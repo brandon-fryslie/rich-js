@@ -1,0 +1,54 @@
+{
+  "name": "rich-js",
+  "version": "0.0.1",
+  "description": "Rich text and beautiful formatting in the terminal — a TypeScript port of Python's Rich",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "keywords": [
+    "terminal",
+    "rich",
+    "ansi",
+    "color",
+    "table",
+    "panel",
+    "tree",
+    "syntax",
+    "markdown",
+    "progress",
+    "cli"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^5.7.0",
+    "vitepress": "^1.6.4",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "string-width": "^8.2.0",
+    "strip-ansi": "^7.2.0"
+  }
+}

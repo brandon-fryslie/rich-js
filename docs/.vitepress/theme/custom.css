@@ -1,0 +1,80 @@
+/* ─── Brand: rich purple ──────────────────────────────────────── */
+:root {
+  --vp-c-brand-1: #7c3aed;
+  --vp-c-brand-2: #6d28d9;
+  --vp-c-brand-3: #5b21b6;
+  --vp-c-brand-soft: rgba(124, 58, 237, 0.12);
+}
+
+.dark {
+  --vp-c-brand-1: #a78bfa;
+  --vp-c-brand-2: #7c3aed;
+  --vp-c-brand-3: #6d28d9;
+  --vp-c-brand-soft: rgba(167, 139, 250, 0.14);
+}
+
+/* ─── Home page hero gradient ─────────────────────────────────── */
+.VPHero .name .clip {
+  background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ─── Code blocks: rounded, bordered ─────────────────────────── */
+.vp-doc div[class*='language-'] {
+  border-radius: 10px;
+  border: 1px solid var(--vp-c-divider);
+}
+
+/* ─── Terminal-output blocks ──────────────────────────────────── */
+.vp-doc div[class*='language-ansi'],
+.vp-doc div[class*='language-sh'],
+.vp-doc div[class*='language-terminal'] {
+  background: #1a1a2e;
+}
+
+.dark .vp-doc div[class*='language-ansi'],
+.dark .vp-doc div[class*='language-sh'],
+.dark .vp-doc div[class*='language-terminal'] {
+  background: #0d0d1a;
+}
+
+/* ─── Feature card icons ──────────────────────────────────────── */
+.VPFeature .icon {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+/* ─── Wider content for docs with long examples ──────────────── */
+.VPDoc.has-aside .content-container {
+  max-width: 860px;
+}
+
+/* ─── Custom badge colors ─────────────────────────────────────── */
+.vp-badge.new {
+  background-color: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  border: 1px solid var(--vp-c-brand-1);
+}
+
+/* ─── Home hero CTA buttons ───────────────────────────────────── */
+.VPButton.brand {
+  background: linear-gradient(135deg, #7c3aed, #5b21b6);
+  border-color: transparent;
+}
+
+.VPButton.brand:hover {
+  background: linear-gradient(135deg, #6d28d9, #4c1d95);
+}
+
+/* ─── Slightly tighter sidebar items ─────────────────────────── */
+.VPSidebarItem .text {
+  font-size: 0.9rem;
+}
+
+/* ─── Monospace font stack for code ──────────────────────────── */
+.vp-doc code {
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace,
+    SFMono-Regular, Menlo, monospace;
+}
