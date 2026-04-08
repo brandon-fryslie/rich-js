@@ -4,11 +4,8 @@ import {
   RichText,
   Rule,
   Style,
-  Spinner,
-  Status,
 } from "../../../src/index.js";
-import { AppState, colorToHex, colorToRgb, visiblePaletteColors } from "../state.js";
-import { buildStatusIndicator } from "./status-indicator.js";
+import { AppState, colorToHex, visiblePaletteColors } from "../state.js";
 
 /**
  * Build the main application layout.
@@ -16,21 +13,17 @@ import { buildStatusIndicator } from "./status-indicator.js";
 export function buildShell(state: AppState, termHeight: number): Layout {
   const root = new Layout();
 
-  // Header (2 rows)
-  const headerLayout = new Layout(buildHeader(), { size: 2, name: "header" });
-
-  // Status indicator (1 row) - shows current mode with spinner
-  const statusIndicator = buildStatusIndicator(state);
-  const statusLayout = new Layout(statusIndicator, { size: 1, name: "status" });
+  // Header (1 row) - compact title + mode indicator
+  const headerLayout = new Layout(buildHeader(state), { size: 1, name: "header" });
 
   // Content area (dynamic height)
   const contentLayout = new Layout(undefined, { name: "content", ratio: 1 });
 
-  // Footer (1 row)
+  // Footer (1 row) - keybindings + status
   const footerLayout = new Layout(buildStatusBar(state), { size: 1, name: "footer" });
 
-  // Vertical split: header / status / content / footer
-  root.splitColumn(headerLayout, statusLayout, contentLayout, footerLayout);
+  // Vertical split: header / content / footer
+  root.splitColumn(headerLayout, contentLayout, footerLayout);
 
   // Within content area: horizontal split between controls and palette display
   const controlsHeight = state.showDetails ? Math.floor((termHeight - 3) * 0.4) : Math.floor((termHeight - 3) * 0.5);
@@ -49,25 +42,18 @@ export function buildShell(state: AppState, termHeight: number): Layout {
 }
 
 /**
- * Build the header section.
+ * Build the header section - compact single-row header.
  */
-function buildHeader(): Panel {
-  const title = new RichText("💫 rich-colors");
-  title.stylize("bold cyan");
+function buildHeader(state: AppState): RichText {
+  const header = new RichText("💫 rich-colors");
+  header.stylize("bold cyan");
 
-  const subtitle = new RichText("Interactive Palette Generator");
-  subtitle.stylize("dim");
+  // Add mode indicator to the right of title
+  const modeInfo = new RichText(` [${state.paletteMode}]`);
+  modeInfo.stylize("dim");
+  header.append(modeInfo);
 
-  const header = new Layout();
-  header.splitColumn(
-    new Layout(title, { size: 1 }),
-    new Layout(subtitle, { size: 1 })
-  );
-
-  return new Panel(header, {
-    title: "",
-    padding: [0, 1],
-  });
+  return header;
 }
 
 /**
@@ -95,14 +81,10 @@ function buildControlsSection(state: AppState): Panel {
 }
 
 /**
- * Build the input color panel.
+ * Build the input color panel - compact display.
  */
 function buildInputPanel(state: AppState): Panel {
-  const lines: RichText[] = [];
-
-  const inputLabel = new RichText("Input Color:");
-  inputLabel.stylize("bold");
-  lines.push(inputLabel);
+  const content = new RichText();
 
   const inputValue = new RichText(state.mode === "inputting" ? `${state.inputColor}_` : state.inputColor);
   if (state.parseError) {
@@ -110,32 +92,20 @@ function buildInputPanel(state: AppState): Panel {
   } else if (state.baseColor) {
     inputValue.stylize("bold green");
   }
-  lines.push(inputValue);
+  content.append(inputValue);
 
   if (state.baseColor && !state.parseError) {
-    const hexLine = new RichText(`Hex: ${colorToHex(state.baseColor)}`);
-    hexLine.stylize("dim");
-    lines.push(hexLine);
-
-    const rgbLine = new RichText(`RGB: ${colorToRgb(state.baseColor)}`);
-    rgbLine.stylize("dim");
-    lines.push(rgbLine);
+    content.append(`\n${colorToHex(state.baseColor)}`);
+    content.stylize("dim");
   } else if (state.parseError) {
-    const errorLine = new RichText(state.parseError);
-    errorLine.stylize("red");
-    lines.push(errorLine);
+    content.append("\n");
+    const error = new RichText(state.parseError);
+    error.stylize("red");
+    content.append(error);
   }
 
-  const hint = new RichText("(Press / to edit)");
-  hint.stylize("dim yellow");
-  lines.push(hint);
-
-  const content = new Layout();
-  const layouts = lines.map((line) => new Layout(line, { size: 1 }));
-  content.splitColumn(...layouts);
-
   return new Panel(content, {
-    title: "Input",
+    title: "Color",
     padding: [0, 1],
   });
 }
@@ -319,34 +289,31 @@ function buildDetailsSection(state: AppState): Panel {
 
 /**
  * Build the status bar (footer).
- * Includes mode indicator with spinner and keybinding hints.
+ * Compact keybindings with status message on the right.
  */
 function buildStatusBar(state: AppState): RichText {
-  const hints = new RichText();
+  const footer = new RichText();
 
   if (state.mode === "inputting") {
-    // Show a spinner while waiting for input
-    const spinner = new Spinner();
-    const status = new Status(`${spinner} Enter color (hex/rgb/name) • Esc to cancel • Enter to submit`);
-    return new RichText(status.toString ? status.toString() : "Enter color (hex/rgb/name) • Esc to cancel • Enter to submit");
+    footer.append("⏳ Enter color (hex/rgb/name) • Esc to cancel • Enter to submit");
+    footer.stylize("yellow dim");
   } else {
-    // Show keybindings and current mode info
-    const hints_text = `Tab: mode • C: system • T: theme • Shift+C: compare • Shift+D: details • /: input • q: quit`;
-    hints.append(hints_text);
-    hints.stylize("dim");
+    // Compact keybindings
+    const hints_text = `Tab: mode • C: sys • T: theme • /: input • q: quit`;
+    footer.append(hints_text);
+    footer.stylize("dim");
 
+    // Status on the right
     if (state.statusMessage) {
-      hints.append(` | `);
+      footer.append(` | `);
       const msgText = new RichText(state.statusMessage);
       msgText.stylize("yellow");
-      hints.append(msgText);
-    } else {
-      // Show current mode info as a status indicator
-      const modeInfo = new RichText(` [${state.paletteMode}] • ${state.colorSystemMode}`);
-      modeInfo.stylize("cyan dim");
-      hints.append(modeInfo);
+      footer.append(msgText);
+    } else if (state.baseColor) {
+      footer.append(` | 🎨 ${state.colorSystemMode}`);
+      footer.stylize("dim");
     }
   }
 
-  return hints;
+  return footer;
 }
