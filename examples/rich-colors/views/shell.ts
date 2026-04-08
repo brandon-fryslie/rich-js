@@ -4,8 +4,11 @@ import {
   RichText,
   Rule,
   Style,
+  Spinner,
+  Status,
 } from "../../../src/index.js";
 import { AppState, colorToHex, colorToRgb, visiblePaletteColors } from "../state.js";
+import { buildStatusIndicator } from "./status-indicator.js";
 
 /**
  * Build the main application layout.
@@ -16,14 +19,18 @@ export function buildShell(state: AppState, termHeight: number): Layout {
   // Header (2 rows)
   const headerLayout = new Layout(buildHeader(), { size: 2, name: "header" });
 
+  // Status indicator (1 row) - shows current mode with spinner
+  const statusIndicator = buildStatusIndicator(state);
+  const statusLayout = new Layout(statusIndicator, { size: 1, name: "status" });
+
   // Content area (dynamic height)
   const contentLayout = new Layout(undefined, { name: "content", ratio: 1 });
 
   // Footer (1 row)
   const footerLayout = new Layout(buildStatusBar(state), { size: 1, name: "footer" });
 
-  // Vertical split: header / content / footer
-  root.splitColumn(headerLayout, contentLayout, footerLayout);
+  // Vertical split: header / status / content / footer
+  root.splitColumn(headerLayout, statusLayout, contentLayout, footerLayout);
 
   // Within content area: horizontal split between controls and palette display
   const controlsHeight = state.showDetails ? Math.floor((termHeight - 3) * 0.4) : Math.floor((termHeight - 3) * 0.5);
@@ -312,21 +319,32 @@ function buildDetailsSection(state: AppState): Panel {
 
 /**
  * Build the status bar (footer).
+ * Includes mode indicator with spinner and keybinding hints.
  */
 function buildStatusBar(state: AppState): RichText {
   const hints = new RichText();
 
   if (state.mode === "inputting") {
-    hints.append("Enter color (hex/rgb/name) • Esc to cancel • Enter to submit");
-    hints.stylize("dim yellow");
+    // Show a spinner while waiting for input
+    const spinner = new Spinner();
+    const status = new Status(`${spinner} Enter color (hex/rgb/name) • Esc to cancel • Enter to submit`);
+    return new RichText(status.toString ? status.toString() : "Enter color (hex/rgb/name) • Esc to cancel • Enter to submit");
   } else {
+    // Show keybindings and current mode info
     const hints_text = `Tab: mode • C: system • T: theme • Shift+C: compare • Shift+D: details • /: input • q: quit`;
     hints.append(hints_text);
     hints.stylize("dim");
 
     if (state.statusMessage) {
-      hints.append(` | ${state.statusMessage}`);
-      hints.stylize("yellow");
+      hints.append(` | `);
+      const msgText = new RichText(state.statusMessage);
+      msgText.stylize("yellow");
+      hints.append(msgText);
+    } else {
+      // Show current mode info as a status indicator
+      const modeInfo = new RichText(` [${state.paletteMode}] • ${state.colorSystemMode}`);
+      modeInfo.stylize("cyan dim");
+      hints.append(modeInfo);
     }
   }
 
