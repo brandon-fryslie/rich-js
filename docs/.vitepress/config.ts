@@ -83,7 +83,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/Textualize/rich' },
+      { icon: 'github', link: 'https://github.com/brandon-fryslie/rich-js' },
     ],
 
     footer: {

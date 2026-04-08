@@ -1,6 +1,8 @@
 # rich-js
 
-A TypeScript port of Python's [Rich](https://github.com/Textualize/rich) library — rich text and beautiful formatting in the terminal.
+A TypeScript port of Python's wonderful [Rich](https://github.com/Textualize/rich) library by @willmcgugan.
+
+## Rich text and beautiful formatting in the terminal
 
 The rich-js API makes it easy to add color and style to terminal output. It can also render pretty tables, progress bars, markdown, syntax highlighted source code, tracebacks, and more — out of the box.
 
