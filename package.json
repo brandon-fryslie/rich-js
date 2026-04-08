@@ -22,7 +22,11 @@
     "clean": "rm -rf dist",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "demo": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-explore/index.js",
+    "demo:build": "tsc -p tsconfig.demo.json",
+    "sessions": "tsc -p tsconfig.demo.json && node dist-demo/examples/claude-sessions/index.js",
+    "colors": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-colors/index.js"
   },
   "keywords": [
     "terminal",
