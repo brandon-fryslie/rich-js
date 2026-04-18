@@ -93,7 +93,8 @@ export class Tree implements Renderable, Measurable {
       for (const prefix of prefixes) {
         yield new Segment(prefix, guideStyle);
       }
-      // Render label
+      // [LAW:single-enforcer] Tree owns its row boundaries explicitly instead
+      // of depending on label renderables to invent trailing newlines.
       yield* this.label.render(options);
       yield Segment.line();
     }
