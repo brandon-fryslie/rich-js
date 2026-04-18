@@ -28,11 +28,18 @@ export class NullHighlighter extends Highlighter {
 
 export class RegexHighlighter extends Highlighter {
   static highlights: (string | RegExp)[] = [];
+  /** Style applied to matches. When ending with "." it acts as a namespace
+   *  prefix: named groups become `baseStyle + groupName` (e.g. "repr." + "url"
+   *  → "repr.url"). Otherwise it's used as a literal style for all matches
+   *  (e.g. "bold red" applies "bold red" to every named group). */
   static baseStyle = "";
 
   highlight(text: RichText): void {
     const ctor = this.constructor as typeof RegexHighlighter;
     const baseStyle = ctor.baseStyle;
+    // Namespace mode: "repr." + groupName → "repr.url"
+    // Literal mode: "bold red" → applied directly to every match
+    const isNamespace = baseStyle.endsWith(".");
 
     for (const pattern of ctor.highlights) {
       const re =
@@ -54,11 +61,10 @@ export class RegexHighlighter extends Highlighter {
               const posInMatch = match[0].indexOf(groupValue, searchFrom);
               if (posInMatch >= 0) {
                 const start = match.index + posInMatch;
-                text.stylize(
-                  `${baseStyle}${groupName}`,
-                  start,
-                  start + groupValue.length,
-                );
+                const style = isNamespace
+                  ? `${baseStyle}${groupName}`
+                  : baseStyle || groupName;
+                text.stylize(style, start, start + groupValue.length);
                 searchFrom = posInMatch + groupValue.length;
               }
             }
