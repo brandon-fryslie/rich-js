@@ -17,7 +17,18 @@ function stripControlChars(text: string): string {
 
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
+  if (typeof style === "string") {
+    try {
+      return Style.parse(style);
+    } catch {
+      // [LAW:single-enforcer] Styling is non-critical — an unrecognized style
+      // name (typo, missing theme key, bad concatenation) degrades to unstyled
+      // rather than crashing. Style.parse throws StyleSyntaxError on unknown
+      // input; we absorb it here at the trust boundary where external strings
+      // (from highlighters, markup, user code) enter the style system.
+      return NULL_STYLE;
+    }
+  }
   return style;
 }
 
@@ -541,17 +552,22 @@ export class RichText implements Renderable, Measurable {
     const overflow = this._overflow ?? options.overflow ?? "fold";
     const justify = this._justify ?? options.justify;
     const noWrap = this._noWrap || (options.noWrap ?? false);
+    const endsWithNewline = text.endsWith("\n");
 
-    for (const line of logicalLines) {
+    for (let index = 0; index < logicalLines.length; index += 1) {
+      const line = logicalLines[index]!;
       const lineWidth = Segment.getLineLength(line);
+      const terminateLine = index < logicalLines.length - 1 || endsWithNewline;
 
       if (noWrap || lineWidth <= maxWidth) {
         // Line fits — apply justification
         yield* this._justifyLine(line, maxWidth, justify);
-        yield Segment.line();
+        if (terminateLine) {
+          yield Segment.line();
+        }
       } else {
         // Line too long — handle overflow
-        yield* this._overflowLine(line, lineWidth, maxWidth, overflow);
+        yield* this._overflowLine(line, lineWidth, maxWidth, overflow, terminateLine);
       }
     }
 
@@ -674,6 +690,7 @@ export class RichText implements Renderable, Measurable {
     lineWidth: number,
     maxWidth: number,
     overflow: "fold" | "crop" | "ellipsis",
+    terminateLine: boolean,
   ): Iterable<Segment> {
     switch (overflow) {
       case "fold": {
@@ -681,16 +698,21 @@ export class RichText implements Renderable, Measurable {
         const cuts: number[] = [];
         for (let w = maxWidth; w < lineWidth; w += maxWidth) cuts.push(w);
         const foldedLines = Segment.divide(line, cuts);
-        for (const fLine of foldedLines) {
+        for (let index = 0; index < foldedLines.length; index += 1) {
+          const fLine = foldedLines[index]!;
           yield* fLine;
-          yield Segment.line();
+          if (index < foldedLines.length - 1 || terminateLine) {
+            yield Segment.line();
+          }
         }
         break;
       }
       case "crop": {
         const cropped = Segment.adjustLineLength(line, maxWidth, undefined, false);
         yield* cropped;
-        yield Segment.line();
+        if (terminateLine) {
+          yield Segment.line();
+        }
         break;
       }
       case "ellipsis": {
@@ -704,7 +726,9 @@ export class RichText implements Renderable, Measurable {
           yield* cropped;
           yield new Segment("\u2026");
         }
-        yield Segment.line();
+        if (terminateLine) {
+          yield Segment.line();
+        }
         break;
       }
     }
