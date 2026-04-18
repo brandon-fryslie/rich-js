@@ -1,7 +1,7 @@
-import { Panel, Markdown, RichText } from "../../../../src/index.js";
+import { Panel, Markdown, RichText, Padding } from "../../../../src/index.js";
 import type { Renderable } from "../../../../src/index.js";
 import type { AssistantBlock } from "../../data/types.js";
-import { shortTime, borderFor, truncate } from "./_common.js";
+import { styledTimestamp, borderFor, truncate, emoji, highlightSearch } from "./_common.js";
 import type { RenderOpts } from "./index.js";
 
 const PREVIEW_LINES = 25;
@@ -13,10 +13,17 @@ export function renderAssistant(block: AssistantBlock, opts: RenderOpts): Render
   try {
     body = new Markdown(text);
   } catch {
-    body = new RichText(text, { end: "" });
+    const rt = new RichText(text, { end: "" });
+    highlightSearch(rt, opts.searchQuery);
+    body = rt;
   }
+  // Wrap in standalone Padding to exercise the Padding renderable
+  body = new Padding(body, [1, 0]);
+
   const tokenCounts = `${block.inputTokens}↑ ${block.outputTokens}↓`;
-  const title = `◆ ${block.model}  ${shortTime(block.timestamp)}  ·  ${tokenCounts}`;
+  const title = new RichText(`${emoji(":sparkles:")} ${block.model}  `, { end: "" });
+  title.append(styledTimestamp(block.timestamp));
+  title.append(`  ·  ${tokenCounts}`);
   return new Panel(body, {
     title,
     borderStyle: borderFor("blue", opts.isSelected),

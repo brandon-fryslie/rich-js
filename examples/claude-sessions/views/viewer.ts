@@ -8,6 +8,7 @@ import { Panel, Segment, RichText } from "../../../src/index.js";
 import type { Renderable, RenderOptions } from "../../../src/index.js";
 import type { AppState } from "../state.js";
 import { renderBlock } from "./block-renderers/index.js";
+import { buildGlobalResults } from "./global-results.js";
 
 class BlockListRenderable implements Renderable {
   constructor(
@@ -30,10 +31,14 @@ class BlockListRenderable implements Renderable {
     const allLines: Segment[][] = [];
     for (let i = 0; i < this.state.blocks.length; i++) {
       const block = this.state.blocks[i]!;
+      const searchQuery = this.state.search.mode === "results-local"
+        ? this.state.search.query
+        : undefined;
       const renderable = renderBlock(block, {
         isSelected: i === this.state.selectedBlockIndex,
         isExpanded: this.state.expanded.has(i),
         viewMode: this.state.viewMode,
+        searchQuery,
       });
       const segs = [...renderable.render(options)];
       const lines = Segment.splitLines(segs);
@@ -69,8 +74,16 @@ class BlockListRenderable implements Renderable {
 }
 
 export function buildViewer(state: AppState, innerHeight: number, focused: boolean): Renderable {
+  // Data-driven swap: when global search results are active, the viewer
+  // pane renders the hit list instead of the block list.
+  if (state.search.mode === "results-global") {
+    return buildGlobalResults(state, innerHeight, focused);
+  }
+
   const list = new BlockListRenderable(state, innerHeight);
   const focusPrefix = focused ? "▸ " : "";
+  const stackDepth = state.sessionStack.length;
+  const depthTag = stackDepth > 0 ? ` (depth ${stackDepth})` : "";
   const sessionName = state.loadedSessionPath
     ? state.loadedSessionPath.split("/").pop() ?? "session"
     : "Viewer";
@@ -78,8 +91,9 @@ export function buildViewer(state: AppState, innerHeight: number, focused: boole
     ? `  ${state.selectedBlockIndex + 1}/${state.blocks.length}`
     : "";
   const modeTag = state.viewMode === "raw" ? "  [raw]" : "";
+  const hiddenTag = state.showHidden ? "  [+hidden]" : "";
   return new Panel(list, {
-    title: `${focusPrefix}${sessionName}${blockInfo}${modeTag}`,
+    title: `${focusPrefix}${sessionName}${blockInfo}${depthTag}${modeTag}${hiddenTag}`,
     borderStyle: focused ? "bold green" : "dim green",
     padding: [0, 1],
   });

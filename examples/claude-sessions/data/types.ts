@@ -56,6 +56,9 @@ export interface SubagentBlock extends BlockBase {
   readonly prompt: string;          // from input.prompt (truncated)
   readonly resultText: string;
   readonly hasResult: boolean;
+  /** Short agent id used to locate the subagent's own JSONL file. Null if
+   *  the tool result didn't carry one (rare — usually early-terminated runs). */
+  readonly agentId: string | null;
 }
 
 export interface SystemBlock extends BlockBase {

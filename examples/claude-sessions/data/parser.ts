@@ -65,8 +65,26 @@ interface RawRecord {
   subtype?: string;
   durationMs?: number;
   message?: MessageShape;
-  toolUseResult?: unknown;
+  toolUseResult?: { agentId?: string } | unknown;
   sourceToolAssistantUUID?: string;
+}
+
+/** Extract agentId for a Task tool_use. Prefer the structured
+ *  toolUseResult.agentId field on the wrapping user record; fall back to
+ *  the tool_result content (sometimes echoed there). Null if none found. */
+function extractAgentId(
+  userRecord: RawRecord | undefined,
+  resolvedContent: AssistantContent | undefined,
+): string | null {
+  if (userRecord && typeof userRecord.toolUseResult === "object" && userRecord.toolUseResult) {
+    const id = (userRecord.toolUseResult as { agentId?: unknown }).agentId;
+    if (typeof id === "string" && id.length > 0) return id;
+  }
+  if (resolvedContent && typeof resolvedContent.content === "object" && resolvedContent.content) {
+    const id = (resolvedContent.content as { agentId?: unknown }).agentId;
+    if (typeof id === "string" && id.length > 0) return id;
+  }
+  return null;
 }
 
 function asString(v: unknown): string {
@@ -112,15 +130,15 @@ function flattenToolResultText(c: AssistantContent): string {
 }
 
 /**
- * Step 1: drop hidden types and meta-only user messages we don't want to show.
- * Keep meta messages; the renderer can dim them.
+ * Step 1: drop hidden types (unless showHidden is true).
+ * Lines without a `type` are always dropped — they're not renderable.
  */
-function dropHidden(lines: ReadonlyArray<RawLine>): RawLine[] {
+function dropHidden(lines: ReadonlyArray<RawLine>, showHidden: boolean): RawLine[] {
   const out: RawLine[] = [];
   for (const line of lines) {
     const r = line.parsed as RawRecord;
     if (typeof r.type !== "string") continue;
-    if (HIDDEN_TYPES.has(r.type)) continue;
+    if (!showHidden && HIDDEN_TYPES.has(r.type)) continue;
     out.push(line);
   }
   return out;
@@ -253,6 +271,10 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
 
         if (toolName === "Task") {
           const input = (tu.input ?? {}) as Record<string, unknown>;
+          const resultUserRecord = resolved
+            ? (lines[resolved.lineIndex]!.parsed as RawRecord)
+            : undefined;
+          const agentId = extractAgentId(resultUserRecord, resolved?.content);
           const block: SubagentBlock = {
             kind: "subagent",
             uuid: `${uuid}#${toolUseId}`,
@@ -271,6 +293,7 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
               : "",
             resultText,
             hasResult: resolved !== undefined,
+            agentId,
           };
           out.push(block);
         } else {
@@ -339,6 +362,14 @@ function emitBlocks(lines: ReadonlyArray<RawLine>): Block[] {
   return out;
 }
 
-export function parseBlocks(lines: ReadonlyArray<RawLine>): Block[] {
-  return emitBlocks(dedupStreaming(dropHidden(lines)));
+export interface ParseOptions {
+  readonly showHidden?: boolean;
+}
+
+export function parseBlocks(
+  lines: ReadonlyArray<RawLine>,
+  opts?: ParseOptions,
+): Block[] {
+  const showHidden = opts?.showHidden === true;
+  return emitBlocks(dedupStreaming(dropHidden(lines, showHidden)));
 }

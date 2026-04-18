@@ -7,15 +7,17 @@ export type Action =
   | { type: "move"; delta: number }
   | { type: "first" }
   | { type: "last" }
-  | { type: "open" }     // sidebar: descend; viewer: no-op
-  | { type: "back" }     // sidebar: ascend
+  | { type: "open" }              // sidebar: descend; viewer: drill into subagent
+  | { type: "back" }              // sidebar: ascend
   | { type: "toggle-sidebar" }
   | { type: "toggle-focus" }
   | { type: "toggle-view-mode" }
   | { type: "toggle-expand" }
+  | { type: "toggle-hidden" }
   | { type: "jump-parent" }
-  | { type: "jump-related" }
-  | { type: "search-enter" }
+  | { type: "pop-session" }
+  | { type: "search-enter" }       // local, /
+  | { type: "global-search-enter" }// global, S
   | { type: "search-next" }
   | { type: "search-prev" }
   | { type: "search-exit" }
@@ -33,31 +35,31 @@ const KEYMAP: Record<string, Action> = {
   "g": { type: "first" },
   "G": { type: "last" },
 
-  // Sidebar navigation
+  // Context-polymorphic open/back
   "\x1b[C": { type: "open" },
   "\r": { type: "open" },
   "\n": { type: "open" },
   "l": { type: "open" },
   "\x1b[D": { type: "back" },
-  "h": { type: "back" },
 
   // Layout
   "\\": { type: "toggle-sidebar" },
-  "b": { type: "toggle-sidebar" },
   "\t": { type: "toggle-focus" },
   "\x1b[Z": { type: "toggle-focus" }, // shift-tab
 
   // Viewer commands
   "v": { type: "toggle-view-mode" },
   "e": { type: "toggle-expand" },
+  "H": { type: "toggle-hidden" },
   "p": { type: "jump-parent" },
-  "r": { type: "jump-related" },
+  "u": { type: "pop-session" },
 
   // Search
   "/": { type: "search-enter" },
+  "S": { type: "global-search-enter" },
   "n": { type: "search-next" },
   "N": { type: "search-prev" },
-  "\x1b": { type: "search-exit" }, // esc — also doubles as quit if no search
+  "\x1b": { type: "search-exit" },
 
   // Quit
   "q": { type: "quit" },

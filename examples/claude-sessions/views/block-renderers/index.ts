@@ -17,6 +17,7 @@ export interface RenderOpts {
   readonly isSelected: boolean;
   readonly isExpanded: boolean;
   readonly viewMode: "pretty" | "raw";
+  readonly searchQuery?: string;
 }
 
 export function renderBlock(block: Block, opts: RenderOpts): Renderable {
