@@ -33,8 +33,8 @@ export class Spinner implements Renderable, Measurable {
   private _frameIndex: number;
   private _lastUpdate: number;
 
-  constructor(name: string, text?: string, options?: SpinnerOptions) {
-    const spinnerName = name;
+  constructor(name?: string, text?: string, options?: SpinnerOptions) {
+    const spinnerName = name ?? DEFAULT_SPINNER;
     const data = SPINNERS[spinnerName];
     if (!data) {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
