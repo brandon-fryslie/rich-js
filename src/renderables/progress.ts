@@ -270,7 +270,12 @@ export class Progress implements Renderable {
       if (!task.visible) continue;
       const cells: unknown[] = this._columns.map((col) => {
         const segs = [...col.render(options, task)];
-        return new RichText(segs.map((s) => s.text).join(""), { end: "" });
+        // Build a RichText that preserves segment styles as spans
+        const text = new RichText("", { end: "" });
+        for (const seg of segs) {
+          text.append(seg.text, seg.style);
+        }
+        return text;
       });
       table.addRow(...cells);
     }
