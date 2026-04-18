@@ -17,7 +17,7 @@ export function buildStatusIndicator(state: AppState): RichText {
     indicator.append("Awaiting color input");
   } else if (state.baseColor) {
     // Show the current palette mode with indicator
-    const modeIndicator = new RichText(`🎨 ${state.paletteMode}`);
+    const modeIndicator = new RichText(`🎨 ${state.selectedPaletteMode}`);
     modeIndicator.stylize("cyan bold");
     indicator.append(modeIndicator);
 

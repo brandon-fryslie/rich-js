@@ -1,6 +1,6 @@
 import process from "process";
 import { Console } from "../../src/index.js";
-import { initialState, reduce, type Action } from "./state.js";
+import { initialState, reduce, colorToHex, type Action } from "./state.js";
 import { buildShell } from "./views/shell.js";
 import { lookupKey } from "./keymap.js";
 
@@ -31,14 +31,12 @@ export async function run(startColor?: string): Promise<void> {
   stdin.setEncoding("utf-8");
 
   const render = (): void => {
-    const termHeight = process.stdout.rows ?? 24;
-
     // Clear screen and move cursor home
     process.stdout.write("\x1b[2J\x1b[H");
 
     // Render the UI
     try {
-      consoleOut.print(buildShell(state, termHeight));
+      consoleOut.print(buildShell(state));
     } catch (err) {
       process.stdout.write(`\nRender error: ${err instanceof Error ? err.message : String(err)}\n`);
     }
@@ -54,29 +52,88 @@ export async function run(startColor?: string): Promise<void> {
         let action: Action;
 
         if (state.mode === "inputting") {
-          // Handle raw input for color entry
+          // [LAW:dataflow-not-control-flow] Input handling dispatches actions that the
+          // reducer uses to filter available colors and navigate. The same render loop
+          // executes every frame; variability lives in the filter state, never in control.
           if (chunk === "\r" || chunk === "\n") {
-            action = { type: "submit-input" };
+            // Select the currently highlighted filtered color
+            if (state.filteredColorNames.length > 0) {
+              action = {
+                type: "select-filtered-color",
+                name: state.filteredColorNames[state.filteredColorIndex]!,
+              };
+            } else {
+              action = { type: "none" };
+            }
           } else if (chunk === "\x1b") {
             action = { type: "exit-input-mode" };
+          } else if (chunk === "\x1b[A" || chunk === "\x1b[B") {
+            // Up/Down arrows to navigate filtered colors
+            const delta = chunk === "\x1b[A" ? -1 : 1;
+            action = { type: "navigate-filtered-colors", delta };
           } else if (chunk === "\x7f" || chunk === "\b") {
-            // Backspace
+            // Backspace: remove last character from filter
             action = {
-              type: "set-input",
-              value: state.inputColor.slice(0, -1),
+              type: "set-input-filter",
+              value: state.inputFilter.slice(0, -1),
             };
           } else if (chunk.charCodeAt(0) >= 0x20 && chunk.charCodeAt(0) < 0x7f) {
-            // Printable character
+            // Printable character: add to filter
             action = {
-              type: "set-input",
-              value: state.inputColor + chunk,
+              type: "set-input-filter",
+              value: state.inputFilter + chunk,
             };
           } else {
             action = { type: "none" };
           }
         } else {
-          // Normal browsing mode - use keymap
-          action = lookupKey(chunk);
+          // Normal browsing mode - context-aware key handling
+          // [LAW:dataflow-not-control-flow] Arrow key behavior depends on state.focus
+          // but the dispatch is deterministic: same focus always produces same action
+          if (chunk === "\x1b[A" || chunk === "\x1b[B") {
+            // Up/Down arrows - switch palette modes when in palette_grid
+            const delta = chunk === "\x1b[A" ? -1 : 1;
+            if (state.focus === "palette_grid") {
+              action = { type: "cycle-palette-mode", delta };
+            } else {
+              action = { type: "none" };
+            }
+          } else if (chunk === "\x1b[C" || chunk === "\x1b[D") {
+            // Left/Right arrows - context-dependent
+            const delta = chunk === "\x1b[C" ? 1 : -1;
+            if (state.focus === "palette_grid") {
+              action = { type: "move-palette-selection", delta };
+            } else if (state.focus === "color_system") {
+              action = { type: "cycle-color-system", delta };
+            } else if (state.focus === "theme") {
+              action = { type: "cycle-theme", delta };
+            } else {
+              action = { type: "none" };
+            }
+          } else if (chunk === "\r" || chunk === "\n") {
+            // Enter - context-dependent (show status message for now)
+            if (state.focus === "palette_grid" && state.baseColor) {
+              const palette = state.allPalettes[state.selectedPaletteMode];
+              if (palette && palette.length > 0) {
+                const color = palette[state.selectedColorIndexInPalette];
+                if (color) {
+                  action = {
+                    type: "set-status",
+                    message: `Selected: ${colorToHex(color)}`,
+                  };
+                } else {
+                  action = { type: "none" };
+                }
+              } else {
+                action = { type: "none" };
+              }
+            } else {
+              action = { type: "none" };
+            }
+          } else {
+            // Other keys - use keymap
+            action = lookupKey(chunk);
+          }
 
           if (action.type === "quit") {
             stdin.off("data", onData);

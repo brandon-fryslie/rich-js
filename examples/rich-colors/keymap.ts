@@ -8,9 +8,11 @@ import { Action } from "./state.js";
  */
 
 export const KEYMAP: Record<string, Action> = {
-  // Palette mode navigation
-  "\t": { type: "cycle-palette-mode", delta: 1 },
-  "\x1b[Z": { type: "cycle-palette-mode", delta: -1 }, // Shift+Tab
+  // [LAW:one-source-of-truth] All keybindings are defined here. Add a row to add a binding.
+
+  // Focus navigation (Tab cycles through: palette_grid → color_system → theme)
+  "\t": { type: "move-focus", delta: 1 },
+  "\x1b[Z": { type: "move-focus", delta: -1 }, // Shift+Tab
 
   // Color system navigation
   "c": { type: "cycle-color-system", delta: 1 },
@@ -20,20 +22,18 @@ export const KEYMAP: Record<string, Action> = {
   "t": { type: "cycle-theme", delta: 1 },
   "T": { type: "cycle-theme", delta: -1 },
 
-  // Toggles
-  "\x03": { type: "toggle-compare" }, // Ctrl+C (repurposed for demo)
-
-  // Details toggle
-  "d": { type: "toggle-details" },
-  "D": { type: "toggle-details" },
-
-  // Palette selection
+  // Palette mode navigation (when focus is on palette_grid)
+  // Press left/right to move through the palette colors
   "\x1b[C": { type: "move-palette-selection", delta: 1 }, // Right arrow
   "\x1b[D": { type: "move-palette-selection", delta: -1 }, // Left arrow
   "l": { type: "move-palette-selection", delta: 1 }, // vim right
   "h": { type: "move-palette-selection", delta: -1 }, // vim left
 
-  // Input mode
+  // Details toggle
+  "d": { type: "toggle-details" },
+  "D": { type: "toggle-details" },
+
+  // Input mode (/ to start filtering colors)
   "/": { type: "start-input-mode" },
 
   // Quit

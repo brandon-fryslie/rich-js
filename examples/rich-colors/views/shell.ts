@@ -4,19 +4,28 @@ import {
   RichText,
   Rule,
   Style,
+  Color,
+  ROUNDED,
+  HEAVY,
 } from "../../../src/index.js";
-import { AppState, colorToHex, visiblePaletteColors } from "../state.js";
+import { AppState, colorToHex } from "../state.js";
 
 /**
  * Build the main application layout.
+ *
+ * [LAW:dataflow-not-control-flow] The same render executes every frame.
+ * All logic is data-driven: focus state determines styling, palette mode
+ * determines which palette is displayed, input mode determines which
+ * instructions appear. No conditionals on "should I render X" — render
+ * everything, let the data decide how it appears.
  */
-export function buildShell(state: AppState, termHeight: number): Layout {
+export function buildShell(state: AppState): Layout {
   const root = new Layout();
 
-  // Header (1 row) - compact title + mode indicator
-  const headerLayout = new Layout(buildHeader(state), { size: 1, name: "header" });
+  // Header (1 row) - title
+  const headerLayout = new Layout(buildHeader(), { size: 1, name: "header" });
 
-  // Content area (dynamic height)
+  // Content area (dynamic height) - main UI
   const contentLayout = new Layout(undefined, { name: "content", ratio: 1 });
 
   // Footer (1 row) - keybindings + status
@@ -25,293 +34,330 @@ export function buildShell(state: AppState, termHeight: number): Layout {
   // Vertical split: header / content / footer
   root.splitColumn(headerLayout, contentLayout, footerLayout);
 
-  // Within content area: horizontal split between controls and palette display
-  const controlsHeight = state.showDetails ? Math.floor((termHeight - 3) * 0.4) : Math.floor((termHeight - 3) * 0.5);
+  // Within content: left side (input/colors) and right side (palettes)
+  const inputLayout = new Layout(buildInputPanel(state), { size: 30, name: "input" });
+  const palettesLayout = new Layout(
+    buildPalettesSection(state),
+    { ratio: 1, name: "palettes" }
+  );
 
-  const controlsLayout = new Layout(buildControlsSection(state), { size: controlsHeight, name: "controls" });
-  const paletteLayout = new Layout(buildPaletteSection(state), { ratio: 1, name: "palette" });
-
-  if (state.showDetails) {
-    const detailsLayout = new Layout(buildDetailsSection(state), { ratio: 1, name: "details" });
-    contentLayout.splitColumn(controlsLayout, paletteLayout, detailsLayout);
-  } else {
-    contentLayout.splitColumn(controlsLayout, paletteLayout);
-  }
+  contentLayout.splitRow(inputLayout, palettesLayout);
 
   return root;
 }
 
 /**
- * Build the header section - compact single-row header.
+ * Build the header section.
  */
-function buildHeader(state: AppState): RichText {
+function buildHeader(): RichText {
   const header = new RichText("💫 rich-colors");
   header.stylize("bold cyan");
-
-  // Add mode indicator to the right of title
-  const modeInfo = new RichText(` [${state.paletteMode}]`);
-  modeInfo.stylize("dim");
-  header.append(modeInfo);
-
   return header;
 }
 
 /**
- * Build the controls section (left side).
- */
-function buildControlsSection(state: AppState): Panel {
-  const content = new Layout();
-
-  // Input section
-  const inputSection = buildInputPanel(state);
-
-  // Options section
-  const optionsSection = buildOptionsPanel(state);
-
-  content.splitColumn(
-    new Layout(inputSection, { ratio: 1 }),
-    new Layout(new Rule(), { size: 1 }),
-    new Layout(optionsSection, { ratio: 2 })
-  );
-
-  return new Panel(content, {
-    title: "Controls",
-    padding: [1, 1],
-  });
-}
-
-/**
- * Build the input color panel - compact display.
+ * Build the input filtering panel (left side).
  */
 function buildInputPanel(state: AppState): Panel {
+  const layout = new Layout();
+
+  // Input field display
+  const inputField = buildInputField(state);
+
+  // Filtered color list
+  const colorList = buildFilteredColorList(state);
+
+  // Options (color system, theme)
+  const optionsSection = buildOptionsSection(state);
+
+  layout.splitColumn(
+    new Layout(inputField, { size: 4, name: "input-field" }),
+    new Layout(colorList, { ratio: 1, name: "color-list" }),
+    new Layout(new Rule(), { size: 1 }),
+    new Layout(optionsSection, { size: 8, name: "options" })
+  );
+
+  // Apply styling based on focus for color_system and theme
+  const isSysOrThemeFocused =
+    state.focus === "color_system" || state.focus === "theme";
+  const focusLabel =
+    state.focus === "color_system" ? " ◄ Color System" :
+    state.focus === "theme" ? " ◄ Theme" : "";
+
+  const titleText = new RichText("Color Input" + focusLabel);
+  if (isSysOrThemeFocused) titleText.stylize("bold cyan");
+  else titleText.stylize("dim");
+
+  return new Panel(layout, {
+    title: titleText,
+    padding: [0, 1],
+    box: isSysOrThemeFocused ? HEAVY : ROUNDED,
+  });
+}
+
+/**
+ * Build the input field display.
+ */
+function buildInputField(state: AppState): RichText {
   const content = new RichText();
 
-  const inputValue = new RichText(state.mode === "inputting" ? `${state.inputColor}_` : state.inputColor);
-  if (state.parseError) {
-    inputValue.stylize("bold red");
-  } else if (state.baseColor) {
-    inputValue.stylize("bold green");
-  }
-  content.append(inputValue);
-
-  if (state.baseColor && !state.parseError) {
-    content.append(`\n${colorToHex(state.baseColor)}`);
-    content.stylize("dim");
-  } else if (state.parseError) {
+  if (state.mode === "inputting") {
+    // Show input with cursor
+    const inputText = new RichText(`${state.inputFilter}_`);
+    inputText.stylize("bold cyan");
+    content.append(inputText);
     content.append("\n");
-    const error = new RichText(state.parseError);
-    error.stylize("red");
-    content.append(error);
+    content.append(new RichText("↑↓ navigate • Enter confirm • Esc cancel").stylize("dim"));
+  } else {
+    // Show base color info
+    if (state.baseColor) {
+      // Show a large swatch of the base color
+      const hex = colorToHex(state.baseColor);
+      const swatch = new RichText(`  ${hex}  `, { end: "" });
+      swatch.stylize(new Style({ bgcolor: state.baseColor, color: Color.parse("white"), bold: true }));
+      content.append(swatch);
+      content.append("\n");
+      content.append(new RichText(`Press / to change`).stylize("dim"));
+    } else {
+      const prompt = new RichText("Press / to enter a color");
+      prompt.stylize("dim yellow");
+      content.append(prompt);
+    }
   }
 
-  return new Panel(content, {
-    title: "Color",
-    padding: [0, 1],
-  });
+  return content;
 }
 
 /**
- * Build the options panel.
+ * Build the filtered color list.
  */
-function buildOptionsPanel(state: AppState): Panel {
-  const content = new Layout();
-  const sections: Layout[] = [];
+function buildFilteredColorList(state: AppState): RichText {
+  const content = new RichText();
 
-  // Palette mode selector
-  const modeSection = buildModeSelector(state);
-  sections.push(new Layout(modeSection, { ratio: 1 }));
-  sections.push(new Layout(new Rule(), { size: 1 }));
-
-  // Color system selector
-  const systemSection = buildSystemSelector(state);
-  sections.push(new Layout(systemSection, { ratio: 1 }));
-  sections.push(new Layout(new Rule(), { size: 1 }));
-
-  // Theme selector
-  const themeSection = buildThemeSelector(state);
-  sections.push(new Layout(themeSection, { ratio: 1 }));
-
-  content.splitColumn(...sections);
-
-  return new Panel(content, {
-    title: "Options",
-    padding: [0, 1],
-  });
-}
-
-/**
- * Build the palette mode selector.
- */
-function buildModeSelector(state: AppState): RichText {
-  const modes = ["complementary", "analogous", "triadic", "tetradic", "square", "monochromatic", "shades", "tints"];
-  const lines: string[] = [];
-
-  for (const mode of modes) {
-    const isActive = mode === state.paletteMode;
-    lines.push(isActive ? `▶ ${mode}` : `  ${mode}`);
+  if (state.mode !== "inputting") {
+    content.append(new RichText("(no colors shown)").stylize("dim"));
+    return content;
   }
 
-  const result = new RichText(lines.join("\n"));
+  if (state.filteredColorNames.length === 0) {
+    content.append(new RichText("No matching colors").stylize("dim yellow"));
+    return content;
+  }
 
-  // For simplicity, stylize the entire result
-  result.stylize("dim");
-  return result;
+  for (let i = 0; i < state.filteredColorNames.length; i++) {
+    const name = state.filteredColorNames[i]!;
+    const isSelected = i === state.filteredColorIndex;
+    const indicator = isSelected ? "▶ " : "  ";
+    content.append(indicator);
+    // Show a colored swatch block next to each color name
+    try {
+      const c = Color.parse(name);
+      const swatch = new RichText("  ", { end: "" });
+      swatch.stylize(new Style({ bgcolor: c }));
+      content.append(swatch);
+      content.append(" ");
+    } catch {
+      content.append("   ");
+    }
+    const nameText = new RichText(name, { end: "" });
+    if (isSelected) nameText.stylize("bold reverse");
+    content.append(nameText);
+    content.append("\n");
+  }
+  return content;
 }
 
 /**
- * Build the color system selector.
+ * Build the options section (color system + theme).
  */
-function buildSystemSelector(state: AppState): RichText {
+function buildOptionsSection(state: AppState): RichText {
+  const content = new RichText();
+
+  // Color system
+  content.append(new RichText("[Color System]").stylize("bold dim"));
+  content.append("\n");
+
   const systems = ["truecolor", "256", "16", "windows"];
-  const lines: string[] = [];
-
   for (const sys of systems) {
     const isActive = sys === state.colorSystemMode;
-    lines.push(isActive ? `▶ ${sys}` : `  ${sys}`);
+    const line = isActive ? `▶ ${sys}` : `  ${sys}`;
+    content.append(line + "\n");
   }
 
-  const result = new RichText(lines.join("\n"));
-  result.stylize("dim");
-  return result;
+  content.append("\n");
+  content.append(new RichText("[Theme]").stylize("bold dim"));
+  content.append("\n");
+
+  // Theme
+  const themeName = "default"; // Simplified for now
+  content.append(`▶ ${themeName}\n`);
+
+  return content;
 }
 
 /**
- * Build the theme selector.
+ * Build the palettes section (right side) showing all 8 modes simultaneously.
  */
-function buildThemeSelector(state: AppState): RichText {
-  const themeNames = ["default", "monokai", "svg_export"];
-  const lines: string[] = [];
-
-  for (const name of themeNames) {
-    const isActive =
-      (name === "default" && state.selectedTheme === state.selectedTheme) ||
-      (name === "monokai") ||
-      (name === "svg_export");
-    lines.push(isActive ? `▶ ${name}` : `  ${name}`);
-  }
-
-  const result = new RichText(lines.join("\n"));
-  result.stylize("dim");
-  return result;
-}
-
-/**
- * Build the palette display section (right side).
- */
-function buildPaletteSection(state: AppState): Panel {
-  let content: RichText;
-
+function buildPalettesSection(state: AppState): Panel {
   if (!state.baseColor) {
-    const msg = new RichText("Enter a color to generate palette");
+    const msg = new RichText("Enter a color to see palettes");
     msg.stylize("dim yellow");
-    content = msg;
-  } else if (state.parseError) {
-    const msg = new RichText(`Invalid color: ${state.parseError}`);
-    msg.stylize("red");
-    content = msg;
-  } else {
-    content = buildPaletteGrid(state);
+    const isFocused = state.focus === "palette_grid";
+    const titleText = new RichText("Palettes " + (isFocused ? "◄ FOCUSED" : ""));
+    if (isFocused) titleText.stylize("bold cyan");
+    else titleText.stylize("dim");
+    return new Panel(msg, {
+      title: titleText,
+      padding: [1, 1],
+      box: isFocused ? HEAVY : ROUNDED,
+    });
   }
 
-  return new Panel(content, {
-    title: `Palette: ${state.paletteMode}`,
-    padding: [1, 1],
+  const layout = new Layout();
+
+  // Show all 8 palettes in a 2×4 grid layout
+  const modes = [
+    "complementary",
+    "analogous",
+    "triadic",
+    "tetradic",
+    "square",
+    "monochromatic",
+    "shades",
+    "tints",
+  ];
+
+  // Split into 2 columns of 4 rows each for 2×4 grid
+  const col1Layouts: Layout[] = [];
+  const col2Layouts: Layout[] = [];
+
+  for (let i = 0; i < 4; i++) {
+    const mode = modes[i]!;
+    const paletteDisplay = buildPaletteGridItem(state, mode);
+    col1Layouts.push(new Layout(paletteDisplay, { ratio: 1 }));
+  }
+
+  for (let i = 4; i < 8; i++) {
+    const mode = modes[i]!;
+    const paletteDisplay = buildPaletteGridItem(state, mode);
+    col2Layouts.push(new Layout(paletteDisplay, { ratio: 1 }));
+  }
+
+  const col1 = new Layout();
+  col1.splitColumn(...col1Layouts);
+
+  const col2 = new Layout();
+  col2.splitColumn(...col2Layouts);
+
+  layout.splitRow(
+    new Layout(col1, { ratio: 1, name: "col1" }),
+    new Layout(col2, { ratio: 1, name: "col2" })
+  );
+
+  const isFocused = state.focus === "palette_grid";
+  const titleText = new RichText("All Palettes " + (isFocused ? "◄ FOCUSED" : ""));
+  if (isFocused) titleText.stylize("bold cyan");
+  else titleText.stylize("dim");
+
+  return new Panel(layout, {
+    title: titleText,
+    padding: [0, 0],
+    box: isFocused ? HEAVY : ROUNDED,
   });
 }
 
 /**
- * Build the palette color grid.
+ * Build a single palette grid item showing name and color swatches.
  */
-function buildPaletteGrid(state: AppState): RichText {
-  const colors = visiblePaletteColors(state);
-  if (colors.length === 0) {
-    const msg = new RichText("No palette generated");
-    msg.stylize("dim");
-    return msg;
-  }
+function buildPaletteGridItem(state: AppState, mode: string): RichText {
+  const palette = state.allPalettes[mode as keyof typeof state.allPalettes];
+  const isSelected = mode === state.selectedPaletteMode;
 
-  const result = new RichText();
-
-  for (let i = 0; i < colors.length; i++) {
-    const color = colors[i]!;
-    const isSelected = i === state.selectedPaletteIndex;
-
-    // Create a colored cell (5 characters wide)
-    const cell = new RichText("     ");
-    const style = new Style({
-      bgcolor: color,
-    });
-    cell.stylize(style);
-
-    // Add selection indicator
-    const indicator = isSelected ? "▶" : " ";
-    const line = new RichText(`${indicator} `);
-    line.append(cell);
-    line.append(` ${colorToHex(color)} `);
-
-    if (i > 0) {
-      result.append("\n");
-    }
-
-    result.append(line);
-  }
-
-  return result;
-}
-
-/**
- * Build the details section (shown if state.showDetails is true).
- */
-function buildDetailsSection(state: AppState): Panel {
   const content = new RichText();
 
-  if (!state.baseColor) {
-    content.append("Enter a color to see details");
-    content.stylize("dim");
+  // Title with selection indicator
+  const modeLabel = new RichText(isSelected ? `▶ ${mode}` : `  ${mode}`);
+  if (isSelected) {
+    modeLabel.stylize("bold cyan");
   } else {
-    const triplet = state.baseColor.getTruecolor();
+    modeLabel.stylize("dim");
+  }
+  content.append(modeLabel);
 
-    content.append(`RGB: ${triplet.red}, ${triplet.green}, ${triplet.blue}\n`);
-    content.append(`Hex: ${triplet.hex}\n`);
-    content.append(`Name: ${state.baseColor.name}\n`);
-    content.append(`Type: ${state.baseColor.type}\n`);
-
-    if (state.compareMode) {
-      content.append(`\nColor System: ${state.colorSystemMode}`);
-    }
+  if (!palette || palette.length === 0) {
+    content.append("\n");
+    content.append(new RichText("—").stylize("dim"));
+    return content;
   }
 
-  return new Panel(content, {
-    title: "Details",
-    padding: [1, 1],
-  });
+  // Show color swatches with actual background colors
+  const colorsToShow = Math.min(palette.length, 6);
+
+  content.append("\n");
+  for (let i = 0; i < colorsToShow; i++) {
+    const color = palette[i]!;
+    const hex = colorToHex(color);
+    // Colored block using the palette color as background
+    const blockStyle = new Style({ bgcolor: color, color: Color.parse("white"), bold: true });
+    const block = new RichText(`  ${hex}  `, { end: "" });
+    block.stylize(blockStyle);
+    content.append(block);
+    content.append(" ", "default");
+  }
+
+  // Show count if truncated
+  if (palette.length > colorsToShow) {
+    content.append("\n");
+    const moreText = new RichText(`+${palette.length - colorsToShow} more`);
+    moreText.stylize("dim");
+    content.append(moreText);
+  }
+
+  return content;
 }
 
 /**
  * Build the status bar (footer).
- * Compact keybindings with status message on the right.
  */
 function buildStatusBar(state: AppState): RichText {
   const footer = new RichText();
 
   if (state.mode === "inputting") {
-    footer.append("⏳ Enter color (hex/rgb/name) • Esc to cancel • Enter to submit");
+    footer.append("Filtering colors • ↑↓ to navigate • Enter to select • Esc to cancel");
     footer.stylize("yellow dim");
   } else {
-    // Compact keybindings
-    const hints_text = `Tab: mode • C: sys • T: theme • /: input • q: quit`;
-    footer.append(hints_text);
+    // Show focus target and context-specific actions
+    let actionHint = "";
+    let focusLabel = "";
+
+    switch (state.focus) {
+      case "palette_grid":
+        focusLabel = "🎨 Palette Grid";
+        actionHint = "↑ ↓ switch palette • ← → pick color • Enter show • Tab move focus";
+        break;
+      case "color_system":
+        focusLabel = "🎚️  Color System";
+        actionHint = "← → cycle system • Tab move focus • / input • q quit";
+        break;
+      case "theme":
+        focusLabel = "🎭 Theme";
+        actionHint = "← → cycle theme • Tab move focus • / input • q quit";
+        break;
+    }
+
+    const focusText = new RichText(focusLabel);
+    focusText.stylize("bold cyan");
+    footer.append(focusText);
+
+    footer.append(" • ");
+    footer.append(actionHint);
     footer.stylize("dim");
 
-    // Status on the right
     if (state.statusMessage) {
-      footer.append(` | `);
+      footer.append(" | ");
       const msgText = new RichText(state.statusMessage);
       msgText.stylize("yellow");
       footer.append(msgText);
-    } else if (state.baseColor) {
-      footer.append(` | 🎨 ${state.colorSystemMode}`);
-      footer.stylize("dim");
     }
   }
 

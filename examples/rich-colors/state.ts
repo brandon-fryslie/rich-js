@@ -1,4 +1,4 @@
-import { Color, TerminalTheme, DEFAULT_TERMINAL_THEME, MONOKAI, SVG_EXPORT_THEME } from "../../src/index.js";
+import { Color, TerminalTheme, DEFAULT_TERMINAL_THEME, MONOKAI, SVG_EXPORT_THEME, ANSI_COLOR_NAMES } from "../../src/index.js";
 import { generatePalette } from "./color-math.js";
 
 /**
@@ -15,27 +15,28 @@ import { generatePalette } from "./color-math.js";
 export type PaletteMode = "complementary" | "analogous" | "triadic" | "tetradic" | "square" | "monochromatic" | "shades" | "tints";
 export type ColorSystemMode = "truecolor" | "256" | "16" | "windows";
 export type AppMode = "browsing" | "inputting";
-export type Focus = "input" | "palette_mode" | "color_system" | "theme" | "palette_display";
+export type FocusTarget = "palette_grid" | "color_system" | "theme";
 
 export interface AppState {
   // Input & parsing
-  readonly inputColor: string;
-  readonly baseColor: Color | null;
-  readonly parseError: string | null;
+  readonly inputFilter: string;                    // what user typed for filtering
+  readonly filteredColorNames: string[];           // matching color names
+  readonly filteredColorIndex: number;             // current selection in filtered list
+  readonly baseColor: Color | null;                // parsed Color, null if none selected
+  readonly parseError: string | null;              // error message if parse fails
 
-  // Palette generation
-  readonly paletteMode: PaletteMode;
-  readonly generatedPalette: Color[] | null;
+  // Palette generation - store all 8 modes simultaneously
+  readonly allPalettes: Record<PaletteMode, Color[] | null>;  // all 8 palette modes
+  readonly selectedPaletteMode: PaletteMode;      // which mode is selected (for expansion)
 
   // Display options
   readonly colorSystemMode: ColorSystemMode;
   readonly selectedTheme: TerminalTheme;
-  readonly compareMode: boolean;
   readonly showDetails: boolean;
 
   // Navigation
-  readonly focus: Focus;
-  readonly selectedPaletteIndex: number;
+  readonly focus: FocusTarget;
+  readonly selectedColorIndexInPalette: number;
 
   // UI state
   readonly mode: AppMode;
@@ -43,15 +44,16 @@ export interface AppState {
 }
 
 export type Action =
-  | { type: "set-input"; value: string }
-  | { type: "submit-input" }
+  | { type: "set-input-filter"; value: string }
+  | { type: "navigate-filtered-colors"; delta: 1 | -1 }
+  | { type: "select-filtered-color"; name: string }
   | { type: "cycle-palette-mode"; delta: 1 | -1 }
   | { type: "cycle-color-system"; delta: 1 | -1 }
   | { type: "cycle-theme"; delta: 1 | -1 }
-  | { type: "toggle-compare" }
   | { type: "toggle-details" }
   | { type: "move-palette-selection"; delta: 1 | -1 }
-  | { type: "focus"; target: Focus }
+  | { type: "move-focus"; delta: 1 | -1 }
+  | { type: "set-status"; message: string }
   | { type: "start-input-mode" }
   | { type: "exit-input-mode" }
   | { type: "clear-status" }
@@ -61,26 +63,28 @@ export type Action =
 const PALETTE_MODES: PaletteMode[] = ["complementary", "analogous", "triadic", "tetradic", "square", "monochromatic", "shades", "tints"];
 const COLOR_SYSTEMS: ColorSystemMode[] = ["truecolor", "256", "16", "windows"];
 const THEMES: TerminalTheme[] = [DEFAULT_TERMINAL_THEME, MONOKAI, SVG_EXPORT_THEME];
+const FOCUS_TARGETS: FocusTarget[] = ["palette_grid", "color_system", "theme"];
 
 /**
  * Create initial application state.
  */
 export function initialState(startColor: string = "#2b923e"): AppState {
   const baseColor = parseColor(startColor);
-  const generatedPalette = baseColor ? generatePalette(baseColor, "complementary") : null;
+  const allPalettes = computeAllPalettes(baseColor);
 
   return {
-    inputColor: startColor,
+    inputFilter: "",
+    filteredColorNames: [],
+    filteredColorIndex: 0,
     baseColor,
     parseError: baseColor ? null : `Invalid color: ${startColor}`,
-    paletteMode: "complementary",
-    generatedPalette,
+    allPalettes,
+    selectedPaletteMode: "complementary",
     colorSystemMode: "truecolor",
     selectedTheme: DEFAULT_TERMINAL_THEME,
-    compareMode: false,
     showDetails: false,
-    focus: "palette_display",
-    selectedPaletteIndex: 0,
+    focus: "palette_grid",
+    selectedColorIndexInPalette: 0,
     mode: "browsing",
     statusMessage: null,
   };
@@ -92,28 +96,30 @@ export function initialState(startColor: string = "#2b923e"): AppState {
  * [LAW:single-enforcer] All state mutations happen here. No mutations outside.
  */
 export function reduce(state: AppState, action: Action): AppState {
-  if (action.type === "set-input") {
-    return reduceSetInput(state, action.value);
-  } else if (action.type === "submit-input") {
-    return reduceSubmitInput(state);
+  if (action.type === "set-input-filter") {
+    return reduceSetInputFilter(state, action.value);
+  } else if (action.type === "navigate-filtered-colors") {
+    return reduceNavigateFilteredColors(state, action.delta);
+  } else if (action.type === "select-filtered-color") {
+    return reduceSelectFilteredColor(state, action.name);
   } else if (action.type === "cycle-palette-mode") {
     return reduceCyclePaletteMode(state, action.delta);
   } else if (action.type === "cycle-color-system") {
     return reduceCycleColorSystem(state, action.delta);
   } else if (action.type === "cycle-theme") {
     return reduceCycleTheme(state, action.delta);
-  } else if (action.type === "toggle-compare") {
-    return { ...state, compareMode: !state.compareMode };
   } else if (action.type === "toggle-details") {
     return { ...state, showDetails: !state.showDetails };
   } else if (action.type === "move-palette-selection") {
     return reduceMoveSelection(state, action.delta);
-  } else if (action.type === "focus") {
-    return { ...state, focus: action.target };
+  } else if (action.type === "move-focus") {
+    return reduceMoveForward(state, action.delta);
   } else if (action.type === "start-input-mode") {
-    return { ...state, mode: "inputting", inputColor: "", parseError: null };
+    return { ...state, mode: "inputting", inputFilter: "", filteredColorIndex: 0, parseError: null };
   } else if (action.type === "exit-input-mode") {
     return { ...state, mode: "browsing" };
+  } else if (action.type === "set-status") {
+    return { ...state, statusMessage: action.message };
   } else if (action.type === "clear-status") {
     return { ...state, statusMessage: null };
   } else {
@@ -121,43 +127,58 @@ export function reduce(state: AppState, action: Action): AppState {
   }
 }
 
-function reduceSetInput(state: AppState, value: string): AppState {
-  const baseColor = parseColor(value);
-  const parseError = baseColor ? null : `Invalid color: ${value}`;
-  const generatedPalette = baseColor ? generatePalette(baseColor, state.paletteMode) : null;
+function reduceSetInputFilter(state: AppState, filter: string): AppState {
+  // [LAW:dataflow-not-control-flow] Filter is applied uniformly. If filter is empty,
+  // all colors are available; if filter matches nothing, result is empty. No special cases.
+  // Filter color names from ANSI_COLOR_NAMES record
+  const colorNames = Object.keys(ANSI_COLOR_NAMES);
+  const filtered = colorNames.filter((name) =>
+    name.toLowerCase().includes(filter.toLowerCase())
+  );
 
   return {
     ...state,
-    inputColor: value,
-    baseColor,
-    parseError,
-    generatedPalette,
-    selectedPaletteIndex: 0,
+    inputFilter: filter,
+    filteredColorNames: filtered.slice(0, 10), // Show max 10 matches
+    filteredColorIndex: 0,
   };
 }
 
-function reduceSubmitInput(state: AppState): AppState {
-  if (!state.baseColor) {
-    return { ...state, statusMessage: "Invalid color. Try #FF0000 or rgb(255,0,0)", mode: "browsing" };
+function reduceNavigateFilteredColors(state: AppState, delta: 1 | -1): AppState {
+  const nextIndex = (state.filteredColorIndex + delta + state.filteredColorNames.length) % Math.max(1, state.filteredColorNames.length);
+  return { ...state, filteredColorIndex: nextIndex };
+}
+
+function reduceSelectFilteredColor(state: AppState, name: string): AppState {
+  const color = parseColor(name);
+  if (!color) {
+    return { ...state, parseError: `Invalid color: ${name}` };
   }
 
-  return { ...state, mode: "browsing" };
+  const allPalettes = computeAllPalettes(color);
+  return {
+    ...state,
+    baseColor: color,
+    parseError: null,
+    allPalettes,
+    inputFilter: "",
+    filteredColorNames: [],
+    filteredColorIndex: 0,
+    mode: "browsing",
+  };
 }
 
 function reduceCyclePaletteMode(state: AppState, delta: 1 | -1): AppState {
   if (!state.baseColor) return state;
 
-  const currentIndex = PALETTE_MODES.indexOf(state.paletteMode);
+  const currentIndex = PALETTE_MODES.indexOf(state.selectedPaletteMode);
   const nextIndex = (currentIndex + delta + PALETTE_MODES.length) % PALETTE_MODES.length;
   const nextMode = PALETTE_MODES[nextIndex]!;
 
-  const generatedPalette = generatePalette(state.baseColor, nextMode);
-
   return {
     ...state,
-    paletteMode: nextMode,
-    generatedPalette,
-    selectedPaletteIndex: 0,
+    selectedPaletteMode: nextMode,
+    selectedColorIndexInPalette: 0,
   };
 }
 
@@ -178,15 +199,23 @@ function reduceCycleTheme(state: AppState, delta: 1 | -1): AppState {
 }
 
 function reduceMoveSelection(state: AppState, delta: 1 | -1): AppState {
-  if (!state.generatedPalette) return state;
+  const palette = state.allPalettes[state.selectedPaletteMode];
+  if (!palette) return state;
 
-  const nextIndex = (state.selectedPaletteIndex + delta + state.generatedPalette.length) % state.generatedPalette.length;
-  return { ...state, selectedPaletteIndex: nextIndex };
+  const nextIndex = (state.selectedColorIndexInPalette + delta + palette.length) % palette.length;
+  return { ...state, selectedColorIndexInPalette: nextIndex };
+}
+
+function reduceMoveForward(state: AppState, delta: 1 | -1): AppState {
+  const currentIndex = FOCUS_TARGETS.indexOf(state.focus);
+  const nextIndex = (currentIndex + delta + FOCUS_TARGETS.length) % FOCUS_TARGETS.length;
+  const nextFocus = FOCUS_TARGETS[nextIndex]!;
+
+  return { ...state, focus: nextFocus };
 }
 
 /**
  * Parse a color string using rich-js Color.parse().
- * Handles hex, rgb, named colors, indexed colors, and default.
  */
 function parseColor(input: string): Color | null {
   if (!input || input.trim() === "") return null;
@@ -199,19 +228,53 @@ function parseColor(input: string): Color | null {
 }
 
 /**
- * Get colors after applying color system downgrading.
+ * Generate all 8 palettes for a given base color.
  */
-export function visiblePaletteColors(state: AppState): Color[] {
-  if (!state.generatedPalette) return [];
+function computeAllPalettes(baseColor: Color | null): Record<PaletteMode, Color[] | null> {
+  if (!baseColor) {
+    return {
+      complementary: null,
+      analogous: null,
+      triadic: null,
+      tetradic: null,
+      square: null,
+      monochromatic: null,
+      shades: null,
+      tints: null,
+    };
+  }
 
-  return state.generatedPalette.map((color) => downgradeColor(color, state.colorSystemMode));
+  return {
+    complementary: generatePalette(baseColor, "complementary"),
+    analogous: generatePalette(baseColor, "analogous"),
+    triadic: generatePalette(baseColor, "triadic"),
+    tetradic: generatePalette(baseColor, "tetradic"),
+    square: generatePalette(baseColor, "square"),
+    monochromatic: generatePalette(baseColor, "monochromatic"),
+    shades: generatePalette(baseColor, "shades"),
+    tints: generatePalette(baseColor, "tints"),
+  };
+}
+
+/**
+ * Get the currently selected palette colors after downgrading.
+ */
+export function getSelectedPaletteColors(state: AppState): Color[] {
+  const palette = state.allPalettes[state.selectedPaletteMode];
+  if (!palette) return [];
+
+  return palette.map((color) => downgradeColor(color, state.colorSystemMode));
+}
+
+/**
+ * Get all palette names.
+ */
+export function getPaletteNames(): PaletteMode[] {
+  return PALETTE_MODES;
 }
 
 /**
  * Downgrade a color to the target color system.
- *
- * [LAW:dataflow-not-control-flow] This function always processes the color
- * the same way; system determines what result is produced, not whether processing occurs.
  */
 function downgradeColor(color: Color, _system: ColorSystemMode): Color {
   // For now, all color systems return truecolor (which the terminal will downgrade if needed).
@@ -225,12 +288,4 @@ function downgradeColor(color: Color, _system: ColorSystemMode): Color {
 export function colorToHex(color: Color): string {
   const triplet = color.getTruecolor();
   return triplet.hex;
-}
-
-/**
- * Format a color for display in rgb format.
- */
-export function colorToRgb(color: Color): string {
-  const triplet = color.getTruecolor();
-  return `rgb(${triplet.red}, ${triplet.green}, ${triplet.blue})`;
 }
