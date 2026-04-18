@@ -296,6 +296,125 @@ const html = console.exportHtml();
 console.saveHtml("output.html");
 ```
 
+## Demos
+
+Three interactive TUI demos exercise the library's renderables against real-world use cases. Each runs in alt-screen mode with flicker-free rendering.
+
+```sh
+npm run demo               # rich-explore: file browser
+npm run sessions           # claude-sessions: Claude Code session browser
+npm run colors             # rich-colors: interactive color palette generator
+```
+
+### rich-explore — TUI file browser + markdown/code reader
+
+A two-pane file browser with a directory tree on the left and a file preview on the right. Navigate with vim-style keys, Tab to switch focus, Enter/arrow keys to expand/collapse directories.
+
+```sh
+npm run demo               # browse current directory
+npm run demo -- /some/path # browse a specific path
+```
+
+**Features exercised:**
+
+| Module | How it's used |
+|---|---|
+| `Console` | Render orchestrator, style application, color-system detection |
+| `Layout` | Row split (tree / preview), column split (header / body / footer), `ratio` and `size` allocation |
+| `Panel` | Bordered panes with dynamic titles (`▸ Tree (20)`), `borderStyle`, `padding`, focus-aware styling |
+| `Tree` | Recursive directory tree with guide lines, `guide_style`, mixed RichText labels |
+| `Table` + `Column` | Directory listing (name, kind, size, mtime), styled headers, right-justified columns |
+| `Markdown` | Renders `.md` files in the preview pane |
+| `Syntax` | Syntax-highlighted source code with `lineNumbers` and per-extension language detection |
+| `JSONRenderable` | Pretty-printed + highlighted JSON file preview |
+| `RichText` + `Span` | Labels, headers, status bar; `.stylize()`, `.append()`, `end` control |
+| `Style` | Parsed inline everywhere (`"bold cyan"`, `"reverse bold"`, `"bold white on blue"`) |
+| `Segment` | Used directly in the `Window` renderable for line splitting, padding, and clipping |
+| `Renderable` protocol | Custom `Window` class implements `Renderable` for viewport clipping |
+| `Box` | `ROUNDED` (Panel default), `HEAVY_HEAD` (Table default) |
+
+### claude-sessions — Claude Code session browser
+
+Browses `~/.claude/projects/` JSONL session files. Two-level sidebar (projects → sessions) on top, conversation viewer below. Pretty-prints every block type (human turns, assistant responses, tool calls, subagents, system events, errors) with per-block raw-JSON toggle. Includes local search, global cross-file search, subagent drill-down with session stack, and hidden-block reveal.
+
+```sh
+npm run sessions
+```
+
+**Key bindings:** `↑↓/jk` navigate, `→/Enter` open/drill, `←` back, `Tab` focus, `\` toggle browser, `v` raw view, `e` expand, `H` hidden blocks, `/` local search, `S` global search, `n/N` next/prev match, `p` parent, `u` pop subagent, `q` quit.
+
+**Features exercised (incremental to rich-explore):**
+
+| Module | How it's used |
+|---|---|
+| `Rule` | Turn-duration system blocks rendered as horizontal dividers; input/output separators in tool-call blocks |
+| `Group` | Composes multi-section tool-call blocks (input + Rule + result) into a single renderable |
+| `Pretty` | Per-block raw view (toggled with `v`) — exercises `ReprHighlighter`, indent guides, `maxString`, `expandAll` |
+| `Traceback` | Error blocks with stack traces render via `Traceback` for styled frame display |
+| `Markdown` | Assistant text rendering (Claude output is often markdown) |
+| `Syntax` | Bash command highlighting in tool-call input summaries |
+| `Panel` | Six distinct border-color schemes by block kind (cyan/blue/yellow/red/magenta/green) |
+| `Layout` | Column split (browser-on-top / viewer-on-bottom), dynamic height budgeting |
+
+### rich-colors — Interactive color palette generator
+
+An interactive palette generator exploring `Color`, `Style`, and terminal color math. Generates palettes from seed colors, displays color swatches, and lets you adjust parameters interactively.
+
+```sh
+npm run colors
+```
+
+**Features exercised (incremental to above):**
+
+| Module | How it's used |
+|---|---|
+| `Color` | Direct `Color` construction, `blendRgb`, color math, palette generation |
+| `TerminalTheme` | `DEFAULT_TERMINAL_THEME`, `MONOKAI`, `SVG_EXPORT_THEME` theme constants |
+| `ANSI_COLOR_NAMES` | Named ANSI color enumeration and display |
+| `Style` | Direct `Style` construction from `Color` objects (not just string parsing) |
+| `Spinner` | Visual activity indicator in input mode |
+
+---
+
+### Coverage summary
+
+**Exercised across demos:**
+
+Core: `Console`, `Style`/`StyleStack`, `RichText`/`Span`, `Segment`, `Box` (multiple variants), `Color`/`blendRgb`/palettes, `Renderable`/`Measurable` protocol, `Measurement`, `cells` (transitively), `ReprHighlighter`, `JSONHighlighter`, `Spinner` data, `TerminalTheme`
+
+Renderables: `Layout`, `Panel`, `Tree`, `Table`/`Column`, `Markdown`, `Syntax`, `JSONRenderable`, `Rule`, `Group`, `Spinner`, `Pretty`, `Traceback`
+
+**Bugs found and fixed via demo integration:**
+
+| Bug | Location | Impact | Fix |
+|---|---|---|---|
+| `Live.refresh()` strips all ANSI styles | `src/renderables/live.ts:106` | Every renderable flowing through `Live` (including `Status`, `Progress`, `Spinner`) appeared unstyled | Apply `style.render(text, colorSystem)` instead of bare `s.text` |
+| `Progress.render()` drops column styles | `src/renderables/progress.ts:273` | Progress percentage, timing, and spinner styles were stripped when building table cells | Use `RichText.append(text, style)` to preserve segment styles |
+| `Tree` emits double blank lines | `src/renderables/tree.ts:98,122` | Extra `Segment.line()` after label render duplicated the newline already emitted by `RichText.render()` | Remove redundant `yield Segment.line()` |
+| `Spinner` constructor rejects `undefined` name | `src/renderables/spinner.ts:36` | `SpinnerColumn` (used by `Progress`) passed optional `string \| undefined` to required `string` parameter | Make `name` optional, default to `DEFAULT_SPINNER` |
+
+**Not yet exercised — candidates for new demos or demo additions:**
+
+| Module | Notes | Suggested coverage |
+|---|---|---|
+| `Constrain` | Width-constraint wrapper | Wrap preview pane content in rich-explore |
+| `Align` | Left/center/right alignment | Center headers or Rule titles |
+| `Padding` | Standalone padding wrapper | Wrap block renderers in claude-sessions |
+| `Columns` | Multi-column grid layout (like `ls -C`) | Add an "icons" view to rich-explore's directory renderer |
+| `ProgressBar` | Standalone progress bar | New demo: file copy/download progress visualization |
+| `Progress` | Multi-task progress manager with columns (`TextColumn`, `BarColumn`, `TaskProgressColumn`, `TimeRemainingColumn`, `TimeElapsedColumn`, `SpinnerColumn`, `MofNCompleteColumn`, `track`) | New demo: multi-file processor with parallel progress bars (bugs now fixed — ready to exercise) |
+| `Live` | Rich's live-update primitive | Replace the custom render loops in demos (style bug now fixed — ready to exercise) |
+| `Status` | Spinner + message display | Loading indicator for large sessions in claude-sessions (depends on `Live`, which is now fixed) |
+| `Prompt` / `IntPrompt` / `FloatPrompt` / `Confirm` | Interactive input via readline | Add a go-to-path prompt in rich-explore; incompatible with raw-mode loops so needs a modal switch |
+| `emoji` | Shortcode substitution (`:smiley:` → 😃) | Enable in markup-rendered block text in claude-sessions |
+| `markup` | `[bold red]...[/]` parsing | Pass assistant text through markup rendering in claude-sessions |
+| `NullHighlighter` / `RegexHighlighter` / `ISO8601Highlighter` | Specialized highlighters | Apply `ISO8601Highlighter` to timestamps; `RegexHighlighter` for search-term highlighting |
+| `StyleStack` / `Theme` / `DEFAULT_STYLES` | Theme customization | Add a theme switcher to rich-colors |
+| `Color` downgrading | `standard` / `256` / `windows` color system fallbacks | Add a color-system picker to rich-colors |
+| `Console` recording | `record`, `exportText`, `exportHtml`, `saveHtml` | Add an export-to-HTML feature to claude-sessions |
+| Most `Box` variants | `ASCII`, `SQUARE`, `MINIMAL`, `HEAVY`, `DOUBLE`, `MARKDOWN`, etc. | Add a box-style picker to rich-explore's Panel borders |
+| `Measurement.get()` / `measureRenderables` | Explicit width measurement | Used internally; could add a measurement debug overlay |
+
 ## Environment Variables
 
 | Variable | Effect |
