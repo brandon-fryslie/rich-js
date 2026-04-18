@@ -1,13 +1,15 @@
-import { Panel, RichText } from "../../../src/index.js";
+import { Panel, RichText, Constrain } from "../../../src/index.js";
 import type { Renderable } from "../../../src/index.js";
 import type { Entry } from "../fs/walk.js";
 import type { FileKind } from "../fs/kinds.js";
+import type { Mode } from "../state.js";
 import { renderMarkdown } from "../renderers/markdown.js";
 import { renderSyntax } from "../renderers/syntax.js";
 import { renderJson } from "../renderers/json.js";
 import { renderDirectory } from "../renderers/directory.js";
 import { renderBinary } from "../renderers/binary.js";
 import { renderFallback } from "../renderers/fallback.js";
+import { CoverageRenderable } from "../renderers/coverage.js";
 import { Window } from "./window.js";
 
 // Kind → renderer dispatch table. To support a new file type, add a
@@ -26,16 +28,23 @@ export function buildPreviewPane(
   innerHeight: number,
   offset: number,
   focused: boolean,
+  mode: Mode = "browse",
 ): Renderable {
   const focusPrefix = focused ? "▸ " : "";
   const baseBorder = focused ? "bold " : "dim ";
 
+  const MAX_CONTENT_WIDTH = 120;
   const wrap = (inner: Renderable, title: string, color: string) =>
-    new Panel(new Window(inner, innerHeight, offset), {
+    new Panel(new Window(new Constrain(inner, MAX_CONTENT_WIDTH), innerHeight, offset), {
       title: `${focusPrefix}${title}`,
       borderStyle: baseBorder + color,
       padding: [0, 1],
     });
+
+  // Coverage mode: show the kitchen-sink renderable exercising all exports
+  if (mode === "coverage") {
+    return wrap(new CoverageRenderable(), "Coverage — all rich-js exports", "yellow");
+  }
 
   if (!entry) {
     const empty = new RichText("(nothing selected)", { end: "" });

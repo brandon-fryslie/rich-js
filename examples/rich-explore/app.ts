@@ -1,10 +1,9 @@
 /**
  * Main loop: raw-mode stdin → action → reducer → render.
- * The same operations run every frame; variability lives in the
- * AppState, not in conditional rendering paths.
+ * Uses rich-js Live with altScreen mode for flicker-free full-screen TUI.
  */
 
-import { Console } from "../../src/index.js";
+import { Console, Live } from "../../src/index.js";
 import {
   initialState,
   toggleExpand,
@@ -55,8 +54,6 @@ function scrollPreviewToTop(state: AppState): AppState {
 }
 
 function scrollPreviewToBottom(state: AppState): AppState {
-  // No way to know the exact bottom without rendering; Window clamps visually.
-  // Use a large sentinel so subsequent scroll-up still works.
   return { ...state, previewOffset: 1 << 20 };
 }
 
@@ -69,11 +66,9 @@ function openSelected(state: AppState): AppState {
 function goUp(state: AppState): AppState {
   const node = state.nodes.get(state.selectedPath);
   if (!node) return state;
-  // If expanded directory → collapse it in place
   if (node.expanded && node.entry.kind === "directory") {
     return collapse(state, state.selectedPath);
   }
-  // Else walk selection to parent (but never the hidden root)
   const parent = parentPath(state, state.selectedPath);
   if (!parent || parent === state.rootPath) return state;
   return { ...state, selectedPath: parent };
@@ -95,6 +90,8 @@ function reduce(state: AppState, action: Action): AppState {
       return state.focus === "preview" ? state : goUp(state);
     case "focus-toggle":
       return { ...state, focus: state.focus === "tree" ? "preview" : "tree" };
+    case "coverage":
+      return { ...state, mode: state.mode === "coverage" ? "browse" : "coverage", focus: "preview", previewOffset: 0 };
     case "quit":
     case "none":
       return state;
@@ -110,23 +107,23 @@ export async function run(startPath: string): Promise<void> {
     throw new Error("rich-explore requires an interactive TTY");
   }
 
-  const cleanup = () => {
-    try { stdin.setRawMode(false); } catch { /* ignore */ }
-    stdin.pause();
-    // Restore: show cursor, reset attrs, leave alt screen
-    process.stdout.write("\x1b[?25h\x1b[0m\x1b[?1049l");
-  };
+  // Use Live with altScreen for full-screen TUI rendering.
+  // autoRefresh: false — we refresh on keypress only.
+  const live = new Live(undefined, {
+    console: consoleOut,
+    altScreen: true,
+    autoRefresh: false,
+    verticalOverflow: "crop",
+  });
 
-  // Enter alt screen + hide cursor
-  process.stdout.write("\x1b[?1049h\x1b[?25l");
   stdin.setRawMode(true);
   stdin.resume();
   stdin.setEncoding("utf-8");
+  live.start();
 
   const render = () => {
     const termHeight = process.stdout.rows || 24;
-    process.stdout.write("\x1b[2J\x1b[H"); // clear alt screen + home
-    consoleOut.print(buildShell(state, termHeight));
+    live.update(buildShell(state, termHeight), { refresh: true });
   };
 
   render();
@@ -151,5 +148,9 @@ export async function run(startPath: string): Promise<void> {
       }
     };
     stdin.on("data", onData);
-  }).finally(cleanup);
+  }).finally(() => {
+    live.stop();
+    try { stdin.setRawMode(false); } catch { /* ignore */ }
+    stdin.pause();
+  });
 }

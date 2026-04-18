@@ -28,7 +28,7 @@ export function buildShell(state: AppState, termHeight: number): Layout {
     { name: "tree", ratio: 2 },
   );
   const previewLayout = new Layout(
-    buildPreviewPane(selected?.entry, paneInnerHeight, state.previewOffset, state.focus === "preview"),
+    buildPreviewPane(selected?.entry, paneInnerHeight, state.previewOffset, state.focus === "preview", state.mode),
     { name: "preview", ratio: 3 },
   );
   body.splitRow(treeLayout, previewLayout);

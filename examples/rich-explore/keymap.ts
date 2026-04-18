@@ -11,6 +11,7 @@ export type Action =
   | { type: "open" }
   | { type: "up" }
   | { type: "focus-toggle" }
+  | { type: "coverage" }
   | { type: "quit" }
   | { type: "none" };
 
@@ -31,6 +32,7 @@ const KEYMAP: Record<string, Action> = {
   "G": { type: "move-last" },
   "\t": { type: "focus-toggle" },
   "\x1b[Z": { type: "focus-toggle" }, // shift-tab
+  "c": { type: "coverage" },
   "q": { type: "quit" },
   "\x03": { type: "quit" },
   "\x1b": { type: "quit" },

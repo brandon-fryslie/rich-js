@@ -11,7 +11,7 @@
 import { basename } from "node:path";
 import { listDir, type Entry } from "./fs/walk.js";
 
-export type Mode = "browse"; // extension: | "search" | "debug" | "diff"
+export type Mode = "browse" | "coverage";
 export type Focus = "tree" | "preview";
 
 export interface NodeData {
