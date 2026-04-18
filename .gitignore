@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-demo/
 *.tsbuildinfo
 docs/.vitepress/dist/
 docs/.vitepress/cache/
