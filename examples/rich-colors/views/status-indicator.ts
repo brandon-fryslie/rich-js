@@ -2,15 +2,15 @@ import { RichText } from "../../../src/index.js";
 import { AppState } from "../state.js";
 
 /**
- * Build a status indicator with spinner for the current palette mode.
- * Uses rich-js Spinner to show visual activity in input mode.
+ * Build a status indicator for the current palette mode.
+ * Renders a static emoji glyph plus the mode/system label — the demo's
+ * top-level redraw cadence isn't driven by Live, so an animated Spinner
+ * wouldn't actually animate here.
  */
 export function buildStatusIndicator(state: AppState): RichText {
   const indicator = new RichText();
 
-  // Add spinner if in input mode
   if (state.mode === "inputting") {
-    // Show visual indicator with animated spinner emoji
     const spinnerText = new RichText("⏳ ");
     spinnerText.stylize("yellow");
     indicator.append(spinnerText);

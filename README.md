@@ -390,25 +390,17 @@ Renderables: `Layout`, `Panel`, `Tree`, `Table`/`Column`, `Markdown`, `Syntax`, 
 |---|---|---|---|
 | `Live.refresh()` strips all ANSI styles | `src/renderables/live.ts:106` | Every renderable flowing through `Live` (including `Status`, `Progress`, `Spinner`) appeared unstyled | Apply `style.render(text, colorSystem)` instead of bare `s.text` |
 | `Progress.render()` drops column styles | `src/renderables/progress.ts:273` | Progress percentage, timing, and spinner styles were stripped when building table cells | Use `RichText.append(text, style)` to preserve segment styles |
-| `Tree` emits double blank lines | `src/renderables/tree.ts:98,122` | Extra `Segment.line()` after label render duplicated the newline already emitted by `RichText.render()` | Remove redundant `yield Segment.line()` |
+| `Tree` emits double blank lines | `src/renderables/tree.ts:98,122` | Label rendering and the explicit `Segment.line()` both contributed a newline, producing blank lines between tree entries | Make `RichText` stop emitting a trailing newline so `Tree`'s explicit `yield Segment.line()` remains the only line break |
 | `Spinner` constructor rejects `undefined` name | `src/renderables/spinner.ts:36` | `SpinnerColumn` (used by `Progress`) passed optional `string \| undefined` to required `string` parameter | Make `name` optional, default to `DEFAULT_SPINNER` |
 
 **Not yet exercised — candidates for new demos or demo additions:**
 
 | Module | Notes | Suggested coverage |
 |---|---|---|
-| `Constrain` | Width-constraint wrapper | Wrap preview pane content in rich-explore |
-| `Align` | Left/center/right alignment | Center headers or Rule titles |
-| `Padding` | Standalone padding wrapper | Wrap block renderers in claude-sessions |
-| `Columns` | Multi-column grid layout (like `ls -C`) | Add an "icons" view to rich-explore's directory renderer |
-| `ProgressBar` | Standalone progress bar | New demo: file copy/download progress visualization |
-| `Progress` | Multi-task progress manager with columns (`TextColumn`, `BarColumn`, `TaskProgressColumn`, `TimeRemainingColumn`, `TimeElapsedColumn`, `SpinnerColumn`, `MofNCompleteColumn`, `track`) | New demo: multi-file processor with parallel progress bars (bugs now fixed — ready to exercise) |
-| `Live` | Rich's live-update primitive | Replace the custom render loops in demos (style bug now fixed — ready to exercise) |
-| `Status` | Spinner + message display | Loading indicator for large sessions in claude-sessions (depends on `Live`, which is now fixed) |
+| `Status` | Spinner + message display | Loading indicator for large sessions in claude-sessions |
 | `Prompt` / `IntPrompt` / `FloatPrompt` / `Confirm` | Interactive input via readline | Add a go-to-path prompt in rich-explore; incompatible with raw-mode loops so needs a modal switch |
 | `emoji` | Shortcode substitution (`:smiley:` → 😃) | Enable in markup-rendered block text in claude-sessions |
-| `markup` | `[bold red]...[/]` parsing | Pass assistant text through markup rendering in claude-sessions |
-| `NullHighlighter` / `RegexHighlighter` / `ISO8601Highlighter` | Specialized highlighters | Apply `ISO8601Highlighter` to timestamps; `RegexHighlighter` for search-term highlighting |
+| `NullHighlighter` / `RegexHighlighter` | Specialized highlighters not yet exercised | `RegexHighlighter` for search-term highlighting in claude-sessions |
 | `StyleStack` / `Theme` / `DEFAULT_STYLES` | Theme customization | Add a theme switcher to rich-colors |
 | `Color` downgrading | `standard` / `256` / `windows` color system fallbacks | Add a color-system picker to rich-colors |
 | `Console` recording | `record`, `exportText`, `exportHtml`, `saveHtml` | Add an export-to-HTML feature to claude-sessions |

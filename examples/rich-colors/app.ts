@@ -45,6 +45,10 @@ export async function run(startColor?: string): Promise<void> {
   // Initial render
   render();
 
+  // Status messages auto-clear after 2s. Hold the handle so a fresh status
+  // cancels the previous timer instead of stacking new ones on every keypress.
+  let statusTimeout: ReturnType<typeof setTimeout> | undefined;
+
   // Main event loop
   await new Promise<void>((resolve, reject) => {
     const onData = (chunk: string): void => {
@@ -151,8 +155,10 @@ export async function run(startColor?: string): Promise<void> {
           render();
 
           // Clear transient messages after a short time
-          if (state.statusMessage && !("timeout" in state)) {
-            setTimeout(() => {
+          if (state.statusMessage) {
+            if (statusTimeout) clearTimeout(statusTimeout);
+            statusTimeout = setTimeout(() => {
+              statusTimeout = undefined;
               state = reduce(state, { type: "clear-status" });
               render();
             }, 2000);

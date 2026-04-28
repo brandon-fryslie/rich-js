@@ -163,6 +163,14 @@ export class Console {
     return this._colorSystem;
   }
 
+  // [LAW:one-source-of-truth] Output target lookup matches _renderSegment's:
+  // explicit `file` wins, otherwise stderr/stdout per the _stderr flag. Exposed
+  // so renderables that bypass the segment pipeline (e.g. Live's raw control
+  // sequences) still write to the caller's configured stream.
+  get file(): NodeJS.WritableStream {
+    return this._file ?? (this._stderr ? process.stderr : process.stdout);
+  }
+
   get theme(): Theme {
     return this._theme;
   }

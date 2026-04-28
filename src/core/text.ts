@@ -4,7 +4,7 @@
 
 import { cellLen } from "./cells.js";
 import { Segment } from "./segment.js";
-import { Style, NULL_STYLE } from "./style.js";
+import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
 // Strip control characters except \t and \n
@@ -20,13 +20,13 @@ function resolveStyle(style: string | Style | undefined): Style {
   if (typeof style === "string") {
     try {
       return Style.parse(style);
-    } catch {
+    } catch (err) {
       // [LAW:single-enforcer] Styling is non-critical — an unrecognized style
       // name (typo, missing theme key, bad concatenation) degrades to unstyled
-      // rather than crashing. Style.parse throws StyleSyntaxError on unknown
-      // input; we absorb it here at the trust boundary where external strings
-      // (from highlighters, markup, user code) enter the style system.
-      return NULL_STYLE;
+      // rather than crashing. Absorb only StyleSyntaxError at this trust
+      // boundary; other errors are genuine bugs and must surface.
+      if (err instanceof StyleSyntaxError) return NULL_STYLE;
+      throw err;
     }
   }
   return style;

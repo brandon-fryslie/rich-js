@@ -64,7 +64,7 @@ export class Live {
     this._started = true;
     this._firstRefresh = true;
 
-    const stream = process.stdout;
+    const stream = this._console.file;
     if (this._altScreen) {
       stream.write("\x1b[?1049h"); // enter alt screen
     }
@@ -93,8 +93,7 @@ export class Live {
 
     this._writeCursorControl(true);
     if (this._altScreen) {
-      const stream = process.stdout;
-      stream.write("\x1b[0m\x1b[?1049l"); // reset attrs + exit alt screen
+      this._console.file.write("\x1b[0m\x1b[?1049l"); // reset attrs + exit alt screen
     }
   }
 
@@ -112,8 +111,7 @@ export class Live {
 
     if (this._altScreen) {
       // Alt-screen mode: cursor home (first refresh clears the buffer)
-      const stream = process.stdout;
-      stream.write(this._firstRefresh ? "\x1b[2J\x1b[H" : "\x1b[H");
+      this._console.file.write(this._firstRefresh ? "\x1b[2J\x1b[H" : "\x1b[H");
       this._firstRefresh = false;
     } else {
       // Inline mode: erase previous output
@@ -132,24 +130,26 @@ export class Live {
       }
     }
 
-    // Apply styles via the Console's color system
-    const colorSystem = this._console.colorSystem ?? undefined;
+    // Apply styles via the Console's color system. When colorSystem is null
+    // (NO_COLOR, dumb terminal), match Console._renderSegment and emit plain
+    // text — Style.render would otherwise still produce ANSI codes.
+    // [LAW:single-enforcer] Color-system gating mirrors Console's policy.
+    const colorSystem = this._console.colorSystem;
     const output = displayLines.map((line) =>
       line.map((s) =>
-        s.style && !s.style.isNull
+        colorSystem !== null && s.style && !s.style.isNull
           ? s.style.render(s.text, colorSystem)
           : s.text,
       ).join(""),
     ).join("\n");
 
-    const stream = process.stdout;
-    stream.write(output + "\n");
+    this._console.file.write(output + "\n");
     this._lastLineCount = displayLines.length;
   }
 
   private _clearLast(): void {
     if (this._lastLineCount > 0) {
-      const stream = process.stdout;
+      const stream = this._console.file;
       for (let i = 0; i < this._lastLineCount; i++) {
         stream.write("\x1b[1A\x1b[2K");
       }
@@ -158,7 +158,6 @@ export class Live {
   }
 
   private _writeCursorControl(show: boolean): void {
-    const stream = process.stdout;
-    stream.write(show ? "\x1b[?25h" : "\x1b[?25l");
+    this._console.file.write(show ? "\x1b[?25h" : "\x1b[?25l");
   }
 }
