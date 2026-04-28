@@ -37,3 +37,16 @@ showcase("PowerlineJoiner", new Strip(cells, new PowerlineJoiner()));
 showcase("CapsuleJoiner", new Strip(cells, new CapsuleJoiner()));
 showcase("PlainJoiner", new Strip(cells, new PlainJoiner()));
 showcase("GradientJoiner (steps=6)", new Strip(cells, new GradientJoiner({ steps: 6 })));
+
+// "Unbounded" gradient: fill the row between two anchor cells with as many
+// steps as the terminal can show. The gradient self-limits visually — beyond
+// the largest channel delta (~255 in truecolor) adjacent cells collapse to
+// identical RGB values, so this also demonstrates that ceiling.
+const LEFT_ANCHOR = new StripCell(" #ff0066 ", Style.parse("white on #ff0066"));
+const RIGHT_ANCHOR = new StripCell(" #00ccff ", Style.parse("white on #00ccff"));
+const anchorWidth = " #ff0066 ".length + " #00ccff ".length;
+const fillSteps = Math.max(1, consoleOut.width - anchorWidth);
+showcase(
+  `GradientJoiner (steps=${fillSteps}, full-width fill)`,
+  new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], new GradientJoiner({ steps: fillSteps })),
+);
