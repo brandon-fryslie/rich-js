@@ -111,6 +111,27 @@ Items in a Strip implement `StyledRenderable` — a `Renderable` plus a single `
 - **Endpoints are explicit.** `join(null, X)` and `join(X, null)` are first-class positions — no special-casing the first/last segment after the fact.
 - **Edge-painter on a path graph.** The strip is a path, items are vertices, joiners paint edges — a clean shape that generalises to any "look at my neighbour's style" pattern.
 
+## `FlexStrip` — wrap-to-width packing
+
+`FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Joiner` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
+
+```typescript
+import { FlexStrip, StripCell, PowerlineJoiner, Style } from "rich-js";
+
+const strip = new FlexStrip(
+  tags.map((t) => new StripCell(` ${t} `, Style.parse("white on blue"))),
+  { joiner: new PowerlineJoiner(), gap: 0, align: "left" },
+);
+console.print(strip);
+```
+
+Options:
+- `joiner` — same `Joiner<T>` protocol; endpoint joins fire at every line boundary.
+- `gap` — cells inserted on each side of an inter-item joiner (default 0).
+- `align` — `"left"` (default), `"center"`, `"right"`, or `"justify"` (distributes spare width across inter-item slots on non-final lines).
+
+If an item is wider than `maxWidth`, it gets its own line and renders at full width — graceful overflow rather than a hard crash. Truncation is the caller's job.
+
 ## Out of scope
 
 - Vertical strips (column layouts) — same pattern transposed; defer until a use case shows up.

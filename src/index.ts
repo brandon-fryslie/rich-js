@@ -150,6 +150,8 @@ export { Pretty } from "./renderables/pretty.js";
 export type { PrettyOptions } from "./renderables/pretty.js";
 export { Columns } from "./renderables/columns.js";
 export type { ColumnsOptions } from "./renderables/columns.js";
+export { FlexStrip } from "./renderables/flexStrip.js";
+export type { FlexStripOptions, FlexAlign } from "./renderables/flexStrip.js";
 export { Live } from "./renderables/live.js";
 export type { LiveOptions } from "./renderables/live.js";
 export { Status } from "./renderables/status.js";
