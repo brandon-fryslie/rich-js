@@ -11,6 +11,7 @@ import { render as renderMarkup } from "./markup.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 import { Rule } from "../renderables/rule.js";
+import { segmentToString } from "./render.js";
 import type {
   Renderable,
   RenderOptions,
@@ -386,11 +387,11 @@ export class Console {
     }
   }
 
+  // [LAW:single-enforcer] Defers to the same Segment-to-ANSI encoder used by
+  // `renderToString`, so terminal output and string export agree by
+  // construction.
   private _renderSegment(segment: Segment): string {
-    if (!segment.style || this._colorSystem === null) {
-      return segment.text;
-    }
-    return segment.style.render(segment.text, this._colorSystem ?? undefined);
+    return segmentToString(segment, this._colorSystem);
   }
 
   private _write(text: string): void {

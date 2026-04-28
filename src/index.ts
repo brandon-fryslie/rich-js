@@ -96,6 +96,14 @@ export type {
   GradientJoinerOptions,
 } from "./core/strip.js";
 
+// renderToString — stateless one-shot emission
+export {
+  renderToString,
+  segmentToString,
+  segmentsToString,
+} from "./core/render.js";
+export type { RenderToStringOptions } from "./core/render.js";
+
 // Emoji
 export { EMOJI, emojiReplace, Emoji, NoEmoji } from "./core/emoji.js";
 
