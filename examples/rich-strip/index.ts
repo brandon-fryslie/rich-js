@@ -16,6 +16,7 @@ import {
   GradientJoiner,
   Style,
   RichText,
+  FlexStrip,
 } from "../../src/index.js";
 
 const consoleOut = new Console({ forceTerminal: true });
@@ -50,3 +51,25 @@ showcase(
   `GradientJoiner (steps=${fillSteps}, full-width fill)`,
   new Strip([LEFT_ANCHOR, RIGHT_ANCHOR], new GradientJoiner({ steps: fillSteps })),
 );
+
+// FlexStrip: pack many styled items, wrap to terminal width.
+const PALETTE = [
+  "#1e3a8a", "#0e7490", "#15803d", "#b45309", "#7c2d12",
+  "#6d28d9", "#be185d", "#0f766e", "#a16207", "#334155",
+];
+const tags = [
+  "rust", "typescript", "go", "python", "elixir", "haskell",
+  "ocaml", "zig", "swift", "kotlin", "ruby", "lua", "clojure",
+  "scala", "erlang", "nim", "crystal", "rescript", "purescript",
+];
+const tagCells = tags.map(
+  (t, i) => new StripCell(` ${t} `, Style.parse(`white on ${PALETTE[i % PALETTE.length]!}`)),
+);
+
+consoleOut.print(new RichText("FlexStrip + PowerlineJoiner (wrap-to-width)", { style: "bold" }));
+consoleOut.print(new FlexStrip(tagCells, { joiner: new PowerlineJoiner() }));
+consoleOut.print(new RichText(""));
+
+consoleOut.print(new RichText("FlexStrip + gap (tag cloud)", { style: "bold" }));
+consoleOut.print(new FlexStrip(tagCells, { gap: 1 }));
+consoleOut.print(new RichText(""));
