@@ -30,37 +30,36 @@ describe("Strip render walk", () => {
     expect(render(strip)).toEqual([]);
   });
 
-  it("emits start-cap, item, end-cap for one item", () => {
+  it("emits item, end-cap for one item (no leading arrow)", () => {
     const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([">", " red ", ">"]);
+    expect(segs.map((s) => s.text)).toEqual([" red ", ">"]);
   });
 
-  it("emits start-cap, item, mid-join, item, end-cap for two items", () => {
+  it("emits item, mid-join, item, end-cap for two items (no leading arrow)", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([">", " red ", ">", " blue ", ">"]);
+    expect(segs.map((s) => s.text)).toEqual([" red ", ">", " blue ", ">"]);
   });
 
-  it("scales linearly: 2N+1 segments for N items", () => {
+  it("scales linearly: 2N segments for N items", () => {
     const strip = new Strip(
       [RED, BLUE, GREEN],
       new PowerlineJoiner({ glyph: ">" }),
     );
     const segs = render(strip);
-    expect(segs).toHaveLength(7);
+    expect(segs).toHaveLength(6);
     expect(segs.map((s) => s.text)).toEqual([
-      ">", " red ", ">", " blue ", ">", " green ", ">",
+      " red ", ">", " blue ", ">", " green ", ">",
     ]);
   });
 });
 
 describe("PowerlineJoiner color inheritance", () => {
-  it("start cap fg = first item's bg, no bg", () => {
+  it("emits no leading arrow at the start", () => {
     const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">" }));
-    const [start] = render(strip);
-    expect(start!.style?.color?.name).toBe(RED.style.bgcolor?.name);
-    expect(start!.style?.bgcolor).toBeUndefined();
+    const segs = render(strip);
+    expect(segs[0]!.text).toBe(" red ");
   });
 
   it("end cap fg = last item's bg, no bg", () => {
@@ -74,7 +73,7 @@ describe("PowerlineJoiner color inheritance", () => {
   it("middle join fg = left.bg, bg = right.bg", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
-    const mid = segs[2]!;
+    const mid = segs[1]!;
     expect(mid.style?.color?.name).toBe(RED.style.bgcolor?.name);
     expect(mid.style?.bgcolor?.name).toBe(BLUE.style.bgcolor?.name);
   });

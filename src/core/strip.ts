@@ -139,13 +139,13 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
   }
 
   join(left: T | null, right: T | null): Renderable {
-    if (left === null && right === null) return EMPTY;
-    if (left === null) {
-      // Start cap: fg = right.bg, no bg.
-      return new FixedSegment(this._glyph, bgAsFg(right!));
-    }
+    // Start cap: empty. A right-pointing arrow with no source segment to its
+    // left has nothing to bleed out *from*, so the first segment just begins
+    // cleanly. This matches vim-airline / tmux-powerline / claude-powerline.
+    if (left === null) return EMPTY;
     if (right === null) {
-      // End cap: fg = left.bg, no bg.
+      // End cap: fg = left.bg, no bg — last segment bleeds out into the
+      // terminal background.
       return new FixedSegment(this._glyph, bgAsFg(left));
     }
     // Middle: fg = left.bg, bg = right.bg.

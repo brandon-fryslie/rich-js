@@ -36,7 +36,7 @@ const strip = new Strip(
 console.print(strip);
 ```
 
-The arrow between two cells inherits `fg = left.bgcolor` and `bg = right.bgcolor`. The first arrow has fg = the first cell's bg with no bg. The last arrow has fg = the last cell's bg with no bg. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells inherits `fg = left.bgcolor` and `bg = right.bgcolor`. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's bg with no bg, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
 
 ## Built-in joiners
 
@@ -48,8 +48,8 @@ Classic powerline arrows.
 new PowerlineJoiner({ glyph: "\ue0b0" });
 ```
 
-- `join(null, R)`: glyph with `fg = R.bg`, no bg.
-- `join(L, null)`: glyph with `fg = L.bg`, no bg.
+- `join(null, R)`: empty. A right-pointing arrow with no source segment to its left has nothing to bleed out *from*, so the strip just begins cleanly. Matches vim-airline / tmux-powerline / claude-powerline.
+- `join(L, null)`: glyph with `fg = L.bg`, no bg — last segment bleeds out into the terminal.
 - `join(L, R)`: glyph with `fg = L.bg`, `bg = R.bg`.
 
 ### `CapsuleJoiner`
