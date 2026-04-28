@@ -78,6 +78,22 @@ export { Measurement, measureRenderables } from "./core/measure.js";
 export { Span, RichText } from "./core/text.js";
 export type { RichTextOptions } from "./core/text.js";
 
+// Strip + Joiner
+export {
+  Strip,
+  StripCell,
+  PowerlineJoiner,
+  CapsuleJoiner,
+  PlainJoiner,
+} from "./core/strip.js";
+export type {
+  StyledRenderable,
+  Joiner,
+  PowerlineJoinerOptions,
+  CapsuleJoinerOptions,
+  PlainJoinerOptions,
+} from "./core/strip.js";
+
 // Emoji
 export { EMOJI, emojiReplace, Emoji, NoEmoji } from "./core/emoji.js";
 
