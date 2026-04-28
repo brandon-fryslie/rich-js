@@ -298,12 +298,13 @@ console.saveHtml("output.html");
 
 ## Demos
 
-Three interactive TUI demos exercise the library's renderables against real-world use cases. Each runs in alt-screen mode with flicker-free rendering.
+Three interactive TUI demos exercise the library's renderables against real-world use cases. Each runs in alt-screen mode with flicker-free rendering. A fourth one-shot demo prints every built-in `Joiner` for visual comparison.
 
 ```sh
 npm run demo               # rich-explore: file browser
 npm run sessions           # claude-sessions: Claude Code session browser
 npm run colors             # rich-colors: interactive color palette generator
+npm run strip              # rich-strip: side-by-side joiner showcase (one-shot)
 ```
 
 ### rich-explore — TUI file browser + markdown/code reader
