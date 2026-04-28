@@ -76,6 +76,17 @@ A fixed separator everywhere. Endpoints are empty.
 new PlainJoiner({ separator: " | ", style: Style.parse("dim") });
 ```
 
+### `GradientJoiner`
+
+Interpolates colours between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
+
+```typescript
+new GradientJoiner({ steps: 4, glyph: "\u258e" });
+```
+
+- Middle: `steps` glyph cells whose foregrounds blend from `left.bg` to `right.bg` via midpoint sampling (no cell equals either anchor).
+- Endpoints (or items lacking a `bgcolor`) render empty — a gradient needs two anchors.
+
 ## Custom joiners
 
 A joiner is a pure function `(leftItem | null, rightItem | null) -> Renderable`. Implement the interface to define your own:

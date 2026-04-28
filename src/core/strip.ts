@@ -19,6 +19,7 @@
 
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE } from "./style.js";
+import { Color, blendRgb } from "./color.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
@@ -224,5 +225,50 @@ export class PlainJoiner<T extends StyledRenderable = StyledRenderable> implemen
     // Endpoints are empty — a fixed separator has no natural cap.
     if (left === null || right === null) return EMPTY;
     return new FixedSegment(this._separator, this._style);
+  }
+}
+
+// --- GradientJoiner ---
+
+export interface GradientJoinerOptions {
+  /** Number of glyph cells between adjacent items (default: 4). */
+  steps?: number;
+  /** Glyph painted at every gradient cell (default: U+258E, left-three-eighths block). */
+  glyph?: string;
+}
+
+export class GradientJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
+  private readonly _steps: number;
+  private readonly _glyph: string;
+
+  constructor(options?: GradientJoinerOptions) {
+    this._steps = options?.steps ?? 4;
+    this._glyph = options?.glyph ?? "\u258e";
+  }
+
+  join(left: T | null, right: T | null): Renderable {
+    // [LAW:dataflow-not-control-flow] Endpoints have no opposite anchor to
+    // interpolate toward — the data (a missing neighbor) makes the gradient
+    // empty. Same for items lacking a bgcolor: nothing to blend between.
+    if (left === null || right === null) return EMPTY;
+    const lbg = left.style.bgcolor;
+    const rbg = right.style.bgcolor;
+    if (!lbg || !rbg) return EMPTY;
+    const lTrip = lbg.getTruecolor();
+    const rTrip = rbg.getTruecolor();
+    const steps = this._steps;
+    const glyph = this._glyph;
+    // Midpoint sampling: t = (i + 0.5) / steps so no cell equals an anchor.
+    const segments: Segment[] = [];
+    for (let i = 0; i < steps; i++) {
+      const t = (i + 0.5) / steps;
+      const c = Color.fromTriplet(blendRgb(lTrip, rTrip, t));
+      segments.push(new Segment(glyph, new Style({ color: c })));
+    }
+    return {
+      *render(_options: RenderOptions): Iterable<Segment> {
+        yield* segments;
+      },
+    };
   }
 }

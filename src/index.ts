@@ -85,6 +85,7 @@ export {
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
+  GradientJoiner,
 } from "./core/strip.js";
 export type {
   StyledRenderable,
@@ -92,6 +93,7 @@ export type {
   PowerlineJoinerOptions,
   CapsuleJoinerOptions,
   PlainJoinerOptions,
+  GradientJoinerOptions,
 } from "./core/strip.js";
 
 // Emoji

@@ -5,6 +5,7 @@ import {
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
+  GradientJoiner,
 } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import type { Segment } from "../../src/core/segment.js";
@@ -133,6 +134,45 @@ describe("PlainJoiner", () => {
       new PlainJoiner({ separator: " | " }),
     );
     expect(render(strip).map((s) => s.text)).toEqual([" red "]);
+  });
+});
+
+describe("GradientJoiner", () => {
+  const FF0000 = new StripCell(" a ", Style.parse("on #ff0000"));
+  const BLUE00FF = new StripCell(" b ", Style.parse("on #0000ff"));
+
+  it("interpolates 3 distinct cells progressing monotonically along R/B", () => {
+    const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner({ steps: 3, glyph: "#" }));
+    const segs = render(strip);
+    // walk: start-cap (empty), item, gradient*3, item, end-cap (empty)
+    expect(segs.map((s) => s.text)).toEqual([" a ", "#", "#", "#", " b "]);
+    const grad = segs.slice(1, 4);
+    const trips = grad.map((s) => s.style!.color!.getTruecolor());
+    // Strictly monotonic: R decreases, B increases.
+    expect(trips[0]!.red).toBeGreaterThan(trips[1]!.red);
+    expect(trips[1]!.red).toBeGreaterThan(trips[2]!.red);
+    expect(trips[0]!.blue).toBeLessThan(trips[1]!.blue);
+    expect(trips[1]!.blue).toBeLessThan(trips[2]!.blue);
+    // No anchor duplication (midpoint sampling).
+    expect(trips[0]!.red).toBeLessThan(255);
+    expect(trips[2]!.blue).toBeLessThan(255);
+  });
+
+  it("renders empty at endpoints", () => {
+    const strip = new Strip([FF0000], new GradientJoiner({ steps: 4, glyph: "#" }));
+    expect(render(strip).map((s) => s.text)).toEqual([" a "]);
+  });
+
+  it("renders empty when an item lacks a bgcolor", () => {
+    const noBg = new StripCell(" x ", Style.parse("white"));
+    const strip = new Strip([FF0000, noBg], new GradientJoiner({ steps: 2, glyph: "#" }));
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", " x "]);
+  });
+
+  it("defaults to steps=4 and glyph U+258E", () => {
+    const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner());
+    const segs = render(strip);
+    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258e", "\u258e", "\u258e", "\u258e", " b "]);
   });
 });
 
