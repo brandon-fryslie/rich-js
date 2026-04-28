@@ -1,11 +1,21 @@
 /**
  * Markup — BBCode-inspired markup parser for inline styling.
  * Parses `[bold red]text[/bold red]` into RichText with styled spans.
+ *
+ * Plugin tags ([LAW:locality-or-seam]): a `MarkupRegistry` lets consumers
+ * register tag handlers without forking the parser. When the parser sees
+ * `[name attrs...]inner[/name]` and `name` is registered, it parses attrs,
+ * recursively renders the inner markup as a child Renderable, and calls the
+ * handler — splicing the handler's returned Renderable into the output. The
+ * built-in style dialect and the plugin dialect are routed by the registry,
+ * which is the single trust boundary between them.
  */
 
-import { Style } from "./style.js";
+import { Style, StyleSyntaxError } from "./style.js";
 import { RichText, Span } from "./text.js";
 import { emojiReplace } from "./emoji.js";
+import { Group } from "../renderables/group.js";
+import type { Renderable } from "./protocol.js";
 
 // --- Tag ---
 
@@ -229,4 +239,220 @@ function findLastOpen(
 
 function unescapeBrackets(text: string): string {
   return text.replace(/\\\[/g, "[");
+}
+
+// --- Plugin registry ---
+
+export interface MarkupTagContext {
+  /** Parsed `key=value` attributes from the opening tag. */
+  attrs: Record<string, string>;
+  /** Inner markup, already parsed (registry-aware) into a Renderable. */
+  children: Renderable;
+  /** Raw inner markup text (between the opening tag's `]` and the closing tag's `[`). */
+  raw: string;
+}
+
+export type MarkupTagHandler = (ctx: MarkupTagContext) => Renderable;
+
+export class MarkupRegistry {
+  private readonly _handlers = new Map<string, MarkupTagHandler>();
+
+  register(name: string, handler: MarkupTagHandler): void {
+    if (isReservedTagName(name)) {
+      throw new MarkupError(
+        `Cannot register markup tag "${name}": name is reserved by a built-in style.`,
+      );
+    }
+    this._handlers.set(name, handler);
+  }
+
+  unregister(name: string): void {
+    this._handlers.delete(name);
+  }
+
+  has(name: string): boolean {
+    return this._handlers.has(name);
+  }
+
+  get(name: string): MarkupTagHandler | undefined {
+    return this._handlers.get(name);
+  }
+}
+
+// [LAW:one-source-of-truth] Reserved-name detection delegates to Style.parse —
+// if a name is a valid built-in style, it cannot be hijacked by a plugin.
+// There is no second list of "reserved names" to drift out of sync.
+function isReservedTagName(name: string): boolean {
+  try {
+    Style.parse(name);
+    return true;
+  } catch (err) {
+    if (err instanceof StyleSyntaxError) return false;
+    throw err;
+  }
+}
+
+export const globalMarkupRegistry = new MarkupRegistry();
+
+export function registerMarkupTag(name: string, handler: MarkupTagHandler): void {
+  globalMarkupRegistry.register(name, handler);
+}
+
+export function unregisterMarkupTag(name: string): void {
+  globalMarkupRegistry.unregister(name);
+}
+
+// --- Plugin-aware tag parsing ---
+
+const PLUGIN_NAME_RE = /^([a-zA-Z][a-zA-Z0-9_-]*)/;
+const ATTR_RE = /([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s\]]+))/g;
+
+function pluginNameOf(inner: string): string | null {
+  const m = PLUGIN_NAME_RE.exec(inner);
+  return m ? m[1]! : null;
+}
+
+function parsePluginAttrs(after: string): Record<string, string> {
+  const attrs: Record<string, string> = {};
+  const re = new RegExp(ATTR_RE.source, ATTR_RE.flags);
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(after)) !== null) {
+    attrs[m[1]!] = m[2] ?? m[3] ?? m[4] ?? "";
+  }
+  return attrs;
+}
+
+// --- Plugin-aware render ---
+
+export interface RenderMarkupOptions {
+  registry?: MarkupRegistry;
+  baseStyle?: string | Style;
+  emoji?: boolean;
+}
+
+/**
+ * Plugin-aware markup render. When the registry has matching tags, returns a
+ * `Group` whose children mix `RichText` chunks (built-in styled text) and
+ * the `Renderable`s emitted by registered handlers. With no plugin tags
+ * present, returns a plain `RichText` so callers see the same shape as the
+ * legacy `render()` path.
+ */
+export function renderMarkup(
+  markup: string,
+  options?: RenderMarkupOptions,
+): Renderable {
+  const registry = options?.registry ?? globalMarkupRegistry;
+  const baseStyle = options?.baseStyle;
+  const doEmoji = options?.emoji !== false;
+
+  // Fast path: no `[` at all → no possible tags.
+  if (!HAS_TAG_RE.test(markup)) {
+    return render(markup, baseStyle, { emoji: doEmoji });
+  }
+
+  const tags = parseTags(markup);
+  // Pair each opening plugin tag with its matching closer up-front, so the
+  // recursion can splice slice-by-slice with no nested-state book-keeping.
+  const { annotated, topLevel: tagPairs } = pairPluginTags(tags, registry);
+  if (tagPairs.size === 0) {
+    return render(markup, baseStyle, { emoji: doEmoji });
+  }
+
+  const children: Renderable[] = [];
+  let cursor = 0;
+
+  // Iterate top-level plugin pairs in source order. Anything *between* pairs
+  // becomes a built-in-style RichText fragment via legacy `render`; the inner
+  // markup of each pair is recursed through `renderMarkup` so nested plugin
+  // tags resolve too.
+  for (const [openIdx, closeIdx] of tagPairs) {
+    const open = annotated[openIdx]!;
+    const close = annotated[closeIdx]!;
+    if (open.start < cursor) continue; // already consumed by an outer pair
+
+    if (open.start > cursor) {
+      const fragment = markup.slice(cursor, open.start);
+      if (fragment.length > 0) {
+        children.push(render(fragment, baseStyle, { emoji: doEmoji }));
+      }
+    }
+
+    const innerRaw = markup.slice(open.end, close.start);
+    const innerRenderable = renderMarkup(innerRaw, options);
+    const handler = registry.get(open.pluginName!)!;
+    const ctx: MarkupTagContext = {
+      attrs: open.attrs!,
+      children: innerRenderable,
+      raw: innerRaw,
+    };
+    children.push(handler(ctx));
+    cursor = close.end;
+  }
+
+  if (cursor < markup.length) {
+    const tail = markup.slice(cursor);
+    if (tail.length > 0) {
+      children.push(render(tail, baseStyle, { emoji: doEmoji }));
+    }
+  }
+
+  if (children.length === 0) return new RichText("");
+  if (children.length === 1) return children[0]!;
+  return new Group(...children);
+}
+
+interface PluginTag extends ParsedTag {
+  pluginName?: string;
+  attrs?: Record<string, string>;
+}
+
+function pairPluginTags(
+  tags: ParsedTag[],
+  registry: MarkupRegistry,
+): { annotated: PluginTag[]; topLevel: Map<number, number> } {
+  // Annotate tags with plugin info, then pair openers with closers. Only
+  // top-level pairs are returned; inner pairs will be re-discovered by the
+  // recursive `renderMarkup` call on the inner slice.
+  const annotated: PluginTag[] = tags.map((t) => annotatePluginTag(t, registry));
+  const stack: number[] = [];
+  const pairs = new Map<number, number>();
+  for (let i = 0; i < annotated.length; i++) {
+    const t = annotated[i]!;
+    if (!t.pluginName) continue;
+    if (t.isImplicitClose) continue;
+    if (t.isClosing) {
+      // Find matching open in stack.
+      for (let j = stack.length - 1; j >= 0; j--) {
+        const openIdx = stack[j]!;
+        if (annotated[openIdx]!.pluginName === t.pluginName) {
+          pairs.set(openIdx, i);
+          stack.splice(j, 1);
+          break;
+        }
+      }
+    } else {
+      stack.push(i);
+    }
+  }
+  // Filter pairs to top-level only.
+  const topLevel = new Map<number, number>();
+  let outerEnd = -1;
+  const sortedOpens = [...pairs.keys()].sort((a, b) => a - b);
+  for (const openIdx of sortedOpens) {
+    if (annotated[openIdx]!.start < outerEnd) continue;
+    topLevel.set(openIdx, pairs.get(openIdx)!);
+    outerEnd = annotated[pairs.get(openIdx)!]!.end;
+  }
+  return { annotated, topLevel };
+}
+
+function annotatePluginTag(tag: ParsedTag, registry: MarkupRegistry): PluginTag {
+  // The legacy parser splits at the first `=`, so tag.styleName for
+  // `[click verb=foo]` is "click verb". Re-extract the leading identifier.
+  const inner = tag.fullMatch.slice(1, -1).replace(/^\//, "");
+  const name = pluginNameOf(inner);
+  if (!name || !registry.has(name)) return tag;
+  const after = inner.slice(name.length);
+  const attrs = tag.isClosing ? {} : parsePluginAttrs(after);
+  return { ...tag, pluginName: name, attrs };
 }

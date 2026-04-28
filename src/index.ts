@@ -104,6 +104,20 @@ export {
 } from "./core/render.js";
 export type { RenderToStringOptions } from "./core/render.js";
 
+// Markup plugin tags
+export {
+  MarkupRegistry,
+  globalMarkupRegistry,
+  registerMarkupTag,
+  unregisterMarkupTag,
+  renderMarkup,
+} from "./core/markup.js";
+export type {
+  MarkupTagContext,
+  MarkupTagHandler,
+  RenderMarkupOptions,
+} from "./core/markup.js";
+
 // Emoji
 export { EMOJI, emojiReplace, Emoji, NoEmoji } from "./core/emoji.js";
 
@@ -112,7 +126,6 @@ export {
   Tag,
   MarkupError,
   escape as escapeMarkup,
-  render as renderMarkup,
 } from "./core/markup.js";
 
 // Highlighter
