@@ -147,7 +147,7 @@ describe("GradientJoiner", () => {
     // walk: start-cap (empty), item, gradient*3, item, end-cap (empty)
     expect(segs.map((s) => s.text)).toEqual([" a ", "#", "#", "#", " b "]);
     const grad = segs.slice(1, 4);
-    const trips = grad.map((s) => s.style!.color!.getTruecolor());
+    const trips = grad.map((s) => s.style!.bgcolor!.getTruecolor());
     // Strictly monotonic: R decreases, B increases.
     expect(trips[0]!.red).toBeGreaterThan(trips[1]!.red);
     expect(trips[1]!.red).toBeGreaterThan(trips[2]!.red);
@@ -169,10 +169,10 @@ describe("GradientJoiner", () => {
     expect(render(strip).map((s) => s.text)).toEqual([" a ", " x "]);
   });
 
-  it("defaults to steps=4 and glyph U+258E", () => {
+  it("defaults to steps=4 and glyph space", () => {
     const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner());
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258e", "\u258e", "\u258e", "\u258e", " b "]);
+    expect(segs.map((s) => s.text)).toEqual([" a ", " ", " ", " ", " ", " b "]);
   });
 });
 

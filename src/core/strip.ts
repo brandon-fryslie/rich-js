@@ -231,19 +231,28 @@ export class PlainJoiner<T extends StyledRenderable = StyledRenderable> implemen
 // --- GradientJoiner ---
 
 export interface GradientJoinerOptions {
-  /** Number of glyph cells between adjacent items (default: 4). */
+  /** Number of cells between adjacent items (default: 4). */
   steps?: number;
-  /** Glyph painted at every gradient cell (default: U+258E, left-three-eighths block). */
+  /**
+   * Glyph painted at every gradient cell (default: " "). The interpolated
+   * colour fills the cell *background*; the glyph rides on top with the
+   * given foreground style. Pass a partial block (e.g. U+258E) and a
+   * non-default `style` to overlay a texture on the gradient.
+   */
   glyph?: string;
+  /** Foreground style for `glyph`. Bg is overwritten with the gradient colour. */
+  style?: Style;
 }
 
 export class GradientJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   private readonly _steps: number;
   private readonly _glyph: string;
+  private readonly _fgStyle: Style;
 
   constructor(options?: GradientJoinerOptions) {
     this._steps = options?.steps ?? 4;
-    this._glyph = options?.glyph ?? "\u258e";
+    this._glyph = options?.glyph ?? " ";
+    this._fgStyle = options?.style ?? NULL_STYLE;
   }
 
   join(left: T | null, right: T | null): Renderable {
@@ -258,12 +267,13 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
     const rTrip = rbg.getTruecolor();
     const steps = this._steps;
     const glyph = this._glyph;
+    const fgStyle = this._fgStyle;
     // Midpoint sampling: t = (i + 0.5) / steps so no cell equals an anchor.
     const segments: Segment[] = [];
     for (let i = 0; i < steps; i++) {
       const t = (i + 0.5) / steps;
       const c = Color.fromTriplet(blendRgb(lTrip, rTrip, t));
-      segments.push(new Segment(glyph, new Style({ color: c })));
+      segments.push(new Segment(glyph, fgStyle.add(new Style({ bgcolor: c }))));
     }
     return {
       *render(_options: RenderOptions): Iterable<Segment> {

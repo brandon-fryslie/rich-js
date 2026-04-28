@@ -81,10 +81,12 @@ new PlainJoiner({ separator: " | ", style: Style.parse("dim") });
 Interpolates colours between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
 
 ```typescript
-new GradientJoiner({ steps: 4, glyph: "\u258e" });
+new GradientJoiner({ steps: 4 });
+// or, with a textured overlay:
+new GradientJoiner({ steps: 4, glyph: "\u258e", style: Style.parse("dim") });
 ```
 
-- Middle: `steps` glyph cells whose foregrounds blend from `left.bg` to `right.bg` via midpoint sampling (no cell equals either anchor).
+- Middle: `steps` cells whose **backgrounds** blend from `left.bg` to `right.bg` via midpoint sampling (no cell equals either anchor). Default glyph is a space — fills the cell solidly with the gradient colour. Pass a partial-block glyph + foreground `style` to overlay a texture.
 - Endpoints (or items lacking a `bgcolor`) render empty — a gradient needs two anchors.
 
 ## Custom joiners
