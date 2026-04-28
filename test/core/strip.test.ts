@@ -140,38 +140,47 @@ describe("GradientJoiner", () => {
   const FF0000 = new StripCell(" a ", Style.parse("on #ff0000"));
   const BLUE00FF = new StripCell(" b ", Style.parse("on #0000ff"));
 
-  it("interpolates 3 distinct cells progressing monotonically along R/B", () => {
-    const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner({ steps: 3, glyph: "#" }));
+  it("emits half-block cells carrying two colour samples each", () => {
+    const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner({ steps: 3 }));
     const segs = render(strip);
-    // walk: start-cap (empty), item, gradient*3, item, end-cap (empty)
-    expect(segs.map((s) => s.text)).toEqual([" a ", "#", "#", "#", " b "]);
+    // walk: item, gradient*3, item.
+    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258c", "\u258c", "\u258c", " b "]);
     const grad = segs.slice(1, 4);
-    const trips = grad.map((s) => s.style!.bgcolor!.getTruecolor());
-    // Strictly monotonic: R decreases, B increases.
-    expect(trips[0]!.red).toBeGreaterThan(trips[1]!.red);
-    expect(trips[1]!.red).toBeGreaterThan(trips[2]!.red);
-    expect(trips[0]!.blue).toBeLessThan(trips[1]!.blue);
-    expect(trips[1]!.blue).toBeLessThan(trips[2]!.blue);
-    // No anchor duplication (midpoint sampling).
-    expect(trips[0]!.red).toBeLessThan(255);
-    expect(trips[2]!.blue).toBeLessThan(255);
+    // Each cell carries fg (left half) and bg (right half) — both real colours.
+    for (const s of grad) {
+      expect(s.style!.color).toBeDefined();
+      expect(s.style!.bgcolor).toBeDefined();
+    }
+    // Flatten to the 6 sub-cell samples in visual order.
+    const samples = grad.flatMap((s) => [
+      s.style!.color!.getTruecolor(),
+      s.style!.bgcolor!.getTruecolor(),
+    ]);
+    // Strictly monotonic across all 6 samples: R decreases, B increases.
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i]!.red).toBeLessThan(samples[i - 1]!.red);
+      expect(samples[i]!.blue).toBeGreaterThan(samples[i - 1]!.blue);
+    }
+    // No sample equals either anchor (midpoint sampling).
+    expect(samples[0]!.red).toBeLessThan(255);
+    expect(samples[samples.length - 1]!.blue).toBeLessThan(255);
   });
 
   it("renders empty at endpoints", () => {
-    const strip = new Strip([FF0000], new GradientJoiner({ steps: 4, glyph: "#" }));
+    const strip = new Strip([FF0000], new GradientJoiner({ steps: 4 }));
     expect(render(strip).map((s) => s.text)).toEqual([" a "]);
   });
 
   it("renders empty when an item lacks a bgcolor", () => {
     const noBg = new StripCell(" x ", Style.parse("white"));
-    const strip = new Strip([FF0000, noBg], new GradientJoiner({ steps: 2, glyph: "#" }));
+    const strip = new Strip([FF0000, noBg], new GradientJoiner({ steps: 2 }));
     expect(render(strip).map((s) => s.text)).toEqual([" a ", " x "]);
   });
 
-  it("defaults to steps=4 and glyph space", () => {
+  it("defaults to steps=4", () => {
     const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner());
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([" a ", " ", " ", " ", " ", " b "]);
+    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258c", "\u258c", "\u258c", "\u258c", " b "]);
   });
 });
 

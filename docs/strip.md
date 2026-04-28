@@ -82,12 +82,12 @@ Interpolates colours between adjacent items' backgrounds. Useful for fade transi
 
 ```typescript
 new GradientJoiner({ steps: 4 });
-// or, with a textured overlay:
-new GradientJoiner({ steps: 4, glyph: "\u258e", style: Style.parse("dim") });
 ```
 
-- Middle: `steps` cells whose **backgrounds** blend from `left.bg` to `right.bg` via midpoint sampling (no cell equals either anchor). Default glyph is a space — fills the cell solidly with the gradient colour. Pass a partial-block glyph + foreground `style` to overlay a texture.
+- Middle: `steps` cells, each painted with the half-block glyph `▌` (U+258C) so one cell carries **two** colour samples — `fg` for the left half, `bg` for the right half. `steps` cells therefore produce `2 × steps` colour samples between the two anchors, doubling the perceived smoothness compared to one-colour-per-cell at the same width.
+- All samples use midpoint sampling — no sample ever equals either anchor.
 - Endpoints (or items lacking a `bgcolor`) render empty — a gradient needs two anchors.
+- Truecolor terminals only: on 256-colour terminals the half-block dithering quantizes adjacent samples to the same palette index and visibly stripes. The existing colour-system downgrade still works, it just looks rougher.
 
 ## Custom joiners
 

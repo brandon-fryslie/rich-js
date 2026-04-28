@@ -233,26 +233,21 @@ export class PlainJoiner<T extends StyledRenderable = StyledRenderable> implemen
 export interface GradientJoinerOptions {
   /** Number of cells between adjacent items (default: 4). */
   steps?: number;
-  /**
-   * Glyph painted at every gradient cell (default: " "). The interpolated
-   * colour fills the cell *background*; the glyph rides on top with the
-   * given foreground style. Pass a partial block (e.g. U+258E) and a
-   * non-default `style` to overlay a texture on the gradient.
-   */
-  glyph?: string;
-  /** Foreground style for `glyph`. Bg is overwritten with the gradient colour. */
-  style?: Style;
 }
+
+/**
+ * Half-block dithering glyph: paints the cell's left half with the foreground
+ * colour and the right half with the background colour. Lets each cell carry
+ * two colour samples — `2 * steps` samples in `steps` cells — so the gradient
+ * looks twice as smooth as one-colour-per-cell at the same width.
+ */
+const HALF_BLOCK = "\u258c"; // ▌
 
 export class GradientJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   private readonly _steps: number;
-  private readonly _glyph: string;
-  private readonly _fgStyle: Style;
 
   constructor(options?: GradientJoinerOptions) {
     this._steps = options?.steps ?? 4;
-    this._glyph = options?.glyph ?? " ";
-    this._fgStyle = options?.style ?? NULL_STYLE;
   }
 
   join(left: T | null, right: T | null): Renderable {
@@ -266,14 +261,17 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
     const lTrip = lbg.getTruecolor();
     const rTrip = rbg.getTruecolor();
     const steps = this._steps;
-    const glyph = this._glyph;
-    const fgStyle = this._fgStyle;
-    // Midpoint sampling: t = (i + 0.5) / steps so no cell equals an anchor.
+    const samples = 2 * steps;
+    // Midpoint sampling across `2 * steps` half-cell positions: sample j has
+    // t = (j + 0.5) / samples. Cell i takes samples 2i (left half) and 2i+1
+    // (right half). No sample ever equals either anchor.
     const segments: Segment[] = [];
     for (let i = 0; i < steps; i++) {
-      const t = (i + 0.5) / steps;
-      const c = Color.fromTriplet(blendRgb(lTrip, rTrip, t));
-      segments.push(new Segment(glyph, fgStyle.add(new Style({ bgcolor: c }))));
+      const tLeft = (2 * i + 0.5) / samples;
+      const tRight = (2 * i + 1.5) / samples;
+      const fg = Color.fromTriplet(blendRgb(lTrip, rTrip, tLeft));
+      const bg = Color.fromTriplet(blendRgb(lTrip, rTrip, tRight));
+      segments.push(new Segment(HALF_BLOCK, new Style({ color: fg, bgcolor: bg })));
     }
     return {
       *render(_options: RenderOptions): Iterable<Segment> {
