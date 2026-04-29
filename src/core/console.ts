@@ -70,13 +70,31 @@ function resolveStyle(style: string | Style | undefined): Style {
 // `resolveColorSystem`. This helper just normalizes the option shape (string |
 // enum | null) into the cached `_colorSystem` field. WINDOWS has no string
 // spec; callers reach it via the enum directly.
+//
+// [LAW:dataflow-not-control-flow] `isTTY` is forwarded unconditionally;
+// `resolveColorSystem` ignores it for non-`"auto"` specs. Caller must compute
+// the effective TTY status of the actual output target (stdout/stderr/file)
+// so `"auto"` detection doesn't accidentally consult `process.stdout.isTTY`
+// when the console is bound to a different stream.
 function resolveOptionColorSystem(
   spec: ColorSystemSpec | ColorSystem | null | undefined,
+  isTTY: boolean,
 ): ColorSystem | null {
   if (spec === null) return null;
-  if (spec === undefined) return resolveColorSystem("auto");
-  if (typeof spec === "string") return resolveColorSystem(spec);
+  if (spec === undefined) return resolveColorSystem("auto", { isTTY });
+  if (typeof spec === "string") return resolveColorSystem(spec, { isTTY });
   return spec;
+}
+
+// [LAW:single-enforcer] Effective TTY status of the console's output target
+// is computed once, here, from the options that determine the target. Mirrors
+// the `isTerminal` getter so the cached `_colorSystem` and runtime
+// `isTerminal` agree on what counts as a TTY.
+function effectiveIsTTY(options?: ConsoleOptions): boolean {
+  if (options?.forceTerminal) return true;
+  if (options?.file) return false;
+  if (typeof process === "undefined") return false;
+  return (options?.stderr ? process.stderr : process.stdout)?.isTTY ?? false;
 }
 
 function getTerminalSize(): { width: number; height: number } {
@@ -110,7 +128,10 @@ export class Console {
   private _buffer: string;
 
   constructor(options?: ConsoleOptions) {
-    this._colorSystem = resolveOptionColorSystem(options?.colorSystem);
+    this._colorSystem = resolveOptionColorSystem(
+      options?.colorSystem,
+      effectiveIsTTY(options),
+    );
     this._width = options?.width;
     this._height = options?.height;
     this._style = resolveStyle(options?.style);

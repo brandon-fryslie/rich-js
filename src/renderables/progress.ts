@@ -58,7 +58,9 @@ export class TextColumn implements ProgressColumn {
     // tags like `[progress.description]` become Style spans, not literal text.
     // Task descriptions are escaped first to prevent injection of stray tags.
     const description = escapeMarkup(task?.description ?? "");
-    const formatted = this.format.replace(/\{task\.description\}/g, description);
+    // Use a callback so `$&`/`$1`/`$$` in the task description aren't
+    // reinterpreted by String.replace as replacement patterns.
+    const formatted = this.format.replace(/\{task\.description\}/g, () => description);
     yield* renderMarkup(formatted).render(options);
   }
 }
