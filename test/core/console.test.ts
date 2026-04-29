@@ -56,8 +56,8 @@ describe("Console construction", () => {
     expect(c.colorSystem).toBe(null);
   });
 
-  it("colorSystem can be set to standard", () => {
-    const c = new Console({ colorSystem: "standard" });
+  it("colorSystem can be set to ansi", () => {
+    const c = new Console({ colorSystem: "ansi" });
     expect(c.colorSystem).toBe(ColorSystem.STANDARD);
   });
 
@@ -71,8 +71,8 @@ describe("Console construction", () => {
     expect(c.colorSystem).toBe(ColorSystem.TRUECOLOR);
   });
 
-  it("colorSystem can be set to windows", () => {
-    const c = new Console({ colorSystem: "windows" });
+  it("colorSystem accepts ColorSystem enum directly (e.g. WINDOWS)", () => {
+    const c = new Console({ colorSystem: ColorSystem.WINDOWS });
     expect(c.colorSystem).toBe(ColorSystem.WINDOWS);
   });
 
@@ -183,8 +183,8 @@ describe("Console color systems", () => {
     expect(output).not.toMatch(/\x1b\[/);
   });
 
-  it("standard maps to STANDARD color system", () => {
-    const c = new Console({ colorSystem: "standard" });
+  it("ansi maps to STANDARD color system", () => {
+    const c = new Console({ colorSystem: "ansi" });
     expect(c.colorSystem).toBe(ColorSystem.STANDARD);
   });
 
@@ -198,8 +198,8 @@ describe("Console color systems", () => {
     expect(c.colorSystem).toBe(ColorSystem.TRUECOLOR);
   });
 
-  it("windows maps to WINDOWS color system", () => {
-    const c = new Console({ colorSystem: "windows" });
+  it("ColorSystem.WINDOWS enum maps through directly", () => {
+    const c = new Console({ colorSystem: ColorSystem.WINDOWS });
     expect(c.colorSystem).toBe(ColorSystem.WINDOWS);
   });
 });

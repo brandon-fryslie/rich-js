@@ -11,6 +11,8 @@ export {
   TerminalTheme,
   parseRgbHex,
   blendRgb,
+  resolveColorSystem,
+  detectColorSystem,
   STANDARD_PALETTE,
   EIGHT_BIT_PALETTE,
   WINDOWS_PALETTE,
@@ -19,6 +21,7 @@ export {
   SVG_EXPORT_THEME,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
+export type { ColorSystemSpec, DetectColorOptions } from "./core/color.js";
 
 export {
   Style,
