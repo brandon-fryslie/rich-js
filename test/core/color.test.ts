@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import {
   ColorTriplet,
+  ColorQuad,
   ColorTable,
   Color,
   ColorType,
   ColorSystem,
   ColorParseError,
   parseRgbHex,
+  parseRgbaHex,
   blendRgb,
   TerminalTheme,
   STANDARD_TABLE,
@@ -55,6 +57,92 @@ describe("ColorTriplet", () => {
 
   it(".normalized of white is [1,1,1]", () => {
     expect(new ColorTriplet(255, 255, 255).normalized).toEqual([1, 1, 1]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ColorQuad
+// ---------------------------------------------------------------------------
+
+describe("ColorQuad", () => {
+  it("stores red, green, blue, alpha as readonly properties", () => {
+    const q = new ColorQuad(10, 20, 30, 0.5);
+    expect(q.red).toBe(10);
+    expect(q.green).toBe(20);
+    expect(q.blue).toBe(30);
+    expect(q.alpha).toBe(0.5);
+  });
+
+  it("fromRgb defaults alpha to 1 (fully opaque)", () => {
+    const q = ColorQuad.fromRgb(new ColorTriplet(1, 2, 3));
+    expect(q.alpha).toBe(1);
+    expect(q.red).toBe(1);
+  });
+
+  it("fromRgb accepts an explicit alpha", () => {
+    const q = ColorQuad.fromRgb(new ColorTriplet(1, 2, 3), 0.25);
+    expect(q.alpha).toBe(0.25);
+  });
+
+  it(".rgb extracts a ColorTriplet (alpha discarded)", () => {
+    const q = new ColorQuad(10, 20, 30, 0.5);
+    const t = q.rgb;
+    expect(t).toBeInstanceOf(ColorTriplet);
+    expect(t.red).toBe(10);
+    expect(t.green).toBe(20);
+    expect(t.blue).toBe(30);
+  });
+
+  it(".hex emits 8-char #RRGGBBAA", () => {
+    expect(new ColorQuad(255, 0, 0, 1).hex).toBe("#ff0000ff");
+    expect(new ColorQuad(0, 0, 0, 0).hex).toBe("#00000000");
+    expect(new ColorQuad(255, 255, 255, 0.5).hex).toBe("#ffffff80");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// parseRgbaHex
+// ---------------------------------------------------------------------------
+
+describe("parseRgbaHex", () => {
+  it("parses 6-char hex as fully opaque", () => {
+    const q = parseRgbaHex("85A598");
+    expect(q.red).toBe(0x85);
+    expect(q.green).toBe(0xa5);
+    expect(q.blue).toBe(0x98);
+    expect(q.alpha).toBe(1);
+  });
+
+  it("parses 8-char hex with alpha", () => {
+    const q = parseRgbaHex("FFFFFF0A");
+    expect(q.red).toBe(255);
+    expect(q.green).toBe(255);
+    expect(q.blue).toBe(255);
+    expect(q.alpha).toBeCloseTo(0x0a / 255);
+  });
+
+  it("accepts leading # for both 6 and 8 char forms", () => {
+    expect(parseRgbaHex("#85A598").alpha).toBe(1);
+    const q = parseRgbaHex("#FFFFFF80");
+    expect(q.alpha).toBeCloseTo(128 / 255);
+  });
+
+  it("is case-insensitive on hex digits", () => {
+    const lower = parseRgbaHex("#ffffff0a");
+    const upper = parseRgbaHex("#FFFFFF0A");
+    expect(lower.red).toBe(upper.red);
+    expect(lower.alpha).toBeCloseTo(upper.alpha);
+  });
+
+  it("throws ColorParseError on wrong length", () => {
+    expect(() => parseRgbaHex("FFF")).toThrow(ColorParseError);
+    expect(() => parseRgbaHex("#FFFFF")).toThrow(ColorParseError);
+    expect(() => parseRgbaHex("FFFFFFFFFF")).toThrow(ColorParseError);
+  });
+
+  it("throws ColorParseError on non-hex characters", () => {
+    expect(() => parseRgbaHex("ZZZZZZ")).toThrow(ColorParseError);
+    expect(() => parseRgbaHex("#85A59G")).toThrow(ColorParseError);
   });
 });
 
