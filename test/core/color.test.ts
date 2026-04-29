@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ColorTriplet,
-  Palette,
+  ColorTable,
   Color,
   ColorType,
   ColorSystem,
@@ -9,9 +9,9 @@ import {
   parseRgbHex,
   blendRgb,
   TerminalTheme,
-  STANDARD_PALETTE,
-  EIGHT_BIT_PALETTE,
-  WINDOWS_PALETTE,
+  STANDARD_TABLE,
+  EIGHT_BIT_TABLE,
+  WINDOWS_TABLE,
   DEFAULT_TERMINAL_THEME,
   MONOKAI,
   SVG_EXPORT_THEME,
@@ -59,11 +59,11 @@ describe("ColorTriplet", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Palette
+// ColorTable
 // ---------------------------------------------------------------------------
 
-describe("Palette", () => {
-  const palette = new Palette([
+describe("ColorTable", () => {
+  const palette = new ColorTable([
     new ColorTriplet(0, 0, 0),
     new ColorTriplet(255, 0, 0),
     new ColorTriplet(0, 255, 0),
@@ -98,20 +98,20 @@ describe("Palette", () => {
     expect(first).toBe(1);
   });
 
-  it("STANDARD_PALETTE has 16 entries", () => {
-    expect(STANDARD_PALETTE.size).toBe(16);
+  it("STANDARD_TABLE has 16 entries", () => {
+    expect(STANDARD_TABLE.size).toBe(16);
   });
 
-  it("EIGHT_BIT_PALETTE has 256 entries", () => {
-    expect(EIGHT_BIT_PALETTE.size).toBe(256);
+  it("EIGHT_BIT_TABLE has 256 entries", () => {
+    expect(EIGHT_BIT_TABLE.size).toBe(256);
   });
 
-  it("WINDOWS_PALETTE has 16 entries", () => {
-    expect(WINDOWS_PALETTE.size).toBe(16);
+  it("WINDOWS_TABLE has 16 entries", () => {
+    expect(WINDOWS_TABLE.size).toBe(16);
   });
 
-  it("EIGHT_BIT_PALETTE.get(0) returns black (0,0,0)", () => {
-    expect(EIGHT_BIT_PALETTE.get(0)).toEqual(new ColorTriplet(0, 0, 0));
+  it("EIGHT_BIT_TABLE.get(0) returns black (0,0,0)", () => {
+    expect(EIGHT_BIT_TABLE.get(0)).toEqual(new ColorTriplet(0, 0, 0));
   });
 });
 
@@ -496,17 +496,17 @@ describe("Color.getTruecolor()", () => {
     expect(c.getTruecolor()).toBe(t);
   });
 
-  it("EIGHT_BIT looks up in EIGHT_BIT_PALETTE", () => {
+  it("EIGHT_BIT looks up in EIGHT_BIT_TABLE", () => {
     const c = Color.fromAnsi(100);
     const result = c.getTruecolor();
-    expect(result).toEqual(EIGHT_BIT_PALETTE.get(100));
+    expect(result).toEqual(EIGHT_BIT_TABLE.get(100));
   });
 
   it("STANDARD looks up in theme's ansiColors", () => {
     const c = Color.fromAnsi(1); // STANDARD red
     const result = c.getTruecolor();
-    // Default theme uses STANDARD_PALETTE
-    expect(result).toEqual(STANDARD_PALETTE.get(1));
+    // Default theme uses STANDARD_TABLE
+    expect(result).toEqual(STANDARD_TABLE.get(1));
   });
 
   it("STANDARD uses provided theme when given", () => {
@@ -614,7 +614,7 @@ describe("TerminalTheme", () => {
   it("stores background, foreground, and ansiColors", () => {
     const bg = new ColorTriplet(0, 0, 0);
     const fg = new ColorTriplet(255, 255, 255);
-    const pal = new Palette([bg, fg]);
+    const pal = new ColorTable([bg, fg]);
     const theme = new TerminalTheme(bg, fg, pal);
     expect(theme.backgroundColor).toBe(bg);
     expect(theme.foregroundColor).toBe(fg);
