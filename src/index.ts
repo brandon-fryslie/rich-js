@@ -23,6 +23,9 @@ export {
 } from "./core/color.js";
 export type { ColorSystemSpec, DetectColorOptions } from "./core/color.js";
 
+// Themes — semantic palettes (distinct from ColorTable quantization LUTs)
+export { Palette } from "./themes/palette.js";
+
 export {
   Style,
   StyleSyntaxError,
