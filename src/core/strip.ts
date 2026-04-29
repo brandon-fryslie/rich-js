@@ -25,9 +25,41 @@ import type { Renderable, RenderOptions } from "./protocol.js";
 // --- StyledRenderable ---
 
 /**
- * Items in a Strip expose a single dominant `style` so joiners can read its
- * fg/bg without inspecting the rendered output. Multi-style content nests
- * inside a styled wrapper; the joiner reads only the wrapper's style.
+ * Items in a `Strip` expose a single dominant `style` so joiners can read
+ * fg/bg without inspecting the rendered output.
+ *
+ * ## Single-style invariant (load-bearing)
+ *
+ * Joiners — `PowerlineJoiner`, `CapsuleJoiner`, `GradientJoiner` — paint edges
+ * by reading `item.style.bgcolor` for adjacent items. If `render()` emits a
+ * `Segment` whose `style.bgcolor` diverges from `this.style.bgcolor`, the
+ * arrow/cap glyph between this item and its neighbour will use the *declared*
+ * bg even though the item *displayed* a different bg. The result is a
+ * visually wrong transition (e.g. a powerline arrow whose source colour
+ * doesn't match the cell it's bleeding out of).
+ *
+ * **The invariant**: for every `Segment` yielded by `render()`, either
+ *   - `segment.style.bgcolor === this.style.bgcolor`, or
+ *   - `segment.style.bgcolor === undefined` (transparent — terminal default).
+ *
+ * Foreground colour and text attributes (bold, italic, underline, etc.) may
+ * vary freely within a single item — only `bgcolor` is constrained, because
+ * that's the only field joiners read.
+ *
+ * ## What breaks the invariant
+ *
+ * - Yielding inline `Segment`s with their own `bgcolor` set to a different
+ *   value (e.g. an embedded "warning" highlight with a yellow background).
+ * - Wrapping a renderable that paints its own background — `Panel`, a styled
+ *   `Group`, or any `RichText` whose base style includes a bg.
+ *
+ * ## The safe path
+ *
+ * Use `StripCell(text, style)` for plain styled text — it satisfies the
+ * invariant by construction. For richer items, implement this interface
+ * directly and ensure your `render()` only emits Segments whose bg matches
+ * `this.style.bgcolor` (or is undefined). Inline fg variation is fine; bg
+ * variation is not.
  */
 export interface StyledRenderable extends Renderable {
   readonly style: Style;
@@ -36,9 +68,13 @@ export interface StyledRenderable extends Renderable {
 // --- StripCell ---
 
 /**
- * Minimal `StyledRenderable` for the common case: a single styled run of
- * text. Consumers with richer needs can implement `StyledRenderable`
- * directly and pass any `T extends StyledRenderable` to `Strip`.
+ * Canonical safe implementation of `StyledRenderable`: a single styled run of
+ * text. Satisfies the single-style invariant by construction — every emitted
+ * `Segment` carries exactly the declared `style`.
+ *
+ * Consumers with richer needs can implement `StyledRenderable` directly and
+ * pass any `T extends StyledRenderable` to `Strip`, but must uphold the
+ * invariant documented on `StyledRenderable`.
  */
 export class StripCell implements StyledRenderable {
   readonly text: string;

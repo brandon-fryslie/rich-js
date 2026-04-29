@@ -105,6 +105,44 @@ class FadeJoiner<T extends StyledRenderable> implements Joiner<T> {
 
 Items in a Strip implement `StyledRenderable` — a `Renderable` plus a single `style: Style` the joiner reads. `StripCell` is the simplest implementation; consumers with richer items can implement the interface directly.
 
+## Single-style invariant
+
+Joiners read `item.style.bgcolor` to paint the transition between adjacent items. The arrow/cap glyph for a powerline transition uses `fg = left.style.bgcolor` and `bg = right.style.bgcolor` — those colours come from the *declared* `.style`, not from inspecting what the item rendered.
+
+This means a custom `StyledRenderable` must uphold an invariant:
+
+> Every `Segment` yielded by `render()` must have a `bgcolor` that is either equal to `this.style.bgcolor`, or `undefined` (transparent). Inline foreground and text-attribute variation is fine; background variation is not.
+
+If you violate this, the joiner glyph will use the wrong colour and produce a visually wrong transition — a powerline arrow whose source colour doesn't match the cell it's bleeding out of.
+
+### What breaks it
+
+```typescript
+// BAD: yields a segment with a different bg than the declared style
+class Warning implements StyledRenderable {
+  readonly style = Style.parse("white on blue");
+  *render() {
+    yield new Segment("ok ", this.style);
+    yield new Segment("!", Style.parse("white on red")); // ← wrong bg
+  }
+}
+```
+
+```typescript
+// BAD: wrapping a Panel whose own style paints a different background
+class Boxed implements StyledRenderable {
+  readonly style = Style.parse("white on blue");
+  private panel = new Panel("hi", { style: "yellow on black" });
+  *render(opts) { yield* this.panel.render(opts); }
+}
+```
+
+### The safe path
+
+Use `StripCell(text, style)` whenever the content is plain styled text — it satisfies the invariant by construction. Inline `fg` variation within a single bg is the canonical extension point and is supported by the underlying segment model; the constraint is only on `bgcolor`.
+
+For genuinely rich content (multiple bg regions, embedded panels), the right pattern is to render that content separately rather than as a `Strip` item, or to split it into multiple `StyledRenderable`s with consistent declared `style`s.
+
 ## Why this is a primitive
 
 - **The join is a pure function.** Trivial to unit-test in isolation, trivial to compose. Powerline-vs-capsule is one constructor swap.
