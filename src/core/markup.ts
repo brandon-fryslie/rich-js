@@ -14,8 +14,6 @@
 import { Style, StyleSyntaxError } from "./style.js";
 import { RichText, Span } from "./text.js";
 import { emojiReplace } from "./emoji.js";
-import { Group } from "../renderables/group.js";
-import type { Renderable } from "./protocol.js";
 
 // --- Tag ---
 
@@ -246,13 +244,18 @@ function unescapeBrackets(text: string): string {
 export interface MarkupTagContext {
   /** Parsed `key=value` attributes from the opening tag. */
   attrs: Record<string, string>;
-  /** Inner markup, already parsed (registry-aware) into a Renderable. */
-  children: Renderable;
+  /** Inner markup, already parsed (registry-aware) into a `RichText`. */
+  children: RichText;
   /** Raw inner markup text (between the opening tag's `]` and the closing tag's `[`). */
   raw: string;
 }
 
-export type MarkupTagHandler = (ctx: MarkupTagContext) => Renderable;
+// [LAW:one-type-per-behavior] Handlers always return `RichText`, and the
+// parser always returns `RichText`. Markup is an inline-text decorator
+// dialect; widening to `Renderable` would let handlers return arbitrary
+// shapes (Panel, Table) and force every caller to type-narrow at the use
+// site, which silently circumvents the type system.
+export type MarkupTagHandler = (ctx: MarkupTagContext) => RichText;
 
 export class MarkupRegistry {
   private readonly _handlers = new Map<string, MarkupTagHandler>();
@@ -375,16 +378,17 @@ export interface RenderMarkupOptions {
 }
 
 /**
- * Plugin-aware markup render. When the registry has matching tags, returns a
- * `Group` whose children mix `RichText` chunks (built-in styled text) and
- * the `Renderable`s emitted by registered handlers. With no plugin tags
- * present, returns a plain `RichText` so callers see the same shape as the
- * legacy `render()` path.
+ * Plugin-aware markup render. Always returns a `RichText`. Built-in style
+ * tags become spans; registered plugin tags are resolved by their handler,
+ * whose returned `RichText` is appended (text + spans) into the output. The
+ * recursion is over markup *slices* — between top-level plugin tag pairs and
+ * inside each pair — and every recursion node returns a `RichText`, so the
+ * append path is uniform.
  */
 export function renderMarkup(
   markup: string,
   options?: RenderMarkupOptions,
-): Renderable {
+): RichText {
   const registry = options?.registry ?? globalMarkupRegistry;
   const baseStyle = options?.baseStyle;
   const doEmoji = options?.emoji !== false;
@@ -396,53 +400,41 @@ export function renderMarkup(
 
   const tags = parseTags(markup);
   // Pair each opening plugin tag with its matching closer up-front, so the
-  // recursion can splice slice-by-slice with no nested-state book-keeping.
+  // splice walk can just iterate top-level pairs in source order with no
+  // nested-state book-keeping.
   const { annotated, topLevel: tagPairs } = pairPluginTags(tags, registry);
   if (tagPairs.size === 0) {
     return render(markup, baseStyle, { emoji: doEmoji });
   }
 
-  const children: Renderable[] = [];
+  // [LAW:one-type-per-behavior] Always assemble a single RichText. Fragments
+  // between plugin pairs are parsed by the built-in `render`, plugin pairs
+  // hand their inner slice (recursively) to a handler; both produce RichText,
+  // both get appended into one accumulator.
+  const out = new RichText("");
   let cursor = 0;
 
-  // Iterate top-level plugin pairs in source order. Anything *between* pairs
-  // becomes a built-in-style RichText fragment via legacy `render`; the inner
-  // markup of each pair is recursed through `renderMarkup` so nested plugin
-  // tags resolve too.
   for (const [openIdx, closeIdx] of tagPairs) {
     const open = annotated[openIdx]!;
     const close = annotated[closeIdx]!;
-    if (open.start < cursor) continue; // already consumed by an outer pair
 
     if (open.start > cursor) {
-      const fragment = markup.slice(cursor, open.start);
-      if (fragment.length > 0) {
-        children.push(render(fragment, baseStyle, { emoji: doEmoji }));
-      }
+      out.append(render(markup.slice(cursor, open.start), baseStyle, { emoji: doEmoji }));
     }
 
     const innerRaw = markup.slice(open.end, close.start);
-    const innerRenderable = renderMarkup(innerRaw, options);
+    const innerRichText = renderMarkup(innerRaw, options);
     const handler = registry.get(open.pluginName!)!;
-    const ctx: MarkupTagContext = {
-      attrs: open.attrs!,
-      children: innerRenderable,
-      raw: innerRaw,
-    };
-    children.push(handler(ctx));
+    out.append(handler({ attrs: open.attrs!, children: innerRichText, raw: innerRaw }));
     cursor = close.end;
   }
 
   if (cursor < markup.length) {
-    const tail = markup.slice(cursor);
-    if (tail.length > 0) {
-      children.push(render(tail, baseStyle, { emoji: doEmoji }));
-    }
+    out.append(render(markup.slice(cursor), baseStyle, { emoji: doEmoji }));
   }
 
-  if (children.length === 0) return new RichText("");
-  if (children.length === 1) return children[0]!;
-  return new Group(...children);
+  if (baseStyle) out.stylize(baseStyle);
+  return out;
 }
 
 interface PluginTag extends ParsedTag {

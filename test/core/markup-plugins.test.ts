@@ -8,7 +8,6 @@ import {
   MarkupError,
 } from "../../src/core/markup.js";
 import { RichText } from "../../src/core/text.js";
-import { Group } from "../../src/renderables/group.js";
 import { ColorSystem } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
 import type { MarkupTagContext } from "../../src/core/markup.js";
@@ -61,17 +60,10 @@ describe("MarkupRegistry", () => {
 
   it("supports nested plugin tags", () => {
     const registry = new MarkupRegistry();
-    registry.register("outer", (ctx) => new RichText("<O:", { end: "" }) /* unused: ctx */);
     registry.register("inner", () => new RichText("[I]", { end: "" }));
-    // The outer handler ignores its children — replace ctx with a richer test.
-    registry.unregister("outer");
     registry.register("outer", (ctx) => {
-      // Compose: prefix + inner-rendered children + suffix.
-      return new Group(
-        new RichText("<O:", { end: "" }),
-        ctx.children,
-        new RichText(":O>", { end: "" }),
-      );
+      // Compose: prefix + inner-rendered children + suffix, into one RichText.
+      return new RichText("<O:", { end: "" }).append(ctx.children).append(":O>");
     });
     const out = renderMarkup("[outer]a[inner]b[/inner]c[/outer]", { registry });
     const text = renderToString(out, { colorSystem: null, endWithNewline: false });
