@@ -1,4 +1,4 @@
-import type { ColorTriplet } from "../core/color.js";
+import type { ColorQuad } from "../core/color.js";
 import { Palette } from "./palette.js";
 import { darken, alphaBlend, contrastFor } from "./colorMath.js";
 
@@ -54,11 +54,11 @@ export interface ResolveContext {
    * meaning depends on a target: alpha (`primary 50%`) and auto-contrast
    * (`auto`, `auto 33%`). Bare names and modifiers do not need it.
    */
-  against?: ColorTriplet;
+  against?: ColorQuad;
 }
 
 /**
- * Resolves Textual-style spec strings against a Palette into ColorTriplets.
+ * Resolves Textual-style spec strings against a Palette into ColorQuads.
  *
  * Spec grammar:
  *   spec      = name ("-darken-" N | "-lighten-" N)? (" " NN "%")?
@@ -74,23 +74,28 @@ export interface ResolveContext {
  *
  * Returns null on: invalid syntax, missing var, or missing required `against`.
  * Pure: same inputs always yield the same output, no internal state.
+ *
+ * Alpha is carried through resolution. The renderer is responsible for
+ * flattening to ColorTriplet at the surface boundary, where the actual bg
+ * is known (terminals don't render alpha).
  */
 export class PaletteResolver {
   constructor(readonly palette: Palette) {}
 
-  resolve(spec: string, ctx?: ResolveContext): ColorTriplet | null {
+  resolve(spec: string, ctx?: ResolveContext): ColorQuad | null {
     const parsed = parse(spec);
     if (parsed === null) return null;
 
     // [LAW:one-type-per-behavior] `auto` is a synthetic var whose "lookup"
     // depends on ctx; named vars look up in the palette. Both produce a
-    // ColorTriplet | null, so the pipeline downstream is identical.
+    // ColorQuad | null, so the pipeline downstream is identical.
     const base = this.lookupBase(parsed.name, ctx);
     if (base === null) return null;
 
     // [LAW:dataflow-not-control-flow] darken at level 0 is a no-op (modulo
     // ±1 RGB roundtrip); we always run it and let the data (levels) decide
     // the magnitude. Negative levels lighten — same op, different value.
+    // Alpha is preserved.
     const modified = darken(base, parsed.darkenLevels);
 
     if (parsed.alpha === null) return modified;
@@ -101,7 +106,7 @@ export class PaletteResolver {
   private lookupBase(
     name: string,
     ctx: ResolveContext | undefined,
-  ): ColorTriplet | null {
+  ): ColorQuad | null {
     if (name === AUTO_NAME) {
       return ctx?.against ? contrastFor(ctx.against) : null;
     }

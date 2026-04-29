@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ColorTriplet } from "../../src/core/color.js";
+import { ColorQuad } from "../../src/core/color.js";
 import { Palette } from "../../src/themes/palette.js";
 import { PaletteResolver } from "../../src/themes/paletteResolver.js";
 import {
@@ -8,11 +8,12 @@ import {
   contrastFor,
 } from "../../src/themes/colorMath.js";
 
-const primary = new ColorTriplet(133, 165, 152); // gruvbox primary-ish
-const accent = new ColorTriplet(254, 128, 25);
-const primaryBg = new ColorTriplet(40, 40, 40); // hyphenated var name
-const darkBg = new ColorTriplet(20, 20, 20);
-const lightBg = new ColorTriplet(240, 240, 240);
+const primary = new ColorQuad(133, 165, 152, 1);
+const accent = new ColorQuad(254, 128, 25, 1);
+const primaryBg = new ColorQuad(40, 40, 40, 1);
+const boost = new ColorQuad(255, 255, 255, 0x0a / 255);
+const darkBg = new ColorQuad(20, 20, 20, 1);
+const lightBg = new ColorQuad(240, 240, 240, 1);
 
 const palette = new Palette(
   "test",
@@ -21,26 +22,32 @@ const palette = new Palette(
     ["primary", primary],
     ["accent", accent],
     ["primary-background", primaryBg],
+    ["boost", boost],
   ]),
 );
 
 const resolver = new PaletteResolver(palette);
 
-const eqTriplet = (a: ColorTriplet | null, b: ColorTriplet) => {
+const eqQuad = (a: ColorQuad | null, b: ColorQuad) => {
   expect(a).not.toBeNull();
   expect(a!.red).toBe(b.red);
   expect(a!.green).toBe(b.green);
   expect(a!.blue).toBe(b.blue);
+  expect(a!.alpha).toBeCloseTo(b.alpha);
 };
 
 describe("PaletteResolver — bare names", () => {
-  it("resolves a bare var to its triplet", () => {
-    eqTriplet(resolver.resolve("primary"), primary);
-    eqTriplet(resolver.resolve("accent"), accent);
+  it("resolves a bare var to its quad", () => {
+    eqQuad(resolver.resolve("primary"), primary);
+    eqQuad(resolver.resolve("accent"), accent);
+  });
+
+  it("preserves alpha for translucent vars", () => {
+    eqQuad(resolver.resolve("boost"), boost);
   });
 
   it("resolves names that themselves contain hyphens", () => {
-    eqTriplet(resolver.resolve("primary-background"), primaryBg);
+    eqQuad(resolver.resolve("primary-background"), primaryBg);
   });
 
   it("returns null for missing var", () => {
@@ -52,21 +59,27 @@ describe("PaletteResolver — bare names", () => {
   });
 
   it("ignores leading/trailing whitespace", () => {
-    eqTriplet(resolver.resolve("  primary  "), primary);
+    eqQuad(resolver.resolve("  primary  "), primary);
   });
 });
 
 describe("PaletteResolver — modifiers", () => {
   it("darken-N applies N levels of darkening to the base", () => {
-    eqTriplet(resolver.resolve("primary-darken-3"), darken(primary, 3));
+    eqQuad(resolver.resolve("primary-darken-3"), darken(primary, 3));
   });
 
   it("lighten-N applies N levels of lightening to the base", () => {
-    eqTriplet(resolver.resolve("primary-lighten-2"), darken(primary, -2));
+    eqQuad(resolver.resolve("primary-lighten-2"), darken(primary, -2));
+  });
+
+  it("modifier preserves alpha of translucent base", () => {
+    const got = resolver.resolve("boost-darken-2");
+    expect(got).not.toBeNull();
+    expect(got!.alpha).toBeCloseTo(boost.alpha);
   });
 
   it("modifier applies to hyphenated var names (right-anchored parse)", () => {
-    eqTriplet(
+    eqQuad(
       resolver.resolve("primary-background-darken-2"),
       darken(primaryBg, 2),
     );
@@ -80,28 +93,27 @@ describe("PaletteResolver — modifiers", () => {
     const got = resolver.resolve("primary-darken-0");
     expect(got).not.toBeNull();
     expect(Math.abs(got!.red - primary.red)).toBeLessThanOrEqual(1);
-    expect(Math.abs(got!.green - primary.green)).toBeLessThanOrEqual(1);
-    expect(Math.abs(got!.blue - primary.blue)).toBeLessThanOrEqual(1);
+    expect(got!.alpha).toBe(primary.alpha);
   });
 });
 
 describe("PaletteResolver — alpha", () => {
-  it("composites the resolved color over `against`", () => {
-    eqTriplet(
+  it("composites the resolved color over `against` (per-channel lerp)", () => {
+    eqQuad(
       resolver.resolve("primary 50%", { against: darkBg }),
       alphaBlend(primary, darkBg, 0.5),
     );
   });
 
   it("alpha 0% returns the background", () => {
-    eqTriplet(
+    eqQuad(
       resolver.resolve("primary 0%", { against: darkBg }),
       alphaBlend(primary, darkBg, 0),
     );
   });
 
   it("alpha 100% is effectively the foreground", () => {
-    eqTriplet(
+    eqQuad(
       resolver.resolve("primary 100%", { against: darkBg }),
       alphaBlend(primary, darkBg, 1),
     );
@@ -112,7 +124,7 @@ describe("PaletteResolver — alpha", () => {
   });
 
   it("accepts decimal percentages", () => {
-    eqTriplet(
+    eqQuad(
       resolver.resolve("primary 33.5%", { against: darkBg }),
       alphaBlend(primary, darkBg, 0.335),
     );
@@ -125,21 +137,22 @@ describe("PaletteResolver — alpha", () => {
 });
 
 describe("PaletteResolver — auto-contrast", () => {
-  it("`auto` against a dark bg returns white", () => {
-    eqTriplet(resolver.resolve("auto", { against: darkBg }), contrastFor(darkBg));
-    expect(resolver.resolve("auto", { against: darkBg })!.red).toBe(255);
+  it("`auto` against a dark bg returns white (opaque)", () => {
+    const got = resolver.resolve("auto", { against: darkBg });
+    eqQuad(got, contrastFor(darkBg));
+    expect(got!.red).toBe(255);
+    expect(got!.alpha).toBe(1);
   });
 
-  it("`auto` against a light bg returns black", () => {
-    eqTriplet(
-      resolver.resolve("auto", { against: lightBg }),
-      contrastFor(lightBg),
-    );
-    expect(resolver.resolve("auto", { against: lightBg })!.red).toBe(0);
+  it("`auto` against a light bg returns black (opaque)", () => {
+    const got = resolver.resolve("auto", { against: lightBg });
+    eqQuad(got, contrastFor(lightBg));
+    expect(got!.red).toBe(0);
+    expect(got!.alpha).toBe(1);
   });
 
   it("`auto NN%` blends the contrast color over the bg", () => {
-    eqTriplet(
+    eqQuad(
       resolver.resolve("auto 33%", { against: darkBg }),
       alphaBlend(contrastFor(darkBg), darkBg, 0.33),
     );
@@ -153,16 +166,9 @@ describe("PaletteResolver — auto-contrast", () => {
 
 describe("PaletteResolver — combined modifier + alpha", () => {
   it("applies modifier first, then composites", () => {
-    eqTriplet(
+    eqQuad(
       resolver.resolve("primary-darken-3 50%", { against: darkBg }),
       alphaBlend(darken(primary, 3), darkBg, 0.5),
-    );
-  });
-
-  it("alpha 100% with modifier is the modifier result composited at full opacity", () => {
-    eqTriplet(
-      resolver.resolve("primary-lighten-2 100%", { against: darkBg }),
-      alphaBlend(darken(primary, -2), darkBg, 1),
     );
   });
 });
