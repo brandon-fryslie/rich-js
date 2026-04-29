@@ -3,6 +3,10 @@
  *
  * Wires the declarative LAYOUT + WIDGETS into a DashboardRuntime and starts
  * the tick loop. Run with: `npm run dash`. Press Ctrl-C to exit.
+ *
+ * [LAW:locality-or-seam] The entrypoint owns process lifecycle: signal
+ * handling and exit live here, not inside the runtime, so the runtime stays
+ * embeddable in tests and other CLIs.
  */
 
 import { Console } from "../../src/index.js";
@@ -18,7 +22,20 @@ function main(): void {
     fps: 8,
     console: consoleOut,
   });
-  runtime.start();
+
+  const onSignal = (): void => {
+    runtime.stop();
+    process.exit(0);
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
+
+  try {
+    runtime.start();
+  } catch (err) {
+    runtime.stop();
+    throw err;
+  }
 }
 
 main();

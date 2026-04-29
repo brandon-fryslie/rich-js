@@ -33,6 +33,15 @@ export function buildLayout(spec: LayoutSpec): Layout {
 
   const children = (spec.children ?? []).map(buildLayout);
   if (children.length > 0) {
+    // [LAW:one-source-of-truth] split direction is data — fail loudly when
+    // missing rather than silently choosing one. The doc invariant
+    // ("Required iff children non-empty") is enforced here, the only place
+    // that observes both fields together.
+    if (spec.split !== "row" && spec.split !== "column") {
+      throw new Error(
+        `LayoutSpec with children must specify split: "row" | "column" (got ${JSON.stringify(spec.split)})`,
+      );
+    }
     if (spec.split === "row") {
       node.splitRow(...children);
     } else {

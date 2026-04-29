@@ -10,6 +10,8 @@
  *
  * [LAW:single-enforcer] Live owns the screen. Widgets never write to stdout.
  * [LAW:one-source-of-truth] _state is the canonical map of widget state.
+ * [LAW:locality-or-seam] The runtime owns the tick loop; the entrypoint owns
+ *   process lifecycle (signal handling, exit). Don't conflate the two.
  */
 
 import {
@@ -27,9 +29,9 @@ import type { TickContext, Widget } from "./widget.js";
 export interface RuntimeOptions {
   /** Tree of layout cells; leaf cells have a `name` matching a widget id. */
   layout: Layout;
-  /** Widget registry, keyed by widget id (== Layout cell name). */
+  /** List of widgets; widget ids must be unique and match Layout cell names. */
   widgets: Widget[];
-  /** Frames per second. Defaults to 4. */
+  /** Frames per second. Must be a finite number > 0. Defaults to 4. */
   fps?: number;
   /** Console to render into. Defaults to a new alt-screen-capable Console. */
   console?: Console;
@@ -44,17 +46,34 @@ export class DashboardRuntime {
   private _frame: number;
   private _lastTickAt: number;
   private _stopped: boolean;
+  private _timer: ReturnType<typeof setInterval> | null;
 
   constructor(options: RuntimeOptions) {
+    const fps = options.fps ?? 4;
+    if (!Number.isFinite(fps) || fps <= 0) {
+      throw new Error(
+        `DashboardRuntime: fps must be a finite number > 0 (got ${String(fps)})`,
+      );
+    }
     this._layout = options.layout;
     this._widgets = options.widgets;
     this._state = new Map();
-    this._fps = options.fps ?? 4;
+    this._fps = fps;
     this._frame = 0;
     this._lastTickAt = 0;
     this._stopped = false;
+    this._timer = null;
 
+    // [LAW:one-source-of-truth] _state is keyed by widget id; duplicate ids
+    // would silently overwrite each other. Fail loudly at construction.
+    const seen = new Set<string>();
     for (const widget of this._widgets) {
+      if (seen.has(widget.id)) {
+        throw new Error(
+          `DashboardRuntime: duplicate widget id "${widget.id}". Widget ids must be unique.`,
+        );
+      }
+      seen.add(widget.id);
       this._state.set(widget.id, widget.init());
     }
 
@@ -72,28 +91,25 @@ export class DashboardRuntime {
   }
 
   start(): void {
+    if (this._timer !== null) {
+      throw new Error("DashboardRuntime: already started");
+    }
+    this._stopped = false;
     this._live.start();
     this._tickAndRender();
     const interval = Math.floor(1000 / this._fps);
-    const timer = setInterval(() => {
-      if (this._stopped) {
-        clearInterval(timer);
-        return;
-      }
+    this._timer = setInterval(() => {
       this._tickAndRender();
     }, interval);
-
-    const onSignal = (): void => {
-      this.stop();
-      process.exit(0);
-    };
-    process.once("SIGINT", onSignal);
-    process.once("SIGTERM", onSignal);
   }
 
   stop(): void {
     if (this._stopped) return;
     this._stopped = true;
+    if (this._timer !== null) {
+      clearInterval(this._timer);
+      this._timer = null;
+    }
     this._live.stop();
   }
 
