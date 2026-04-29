@@ -29,6 +29,44 @@ export class ColorTriplet {
   }
 }
 
+// --- ColorQuad ---
+
+/**
+ * Immutable RGBA color. Distinct from `ColorTriplet` (RGB-only) because alpha
+ * is semantically meaningful in the theming layer (translucent overlays,
+ * alpha-modifier specs like `"primary 50%"`) but meaningless to the ANSI
+ * downgrade pipeline. Terminals don't render alpha — flattening to a
+ * ColorTriplet happens at the render boundary, where the surface bg is known.
+ *
+ * Alpha is stored as a normalized 0..1 float; `hex` emits 8-char `#RRGGBBAA`.
+ */
+export class ColorQuad {
+  constructor(
+    readonly red: number,
+    readonly green: number,
+    readonly blue: number,
+    readonly alpha: number,
+  ) {}
+
+  /** Lift an RGB triplet to a quad. Default alpha is fully opaque. */
+  static fromRgb(rgb: ColorTriplet, alpha = 1): ColorQuad {
+    return new ColorQuad(rgb.red, rgb.green, rgb.blue, alpha);
+  }
+
+  /** RGB component as a ColorTriplet. Discards alpha. */
+  get rgb(): ColorTriplet {
+    return new ColorTriplet(this.red, this.green, this.blue);
+  }
+
+  /** 8-char hex form `#RRGGBBAA`. */
+  get hex(): string {
+    const a = Math.round(this.alpha * 255)
+      .toString(16)
+      .padStart(2, "0");
+    return this.rgb.hex + a;
+  }
+}
+
 // --- ColorTable ---
 
 export class ColorTable {
@@ -476,6 +514,30 @@ export function parseRgbHex(hex: string): ColorTriplet {
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
   return new ColorTriplet(r, g, b);
+}
+
+/**
+ * Parse a hex color (`RRGGBB`, `RRGGBBAA`, `#RRGGBB`, or `#RRGGBBAA`) into a
+ * ColorQuad. Six-char input is treated as fully opaque (alpha=1). Throws
+ * `ColorParseError` for malformed input — there is no "unknown" RGBA, so
+ * silent fallback would mask data-import bugs.
+ */
+export function parseRgbaHex(hex: string): ColorQuad {
+  const stripped = hex.startsWith("#") ? hex.slice(1) : hex;
+  if (stripped.length !== 6 && stripped.length !== 8) {
+    throw new ColorParseError(
+      `parseRgbaHex: expected 6 or 8 hex chars, got ${stripped.length} in "${hex}"`,
+    );
+  }
+  if (!/^[0-9a-fA-F]+$/.test(stripped)) {
+    throw new ColorParseError(`parseRgbaHex: non-hex characters in "${hex}"`);
+  }
+  const r = parseInt(stripped.slice(0, 2), 16);
+  const g = parseInt(stripped.slice(2, 4), 16);
+  const b = parseInt(stripped.slice(4, 6), 16);
+  const a =
+    stripped.length === 8 ? parseInt(stripped.slice(6, 8), 16) / 255 : 1;
+  return new ColorQuad(r, g, b, a);
 }
 
 export function blendRgb(

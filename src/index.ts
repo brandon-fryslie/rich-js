@@ -3,6 +3,7 @@ export { cellLen, setCellSize, splitText, chopCells } from "./core/cells.js";
 
 export {
   ColorTriplet,
+  ColorQuad,
   ColorTable,
   ColorType,
   ColorSystem,
@@ -10,6 +11,7 @@ export {
   ColorParseError,
   TerminalTheme,
   parseRgbHex,
+  parseRgbaHex,
   blendRgb,
   resolveColorSystem,
   detectColorSystem,
