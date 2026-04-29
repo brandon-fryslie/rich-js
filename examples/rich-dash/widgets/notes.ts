@@ -7,9 +7,8 @@
  */
 
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
 import { Markdown, type Renderable } from "../../../src/index.js";
 import { defineWidget } from "../runtime/widget.js";
 

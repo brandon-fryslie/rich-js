@@ -30,9 +30,9 @@ export interface WidgetSpec<S> {
   readonly borderStyle?: string;
   /** Build the widget's initial state. Called once at startup. */
   init(): S;
-  /** Pure state transition. Returning the same reference is fine. */
+  /** Advance widget state for the next frame. Returning the same reference is fine. */
   tick(state: S, ctx: TickContext): S;
-  /** Pure projection of state to a Renderable. No I/O, no mutation. */
+  /** Project state to a Renderable for this frame. Do not perform screen/runtime I/O here. */
   render(state: S): Renderable;
 }
 
