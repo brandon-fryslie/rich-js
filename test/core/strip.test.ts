@@ -5,6 +5,7 @@ import {
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
+  GradientJoiner,
 } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
 import type { Segment } from "../../src/core/segment.js";
@@ -29,37 +30,36 @@ describe("Strip render walk", () => {
     expect(render(strip)).toEqual([]);
   });
 
-  it("emits start-cap, item, end-cap for one item", () => {
+  it("emits item, end-cap for one item (no leading arrow)", () => {
     const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([">", " red ", ">"]);
+    expect(segs.map((s) => s.text)).toEqual([" red ", ">"]);
   });
 
-  it("emits start-cap, item, mid-join, item, end-cap for two items", () => {
+  it("emits item, mid-join, item, end-cap for two items (no leading arrow)", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([">", " red ", ">", " blue ", ">"]);
+    expect(segs.map((s) => s.text)).toEqual([" red ", ">", " blue ", ">"]);
   });
 
-  it("scales linearly: 2N+1 segments for N items", () => {
+  it("scales linearly: 2N segments for N items", () => {
     const strip = new Strip(
       [RED, BLUE, GREEN],
       new PowerlineJoiner({ glyph: ">" }),
     );
     const segs = render(strip);
-    expect(segs).toHaveLength(7);
+    expect(segs).toHaveLength(6);
     expect(segs.map((s) => s.text)).toEqual([
-      ">", " red ", ">", " blue ", ">", " green ", ">",
+      " red ", ">", " blue ", ">", " green ", ">",
     ]);
   });
 });
 
 describe("PowerlineJoiner color inheritance", () => {
-  it("start cap fg = first item's bg, no bg", () => {
+  it("emits no leading arrow at the start", () => {
     const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">" }));
-    const [start] = render(strip);
-    expect(start!.style?.color?.name).toBe(RED.style.bgcolor?.name);
-    expect(start!.style?.bgcolor).toBeUndefined();
+    const segs = render(strip);
+    expect(segs[0]!.text).toBe(" red ");
   });
 
   it("end cap fg = last item's bg, no bg", () => {
@@ -73,7 +73,7 @@ describe("PowerlineJoiner color inheritance", () => {
   it("middle join fg = left.bg, bg = right.bg", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
-    const mid = segs[2]!;
+    const mid = segs[1]!;
     expect(mid.style?.color?.name).toBe(RED.style.bgcolor?.name);
     expect(mid.style?.bgcolor?.name).toBe(BLUE.style.bgcolor?.name);
   });
@@ -133,6 +133,54 @@ describe("PlainJoiner", () => {
       new PlainJoiner({ separator: " | " }),
     );
     expect(render(strip).map((s) => s.text)).toEqual([" red "]);
+  });
+});
+
+describe("GradientJoiner", () => {
+  const FF0000 = new StripCell(" a ", Style.parse("on #ff0000"));
+  const BLUE00FF = new StripCell(" b ", Style.parse("on #0000ff"));
+
+  it("emits half-block cells carrying two colour samples each", () => {
+    const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner({ steps: 3 }));
+    const segs = render(strip);
+    // walk: item, gradient*3, item.
+    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258c", "\u258c", "\u258c", " b "]);
+    const grad = segs.slice(1, 4);
+    // Each cell carries fg (left half) and bg (right half) — both real colours.
+    for (const s of grad) {
+      expect(s.style!.color).toBeDefined();
+      expect(s.style!.bgcolor).toBeDefined();
+    }
+    // Flatten to the 6 sub-cell samples in visual order.
+    const samples = grad.flatMap((s) => [
+      s.style!.color!.getTruecolor(),
+      s.style!.bgcolor!.getTruecolor(),
+    ]);
+    // Strictly monotonic across all 6 samples: R decreases, B increases.
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i]!.red).toBeLessThan(samples[i - 1]!.red);
+      expect(samples[i]!.blue).toBeGreaterThan(samples[i - 1]!.blue);
+    }
+    // No sample equals either anchor (midpoint sampling).
+    expect(samples[0]!.red).toBeLessThan(255);
+    expect(samples[samples.length - 1]!.blue).toBeLessThan(255);
+  });
+
+  it("renders empty at endpoints", () => {
+    const strip = new Strip([FF0000], new GradientJoiner({ steps: 4 }));
+    expect(render(strip).map((s) => s.text)).toEqual([" a "]);
+  });
+
+  it("renders empty when an item lacks a bgcolor", () => {
+    const noBg = new StripCell(" x ", Style.parse("white"));
+    const strip = new Strip([FF0000, noBg], new GradientJoiner({ steps: 2 }));
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", " x "]);
+  });
+
+  it("defaults to steps=4", () => {
+    const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner());
+    const segs = render(strip);
+    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258c", "\u258c", "\u258c", "\u258c", " b "]);
   });
 });
 
