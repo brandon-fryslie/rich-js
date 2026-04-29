@@ -28,10 +28,17 @@ function rgbToHsl(c: ColorTriplet): Hsl {
   return { h, s, l };
 }
 
+function clampChannel(v: number): number {
+  // Float HSL math + Math.round can land at -1 or 256 at the boundaries; clamp
+  // so an invalid ColorTriplet never escapes this function.
+  const r = Math.round(v);
+  return r < 0 ? 0 : r > 255 ? 255 : r;
+}
+
 function hslToRgb(hsl: Hsl): ColorTriplet {
   const { h, s, l } = hsl;
   if (s === 0) {
-    const v = Math.round(l * 255);
+    const v = clampChannel(l * 255);
     return new ColorTriplet(v, v, v);
   }
   const c = (1 - Math.abs(2 * l - 1)) * s;
@@ -48,9 +55,9 @@ function hslToRgb(hsl: Hsl): ColorTriplet {
   else [r, g, b] = [c, 0, x];
   const m = l - c / 2;
   return new ColorTriplet(
-    Math.round((r + m) * 255),
-    Math.round((g + m) * 255),
-    Math.round((b + m) * 255),
+    clampChannel((r + m) * 255),
+    clampChannel((g + m) * 255),
+    clampChannel((b + m) * 255),
   );
 }
 

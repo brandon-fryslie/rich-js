@@ -23,7 +23,9 @@ export class Palette {
   ) {
     this.name = name;
     this.dark = dark;
-    this.vars = vars;
+    // Defensive copy: ReadonlyMap is a compile-time aliasing constraint, not a
+    // runtime one. Copying at the seam makes Palette genuinely immutable.
+    this.vars = new Map(vars);
   }
 
   get(key: string): ColorTriplet | undefined {

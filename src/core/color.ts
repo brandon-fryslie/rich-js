@@ -48,7 +48,7 @@ export class ColorTable {
   }
 
   /**
-   * Finds the nearest palette index to the given triplet (Euclidean distance, cached).
+   * Finds the nearest table index to the given triplet (Euclidean distance, cached).
    */
   match(triplet: ColorTriplet): number {
     const key = `${triplet.red},${triplet.green},${triplet.blue}`;
