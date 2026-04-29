@@ -49,6 +49,33 @@ function renderToBlock(r: Renderable, options: RenderOptions): RenderedBlock {
 
 const EMPTY_BLOCK: RenderedBlock = { segments: [], width: 0 };
 
+const PAD_LEFT_BY_ALIGN: Record<FlexAlign, (spare: number) => number> = {
+  left: () => 0,
+  justify: () => 0,
+  center: (spare) => Math.floor(spare / 2),
+  right: (spare) => spare,
+};
+
+function computePadLeft(align: FlexAlign, spare: number): number {
+  return PAD_LEFT_BY_ALIGN[align](spare);
+}
+
+// Return per-slot fill widths (length = itemCount - 1, possibly empty).
+// Non-justify cases produce all zeros — the emit loop runs the same way.
+function computeSlotFills(
+  align: FlexAlign,
+  isFinalLine: boolean,
+  spare: number,
+  itemCount: number,
+): number[] {
+  const slots = Math.max(0, itemCount - 1);
+  const distribute = align === "justify" && !isFinalLine && slots > 0 && spare > 0;
+  const totalFill = distribute ? spare : 0;
+  const base = slots > 0 ? Math.floor(totalFill / slots) : 0;
+  const extra = totalFill - base * slots;
+  return Array.from({ length: slots }, (_, k) => base + (k < extra ? 1 : 0));
+}
+
 export class FlexStrip<T extends StyledRenderable = StyledRenderable>
   implements Renderable, Measurable
 {
@@ -84,7 +111,15 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
 
     // Build lines as arrays of "blocks" (item or join). Each line begins with
     // the start-cap for its first item and ends with the end-cap for its last.
-    type Line = { blocks: RenderedBlock[]; width: number; lastIndex: number };
+    // `itemBlockIndices` records the block index of every *item* (i.e., the
+    // packed renderable, not a gap/joiner/cap), so justify can distribute
+    // spare width across inter-item slots only — not between joiner halves.
+    type Line = {
+      blocks: RenderedBlock[];
+      width: number;
+      lastIndex: number;
+      itemBlockIndices: number[];
+    };
     const lines: Line[] = [];
     let line: Line | null = null;
     const gapBlock: RenderedBlock = gap > 0
@@ -97,7 +132,8 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
         const sc = startCap(i);
         const ec = endCap(i);
         const blocks = sc.width > 0 ? [sc, item] : [item];
-        line = { blocks, width: sc.width + item.width, lastIndex: i };
+        const itemBlockIndices = [blocks.length - 1];
+        line = { blocks, width: sc.width + item.width, lastIndex: i, itemBlockIndices };
         // Tentatively reserve space for the line's eventual end-cap by
         // tracking it separately below — `line.width` is the open width
         // (without end-cap). We test fit using width + endCap on each step.
@@ -119,6 +155,7 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
         if (mid.width > 0) line.blocks.push(mid);
         if (gap > 0) line.blocks.push(gapBlock);
         line.blocks.push(item);
+        line.itemBlockIndices.push(line.blocks.length - 1);
         line.width += addCost;
         line.lastIndex = i;
         (line as Line & { endCap: RenderedBlock }).endCap = newEndCap;
@@ -131,7 +168,8 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
         const sc = startCap(i);
         const ec = endCap(i);
         const blocks = sc.width > 0 ? [sc, item] : [item];
-        line = { blocks, width: sc.width + item.width, lastIndex: i };
+        const itemBlockIndices = [blocks.length - 1];
+        line = { blocks, width: sc.width + item.width, lastIndex: i, itemBlockIndices };
         (line as Line & { endCap: RenderedBlock }).endCap = ec;
       }
     }
@@ -145,33 +183,37 @@ export class FlexStrip<T extends StyledRenderable = StyledRenderable>
       lines.push(finalLine);
     }
 
-    // Emit. Apply alignment by padding the line. Justify on a non-final line
-    // distributes spare width across inter-item gaps; final line is left-
-    // aligned (standard text-justification behavior).
+    // [LAW:dataflow-not-control-flow] Single emission path for every line:
+    // emit pad, walk every block, optionally emit a per-slot fill before each
+    // non-first item. Variability lives in two precomputed value sequences
+    // (`padLeft` and `slotFills`); the emit loop has no per-mode branch.
+    //
+    // - `padLeft` pushes the line right by 0 (left/justify), spare/2 (center),
+    //   or full spare (right). Justify-on-final-line follows the left rule.
+    // - `slotFills[k]` is the cells of fill emitted before the (k+1)-th item.
+    //   Always 0 unless align=justify on a non-final line with ≥2 items.
+    //
+    // Putting the variability in data means the emit loop is the same shape
+    // every render, and "what happens between two items" can never accidentally
+    // become "what happens between joiner halves" — the data decides.
     const align = this.align;
     for (let li = 0; li < lines.length; li++) {
       const ln = lines[li]!;
       const isLast = li === lines.length - 1;
       const spare = Math.max(0, maxWidth - ln.width);
-      const padLeft = align === "center" ? Math.floor(spare / 2)
-        : align === "right" ? spare
-        : 0;
+      const padLeft = computePadLeft(align, spare);
+      const slotFills = computeSlotFills(align, isLast, spare, ln.itemBlockIndices.length);
+      const itemRankOf = new Map<number, number>();
+      ln.itemBlockIndices.forEach((blockIdx, rank) => itemRankOf.set(blockIdx, rank));
+
       if (padLeft > 0) yield new Segment(" ".repeat(padLeft));
-      if (align === "justify" && !isLast && ln.blocks.length > 1 && spare > 0) {
-        // Distribute spare evenly across the N-1 inter-item slots.
-        const slots = ln.blocks.length - 1;
-        const base = Math.floor(spare / slots);
-        let extra = spare - base * slots;
-        for (let bi = 0; bi < ln.blocks.length; bi++) {
-          yield* ln.blocks[bi]!.segments;
-          if (bi < ln.blocks.length - 1) {
-            const fill = base + (extra > 0 ? 1 : 0);
-            if (extra > 0) extra--;
-            if (fill > 0) yield new Segment(" ".repeat(fill));
-          }
+      for (let bi = 0; bi < ln.blocks.length; bi++) {
+        const rank = itemRankOf.get(bi);
+        if (rank !== undefined && rank > 0) {
+          const fill = slotFills[rank - 1]!;
+          if (fill > 0) yield new Segment(" ".repeat(fill));
         }
-      } else {
-        for (const b of ln.blocks) yield* b.segments;
+        yield* ln.blocks[bi]!.segments;
       }
       yield Segment.line();
     }

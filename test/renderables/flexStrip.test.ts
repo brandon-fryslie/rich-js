@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { StripCell, PowerlineJoiner } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
-import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert what callers observe — packed
@@ -49,7 +48,6 @@ describe("FlexStrip", () => {
     const lines = renderLines(strip, OPTS(18));
     // Each line ≤ 18 cells.
     for (const ln of lines) {
-      expect(Segment.getShape ? true : true); // sanity
       expect(ln.replace(/\s/g, " ").length).toBeLessThanOrEqual(18);
     }
     // All items appear in order.

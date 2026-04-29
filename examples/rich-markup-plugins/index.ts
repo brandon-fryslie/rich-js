@@ -16,6 +16,20 @@ import {
   Style,
   Group,
 } from "../../src/index.js";
+import type { Renderable } from "../../src/index.js";
+
+// `ctx.children` is the already-parsed inner Renderable; `ctx.raw` is the raw
+// markup string (still contains any tag syntax). Both demo handlers want the
+// inner *visible* text only — the segments rendered from `children` are
+// exactly that, with no tag noise. Walking those segments avoids re-parsing
+// `raw` and avoids regex.
+function plainTextOf(r: Renderable): string {
+  let out = "";
+  for (const s of r.render({ maxWidth: 1_000_000 })) {
+    if (!s.isControl) out += s.text;
+  }
+  return out;
+}
 
 const consoleOut = new Console({ forceTerminal: true });
 
@@ -27,12 +41,12 @@ const registry = new MarkupRegistry();
 registry.register("click", (ctx) => {
   const href = ctx.attrs["href"] ?? ctx.attrs["url"] ?? "";
   const linkStyle = new Style({ link: href, underline: true });
-  // Wrap the children in a RichText that carries a link span over the whole
-  // inner cell range. We re-render the children to a flat string so we can
-  // attach the link style cleanly; built-in spans inside ctx.children remain
-  // visible because we reuse the same Renderable as a sibling, then overlay.
-  const text = ctx.raw.replace(/\[[^\]]*\]/g, "");
-  const richText = new RichText(text, { end: "" });
+  // Collapse `ctx.children` to its plain text and wrap it in a single
+  // link-styled RichText. Inner built-in spans (e.g. [bold] inside [click])
+  // are intentionally flattened — preserving inner styling beneath an OSC 8
+  // link would mean overlaying a link style on top of the children's spans
+  // (a separate exercise).
+  const richText = new RichText(plainTextOf(ctx.children), { end: "" });
   richText.stylize(linkStyle);
   return richText;
 });
@@ -47,8 +61,7 @@ const BADGE_STYLES: Record<string, string> = {
 registry.register("badge", (ctx) => {
   const kind = ctx.attrs["kind"] ?? "info";
   const style = Style.parse(BADGE_STYLES[kind] ?? BADGE_STYLES["info"]!);
-  const label = ctx.raw.replace(/\[[^\]]*\]/g, "");
-  return new RichText(` ${label} `, { style, end: "" });
+  return new RichText(` ${plainTextOf(ctx.children)} `, { style, end: "" });
 });
 
 function show(label: string, markup: string): void {

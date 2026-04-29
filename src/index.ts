@@ -126,6 +126,10 @@ export {
   Tag,
   MarkupError,
   escape as escapeMarkup,
+  // Legacy text-only parser. Returns a `RichText` directly; callers needing
+  // `.stylize()` / `.plain` / span manipulation should prefer this over the
+  // plugin-aware `renderMarkup` which widens its return type to `Renderable`.
+  render as parseMarkup,
 } from "./core/markup.js";
 
 // Highlighter

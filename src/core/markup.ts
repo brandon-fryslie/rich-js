@@ -304,20 +304,64 @@ export function unregisterMarkupTag(name: string): void {
 
 // --- Plugin-aware tag parsing ---
 
-const PLUGIN_NAME_RE = /^([a-zA-Z][a-zA-Z0-9_-]*)/;
-const ATTR_RE = /([a-zA-Z][a-zA-Z0-9_-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s\]]+))/g;
+function isAlpha(c: string): boolean {
+  const cc = c.charCodeAt(0);
+  return (cc >= 65 && cc <= 90) || (cc >= 97 && cc <= 122);
+}
+
+function isIdentChar(c: string): boolean {
+  if (isAlpha(c)) return true;
+  const cc = c.charCodeAt(0);
+  return (cc >= 48 && cc <= 57) || c === "_" || c === "-";
+}
+
+function isSpace(c: string): boolean {
+  return c === " " || c === "\t";
+}
 
 function pluginNameOf(inner: string): string | null {
-  const m = PLUGIN_NAME_RE.exec(inner);
-  return m ? m[1]! : null;
+  if (inner.length === 0 || !isAlpha(inner[0]!)) return null;
+  let i = 1;
+  while (i < inner.length && isIdentChar(inner[i]!)) i++;
+  return inner.slice(0, i);
 }
 
 function parsePluginAttrs(after: string): Record<string, string> {
+  // Hand-written tokenizer. Walks `key=value` pairs separated by whitespace;
+  // values may be bare, single-quoted, or double-quoted. Matches the syntax
+  // the regex it replaces accepted.
   const attrs: Record<string, string> = {};
-  const re = new RegExp(ATTR_RE.source, ATTR_RE.flags);
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(after)) !== null) {
-    attrs[m[1]!] = m[2] ?? m[3] ?? m[4] ?? "";
+  let i = 0;
+  while (i < after.length) {
+    while (i < after.length && isSpace(after[i]!)) i++;
+    if (i >= after.length) break;
+    if (!isAlpha(after[i]!)) {
+      // Skip a stray non-name character to avoid infinite loops on malformed
+      // input — the legacy regex would simply fail to match here.
+      i++;
+      continue;
+    }
+    const nameStart = i;
+    while (i < after.length && isIdentChar(after[i]!)) i++;
+    const name = after.slice(nameStart, i);
+    while (i < after.length && isSpace(after[i]!)) i++;
+    if (after[i] !== "=") continue;
+    i++;
+    while (i < after.length && isSpace(after[i]!)) i++;
+    let value = "";
+    const quote = after[i];
+    if (quote === '"' || quote === "'") {
+      i++;
+      const valStart = i;
+      while (i < after.length && after[i] !== quote) i++;
+      value = after.slice(valStart, i);
+      if (i < after.length) i++;
+    } else {
+      const valStart = i;
+      while (i < after.length && !isSpace(after[i]!) && after[i] !== "]") i++;
+      value = after.slice(valStart, i);
+    }
+    attrs[name] = value;
   }
   return attrs;
 }

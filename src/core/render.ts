@@ -54,14 +54,16 @@ export function renderToString(
   options?: RenderToStringOptions,
 ): string {
   const width = options?.width ?? DEFAULT_WIDTH;
-  // [LAW:dataflow-not-control-flow] Distinguish "explicit null" from "absent"
-  // — `??` would collapse them. `noColor` and an explicit `null` both mean
-  // "strip color"; only an absent field falls back to truecolor.
+  // [LAW:dataflow-not-control-flow] Distinguish "explicit null" from the
+  // defaulted case. `??` would collapse `null` into the default; `in` would
+  // accept an explicit `undefined` value as authoritative. Only an explicit
+  // `null` (or `noColor: true`) strips color; everything else — absent field,
+  // explicit `undefined` — falls back to truecolor.
   const colorSystem = options?.noColor
     ? null
-    : "colorSystem" in (options ?? {})
-      ? options!.colorSystem!
-      : ColorSystem.TRUECOLOR;
+    : options?.colorSystem === undefined
+      ? ColorSystem.TRUECOLOR
+      : options.colorSystem;
   const endWithNewline = options?.endWithNewline ?? true;
 
   const renderOptions: RenderOptions = {

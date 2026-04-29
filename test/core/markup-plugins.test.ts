@@ -8,8 +8,8 @@ import {
   MarkupError,
 } from "../../src/core/markup.js";
 import { RichText } from "../../src/core/text.js";
-import { Style } from "../../src/core/style.js";
 import { Group } from "../../src/renderables/group.js";
+import { ColorSystem } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
 import type { MarkupTagContext } from "../../src/core/markup.js";
 
@@ -134,7 +134,7 @@ describe("MarkupRegistry", () => {
     let captured: string | null = null;
     registry.register("click", (ctx) => {
       captured = renderToString(ctx.children, {
-        colorSystem: 1, // STANDARD
+        colorSystem: ColorSystem.STANDARD,
         endWithNewline: false,
       });
       return ctx.children;
@@ -142,6 +142,5 @@ describe("MarkupRegistry", () => {
     renderMarkup("[click verb=foo][bold red]hot[/bold red][/click]", { registry });
     expect(captured).toContain("hot");
     expect(captured).toMatch(/\x1b\[/); // some ANSI present from bold/red
-    void Style; // silence unused import
   });
 });
