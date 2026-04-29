@@ -6,6 +6,7 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
+import { escape as escapeMarkup, renderMarkup } from "../core/markup.js";
 import { ProgressBar } from "./progressBar.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
@@ -52,9 +53,13 @@ export class TextColumn implements ProgressColumn {
     this.format = format ?? "{task.description}";
   }
 
-  *render(_options: RenderOptions, task?: Task): Iterable<Segment> {
-    const text = this.format.replace(/\{task\.description\}/g, task?.description ?? "");
-    yield new Segment(text);
+  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
+    // [LAW:single-enforcer] Format strings flow through the markup parser so
+    // tags like `[progress.description]` become Style spans, not literal text.
+    // Task descriptions are escaped first to prevent injection of stray tags.
+    const description = escapeMarkup(task?.description ?? "");
+    const formatted = this.format.replace(/\{task\.description\}/g, description);
+    yield* renderMarkup(formatted).render(options);
   }
 }
 
