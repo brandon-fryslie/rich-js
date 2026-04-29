@@ -92,6 +92,7 @@ export {
 } from "./core/strip.js";
 export type {
   StyledRenderable,
+  StripCellPart,
   Joiner,
   PowerlineJoinerOptions,
   CapsuleJoinerOptions,

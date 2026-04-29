@@ -143,6 +143,27 @@ Use `StripCell(text, style)` whenever the content is plain styled text — it sa
 
 For genuinely rich content (multiple bg regions, embedded panels), the right pattern is to render that content separately rather than as a `Strip` item, or to split it into multiple `StyledRenderable`s with consistent declared `style`s.
 
+### Inline foreground variation — `StripCell` parts form
+
+When a single cell needs inline `fg` (or attribute) variation under one shared bg — a status segment where `S` is green, `+3` is green, `-2` is red, all on a blue cell — pass parts instead of a string:
+
+```typescript
+new StripCell(
+  [
+    { text: " main " },
+    { text: "S",  style: Style.parse("green") },
+    { text: " " },
+    { text: "+3", style: Style.parse("green") },
+    { text: " " },
+    { text: "-2", style: Style.parse("red") },
+    { text: " " },
+  ],
+  Style.parse("white on blue"),
+);
+```
+
+Each part contributes one segment whose bg is always the cell-level bg; the part's `style` overlays foreground and text attributes. The single-style invariant is enforced by construction — passing a part whose `style` sets `bgcolor` throws.
+
 ## Why this is a primitive
 
 - **The join is a pure function.** Trivial to unit-test in isolation, trivial to compose. Powerline-vs-capsule is one constructor swap.
