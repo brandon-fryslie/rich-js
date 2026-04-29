@@ -21,6 +21,7 @@ import {
   Style,
   type Renderable,
 } from "../../../src/index.js";
+import { ClipHeight, InjectMaxHeight } from "./clip.js";
 import type { TickContext, Widget } from "./widget.js";
 
 export interface RuntimeOptions {
@@ -58,7 +59,11 @@ export class DashboardRuntime {
     }
 
     const consoleOut = options.console ?? new Console({ forceTerminal: true });
-    this._live = new Live(this._layout, {
+    // Inject the terminal height into the root render so Layout's column
+    // splits distribute correctly, and reserve one row to keep Live's
+    // trailing newline from scrolling the alt-screen buffer.
+    const root = new InjectMaxHeight(this._layout, () => consoleOut.height - 1);
+    this._live = new Live(root, {
       console: consoleOut,
       refreshPerSecond: this._fps,
       autoRefresh: false,
@@ -122,7 +127,10 @@ function wrapInPanel(widget: Widget, body: Renderable): Renderable {
     style: Style.parse("bold"),
     end: "",
   });
-  return new Panel(body, {
+  // Reserve 2 rows for the panel's top/bottom borders so the body never
+  // overflows its cell. The 2-row reserve is the same constant Panel uses
+  // internally; encoding it once at the seam keeps panel and body in sync.
+  return new Panel(new ClipHeight(body, 2), {
     title,
     borderStyle: widget.borderStyle ?? "cyan",
     padding: [0, 1],
