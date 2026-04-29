@@ -19,6 +19,7 @@
 
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE } from "./style.js";
+import { Color, blendRgb } from "./color.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
@@ -138,13 +139,13 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
   }
 
   join(left: T | null, right: T | null): Renderable {
-    if (left === null && right === null) return EMPTY;
-    if (left === null) {
-      // Start cap: fg = right.bg, no bg.
-      return new FixedSegment(this._glyph, bgAsFg(right!));
-    }
+    // Start cap: empty. A right-pointing arrow with no source segment to its
+    // left has nothing to bleed out *from*, so the first segment just begins
+    // cleanly. This matches vim-airline / tmux-powerline / claude-powerline.
+    if (left === null) return EMPTY;
     if (right === null) {
-      // End cap: fg = left.bg, no bg.
+      // End cap: fg = left.bg, no bg — last segment bleeds out into the
+      // terminal background.
       return new FixedSegment(this._glyph, bgAsFg(left));
     }
     // Middle: fg = left.bg, bg = right.bg.
@@ -224,5 +225,58 @@ export class PlainJoiner<T extends StyledRenderable = StyledRenderable> implemen
     // Endpoints are empty — a fixed separator has no natural cap.
     if (left === null || right === null) return EMPTY;
     return new FixedSegment(this._separator, this._style);
+  }
+}
+
+// --- GradientJoiner ---
+
+export interface GradientJoinerOptions {
+  /** Number of cells between adjacent items (default: 4). */
+  steps?: number;
+}
+
+/**
+ * Half-block dithering glyph: paints the cell's left half with the foreground
+ * colour and the right half with the background colour. Lets each cell carry
+ * two colour samples — `2 * steps` samples in `steps` cells — so the gradient
+ * looks twice as smooth as one-colour-per-cell at the same width.
+ */
+const HALF_BLOCK = "\u258c"; // ▌
+
+export class GradientJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
+  private readonly _steps: number;
+
+  constructor(options?: GradientJoinerOptions) {
+    this._steps = options?.steps ?? 4;
+  }
+
+  join(left: T | null, right: T | null): Renderable {
+    // [LAW:dataflow-not-control-flow] Endpoints have no opposite anchor to
+    // interpolate toward — the data (a missing neighbor) makes the gradient
+    // empty. Same for items lacking a bgcolor: nothing to blend between.
+    if (left === null || right === null) return EMPTY;
+    const lbg = left.style.bgcolor;
+    const rbg = right.style.bgcolor;
+    if (!lbg || !rbg) return EMPTY;
+    const lTrip = lbg.getTruecolor();
+    const rTrip = rbg.getTruecolor();
+    const steps = this._steps;
+    const samples = 2 * steps;
+    // Midpoint sampling across `2 * steps` half-cell positions: sample j has
+    // t = (j + 0.5) / samples. Cell i takes samples 2i (left half) and 2i+1
+    // (right half). No sample ever equals either anchor.
+    const segments: Segment[] = [];
+    for (let i = 0; i < steps; i++) {
+      const tLeft = (2 * i + 0.5) / samples;
+      const tRight = (2 * i + 1.5) / samples;
+      const fg = Color.fromTriplet(blendRgb(lTrip, rTrip, tLeft));
+      const bg = Color.fromTriplet(blendRgb(lTrip, rTrip, tRight));
+      segments.push(new Segment(HALF_BLOCK, new Style({ color: fg, bgcolor: bg })));
+    }
+    return {
+      *render(_options: RenderOptions): Iterable<Segment> {
+        yield* segments;
+      },
+    };
   }
 }

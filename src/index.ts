@@ -85,6 +85,7 @@ export {
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
+  GradientJoiner,
 } from "./core/strip.js";
 export type {
   StyledRenderable,
@@ -92,7 +93,30 @@ export type {
   PowerlineJoinerOptions,
   CapsuleJoinerOptions,
   PlainJoinerOptions,
+  GradientJoinerOptions,
 } from "./core/strip.js";
+
+// renderToString — stateless one-shot emission
+export {
+  renderToString,
+  segmentToString,
+  segmentsToString,
+} from "./core/render.js";
+export type { RenderToStringOptions } from "./core/render.js";
+
+// Markup plugin tags
+export {
+  MarkupRegistry,
+  globalMarkupRegistry,
+  registerMarkupTag,
+  unregisterMarkupTag,
+  renderMarkup,
+} from "./core/markup.js";
+export type {
+  MarkupTagContext,
+  MarkupTagHandler,
+  RenderMarkupOptions,
+} from "./core/markup.js";
 
 // Emoji
 export { EMOJI, emojiReplace, Emoji, NoEmoji } from "./core/emoji.js";
@@ -102,7 +126,6 @@ export {
   Tag,
   MarkupError,
   escape as escapeMarkup,
-  render as renderMarkup,
 } from "./core/markup.js";
 
 // Highlighter
@@ -148,6 +171,8 @@ export { Pretty } from "./renderables/pretty.js";
 export type { PrettyOptions } from "./renderables/pretty.js";
 export { Columns } from "./renderables/columns.js";
 export type { ColumnsOptions } from "./renderables/columns.js";
+export { FlexStrip } from "./renderables/flexStrip.js";
+export type { FlexStripOptions, FlexAlign } from "./renderables/flexStrip.js";
 export { Live } from "./renderables/live.js";
 export type { LiveOptions } from "./renderables/live.js";
 export { Status } from "./renderables/status.js";

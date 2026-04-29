@@ -36,7 +36,7 @@ const strip = new Strip(
 console.print(strip);
 ```
 
-The arrow between two cells inherits `fg = left.bgcolor` and `bg = right.bgcolor`. The first arrow has fg = the first cell's bg with no bg. The last arrow has fg = the last cell's bg with no bg. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells inherits `fg = left.bgcolor` and `bg = right.bgcolor`. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's bg with no bg, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
 
 ## Built-in joiners
 
@@ -48,8 +48,8 @@ Classic powerline arrows.
 new PowerlineJoiner({ glyph: "\ue0b0" });
 ```
 
-- `join(null, R)`: glyph with `fg = R.bg`, no bg.
-- `join(L, null)`: glyph with `fg = L.bg`, no bg.
+- `join(null, R)`: empty. A right-pointing arrow with no source segment to its left has nothing to bleed out *from*, so the strip just begins cleanly. Matches vim-airline / tmux-powerline / claude-powerline.
+- `join(L, null)`: glyph with `fg = L.bg`, no bg — last segment bleeds out into the terminal.
 - `join(L, R)`: glyph with `fg = L.bg`, `bg = R.bg`.
 
 ### `CapsuleJoiner`
@@ -76,6 +76,19 @@ A fixed separator everywhere. Endpoints are empty.
 new PlainJoiner({ separator: " | ", style: Style.parse("dim") });
 ```
 
+### `GradientJoiner`
+
+Interpolates colours between adjacent items' backgrounds. Useful for fade transitions, bandwidth meters, and decorative bars.
+
+```typescript
+new GradientJoiner({ steps: 4 });
+```
+
+- Middle: `steps` cells, each painted with the half-block glyph `▌` (U+258C) so one cell carries **two** colour samples — `fg` for the left half, `bg` for the right half. `steps` cells therefore produce `2 × steps` colour samples between the two anchors, doubling the perceived smoothness compared to one-colour-per-cell at the same width.
+- All samples use midpoint sampling — no sample ever equals either anchor.
+- Endpoints (or items lacking a `bgcolor`) render empty — a gradient needs two anchors.
+- Truecolor terminals only: on 256-colour terminals the half-block dithering quantizes adjacent samples to the same palette index and visibly stripes. The existing colour-system downgrade still works, it just looks rougher.
+
 ## Custom joiners
 
 A joiner is a pure function `(leftItem | null, rightItem | null) -> Renderable`. Implement the interface to define your own:
@@ -97,6 +110,27 @@ Items in a Strip implement `StyledRenderable` — a `Renderable` plus a single `
 - **The join is a pure function.** Trivial to unit-test in isolation, trivial to compose. Powerline-vs-capsule is one constructor swap.
 - **Endpoints are explicit.** `join(null, X)` and `join(X, null)` are first-class positions — no special-casing the first/last segment after the fact.
 - **Edge-painter on a path graph.** The strip is a path, items are vertices, joiners paint edges — a clean shape that generalises to any "look at my neighbour's style" pattern.
+
+## `FlexStrip` — wrap-to-width packing
+
+`FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Joiner` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
+
+```typescript
+import { FlexStrip, StripCell, PowerlineJoiner, Style } from "rich-js";
+
+const strip = new FlexStrip(
+  tags.map((t) => new StripCell(` ${t} `, Style.parse("white on blue"))),
+  { joiner: new PowerlineJoiner(), gap: 0, align: "left" },
+);
+console.print(strip);
+```
+
+Options:
+- `joiner` — same `Joiner<T>` protocol; endpoint joins fire at every line boundary.
+- `gap` — cells inserted on each side of an inter-item joiner (default 0).
+- `align` — `"left"` (default), `"center"`, `"right"`, or `"justify"` (distributes spare width across inter-item slots on non-final lines).
+
+If an item is wider than `maxWidth`, it gets its own line and renders at full width — graceful overflow rather than a hard crash. Truncation is the caller's job.
 
 ## Out of scope
 
