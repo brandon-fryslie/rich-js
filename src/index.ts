@@ -25,6 +25,8 @@ export type { ColorSystemSpec, DetectColorOptions } from "./core/color.js";
 
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";
+export { PaletteResolver } from "./themes/paletteResolver.js";
+export type { ResolveContext } from "./themes/paletteResolver.js";
 
 export {
   Style,
