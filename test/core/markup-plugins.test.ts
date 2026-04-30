@@ -30,7 +30,7 @@ describe("MarkupRegistry", () => {
     expect(received!.attrs).toEqual({ verb: "open", arg: "foo" });
     expect(received!.raw).toBe("bar");
     // Child renderable is the parsed inner content.
-    const text = renderToString(out, { colorSystem: null, endWithNewline: false });
+    const text = renderToString(out, { colorSystem: null });
     expect(text).toBe("bar");
   });
 
@@ -38,7 +38,7 @@ describe("MarkupRegistry", () => {
     const registry = new MarkupRegistry();
     registry.register("badge", () => new RichText("[BADGE]", { end: "" }));
     const out = renderMarkup("hello [badge]ignored[/badge] world", { registry });
-    const text = renderToString(out, { colorSystem: null, endWithNewline: false });
+    const text = renderToString(out, { colorSystem: null });
     expect(text).toBe("hello [BADGE] world");
   });
 
@@ -46,10 +46,7 @@ describe("MarkupRegistry", () => {
     const registry = new MarkupRegistry();
     let captured: string | null = null;
     registry.register("click", (ctx) => {
-      captured = renderToString(ctx.children, {
-        colorSystem: null,
-        endWithNewline: false,
-      });
+      captured = renderToString(ctx.children, { colorSystem: null });
       return ctx.children;
     });
     renderMarkup("[click verb=foo]plain [bold]important[/bold] tail[/click]", {
@@ -66,7 +63,7 @@ describe("MarkupRegistry", () => {
       return new RichText("<O:", { end: "" }).append(ctx.children).append(":O>");
     });
     const out = renderMarkup("[outer]a[inner]b[/inner]c[/outer]", { registry });
-    const text = renderToString(out, { colorSystem: null, endWithNewline: false });
+    const text = renderToString(out, { colorSystem: null });
     expect(text).toBe("<O:a[I]c:O>");
   });
 
@@ -74,16 +71,14 @@ describe("MarkupRegistry", () => {
     const registry = new MarkupRegistry();
     registry.register("click", () => new RichText("HANDLED", { end: "" }));
     const before = renderMarkup("[click]x[/click]", { registry });
-    expect(renderToString(before, { colorSystem: null, endWithNewline: false }))
-      .toBe("HANDLED");
+    expect(renderToString(before, { colorSystem: null })).toBe("HANDLED");
     registry.unregister("click");
     const after = renderMarkup("[click]x[/click]", { registry });
     // With no handler, falls back to legacy parse: "click" is not a known
     // style, but the parser still treats it as a span style and Style.parse
     // gracefully degrades to no styling. Either way, the visible plain text
     // is "x".
-    expect(renderToString(after, { colorSystem: null, endWithNewline: false }))
-      .toBe("x");
+    expect(renderToString(after, { colorSystem: null })).toBe("x");
   });
 
   it("rejects registering over a built-in style name", () => {
@@ -102,8 +97,7 @@ describe("MarkupRegistry", () => {
     registerMarkupTag("greet", () => new RichText("HI", { end: "" }));
     try {
       const out = renderMarkup("[greet]ignored[/greet]");
-      expect(renderToString(out, { colorSystem: null, endWithNewline: false }))
-        .toBe("HI");
+      expect(renderToString(out, { colorSystem: null })).toBe("HI");
     } finally {
       unregisterMarkupTag("greet");
     }
@@ -125,10 +119,7 @@ describe("MarkupRegistry", () => {
     const registry = new MarkupRegistry();
     let captured: string | null = null;
     registry.register("click", (ctx) => {
-      captured = renderToString(ctx.children, {
-        colorSystem: ColorSystem.STANDARD,
-        endWithNewline: false,
-      });
+      captured = renderToString(ctx.children, { colorSystem: ColorSystem.STANDARD });
       return ctx.children;
     });
     renderMarkup("[click verb=foo][bold red]hot[/bold red][/click]", { registry });
