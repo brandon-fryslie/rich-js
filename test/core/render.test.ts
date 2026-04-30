@@ -16,31 +16,25 @@ describe("renderToString", () => {
     expect(out).toContain("hi");
     expect(out).toMatch(/\x1b\[[0-9;]*31[0-9;]*m/); // SGR 31 = red
     expect(out).toMatch(/\x1b\[0m/); // reset
-    expect(out.endsWith("\n")).toBe(true);
+    expect(out.endsWith("\n")).toBe(false);
   });
 
   it("strips all color codes when colorSystem = null", () => {
     const text = new RichText("hi", { style: Style.parse("bold red on blue"), end: "" });
     const out = renderToString(text, { colorSystem: null });
-    expect(out).toBe("hi\n");
+    expect(out).toBe("hi");
   });
 
   it("strips all color codes when noColor = true", () => {
     const text = new RichText("hi", { style: Style.parse("bold red"), end: "" });
     const out = renderToString(text, { noColor: true });
-    expect(out).toBe("hi\n");
-  });
-
-  it("does not append a newline when endWithNewline = false", () => {
-    const text = new RichText("hi", { end: "" });
-    const out = renderToString(text, { endWithNewline: false, colorSystem: null });
     expect(out).toBe("hi");
   });
 
-  it("does not double a trailing newline that the renderable already produced", () => {
-    const text = new RichText("hi"); // default end = "\n"
-    const out = renderToString(text, { colorSystem: null });
-    expect(out).toBe("hi\n");
+  it("emits exactly the bytes the renderable produces — no implicit trailing newline", () => {
+    // [LAW:one-source-of-truth] renderToString does not add or strip newlines;
+    // the renderable's segment stream is the only source of truth.
+    expect(renderToString(new RichText("hi"), { colorSystem: null })).toBe("hi");
   });
 
   it("is referentially transparent — same args produce byte-identical output", () => {

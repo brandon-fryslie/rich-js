@@ -47,8 +47,6 @@ export interface RenderToStringOptions {
   isTTY?: boolean;
   /** When true, forces `colorSystem` to `null` regardless of the explicit value. */
   noColor?: boolean;
-  /** Append a trailing newline if the rendered output does not already end with one. Default true. */
-  endWithNewline?: boolean;
 }
 
 const DEFAULT_WIDTH = 80;
@@ -96,8 +94,6 @@ export function renderToString(
       : typeof rawSpec === "string"
         ? resolveColorSystem(rawSpec, detectOptions)
         : rawSpec;
-  const endWithNewline = options?.endWithNewline ?? true;
-
   const renderOptions: RenderOptions = {
     maxWidth: width,
     isTerminal: false,
@@ -105,7 +101,5 @@ export function renderToString(
     asciiOnly: false,
   };
 
-  const out = segmentsToString(renderable.render(renderOptions), colorSystem);
-  if (!endWithNewline) return out;
-  return out.endsWith("\n") ? out : out + "\n";
+  return segmentsToString(renderable.render(renderOptions), colorSystem);
 }
