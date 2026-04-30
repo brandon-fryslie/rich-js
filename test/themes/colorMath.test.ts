@@ -78,12 +78,16 @@ describe("alphaBlend", () => {
   it("opacity=0 returns bg (rgb and alpha)", () => {
     const out = alphaBlend(red, white, 0);
     expect(out.red).toBe(white.red);
+    expect(out.green).toBe(white.green);
+    expect(out.blue).toBe(white.blue);
     expect(out.alpha).toBe(white.alpha);
   });
 
   it("opacity=1 returns fg (rgb and alpha)", () => {
     const out = alphaBlend(red, white, 1);
     expect(out.red).toBe(red.red);
+    expect(out.green).toBe(red.green);
+    expect(out.blue).toBe(red.blue);
     expect(out.alpha).toBe(red.alpha);
   });
 
