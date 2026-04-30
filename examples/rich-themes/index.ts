@@ -111,7 +111,7 @@ function joinRow(parts: RichText[]): RichText {
   return out;
 }
 
-async function main(): Promise<void> {
+function main(): void {
   consoleOut.print(
     new RichText("rich-themes — 18 Textual theme palettes", { style: "bold" }),
   );
@@ -124,7 +124,7 @@ async function main(): Promise<void> {
   consoleOut.print(new RichText(""));
 
   for (const name of listThemePalettes()) {
-    const palette = await getThemePalette(name);
+    const palette = getThemePalette(name);
     if (!palette) {
       consoleOut.print(new RichText(`${name}: failed to load`, { style: "bold red" }));
       continue;
@@ -137,7 +137,7 @@ async function main(): Promise<void> {
 
   // Sanity check: a name not in the registry returns null (fixture for the
   // null path — easy to miss when only happy paths get visualized).
-  const missing = await getThemePalette("not-a-real-theme");
+  const missing = getThemePalette("not-a-real-theme");
   consoleOut.print(
     new RichText(
       `getThemePalette("not-a-real-theme") → ${missing === null ? "null ✓" : "UNEXPECTED"}`,
@@ -146,7 +146,9 @@ async function main(): Promise<void> {
   );
 }
 
-main().catch((err) => {
+try {
+  main();
+} catch (err) {
   console.error("Error:", err instanceof Error ? err.message : String(err));
   process.exit(1);
-});
+}
