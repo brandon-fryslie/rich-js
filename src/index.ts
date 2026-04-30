@@ -3,7 +3,7 @@ export { cellLen, setCellSize, splitText, chopCells } from "./core/cells.js";
 
 export {
   ColorTriplet,
-  Palette,
+  ColorTable,
   ColorType,
   ColorSystem,
   Color,
@@ -11,14 +11,20 @@ export {
   TerminalTheme,
   parseRgbHex,
   blendRgb,
-  STANDARD_PALETTE,
-  EIGHT_BIT_PALETTE,
-  WINDOWS_PALETTE,
+  resolveColorSystem,
+  detectColorSystem,
+  STANDARD_TABLE,
+  EIGHT_BIT_TABLE,
+  WINDOWS_TABLE,
   DEFAULT_TERMINAL_THEME,
   MONOKAI,
   SVG_EXPORT_THEME,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
+export type { ColorSystemSpec, DetectColorOptions } from "./core/color.js";
+
+// Themes — semantic palettes (distinct from ColorTable quantization LUTs)
+export { Palette } from "./themes/palette.js";
 
 export {
   Style,
@@ -89,6 +95,7 @@ export {
 } from "./core/strip.js";
 export type {
   StyledRenderable,
+  StripCellPart,
   Joiner,
   PowerlineJoinerOptions,
   CapsuleJoinerOptions,

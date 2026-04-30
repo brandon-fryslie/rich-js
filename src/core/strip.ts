@@ -25,9 +25,41 @@ import type { Renderable, RenderOptions } from "./protocol.js";
 // --- StyledRenderable ---
 
 /**
- * Items in a Strip expose a single dominant `style` so joiners can read its
- * fg/bg without inspecting the rendered output. Multi-style content nests
- * inside a styled wrapper; the joiner reads only the wrapper's style.
+ * Items in a `Strip` expose a single dominant `style` so joiners can read
+ * fg/bg without inspecting the rendered output.
+ *
+ * ## Single-style invariant (load-bearing)
+ *
+ * Joiners — `PowerlineJoiner`, `CapsuleJoiner`, `GradientJoiner` — paint edges
+ * by reading `item.style.bgcolor` for adjacent items. If `render()` emits a
+ * `Segment` whose `style.bgcolor` diverges from `this.style.bgcolor`, the
+ * arrow/cap glyph between this item and its neighbour will use the *declared*
+ * bg even though the item *displayed* a different bg. The result is a
+ * visually wrong transition (e.g. a powerline arrow whose source colour
+ * doesn't match the cell it's bleeding out of).
+ *
+ * **The invariant**: for every `Segment` yielded by `render()`, either
+ *   - `segment.style.bgcolor === this.style.bgcolor`, or
+ *   - `segment.style.bgcolor === undefined` (transparent — terminal default).
+ *
+ * Foreground colour and text attributes (bold, italic, underline, etc.) may
+ * vary freely within a single item — only `bgcolor` is constrained, because
+ * that's the only field joiners read.
+ *
+ * ## What breaks the invariant
+ *
+ * - Yielding inline `Segment`s with their own `bgcolor` set to a different
+ *   value (e.g. an embedded "warning" highlight with a yellow background).
+ * - Wrapping a renderable that paints its own background — `Panel`, a styled
+ *   `Group`, or any `RichText` whose base style includes a bg.
+ *
+ * ## The safe path
+ *
+ * Use `StripCell(text, style)` for plain styled text — it satisfies the
+ * invariant by construction. For richer items, implement this interface
+ * directly and ensure your `render()` only emits Segments whose bg matches
+ * `this.style.bgcolor` (or is undefined). Inline fg variation is fine; bg
+ * variation is not.
  */
 export interface StyledRenderable extends Renderable {
   readonly style: Style;
@@ -36,21 +68,77 @@ export interface StyledRenderable extends Renderable {
 // --- StripCell ---
 
 /**
- * Minimal `StyledRenderable` for the common case: a single styled run of
- * text. Consumers with richer needs can implement `StyledRenderable`
- * directly and pass any `T extends StyledRenderable` to `Strip`.
+ * A styled run within a `StripCell` — text plus an optional foreground /
+ * text-attribute overlay. Used to express inline fg variation inside a single
+ * cell (e.g. a status string where some characters render green and others
+ * red, all on the same cell-level bg).
+ *
+ * The overlay must NOT set `bgcolor`. Cell-level bg is the joiner-visible bg
+ * per the single-style invariant on `StyledRenderable`; allowing parts to
+ * override it would silently violate that invariant. `StripCell` rejects parts
+ * with a `bgcolor` overlay at construction.
+ */
+export interface StripCellPart {
+  readonly text: string;
+  readonly style?: Style;
+}
+
+/**
+ * Canonical safe implementation of `StyledRenderable`. Two construction
+ * shapes:
+ *
+ * - `new StripCell(text, style)` — a single styled run. One segment out.
+ * - `new StripCell(parts, style)` — multiple runs sharing one cell-level
+ *   `style`. Each part may carry its own fg / attribute overlay; cell-level
+ *   `style` always governs the bg. Consumers needing inline fg variation
+ *   (e.g. `[ main S +3 -2 ]` where `S`/`+3` are green, `-2` is red, all on
+ *   the same blue bg) use this shape instead of writing a custom
+ *   `StyledRenderable`.
+ *
+ * Both shapes satisfy the single-style invariant by construction: parts with
+ * `bgcolor` set are rejected, so every emitted `Segment`'s bg matches
+ * `this.style.bgcolor` (or is undefined when the cell has no bg).
  */
 export class StripCell implements StyledRenderable {
   readonly text: string;
   readonly style: Style;
+  private readonly _parts: readonly StripCellPart[];
 
-  constructor(text: string, style?: Style) {
-    this.text = text;
+  constructor(text: string, style?: Style);
+  constructor(parts: readonly StripCellPart[], style?: Style);
+  constructor(textOrParts: string | readonly StripCellPart[], style?: Style) {
     this.style = style ?? NULL_STYLE;
+    if (typeof textOrParts === "string") {
+      this.text = textOrParts;
+      this._parts = [{ text: textOrParts }];
+      return;
+    }
+    // [LAW:single-enforcer] cell-level bg is the only joiner-visible bg.
+    // Reject parts that try to set their own bg at construction so the
+    // invariant cannot be silently broken downstream.
+    for (const part of textOrParts) {
+      if (part.style?.bgcolor !== undefined) {
+        throw new Error(
+          "StripCell part style must not set bgcolor — cell-level style governs the bg (single-style invariant). Use the cell `style` argument for bg.",
+        );
+      }
+    }
+    this._parts = textOrParts.slice();
+    this.text = textOrParts.map((p) => p.text).join("");
   }
 
   *render(_options: RenderOptions): Iterable<Segment> {
-    yield new Segment(this.text, this.style);
+    // [LAW:dataflow-not-control-flow] The walk is identical for both
+    // construction shapes: one part for the (text, style) form, N parts for
+    // the parts form. Variability lives in `_parts`, not in branching here.
+    for (const part of this._parts) {
+      const partStyle = part.style;
+      // `Style.add` keeps `this.style.bgcolor` whenever the overlay's bg is
+      // undefined — and the constructor guarantees that. So the merged style
+      // always satisfies `merged.bgcolor === this.style.bgcolor`.
+      const style = partStyle ? this.style.add(partStyle) : this.style;
+      yield new Segment(part.text, style);
+    }
   }
 }
 

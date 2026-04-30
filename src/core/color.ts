@@ -29,9 +29,9 @@ export class ColorTriplet {
   }
 }
 
-// --- Palette ---
+// --- ColorTable ---
 
-export class Palette {
+export class ColorTable {
   private readonly colors: ColorTriplet[];
   private readonly matchCache = new Map<string, number>();
 
@@ -48,7 +48,7 @@ export class Palette {
   }
 
   /**
-   * Finds the nearest palette index to the given triplet (Euclidean distance, cached).
+   * Finds the nearest table index to the given triplet (Euclidean distance, cached).
    */
   match(triplet: ColorTriplet): number {
     const key = `${triplet.red},${triplet.green},${triplet.blue}`;
@@ -88,6 +88,140 @@ export enum ColorSystem {
   EIGHT_BIT = 2,
   TRUECOLOR = 3,
   WINDOWS = 4,
+}
+
+// --- Color system resolution ---
+
+/**
+ * String form of a desired color encoding. Consumers (CLIs, config files) speak
+ * strings; the canonical machine representation is `ColorSystem | null`.
+ *
+ * - `"auto"`     — capability-detect from env + TTY state
+ * - `"truecolor"` — 24-bit RGB
+ * - `"256"`      — 8-bit indexed
+ * - `"ansi"`     — 16-color standard
+ * - `"none"`     — no color codes
+ */
+export type ColorSystemSpec = "auto" | "truecolor" | "256" | "ansi" | "none";
+
+export interface DetectColorOptions {
+  /** Environment to probe. Defaults to `process.env`. */
+  env?: NodeJS.ProcessEnv;
+  /** Whether output is going to a real terminal. Defaults to `process.stdout?.isTTY`. */
+  isTTY?: boolean;
+}
+
+// [LAW:one-source-of-truth] Spec → ColorSystem mapping is data, not branches.
+// The single table below is consulted by `resolveColorSystem`; "auto" routes
+// to `detectColorSystem` and "none" maps to `null`.
+const SPEC_TABLE: Record<Exclude<ColorSystemSpec, "auto">, ColorSystem | null> = {
+  truecolor: ColorSystem.TRUECOLOR,
+  "256": ColorSystem.EIGHT_BIT,
+  ansi: ColorSystem.STANDARD,
+  none: null,
+};
+
+// [LAW:one-source-of-truth] FORCE_COLOR=N → ColorSystem mapping is data.
+// Honors the de facto convention used by chalk/supports-color/Node.
+const FORCE_COLOR_TABLE: Record<string, ColorSystem | null> = {
+  "0": null,
+  false: null,
+  "1": ColorSystem.STANDARD,
+  true: ColorSystem.STANDARD,
+  "2": ColorSystem.EIGHT_BIT,
+  "3": ColorSystem.TRUECOLOR,
+};
+
+const TRUECOLOR_TERMS = new Set([
+  "xterm-kitty",
+  "xterm-ghostty",
+  "wezterm",
+  "alacritty",
+  "foot",
+  "contour",
+]);
+
+const TERM_PROGRAM_TABLE: Record<string, ColorSystem> = {
+  "iTerm.app": ColorSystem.TRUECOLOR,
+  Apple_Terminal: ColorSystem.EIGHT_BIT,
+  vscode: ColorSystem.TRUECOLOR,
+  Tabby: ColorSystem.TRUECOLOR,
+};
+
+/**
+ * Detect the terminal's color capability from env + TTY state.
+ *
+ * Probes (in priority order): NO_COLOR (per https://no-color.org —
+ * any non-empty value disables color), FORCE_COLOR (numeric/boolean override),
+ * TTY presence, TERM=dumb/unknown, COLORTERM, known terminal lists, TERM_PROGRAM,
+ * and TERM substring patterns. Returns `null` for "no color".
+ *
+ * [LAW:dataflow-not-control-flow] Same probes run every call; variability is
+ * in the env values, not in which checks execute.
+ */
+export function detectColorSystem(
+  options: DetectColorOptions = {},
+): ColorSystem | null {
+  const env = options.env ?? (typeof process !== "undefined" ? process.env : {});
+  const isTTY =
+    options.isTTY ??
+    (typeof process !== "undefined" ? (process.stdout?.isTTY ?? false) : false);
+
+  // NO_COLOR: any non-empty value disables color.
+  const noColor = env["NO_COLOR"];
+  if (noColor !== undefined && noColor !== "") return null;
+
+  // FORCE_COLOR: explicit override, wins over TTY/TERM detection.
+  const force = env["FORCE_COLOR"];
+  if (force !== undefined && force !== "") {
+    const mapped = FORCE_COLOR_TABLE[force];
+    return mapped !== undefined ? mapped : ColorSystem.STANDARD;
+  }
+
+  if (!isTTY) return null;
+
+  const term = env["TERM"] ?? "";
+  if (term === "dumb" || term === "unknown") return null;
+
+  const colorterm = env["COLORTERM"];
+  if (colorterm === "truecolor" || colorterm === "24bit") {
+    return ColorSystem.TRUECOLOR;
+  }
+
+  if (TRUECOLOR_TERMS.has(term)) return ColorSystem.TRUECOLOR;
+
+  const termProgram = env["TERM_PROGRAM"];
+  if (termProgram !== undefined) {
+    const mapped = TERM_PROGRAM_TABLE[termProgram];
+    if (mapped !== undefined) return mapped;
+  }
+
+  if (/-256(color)?$/i.test(term)) return ColorSystem.EIGHT_BIT;
+  if (/-truecolor$/i.test(term)) return ColorSystem.TRUECOLOR;
+  if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(term)) {
+    return ColorSystem.STANDARD;
+  }
+  if (colorterm !== undefined && colorterm !== "") return ColorSystem.STANDARD;
+
+  // Default: a terminal exists (isTTY=true) but we couldn't classify it.
+  // Assume safe baseline rather than disabling color.
+  return ColorSystem.STANDARD;
+}
+
+/**
+ * Resolve a string spec into a `ColorSystem` (or `null` for no color).
+ *
+ * `"auto"` triggers env-based detection; all other specs are direct mappings.
+ *
+ * [LAW:single-enforcer] All string→ColorSystem resolution flows through here;
+ * `Console` and `renderToString` both delegate to this function.
+ */
+export function resolveColorSystem(
+  spec: ColorSystemSpec,
+  options?: DetectColorOptions,
+): ColorSystem | null {
+  if (spec === "auto") return detectColorSystem(options);
+  return SPEC_TABLE[spec];
 }
 
 // --- Color ---
@@ -206,7 +340,7 @@ export class Color {
       case ColorType.TRUECOLOR:
         return this.triplet!;
       case ColorType.EIGHT_BIT:
-        return EIGHT_BIT_PALETTE.get(this.number!);
+        return EIGHT_BIT_TABLE.get(this.number!);
       case ColorType.STANDARD: {
         const t = theme ?? DEFAULT_TERMINAL_THEME;
         return t.ansiColors.get(this.number!);
@@ -262,11 +396,11 @@ export class Color {
 
     switch (targetSystem) {
       case ColorSystem.EIGHT_BIT: {
-        const index = EIGHT_BIT_PALETTE.match(triplet);
+        const index = EIGHT_BIT_TABLE.match(triplet);
         return Color.fromAnsi(index);
       }
       case ColorSystem.STANDARD: {
-        const index = STANDARD_PALETTE.match(triplet);
+        const index = STANDARD_TABLE.match(triplet);
         return new Color(
           `color(${index})`,
           ColorType.STANDARD,
@@ -274,7 +408,7 @@ export class Color {
         );
       }
       case ColorSystem.WINDOWS: {
-        const index = WINDOWS_PALETTE.match(triplet);
+        const index = WINDOWS_TABLE.match(triplet);
         return new Color(
           `color(${index})`,
           ColorType.WINDOWS,
@@ -362,11 +496,11 @@ export class TerminalTheme {
   constructor(
     readonly backgroundColor: ColorTriplet,
     readonly foregroundColor: ColorTriplet,
-    readonly ansiColors: Palette,
+    readonly ansiColors: ColorTable,
   ) {}
 }
 
-// --- Palette data ---
+// --- ColorTable data ---
 
 function buildStandard16(): ColorTriplet[] {
   return [
@@ -389,7 +523,7 @@ function buildStandard16(): ColorTriplet[] {
   ];
 }
 
-function build256Palette(): ColorTriplet[] {
+function build256Table(): ColorTriplet[] {
   const colors = buildStandard16();
 
   // 6x6x6 color cube (indices 16-231)
@@ -411,7 +545,7 @@ function build256Palette(): ColorTriplet[] {
   return colors;
 }
 
-function buildWindowsPalette(): ColorTriplet[] {
+function buildWindowsTable(): ColorTriplet[] {
   return [
     new ColorTriplet(0, 0, 0),        // 0
     new ColorTriplet(0, 0, 128),       // 1
@@ -432,22 +566,22 @@ function buildWindowsPalette(): ColorTriplet[] {
   ];
 }
 
-export const STANDARD_PALETTE = new Palette(buildStandard16());
-export const EIGHT_BIT_PALETTE = new Palette(build256Palette());
-export const WINDOWS_PALETTE = new Palette(buildWindowsPalette());
+export const STANDARD_TABLE = new ColorTable(buildStandard16());
+export const EIGHT_BIT_TABLE = new ColorTable(build256Table());
+export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 
 // --- Pre-built themes ---
 
 export const DEFAULT_TERMINAL_THEME = new TerminalTheme(
   new ColorTriplet(0, 0, 0),
   new ColorTriplet(255, 255, 255),
-  STANDARD_PALETTE,
+  STANDARD_TABLE,
 );
 
 export const MONOKAI = new TerminalTheme(
   new ColorTriplet(12, 12, 12),
   new ColorTriplet(217, 217, 217),
-  new Palette([
+  new ColorTable([
     new ColorTriplet(1, 1, 1),         // 0
     new ColorTriplet(222, 56, 43),     // 1
     new ColorTriplet(57, 181, 74),     // 2
@@ -470,7 +604,7 @@ export const MONOKAI = new TerminalTheme(
 export const SVG_EXPORT_THEME = new TerminalTheme(
   new ColorTriplet(41, 41, 41),
   new ColorTriplet(197, 200, 198),
-  new Palette([
+  new ColorTable([
     new ColorTriplet(75, 78, 85),      // 0
     new ColorTriplet(204, 85, 90),     // 1
     new ColorTriplet(152, 195, 121),   // 2

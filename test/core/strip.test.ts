@@ -192,4 +192,83 @@ describe("StripCell", () => {
     expect(segs[0]!.text).toBe("hi");
     expect(segs[0]!.style?.bgcolor?.name).toBe("red");
   });
+
+  it("parts form: yields one segment per part, all sharing cell bg", () => {
+    const cell = new StripCell(
+      [
+        { text: " main " },
+        { text: "S", style: Style.parse("green") },
+        { text: " " },
+        { text: "+3", style: Style.parse("green") },
+        { text: " " },
+        { text: "-2", style: Style.parse("red") },
+        { text: " " },
+      ],
+      Style.parse("white on blue"),
+    );
+    const segs = [...cell.render(OPTIONS)];
+    expect(segs.map((s) => s.text)).toEqual([" main ", "S", " ", "+3", " ", "-2", " "]);
+    // Every segment carries the cell-level bg — the single-style invariant.
+    for (const s of segs) {
+      expect(s.style?.bgcolor?.name).toBe("blue");
+    }
+    // Per-part fg overlays land on the right runs.
+    expect(segs[0]!.style?.color?.name).toBe("white"); // cell fg, no overlay
+    expect(segs[1]!.style?.color?.name).toBe("green"); // S
+    expect(segs[3]!.style?.color?.name).toBe("green"); // +3
+    expect(segs[5]!.style?.color?.name).toBe("red");   // -2
+  });
+
+  it("parts form: text property is the concatenation of parts", () => {
+    const cell = new StripCell(
+      [{ text: " a " }, { text: "b", style: Style.parse("green") }, { text: " c " }],
+      Style.parse("on blue"),
+    );
+    expect(cell.text).toBe(" a b c ");
+  });
+
+  it("parts form: cell.style is what joiners read (joiner-visible bg)", () => {
+    // [LAW:single-enforcer] joiners must see the cell-level bg, not any per-part bg.
+    const cellA = new StripCell(
+      [{ text: "a" }, { text: "!", style: Style.parse("yellow bold") }],
+      Style.parse("white on blue"),
+    );
+    const cellB = new StripCell(" b ", Style.parse("white on green"));
+    const strip = new Strip([cellA, cellB], new PowerlineJoiner({ glyph: ">" }));
+    const segs = render(strip);
+    // Mid-join: fg = cellA.bg = blue, bg = cellB.bg = green.
+    const mid = segs.find((s) => s.text === ">")!;
+    expect(mid.style?.color?.name).toBe("blue");
+    expect(mid.style?.bgcolor?.name).toBe("green");
+  });
+
+  it("parts form: rejects part styles that set bgcolor", () => {
+    expect(
+      () =>
+        new StripCell(
+          [{ text: "x", style: Style.parse("white on red") }],
+          Style.parse("white on blue"),
+        ),
+    ).toThrow(/bgcolor/);
+  });
+
+  it("parts form: empty parts array yields no segments", () => {
+    const cell = new StripCell([] as const, Style.parse("on blue"));
+    expect([...cell.render(OPTIONS)]).toEqual([]);
+    expect(cell.text).toBe("");
+  });
+
+  it("parts form: parts without overlay inherit cell fg + bg", () => {
+    const cell = new StripCell(
+      [{ text: "x" }, { text: "y", style: Style.parse("bold") }],
+      Style.parse("white on blue"),
+    );
+    const segs = [...cell.render(OPTIONS)];
+    expect(segs[0]!.style?.color?.name).toBe("white");
+    expect(segs[0]!.style?.bgcolor?.name).toBe("blue");
+    expect(segs[0]!.style?.bold).toBeUndefined();
+    expect(segs[1]!.style?.color?.name).toBe("white"); // cell fg preserved
+    expect(segs[1]!.style?.bgcolor?.name).toBe("blue");
+    expect(segs[1]!.style?.bold).toBe(true); // attr overlay applied
+  });
 });

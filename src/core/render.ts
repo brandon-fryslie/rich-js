@@ -1,8 +1,14 @@
 /**
  * `renderToString` — stateless one-shot emission of a `Renderable` to a string
  * of ANSI-encoded text. Pure function: same inputs produce byte-identical
- * output. Does not touch `process.stdout`, does not query the terminal, does
- * not require a `Console` instance.
+ * output. Does not write to `process.stdout` and does not require a `Console`
+ * instance.
+ *
+ * Note on `colorSystem: "auto"`: the `"auto"` spec resolves via
+ * `detectColorSystem`, which reads `process.env` and `process.stdout?.isTTY`
+ * by default. Callers that want a fully deterministic render must either pass
+ * an explicit `ColorSystem` enum / non-`"auto"` spec, or supply `env` and
+ * `isTTY` in the options so detection does not consult ambient process state.
  *
  * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentsToString`
  * and is the single way segments become wire bytes. `Console._renderSegment`
@@ -14,15 +20,31 @@
  * `Style.render` skip codes — not a separate code path.
  */
 
-import { ColorSystem } from "./color.js";
+import { ColorSystem, resolveColorSystem } from "./color.js";
+import type { ColorSystemSpec, DetectColorOptions } from "./color.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
 export interface RenderToStringOptions {
   /** Cell width to render into. Default 80. */
   width?: number;
-  /** Color encoding to emit. `null` strips all color codes. Default truecolor. */
-  colorSystem?: ColorSystem | null;
+  /**
+   * Color encoding to emit. Accepts a `ColorSystemSpec` string (`"auto"`,
+   * `"truecolor"`, `"256"`, `"ansi"`, `"none"`), a `ColorSystem` enum value,
+   * or `null` to strip all color codes. Default truecolor.
+   */
+  colorSystem?: ColorSystemSpec | ColorSystem | null;
+  /**
+   * Environment to consult when `colorSystem` is `"auto"`. Defaults to
+   * `process.env`. Pass an explicit value to keep rendering deterministic.
+   */
+  env?: NodeJS.ProcessEnv;
+  /**
+   * Whether output is going to a TTY when `colorSystem` is `"auto"`. Defaults
+   * to `process.stdout?.isTTY`. Pass an explicit value to keep rendering
+   * deterministic.
+   */
+  isTTY?: boolean;
   /** When true, forces `colorSystem` to `null` regardless of the explicit value. */
   noColor?: boolean;
   /** Append a trailing newline if the rendered output does not already end with one. Default true. */
@@ -59,11 +81,21 @@ export function renderToString(
   // accept an explicit `undefined` value as authoritative. Only an explicit
   // `null` (or `noColor: true`) strips color; everything else — absent field,
   // explicit `undefined` — falls back to truecolor.
+  // [LAW:single-enforcer] String specs route through `resolveColorSystem`;
+  // enum/null pass through unchanged.
+  const rawSpec = options?.colorSystem;
+  // [LAW:dataflow-not-control-flow] Build the detect options unconditionally;
+  // `resolveColorSystem` ignores them for non-`"auto"` specs.
+  const detectOptions: DetectColorOptions = {};
+  if (options?.env !== undefined) detectOptions.env = options.env;
+  if (options?.isTTY !== undefined) detectOptions.isTTY = options.isTTY;
   const colorSystem = options?.noColor
     ? null
-    : options?.colorSystem === undefined
+    : rawSpec === undefined
       ? ColorSystem.TRUECOLOR
-      : options.colorSystem;
+      : typeof rawSpec === "string"
+        ? resolveColorSystem(rawSpec, detectOptions)
+        : rawSpec;
   const endWithNewline = options?.endWithNewline ?? true;
 
   const renderOptions: RenderOptions = {
