@@ -1,7 +1,9 @@
-{
-  "name": "atom-one-dark",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "atom-one-dark",
+  dark: true,
+  vars: {
     "accent": "#A378C2",
     "accent-darken-1": "#8E65AD",
     "accent-darken-2": "#7A5299",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#F4C66E",
     "warning-lighten-2": "#FFDB82",
     "warning-lighten-3": "#FFF096",
-    "warning-muted": "#5E543F"
-  }
-}
+    "warning-muted": "#5E543F",
+  },
+};
+
+export default theme;

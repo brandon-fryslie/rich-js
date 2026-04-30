@@ -1,7 +1,9 @@
-{
-  "name": "flexoki",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "flexoki",
+  dark: true,
+  vars: {
     "accent": "#9B76C8",
     "accent-darken-1": "#8663B3",
     "accent-darken-2": "#72509E",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#C39621",
     "warning-lighten-2": "#D9AA37",
     "warning-lighten-3": "#F0BE4B",
-    "warning-muted": "#3F310A"
-  }
-}
+    "warning-muted": "#3F310A",
+  },
+};
+
+export default theme;

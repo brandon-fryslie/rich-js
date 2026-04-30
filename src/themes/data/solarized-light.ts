@@ -1,7 +1,9 @@
-{
-  "name": "solarized-light",
-  "dark": false,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "solarized-light",
+  dark: false,
+  vars: {
     "accent": "#6C71C4",
     "accent-darken-1": "#575EAF",
     "accent-darken-2": "#424C9A",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#E25F29",
     "warning-lighten-2": "#FA733C",
     "warning-lighten-3": "#FF874E",
-    "warning-muted": "#EEC2A5"
-  }
-}
+    "warning-muted": "#EEC2A5",
+  },
+};
+
+export default theme;

@@ -1,7 +1,9 @@
-{
-  "name": "catppuccin-mocha",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "catppuccin-mocha",
+  dark: true,
+  vars: {
     "accent": "#F9B387",
     "accent-darken-1": "#E39E73",
     "accent-darken-2": "#CD8A60",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#FFF8C4",
     "warning-lighten-2": "#FFFFD9",
     "warning-lighten-3": "#FFFFEF",
-    "warning-muted": "#5B544E"
-  }
-}
+    "warning-muted": "#5B544E",
+  },
+};
+
+export default theme;

@@ -34,6 +34,7 @@ export {
   listThemePalettes,
 } from "./themes/registry.js";
 export type { ThemeName } from "./themes/registry.js";
+export type { ThemePaletteData } from "./themes/data/index.js";
 
 export {
   Style,

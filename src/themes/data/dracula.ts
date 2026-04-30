@@ -1,7 +1,9 @@
-{
-  "name": "dracula",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "dracula",
+  dark: true,
+  vars: {
     "accent": "#FF79C6",
     "accent-darken-1": "#E864B1",
     "accent-darken-2": "#D24F9D",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#FFCC7F",
     "warning-lighten-2": "#FFE193",
     "warning-lighten-3": "#FFF7A7",
-    "warning-muted": "#685446"
-  }
-}
+    "warning-muted": "#685446",
+  },
+};
+
+export default theme;

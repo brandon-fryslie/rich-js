@@ -1,7 +1,9 @@
-{
-  "name": "gruvbox",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "gruvbox",
+  dark: true,
+  vars: {
     "accent": "#F9BD2F",
     "accent-darken-1": "#E2A811",
     "accent-darken-2": "#CB9400",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#FF9430",
     "warning-lighten-2": "#FFA845",
     "warning-lighten-3": "#FFBD5A",
-    "warning-muted": "#684223"
-  }
-}
+    "warning-muted": "#684223",
+  },
+};
+
+export default theme;

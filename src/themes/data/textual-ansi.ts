@@ -1,7 +1,9 @@
-{
-  "name": "textual-ansi",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "textual-ansi",
+  dark: true,
+  vars: {
     "accent": "#0000FF",
     "accent-darken-1": "#0000FF",
     "accent-darken-2": "#0000FF",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#808000",
     "warning-lighten-2": "#808000",
     "warning-lighten-3": "#808000",
-    "warning-muted": "#0178D4"
-  }
-}
+    "warning-muted": "#0178D4",
+  },
+};
+
+export default theme;

@@ -1,7 +1,9 @@
-{
-  "name": "monokai",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "monokai",
+  dark: true,
+  vars: {
     "accent": "#66D9EF",
     "accent-darken-1": "#4DC3D9",
     "accent-darken-2": "#31AFC4",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#FFAB36",
     "warning-lighten-2": "#FFBF4C",
     "warning-lighten-3": "#FFD460",
-    "warning-muted": "#674921"
-  }
-}
+    "warning-muted": "#674921",
+  },
+};
+
+export default theme;

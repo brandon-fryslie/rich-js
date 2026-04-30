@@ -1,7 +1,9 @@
-{
-  "name": "rose-pine-dawn",
-  "dark": false,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "rose-pine-dawn",
+  dark: false,
+  vars: {
     "accent": "#D6827E",
     "accent-darken-1": "#C16E6B",
     "accent-darken-2": "#AB5B58",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#FFB148",
     "warning-lighten-2": "#FFC55C",
     "warning-lighten-3": "#FFDA70",
-    "warning-muted": "#F5D9B5"
-  }
-}
+    "warning-muted": "#F5D9B5",
+  },
+};
+
+export default theme;

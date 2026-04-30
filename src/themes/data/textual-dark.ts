@@ -1,7 +1,9 @@
-{
-  "name": "textual-dark",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "textual-dark",
+  dark: true,
+  vars: {
     "accent": "#FEA62B",
     "accent-darken-1": "#E7920D",
     "accent-darken-2": "#CF7E00",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#FFBA41",
     "warning-lighten-2": "#FFCF56",
     "warning-lighten-3": "#FFE46B",
-    "warning-muted": "#593E19"
-  }
-}
+    "warning-muted": "#593E19",
+  },
+};
+
+export default theme;

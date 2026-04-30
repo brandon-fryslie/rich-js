@@ -1,7 +1,9 @@
-{
-  "name": "nord",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "nord",
+  dark: true,
+  vars: {
     "accent": "#B48EAD",
     "accent-darken-1": "#9F7A98",
     "accent-darken-2": "#8B6785",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#FFE09E",
     "warning-lighten-2": "#FFF5B3",
     "warning-lighten-3": "#FFFFC8",
-    "warning-muted": "#666156"
-  }
-}
+    "warning-muted": "#666156",
+  },
+};
+
+export default theme;

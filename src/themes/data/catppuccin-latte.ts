@@ -1,7 +1,9 @@
-{
-  "name": "catppuccin-latte",
-  "dark": false,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "catppuccin-latte",
+  dark: false,
+  vars: {
     "accent": "#FD640B",
     "accent-darken-1": "#E54F00",
     "accent-darken-2": "#CC3900",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#F6A134",
     "warning-lighten-2": "#FFB648",
     "warning-lighten-3": "#FFCA5D",
-    "warning-muted": "#EAD3B4"
-  }
-}
+    "warning-muted": "#EAD3B4",
+  },
+};
+
+export default theme;

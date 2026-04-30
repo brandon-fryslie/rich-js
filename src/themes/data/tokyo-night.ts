@@ -1,7 +1,9 @@
-{
-  "name": "tokyo-night",
-  "dark": true,
-  "vars": {
+import type { ThemePaletteData } from "./types.js";
+
+const theme: ThemePaletteData = {
+  name: "tokyo-night",
+  dark: true,
+  vars: {
     "accent": "#FE9E64",
     "accent-darken-1": "#E78A51",
     "accent-darken-2": "#D0763E",
@@ -152,6 +154,8 @@
     "warning-lighten-1": "#F6C37B",
     "warning-lighten-2": "#FFD88F",
     "warning-lighten-3": "#FFEDA3",
-    "warning-muted": "#554739"
-  }
-}
+    "warning-muted": "#554739",
+  },
+};
+
+export default theme;
