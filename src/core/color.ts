@@ -29,9 +29,9 @@ export class ColorTriplet {
   }
 }
 
-// --- Palette ---
+// --- ColorTable ---
 
-export class Palette {
+export class ColorTable {
   private readonly colors: ColorTriplet[];
   private readonly matchCache = new Map<string, number>();
 
@@ -48,7 +48,7 @@ export class Palette {
   }
 
   /**
-   * Finds the nearest palette index to the given triplet (Euclidean distance, cached).
+   * Finds the nearest table index to the given triplet (Euclidean distance, cached).
    */
   match(triplet: ColorTriplet): number {
     const key = `${triplet.red},${triplet.green},${triplet.blue}`;
@@ -340,7 +340,7 @@ export class Color {
       case ColorType.TRUECOLOR:
         return this.triplet!;
       case ColorType.EIGHT_BIT:
-        return EIGHT_BIT_PALETTE.get(this.number!);
+        return EIGHT_BIT_TABLE.get(this.number!);
       case ColorType.STANDARD: {
         const t = theme ?? DEFAULT_TERMINAL_THEME;
         return t.ansiColors.get(this.number!);
@@ -396,11 +396,11 @@ export class Color {
 
     switch (targetSystem) {
       case ColorSystem.EIGHT_BIT: {
-        const index = EIGHT_BIT_PALETTE.match(triplet);
+        const index = EIGHT_BIT_TABLE.match(triplet);
         return Color.fromAnsi(index);
       }
       case ColorSystem.STANDARD: {
-        const index = STANDARD_PALETTE.match(triplet);
+        const index = STANDARD_TABLE.match(triplet);
         return new Color(
           `color(${index})`,
           ColorType.STANDARD,
@@ -408,7 +408,7 @@ export class Color {
         );
       }
       case ColorSystem.WINDOWS: {
-        const index = WINDOWS_PALETTE.match(triplet);
+        const index = WINDOWS_TABLE.match(triplet);
         return new Color(
           `color(${index})`,
           ColorType.WINDOWS,
@@ -496,11 +496,11 @@ export class TerminalTheme {
   constructor(
     readonly backgroundColor: ColorTriplet,
     readonly foregroundColor: ColorTriplet,
-    readonly ansiColors: Palette,
+    readonly ansiColors: ColorTable,
   ) {}
 }
 
-// --- Palette data ---
+// --- ColorTable data ---
 
 function buildStandard16(): ColorTriplet[] {
   return [
@@ -523,7 +523,7 @@ function buildStandard16(): ColorTriplet[] {
   ];
 }
 
-function build256Palette(): ColorTriplet[] {
+function build256Table(): ColorTriplet[] {
   const colors = buildStandard16();
 
   // 6x6x6 color cube (indices 16-231)
@@ -545,7 +545,7 @@ function build256Palette(): ColorTriplet[] {
   return colors;
 }
 
-function buildWindowsPalette(): ColorTriplet[] {
+function buildWindowsTable(): ColorTriplet[] {
   return [
     new ColorTriplet(0, 0, 0),        // 0
     new ColorTriplet(0, 0, 128),       // 1
@@ -566,22 +566,22 @@ function buildWindowsPalette(): ColorTriplet[] {
   ];
 }
 
-export const STANDARD_PALETTE = new Palette(buildStandard16());
-export const EIGHT_BIT_PALETTE = new Palette(build256Palette());
-export const WINDOWS_PALETTE = new Palette(buildWindowsPalette());
+export const STANDARD_TABLE = new ColorTable(buildStandard16());
+export const EIGHT_BIT_TABLE = new ColorTable(build256Table());
+export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 
 // --- Pre-built themes ---
 
 export const DEFAULT_TERMINAL_THEME = new TerminalTheme(
   new ColorTriplet(0, 0, 0),
   new ColorTriplet(255, 255, 255),
-  STANDARD_PALETTE,
+  STANDARD_TABLE,
 );
 
 export const MONOKAI = new TerminalTheme(
   new ColorTriplet(12, 12, 12),
   new ColorTriplet(217, 217, 217),
-  new Palette([
+  new ColorTable([
     new ColorTriplet(1, 1, 1),         // 0
     new ColorTriplet(222, 56, 43),     // 1
     new ColorTriplet(57, 181, 74),     // 2
@@ -604,7 +604,7 @@ export const MONOKAI = new TerminalTheme(
 export const SVG_EXPORT_THEME = new TerminalTheme(
   new ColorTriplet(41, 41, 41),
   new ColorTriplet(197, 200, 198),
-  new Palette([
+  new ColorTable([
     new ColorTriplet(75, 78, 85),      // 0
     new ColorTriplet(204, 85, 90),     // 1
     new ColorTriplet(152, 195, 121),   // 2
