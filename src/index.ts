@@ -29,6 +29,11 @@ export type { ColorSystemSpec, DetectColorOptions } from "./core/color.js";
 export { Palette } from "./themes/palette.js";
 export { PaletteResolver } from "./themes/paletteResolver.js";
 export type { ResolveContext } from "./themes/paletteResolver.js";
+export {
+  getThemePalette,
+  listThemePalettes,
+} from "./themes/registry.js";
+export type { ThemeName } from "./themes/registry.js";
 
 export {
   Style,
