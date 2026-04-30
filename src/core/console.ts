@@ -5,7 +5,8 @@
 import { writeFileSync } from "fs";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme } from "./style.js";
-import { ColorSystem } from "./color.js";
+import { ColorSystem, resolveColorSystem } from "./color.js";
+import type { ColorSystemSpec } from "./color.js";
 import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
 import { ReprHighlighter } from "./highlighter.js";
@@ -21,7 +22,12 @@ import { isRenderable } from "./protocol.js";
 // --- Types ---
 
 export interface ConsoleOptions {
-  colorSystem?: null | "auto" | "standard" | "256" | "truecolor" | "windows";
+  /**
+   * Color encoding. Accepts a `ColorSystemSpec` string (`"auto"`, `"truecolor"`,
+   * `"256"`, `"ansi"`, `"none"`), a `ColorSystem` enum value (use this for
+   * `WINDOWS`, which has no string spec), or `null` for no color. Default `"auto"`.
+   */
+  colorSystem?: ColorSystemSpec | ColorSystem | null;
   width?: number;
   height?: number;
   style?: string | Style;
@@ -60,19 +66,35 @@ function resolveStyle(style: string | Style | undefined): Style {
   return style;
 }
 
-function detectColorSystem(): ColorSystem | null {
-  // Check NO_COLOR
-  if (typeof process !== "undefined" && process.env) {
-    if (process.env["NO_COLOR"] !== undefined) return null;
-    const term = process.env["TERM"] ?? "";
-    if (term === "dumb" || term === "unknown") return null;
-    if (process.env["FORCE_COLOR"]) return ColorSystem.TRUECOLOR;
-    if (process.env["COLORTERM"] === "truecolor" || process.env["COLORTERM"] === "24bit") {
-      return ColorSystem.TRUECOLOR;
-    }
-    if (term.includes("256color")) return ColorSystem.EIGHT_BIT;
-  }
-  return ColorSystem.TRUECOLOR;
+// [LAW:single-enforcer] Color spec → ColorSystem resolution lives in
+// `resolveColorSystem`. This helper just normalizes the option shape (string |
+// enum | null) into the cached `_colorSystem` field. WINDOWS has no string
+// spec; callers reach it via the enum directly.
+//
+// [LAW:dataflow-not-control-flow] `isTTY` is forwarded unconditionally;
+// `resolveColorSystem` ignores it for non-`"auto"` specs. Caller must compute
+// the effective TTY status of the actual output target (stdout/stderr/file)
+// so `"auto"` detection doesn't accidentally consult `process.stdout.isTTY`
+// when the console is bound to a different stream.
+function resolveOptionColorSystem(
+  spec: ColorSystemSpec | ColorSystem | null | undefined,
+  isTTY: boolean,
+): ColorSystem | null {
+  if (spec === null) return null;
+  if (spec === undefined) return resolveColorSystem("auto", { isTTY });
+  if (typeof spec === "string") return resolveColorSystem(spec, { isTTY });
+  return spec;
+}
+
+// [LAW:single-enforcer] Effective TTY status of the console's output target
+// is computed once, here, from the options that determine the target. Mirrors
+// the `isTerminal` getter so the cached `_colorSystem` and runtime
+// `isTerminal` agree on what counts as a TTY.
+function effectiveIsTTY(options?: ConsoleOptions): boolean {
+  if (options?.forceTerminal) return true;
+  if (options?.file) return false;
+  if (typeof process === "undefined") return false;
+  return (options?.stderr ? process.stderr : process.stdout)?.isTTY ?? false;
 }
 
 function getTerminalSize(): { width: number; height: number } {
@@ -106,8 +128,10 @@ export class Console {
   private _buffer: string;
 
   constructor(options?: ConsoleOptions) {
-    const csOpt = options?.colorSystem !== undefined ? options.colorSystem : "auto";
-    this._colorSystem = csOpt === "auto" ? detectColorSystem() : csOpt === null ? null : mapColorSystem(csOpt);
+    this._colorSystem = resolveOptionColorSystem(
+      options?.colorSystem,
+      effectiveIsTTY(options),
+    );
     this._width = options?.width;
     this._height = options?.height;
     this._style = resolveStyle(options?.style);
@@ -404,17 +428,3 @@ export class Console {
   }
 }
 
-function mapColorSystem(name: string): ColorSystem | null {
-  switch (name) {
-    case "standard":
-      return ColorSystem.STANDARD;
-    case "256":
-      return ColorSystem.EIGHT_BIT;
-    case "truecolor":
-      return ColorSystem.TRUECOLOR;
-    case "windows":
-      return ColorSystem.WINDOWS;
-    default:
-      return null;
-  }
-}
