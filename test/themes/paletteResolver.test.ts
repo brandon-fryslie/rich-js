@@ -93,6 +93,8 @@ describe("PaletteResolver — modifiers", () => {
     const got = resolver.resolve("primary-darken-0");
     expect(got).not.toBeNull();
     expect(Math.abs(got!.red - primary.red)).toBeLessThanOrEqual(1);
+    expect(Math.abs(got!.green - primary.green)).toBeLessThanOrEqual(1);
+    expect(Math.abs(got!.blue - primary.blue)).toBeLessThanOrEqual(1);
     expect(got!.alpha).toBe(primary.alpha);
   });
 });
