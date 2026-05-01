@@ -7,7 +7,7 @@ import {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "../../src/core/style.js";
-import { ColorSpec, ColorSystem } from "../../src/core/color.js";
+import { ColorSpec, ColorDepth } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (parse semantics, merge rules, render output), not implementation details (caches, internal fields)
 
@@ -1007,7 +1007,7 @@ describe("DEFAULT_STYLES (additional)", () => {
 describe("Style.render with colorSystem", () => {
   it("renders with ANSI codes when colorSystem is STANDARD", () => {
     const s = Style.parse("red");
-    const result = s.render("x", ColorSystem.STANDARD);
+    const result = s.render("x", ColorDepth.STANDARD);
     expect(result).toContain("\x1b[");
     expect(result).toContain("m");
     expect(result).toContain("x");

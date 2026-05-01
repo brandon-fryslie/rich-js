@@ -83,18 +83,11 @@ export enum ColorDepth {
   WINDOWS = 4,
 }
 
-export enum ColorSystem {
-  STANDARD = 1,
-  EIGHT_BIT = 2,
-  TRUECOLOR = 3,
-  WINDOWS = 4,
-}
-
 // --- ColorSpec system resolution ---
 
 /**
  * String form of a desired color encoding. Consumers (CLIs, config files) speak
- * strings; the canonical machine representation is `ColorSystem | null`.
+ * strings; the canonical machine representation is `ColorDepth | null`.
  *
  * - `"auto"`     — capability-detect from env + TTY state
  * - `"truecolor"` — 24-bit RGB
@@ -111,25 +104,25 @@ export interface DetectColorOptions {
   isTTY?: boolean;
 }
 
-// [LAW:one-source-of-truth] Spec → ColorSystem mapping is data, not branches.
+// [LAW:one-source-of-truth] Spec → ColorDepth mapping is data, not branches.
 // The single table below is consulted by `resolveColorSystem`; "auto" routes
 // to `detectColorSystem` and "none" maps to `null`.
-const SPEC_TABLE: Record<Exclude<ColorSystemSpec, "auto">, ColorSystem | null> = {
-  truecolor: ColorSystem.TRUECOLOR,
-  "256": ColorSystem.EIGHT_BIT,
-  ansi: ColorSystem.STANDARD,
+const SPEC_TABLE: Record<Exclude<ColorSystemSpec, "auto">, ColorDepth | null> = {
+  truecolor: ColorDepth.TRUECOLOR,
+  "256": ColorDepth.EIGHT_BIT,
+  ansi: ColorDepth.STANDARD,
   none: null,
 };
 
-// [LAW:one-source-of-truth] FORCE_COLOR=N → ColorSystem mapping is data.
+// [LAW:one-source-of-truth] FORCE_COLOR=N → ColorDepth mapping is data.
 // Honors the de facto convention used by chalk/supports-color/Node.
-const FORCE_COLOR_TABLE: Record<string, ColorSystem | null> = {
+const FORCE_COLOR_TABLE: Record<string, ColorDepth | null> = {
   "0": null,
   false: null,
-  "1": ColorSystem.STANDARD,
-  true: ColorSystem.STANDARD,
-  "2": ColorSystem.EIGHT_BIT,
-  "3": ColorSystem.TRUECOLOR,
+  "1": ColorDepth.STANDARD,
+  true: ColorDepth.STANDARD,
+  "2": ColorDepth.EIGHT_BIT,
+  "3": ColorDepth.TRUECOLOR,
 };
 
 const TRUECOLOR_TERMS = new Set([
@@ -141,11 +134,11 @@ const TRUECOLOR_TERMS = new Set([
   "contour",
 ]);
 
-const TERM_PROGRAM_TABLE: Record<string, ColorSystem> = {
-  "iTerm.app": ColorSystem.TRUECOLOR,
-  Apple_Terminal: ColorSystem.EIGHT_BIT,
-  vscode: ColorSystem.TRUECOLOR,
-  Tabby: ColorSystem.TRUECOLOR,
+const TERM_PROGRAM_TABLE: Record<string, ColorDepth> = {
+  "iTerm.app": ColorDepth.TRUECOLOR,
+  Apple_Terminal: ColorDepth.EIGHT_BIT,
+  vscode: ColorDepth.TRUECOLOR,
+  Tabby: ColorDepth.TRUECOLOR,
 };
 
 /**
@@ -161,7 +154,7 @@ const TERM_PROGRAM_TABLE: Record<string, ColorSystem> = {
  */
 export function detectColorSystem(
   options: DetectColorOptions = {},
-): ColorSystem | null {
+): ColorDepth | null {
   const env = options.env ?? (typeof process !== "undefined" ? process.env : {});
   const isTTY =
     options.isTTY ??
@@ -175,7 +168,7 @@ export function detectColorSystem(
   const force = env["FORCE_COLOR"];
   if (force !== undefined && force !== "") {
     const mapped = FORCE_COLOR_TABLE[force];
-    return mapped !== undefined ? mapped : ColorSystem.STANDARD;
+    return mapped !== undefined ? mapped : ColorDepth.STANDARD;
   }
 
   if (!isTTY) return null;
@@ -185,10 +178,10 @@ export function detectColorSystem(
 
   const colorterm = env["COLORTERM"];
   if (colorterm === "truecolor" || colorterm === "24bit") {
-    return ColorSystem.TRUECOLOR;
+    return ColorDepth.TRUECOLOR;
   }
 
-  if (TRUECOLOR_TERMS.has(term)) return ColorSystem.TRUECOLOR;
+  if (TRUECOLOR_TERMS.has(term)) return ColorDepth.TRUECOLOR;
 
   const termProgram = env["TERM_PROGRAM"];
   if (termProgram !== undefined) {
@@ -196,30 +189,30 @@ export function detectColorSystem(
     if (mapped !== undefined) return mapped;
   }
 
-  if (/-256(color)?$/i.test(term)) return ColorSystem.EIGHT_BIT;
-  if (/-truecolor$/i.test(term)) return ColorSystem.TRUECOLOR;
+  if (/-256(color)?$/i.test(term)) return ColorDepth.EIGHT_BIT;
+  if (/-truecolor$/i.test(term)) return ColorDepth.TRUECOLOR;
   if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(term)) {
-    return ColorSystem.STANDARD;
+    return ColorDepth.STANDARD;
   }
-  if (colorterm !== undefined && colorterm !== "") return ColorSystem.STANDARD;
+  if (colorterm !== undefined && colorterm !== "") return ColorDepth.STANDARD;
 
   // Default: a terminal exists (isTTY=true) but we couldn't classify it.
   // Assume safe baseline rather than disabling color.
-  return ColorSystem.STANDARD;
+  return ColorDepth.STANDARD;
 }
 
 /**
- * Resolve a string spec into a `ColorSystem` (or `null` for no color).
+ * Resolve a string spec into a `ColorDepth` (or `null` for no color).
  *
  * `"auto"` triggers env-based detection; all other specs are direct mappings.
  *
- * [LAW:single-enforcer] All string→ColorSystem resolution flows through here;
+ * [LAW:single-enforcer] All string→ColorDepth resolution flows through here;
  * `Console` and `renderToString` both delegate to this function.
  */
 export function resolveColorSystem(
   spec: ColorSystemSpec,
   options?: DetectColorOptions,
-): ColorSystem | null {
+): ColorDepth | null {
   if (spec === "auto") return detectColorSystem(options);
   return SPEC_TABLE[spec];
 }
@@ -242,7 +235,7 @@ export class ColorSpec {
   readonly number: number | undefined;
   readonly triplet: ColorRgba | undefined;
 
-  private downgradeCache = new Map<ColorSystem, ColorSpec>();
+  private downgradeCache = new Map<ColorDepth, ColorSpec>();
 
   constructor(
     name: string,
@@ -254,21 +247,6 @@ export class ColorSpec {
     this.type = type;
     this.number = number;
     this.triplet = triplet;
-  }
-
-  get system(): ColorSystem {
-    switch (this.type) {
-      case ColorDepth.DEFAULT:
-        return ColorSystem.STANDARD;
-      case ColorDepth.STANDARD:
-        return ColorSystem.STANDARD;
-      case ColorDepth.EIGHT_BIT:
-        return ColorSystem.EIGHT_BIT;
-      case ColorDepth.TRUECOLOR:
-        return ColorSystem.TRUECOLOR;
-      case ColorDepth.WINDOWS:
-        return ColorSystem.WINDOWS;
-    }
   }
 
   get isDefault(): boolean {
@@ -318,11 +296,11 @@ export class ColorSpec {
   }
 
   /**
-   * Downgrade to a lower-fidelity color system. Cached.
+   * Downgrade to a lower-fidelity color depth. Cached.
    */
-  downgrade(targetSystem: ColorSystem): ColorSpec {
+  downgrade(targetSystem: ColorDepth): ColorSpec {
     if (this.type === ColorDepth.DEFAULT) return this;
-    if (this.system <= targetSystem) return this;
+    if (this.type <= targetSystem) return this;
 
     const cached = this.downgradeCache.get(targetSystem);
     if (cached) return cached;
@@ -390,16 +368,16 @@ export class ColorSpec {
 
   // --- private ---
 
-  private performDowngrade(targetSystem: ColorSystem): ColorSpec {
+  private performDowngrade(targetSystem: ColorDepth): ColorSpec {
     // Get the true RGB of this color
     const triplet = this.getTruecolor();
 
     switch (targetSystem) {
-      case ColorSystem.EIGHT_BIT: {
+      case ColorDepth.EIGHT_BIT: {
         const index = EIGHT_BIT_TABLE.match(triplet);
         return ColorSpec.fromAnsi(index);
       }
-      case ColorSystem.STANDARD: {
+      case ColorDepth.STANDARD: {
         const index = STANDARD_TABLE.match(triplet);
         return new ColorSpec(
           `color(${index})`,
@@ -407,7 +385,7 @@ export class ColorSpec {
           index,
         );
       }
-      case ColorSystem.WINDOWS: {
+      case ColorDepth.WINDOWS: {
         const index = WINDOWS_TABLE.match(triplet);
         return new ColorSpec(
           `color(${index})`,
@@ -415,8 +393,10 @@ export class ColorSpec {
           index,
         );
       }
-      case ColorSystem.TRUECOLOR:
+      case ColorDepth.TRUECOLOR:
         return this;
+      case ColorDepth.DEFAULT:
+        return ColorSpec.default();
     }
   }
 }

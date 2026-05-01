@@ -4,7 +4,7 @@ import {
   ColorTable,
   ColorSpec,
   ColorDepth,
-  ColorSystem,
+  ColorDepth,
   ColorParseError,
   parseRgbHex,
   blendRgb,
@@ -223,22 +223,6 @@ describe("ColorSpec factory methods", () => {
 // ---------------------------------------------------------------------------
 
 describe("ColorSpec properties", () => {
-  it(".system maps DEFAULT to STANDARD", () => {
-    expect(ColorSpec.default().system).toBe(ColorSystem.STANDARD);
-  });
-
-  it(".system maps STANDARD to STANDARD", () => {
-    expect(ColorSpec.fromAnsi(1).system).toBe(ColorSystem.STANDARD);
-  });
-
-  it(".system maps EIGHT_BIT to EIGHT_BIT", () => {
-    expect(ColorSpec.fromAnsi(100).system).toBe(ColorSystem.EIGHT_BIT);
-  });
-
-  it(".system maps TRUECOLOR to TRUECOLOR", () => {
-    expect(ColorSpec.fromRgb(1, 2, 3).system).toBe(ColorSystem.TRUECOLOR);
-  });
-
   it(".isDefault is true only for DEFAULT type", () => {
     expect(ColorSpec.default().isDefault).toBe(true);
     expect(ColorSpec.fromAnsi(1).isDefault).toBe(false);
@@ -256,11 +240,6 @@ describe("ColorSpec properties", () => {
 
   it(".isSystemDefined is false for DEFAULT", () => {
     expect(ColorSpec.default().isSystemDefined).toBe(false);
-  });
-
-  it(".system maps WINDOWS to WINDOWS", () => {
-    const c = new ColorSpec("color(12)", ColorDepth.WINDOWS, 12);
-    expect(c.system).toBe(ColorSystem.WINDOWS);
   });
 
   it(".isSystemDefined is true for WINDOWS type", () => {
@@ -343,21 +322,21 @@ describe("ColorSpec.getAnsiCodes()", () => {
 describe("ColorSpec.downgrade()", () => {
   it("DEFAULT returns self regardless of target system", () => {
     const def = ColorSpec.default();
-    expect(def.downgrade(ColorSystem.STANDARD)).toBe(def);
-    expect(def.downgrade(ColorSystem.EIGHT_BIT)).toBe(def);
-    expect(def.downgrade(ColorSystem.TRUECOLOR)).toBe(def);
+    expect(def.downgrade(ColorDepth.STANDARD)).toBe(def);
+    expect(def.downgrade(ColorDepth.EIGHT_BIT)).toBe(def);
+    expect(def.downgrade(ColorDepth.TRUECOLOR)).toBe(def);
   });
 
   it("returns self when already at or below the target system", () => {
     const std = ColorSpec.fromAnsi(1); // STANDARD
-    expect(std.downgrade(ColorSystem.STANDARD)).toBe(std);
-    expect(std.downgrade(ColorSystem.EIGHT_BIT)).toBe(std);
-    expect(std.downgrade(ColorSystem.TRUECOLOR)).toBe(std);
+    expect(std.downgrade(ColorDepth.STANDARD)).toBe(std);
+    expect(std.downgrade(ColorDepth.EIGHT_BIT)).toBe(std);
+    expect(std.downgrade(ColorDepth.TRUECOLOR)).toBe(std);
   });
 
   it("TRUECOLOR downgrades to EIGHT_BIT", () => {
     const c = ColorSpec.fromRgb(255, 0, 0);
-    const downgraded = c.downgrade(ColorSystem.EIGHT_BIT);
+    const downgraded = c.downgrade(ColorDepth.EIGHT_BIT);
     expect(downgraded.type).toBe(ColorDepth.STANDARD); // 255,0,0 matches standard red
     // At minimum it should have a number
     expect(downgraded.number).toBeDefined();
@@ -365,14 +344,14 @@ describe("ColorSpec.downgrade()", () => {
 
   it("TRUECOLOR downgrades to STANDARD", () => {
     const c = ColorSpec.fromRgb(255, 0, 0);
-    const downgraded = c.downgrade(ColorSystem.STANDARD);
+    const downgraded = c.downgrade(ColorDepth.STANDARD);
     expect(downgraded.type).toBe(ColorDepth.STANDARD);
     expect(downgraded.number).toBeDefined();
   });
 
   it("EIGHT_BIT downgrades to STANDARD", () => {
     const c = ColorSpec.fromAnsi(196); // Bright red in 256 palette
-    const downgraded = c.downgrade(ColorSystem.STANDARD);
+    const downgraded = c.downgrade(ColorDepth.STANDARD);
     expect(downgraded.type).toBe(ColorDepth.STANDARD);
     expect(downgraded.number).toBeDefined();
     expect(downgraded.number!).toBeLessThan(16);
@@ -380,8 +359,8 @@ describe("ColorSpec.downgrade()", () => {
 
   it("caches downgrade results", () => {
     const c = ColorSpec.fromRgb(100, 200, 50);
-    const first = c.downgrade(ColorSystem.STANDARD);
-    const second = c.downgrade(ColorSystem.STANDARD);
+    const first = c.downgrade(ColorDepth.STANDARD);
+    const second = c.downgrade(ColorDepth.STANDARD);
     expect(first).toBe(second);
   });
 
@@ -391,7 +370,7 @@ describe("ColorSpec.downgrade()", () => {
     // Grayscale ramp entries: 8, 18, 28, 38, 48, 58, 68, 78, 88, 98, 108, 118, 128, ...
     // (108, 108, 108) is closest to index 245 (grey58) = (108, 108, 108)
     const c = ColorSpec.fromRgb(108, 108, 108);
-    const downgraded = c.downgrade(ColorSystem.EIGHT_BIT);
+    const downgraded = c.downgrade(ColorDepth.EIGHT_BIT);
     expect(downgraded.number).toBeDefined();
     expect(downgraded.number!).toBeGreaterThanOrEqual(232);
     expect(downgraded.number!).toBeLessThanOrEqual(255);
@@ -400,7 +379,7 @@ describe("ColorSpec.downgrade()", () => {
   it("WINDOWS downgrades to STANDARD returning a STANDARD-type color", () => {
     // WINDOWS (system=4) > STANDARD (system=1), so downgrade is triggered
     const c = new ColorSpec("color(12)", ColorDepth.WINDOWS, 12);
-    const downgraded = c.downgrade(ColorSystem.STANDARD);
+    const downgraded = c.downgrade(ColorDepth.STANDARD);
     expect(downgraded.type).toBe(ColorDepth.STANDARD);
     expect(downgraded.number).toBeDefined();
     expect(downgraded.number!).toBeGreaterThanOrEqual(0);

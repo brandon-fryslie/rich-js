@@ -8,7 +8,7 @@ import {
   MarkupError,
 } from "../../src/core/markup.js";
 import { RichText } from "../../src/core/text.js";
-import { ColorSystem } from "../../src/core/color.js";
+import { ColorDepth } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
 import type { MarkupTagContext } from "../../src/core/markup.js";
 
@@ -119,7 +119,7 @@ describe("MarkupRegistry", () => {
     const registry = new MarkupRegistry();
     let captured: string | null = null;
     registry.register("click", (ctx) => {
-      captured = renderToString(ctx.children, { colorSystem: ColorSystem.STANDARD });
+      captured = renderToString(ctx.children, { colorSystem: ColorDepth.STANDARD });
       return ctx.children;
     });
     renderMarkup("[click verb=foo][bold red]hot[/bold red][/click]", { registry });
