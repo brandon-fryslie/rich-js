@@ -83,19 +83,7 @@ export enum ColorDepth {
   WINDOWS = 4,
 }
 
-// --- ColorSpec system resolution ---
-
-/**
- * String form of a desired color encoding. Consumers (CLIs, config files) speak
- * strings; the canonical machine representation is `ColorDepth | null`.
- *
- * - `"auto"`     — capability-detect from env + TTY state
- * - `"truecolor"` — 24-bit RGB
- * - `"256"`      — 8-bit indexed
- * - `"ansi"`     — 16-color standard
- * - `"none"`     — no color codes
- */
-export type ColorSystemSpec = "auto" | "truecolor" | "256" | "ansi" | "none";
+// --- ColorDepth resolution ---
 
 export interface DetectColorOptions {
   /** Environment to probe. Defaults to `process.env`. */
@@ -104,41 +92,40 @@ export interface DetectColorOptions {
   isTTY?: boolean;
 }
 
-// [LAW:one-source-of-truth] Spec → ColorDepth mapping is data, not branches.
-// The single table below is consulted by `resolveColorSystem`; "auto" routes
-// to `detectColorSystem` and "none" maps to `null`.
-const SPEC_TABLE: Record<Exclude<ColorSystemSpec, "auto">, ColorDepth | null> = {
+// [LAW:one-source-of-truth] One table covers every recognized string form
+// that resolves to a ColorDepth: user-facing CLI/config specs, FORCE_COLOR
+// values (the chalk/supports-color convention), TERM_PROGRAM identifiers,
+// and exact TERM names whose color capability is known. Keys are disjoint
+// across these sources, so one table is honest. `null` means "no color".
+// "auto" is intentionally absent — it routes to env detection.
+const STRING_TO_DEPTH: Record<string, ColorDepth | null> = {
+  // CLI/config specs
   truecolor: ColorDepth.TRUECOLOR,
   "256": ColorDepth.EIGHT_BIT,
   ansi: ColorDepth.STANDARD,
   none: null,
-};
 
-// [LAW:one-source-of-truth] FORCE_COLOR=N → ColorDepth mapping is data.
-// Honors the de facto convention used by chalk/supports-color/Node.
-const FORCE_COLOR_TABLE: Record<string, ColorDepth | null> = {
+  // FORCE_COLOR values
   "0": null,
   false: null,
   "1": ColorDepth.STANDARD,
   true: ColorDepth.STANDARD,
   "2": ColorDepth.EIGHT_BIT,
   "3": ColorDepth.TRUECOLOR,
-};
 
-const TRUECOLOR_TERMS = new Set([
-  "xterm-kitty",
-  "xterm-ghostty",
-  "wezterm",
-  "alacritty",
-  "foot",
-  "contour",
-]);
-
-const TERM_PROGRAM_TABLE: Record<string, ColorDepth> = {
+  // TERM_PROGRAM identifiers
   "iTerm.app": ColorDepth.TRUECOLOR,
   Apple_Terminal: ColorDepth.EIGHT_BIT,
   vscode: ColorDepth.TRUECOLOR,
   Tabby: ColorDepth.TRUECOLOR,
+
+  // Known truecolor TERM names
+  "xterm-kitty": ColorDepth.TRUECOLOR,
+  "xterm-ghostty": ColorDepth.TRUECOLOR,
+  wezterm: ColorDepth.TRUECOLOR,
+  alacritty: ColorDepth.TRUECOLOR,
+  foot: ColorDepth.TRUECOLOR,
+  contour: ColorDepth.TRUECOLOR,
 };
 
 /**
@@ -146,8 +133,8 @@ const TERM_PROGRAM_TABLE: Record<string, ColorDepth> = {
  *
  * Probes (in priority order): NO_COLOR (per https://no-color.org —
  * any non-empty value disables color), FORCE_COLOR (numeric/boolean override),
- * TTY presence, TERM=dumb/unknown, COLORTERM, known terminal lists, TERM_PROGRAM,
- * and TERM substring patterns. Returns `null` for "no color".
+ * TTY presence, TERM=dumb/unknown, COLORTERM, known terminal/TERM_PROGRAM
+ * names, and TERM regex patterns. Returns `null` for "no color".
  *
  * [LAW:dataflow-not-control-flow] Same probes run every call; variability is
  * in the env values, not in which checks execute.
@@ -167,7 +154,7 @@ export function detectColorSystem(
   // FORCE_COLOR: explicit override, wins over TTY/TERM detection.
   const force = env["FORCE_COLOR"];
   if (force !== undefined && force !== "") {
-    const mapped = FORCE_COLOR_TABLE[force];
+    const mapped = STRING_TO_DEPTH[force];
     return mapped !== undefined ? mapped : ColorDepth.STANDARD;
   }
 
@@ -181,11 +168,12 @@ export function detectColorSystem(
     return ColorDepth.TRUECOLOR;
   }
 
-  if (TRUECOLOR_TERMS.has(term)) return ColorDepth.TRUECOLOR;
+  const termDepth = STRING_TO_DEPTH[term];
+  if (termDepth !== undefined) return termDepth;
 
   const termProgram = env["TERM_PROGRAM"];
   if (termProgram !== undefined) {
-    const mapped = TERM_PROGRAM_TABLE[termProgram];
+    const mapped = STRING_TO_DEPTH[termProgram];
     if (mapped !== undefined) return mapped;
   }
 
@@ -204,17 +192,21 @@ export function detectColorSystem(
 /**
  * Resolve a string spec into a `ColorDepth` (or `null` for no color).
  *
- * `"auto"` triggers env-based detection; all other specs are direct mappings.
+ * `"auto"` triggers env-based detection; all other recognized specs are
+ * direct table lookups against `STRING_TO_DEPTH`. Throws on unknown specs
+ * — silent fallback would mask user typos.
  *
- * [LAW:single-enforcer] All string→ColorDepth resolution flows through here;
- * `Console` and `renderToString` both delegate to this function.
+ * [LAW:single-enforcer] All string→ColorDepth resolution flows through here.
  */
 export function resolveColorSystem(
-  spec: ColorSystemSpec,
+  spec: string,
   options?: DetectColorOptions,
 ): ColorDepth | null {
   if (spec === "auto") return detectColorSystem(options);
-  return SPEC_TABLE[spec];
+  if (spec in STRING_TO_DEPTH) return STRING_TO_DEPTH[spec]!;
+  throw new ColorParseError(
+    `Unknown color depth spec: ${JSON.stringify(spec)} (expected "auto", "truecolor", "256", "ansi", or "none")`,
+  );
 }
 
 // --- ColorSpec ---

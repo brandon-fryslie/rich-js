@@ -6,7 +6,6 @@ import { writeFileSync } from "fs";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme } from "./style.js";
 import { ColorDepth, resolveColorSystem } from "./color.js";
-import type { ColorSystemSpec } from "./color.js";
 import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
 import { ReprHighlighter } from "./highlighter.js";
@@ -23,11 +22,11 @@ import { isRenderable } from "./protocol.js";
 
 export interface ConsoleOptions {
   /**
-   * Color encoding. Accepts a `ColorSystemSpec` string (`"auto"`, `"truecolor"`,
-   * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for
-   * `WINDOWS`, which has no string spec), or `null` for no color. Default `"auto"`.
+   * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
+   * `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for `WINDOWS`,
+   * which has no string spec), or `null` for no color. Default `"auto"`.
    */
-  colorSystem?: ColorSystemSpec | ColorDepth | null;
+  colorSystem?: string | ColorDepth | null;
   width?: number;
   height?: number;
   style?: string | Style;
@@ -77,7 +76,7 @@ function resolveStyle(style: string | Style | undefined): Style {
 // so `"auto"` detection doesn't accidentally consult `process.stdout.isTTY`
 // when the console is bound to a different stream.
 function resolveOptionColorSystem(
-  spec: ColorSystemSpec | ColorDepth | null | undefined,
+  spec: string | ColorDepth | null | undefined,
   isTTY: boolean,
 ): ColorDepth | null {
   if (spec === null) return null;
