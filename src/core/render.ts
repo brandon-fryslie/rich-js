@@ -21,7 +21,7 @@
  */
 
 import { ColorDepth, resolveColorSystem } from "./color.js";
-import type { ColorSystemSpec, DetectColorOptions } from "./color.js";
+import type { DetectColorOptions } from "./color.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
@@ -29,11 +29,11 @@ export interface RenderToStringOptions {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
-   * Color encoding to emit. Accepts a `ColorSystemSpec` string (`"auto"`,
-   * `"truecolor"`, `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value,
-   * or `null` to strip all color codes. Default truecolor.
+   * Color encoding to emit. Accepts a string spec (`"auto"`, `"truecolor"`,
+   * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value, or `null` to
+   * strip all color codes. Default truecolor.
    */
-  colorSystem?: ColorSystemSpec | ColorDepth | null;
+  colorSystem?: string | ColorDepth | null;
   /**
    * Environment to consult when `colorSystem` is `"auto"`. Defaults to
    * `process.env`. Pass an explicit value to keep rendering deterministic.
