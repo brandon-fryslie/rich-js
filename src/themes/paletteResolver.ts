@@ -1,4 +1,4 @@
-import type { ColorTriplet } from "../core/color.js";
+import type { ColorRgba } from "../core/color.js";
 import { Palette } from "./palette.js";
 import { darken, alphaBlend, contrastFor } from "./colorMath.js";
 
@@ -54,7 +54,7 @@ export interface ResolveContext {
    * meaning depends on a target: alpha (`primary 50%`) and auto-contrast
    * (`auto`, `auto 33%`). Bare names and modifiers do not need it.
    */
-  against?: ColorTriplet;
+  against?: ColorRgba;
 }
 
 /**
@@ -78,13 +78,13 @@ export interface ResolveContext {
 export class PaletteResolver {
   constructor(readonly palette: Palette) {}
 
-  resolve(spec: string, ctx?: ResolveContext): ColorTriplet | null {
+  resolve(spec: string, ctx?: ResolveContext): ColorRgba | null {
     const parsed = parse(spec);
     if (parsed === null) return null;
 
     // [LAW:one-type-per-behavior] `auto` is a synthetic var whose "lookup"
     // depends on ctx; named vars look up in the palette. Both produce a
-    // ColorTriplet | null, so the pipeline downstream is identical.
+    // ColorRgba | null, so the pipeline downstream is identical.
     const base = this.lookupBase(parsed.name, ctx);
     if (base === null) return null;
 
@@ -101,7 +101,7 @@ export class PaletteResolver {
   private lookupBase(
     name: string,
     ctx: ResolveContext | undefined,
-  ): ColorTriplet | null {
+  ): ColorRgba | null {
     if (name === AUTO_NAME) {
       return ctx?.against ? contrastFor(ctx.against) : null;
     }
