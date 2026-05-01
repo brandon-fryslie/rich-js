@@ -4,7 +4,7 @@ import {
   RichText,
   Rule,
   Style,
-  Color,
+  ColorSpec,
   ROUNDED,
   HEAVY,
 } from "../../../src/index.js";
@@ -81,10 +81,10 @@ function buildInputPanel(state: AppState): Panel {
   const isSysOrThemeFocused =
     state.focus === "color_system" || state.focus === "theme";
   const focusLabel =
-    state.focus === "color_system" ? " ◄ Color System" :
+    state.focus === "color_system" ? " ◄ ColorSpec System" :
     state.focus === "theme" ? " ◄ Theme" : "";
 
-  const titleText = new RichText("Color Input" + focusLabel);
+  const titleText = new RichText("ColorSpec Input" + focusLabel);
   if (isSysOrThemeFocused) titleText.stylize("bold cyan");
   else titleText.stylize("dim");
 
@@ -173,8 +173,8 @@ function buildFilteredColorList(state: AppState): RichText {
 function buildOptionsSection(state: AppState): RichText {
   const content = new RichText();
 
-  // Color system
-  content.append(new RichText("[Color System]").stylize("bold dim"));
+  // ColorSpec system
+  content.append(new RichText("[ColorSpec System]").stylize("bold dim"));
   content.append("\n");
 
   const systems = ["truecolor", "256", "16", "windows"];
@@ -336,7 +336,7 @@ function buildStatusBar(state: AppState): RichText {
         actionHint = "↑ ↓ switch palette • ← → pick color • Enter show • Tab move focus";
         break;
       case "color_system":
-        focusLabel = "🎚️  Color System";
+        focusLabel = "🎚️  ColorSpec System";
         actionHint = "← → cycle system • Tab move focus • / input • q quit";
         break;
       case "theme":

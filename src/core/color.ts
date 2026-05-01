@@ -2,9 +2,9 @@
  * Terminal color representation, parsing, downgrading, and ANSI code generation.
  */
 
-// --- ColorTriplet ---
+// --- ColorRgba ---
 
-export class ColorTriplet {
+export class ColorRgba {
   constructor(
     readonly red: number,
     readonly green: number,
@@ -32,14 +32,14 @@ export class ColorTriplet {
 // --- ColorTable ---
 
 export class ColorTable {
-  private readonly colors: ColorTriplet[];
+  private readonly colors: ColorRgba[];
   private readonly matchCache = new Map<string, number>();
 
-  constructor(colors: ColorTriplet[]) {
+  constructor(colors: ColorRgba[]) {
     this.colors = colors;
   }
 
-  get(index: number): ColorTriplet {
+  get(index: number): ColorRgba {
     return this.colors[index]!;
   }
 
@@ -50,7 +50,7 @@ export class ColorTable {
   /**
    * Finds the nearest table index to the given triplet (Euclidean distance, cached).
    */
-  match(triplet: ColorTriplet): number {
+  match(triplet: ColorRgba): number {
     const key = `${triplet.red},${triplet.green},${triplet.blue}`;
     const cached = this.matchCache.get(key);
     if (cached !== undefined) return cached;
@@ -75,7 +75,7 @@ export class ColorTable {
 
 // --- Enums ---
 
-export enum ColorType {
+export enum ColorDepth {
   DEFAULT = 0,
   STANDARD = 1,
   EIGHT_BIT = 2,
@@ -90,7 +90,7 @@ export enum ColorSystem {
   WINDOWS = 4,
 }
 
-// --- Color system resolution ---
+// --- ColorSpec system resolution ---
 
 /**
  * String form of a desired color encoding. Consumers (CLIs, config files) speak
@@ -224,7 +224,7 @@ export function resolveColorSystem(
   return SPEC_TABLE[spec];
 }
 
-// --- Color ---
+// --- ColorSpec ---
 
 export class ColorParseError extends Error {
   constructor(message: string) {
@@ -233,22 +233,22 @@ export class ColorParseError extends Error {
   }
 }
 
-// [LAW:one-source-of-truth] Parse cache is the single source for parsed Color instances
-const parseCache = new Map<string, Color>();
+// [LAW:one-source-of-truth] Parse cache is the single source for parsed ColorSpec instances
+const parseCache = new Map<string, ColorSpec>();
 
-export class Color {
+export class ColorSpec {
   readonly name: string;
-  readonly type: ColorType;
+  readonly type: ColorDepth;
   readonly number: number | undefined;
-  readonly triplet: ColorTriplet | undefined;
+  readonly triplet: ColorRgba | undefined;
 
-  private downgradeCache = new Map<ColorSystem, Color>();
+  private downgradeCache = new Map<ColorSystem, ColorSpec>();
 
   constructor(
     name: string,
-    type: ColorType,
+    type: ColorDepth,
     number?: number,
-    triplet?: ColorTriplet,
+    triplet?: ColorRgba,
   ) {
     this.name = name;
     this.type = type;
@@ -258,26 +258,26 @@ export class Color {
 
   get system(): ColorSystem {
     switch (this.type) {
-      case ColorType.DEFAULT:
+      case ColorDepth.DEFAULT:
         return ColorSystem.STANDARD;
-      case ColorType.STANDARD:
+      case ColorDepth.STANDARD:
         return ColorSystem.STANDARD;
-      case ColorType.EIGHT_BIT:
+      case ColorDepth.EIGHT_BIT:
         return ColorSystem.EIGHT_BIT;
-      case ColorType.TRUECOLOR:
+      case ColorDepth.TRUECOLOR:
         return ColorSystem.TRUECOLOR;
-      case ColorType.WINDOWS:
+      case ColorDepth.WINDOWS:
         return ColorSystem.WINDOWS;
     }
   }
 
   get isDefault(): boolean {
-    return this.type === ColorType.DEFAULT;
+    return this.type === ColorDepth.DEFAULT;
   }
 
   get isSystemDefined(): boolean {
     return (
-      this.type === ColorType.STANDARD || this.type === ColorType.WINDOWS
+      this.type === ColorDepth.STANDARD || this.type === ColorDepth.WINDOWS
     );
   }
 
@@ -286,18 +286,18 @@ export class Color {
    */
   getAnsiCodes(foreground = true): string[] {
     switch (this.type) {
-      case ColorType.DEFAULT:
+      case ColorDepth.DEFAULT:
         return [foreground ? "39" : "49"];
-      case ColorType.STANDARD: {
+      case ColorDepth.STANDARD: {
         const n = this.number!;
         if (foreground) {
           return n < 8 ? [`${30 + n}`] : [`${90 + n - 8}`];
         }
         return n < 8 ? [`${40 + n}`] : [`${100 + n - 8}`];
       }
-      case ColorType.EIGHT_BIT:
+      case ColorDepth.EIGHT_BIT:
         return [foreground ? "38" : "48", "5", `${this.number!}`];
-      case ColorType.TRUECOLOR: {
+      case ColorDepth.TRUECOLOR: {
         const t = this.triplet!;
         return [
           foreground ? "38" : "48",
@@ -307,7 +307,7 @@ export class Color {
           `${t.blue}`,
         ];
       }
-      case ColorType.WINDOWS: {
+      case ColorDepth.WINDOWS: {
         const n = this.number!;
         if (foreground) {
           return n < 8 ? [`${30 + n}`] : [`${90 + n - 8}`];
@@ -320,8 +320,8 @@ export class Color {
   /**
    * Downgrade to a lower-fidelity color system. Cached.
    */
-  downgrade(targetSystem: ColorSystem): Color {
-    if (this.type === ColorType.DEFAULT) return this;
+  downgrade(targetSystem: ColorSystem): ColorSpec {
+    if (this.type === ColorDepth.DEFAULT) return this;
     if (this.system <= targetSystem) return this;
 
     const cached = this.downgradeCache.get(targetSystem);
@@ -335,21 +335,21 @@ export class Color {
   /**
    * Resolves to an actual RGB triplet for any color type.
    */
-  getTruecolor(theme?: TerminalTheme, foreground = true): ColorTriplet {
+  getTruecolor(theme?: TerminalTheme, foreground = true): ColorRgba {
     switch (this.type) {
-      case ColorType.TRUECOLOR:
+      case ColorDepth.TRUECOLOR:
         return this.triplet!;
-      case ColorType.EIGHT_BIT:
+      case ColorDepth.EIGHT_BIT:
         return EIGHT_BIT_TABLE.get(this.number!);
-      case ColorType.STANDARD: {
+      case ColorDepth.STANDARD: {
         const t = theme ?? DEFAULT_TERMINAL_THEME;
         return t.ansiColors.get(this.number!);
       }
-      case ColorType.DEFAULT: {
+      case ColorDepth.DEFAULT: {
         const t = theme ?? DEFAULT_TERMINAL_THEME;
         return foreground ? t.foregroundColor : t.backgroundColor;
       }
-      case ColorType.WINDOWS: {
+      case ColorDepth.WINDOWS: {
         const t = theme ?? DEFAULT_TERMINAL_THEME;
         return t.ansiColors.get(this.number!);
       }
@@ -358,27 +358,27 @@ export class Color {
 
   // --- Static factories ---
 
-  static default(): Color {
-    return new Color("default", ColorType.DEFAULT);
+  static default(): ColorSpec {
+    return new ColorSpec("default", ColorDepth.DEFAULT);
   }
 
-  static fromAnsi(n: number): Color {
-    const type = n < 16 ? ColorType.STANDARD : ColorType.EIGHT_BIT;
-    return new Color(`color(${n})`, type, n);
+  static fromAnsi(n: number): ColorSpec {
+    const type = n < 16 ? ColorDepth.STANDARD : ColorDepth.EIGHT_BIT;
+    return new ColorSpec(`color(${n})`, type, n);
   }
 
-  static fromTriplet(triplet: ColorTriplet): Color {
-    return new Color(triplet.hex, ColorType.TRUECOLOR, undefined, triplet);
+  static fromTriplet(triplet: ColorRgba): ColorSpec {
+    return new ColorSpec(triplet.hex, ColorDepth.TRUECOLOR, undefined, triplet);
   }
 
-  static fromRgb(r: number, g: number, b: number): Color {
-    return Color.fromTriplet(new ColorTriplet(r, g, b));
+  static fromRgb(r: number, g: number, b: number): ColorSpec {
+    return ColorSpec.fromTriplet(new ColorRgba(r, g, b));
   }
 
   /**
    * Parse a color string. Cached — identical strings return the same instance.
    */
-  static parse(colorString: string): Color {
+  static parse(colorString: string): ColorSpec {
     const key = colorString.toLowerCase().trim();
     const cached = parseCache.get(key);
     if (cached) return cached;
@@ -390,28 +390,28 @@ export class Color {
 
   // --- private ---
 
-  private performDowngrade(targetSystem: ColorSystem): Color {
+  private performDowngrade(targetSystem: ColorSystem): ColorSpec {
     // Get the true RGB of this color
     const triplet = this.getTruecolor();
 
     switch (targetSystem) {
       case ColorSystem.EIGHT_BIT: {
         const index = EIGHT_BIT_TABLE.match(triplet);
-        return Color.fromAnsi(index);
+        return ColorSpec.fromAnsi(index);
       }
       case ColorSystem.STANDARD: {
         const index = STANDARD_TABLE.match(triplet);
-        return new Color(
+        return new ColorSpec(
           `color(${index})`,
-          ColorType.STANDARD,
+          ColorDepth.STANDARD,
           index,
         );
       }
       case ColorSystem.WINDOWS: {
         const index = WINDOWS_TABLE.match(triplet);
-        return new Color(
+        return new ColorSpec(
           `color(${index})`,
-          ColorType.WINDOWS,
+          ColorDepth.WINDOWS,
           index,
         );
       }
@@ -427,23 +427,23 @@ const HEX_RE = /^#([0-9a-f]{6})$/;
 const RGB_RE = /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/;
 const COLOR_NUMBER_RE = /^color\((\d{1,3})\)$/;
 
-function parseSingle(key: string): Color {
+function parseSingle(key: string): ColorSpec {
   if (key === "default" || key === "") {
-    return Color.default();
+    return ColorSpec.default();
   }
 
   // Named color
   const namedIndex = ANSI_COLOR_NAMES[key];
   if (namedIndex !== undefined) {
-    const type = namedIndex < 16 ? ColorType.STANDARD : ColorType.EIGHT_BIT;
-    return new Color(key, type, namedIndex);
+    const type = namedIndex < 16 ? ColorDepth.STANDARD : ColorDepth.EIGHT_BIT;
+    return new ColorSpec(key, type, namedIndex);
   }
 
   // Hex
   const hexMatch = HEX_RE.exec(key);
   if (hexMatch) {
     const triplet = parseRgbHex(hexMatch[1]!);
-    return new Color(key, ColorType.TRUECOLOR, undefined, triplet);
+    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, triplet);
   }
 
   // rgb()
@@ -452,7 +452,7 @@ function parseSingle(key: string): Color {
     const r = parseInt(rgbMatch[1]!, 10);
     const g = parseInt(rgbMatch[2]!, 10);
     const b = parseInt(rgbMatch[3]!, 10);
-    return new Color(key, ColorType.TRUECOLOR, undefined, new ColorTriplet(r, g, b));
+    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, new ColorRgba(r, g, b));
   }
 
   // color(N)
@@ -460,10 +460,10 @@ function parseSingle(key: string): Color {
   if (numMatch) {
     const n = parseInt(numMatch[1]!, 10);
     if (n > 255) {
-      throw new ColorParseError(`Color number ${n} is out of range (0-255)`);
+      throw new ColorParseError(`ColorSpec number ${n} is out of range (0-255)`);
     }
-    const type = n < 16 ? ColorType.STANDARD : ColorType.EIGHT_BIT;
-    return new Color(key, type, n);
+    const type = n < 16 ? ColorDepth.STANDARD : ColorDepth.EIGHT_BIT;
+    return new ColorSpec(key, type, n);
   }
 
   throw new ColorParseError(`Failed to parse color: "${key}"`);
@@ -471,19 +471,19 @@ function parseSingle(key: string): Color {
 
 // --- Utility functions ---
 
-export function parseRgbHex(hex: string): ColorTriplet {
+export function parseRgbHex(hex: string): ColorRgba {
   const r = parseInt(hex.slice(0, 2), 16);
   const g = parseInt(hex.slice(2, 4), 16);
   const b = parseInt(hex.slice(4, 6), 16);
-  return new ColorTriplet(r, g, b);
+  return new ColorRgba(r, g, b);
 }
 
 export function blendRgb(
-  color1: ColorTriplet,
-  color2: ColorTriplet,
+  color1: ColorRgba,
+  color2: ColorRgba,
   crossFade = 0.5,
-): ColorTriplet {
-  return new ColorTriplet(
+): ColorRgba {
+  return new ColorRgba(
     Math.round(color1.red + (color2.red - color1.red) * crossFade),
     Math.round(color1.green + (color2.green - color1.green) * crossFade),
     Math.round(color1.blue + (color2.blue - color1.blue) * crossFade),
@@ -494,36 +494,36 @@ export function blendRgb(
 
 export class TerminalTheme {
   constructor(
-    readonly backgroundColor: ColorTriplet,
-    readonly foregroundColor: ColorTriplet,
+    readonly backgroundColor: ColorRgba,
+    readonly foregroundColor: ColorRgba,
     readonly ansiColors: ColorTable,
   ) {}
 }
 
 // --- ColorTable data ---
 
-function buildStandard16(): ColorTriplet[] {
+function buildStandard16(): ColorRgba[] {
   return [
-    new ColorTriplet(0, 0, 0),        // 0  black
-    new ColorTriplet(128, 0, 0),       // 1  red
-    new ColorTriplet(0, 128, 0),       // 2  green
-    new ColorTriplet(128, 128, 0),     // 3  yellow
-    new ColorTriplet(0, 0, 128),       // 4  blue
-    new ColorTriplet(128, 0, 128),     // 5  magenta
-    new ColorTriplet(0, 128, 128),     // 6  cyan
-    new ColorTriplet(192, 192, 192),   // 7  white
-    new ColorTriplet(128, 128, 128),   // 8  bright_black
-    new ColorTriplet(255, 0, 0),       // 9  bright_red
-    new ColorTriplet(0, 255, 0),       // 10 bright_green
-    new ColorTriplet(255, 255, 0),     // 11 bright_yellow
-    new ColorTriplet(0, 0, 255),       // 12 bright_blue
-    new ColorTriplet(255, 0, 255),     // 13 bright_magenta
-    new ColorTriplet(0, 255, 255),     // 14 bright_cyan
-    new ColorTriplet(255, 255, 255),   // 15 bright_white
+    new ColorRgba(0, 0, 0),        // 0  black
+    new ColorRgba(128, 0, 0),       // 1  red
+    new ColorRgba(0, 128, 0),       // 2  green
+    new ColorRgba(128, 128, 0),     // 3  yellow
+    new ColorRgba(0, 0, 128),       // 4  blue
+    new ColorRgba(128, 0, 128),     // 5  magenta
+    new ColorRgba(0, 128, 128),     // 6  cyan
+    new ColorRgba(192, 192, 192),   // 7  white
+    new ColorRgba(128, 128, 128),   // 8  bright_black
+    new ColorRgba(255, 0, 0),       // 9  bright_red
+    new ColorRgba(0, 255, 0),       // 10 bright_green
+    new ColorRgba(255, 255, 0),     // 11 bright_yellow
+    new ColorRgba(0, 0, 255),       // 12 bright_blue
+    new ColorRgba(255, 0, 255),     // 13 bright_magenta
+    new ColorRgba(0, 255, 255),     // 14 bright_cyan
+    new ColorRgba(255, 255, 255),   // 15 bright_white
   ];
 }
 
-function build256Table(): ColorTriplet[] {
+function build256Table(): ColorRgba[] {
   const colors = buildStandard16();
 
   // 6x6x6 color cube (indices 16-231)
@@ -531,7 +531,7 @@ function build256Table(): ColorTriplet[] {
   for (let r = 0; r < 6; r++) {
     for (let g = 0; g < 6; g++) {
       for (let b = 0; b < 6; b++) {
-        colors.push(new ColorTriplet(levels[r]!, levels[g]!, levels[b]!));
+        colors.push(new ColorRgba(levels[r]!, levels[g]!, levels[b]!));
       }
     }
   }
@@ -539,30 +539,30 @@ function build256Table(): ColorTriplet[] {
   // Grayscale ramp (indices 232-255)
   for (let i = 0; i < 24; i++) {
     const grey = 8 + 10 * i;
-    colors.push(new ColorTriplet(grey, grey, grey));
+    colors.push(new ColorRgba(grey, grey, grey));
   }
 
   return colors;
 }
 
-function buildWindowsTable(): ColorTriplet[] {
+function buildWindowsTable(): ColorRgba[] {
   return [
-    new ColorTriplet(0, 0, 0),        // 0
-    new ColorTriplet(0, 0, 128),       // 1
-    new ColorTriplet(0, 128, 0),       // 2
-    new ColorTriplet(0, 128, 128),     // 3
-    new ColorTriplet(128, 0, 0),       // 4
-    new ColorTriplet(128, 0, 128),     // 5
-    new ColorTriplet(128, 128, 0),     // 6
-    new ColorTriplet(192, 192, 192),   // 7
-    new ColorTriplet(128, 128, 128),   // 8
-    new ColorTriplet(0, 0, 255),       // 9
-    new ColorTriplet(0, 255, 0),       // 10
-    new ColorTriplet(0, 255, 255),     // 11
-    new ColorTriplet(255, 0, 0),       // 12
-    new ColorTriplet(255, 0, 255),     // 13
-    new ColorTriplet(255, 255, 0),     // 14
-    new ColorTriplet(255, 255, 255),   // 15
+    new ColorRgba(0, 0, 0),        // 0
+    new ColorRgba(0, 0, 128),       // 1
+    new ColorRgba(0, 128, 0),       // 2
+    new ColorRgba(0, 128, 128),     // 3
+    new ColorRgba(128, 0, 0),       // 4
+    new ColorRgba(128, 0, 128),     // 5
+    new ColorRgba(128, 128, 0),     // 6
+    new ColorRgba(192, 192, 192),   // 7
+    new ColorRgba(128, 128, 128),   // 8
+    new ColorRgba(0, 0, 255),       // 9
+    new ColorRgba(0, 255, 0),       // 10
+    new ColorRgba(0, 255, 255),     // 11
+    new ColorRgba(255, 0, 0),       // 12
+    new ColorRgba(255, 0, 255),     // 13
+    new ColorRgba(255, 255, 0),     // 14
+    new ColorRgba(255, 255, 255),   // 15
   ];
 }
 
@@ -573,58 +573,58 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // --- Pre-built themes ---
 
 export const DEFAULT_TERMINAL_THEME = new TerminalTheme(
-  new ColorTriplet(0, 0, 0),
-  new ColorTriplet(255, 255, 255),
+  new ColorRgba(0, 0, 0),
+  new ColorRgba(255, 255, 255),
   STANDARD_TABLE,
 );
 
 export const MONOKAI = new TerminalTheme(
-  new ColorTriplet(12, 12, 12),
-  new ColorTriplet(217, 217, 217),
+  new ColorRgba(12, 12, 12),
+  new ColorRgba(217, 217, 217),
   new ColorTable([
-    new ColorTriplet(1, 1, 1),         // 0
-    new ColorTriplet(222, 56, 43),     // 1
-    new ColorTriplet(57, 181, 74),     // 2
-    new ColorTriplet(255, 199, 6),     // 3
-    new ColorTriplet(0, 111, 184),     // 4
-    new ColorTriplet(118, 38, 113),    // 5
-    new ColorTriplet(44, 181, 233),    // 6
-    new ColorTriplet(204, 204, 204),   // 7
-    new ColorTriplet(128, 128, 128),   // 8
-    new ColorTriplet(255, 0, 0),       // 9
-    new ColorTriplet(0, 255, 0),       // 10
-    new ColorTriplet(255, 255, 0),     // 11
-    new ColorTriplet(0, 0, 255),       // 12
-    new ColorTriplet(255, 0, 255),     // 13
-    new ColorTriplet(0, 255, 255),     // 14
-    new ColorTriplet(255, 255, 255),   // 15
+    new ColorRgba(1, 1, 1),         // 0
+    new ColorRgba(222, 56, 43),     // 1
+    new ColorRgba(57, 181, 74),     // 2
+    new ColorRgba(255, 199, 6),     // 3
+    new ColorRgba(0, 111, 184),     // 4
+    new ColorRgba(118, 38, 113),    // 5
+    new ColorRgba(44, 181, 233),    // 6
+    new ColorRgba(204, 204, 204),   // 7
+    new ColorRgba(128, 128, 128),   // 8
+    new ColorRgba(255, 0, 0),       // 9
+    new ColorRgba(0, 255, 0),       // 10
+    new ColorRgba(255, 255, 0),     // 11
+    new ColorRgba(0, 0, 255),       // 12
+    new ColorRgba(255, 0, 255),     // 13
+    new ColorRgba(0, 255, 255),     // 14
+    new ColorRgba(255, 255, 255),   // 15
   ]),
 );
 
 export const SVG_EXPORT_THEME = new TerminalTheme(
-  new ColorTriplet(41, 41, 41),
-  new ColorTriplet(197, 200, 198),
+  new ColorRgba(41, 41, 41),
+  new ColorRgba(197, 200, 198),
   new ColorTable([
-    new ColorTriplet(75, 78, 85),      // 0
-    new ColorTriplet(204, 85, 90),     // 1
-    new ColorTriplet(152, 195, 121),   // 2
-    new ColorTriplet(229, 192, 123),   // 3
-    new ColorTriplet(97, 175, 239),    // 4
-    new ColorTriplet(198, 120, 221),   // 5
-    new ColorTriplet(86, 182, 194),    // 6
-    new ColorTriplet(171, 178, 191),   // 7
-    new ColorTriplet(75, 78, 85),      // 8
-    new ColorTriplet(255, 135, 135),   // 9
-    new ColorTriplet(135, 255, 175),   // 10
-    new ColorTriplet(255, 255, 95),    // 11
-    new ColorTriplet(135, 175, 255),   // 12
-    new ColorTriplet(255, 135, 255),   // 13
-    new ColorTriplet(95, 255, 255),    // 14
-    new ColorTriplet(255, 255, 255),   // 15
+    new ColorRgba(75, 78, 85),      // 0
+    new ColorRgba(204, 85, 90),     // 1
+    new ColorRgba(152, 195, 121),   // 2
+    new ColorRgba(229, 192, 123),   // 3
+    new ColorRgba(97, 175, 239),    // 4
+    new ColorRgba(198, 120, 221),   // 5
+    new ColorRgba(86, 182, 194),    // 6
+    new ColorRgba(171, 178, 191),   // 7
+    new ColorRgba(75, 78, 85),      // 8
+    new ColorRgba(255, 135, 135),   // 9
+    new ColorRgba(135, 255, 175),   // 10
+    new ColorRgba(255, 255, 95),    // 11
+    new ColorRgba(135, 175, 255),   // 12
+    new ColorRgba(255, 135, 255),   // 13
+    new ColorRgba(95, 255, 255),    // 14
+    new ColorRgba(255, 255, 255),   // 15
   ]),
 );
 
-// --- ANSI Color Names ---
+// --- ANSI ColorSpec Names ---
 // [LAW:one-source-of-truth] Single canonical mapping from name → palette index
 
 export const ANSI_COLOR_NAMES: Record<string, number> = {

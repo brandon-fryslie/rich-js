@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ColorTriplet } from "../../src/core/color.js";
+import { ColorRgba } from "../../src/core/color.js";
 import { Palette } from "../../src/themes/palette.js";
 import { PaletteResolver } from "../../src/themes/paletteResolver.js";
 import {
@@ -8,11 +8,11 @@ import {
   contrastFor,
 } from "../../src/themes/colorMath.js";
 
-const primary = new ColorTriplet(133, 165, 152); // gruvbox primary-ish
-const accent = new ColorTriplet(254, 128, 25);
-const primaryBg = new ColorTriplet(40, 40, 40); // hyphenated var name
-const darkBg = new ColorTriplet(20, 20, 20);
-const lightBg = new ColorTriplet(240, 240, 240);
+const primary = new ColorRgba(133, 165, 152); // gruvbox primary-ish
+const accent = new ColorRgba(254, 128, 25);
+const primaryBg = new ColorRgba(40, 40, 40); // hyphenated var name
+const darkBg = new ColorRgba(20, 20, 20);
+const lightBg = new ColorRgba(240, 240, 240);
 
 const palette = new Palette(
   "test",
@@ -26,7 +26,7 @@ const palette = new Palette(
 
 const resolver = new PaletteResolver(palette);
 
-const eqTriplet = (a: ColorTriplet | null, b: ColorTriplet) => {
+const eqTriplet = (a: ColorRgba | null, b: ColorRgba) => {
   expect(a).not.toBeNull();
   expect(a!.red).toBe(b.red);
   expect(a!.green).toBe(b.green);

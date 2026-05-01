@@ -7,7 +7,7 @@ import {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "../../src/core/style.js";
-import { Color, ColorSystem } from "../../src/core/color.js";
+import { ColorSpec, ColorSystem } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (parse semantics, merge rules, render output), not implementation details (caches, internal fields)
 
@@ -32,8 +32,8 @@ describe("Style construction", () => {
     expect(s.color!.name).toBe("red");
   });
 
-  it("constructs with a Color instance", () => {
-    const c = Color.parse("blue");
+  it("constructs with a ColorSpec instance", () => {
+    const c = ColorSpec.parse("blue");
     const s = new Style({ color: c });
     expect(s.color).toBe(c);
   });
@@ -524,7 +524,7 @@ describe("transparentBackground", () => {
   });
 
   it("returns true when bgcolor is the default color", () => {
-    const s = new Style({ bgcolor: Color.default() });
+    const s = new Style({ bgcolor: ColorSpec.default() });
     expect(s.transparentBackground).toBe(true);
   });
 
@@ -667,15 +667,15 @@ describe("Style.null", () => {
 
 describe("Style.fromColor", () => {
   it("creates a style with just a foreground color", () => {
-    const c = Color.parse("red");
+    const c = ColorSpec.parse("red");
     const s = Style.fromColor(c);
     expect(s.color!.name).toBe("red");
     expect(s.bgcolor).toBeUndefined();
   });
 
   it("creates a style with foreground and background colors", () => {
-    const fg = Color.parse("red");
-    const bg = Color.parse("blue");
+    const fg = ColorSpec.parse("red");
+    const bg = ColorSpec.parse("blue");
     const s = Style.fromColor(fg, bg);
     expect(s.color!.name).toBe("red");
     expect(s.bgcolor!.name).toBe("blue");

@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { ColorTriplet } from "../../src/core/color.js";
+import { ColorRgba } from "../../src/core/color.js";
 import { Palette } from "../../src/themes/palette.js";
 
 describe("Palette", () => {
-  const primary = new ColorTriplet(133, 165, 152);
-  const accent = new ColorTriplet(254, 128, 25);
+  const primary = new ColorRgba(133, 165, 152);
+  const accent = new ColorRgba(254, 128, 25);
 
   it("stores name, dark flag, and vars", () => {
     const p = new Palette(
@@ -20,7 +20,7 @@ describe("Palette", () => {
     expect(p.vars.size).toBe(2);
   });
 
-  it("get(key) returns the matching ColorTriplet", () => {
+  it("get(key) returns the matching ColorRgba", () => {
     const p = new Palette("t", false, new Map([["primary", primary]]));
     expect(p.get("primary")).toBe(primary);
   });

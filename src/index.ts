@@ -2,11 +2,11 @@
 export { cellLen, setCellSize, splitText, chopCells } from "./core/cells.js";
 
 export {
-  ColorTriplet,
+  ColorRgba,
   ColorTable,
-  ColorType,
+  ColorDepth,
   ColorSystem,
-  Color,
+  ColorSpec,
   ColorParseError,
   TerminalTheme,
   parseRgbHex,

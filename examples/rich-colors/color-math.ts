@@ -1,9 +1,9 @@
-import { Color, blendRgb } from "../../src/index.js";
+import { ColorSpec, blendRgb } from "../../src/index.js";
 
 /**
- * Color space conversion and palette generation utilities.
+ * ColorSpec space conversion and palette generation utilities.
  *
- * [LAW:one-source-of-truth] Color math operations are pure functions that
+ * [LAW:one-source-of-truth] ColorSpec math operations are pure functions that
  * don't rely on external state. Results can be safely cached or memoized.
  */
 
@@ -108,7 +108,7 @@ export function hslToRgb(h: number, s: number, l: number): { r: number; g: numbe
  * Generate a complementary color palette (opposite hue).
  * Returns the base color and its complement.
  */
-export function generateComplementary(baseColor: Color): Color[] {
+export function generateComplementary(baseColor: ColorSpec): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
   const hsl = rgbToHsl(triplet.red, triplet.green, triplet.blue);
 
@@ -122,11 +122,11 @@ export function generateComplementary(baseColor: Color): Color[] {
  * Generate an analogous color palette (adjacent hues).
  * Returns colors at hue ± 30 degrees.
  */
-export function generateAnalogous(baseColor: Color): Color[] {
+export function generateAnalogous(baseColor: ColorSpec): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
   const hsl = rgbToHsl(triplet.red, triplet.green, triplet.blue);
 
-  const colors: Color[] = [];
+  const colors: ColorSpec[] = [];
   for (const offset of [-30, 0, 30]) {
     const h = (hsl.h + offset + 360) % 360;
     const rgb = hslToRgb(h, hsl.s, hsl.l);
@@ -140,11 +140,11 @@ export function generateAnalogous(baseColor: Color): Color[] {
  * Generate a triadic color palette (120 degrees apart).
  * Returns 3 colors equally spaced around the color wheel.
  */
-export function generateTriadic(baseColor: Color): Color[] {
+export function generateTriadic(baseColor: ColorSpec): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
   const hsl = rgbToHsl(triplet.red, triplet.green, triplet.blue);
 
-  const colors: Color[] = [];
+  const colors: ColorSpec[] = [];
   for (const offset of [0, 120, 240]) {
     const h = (hsl.h + offset) % 360;
     const rgb = hslToRgb(h, hsl.s, hsl.l);
@@ -158,11 +158,11 @@ export function generateTriadic(baseColor: Color): Color[] {
  * Generate a tetradic (square) color palette (90 degrees apart).
  * Returns 4 colors equally spaced around the color wheel.
  */
-export function generateTetradic(baseColor: Color): Color[] {
+export function generateTetradic(baseColor: ColorSpec): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
   const hsl = rgbToHsl(triplet.red, triplet.green, triplet.blue);
 
-  const colors: Color[] = [];
+  const colors: ColorSpec[] = [];
   for (const offset of [0, 90, 180, 270]) {
     const h = (hsl.h + offset) % 360;
     const rgb = hslToRgb(h, hsl.s, hsl.l);
@@ -176,11 +176,11 @@ export function generateTetradic(baseColor: Color): Color[] {
  * Generate a monochromatic color palette (same hue, varying lightness).
  * Returns colors from dark to light with the same hue and saturation.
  */
-export function generateMonochromatic(baseColor: Color, count: number = 5): Color[] {
+export function generateMonochromatic(baseColor: ColorSpec, count: number = 5): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
   const hsl = rgbToHsl(triplet.red, triplet.green, triplet.blue);
 
-  const colors: Color[] = [];
+  const colors: ColorSpec[] = [];
   const step = 100 / (count + 1);
 
   for (let i = 1; i <= count; i++) {
@@ -196,11 +196,11 @@ export function generateMonochromatic(baseColor: Color, count: number = 5): Colo
  * Generate shades of a color (blend with black).
  * Returns colors from the original to darker.
  */
-export function generateShades(baseColor: Color, count: number = 5): Color[] {
+export function generateShades(baseColor: ColorSpec, count: number = 5): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
   const blackTriplet = Color.fromRgb(0, 0, 0).getTruecolor();
 
-  const colors: Color[] = [];
+  const colors: ColorSpec[] = [];
   for (let i = 0; i < count; i++) {
     const ratio = (i + 1) / (count + 1);
     const blended = blendRgb(triplet, blackTriplet, ratio);
@@ -214,11 +214,11 @@ export function generateShades(baseColor: Color, count: number = 5): Color[] {
  * Generate tints of a color (blend with white).
  * Returns colors from the original to lighter.
  */
-export function generateTints(baseColor: Color, count: number = 5): Color[] {
+export function generateTints(baseColor: ColorSpec, count: number = 5): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
   const whiteTriplet = Color.fromRgb(255, 255, 255).getTruecolor();
 
-  const colors: Color[] = [];
+  const colors: ColorSpec[] = [];
   for (let i = 0; i < count; i++) {
     const ratio = (i + 1) / (count + 1);
     const blended = blendRgb(triplet, whiteTriplet, ratio);
@@ -232,9 +232,9 @@ export function generateTints(baseColor: Color, count: number = 5): Color[] {
  * Generate a palette based on the specified mode.
  */
 export function generatePalette(
-  baseColor: Color,
+  baseColor: ColorSpec,
   mode: "complementary" | "analogous" | "triadic" | "tetradic" | "square" | "monochromatic" | "shades" | "tints"
-): Color[] {
+): ColorSpec[] {
   switch (mode) {
     case "complementary":
       return generateComplementary(baseColor);
