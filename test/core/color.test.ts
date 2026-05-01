@@ -360,6 +360,47 @@ describe("ColorSpec.getAnsiCodes()", () => {
 });
 
 // ---------------------------------------------------------------------------
+// ColorSpec.flattenAlpha()
+// ---------------------------------------------------------------------------
+
+describe("ColorSpec.flattenAlpha()", () => {
+  const black = new ColorRgba(0, 0, 0);
+  const white = new ColorRgba(255, 255, 255);
+
+  it("opaque truecolor passes through (returns same instance)", () => {
+    const c = ColorSpec.fromRgb(255, 0, 0);
+    expect(c.flattenAlpha(white)).toBe(c);
+  });
+
+  it("translucent truecolor flattens against bg and produces a new opaque ColorSpec", () => {
+    // alpha 0x80 = 128/255 ≈ 0.502
+    const c = ColorSpec.parse("#ff000080");
+    const out = c.flattenAlpha(black);
+    expect(out.value!.red).toBe(128);
+    expect(out.value!.green).toBe(0);
+    expect(out.value!.blue).toBe(0);
+    expect(out.value!.alpha).toBe(1);
+  });
+
+  it("non-truecolor (palette index) has no alpha and returns self", () => {
+    const c = ColorSpec.fromAnsi(1); // STANDARD red
+    expect(c.flattenAlpha(black)).toBe(c);
+  });
+
+  it("DEFAULT color returns self (no alpha to flatten)", () => {
+    const c = ColorSpec.default();
+    expect(c.flattenAlpha(white)).toBe(c);
+  });
+
+  it("idempotent: flattening an already-opaque result is a no-op", () => {
+    const c = ColorSpec.parse("#ff000080");
+    const flat1 = c.flattenAlpha(black);
+    const flat2 = flat1.flattenAlpha(black);
+    expect(flat2).toBe(flat1);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // ColorSpec.downgrade()
 // ---------------------------------------------------------------------------
 
