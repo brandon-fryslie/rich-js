@@ -5,7 +5,6 @@ export {
   ColorRgba,
   ColorTable,
   ColorDepth,
-  ColorSystem,
   ColorSpec,
   ColorParseError,
   TerminalTheme,

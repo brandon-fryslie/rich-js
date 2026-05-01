@@ -4,7 +4,7 @@
 
 import {
   ColorSpec,
-  ColorSystem,
+  ColorDepth,
 } from "./color.js";
 import type { TerminalTheme } from "./color.js";
 
@@ -282,7 +282,7 @@ export class Style {
   /**
    * Render text with this style's ANSI escape codes.
    */
-  render(text: string, colorSystem?: ColorSystem): string {
+  render(text: string, colorSystem?: ColorDepth): string {
     if (text.length === 0) return "";
     if (this.isNull) return text;
 

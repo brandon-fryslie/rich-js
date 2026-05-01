@@ -278,7 +278,7 @@ export function getPaletteNames(): PaletteMode[] {
  */
 function downgradeColor(color: ColorSpec, _system: ColorSystemMode): ColorSpec {
   // For now, all color systems return truecolor (which the terminal will downgrade if needed).
-  // TODO: Implement proper downgrading once ColorSystem enum is available in public API
+  // TODO: Implement proper downgrading once ColorDepth enum is available in public API
   return color;
 }
 
