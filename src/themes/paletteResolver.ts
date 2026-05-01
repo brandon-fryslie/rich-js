@@ -58,7 +58,7 @@ export interface ResolveContext {
 }
 
 /**
- * Resolves Textual-style spec strings against a Palette into ColorTriplets.
+ * Resolves Textual-style spec strings against a Palette into ColorRgba values.
  *
  * Spec grammar:
  *   spec      = name ("-darken-" N | "-lighten-" N)? (" " NN "%")?

@@ -1014,6 +1014,84 @@ describe("Style.render with colorSystem", () => {
   });
 });
 
+// --- Alpha compositing at the render boundary ---
+//
+// The render pipeline must flatten alpha into a final RGB triplet *before*
+// emitting ANSI codes (and before any downgrade pass). These tests pin the
+// "flatten then lose alpha" path closed: any change that bypasses
+// flattenAlpha will fail one of these.
+
+describe("Style.render alpha compositing", () => {
+  it("opaque fg/bg pass through unchanged (regression check)", () => {
+    const s = new Style({ color: ColorSpec.fromRgb(255, 0, 0) });
+    expect(s.render("x", ColorDepth.TRUECOLOR)).toBe(
+      "\x1b[38;2;255;0;0mx\x1b[0m",
+    );
+  });
+
+  it("composites translucent fg over an explicit bg before emitting truecolor", () => {
+    // 50% red over white → (255, 127, 127)
+    const s = new Style({
+      color: ColorSpec.parse("#ff000080"),
+      bgcolor: ColorSpec.parse("#ffffff"),
+    });
+    const result = s.render("x", ColorDepth.TRUECOLOR);
+    expect(result).toContain("38;2;255;127;127");
+    // bg unchanged (already opaque)
+    expect(result).toContain("48;2;255;255;255");
+  });
+
+  it("composites translucent fg against the surface bg when no bgcolor is set", () => {
+    // DEFAULT_TERMINAL_THEME.backgroundColor is (0,0,0). Hex alpha 0x80
+    // is 128/255 ≈ 0.502, so 50.2% red over black → (128, 0, 0).
+    const s = new Style({ color: ColorSpec.parse("#ff000080") });
+    const result = s.render("x", ColorDepth.TRUECOLOR);
+    expect(result).toContain("38;2;128;0;0");
+  });
+
+  it("flattens a translucent bg over the surface before using it as the fg substrate", () => {
+    // bg = 0x80-alpha white over default-black surface → (128, 128, 128).
+    // fg = fully opaque red, so no fg compositing happens.
+    const s = new Style({
+      color: ColorSpec.fromRgb(255, 0, 0),
+      bgcolor: ColorSpec.parse("#ffffff80"),
+    });
+    const result = s.render("x", ColorDepth.TRUECOLOR);
+    expect(result).toContain("48;2;128;128;128");
+    expect(result).toContain("38;2;255;0;0");
+  });
+
+  it("layers fg over flattened bg over surface", () => {
+    // bg = 0x80-alpha white over black-surface → (128, 128, 128).
+    // fg = 0x80-alpha red over (128,128,128) → (192, 64, 64).
+    const s = new Style({
+      color: ColorSpec.parse("#ff000080"),
+      bgcolor: ColorSpec.parse("#ffffff80"),
+    });
+    const result = s.render("x", ColorDepth.TRUECOLOR);
+    expect(result).toContain("38;2;192;64;64");
+    expect(result).toContain("48;2;128;128;128");
+  });
+
+  it("flattens alpha BEFORE downgrade so 8-bit palette match sees the composited RGB", () => {
+    // 50% red over black = (127,0,0). Without pre-flatten, the downgrade
+    // would match (255,0,0) → bright red index. With pre-flatten, it should
+    // match a darker red. Either way, the index for (127,0,0) ≠ index for (255,0,0).
+    const translucent = new Style({ color: ColorSpec.parse("#ff000080") });
+    const opaque = new Style({ color: ColorSpec.parse("#ff0000") });
+    const tOut = translucent.render("x", ColorDepth.EIGHT_BIT);
+    const oOut = opaque.render("x", ColorDepth.EIGHT_BIT);
+    expect(tOut).not.toBe(oOut);
+  });
+
+  it("non-truecolor fg has no alpha and renders unchanged", () => {
+    // Palette colors (STANDARD/EIGHT_BIT) carry no alpha, so flattenAlpha
+    // is a no-op. The output for a "red" style must be the bare 31 SGR code.
+    const s = Style.parse("red");
+    expect(s.render("x", ColorDepth.STANDARD)).toBe("\x1b[31mx\x1b[0m");
+  });
+});
+
 describe("Style.normalize", () => {
   it("trims leading and trailing whitespace", () => {
     expect(Style.normalize("  bold  ")).toBe("bold");

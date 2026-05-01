@@ -340,6 +340,26 @@ export class ColorSpec {
   }
 
   /**
+   * Composite this color's alpha (if any) against an opaque background,
+   * returning a fully-opaque ColorSpec. Non-truecolor specs (palette
+   * indices, default) have no alpha and pass through unchanged.
+   *
+   * [LAW:single-enforcer] Sole alpha-flattening site for the render
+   * pipeline. Run *before* downgrade — otherwise palette matching on the
+   * still-translucent RGB silently drops alpha (the "flatten then lose
+   * alpha" path the unification ticket forbids).
+   *
+   * [LAW:dataflow-not-control-flow] `ColorRgba.compositeOver` is a no-op
+   * when alpha=1, so callers invoke this unconditionally; the data
+   * (alpha value) decides whether work happens.
+   */
+  flattenAlpha(bg: ColorRgba): ColorSpec {
+    if (this.type !== ColorDepth.TRUECOLOR || !this.value) return this;
+    const flat = this.value.compositeOver(bg);
+    return flat === this.value ? this : ColorSpec.fromRgba(flat);
+  }
+
+  /**
    * Downgrade to a lower-fidelity color depth. Cached.
    */
   downgrade(targetSystem: ColorDepth): ColorSpec {

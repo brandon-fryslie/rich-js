@@ -5,6 +5,7 @@
 import {
   ColorSpec,
   ColorDepth,
+  DEFAULT_TERMINAL_THEME,
 } from "./color.js";
 import type { TerminalTheme } from "./color.js";
 
@@ -288,19 +289,23 @@ export class Style {
 
     const attrs: string[] = [];
 
-    // Colors
-    if (this.color) {
+    // [LAW:dataflow-not-control-flow] Always resolve a substrate and flatten
+    // alpha before downgrade. Opaque colors short-circuit inside compositeOver,
+    // so the same code path runs every render — the alpha value is the data,
+    // not a branch.
+    const surface = DEFAULT_TERMINAL_THEME.backgroundColor;
+    const bgFlat = this.bgcolor?.flattenAlpha(surface);
+    const fgSubstrate = bgFlat?.getTruecolor(undefined, false) ?? surface;
+    const fgFlat = this.color?.flattenAlpha(fgSubstrate);
+
+    if (fgFlat) {
       const c =
-        colorSystem !== undefined
-          ? this.color.downgrade(colorSystem)
-          : this.color;
+        colorSystem !== undefined ? fgFlat.downgrade(colorSystem) : fgFlat;
       attrs.push(...c.getAnsiCodes(true));
     }
-    if (this.bgcolor) {
+    if (bgFlat) {
       const c =
-        colorSystem !== undefined
-          ? this.bgcolor.downgrade(colorSystem)
-          : this.bgcolor;
+        colorSystem !== undefined ? bgFlat.downgrade(colorSystem) : bgFlat;
       attrs.push(...c.getAnsiCodes(false));
     }
 
