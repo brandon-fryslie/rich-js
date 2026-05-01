@@ -357,8 +357,8 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
     for (let i = 0; i < steps; i++) {
       const tLeft = (2 * i + 0.5) / samples;
       const tRight = (2 * i + 1.5) / samples;
-      const fg = ColorSpec.fromTriplet(blendRgb(lTrip, rTrip, tLeft));
-      const bg = ColorSpec.fromTriplet(blendRgb(lTrip, rTrip, tRight));
+      const fg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tLeft));
+      const bg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tRight));
       segments.push(new Segment(HALF_BLOCK, new Style({ color: fg, bgcolor: bg })));
     }
     return {

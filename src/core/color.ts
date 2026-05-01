@@ -4,28 +4,78 @@
 
 // --- ColorRgba ---
 
+function hex2(byte: number): string {
+  return byte.toString(16).padStart(2, "0");
+}
+
+function assertChannel(name: string, v: number): void {
+  if (!Number.isFinite(v) || v < 0 || v > 255) {
+    throw new RangeError(
+      `ColorRgba.${name} must be a finite number in [0, 255]; got ${v}`,
+    );
+  }
+}
+
+/**
+ * Immutable RGBA color value. Alpha defaults to 1 (fully opaque).
+ *
+ * [LAW:single-enforcer] The constructor is the sole validation site for
+ * channel/alpha invariants. Float-arithmetic callers (HSL roundtrips, blends,
+ * lerps) are responsible for `Math.round` + clamp before construction; the
+ * constructor throws rather than silently masking out-of-range input.
+ */
 export class ColorRgba {
   constructor(
     readonly red: number,
     readonly green: number,
     readonly blue: number,
-  ) {}
+    readonly alpha: number = 1,
+  ) {
+    assertChannel("red", red);
+    assertChannel("green", green);
+    assertChannel("blue", blue);
+    if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
+      throw new RangeError(
+        `ColorRgba.alpha must be a finite number in [0, 1]; got ${alpha}`,
+      );
+    }
+  }
 
+  /** 6-char `#RRGGBB` when fully opaque, 8-char `#RRGGBBAA` otherwise. */
   get hex(): string {
-    return (
-      "#" +
-      this.red.toString(16).padStart(2, "0") +
-      this.green.toString(16).padStart(2, "0") +
-      this.blue.toString(16).padStart(2, "0")
-    );
+    const rgb = "#" + hex2(this.red) + hex2(this.green) + hex2(this.blue);
+    return this.alpha === 1 ? rgb : rgb + hex2(Math.round(this.alpha * 255));
   }
 
+  /** `rgb(r,g,b)` when fully opaque, `rgba(r,g,b,a)` otherwise. */
   get rgb(): string {
-    return `rgb(${this.red},${this.green},${this.blue})`;
+    return this.alpha === 1
+      ? `rgb(${this.red},${this.green},${this.blue})`
+      : `rgba(${this.red},${this.green},${this.blue},${this.alpha})`;
   }
 
-  get normalized(): [number, number, number] {
-    return [this.red / 255, this.green / 255, this.blue / 255];
+  /** [r/255, g/255, b/255, alpha] — alpha is already 0..1, no division. */
+  get normalized(): [number, number, number, number] {
+    return [this.red / 255, this.green / 255, this.blue / 255, this.alpha];
+  }
+
+  /**
+   * Composite this color over an opaque background. Returns a fully opaque
+   * ColorRgba (alpha=1). Per-channel linear interpolation by alpha.
+   *
+   * [LAW:dataflow-not-control-flow] alpha=1 short-circuits to `this`, so
+   * callers can invoke this unconditionally; the data decides whether work
+   * happens.
+   */
+  compositeOver(bg: ColorRgba): ColorRgba {
+    if (this.alpha === 1) return this;
+    const t = this.alpha;
+    return new ColorRgba(
+      Math.round(bg.red + (this.red - bg.red) * t),
+      Math.round(bg.green + (this.green - bg.green) * t),
+      Math.round(bg.blue + (this.blue - bg.blue) * t),
+      1,
+    );
   }
 }
 
@@ -48,10 +98,12 @@ export class ColorTable {
   }
 
   /**
-   * Finds the nearest table index to the given triplet (Euclidean distance, cached).
+   * Finds the nearest table index to the given color (Euclidean RGB distance, cached).
+   * Alpha is part of the cache key so two values that differ only in alpha
+   * don't collide, but is not used in the distance metric.
    */
-  match(triplet: ColorRgba): number {
-    const key = `${triplet.red},${triplet.green},${triplet.blue}`;
+  match(value: ColorRgba): number {
+    const key = `${value.red},${value.green},${value.blue},${value.alpha}`;
     const cached = this.matchCache.get(key);
     if (cached !== undefined) return cached;
 
@@ -59,9 +111,9 @@ export class ColorTable {
     let bestDist = Infinity;
     for (let i = 0; i < this.colors.length; i++) {
       const c = this.colors[i]!;
-      const dr = c.red - triplet.red;
-      const dg = c.green - triplet.green;
-      const db = c.blue - triplet.blue;
+      const dr = c.red - value.red;
+      const dg = c.green - value.green;
+      const db = c.blue - value.blue;
       const dist = dr * dr + dg * dg + db * db;
       if (dist < bestDist) {
         bestDist = dist;
@@ -225,7 +277,7 @@ export class ColorSpec {
   readonly name: string;
   readonly type: ColorDepth;
   readonly number: number | undefined;
-  readonly triplet: ColorRgba | undefined;
+  readonly value: ColorRgba | undefined;
 
   private downgradeCache = new Map<ColorDepth, ColorSpec>();
 
@@ -233,12 +285,12 @@ export class ColorSpec {
     name: string,
     type: ColorDepth,
     number?: number,
-    triplet?: ColorRgba,
+    value?: ColorRgba,
   ) {
     this.name = name;
     this.type = type;
     this.number = number;
-    this.triplet = triplet;
+    this.value = value;
   }
 
   get isDefault(): boolean {
@@ -268,7 +320,7 @@ export class ColorSpec {
       case ColorDepth.EIGHT_BIT:
         return [foreground ? "38" : "48", "5", `${this.number!}`];
       case ColorDepth.TRUECOLOR: {
-        const t = this.triplet!;
+        const t = this.value!;
         return [
           foreground ? "38" : "48",
           "2",
@@ -303,12 +355,12 @@ export class ColorSpec {
   }
 
   /**
-   * Resolves to an actual RGB triplet for any color type.
+   * Resolves to an actual RGB(A) value for any color type.
    */
   getTruecolor(theme?: TerminalTheme, foreground = true): ColorRgba {
     switch (this.type) {
       case ColorDepth.TRUECOLOR:
-        return this.triplet!;
+        return this.value!;
       case ColorDepth.EIGHT_BIT:
         return EIGHT_BIT_TABLE.get(this.number!);
       case ColorDepth.STANDARD: {
@@ -337,12 +389,12 @@ export class ColorSpec {
     return new ColorSpec(`color(${n})`, type, n);
   }
 
-  static fromTriplet(triplet: ColorRgba): ColorSpec {
-    return new ColorSpec(triplet.hex, ColorDepth.TRUECOLOR, undefined, triplet);
+  static fromRgba(value: ColorRgba): ColorSpec {
+    return new ColorSpec(value.hex, ColorDepth.TRUECOLOR, undefined, value);
   }
 
   static fromRgb(r: number, g: number, b: number): ColorSpec {
-    return ColorSpec.fromTriplet(new ColorRgba(r, g, b));
+    return ColorSpec.fromRgba(new ColorRgba(r, g, b));
   }
 
   /**
@@ -396,6 +448,7 @@ export class ColorSpec {
 // --- Parsing internals ---
 
 const HEX_RE = /^#([0-9a-f]{6})$/;
+const HEX_RGBA_RE = /^#([0-9a-f]{8})$/;
 const RGB_RE = /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/;
 const COLOR_NUMBER_RE = /^color\((\d{1,3})\)$/;
 
@@ -411,11 +464,15 @@ function parseSingle(key: string): ColorSpec {
     return new ColorSpec(key, type, namedIndex);
   }
 
-  // Hex
+  // Hex (8-char with alpha takes precedence over 6-char to avoid the 6-char
+  // regex matching a prefix of an 8-char string).
+  const hexRgbaMatch = HEX_RGBA_RE.exec(key);
+  if (hexRgbaMatch) {
+    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, parseRgbaHex(hexRgbaMatch[1]!));
+  }
   const hexMatch = HEX_RE.exec(key);
   if (hexMatch) {
-    const triplet = parseRgbHex(hexMatch[1]!);
-    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, triplet);
+    return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, parseRgbHex(hexMatch[1]!));
   }
 
   // rgb()
@@ -450,6 +507,14 @@ export function parseRgbHex(hex: string): ColorRgba {
   return new ColorRgba(r, g, b);
 }
 
+export function parseRgbaHex(hex: string): ColorRgba {
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const a = parseInt(hex.slice(6, 8), 16) / 255;
+  return new ColorRgba(r, g, b, a);
+}
+
 export function blendRgb(
   color1: ColorRgba,
   color2: ColorRgba,
@@ -459,6 +524,7 @@ export function blendRgb(
     Math.round(color1.red + (color2.red - color1.red) * crossFade),
     Math.round(color1.green + (color2.green - color1.green) * crossFade),
     Math.round(color1.blue + (color2.blue - color1.blue) * crossFade),
+    color1.alpha + (color2.alpha - color1.alpha) * crossFade,
   );
 }
 

@@ -4,7 +4,6 @@ import {
   ColorTable,
   ColorSpec,
   ColorDepth,
-  ColorDepth,
   ColorParseError,
   parseRgbHex,
   blendRgb,
@@ -42,19 +41,64 @@ describe("ColorRgba", () => {
     expect(new ColorRgba(255, 128, 0).rgb).toBe("rgb(255,128,0)");
   });
 
-  it(".normalized returns [0-1] tuple", () => {
-    const [r, g, b] = new ColorRgba(255, 0, 128).normalized;
+  it(".normalized returns [r, g, b, a] tuple", () => {
+    const [r, g, b, a] = new ColorRgba(255, 0, 128).normalized;
     expect(r).toBe(1);
     expect(g).toBe(0);
     expect(b).toBeCloseTo(128 / 255);
+    expect(a).toBe(1);
   });
 
-  it(".normalized of black is [0,0,0]", () => {
-    expect(new ColorRgba(0, 0, 0).normalized).toEqual([0, 0, 0]);
+  it(".normalized of opaque black is [0,0,0,1]", () => {
+    expect(new ColorRgba(0, 0, 0).normalized).toEqual([0, 0, 0, 1]);
   });
 
-  it(".normalized of white is [1,1,1]", () => {
-    expect(new ColorRgba(255, 255, 255).normalized).toEqual([1, 1, 1]);
+  it(".normalized of opaque white is [1,1,1,1]", () => {
+    expect(new ColorRgba(255, 255, 255).normalized).toEqual([1, 1, 1, 1]);
+  });
+
+  it("alpha defaults to 1 (fully opaque)", () => {
+    expect(new ColorRgba(10, 20, 30).alpha).toBe(1);
+  });
+
+  it("accepts explicit alpha in [0,1]", () => {
+    expect(new ColorRgba(10, 20, 30, 0.5).alpha).toBe(0.5);
+    expect(new ColorRgba(10, 20, 30, 0).alpha).toBe(0);
+  });
+
+  it(".hex emits 8-char form when alpha < 1", () => {
+    expect(new ColorRgba(255, 0, 102, 0.5).hex).toBe("#ff006680");
+  });
+
+  it(".rgb emits rgba(...) when alpha < 1", () => {
+    expect(new ColorRgba(255, 0, 102, 0.5).rgb).toBe("rgba(255,0,102,0.5)");
+  });
+
+  it("constructor throws on rgb out of [0,255]", () => {
+    expect(() => new ColorRgba(-1, 0, 0)).toThrow(RangeError);
+    expect(() => new ColorRgba(0, 256, 0)).toThrow(RangeError);
+    expect(() => new ColorRgba(0, 0, NaN)).toThrow(RangeError);
+  });
+
+  it("constructor throws on alpha out of [0,1]", () => {
+    expect(() => new ColorRgba(0, 0, 0, -0.1)).toThrow(RangeError);
+    expect(() => new ColorRgba(0, 0, 0, 1.5)).toThrow(RangeError);
+  });
+
+  it("compositeOver of opaque is identity", () => {
+    const c = new ColorRgba(100, 100, 100);
+    const bg = new ColorRgba(0, 0, 0);
+    expect(c.compositeOver(bg)).toBe(c);
+  });
+
+  it("compositeOver lerps per channel and produces alpha=1", () => {
+    const fg = new ColorRgba(255, 0, 0, 0.5);
+    const bg = new ColorRgba(0, 0, 0);
+    const out = fg.compositeOver(bg);
+    expect(out.red).toBe(128);
+    expect(out.green).toBe(0);
+    expect(out.blue).toBe(0);
+    expect(out.alpha).toBe(1);
   });
 });
 
@@ -129,7 +173,7 @@ describe("ColorSpec.parse()", () => {
   it('parses "#ff0000" as TRUECOLOR', () => {
     const c = ColorSpec.parse("#ff0000");
     expect(c.type).toBe(ColorDepth.TRUECOLOR);
-    expect(c.triplet).toEqual(new ColorRgba(255, 0, 0));
+    expect(c.value).toEqual(new ColorRgba(255, 0, 0));
   });
 
   it("throws ColorParseError on invalid color string", () => {
@@ -187,7 +231,7 @@ describe("ColorSpec factory methods", () => {
     expect(c.type).toBe(ColorDepth.DEFAULT);
     expect(c.name).toBe("default");
     expect(c.number).toBeUndefined();
-    expect(c.triplet).toBeUndefined();
+    expect(c.value).toBeUndefined();
   });
 
   it("ColorSpec.fromAnsi() creates STANDARD for n < 16", () => {
@@ -203,18 +247,18 @@ describe("ColorSpec factory methods", () => {
     expect(c.number).toBe(100);
   });
 
-  it("ColorSpec.fromTriplet() creates a TRUECOLOR with the given triplet", () => {
+  it("ColorSpec.fromRgba() creates a TRUECOLOR with the given triplet", () => {
     const t = new ColorRgba(10, 20, 30);
-    const c = ColorSpec.fromTriplet(t);
+    const c = ColorSpec.fromRgba(t);
     expect(c.type).toBe(ColorDepth.TRUECOLOR);
-    expect(c.triplet).toBe(t);
+    expect(c.value).toBe(t);
     expect(c.name).toBe(t.hex);
   });
 
   it("ColorSpec.fromRgb() creates a TRUECOLOR with r, g, b values", () => {
     const c = ColorSpec.fromRgb(100, 150, 200);
     expect(c.type).toBe(ColorDepth.TRUECOLOR);
-    expect(c.triplet).toEqual(new ColorRgba(100, 150, 200));
+    expect(c.value).toEqual(new ColorRgba(100, 150, 200));
   });
 });
 
@@ -394,7 +438,7 @@ describe("ColorSpec.downgrade()", () => {
 describe("ColorSpec.getTruecolor()", () => {
   it("TRUECOLOR returns its own triplet", () => {
     const t = new ColorRgba(10, 20, 30);
-    const c = ColorSpec.fromTriplet(t);
+    const c = ColorSpec.fromRgba(t);
     expect(c.getTruecolor()).toBe(t);
   });
 

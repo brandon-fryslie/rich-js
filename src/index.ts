@@ -9,6 +9,7 @@ export {
   ColorParseError,
   TerminalTheme,
   parseRgbHex,
+  parseRgbaHex,
   blendRgb,
   resolveColorSystem,
   detectColorSystem,
