@@ -255,7 +255,7 @@ export function resolveColorSystem(
   options?: DetectColorOptions,
 ): ColorDepth | null {
   if (spec === "auto") return detectColorSystem(options);
-  if (spec in STRING_TO_DEPTH) return STRING_TO_DEPTH[spec]!;
+  if (Object.hasOwn(STRING_TO_DEPTH, spec)) return STRING_TO_DEPTH[spec]!;
   throw new ColorParseError(
     `Unknown color depth spec: ${JSON.stringify(spec)} (expected "auto", "truecolor", "256", "ansi", or "none")`,
   );

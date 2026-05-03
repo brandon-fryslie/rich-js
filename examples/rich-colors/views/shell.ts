@@ -114,7 +114,7 @@ function buildInputField(state: AppState): RichText {
       // Show a large swatch of the base color
       const hex = colorToHex(state.baseColor);
       const swatch = new RichText(`  ${hex}  `, { end: "" });
-      swatch.stylize(new Style({ bgcolor: state.baseColor, color: Color.parse("white"), bold: true }));
+      swatch.stylize(new Style({ bgcolor: state.baseColor, color: ColorSpec.parse("white"), bold: true }));
       content.append(swatch);
       content.append("\n");
       content.append(new RichText(`Press / to change`).stylize("dim"));
@@ -151,7 +151,7 @@ function buildFilteredColorList(state: AppState): RichText {
     content.append(indicator);
     // Show a colored swatch block next to each color name
     try {
-      const c = Color.parse(name);
+      const c = ColorSpec.parse(name);
       const swatch = new RichText("  ", { end: "" });
       swatch.stylize(new Style({ bgcolor: c }));
       content.append(swatch);
@@ -298,7 +298,7 @@ function buildPaletteGridItem(state: AppState, mode: string): RichText {
     const color = palette[i]!;
     const hex = colorToHex(color);
     // Colored block using the palette color as background
-    const blockStyle = new Style({ bgcolor: color, color: Color.parse("white"), bold: true });
+    const blockStyle = new Style({ bgcolor: color, color: ColorSpec.parse("white"), bold: true });
     const block = new RichText(`  ${hex}  `, { end: "" });
     block.stylize(blockStyle);
     content.append(block);

@@ -113,7 +113,7 @@ export function generateComplementary(baseColor: ColorSpec): ColorSpec[] {
   const hsl = rgbToHsl(triplet.red, triplet.green, triplet.blue);
 
   const complement = hslToRgb((hsl.h + 180) % 360, hsl.s, hsl.l);
-  const complementColor = Color.fromRgb(complement.r, complement.g, complement.b);
+  const complementColor = ColorSpec.fromRgb(complement.r, complement.g, complement.b);
 
   return [baseColor, complementColor];
 }
@@ -130,7 +130,7 @@ export function generateAnalogous(baseColor: ColorSpec): ColorSpec[] {
   for (const offset of [-30, 0, 30]) {
     const h = (hsl.h + offset + 360) % 360;
     const rgb = hslToRgb(h, hsl.s, hsl.l);
-    colors.push(Color.fromRgb(rgb.r, rgb.g, rgb.b));
+    colors.push(ColorSpec.fromRgb(rgb.r, rgb.g, rgb.b));
   }
 
   return colors;
@@ -148,7 +148,7 @@ export function generateTriadic(baseColor: ColorSpec): ColorSpec[] {
   for (const offset of [0, 120, 240]) {
     const h = (hsl.h + offset) % 360;
     const rgb = hslToRgb(h, hsl.s, hsl.l);
-    colors.push(Color.fromRgb(rgb.r, rgb.g, rgb.b));
+    colors.push(ColorSpec.fromRgb(rgb.r, rgb.g, rgb.b));
   }
 
   return colors;
@@ -166,7 +166,7 @@ export function generateTetradic(baseColor: ColorSpec): ColorSpec[] {
   for (const offset of [0, 90, 180, 270]) {
     const h = (hsl.h + offset) % 360;
     const rgb = hslToRgb(h, hsl.s, hsl.l);
-    colors.push(Color.fromRgb(rgb.r, rgb.g, rgb.b));
+    colors.push(ColorSpec.fromRgb(rgb.r, rgb.g, rgb.b));
   }
 
   return colors;
@@ -186,7 +186,7 @@ export function generateMonochromatic(baseColor: ColorSpec, count: number = 5): 
   for (let i = 1; i <= count; i++) {
     const l = step * i;
     const rgb = hslToRgb(hsl.h, hsl.s, l);
-    colors.push(Color.fromRgb(rgb.r, rgb.g, rgb.b));
+    colors.push(ColorSpec.fromRgb(rgb.r, rgb.g, rgb.b));
   }
 
   return colors;
@@ -198,13 +198,13 @@ export function generateMonochromatic(baseColor: ColorSpec, count: number = 5): 
  */
 export function generateShades(baseColor: ColorSpec, count: number = 5): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
-  const blackTriplet = Color.fromRgb(0, 0, 0).getTruecolor();
+  const blackTriplet = ColorSpec.fromRgb(0, 0, 0).getTruecolor();
 
   const colors: ColorSpec[] = [];
   for (let i = 0; i < count; i++) {
     const ratio = (i + 1) / (count + 1);
     const blended = blendRgb(triplet, blackTriplet, ratio);
-    colors.push(Color.fromRgb(blended.red, blended.green, blended.blue));
+    colors.push(ColorSpec.fromRgb(blended.red, blended.green, blended.blue));
   }
 
   return colors;
@@ -216,13 +216,13 @@ export function generateShades(baseColor: ColorSpec, count: number = 5): ColorSp
  */
 export function generateTints(baseColor: ColorSpec, count: number = 5): ColorSpec[] {
   const triplet = baseColor.getTruecolor();
-  const whiteTriplet = Color.fromRgb(255, 255, 255).getTruecolor();
+  const whiteTriplet = ColorSpec.fromRgb(255, 255, 255).getTruecolor();
 
   const colors: ColorSpec[] = [];
   for (let i = 0; i < count; i++) {
     const ratio = (i + 1) / (count + 1);
     const blended = blendRgb(triplet, whiteTriplet, ratio);
-    colors.push(Color.fromRgb(blended.red, blended.green, blended.blue));
+    colors.push(ColorSpec.fromRgb(blended.red, blended.green, blended.blue));
   }
 
   return colors;

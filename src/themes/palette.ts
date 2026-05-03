@@ -8,7 +8,7 @@ import type { ColorRgba } from "../core/color.js";
  * `accent`, `error`, etc. — and are the foundation of the theming system.
  *
  * Storage is uniformly ColorRgba; consumers that load from hex JSON
- * parse to triplets at load time. Spec resolution (modifier, alpha,
+ * parse to ColorRgba at load time. Spec resolution (modifier, alpha,
  * auto-contrast) lives in PaletteResolver, not here.
  */
 export class Palette {
