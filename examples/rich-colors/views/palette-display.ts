@@ -1,4 +1,4 @@
-import { Color, RichText, Style, Renderable, Segment, RenderOptions } from "../../../src/index.js";
+import { ColorSpec, RichText, Style, Renderable, Segment, RenderOptions } from "../../../src/index.js";
 
 /**
  * Renderable for displaying a single color swatch.
@@ -8,7 +8,7 @@ import { Color, RichText, Style, Renderable, Segment, RenderOptions } from "../.
  */
 export class ColorSwatch implements Renderable {
   constructor(
-    private color: Color | null,
+    private color: ColorSpec | null,
     private width: number = 10,
     private showLabel: boolean = true
   ) {}
@@ -47,7 +47,7 @@ export class ColorSwatch implements Renderable {
  */
 export class PaletteGrid implements Renderable {
   constructor(
-    private colors: Color[],
+    private colors: ColorSpec[],
     private selectedIndex: number = 0,
     private swatchWidth: number = 10
   ) {}
@@ -64,11 +64,11 @@ export class PaletteGrid implements Renderable {
       }
       yield* indicator.render(options);
 
-      // Color swatch
+      // ColorSpec swatch
       const swatch = new ColorSwatch(color, this.swatchWidth, false);
       yield* swatch.render(options);
 
-      // Color information
+      // ColorSpec information
       const triplet = color.getTruecolor();
       const info = new RichText(` ${triplet.hex}`);
       yield* info.render(options);

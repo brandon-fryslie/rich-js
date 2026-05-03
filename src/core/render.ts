@@ -7,7 +7,7 @@
  * Note on `colorSystem: "auto"`: the `"auto"` spec resolves via
  * `detectColorSystem`, which reads `process.env` and `process.stdout?.isTTY`
  * by default. Callers that want a fully deterministic render must either pass
- * an explicit `ColorSystem` enum / non-`"auto"` spec, or supply `env` and
+ * an explicit `ColorDepth` enum / non-`"auto"` spec, or supply `env` and
  * `isTTY` in the options so detection does not consult ambient process state.
  *
  * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentsToString`
@@ -20,8 +20,8 @@
  * `Style.render` skip codes — not a separate code path.
  */
 
-import { ColorSystem, resolveColorSystem } from "./color.js";
-import type { ColorSystemSpec, DetectColorOptions } from "./color.js";
+import { ColorDepth, resolveColorSystem } from "./color.js";
+import type { DetectColorOptions } from "./color.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
@@ -29,11 +29,11 @@ export interface RenderToStringOptions {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
-   * Color encoding to emit. Accepts a `ColorSystemSpec` string (`"auto"`,
-   * `"truecolor"`, `"256"`, `"ansi"`, `"none"`), a `ColorSystem` enum value,
-   * or `null` to strip all color codes. Default truecolor.
+   * Color encoding to emit. Accepts a string spec (`"auto"`, `"truecolor"`,
+   * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value, or `null` to
+   * strip all color codes. Default truecolor.
    */
-  colorSystem?: ColorSystemSpec | ColorSystem | null;
+  colorSystem?: string | ColorDepth | null;
   /**
    * Environment to consult when `colorSystem` is `"auto"`. Defaults to
    * `process.env`. Pass an explicit value to keep rendering deterministic.
@@ -53,7 +53,7 @@ const DEFAULT_WIDTH = 80;
 
 export function segmentToString(
   segment: Segment,
-  colorSystem: ColorSystem | null,
+  colorSystem: ColorDepth | null,
 ): string {
   if (segment.isControl) return "";
   if (!segment.style || colorSystem === null) return segment.text;
@@ -62,7 +62,7 @@ export function segmentToString(
 
 export function segmentsToString(
   segments: Iterable<Segment>,
-  colorSystem: ColorSystem | null,
+  colorSystem: ColorDepth | null,
 ): string {
   let out = "";
   for (const s of segments) out += segmentToString(s, colorSystem);
@@ -90,7 +90,7 @@ export function renderToString(
   const colorSystem = options?.noColor
     ? null
     : rawSpec === undefined
-      ? ColorSystem.TRUECOLOR
+      ? ColorDepth.TRUECOLOR
       : typeof rawSpec === "string"
         ? resolveColorSystem(rawSpec, detectOptions)
         : rawSpec;

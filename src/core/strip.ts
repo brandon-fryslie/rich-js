@@ -19,7 +19,7 @@
 
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE } from "./style.js";
-import { Color, blendRgb } from "./color.js";
+import { ColorSpec, blendRgb } from "./color.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
@@ -357,8 +357,8 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
     for (let i = 0; i < steps; i++) {
       const tLeft = (2 * i + 0.5) / samples;
       const tRight = (2 * i + 1.5) / samples;
-      const fg = Color.fromTriplet(blendRgb(lTrip, rTrip, tLeft));
-      const bg = Color.fromTriplet(blendRgb(lTrip, rTrip, tRight));
+      const fg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tLeft));
+      const bg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tRight));
       segments.push(new Segment(HALF_BLOCK, new Style({ color: fg, bgcolor: bg })));
     }
     return {

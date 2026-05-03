@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderToString } from "../../src/core/render.js";
-import { ColorSystem } from "../../src/core/color.js";
+import { ColorDepth } from "../../src/core/color.js";
 import { RichText } from "../../src/core/text.js";
 import { Style } from "../../src/core/style.js";
 import { Strip, StripCell, PowerlineJoiner } from "../../src/core/strip.js";
@@ -12,7 +12,7 @@ import { Panel } from "../../src/renderables/panel.js";
 describe("renderToString", () => {
   it("emits ANSI-encoded text for a styled RichText (standard color)", () => {
     const text = new RichText("hi", { style: Style.parse("red"), end: "" });
-    const out = renderToString(text, { colorSystem: ColorSystem.STANDARD });
+    const out = renderToString(text, { colorSystem: ColorDepth.STANDARD });
     expect(out).toContain("hi");
     expect(out).toMatch(/\x1b\[[0-9;]*31[0-9;]*m/); // SGR 31 = red
     expect(out).toMatch(/\x1b\[0m/); // reset
@@ -52,7 +52,7 @@ describe("renderToString", () => {
       ],
       new PowerlineJoiner({ glyph: ">" }),
     );
-    const out = renderToString(strip, { colorSystem: ColorSystem.TRUECOLOR });
+    const out = renderToString(strip, { colorSystem: ColorDepth.TRUECOLOR });
     expect(out).toContain(" main ");
     expect(out).toContain(" foo ");
     expect(out).toContain(">");

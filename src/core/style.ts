@@ -3,8 +3,9 @@
  */
 
 import {
-  Color,
-  ColorSystem,
+  ColorSpec,
+  ColorDepth,
+  DEFAULT_TERMINAL_THEME,
 } from "./color.js";
 import type { TerminalTheme } from "./color.js";
 
@@ -59,8 +60,8 @@ const SHORT_ALIASES: Record<string, AttributeName> = {
 // --- Types ---
 
 export interface StyleOptions {
-  color?: string | Color;
-  bgcolor?: string | Color;
+  color?: string | ColorSpec;
+  bgcolor?: string | ColorSpec;
   bold?: boolean;
   dim?: boolean;
   italic?: boolean;
@@ -93,8 +94,8 @@ let nextLinkId = 1;
 // --- Style ---
 
 export class Style {
-  readonly color: Color | undefined;
-  readonly bgcolor: Color | undefined;
+  readonly color: ColorSpec | undefined;
+  readonly bgcolor: ColorSpec | undefined;
   readonly bold: boolean | undefined;
   readonly dim: boolean | undefined;
   readonly italic: boolean | undefined;
@@ -282,25 +283,29 @@ export class Style {
   /**
    * Render text with this style's ANSI escape codes.
    */
-  render(text: string, colorSystem?: ColorSystem): string {
+  render(text: string, colorSystem?: ColorDepth): string {
     if (text.length === 0) return "";
     if (this.isNull) return text;
 
     const attrs: string[] = [];
 
-    // Colors
-    if (this.color) {
+    // [LAW:dataflow-not-control-flow] Always resolve a substrate and flatten
+    // alpha before downgrade. Opaque colors short-circuit inside compositeOver,
+    // so the same code path runs every render — the alpha value is the data,
+    // not a branch.
+    const surface = DEFAULT_TERMINAL_THEME.backgroundColor;
+    const bgFlat = this.bgcolor?.flattenAlpha(surface);
+    const fgSubstrate = bgFlat?.getTruecolor(undefined, false) ?? surface;
+    const fgFlat = this.color?.flattenAlpha(fgSubstrate);
+
+    if (fgFlat) {
       const c =
-        colorSystem !== undefined
-          ? this.color.downgrade(colorSystem)
-          : this.color;
+        colorSystem !== undefined ? fgFlat.downgrade(colorSystem) : fgFlat;
       attrs.push(...c.getAnsiCodes(true));
     }
-    if (this.bgcolor) {
+    if (bgFlat) {
       const c =
-        colorSystem !== undefined
-          ? this.bgcolor.downgrade(colorSystem)
-          : this.bgcolor;
+        colorSystem !== undefined ? bgFlat.downgrade(colorSystem) : bgFlat;
       attrs.push(...c.getAnsiCodes(false));
     }
 
@@ -387,7 +392,7 @@ export class Style {
     return NULL_STYLE;
   }
 
-  static fromColor(color?: Color, bgcolor?: Color): Style {
+  static fromColor(color?: ColorSpec, bgcolor?: ColorSpec): Style {
     return new Style({ color, bgcolor });
   }
 
@@ -545,7 +550,7 @@ function parseStyleDefinition(definition: string): Style {
         throw new StyleSyntaxError(`Expected color after "on" in style definition`);
       }
       try {
-        opts.bgcolor = Color.parse(next);
+        opts.bgcolor = ColorSpec.parse(next);
       } catch {
         throw new StyleSyntaxError(`Invalid background color: "${next}"`);
       }
@@ -574,7 +579,7 @@ function parseStyleDefinition(definition: string): Style {
 
     // Must be a color
     try {
-      opts.color = Color.parse(token);
+      opts.color = ColorSpec.parse(token);
     } catch {
       throw new StyleSyntaxError(`Invalid style definition: "${token}"`);
     }
@@ -584,10 +589,10 @@ function parseStyleDefinition(definition: string): Style {
   return new Style(opts);
 }
 
-function resolveColor(c: string | Color | undefined): Color | undefined {
+function resolveColor(c: string | ColorSpec | undefined): ColorSpec | undefined {
   if (c === undefined) return undefined;
-  if (c instanceof Color) return c;
-  return Color.parse(c);
+  if (c instanceof ColorSpec) return c;
+  return ColorSpec.parse(c);
 }
 
 // --- DEFAULT_STYLES ---
@@ -598,8 +603,8 @@ let defaultStylesReady = false;
 export const DEFAULT_STYLES: Record<string, Style> = {
   none: NULL_STYLE,
   reset: new Style({
-    color: Color.default(),
-    bgcolor: Color.default(),
+    color: ColorSpec.default(),
+    bgcolor: ColorSpec.default(),
     bold: false,
     dim: false,
     italic: false,

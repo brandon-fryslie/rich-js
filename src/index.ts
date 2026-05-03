@@ -2,14 +2,14 @@
 export { cellLen, setCellSize, splitText, chopCells } from "./core/cells.js";
 
 export {
-  ColorTriplet,
+  ColorRgba,
   ColorTable,
-  ColorType,
-  ColorSystem,
-  Color,
+  ColorDepth,
+  ColorSpec,
   ColorParseError,
   TerminalTheme,
   parseRgbHex,
+  parseRgbaHex,
   blendRgb,
   resolveColorSystem,
   detectColorSystem,
@@ -21,7 +21,7 @@ export {
   SVG_EXPORT_THEME,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
-export type { ColorSystemSpec, DetectColorOptions } from "./core/color.js";
+export type { DetectColorOptions } from "./core/color.js";
 
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";

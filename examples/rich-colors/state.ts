@@ -1,4 +1,4 @@
-import { Color, TerminalTheme, DEFAULT_TERMINAL_THEME, MONOKAI, SVG_EXPORT_THEME, ANSI_COLOR_NAMES } from "../../src/index.js";
+import { ColorSpec, TerminalTheme, DEFAULT_TERMINAL_THEME, MONOKAI, SVG_EXPORT_THEME, ANSI_COLOR_NAMES } from "../../src/index.js";
 import { generatePalette } from "./color-math.js";
 
 /**
@@ -8,7 +8,7 @@ import { generatePalette } from "./color-math.js";
  * (generated palettes) is computed on-demand in reducers.
  *
  * [LAW:dataflow-not-control-flow] Every frame executes the same render and
- * reduce operations. Variability lives in the data (null vs Color, different
+ * reduce operations. Variability lives in the data (null vs ColorSpec, different
  * palette modes), never in skipped operations.
  */
 
@@ -22,11 +22,11 @@ export interface AppState {
   readonly inputFilter: string;                    // what user typed for filtering
   readonly filteredColorNames: string[];           // matching color names
   readonly filteredColorIndex: number;             // current selection in filtered list
-  readonly baseColor: Color | null;                // parsed Color, null if none selected
+  readonly baseColor: ColorSpec | null;                // parsed ColorSpec, null if none selected
   readonly parseError: string | null;              // error message if parse fails
 
   // Palette generation - store all 8 modes simultaneously
-  readonly allPalettes: Record<PaletteMode, Color[] | null>;  // all 8 palette modes
+  readonly allPalettes: Record<PaletteMode, ColorSpec[] | null>;  // all 8 palette modes
   readonly selectedPaletteMode: PaletteMode;      // which mode is selected (for expansion)
 
   // Display options
@@ -217,7 +217,7 @@ function reduceMoveForward(state: AppState, delta: 1 | -1): AppState {
 /**
  * Parse a color string using rich-js Color.parse().
  */
-function parseColor(input: string): Color | null {
+function parseColor(input: string): ColorSpec | null {
   if (!input || input.trim() === "") return null;
 
   try {
@@ -230,7 +230,7 @@ function parseColor(input: string): Color | null {
 /**
  * Generate all 8 palettes for a given base color.
  */
-function computeAllPalettes(baseColor: Color | null): Record<PaletteMode, Color[] | null> {
+function computeAllPalettes(baseColor: ColorSpec | null): Record<PaletteMode, ColorSpec[] | null> {
   if (!baseColor) {
     return {
       complementary: null,
@@ -259,7 +259,7 @@ function computeAllPalettes(baseColor: Color | null): Record<PaletteMode, Color[
 /**
  * Get the currently selected palette colors after downgrading.
  */
-export function getSelectedPaletteColors(state: AppState): Color[] {
+export function getSelectedPaletteColors(state: AppState): ColorSpec[] {
   const palette = state.allPalettes[state.selectedPaletteMode];
   if (!palette) return [];
 
@@ -276,16 +276,16 @@ export function getPaletteNames(): PaletteMode[] {
 /**
  * Downgrade a color to the target color system.
  */
-function downgradeColor(color: Color, _system: ColorSystemMode): Color {
+function downgradeColor(color: ColorSpec, _system: ColorSystemMode): ColorSpec {
   // For now, all color systems return truecolor (which the terminal will downgrade if needed).
-  // TODO: Implement proper downgrading once ColorSystem enum is available in public API
+  // TODO: Implement proper downgrading once ColorDepth enum is available in public API
   return color;
 }
 
 /**
  * Format a color for display in hex format.
  */
-export function colorToHex(color: Color): string {
+export function colorToHex(color: ColorSpec): string {
   const triplet = color.getTruecolor();
   return triplet.hex;
 }

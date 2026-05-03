@@ -29,8 +29,8 @@ import {
   StyleStack, Theme, DEFAULT_STYLES, Style, NULL_STYLE,
   StyleSyntaxError, MarkupError,
   // Color
-  STANDARD_PALETTE, WINDOWS_PALETTE,
-  ColorParseError, ColorType, Color, parseRgbHex,
+  STANDARD_TABLE, WINDOWS_TABLE,
+  ColorParseError, ColorDepth, ColorSpec, parseRgbHex,
   // Cells
   cellLen, setCellSize, splitText, chopCells,
   // Measurement
@@ -135,22 +135,22 @@ export class CoverageRenderable implements Renderable {
     // NULL_STYLE
     items.push(new RichText(`NULL_STYLE.isNull: ${String(NULL_STYLE.isNull)}`, { end: "" }));
 
-    // ── 7. Palette + parseRgbHex + ColorType + ColorParseError ───────
+    // ── 7. Palette + parseRgbHex + ColorDepth + ColorParseError ───────
     items.push(new Rule("Color / Palette", { style: "bold cyan" }));
     const rgb = parseRgbHex("ff6600");
     items.push(new RichText(`parseRgbHex("ff6600") = ${rgb.hex} (r=${rgb.red} g=${rgb.green} b=${rgb.blue})`, { end: "" }));
     items.push(new RichText(
-      `STANDARD_PALETTE: ${STANDARD_PALETTE.size} colors, WINDOWS_PALETTE: ${WINDOWS_PALETTE.size} colors`,
+      `STANDARD_TABLE: ${STANDARD_TABLE.size} colors, WINDOWS_TABLE: ${WINDOWS_TABLE.size} colors`,
       { end: "" },
     ));
-    try { Color.parse("not_a_color_xyz"); } catch (e) {
+    try { ColorSpec.parse("not_a_color_xyz"); } catch (e) {
       items.push(new RichText(
         `ColorParseError: ${e instanceof ColorParseError} — ${(e as Error).message.slice(0, 60)}`,
         { end: "" },
       ));
     }
     items.push(new RichText(
-      `ColorType: DEFAULT=${ColorType.DEFAULT} STANDARD=${ColorType.STANDARD} EIGHT_BIT=${ColorType.EIGHT_BIT} TRUECOLOR=${ColorType.TRUECOLOR}`,
+      `ColorDepth: DEFAULT=${ColorDepth.DEFAULT} STANDARD=${ColorDepth.STANDARD} EIGHT_BIT=${ColorDepth.EIGHT_BIT} TRUECOLOR=${ColorDepth.TRUECOLOR}`,
       { end: "" },
     ));
 
