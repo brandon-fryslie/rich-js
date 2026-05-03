@@ -1,4 +1,4 @@
-import { ColorTriplet, blendRgb } from "../core/color.js";
+import { ColorRgba, blendRgb } from "../core/color.js";
 
 const LEVEL_STEP = 0.1;
 
@@ -8,7 +8,7 @@ interface Hsl {
   l: number;
 }
 
-function rgbToHsl(c: ColorTriplet): Hsl {
+function rgbToHsl(c: ColorRgba): Hsl {
   const r = c.red / 255;
   const g = c.green / 255;
   const b = c.blue / 255;
@@ -30,16 +30,16 @@ function rgbToHsl(c: ColorTriplet): Hsl {
 
 function clampChannel(v: number): number {
   // Float HSL math + Math.round can land at -1 or 256 at the boundaries; clamp
-  // so an invalid ColorTriplet never escapes this function.
+  // so an invalid ColorRgba never escapes this function.
   const r = Math.round(v);
   return r < 0 ? 0 : r > 255 ? 255 : r;
 }
 
-function hslToRgb(hsl: Hsl): ColorTriplet {
+function hslToRgb(hsl: Hsl): ColorRgba {
   const { h, s, l } = hsl;
   if (s === 0) {
     const v = clampChannel(l * 255);
-    return new ColorTriplet(v, v, v);
+    return new ColorRgba(v, v, v);
   }
   const c = (1 - Math.abs(2 * l - 1)) * s;
   const hp = h / 60;
@@ -54,7 +54,7 @@ function hslToRgb(hsl: Hsl): ColorTriplet {
   else if (hp < 5) [r, g, b] = [x, 0, c];
   else [r, g, b] = [c, 0, x];
   const m = l - c / 2;
-  return new ColorTriplet(
+  return new ColorRgba(
     clampChannel((r + m) * 255),
     clampChannel((g + m) * 255),
     clampChannel((b + m) * 255),
@@ -70,7 +70,7 @@ function clamp01(v: number): number {
  * Negative levels lighten. Level 0 returns an equivalent triplet (after the
  * RGB↔HSL roundtrip; values may differ by ±1 due to rounding).
  */
-export function darken(color: ColorTriplet, levels: number): ColorTriplet {
+export function darken(color: ColorRgba, levels: number): ColorRgba {
   const hsl = rgbToHsl(color);
   hsl.l = clamp01(hsl.l - LEVEL_STEP * levels);
   return hslToRgb(hsl);
@@ -79,7 +79,7 @@ export function darken(color: ColorTriplet, levels: number): ColorTriplet {
 /**
  * Lighten a color by N levels. Equivalent to `darken(color, -levels)`.
  */
-export function lighten(color: ColorTriplet, levels: number): ColorTriplet {
+export function lighten(color: ColorRgba, levels: number): ColorRgba {
   return darken(color, -levels);
 }
 
@@ -88,10 +88,10 @@ export function lighten(color: ColorTriplet, levels: number): ColorTriplet {
  * at alpha=1 returns fg.
  */
 export function alphaBlend(
-  fg: ColorTriplet,
-  bg: ColorTriplet,
+  fg: ColorRgba,
+  bg: ColorRgba,
   alpha: number,
-): ColorTriplet {
+): ColorRgba {
   return blendRgb(bg, fg, clamp01(alpha));
 }
 
@@ -100,14 +100,14 @@ export function alphaBlend(
  * WCAG relative-luminance threshold of 0.179 (the perceptually correct cutoff
  * where black and white are equally readable).
  */
-export function contrastFor(bg: ColorTriplet): ColorTriplet {
+export function contrastFor(bg: ColorRgba): ColorRgba {
   const lum = relativeLuminance(bg);
   return lum > 0.179
-    ? new ColorTriplet(0, 0, 0)
-    : new ColorTriplet(255, 255, 255);
+    ? new ColorRgba(0, 0, 0)
+    : new ColorRgba(255, 255, 255);
 }
 
-function relativeLuminance(c: ColorTriplet): number {
+function relativeLuminance(c: ColorRgba): number {
   const ch = (v: number): number => {
     const x = v / 255;
     return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);

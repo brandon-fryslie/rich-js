@@ -5,8 +5,7 @@
 import { writeFileSync } from "fs";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme } from "./style.js";
-import { ColorSystem, resolveColorSystem } from "./color.js";
-import type { ColorSystemSpec } from "./color.js";
+import { ColorDepth, resolveColorSystem } from "./color.js";
 import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
 import { ReprHighlighter } from "./highlighter.js";
@@ -23,11 +22,11 @@ import { isRenderable } from "./protocol.js";
 
 export interface ConsoleOptions {
   /**
-   * Color encoding. Accepts a `ColorSystemSpec` string (`"auto"`, `"truecolor"`,
-   * `"256"`, `"ansi"`, `"none"`), a `ColorSystem` enum value (use this for
-   * `WINDOWS`, which has no string spec), or `null` for no color. Default `"auto"`.
+   * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
+   * `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for `WINDOWS`,
+   * which has no string spec), or `null` for no color. Default `"auto"`.
    */
-  colorSystem?: ColorSystemSpec | ColorSystem | null;
+  colorSystem?: string | ColorDepth | null;
   width?: number;
   height?: number;
   style?: string | Style;
@@ -66,7 +65,7 @@ function resolveStyle(style: string | Style | undefined): Style {
   return style;
 }
 
-// [LAW:single-enforcer] Color spec → ColorSystem resolution lives in
+// [LAW:single-enforcer] Color spec → ColorDepth resolution lives in
 // `resolveColorSystem`. This helper just normalizes the option shape (string |
 // enum | null) into the cached `_colorSystem` field. WINDOWS has no string
 // spec; callers reach it via the enum directly.
@@ -77,9 +76,9 @@ function resolveStyle(style: string | Style | undefined): Style {
 // so `"auto"` detection doesn't accidentally consult `process.stdout.isTTY`
 // when the console is bound to a different stream.
 function resolveOptionColorSystem(
-  spec: ColorSystemSpec | ColorSystem | null | undefined,
+  spec: string | ColorDepth | null | undefined,
   isTTY: boolean,
-): ColorSystem | null {
+): ColorDepth | null {
   if (spec === null) return null;
   if (spec === undefined) return resolveColorSystem("auto", { isTTY });
   if (typeof spec === "string") return resolveColorSystem(spec, { isTTY });
@@ -111,7 +110,7 @@ function getTerminalSize(): { width: number; height: number } {
 // --- Console ---
 
 export class Console {
-  private _colorSystem: ColorSystem | null;
+  private _colorSystem: ColorDepth | null;
   private _width: number | undefined;
   private _height: number | undefined;
   private _style: Style;
@@ -184,7 +183,7 @@ export class Console {
     return this.isTerminal;
   }
 
-  get colorSystem(): ColorSystem | null {
+  get colorSystem(): ColorDepth | null {
     return this._colorSystem;
   }
 

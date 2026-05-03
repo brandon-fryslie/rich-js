@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Console } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
-import { ColorSystem } from "../../src/core/color.js";
+import { ColorDepth } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -58,22 +58,22 @@ describe("Console construction", () => {
 
   it("colorSystem can be set to ansi", () => {
     const c = new Console({ colorSystem: "ansi" });
-    expect(c.colorSystem).toBe(ColorSystem.STANDARD);
+    expect(c.colorSystem).toBe(ColorDepth.STANDARD);
   });
 
   it("colorSystem can be set to 256", () => {
     const c = new Console({ colorSystem: "256" });
-    expect(c.colorSystem).toBe(ColorSystem.EIGHT_BIT);
+    expect(c.colorSystem).toBe(ColorDepth.EIGHT_BIT);
   });
 
   it("colorSystem can be set to truecolor", () => {
     const c = new Console({ colorSystem: "truecolor" });
-    expect(c.colorSystem).toBe(ColorSystem.TRUECOLOR);
+    expect(c.colorSystem).toBe(ColorDepth.TRUECOLOR);
   });
 
-  it("colorSystem accepts ColorSystem enum directly (e.g. WINDOWS)", () => {
-    const c = new Console({ colorSystem: ColorSystem.WINDOWS });
-    expect(c.colorSystem).toBe(ColorSystem.WINDOWS);
+  it("colorSystem accepts ColorDepth enum directly (e.g. WINDOWS)", () => {
+    const c = new Console({ colorSystem: ColorDepth.WINDOWS });
+    expect(c.colorSystem).toBe(ColorDepth.WINDOWS);
   });
 
   it("markup defaults to true", () => {
@@ -163,7 +163,7 @@ describe("Console auto-detected attributes", () => {
 
   it(".colorSystem reflects configured value", () => {
     const c = new Console({ colorSystem: "truecolor" });
-    expect(c.colorSystem).toBe(ColorSystem.TRUECOLOR);
+    expect(c.colorSystem).toBe(ColorDepth.TRUECOLOR);
   });
 
   it(".colorSystem is null when set to null", () => {
@@ -185,22 +185,22 @@ describe("Console color systems", () => {
 
   it("ansi maps to STANDARD color system", () => {
     const c = new Console({ colorSystem: "ansi" });
-    expect(c.colorSystem).toBe(ColorSystem.STANDARD);
+    expect(c.colorSystem).toBe(ColorDepth.STANDARD);
   });
 
   it("256 maps to EIGHT_BIT color system", () => {
     const c = new Console({ colorSystem: "256" });
-    expect(c.colorSystem).toBe(ColorSystem.EIGHT_BIT);
+    expect(c.colorSystem).toBe(ColorDepth.EIGHT_BIT);
   });
 
   it("truecolor maps to TRUECOLOR color system", () => {
     const c = new Console({ colorSystem: "truecolor" });
-    expect(c.colorSystem).toBe(ColorSystem.TRUECOLOR);
+    expect(c.colorSystem).toBe(ColorDepth.TRUECOLOR);
   });
 
-  it("ColorSystem.WINDOWS enum maps through directly", () => {
-    const c = new Console({ colorSystem: ColorSystem.WINDOWS });
-    expect(c.colorSystem).toBe(ColorSystem.WINDOWS);
+  it("ColorDepth.WINDOWS enum maps through directly", () => {
+    const c = new Console({ colorSystem: ColorDepth.WINDOWS });
+    expect(c.colorSystem).toBe(ColorDepth.WINDOWS);
   });
 });
 

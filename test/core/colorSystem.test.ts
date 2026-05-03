@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  ColorSystem,
+  ColorDepth,
   resolveColorSystem,
   detectColorSystem,
 } from "../../src/core/color.js";
@@ -9,22 +9,22 @@ import { RichText } from "../../src/core/text.js";
 
 const EMPTY: NodeJS.ProcessEnv = {};
 
-describe("resolveColorSystem (string spec → ColorSystem)", () => {
+describe("resolveColorSystem (string spec → ColorDepth)", () => {
   it("maps 'truecolor' → TRUECOLOR", () => {
     expect(resolveColorSystem("truecolor", { env: EMPTY, isTTY: true })).toBe(
-      ColorSystem.TRUECOLOR,
+      ColorDepth.TRUECOLOR,
     );
   });
 
   it("maps '256' → EIGHT_BIT", () => {
     expect(resolveColorSystem("256", { env: EMPTY, isTTY: true })).toBe(
-      ColorSystem.EIGHT_BIT,
+      ColorDepth.EIGHT_BIT,
     );
   });
 
   it("maps 'ansi' → STANDARD", () => {
     expect(resolveColorSystem("ansi", { env: EMPTY, isTTY: true })).toBe(
-      ColorSystem.STANDARD,
+      ColorDepth.STANDARD,
     );
   });
 
@@ -35,7 +35,7 @@ describe("resolveColorSystem (string spec → ColorSystem)", () => {
   it("'auto' delegates to detectColorSystem", () => {
     const env: NodeJS.ProcessEnv = { COLORTERM: "truecolor" };
     expect(resolveColorSystem("auto", { env, isTTY: true })).toBe(
-      ColorSystem.TRUECOLOR,
+      ColorDepth.TRUECOLOR,
     );
   });
 
@@ -43,12 +43,12 @@ describe("resolveColorSystem (string spec → ColorSystem)", () => {
     const env: NodeJS.ProcessEnv = { NO_COLOR: "1" };
     // Even with NO_COLOR set, explicit "truecolor" overrides — caller is boss.
     expect(resolveColorSystem("truecolor", { env, isTTY: true })).toBe(
-      ColorSystem.TRUECOLOR,
+      ColorDepth.TRUECOLOR,
     );
   });
 });
 
-describe("detectColorSystem (env + TTY → ColorSystem)", () => {
+describe("detectColorSystem (env + TTY → ColorDepth)", () => {
   it("NO_COLOR with any non-empty value disables color", () => {
     expect(detectColorSystem({ env: { NO_COLOR: "1" }, isTTY: true })).toBe(
       null,
@@ -67,31 +67,31 @@ describe("detectColorSystem (env + TTY → ColorSystem)", () => {
         env: { NO_COLOR: "", COLORTERM: "truecolor" },
         isTTY: true,
       }),
-    ).toBe(ColorSystem.TRUECOLOR);
+    ).toBe(ColorDepth.TRUECOLOR);
   });
 
   it("FORCE_COLOR=3 → TRUECOLOR (overrides isTTY=false)", () => {
     expect(
       detectColorSystem({ env: { FORCE_COLOR: "3" }, isTTY: false }),
-    ).toBe(ColorSystem.TRUECOLOR);
+    ).toBe(ColorDepth.TRUECOLOR);
   });
 
   it("FORCE_COLOR=2 → EIGHT_BIT", () => {
     expect(detectColorSystem({ env: { FORCE_COLOR: "2" }, isTTY: true })).toBe(
-      ColorSystem.EIGHT_BIT,
+      ColorDepth.EIGHT_BIT,
     );
   });
 
   it("FORCE_COLOR=1 → STANDARD", () => {
     expect(detectColorSystem({ env: { FORCE_COLOR: "1" }, isTTY: true })).toBe(
-      ColorSystem.STANDARD,
+      ColorDepth.STANDARD,
     );
   });
 
   it("FORCE_COLOR=true → STANDARD", () => {
     expect(
       detectColorSystem({ env: { FORCE_COLOR: "true" }, isTTY: false }),
-    ).toBe(ColorSystem.STANDARD);
+    ).toBe(ColorDepth.STANDARD);
   });
 
   it("FORCE_COLOR=0 → null", () => {
@@ -130,19 +130,19 @@ describe("detectColorSystem (env + TTY → ColorSystem)", () => {
   it("COLORTERM=truecolor → TRUECOLOR", () => {
     expect(
       detectColorSystem({ env: { COLORTERM: "truecolor" }, isTTY: true }),
-    ).toBe(ColorSystem.TRUECOLOR);
+    ).toBe(ColorDepth.TRUECOLOR);
   });
 
   it("COLORTERM=24bit → TRUECOLOR", () => {
     expect(
       detectColorSystem({ env: { COLORTERM: "24bit" }, isTTY: true }),
-    ).toBe(ColorSystem.TRUECOLOR);
+    ).toBe(ColorDepth.TRUECOLOR);
   });
 
   it("known truecolor terminal (xterm-kitty) → TRUECOLOR", () => {
     expect(
       detectColorSystem({ env: { TERM: "xterm-kitty" }, isTTY: true }),
-    ).toBe(ColorSystem.TRUECOLOR);
+    ).toBe(ColorDepth.TRUECOLOR);
   });
 
   it("TERM_PROGRAM=iTerm.app → TRUECOLOR", () => {
@@ -151,7 +151,7 @@ describe("detectColorSystem (env + TTY → ColorSystem)", () => {
         env: { TERM_PROGRAM: "iTerm.app", TERM: "xterm" },
         isTTY: true,
       }),
-    ).toBe(ColorSystem.TRUECOLOR);
+    ).toBe(ColorDepth.TRUECOLOR);
   });
 
   it("TERM_PROGRAM=Apple_Terminal → EIGHT_BIT", () => {
@@ -160,30 +160,30 @@ describe("detectColorSystem (env + TTY → ColorSystem)", () => {
         env: { TERM_PROGRAM: "Apple_Terminal", TERM: "xterm" },
         isTTY: true,
       }),
-    ).toBe(ColorSystem.EIGHT_BIT);
+    ).toBe(ColorDepth.EIGHT_BIT);
   });
 
   it("TERM matches -256color → EIGHT_BIT", () => {
     expect(
       detectColorSystem({ env: { TERM: "xterm-256color" }, isTTY: true }),
-    ).toBe(ColorSystem.EIGHT_BIT);
+    ).toBe(ColorDepth.EIGHT_BIT);
   });
 
   it("TERM matches generic xterm → STANDARD", () => {
     expect(detectColorSystem({ env: { TERM: "xterm" }, isTTY: true })).toBe(
-      ColorSystem.STANDARD,
+      ColorDepth.STANDARD,
     );
   });
 
   it("unknown TERM with isTTY=true → STANDARD (safe baseline)", () => {
     expect(
       detectColorSystem({ env: { TERM: "weird-thing-9000" }, isTTY: true }),
-    ).toBe(ColorSystem.STANDARD);
+    ).toBe(ColorDepth.STANDARD);
   });
 
   it("empty env, isTTY=true → STANDARD baseline", () => {
     expect(detectColorSystem({ env: EMPTY, isTTY: true })).toBe(
-      ColorSystem.STANDARD,
+      ColorDepth.STANDARD,
     );
   });
 
@@ -221,9 +221,9 @@ describe("renderToString accepts ColorSystemSpec strings", () => {
     expect(typeof out).toBe("string");
   });
 
-  it("colorSystem: ColorSystem enum still works", () => {
+  it("colorSystem: ColorDepth enum still works", () => {
     const out = renderToString(text, {
-      colorSystem: ColorSystem.STANDARD,
+      colorSystem: ColorDepth.STANDARD,
       width: 10,
     });
     expect(out).toMatch(/\x1b\[/);
