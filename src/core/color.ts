@@ -9,9 +9,9 @@ function hex2(byte: number): string {
 }
 
 function assertChannel(name: string, v: number): void {
-  if (!Number.isFinite(v) || v < 0 || v > 255) {
+  if (!Number.isInteger(v) || v < 0 || v > 255) {
     throw new RangeError(
-      `ColorRgba.${name} must be a finite number in [0, 255]; got ${v}`,
+      `ColorRgba.${name} must be an integer in [0, 255]; got ${v}`,
     );
   }
 }
@@ -449,14 +449,10 @@ export class ColorSpec {
           index,
         );
       }
-      case ColorDepth.WINDOWS: {
-        const index = WINDOWS_TABLE.match(triplet);
-        return new ColorSpec(
-          `color(${index})`,
-          ColorDepth.WINDOWS,
-          index,
-        );
-      }
+      // WINDOWS is a detection result (max enum value), not a downgrade target.
+      // The `this.type <= targetSystem` guard in downgrade() always short-circuits
+      // before reaching this method with WINDOWS, so this case is unreachable.
+      case ColorDepth.WINDOWS:
       case ColorDepth.TRUECOLOR:
         return this;
       case ColorDepth.DEFAULT:
