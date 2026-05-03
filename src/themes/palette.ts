@@ -46,7 +46,7 @@ export class Palette {
   static fromHex(
     name: string,
     dark: boolean,
-    vars: Record<string, string>,
+    vars: Readonly<Record<string, string>>,
   ): Palette {
     const map = new Map<string, ColorQuad>();
     for (const [k, v] of Object.entries(vars)) {

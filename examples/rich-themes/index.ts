@@ -100,9 +100,8 @@ function resolverRow(palette: Palette): RichText[] {
 }
 
 function joinRow(parts: RichText[]): RichText {
-  // Concatenate by reducing into a single RichText. Each swatch carries its
-  // own style, so the gap text just inherits the previous one — we use
-  // separate empty RichTexts to break runs.
+  // Concatenate swatches into a single RichText. Each swatch carries its own
+  // style, so the result is a sequence of independently-styled spans.
   const out = new RichText("");
   for (const p of parts) {
     out.append(p);
