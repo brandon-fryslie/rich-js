@@ -3,7 +3,7 @@ import { THEMES, type ThemeName } from "./data/index.js";
 
 export type { ThemeName };
 
-const THEME_NAMES = Object.keys(THEMES).sort() as readonly ThemeName[];
+const THEME_NAMES = Object.freeze(Object.keys(THEMES).sort() as readonly ThemeName[]);
 
 const cache = new Map<ThemeName, Palette>();
 
@@ -22,6 +22,8 @@ export function listThemePalettes(): readonly ThemeName[] {
  * 150 vars into ColorQuads) is constructed lazily on first request and
  * cached — subsequent calls for the same name return the same instance.
  */
+export function getThemePalette(name: ThemeName): Palette;
+export function getThemePalette(name: string): Palette | null;
 export function getThemePalette(name: string): Palette | null {
   if (!isThemeName(name)) return null;
 
@@ -35,5 +37,5 @@ export function getThemePalette(name: string): Palette | null {
 }
 
 function isThemeName(name: string): name is ThemeName {
-  return name in THEMES;
+  return Object.hasOwn(THEMES, name);
 }

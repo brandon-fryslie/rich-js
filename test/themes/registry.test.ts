@@ -27,7 +27,7 @@ const ALL_NAMES = [
 ];
 
 describe("listThemePalettes", () => {
-  it("returns all 18 Textual theme names", () => {
+  it("returns all 18 registered theme names", () => {
     const names = listThemePalettes();
     expect([...names].sort()).toEqual([...ALL_NAMES].sort());
   });
@@ -79,7 +79,7 @@ describe("getThemePalette", () => {
 
   it("hex equivalence — gruvbox.primary matches upstream Textual", () => {
     // Curated spot-checks against the canonical Textual values. Drift here
-    // means the JSON data file was edited by hand and lost fidelity.
+    // means the TS module data was edited and lost fidelity.
     const primary = getThemePalette("gruvbox")!.get("primary")!;
     expect(primary.red).toBe(0x85);
     expect(primary.green).toBe(0xa5);

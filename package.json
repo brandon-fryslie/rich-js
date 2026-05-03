@@ -30,7 +30,7 @@
     "strip": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-strip/index.js",
     "markup-plugins": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-markup-plugins/index.js",
     "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js",
-    "themes": "tsx examples/rich-themes/index.ts"
+    "themes": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-themes/index.js"
   },
   "keywords": [
     "terminal",

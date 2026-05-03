@@ -87,7 +87,6 @@ function resolverRow(palette: Palette): RichText[] {
   const resolver = new PaletteResolver(palette);
   const bg = palette.get("background")!;
   const fg = palette.get("foreground")!;
-  void bg; // referenced via ctx below; binding kept for symmetry with swatchRow
   const out: RichText[] = [];
   for (const spec of RESOLVER_SPECS) {
     const resolved = resolver.resolve(spec, { against: bg });

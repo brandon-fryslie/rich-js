@@ -27,7 +27,8 @@ import tokyoNight from "./tokyo-night.js";
 /**
  * The 18 bundled Textual theme palettes, keyed by name. `as const` preserves
  * the literal-type keys so `ThemeName` (below) is `"atom-one-dark" | "..."`,
- * not `string` — callers passing an unknown name fail at compile time.
+ * not `string`. Note: callers must type their input as `ThemeName` explicitly
+ * to get compile-time safety; `getThemePalette(string)` still returns nullable.
  */
 export const THEMES = {
   "atom-one-dark": atomOneDark,
