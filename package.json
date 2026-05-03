@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./themes/data": {
+      "types": "./dist/themes/data/index.d.ts",
+      "import": "./dist/themes/data/index.js"
     }
   },
   "files": [
