@@ -291,6 +291,11 @@ let stopReading: (() => void) | null = null;
 let disposeRender: (() => void) | null = null;
 
 function startup(): void {
+  if (!process.stdin.isTTY) {
+    process.stderr.write("Error: demo-inputs requires an interactive terminal.\n");
+    process.exit(1);
+  }
+
   enterRawMode();
   hideCursor();
   enableMouse();
