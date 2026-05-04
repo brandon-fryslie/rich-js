@@ -37,6 +37,7 @@
     "colors": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-colors/index.js",
     "strip": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-strip/index.js",
     "markup-plugins": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-markup-plugins/index.js",
+    "config": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-config/index.js",
     "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js"
   },
   "keywords": [
