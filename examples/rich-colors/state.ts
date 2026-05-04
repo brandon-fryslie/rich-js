@@ -221,7 +221,7 @@ function parseColor(input: string): ColorSpec | null {
   if (!input || input.trim() === "") return null;
 
   try {
-    return Color.parse(input);
+    return ColorSpec.parse(input);
   } catch {
     return null;
   }
