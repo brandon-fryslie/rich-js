@@ -1,17 +1,6 @@
 /**
  * rich-config — interactive theme explorer for rich-js.
  *
- * Live demo of the interactive widget stack:
- *   - Button rendering with all variants
- *   - Focus cycling (tab / shift+tab)
- *   - Click triggering
- *   - Keyboard handling (space / enter)
- *   - Mouse hover highlighting
- *   - MobX observable reactivity
- *   - Live theme preview: switches between rich-js TerminalThemes
- *     and shows their ANSI color tables, foreground/background, etc.
- *   - Slot-in architecture for future widgets
- *
  * Run with: npm run demo-inputs
  * Press Ctrl-C or q to exit.
  */
@@ -57,7 +46,6 @@ const THEMES = [
 
 class AppState {
   selectedThemeIdx = 0;
-  hoverIdx = -1;
 
   constructor() { makeAutoObservable(this); }
 
@@ -65,7 +53,6 @@ class AppState {
   get selectedName() { return THEMES[this.selectedThemeIdx]!.name; }
 
   selectTheme(idx: number): void { this.selectedThemeIdx = idx; }
-  setHover(idx: number): void { this.hoverIdx = idx; }
 }
 
 const state = new AppState();
@@ -125,10 +112,6 @@ const fm = new DefaultFocusManager();
 
 // --- Rendering helpers ---
 
-function hex(c: ColorRgba): string {
-  return c.hex;
-}
-
 function colorSwatch(c: ColorRgba): string {
   const bg = `\x1b[48;2;${c.red};${c.green};${c.blue}m`;
   const fg = `\x1b[38;2;${c.red};${c.green};${c.blue}m`;
@@ -136,20 +119,11 @@ function colorSwatch(c: ColorRgba): string {
 }
 
 function renderWidget(widget: InteractiveWidget, row: number, col: number): number {
-  const isHovered = state.hoverIdx >= 0 && allWidgets[state.hoverIdx] === widget;
-
   const segments = [...widget.render({ maxWidth: 80 })];
   const ansi = segmentsToString(segments, ColorDepth.TRUECOLOR);
-
-  let output = ansi;
-  if (isHovered && !widget.focused && !widget.disabled) {
-    output = `\x1b[7m${ansi}\x1b[0m`;
-  }
-
   const width = segments.reduce((sum, s) => sum + s.cellLength, 0);
   widget.bounds = { x: col, y: row - 1, width, height: 1 };
-  writeAt(row, col, output);
-
+  writeAt(row, col, ansi);
   return col + width + 2;
 }
 
@@ -168,12 +142,11 @@ function renderButtons(): void {
 function renderThemePreview(): void {
   const theme = state.selectedTheme;
   const name = state.selectedName;
+  const fg = theme.foregroundColor;
+  const bg = theme.backgroundColor;
 
   writeAt(THEME_NAME_ROW, 2, `\x1b[1mTheme:\x1b[0m ${name}`);
-
-  const bg = theme.backgroundColor;
-  const fg = theme.foregroundColor;
-  writeAt(BG_FG_ROW, 2, `Background ${colorSwatch(bg)} ${hex(bg)}   Foreground ${colorSwatch(fg)} ${hex(fg)}`);
+  writeAt(BG_FG_ROW, 2, `Background ${colorSwatch(bg)} ${bg.hex}   Foreground ${colorSwatch(fg)} ${fg.hex}`);
 
   const table = theme.ansiColors;
   const COLS = 8;
@@ -185,14 +158,14 @@ function renderThemePreview(): void {
   }
 
   const sampleRow = COLOR_GRID_ROW + 3;
-  const sampleStyle = new Style({ color: ColorSpec.parse(hex(fg)), bgcolor: ColorSpec.parse(hex(bg)) });
+  const ss = new Style({ color: ColorSpec.parse(fg.hex), bgcolor: ColorSpec.parse(bg.hex) });
   const sampleSegs = [
-    new Segment(" Normal ", sampleStyle),
-    new Segment(" Bold ", new Style({ ...sampleStyle, bold: true })),
-    new Segment(" Dim ", new Style({ ...sampleStyle, dim: true })),
-    new Segment(" Italic ", new Style({ ...sampleStyle, italic: true })),
-    new Segment(" Underline ", new Style({ ...sampleStyle, underline: true })),
-    new Segment(" Reverse ", new Style({ ...sampleStyle, reverse: true })),
+    new Segment(" Normal ", ss),
+    new Segment(" Bold ", new Style({ ...ss, bold: true })),
+    new Segment(" Dim ", new Style({ ...ss, dim: true })),
+    new Segment(" Italic ", new Style({ ...ss, italic: true })),
+    new Segment(" Underline ", new Style({ ...ss, underline: true })),
+    new Segment(" Reverse ", new Style({ ...ss, reverse: true })),
   ];
   writeAt(sampleRow, 2, segmentsToString(sampleSegs, ColorDepth.TRUECOLOR));
 }
@@ -200,10 +173,10 @@ function renderThemePreview(): void {
 function renderStatus(): void {
   const focused = fm.current;
   const id = focused?.id ?? "none";
-  const details = focused ? `focused=${focused.focused} disabled=${focused.disabled}` : "";
+  const details = focused ? `focused=${focused.focused} active=${focused.active} disabled=${focused.disabled}` : "";
   writeAt(STATUS_ROW, 2, `\x1b[1;33m\u25b8 Focus:\x1b[0m ${id}  \x1b[2m${details}\x1b[0m`);
   if (focused instanceof Button) {
-    writeAt(STATUS_ROW, 55, `\x1b[2mvariant=${focused.variant}\x1b[0m`);
+    writeAt(STATUS_ROW, 65, `\x1b[2mvariant=${focused.variant}\x1b[0m`);
   }
 }
 
@@ -240,8 +213,10 @@ function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void
     return;
   }
 
+  // Forward key to focused widget
   if (key && fm.current) {
     fm.current.handleKey(key);
+    return;
   }
 
   if (mouse) {
@@ -250,26 +225,40 @@ function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void
 }
 
 function handleMouse(mouse: WidgetMouseEvent): void {
-  // All state mutations inside action to satisfy MobX strict mode
+  const hit = widgetAt(mouse.x, mouse.y);
+
   runInAction(() => {
-    state.hoverIdx = -1;
-    for (let i = 0; i < allWidgets.length; i++) {
-      if (allWidgets[i]!.containsPoint(mouse.x, mouse.y)) {
-        state.hoverIdx = i;
-        break;
-      }
+    // Update hover state for all widgets
+    for (const widget of allWidgets) {
+      widget.hovered = widget === hit;
     }
   });
 
-  if (mouse.type === "mouse_up") {
-    for (const widget of allWidgets) {
-      if (widget.containsPoint(mouse.x, mouse.y)) {
-        fm.focus(widget);
-        widget.handleClick(mouse);
-        break;
-      }
+  // Forward ALL mouse events to the hit widget
+  if (hit) {
+    hit.handleMouse(mouse);
+
+    // Focus on click
+    if (mouse.type === "mouse_up") {
+      fm.focus(hit);
     }
   }
+
+  // Clear active on mouse_up regardless of hit location
+  if (mouse.type === "mouse_up") {
+    runInAction(() => {
+      for (const widget of allWidgets) {
+        widget.active = false;
+      }
+    });
+  }
+}
+
+function widgetAt(x: number, y: number): InteractiveWidget | null {
+  for (const widget of allWidgets) {
+    if (widget.containsPoint(x, y)) return widget;
+  }
+  return null;
 }
 
 // --- Lifecycle ---
@@ -291,10 +280,15 @@ function startup(): void {
   for (const widget of allWidgets) fm.register(widget);
 
   disposeRender = autorun(() => {
+    // Propagate theme to all buttons
+    const theme = state.selectedTheme;
+    for (const widget of allWidgets) {
+      if (widget instanceof Button) widget.setTheme(theme);
+    }
     void state.selectedThemeIdx;
-    void state.hoverIdx;
     void fm.current?.focused;
-    void fm.current?.disabled;
+    void fm.current?.active;
+    void fm.current?.hovered;
     void logs.length;
     render();
   });

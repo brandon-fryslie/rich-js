@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { Button } from "../../src/widgets/button.js";
-import type { InteractiveWidget, KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
 
 const enterEvent: KeyEvent = { key: "enter", character: "\r", shift: false, ctrl: false, meta: false };
 const spaceEvent: KeyEvent = { key: "space", character: " ", shift: false, ctrl: false, meta: false };
 const escapeEvent: KeyEvent = { key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false };
+
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
 
 describe("Button", () => {
   it("constructs with defaults", () => {
@@ -15,6 +18,8 @@ describe("Button", () => {
     expect(btn.focusable).toBe(true);
     expect(btn.disabled).toBe(false);
     expect(btn.focused).toBe(false);
+    expect(btn.hovered).toBe(false);
+    expect(btn.active).toBe(false);
   });
 
   it("constructs with options", () => {
@@ -27,7 +32,7 @@ describe("Button", () => {
   it("implements InteractiveWidget", () => {
     const btn: InteractiveWidget = new Button({ label: "OK" });
     expect(typeof btn.handleKey).toBe("function");
-    expect(typeof btn.handleClick).toBe("function");
+    expect(typeof btn.handleMouse).toBe("function");
     expect(typeof btn.render).toBe("function");
     expect(typeof btn.measure).toBe("function");
   });
@@ -59,8 +64,36 @@ describe("Button", () => {
       const segments = [...btn.render({ maxWidth: 80 })];
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
-      // Focused swaps fg/bg — bgcolor becomes the original fg color
       expect(style.bgcolor?.name).toBe("#ffffff");
+    });
+
+    it("renders hover state with lighter background", () => {
+      const btn = new Button({ label: "Go" });
+      btn.setHovered(true);
+      const segments = [...btn.render({ maxWidth: 80 })];
+      const style = segments[0]!.style!;
+      // Hover bg should be lighter than normal bg
+      expect(style.bgcolor).toBeDefined();
+      expect(style.bgcolor!.name).not.toBe("#4a4a4a"); // normal bg for default
+    });
+
+    it("renders active state with reverse + underline", () => {
+      const btn = new Button({ label: "Go" });
+      btn.setActive(true);
+      const segments = [...btn.render({ maxWidth: 80 })];
+      const style = segments[0]!.style!;
+      expect(style.bold).toBe(true);
+      expect(style.underline).toBe(true);
+      expect(style.bgcolor?.name).toBe("#ffffff"); // fg/bg swapped
+    });
+
+    it("active overrides focused", () => {
+      const btn = new Button({ label: "Go" });
+      btn.focus();
+      btn.setActive(true);
+      const segments = [...btn.render({ maxWidth: 80 })];
+      const style = segments[0]!.style!;
+      expect(style.underline).toBe(true); // active adds underline, focus alone doesn't
     });
   });
 
@@ -68,7 +101,7 @@ describe("Button", () => {
     it("reports exact width (label + 2 spaces)", () => {
       const btn = new Button({ label: "Submit" });
       const { minimum, maximum } = btn.measure({ maxWidth: 80 });
-      expect(minimum).toBe(8); // " Submit "
+      expect(minimum).toBe(8);
       expect(maximum).toBe(8);
     });
   });
@@ -107,19 +140,22 @@ describe("Button", () => {
       expect(submits).toHaveLength(0);
     });
 
-    it("fires onSubmit on click", () => {
+    it("fires onSubmit on mouse down then up", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleClick({ type: "click", x: 0, y: 0, button: 0, shift: false, ctrl: false });
+      btn.handleMouse(mouseDown);
+      expect(submits).toHaveLength(0); // not yet
+      btn.handleMouse(mouseUp);
       expect(submits).toHaveLength(1);
     });
 
-    it("does not fire onSubmit when disabled (click)", () => {
+    it("does not fire onSubmit when disabled (mouse)", () => {
       const btn = new Button({ label: "Go", disabled: true });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleClick({ type: "click", x: 0, y: 0, button: 0, shift: false, ctrl: false });
+      btn.handleMouse(mouseDown);
+      btn.handleMouse(mouseUp);
       expect(submits).toHaveLength(0);
     });
   });
@@ -139,6 +175,22 @@ describe("Button", () => {
       expect(btn.disabled).toBe(true);
       btn.setDisabled(false);
       expect(btn.disabled).toBe(false);
+    });
+
+    it("sets hovered", () => {
+      const btn = new Button({ label: "Go" });
+      btn.setHovered(true);
+      expect(btn.hovered).toBe(true);
+      btn.setHovered(false);
+      expect(btn.hovered).toBe(false);
+    });
+
+    it("sets active", () => {
+      const btn = new Button({ label: "Go" });
+      btn.setActive(true);
+      expect(btn.active).toBe(true);
+      btn.setActive(false);
+      expect(btn.active).toBe(false);
     });
 
     it("unsubscribes from onSubmit", () => {

@@ -49,8 +49,13 @@ export interface InteractiveWidget extends Renderable, Measurable {
   // [LAW:one-source-of-truth] single source for focus eligibility
   readonly focusable: boolean;
 
-  // Observable state (writable via actions — readonly in interface is aspirational)
+  // Widget interaction states — match Textual pseudo-class naming:
+  //   focus  — keyboard focus (Textual :focus)
+  //   hover  — mouse cursor over widget (Textual :hover)
+  //   active — pressed/being activated (web convention, not in Textual)
   focused: boolean;
+  hovered: boolean;
+  active: boolean;
   disabled: boolean;
   visible: boolean;
 
@@ -59,7 +64,7 @@ export interface InteractiveWidget extends Renderable, Measurable {
 
   // Event handlers
   handleKey(event: KeyEvent): void;
-  handleClick(event: WidgetMouseEvent): void;
+  handleMouse(event: WidgetMouseEvent): void;
   handleFocus(event: WidgetFocusEvent): void;
 
   // Programmatic control
