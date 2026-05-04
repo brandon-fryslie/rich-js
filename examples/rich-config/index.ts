@@ -17,6 +17,22 @@ import {
   DEFAULT_TERMINAL_THEME,
   MONOKAI,
   SVG_EXPORT_THEME,
+  NORD,
+  GRUVBOX,
+  DRACULA,
+  TOKYO_NIGHT,
+  FLEXOKI,
+  CATPPUCCIN_MOCHA,
+  CATPPUCCIN_LATTE,
+  CATPPUCCIN_FRAPPE,
+  CATPPUCCIN_MACCHIATO,
+  SOLARIZED_DARK,
+  SOLARIZED_LIGHT,
+  ROSE_PINE,
+  ROSE_PINE_MOON,
+  ROSE_PINE_DAWN,
+  ATOM_ONE_DARK,
+  ATOM_ONE_LIGHT,
 } from "../../src/index.js";
 import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
 import type { ColorRgba } from "../../src/core/color.js";
@@ -39,8 +55,24 @@ import {
 const THEMES = [
   { name: "Default", theme: DEFAULT_TERMINAL_THEME },
   { name: "Monokai", theme: MONOKAI },
+  { name: "Nord", theme: NORD },
+  { name: "Gruvbox", theme: GRUVBOX },
+  { name: "Dracula", theme: DRACULA },
+  { name: "Tokyo Night", theme: TOKYO_NIGHT },
+  { name: "Flexoki", theme: FLEXOKI },
+  { name: "Catppuccin Mocha", theme: CATPPUCCIN_MOCHA },
+  { name: "Catppuccin Latte", theme: CATPPUCCIN_LATTE },
+  { name: "Catppuccin Frapp\u00e9", theme: CATPPUCCIN_FRAPPE },
+  { name: "Catppuccin Macchiato", theme: CATPPUCCIN_MACCHIATO },
+  { name: "Solarized Dark", theme: SOLARIZED_DARK },
+  { name: "Solarized Light", theme: SOLARIZED_LIGHT },
+  { name: "Rose Pine", theme: ROSE_PINE },
+  { name: "Rose Pine Moon", theme: ROSE_PINE_MOON },
+  { name: "Rose Pine Dawn", theme: ROSE_PINE_DAWN },
+  { name: "Atom One Dark", theme: ATOM_ONE_DARK },
+  { name: "Atom One Light", theme: ATOM_ONE_LIGHT },
   { name: "SVG Export", theme: SVG_EXPORT_THEME },
-] as const;
+];
 
 // --- Observable app state ---
 
@@ -61,12 +93,13 @@ const state = new AppState();
 
 const HEADER_ROW = 1;
 const SUBTITLE_ROW = 2;
-const BUTTON_ROW = 4;
-const THEME_NAME_ROW = 6;
-const BG_FG_ROW = 7;
-const COLOR_GRID_ROW = 9;
-const STATUS_ROW = 20;
-const LOG_ROW = 22;
+const BUTTON_START_ROW = 4;
+const MAX_BUTTON_COLS = 78;
+const THEME_NAME_ROW = 10;
+const BG_FG_ROW = 11;
+const COLOR_GRID_ROW = 13;
+const STATUS_ROW = 24;
+const LOG_ROW = 26;
 const MAX_LOGS = 4;
 
 // --- Log buffer ---
@@ -141,9 +174,15 @@ function renderHeader(): void {
 }
 
 function renderButtons(): void {
+  let row = BUTTON_START_ROW;
   let col = 2;
   for (const widget of allWidgets) {
-    col = renderWidget(widget, BUTTON_ROW, col);
+    const { minimum } = widget.measure({ maxWidth: 80 });
+    if (col + minimum > MAX_BUTTON_COLS && col > 2) {
+      row++;
+      col = 2;
+    }
+    col = renderWidget(widget, row, col);
   }
 }
 
