@@ -63,6 +63,7 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
+    "mobx": "^6.15.0",
     "string-width": "^8.2.0",
     "strip-ansi": "^7.2.0"
   }
