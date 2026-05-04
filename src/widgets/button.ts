@@ -33,8 +33,6 @@ const VARIANT_STYLES: Record<ButtonVariant, { color: string; bgcolor: string }> 
   danger: { color: "#ffffff", bgcolor: "#cc0000" },
 };
 
-const FOCUSSED_DEFAULT_BG = "#6a6a6a";
-
 export class Button implements InteractiveWidget {
   readonly id: string;
   readonly focusable = true;
@@ -131,15 +129,13 @@ export class Button implements InteractiveWidget {
     }
 
     const colors = VARIANT_STYLES[this.variant];
-    const bg = this.focused && this.variant === "default"
-      ? FOCUSSED_DEFAULT_BG
-      : colors.bgcolor;
 
-    return new Style({
-      color: colors.color,
-      bgcolor: bg,
-      bold: this.focused,
-    });
+    if (this.focused) {
+      // Reverse swaps fg/bg — unmistakable focus indicator in any terminal
+      return new Style({ color: colors.bgcolor, bgcolor: colors.color, bold: true });
+    }
+
+    return new Style({ color: colors.color, bgcolor: colors.bgcolor });
   }
 
   private emitSubmit(): void {

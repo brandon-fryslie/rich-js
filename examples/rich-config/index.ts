@@ -12,11 +12,11 @@
  *     and shows their ANSI color tables, foreground/background, etc.
  *   - Slot-in architecture for future widgets
  *
- * Run with: npm run config
+ * Run with: npm run demo-inputs
  * Press Ctrl-C or q to exit.
  */
 
-import { autorun } from "mobx";
+import { autorun, runInAction, makeAutoObservable } from "mobx";
 import {
   Button,
   DefaultFocusManager,
@@ -53,22 +53,19 @@ const THEMES = [
   { name: "SVG Export", theme: SVG_EXPORT_THEME },
 ] as const;
 
-// --- Observable app state (minimal MobX store) ---
-
-import { makeAutoObservable } from "mobx";
+// --- Observable app state ---
 
 class AppState {
   selectedThemeIdx = 0;
-  hoverIdx = -1; // -1 = no hover
+  hoverIdx = -1;
 
   constructor() { makeAutoObservable(this); }
 
   get selectedTheme() { return THEMES[this.selectedThemeIdx]!.theme; }
   get selectedName() { return THEMES[this.selectedThemeIdx]!.name; }
 
-  selectTheme(idx: number): void {
-    this.selectedThemeIdx = idx;
-  }
+  selectTheme(idx: number): void { this.selectedThemeIdx = idx; }
+  setHover(idx: number): void { this.hoverIdx = idx; }
 }
 
 const state = new AppState();
@@ -150,7 +147,7 @@ function renderWidget(widget: InteractiveWidget, row: number, col: number): numb
   }
 
   const width = segments.reduce((sum, s) => sum + s.cellLength, 0);
-  widget.bounds = { x: col, y: row - 1, width, height: 1 }; // terminal rows are 1-based
+  widget.bounds = { x: col, y: row - 1, width, height: 1 };
   writeAt(row, col, output);
 
   return col + width + 2;
@@ -174,26 +171,19 @@ function renderThemePreview(): void {
 
   writeAt(THEME_NAME_ROW, 2, `\x1b[1mTheme:\x1b[0m ${name}`);
 
-  // Background / foreground swatches
   const bg = theme.backgroundColor;
   const fg = theme.foregroundColor;
-  const bgSwatch = colorSwatch(bg);
-  const fgSwatch = colorSwatch(fg);
-  writeAt(BG_FG_ROW, 2, `Background ${bgSwatch} ${hex(bg)}   Foreground ${fgSwatch} ${hex(fg)}`);
+  writeAt(BG_FG_ROW, 2, `Background ${colorSwatch(bg)} ${hex(bg)}   Foreground ${colorSwatch(fg)} ${hex(fg)}`);
 
-  // ANSI color grid (16 standard colors)
   const table = theme.ansiColors;
   const COLS = 8;
   for (let i = 0; i < 16; i++) {
     const c = table.get(i);
     const row = COLOR_GRID_ROW + Math.floor(i / COLS);
     const col = 2 + (i % COLS) * 10;
-    const swatch = colorSwatch(c);
-    const label = String(i).padStart(2, " ");
-    writeAt(row, col, `${swatch} ${label}`);
+    writeAt(row, col, `${colorSwatch(c)} ${String(i).padStart(2, " ")}`);
   }
 
-  // Sample text with the theme colors
   const sampleRow = COLOR_GRID_ROW + 3;
   const sampleStyle = new Style({ color: ColorSpec.parse(hex(fg)), bgcolor: ColorSpec.parse(hex(bg)) });
   const sampleSegs = [
@@ -204,19 +194,14 @@ function renderThemePreview(): void {
     new Segment(" Underline ", new Style({ ...sampleStyle, underline: true })),
     new Segment(" Reverse ", new Style({ ...sampleStyle, reverse: true })),
   ];
-  const sampleAnsi = segmentsToString(sampleSegs, ColorDepth.TRUECOLOR);
-  writeAt(sampleRow, 2, sampleAnsi);
+  writeAt(sampleRow, 2, segmentsToString(sampleSegs, ColorDepth.TRUECOLOR));
 }
 
 function renderStatus(): void {
   const focused = fm.current;
   const id = focused?.id ?? "none";
-  const details = focused
-    ? `focused=${focused.focused} disabled=${focused.disabled}`
-    : "";
+  const details = focused ? `focused=${focused.focused} disabled=${focused.disabled}` : "";
   writeAt(STATUS_ROW, 2, `\x1b[1;33m\u25b8 Focus:\x1b[0m ${id}  \x1b[2m${details}\x1b[0m`);
-
-  // Show variant if button
   if (focused instanceof Button) {
     writeAt(STATUS_ROW, 55, `\x1b[2mvariant=${focused.variant}\x1b[0m`);
   }
@@ -265,14 +250,16 @@ function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void
 }
 
 function handleMouse(mouse: WidgetMouseEvent): void {
-  // Update hover state
-  state.hoverIdx = -1;
-  for (let i = 0; i < allWidgets.length; i++) {
-    if (allWidgets[i]!.containsPoint(mouse.x, mouse.y)) {
-      state.hoverIdx = i;
-      break;
+  // All state mutations inside action to satisfy MobX strict mode
+  runInAction(() => {
+    state.hoverIdx = -1;
+    for (let i = 0; i < allWidgets.length; i++) {
+      if (allWidgets[i]!.containsPoint(mouse.x, mouse.y)) {
+        state.hoverIdx = i;
+        break;
+      }
     }
-  }
+  });
 
   if (mouse.type === "mouse_up") {
     for (const widget of allWidgets) {
@@ -303,9 +290,7 @@ function startup(): void {
 
   for (const widget of allWidgets) fm.register(widget);
 
-  // Re-render on any observable change
   disposeRender = autorun(() => {
-    // Touch observables to subscribe
     void state.selectedThemeIdx;
     void state.hoverIdx;
     void fm.current?.focused;

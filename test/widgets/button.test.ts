@@ -53,12 +53,14 @@ describe("Button", () => {
       expect(style.dim).toBe(true);
     });
 
-    it("renders bold when focused", () => {
+    it("renders with reversed colors when focused", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       const segments = [...btn.render({ maxWidth: 80 })];
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
+      // Focused swaps fg/bg — bgcolor becomes the original fg color
+      expect(style.bgcolor?.name).toBe("#ffffff");
     });
   });
 
