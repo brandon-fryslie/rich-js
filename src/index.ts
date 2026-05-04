@@ -27,6 +27,8 @@ export type { DetectColorOptions } from "./core/color.js";
 export { Palette } from "./themes/palette.js";
 export { PaletteResolver } from "./themes/paletteResolver.js";
 export type { ResolveContext } from "./themes/paletteResolver.js";
+export { buildPalette } from "./themes/buildPalette.js";
+export type { BaseColors } from "./themes/buildPalette.js";
 
 export {
   Style,

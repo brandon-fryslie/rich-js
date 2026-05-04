@@ -551,6 +551,7 @@ export class TerminalTheme {
     readonly backgroundColor: ColorRgba,
     readonly foregroundColor: ColorRgba,
     readonly ansiColors: ColorTable,
+    readonly palette: import("../themes/palette.js").Palette,
   ) {}
 }
 
@@ -626,11 +627,36 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 
 // --- Pre-built themes ---
 
+import { buildPalette } from "../themes/buildPalette.js";
+
+const DEFAULT_PALETTE = buildPalette("default", true, {
+  primary: new ColorRgba(0, 111, 184),
+  secondary: new ColorRgba(118, 38, 113),
+  accent: new ColorRgba(0, 111, 184),
+  success: new ColorRgba(0, 128, 0),
+  warning: new ColorRgba(128, 128, 0),
+  error: new ColorRgba(128, 0, 0),
+  background: new ColorRgba(0, 0, 0),
+  foreground: new ColorRgba(255, 255, 255),
+});
+
 export const DEFAULT_TERMINAL_THEME = new TerminalTheme(
   new ColorRgba(0, 0, 0),
   new ColorRgba(255, 255, 255),
   STANDARD_TABLE,
+  DEFAULT_PALETTE,
 );
+
+const MONOKAI_PALETTE = buildPalette("monokai", true, {
+  primary: new ColorRgba(0, 111, 184),
+  secondary: new ColorRgba(118, 38, 113),
+  accent: new ColorRgba(44, 181, 233),
+  success: new ColorRgba(57, 181, 74),
+  warning: new ColorRgba(255, 199, 6),
+  error: new ColorRgba(222, 56, 43),
+  background: new ColorRgba(12, 12, 12),
+  foreground: new ColorRgba(217, 217, 217),
+});
 
 export const MONOKAI = new TerminalTheme(
   new ColorRgba(12, 12, 12),
@@ -653,7 +679,19 @@ export const MONOKAI = new TerminalTheme(
     new ColorRgba(0, 255, 255),     // 14
     new ColorRgba(255, 255, 255),   // 15
   ]),
+  MONOKAI_PALETTE,
 );
+
+const SVG_EXPORT_PALETTE = buildPalette("svg-export", true, {
+  primary: new ColorRgba(97, 175, 239),
+  secondary: new ColorRgba(198, 120, 221),
+  accent: new ColorRgba(86, 182, 194),
+  success: new ColorRgba(152, 195, 121),
+  warning: new ColorRgba(229, 192, 123),
+  error: new ColorRgba(204, 85, 90),
+  background: new ColorRgba(41, 41, 41),
+  foreground: new ColorRgba(197, 200, 198),
+});
 
 export const SVG_EXPORT_THEME = new TerminalTheme(
   new ColorRgba(41, 41, 41),
@@ -676,6 +714,7 @@ export const SVG_EXPORT_THEME = new TerminalTheme(
     new ColorRgba(95, 255, 255),    // 14
     new ColorRgba(255, 255, 255),   // 15
   ]),
+  SVG_EXPORT_PALETTE,
 );
 
 // --- ANSI ColorSpec Names ---

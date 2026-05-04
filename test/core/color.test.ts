@@ -16,6 +16,7 @@ import {
   SVG_EXPORT_THEME,
   ANSI_COLOR_NAMES,
 } from "../../src/core/color.js";
+import { buildPalette } from "../../src/themes/buildPalette.js";
 
 // ---------------------------------------------------------------------------
 // ColorRgba
@@ -598,14 +599,25 @@ describe("blendRgb", () => {
 // ---------------------------------------------------------------------------
 
 describe("TerminalTheme", () => {
-  it("stores background, foreground, and ansiColors", () => {
+  it("stores background, foreground, ansiColors, and palette", () => {
     const bg = new ColorRgba(0, 0, 0);
     const fg = new ColorRgba(255, 255, 255);
     const pal = new ColorTable([bg, fg]);
-    const theme = new TerminalTheme(bg, fg, pal);
+    const palette = buildPalette("test", true, {
+      primary: new ColorRgba(0, 111, 184),
+      secondary: new ColorRgba(118, 38, 113),
+      accent: new ColorRgba(0, 111, 184),
+      success: new ColorRgba(0, 128, 0),
+      warning: new ColorRgba(128, 128, 0),
+      error: new ColorRgba(128, 0, 0),
+      background: bg,
+      foreground: fg,
+    });
+    const theme = new TerminalTheme(bg, fg, pal, palette);
     expect(theme.backgroundColor).toBe(bg);
     expect(theme.foregroundColor).toBe(fg);
     expect(theme.ansiColors).toBe(pal);
+    expect(theme.palette).toBe(palette);
   });
 });
 
