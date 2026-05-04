@@ -116,7 +116,15 @@ export function parseKey(data: string): KeyEvent | null {
     return { key: "escape", character: "", shift: false, ctrl: false, meta: false };
   }
 
-  // Ctrl+letter
+  // Single-character keys: check KEY_NAMES first (tab, enter, space, backspace, etc.)
+  if (data.length === 1) {
+    const name = KEY_NAMES[data];
+    if (name) {
+      return { key: name, character: name === "space" ? " " : "", shift: false, ctrl: false, meta: false };
+    }
+  }
+
+  // Ctrl+letter (remaining control chars not in KEY_NAMES)
   if (data.length === 1 && data.charCodeAt(0) < 32) {
     const code = data.charCodeAt(0);
     const letter = String.fromCharCode(code + 96);

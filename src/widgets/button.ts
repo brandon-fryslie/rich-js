@@ -87,9 +87,6 @@ export class Button implements InteractiveWidget {
     if (event.key === "enter" || event.key === "space") {
       this.active = true;
       this.emitSubmit();
-      // Active resets on next render cycle (host should clear it,
-      // or we clear it synchronously after emit so it flashes)
-      this.active = false;
     }
   }
 
