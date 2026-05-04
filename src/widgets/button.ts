@@ -2,14 +2,15 @@
  * Button widget — labeled action trigger with variant styling.
  * [LAW:dataflow-not-control-flow] rendering is a pure function of observable state.
  *
- * Four visual states, composed from observable booleans:
- *   normal  — focused=false, hovered=false, active=false
- *   hover   — hovered=true (mouse cursor over, not pressed)
- *   focus   — focused=true (keyboard focus, distinct visual)
- *   active  — active=true (pressed, mouse_down or key held)
+ * Four visual states:
+ *   normal  — variant colors from theme ANSI palette
+ *   hover   — lightened background (mouse over)
+ *   focus   — box-drawing border around the button
+ *   active  — color reversal (pressed)
  *
- * States compose: a focused+hovered button shows focus styling (focus wins).
- * An active button always shows active styling (active wins).
+ * States compose: active > focus > hover > normal.
+ * Button renders 3 rows when focused (border top, content, border bottom),
+ * 1 row otherwise.
  */
 
 import { makeObservable, observable, action } from "mobx";
@@ -38,14 +39,12 @@ export interface ButtonOptions {
 }
 
 // Variant → ANSI color index mapping (theme-aware)
-// Uses standard ANSI positions: 0=black, 1=red, 2=green, 3=yellow, 4=blue,
-// 7=white, 8=bright_black, 9=bright_red, 15=bright_white
 const VARIANT_ANSI: Record<ButtonVariant, { fgIdx: number; bgIdx: number }> = {
-  default: { fgIdx: 15, bgIdx: 8 },    // bright_white on bright_black
-  primary: { fgIdx: 15, bgIdx: 4 },     // bright_white on blue
-  success: { fgIdx: 15, bgIdx: 2 },     // bright_white on green
-  warning: { fgIdx: 0, bgIdx: 3 },      // black on yellow
-  danger: { fgIdx: 15, bgIdx: 1 },      // bright_white on red
+  default: { fgIdx: 15, bgIdx: 8 },
+  primary: { fgIdx: 15, bgIdx: 4 },
+  success: { fgIdx: 15, bgIdx: 2 },
+  warning: { fgIdx: 0, bgIdx: 3 },
+  danger: { fgIdx: 15, bgIdx: 1 },
 };
 
 const HOVER_BG_BOOST = 30;
@@ -93,7 +92,6 @@ export class Button implements InteractiveWidget {
   @action
   handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
-
     if (event.type === "mouse_down") {
       this.active = true;
     }
@@ -114,16 +112,12 @@ export class Button implements InteractiveWidget {
 
   @action
   focus(): void { this.focused = true; }
-
   @action
   blur(): void { this.focused = false; }
-
   @action
   setHovered(value: boolean): void { this.hovered = value; }
-
   @action
   setActive(value: boolean): void { this.active = value; }
-
   @action
   setDisabled(value: boolean): void { this.disabled = value; }
 
@@ -150,9 +144,39 @@ export class Button implements InteractiveWidget {
   // --- Rendering ---
 
   render(_options: RenderOptions): Iterable<Segment> {
-    const style = this.computeStyle();
-    const text = ` ${this.label} `;
-    return [new Segment(text, style)];
+    const { fg, bg } = this.resolveColors();
+    const padLabel = ` ${this.label} `;
+
+    if (this.disabled) {
+      return [new Segment(padLabel, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
+    }
+
+    // Active — color reversal
+    if (this.active) {
+      if (this.focused) {
+        return this.withBorder(padLabel, new Style({ color: bg, bgcolor: fg, bold: true }), fg);
+      }
+      return [new Segment(padLabel, new Style({ color: bg, bgcolor: fg, bold: true }))];
+    }
+
+    // Focused — border around the button
+    if (this.focused) {
+      return this.withBorder(padLabel, new Style({ color: fg, bgcolor: bg }), bg);
+    }
+
+    // Hovered — lightened background
+    if (this.hovered) {
+      const bgRgba = this._theme.ansiColors.get(VARIANT_ANSI[this.variant].bgIdx);
+      const lightened = ColorSpec.fromRgb(
+        Math.min(255, bgRgba.red + HOVER_BG_BOOST),
+        Math.min(255, bgRgba.green + HOVER_BG_BOOST),
+        Math.min(255, bgRgba.blue + HOVER_BG_BOOST),
+      );
+      return [new Segment(padLabel, new Style({ color: fg, bgcolor: lightened }))];
+    }
+
+    // Normal
+    return [new Segment(padLabel, new Style({ color: fg, bgcolor: bg }))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
@@ -171,36 +195,20 @@ export class Button implements InteractiveWidget {
     };
   }
 
-  private computeStyle(): Style {
-    const { fg, bg } = this.resolveColors();
-
-    if (this.disabled) {
-      return new Style({ color: "#666666", bgcolor: "#333333", dim: true });
-    }
-
-    // Active (pressed) — reverse + bold + underline
-    if (this.active) {
-      return new Style({ color: bg, bgcolor: fg, bold: true, underline: true });
-    }
-
-    // Focused — reverse colors + bold
-    if (this.focused) {
-      return new Style({ color: bg, bgcolor: fg, bold: true });
-    }
-
-    // Hovered — lighten background slightly
-    if (this.hovered) {
-      const bgRgba = this._theme.ansiColors.get(VARIANT_ANSI[this.variant].bgIdx);
-      const lightened = ColorSpec.fromRgb(
-        Math.min(255, bgRgba.red + HOVER_BG_BOOST),
-        Math.min(255, bgRgba.green + HOVER_BG_BOOST),
-        Math.min(255, bgRgba.blue + HOVER_BG_BOOST),
-      );
-      return new Style({ color: fg, bgcolor: lightened });
-    }
-
-    // Normal
-    return new Style({ color: fg, bgcolor: bg });
+  /** Wrap content in box-drawing border. borderColor = the variant's bg color. */
+  private withBorder(content: string, contentStyle: Style, borderColor: ColorSpec): Segment[] {
+    const borderStyle = new Style({ color: borderColor });
+    const len = content.length;
+    const top = `╭${"─".repeat(len)}╮`;
+    const mid = `│${content}│`;
+    const bot = `╰${"─".repeat(len)}╯`;
+    return [
+      new Segment(top, borderStyle),
+      Segment.line(),
+      new Segment(mid, contentStyle),
+      Segment.line(),
+      new Segment(bot, borderStyle),
+    ];
   }
 
   private emitSubmit(): void {
