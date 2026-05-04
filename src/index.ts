@@ -207,3 +207,16 @@ export { Markdown } from "./renderables/markdown.js";
 export type { MarkdownOptions } from "./renderables/markdown.js";
 export { Layout } from "./renderables/layout.js";
 export type { LayoutOptions } from "./renderables/layout.js";
+
+// Interactive widgets
+export type {
+  KeyEvent,
+  WidgetMouseEvent,
+  WidgetFocusEvent,
+  WidgetBounds,
+  InteractiveWidget,
+  FocusManager,
+  Screen,
+  Unsubscribe,
+} from "./widgets/types.js";
+export { WidgetBase } from "./widgets/widget-base.js";
