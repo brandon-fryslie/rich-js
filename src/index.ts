@@ -221,3 +221,5 @@ export type {
 } from "./widgets/types.js";
 export { WidgetBase } from "./widgets/widget-base.js";
 export { DefaultFocusManager } from "./widgets/focus-manager.js";
+export { Button } from "./widgets/button.js";
+export type { ButtonVariant, ButtonOptions } from "./widgets/button.js";
