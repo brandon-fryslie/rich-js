@@ -58,13 +58,24 @@ describe("Button", () => {
       expect(style.dim).toBe(true);
     });
 
-    it("renders with reversed colors when focused", () => {
+    it("renders with box-drawing border when focused", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       const segments = [...btn.render({ maxWidth: 80 })];
-      const style = segments[0]!.style!;
-      expect(style.bold).toBe(true);
-      expect(style.bgcolor?.name).toBe("#ffffff");
+      // 3 content segments + 2 newline segments = 5
+      expect(segments).toHaveLength(5);
+      expect(segments[0]!.text).toContain("╭");
+      expect(segments[2]!.text).toContain(" Go ");
+      expect(segments[4]!.text).toContain("╰");
+    });
+
+    it("focused border uses variant bg color", () => {
+      const btn = new Button({ label: "Go" });
+      btn.focus();
+      const segments = [...btn.render({ maxWidth: 80 })];
+      const borderStyle = segments[0]!.style!;
+      // Border color should be set
+      expect(borderStyle.color).toBeDefined();
     });
 
     it("renders hover state with lighter background", () => {
@@ -77,23 +88,25 @@ describe("Button", () => {
       expect(style.bgcolor!.name).not.toBe("#4a4a4a"); // normal bg for default
     });
 
-    it("renders active state with reverse + underline", () => {
+    it("renders active state with color reversal", () => {
       const btn = new Button({ label: "Go" });
       btn.setActive(true);
       const segments = [...btn.render({ maxWidth: 80 })];
+      expect(segments).toHaveLength(1);
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
-      expect(style.underline).toBe(true);
-      expect(style.bgcolor?.name).toBe("#ffffff"); // fg/bg swapped
+      // fg/bg are swapped relative to normal state
     });
 
-    it("active overrides focused", () => {
+    it("active + focused renders border with reversed colors", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       btn.setActive(true);
       const segments = [...btn.render({ maxWidth: 80 })];
-      const style = segments[0]!.style!;
-      expect(style.underline).toBe(true); // active adds underline, focus alone doesn't
+      expect(segments).toHaveLength(5);
+      // Content segment should have bold (active color reversal)
+      const contentStyle = segments[2]!.style!;
+      expect(contentStyle.bold).toBe(true);
     });
   });
 

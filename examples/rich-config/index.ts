@@ -62,11 +62,11 @@ const state = new AppState();
 const HEADER_ROW = 1;
 const SUBTITLE_ROW = 2;
 const BUTTON_ROW = 4;
-const THEME_NAME_ROW = 6;
-const BG_FG_ROW = 7;
-const COLOR_GRID_ROW = 9;
-const STATUS_ROW = 20;
-const LOG_ROW = 22;
+const THEME_NAME_ROW = 8;
+const BG_FG_ROW = 9;
+const COLOR_GRID_ROW = 11;
+const STATUS_ROW = 22;
+const LOG_ROW = 24;
 const MAX_LOGS = 4;
 
 // --- Log buffer ---
@@ -120,11 +120,19 @@ function colorSwatch(c: ColorRgba): string {
 
 function renderWidget(widget: InteractiveWidget, row: number, col: number): number {
   const segments = [...widget.render({ maxWidth: 80 })];
-  const ansi = segmentsToString(segments, ColorDepth.TRUECOLOR);
-  const width = segments.reduce((sum, s) => sum + s.cellLength, 0);
-  widget.bounds = { x: col, y: row - 1, width, height: 1 };
-  writeAt(row, col, ansi);
-  return col + width + 2;
+  const lines = Segment.splitLines(segments);
+  // Width is the max cell length across all lines
+  let maxWidth = 0;
+  for (const line of lines) {
+    const w = line.reduce((sum, s) => sum + s.cellLength, 0);
+    if (w > maxWidth) maxWidth = w;
+  }
+  widget.bounds = { x: col, y: row - 1, width: maxWidth, height: lines.length };
+  for (let i = 0; i < lines.length; i++) {
+    const ansi = segmentsToString(lines[i]!, ColorDepth.TRUECOLOR);
+    writeAt(row + i, col, ansi);
+  }
+  return col + maxWidth + 2;
 }
 
 function renderHeader(): void {
