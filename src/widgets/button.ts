@@ -3,14 +3,12 @@
  * [LAW:dataflow-not-control-flow] rendering is a pure function of observable state.
  *
  * Four visual states:
- *   normal  — variant colors from theme ANSI palette
- *   hover   — lightened background (mouse over)
- *   focus   — box-drawing border around the button
+ *   normal  — variant colors from theme semantic palette (muted)
+ *   hover   — full variant accent color (brighter than muted)
+ *   focus   — brackets [ label ] surrounding the button
  *   active  — color reversal (pressed)
  *
  * States compose: active > focus > hover > normal.
- * Button renders 3 rows when focused (border top, content, border bottom),
- * 1 row otherwise.
  */
 
 import { makeObservable, observable, action } from "mobx";
@@ -38,16 +36,14 @@ export interface ButtonOptions {
   theme?: TerminalTheme;
 }
 
-// Variant → ANSI color index mapping (theme-aware)
-const VARIANT_ANSI: Record<ButtonVariant, { fgIdx: number; bgIdx: number }> = {
-  default: { fgIdx: 15, bgIdx: 8 },
-  primary: { fgIdx: 15, bgIdx: 4 },
-  success: { fgIdx: 15, bgIdx: 2 },
-  warning: { fgIdx: 0, bgIdx: 3 },
-  danger: { fgIdx: 15, bgIdx: 1 },
+// Variant → palette key mapping for normal (muted bg) and hover (full color bg)
+const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: string }> = {
+  default:  { bg: "surface",          fg: "foreground",    hover: "primary" },
+  primary:  { bg: "primary-muted",    fg: "text-primary",  hover: "primary" },
+  success:  { bg: "success-muted",    fg: "text-success",  hover: "success" },
+  warning:  { bg: "warning-muted",    fg: "text-warning",  hover: "warning" },
+  danger:   { bg: "error-muted",      fg: "text-error",    hover: "error" },
 };
-
-const HOVER_BG_BOOST = 30;
 
 export class Button implements InteractiveWidget {
   readonly id: string;
@@ -144,8 +140,7 @@ export class Button implements InteractiveWidget {
   // --- Rendering ---
 
   render(_options: RenderOptions): Iterable<Segment> {
-    const { fg, bg } = this.resolveColors();
-    // [LAW:dataflow-not-control-flow] same segment count and width every state — only style + content vary
+    // [LAW:dataflow-not-control-flow] same segment count and width every state
     const focused = this.focused;
     const left = focused ? "[" : " ";
     const right = focused ? "]" : " ";
@@ -155,23 +150,21 @@ export class Button implements InteractiveWidget {
       return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
     }
 
-    // Active — color reversal
+    // Active — color reversal (fg/bg swapped)
     if (this.active) {
+      const { fg, bg } = this.resolveColors("bg");
       return [new Segment(text, new Style({ color: bg, bgcolor: fg, bold: true }))];
     }
 
-    // Hovered — lightened background
+    // Hovered — full variant accent color
     if (this.hovered) {
-      const bgRgba = this._theme.ansiColors.get(VARIANT_ANSI[this.variant].bgIdx);
-      const lightened = ColorSpec.fromRgb(
-        Math.min(255, bgRgba.red + HOVER_BG_BOOST),
-        Math.min(255, bgRgba.green + HOVER_BG_BOOST),
-        Math.min(255, bgRgba.blue + HOVER_BG_BOOST),
-      );
-      return [new Segment(text, new Style({ color: fg, bgcolor: lightened }))];
+      const fg = this.resolveFg();
+      const bg = this.resolvePalette(VARIANT_KEYS[this.variant].hover);
+      return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
     }
 
     // Normal / focused
+    const { fg, bg } = this.resolveColors("bg");
     return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
   }
 
@@ -182,13 +175,25 @@ export class Button implements InteractiveWidget {
 
   // --- Private ---
 
-  private resolveColors(): { fg: ColorSpec; bg: ColorSpec } {
-    const ansi = VARIANT_ANSI[this.variant];
-    const table = this._theme.ansiColors;
+  private resolveColors(
+    bgKey: "bg" | "hover",
+  ): { fg: ColorSpec; bg: ColorSpec } {
+    const keys = VARIANT_KEYS[this.variant];
     return {
-      fg: ColorSpec.fromRgba(table.get(ansi.fgIdx)),
-      bg: ColorSpec.fromRgba(table.get(ansi.bgIdx)),
+      fg: this.resolvePalette(keys.fg),
+      bg: this.resolvePalette(bgKey === "hover" ? keys.hover : keys.bg),
     };
+  }
+
+  private resolveFg(): ColorSpec {
+    return this.resolvePalette(VARIANT_KEYS[this.variant].fg);
+  }
+
+  private resolvePalette(key: string): ColorSpec {
+    const rgba = this._theme.palette.get(key);
+    // [LAW:no-defensive-null-guards] palette is required and must contain all keys.
+    // If a key is missing, that's a palette construction bug — fail loudly.
+    return ColorSpec.fromRgba(rgba!);
   }
 
   private emitSubmit(): void {
