@@ -632,7 +632,7 @@ describe("Pre-built themes", () => {
   });
 
   it("MONOKAI exists and has distinct background", () => {
-    expect(MONOKAI.backgroundColor).toEqual(new ColorRgba(12, 12, 12));
+    expect(MONOKAI.backgroundColor).toEqual(new ColorRgba(39, 40, 34));
   });
 
   it("SVG_EXPORT_THEME exists", () => {
