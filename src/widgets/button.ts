@@ -1,16 +1,28 @@
 /**
  * Button widget — labeled action trigger with variant styling.
  * [LAW:dataflow-not-control-flow] rendering is a pure function of observable state.
+ *
+ * Four visual states, composed from observable booleans:
+ *   normal  — focused=false, hovered=false, active=false
+ *   hover   — hovered=true (mouse cursor over, not pressed)
+ *   focus   — focused=true (keyboard focus, distinct visual)
+ *   active  — active=true (pressed, mouse_down or key held)
+ *
+ * States compose: a focused+hovered button shows focus styling (focus wins).
+ * An active button always shows active styling (active wins).
  */
 
 import { makeObservable, observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
+import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
+import type { TerminalTheme } from "../core/color.js";
 import type {
   InteractiveWidget,
   KeyEvent,
   WidgetMouseEvent,
+  WidgetFocusEvent,
   WidgetBounds,
   Unsubscribe,
 } from "./types.js";
@@ -22,16 +34,21 @@ export interface ButtonOptions {
   variant?: ButtonVariant;
   id?: string;
   disabled?: boolean;
+  theme?: TerminalTheme;
 }
 
-// Variant foreground/background color pairs
-const VARIANT_STYLES: Record<ButtonVariant, { color: string; bgcolor: string }> = {
-  default: { color: "#ffffff", bgcolor: "#4a4a4a" },
-  primary: { color: "#ffffff", bgcolor: "#0055d4" },
-  success: { color: "#ffffff", bgcolor: "#008000" },
-  warning: { color: "#000000", bgcolor: "#d4a017" },
-  danger: { color: "#ffffff", bgcolor: "#cc0000" },
+// Variant → ANSI color index mapping (theme-aware)
+// Uses standard ANSI positions: 0=black, 1=red, 2=green, 3=yellow, 4=blue,
+// 7=white, 8=bright_black, 9=bright_red, 15=bright_white
+const VARIANT_ANSI: Record<ButtonVariant, { fgIdx: number; bgIdx: number }> = {
+  default: { fgIdx: 15, bgIdx: 8 },    // bright_white on bright_black
+  primary: { fgIdx: 15, bgIdx: 4 },     // bright_white on blue
+  success: { fgIdx: 15, bgIdx: 2 },     // bright_white on green
+  warning: { fgIdx: 0, bgIdx: 3 },      // black on yellow
+  danger: { fgIdx: 15, bgIdx: 1 },      // bright_white on red
 };
+
+const HOVER_BG_BOOST = 30;
 
 export class Button implements InteractiveWidget {
   readonly id: string;
@@ -40,21 +57,27 @@ export class Button implements InteractiveWidget {
   @observable accessor label: string;
   @observable.ref accessor variant: ButtonVariant;
   @observable accessor focused: boolean = false;
-  @observable accessor disabled: boolean;
+  @observable accessor hovered: boolean = false;
+  @observable accessor active: boolean = false;
+  @observable accessor disabled: boolean = false;
   @observable accessor visible: boolean = true;
   @observable.ref accessor bounds: WidgetBounds | null = null;
 
   private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
   private readonly submitHandlers = new Set<(w: InteractiveWidget) => void>();
+  private _theme: TerminalTheme;
 
   constructor(options: ButtonOptions) {
     this.id = options.id ?? `button-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.variant = options.variant ?? "default";
     this.disabled = options.disabled ?? false;
+    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
 
     makeObservable(this);
   }
+
+  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -62,18 +85,31 @@ export class Button implements InteractiveWidget {
   handleKey(event: KeyEvent): void {
     if (this.disabled) return;
     if (event.key === "enter" || event.key === "space") {
+      this.active = true;
       this.emitSubmit();
+      // Active resets on next render cycle (host should clear it,
+      // or we clear it synchronously after emit so it flashes)
+      this.active = false;
     }
   }
 
   @action
-  handleClick(_event: WidgetMouseEvent): void {
+  handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
-    this.emitSubmit();
+
+    if (event.type === "mouse_down") {
+      this.active = true;
+    }
+    if (event.type === "mouse_up") {
+      if (this.active) {
+        this.active = false;
+        this.emitSubmit();
+      }
+    }
   }
 
   @action
-  handleFocus(event: { type: "focus" | "blur" }): void {
+  handleFocus(event: WidgetFocusEvent): void {
     this.focused = event.type === "focus";
   }
 
@@ -84,6 +120,12 @@ export class Button implements InteractiveWidget {
 
   @action
   blur(): void { this.focused = false; }
+
+  @action
+  setHovered(value: boolean): void { this.hovered = value; }
+
+  @action
+  setActive(value: boolean): void { this.active = value; }
 
   @action
   setDisabled(value: boolean): void { this.disabled = value; }
@@ -117,25 +159,51 @@ export class Button implements InteractiveWidget {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.label.length + 2; // spaces around label
+    const width = this.label.length + 2;
     return { minimum: width, maximum: width };
   }
 
   // --- Private ---
 
+  private resolveColors(): { fg: ColorSpec; bg: ColorSpec } {
+    const ansi = VARIANT_ANSI[this.variant];
+    const table = this._theme.ansiColors;
+    return {
+      fg: ColorSpec.fromRgba(table.get(ansi.fgIdx)),
+      bg: ColorSpec.fromRgba(table.get(ansi.bgIdx)),
+    };
+  }
+
   private computeStyle(): Style {
+    const { fg, bg } = this.resolveColors();
+
     if (this.disabled) {
       return new Style({ color: "#666666", bgcolor: "#333333", dim: true });
     }
 
-    const colors = VARIANT_STYLES[this.variant];
-
-    if (this.focused) {
-      // Reverse swaps fg/bg — unmistakable focus indicator in any terminal
-      return new Style({ color: colors.bgcolor, bgcolor: colors.color, bold: true });
+    // Active (pressed) — reverse + bold + underline
+    if (this.active) {
+      return new Style({ color: bg, bgcolor: fg, bold: true, underline: true });
     }
 
-    return new Style({ color: colors.color, bgcolor: colors.bgcolor });
+    // Focused — reverse colors + bold
+    if (this.focused) {
+      return new Style({ color: bg, bgcolor: fg, bold: true });
+    }
+
+    // Hovered — lighten background slightly
+    if (this.hovered) {
+      const bgRgba = this._theme.ansiColors.get(VARIANT_ANSI[this.variant].bgIdx);
+      const lightened = ColorSpec.fromRgb(
+        Math.min(255, bgRgba.red + HOVER_BG_BOOST),
+        Math.min(255, bgRgba.green + HOVER_BG_BOOST),
+        Math.min(255, bgRgba.blue + HOVER_BG_BOOST),
+      );
+      return new Style({ color: fg, bgcolor: lightened });
+    }
+
+    // Normal
+    return new Style({ color: fg, bgcolor: bg });
   }
 
   private emitSubmit(): void {

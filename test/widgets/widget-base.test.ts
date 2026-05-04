@@ -31,6 +31,8 @@ describe("WidgetBase", () => {
     expect(widget.id).toBe("stub");
     expect(widget.focusable).toBe(true);
     expect(widget.focused).toBe(false);
+    expect(widget.hovered).toBe(false);
+    expect(widget.active).toBe(false);
     expect(widget.disabled).toBe(false);
     expect(widget.visible).toBe(true);
     expect(widget.bounds).toBeNull();

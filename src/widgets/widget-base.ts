@@ -24,6 +24,8 @@ export abstract class WidgetBase implements InteractiveWidget {
   abstract readonly focusable: boolean;
 
   @observable accessor focused: boolean = false;
+  @observable accessor hovered: boolean = false;
+  @observable accessor active: boolean = false;
   @observable accessor disabled: boolean = false;
   @observable accessor visible: boolean = true;
   @observable.ref accessor bounds: WidgetBounds | null = null;
@@ -39,7 +41,7 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   abstract handleKey(event: KeyEvent): void;
 
-  handleClick(_event: WidgetMouseEvent): void {}
+  handleMouse(_event: WidgetMouseEvent): void {}
 
   @action
   handleFocus(event: WidgetFocusEvent): void {
