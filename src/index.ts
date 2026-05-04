@@ -220,3 +220,4 @@ export type {
   Unsubscribe,
 } from "./widgets/types.js";
 export { WidgetBase } from "./widgets/widget-base.js";
+export { DefaultFocusManager } from "./widgets/focus-manager.js";

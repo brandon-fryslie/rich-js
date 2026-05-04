@@ -10,3 +10,4 @@ export type {
 } from "./types.js";
 
 export { WidgetBase } from "./widget-base.js";
+export { DefaultFocusManager } from "./focus-manager.js";
