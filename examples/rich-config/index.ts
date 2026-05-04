@@ -216,6 +216,11 @@ function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void
   // Forward key to focused widget
   if (key && fm.current) {
     fm.current.handleKey(key);
+    // Keyboard activation is momentary — clear after a frame so the visual flash is visible
+    if (key.key === "enter" || key.key === "space") {
+      const widget = fm.current;
+      setTimeout(() => runInAction(() => { widget.active = false; }), 80);
+    }
     return;
   }
 
