@@ -42,7 +42,7 @@ describe("Button", () => {
       const btn = new Button({ label: "OK" });
       const segments = [...btn.render({ maxWidth: 80 })];
       expect(segments).toHaveLength(1);
-      expect(segments[0]!.text).toBe(" OK ");
+      expect(segments[0]!.text).toBe("  OK  ");
     });
 
     it("renders with style (not undefined)", () => {
@@ -58,24 +58,26 @@ describe("Button", () => {
       expect(style.dim).toBe(true);
     });
 
-    it("renders with box-drawing border when focused", () => {
+    it("renders brackets when focused", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       const segments = [...btn.render({ maxWidth: 80 })];
-      // 3 content segments + 2 newline segments = 5
-      expect(segments).toHaveLength(5);
-      expect(segments[0]!.text).toContain("╭");
-      expect(segments[2]!.text).toContain(" Go ");
-      expect(segments[4]!.text).toContain("╰");
+      expect(segments).toHaveLength(1);
+      expect(segments[0]!.text).toBe("[ Go ]");
     });
 
-    it("focused border uses variant bg color", () => {
+    it("renders spaces (no brackets) when not focused", () => {
       const btn = new Button({ label: "Go" });
-      btn.focus();
       const segments = [...btn.render({ maxWidth: 80 })];
-      const borderStyle = segments[0]!.style!;
-      // Border color should be set
-      expect(borderStyle.color).toBeDefined();
+      expect(segments[0]!.text).toBe("  Go  ");
+    });
+
+    it("focus does not change width", () => {
+      const btn = new Button({ label: "Go" });
+      const normalSegs = [...btn.render({ maxWidth: 80 })];
+      btn.focus();
+      const focusedSegs = [...btn.render({ maxWidth: 80 })];
+      expect(normalSegs[0]!.text.length).toBe(focusedSegs[0]!.text.length);
     });
 
     it("renders hover state with lighter background", () => {
@@ -83,9 +85,8 @@ describe("Button", () => {
       btn.setHovered(true);
       const segments = [...btn.render({ maxWidth: 80 })];
       const style = segments[0]!.style!;
-      // Hover bg should be lighter than normal bg
       expect(style.bgcolor).toBeDefined();
-      expect(style.bgcolor!.name).not.toBe("#4a4a4a"); // normal bg for default
+      expect(style.bgcolor!.name).not.toBe("#4a4a4a");
     });
 
     it("renders active state with color reversal", () => {
@@ -95,27 +96,25 @@ describe("Button", () => {
       expect(segments).toHaveLength(1);
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
-      // fg/bg are swapped relative to normal state
     });
 
-    it("active + focused renders border with reversed colors", () => {
+    it("active + focused shows brackets with reversed colors", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       btn.setActive(true);
       const segments = [...btn.render({ maxWidth: 80 })];
-      expect(segments).toHaveLength(5);
-      // Content segment should have bold (active color reversal)
-      const contentStyle = segments[2]!.style!;
-      expect(contentStyle.bold).toBe(true);
+      expect(segments).toHaveLength(1);
+      expect(segments[0]!.text).toBe("[ Go ]");
+      expect(segments[0]!.style!.bold).toBe(true);
     });
   });
 
   describe("measure", () => {
-    it("reports exact width (label + 2 spaces)", () => {
+    it("reports exact width (label + 4 for brackets and padding)", () => {
       const btn = new Button({ label: "Submit" });
       const { minimum, maximum } = btn.measure({ maxWidth: 80 });
-      expect(minimum).toBe(8);
-      expect(maximum).toBe(8);
+      expect(minimum).toBe(10);
+      expect(maximum).toBe(10);
     });
   });
 

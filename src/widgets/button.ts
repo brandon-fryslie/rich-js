@@ -145,23 +145,19 @@ export class Button implements InteractiveWidget {
 
   render(_options: RenderOptions): Iterable<Segment> {
     const { fg, bg } = this.resolveColors();
-    const padLabel = ` ${this.label} `;
+    // [LAW:dataflow-not-control-flow] same segment count and width every state — only style + content vary
+    const focused = this.focused;
+    const left = focused ? "[" : " ";
+    const right = focused ? "]" : " ";
+    const text = `${left} ${this.label} ${right}`;
 
     if (this.disabled) {
-      return [new Segment(padLabel, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
+      return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
     }
 
     // Active — color reversal
     if (this.active) {
-      if (this.focused) {
-        return this.withBorder(padLabel, new Style({ color: bg, bgcolor: fg, bold: true }), fg);
-      }
-      return [new Segment(padLabel, new Style({ color: bg, bgcolor: fg, bold: true }))];
-    }
-
-    // Focused — border around the button
-    if (this.focused) {
-      return this.withBorder(padLabel, new Style({ color: fg, bgcolor: bg }), bg);
+      return [new Segment(text, new Style({ color: bg, bgcolor: fg, bold: true }))];
     }
 
     // Hovered — lightened background
@@ -172,15 +168,15 @@ export class Button implements InteractiveWidget {
         Math.min(255, bgRgba.green + HOVER_BG_BOOST),
         Math.min(255, bgRgba.blue + HOVER_BG_BOOST),
       );
-      return [new Segment(padLabel, new Style({ color: fg, bgcolor: lightened }))];
+      return [new Segment(text, new Style({ color: fg, bgcolor: lightened }))];
     }
 
-    // Normal
-    return [new Segment(padLabel, new Style({ color: fg, bgcolor: bg }))];
+    // Normal / focused
+    return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.label.length + 2;
+    const width = this.label.length + 4; // [ space label space ]
     return { minimum: width, maximum: width };
   }
 
@@ -193,22 +189,6 @@ export class Button implements InteractiveWidget {
       fg: ColorSpec.fromRgba(table.get(ansi.fgIdx)),
       bg: ColorSpec.fromRgba(table.get(ansi.bgIdx)),
     };
-  }
-
-  /** Wrap content in box-drawing border. borderColor = the variant's bg color. */
-  private withBorder(content: string, contentStyle: Style, borderColor: ColorSpec): Segment[] {
-    const borderStyle = new Style({ color: borderColor });
-    const len = content.length;
-    const top = `╭${"─".repeat(len)}╮`;
-    const mid = `│${content}│`;
-    const bot = `╰${"─".repeat(len)}╯`;
-    return [
-      new Segment(top, borderStyle),
-      Segment.line(),
-      new Segment(mid, contentStyle),
-      Segment.line(),
-      new Segment(bot, borderStyle),
-    ];
   }
 
   private emitSubmit(): void {

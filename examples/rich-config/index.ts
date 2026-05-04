@@ -62,11 +62,11 @@ const state = new AppState();
 const HEADER_ROW = 1;
 const SUBTITLE_ROW = 2;
 const BUTTON_ROW = 4;
-const THEME_NAME_ROW = 8;
-const BG_FG_ROW = 9;
-const COLOR_GRID_ROW = 11;
-const STATUS_ROW = 22;
-const LOG_ROW = 24;
+const THEME_NAME_ROW = 6;
+const BG_FG_ROW = 7;
+const COLOR_GRID_ROW = 9;
+const STATUS_ROW = 20;
+const LOG_ROW = 22;
 const MAX_LOGS = 4;
 
 // --- Log buffer ---
