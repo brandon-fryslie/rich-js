@@ -30,11 +30,11 @@ export function enableMouse(): void {
   process.stdout.write("\x1b[?1006h");
   // Enable mouse button press/release + motion tracking
   process.stdout.write("\x1b[?1000h");
-  process.stdout.write("\x1b[?1002h");
+  process.stdout.write("\x1b[?1003h");
 }
 
 export function disableMouse(): void {
-  process.stdout.write("\x1b[?1002l");
+  process.stdout.write("\x1b[?1003l");
   process.stdout.write("\x1b[?1000l");
   process.stdout.write("\x1b[?1006l");
 }
