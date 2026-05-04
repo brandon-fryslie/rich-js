@@ -49,13 +49,13 @@ export interface InteractiveWidget extends Renderable, Measurable {
   // [LAW:one-source-of-truth] single source for focus eligibility
   readonly focusable: boolean;
 
-  // Observable state
-  readonly focused: boolean;
-  readonly disabled: boolean;
-  readonly visible: boolean;
+  // Observable state (writable via actions — readonly in interface is aspirational)
+  focused: boolean;
+  disabled: boolean;
+  visible: boolean;
 
   // Geometry — set by host during layout, used for hit-testing
-  readonly bounds: WidgetBounds | null;
+  bounds: WidgetBounds | null;
 
   // Event handlers
   handleKey(event: KeyEvent): void;
