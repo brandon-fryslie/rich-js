@@ -112,4 +112,8 @@ export interface Screen {
 
   readonly focusManager: FocusManager;
   readonly running: boolean;
+  // [LAW:one-source-of-truth] The screen owns the live widget list; the
+  // router and other consumers read it from here for hit-testing / layout
+  // queries.
+  readonly widgets: readonly InteractiveWidget[];
 }
