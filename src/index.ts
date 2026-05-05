@@ -239,5 +239,7 @@ export type {
 } from "./widgets/types.js";
 export { WidgetBase } from "./widgets/widget-base.js";
 export { DefaultFocusManager } from "./widgets/focus-manager.js";
+export { DefaultScreen } from "./widgets/screen.js";
+export type { ScreenOptions, ColorSystemSpec } from "./widgets/screen.js";
 export { Button } from "./widgets/button.js";
 export type { ButtonVariant, ButtonOptions } from "./widgets/button.js";
