@@ -15,3 +15,5 @@ export { DefaultScreen } from "./screen.js";
 export type { ScreenOptions, ColorSystemSpec } from "./screen.js";
 export { Button } from "./button.js";
 export type { ButtonVariant, ButtonOptions } from "./button.js";
+export { EventRouter } from "./event-router.js";
+export type { EventRouterOptions } from "./event-router.js";
