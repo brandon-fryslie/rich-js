@@ -107,10 +107,10 @@ const state = new AppState();
 
 const HEADER_ROW = 1;
 const SUBTITLE_ROW = 2;
-const BUTTON_START_ROW = 4;
+const WIDGETS_START_ROW = 4;
 const MAX_BUTTON_COLS = 78;
-// Layout below is dynamic — renderButtons / renderInteractiveWidgets
-// return the next free row; renderContent uses what's left over.
+// Layout below is dynamic — renderInteractiveWidgets returns the next
+// free row; renderContent uses what's left between widgets and STATUS_ROW.
 const STATUS_ROW = 42;
 const LOG_ROW = 44;
 const MAX_LOGS = 3;
@@ -123,62 +123,57 @@ function log(msg: string): void {
   if (logs.length > MAX_LOGS) logs.shift();
 }
 
-// --- Theme buttons ---
-
-const themeButtons = THEMES.map((t, i) =>
-  new Button({
-    label: t.name,
-    variant: i === 0 ? "primary" : "default",
-    id: `theme-${t.name.toLowerCase().replace(/\s+/g, "-")}`,
-  })
-);
+// --- Action buttons (Button showcases) ---
 
 const btnExport = new Button({ label: "Export", variant: "success", id: "btn-export" });
 const btnReset = new Button({ label: "Reset", variant: "danger", id: "btn-reset" });
 const btnDisabled = new Button({ label: "Locked", variant: "default", disabled: true, id: "btn-locked" });
 
-themeButtons.forEach((btn, i) => {
-  btn.onSubmit(() => {
-    state.selectTheme(i);
-    log(`Switched to ${THEMES[i]!.name} theme`);
-  });
-});
-btnExport.onSubmit(() => log(`Exported ${state.selectedName} theme`));
-btnReset.onSubmit(() => {
-  state.selectTheme(0);
-  log("Reset to Default theme");
-});
+// --- Interactive widgets ---
 
-// --- Interactive widgets (one of each new type) ---
-
+// [LAW:one-source-of-truth] themeDropdown.selectedIndex is the canonical
+// user-driven source of truth for theme selection; AppState.selectedThemeIdx
+// mirrors it via the onSubmit handler.
+const themeDropdown = new Dropdown({
+  options: THEMES.map((t) => t.name),
+  selectedIndex: 0,
+  id: "dd-theme",
+});
 const cbSubscribe = new Checkbox({ label: "Subscribe", id: "cb-subscribe" });
 const tgNotif = new Toggle({ label: "Notifications", variant: "success", id: "tg-notif" });
 const slVolume = new Slider({ value: 40, min: 0, max: 100, step: 5, width: 22, id: "sl-volume" });
 const inName = new TextInput({ placeholder: "Enter name", id: "in-name" });
-const ddPriority = new Dropdown({
-  options: ["Low", "Normal", "High", "Critical"],
-  selectedIndex: 1,
-  id: "dd-priority",
-});
 
+themeDropdown.onSubmit(() => {
+  const idx = themeDropdown.selectedIndex;
+  state.selectTheme(idx);
+  log(`Switched to ${THEMES[idx]!.name} theme`);
+});
 cbSubscribe.onChange(() => log(`Subscribe → ${cbSubscribe.checked}`));
 tgNotif.onChange(() => log(`Notifications → ${tgNotif.on ? "ON" : "OFF"}`));
 slVolume.onChange(() => log(`Volume → ${slVolume.value}`));
 inName.onSubmit(() => log(`Submitted name: ${JSON.stringify(inName.value)}`));
-ddPriority.onSubmit(() =>
-  log(`Priority → ${ddPriority.options[ddPriority.selectedIndex]}`),
-);
 
-const themeWidgets: InteractiveWidget[] = [...themeButtons, btnExport, btnReset, btnDisabled];
-const inputWidgets: InteractiveWidget[] = [cbSubscribe, tgNotif, slVolume];
-const dropdownWidget: InteractiveWidget = ddPriority;
-const textInputWidget: InteractiveWidget = inName;
+btnExport.onSubmit(() => log(`Exported ${state.selectedName} theme`));
+btnReset.onSubmit(() => {
+  // Drive the dropdown (source of truth); AppState follows.
+  runInAction(() => {
+    themeDropdown.selectedIndex = 0;
+  });
+  state.selectTheme(0);
+  log("Reset to Default theme");
+});
 
+// Tab order: dropdown → text input → toggles → slider → action buttons.
 const allWidgets: InteractiveWidget[] = [
-  ...themeWidgets,
-  ...inputWidgets,
-  textInputWidget,
-  dropdownWidget,
+  themeDropdown,
+  inName,
+  cbSubscribe,
+  tgNotif,
+  slVolume,
+  btnExport,
+  btnReset,
+  btnDisabled,
 ];
 
 // --- Focus manager ---
@@ -218,10 +213,10 @@ function renderHeader(): void {
   writeAt(SUBTITLE_ROW, 2, "\x1b[2mTab · Space/Enter · Click · Ctrl-C to exit\x1b[0m");
 }
 
-function renderButtons(startRow: number): number {
+function renderInlineRow(widgets: InteractiveWidget[], startRow: number): number {
   let row = startRow;
   let col = 2;
-  for (const widget of themeWidgets) {
+  for (const widget of widgets) {
     const { minimum } = widget.measure({ maxWidth: 80 });
     if (col + minimum > MAX_BUTTON_COLS && col > 2) {
       row++;
@@ -229,35 +224,32 @@ function renderButtons(startRow: number): number {
     }
     col = renderWidget(widget, row, col);
   }
-  return row + 1; // first free row after the last button row
+  return row + 1;
 }
 
 function renderInteractiveWidgets(startRow: number): number {
-  // Heading
   writeAt(startRow, 2, "\x1b[1;33mInteractive Widgets\x1b[0m");
   let row = startRow + 1;
-  let col = 2;
 
-  // Inline row: Checkbox + Toggle + Slider
-  for (const widget of inputWidgets) {
-    const { minimum } = widget.measure({ maxWidth: 80 });
-    if (col + minimum > MAX_BUTTON_COLS && col > 2) {
-      row++;
-      col = 2;
-    }
-    col = renderWidget(widget, row, col);
-  }
-  row++;
+  // Theme dropdown sits at the top: it's the primary control and grows
+  // downward when expanded. Reserve full expansion (1 header + N options
+  // + spacer) so content below stays at a stable row regardless of the
+  // expanded flag — [LAW:dataflow-not-control-flow], layout shape is
+  // independent of widget state.
+  renderWidget(themeDropdown, row, 2);
+  row += 1 + themeDropdown.options.length + 1;
 
-  // TextInput on its own row (placeholder/value width is dynamic)
-  renderWidget(textInputWidget, row, 2);
-  row++;
+  // TextInput on its own row (filter input — wired in d94.2/d94.3).
+  renderWidget(inName, row, 2);
+  row += 1;
 
-  // Dropdown on its own row — when expanded it grows downward, so we
-  // reserve enough rows for the longest option list (1 header + N options).
-  renderWidget(dropdownWidget, row, 2);
-  const ddOptions = (dropdownWidget as Dropdown).options.length;
-  return row + 1 + ddOptions + 1; // header + max-options + spacer
+  // Inline boolean + slider row: Checkbox, Toggle, Slider.
+  row = renderInlineRow([cbSubscribe, tgNotif, slVolume], row);
+
+  // Action buttons row: Export, Reset, Locked.
+  row = renderInlineRow([btnExport, btnReset, btnDisabled], row);
+
+  return row;
 }
 
 function renderRenderable(renderable: { render(options: RenderOptions): Iterable<Segment> }, row: number, col: number): number {
@@ -371,9 +363,7 @@ function renderLogs(): void {
 function render(): void {
   eraseBelow(HEADER_ROW);
   renderHeader();
-  const afterButtons = renderButtons(BUTTON_START_ROW);
-  // One blank row between sections.
-  const afterWidgets = renderInteractiveWidgets(afterButtons + 1);
+  const afterWidgets = renderInteractiveWidgets(WIDGETS_START_ROW);
   renderContent(afterWidgets + 1);
   renderStatus();
   renderLogs();
@@ -477,9 +467,9 @@ function startup(): void {
     void slVolume.value;
     void inName.value;
     void inName.cursorPosition;
-    void ddPriority.expanded;
-    void ddPriority.selectedIndex;
-    void ddPriority.highlightedIndex;
+    void themeDropdown.expanded;
+    void themeDropdown.selectedIndex;
+    void themeDropdown.highlightedIndex;
     void logs.length;
     render();
   });
