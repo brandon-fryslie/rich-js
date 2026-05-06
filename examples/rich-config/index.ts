@@ -142,7 +142,7 @@ const themeDropdown = new Dropdown({
   id: "dd-theme",
 });
 const cbSubscribe = new Checkbox({ label: "Subscribe", id: "cb-subscribe" });
-const tgNotif = new Toggle({ label: "Notifications", variant: "success", id: "tg-notif" });
+const tgDarkOnly = new Toggle({ label: "Dark only", variant: "success", id: "tg-dark-only" });
 const slVolume = new Slider({ value: 40, min: 0, max: 100, step: 5, width: 22, id: "sl-volume" });
 const inName = new TextInput({ placeholder: "Filter themes", id: "in-filter" });
 
@@ -157,7 +157,7 @@ themeDropdown.onSubmit(() => {
   log(`Switched to ${name} theme`);
 });
 cbSubscribe.onChange(() => log(`Subscribe → ${cbSubscribe.checked}`));
-tgNotif.onChange(() => log(`Notifications → ${tgNotif.on ? "ON" : "OFF"}`));
+tgDarkOnly.onChange(() => log(`Dark only → ${tgDarkOnly.on ? "ON" : "OFF"}`));
 slVolume.onChange(() => log(`Volume → ${slVolume.value}`));
 inName.onSubmit(() => log(`Filter: ${JSON.stringify(inName.value)} (${themeDropdown.options.length} match)`));
 
@@ -178,7 +178,7 @@ const allWidgets: InteractiveWidget[] = [
   themeDropdown,
   inName,
   cbSubscribe,
-  tgNotif,
+  tgDarkOnly,
   slVolume,
   btnExport,
   btnReset,
@@ -252,7 +252,7 @@ function renderInteractiveWidgets(startRow: number): number {
   row += 1 + themeDropdown.options.length + 1;
 
   // Inline boolean + slider row: Checkbox, Toggle, Slider.
-  row = renderInlineRow([cbSubscribe, tgNotif, slVolume], row);
+  row = renderInlineRow([cbSubscribe, tgDarkOnly, slVolume], row);
 
   // Action buttons row: Export, Reset, Locked.
   row = renderInlineRow([btnExport, btnReset, btnDisabled], row);
@@ -458,18 +458,19 @@ function startup(): void {
 
   for (const widget of allWidgets) fm.register(widget);
 
-  // [LAW:single-enforcer] Filter pipeline: inName.value (filter source) +
-  // state.selectedThemeIdx (canonical selection) → themeDropdown.options
-  // (filtered names) + themeDropdown.selectedIndex (filtered position of
-  // the canonical theme, or -1 if filtered out). This is the single
-  // place that mutates dropdown.options.
+  // [LAW:single-enforcer] Filter pipeline: inName.value (substring) +
+  // tgDarkOnly.on (dark-only) + state.selectedThemeIdx (canonical
+  // selection) → themeDropdown.options (filtered names) +
+  // themeDropdown.selectedIndex (filtered position of the canonical
+  // theme, or -1 if filtered out). This is the single place that
+  // mutates dropdown.options — both filter predicates compose here.
   disposeFilter = autorun(() => {
     const filterText = inName.value.toLowerCase();
+    const darkOnly = tgDarkOnly.on;
     const canonicalTheme = THEMES[state.selectedThemeIdx]!;
-    const filtered =
-      filterText === ""
-        ? THEMES
-        : THEMES.filter((t) => t.name.toLowerCase().includes(filterText));
+    const filtered = THEMES
+      .filter((t) => !darkOnly || t.theme.palette.dark)
+      .filter((t) => filterText === "" || t.name.toLowerCase().includes(filterText));
     runInAction(() => {
       themeDropdown.options = filtered.map((t) => t.name);
       // -1 when the canonical theme is filtered out → header renders blank,
@@ -492,7 +493,7 @@ function startup(): void {
     void fm.current?.hovered;
     // Touch the new widgets' observables so the autorun re-fires on their changes.
     void cbSubscribe.checked;
-    void tgNotif.on;
+    void tgDarkOnly.on;
     void slVolume.value;
     void inName.value;
     void inName.cursorPosition;
