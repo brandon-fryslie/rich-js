@@ -31,12 +31,18 @@ export interface ButtonOptions {
   theme?: TerminalTheme;
 }
 
-const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: string }> = {
-  default:  { bg: "surface",          fg: "foreground",    hover: "primary" },
-  primary:  { bg: "primary-muted",    fg: "text-primary",  hover: "primary" },
-  success:  { bg: "success-muted",    fg: "text-success",  hover: "success" },
-  warning:  { bg: "warning-muted",    fg: "text-warning",  hover: "warning" },
-  danger:   { bg: "error-muted",      fg: "text-error",    hover: "error" },
+// Variant → palette key mapping. Per variant:
+//   bg / fg     — normal state. Muted accent bg + mostly-accent fg → readable.
+//   hover       — full accent bg; pair with hoverFg, NOT with `fg`. The
+//                 text-* keys are mostly-accent and would clash on a full
+//                 accent bg.
+//   hoverFg     — WCAG-correct contrast colour (on-${accent}) for full bg.
+const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: string; hoverFg: string }> = {
+  default:  { bg: "surface",       fg: "foreground",   hover: "primary", hoverFg: "on-primary" },
+  primary:  { bg: "primary-muted", fg: "text-primary", hover: "primary", hoverFg: "on-primary" },
+  success:  { bg: "success-muted", fg: "text-success", hover: "success", hoverFg: "on-success" },
+  warning:  { bg: "warning-muted", fg: "text-warning", hover: "warning", hoverFg: "on-warning" },
+  danger:   { bg: "error-muted",   fg: "text-error",   hover: "error",   hoverFg: "on-error" },
 };
 
 export class Button extends WidgetBase {
@@ -105,15 +111,14 @@ export class Button extends WidgetBase {
       return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
     }
 
-    if (this.active) {
-      const { fg, bg } = this.resolveColors("bg");
-      return [new Segment(text, new Style({ color: bg, bgcolor: fg, bold: true }))];
-    }
-
-    if (this.hovered) {
-      const fg = this.resolveFg();
+    // Active and hover share the same colour pair (full accent bg + on-accent fg).
+    // Active is differentiated by bold, not by inverting fg/bg — inversion gives
+    // mostly-accent text on mostly-bg-tinted background, which is unreadable for
+    // accents whose contrast partner depends on luminance.
+    if (this.active || this.hovered) {
+      const fg = this.resolvePalette(VARIANT_KEYS[this.variant].hoverFg);
       const bg = this.resolvePalette(VARIANT_KEYS[this.variant].hover);
-      return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
+      return [new Segment(text, new Style({ color: fg, bgcolor: bg, bold: this.active }))];
     }
 
     const { fg, bg } = this.resolveColors("bg");
@@ -135,10 +140,6 @@ export class Button extends WidgetBase {
       fg: this.resolvePalette(keys.fg),
       bg: this.resolvePalette(bgKey === "hover" ? keys.hover : keys.bg),
     };
-  }
-
-  private resolveFg(): ColorSpec {
-    return this.resolvePalette(VARIANT_KEYS[this.variant].fg);
   }
 
   private resolvePalette(key: string): ColorSpec {

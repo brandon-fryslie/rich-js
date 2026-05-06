@@ -117,6 +117,23 @@ describe("Toggle", () => {
       expect(offBg!.name).not.toBe(onBg!.name);
     });
 
+    it("ON state uses on-${accent} contrast colour as fg, not text-${accent}", () => {
+      const on = new Toggle({ label: "Go", variant: "primary", on: true });
+      const fg = [...on.render({ maxWidth: 80 })][0]!.style!.color!;
+      // on-primary is pure black or pure white (WCAG contrast).
+      const isBlack = fg.name === "#000000";
+      const isWhite = fg.name === "#ffffff";
+      expect(isBlack || isWhite).toBe(true);
+    });
+
+    it("ON state's fg differs from its bg (no same-hue clash)", () => {
+      for (const variant of ["primary", "success", "warning", "danger"] as const) {
+        const on = new Toggle({ label: "Go", variant, on: true });
+        const style = [...on.render({ maxWidth: 80 })][0]!.style!;
+        expect(style.color!.name).not.toBe(style.bgcolor!.name);
+      }
+    });
+
     it("variants produce different ON background colours", () => {
       const primary = new Toggle({ label: "Go", variant: "primary", on: true });
       const success = new Toggle({ label: "Go", variant: "success", on: true });
