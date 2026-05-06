@@ -17,5 +17,7 @@ export { Button } from "./button.js";
 export type { ButtonVariant, ButtonOptions } from "./button.js";
 export { Checkbox } from "./checkbox.js";
 export type { CheckboxOptions } from "./checkbox.js";
+export { Toggle } from "./toggle.js";
+export type { ToggleVariant, ToggleOptions } from "./toggle.js";
 export { EventRouter } from "./event-router.js";
 export type { EventRouterOptions } from "./event-router.js";
