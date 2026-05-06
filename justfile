@@ -33,3 +33,6 @@ strip:
 
 markup-plugins:
     npm run markup-plugins
+
+widgets-demo:
+    npm run widgets-demo

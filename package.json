@@ -38,7 +38,8 @@
     "strip": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-strip/index.js",
     "markup-plugins": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-markup-plugins/index.js",
     "demo-inputs": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-config/index.js",
-    "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js"
+    "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js",
+    "widgets-demo": "tsc -p tsconfig.demo.json && node dist-demo/examples/widgets-demo/index.js"
   },
   "keywords": [
     "terminal",
