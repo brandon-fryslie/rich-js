@@ -23,5 +23,7 @@ export { TextInput } from "./text-input.js";
 export type { TextInputOptions } from "./text-input.js";
 export { Dropdown } from "./dropdown.js";
 export type { DropdownOptions } from "./dropdown.js";
+export { Slider } from "./slider.js";
+export type { SliderOptions } from "./slider.js";
 export { EventRouter } from "./event-router.js";
 export type { EventRouterOptions } from "./event-router.js";
