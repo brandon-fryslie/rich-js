@@ -21,5 +21,7 @@ export { Toggle } from "./toggle.js";
 export type { ToggleVariant, ToggleOptions } from "./toggle.js";
 export { TextInput } from "./text-input.js";
 export type { TextInputOptions } from "./text-input.js";
+export { Dropdown } from "./dropdown.js";
+export type { DropdownOptions } from "./dropdown.js";
 export { EventRouter } from "./event-router.js";
 export type { EventRouterOptions } from "./event-router.js";
