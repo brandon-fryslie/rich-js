@@ -131,9 +131,11 @@ const btnDisabled = new Button({ label: "Locked", variant: "default", disabled: 
 
 // --- Interactive widgets ---
 
-// [LAW:one-source-of-truth] themeDropdown.selectedIndex is the canonical
-// user-driven source of truth for theme selection; AppState.selectedThemeIdx
-// mirrors it via the onSubmit handler.
+// [LAW:one-source-of-truth] state.selectedThemeIdx is the canonical
+// "selected theme" — it indexes the global THEMES array and survives
+// filter changes. themeDropdown.options is filter-derived; the dropdown's
+// selectedIndex is a positional projection of state.selectedThemeIdx into
+// that filtered list, maintained by the filter autorun in startup().
 const themeDropdown = new Dropdown({
   options: THEMES.map((t) => t.name),
   selectedIndex: 0,
@@ -142,25 +144,32 @@ const themeDropdown = new Dropdown({
 const cbSubscribe = new Checkbox({ label: "Subscribe", id: "cb-subscribe" });
 const tgNotif = new Toggle({ label: "Notifications", variant: "success", id: "tg-notif" });
 const slVolume = new Slider({ value: 40, min: 0, max: 100, step: 5, width: 22, id: "sl-volume" });
-const inName = new TextInput({ placeholder: "Enter name", id: "in-name" });
+const inName = new TextInput({ placeholder: "Filter themes", id: "in-filter" });
 
 themeDropdown.onSubmit(() => {
-  const idx = themeDropdown.selectedIndex;
-  state.selectTheme(idx);
-  log(`Switched to ${THEMES[idx]!.name} theme`);
+  // Resolve the picked option back to its canonical THEMES index by name —
+  // dropdown.options is filter-volatile, so positional indexing is unsafe.
+  const name = themeDropdown.options[themeDropdown.selectedIndex];
+  if (name === undefined) return;
+  const globalIdx = THEMES.findIndex((t) => t.name === name);
+  if (globalIdx === -1) return;
+  state.selectTheme(globalIdx);
+  log(`Switched to ${name} theme`);
 });
 cbSubscribe.onChange(() => log(`Subscribe → ${cbSubscribe.checked}`));
 tgNotif.onChange(() => log(`Notifications → ${tgNotif.on ? "ON" : "OFF"}`));
 slVolume.onChange(() => log(`Volume → ${slVolume.value}`));
-inName.onSubmit(() => log(`Submitted name: ${JSON.stringify(inName.value)}`));
+inName.onSubmit(() => log(`Filter: ${JSON.stringify(inName.value)} (${themeDropdown.options.length} match)`));
 
 btnExport.onSubmit(() => log(`Exported ${state.selectedName} theme`));
 btnReset.onSubmit(() => {
-  // Drive the dropdown (source of truth); AppState follows.
+  // Reset state to Default and clear the filter; the filter autorun
+  // re-syncs themeDropdown.options/selectedIndex from these canonical inputs.
   runInAction(() => {
-    themeDropdown.selectedIndex = 0;
+    inName.value = "";
+    inName.cursorPosition = 0;
+    state.selectTheme(0);
   });
-  state.selectTheme(0);
   log("Reset to Default theme");
 });
 
@@ -231,17 +240,16 @@ function renderInteractiveWidgets(startRow: number): number {
   writeAt(startRow, 2, "\x1b[1;33mInteractive Widgets\x1b[0m");
   let row = startRow + 1;
 
-  // Theme dropdown sits at the top: it's the primary control and grows
-  // downward when expanded. Reserve full expansion (1 header + N options
-  // + spacer) so content below stays at a stable row regardless of the
-  // expanded flag — [LAW:dataflow-not-control-flow], layout shape is
-  // independent of widget state.
-  renderWidget(themeDropdown, row, 2);
+  // Top row: theme dropdown + filter text input side by side. The
+  // dropdown's expansion grows downward in its own column, so it doesn't
+  // collide with the text input on the right.
+  // Reserve full expansion (1 header + N options + spacer) so content
+  // below stays at a stable row regardless of the expanded flag —
+  // [LAW:dataflow-not-control-flow], layout shape is independent of
+  // widget state.
+  const ddNextCol = renderWidget(themeDropdown, row, 2);
+  renderWidget(inName, row, ddNextCol);
   row += 1 + themeDropdown.options.length + 1;
-
-  // TextInput on its own row (filter input — wired in d94.2/d94.3).
-  renderWidget(inName, row, 2);
-  row += 1;
 
   // Inline boolean + slider row: Checkbox, Toggle, Slider.
   row = renderInlineRow([cbSubscribe, tgNotif, slVolume], row);
@@ -435,6 +443,7 @@ function widgetAt(x: number, y: number): InteractiveWidget | null {
 
 let stopReading: (() => void) | null = null;
 let disposeRender: (() => void) | null = null;
+let disposeFilter: (() => void) | null = null;
 
 function startup(): void {
   if (!process.stdin.isTTY) {
@@ -448,6 +457,26 @@ function startup(): void {
   clearScreen();
 
   for (const widget of allWidgets) fm.register(widget);
+
+  // [LAW:single-enforcer] Filter pipeline: inName.value (filter source) +
+  // state.selectedThemeIdx (canonical selection) → themeDropdown.options
+  // (filtered names) + themeDropdown.selectedIndex (filtered position of
+  // the canonical theme, or -1 if filtered out). This is the single
+  // place that mutates dropdown.options.
+  disposeFilter = autorun(() => {
+    const filterText = inName.value.toLowerCase();
+    const canonicalTheme = THEMES[state.selectedThemeIdx]!;
+    const filtered =
+      filterText === ""
+        ? THEMES
+        : THEMES.filter((t) => t.name.toLowerCase().includes(filterText));
+    runInAction(() => {
+      themeDropdown.options = filtered.map((t) => t.name);
+      // -1 when the canonical theme is filtered out → header renders blank,
+      // state stays unchanged ("leave the selection where it is").
+      themeDropdown.selectedIndex = filtered.indexOf(canonicalTheme);
+    });
+  });
 
   disposeRender = autorun(() => {
     const theme = state.selectedTheme;
@@ -480,6 +509,7 @@ function startup(): void {
 function shutdown(): void {
   if (stopReading) stopReading();
   if (disposeRender) disposeRender();
+  if (disposeFilter) disposeFilter();
   disableMouse();
   showCursor();
   clearScreen();
