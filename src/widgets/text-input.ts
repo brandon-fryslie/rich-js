@@ -165,10 +165,11 @@ export class TextInput extends WidgetBase {
         ? new Style({ color: this.resolvePalette("foreground"), dim: true })
         : new Style({ color: this.resolvePalette("foreground") });
 
+    // Cursor cell paints on a full primary bg → use on-primary for fg so
+    // contrast is WCAG-correct across all themes, not theme-bg-dependent.
     const cursorStyle = new Style({
-      color: this.resolvePalette("background"),
+      color: this.resolvePalette("on-primary"),
       bgcolor: this.resolvePalette("primary"),
-      reverse: false,
     });
 
     const segments: Segment[] = [new Segment("[", bracketStyle)];

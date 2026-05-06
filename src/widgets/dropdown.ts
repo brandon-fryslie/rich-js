@@ -177,6 +177,8 @@ export class Dropdown extends WidgetBase {
     const isSelected = idx === this.selectedIndex;
     const isHighlighted = idx === this.highlightedIndex;
 
+    // Highlighted: muted bg → text-primary (mostly-accent fg) is readable.
+    // Selected:    full primary bg → on-primary (WCAG contrast) for fg.
     const rowStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
       : isHighlighted
@@ -186,7 +188,7 @@ export class Dropdown extends WidgetBase {
           })
         : isSelected
           ? new Style({
-              color: this.resolvePalette("text-primary"),
+              color: this.resolvePalette("on-primary"),
               bgcolor: this.resolvePalette("primary"),
             })
           : new Style({

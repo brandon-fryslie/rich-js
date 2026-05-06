@@ -31,15 +31,20 @@ export interface ToggleOptions {
   variant?: ToggleVariant;
 }
 
+// onFg uses on-${accent} (WCAG-correct contrast, picked once at palette
+// build time) so the ON state stays readable on a full accent bg. Earlier
+// versions used text-${accent} here, which is mostly-accent and clashed
+// with the same accent as background. offFg keeps text-${accent} because
+// offBg is mostly-bg-tinted and the contrast holds.
 const VARIANT_KEYS: Record<
   ToggleVariant,
   { onBg: string; onFg: string; offBg: string; offFg: string }
 > = {
-  default: { onBg: "primary", onFg: "text-primary", offBg: "surface",       offFg: "foreground" },
-  primary: { onBg: "primary", onFg: "text-primary", offBg: "primary-muted", offFg: "text-primary" },
-  success: { onBg: "success", onFg: "text-success", offBg: "success-muted", offFg: "text-success" },
-  warning: { onBg: "warning", onFg: "text-warning", offBg: "warning-muted", offFg: "text-warning" },
-  danger:  { onBg: "error",   onFg: "text-error",   offBg: "error-muted",   offFg: "text-error" },
+  default: { onBg: "primary", onFg: "on-primary", offBg: "surface",       offFg: "foreground" },
+  primary: { onBg: "primary", onFg: "on-primary", offBg: "primary-muted", offFg: "text-primary" },
+  success: { onBg: "success", onFg: "on-success", offBg: "success-muted", offFg: "text-success" },
+  warning: { onBg: "warning", onFg: "on-warning", offBg: "warning-muted", offFg: "text-warning" },
+  danger:  { onBg: "error",   onFg: "on-error",   offBg: "error-muted",   offFg: "text-error" },
 };
 
 export class Toggle extends WidgetBase {
