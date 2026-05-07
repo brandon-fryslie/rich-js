@@ -146,6 +146,7 @@ const cbAnsi = new Checkbox({ label: "ANSI", checked: true, id: "cb-ansi" });
 const cbProgress = new Checkbox({ label: "Progress", checked: true, id: "cb-progress" });
 const tgDarkOnly = new Toggle({ label: "Dark only", variant: "success", id: "tg-dark-only" });
 const slVolume = new Slider({ value: 40, min: 0, max: 100, step: 5, width: 22, id: "sl-volume" });
+const slContrast = new Slider({ value: 0.179, min: 0, max: 1, step: 0.05, width: 25, id: "sl-contrast" });
 const inName = new TextInput({ placeholder: "Filter themes", id: "in-filter" });
 
 themeDropdown.onSubmit(() => {
@@ -163,6 +164,7 @@ cbAnsi.onChange(() => log(`ANSI palette → ${cbAnsi.checked ? "shown" : "hidden
 cbProgress.onChange(() => log(`Progress bars → ${cbProgress.checked ? "shown" : "hidden"}`));
 tgDarkOnly.onChange(() => log(`Dark only → ${tgDarkOnly.on ? "ON" : "OFF"}`));
 slVolume.onChange(() => log(`Volume → ${slVolume.value}`));
+slContrast.onChange(() => log(`Contrast threshold → ${slContrast.value.toFixed(2)}`));
 inName.onSubmit(() => log(`Filter: ${JSON.stringify(inName.value)} (${themeDropdown.options.length} match)`));
 
 btnExport.onSubmit(() => log(`Exported ${state.selectedName} theme`));
@@ -186,6 +188,7 @@ const allWidgets: InteractiveWidget[] = [
   cbProgress,
   tgDarkOnly,
   slVolume,
+  slContrast,
   btnExport,
   btnReset,
   btnDisabled,
@@ -257,8 +260,11 @@ function renderInteractiveWidgets(startRow: number): number {
   renderWidget(inName, row, ddNextCol);
   row += 1 + themeDropdown.options.length + 1;
 
-  // Inline boolean + slider row: Checkbox, Toggle, Slider.
-  row = renderInlineRow([cbMuted, cbAnsi, cbProgress, tgDarkOnly, slVolume], row);
+  // Visibility checkboxes + dark-only toggle.
+  row = renderInlineRow([cbMuted, cbAnsi, cbProgress, tgDarkOnly], row);
+
+  // Sliders row: contrast threshold + progress fill.
+  row = renderInlineRow([slContrast, slVolume], row);
 
   // Action buttons row: Export, Reset, Locked.
   row = renderInlineRow([btnExport, btnReset, btnDisabled], row);
@@ -296,17 +302,26 @@ function renderContent(startRow: number): void {
   row++;
 
   // --- Semantic palette swatches ---
-  // Reading .checked here subscribes the autorun: toggling cbMuted
-  // re-fires the render and the muted half disappears/reappears.
+  // Reading .checked / slider .value here subscribes the autorun:
+  // toggling cbMuted or dragging slContrast re-fires render.
   const showMuted = cbMuted.checked;
+  const contrastThreshold = slContrast.value;
   const accentKeys = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
   let swatchLine = "";
   for (const key of accentKeys) {
     const c = palette.get(key)!;
     const bgAnsi = `\x1b[48;2;${c.red};${c.green};${c.blue}m`;
     const reset = "\x1b[0m";
-    const fgContrast = luminance(c) > 0.179 ? "30" : "37";
+    const lum = luminance(c);
+    const fgContrast = lum > 0.179 ? "30" : "37";
     swatchLine += `${bgAnsi}\x1b[${fgContrast};1m ${key.padEnd(9)}${reset}`;
+
+    // Contrast tag — driven by slContrast.value.
+    const isOk = lum > contrastThreshold;
+    const tagColor = palette.get(isOk ? "success" : "warning")!;
+    const tagAnsi = `\x1b[38;2;${tagColor.red};${tagColor.green};${tagColor.blue}m`;
+    swatchLine += `${tagAnsi}${isOk ? " OK " : "low "}${reset}`;
+
     if (showMuted) {
       const muted = palette.get(`${key}-muted`)!;
       const mutedAnsi = `\x1b[48;2;${muted.red};${muted.green};${muted.blue}m`;
@@ -527,6 +542,7 @@ function startup(): void {
     void cbProgress.checked;
     void tgDarkOnly.on;
     void slVolume.value;
+    void slContrast.value;
     void inName.value;
     void inName.cursorPosition;
     void themeDropdown.expanded;
