@@ -6,7 +6,8 @@
  * terminal escape sequences, or their host environment.
  */
 
-import type { Renderable, Measurable } from "../core/protocol.js";
+import type { Renderable, Measurable, RenderOptions } from "../core/protocol.js";
+import type { Segment } from "../core/segment.js";
 
 // --- Event types ---
 
@@ -78,6 +79,33 @@ export interface InteractiveWidget extends Renderable, Measurable {
   // Subscriptions
   onChange(handler: (widget: InteractiveWidget) => void): () => void;
   onSubmit(handler: (widget: InteractiveWidget) => void): () => void;
+}
+
+// --- Overlay protocol ---
+
+// [LAW:one-source-of-truth] Inline footprint and rendered shape are
+// independent. `render()` (Renderable) emits the inline footprint that
+// participates in flow layout — for the Dropdown, just the 1-row header.
+// `renderOverlay()` emits segments painted ON TOP of the frame after
+// base layout, anchored directly below the inline footprint at the same
+// column. Returns null when no overlay is active.
+//
+// The host (Screen / demo render loop) is the single enforcer that runs
+// the overlay pass: it iterates widgets in mount order, calls
+// renderOverlay on those that opt in, paints the segments at
+// (bounds.x, bounds.y + bounds.height), and grows widget.bounds to
+// include the overlay area for hit-testing. Render order = z-order:
+// the overlay pass runs last, so overlay content wins over anything
+// rendered earlier in the frame.
+export interface OverlayRenderable {
+  renderOverlay(options: RenderOptions): Iterable<Segment> | null;
+}
+
+export function hasOverlay(value: object): value is OverlayRenderable {
+  return (
+    "renderOverlay" in value &&
+    typeof (value as OverlayRenderable).renderOverlay === "function"
+  );
 }
 
 // --- Unsubscribe helper ---

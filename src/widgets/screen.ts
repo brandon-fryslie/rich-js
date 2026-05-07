@@ -27,6 +27,7 @@ import { segmentsToString } from "../core/render.js";
 import { ColorDepth, resolveColorSystem } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
 import { DefaultFocusManager } from "./focus-manager.js";
+import { hasOverlay } from "./types.js";
 import type {
   Screen,
   InteractiveWidget,
@@ -171,6 +172,8 @@ export class DefaultScreen implements Screen {
     const boundsList: { widget: InteractiveWidget; bounds: WidgetBounds }[] = [];
     let y = 0;
 
+    // Pass 1 — base layout. Each widget contributes its inline footprint
+    // (Renderable.render). Widgets stack vertically.
     for (const widget of this.widgetList) {
       // [LAW:dataflow-not-control-flow] Hidden widgets still pass through the
       // pipeline — their data just produces zero rows and zero-size bounds.
@@ -182,6 +185,36 @@ export class DefaultScreen implements Screen {
       boundsList.push({ widget, bounds: { x: 0, y, width: w, height: h } });
       for (const line of widgetLines) lines.push(line);
       y += h;
+    }
+
+    // Pass 2 — overlays. Widgets that implement OverlayRenderable paint
+    // ON TOP of the frame, anchored directly below their inline footprint.
+    // Render order = z-order: the overlay pass runs last, so overlay rows
+    // overwrite anything that was placed below the widget by pass 1.
+    // [LAW:single-enforcer] Overlay placement and bounds-union both happen
+    // here; widgets never draw their own overlays.
+    for (const entry of boundsList) {
+      const widget = entry.widget;
+      if (!widget.visible) continue;
+      if (!hasOverlay(widget)) continue;
+      const overlaySegs = widget.renderOverlay(renderOptions);
+      if (overlaySegs === null) continue;
+      const overlayLines = Segment.splitLines(Array.from(overlaySegs));
+      if (overlayLines.length === 0) continue;
+
+      const startY = entry.bounds.y + entry.bounds.height;
+      while (lines.length < startY + overlayLines.length) lines.push([]);
+      for (let i = 0; i < overlayLines.length; i++) {
+        lines[startY + i] = overlayLines[i]!;
+      }
+
+      const [overlayW] = Segment.getShape(overlayLines);
+      entry.bounds = {
+        x: entry.bounds.x,
+        y: entry.bounds.y,
+        width: Math.max(entry.bounds.width, overlayW),
+        height: entry.bounds.height + overlayLines.length,
+      };
     }
 
     return { lines, bounds: boundsList };
