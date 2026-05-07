@@ -145,7 +145,7 @@ const cbMuted = new Checkbox({ label: "Muted", checked: true, id: "cb-muted" });
 const cbAnsi = new Checkbox({ label: "ANSI", checked: true, id: "cb-ansi" });
 const cbProgress = new Checkbox({ label: "Progress", checked: true, id: "cb-progress" });
 const tgDarkOnly = new Toggle({ label: "Dark only", variant: "success", id: "tg-dark-only" });
-const slVolume = new Slider({ value: 40, min: 0, max: 100, step: 5, width: 22, id: "sl-volume" });
+const slFill = new Slider({ value: 60, min: 0, max: 100, step: 5, width: 25, id: "sl-fill" });
 const slContrast = new Slider({ value: 0.179, min: 0, max: 1, step: 0.05, width: 25, id: "sl-contrast" });
 const inName = new TextInput({ placeholder: "Filter themes", id: "in-filter" });
 
@@ -163,7 +163,7 @@ cbMuted.onChange(() => log(`Muted swatches → ${cbMuted.checked ? "shown" : "hi
 cbAnsi.onChange(() => log(`ANSI palette → ${cbAnsi.checked ? "shown" : "hidden"}`));
 cbProgress.onChange(() => log(`Progress bars → ${cbProgress.checked ? "shown" : "hidden"}`));
 tgDarkOnly.onChange(() => log(`Dark only → ${tgDarkOnly.on ? "ON" : "OFF"}`));
-slVolume.onChange(() => log(`Volume → ${slVolume.value}`));
+slFill.onChange(() => log(`Progress fill → ${slFill.value}%`));
 slContrast.onChange(() => log(`Contrast threshold → ${slContrast.value.toFixed(2)}`));
 inName.onSubmit(() => log(`Filter: ${JSON.stringify(inName.value)} (${themeDropdown.options.length} match)`));
 
@@ -187,8 +187,8 @@ const allWidgets: InteractiveWidget[] = [
   cbAnsi,
   cbProgress,
   tgDarkOnly,
-  slVolume,
   slContrast,
+  slFill,
   btnExport,
   btnReset,
   btnDisabled,
@@ -264,7 +264,7 @@ function renderInteractiveWidgets(startRow: number): number {
   row = renderInlineRow([cbMuted, cbAnsi, cbProgress, tgDarkOnly], row);
 
   // Sliders row: contrast threshold + progress fill.
-  row = renderInlineRow([slContrast, slVolume], row);
+  row = renderInlineRow([slContrast, slFill], row);
 
   // Action buttons row: Export, Reset, Locked.
   row = renderInlineRow([btnExport, btnReset, btnDisabled], row);
@@ -340,20 +340,23 @@ function renderContent(startRow: number): void {
   // simply don't appear in the list. Each section is a (row) => row fn.
   type Section = (row: number) => number;
   const sections: Section[] = [
-    cbProgress.checked ? (r: number) => renderProgressSection(r, palette) : null,
+    cbProgress.checked ? (r: number) => renderProgressSection(r, palette, slFill.value) : null,
     cbAnsi.checked ? (r: number) => renderAnsiSection(r, theme, palette) : null,
   ].filter((s): s is Section => s !== null);
 
   for (const section of sections) row = section(row);
 }
 
-function renderProgressSection(startRow: number, palette: import("../../src/themes/palette.js").Palette): number {
+function renderProgressSection(startRow: number, palette: import("../../src/themes/palette.js").Palette, fillPct: number): number {
   let row = startRow;
+  // [LAW:dataflow-not-control-flow] all four bars share the same fill —
+  // the demo's purpose is to compare accent rendering at one fill ratio,
+  // not to encode a fixed pattern. fillPct flows in from slFill.value.
   const progressData = [
-    { label: "primary", color: "primary", pct: 75 },
-    { label: "success", color: "success", pct: 100 },
-    { label: "warning", color: "warning", pct: 45 },
-    { label: "error",   color: "error",   pct: 20 },
+    { label: "primary", color: "primary", pct: fillPct },
+    { label: "success", color: "success", pct: fillPct },
+    { label: "warning", color: "warning", pct: fillPct },
+    { label: "error",   color: "error",   pct: fillPct },
   ];
   for (const p of progressData) {
     const bar = new ProgressBar({
@@ -541,8 +544,8 @@ function startup(): void {
     void cbAnsi.checked;
     void cbProgress.checked;
     void tgDarkOnly.on;
-    void slVolume.value;
     void slContrast.value;
+    void slFill.value;
     void inName.value;
     void inName.cursorPosition;
     void themeDropdown.expanded;
