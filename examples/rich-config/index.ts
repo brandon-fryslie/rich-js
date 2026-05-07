@@ -141,7 +141,9 @@ const themeDropdown = new Dropdown({
   selectedIndex: 0,
   id: "dd-theme",
 });
-const cbSubscribe = new Checkbox({ label: "Subscribe", id: "cb-subscribe" });
+const cbMuted = new Checkbox({ label: "Muted", checked: true, id: "cb-muted" });
+const cbAnsi = new Checkbox({ label: "ANSI", checked: true, id: "cb-ansi" });
+const cbProgress = new Checkbox({ label: "Progress", checked: true, id: "cb-progress" });
 const tgDarkOnly = new Toggle({ label: "Dark only", variant: "success", id: "tg-dark-only" });
 const slVolume = new Slider({ value: 40, min: 0, max: 100, step: 5, width: 22, id: "sl-volume" });
 const inName = new TextInput({ placeholder: "Filter themes", id: "in-filter" });
@@ -156,7 +158,9 @@ themeDropdown.onSubmit(() => {
   state.selectTheme(globalIdx);
   log(`Switched to ${name} theme`);
 });
-cbSubscribe.onChange(() => log(`Subscribe → ${cbSubscribe.checked}`));
+cbMuted.onChange(() => log(`Muted swatches → ${cbMuted.checked ? "shown" : "hidden"}`));
+cbAnsi.onChange(() => log(`ANSI palette → ${cbAnsi.checked ? "shown" : "hidden"}`));
+cbProgress.onChange(() => log(`Progress bars → ${cbProgress.checked ? "shown" : "hidden"}`));
 tgDarkOnly.onChange(() => log(`Dark only → ${tgDarkOnly.on ? "ON" : "OFF"}`));
 slVolume.onChange(() => log(`Volume → ${slVolume.value}`));
 inName.onSubmit(() => log(`Filter: ${JSON.stringify(inName.value)} (${themeDropdown.options.length} match)`));
@@ -177,7 +181,9 @@ btnReset.onSubmit(() => {
 const allWidgets: InteractiveWidget[] = [
   themeDropdown,
   inName,
-  cbSubscribe,
+  cbMuted,
+  cbAnsi,
+  cbProgress,
   tgDarkOnly,
   slVolume,
   btnExport,
@@ -252,7 +258,7 @@ function renderInteractiveWidgets(startRow: number): number {
   row += 1 + themeDropdown.options.length + 1;
 
   // Inline boolean + slider row: Checkbox, Toggle, Slider.
-  row = renderInlineRow([cbSubscribe, tgDarkOnly, slVolume], row);
+  row = renderInlineRow([cbMuted, cbAnsi, cbProgress, tgDarkOnly, slVolume], row);
 
   // Action buttons row: Export, Reset, Locked.
   row = renderInlineRow([btnExport, btnReset, btnDisabled], row);
@@ -290,23 +296,44 @@ function renderContent(startRow: number): void {
   row++;
 
   // --- Semantic palette swatches ---
+  // Reading .checked here subscribes the autorun: toggling cbMuted
+  // re-fires the render and the muted half disappears/reappears.
+  const showMuted = cbMuted.checked;
   const accentKeys = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
   let swatchLine = "";
   for (const key of accentKeys) {
     const c = palette.get(key)!;
-    const muted = palette.get(`${key}-muted`)!;
     const bgAnsi = `\x1b[48;2;${c.red};${c.green};${c.blue}m`;
-    const mutedAnsi = `\x1b[48;2;${muted.red};${muted.green};${muted.blue}m`;
     const reset = "\x1b[0m";
     const fgContrast = luminance(c) > 0.179 ? "30" : "37";
-    const fgMuted = luminance(muted) > 0.179 ? "30" : "37";
-    swatchLine += `${bgAnsi}\x1b[${fgContrast};1m ${key.padEnd(9)}${reset}${mutedAnsi}\x1b[${fgMuted}m muted ${reset} `;
+    swatchLine += `${bgAnsi}\x1b[${fgContrast};1m ${key.padEnd(9)}${reset}`;
+    if (showMuted) {
+      const muted = palette.get(`${key}-muted`)!;
+      const mutedAnsi = `\x1b[48;2;${muted.red};${muted.green};${muted.blue}m`;
+      const fgMuted = luminance(muted) > 0.179 ? "30" : "37";
+      swatchLine += `${mutedAnsi}\x1b[${fgMuted}m muted ${reset}`;
+    }
+    swatchLine += " ";
   }
   writeAt(row, 2, swatchLine);
   row++;
   row++;
 
-  // --- Progress bars showing accent colours ---
+  // [LAW:dataflow-not-control-flow] section visibility lives in the
+  // section list (data), not as if-guards around side effects. The for
+  // loop runs unconditionally; sections excluded by checkbox.checked
+  // simply don't appear in the list. Each section is a (row) => row fn.
+  type Section = (row: number) => number;
+  const sections: Section[] = [
+    cbProgress.checked ? (r: number) => renderProgressSection(r, palette) : null,
+    cbAnsi.checked ? (r: number) => renderAnsiSection(r, theme, palette) : null,
+  ].filter((s): s is Section => s !== null);
+
+  for (const section of sections) row = section(row);
+}
+
+function renderProgressSection(startRow: number, palette: import("../../src/themes/palette.js").Palette): number {
+  let row = startRow;
   const progressData = [
     { label: "primary", color: "primary", pct: 75 },
     { label: "success", color: "success", pct: 100 },
@@ -326,9 +353,11 @@ function renderContent(startRow: number): void {
     writeAt(row, 2, segmentsToString([labelSeg], ColorDepth.TRUECOLOR));
     row += renderRenderable(bar, row, 16);
   }
-  row++;
+  return row + 1;
+}
 
-  // --- ANSI palette swatches (one row, 16 colours) ---
+function renderAnsiSection(startRow: number, theme: import("../../src/core/color.js").TerminalTheme, palette: import("../../src/themes/palette.js").Palette): number {
+  let row = startRow;
   const headingStyle = new Style({ color: paletteColor(palette.get("secondary")!), bold: true });
   writeAt(row, 2, segmentsToString([new Segment("ANSI Palette", headingStyle)], ColorDepth.TRUECOLOR));
   row++;
@@ -338,6 +367,7 @@ function renderContent(startRow: number): void {
     const col = 2 + i * 5;
     writeAt(row, col, `${colorSwatch(c)}${String(i).padStart(2, " ")}`);
   }
+  return row + 1;
 }
 
 function luminance(c: ColorRgba): number {
@@ -492,7 +522,9 @@ function startup(): void {
     void fm.current?.active;
     void fm.current?.hovered;
     // Touch the new widgets' observables so the autorun re-fires on their changes.
-    void cbSubscribe.checked;
+    void cbMuted.checked;
+    void cbAnsi.checked;
+    void cbProgress.checked;
     void tgDarkOnly.on;
     void slVolume.value;
     void inName.value;
