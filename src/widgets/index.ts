@@ -4,10 +4,12 @@ export type {
   WidgetFocusEvent,
   WidgetBounds,
   InteractiveWidget,
+  OverlayRenderable,
   FocusManager,
   Screen,
   Unsubscribe,
 } from "./types.js";
+export { hasOverlay } from "./types.js";
 
 export { WidgetBase } from "./widget-base.js";
 export { DefaultFocusManager } from "./focus-manager.js";

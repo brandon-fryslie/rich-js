@@ -48,6 +48,7 @@ import {
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
 import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { hasOverlay } from "../../src/widgets/types.js";
 import type { ColorRgba } from "../../src/core/color.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import {
@@ -250,15 +251,14 @@ function renderInteractiveWidgets(startRow: number): number {
   let row = startRow + 1;
 
   // Top row: theme dropdown + filter text input side by side. The
-  // dropdown's expansion grows downward in its own column, so it doesn't
-  // collide with the text input on the right.
-  // Reserve full expansion (1 header + N options + spacer) so content
-  // below stays at a stable row regardless of the expanded flag —
-  // [LAW:dataflow-not-control-flow], layout shape is independent of
-  // widget state.
+  // dropdown's `render()` is just the 1-row header — its option list
+  // lives in `renderOverlay()`, painted on top of subsequent content
+  // by `renderOverlays()` later in the frame.
+  // [LAW:dataflow-not-control-flow] Layout footprint is constant (1 row);
+  // `expanded` only affects the overlay pass, never flow.
   const ddNextCol = renderWidget(themeDropdown, row, 2);
   renderWidget(inName, row, ddNextCol);
-  row += 1 + themeDropdown.options.length + 1;
+  row += 2;
 
   // Visibility checkboxes + dark-only toggle.
   row = renderInlineRow([cbMuted, cbAnsi, cbProgress, tgDarkOnly], row);
@@ -421,8 +421,46 @@ function render(): void {
   renderHeader();
   const afterWidgets = renderInteractiveWidgets(WIDGETS_START_ROW);
   renderContent(afterWidgets + 1);
+  // Overlay pass — runs after all base content. Render order = z-order:
+  // any widget that opts into OverlayRenderable paints ON TOP of whatever
+  // pass-1 placed below its inline footprint.
+  renderOverlays();
   renderStatus();
   renderLogs();
+}
+
+function renderOverlays(): void {
+  for (const widget of allWidgets) {
+    if (!hasOverlay(widget)) continue;
+    const overlaySegs = widget.renderOverlay({ maxWidth: 80 });
+    if (overlaySegs === null) continue;
+    const overlayLines = Segment.splitLines([...overlaySegs]);
+    if (overlayLines.length === 0) continue;
+    const b = widget.bounds;
+    if (!b) continue;
+
+    // bounds.y is 0-indexed (renderWidget set it to row - 1). The overlay
+    // starts at the 1-indexed row directly below the inline footprint.
+    const startRow = b.y + b.height + 1;
+    let maxWidth = 0;
+    for (const line of overlayLines) {
+      const w = line.reduce((sum, s) => sum + s.cellLength, 0);
+      if (w > maxWidth) maxWidth = w;
+    }
+    // Grow the widget's bounds to include the overlay so hit-testing
+    // catches clicks on option rows. Single enforcer for bounds-union.
+    widget.bounds = {
+      x: b.x,
+      y: b.y,
+      width: Math.max(b.width, maxWidth),
+      height: b.height + overlayLines.length,
+    };
+
+    for (let i = 0; i < overlayLines.length; i++) {
+      const ansi = segmentsToString(overlayLines[i]!, ColorDepth.TRUECOLOR);
+      writeAt(startRow + i, b.x, ansi);
+    }
+  }
 }
 
 // --- Input handling ---

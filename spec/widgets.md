@@ -158,9 +158,25 @@ interface Screen {
 - **Rendering**: `[ON]  label` / `[OFF] label` with color
 
 ### Dropdown
-- **State**: `options: string[]`, `selectedIndex: number`, `expanded: boolean`
+- **State**: `options: string[]`, `selectedIndex: number`, `expanded: boolean`, `filter: string`
 - **Events**: key=enter/space or click → expand; up/down → navigate; enter → select; escape → close
 - **Rendering collapsed**: `selected ▾`; **expanded**: shows option list with highlight
+
+#### Filtering (built-in)
+
+The Dropdown has a built-in type-to-filter. The header doubles as the filter input — no sibling TextInput required.
+
+- **Canonical state**: `options` and `selectedIndex` are canonical. `filter: string` is internal view state. `filteredOptions` is derived: the subsequence of `options` whose label contains `filter` (case-insensitive). `highlightedIndex` indexes into `filteredOptions`.
+- **Width invariant**: `measure()` returns `maxLabelLen(options) + 4` regardless of filter state. The header reserves this width always; the query is right-clipped if it exceeds `maxLabelLen`. Filtering never changes the inline footprint or the overlay width.
+- **Auto-expand on type**: A printable character handled while collapsed expands the dropdown and appends to the filter in one transition. There is no separate "enter filter mode" gesture.
+- **Escape**: clears the filter and collapses in a single step. Backspace exists for incremental clearing.
+- **Commit (enter or click)**: maps `filteredOptions[highlightedIndex]` back to its index in canonical `options`, assigns to `selectedIndex`, then clears the filter and collapses. Enter while `filteredOptions` is empty is a no-op.
+- **Selection preservation under filter**: `selectedIndex` is invariant under filter mutations. If the filter excludes the canonical selection, the overlay simply does not paint a "selected" row — the canonical state is still there and reappears whenever the filter clears.
+- **Highlight reset**: any change to `filter` resets `highlightedIndex` to 0. (When the filter is empty, `highlightedIndex` is seeded from `selectedIndex` on expand, as today.)
+- **Zero matches**: when `filteredOptions` is empty, the overlay paints a single dimmed row `(no matches)`. Enter is a no-op in this state.
+- **Header rendering**:
+  - `filter === ""` → `[ selected-label ▾ ]` (today's behavior).
+  - `filter !== ""` → `[ query│       ▾ ]` — query left, cursor indicator (when focused), padded out to `maxLabelLen`. Long queries are right-clipped so the header width never grows.
 
 ### Slider
 - **State**: `value: number`, `min: number`, `max: number`, `step: number`
