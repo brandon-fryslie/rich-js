@@ -1,14 +1,14 @@
 # Doc Spec: Template Bindings
 
-The template-bindings doc explains how rich-js exposes its styling vocabulary as template functions in the shared `go-template-js` engine, and how consumers consume that engine to author styled-text templates.
+The template-bindings doc explains how rich-js exposes its styling vocabulary as template functions in the shared `@promptctl/go-template-js` engine, and how consumers consume that engine to author styled-text templates.
 
 ## Sections
 
 ### What the binding module is
 
-One paragraph: rich-js does not ship its own markup grammar. Styled-text strings are authored in standard Go-template syntax (`{{ … }}`), and styling is expressed as ordinary template-function calls (`{{ bold .name }}`, `{{ red (bold "x") }}`, `{{ link .url .label }}`). The `template-bindings` module is rich-js's registration of those style functions into a `go-template-js` engine. One parser, one AST, one error-message dialect — provided by `go-template-js`; the styling vocabulary is provided here.
+One paragraph: rich-js does not ship its own markup grammar. Styled-text strings are authored in standard Go-template syntax (`{{ … }}`), and styling is expressed as ordinary template-function calls (`{{ bold .name }}`, `{{ red (bold "x") }}`, `{{ link .url .label }}`). The `template-bindings` module is rich-js's registration of those style functions into a `@promptctl/go-template-js` engine. One parser, one AST, one error-message dialect — provided by `@promptctl/go-template-js`; the styling vocabulary is provided here.
 
-Cross-reference: the canonical Go-template syntax reference is [`text/template`](https://pkg.go.dev/text/template); the engine package is `go-template-js`. This doc covers only what the rich-js binding adds on top.
+Cross-reference: the canonical Go-template syntax reference is [`text/template`](https://pkg.go.dev/text/template); the engine package is `@promptctl/go-template-js`. This doc covers only what the rich-js binding adds on top.
 
 ### The fragment type
 
@@ -39,8 +39,8 @@ Mention that the bootstrap registration set is empty by design — subsequent do
 
 Explain that the rich-js binding is one piece of a wider templating environment. A consumer's engine typically merges:
 
-1. Go-template runtime built-ins (`and`, `or`, `eq`, `index`, `printf`, …) — always present, contributed by `go-template-js` itself.
-2. The sprig subset the consumer wants (`sprigDefaults()`, `sprigStrings()`, …) — pulled from `go-template-js`.
+1. Go-template runtime built-ins (`and`, `or`, `eq`, `index`, `printf`, …) — always present, contributed by `@promptctl/go-template-js` itself.
+2. The sprig subset the consumer wants (`sprigDefaults()`, `sprigStrings()`, …) — pulled from `@promptctl/go-template-js`.
 3. The rich-js styling vocabulary — `richTextFuncs()`.
 4. The consumer's own domain functions.
 
@@ -48,11 +48,11 @@ Show the merge order convention (later wins on name collision); state that rich-
 
 ### Errors
 
-Explain that template errors raised during parse or evaluate are instances of `TemplateError` (and its subclasses) from `go-template-js` — `ParseError`, `EvalError`, `FuncNotFoundError`, `TypeMismatchError`, `MissingFieldError`. Each carries a position and a source snippet. The rich-js binding does not introduce a separate error hierarchy; styling failures surface through the same channel.
+Explain that template errors raised during parse or evaluate are instances of `TemplateError` (and its subclasses) from `@promptctl/go-template-js` — `ParseError`, `EvalError`, `FuncNotFoundError`, `TypeMismatchError`, `MissingFieldError`. Each carries a position and a source snippet. The rich-js binding does not introduce a separate error hierarchy; styling failures surface through the same channel.
 
 ## Constraints
 
 - Do not document any specific style function (`bold`, `red`, `link`, palette, auto-contrast). Each ships in its own follow-up epic and extends this doc with a section describing its signature and the cell semantics it implies.
 - Do not document Go-template syntax — link to the canonical reference instead. This doc is about the binding contract, not the language.
-- Do not describe the parser, AST, or evaluator internals. Those live in `go-template-js`.
+- Do not describe the parser, AST, or evaluator internals. Those live in `@promptctl/go-template-js`.
 - The "no silent flattening" contract must be stated explicitly — it is the architectural commitment that makes function composition safe across the styled/plain boundary.

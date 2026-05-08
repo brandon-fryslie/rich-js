@@ -226,7 +226,7 @@ export type { MarkdownOptions } from "./renderables/markdown.js";
 export { Layout } from "./renderables/layout.js";
 export type { LayoutOptions } from "./renderables/layout.js";
 
-// Template bindings — register rich-js styling as go-template-js functions
+// Template bindings — register rich-js styling as @promptctl/go-template-js functions
 export { createRichTextEngine, richTextFuncs } from "./template-bindings/index.js";
 
 // Interactive widgets
