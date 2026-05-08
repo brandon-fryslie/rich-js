@@ -164,7 +164,9 @@ function renderWidget(widget: InteractiveWidget, row: number, col: number): numb
     const w = line.reduce((sum, s) => sum + s.cellLength, 0);
     if (w > maxWidth) maxWidth = w;
   }
-  widget.bounds = { x: col, y: row - 1, width: maxWidth, height: lines.length };
+  // writeAt uses 1-based columns (CUP semantics) but mouse-event x is 0-based —
+  // store bounds in 0-based coordinates so hit-testing aligns with WidgetMouseEvent.x.
+  widget.bounds = { x: col - 1, y: row - 1, width: maxWidth, height: lines.length };
   for (let i = 0; i < lines.length; i++) {
     const ansi = segmentsToString(lines[i]!, ColorDepth.TRUECOLOR);
     writeAt(row + i, col, ansi);

@@ -243,3 +243,6 @@ export { WidgetBase } from "./widgets/widget-base.js";
 export { DefaultFocusManager } from "./widgets/focus-manager.js";
 export { Button } from "./widgets/button.js";
 export type { ButtonVariant, ButtonOptions } from "./widgets/button.js";
+
+// Template bindings — register rich-js styling as @promptctl/go-template-js functions
+export { createRichTextEngine, richTextFuncs } from "./template-bindings/index.js";

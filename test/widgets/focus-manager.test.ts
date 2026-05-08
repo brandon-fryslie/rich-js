@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
-import type { RenderOptions, KeyEvent, WidgetMouseEvent } from "../../src/index.js";
+import type {
+  RenderOptions,
+  KeyEvent,
+  InteractiveWidget,
+} from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 
@@ -53,6 +57,13 @@ describe("DefaultFocusManager", () => {
     fm.register(c);
     expect(fm.widgets).toHaveLength(3);
     expect(fm.current).toBe(a);
+  });
+
+  it("throws on duplicate registration", () => {
+    const fm = new DefaultFocusManager();
+    const a = new StubWidget("a");
+    fm.register(a);
+    expect(() => fm.register(a)).toThrow(/already registered/);
   });
 
   describe("next() / prev()", () => {

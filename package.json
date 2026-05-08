@@ -17,6 +17,10 @@
     "./themes/registry": {
       "types": "./dist/themes/registry.d.ts",
       "import": "./dist/themes/registry.js"
+    },
+    "./template-bindings": {
+      "types": "./dist/template-bindings/index.d.ts",
+      "import": "./dist/template-bindings/index.js"
     }
   },
   "files": [
@@ -55,7 +59,7 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
@@ -64,6 +68,7 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
+    "@promptctl/go-template-js": "^0.1.1",
     "mobx": "^6.15.0",
     "string-width": "^8.2.0",
     "strip-ansi": "^7.2.0"
