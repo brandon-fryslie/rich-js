@@ -19,6 +19,35 @@
  * (label, focused, hovered, active, disabled, visible, the widget list
  * itself). Renders are debounced to a microtask so a burst of state changes
  * within one tick produces one frame.
+ *
+ * Layout (per-widget Placement):
+ *
+ *   flow   — vertical stack at x=0; advances the layout cursor by the
+ *            widget's measured height. Default placement; preserves the
+ *            historical single-column behavior so existing consumers
+ *            (and the screen tests) need no migration.
+ *   inline — same row as the preceding flow/inline neighbor; x packs
+ *            after that neighbor's right edge plus a one-cell gap. The
+ *            row's height is the max of its members; the cursor advances
+ *            past the tallest member when the next non-inline item is
+ *            placed (or at end of frame).
+ *   fixed  — absolute (x, y); independent of the cursor. Used for
+ *            anchored content like status/log rows that the host wants
+ *            placed at a known coordinate regardless of flow growth.
+ *
+ * The overlay pass (single enforcer) runs after base layout: any widget
+ * implementing OverlayRenderable contributes overlay segments anchored
+ * directly below its inline footprint, and Screen unions the overlay
+ * area into the widget's bounds for hit-testing.
+ *
+ * Design alternatives considered:
+ *   1. Per-widget Placement (chosen) — smallest type that covers the legal
+ *      variability; one total switch in computeFrame; back-compat default.
+ *   2. Named regions (header/body/status as flow containers) — adds a
+ *      two-step API surface (declare regions, then mount into them) and
+ *      another concept; rejected as larger than the problem requires.
+ *   3. Host-supplied layout function — pushes layout out of Screen,
+ *      defeating single-enforcer; rejected.
  */
 
 import { autorun, makeObservable, observable, runInAction, type IReactionDisposer } from "mobx";
@@ -27,11 +56,13 @@ import { segmentsToString } from "../core/render.js";
 import { ColorDepth, resolveColorSystem } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
 import { DefaultFocusManager } from "./focus-manager.js";
-import { hasOverlay } from "./types.js";
+import { FLOW, hasOverlay } from "./types.js";
 import type {
   Screen,
   InteractiveWidget,
   FocusManager,
+  MountEntry,
+  Placement,
   WidgetBounds,
 } from "./types.js";
 
@@ -71,6 +102,12 @@ export class DefaultScreen implements Screen {
   @observable.shallow
   accessor widgetList: InteractiveWidget[] = [];
 
+  // [LAW:one-source-of-truth] Placements live in a parallel Map keyed by
+  // widget. Placements are immutable per mount — Screen sets them and never
+  // mutates them, so they don't need to be observable. The observable
+  // `widgetList` above already fires reactivity on mount/unmount.
+  private readonly placements = new Map<InteractiveWidget, Placement>();
+
   private _running = false;
   private autorunDispose: IReactionDisposer | undefined;
   private renderScheduled = false;
@@ -103,13 +140,15 @@ export class DefaultScreen implements Screen {
 
   // --- Lifecycle ---
 
-  mount(...widgets: InteractiveWidget[]): void {
+  mount(...entries: MountEntry[]): void {
     runInAction(() => {
       const next = [...this.widgetList];
-      for (const w of widgets) {
-        if (next.includes(w)) continue;
-        next.push(w);
-        this.focusManager.register(w);
+      for (const entry of entries) {
+        const { widget, placement } = normalizeEntry(entry);
+        if (next.includes(widget)) continue;
+        next.push(widget);
+        this.placements.set(widget, placement);
+        this.focusManager.register(widget);
       }
       this.widgetList = next;
     });
@@ -120,6 +159,7 @@ export class DefaultScreen implements Screen {
       const idx = this.widgetList.indexOf(widget);
       if (idx === -1) return;
       this.widgetList = this.widgetList.filter((w) => w !== widget);
+      this.placements.delete(widget);
       this.focusManager.unregister(widget);
     });
   }
@@ -170,10 +210,16 @@ export class DefaultScreen implements Screen {
 
     const lines: Segment[][] = [];
     const boundsList: { widget: InteractiveWidget; bounds: WidgetBounds }[] = [];
-    let y = 0;
+
+    // Layout cursor for flow placement. `cursorY` is the next free row.
+    // `lastFlowRow` tracks the most recent flow/inline row so that a
+    // following inline placement can pack against its right edge.
+    let cursorY = 0;
+    interface FlowRow { startY: number; height: number; rightX: number }
+    let lastFlowRow: FlowRow | null = null;
 
     // Pass 1 — base layout. Each widget contributes its inline footprint
-    // (Renderable.render). Widgets stack vertically.
+    // (Renderable.render). Position is determined by the widget's Placement.
     for (const widget of this.widgetList) {
       // [LAW:dataflow-not-control-flow] Hidden widgets still pass through the
       // pipeline — their data just produces zero rows and zero-size bounds.
@@ -182,9 +228,58 @@ export class DefaultScreen implements Screen {
       const segments = visible ? Array.from(widget.render(renderOptions)) : [];
       const widgetLines = visible ? Segment.splitLines(segments) : [];
       const [w, h] = Segment.getShape(widgetLines);
-      boundsList.push({ widget, bounds: { x: 0, y, width: w, height: h } });
-      for (const line of widgetLines) lines.push(line);
-      y += h;
+
+      const placement = this.placements.get(widget) ?? FLOW;
+
+      // [LAW:types-are-the-program] Single total switch on the discriminated
+      // union: every legal placement gets exactly one branch, the compiler
+      // enforces exhaustiveness, and the rest of the pipeline (paint into
+      // `lines`, record bounds) is identical for every kind.
+      let x: number;
+      let y: number;
+      switch (placement.kind) {
+        case "flow": {
+          x = 0;
+          y = cursorY;
+          paintLines(lines, widgetLines, x, y);
+          if (h > 0) {
+            cursorY = y + h;
+            lastFlowRow = { startY: y, height: h, rightX: x + w };
+          }
+          break;
+        }
+        case "inline": {
+          // Pack onto the most recent flow/inline row. If there is no prior
+          // row (inline used as the first item), fall back to flow at x=0.
+          const prev: FlowRow | null = lastFlowRow;
+          if (prev === null) {
+            x = 0;
+            y = cursorY;
+          } else {
+            x = prev.rightX + (prev.rightX > 0 ? 1 : 0);
+            y = prev.startY;
+          }
+          paintLines(lines, widgetLines, x, y);
+          if (h > 0) {
+            const rowStart: number = prev?.startY ?? y;
+            const rowHeight: number = Math.max(prev?.height ?? 0, h);
+            cursorY = Math.max(cursorY, rowStart + rowHeight);
+            lastFlowRow = { startY: rowStart, height: rowHeight, rightX: x + w };
+          }
+          break;
+        }
+        case "fixed": {
+          x = placement.x;
+          y = placement.y;
+          paintLines(lines, widgetLines, x, y);
+          // Fixed placements never advance the flow cursor — they are
+          // independent anchors. We still grow the canvas if needed
+          // (paintLines handles that).
+          break;
+        }
+      }
+
+      boundsList.push({ widget, bounds: { x, y, width: w, height: h } });
     }
 
     // Pass 2 — overlays. Widgets that implement OverlayRenderable paint
@@ -203,10 +298,7 @@ export class DefaultScreen implements Screen {
       if (overlayLines.length === 0) continue;
 
       const startY = entry.bounds.y + entry.bounds.height;
-      while (lines.length < startY + overlayLines.length) lines.push([]);
-      for (let i = 0; i < overlayLines.length; i++) {
-        lines[startY + i] = overlayLines[i]!;
-      }
+      paintLines(lines, overlayLines, entry.bounds.x, startY);
 
       const [overlayW] = Segment.getShape(overlayLines);
       entry.bounds = {
@@ -272,4 +364,89 @@ function resolveSpec(
   if (spec === undefined) return resolveColorSystem("auto", { isTTY });
   if (typeof spec === "string") return resolveColorSystem(spec, { isTTY });
   return spec;
+}
+
+// Normalize a MountEntry into its internal { widget, placement } form.
+// Bare widgets default to flow placement so existing call sites (and tests)
+// that pass `mount(a, b, c)` keep working unchanged.
+function normalizeEntry(entry: MountEntry): { widget: InteractiveWidget; placement: Placement } {
+  if ("widget" in entry && "placement" in entry) {
+    return { widget: entry.widget, placement: entry.placement };
+  }
+  return { widget: entry as InteractiveWidget, placement: FLOW };
+}
+
+// Paint `widgetLines` into the frame `lines` at top-left (x, y). Grows the
+// frame as needed and uses cell-accurate splice semantics so a fixed
+// placement or overlay overwrites whatever was painted earlier underneath.
+//
+// [LAW:single-enforcer] All compositing into the frame buffer goes through
+// this function. flow/inline/fixed placements and the overlay pass all call
+// it, so the rules for "how characters land at (x, y)" live in one place.
+function paintLines(
+  lines: Segment[][],
+  widgetLines: Segment[][],
+  x: number,
+  y: number,
+): void {
+  if (widgetLines.length === 0) return;
+  while (lines.length < y + widgetLines.length) lines.push([]);
+  for (let i = 0; i < widgetLines.length; i++) {
+    const target = lines[y + i]!;
+    const source = widgetLines[i]!;
+    const sourceWidth = lineCellLength(source);
+    if (sourceWidth === 0) continue;
+    if (x === 0 && target.length === 0) {
+      lines[y + i] = source.slice();
+      continue;
+    }
+    lines[y + i] = spliceCells(target, x, sourceWidth, source);
+  }
+}
+
+function lineCellLength(line: Segment[]): number {
+  let total = 0;
+  for (const s of line) total += s.cellLength;
+  return total;
+}
+
+// Return a new row with cells [start, start+length) replaced by
+// `replacement`. Pads the prefix with spaces if `row` is shorter than
+// `start`. Honors wide characters and styled segments by splitting at cell
+// boundaries.
+function spliceCells(
+  row: Segment[],
+  start: number,
+  length: number,
+  replacement: Segment[],
+): Segment[] {
+  const rowWidth = lineCellLength(row);
+  const padded: Segment[] = row.slice();
+  if (rowWidth < start) {
+    padded.push(new Segment(" ".repeat(start - rowWidth)));
+  }
+
+  const prefix: Segment[] = [];
+  const suffix: Segment[] = [];
+  let cursor = 0;
+  for (const seg of padded) {
+    const segEnd = cursor + seg.cellLength;
+    if (segEnd <= start) {
+      prefix.push(seg);
+    } else if (cursor >= start + length) {
+      suffix.push(seg);
+    } else {
+      if (cursor < start) {
+        const [head] = seg.splitCells(start - cursor);
+        if (head.hasText) prefix.push(head);
+      }
+      if (segEnd > start + length) {
+        const [, tail] = seg.splitCells(start + length - cursor);
+        if (tail.hasText) suffix.push(tail);
+      }
+    }
+    cursor = segEnd;
+  }
+
+  return [...prefix, ...replacement, ...suffix];
 }

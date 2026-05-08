@@ -81,6 +81,26 @@ export interface InteractiveWidget extends Renderable, Measurable {
   onSubmit(handler: (widget: InteractiveWidget) => void): () => void;
 }
 
+// --- Placement ---
+
+// [LAW:types-are-the-program] Placement is the discriminated union of "where
+// does this item go in the frame". Three kinds cover the legal variability:
+//
+//   flow   — vertical stack at x=0; advances the layout cursor
+//   inline — continues the row of the preceding flow/inline item; same y,
+//            x packed after that item's right edge (+ a one-cell gap)
+//   fixed  — absolute (x, y); does not interact with the layout cursor
+//
+// Variability lives in the value (the Placement carried by each mount entry),
+// never in whether the layout pipeline runs. computeFrame switches on `kind`
+// in one place — the single, total switch the type system enforces.
+export type Placement =
+  | { kind: "flow" }
+  | { kind: "inline" }
+  | { kind: "fixed"; x: number; y: number };
+
+export const FLOW: Placement = { kind: "flow" };
+
 // --- Overlay protocol ---
 
 // [LAW:one-source-of-truth] Inline footprint and rendered shape are
@@ -131,8 +151,15 @@ export interface FocusManager {
 
 // --- Screen ---
 
+// A mount entry is either a bare widget (placement defaults to flow) or a
+// widget paired with an explicit placement. The two-shape input is a
+// convenience; internally Screen normalizes to { widget, placement }.
+export type MountEntry =
+  | InteractiveWidget
+  | { widget: InteractiveWidget; placement: Placement };
+
 export interface Screen {
-  mount(...widgets: InteractiveWidget[]): void;
+  mount(...entries: MountEntry[]): void;
   unmount(widget: InteractiveWidget): void;
 
   start(): void;
