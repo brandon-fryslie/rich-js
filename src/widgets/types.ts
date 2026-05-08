@@ -76,8 +76,8 @@ export interface InteractiveWidget extends Renderable, Measurable {
   containsPoint(x: number, y: number): boolean;
 
   // Subscriptions
-  onChange(handler: (widget: InteractiveWidget) => void): () => void;
-  onSubmit(handler: (widget: InteractiveWidget) => void): () => void;
+  onChange(handler: (widget: InteractiveWidget) => void): Unsubscribe;
+  onSubmit(handler: (widget: InteractiveWidget) => void): Unsubscribe;
 }
 
 // --- Unsubscribe helper ---
