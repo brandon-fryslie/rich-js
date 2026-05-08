@@ -12,14 +12,13 @@ import {
   segmentsToString,
   Segment,
   Style,
-  ColorSpec,
   ColorDepth,
   Panel,
+  RichText,
   Rule,
   Table,
   Tree,
   ProgressBar,
-  Console,
   ROUNDED,
   HEAVY_HEAD,
   DEFAULT_TERMINAL_THEME,
@@ -43,7 +42,7 @@ import {
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
 import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
-import type { ColorRgba, TerminalTheme } from "../../src/core/color.js";
+import type { ColorRgba } from "../../src/core/color.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import {
   enterRawMode,
@@ -264,8 +263,9 @@ function renderContent(): void {
   row += renderRenderable(table, row, 2);
   row++;
 
-  // Tree
-  const tree = new Tree(`\x1b[1m${name}\x1b[0m`, {
+  // Tree — Tree doesn't interpret ANSI escapes in its label, so embedding
+  // them would print literal `\x1b[1m`. Use a styled RichText instead.
+  const tree = new Tree(new RichText(name, { style: new Style({ bold: true }) }), {
     guide_style: new Style({ color: palette.get("secondary-muted")! }).toString(),
   });
   const colors = tree.add("Semantic Colors");
