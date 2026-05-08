@@ -16,9 +16,6 @@ export {
   STANDARD_TABLE,
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
-  DEFAULT_TERMINAL_THEME,
-  MONOKAI,
-  SVG_EXPORT_THEME,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
 export type { DetectColorOptions } from "./core/color.js";
@@ -27,6 +24,29 @@ export type { DetectColorOptions } from "./core/color.js";
 export { Palette } from "./themes/palette.js";
 export { PaletteResolver } from "./themes/paletteResolver.js";
 export type { ResolveContext } from "./themes/paletteResolver.js";
+export { buildPalette } from "./themes/buildPalette.js";
+export type { BaseColors } from "./themes/buildPalette.js";
+export {
+  DEFAULT_TERMINAL_THEME,
+  MONOKAI,
+  SVG_EXPORT_THEME,
+  NORD,
+  GRUVBOX,
+  DRACULA,
+  TOKYO_NIGHT,
+  FLEXOKI,
+  CATPPUCCIN_MOCHA,
+  CATPPUCCIN_LATTE,
+  CATPPUCCIN_FRAPPE,
+  CATPPUCCIN_MACCHIATO,
+  SOLARIZED_DARK,
+  SOLARIZED_LIGHT,
+  ROSE_PINE,
+  ROSE_PINE_MOON,
+  ROSE_PINE_DAWN,
+  ATOM_ONE_DARK,
+  ATOM_ONE_LIGHT,
+} from "./themes/terminalThemes.js";
 
 export {
   Style,

@@ -384,15 +384,15 @@ export class ColorSpec {
       case ColorDepth.EIGHT_BIT:
         return EIGHT_BIT_TABLE.get(this.number!);
       case ColorDepth.STANDARD: {
-        const t = theme ?? DEFAULT_TERMINAL_THEME;
+        const t = theme ?? INTERNAL_DEFAULT_THEME;
         return t.ansiColors.get(this.number!);
       }
       case ColorDepth.DEFAULT: {
-        const t = theme ?? DEFAULT_TERMINAL_THEME;
+        const t = theme ?? INTERNAL_DEFAULT_THEME;
         return foreground ? t.foregroundColor : t.backgroundColor;
       }
       case ColorDepth.WINDOWS: {
-        const t = theme ?? DEFAULT_TERMINAL_THEME;
+        const t = theme ?? INTERNAL_DEFAULT_THEME;
         return t.ansiColors.get(this.number!);
       }
     }
@@ -546,11 +546,25 @@ export function blendRgb(
 
 // --- TerminalTheme ---
 
+/**
+ * A terminal theme — surface/foreground baseline, the ANSI 16/256 LUT, and a
+ * semantic palette.
+ *
+ * **`ansiColors` is the canonical ANSI table, not a per-theme override.** All
+ * preset themes in this codebase use `STANDARD_TABLE` for `ansiColors`. Theme
+ * identity lives entirely in `palette` (primary, accent, text-*, surface, ...);
+ * `ColorSpec.parse("red")` is intentionally consistent across themes — same
+ * design as Textual itself, which models theming at the truecolor/semantic
+ * layer rather than overloading the ANSI 16. Custom callers building bespoke
+ * themes that *do* want to retint ANSI 16 are free to pass their own
+ * `ColorTable`; that path is supported but not how the built-in presets work.
+ */
 export class TerminalTheme {
   constructor(
     readonly backgroundColor: ColorRgba,
     readonly foregroundColor: ColorRgba,
     readonly ansiColors: ColorTable,
+    readonly palette: import("../themes/palette.js").Palette,
   ) {}
 }
 
@@ -624,58 +638,27 @@ export const STANDARD_TABLE = new ColorTable(buildStandard16());
 export const EIGHT_BIT_TABLE = new ColorTable(build256Table());
 export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 
-// --- Pre-built themes ---
+// --- Internal fallback theme ---
+//
+// [LAW:one-way-deps] Preset themes (DEFAULT_TERMINAL_THEME, MONOKAI, NORD, ...)
+// live in `src/themes/terminalThemes.ts` because they need `buildPalette` from
+// `themes/`. Keeping them out of `core/color.ts` makes the dependency strictly
+// `themes/* -> core/color`, with no runtime back-edge.
+//
+// `getTruecolor()` retains a fallback for callers that omit `theme`. The
+// fallback uses STANDARD_TABLE + black/white + an empty Palette — sufficient
+// for STANDARD/DEFAULT/WINDOWS lookups, which never read `palette`.
+//
+// Runtime-importing `Palette` from `themes/palette.ts` is safe: that module
+// only `import type`s from `core/color.ts`, so there is no runtime cycle.
 
-export const DEFAULT_TERMINAL_THEME = new TerminalTheme(
+import { Palette } from "../themes/palette.js";
+
+const INTERNAL_DEFAULT_THEME = new TerminalTheme(
   new ColorRgba(0, 0, 0),
   new ColorRgba(255, 255, 255),
   STANDARD_TABLE,
-);
-
-export const MONOKAI = new TerminalTheme(
-  new ColorRgba(12, 12, 12),
-  new ColorRgba(217, 217, 217),
-  new ColorTable([
-    new ColorRgba(1, 1, 1),         // 0
-    new ColorRgba(222, 56, 43),     // 1
-    new ColorRgba(57, 181, 74),     // 2
-    new ColorRgba(255, 199, 6),     // 3
-    new ColorRgba(0, 111, 184),     // 4
-    new ColorRgba(118, 38, 113),    // 5
-    new ColorRgba(44, 181, 233),    // 6
-    new ColorRgba(204, 204, 204),   // 7
-    new ColorRgba(128, 128, 128),   // 8
-    new ColorRgba(255, 0, 0),       // 9
-    new ColorRgba(0, 255, 0),       // 10
-    new ColorRgba(255, 255, 0),     // 11
-    new ColorRgba(0, 0, 255),       // 12
-    new ColorRgba(255, 0, 255),     // 13
-    new ColorRgba(0, 255, 255),     // 14
-    new ColorRgba(255, 255, 255),   // 15
-  ]),
-);
-
-export const SVG_EXPORT_THEME = new TerminalTheme(
-  new ColorRgba(41, 41, 41),
-  new ColorRgba(197, 200, 198),
-  new ColorTable([
-    new ColorRgba(75, 78, 85),      // 0
-    new ColorRgba(204, 85, 90),     // 1
-    new ColorRgba(152, 195, 121),   // 2
-    new ColorRgba(229, 192, 123),   // 3
-    new ColorRgba(97, 175, 239),    // 4
-    new ColorRgba(198, 120, 221),   // 5
-    new ColorRgba(86, 182, 194),    // 6
-    new ColorRgba(171, 178, 191),   // 7
-    new ColorRgba(75, 78, 85),      // 8
-    new ColorRgba(255, 135, 135),   // 9
-    new ColorRgba(135, 255, 175),   // 10
-    new ColorRgba(255, 255, 95),    // 11
-    new ColorRgba(135, 175, 255),   // 12
-    new ColorRgba(255, 135, 255),   // 13
-    new ColorRgba(95, 255, 255),    // 14
-    new ColorRgba(255, 255, 255),   // 15
-  ]),
+  new Palette("default", true, new Map()),
 );
 
 // --- ANSI ColorSpec Names ---
