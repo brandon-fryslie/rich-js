@@ -74,6 +74,10 @@ export class DefaultScreen implements Screen {
   private autorunDispose: IReactionDisposer | undefined;
   private renderScheduled = false;
   private lastLineCount = 0;
+  // [LAW:one-source-of-truth] The autorun computes the frame to subscribe to
+  // observables; draw() consumes the same frame instead of recomputing. One
+  // computeFrame() call per reactive tick.
+  private pendingFrame: FrameLayout | null = null;
 
   private readonly out: NodeJS.WritableStream;
   private readonly widthOverride: number | undefined;
@@ -131,10 +135,12 @@ export class DefaultScreen implements Screen {
     if (this.manageCursor) this.out.write("\x1b[?25l");
 
     // [LAW:dataflow-not-control-flow] One reactive pipeline. The autorun
-    // reads observables during render; MobX subscribes to exactly what was
-    // read, so only relevant state changes trigger redraws.
+    // computes the frame (which transitively reads every observable used
+    // during layout/render); MobX subscribes to exactly what was read, so
+    // only relevant state changes trigger redraws. We cache the frame here
+    // and reuse it in draw() — one computeFrame() per reactive tick.
     this.autorunDispose = autorun(() => {
-      this.computeFrame(); // touch observables to subscribe
+      this.pendingFrame = this.computeFrame();
       this.scheduleRender();
     });
   }
@@ -147,6 +153,7 @@ export class DefaultScreen implements Screen {
       this.autorunDispose();
       this.autorunDispose = undefined;
     }
+    this.pendingFrame = null;
 
     if (this.manageCursor) this.out.write("\x1b[?25h");
     if (this.lastLineCount > 0) this.out.write("\n");
@@ -197,7 +204,11 @@ export class DefaultScreen implements Screen {
   }
 
   private draw(): void {
-    const { lines, bounds } = this.computeFrame();
+    // [LAW:no-defensive-null-guards] draw() only runs after the autorun has
+    // populated pendingFrame (start() seeds it before scheduling). Treating
+    // a null frame as a bug — fail loudly rather than silently re-compute.
+    const frame = this.pendingFrame!;
+    const { lines, bounds } = frame;
 
     // [LAW:single-enforcer] Bounds are written here, the only place that
     // computes layout. Widgets must not set their own bounds.

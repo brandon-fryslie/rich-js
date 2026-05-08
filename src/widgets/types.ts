@@ -71,6 +71,9 @@ export interface InteractiveWidget extends Renderable, Measurable {
   focus(): void;
   blur(): void;
   setDisabled(value: boolean): void;
+  // [LAW:single-enforcer] canonical mutator for `hovered`; the router calls
+  // this — no per-widget override and no direct write path.
+  setHovered(value: boolean): void;
 
   // Hit-testing
   containsPoint(x: number, y: number): boolean;

@@ -42,7 +42,9 @@ export class TextInput extends WidgetBase {
   @observable accessor cursorPosition: number;
   @observable.ref accessor placeholder: string;
 
-  private _theme: TerminalTheme;
+  // [LAW:dataflow-not-control-flow] theme is observable.ref so render() reads
+  // it as a reactive dependency; setTheme triggers the screen's autorun.
+  @observable.ref private accessor _theme: TerminalTheme;
   private readonly _maxLength: number | undefined;
   private readonly _password: boolean;
 
@@ -58,6 +60,7 @@ export class TextInput extends WidgetBase {
     this._password = options.password ?? false;
   }
 
+  @action
   setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
@@ -126,11 +129,6 @@ export class TextInput extends WidgetBase {
     const relX = event.x - b.x - 1;
     this.cursorPosition = Math.max(0, Math.min(this.value.length, relX));
   }
-
-  // --- Hover mutator (router fast-path) ---
-
-  @action
-  setHovered(value: boolean): void { this.hovered = value; }
 
   // --- Rendering ---
 
