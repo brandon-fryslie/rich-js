@@ -17,7 +17,7 @@
  * every time.
  */
 
-import type { Segment } from "../core/segment.js";
+import { Segment } from "../core/segment.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent } from "./types.js";
@@ -62,18 +62,14 @@ export class StaticItem extends WidgetBase {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     if (this.measureFn) return this.measureFn(options);
-    // Render once and use the resulting line width as both min and max.
-    let max = 0;
-    let cur = 0;
-    for (const seg of this.renderFn(options)) {
-      if (seg.text === "\n") {
-        if (cur > max) max = cur;
-        cur = 0;
-      } else {
-        cur += seg.cellLength;
-      }
-    }
-    if (cur > max) max = cur;
-    return { minimum: max, maximum: max };
+    // [LAW:single-enforcer] Segment.splitLines + Segment.getShape are the
+    // canonical authority on how segment streams split into lines and what
+    // their pixel shape is. Reusing them keeps measurement consistent with
+    // Screen's render pipeline even when the renderable emits embedded
+    // newlines inside a single Segment.text (which Segment.splitLines
+    // supports but a per-segment `text === "\n"` check does not).
+    const lines = Segment.splitLines(this.renderFn(options));
+    const [width] = Segment.getShape(lines);
+    return { minimum: width, maximum: width };
   }
 }

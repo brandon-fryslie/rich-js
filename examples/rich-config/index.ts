@@ -112,12 +112,15 @@ const state = new AppState();
 // of forcing a hardcoded 45-row layout that scrolls off short terminals.
 // The flow content above takes ~26 rows, so any terminal >= 30 rows works
 // without overlap; smaller terminals still render but the bottom anchors
-// will overlap the flow content.
+// will overlap the flow content. LOG_Y is the start row of the MAX_LOGS-tall
+// log buffer — clamped against negative values so it stays in-bounds even
+// when TERMINAL_ROWS < MAX_LOGS, instead of being floored at MAX_LOGS (which
+// would push the start row past the bottom of short terminals).
 const MAX_LOGS = 3;
 const TERMINAL_ROWS = process.stdout.rows ?? 45;
-const LOG_Y = Math.max(MAX_LOGS, TERMINAL_ROWS - MAX_LOGS);
-const SEPARATOR_Y = LOG_Y - 1;
-const STATUS_Y = LOG_Y - 2;
+const LOG_Y = Math.max(0, TERMINAL_ROWS - MAX_LOGS);
+const SEPARATOR_Y = Math.max(0, LOG_Y - 1);
+const STATUS_Y = Math.max(0, LOG_Y - 2);
 
 // --- Log buffer ---
 
