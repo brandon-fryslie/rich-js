@@ -20,13 +20,17 @@
 
 import { createEngine, type Engine, type FuncMap } from "@promptctl/go-template-js";
 import { RichText } from "../core/text.js";
+import { richTextStyleFuncs } from "./style-funcs.js";
 
 /**
- * Funcs registered by the rich-js binding. Bootstrap is empty; follow-up
- * epics merge their registrations into this map. Exposed as a factory (not
- * a const) so future registrations that need configuration (e.g. a palette
- * resolver bound at construction time) have a place to receive arguments
- * without breaking the public shape.
+ * Funcs registered by the rich-js binding. Style functions
+ * (foreground / attribute / background) are populated by
+ * `richTextStyleFuncs`; subsequent epics on the `template-bindings`
+ * topic merge `link`, palette/theme/auto-contrast, and per-position
+ * hue rotation into the same map. Exposed as a factory (not a const)
+ * so future registrations that need configuration (e.g. a palette
+ * resolver bound at construction time) have a place to receive
+ * arguments without breaking the public shape.
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output
@@ -35,7 +39,7 @@ import { RichText } from "../core/text.js";
  * `EngineConfig<T>.funcs` regardless of their `T`.
  */
 export function richTextFuncs(): FuncMap {
-  return {};
+  return richTextStyleFuncs();
 }
 
 /**

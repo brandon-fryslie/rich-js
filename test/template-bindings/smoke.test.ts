@@ -29,7 +29,17 @@ describe("template-bindings — bootstrap smoke", () => {
     }
   });
 
-  it("exposes an empty bootstrap FuncMap from richTextFuncs()", () => {
-    expect(richTextFuncs()).toEqual({});
+  it("exposes a populated FuncMap from richTextFuncs()", () => {
+    // Spot-check a representative from each registration category. The
+    // exhaustive inventory is asserted in style-funcs.test.ts.
+    const funcs = richTextFuncs();
+    expect(funcs.red).toBeDefined();   // named foreground
+    expect(funcs.bold).toBeDefined();  // canonical attribute
+    expect(funcs.b).toBeDefined();     // short alias
+    expect(funcs.not_bold).toBeDefined(); // negation
+    expect(funcs.on).toBeDefined();    // background
+    expect(funcs.color).toBeDefined(); // palette index
+    expect(funcs.hex).toBeDefined();   // hex
+    expect(funcs.rgb).toBeDefined();   // rgb
   });
 });
