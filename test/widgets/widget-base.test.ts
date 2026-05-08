@@ -23,6 +23,18 @@ class StubWidget extends WidgetBase {
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     return { minimum: 4, maximum: 4 };
   }
+
+  // Test-only public wrappers for the protected emitters.
+  // emitChange/emitSubmit are part of the subclass-author contract, not the
+  // public widget contract — exposing them here keeps the base API honest
+  // while letting tests exercise the subscription mechanism directly.
+  triggerChange(): void {
+    this.emitChange();
+  }
+
+  triggerSubmit(): void {
+    this.emitSubmit();
+  }
 }
 
 describe("WidgetBase", () => {
@@ -78,12 +90,12 @@ describe("WidgetBase", () => {
     const changes: InteractiveWidget[] = [];
     const unsub = widget.onChange((w) => changes.push(w));
 
-    widget.emitChange();
+    widget.triggerChange();
     expect(changes).toHaveLength(1);
     expect(changes[0]).toBe(widget);
 
     unsub();
-    widget.emitChange();
+    widget.triggerChange();
     expect(changes).toHaveLength(1);
   });
 
@@ -92,7 +104,7 @@ describe("WidgetBase", () => {
     const submits: InteractiveWidget[] = [];
     widget.onSubmit((w) => submits.push(w));
 
-    widget.emitSubmit();
+    widget.triggerSubmit();
     expect(submits).toHaveLength(1);
   });
 

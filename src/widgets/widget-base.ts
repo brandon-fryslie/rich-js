@@ -2,6 +2,7 @@
  * WidgetBase — shared MobX observable foundation for interactive widgets.
  * [LAW:one-type-per-behavior] All widgets share the same base; differences
  * are in configuration and state, not in infrastructure.
+ * [LAW:single-enforcer] Subscription emission lives here, not duplicated per widget.
  *
  * Uses makeObservable (not makeAutoObservable) because subclasses extend this.
  * MobX 6.x with TC39 decorators requires `accessor` keyword.
@@ -46,23 +47,40 @@ export abstract class WidgetBase implements InteractiveWidget {
   @action
   handleFocus(event: WidgetFocusEvent): void {
     this.focused = event.type === "focus";
+    this.emitChange();
   }
 
   // --- Programmatic control ---
+  // [LAW:single-enforcer] every state-mutating action emits change exactly once.
 
   @action
   focus(): void {
     this.focused = true;
+    this.emitChange();
   }
 
   @action
   blur(): void {
     this.focused = false;
+    this.emitChange();
+  }
+
+  @action
+  setHovered(value: boolean): void {
+    this.hovered = value;
+    this.emitChange();
+  }
+
+  @action
+  setActive(value: boolean): void {
+    this.active = value;
+    this.emitChange();
   }
 
   @action
   setDisabled(value: boolean): void {
     this.disabled = value;
+    this.emitChange();
   }
 
   // --- Hit-testing ---

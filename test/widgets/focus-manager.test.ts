@@ -55,6 +55,13 @@ describe("DefaultFocusManager", () => {
     expect(fm.current).toBe(a);
   });
 
+  it("throws on duplicate registration", () => {
+    const fm = new DefaultFocusManager();
+    const a = new StubWidget("a");
+    fm.register(a);
+    expect(() => fm.register(a)).toThrow(/already registered/);
+  });
+
   describe("next() / prev()", () => {
     it("cycles forward through focusable widgets", () => {
       const fm = new DefaultFocusManager();
