@@ -35,6 +35,55 @@ State which slots are stringifiable for `printf`/`print*` — they use the engin
 
 Mention that the bootstrap registration set is empty by design — subsequent doc sections will document each style function's signature as it lands. The contract above is what callers can rely on across every future addition.
 
+### Registered styling functions
+
+This section enumerates the functions registered by `richTextFuncs()` at a contract level — names, argument shapes, return shape. Implementation details (which `Style` object is constructed, which lookup table is consulted) belong in the source.
+
+#### Foreground colour
+
+- **Named colours.** Every name accepted by the string-syntax style spec is registered as a one-argument function: `{{ red "x" }}`, `{{ bright_blue "x" }}`, `{{ deep_pink4 "x" }}`. The full inventory comes from the same name table that `Style.parse` consults — adding a new named colour to that table makes it available in templates without further work.
+- **Palette index.** `{{ color N "x" }}` — `N` is an integer in `0..255`. Templating analogue of the string form `color(N)`.
+- **Hex.** `{{ hex "#af00ff" "x" }}` — six-digit RGB or eight-digit RGBA, same syntax as the string form.
+- **RGB triple.** `{{ rgb 175 0 255 "x" }}` — three integers in `0..255`.
+
+Each foreground form takes the colour spec(s) followed by a final `liftable` slot — the child fragment. The child may be a string literal (lifted to `RichText` by the engine) or another `RichText` produced by a nested call.
+
+#### Background
+
+A single `on` function takes a colour-spec string and a child: `{{ on "white" "x" }}`, `{{ on "#112233" "x" }}`, `{{ on "rgb(10,20,30)" "x" }}`, `{{ on "color(42)" "x" }}`. The first argument is parsed by the same colour-spec parser used everywhere else in rich-js, so any string accepted as a foreground spec is also accepted as a background spec.
+
+Reason for the single-function shape: backgrounding is an operation on a colour-spec value, not a colour itself. Mirroring the named-foreground set with a parallel named-background set (`on_red`, `on_bright_blue`, …) would double the inventory without adding expressiveness — `on "red"` is already concise and accepts the full colour-spec grammar.
+
+#### Text attributes
+
+The thirteen attributes documented in `spec/style.md` are each registered as a one-argument function:
+
+`bold`, `dim`, `italic`, `underline`, `blink`, `blink2`, `reverse`, `conceal`, `strike`, `underline2`, `frame`, `encircle`, `overline`.
+
+Short aliases from the same source are also registered, so authors can write either form: `b`/`bold`, `d`/`dim`, `i`/`italic`, `u`/`underline`, `s`/`strike`, `r`/`reverse`, `o`/`overline`, `uu`/`underline2`. Both forms produce the same fragment; the canonical name is used in the resulting `Style`.
+
+#### Negated attributes
+
+For each attribute, a `not_<name>` form turns the attribute off rather than on: `{{ not_bold "x" }}`, `{{ not_italic "x" }}`. This is the templating analogue of the string-form `not bold` / `not italic`. Negated forms are not aliased — the `not_*` family stays canonical-only to keep the inventory predictable.
+
+The naming choice (`not_<attribute>` rather than `notBold` or a generic `not "bold" "x"`):
+- The leading `not_` keeps the template author's eye on the operation, with the attribute name following — matches the string-form word order.
+- Per-attribute registration parallels the positive set, so the engine's `FuncNotFoundError` suggestion list remains useful (typing `not_blod` suggests `not_bold` because both are registered names).
+- A generic `not "bold" "x"` would collide with Go-template's built-in `not` (boolean negation).
+
+### Composition
+
+Nesting is plain function composition. `{{ red (bold "x") }}` evaluates the inner call to a `RichText` carrying `bold`, hands it to the outer call, which applies `red` on top.
+
+When two styles meet on the same fragment, conflict resolution follows `Style.add` — the outer (most recently applied) style wins on any field that both populate:
+
+- `{{ red (blue "x") }}` → fragment with `color = red`. The inner `blue` is overwritten.
+- `{{ bold (red "x") }}` → fragment with `color = red, bold`. No conflict; both contribute.
+- `{{ red (bold "x") }}` → same fragment as `{{ bold (red "x") }}`. Order doesn't matter when the contributing slots are disjoint.
+- `{{ on "white" (red "x") }}` → fragment with `color = red, bgcolor = white`. Foreground and background are independent slots.
+
+A fragment built by template composition is equivalent to the same styling expressed by directly constructing a `Style` chain — `Style.parse("red").add(Style.parse("bold"))` produces the same final `Style` as `red (bold …)`. This is the "round-trip through `Style` without semantic drift" property the binding's tests assert.
+
 ### Composition with other function sources
 
 Explain that the rich-js binding is one piece of a wider templating environment. A consumer's engine typically merges:
