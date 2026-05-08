@@ -19,7 +19,7 @@ Explain that the engine is generic over an output type `T`, and rich-js binds it
 Show the two-call public surface of the bootstrap module:
 
 - `createRichTextEngine()` — returns a ready-to-use `Engine<RichText>` with rich-js's style functions pre-registered. Use this when rich-js styling is the only vocabulary the templates need.
-- `richTextFuncs()` — returns the rich-js `FuncMap<RichText>` alone, with no engine. Use this when the consumer manages its own engine and wants to merge rich-js's functions into a wider registry (sprig + the consumer's own domain functions + rich-js styling).
+- `richTextFuncs()` — returns the rich-js `FuncMap` alone, with no engine. (`FuncMap` is `Record<string, TemplateFunc>` in `@promptctl/go-template-js`; the engine's fragment type lives on `Engine<T>` / `EngineConfig<T>`, not on `FuncMap` itself, so the same map merges into any consumer's `EngineConfig<T>.funcs` regardless of `T`.) Use this when the consumer manages its own engine and wants to merge rich-js's functions into a wider registry (sprig + the consumer's own domain functions + rich-js styling).
 
 State that `richTextFuncs()` is the canonical way to compose rich-js styling with other function sources; `createRichTextEngine()` is sugar for the common case.
 
@@ -33,7 +33,7 @@ Explain what every function rich-js registers shares — the contract that holds
 
 State which slots are stringifiable for `printf`/`print*` — they use the engine's `toString` bridge, which for the rich-js binding flattens a `RichText` to its `.plain` text (drops styling). Authors who want styled output route through a style function, not through `print`.
 
-Mention that the bootstrap registration set is empty by design — subsequent doc sections will document each style function's signature as it lands. The contract above is what callers can rely on across every future addition.
+The contract above is what callers can rely on across every style function rich-js registers, present and future.
 
 ### Registered styling functions
 
@@ -101,7 +101,8 @@ Explain that template errors raised during parse or evaluate are instances of `T
 
 ## Constraints
 
-- Do not document any specific style function (`bold`, `red`, `link`, palette, auto-contrast). Each ships in its own follow-up epic and extends this doc with a section describing its signature and the cell semantics it implies.
+- The styling vocabulary documented here is the foreground / attribute / background set landed in this epic. `link`, palette / theme / auto-contrast helpers, and per-position hue rotation each ship in their own follow-up epic on the `template-bindings` topic and extend this doc with a section describing their signature and the cell semantics they imply.
 - Do not document Go-template syntax — link to the canonical reference instead. This doc is about the binding contract, not the language.
 - Do not describe the parser, AST, or evaluator internals. Those live in `@promptctl/go-template-js`.
 - The "no silent flattening" contract must be stated explicitly — it is the architectural commitment that makes function composition safe across the styled/plain boundary.
+- Function inventories (named colours, attribute names, short aliases) are documented at the contract level — names and shapes — and derive from the canonical tables in `src/core/color.ts` and `src/core/style.ts`. Do not restate the literal list; reference the source. [LAW:one-source-of-truth]

@@ -18,7 +18,12 @@
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { Style } from "../core/style.js";
+import {
+  Style,
+  ATTRIBUTE_NAMES,
+  ATTRIBUTE_SHORT_ALIASES,
+  type AttributeName,
+} from "../core/style.js";
 import { ColorSpec, ANSI_COLOR_NAMES } from "../core/color.js";
 import { RichText } from "../core/text.js";
 
@@ -111,34 +116,11 @@ const onFunc: TemplateFunc = {
 };
 
 // --- Text attributes ---
-
-const ATTRIBUTE_NAMES = [
-  "bold",
-  "dim",
-  "italic",
-  "underline",
-  "blink",
-  "blink2",
-  "reverse",
-  "conceal",
-  "strike",
-  "underline2",
-  "frame",
-  "encircle",
-  "overline",
-] as const;
-type AttributeName = (typeof ATTRIBUTE_NAMES)[number];
-
-const ATTRIBUTE_ALIASES: Record<string, AttributeName> = {
-  b: "bold",
-  d: "dim",
-  i: "italic",
-  u: "underline",
-  s: "strike",
-  r: "reverse",
-  o: "overline",
-  uu: "underline2",
-};
+//
+// [LAW:one-source-of-truth] The attribute and short-alias inventories
+// come from `core/style.ts`. This file derives the template registration
+// set from the same data `Style.parse` consults — adding an attribute or
+// alias in one place propagates here automatically.
 
 function attrStyle(name: AttributeName, value: boolean): Style {
   return new Style({ [name]: value });
@@ -150,7 +132,7 @@ function attributeFuncs(): FuncMap {
     out[name] = fgFunc(attrStyle(name, true));
     out[`not_${name}`] = fgFunc(attrStyle(name, false));
   }
-  for (const [alias, canonical] of Object.entries(ATTRIBUTE_ALIASES)) {
+  for (const [alias, canonical] of Object.entries(ATTRIBUTE_SHORT_ALIASES)) {
     out[alias] = fgFunc(attrStyle(canonical, true));
   }
   return out;
