@@ -41,5 +41,6 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(funcs.color).toBeDefined(); // palette index
     expect(funcs.hex).toBeDefined();   // hex
     expect(funcs.rgb).toBeDefined();   // rgb
+    expect(funcs.link).toBeDefined();  // hyperlink (cell splitter)
   });
 });
