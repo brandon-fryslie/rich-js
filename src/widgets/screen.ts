@@ -340,7 +340,16 @@ export class DefaultScreen implements Screen {
 
     for (let i = 0; i < drawCount; i++) {
       const line = lines[i];
-      if (line) buf += segmentsToString(line, this.colorSystem);
+      if (line) {
+        // [LAW:single-enforcer] Clip each line to terminal width so wide
+        // content can't soft-wrap and break the "1 frame row = 1 terminal
+        // row" invariant the redraw loop depends on. Without this, a wrapped
+        // line shifts every later row down by one terminal cell, which
+        // misaligns overlays and leaves wrap-continuation residue when later
+        // frames write narrower content over the same logical row.
+        const clipped = Segment.adjustLineLength(line, this.width, undefined, false);
+        buf += segmentsToString(clipped, this.colorSystem);
+      }
       // [LAW:single-enforcer] Erase-to-end-of-line is the single mechanism
       // for overwriting stale content. We do not pre-clear lines.
       buf += "\x1b[K";
