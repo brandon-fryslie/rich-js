@@ -6,6 +6,8 @@ The template-bindings doc explains how rich-js exposes its styling vocabulary as
 
 ### What the binding module is
 
+Add a short "when to use template-bindings vs markup" note before the main paragraph: template-bindings is the right choice for programmatic composition, structured output (toolbar cells, multi-cell links), and toolchain templates; for human-authored strings where styling is embedded inline, the markup module (`[bold red]text[/]`) is simpler — cross-link to `spec/markup.md`.
+
 One paragraph: rich-js does not ship its own markup grammar. Styled-text strings are authored in standard Go-template syntax (`{{ … }}`), and styling is expressed as ordinary template-function calls (`{{ bold .name }}`, `{{ red (bold "x") }}`, `{{ link .url .label }}`). The `template-bindings` module is rich-js's registration of those style functions into a `@promptctl/go-template-js` engine. One parser, one AST, one error-message dialect — provided by `@promptctl/go-template-js`; the styling vocabulary is provided here.
 
 Cross-reference: the canonical Go-template syntax reference is [`text/template`](https://pkg.go.dev/text/template); the engine package is `@promptctl/go-template-js`. This doc covers only what the rich-js binding adds on top.
