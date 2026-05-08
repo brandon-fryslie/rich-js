@@ -38,9 +38,14 @@ import { richTextStyleFuncs } from "./style-funcs.js";
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output
- * types are carried as runtime `argTypes` on each `TemplateFunc`. So this
- * map is the standard `FuncMap`; consumers merge it into any
- * `EngineConfig<T>.funcs` regardless of their `T`.
+ * types are carried as runtime `argTypes` on each `TemplateFunc`. The map
+ * therefore *type-checks* against any `EngineConfig<T>.funcs`, but the
+ * functions returned here are only *runtime-compatible* with
+ * `Engine<RichText>`: each style function returns a `RichText` and
+ * requires its lifted child to be a `RichText` (enforced by an
+ * `instanceof` check that throws on misuse). Consumers merging this map
+ * into a wider engine must keep `T = RichText`; merging into an engine
+ * whose `T` is something else will compile but fail at evaluation time.
  */
 export function richTextFuncs(): FuncMap {
   return richTextStyleFuncs();
