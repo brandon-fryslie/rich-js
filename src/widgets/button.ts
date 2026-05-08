@@ -90,10 +90,7 @@ export class Button extends WidgetBase {
     }
   }
 
-  // --- Hover/active mutators (router fast-path uses setHovered) ---
-
-  @action
-  setHovered(value: boolean): void { this.hovered = value; }
+  // --- Active mutator (router fast-path; setHovered is inherited) ---
 
   @action
   setActive(value: boolean): void { this.active = value; }

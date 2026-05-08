@@ -41,7 +41,9 @@ export class Dropdown extends WidgetBase {
   @observable accessor expanded: boolean = false;
   @observable accessor highlightedIndex: number;
 
-  private _theme: TerminalTheme;
+  // [LAW:dataflow-not-control-flow] theme is observable.ref so render() reads
+  // it as a reactive dependency; setTheme triggers the screen's autorun.
+  @observable.ref private accessor _theme: TerminalTheme;
 
   constructor(options: DropdownOptions) {
     super();
@@ -53,6 +55,7 @@ export class Dropdown extends WidgetBase {
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
 
+  @action
   setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
@@ -130,11 +133,6 @@ export class Dropdown extends WidgetBase {
       this.emitSubmit();
     }
   }
-
-  // --- Hover mutator (router fast-path) ---
-
-  @action
-  setHovered(value: boolean): void { this.hovered = value; }
 
   // --- Rendering ---
 

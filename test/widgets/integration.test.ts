@@ -20,6 +20,7 @@ import { Button } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Toggle } from "../../src/widgets/toggle.js";
 import { TextInput } from "../../src/widgets/text-input.js";
+import { MONOKAI } from "../../src/core/color.js";
 
 class CapturingStream extends Writable {
   chunks: string[] = [];
@@ -265,6 +266,38 @@ describe("widget pipeline integration", () => {
 
       // queueMicrotask coalescing: one frame, not three.
       expect(h.stdout.chunks.length).toBe(1);
+    });
+  });
+
+  describe("theme reactivity", () => {
+    // setTheme() flips the widget's observable theme reference; the screen's
+    // autorun reads palette colors via render(), so swapping themes must
+    // trigger a redraw without any other observable change. This is the
+    // bug Copilot caught: a non-observable _theme would leave the screen
+    // stale until something else changed.
+    it("Checkbox.setTheme triggers a screen redraw", async () => {
+      await flush();
+      h.stdout.reset();
+      h.checkbox.setTheme(MONOKAI);
+      await flush();
+      // A redraw was scheduled and emitted.
+      expect(h.stdout.chunks.length).toBeGreaterThan(0);
+    });
+
+    it("Toggle.setTheme triggers a screen redraw", async () => {
+      await flush();
+      h.stdout.reset();
+      h.toggle.setTheme(MONOKAI);
+      await flush();
+      expect(h.stdout.chunks.length).toBeGreaterThan(0);
+    });
+
+    it("TextInput.setTheme triggers a screen redraw", async () => {
+      await flush();
+      h.stdout.reset();
+      h.input.setTheme(MONOKAI);
+      await flush();
+      expect(h.stdout.chunks.length).toBeGreaterThan(0);
     });
   });
 
