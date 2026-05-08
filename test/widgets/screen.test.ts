@@ -165,7 +165,8 @@ describe("DefaultScreen", () => {
     it("subsequent frames emit cursor-up to overwrite previous frame", async () => {
       const a = new StubWidget("a", "Alpha");
       const b = new StubWidget("b", "Beta");
-      screen.mount(a, b);
+      const c = new StubWidget("c", "Gamma");
+      screen.mount(a, b, c);
       screen.start();
       await flush();
 
@@ -175,10 +176,43 @@ describe("DefaultScreen", () => {
       await flush();
 
       const out = stream.joined();
-      // 2 widgets → 2 lines drawn last frame → \x1b[2A to top.
+      // [LAW:types-are-the-program] 3 widgets → 3 lines drawn → cursor ends on
+      // line 3 (no trailing newline) → returning to top of frame is `lastLineCount - 1` rows up.
       expect(out).toMatch(/\x1b\[2A/);
+      expect(out).not.toMatch(/\x1b\[3A/);
       // Erase-to-end-of-line on each line.
       expect(out).toMatch(/\x1b\[K/);
+    });
+
+    it("two-line frame moves up exactly one row on redraw", async () => {
+      // Regression: previously emitted \x1b[2A for two lines, overshooting by
+      // one and overwriting the line above the frame when not at top-of-terminal.
+      const a = new StubWidget("a", "Alpha");
+      const b = new StubWidget("b", "Beta");
+      screen.mount(a, b);
+      screen.start();
+      await flush();
+      stream.reset();
+      screen.focusManager.next();
+      await flush();
+
+      const out = stream.joined();
+      expect(out).toMatch(/\x1b\[1A/);
+      expect(out).not.toMatch(/\x1b\[2A/);
+    });
+
+    it("single-line frame emits no cursor-up sequence on redraw", async () => {
+      // After 1 line with no trailing newline, cursor is already on the only
+      // line — `\r` alone gets us back to the start, no upward motion needed.
+      const a = new StubWidget("a", "Alpha");
+      screen.mount(a);
+      screen.start();
+      await flush();
+      stream.reset();
+      screen.focusManager.next();
+      await flush();
+
+      expect(stream.joined()).not.toMatch(/\x1b\[\d+A/);
     });
 
     it("never emits clear-screen or per-line clear-up sequences", async () => {

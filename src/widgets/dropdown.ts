@@ -47,9 +47,22 @@ export class Dropdown extends WidgetBase {
 
   constructor(options: DropdownOptions) {
     super();
+    // [LAW:types-are-the-program] A Dropdown with zero options is an illegal
+    // state — `selectedIndex` has no valid value and navigation paths
+    // (Math.min(options.length - 1, ...)) can produce -1. Forbid it at the
+    // constructor edge so every callsite downstream can assume non-empty.
+    if (options.options.length === 0) {
+      throw new RangeError("Dropdown requires at least one option");
+    }
     this.id = options.id ?? `dropdown-${Math.random().toString(36).slice(2, 8)}`;
     this.options = [...options.options];
-    this.selectedIndex = options.selectedIndex ?? 0;
+    const initialIdx = options.selectedIndex ?? 0;
+    if (initialIdx < 0 || initialIdx >= this.options.length) {
+      throw new RangeError(
+        `Dropdown selectedIndex ${initialIdx} is out of range (0..${this.options.length - 1})`,
+      );
+    }
+    this.selectedIndex = initialIdx;
     this.highlightedIndex = this.selectedIndex;
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;

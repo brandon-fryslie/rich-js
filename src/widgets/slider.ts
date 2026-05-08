@@ -57,7 +57,14 @@ export class Slider extends WidgetBase {
     this.min = options.min ?? 0;
     this.max = options.max ?? 100;
     this.step = options.step ?? 1;
-    this.width = options.width ?? DEFAULT_WIDTH;
+    const w = options.width ?? DEFAULT_WIDTH;
+    // [LAW:types-are-the-program] width must be at least 1 — the marker
+    // always occupies one cell, so width <= 0 makes the render contract
+    // ("emits exactly `width` cells") unsatisfiable.
+    if (!Number.isInteger(w) || w < 1) {
+      throw new RangeError(`Slider width must be an integer >= 1, got ${w}`);
+    }
+    this.width = w;
     this.value = clampSnap(options.value ?? this.min, this.min, this.max, this.step);
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
