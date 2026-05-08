@@ -29,7 +29,7 @@ screen (render loop, ANSI output)
 
 A widget does not know about stdin, terminal escape sequences, or its host. It:
 - Holds observable state (MobX)
-- Accepts typed events via methods (`handleKey`, `handleClick`, `focus`, `blur`)
+- Accepts typed events via methods (`handleKey`, `handleMouse`, `handleFocus`)
 - Implements `Renderable.render()` to produce `Segment[]` from current state
 - Implements `Measurable.measure()` for width negotiation
 
@@ -50,7 +50,7 @@ interface KeyEvent {
   meta: boolean;
 }
 
-interface MouseEvent {
+interface WidgetMouseEvent {
   type: "click" | "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
   x: number;             // column (0-based)
   y: number;             // row (0-based)
@@ -59,14 +59,22 @@ interface MouseEvent {
   ctrl: boolean;
 }
 
-interface FocusEvent {
+interface WidgetFocusEvent {
   type: "focus" | "blur";
+}
+
+interface WidgetBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 ```
 
 ### InteractiveWidget
 
 The contract every widget implements. Extends existing `Renderable` and `Measurable`.
+Mirrors `src/widgets/types.ts` — that file is the source of truth.
 
 ```typescript
 interface InteractiveWidget extends Renderable, Measurable {
@@ -74,18 +82,24 @@ interface InteractiveWidget extends Renderable, Measurable {
   readonly id: string;
   readonly focusable: boolean;  // [LAW:one-source-of-truth] single source for focus eligibility
 
-  // State (MobX observables)
-  readonly focused: boolean;
-  readonly disabled: boolean;
-  readonly visible: boolean;
+  // Interaction state (MobX observables — mutable so the host and widget itself
+  // can drive transitions; pseudo-class names match Textual where applicable):
+  //   focus   — keyboard focus (Textual :focus)
+  //   hover   — mouse cursor over widget (Textual :hover)
+  //   active  — pressed/being activated (web convention, not in Textual)
+  focused: boolean;
+  hovered: boolean;
+  active: boolean;
+  disabled: boolean;
+  visible: boolean;
 
   // Geometry — set by host during layout, used for hit-testing
-  readonly bounds: { x: number; y: number; width: number; height: number } | null;
+  bounds: WidgetBounds | null;
 
   // Event handlers — called by host
   handleKey(event: KeyEvent): void;
-  handleClick(event: MouseEvent): void;
-  handleFocus(event: FocusEvent): void;
+  handleMouse(event: WidgetMouseEvent): void;
+  handleFocus(event: WidgetFocusEvent): void;
 
   // Programmatic control
   focus(): void;
@@ -144,8 +158,8 @@ interface Screen {
 
 ### Button
 - **State**: `label: string`, `variant: "default" | "primary" | "success" | "warning" | "danger"`
-- **Events**: key=enter or click → `onSubmit`
-- **Rendering**: `[ label ]` with style based on focused/disabled state and variant
+- **Events**: key=enter/space or mouse_down/up → `onSubmit`
+- **Rendering**: single line, fixed width = `cellLen(label) + 4`. Spaces around the label when not focused (`  label  `), `[`/`]` brackets when focused (`[ label ]`). State precedence (highest first): disabled → active → hover → focus → normal.
 
 ### Checkbox
 - **State**: `checked: boolean`, `label: string`
@@ -188,29 +202,9 @@ class RichJsWidgetAdapter {
   constructor(private widget: InteractiveWidget) {}
 
   // Map textual-js Key message → widget.handleKey()
-  // Map textual-js Click message → widget.handleClick()
+  // Map textual-js Click/Mouse message → widget.handleMouse()
   // Map textual-js Focus/Blur → widget.handleFocus()
   // Wrap widget.render() → Visual for compositor
   // Subscribe to widget.onChange/onSubmit → textual-js state updates
 }
 ```
-
-The adapter lives in textual-js, not rich-js. Rich-js widgets have no knowledge of textual-js.
-
-## Dependencies
-
-- **mobx** — observable state for widgets (already used by textual-js)
-- **Existing rich-js core** — Segment, Style, Renderable, Measurable, cellLen
-- **No other runtime dependencies**
-
-## Out of scope (v1)
-
-- Layout engine (grid, flex, etc.) — widgets are positioned manually or linearly
-- CSS/styling system — widgets accept style params, no cascade
-- Scroll regions / virtual scrolling
-- Widget trees / nesting
-- Keyboard shortcuts beyond tab/shift-tab navigation
-- Drag and drop
-- Multi-select (dropdown is single-select)
-- Accessibility (screen reader announcements)
-- Animation

@@ -14,7 +14,8 @@
 import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
+import { ColorSpec } from "../core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";

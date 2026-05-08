@@ -20,7 +20,7 @@ import { Button } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Toggle } from "../../src/widgets/toggle.js";
 import { TextInput } from "../../src/widgets/text-input.js";
-import { MONOKAI } from "../../src/core/color.js";
+import { MONOKAI } from "../../src/themes/terminalThemes.js";
 
 class CapturingStream extends Writable {
   chunks: string[] = [];
