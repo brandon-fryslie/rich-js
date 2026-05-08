@@ -563,9 +563,13 @@ function startup(): void {
 
   enterRawMode();
   enableMouse();
-  // Move below current shell prompt so Screen's first frame doesn't paint
-  // over the user's existing terminal content.
-  process.stdout.write("\n");
+  // [LAW:single-enforcer] Switch to the alternate screen buffer so the demo
+  // gets a full-terminal canvas independent of where the shell prompt was
+  // sitting. The main buffer is preserved and restored on shutdown — the
+  // demo's frame (LOG_Y + MAX_LOGS rows tall) lands at row 0 of a clean area
+  // and never has to fight scroll-back. Standard idiom for full-screen TUIs.
+  process.stdout.write("\x1b[?1049h");
+  process.stdout.write("\x1b[H");
 
   // Mount everything before starting Screen — Screen's first render then
   // produces a complete frame in one go.
@@ -610,7 +614,10 @@ function shutdown(): void {
   if (disposeFilter) disposeFilter();
   screen.stop();
   disableMouse();
-  process.stdout.write("\n\x1b[1;36mGoodbye!\x1b[0m\n");
+  // Leave the alternate screen buffer; the original main-buffer content
+  // (shell prompt, scrollback) is restored as if the demo was never there.
+  process.stdout.write("\x1b[?1049l");
+  process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
   leaveRawMode();
   process.exit(0);
 }
