@@ -3,11 +3,17 @@
  */
 
 import {
+  ColorRgba,
   ColorSpec,
   ColorDepth,
-  DEFAULT_TERMINAL_THEME,
 } from "./color.js";
 import type { TerminalTheme } from "./color.js";
+
+// [LAW:one-way-deps] `core/style` depends only on `core/color`; the substrate
+// fallback is the canonical canvas color (black), inlined to avoid pulling in
+// any preset theme constants. Preset themes live in `src/themes/` and depend
+// on core, never the reverse.
+const SURFACE_BLACK = new ColorRgba(0, 0, 0);
 
 // --- Attribute definitions ---
 
@@ -293,7 +299,7 @@ export class Style {
     // alpha before downgrade. Opaque colors short-circuit inside compositeOver,
     // so the same code path runs every render — the alpha value is the data,
     // not a branch.
-    const surface = DEFAULT_TERMINAL_THEME.backgroundColor;
+    const surface = SURFACE_BLACK;
     const bgFlat = this.bgcolor?.flattenAlpha(surface);
     const fgSubstrate = bgFlat?.getTruecolor(undefined, false) ?? surface;
     const fgFlat = this.color?.flattenAlpha(fgSubstrate);
