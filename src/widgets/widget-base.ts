@@ -51,18 +51,17 @@ export abstract class WidgetBase implements InteractiveWidget {
   }
 
   // --- Programmatic control ---
-  // [LAW:single-enforcer] every state-mutating action emits change exactly once.
+  // [LAW:single-enforcer] `handleFocus` is the canonical site that mutates
+  // `focused` and emits change. `focus()` / `blur()` are public-API
+  // delegates so external callers and the focus manager converge on one
+  // implementation rather than dispatching the transition twice.
 
-  @action
   focus(): void {
-    this.focused = true;
-    this.emitChange();
+    this.handleFocus({ type: "focus" });
   }
 
-  @action
   blur(): void {
-    this.focused = false;
-    this.emitChange();
+    this.handleFocus({ type: "blur" });
   }
 
   @action

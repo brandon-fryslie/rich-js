@@ -80,9 +80,13 @@ export class Button extends WidgetBase {
       this.active = true;
       this.emitChange();
       this.emitSubmit();
-      // Clear immediately so a keyboard-activated button does not stay visually pressed.
-      this.active = false;
-      this.emitChange();
+      // [LAW:dataflow-not-control-flow] flipping `active` true→false inside one
+      // `@action` is invisible to MobX autorun observers — they only see the
+      // post-action state. Schedule the clear on the next microtask so the
+      // action exits with `active=true` (one reaction cycle) and `setActive(false)`
+      // runs in its own action (second cycle), giving observers a render with
+      // the pressed state.
+      queueMicrotask(() => this.setActive(false));
     }
   }
 

@@ -29,7 +29,7 @@ screen (render loop, ANSI output)
 
 A widget does not know about stdin, terminal escape sequences, or its host. It:
 - Holds observable state (MobX)
-- Accepts typed events via methods (`handleKey`, `handleClick`, `focus`, `blur`)
+- Accepts typed events via methods (`handleKey`, `handleMouse`, `handleFocus`)
 - Implements `Renderable.render()` to produce `Segment[]` from current state
 - Implements `Measurable.measure()` for width negotiation
 

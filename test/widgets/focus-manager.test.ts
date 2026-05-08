@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
-import type { RenderOptions, KeyEvent, WidgetMouseEvent } from "../../src/index.js";
+import type {
+  RenderOptions,
+  KeyEvent,
+  InteractiveWidget,
+} from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 

@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
-import { Style } from "../../src/core/style.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import type {
   InteractiveWidget,
   KeyEvent,
-  WidgetMouseEvent,
   WidgetFocusEvent,
 } from "../../src/widgets/types.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
@@ -64,6 +62,22 @@ describe("WidgetBase", () => {
     expect(widget.focused).toBe(true);
     widget.handleFocus({ type: "blur" } as WidgetFocusEvent);
     expect(widget.focused).toBe(false);
+  });
+
+  it("focus()/blur() emit change exactly once per transition", () => {
+    // [LAW:single-enforcer] focus()/blur() delegate to handleFocus, which is
+    // the canonical state-mutation site — one transition should produce one
+    // emitChange, not two.
+    const widget = new StubWidget();
+    let changeCount = 0;
+    widget.onChange(() => changeCount++);
+
+    widget.focus();
+    expect(changeCount).toBe(1);
+    widget.blur();
+    expect(changeCount).toBe(2);
+    widget.handleFocus({ type: "focus" } as WidgetFocusEvent);
+    expect(changeCount).toBe(3);
   });
 
   it("sets disabled state", () => {
