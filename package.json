@@ -67,7 +67,7 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "@promptctl/go-template-js": "^0.1.0",
+    "@promptctl/go-template-js": "^0.1.1",
     "string-width": "^8.2.0",
     "strip-ansi": "^7.2.0"
   }
