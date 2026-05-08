@@ -35,6 +35,12 @@ export class DefaultFocusManager implements FocusManager {
 
   @action
   register(widget: InteractiveWidget): void {
+    // [LAW:dataflow-not-control-flow] same call shape always behaves the same way:
+    // a duplicate registration is a programmer bug (would silently corrupt focus
+    // cycling and break unregister), so fail loud instead of silently de-duping.
+    if (this.widgetList.includes(widget)) {
+      throw new Error(`FocusManager: widget '${widget.id}' is already registered`);
+    }
     this.widgetList = [...this.widgetList, widget];
     if (!this.currentWidget && widget.focusable && !widget.disabled) {
       this.setFocus(widget);

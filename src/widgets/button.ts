@@ -1,32 +1,29 @@
 /**
  * Button widget — labeled action trigger with variant styling.
  * [LAW:dataflow-not-control-flow] rendering is a pure function of observable state.
+ * [LAW:one-source-of-truth] extends WidgetBase; all shared widget machinery
+ * (state fields, subscriptions, hit-testing, focus/blur, emitChange) lives there.
  *
- * Four visual states:
- *   normal  — variant colors from theme ANSI palette
- *   hover   — lightened background (mouse over)
- *   focus   — box-drawing border around the button
- *   active  — color reversal (pressed)
+ * Renders a single line: `  label  ` normally, `[ label ]` when focused.
+ * Width is constant across states (focus does not reflow).
  *
- * States compose: active > focus > hover > normal.
- * Button renders 3 rows when focused (border top, content, border bottom),
- * 1 row otherwise.
+ * Visual states (precedence: disabled > active > hover > focus > normal):
+ *   disabled — dim grey on dark grey
+ *   active   — color reversal of the variant (pressed)
+ *   hover    — variant background lightened by HOVER_BG_BOOST
+ *   focus    — `[`/`]` brackets replace surrounding spaces
+ *   normal   — variant fg on variant bg from the terminal theme
  */
 
 import { makeObservable, observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
+import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import type {
-  InteractiveWidget,
-  KeyEvent,
-  WidgetMouseEvent,
-  WidgetFocusEvent,
-  WidgetBounds,
-  Unsubscribe,
-} from "./types.js";
+import { WidgetBase } from "./widget-base.js";
+import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 export type ButtonVariant = "default" | "primary" | "success" | "warning" | "danger";
 
@@ -49,34 +46,30 @@ const VARIANT_ANSI: Record<ButtonVariant, { fgIdx: number; bgIdx: number }> = {
 
 const HOVER_BG_BOOST = 30;
 
-export class Button implements InteractiveWidget {
+export class Button extends WidgetBase {
   readonly id: string;
   readonly focusable = true;
 
   @observable accessor label: string;
   @observable.ref accessor variant: ButtonVariant;
-  @observable accessor focused: boolean = false;
-  @observable accessor hovered: boolean = false;
-  @observable accessor active: boolean = false;
-  @observable accessor disabled: boolean = false;
-  @observable accessor visible: boolean = true;
-  @observable.ref accessor bounds: WidgetBounds | null = null;
-
-  private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
-  private readonly submitHandlers = new Set<(w: InteractiveWidget) => void>();
-  private _theme: TerminalTheme;
+  @observable.ref accessor theme: TerminalTheme;
 
   constructor(options: ButtonOptions) {
+    super();
     this.id = options.id ?? `button-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.variant = options.variant ?? "default";
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
+    this.theme = options.theme ?? DEFAULT_TERMINAL_THEME;
 
     makeObservable(this);
   }
 
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
+  @action
+  setTheme(theme: TerminalTheme): void {
+    this.theme = theme;
+    this.emitChange();
+  }
 
   // --- Event handlers ---
 
@@ -85,60 +78,28 @@ export class Button implements InteractiveWidget {
     if (this.disabled) return;
     if (event.key === "enter" || event.key === "space") {
       this.active = true;
+      this.emitChange();
       this.emitSubmit();
+      // Clear immediately so a keyboard-activated button does not stay visually pressed.
+      this.active = false;
+      this.emitChange();
     }
   }
 
   @action
-  handleMouse(event: WidgetMouseEvent): void {
+  override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
     if (event.type === "mouse_down") {
       this.active = true;
+      this.emitChange();
     }
     if (event.type === "mouse_up") {
       if (this.active) {
         this.active = false;
+        this.emitChange();
         this.emitSubmit();
       }
     }
-  }
-
-  @action
-  handleFocus(event: WidgetFocusEvent): void {
-    this.focused = event.type === "focus";
-  }
-
-  // --- Programmatic control ---
-
-  @action
-  focus(): void { this.focused = true; }
-  @action
-  blur(): void { this.focused = false; }
-  @action
-  setHovered(value: boolean): void { this.hovered = value; }
-  @action
-  setActive(value: boolean): void { this.active = value; }
-  @action
-  setDisabled(value: boolean): void { this.disabled = value; }
-
-  // --- Hit-testing ---
-
-  containsPoint(x: number, y: number): boolean {
-    const b = this.bounds;
-    if (!b) return false;
-    return x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height;
-  }
-
-  // --- Subscriptions ---
-
-  onChange(handler: (widget: InteractiveWidget) => void): Unsubscribe {
-    this.changeHandlers.add(handler);
-    return () => this.changeHandlers.delete(handler);
-  }
-
-  onSubmit(handler: (widget: InteractiveWidget) => void): Unsubscribe {
-    this.submitHandlers.add(handler);
-    return () => this.submitHandlers.delete(handler);
   }
 
   // --- Rendering ---
@@ -162,7 +123,7 @@ export class Button implements InteractiveWidget {
 
     // Hovered — lightened background
     if (this.hovered) {
-      const bgRgba = this._theme.ansiColors.get(VARIANT_ANSI[this.variant].bgIdx);
+      const bgRgba = this.theme.ansiColors.get(VARIANT_ANSI[this.variant].bgIdx);
       const lightened = ColorSpec.fromRgb(
         Math.min(255, bgRgba.red + HOVER_BG_BOOST),
         Math.min(255, bgRgba.green + HOVER_BG_BOOST),
@@ -176,7 +137,8 @@ export class Button implements InteractiveWidget {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.label.length + 4; // [ space label space ]
+    // [LAW:one-source-of-truth] cellLen is the single authority for terminal cell width.
+    const width = cellLen(this.label) + 4; // [ space label space ]
     return { minimum: width, maximum: width };
   }
 
@@ -184,14 +146,10 @@ export class Button implements InteractiveWidget {
 
   private resolveColors(): { fg: ColorSpec; bg: ColorSpec } {
     const ansi = VARIANT_ANSI[this.variant];
-    const table = this._theme.ansiColors;
+    const table = this.theme.ansiColors;
     return {
       fg: ColorSpec.fromRgba(table.get(ansi.fgIdx)),
       bg: ColorSpec.fromRgba(table.get(ansi.bgIdx)),
     };
-  }
-
-  private emitSubmit(): void {
-    for (const handler of this.submitHandlers) handler(this);
   }
 }
