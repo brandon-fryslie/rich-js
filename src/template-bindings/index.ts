@@ -2,12 +2,16 @@
  * rich-js template bindings — public entry point.
  *
  * [LAW:one-source-of-truth] This module is the single place where rich-js's
- * styling vocabulary is exposed as `@promptctl/go-template-js` template functions. The
- * bootstrap registration set is intentionally empty; subsequent epics on the
- * `template-bindings` topic populate it (foreground/attribute/background,
- * link, palette, auto-contrast). Consumers compose templates against the
- * Engine returned here; nesting is plain function composition
- * (`{{ red (bold "x") }}`), not a second markup grammar.
+ * styling vocabulary is exposed as `@promptctl/go-template-js` template
+ * functions. The current registration set covers foreground colour
+ * (named, palette index, hex, RGB), background (`on`), and text
+ * attributes (canonical names, short aliases, `not_*` negations) — all
+ * registered via `richTextStyleFuncs`. `link`, palette / theme /
+ * auto-contrast helpers, and per-position hue rotation ship in follow-up
+ * epics on the same `template-bindings` topic and merge into this same
+ * map. Consumers compose templates against the Engine returned here;
+ * nesting is plain function composition (`{{ red (bold "x") }}`), not a
+ * second markup grammar.
  *
  * Fragment type: `RichText`. Chosen because it is the library's primary
  * text type (implements `Renderable` + `Measurable`), composes via

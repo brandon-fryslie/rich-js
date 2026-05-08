@@ -8,7 +8,7 @@ The rich-js API makes it easy to add color and style to terminal output. It can 
 
 ## Compatibility
 
-Works on Linux, macOS, and Windows. Requires Node.js >= 18. ESM-only.
+Works on Linux, macOS, and Windows. Requires Node.js >= 20. ESM-only.
 
 ## Installing
 
