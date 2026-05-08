@@ -325,10 +325,9 @@ export class DefaultScreen implements Screen {
     const { lines, bounds } = this.computeFrame();
 
     // [LAW:single-enforcer] Bounds are written here, the only place that
-    // computes layout. Widgets must not set their own bounds.
-    runInAction(() => {
-      for (const { widget, bounds: b } of bounds) widget.bounds = b;
-    });
+    // computes layout. `bounds` is a plain field (see widget-base.ts) — no
+    // MobX action required.
+    for (const { widget, bounds: b } of bounds) widget.bounds = b;
 
     const newCount = lines.length;
     const drawCount = Math.max(newCount, this.lastLineCount);
