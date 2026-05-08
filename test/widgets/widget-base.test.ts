@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
-import { Style } from "../../src/core/style.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import type {
   InteractiveWidget,
   KeyEvent,
-  WidgetMouseEvent,
   WidgetFocusEvent,
 } from "../../src/widgets/types.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
@@ -22,6 +20,18 @@ class StubWidget extends WidgetBase {
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     return { minimum: 4, maximum: 4 };
+  }
+
+  // Test-only public wrappers for the protected emitters.
+  // emitChange/emitSubmit are part of the subclass-author contract, not the
+  // public widget contract — exposing them here keeps the base API honest
+  // while letting tests exercise the subscription mechanism directly.
+  triggerChange(): void {
+    this.emitChange();
+  }
+
+  triggerSubmit(): void {
+    this.emitSubmit();
   }
 }
 
@@ -54,6 +64,23 @@ describe("WidgetBase", () => {
     expect(widget.focused).toBe(false);
   });
 
+  it("focus()/blur() emit change exactly once per transition", () => {
+    // [LAW:single-enforcer] focus()/blur() delegate to handleFocus, which is
+    // the canonical state-mutation site — one transition should produce one
+    // emitChange, not two.
+    const widget = new StubWidget();
+    let changeCount = 0;
+    widget.onChange(() => changeCount++);
+
+    widget.focus();
+    expect(changeCount).toBe(1);
+    widget.blur();
+    expect(changeCount).toBe(2);
+    widget.handleFocus({ type: "focus" } as WidgetFocusEvent);
+    expect(changeCount).toBe(3);
+  });
+
+
   it("sets disabled state", () => {
     const widget = new StubWidget();
     widget.setDisabled(true);
@@ -78,12 +105,12 @@ describe("WidgetBase", () => {
     const changes: InteractiveWidget[] = [];
     const unsub = widget.onChange((w) => changes.push(w));
 
-    widget.emitChange();
+    widget.triggerChange();
     expect(changes).toHaveLength(1);
     expect(changes[0]).toBe(widget);
 
     unsub();
-    widget.emitChange();
+    widget.triggerChange();
     expect(changes).toHaveLength(1);
   });
 
@@ -92,7 +119,7 @@ describe("WidgetBase", () => {
     const submits: InteractiveWidget[] = [];
     widget.onSubmit((w) => submits.push(w));
 
-    widget.emitSubmit();
+    widget.triggerSubmit();
     expect(submits).toHaveLength(1);
   });
 

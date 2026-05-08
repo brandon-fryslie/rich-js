@@ -1,21 +1,26 @@
 /**
  * Button widget — labeled action trigger with variant styling.
  * [LAW:dataflow-not-control-flow] rendering is a pure function of observable state.
- * [LAW:one-type-per-behavior] shared widget infrastructure lives on WidgetBase.
+ * [LAW:one-source-of-truth] extends WidgetBase; all shared widget machinery
+ * (state fields, subscriptions, hit-testing, focus/blur, emitChange) lives there.
  *
- * Four visual states:
- *   normal  — variant colors from theme semantic palette (muted)
- *   hover   — full variant accent color (brighter than muted)
- *   focus   — brackets [ label ] surrounding the button
- *   active  — color reversal (pressed)
+ * Renders a single line: `  label  ` normally, `[ label ]` when focused.
+ * Width is constant across states (focus does not reflow).
  *
- * States compose: active > focus > hover > normal.
+ * Visual states (precedence: disabled > active > hover > focus > normal):
+ *   disabled    — dim grey on dark grey
+ *   active      — full accent bg + on-accent fg + bold (same bg as hover; bold differentiates)
+ *   hover       — full accent bg + on-accent fg (WCAG-correct contrast partner)
+ *   focus       — `[`/`]` brackets replace surrounding spaces
+ *   normal      — muted accent bg + text-accent fg from semantic palette
  */
 
-import { observable, action } from "mobx";
+import { makeObservable, observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
+import { ColorSpec } from "../core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
+import { cellLen } from "../core/cells.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
@@ -45,14 +50,14 @@ const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: strin
   danger:   { bg: "error-muted",   fg: "text-error",   hover: "error",   hoverFg: "on-error" },
 };
 
+
 export class Button extends WidgetBase {
   readonly id: string;
   readonly focusable = true;
 
   @observable accessor label: string;
   @observable.ref accessor variant: ButtonVariant;
-
-  private _theme: TerminalTheme;
+  @observable.ref accessor theme: TerminalTheme;
 
   constructor(options: ButtonOptions) {
     super();
@@ -60,10 +65,16 @@ export class Button extends WidgetBase {
     this.label = options.label;
     this.variant = options.variant ?? "default";
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
+    this.theme = options.theme ?? DEFAULT_TERMINAL_THEME;
+
+    makeObservable(this);
   }
 
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
+  @action
+  setTheme(theme: TerminalTheme): void {
+    this.theme = theme;
+    this.emitChange();
+  }
 
   // --- Event handlers ---
 
@@ -72,7 +83,15 @@ export class Button extends WidgetBase {
     if (this.disabled) return;
     if (event.key === "enter" || event.key === "space") {
       this.active = true;
+      this.emitChange();
       this.emitSubmit();
+      // [LAW:dataflow-not-control-flow] flipping `active` true→false inside one
+      // `@action` is invisible to MobX autorun observers — they only see the
+      // post-action state. Schedule the clear on the next microtask so the
+      // action exits with `active=true` (one reaction cycle) and `setActive(false)`
+      // runs in its own action (second cycle), giving observers a render with
+      // the pressed state.
+      queueMicrotask(() => this.setActive(false));
     }
   }
 
@@ -81,24 +100,21 @@ export class Button extends WidgetBase {
     if (this.disabled) return;
     if (event.type === "mouse_down") {
       this.active = true;
+      this.emitChange();
     }
     if (event.type === "mouse_up") {
       if (this.active) {
         this.active = false;
+        this.emitChange();
         this.emitSubmit();
       }
     }
   }
 
-  // --- Active mutator (router fast-path; setHovered is inherited) ---
-
-  @action
-  setActive(value: boolean): void { this.active = value; }
-
   // --- Rendering ---
 
   render(_options: RenderOptions): Iterable<Segment> {
-    // [LAW:dataflow-not-control-flow] same segment count and width every state
+    // [LAW:dataflow-not-control-flow] same segment count and width every state — only style + content vary
     const focused = this.focused;
     const left = focused ? "[" : " ";
     const right = focused ? "]" : " ";
@@ -118,29 +134,28 @@ export class Button extends WidgetBase {
       return [new Segment(text, new Style({ color: fg, bgcolor: bg, bold: this.active }))];
     }
 
-    const { fg, bg } = this.resolveColors("bg");
+    const { fg, bg } = this.resolveNormalColors();
     return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.label.length + 4;
+    // [LAW:one-source-of-truth] cellLen is the single authority for terminal cell width.
+    const width = cellLen(this.label) + 4; // [ space label space ]
     return { minimum: width, maximum: width };
   }
 
   // --- Palette resolution ---
 
-  private resolveColors(
-    bgKey: "bg" | "hover",
-  ): { fg: ColorSpec; bg: ColorSpec } {
+  private resolveNormalColors(): { fg: ColorSpec; bg: ColorSpec } {
     const keys = VARIANT_KEYS[this.variant];
     return {
       fg: this.resolvePalette(keys.fg),
-      bg: this.resolvePalette(bgKey === "hover" ? keys.hover : keys.bg),
+      bg: this.resolvePalette(keys.bg),
     };
   }
 
   private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
+    const rgba = this.theme.palette.get(key);
     // [LAW:no-defensive-null-guards] palette is required and must contain all keys.
     return ColorSpec.fromRgba(rgba!);
   }

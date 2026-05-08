@@ -16,6 +16,17 @@ export {
   STANDARD_TABLE,
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
+  ANSI_COLOR_NAMES,
+} from "./core/color.js";
+export type { DetectColorOptions } from "./core/color.js";
+
+// Themes — semantic palettes (distinct from ColorTable quantization LUTs)
+export { Palette } from "./themes/palette.js";
+export { PaletteResolver } from "./themes/paletteResolver.js";
+export type { ResolveContext } from "./themes/paletteResolver.js";
+export { buildPalette } from "./themes/buildPalette.js";
+export type { BaseColors } from "./themes/buildPalette.js";
+export {
   DEFAULT_TERMINAL_THEME,
   MONOKAI,
   SVG_EXPORT_THEME,
@@ -35,16 +46,7 @@ export {
   ROSE_PINE_DAWN,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
-  ANSI_COLOR_NAMES,
-} from "./core/color.js";
-export type { DetectColorOptions } from "./core/color.js";
-
-// Themes — semantic palettes (distinct from ColorTable quantization LUTs)
-export { Palette } from "./themes/palette.js";
-export { PaletteResolver } from "./themes/paletteResolver.js";
-export type { ResolveContext } from "./themes/paletteResolver.js";
-export { buildPalette } from "./themes/buildPalette.js";
-export type { BaseColors } from "./themes/buildPalette.js";
+} from "./themes/terminalThemes.js";
 
 export {
   Style,
@@ -255,3 +257,6 @@ export { Slider } from "./widgets/slider.js";
 export type { SliderOptions } from "./widgets/slider.js";
 export { EventRouter } from "./widgets/event-router.js";
 export type { EventRouterOptions } from "./widgets/event-router.js";
+
+// Template bindings — register rich-js styling as @promptctl/go-template-js functions
+export { createRichTextEngine, richTextFuncs } from "./template-bindings/index.js";

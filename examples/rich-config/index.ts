@@ -7,7 +7,7 @@
  * can verify state changes as they tab around.
  *
  * Run with: npm run demo-inputs
- * Press Tab to navigate · Space/Enter to interact · Ctrl-C to exit.
+ * Press Tab to navigate · Space/Enter to interact · Ctrl-C or q to exit.
  */
 
 import { autorun, runInAction, makeAutoObservable } from "mobx";
@@ -205,7 +205,9 @@ function renderWidget(widget: InteractiveWidget, row: number, col: number): numb
     const w = line.reduce((sum, s) => sum + s.cellLength, 0);
     if (w > maxWidth) maxWidth = w;
   }
-  widget.bounds = { x: col, y: row - 1, width: maxWidth, height: lines.length };
+  // writeAt uses 1-based columns (CUP semantics) but mouse-event x is 0-based —
+  // store bounds in 0-based coordinates so hit-testing aligns with WidgetMouseEvent.x.
+  widget.bounds = { x: col - 1, y: row - 1, width: maxWidth, height: lines.length };
   for (let i = 0; i < lines.length; i++) {
     const ansi = segmentsToString(lines[i]!, ColorDepth.TRUECOLOR);
     writeAt(row + i, col, ansi);
@@ -215,7 +217,7 @@ function renderWidget(widget: InteractiveWidget, row: number, col: number): numb
 
 function renderHeader(): void {
   writeAt(HEADER_ROW, 2, "\x1b[1;36mrich-js Theme + Widgets Explorer\x1b[0m");
-  writeAt(SUBTITLE_ROW, 2, "\x1b[2mTab · Space/Enter · Click · Ctrl-C to exit\x1b[0m");
+  writeAt(SUBTITLE_ROW, 2, "\x1b[2mTab · Space/Enter · Click · Ctrl-C or q to exit\x1b[0m");
 }
 
 function renderButtons(startRow: number): number {
@@ -383,6 +385,7 @@ function render(): void {
 
 function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void {
   if (key?.ctrl && key.key === "c") { shutdown(); return; }
+  if (key?.key === "q" && !key.ctrl) { shutdown(); return; }
 
   if (key?.key === "tab") {
     key.shift ? fm.prev() : fm.next();

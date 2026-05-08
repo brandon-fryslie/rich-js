@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is this project?
 
-A TypeScript port of Python's [Rich](https://github.com/Textualize/rich) library — rich text and beautiful formatting in the terminal. ESM-only, targeting Node.js >= 18.
+A TypeScript port of Python's [Rich](https://github.com/Textualize/rich) library — rich text and beautiful formatting in the terminal. ESM-only, targeting Node.js >= 20 (transitively required by `@promptctl/go-template-js`).
 
 ## Commands
 
