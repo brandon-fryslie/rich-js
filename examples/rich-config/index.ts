@@ -2,9 +2,17 @@
  * rich-config — interactive theme + widgets explorer for rich-js.
  *
  * Mounts every interactive widget (Button, Checkbox, Toggle, TextInput,
- * Dropdown, Slider) and re-themes them all when the user selects a new
- * theme. The bottom log line shows widget interactions live so the user
- * can verify state changes as they tab around.
+ * Dropdown, Slider) plus the surrounding static content (header, palette
+ * swatches, progress bars, status row, log buffer) into a single
+ * DefaultScreen. Screen owns the render loop, the overlay pass, and
+ * widget bounds — there is no parallel writeAt-based render path.
+ *
+ * Layout uses three placement kinds (see src/widgets/types.ts):
+ *   flow   — vertical stack at x=0 (header/subtitle/heading/content)
+ *   inline — horizontal continuation of the preceding row (filter input
+ *            beside the dropdown; checkbox/slider/button clusters)
+ *   fixed  — absolute (x, y) for the status row and log buffer that
+ *            anchor at the bottom regardless of content growth.
  *
  * Run with: npm run demo-inputs
  * Press Tab to navigate · Space/Enter to interact · Ctrl-C to exit.
@@ -18,12 +26,12 @@ import {
   TextInput,
   Dropdown,
   Slider,
+  DefaultScreen,
   DefaultFocusManager,
-  segmentsToString,
+  StaticItem,
   Segment,
   Style,
   ColorSpec,
-  ColorDepth,
   Panel,
   ProgressBar,
   ROUNDED,
@@ -47,22 +55,15 @@ import {
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
-import { hasOverlay } from "../../src/widgets/types.js";
+import type { InteractiveWidget, KeyEvent, WidgetMouseEvent, MountEntry } from "../../src/widgets/types.js";
 import type { ColorRgba } from "../../src/core/color.js";
-import type { RenderOptions } from "../../src/core/protocol.js";
+import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import {
   enterRawMode,
   leaveRawMode,
   enableMouse,
   disableMouse,
-  clearScreen,
-  hideCursor,
-  showCursor,
-  moveCursor,
-  eraseBelow,
   startReading,
-  writeAt,
 } from "./terminal.js";
 
 // --- Available themes ---
@@ -104,25 +105,25 @@ class AppState {
 
 const state = new AppState();
 
-// --- Layout ---
+// --- Layout constants (0-indexed; Screen owns absolute coordinates) ---
 
-const HEADER_ROW = 1;
-const SUBTITLE_ROW = 2;
-const WIDGETS_START_ROW = 4;
-const MAX_BUTTON_COLS = 78;
-// Layout below is dynamic — renderInteractiveWidgets returns the next
-// free row; renderContent uses what's left between widgets and STATUS_ROW.
-const STATUS_ROW = 42;
-const LOG_ROW = 44;
+const STATUS_Y = 40;
+const SEPARATOR_Y = 41;
+const LOG_Y = 42;
 const MAX_LOGS = 3;
 
 // --- Log buffer ---
 
-const logs: string[] = [];
-function log(msg: string): void {
-  logs.push(msg);
-  if (logs.length > MAX_LOGS) logs.shift();
+class LogBuffer {
+  entries: string[] = [];
+  constructor() { makeAutoObservable(this); }
+  push(msg: string): void {
+    this.entries.push(msg);
+    if (this.entries.length > MAX_LOGS) this.entries.shift();
+  }
 }
+const logs = new LogBuffer();
+const log = (msg: string): void => logs.push(msg);
 
 // --- Action buttons (Button showcases) ---
 
@@ -195,197 +196,28 @@ const allWidgets: InteractiveWidget[] = [
   btnDisabled,
 ];
 
-// --- Focus manager ---
+// --- Focus manager + Screen ---
 
 const fm = new DefaultFocusManager();
+const screen = new DefaultScreen({
+  focusManager: fm,
+  out: process.stdout,
+});
 
-// --- Rendering helpers ---
+// --- Static-content rendering helpers ---
 
 function paletteColor(c: ColorRgba): ColorSpec {
   return ColorSpec.fromRgba(c);
 }
 
-function colorSwatch(c: ColorRgba): string {
-  const bg = `\x1b[48;2;${c.red};${c.green};${c.blue}m`;
-  const fg = `\x1b[38;2;${c.red};${c.green};${c.blue}m`;
-  return `${bg}  ${fg}██\x1b[0m`;
-}
-
-function renderWidget(widget: InteractiveWidget, row: number, col: number): number {
-  const segments = [...widget.render({ maxWidth: 80 })];
-  const lines = Segment.splitLines(segments);
-  let maxWidth = 0;
-  for (const line of lines) {
-    const w = line.reduce((sum, s) => sum + s.cellLength, 0);
-    if (w > maxWidth) maxWidth = w;
-  }
-  widget.bounds = { x: col, y: row - 1, width: maxWidth, height: lines.length };
-  for (let i = 0; i < lines.length; i++) {
-    const ansi = segmentsToString(lines[i]!, ColorDepth.TRUECOLOR);
-    writeAt(row + i, col, ansi);
-  }
-  return col + maxWidth + 2;
-}
-
-function renderHeader(): void {
-  writeAt(HEADER_ROW, 2, "\x1b[1;36mrich-js Theme + Widgets Explorer\x1b[0m");
-  writeAt(SUBTITLE_ROW, 2, "\x1b[2mTab · Space/Enter · Click · Ctrl-C to exit\x1b[0m");
-}
-
-function renderInlineRow(widgets: InteractiveWidget[], startRow: number): number {
-  let row = startRow;
-  let col = 2;
-  for (const widget of widgets) {
-    const { minimum } = widget.measure({ maxWidth: 80 });
-    if (col + minimum > MAX_BUTTON_COLS && col > 2) {
-      row++;
-      col = 2;
-    }
-    col = renderWidget(widget, row, col);
-  }
-  return row + 1;
-}
-
-function renderInteractiveWidgets(startRow: number): number {
-  writeAt(startRow, 2, "\x1b[1;33mInteractive Widgets\x1b[0m");
-  let row = startRow + 1;
-
-  // Top row: theme dropdown + filter text input side by side. The
-  // dropdown's `render()` is just the 1-row header — its option list
-  // lives in `renderOverlay()`, painted on top of subsequent content
-  // by `renderOverlays()` later in the frame.
-  // [LAW:dataflow-not-control-flow] Layout footprint is constant (1 row);
-  // `expanded` only affects the overlay pass, never flow.
-  const ddNextCol = renderWidget(themeDropdown, row, 2);
-  renderWidget(inName, row, ddNextCol);
-  row += 2;
-
-  // Visibility checkboxes + dark-only toggle.
-  row = renderInlineRow([cbMuted, cbAnsi, cbProgress, tgDarkOnly], row);
-
-  // Sliders row: contrast threshold + progress fill.
-  row = renderInlineRow([slContrast, slFill], row);
-
-  // Action buttons row: Export, Reset, Locked.
-  row = renderInlineRow([btnExport, btnReset, btnDisabled], row);
-
-  return row;
-}
-
-function renderRenderable(renderable: { render(options: RenderOptions): Iterable<Segment> }, row: number, col: number): number {
-  const segments = [...renderable.render({ maxWidth: 80 })];
-  const lines = Segment.splitLines(segments);
-  for (let i = 0; i < lines.length; i++) {
-    const ansi = segmentsToString(lines[i]!, ColorDepth.TRUECOLOR);
-    writeAt(row + i, col, ansi);
-  }
-  return lines.length;
-}
-
-function renderContent(startRow: number): void {
-  const theme = state.selectedTheme;
-  const name = state.selectedName;
-  const fg = paletteColor(theme.foregroundColor);
-  const bg = paletteColor(theme.backgroundColor);
-  const palette = theme.palette;
-  let row = startRow;
-
-  // --- Theme name panel ---
-  const titlePanel = new Panel(` ${name} `, {
-    box: ROUNDED,
-    style: new Style({ color: fg, bgcolor: bg, bold: true }),
-    borderStyle: new Style({ color: paletteColor(palette.get("primary")!) }),
-    width: 78,
-    padding: 0,
-  });
-  row += renderRenderable(titlePanel, row, 2);
-  row++;
-
-  // --- Semantic palette swatches ---
-  // Reading .checked / slider .value here subscribes the autorun:
-  // toggling cbMuted or dragging slContrast re-fires render.
-  const showMuted = cbMuted.checked;
-  const contrastThreshold = slContrast.value;
-  const accentKeys = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
-  let swatchLine = "";
-  for (const key of accentKeys) {
-    const c = palette.get(key)!;
-    const bgAnsi = `\x1b[48;2;${c.red};${c.green};${c.blue}m`;
-    const reset = "\x1b[0m";
-    const lum = luminance(c);
-    const fgContrast = lum > 0.179 ? "30" : "37";
-    swatchLine += `${bgAnsi}\x1b[${fgContrast};1m ${key.padEnd(9)}${reset}`;
-
-    // Contrast tag — driven by slContrast.value.
-    const isOk = lum > contrastThreshold;
-    const tagColor = palette.get(isOk ? "success" : "warning")!;
-    const tagAnsi = `\x1b[38;2;${tagColor.red};${tagColor.green};${tagColor.blue}m`;
-    swatchLine += `${tagAnsi}${isOk ? " OK " : "low "}${reset}`;
-
-    if (showMuted) {
-      const muted = palette.get(`${key}-muted`)!;
-      const mutedAnsi = `\x1b[48;2;${muted.red};${muted.green};${muted.blue}m`;
-      const fgMuted = luminance(muted) > 0.179 ? "30" : "37";
-      swatchLine += `${mutedAnsi}\x1b[${fgMuted}m muted ${reset}`;
-    }
-    swatchLine += " ";
-  }
-  writeAt(row, 2, swatchLine);
-  row++;
-  row++;
-
-  // [LAW:dataflow-not-control-flow] section visibility lives in the
-  // section list (data), not as if-guards around side effects. The for
-  // loop runs unconditionally; sections excluded by checkbox.checked
-  // simply don't appear in the list. Each section is a (row) => row fn.
-  type Section = (row: number) => number;
-  const sections: Section[] = [
-    cbProgress.checked ? (r: number) => renderProgressSection(r, palette, slFill.value) : null,
-    cbAnsi.checked ? (r: number) => renderAnsiSection(r, theme, palette) : null,
-  ].filter((s): s is Section => s !== null);
-
-  for (const section of sections) row = section(row);
-}
-
-function renderProgressSection(startRow: number, palette: import("../../src/themes/palette.js").Palette, fillPct: number): number {
-  let row = startRow;
-  // [LAW:dataflow-not-control-flow] all four bars share the same fill —
-  // the demo's purpose is to compare accent rendering at one fill ratio,
-  // not to encode a fixed pattern. fillPct flows in from slFill.value.
-  const progressData = [
-    { label: "primary", color: "primary", pct: fillPct },
-    { label: "success", color: "success", pct: fillPct },
-    { label: "warning", color: "warning", pct: fillPct },
-    { label: "error",   color: "error",   pct: fillPct },
-  ];
-  for (const p of progressData) {
-    const bar = new ProgressBar({
-      total: 100,
-      completed: p.pct,
-      width: 30,
-      completeStyle: new Style({ bgcolor: paletteColor(palette.get(p.color)!) }),
-      style: new Style({ bgcolor: paletteColor(palette.get(`${p.color}-muted`)!) }),
-    });
-    const labelStyle = new Style({ color: paletteColor(palette.get(p.color)!), bold: true });
-    const labelSeg = new Segment(` ${p.label.padEnd(10)}`, labelStyle);
-    writeAt(row, 2, segmentsToString([labelSeg], ColorDepth.TRUECOLOR));
-    row += renderRenderable(bar, row, 16);
-  }
-  return row + 1;
-}
-
-function renderAnsiSection(startRow: number, theme: import("../../src/core/color.js").TerminalTheme, palette: import("../../src/themes/palette.js").Palette): number {
-  let row = startRow;
-  const headingStyle = new Style({ color: paletteColor(palette.get("secondary")!), bold: true });
-  writeAt(row, 2, segmentsToString([new Segment("ANSI Palette", headingStyle)], ColorDepth.TRUECOLOR));
-  row++;
-  const ansiTable = theme.ansiColors;
-  for (let i = 0; i < 16; i++) {
-    const c = ansiTable.get(i);
-    const col = 2 + i * 5;
-    writeAt(row, col, `${colorSwatch(c)}${String(i).padStart(2, " ")}`);
-  }
-  return row + 1;
+// Build a renderable that emits a fixed Style + text. Tiny helper to keep
+// the StaticItem definitions terse.
+function styledLine(text: string, style: Style): Renderable {
+  return {
+    render(_options: RenderOptions): Iterable<Segment> {
+      return [new Segment(text, style)];
+    },
+  };
 }
 
 function luminance(c: ColorRgba): number {
@@ -396,72 +228,260 @@ function luminance(c: ColorRgba): number {
   return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue);
 }
 
-function renderStatus(): void {
-  const focused = fm.current;
-  const id = focused?.id ?? "none";
-  const details = focused ? `focused=${focused.focused} active=${focused.active}` : "";
-  writeAt(STATUS_ROW, 2, `\x1b[1;33m▸\x1b[0m ${id}  \x1b[2m${details}\x1b[0m`);
+// --- StaticItem definitions ---
+
+const headerStyle = new Style({
+  color: ColorSpec.fromRgb(0, 200, 200),
+  bold: true,
+});
+const dimStyle = new Style({ dim: true });
+const sectionHeadStyle = new Style({
+  color: ColorSpec.fromRgb(220, 200, 80),
+  bold: true,
+});
+
+const headerItem = new StaticItem({
+  id: "static-header",
+  render: styledLine("rich-js Theme + Widgets Explorer", headerStyle),
+});
+const subtitleItem = new StaticItem({
+  id: "static-subtitle",
+  render: styledLine("Tab · Space/Enter · Click · Ctrl-C to exit", dimStyle),
+});
+const widgetsHeading = new StaticItem({
+  id: "static-widgets-heading",
+  render: styledLine("Interactive Widgets", sectionHeadStyle),
+});
+
+// A blank one-row spacer used to introduce vertical gaps between flow groups.
+function spacer(id: string): StaticItem {
+  return new StaticItem({
+    id,
+    render: () => [new Segment(" ")],
+  });
 }
 
-function renderLogs(): void {
-  writeAt(LOG_ROW - 1, 2, "\x1b[2m" + "─".repeat(76) + "\x1b[0m");
-  for (let i = 0; i < MAX_LOGS; i++) {
-    const row = LOG_ROW + i;
-    moveCursor(row, 2);
-    process.stdout.write("\x1b[2K");
-    if (i < logs.length) {
-      const entry = logs[logs.length - MAX_LOGS + i];
-      if (entry) writeAt(row, 2, `\x1b[2m  ${entry}\x1b[0m`);
+// Theme name panel — re-renders each frame because it depends on
+// state.selectedTheme + state.selectedName. The function form of
+// StaticItem.render is called inside Screen's autorun, so reads of
+// observables here subscribe Screen to them.
+const titlePanelItem = new StaticItem({
+  id: "static-title-panel",
+  render: (_options) => {
+    const theme = state.selectedTheme;
+    const name = state.selectedName;
+    const fg = paletteColor(theme.foregroundColor);
+    const bg = paletteColor(theme.backgroundColor);
+    const palette = theme.palette;
+    const panel = new Panel(` ${name} `, {
+      box: ROUNDED,
+      style: new Style({ color: fg, bgcolor: bg, bold: true }),
+      borderStyle: new Style({ color: paletteColor(palette.get("primary")!) }),
+      width: 78,
+      padding: 0,
+    });
+    return panel.render({ maxWidth: 80 });
+  },
+});
+
+// Palette swatch row. Reads cbMuted.checked + slContrast.value so the
+// swatch composition reacts to those toggles.
+const swatchesItem = new StaticItem({
+  id: "static-swatches",
+  render: (_options) => {
+    const theme = state.selectedTheme;
+    const palette = theme.palette;
+    const showMuted = cbMuted.checked;
+    const contrastThreshold = slContrast.value;
+    const accentKeys = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
+    const segments: Segment[] = [];
+    for (const key of accentKeys) {
+      const c = palette.get(key)!;
+      const lum = luminance(c);
+      const fgLight = lum > 0.179;
+      const swatchStyle = new Style({
+        color: fgLight ? ColorSpec.fromRgb(0, 0, 0) : ColorSpec.fromRgb(255, 255, 255),
+        bgcolor: ColorSpec.fromRgba(c),
+        bold: true,
+      });
+      segments.push(new Segment(` ${key.padEnd(9)}`, swatchStyle));
+
+      const isOk = lum > contrastThreshold;
+      const tagColor = palette.get(isOk ? "success" : "warning")!;
+      const tagStyle = new Style({ color: ColorSpec.fromRgba(tagColor) });
+      segments.push(new Segment(isOk ? " OK " : "low ", tagStyle));
+
+      if (showMuted) {
+        const muted = palette.get(`${key}-muted`)!;
+        const mutedFgLight = luminance(muted) > 0.179;
+        const mutedStyle = new Style({
+          color: mutedFgLight ? ColorSpec.fromRgb(0, 0, 0) : ColorSpec.fromRgb(200, 200, 200),
+          bgcolor: ColorSpec.fromRgba(muted),
+        });
+        segments.push(new Segment(" muted ", mutedStyle));
+      }
+      segments.push(new Segment(" "));
     }
-  }
-}
+    return segments;
+  },
+});
 
-function render(): void {
-  eraseBelow(HEADER_ROW);
-  renderHeader();
-  const afterWidgets = renderInteractiveWidgets(WIDGETS_START_ROW);
-  renderContent(afterWidgets + 1);
-  // Overlay pass — runs after all base content. Render order = z-order:
-  // any widget that opts into OverlayRenderable paints ON TOP of whatever
-  // pass-1 placed below its inline footprint.
-  renderOverlays();
-  renderStatus();
-  renderLogs();
-}
-
-function renderOverlays(): void {
-  for (const widget of allWidgets) {
-    if (!hasOverlay(widget)) continue;
-    const overlaySegs = widget.renderOverlay({ maxWidth: 80 });
-    if (overlaySegs === null) continue;
-    const overlayLines = Segment.splitLines([...overlaySegs]);
-    if (overlayLines.length === 0) continue;
-    const b = widget.bounds;
-    if (!b) continue;
-
-    // bounds.y is 0-indexed (renderWidget set it to row - 1). The overlay
-    // starts at the 1-indexed row directly below the inline footprint.
-    const startRow = b.y + b.height + 1;
-    let maxWidth = 0;
-    for (const line of overlayLines) {
-      const w = line.reduce((sum, s) => sum + s.cellLength, 0);
-      if (w > maxWidth) maxWidth = w;
+// Progress section. When cbProgress.checked is false, render returns [] —
+// pass 1 produces a 0-height widget and the flow cursor doesn't advance
+// (dataflow-not-control-flow: variability lives in the data, not in
+// whether the renderer runs).
+const progressItem = new StaticItem({
+  id: "static-progress",
+  render: (_options) => {
+    if (!cbProgress.checked) return [];
+    const theme = state.selectedTheme;
+    const palette = theme.palette;
+    const fillPct = slFill.value;
+    const segments: Segment[] = [];
+    const progressData = [
+      { label: "primary", color: "primary", pct: fillPct },
+      { label: "success", color: "success", pct: fillPct },
+      { label: "warning", color: "warning", pct: fillPct },
+      { label: "error",   color: "error",   pct: fillPct },
+    ];
+    for (let i = 0; i < progressData.length; i++) {
+      const p = progressData[i]!;
+      const labelStyle = new Style({ color: paletteColor(palette.get(p.color)!), bold: true });
+      segments.push(new Segment(` ${p.label.padEnd(10)} `, labelStyle));
+      const bar = new ProgressBar({
+        total: 100,
+        completed: p.pct,
+        width: 30,
+        completeStyle: new Style({ bgcolor: paletteColor(palette.get(p.color)!) }),
+        style: new Style({ bgcolor: paletteColor(palette.get(`${p.color}-muted`)!) }),
+      });
+      for (const seg of bar.render({ maxWidth: 50 })) segments.push(seg);
+      if (i < progressData.length - 1) segments.push(new Segment("\n"));
     }
-    // Grow the widget's bounds to include the overlay so hit-testing
-    // catches clicks on option rows. Single enforcer for bounds-union.
-    widget.bounds = {
-      x: b.x,
-      y: b.y,
-      width: Math.max(b.width, maxWidth),
-      height: b.height + overlayLines.length,
-    };
+    return segments;
+  },
+});
 
-    for (let i = 0; i < overlayLines.length; i++) {
-      const ansi = segmentsToString(overlayLines[i]!, ColorDepth.TRUECOLOR);
-      writeAt(startRow + i, b.x, ansi);
+// ANSI palette. Same dataflow pattern: returns [] when unchecked.
+const ansiItem = new StaticItem({
+  id: "static-ansi",
+  render: (_options) => {
+    if (!cbAnsi.checked) return [];
+    const theme = state.selectedTheme;
+    const palette = theme.palette;
+    const headingStyle = new Style({ color: paletteColor(palette.get("secondary")!), bold: true });
+    const segments: Segment[] = [new Segment("ANSI Palette", headingStyle), new Segment("\n")];
+    const ansiTable = theme.ansiColors;
+    for (let i = 0; i < 16; i++) {
+      const c = ansiTable.get(i);
+      const swatchStyle = new Style({
+        color: ColorSpec.fromRgba(c),
+        bgcolor: ColorSpec.fromRgba(c),
+      });
+      segments.push(new Segment("  ", swatchStyle));
+      segments.push(new Segment(`██${String(i).padStart(2, " ")} `, new Style({ color: ColorSpec.fromRgba(c) })));
     }
-  }
-}
+    return segments;
+  },
+});
+
+// Status row (focus diagnostic). Reads fm.current observables.
+const statusItem = new StaticItem({
+  id: "static-status",
+  render: (_options) => {
+    const focused = fm.current;
+    const id = focused?.id ?? "none";
+    const focusedFlag = focused?.focused ?? false;
+    const activeFlag = focused?.active ?? false;
+    const arrowStyle = new Style({
+      color: ColorSpec.fromRgb(220, 200, 80),
+      bold: true,
+    });
+    return [
+      new Segment("▸ ", arrowStyle),
+      new Segment(`${id}  `),
+      new Segment(`focused=${focusedFlag} active=${activeFlag}`, dimStyle),
+    ];
+  },
+});
+
+// Separator above the log buffer — single static row.
+const separatorItem = new StaticItem({
+  id: "static-separator",
+  render: styledLine("─".repeat(76), dimStyle),
+});
+
+// Log buffer — three rows, newest at the bottom. Reads logs.entries.
+const logItem = new StaticItem({
+  id: "static-logs",
+  render: (_options) => {
+    const segments: Segment[] = [];
+    for (let i = 0; i < MAX_LOGS; i++) {
+      const entry = logs.entries[i];
+      if (entry !== undefined) {
+        segments.push(new Segment(`  ${entry}`, dimStyle));
+      }
+      if (i < MAX_LOGS - 1) segments.push(new Segment("\n"));
+    }
+    return segments;
+  },
+});
+
+// --- Mount layout ---
+
+// [LAW:single-enforcer] All layout flows through Screen. Mount order +
+// placements together describe the entire frame; there is no second
+// render path.
+const mountList: MountEntry[] = [
+  // Top: header / subtitle / heading.
+  headerItem,
+  subtitleItem,
+  spacer("sp-1"),
+  widgetsHeading,
+
+  // Row of dropdown + filter input.
+  themeDropdown,
+  { widget: inName, placement: { kind: "inline" } },
+
+  spacer("sp-2"),
+
+  // Row of visibility checkboxes + dark-only toggle.
+  cbMuted,
+  { widget: cbAnsi, placement: { kind: "inline" } },
+  { widget: cbProgress, placement: { kind: "inline" } },
+  { widget: tgDarkOnly, placement: { kind: "inline" } },
+
+  spacer("sp-3"),
+
+  // Row of sliders.
+  slContrast,
+  { widget: slFill, placement: { kind: "inline" } },
+
+  spacer("sp-4"),
+
+  // Row of action buttons.
+  btnExport,
+  { widget: btnReset, placement: { kind: "inline" } },
+  { widget: btnDisabled, placement: { kind: "inline" } },
+
+  spacer("sp-5"),
+
+  // Theme presentation: panel + swatches.
+  titlePanelItem,
+  spacer("sp-6"),
+  swatchesItem,
+  spacer("sp-7"),
+
+  // Optional sections (each renders 0 rows when its checkbox is off).
+  progressItem,
+  spacer("sp-8"),
+  ansiItem,
+
+  // Bottom-anchored: status row + separator + log buffer.
+  { widget: statusItem, placement: { kind: "fixed", x: 0, y: STATUS_Y } },
+  { widget: separatorItem, placement: { kind: "fixed", x: 0, y: SEPARATOR_Y } },
+  { widget: logItem, placement: { kind: "fixed", x: 0, y: LOG_Y } },
+];
 
 // --- Input handling ---
 
@@ -475,9 +495,6 @@ function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void
 
   if (key && fm.current) {
     fm.current.handleKey(key);
-    // Buttons momentarily set active=true on submit; reset after a short
-    // delay so the visual press registers without sticking. Other widgets
-    // don't use the active observable from key input.
     if (fm.current instanceof Button && (key.key === "enter" || key.key === "space")) {
       const widget = fm.current;
       setTimeout(() => runInAction(() => { widget.active = false; }), 80);
@@ -528,7 +545,7 @@ function widgetAt(x: number, y: number): InteractiveWidget | null {
 // --- Lifecycle ---
 
 let stopReading: (() => void) | null = null;
-let disposeRender: (() => void) | null = null;
+let disposeTheme: (() => void) | null = null;
 let disposeFilter: (() => void) | null = null;
 
 function startup(): void {
@@ -538,18 +555,20 @@ function startup(): void {
   }
 
   enterRawMode();
-  hideCursor();
   enableMouse();
-  clearScreen();
+  // Move below current shell prompt so Screen's first frame doesn't paint
+  // over the user's existing terminal content.
+  process.stdout.write("\n");
 
-  for (const widget of allWidgets) fm.register(widget);
+  // Mount everything before starting Screen — Screen's first render then
+  // produces a complete frame in one go.
+  screen.mount(...mountList);
 
   // [LAW:single-enforcer] Filter pipeline: inName.value (substring) +
   // tgDarkOnly.on (dark-only) + state.selectedThemeIdx (canonical
   // selection) → themeDropdown.options (filtered names) +
   // themeDropdown.selectedIndex (filtered position of the canonical
-  // theme, or -1 if filtered out). This is the single place that
-  // mutates dropdown.options — both filter predicates compose here.
+  // theme, or -1 if filtered out).
   disposeFilter = autorun(() => {
     const filterText = inName.value.toLowerCase();
     const darkOnly = tgDarkOnly.on;
@@ -559,51 +578,32 @@ function startup(): void {
       .filter((t) => filterText === "" || t.name.toLowerCase().includes(filterText));
     runInAction(() => {
       themeDropdown.options = filtered.map((t) => t.name);
-      // -1 when the canonical theme is filtered out → header renders blank,
-      // state stays unchanged ("leave the selection where it is").
       themeDropdown.selectedIndex = filtered.indexOf(canonicalTheme);
     });
   });
 
-  disposeRender = autorun(() => {
+  // Apply the active theme to every themable widget. State changes here
+  // do not directly drive Screen — Screen subscribes to widget observables
+  // and re-renders on its own.
+  disposeTheme = autorun(() => {
     const theme = state.selectedTheme;
-    // [LAW:single-enforcer] One pass applies the active theme to every
-    // themable widget. Each widget owns its own setTheme; we just iterate.
     for (const widget of allWidgets) {
       const setTheme = (widget as { setTheme?: (t: typeof theme) => void }).setTheme;
       if (typeof setTheme === "function") setTheme.call(widget, theme);
     }
-    void state.selectedThemeIdx;
-    void fm.current?.focused;
-    void fm.current?.active;
-    void fm.current?.hovered;
-    // Touch the new widgets' observables so the autorun re-fires on their changes.
-    void cbMuted.checked;
-    void cbAnsi.checked;
-    void cbProgress.checked;
-    void tgDarkOnly.on;
-    void slContrast.value;
-    void slFill.value;
-    void inName.value;
-    void inName.cursorPosition;
-    void themeDropdown.expanded;
-    void themeDropdown.selectedIndex;
-    void themeDropdown.highlightedIndex;
-    void logs.length;
-    render();
   });
 
+  screen.start();
   stopReading = startReading((key, mouse) => handleInput(key, mouse));
 }
 
 function shutdown(): void {
   if (stopReading) stopReading();
-  if (disposeRender) disposeRender();
+  if (disposeTheme) disposeTheme();
   if (disposeFilter) disposeFilter();
+  screen.stop();
   disableMouse();
-  showCursor();
-  clearScreen();
-  process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\r\n");
+  process.stdout.write("\n\x1b[1;36mGoodbye!\x1b[0m\n");
   leaveRawMode();
   process.exit(0);
 }

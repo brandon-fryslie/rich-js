@@ -235,8 +235,13 @@ export type {
   InteractiveWidget,
   FocusManager,
   Screen,
+  MountEntry,
+  Placement,
   Unsubscribe,
 } from "./widgets/types.js";
+export { FLOW } from "./widgets/types.js";
+export { StaticItem } from "./widgets/static-item.js";
+export type { StaticItemOptions } from "./widgets/static-item.js";
 export { WidgetBase } from "./widgets/widget-base.js";
 export { DefaultFocusManager } from "./widgets/focus-manager.js";
 export { DefaultScreen } from "./widgets/screen.js";
