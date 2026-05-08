@@ -17,6 +17,10 @@
     "./themes/registry": {
       "types": "./dist/themes/registry.d.ts",
       "import": "./dist/themes/registry.js"
+    },
+    "./template-bindings": {
+      "types": "./dist/template-bindings/index.d.ts",
+      "import": "./dist/template-bindings/index.js"
     }
   },
   "files": [
@@ -63,6 +67,7 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
+    "go-template-js": "file:../go-template-js",
     "string-width": "^8.2.0",
     "strip-ansi": "^7.2.0"
   }
