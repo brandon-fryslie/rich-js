@@ -14,7 +14,8 @@
 import { makeObservable, observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
+import { ColorSpec } from "../core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import type {
@@ -150,21 +151,21 @@ export class Button implements InteractiveWidget {
       return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
     }
 
+    // [LAW:single-enforcer] one resolution site for all variant colors; the
+    // state below picks which already-computed color to apply.
+    const { fg, bg, bgHover } = this.resolveColors();
+
     // Active — color reversal (fg/bg swapped)
     if (this.active) {
-      const { fg, bg } = this.resolveColors("bg");
       return [new Segment(text, new Style({ color: bg, bgcolor: fg, bold: true }))];
     }
 
     // Hovered — full variant accent color
     if (this.hovered) {
-      const fg = this.resolveFg();
-      const bg = this.resolvePalette(VARIANT_KEYS[this.variant].hover);
-      return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
+      return [new Segment(text, new Style({ color: fg, bgcolor: bgHover }))];
     }
 
     // Normal / focused
-    const { fg, bg } = this.resolveColors("bg");
     return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
   }
 
@@ -175,18 +176,13 @@ export class Button implements InteractiveWidget {
 
   // --- Private ---
 
-  private resolveColors(
-    bgKey: "bg" | "hover",
-  ): { fg: ColorSpec; bg: ColorSpec } {
+  private resolveColors(): { fg: ColorSpec; bg: ColorSpec; bgHover: ColorSpec } {
     const keys = VARIANT_KEYS[this.variant];
     return {
       fg: this.resolvePalette(keys.fg),
-      bg: this.resolvePalette(bgKey === "hover" ? keys.hover : keys.bg),
+      bg: this.resolvePalette(keys.bg),
+      bgHover: this.resolvePalette(keys.hover),
     };
-  }
-
-  private resolveFg(): ColorSpec {
-    return this.resolvePalette(VARIANT_KEYS[this.variant].fg);
   }
 
   private resolvePalette(key: string): ColorSpec {

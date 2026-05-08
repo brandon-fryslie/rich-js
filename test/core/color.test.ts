@@ -11,11 +11,13 @@ import {
   STANDARD_TABLE,
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
+  ANSI_COLOR_NAMES,
+} from "../../src/core/color.js";
+import {
   DEFAULT_TERMINAL_THEME,
   MONOKAI,
   SVG_EXPORT_THEME,
-  ANSI_COLOR_NAMES,
-} from "../../src/core/color.js";
+} from "../../src/themes/terminalThemes.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
 
 // ---------------------------------------------------------------------------
