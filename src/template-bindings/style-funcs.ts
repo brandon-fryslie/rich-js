@@ -89,8 +89,20 @@ const colorPaletteFunc: TemplateFunc = {
   returnType: "T",
 };
 
+// [LAW:types-are-the-program] `hex` advertises a narrower domain than the
+// general colour-spec parser — only `#RRGGBB` / `#RRGGBBAA` is admitted.
+// Without this gate, `ColorSpec.parse` would silently accept any colour-spec
+// string (named colours, `rgb(...)`, `color(N)`), letting `hex "red"` succeed
+// and masking author mistakes.
+const HEX_INPUT_RE = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/;
+
 const colorHexFunc: TemplateFunc = {
   fn: ((hex: string, child: unknown) => {
+    if (!HEX_INPUT_RE.test(hex)) {
+      throw new RangeError(
+        `hex expected #RRGGBB or #RRGGBBAA, got ${JSON.stringify(hex)}`,
+      );
+    }
     return applyStyleToFragment(child, new Style({ color: ColorSpec.parse(hex) }));
   }) as TemplateFunc["fn"],
   argTypes: ["string", "liftable"],

@@ -106,6 +106,21 @@ describe("generic foreground / background forms", () => {
     expect(rt.style.color?.name).toBe("#af00ff");
   });
 
+  it("hex accepts the eight-digit RGBA form", () => {
+    const rt = evalOne(`{{ hex "#af00ff80" "x" }}`);
+    expect(rt.style.color?.getTruecolor().hex).toBe("#af00ff80");
+  });
+
+  it("hex rejects non-hex colour-spec strings", () => {
+    // [LAW:types-are-the-program] hex advertises a narrower domain than
+    // ColorSpec.parse; named colours, rgb(...), color(N) must not slip through.
+    expect(() => evalOne(`{{ hex "red" "x" }}`)).toThrow(/hex expected/);
+    expect(() => evalOne(`{{ hex "rgb(1,2,3)" "x" }}`)).toThrow(/hex expected/);
+    expect(() => evalOne(`{{ hex "color(42)" "x" }}`)).toThrow(/hex expected/);
+    expect(() => evalOne(`{{ hex "af00ff" "x" }}`)).toThrow(/hex expected/);
+    expect(() => evalOne(`{{ hex "#af00f" "x" }}`)).toThrow(/hex expected/);
+  });
+
   it("rgb 175 0 255 produces the same color as hex #af00ff", () => {
     const rgb = evalOne(`{{ rgb 175 0 255 "x" }}`);
     const hex = evalOne(`{{ hex "#af00ff" "x" }}`);
