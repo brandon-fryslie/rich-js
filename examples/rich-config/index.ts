@@ -107,10 +107,17 @@ const state = new AppState();
 
 // --- Layout constants (0-indexed; Screen owns absolute coordinates) ---
 
-const STATUS_Y = 40;
-const SEPARATOR_Y = 41;
-const LOG_Y = 42;
+// [LAW:dataflow-not-control-flow] Bottom-anchored rows derive from the
+// terminal's height at startup so the demo fits any reasonable size instead
+// of forcing a hardcoded 45-row layout that scrolls off short terminals.
+// The flow content above takes ~26 rows, so any terminal >= 30 rows works
+// without overlap; smaller terminals still render but the bottom anchors
+// will overlap the flow content.
 const MAX_LOGS = 3;
+const TERMINAL_ROWS = process.stdout.rows ?? 45;
+const LOG_Y = Math.max(MAX_LOGS, TERMINAL_ROWS - MAX_LOGS);
+const SEPARATOR_Y = LOG_Y - 1;
+const STATUS_Y = LOG_Y - 2;
 
 // --- Log buffer ---
 
