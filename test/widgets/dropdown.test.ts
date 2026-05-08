@@ -46,6 +46,17 @@ describe("Dropdown", () => {
     expect(d.disabled).toBe(true);
   });
 
+  it("rejects empty options at construction", () => {
+    // [LAW:types-are-the-program] zero options is an illegal state — no value
+    // to select, navigation can produce -1. Forbid at the constructor edge.
+    expect(() => new Dropdown({ options: [] })).toThrow(/at least one option/);
+  });
+
+  it("rejects out-of-range selectedIndex at construction", () => {
+    expect(() => new Dropdown({ options: ["a", "b"], selectedIndex: 5 })).toThrow(/out of range/);
+    expect(() => new Dropdown({ options: ["a", "b"], selectedIndex: -1 })).toThrow(/out of range/);
+  });
+
   it("implements InteractiveWidget", () => {
     const d: InteractiveWidget = new Dropdown({ options: ["a"] });
     expect(typeof d.handleKey).toBe("function");

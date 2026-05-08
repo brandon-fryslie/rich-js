@@ -219,9 +219,12 @@ export class DefaultScreen implements Screen {
     const newCount = lines.length;
     const drawCount = Math.max(newCount, this.lastLineCount);
 
+    // [LAW:types-are-the-program] After writing N lines (N-1 inter-line `\n`,
+    // no trailing newline), cursor is at end of line N. Returning to the top
+    // is `N-1` rows up. `lastLineCount === 1` needs no move, just `\r`.
     let buf = "";
-    if (this.lastLineCount > 0) {
-      buf += `\x1b[${this.lastLineCount}A`;
+    if (this.lastLineCount > 1) {
+      buf += `\x1b[${this.lastLineCount - 1}A`;
     }
     buf += "\r";
 
