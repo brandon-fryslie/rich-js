@@ -2,7 +2,7 @@
  * rich-js template bindings — public entry point.
  *
  * [LAW:one-source-of-truth] This module is the single place where rich-js's
- * styling vocabulary is exposed as `go-template-js` template functions. The
+ * styling vocabulary is exposed as `@promptctl/go-template-js` template functions. The
  * bootstrap registration set is intentionally empty; subsequent epics on the
  * `template-bindings` topic populate it (foreground/attribute/background,
  * link, palette, auto-contrast). Consumers compose templates against the
@@ -18,7 +18,7 @@
  * carrying its own URL).
  */
 
-import { createEngine, type Engine, type FuncMap } from "go-template-js";
+import { createEngine, type Engine, type FuncMap } from "@promptctl/go-template-js";
 import { RichText } from "../core/text.js";
 
 /**
@@ -28,7 +28,7 @@ import { RichText } from "../core/text.js";
  * resolver bound at construction time) have a place to receive arguments
  * without breaking the public shape.
  *
- * `FuncMap` is not parameterised over `T` in `go-template-js` — the engine's
+ * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output
  * types are carried as runtime `argTypes` on each `TemplateFunc`. So this
  * map is the standard `FuncMap`; consumers merge it into any
