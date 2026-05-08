@@ -7,3 +7,4 @@ docs/.vitepress/cache/
 .idea/
 .mcp.json
 .claude/*.lock
+.claude/worktrees/
