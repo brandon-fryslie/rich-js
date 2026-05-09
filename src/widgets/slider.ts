@@ -9,7 +9,7 @@
  *   track    — `width` cells of "─" (ASCII fallback "-")
  *   marker   — "●" (ASCII fallback "*") at round((value - min) / range * (width - 1))
  *   filled   — cells left of and including the marker use primary fg
- *   unfilled — cells right of the marker use surface bg / foreground
+ *   unfilled — cells right of the marker use surface foreground colour, terminal-default background
  *   focused  — underline on the segments
  *   disabled — dim
  */

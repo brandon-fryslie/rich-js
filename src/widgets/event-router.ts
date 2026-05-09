@@ -345,9 +345,8 @@ export class EventRouter {
         event: { key: "escape", character: "", shift: false, ctrl: false, meta: false },
       };
     }
-    // ESC <any other byte> → unrecognised; drop the ESC, re-process from b1.
-    // This avoids treating Alt+key as an Alt sequence (out of scope) while
-    // still surfacing the key.
+    // ESC <any other byte> → unrecognised sequence; emit Escape for the lone ESC
+    // (bytes: 1 consumed), then b1 is re-processed on the next call.
     return {
       kind: "key",
       bytes: 1,

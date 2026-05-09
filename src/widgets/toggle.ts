@@ -18,6 +18,7 @@ import { ColorSpec } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
+import { cellLen } from "../core/cells.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -116,7 +117,7 @@ export class Toggle extends WidgetBase {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = 5 + 1 + this.label.length;
+    const width = 5 + 1 + cellLen(this.label);
     return { minimum: width, maximum: width };
   }
 

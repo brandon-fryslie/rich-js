@@ -20,6 +20,7 @@ import { ColorSpec } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
+import { cellLen, setCellSize, splitText } from "../core/cells.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -142,17 +143,20 @@ export class TextInput extends WidgetBase {
         ? "•".repeat(this.value.length)
         : this.value;
 
-    // [LAW:dataflow-not-control-flow] content width is data — derived from
-    // value/placeholder length, MIN_CONTENT_WIDTH floor, maxWidth ceiling.
+    // [LAW:dataflow-not-control-flow] content width is data — all in TERMINAL CELLS.
+    // cursorPosition is a code-unit index (editing ops need it); convert to cells once here.
+    const rawDisplayCells = cellLen(rawDisplay);
+    const cursorCells = cellLen(rawDisplay.slice(0, this.cursorPosition));
     const maxAvailable = Math.max(MIN_CONTENT_WIDTH, options.maxWidth - 2);
-    const desiredWidth = Math.max(MIN_CONTENT_WIDTH, rawDisplay.length, this.cursorPosition + 1);
+    const desiredWidth = Math.max(MIN_CONTENT_WIDTH, rawDisplayCells, cursorCells + 1);
     const contentWidth = Math.min(maxAvailable, desiredWidth);
 
-    // Slide window to keep cursor visible when content overflows.
-    const startIdx = Math.max(0, Math.min(rawDisplay.length - contentWidth, this.cursorPosition - contentWidth + 1));
-    const sliced = rawDisplay.slice(Math.max(0, startIdx), Math.max(0, startIdx) + contentWidth);
-    const display = sliced.padEnd(contentWidth, " ");
-    const cursorDisplayIdx = this.cursorPosition - Math.max(0, startIdx);
+    // Slide window (in cells) to keep cursor visible when content overflows.
+    const startCell = Math.max(0, Math.min(rawDisplayCells - contentWidth, cursorCells - contentWidth + 1));
+    const [, fromStart] = splitText(rawDisplay, startCell);
+    const [sliced] = splitText(fromStart, contentWidth);
+    const display = setCellSize(sliced, contentWidth);
+    const cursorDisplayCell = cursorCells - startCell;
 
     const bracketStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
@@ -173,10 +177,9 @@ export class TextInput extends WidgetBase {
 
     const segments: Segment[] = [new Segment("[", bracketStyle)];
 
-    if (this.focused && !this.disabled && cursorDisplayIdx >= 0 && cursorDisplayIdx < contentWidth) {
-      const before = display.slice(0, cursorDisplayIdx);
-      const at = display.slice(cursorDisplayIdx, cursorDisplayIdx + 1);
-      const after = display.slice(cursorDisplayIdx + 1);
+    if (this.focused && !this.disabled && cursorDisplayCell >= 0 && cursorDisplayCell < contentWidth) {
+      const [before, afterCursor] = splitText(display, cursorDisplayCell);
+      const [at, after] = splitText(afterCursor, 1);
       if (before.length > 0) segments.push(new Segment(before, contentStyle));
       segments.push(new Segment(at.length > 0 ? at : " ", cursorStyle));
       if (after.length > 0) segments.push(new Segment(after, contentStyle));
@@ -190,7 +193,7 @@ export class TextInput extends WidgetBase {
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     const minimum = MIN_CONTENT_WIDTH + 2;
-    const maximum = Math.max(minimum, Math.max(this.value.length, this.placeholder.length) + 2);
+    const maximum = Math.max(minimum, Math.max(cellLen(this.value), cellLen(this.placeholder)) + 2);
     return { minimum, maximum };
   }
 
