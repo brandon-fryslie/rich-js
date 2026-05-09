@@ -208,23 +208,3 @@ class RichJsWidgetAdapter {
   // Subscribe to widget.onChange/onSubmit → textual-js state updates
 }
 ```
-
-The adapter lives in textual-js, not rich-js. Rich-js widgets have no knowledge of textual-js.
-
-## Dependencies
-
-- **mobx** — observable state for widgets (already used by textual-js)
-- **Existing rich-js core** — Segment, Style, Renderable, Measurable, cellLen
-- **No other runtime dependencies**
-
-## Out of scope (v1)
-
-- Layout engine (grid, flex, etc.) — widgets are positioned manually or linearly
-- CSS/styling system — widgets accept style params, no cascade
-- Scroll regions / virtual scrolling
-- Widget trees / nesting
-- Keyboard shortcuts beyond tab/shift-tab navigation
-- Drag and drop
-- Multi-select (dropdown is single-select)
-- Accessibility (screen reader announcements)
-- Animation

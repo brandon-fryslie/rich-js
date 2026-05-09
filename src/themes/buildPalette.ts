@@ -30,7 +30,12 @@ const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "
  *
  * Derived entries follow Textual's formulas:
  * - `*-muted` = color blended 70% toward background
- * - `text-*` = contrast text tinted 66% with the accent color
+ * - `text-*`  = contrast text tinted 66% with the accent color (use as
+ *              foreground in muted/background-tinted contexts)
+ * - `on-*`    = WCAG-correct contrast colour (black or white) for use as
+ *              foreground when the FULL accent is the background. Picked
+ *              by relative luminance — single source of truth so widgets
+ *              never need to invert / reverse fg/bg to get readable text.
  * - `surface` = background blended 5% toward foreground
  */
 export function buildPalette(name: string, dark: boolean, base: BaseColors): Palette {
@@ -46,12 +51,15 @@ export function buildPalette(name: string, dark: boolean, base: BaseColors): Pal
   // Surface — subtle lift from background
   vars.set("surface", blendRgb(base.background, base.foreground, SURFACE_LIFT));
 
-  // Derived: muted and text- for each accent
+  // Derived: muted, text-, and on- for each accent.
+  // [LAW:single-enforcer] contrastFor is the only place that decides
+  // black-vs-white for "text on this accent" — widgets read on-${accent}.
   const contrastText = contrastFor(base.background);
   for (const key of ACCENT_KEYS) {
     const color = base[key];
     vars.set(`${key}-muted`, blendRgb(color, base.background, MUTED_BLEND));
     vars.set(`text-${key}`, alphaBlend(color, contrastText, TEXT_ALPHA));
+    vars.set(`on-${key}`, contrastFor(color));
   }
 
   return new Palette(name, dark, vars);

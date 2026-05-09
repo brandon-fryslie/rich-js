@@ -8,11 +8,11 @@
  * Width is constant across states (focus does not reflow).
  *
  * Visual states (precedence: disabled > active > hover > focus > normal):
- *   disabled — dim grey on dark grey
- *   active   — color reversal of the variant (pressed)
- *   hover    — variant background lightened by HOVER_BG_BOOST
- *   focus    — `[`/`]` brackets replace surrounding spaces
- *   normal   — variant fg on variant bg from the terminal theme
+ *   disabled    — dim grey on dark grey
+ *   active      — full accent bg + on-accent fg + bold (same bg as hover; bold differentiates)
+ *   hover       — full accent bg + on-accent fg (WCAG-correct contrast partner)
+ *   focus       — `[`/`]` brackets replace surrounding spaces
+ *   normal      — muted accent bg + text-accent fg from semantic palette
  */
 
 import { makeObservable, observable, action } from "mobx";
@@ -36,16 +36,20 @@ export interface ButtonOptions {
   theme?: TerminalTheme;
 }
 
-// Variant → ANSI color index mapping (theme-aware)
-const VARIANT_ANSI: Record<ButtonVariant, { fgIdx: number; bgIdx: number }> = {
-  default: { fgIdx: 15, bgIdx: 8 },
-  primary: { fgIdx: 15, bgIdx: 4 },
-  success: { fgIdx: 15, bgIdx: 2 },
-  warning: { fgIdx: 0, bgIdx: 3 },
-  danger: { fgIdx: 15, bgIdx: 1 },
+// Variant → palette key mapping. Per variant:
+//   bg / fg     — normal state. Muted accent bg + mostly-accent fg → readable.
+//   hover       — full accent bg; pair with hoverFg, NOT with `fg`. The
+//                 text-* keys are mostly-accent and would clash on a full
+//                 accent bg.
+//   hoverFg     — WCAG-correct contrast colour (on-${accent}) for full bg.
+const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: string; hoverFg: string }> = {
+  default:  { bg: "surface",       fg: "foreground",   hover: "primary", hoverFg: "on-primary" },
+  primary:  { bg: "primary-muted", fg: "text-primary", hover: "primary", hoverFg: "on-primary" },
+  success:  { bg: "success-muted", fg: "text-success", hover: "success", hoverFg: "on-success" },
+  warning:  { bg: "warning-muted", fg: "text-warning", hover: "warning", hoverFg: "on-warning" },
+  danger:   { bg: "error-muted",   fg: "text-error",   hover: "error",   hoverFg: "on-error" },
 };
 
-const HOVER_BG_BOOST = 30;
 
 export class Button extends WidgetBase {
   readonly id: string;
@@ -110,7 +114,6 @@ export class Button extends WidgetBase {
   // --- Rendering ---
 
   render(_options: RenderOptions): Iterable<Segment> {
-    const { fg, bg } = this.resolveColors();
     // [LAW:dataflow-not-control-flow] same segment count and width every state — only style + content vary
     const focused = this.focused;
     const left = focused ? "[" : " ";
@@ -121,23 +124,17 @@ export class Button extends WidgetBase {
       return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
     }
 
-    // Active — color reversal
-    if (this.active) {
-      return [new Segment(text, new Style({ color: bg, bgcolor: fg, bold: true }))];
+    // Active and hover share the same colour pair (full accent bg + on-accent fg).
+    // Active is differentiated by bold, not by inverting fg/bg — inversion gives
+    // mostly-accent text on mostly-bg-tinted background, which is unreadable for
+    // accents whose contrast partner depends on luminance.
+    if (this.active || this.hovered) {
+      const fg = this.resolvePalette(VARIANT_KEYS[this.variant].hoverFg);
+      const bg = this.resolvePalette(VARIANT_KEYS[this.variant].hover);
+      return [new Segment(text, new Style({ color: fg, bgcolor: bg, bold: this.active }))];
     }
 
-    // Hovered — lightened background
-    if (this.hovered) {
-      const bgRgba = this.theme.ansiColors.get(VARIANT_ANSI[this.variant].bgIdx);
-      const lightened = ColorSpec.fromRgb(
-        Math.min(255, bgRgba.red + HOVER_BG_BOOST),
-        Math.min(255, bgRgba.green + HOVER_BG_BOOST),
-        Math.min(255, bgRgba.blue + HOVER_BG_BOOST),
-      );
-      return [new Segment(text, new Style({ color: fg, bgcolor: lightened }))];
-    }
-
-    // Normal / focused
+    const { fg, bg } = this.resolveNormalColors();
     return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
   }
 
@@ -147,14 +144,19 @@ export class Button extends WidgetBase {
     return { minimum: width, maximum: width };
   }
 
-  // --- Private ---
+  // --- Palette resolution ---
 
-  private resolveColors(): { fg: ColorSpec; bg: ColorSpec } {
-    const ansi = VARIANT_ANSI[this.variant];
-    const table = this.theme.ansiColors;
+  private resolveNormalColors(): { fg: ColorSpec; bg: ColorSpec } {
+    const keys = VARIANT_KEYS[this.variant];
     return {
-      fg: ColorSpec.fromRgba(table.get(ansi.fgIdx)),
-      bg: ColorSpec.fromRgba(table.get(ansi.bgIdx)),
+      fg: this.resolvePalette(keys.fg),
+      bg: this.resolvePalette(keys.bg),
     };
+  }
+
+  private resolvePalette(key: string): ColorSpec {
+    const rgba = this.theme.palette.get(key);
+    // [LAW:no-defensive-null-guards] palette is required and must contain all keys.
+    return ColorSpec.fromRgba(rgba!);
   }
 }

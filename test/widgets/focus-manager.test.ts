@@ -66,6 +66,7 @@ describe("DefaultFocusManager", () => {
     expect(() => fm.register(a)).toThrow(/already registered/);
   });
 
+
   describe("next() / prev()", () => {
     it("cycles forward through focusable widgets", () => {
       const fm = new DefaultFocusManager();

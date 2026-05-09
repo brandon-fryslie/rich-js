@@ -71,6 +71,9 @@ export interface InteractiveWidget extends Renderable, Measurable {
   focus(): void;
   blur(): void;
   setDisabled(value: boolean): void;
+  // [LAW:single-enforcer] canonical mutator for `hovered`; the router calls
+  // this — no per-widget override and no direct write path.
+  setHovered(value: boolean): void;
 
   // Hit-testing
   containsPoint(x: number, y: number): boolean;
@@ -112,4 +115,8 @@ export interface Screen {
 
   readonly focusManager: FocusManager;
   readonly running: boolean;
+  // [LAW:one-source-of-truth] The screen owns the live widget list; the
+  // router and other consumers read it from here for hit-testing / layout
+  // queries.
+  readonly widgets: readonly InteractiveWidget[];
 }
