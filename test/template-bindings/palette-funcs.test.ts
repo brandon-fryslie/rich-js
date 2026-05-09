@@ -166,8 +166,11 @@ describe("palette function", () => {
 
 const darkBg = new ColorRgba(20, 20, 20);
 const lightBg = new ColorRgba(240, 240, 240);
+// WCAG relative luminance of (128,128,128) ≈ 0.216 > threshold 0.179 → black contrast
+const midBg = new ColorRgba(128, 128, 128);
 const darkBgHex = "#141414";
 const lightBgHex = "#f0f0f0";
+const midBgHex = "#808080";
 
 describe("paletteOver function", () => {
   it("resolves alpha spec against dark background", () => {
@@ -192,6 +195,14 @@ describe("paletteOver function", () => {
   it("resolves 'auto' against light background → black-ish contrast", () => {
     const rt = evalOne(gruvboxEngine, `{{ paletteOver "auto" "${lightBgHex}" "x" }}`);
     const expected = contrastFor(lightBg);
+    eqRgb(rt.style.color, expected);
+    expect(rt.style.color!.getTruecolor().red).toBe(0);
+  });
+
+  it("resolves 'auto' against mid-luminance background → predictable contrast", () => {
+    // (128,128,128) has WCAG lum ≈ 0.216 > 0.179 threshold → black contrast
+    const rt = evalOne(gruvboxEngine, `{{ paletteOver "auto" "${midBgHex}" "x" }}`);
+    const expected = contrastFor(midBg);
     eqRgb(rt.style.color, expected);
     expect(rt.style.color!.getTruecolor().red).toBe(0);
   });
