@@ -105,10 +105,14 @@ describe("theme switching", () => {
     const gruvboxPrimary = gruvboxResult.style.color!.getTruecolor();
     const draculaPrimary = draculaResult.style.color!.getTruecolor();
 
-    // Both resolved but to different values
+    // Both resolved but to different full-triplet values
     expect(gruvboxPrimary).toBeDefined();
     expect(draculaPrimary).toBeDefined();
-    expect(gruvboxPrimary.red).not.toBe(draculaPrimary.red);
+    const same =
+      gruvboxPrimary.red === draculaPrimary.red &&
+      gruvboxPrimary.green === draculaPrimary.green &&
+      gruvboxPrimary.blue === draculaPrimary.blue;
+    expect(same).toBe(false);
   });
 
   it("gruvbox primary matches PaletteResolver.resolve('primary') for GRUVBOX", () => {

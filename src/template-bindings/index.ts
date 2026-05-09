@@ -1,14 +1,22 @@
 /**
  * rich-js template bindings — public entry point.
  *
- * [LAW:one-source-of-truth] This module is the single place where rich-js's
- * styling vocabulary is exposed as `@promptctl/go-template-js` template
- * functions. The current registration set covers foreground colour
- * (named, palette index, hex, RGB), background (`on`), text attributes
- * (canonical names, short aliases, `not_*` negations), hyperlink (`link`),
- * and palette/theme/auto-contrast helpers (`paletteFuncs`). Consumers compose
- * templates against the Engine returned here; nesting is plain function
- * composition (`{{ red (bold "x") }}`), not a second markup grammar.
+ * [LAW:one-source-of-truth] This module is the public entry point for
+ * rich-js's styling vocabulary as `@promptctl/go-template-js` template
+ * functions. Two complementary registrations are exported:
+ *
+ * - `richTextFuncs()` — foreground colours, background, text attributes, and
+ *   `link`. Does not require configuration; safe to register unconditionally.
+ * - `paletteFuncs(resolver)` — semantic palette, auto-contrast, and extended
+ *   spec forms. Requires a `PaletteResolver` argument bound to the active
+ *   theme; consumers merge it alongside `richTextFuncs()`.
+ *
+ * `createRichTextEngine()` is convenience sugar that wires up `richTextFuncs()`
+ * only — it does not include `paletteFuncs`, because palette functions require
+ * a resolver the factory cannot supply. Consumers that need palette access
+ * call `paletteFuncs(resolver)` and merge it into their own engine config.
+ * Nesting is plain function composition (`{{ red (bold "x") }}`), not a
+ * second markup grammar.
  *
  * Fragment type: `RichText`. Chosen because it is the library's primary
  * text type (implements `Renderable` + `Measurable`), composes via

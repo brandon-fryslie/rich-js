@@ -78,9 +78,9 @@ The naming choice (`not_<attribute>` rather than `notBold` or a generic `not "bo
 The palette binding is loaded separately from the style-function set because it requires a runtime argument — a `PaletteResolver` bound to an active theme. Consumers call `paletteFuncs(resolver)` and merge the result alongside `richTextFuncs()`:
 
 ```ts
+import { createEngine } from "@promptctl/go-template-js";
+import { GRUVBOX, PaletteResolver, RichText } from "rich-js";
 import { richTextFuncs, paletteFuncs } from "rich-js/template-bindings";
-import { PaletteResolver } from "rich-js/themes/paletteResolver";
-import { GRUVBOX } from "rich-js/themes";
 
 const engine = createEngine({
   fromString: (s) => new RichText(s),

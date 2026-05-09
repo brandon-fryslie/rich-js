@@ -161,9 +161,8 @@ function makeAutoFunc(resolver: PaletteResolver): TemplateFunc {
  *
  * @example
  * ```ts
- * import { GRUVBOX } from "rich-js/themes";
- * import { PaletteResolver } from "rich-js/themes/paletteResolver";
  * import { createEngine } from "@promptctl/go-template-js";
+ * import { GRUVBOX, PaletteResolver, RichText } from "rich-js";
  * import { richTextFuncs, paletteFuncs } from "rich-js/template-bindings";
  *
  * const engine = createEngine({
