@@ -129,7 +129,7 @@ Explain that template errors raised during parse or evaluate are instances of `T
 
 ## Constraints
 
-- The styling vocabulary documented here is the foreground / attribute / background set landed in this epic. `link`, palette / theme / auto-contrast helpers, and per-position hue rotation each ship in their own follow-up epic on the `template-bindings` topic and extend this doc with a section describing their signature and the cell semantics they imply.
+- Each new family of style functions documents itself in its own subsection under **Registered styling functions** rather than as a standalone top-level section. The subsection names its functions at the contract level (names, argument shapes, return shape) without describing how they are implemented.
 - Do not document Go-template syntax — link to the canonical reference instead. This doc is about the binding contract, not the language.
 - Do not describe the parser, AST, or evaluator internals. Those live in `@promptctl/go-template-js`.
 - The "no silent flattening" contract must be stated explicitly — it is the architectural commitment that makes function composition safe across the styled/plain boundary.
