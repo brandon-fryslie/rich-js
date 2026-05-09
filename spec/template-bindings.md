@@ -73,6 +73,47 @@ The naming choice (`not_<attribute>` rather than `notBold` or a generic `not "bo
 - Per-attribute registration parallels the positive set, so the engine's `FuncNotFoundError` suggestion list remains useful (typing `not_blod` suggests `not_bold` because both are registered names).
 - A generic `not "bold" "x"` would collide with Go-template's built-in `not` (boolean negation).
 
+#### Palette / theme / auto-contrast
+
+The palette binding is loaded separately from the style-function set because it requires a runtime argument — a `PaletteResolver` bound to an active theme. Consumers call `paletteFuncs(resolver)` and merge the result alongside `richTextFuncs()`:
+
+```ts
+import { richTextFuncs, paletteFuncs } from "rich-js/template-bindings";
+import { PaletteResolver } from "rich-js/themes/paletteResolver";
+import { GRUVBOX } from "rich-js/themes";
+
+const engine = createEngine({
+  fromString: (s) => new RichText(s),
+  toString: (rt) => rt.plain,
+  funcs: { ...richTextFuncs(), ...paletteFuncs(new PaletteResolver(GRUVBOX.palette)) },
+});
+```
+
+**Semantic-name functions.** For each palette variable whose name is a valid Go template identifier (letter or underscore start, alphanumeric/underscore body — no hyphens), `paletteFuncs` registers a one-argument function that resolves that variable and applies the result as foreground color:
+
+```
+{{ primary child }}     {{ accent child }}    {{ error child }}
+{{ success child }}     {{ warning child }}   {{ secondary child }}
+{{ background child }}  {{ foreground child }} {{ surface child }}
+```
+
+All themes built by `buildPalette` expose these nine identifier-safe names plus derived entries like `primary-muted` and `text-primary`. The hyphenated derived names cannot be Go template identifiers and are accessed via `palette`.
+
+**`palette "spec" child`** — resolves any spec string that does not require a background context: bare names (`"primary"`, `"primary-muted"`), darken/lighten modifiers (`"primary-darken-3"`). The spec grammar is the same as `PaletteResolver.resolve` — see `spec/themes/`. If the spec requires a background (alpha or auto-contrast) but none is provided, evaluation throws with a message directing the author to `paletteOver`.
+
+**`paletteOver "spec" "#bgHex" child`** — resolves any spec with an explicit background color. Covers alpha compositing (`"primary 50%"`) and auto-contrast (`"auto"`, `"auto 33%"`). The background is supplied as a `#RRGGBB` or `#RRGGBBAA` hex string — the same format accepted by the `hex` style function. The background is threaded as an explicit argument rather than via scope side-channels, keeping evaluation stateless.
+
+**`auto "#bgHex" child`** — syntactic sugar for `{{ paletteOver "auto" "#bgHex" child }}`. Resolves the auto-contrast color (white against a dark background, black against a light background) and applies it as foreground:
+
+```
+{{ auto "#282828" "text" }}   → white text (dark gruvbox bg)
+{{ auto "#ffffff" "text" }}   → black text (light bg)
+```
+
+**Theme switching.** `paletteFuncs(resolver)` captures `resolver` at construction time. Consumers that need runtime theme switching create a fresh `paletteFuncs()` from the new resolver and rebuild (or reconstruct) their engine. The same template *source string* produces different colors because the functions in the new engine resolve against the new palette — the template text is unchanged; the resolver differs.
+
+**Resolution context for `paletteOver` / `auto`.** The background color (`against` in `PaletteResolver` terms) is threaded as an explicit hex argument rather than via a scope variable, an evaluation-time hook, or a deferred-resolution fragment. This design was chosen because `go-template-js`'s functions do not have access to the evaluation scope at call time — each function receives only its declared arguments. Explicit threading is therefore the only stateless option and keeps the contract auditable from the template source alone.
+
 ### Composition
 
 Nesting is plain function composition. `{{ red (bold "x") }}` evaluates the inner call to a `RichText` carrying `bold`, hands it to the outer call, which applies `red` on top.
@@ -121,7 +162,7 @@ Explain that the rich-js binding is one piece of a wider templating environment.
 3. The rich-js styling vocabulary — `richTextFuncs()`.
 4. The consumer's own domain functions.
 
-Show the merge order convention (later wins on name collision); state that rich-js never registers a name that overlaps with a built-in or with sprig.
+Show the merge order convention (later wins on name collision); state that rich-js never registers a name that overlaps with a built-in or with sprig. Note that `paletteFuncs(resolver)` is merged separately from `richTextFuncs()` because it requires a resolver argument; both should appear in the consumer's merge.
 
 ### Errors
 
