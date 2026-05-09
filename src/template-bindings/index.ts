@@ -1,16 +1,21 @@
 /**
  * rich-js template bindings — public entry point.
  *
- * [LAW:one-source-of-truth] This module is the single place where rich-js's
- * styling vocabulary is exposed as `@promptctl/go-template-js` template
- * functions. The current registration set covers foreground colour
- * (named, palette index, hex, RGB), background (`on`), and text
- * attributes (canonical names, short aliases, `not_*` negations) — all
- * registered via `richTextStyleFuncs`. `link`, palette / theme /
- * auto-contrast helpers, and per-position hue rotation ship in follow-up
- * epics on the same `template-bindings` topic and merge into this same
- * map. Consumers compose templates against the Engine returned here;
- * nesting is plain function composition (`{{ red (bold "x") }}`), not a
+ * [LAW:one-source-of-truth] This module is the public entry point for
+ * rich-js's styling vocabulary as `@promptctl/go-template-js` template
+ * functions. Two complementary registrations are exported:
+ *
+ * - `richTextFuncs()` — foreground colours, background, text attributes, and
+ *   `link`. Does not require configuration; safe to register unconditionally.
+ * - `paletteFuncs(resolver)` — semantic palette, auto-contrast, and extended
+ *   spec forms. Requires a `PaletteResolver` argument bound to the active
+ *   theme; consumers merge it alongside `richTextFuncs()`.
+ *
+ * `createRichTextEngine()` is convenience sugar that wires up `richTextFuncs()`
+ * only — it does not include `paletteFuncs`, because palette functions require
+ * a resolver the factory cannot supply. Consumers that need palette access
+ * call `paletteFuncs(resolver)` and merge it into their own engine config.
+ * Nesting is plain function composition (`{{ red (bold "x") }}`), not a
  * second markup grammar.
  *
  * Fragment type: `RichText`. Chosen because it is the library's primary
@@ -26,15 +31,15 @@ import { createEngine, type Engine, type FuncMap } from "@promptctl/go-template-
 import { RichText } from "../core/text.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
 
+export { paletteFuncs } from "./palette-funcs.js";
+
 /**
- * Funcs registered by the rich-js binding. Style functions
- * (foreground / attribute / background) are populated by
- * `richTextStyleFuncs`; subsequent epics on the `template-bindings`
- * topic merge `link`, palette/theme/auto-contrast, and per-position
- * hue rotation into the same map. Exposed as a factory (not a const)
- * so future registrations that need configuration (e.g. a palette
- * resolver bound at construction time) have a place to receive
- * arguments without breaking the public shape.
+ * Funcs registered by the rich-js binding — style functions (foreground,
+ * background, attributes) and the `link` cell-splitter. Exposed as a factory
+ * so future registrations that need configuration have a place to receive
+ * arguments. Palette/theme/auto-contrast functions ship separately via
+ * `paletteFuncs(resolver)` and are merged at consumer side — they require a
+ * `PaletteResolver` argument and so cannot be included in this generic call.
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output
