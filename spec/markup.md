@@ -8,6 +8,8 @@ The markup doc explains the inline tag syntax that can be embedded in strings pa
 
 One paragraph: markup is a bbcode-inspired tag syntax that applies styles and links inline within strings. It works wherever the library accepts a string — print, log, table cells, panel titles, etc.
 
+Add a short "when to use markup vs template-bindings" note: markup is the right choice for human-authored strings where styling is embedded inline; for programmatic composition, structured output (toolbar cells, multi-cell links), or toolchain templates, prefer the template-bindings module — cross-link to `spec/template-bindings.md`.
+
 ### Syntax
 
 #### Opening and closing tags
