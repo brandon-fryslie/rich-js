@@ -26,7 +26,7 @@ import { RichText } from "../core/text.js";
 export function applyStyleToFragment(child: unknown, style: Style): RichText {
   if (!(child instanceof RichText)) {
     throw new TypeError(
-      `style function expected a RichText fragment, got ${typeof child === "object" ? Object.prototype.toString.call(child) : typeof child}`,
+      `template function expected a RichText fragment, got ${typeof child === "object" ? Object.prototype.toString.call(child) : typeof child}`,
     );
   }
   const result = child.copy();

@@ -75,8 +75,8 @@ function hexToColorRgba(hex: string): ColorRgba {
  * Resolve `spec` against the resolver (with optional background context) and
  * apply the resulting color as a foreground `Style` on `child`.
  *
- * Returns null on resolution failure so callers can provide context-appropriate
- * error messages.
+ * Throws on resolution failure with a contextual message — including a hint to
+ * use `paletteOver` when the spec needs a background but none was provided.
  */
 function resolveAndApply(
   resolver: PaletteResolver,
@@ -94,7 +94,7 @@ function resolveAndApply(
       `palette spec ${JSON.stringify(spec)} did not resolve — check the spec string is valid and the variable exists${hint}`,
     );
   }
-  return applyStyleToFragment(child, new Style({ color: ColorSpec.fromRgb(color.red, color.green, color.blue) }));
+  return applyStyleToFragment(child, new Style({ color: ColorSpec.fromRgba(color) }));
 }
 
 // [LAW:types-are-the-program] Only palette var names that are valid Go template
