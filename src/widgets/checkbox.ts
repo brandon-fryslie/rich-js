@@ -18,6 +18,7 @@ import { ColorSpec } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
+import { cellLen } from "../core/cells.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -91,7 +92,7 @@ export class Checkbox extends WidgetBase {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.label.length + 4;
+    const width = cellLen(this.label) + 4;
     return { minimum: width, maximum: width };
   }
 

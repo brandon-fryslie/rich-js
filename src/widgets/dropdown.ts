@@ -22,6 +22,7 @@ import { ColorSpec } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
+import { cellLen, setCellSize } from "../core/cells.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -163,9 +164,9 @@ export class Dropdown extends WidgetBase {
           underline: this.focused,
         });
 
-    // Header: "[" + label.padEnd(maxLabelLen) + " " + arrow + "]"
+    // Header: "[" + label (padded to maxLabelLen cells) + " " + arrow + "]"
     // Width = 1 + maxLabelLen + 1 + 1 + 1 = maxLabelLen + 4.
-    const headerLabel = (this.options[this.selectedIndex] ?? "").padEnd(maxLabelLen, " ");
+    const headerLabel = setCellSize(this.options[this.selectedIndex] ?? "", maxLabelLen);
     segments.push(new Segment("[", baseStyle));
     segments.push(new Segment(`${headerLabel} ${arrowChar}`, baseStyle));
     segments.push(new Segment("]", baseStyle));
@@ -181,9 +182,9 @@ export class Dropdown extends WidgetBase {
   }
 
   private renderOptionRow(idx: number, maxLabelLen: number): Segment[] {
-    // Row: "[ " + label.padEnd(maxLabelLen) + " ]"
+    // Row: "[ " + label (padded to maxLabelLen cells) + " ]"
     // Width = 1 + 1 + maxLabelLen + 1 + 1 = maxLabelLen + 4.
-    const label = (this.options[idx] ?? "").padEnd(maxLabelLen, " ");
+    const label = setCellSize(this.options[idx] ?? "", maxLabelLen);
     const inner = ` ${label} `;
 
     const isSelected = idx === this.selectedIndex;
@@ -217,7 +218,10 @@ export class Dropdown extends WidgetBase {
 
   private maxLabelLen(): number {
     let m = 0;
-    for (const label of this.options) if (label.length > m) m = label.length;
+    for (const label of this.options) {
+      const w = cellLen(label);
+      if (w > m) m = w;
+    }
     return m;
   }
 
