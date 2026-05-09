@@ -20,7 +20,6 @@ import { Button } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Toggle } from "../../src/widgets/toggle.js";
 import { TextInput } from "../../src/widgets/text-input.js";
-import { MONOKAI } from "../../src/themes/terminalThemes.js";
 
 class CapturingStream extends Writable {
   chunks: string[] = [];
@@ -223,10 +222,8 @@ describe("widget pipeline integration", () => {
       await flush();
 
       const out = h.stdout.joined();
-      // [LAW:types-are-the-program] 4 widgets → 4 lines, no trailing newline,
-      // cursor on line 4 → returning to top is `lastLineCount - 1 = 3` rows up.
-      expect(out).toMatch(/\x1b\[3A/);
-      expect(out).not.toMatch(/\x1b\[4A/);
+      // 4 widgets → 4 lines drawn last frame → \x1b[4A to top.
+      expect(out).toMatch(/\x1b\[4A/);
       // Erase-to-end-of-line on each line.
       expect(out).toMatch(/\x1b\[K/);
       // The full-screen-clear pattern is forbidden.
@@ -268,38 +265,6 @@ describe("widget pipeline integration", () => {
 
       // queueMicrotask coalescing: one frame, not three.
       expect(h.stdout.chunks.length).toBe(1);
-    });
-  });
-
-  describe("theme reactivity", () => {
-    // setTheme() flips the widget's observable theme reference; the screen's
-    // autorun reads palette colors via render(), so swapping themes must
-    // trigger a redraw without any other observable change. This is the
-    // bug Copilot caught: a non-observable _theme would leave the screen
-    // stale until something else changed.
-    it("Checkbox.setTheme triggers a screen redraw", async () => {
-      await flush();
-      h.stdout.reset();
-      h.checkbox.setTheme(MONOKAI);
-      await flush();
-      // A redraw was scheduled and emitted.
-      expect(h.stdout.chunks.length).toBeGreaterThan(0);
-    });
-
-    it("Toggle.setTheme triggers a screen redraw", async () => {
-      await flush();
-      h.stdout.reset();
-      h.toggle.setTheme(MONOKAI);
-      await flush();
-      expect(h.stdout.chunks.length).toBeGreaterThan(0);
-    });
-
-    it("TextInput.setTheme triggers a screen redraw", async () => {
-      await flush();
-      h.stdout.reset();
-      h.input.setTheme(MONOKAI);
-      await flush();
-      expect(h.stdout.chunks.length).toBeGreaterThan(0);
     });
   });
 

@@ -1,6 +1,6 @@
 {
-  "name": "rich-js",
-  "version": "0.0.1",
+  "name": "@promptctl/rich-js",
+  "version": "0.1.0",
   "description": "Rich text and beautiful formatting in the terminal — a TypeScript port of Python's Rich",
   "type": "module",
   "main": "dist/index.js",

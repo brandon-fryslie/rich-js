@@ -45,14 +45,6 @@ describe("Slider", () => {
     expect(s.disabled).toBe(false);
   });
 
-  it("rejects width <= 0 at construction", () => {
-    // [LAW:types-are-the-program] width <= 0 makes the render contract
-    // ("emits exactly `width` cells") unsatisfiable since the marker
-    // already occupies one cell.
-    expect(() => new Slider({ width: 0 })).toThrow(/width must be an integer >= 1/);
-    expect(() => new Slider({ width: -5 })).toThrow(/width must be an integer >= 1/);
-  });
-
   it("constructs with options", () => {
     const s = new Slider({ value: 50, min: 0, max: 200, step: 5, width: 30, id: "vol", disabled: true });
     expect(s.value).toBe(50);

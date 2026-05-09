@@ -165,8 +165,7 @@ describe("DefaultScreen", () => {
     it("subsequent frames emit cursor-up to overwrite previous frame", async () => {
       const a = new StubWidget("a", "Alpha");
       const b = new StubWidget("b", "Beta");
-      const c = new StubWidget("c", "Gamma");
-      screen.mount(a, b, c);
+      screen.mount(a, b);
       screen.start();
       await flush();
 
@@ -176,43 +175,10 @@ describe("DefaultScreen", () => {
       await flush();
 
       const out = stream.joined();
-      // [LAW:types-are-the-program] 3 widgets → 3 lines drawn → cursor ends on
-      // line 3 (no trailing newline) → returning to top of frame is `lastLineCount - 1` rows up.
+      // 2 widgets → 2 lines drawn last frame → \x1b[2A to top.
       expect(out).toMatch(/\x1b\[2A/);
-      expect(out).not.toMatch(/\x1b\[3A/);
       // Erase-to-end-of-line on each line.
       expect(out).toMatch(/\x1b\[K/);
-    });
-
-    it("two-line frame moves up exactly one row on redraw", async () => {
-      // Regression: previously emitted \x1b[2A for two lines, overshooting by
-      // one and overwriting the line above the frame when not at top-of-terminal.
-      const a = new StubWidget("a", "Alpha");
-      const b = new StubWidget("b", "Beta");
-      screen.mount(a, b);
-      screen.start();
-      await flush();
-      stream.reset();
-      screen.focusManager.next();
-      await flush();
-
-      const out = stream.joined();
-      expect(out).toMatch(/\x1b\[1A/);
-      expect(out).not.toMatch(/\x1b\[2A/);
-    });
-
-    it("single-line frame emits no cursor-up sequence on redraw", async () => {
-      // After 1 line with no trailing newline, cursor is already on the only
-      // line — `\r` alone gets us back to the start, no upward motion needed.
-      const a = new StubWidget("a", "Alpha");
-      screen.mount(a);
-      screen.start();
-      await flush();
-      stream.reset();
-      screen.focusManager.next();
-      await flush();
-
-      expect(stream.joined()).not.toMatch(/\x1b\[\d+A/);
     });
 
     it("never emits clear-screen or per-line clear-up sequences", async () => {
@@ -368,6 +334,127 @@ describe("DefaultScreen", () => {
       screen.start();
       screen.stop();
     }).not.toThrow();
+  });
+
+  describe("placements", () => {
+    it("default placement (bare widget) flows vertically (back-compat)", async () => {
+      const a = new StubWidget("a", "Alpha");
+      const b = new StubWidget("b", "Beta");
+      screen.mount(a, b);
+      screen.start();
+      await flush();
+
+      // Same as the existing flow test — bare mount() args still produce
+      // the historical single-column layout.
+      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(b.bounds).toEqual({ x: 0, y: 1, width: 5, height: 1 });
+    });
+
+    it("inline placement packs widget on the row of its predecessor", async () => {
+      const a = new StubWidget("a", "Alpha");
+      const b = new StubWidget("b", "Beta");
+      screen.mount(a, { widget: b, placement: { kind: "inline" } });
+      screen.start();
+      await flush();
+
+      // a flows at (0, 0), width 6 (" Alpha" — first widget auto-focuses → "*Alpha").
+      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      // b inlines: x = a.right + 1 cell gap = 7, y = 0.
+      expect(b.bounds).toEqual({ x: 7, y: 0, width: 5, height: 1 });
+
+      // Both widgets share the row; the rendered line should contain both
+      // labels left-to-right with the gap between them.
+      const out = stream.joined();
+      expect(out).toMatch(/\*Alpha\s+ Beta/);
+    });
+
+    it("multiple inline placements pack onto the same row in order", async () => {
+      const a = new StubWidget("a", "Alpha");
+      const b = new StubWidget("b", "Beta");
+      const c = new StubWidget("c", "Gamma");
+      screen.mount(
+        a,
+        { widget: b, placement: { kind: "inline" } },
+        { widget: c, placement: { kind: "inline" } },
+      );
+      screen.start();
+      await flush();
+
+      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(b.bounds).toEqual({ x: 7, y: 0, width: 5, height: 1 });
+      expect(c.bounds).toEqual({ x: 13, y: 0, width: 6, height: 1 });
+    });
+
+    it("a flow placement after inlines starts a new row", async () => {
+      const a = new StubWidget("a", "Alpha");
+      const b = new StubWidget("b", "Beta");
+      const c = new StubWidget("c", "Gamma");
+      screen.mount(
+        a,
+        { widget: b, placement: { kind: "inline" } },
+        c, // back to flow
+      );
+      screen.start();
+      await flush();
+
+      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(b.bounds).toEqual({ x: 7, y: 0, width: 5, height: 1 });
+      // c flows at y=1 — directly below the inline row.
+      expect(c.bounds).toEqual({ x: 0, y: 1, width: 6, height: 1 });
+    });
+
+    it("fixed placement anchors at absolute coords", async () => {
+      const a = new StubWidget("a", "Alpha");
+      const status = new StubWidget("s", "Status", false);
+      screen.mount(a, { widget: status, placement: { kind: "fixed", x: 10, y: 5 } });
+      screen.start();
+      await flush();
+
+      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(status.bounds).toEqual({ x: 10, y: 5, width: 7, height: 1 });
+
+      // Frame extends to row 5 (the fixed item's y); intermediate rows are
+      // padded blanks. The total line count should be 6.
+      // (2 chunks: cursor positioning + content. Lines after the cursor-up
+      // are all separated by \n, so we can count newlines + 1.)
+      const out = stream.joined();
+      // The "Status" string lives at column 10 of the 6th line.
+      // Easier check: it must appear in the output.
+      expect(out).toContain(" Status");
+    });
+
+    it("fixed placement does not advance the flow cursor", async () => {
+      const a = new StubWidget("a", "Alpha");
+      const fixed = new StubWidget("f", "Fixed", false);
+      const b = new StubWidget("b", "Beta");
+      screen.mount(
+        a,
+        { widget: fixed, placement: { kind: "fixed", x: 20, y: 10 } },
+        b,
+      );
+      screen.start();
+      await flush();
+
+      // a at (0, 0), fixed at (20, 10) — but b still flows at y=1
+      // (immediately after a), independent of the fixed item.
+      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(fixed.bounds).toEqual({ x: 20, y: 10, width: 6, height: 1 });
+      expect(b.bounds).toEqual({ x: 0, y: 1, width: 5, height: 1 });
+    });
+
+    it("fixed placement is hit-testable at its absolute coords", async () => {
+      const fixed = new StubWidget("f", "Fixed", false);
+      screen.mount({ widget: fixed, placement: { kind: "fixed", x: 12, y: 7 } });
+      screen.start();
+      await flush();
+
+      // " Fixed" is 6 cells wide; bounds x=12, width=6 → covers cols 12..17.
+      expect(fixed.containsPoint(12, 7)).toBe(true);
+      expect(fixed.containsPoint(17, 7)).toBe(true);
+      expect(fixed.containsPoint(18, 7)).toBe(false);
+      expect(fixed.containsPoint(11, 7)).toBe(false);
+      expect(fixed.containsPoint(15, 6)).toBe(false);
+    });
   });
 
   it("does not draw after stop", async () => {

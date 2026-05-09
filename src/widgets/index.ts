@@ -4,10 +4,16 @@ export type {
   WidgetFocusEvent,
   WidgetBounds,
   InteractiveWidget,
+  OverlayRenderable,
   FocusManager,
   Screen,
+  MountEntry,
+  Placement,
   Unsubscribe,
 } from "./types.js";
+export { FLOW, hasOverlay } from "./types.js";
+export { StaticItem } from "./static-item.js";
+export type { StaticItemOptions } from "./static-item.js";
 
 export { WidgetBase } from "./widget-base.js";
 export { DefaultFocusManager } from "./focus-manager.js";

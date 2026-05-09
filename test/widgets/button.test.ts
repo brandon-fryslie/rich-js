@@ -100,7 +100,7 @@ describe("Button", () => {
       expect(isBlack || isWhite).toBe(true);
     });
 
-    it("renders active state with bold and full accent bg", () => {
+    it("renders active state with bold and full accent bg (no fg/bg inversion)", () => {
       const btn = new Button({ label: "Go", variant: "primary" });
       btn.setActive(true);
       const segments = [...btn.render({ maxWidth: 80 })];
@@ -127,7 +127,7 @@ describe("Button", () => {
       expect(hoverStyle.bold).toBeFalsy();
     });
 
-    it("active + focused shows brackets and bold", () => {
+    it("active + focused shows brackets and bold without inverting colours", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       btn.setActive(true);
@@ -163,18 +163,6 @@ describe("Button", () => {
       btn.onSubmit((w) => submits.push(w));
       btn.handleKey(spaceEvent);
       expect(submits).toHaveLength(1);
-    });
-
-    it("keyboard activation makes active=true observable across MobX cycles", async () => {
-      // [LAW:dataflow-not-control-flow] toggling active true→false inside a
-      // single @action would only ever expose the post-action state to MobX
-      // autoruns. The handler exits with active=true and schedules the clear
-      // on a microtask so observers see both states.
-      const btn = new Button({ label: "Go" });
-      btn.handleKey(enterEvent);
-      expect(btn.active).toBe(true);
-      await Promise.resolve(); // drain microtask queue
-      expect(btn.active).toBe(false);
     });
 
     it("does not fire onSubmit on other keys", () => {

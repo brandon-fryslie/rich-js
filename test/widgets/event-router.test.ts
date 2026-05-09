@@ -235,17 +235,6 @@ describe("EventRouter — key parsing", () => {
     expect(h.keyEvents.map((e) => e.key)).toEqual(["up"]);
   });
 
-  it("collapses ESC ESC into a single escape event (consumes both bytes)", () => {
-    h.router.feed("\x1b\x1b");
-    // Both bytes consumed in one shot; no lone-ESC timer arms.
-    expect(h.keyEvents).toEqual([
-      { key: "escape", character: "", shift: false, ctrl: false, meta: false },
-    ]);
-    // Flushing is a no-op — buffer is empty, no second escape leaks out.
-    h.router.flush();
-    expect(h.keyEvents).toHaveLength(1);
-  });
-
   it("handles a CSI sequence split across multiple chunks", () => {
     h.router.feed("\x1b[");
     h.router.feed("3");
@@ -346,72 +335,6 @@ describe("EventRouter — mouse parsing", () => {
     const h = makeHarness([a]);
     h.router.feed("\x1b[<0;3;1M");
     expect(a.mouseEvents).toHaveLength(0);
-  });
-});
-
-describe("EventRouter — mouse capture", () => {
-  // After mouse_down on a widget, subsequent mouse_move and mouse_up events
-  // are routed to that widget regardless of bounds, until release. This is
-  // what makes Slider drag and Dropdown outside-click collapse work.
-
-  it("routes mouse_move to the captured widget when pointer leaves bounds", () => {
-    const a = new StubWidget("a");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    const h = makeHarness([a]);
-
-    h.router.feed("\x1b[<0;3;1M"); // mouse_down at (2,0) — inside a
-    h.router.feed("\x1b[<32;20;1M"); // mouse_move at (19,0) — outside a (bit 32 = motion)
-    h.router.feed("\x1b[<0;20;1m"); // mouse_up at (19,0) — outside a
-
-    const types = a.mouseEvents.map((e) => e.type);
-    expect(types).toEqual(["mouse_down", "mouse_move", "mouse_up"]);
-  });
-
-  it("releases capture on mouse_up so the next mouse_move is hit-tested again", () => {
-    const a = new StubWidget("a");
-    const b = new StubWidget("b");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
-    const h = makeHarness([a, b]);
-
-    // Press inside a → capture a, then release outside → capture cleared.
-    h.router.feed("\x1b[<0;3;1M");
-    h.router.feed("\x1b[<0;20;1m");
-
-    // A subsequent move into b should go to b normally.
-    h.router.feed("\x1b[<32;7;1M");
-    const bTypes = b.mouseEvents.map((e) => e.type);
-    expect(bTypes).toContain("mouse_move");
-  });
-
-  it("delivers click outside the dropdown's bounds when capture seeded a press inside", () => {
-    // Simulates the Dropdown outside-click-collapse pattern: a press starts
-    // inside the expanded list, the user drags out and releases — capture
-    // ensures the dropdown still receives mouse_up to act on the gesture.
-    const dd = new StubWidget("dd");
-    dd.setBounds({ x: 0, y: 0, width: 10, height: 5 });
-    const h = makeHarness([dd]);
-
-    h.router.feed("\x1b[<0;3;1M"); // press inside
-    h.router.feed("\x1b[<0;20;10m"); // release way outside
-
-    expect(dd.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_up"]);
-  });
-
-  it("dispatches mouse_down by hit-test when no capture exists (capture seeded for the new gesture)", () => {
-    const a = new StubWidget("a");
-    const b = new StubWidget("b");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
-    const h = makeHarness([a, b]);
-
-    // First gesture: press in a, release in a.
-    h.router.feed("\x1b[<0;3;1M");
-    h.router.feed("\x1b[<0;3;1m");
-
-    // Second gesture: press in b. With capture cleared, b receives it.
-    h.router.feed("\x1b[<0;7;1M");
-    expect(b.mouseEvents.map((e) => e.type)).toContain("mouse_down");
   });
 });
 

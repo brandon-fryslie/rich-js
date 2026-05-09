@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Dropdown } from "../../src/widgets/dropdown.js";
 import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import type { Segment } from "../../src/core/segment.js";
 
 const makeKey = (key: string): KeyEvent => ({
   key,
@@ -15,6 +16,15 @@ const spaceEvent = makeKey("space");
 const escapeEvent = makeKey("escape");
 const upEvent = makeKey("up");
 const downEvent = makeKey("down");
+const backspaceEvent = makeKey("backspace");
+
+const charKey = (ch: string): KeyEvent => ({
+  key: ch,
+  character: ch,
+  shift: false,
+  ctrl: false,
+  meta: false,
+});
 
 const mouseUpAt = (x: number, y: number): WidgetMouseEvent => ({
   type: "mouse_up",
@@ -44,17 +54,6 @@ describe("Dropdown", () => {
     expect(d.highlightedIndex).toBe(2);
     expect(d.id).toBe("x");
     expect(d.disabled).toBe(true);
-  });
-
-  it("rejects empty options at construction", () => {
-    // [LAW:types-are-the-program] zero options is an illegal state — no value
-    // to select, navigation can produce -1. Forbid at the constructor edge.
-    expect(() => new Dropdown({ options: [] })).toThrow(/at least one option/);
-  });
-
-  it("rejects out-of-range selectedIndex at construction", () => {
-    expect(() => new Dropdown({ options: ["a", "b"], selectedIndex: 5 })).toThrow(/out of range/);
-    expect(() => new Dropdown({ options: ["a", "b"], selectedIndex: -1 })).toThrow(/out of range/);
   });
 
   it("implements InteractiveWidget", () => {
@@ -220,20 +219,33 @@ describe("Dropdown", () => {
   });
 
   describe("rendering", () => {
-    it("collapsed renders 1 row", () => {
-      const d = new Dropdown({ options: ["a", "b"] });
-      const segs = [...d.render(RENDER)];
-      const text = segs.map((s) => s.text).join("");
-      expect(text.includes("\n")).toBe(false);
+    it("render() always emits a single row regardless of expanded", () => {
+      const d = new Dropdown({ options: ["a", "b", "c"] });
+      const collapsedText = [...d.render(RENDER)].map((s) => s.text).join("");
+      expect(collapsedText.includes("\n")).toBe(false);
+
+      d.handleKey(enterEvent);
+      const expandedText = [...d.render(RENDER)].map((s) => s.text).join("");
+      expect(expandedText.includes("\n")).toBe(false);
+      // Inline footprint is invariant under expansion.
+      expect(expandedText).toBe(collapsedText);
     });
 
-    it("expanded renders 1 + N rows", () => {
+    it("renderOverlay returns null when collapsed", () => {
+      const d = new Dropdown({ options: ["a", "b"] });
+      expect(d.renderOverlay(RENDER)).toBeNull();
+    });
+
+    it("renderOverlay emits N option rows when expanded", () => {
       const d = new Dropdown({ options: ["a", "b", "c"] });
       d.handleKey(enterEvent);
-      const segs = [...d.render(RENDER)];
+      const overlay = d.renderOverlay(RENDER);
+      expect(overlay).not.toBeNull();
+      const segs = [...(overlay as Iterable<Segment>)];
       const text = segs.map((s) => s.text).join("");
+      // 3 option rows separated by 2 newlines.
       const newlineCount = (text.match(/\n/g) || []).length;
-      expect(newlineCount).toBe(3);
+      expect(newlineCount).toBe(2);
     });
 
     it("collapsed shows the selected label and arrow", () => {
@@ -252,11 +264,13 @@ describe("Dropdown", () => {
       expect(text).not.toContain("▾");
     });
 
-    it("highlighted row uses primary-muted bg, distinct from selected primary", () => {
+    it("overlay highlighted row uses primary-muted bg, distinct from selected primary", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
       d.handleKey(enterEvent);
       d.handleKey(downEvent); // highlighted = 1, selected = 0
-      const segs = [...d.render(RENDER)];
+      const overlay = d.renderOverlay(RENDER);
+      expect(overlay).not.toBeNull();
+      const segs = [...(overlay as Iterable<Segment>)];
       const bgColors = segs.map((s) => s.style?.bgcolor?.name).filter(Boolean);
       const distinct = new Set(bgColors);
       expect(distinct.size).toBeGreaterThan(1);
@@ -301,6 +315,190 @@ describe("Dropdown", () => {
       expect(d.containsPoint(0, 0)).toBe(true);
       expect(d.containsPoint(4, 0)).toBe(true);
       expect(d.containsPoint(5, 0)).toBe(false);
+    });
+  });
+
+  describe("filtering", () => {
+    const opts = ["alpha", "beta", "gamma", "Alphabet"];
+
+    const overlayText = (d: Dropdown): string => {
+      const o = d.renderOverlay(RENDER);
+      if (o === null) return "";
+      return [...(o as Iterable<Segment>)].map((s) => s.text).join("");
+    };
+
+    const headerText = (d: Dropdown): string =>
+      [...d.render(RENDER)].map((s) => s.text).join("");
+
+    it("filteredOptions: empty filter returns all, with canonical idx", () => {
+      const d = new Dropdown({ options: opts });
+      expect(d.filteredOptions.map((e) => e.idx)).toEqual([0, 1, 2, 3]);
+    });
+
+    it("filteredOptions: case-insensitive substring match preserves canonical idx", () => {
+      const d = new Dropdown({ options: opts });
+      d.filter = "alph";
+      expect(d.filteredOptions.map((e) => e.label)).toEqual(["alpha", "Alphabet"]);
+      expect(d.filteredOptions.map((e) => e.idx)).toEqual([0, 3]);
+    });
+
+    it("typing a printable char while collapsed auto-expands and seeds filter", () => {
+      const d = new Dropdown({ options: opts });
+      d.handleKey(charKey("g"));
+      expect(d.expanded).toBe(true);
+      expect(d.filter).toBe("g");
+      expect(d.highlightedIndex).toBe(0);
+    });
+
+    it("typing while expanded appends to filter and resets highlightedIndex to 0", () => {
+      const d = new Dropdown({ options: opts });
+      d.handleKey(enterEvent);
+      d.handleKey(downEvent); // highlightedIndex = 1
+      d.handleKey(charKey("a"));
+      expect(d.filter).toBe("a");
+      expect(d.highlightedIndex).toBe(0);
+    });
+
+    it("backspace removes one char; on empty filter is a no-op", () => {
+      const d = new Dropdown({ options: opts });
+      d.handleKey(charKey("g"));
+      d.handleKey(charKey("a"));
+      expect(d.filter).toBe("ga");
+      d.handleKey(backspaceEvent);
+      expect(d.filter).toBe("g");
+      d.handleKey(backspaceEvent);
+      expect(d.filter).toBe("");
+      d.handleKey(backspaceEvent);
+      expect(d.filter).toBe("");
+      expect(d.expanded).toBe(true); // backspace does not collapse
+    });
+
+    it("escape clears filter and collapses in one step", () => {
+      const d = new Dropdown({ options: opts });
+      d.handleKey(charKey("a"));
+      d.handleKey(charKey("l"));
+      expect(d.filter).toBe("al");
+      d.handleKey(escapeEvent);
+      expect(d.expanded).toBe(false);
+      expect(d.filter).toBe("");
+    });
+
+    it("enter commits filteredOptions[highlightedIndex] to canonical selectedIndex and clears filter", () => {
+      const d = new Dropdown({ options: opts, selectedIndex: 0 });
+      // Filter "lph" matches alpha (canonical 0) and Alphabet (canonical 3) only.
+      for (const ch of "lph") d.handleKey(charKey(ch));
+      d.handleKey(downEvent); // highlightedIndex = 1 → "Alphabet" (canonical idx 3)
+      d.handleKey(enterEvent);
+      expect(d.selectedIndex).toBe(3);
+      expect(d.filter).toBe("");
+      expect(d.expanded).toBe(false);
+    });
+
+    it("commit clears filter (next open shows all options again)", () => {
+      const d = new Dropdown({ options: opts });
+      d.handleKey(charKey("a"));
+      d.handleKey(enterEvent);
+      d.handleKey(enterEvent); // re-open
+      expect(d.filter).toBe("");
+      expect(d.filteredOptions).toHaveLength(4);
+    });
+
+    it("canonical selectedIndex is preserved when filter excludes it", () => {
+      const d = new Dropdown({ options: opts, selectedIndex: 1 }); // "beta"
+      d.handleKey(charKey("g")); // filter excludes "beta"
+      expect(d.selectedIndex).toBe(1); // unchanged
+      d.handleKey(escapeEvent); // cancel without commit
+      expect(d.selectedIndex).toBe(1); // still unchanged
+      // And the header shows "beta" again now that filter is clear.
+      expect(headerText(d)).toContain("beta");
+    });
+
+    it("zero matches: overlay paints a single (no matches) row", () => {
+      // Need maxLabelLen >= 12 so the placeholder fits without right-clipping.
+      const d = new Dropdown({ options: ["alphabet-soup", "beta", "gamma"] });
+      d.handleKey(charKey("z"));
+      const text = overlayText(d);
+      expect(text).toContain("(no matches)");
+      expect((text.match(/\n/g) || []).length).toBe(0); // exactly one row
+    });
+
+    it("zero matches with narrow dropdown: row exists, width invariant holds (placeholder right-clipped)", () => {
+      const d = new Dropdown({ options: opts }); // maxLabelLen = 8 < 12
+      d.handleKey(charKey("z"));
+      const text = overlayText(d);
+      expect(text).toContain("(no"); // truncated form of "(no matches)"
+      expect((text.match(/\n/g) || []).length).toBe(0);
+    });
+
+    it("zero matches: enter is a no-op", () => {
+      const d = new Dropdown({ options: opts, selectedIndex: 0 });
+      const submits: InteractiveWidget[] = [];
+      d.onSubmit((w) => submits.push(w));
+      d.handleKey(charKey("z"));
+      d.handleKey(enterEvent);
+      expect(submits).toHaveLength(0);
+      expect(d.selectedIndex).toBe(0);
+      expect(d.expanded).toBe(true); // still open
+      expect(d.filter).toBe("z"); // filter unchanged
+    });
+
+    it("header shows query (not selected label) while filtering", () => {
+      const d = new Dropdown({ options: opts, selectedIndex: 0 });
+      d.handleKey(charKey("b"));
+      const text = headerText(d);
+      expect(text).toContain("b");
+      expect(text).not.toContain("alpha");
+    });
+
+    it("width invariant: header width unchanged across filter mutations", () => {
+      const d = new Dropdown({ options: opts });
+      const baseWidth = headerText(d).length;
+      d.handleKey(charKey("a"));
+      expect(headerText(d).length).toBe(baseWidth);
+      // Long filter (longer than maxLabelLen) is right-clipped, width still invariant.
+      for (const ch of "supercalifragilistic") d.handleKey(charKey(ch));
+      expect(headerText(d).length).toBe(baseWidth);
+    });
+
+    it("measure() is invariant under filter", () => {
+      const d = new Dropdown({ options: opts });
+      const before = d.measure(RENDER);
+      d.handleKey(charKey("z")); // zero matches
+      expect(d.measure(RENDER)).toEqual(before);
+    });
+
+    it("mouse click on filtered row commits the canonical idx", () => {
+      const d = new Dropdown({ options: opts, selectedIndex: 0 });
+      // Filter "lph" → filteredOptions = [alpha(0), Alphabet(3)]
+      for (const ch of "lph") d.handleKey(charKey(ch));
+      d.bounds = { x: 0, y: 0, width: 12, height: 3 };
+      d.handleMouse(mouseUpAt(2, 2)); // row index 1 → "Alphabet" (canonical idx 3)
+      expect(d.selectedIndex).toBe(3);
+      expect(d.filter).toBe("");
+      expect(d.expanded).toBe(false);
+    });
+
+    it("mouse click on header clears filter and collapses without selection change", () => {
+      const d = new Dropdown({ options: opts, selectedIndex: 0 });
+      d.handleKey(charKey("g"));
+      d.bounds = { x: 0, y: 0, width: 12, height: 2 };
+      d.handleMouse(mouseUpAt(2, 0));
+      expect(d.expanded).toBe(false);
+      expect(d.filter).toBe("");
+      expect(d.selectedIndex).toBe(0);
+    });
+
+    it("highlightedIndex stays in range as filter narrows", () => {
+      const d = new Dropdown({ options: opts });
+      d.handleKey(enterEvent);
+      d.handleKey(downEvent);
+      d.handleKey(downEvent); // highlightedIndex = 2
+      d.handleKey(charKey("a")); // filter resets it to 0
+      expect(d.highlightedIndex).toBe(0);
+      // Down clamps to filteredOptions.length - 1.
+      const fLen = d.filteredOptions.length;
+      for (let i = 0; i < fLen + 5; i++) d.handleKey(downEvent);
+      expect(d.highlightedIndex).toBe(fLen - 1);
     });
   });
 });

@@ -6,7 +6,8 @@
  * terminal escape sequences, or their host environment.
  */
 
-import type { Renderable, Measurable } from "../core/protocol.js";
+import type { Renderable, Measurable, RenderOptions } from "../core/protocol.js";
+import type { Segment } from "../core/segment.js";
 
 // --- Event types ---
 
@@ -71,16 +72,60 @@ export interface InteractiveWidget extends Renderable, Measurable {
   focus(): void;
   blur(): void;
   setDisabled(value: boolean): void;
-  // [LAW:single-enforcer] canonical mutator for `hovered`; the router calls
-  // this — no per-widget override and no direct write path.
-  setHovered(value: boolean): void;
 
   // Hit-testing
   containsPoint(x: number, y: number): boolean;
 
   // Subscriptions
-  onChange(handler: (widget: InteractiveWidget) => void): Unsubscribe;
-  onSubmit(handler: (widget: InteractiveWidget) => void): Unsubscribe;
+  onChange(handler: (widget: InteractiveWidget) => void): () => void;
+  onSubmit(handler: (widget: InteractiveWidget) => void): () => void;
+}
+
+// --- Placement ---
+
+// [LAW:types-are-the-program] Placement is the discriminated union of "where
+// does this item go in the frame". Three kinds cover the legal variability:
+//
+//   flow   — vertical stack at x=0; advances the layout cursor
+//   inline — continues the row of the preceding flow/inline item; same y,
+//            x packed after that item's right edge (+ a one-cell gap)
+//   fixed  — absolute (x, y); does not interact with the layout cursor
+//
+// Variability lives in the value (the Placement carried by each mount entry),
+// never in whether the layout pipeline runs. computeFrame switches on `kind`
+// in one place — the single, total switch the type system enforces.
+export type Placement =
+  | { kind: "flow" }
+  | { kind: "inline" }
+  | { kind: "fixed"; x: number; y: number };
+
+export const FLOW: Placement = { kind: "flow" };
+
+// --- Overlay protocol ---
+
+// [LAW:one-source-of-truth] Inline footprint and rendered shape are
+// independent. `render()` (Renderable) emits the inline footprint that
+// participates in flow layout — for the Dropdown, just the 1-row header.
+// `renderOverlay()` emits segments painted ON TOP of the frame after
+// base layout, anchored directly below the inline footprint at the same
+// column. Returns null when no overlay is active.
+//
+// The host (Screen / demo render loop) is the single enforcer that runs
+// the overlay pass: it iterates widgets in mount order, calls
+// renderOverlay on those that opt in, paints the segments at
+// (bounds.x, bounds.y + bounds.height), and grows widget.bounds to
+// include the overlay area for hit-testing. Render order = z-order:
+// the overlay pass runs last, so overlay content wins over anything
+// rendered earlier in the frame.
+export interface OverlayRenderable {
+  renderOverlay(options: RenderOptions): Iterable<Segment> | null;
+}
+
+export function hasOverlay(value: object): value is OverlayRenderable {
+  return (
+    "renderOverlay" in value &&
+    typeof (value as OverlayRenderable).renderOverlay === "function"
+  );
 }
 
 // --- Unsubscribe helper ---
@@ -106,8 +151,15 @@ export interface FocusManager {
 
 // --- Screen ---
 
+// A mount entry is either a bare widget (placement defaults to flow) or a
+// widget paired with an explicit placement. The two-shape input is a
+// convenience; internally Screen normalizes to { widget, placement }.
+export type MountEntry =
+  | InteractiveWidget
+  | { widget: InteractiveWidget; placement: Placement };
+
 export interface Screen {
-  mount(...widgets: InteractiveWidget[]): void;
+  mount(...entries: MountEntry[]): void;
   unmount(widget: InteractiveWidget): void;
 
   start(): void;

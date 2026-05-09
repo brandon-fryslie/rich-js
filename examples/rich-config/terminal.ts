@@ -39,34 +39,6 @@ export function disableMouse(): void {
   process.stdout.write("\x1b[?1006l");
 }
 
-// --- Screen helpers ---
-
-export function clearScreen(): void {
-  process.stdout.write("\x1b[2J\x1b[H");
-}
-
-export function hideCursor(): void {
-  process.stdout.write("\x1b[?25l");
-}
-
-export function showCursor(): void {
-  process.stdout.write("\x1b[?25h");
-}
-
-export function moveCursor(row: number, col: number): void {
-  process.stdout.write(`\x1b[${row};${col}H`);
-}
-
-export function writeAt(row: number, col: number, text: string): void {
-  moveCursor(row, col);
-  process.stdout.write(text);
-}
-
-export function eraseBelow(row: number): void {
-  moveCursor(row, 1);
-  process.stdout.write("\x1b[J");
-}
-
 // --- Key parsing ---
 
 const KEY_NAMES: Record<string, string> = {

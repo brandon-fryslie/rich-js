@@ -29,7 +29,7 @@ screen (render loop, ANSI output)
 
 A widget does not know about stdin, terminal escape sequences, or its host. It:
 - Holds observable state (MobX)
-- Accepts typed events via methods (`handleKey`, `handleMouse`, `handleFocus`)
+- Accepts typed events via methods (`handleKey`, `handleClick`, `focus`, `blur`)
 - Implements `Renderable.render()` to produce `Segment[]` from current state
 - Implements `Measurable.measure()` for width negotiation
 
@@ -50,7 +50,7 @@ interface KeyEvent {
   meta: boolean;
 }
 
-interface WidgetMouseEvent {
+interface MouseEvent {
   type: "click" | "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
   x: number;             // column (0-based)
   y: number;             // row (0-based)
@@ -59,22 +59,14 @@ interface WidgetMouseEvent {
   ctrl: boolean;
 }
 
-interface WidgetFocusEvent {
+interface FocusEvent {
   type: "focus" | "blur";
-}
-
-interface WidgetBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
 }
 ```
 
 ### InteractiveWidget
 
 The contract every widget implements. Extends existing `Renderable` and `Measurable`.
-Mirrors `src/widgets/types.ts` — that file is the source of truth.
 
 ```typescript
 interface InteractiveWidget extends Renderable, Measurable {
@@ -82,24 +74,18 @@ interface InteractiveWidget extends Renderable, Measurable {
   readonly id: string;
   readonly focusable: boolean;  // [LAW:one-source-of-truth] single source for focus eligibility
 
-  // Interaction state (MobX observables — mutable so the host and widget itself
-  // can drive transitions; pseudo-class names match Textual where applicable):
-  //   focus   — keyboard focus (Textual :focus)
-  //   hover   — mouse cursor over widget (Textual :hover)
-  //   active  — pressed/being activated (web convention, not in Textual)
-  focused: boolean;
-  hovered: boolean;
-  active: boolean;
-  disabled: boolean;
-  visible: boolean;
+  // State (MobX observables)
+  readonly focused: boolean;
+  readonly disabled: boolean;
+  readonly visible: boolean;
 
   // Geometry — set by host during layout, used for hit-testing
-  bounds: WidgetBounds | null;
+  readonly bounds: { x: number; y: number; width: number; height: number } | null;
 
   // Event handlers — called by host
   handleKey(event: KeyEvent): void;
-  handleMouse(event: WidgetMouseEvent): void;
-  handleFocus(event: WidgetFocusEvent): void;
+  handleClick(event: MouseEvent): void;
+  handleFocus(event: FocusEvent): void;
 
   // Programmatic control
   focus(): void;
@@ -158,8 +144,8 @@ interface Screen {
 
 ### Button
 - **State**: `label: string`, `variant: "default" | "primary" | "success" | "warning" | "danger"`
-- **Events**: key=enter/space or mouse_down/up → `onSubmit`
-- **Rendering**: single line, fixed width = `cellLen(label) + 4`. Spaces around the label when not focused (`  label  `), `[`/`]` brackets when focused (`[ label ]`). State precedence (highest first): disabled → active → hover → focus → normal.
+- **Events**: key=enter or click → `onSubmit`
+- **Rendering**: `[ label ]` with style based on focused/disabled state and variant
 
 ### Checkbox
 - **State**: `checked: boolean`, `label: string`
@@ -172,9 +158,25 @@ interface Screen {
 - **Rendering**: `[ON]  label` / `[OFF] label` with color
 
 ### Dropdown
-- **State**: `options: string[]`, `selectedIndex: number`, `expanded: boolean`
+- **State**: `options: string[]`, `selectedIndex: number`, `expanded: boolean`, `filter: string`
 - **Events**: key=enter/space or click → expand; up/down → navigate; enter → select; escape → close
 - **Rendering collapsed**: `selected ▾`; **expanded**: shows option list with highlight
+
+#### Filtering (built-in)
+
+The Dropdown has a built-in type-to-filter. The header doubles as the filter input — no sibling TextInput required.
+
+- **Canonical state**: `options` and `selectedIndex` are canonical. `filter: string` is internal view state. `filteredOptions` is derived: the subsequence of `options` whose label contains `filter` (case-insensitive). `highlightedIndex` indexes into `filteredOptions`.
+- **Width invariant**: `measure()` returns `maxLabelLen(options) + 4` regardless of filter state. The header reserves this width always; the query is right-clipped if it exceeds `maxLabelLen`. Filtering never changes the inline footprint or the overlay width.
+- **Auto-expand on type**: A printable character handled while collapsed expands the dropdown and appends to the filter in one transition. There is no separate "enter filter mode" gesture.
+- **Escape**: clears the filter and collapses in a single step. Backspace exists for incremental clearing.
+- **Commit (enter or click)**: maps `filteredOptions[highlightedIndex]` back to its index in canonical `options`, assigns to `selectedIndex`, then clears the filter and collapses. Enter while `filteredOptions` is empty is a no-op.
+- **Selection preservation under filter**: `selectedIndex` is invariant under filter mutations. If the filter excludes the canonical selection, the overlay simply does not paint a "selected" row — the canonical state is still there and reappears whenever the filter clears.
+- **Highlight reset**: any change to `filter` resets `highlightedIndex` to 0. (When the filter is empty, `highlightedIndex` is seeded from `selectedIndex` on expand, as today.)
+- **Zero matches**: when `filteredOptions` is empty, the overlay paints a single dimmed row `(no matches)`. Enter is a no-op in this state.
+- **Header rendering**:
+  - `filter === ""` → `[ selected-label ▾ ]` (today's behavior).
+  - `filter !== ""` → `[ query│       ▾ ]` — query left, cursor indicator (when focused), padded out to `maxLabelLen`. Long queries are right-clipped so the header width never grows.
 
 ### Slider
 - **State**: `value: number`, `min: number`, `max: number`, `step: number`
@@ -202,9 +204,29 @@ class RichJsWidgetAdapter {
   constructor(private widget: InteractiveWidget) {}
 
   // Map textual-js Key message → widget.handleKey()
-  // Map textual-js Click/Mouse message → widget.handleMouse()
+  // Map textual-js Click message → widget.handleClick()
   // Map textual-js Focus/Blur → widget.handleFocus()
   // Wrap widget.render() → Visual for compositor
   // Subscribe to widget.onChange/onSubmit → textual-js state updates
 }
 ```
+
+The adapter lives in textual-js, not rich-js. Rich-js widgets have no knowledge of textual-js.
+
+## Dependencies
+
+- **mobx** — observable state for widgets (already used by textual-js)
+- **Existing rich-js core** — Segment, Style, Renderable, Measurable, cellLen
+- **No other runtime dependencies**
+
+## Out of scope (v1)
+
+- Layout engine (grid, flex, etc.) — widgets are positioned manually or linearly
+- CSS/styling system — widgets accept style params, no cascade
+- Scroll regions / virtual scrolling
+- Widget trees / nesting
+- Keyboard shortcuts beyond tab/shift-tab navigation
+- Drag and drop
+- Multi-select (dropdown is single-select)
+- Accessibility (screen reader announcements)
+- Animation

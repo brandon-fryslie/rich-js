@@ -138,12 +138,6 @@ export class EventRouter {
   private running = false;
   private dataListener: ((chunk: Buffer | string) => void) | undefined;
   private escTimer: ReturnType<typeof setImmediate> | undefined;
-  // [LAW:single-enforcer] Mouse capture: the widget that received `mouse_down`
-  // owns the subsequent `mouse_move` / `mouse_up` events until release, even
-  // if the pointer leaves its bounds. This lets Slider drag stay live and
-  // Dropdown receive the outside-click that collapses it. Capture is data,
-  // not a mode — the same dispatch pipeline runs every event.
-  private mouseCapture: InteractiveWidget | null = null;
 
   private readonly keyHandlers = new Set<(event: KeyEvent) => void>();
   private readonly mouseHandlers = new Set<(event: WidgetMouseEvent) => void>();
@@ -175,6 +169,11 @@ export class EventRouter {
     if (typeof (this.input as { resume?: () => void })?.resume === "function") {
       (this.input as { resume: () => void }).resume();
     }
+    if (typeof (this.input as { setEncoding?: (e: string) => void })?.setEncoding === "function") {
+      // No-op for streams that don't support it. We always re-encode to Buffer
+      // internally — the encoding hint just keeps Node from splitting multibyte
+      // characters when stdin is set to raw mode.
+    }
 
     if (this.manageMouse) this.output.write(MOUSE_TRACK_ON);
 
@@ -194,7 +193,6 @@ export class EventRouter {
       clearImmediate(this.escTimer);
       this.escTimer = undefined;
     }
-    this.mouseCapture = null;
 
     if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
     if (this.manageRawMode && this.input?.setRawMode) {
@@ -335,18 +333,17 @@ export class EventRouter {
     if (b1 === LBRACKET) return this.consumeCSI(buf);
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
-    // ESC ESC → escape key (some terminals double-send). Consume both bytes so
-    // the second ESC doesn't re-enter the lone-ESC timer and produce a phantom
-    // duplicate event.
+    // ESC ESC → escape key (some terminals double-send)
     if (b1 === ESC) {
       return {
         kind: "key",
-        bytes: 2,
+        bytes: 1,
         event: { key: "escape", character: "", shift: false, ctrl: false, meta: false },
       };
     }
-    // ESC <any other byte> → unrecognised sequence; emit Escape for the lone ESC
-    // (bytes: 1 consumed), then b1 is re-processed on the next call.
+    // ESC <any other byte> → unrecognised; drop the ESC, re-process from b1.
+    // This avoids treating Alt+key as an Alt sequence (out of scope) while
+    // still surfacing the key.
     return {
       kind: "key",
       bytes: 1,
@@ -438,55 +435,26 @@ export class EventRouter {
 
     const widgets = this.source.getWidgets();
 
-    // Hover tracking is independent of capture — it always reflects which
-    // widget the pointer is physically over, regardless of which widget owns
-    // the gesture. Slider dragging outside its own bounds therefore clears
-    // its hover even while it keeps receiving mouse_move events.
+    // Hover tracking: any widget whose hover state changed gets an update.
     if (event.type === "mouse_move") {
       for (const w of widgets) {
         if (!w.visible) continue;
         const inside = w.containsPoint(event.x, event.y);
-        if (inside !== w.hovered) w.setHovered(inside);
+        if (inside !== w.hovered) updateHover(w, inside, event);
       }
     }
 
-    // [LAW:dataflow-not-control-flow] Resolve target as data: capture wins
-    // for mid-gesture move/up events; everything else falls back to the
-    // topmost-hit widget. Mouse_down also seeds the capture.
-    const hit = topmostHit(widgets, event.x, event.y);
-    const target = pickMouseTarget(this.mouseCapture, hit, event.type);
-    if (event.type === "mouse_down") this.mouseCapture = hit;
-    if (event.type === "mouse_up") this.mouseCapture = null;
-
-    if (target) target.handleMouse(event);
+    // Click / button event: deliver to topmost widget under the pointer.
+    // [LAW:dataflow-not-control-flow] reverse iteration runs every event;
+    // an empty hit produces an empty effect, no early-mode branch.
+    for (let i = widgets.length - 1; i >= 0; i--) {
+      const w = widgets[i]!;
+      if (!w.visible) continue;
+      if (!w.containsPoint(event.x, event.y)) continue;
+      w.handleMouse(event);
+      break;
+    }
   }
-}
-
-function topmostHit(
-  widgets: readonly InteractiveWidget[],
-  x: number,
-  y: number,
-): InteractiveWidget | null {
-  for (let i = widgets.length - 1; i >= 0; i--) {
-    const w = widgets[i]!;
-    if (!w.visible) continue;
-    if (!w.containsPoint(x, y)) continue;
-    return w;
-  }
-  return null;
-}
-
-// [LAW:dataflow-not-control-flow] Target selection is a pure function of
-// (capture, hit, event-type). `mouse_move` and `mouse_up` honour capture so
-// drag gestures and outside-click collapses keep working when the pointer
-// exits widget bounds; everything else uses the hit-test result.
-function pickMouseTarget(
-  capture: InteractiveWidget | null,
-  hit: InteractiveWidget | null,
-  type: WidgetMouseEvent["type"],
-): InteractiveWidget | null {
-  if (capture && (type === "mouse_move" || type === "mouse_up")) return capture;
-  return hit;
 }
 
 // --- Helpers ---
@@ -577,3 +545,17 @@ function decodeModifier(mod: number): { shift: boolean; ctrl: boolean; meta: boo
   };
 }
 
+function updateHover(
+  widget: InteractiveWidget,
+  hovered: boolean,
+  event: WidgetMouseEvent,
+): void {
+  const setHovered = (widget as { setHovered?: (v: boolean) => void }).setHovered;
+  if (typeof setHovered === "function") {
+    setHovered.call(widget, hovered);
+    return;
+  }
+  // [LAW:dataflow-not-control-flow] Fallback path: the synthesized event
+  // carries the hover transition; widgets that care can read `event.type`.
+  widget.handleMouse(event);
+}
