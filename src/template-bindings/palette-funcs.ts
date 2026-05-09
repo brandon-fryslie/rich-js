@@ -15,7 +15,7 @@
  *
  * ### Surface design rationale
  *
- * Three layers of ergonomics:
+ * Four layers of ergonomics:
  *
  * 1. **Semantic-name functions** — one function per palette variable whose
  *    name is a valid Go template identifier (no hyphens). `{{ primary child }}`,
