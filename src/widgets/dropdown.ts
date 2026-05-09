@@ -50,6 +50,14 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
   @observable accessor highlightedIndex: number;
   @observable accessor filter: string = "";
 
+  // [LAW:single-enforcer] All filter writes go through setFilter(); it owns
+  // both the filter value and the highlightedIndex reset.
+  @action
+  private setFilter(value: string): void {
+    this.filter = value;
+    this.highlightedIndex = 0;
+  }
+
   // [LAW:dataflow-not-control-flow] Derived view; empty filter falls out
   // naturally because "".includes("") is true for every label — no
   // special-case branch.
@@ -100,8 +108,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       // Any other printable char auto-expands and starts filtering.
       if (isPrintable) {
         this.expanded = true;
-        this.filter = this.filter + event.character;
-        this.highlightedIndex = 0;
+        this.setFilter(this.filter + event.character);
       }
       return;
     }
@@ -122,7 +129,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
         const picked = this.filteredOptions[this.highlightedIndex];
         if (picked === undefined) return;
         this.selectedIndex = picked.idx;
-        this.filter = "";
+        this.setFilter("");
         this.expanded = false;
         this.emitChange();
         this.emitSubmit();
@@ -130,19 +137,17 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       }
       case "escape":
         // Single-step: clear filter + collapse.
-        this.filter = "";
+        this.setFilter("");
         this.expanded = false;
         return;
       case "backspace":
         // [LAW:dataflow-not-control-flow] slice(0,-1) on "" is "" — no guard.
-        this.filter = this.filter.slice(0, -1);
-        this.highlightedIndex = 0;
+        this.setFilter(this.filter.slice(0, -1));
         return;
     }
 
     if (isPrintable) {
-      this.filter = this.filter + event.character;
-      this.highlightedIndex = 0;
+      this.setFilter(this.filter + event.character);
     }
   }
 
@@ -171,14 +176,14 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // expanded: row 0 is the header; rows 1..M are filtered options.
     if (!inside) {
       // Click outside cancels — clear filter + collapse.
-      this.filter = "";
+      this.setFilter("");
       this.expanded = false;
       return;
     }
     const rowOffset = event.y - b.y;
     if (rowOffset === 0) {
       // Click the header → collapse + clear filter, no selection change.
-      this.filter = "";
+      this.setFilter("");
       this.expanded = false;
       return;
     }
@@ -186,7 +191,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     const picked = this.filteredOptions[rowOffset - 1];
     if (picked === undefined) return;
     this.selectedIndex = picked.idx;
-    this.filter = "";
+    this.setFilter("");
     this.expanded = false;
     this.emitChange();
     this.emitSubmit();
