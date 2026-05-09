@@ -66,6 +66,44 @@ describe("buildPalette", () => {
     for (const key of accents) {
       expect(p.get(`${key}-muted`)).toBeDefined();
       expect(p.get(`text-${key}`)).toBeDefined();
+      expect(p.get(`on-${key}`)).toBeDefined();
     }
+  });
+
+  describe("on-${accent} contrast keys", () => {
+    it("on-${accent} is pure black or pure white per WCAG luminance", () => {
+      const p = buildPalette("test", true, TEST_BASE);
+      const accents = ["primary", "secondary", "accent", "success", "warning", "error"];
+      for (const key of accents) {
+        const c = p.get(`on-${key}`)!;
+        const isBlack = c.red === 0 && c.green === 0 && c.blue === 0;
+        const isWhite = c.red === 255 && c.green === 255 && c.blue === 255;
+        expect(isBlack || isWhite).toBe(true);
+      }
+    });
+
+    it("on-warning picks black when warning is high-luminance (yellow)", () => {
+      const base = { ...TEST_BASE, warning: new ColorRgba(255, 215, 0) };
+      const p = buildPalette("test", true, base);
+      expect(p.get("on-warning")).toEqual(new ColorRgba(0, 0, 0));
+    });
+
+    it("on-error picks white when error is low-luminance (dark red)", () => {
+      const base = { ...TEST_BASE, error: new ColorRgba(128, 0, 0) };
+      const p = buildPalette("test", true, base);
+      expect(p.get("on-error")).toEqual(new ColorRgba(255, 255, 255));
+    });
+
+    it("contrast choice depends on the accent itself, not the theme background", () => {
+      // Same accent (mid-blue) on dark and light themes → same on- value.
+      const dark = buildPalette("dark", true, TEST_BASE);
+      const lightBase = {
+        ...TEST_BASE,
+        background: new ColorRgba(255, 255, 255),
+        foreground: new ColorRgba(0, 0, 0),
+      };
+      const light = buildPalette("light", false, lightBase);
+      expect(dark.get("on-primary")).toEqual(light.get("on-primary"));
+    });
   });
 });

@@ -89,16 +89,45 @@ describe("Button", () => {
       expect(style.bgcolor!.name).not.toBe("#4a4a4a");
     });
 
-    it("renders active state with color reversal", () => {
-      const btn = new Button({ label: "Go" });
+    it("hover uses the on-${accent} contrast colour as fg, not text-${accent}", () => {
+      const btn = new Button({ label: "Go", variant: "primary" });
+      btn.setHovered(true);
+      const style = [...btn.render({ maxWidth: 80 })][0]!.style!;
+      // on-primary is pure black or pure white (WCAG contrast).
+      const fg = style.color!;
+      const isBlack = fg.name === "#000000";
+      const isWhite = fg.name === "#ffffff";
+      expect(isBlack || isWhite).toBe(true);
+    });
+
+    it("renders active state with bold and full accent bg", () => {
+      const btn = new Button({ label: "Go", variant: "primary" });
       btn.setActive(true);
       const segments = [...btn.render({ maxWidth: 80 })];
       expect(segments).toHaveLength(1);
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
+      // bg should be the full accent (same as hover), fg should be on-${accent}.
+      // Both should be different — no inversion that would put fg = mostly-bg.
+      expect(style.color!.name).not.toBe(style.bgcolor!.name);
     });
 
-    it("active + focused shows brackets with reversed colors", () => {
+    it("active and hover use the same colour pair; bold differentiates them", () => {
+      const hover = new Button({ label: "Go", variant: "primary" });
+      hover.setHovered(true);
+      const hoverStyle = [...hover.render({ maxWidth: 80 })][0]!.style!;
+
+      const active = new Button({ label: "Go", variant: "primary" });
+      active.setActive(true);
+      const activeStyle = [...active.render({ maxWidth: 80 })][0]!.style!;
+
+      expect(activeStyle.color!.name).toBe(hoverStyle.color!.name);
+      expect(activeStyle.bgcolor!.name).toBe(hoverStyle.bgcolor!.name);
+      expect(activeStyle.bold).toBe(true);
+      expect(hoverStyle.bold).toBeFalsy();
+    });
+
+    it("active + focused shows brackets and bold", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       btn.setActive(true);

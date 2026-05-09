@@ -241,8 +241,22 @@ export type {
 } from "./widgets/types.js";
 export { WidgetBase } from "./widgets/widget-base.js";
 export { DefaultFocusManager } from "./widgets/focus-manager.js";
+export { DefaultScreen } from "./widgets/screen.js";
+export type { ScreenOptions, ColorSystemSpec } from "./widgets/screen.js";
 export { Button } from "./widgets/button.js";
 export type { ButtonVariant, ButtonOptions } from "./widgets/button.js";
+export { Checkbox } from "./widgets/checkbox.js";
+export type { CheckboxOptions } from "./widgets/checkbox.js";
+export { Toggle } from "./widgets/toggle.js";
+export type { ToggleVariant, ToggleOptions } from "./widgets/toggle.js";
+export { TextInput } from "./widgets/text-input.js";
+export type { TextInputOptions } from "./widgets/text-input.js";
+export { Dropdown } from "./widgets/dropdown.js";
+export type { DropdownOptions } from "./widgets/dropdown.js";
+export { Slider } from "./widgets/slider.js";
+export type { SliderOptions } from "./widgets/slider.js";
+export { EventRouter } from "./widgets/event-router.js";
+export type { EventRouterOptions } from "./widgets/event-router.js";
 
 // Template bindings — register rich-js styling as @promptctl/go-template-js functions
 export { createRichTextEngine, richTextFuncs } from "./template-bindings/index.js";

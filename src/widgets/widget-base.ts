@@ -64,6 +64,8 @@ export abstract class WidgetBase implements InteractiveWidget {
     this.handleFocus({ type: "blur" });
   }
 
+  // [LAW:single-enforcer] One canonical mutator for the hovered observable.
+  // The router and tests both call this; widgets never need to override it.
   @action
   setHovered(value: boolean): void {
     this.hovered = value;

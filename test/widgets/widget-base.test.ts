@@ -80,6 +80,7 @@ describe("WidgetBase", () => {
     expect(changeCount).toBe(3);
   });
 
+
   it("sets disabled state", () => {
     const widget = new StubWidget();
     widget.setDisabled(true);
