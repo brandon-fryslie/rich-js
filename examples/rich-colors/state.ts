@@ -215,7 +215,7 @@ function reduceMoveForward(state: AppState, delta: 1 | -1): AppState {
 }
 
 /**
- * Parse a color string using rich-js Color.parse().
+ * Parse a color string using rich-js ColorSpec.parse().
  */
 function parseColor(input: string): ColorSpec | null {
   if (!input || input.trim() === "") return null;

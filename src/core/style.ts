@@ -3,15 +3,27 @@
  */
 
 import {
+  ColorRgba,
   ColorSpec,
   ColorDepth,
-  DEFAULT_TERMINAL_THEME,
 } from "./color.js";
 import type { TerminalTheme } from "./color.js";
 
+// [LAW:one-way-deps] `core/style` depends only on `core/color`; the substrate
+// fallback is the canonical canvas color (black), inlined to avoid pulling in
+// any preset theme constants. Preset themes live in `src/themes/` and depend
+// on core, never the reverse.
+const SURFACE_BLACK = new ColorRgba(0, 0, 0);
+
 // --- Attribute definitions ---
 
-const ATTRIBUTE_NAMES = [
+/**
+ * Canonical text-attribute inventory. Single source of truth consumed by
+ * `Style.parse` / `Style.toString` and the template bindings — adding an
+ * attribute here propagates to every styling surface without a second
+ * list to keep in sync. [LAW:one-source-of-truth]
+ */
+export const ATTRIBUTE_NAMES = [
   "bold",
   "dim",
   "italic",
@@ -27,7 +39,7 @@ const ATTRIBUTE_NAMES = [
   "overline",
 ] as const;
 
-type AttributeName = (typeof ATTRIBUTE_NAMES)[number];
+export type AttributeName = (typeof ATTRIBUTE_NAMES)[number];
 
 // SGR codes for each attribute (on / off)
 const ATTRIBUTE_SGR: Record<AttributeName, [number, number]> = {
@@ -46,7 +58,13 @@ const ATTRIBUTE_SGR: Record<AttributeName, [number, number]> = {
   overline: [53, 55],
 };
 
-const SHORT_ALIASES: Record<string, AttributeName> = {
+/**
+ * Canonical short-attribute aliases (`b` → `bold`, `i` → `italic`, …).
+ * Single source of truth consumed by `Style.parse` and the template
+ * bindings — adding an alias here makes it available everywhere.
+ * [LAW:one-source-of-truth]
+ */
+export const ATTRIBUTE_SHORT_ALIASES: Record<string, AttributeName> = {
   b: "bold",
   d: "dim",
   i: "italic",
@@ -293,7 +311,7 @@ export class Style {
     // alpha before downgrade. Opaque colors short-circuit inside compositeOver,
     // so the same code path runs every render — the alpha value is the data,
     // not a branch.
-    const surface = DEFAULT_TERMINAL_THEME.backgroundColor;
+    const surface = SURFACE_BLACK;
     const bgFlat = this.bgcolor?.flattenAlpha(surface);
     const fgSubstrate = bgFlat?.getTruecolor(undefined, false) ?? surface;
     const fgFlat = this.color?.flattenAlpha(fgSubstrate);
@@ -533,7 +551,7 @@ function parseStyleDefinition(definition: string): Style {
       if (!next) {
         throw new StyleSyntaxError(`Expected attribute after "not" in style definition`);
       }
-      const attrName = SHORT_ALIASES[next] ?? next;
+      const attrName = ATTRIBUTE_SHORT_ALIASES[next] ?? next;
       if (!ATTRIBUTE_SET.has(attrName)) {
         throw new StyleSyntaxError(`Invalid attribute: "${next}"`);
       }
@@ -570,7 +588,7 @@ function parseStyleDefinition(definition: string): Style {
     }
 
     // Attribute (full name)
-    const resolvedAttr = SHORT_ALIASES[token] ?? token;
+    const resolvedAttr = ATTRIBUTE_SHORT_ALIASES[token] ?? token;
     if (ATTRIBUTE_SET.has(resolvedAttr)) {
       (opts as Record<string, boolean>)[resolvedAttr] = true;
       i++;
