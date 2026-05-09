@@ -25,37 +25,7 @@ import {
   type AttributeName,
 } from "../core/style.js";
 import { ColorSpec, ANSI_COLOR_NAMES } from "../core/color.js";
-import { RichText } from "../core/text.js";
-
-// --- Helpers ---
-
-/**
- * Apply a style on top of an already-styled RichText fragment.
- *
- * The engine's `"liftable"` arg type lifts string literals to
- * `RichText` via the binding's `fromString` *before* the body runs,
- * so by the time we get here, `child` is always a `RichText`. The
- * defensive instanceof check exists because `"liftable"` admits any
- * non-primitive value — the engine cannot prove the object is the
- * binding's own `T`. A misuse (`{{ red someMap }}`) lands here and
- * fails loudly rather than producing a malformed fragment.
- *
- * Conflict resolution follows `Style.add`: the outer (newly applied)
- * style wins. `red (bold "x")` → bold + red; `red (red "x")` → red.
- * Spans inside the inner fragment are preserved as-is — their styles
- * compose with the new wrapper at render time via the segment
- * pipeline's existing additive semantics.
- */
-function applyStyleToFragment(child: unknown, style: Style): RichText {
-  if (!(child instanceof RichText)) {
-    throw new TypeError(
-      `style function expected a RichText fragment, got ${typeof child === "object" ? Object.prototype.toString.call(child) : typeof child}`,
-    );
-  }
-  const result = child.copy();
-  result.style = child.style.add(style);
-  return result;
-}
+import { applyStyleToFragment } from "./helpers.js";
 
 function fgFunc(style: Style): TemplateFunc {
   return {
