@@ -150,16 +150,43 @@ function attributeFuncs(): FuncMap {
   return out;
 }
 
+// --- Hyperlink ---
+//
+// `link` is the cell-splitter for the multi-cell consumer contract.
+// Implementation-wise it is the same shape as any other style function:
+// it sets the `link` slot of `Style` exactly as the existing string-form
+// `link URL` does, so a template-built fragment is byte-equivalent to
+// `RichText("x", { style: Style.parse("link u") })`.
+//
+// The cell-boundary signal that consumers (cc-candybar et al.) walk is
+// `fragment.style.link` being truthy. `Style.add` propagates `link`
+// through any outer wrapping call, so `{{ red (link "u" "x") }}` and
+// `{{ link "u" "x" }}` produce shapes that both qualify as cells from
+// the consumer's perspective. Outer-wins on nested links comes for free
+// from `Style.add`'s right-wins-on-conflict rule.
+//
+// [LAW:dataflow-not-control-flow] No special-case AST node, no
+// `LinkFragment` subclass, no second emitter path — the variability is
+// the value of `style.link`, not whether some control-flow branch ran.
+
+const linkFunc: TemplateFunc = {
+  fn: ((url: string, child: unknown) => {
+    return applyStyleToFragment(child, new Style({ link: url }));
+  }) as TemplateFunc["fn"],
+  argTypes: ["string", "liftable"],
+  returnType: "T",
+};
+
 // --- Public assembly ---
 
 /**
- * The full binding registration set produced by this epic — foreground
- * colours (named + generic forms), background (`on`), and text
- * attributes (canonical names, short aliases, and `not_*` negations).
+ * The full binding registration set populated by the template-bindings
+ * style epics — foreground colours (named + generic forms), background
+ * (`on`), text attributes (canonical names, short aliases, and `not_*`
+ * negations), and the hyperlink cell-splitter (`link`).
  *
- * `link`, palette/theme/auto-contrast, and per-position hue rotation
- * are deliberately absent — they ship in the follow-up epics on the
- * same `template-bindings` topic.
+ * Palette/theme/auto-contrast and per-position hue rotation are
+ * deliberately absent — they ship in `rich-template-bindings-83q`.
  */
 export function richTextStyleFuncs(): FuncMap {
   return {
@@ -169,5 +196,6 @@ export function richTextStyleFuncs(): FuncMap {
     rgb: colorRgbFunc,
     on: onFunc,
     ...attributeFuncs(),
+    link: linkFunc,
   };
 }

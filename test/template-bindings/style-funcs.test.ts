@@ -225,3 +225,143 @@ describe("multi-fragment templates", () => {
     expect(out[1]!.style.color?.name).toBe("blue");
   });
 });
+
+describe("link function (cell-splitter contract)", () => {
+  it("link wraps a string literal with the link slot set", () => {
+    const rt = evalOne(`{{ link "https://example.com" "label" }}`);
+    expect(rt.plain).toBe("label");
+    expect(rt.style.link).toBe("https://example.com");
+  });
+
+  it("equivalent to Style.parse(\"link URL\") for the same URL", () => {
+    const rt = evalOne(`{{ link "https://example.com" "x" }}`);
+    expect(rt.style.link).toBe(Style.parse("link https://example.com").link);
+  });
+
+  it("nested links collapse with the outer winning", () => {
+    const rt = evalOne(`{{ link "outer" (link "inner" "x") }}`);
+    expect(rt.style.link).toBe("outer");
+  });
+
+  it("link inside a non-link style preserves both", () => {
+    // `{{ bold (link "u" "x") }}` — outer is bold, inner sets link.
+    // Style.add propagates link from inner to outer fragment.
+    const rt = evalOne(`{{ bold (link "u" "x") }}`);
+    expect(rt.style.bold).toBe(true);
+    expect(rt.style.link).toBe("u");
+  });
+
+  it("non-link style inside a link preserves both", () => {
+    // `{{ link "u" (bold "x") }}` — outer is link, inner is bold.
+    const rt = evalOne(`{{ link "u" (bold "x") }}`);
+    expect(rt.style.bold).toBe(true);
+    expect(rt.style.link).toBe("u");
+  });
+
+  it("link composes with foreground / background colour", () => {
+    const rt = evalOne(`{{ link "u" (red (on "white" "x")) }}`);
+    expect(rt.style.link).toBe("u");
+    expect(rt.style.color?.name).toBe("red");
+    expect(rt.style.bgcolor?.name).toBe("white");
+  });
+
+  it("a link-bearing fragment's Style equals the directly-constructed equivalent", () => {
+    const rt = evalOne(`{{ red (link "u" (bold "hello")) }}`);
+    const expected = Style.combine([
+      Style.parse("bold"),
+      Style.parse("link u"),
+      Style.parse("red"),
+    ]);
+    expect(rt.style.color?.name).toBe(expected.color?.name);
+    expect(rt.style.bold).toBe(expected.bold);
+    expect(rt.style.link).toBe(expected.link);
+  });
+});
+
+describe("multi-cell contract (consumer-side cell splitting)", () => {
+  // Test renderer implementing the contract described in
+  // spec/template-bindings.md → "Cell-splitting algorithm (consumer side)".
+  // Consumers (cc-candybar et al.) build their own equivalent — this
+  // verifies the binding produces fragments the contract can interpret.
+  function splitCells(fragments: readonly RichText[]): {
+    cells: { fragment: RichText; before: RichText[] }[];
+    trailing: RichText[];
+  } {
+    const cells: { fragment: RichText; before: RichText[] }[] = [];
+    let pending: RichText[] = [];
+    for (const f of fragments) {
+      if (f.style.link) {
+        cells.push({ fragment: f, before: pending });
+        pending = [];
+      } else {
+        pending.push(f);
+      }
+    }
+    return { cells, trailing: pending };
+  }
+
+  it("a single top-level link is one cell with no joiner", () => {
+    const out = engine.parse(`{{ link "u" "a" }}`).evaluate({});
+    const { cells, trailing } = splitCells(out);
+    expect(cells.length).toBe(1);
+    expect(cells[0]!.fragment.plain).toBe("a");
+    expect(cells[0]!.fragment.style.link).toBe("u");
+    expect(cells[0]!.before).toEqual([]);
+    expect(trailing).toEqual([]);
+  });
+
+  it("two top-level links separated by literal text split into two cells with the literal as joiner", () => {
+    const out = engine.parse(`{{ link "u1" "a" }} {{ link "u2" "b" }}`).evaluate({});
+    const { cells, trailing } = splitCells(out);
+    expect(cells.length).toBe(2);
+
+    // First cell: link u1, no joiner before.
+    expect(cells[0]!.fragment.plain).toBe("a");
+    expect(cells[0]!.fragment.style.link).toBe("u1");
+    expect(cells[0]!.before).toEqual([]);
+
+    // Second cell: link u2, joined by " ".
+    expect(cells[1]!.fragment.plain).toBe("b");
+    expect(cells[1]!.fragment.style.link).toBe("u2");
+    expect(cells[1]!.before.length).toBe(1);
+    expect(cells[1]!.before[0]!.plain).toBe(" ");
+    expect(cells[1]!.before[0]!.style.link).toBeUndefined();
+
+    expect(trailing).toEqual([]);
+  });
+
+  it("nested links produce a single cell with the outer link applied", () => {
+    const out = engine.parse(`{{ link "outer" (link "inner" "x") }}`).evaluate({});
+    const { cells, trailing } = splitCells(out);
+    expect(cells.length).toBe(1);
+    expect(cells[0]!.fragment.style.link).toBe("outer");
+    expect(trailing).toEqual([]);
+  });
+
+  it("link wrapped by bold yields one cell with both styles", () => {
+    const out = engine.parse(`{{ bold (link "u" "x") }}`).evaluate({});
+    const { cells, trailing } = splitCells(out);
+    expect(cells.length).toBe(1);
+    expect(cells[0]!.fragment.style.bold).toBe(true);
+    expect(cells[0]!.fragment.style.link).toBe("u");
+    expect(trailing).toEqual([]);
+  });
+
+  it("a link-free template yields no cells; everything is trailing joiner content", () => {
+    const out = engine.parse(`{{ red "hello" }}`).evaluate({});
+    const { cells, trailing } = splitCells(out);
+    expect(cells.length).toBe(0);
+    expect(trailing.length).toBe(1);
+    expect(trailing[0]!.plain).toBe("hello");
+    expect(trailing[0]!.style.color?.name).toBe("red");
+  });
+
+  it("leading literal before a link becomes the cell's joiner", () => {
+    const out = engine.parse(`prefix {{ link "u" "a" }}`).evaluate({});
+    const { cells, trailing } = splitCells(out);
+    expect(cells.length).toBe(1);
+    expect(cells[0]!.before.length).toBe(1);
+    expect(cells[0]!.before[0]!.plain).toBe("prefix ");
+    expect(trailing).toEqual([]);
+  });
+});
