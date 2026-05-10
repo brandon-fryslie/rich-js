@@ -1,13 +1,27 @@
 /**
- * Template Bindings Demo — comprehensive showcase of @promptctl/go-template-js
- * integration with rich-js styling.
+ * Template Bindings — Interactive TUI Demo
  *
- * Covers: text attributes, named/generic colors, backgrounds, composition,
- * hyperlinks, palette functions, modifiers, auto-contrast, theme gallery,
- * and a realistic CI build report rendered from a Go template.
+ * Every displayed item has an editable TextInput containing the Go template
+ * that live-generates it. Edit the template to see the output update instantly.
+ *
+ * PageUp / PageDown  — navigate sections
+ * Tab / Shift+Tab    — cycle inputs within the current section
+ * Ctrl+C             — exit
  */
 
-import { Console, RichText, Style, Rule, Panel, Table, Group } from "../../src/index.js";
+import {
+  RichText,
+  Style,
+  Rule,
+  Panel,
+  EventRouter,
+  DefaultScreen,
+  DefaultFocusManager,
+  StaticItem,
+  TextInput,
+  Segment,
+  type MountEntry,
+} from "../../src/index.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   MONOKAI,
@@ -31,6 +45,7 @@ import {
   paletteFuncs,
   createRichTextEngine,
 } from "../../src/template-bindings/index.js";
+import { makeAutoObservable, autorun, runInAction } from "mobx";
 
 // ─── Engine helpers ────────────────────────────────────────────────────────
 
@@ -47,20 +62,16 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
   });
 }
 
-// engine.compile(tmpl)(scope) returns T[] — join all fragments into one RichText.
-// applyStyleToFragment stores styling in _style (base style), which RichText.append
-// does not transfer. We encode _style as a span FIRST, then add specific spans after,
-// so span-level styles win over the base on conflict (_buildSegments applies spans in
-// order and the last .add wins).
+// engine.compile(tmpl)(scope) returns T[]. We encode each fragment's _style
+// as a span (via stylize) before adding specific spans so later spans win
+// on conflict — matching _buildSegments accumulation order.
 function exec(engine: Engine<RichText>, tmpl: string): RichText {
   const frags = engine.compile(tmpl)({});
   const out = new RichText("", { end: "" });
   for (const f of frags) {
     const start = out.length;
     out.append(f.plain);
-    if (!f.style.isNull) {
-      out.stylize(f.style, start, out.length);
-    }
+    if (!f.style.isNull) out.stylize(f.style, start, out.length);
     for (const span of f.spans) {
       out.stylize(span.style, start + span.start, start + span.end);
     }
@@ -68,116 +79,206 @@ function exec(engine: Engine<RichText>, tmpl: string): RichText {
   return out;
 }
 
-// ─── Console + layout helpers ──────────────────────────────────────────────
+// Pre-create engines once — not per frame.
+const draculaEngine = makeEngine(DRACULA);
+const gruvboxEngine = makeEngine(GRUVBOX);
+const tokyoEngine = makeEngine(TOKYO_NIGHT);
 
-const con = new Console({ forceTerminal: true });
+const GALLERY_THEMES: [string, Engine<RichText>][] = [
+  ["GRUVBOX",          makeEngine(GRUVBOX)],
+  ["DRACULA",          makeEngine(DRACULA)],
+  ["NORD",             makeEngine(NORD)],
+  ["TOKYO_NIGHT",      makeEngine(TOKYO_NIGHT)],
+  ["CATPPUCCIN_MOCHA", makeEngine(CATPPUCCIN_MOCHA)],
+  ["CATPPUCCIN_LATTE", makeEngine(CATPPUCCIN_LATTE)],
+  ["ROSE_PINE",        makeEngine(ROSE_PINE)],
+  ["ROSE_PINE_DAWN",   makeEngine(ROSE_PINE_DAWN)],
+  ["SOLARIZED_DARK",   makeEngine(SOLARIZED_DARK)],
+  ["SOLARIZED_LIGHT",  makeEngine(SOLARIZED_LIGHT)],
+  ["MONOKAI",          makeEngine(MONOKAI)],
+  ["FLEXOKI",          makeEngine(FLEXOKI)],
+  ["ATOM_ONE_DARK",    makeEngine(ATOM_ONE_DARK)],
+];
 
-function section(title: string): void {
-  con.print(new RichText(""));
-  con.print(new Rule(title, { style: Style.parse("bold cyan") }));
-  con.print(new RichText(""));
+// ─── Styles ────────────────────────────────────────────────────────────────
+
+const dimStyle = Style.parse("dim");
+const cyanBoldStyle = Style.parse("bold cyan");
+const redStyle = Style.parse("red dim");
+
+// ─── App state ─────────────────────────────────────────────────────────────
+
+class AppState {
+  sectionIdx = 0;
+
+  constructor() {
+    makeAutoObservable(this);
+  }
+
+  prev(n: number): void {
+    this.sectionIdx = (this.sectionIdx + n - 1) % n;
+  }
+
+  next(n: number): void {
+    this.sectionIdx = (this.sectionIdx + 1) % n;
+  }
+}
+const state = new AppState();
+
+// ─── Widget utilities ──────────────────────────────────────────────────────
+
+let _uid = 0;
+const uid = (p: string): string => `${p}-${_uid++}`;
+
+function makeStaticSpacer(): StaticItem {
+  return new StaticItem({ id: uid("sp"), render: () => [new Segment("")] });
 }
 
-function row(label: string, content: RichText): void {
-  // Use append(text, style) so dim is a span, not a base style — prevents dim from
-  // bleeding into content via _buildSegments base-style accumulation.
-  const lbl = new RichText("", { end: "" });
-  lbl.append(`  ${label.padEnd(28)} `, Style.parse("dim"));
-  con.print(lbl.append(content));
+// Render a template to Segment[]. On error, returns a dim error message.
+function renderTmpl(
+  engine: Engine<RichText>,
+  tmpl: string,
+  maxWidth: number,
+): Segment[] {
+  try {
+    const result = exec(engine, tmpl);
+    return Array.from(result.render({ maxWidth, isTerminal: true, encoding: "utf-8" }));
+  } catch (e) {
+    return [new Segment(`  [error: ${String(e).slice(0, 70)}]`, redStyle)];
+  }
 }
 
-// ─── Section 0: Header ─────────────────────────────────────────────────────
+// ─── Demo row ──────────────────────────────────────────────────────────────
+//
+// Layout (all flow placement):
+//   labelItem  "  label text"        — dim label
+//   input      [template ...]        — full-width TextInput
+//   outputItem "    rendered result" — indented live output
+//   spacer                           — blank separator
 
-{
-  const title = new RichText("  @promptctl/rich-js  ·  Template Bindings  ", {
-    style: Style.parse("bold"),
-    end: "",
+interface DemoRow {
+  labelItem: StaticItem;
+  input: TextInput;
+  outputItem: StaticItem;
+  spacer: StaticItem;
+}
+
+function makeDemoRow(
+  label: string,
+  template: string,
+  engine: Engine<RichText>,
+): DemoRow {
+  const input = new TextInput({ value: template, id: uid("ti") });
+
+  const labelItem = new StaticItem({
+    id: uid("lbl"),
+    render: () => [new Segment(`  ${label}`, dimStyle)],
   });
-  const subtitle = new RichText("  Go template syntax → rich terminal styling  ", {
-    style: Style.parse("dim"),
-    end: "",
+
+  // Reads input.value — MobX subscribes Screen's autorun to this observable.
+  const outputItem = new StaticItem({
+    id: uid("out"),
+    render: (opts) => {
+      const segs = renderTmpl(engine, input.value, opts.maxWidth - 4);
+      return [new Segment("    "), ...segs];
+    },
   });
-  con.print(
-    new Panel(new Group(title, new RichText(""), subtitle), {
-      borderStyle: Style.parse("bold cyan"),
-      expand: false,
-      padding: [1, 2],
-    }),
-  );
+
+  return { labelItem, input, outputItem, spacer: makeStaticSpacer() };
 }
 
-// ─── Section 1: Text Attributes ────────────────────────────────────────────
+// ─── Section ───────────────────────────────────────────────────────────────
 
-section("Text Attributes");
+interface Section {
+  headerItem: StaticItem;
+  rows: DemoRow[];
+  extraItems: (StaticItem | TextInput)[];
+  allInteractiveWidgets: (StaticItem | TextInput)[];
+  mountEntries: MountEntry[];
+}
 
-row(
-  "canonical names",
-  exec(
-    styleEngine,
+function makeSection(
+  title: string,
+  rows: DemoRow[],
+  extraItems: (StaticItem | TextInput)[] = [],
+): Section {
+  const headerItem = new StaticItem({
+    id: uid("hdr"),
+    render: (opts) => new Rule(title, { style: cyanBoldStyle }).render(opts),
+  });
+  const headerSpacer = makeStaticSpacer();
+  const trailingSpacer = makeStaticSpacer();
+
+  const rowWidgets = rows.flatMap((r): (StaticItem | TextInput)[] => [
+    r.labelItem, r.input, r.outputItem, r.spacer,
+  ]);
+
+  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
+    headerItem, headerSpacer,
+    ...rowWidgets,
+    ...extraItems,
+    trailingSpacer,
+  ];
+
+  const mountEntries: MountEntry[] = allInteractiveWidgets as MountEntry[];
+
+  return { headerItem, rows, extraItems, allInteractiveWidgets, mountEntries };
+}
+
+// ─── Section definitions ───────────────────────────────────────────────────
+
+// § 0  Text Attributes
+const sec0 = makeSection("Text Attributes", [
+  makeDemoRow(
+    "canonical names",
     `{{ bold "bold" }}  {{ dim "dim" }}  {{ italic "italic" }}  ` +
-    `{{ underline "underline" }}  {{ strike "strike" }}  {{ overline "overline" }}  ` +
-    `{{ reverse "reverse" }}  {{ blink "blink" }}`,
-  ),
-);
-
-row(
-  "short aliases",
-  exec(styleEngine, `{{ b "b" }}  {{ i "i" }}  {{ u "u" }}  {{ s "s" }}`),
-);
-
-row(
-  "negation",
-  exec(styleEngine, `{{ not_bold (bold "un-bolded") }}  ← outer not_bold overrides inner bold`),
-);
-
-// ─── Section 2: Named Foreground Colors ────────────────────────────────────
-
-section("Foreground Colors — Named");
-
-row(
-  "standard 8",
-  exec(
+    `{{ underline "underline" }}  {{ strike "strike" }}  ` +
+    `{{ overline "overline" }}  {{ reverse "reverse" }}  {{ blink "blink" }}`,
     styleEngine,
-    `{{ black "black" }}  {{ red "red" }}  {{ green "green" }}  {{ yellow "yellow" }}  ` +
-    `{{ blue "blue" }}  {{ magenta "magenta" }}  {{ cyan "cyan" }}  {{ white "white" }}`,
   ),
-);
-
-row(
-  "bright 8",
-  exec(
+  makeDemoRow(
+    "short aliases",
+    `{{ b "b" }}  {{ i "i" }}  {{ u "u" }}  {{ s "s" }}`,
     styleEngine,
+  ),
+  makeDemoRow(
+    "negation (not_bold wins)",
+    `{{ not_bold (bold "un-bolded") }}  ← outer not_bold overrides inner bold`,
+    styleEngine,
+  ),
+]);
+
+// § 1  Named Colors
+const sec1 = makeSection("Foreground Colors — Named", [
+  makeDemoRow(
+    "standard 8",
+    `{{ black "black" }}  {{ red "red" }}  {{ green "green" }}  ` +
+    `{{ yellow "yellow" }}  {{ blue "blue" }}  {{ magenta "magenta" }}  ` +
+    `{{ cyan "cyan" }}  {{ white "white" }}`,
+    styleEngine,
+  ),
+  makeDemoRow(
+    "bright 8",
     `{{ bright_black "br_black" }}  {{ bright_red "br_red" }}  ` +
     `{{ bright_green "br_green" }}  {{ bright_yellow "br_yellow" }}  ` +
     `{{ bright_blue "br_blue" }}  {{ bright_magenta "br_mag" }}  ` +
     `{{ bright_cyan "br_cyan" }}  {{ bright_white "br_white" }}`,
-  ),
-);
-
-con.print(new RichText("  256-color ramp:", { style: Style.parse("dim") }));
-for (let base = 0; base < 256; base += 86) {
-  const end = Math.min(base + 86, 256);
-  const tmpl = Array.from({ length: end - base }, (_, i) => `{{ color ${base + i} "█" }}`).join("");
-  con.print(exec(styleEngine, "  " + tmpl));
-}
-
-// ─── Section 3: Generic Color Forms ────────────────────────────────────────
-
-section("Foreground Colors — Generic Forms");
-
-row("hex #ff6b6b",          exec(styleEngine, `{{ hex "#ff6b6b" "coral red" }}`));
-row("rgb 255 107 107",      exec(styleEngine, `{{ rgb 255 107 107 "coral red" }}`));
-row("color 203 (256-index)", exec(styleEngine, `{{ color 203 "coral red" }}`));
-row("light_coral (named)",  exec(styleEngine, `{{ light_coral "coral red" }}`));
-
-// ─── Section 4: Background Colors ──────────────────────────────────────────
-
-section("Background Colors — on()");
-
-row(
-  "named colors",
-  exec(
     styleEngine,
+  ),
+]);
+
+// § 2  Generic Color Forms
+const sec2 = makeSection("Foreground Colors — Generic Forms", [
+  makeDemoRow("hex #ff6b6b",          `{{ hex "#ff6b6b" "coral red" }}`,   styleEngine),
+  makeDemoRow("rgb 255 107 107",      `{{ rgb 255 107 107 "coral red" }}`, styleEngine),
+  makeDemoRow("color 203 (256-index)",`{{ color 203 "coral red" }}`,       styleEngine),
+  makeDemoRow("light_coral (named)",  `{{ light_coral "coral red" }}`,     styleEngine),
+]);
+
+// § 3  Background Colors
+const sec3 = makeSection("Background Colors — on()", [
+  makeDemoRow(
+    "named colors",
     `{{ bright_white (on "red" " red ") }}  ` +
     `{{ bright_white (on "green" " green ") }}  ` +
     `{{ bright_white (on "blue" " blue ") }}  ` +
@@ -185,251 +286,389 @@ row(
     `{{ bright_white (on "cyan" " cyan ") }}  ` +
     `{{ black (on "yellow" " yellow ") }}  ` +
     `{{ black (on "white" " white ") }}`,
-  ),
-);
-
-row(
-  "hex + named 256",
-  exec(
     styleEngine,
+  ),
+  makeDemoRow(
+    "hex + named 256",
     `{{ bright_white (on "#ff6b6b" " #ff6b6b ") }}  ` +
     `{{ bright_white (on "#2d4f67" " #2d4f67 ") }}  ` +
     `{{ bright_white (on "navy_blue" " navy_blue ") }}  ` +
     `{{ black (on "light_coral" " light_coral ") }}`,
+    styleEngine,
   ),
-);
+]);
 
-// ─── Section 5: Composition ─────────────────────────────────────────────────
+// § 4  Composition
+const sec4 = makeSection("Composition", [
+  makeDemoRow("bold red",             `{{ bold (red "alert!") }}`,                                     styleEngine),
+  makeDemoRow("italic on navy",       `{{ italic (on "navy_blue" (bright_white "deep sea")) }}`,        styleEngine),
+  makeDemoRow("underline hex bold",   `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`,               styleEngine),
+  makeDemoRow("dim strike",           `{{ dim (strike "deprecated") }}`,                                styleEngine),
+  makeDemoRow("reverse cyan",         `{{ reverse (cyan "flipped") }}`,                                 styleEngine),
+  makeDemoRow("all three (aliases)",  `{{ b (i (u "all three")) }}`,                                    styleEngine),
+]);
 
-section("Composition");
-
-{
-  const table = new Table({ borderStyle: Style.parse("dim") });
-  table.addColumn("Template", { style: Style.parse("dim"), noWrap: true });
-  table.addColumn("Rendered");
-
-  const pairs: Array<[string, string]> = [
-    [
-      '{{ bold (red "alert!") }}',
-      `{{ bold (red "alert!") }}`,
-    ],
-    [
-      '{{ italic (on "navy_blue" (bright_white "deep sea")) }}',
-      `{{ italic (on "navy_blue" (bright_white "deep sea")) }}`,
-    ],
-    [
-      '{{ underline (hex "#ff6b6b" (bold "alarm!")) }}',
-      `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`,
-    ],
-    [
-      '{{ dim (strike "deprecated") }}',
-      `{{ dim (strike "deprecated") }}`,
-    ],
-    [
-      '{{ reverse (cyan "flipped") }}',
-      `{{ reverse (cyan "flipped") }}`,
-    ],
-    [
-      '{{ b (i (u "all three")) }}',
-      `{{ b (i (u "all three")) }}`,
-    ],
-  ];
-
-  for (const [label, tmpl] of pairs) {
-    table.addRow(new RichText(label, { style: Style.parse("dim"), end: "" }), exec(styleEngine, tmpl));
-  }
-  con.print(table);
-}
-
-// ─── Section 6: Hyperlinks ──────────────────────────────────────────────────
-
-section("Links — OSC 8 Hyperlinks");
-
-con.print(
-  exec(styleEngine, `  {{ link "https://github.com/anthropics/anthropic-sdk-python" (underline (cyan "Anthropic SDK")) }}`),
-);
-con.print(
-  exec(styleEngine, `  {{ bold (link "https://rich.readthedocs.io" (green "Python Rich")) }}`),
-);
-con.print(
-  exec(styleEngine, `  {{ link "https://github.com" (b (hex "#58a6ff" "GitHub")) }}`),
-);
-con.print(
-  new RichText(
-    "  Links are OSC 8 escape sequences — click them in a supporting terminal (iTerm2, Kitty, WezTerm).",
-    { style: Style.parse("dim") },
+// § 5  Links
+const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
+  makeDemoRow(
+    "underline cyan",
+    `{{ link "https://github.com/anthropics/anthropic-sdk-python" (underline (cyan "Anthropic SDK")) }}`,
+    styleEngine,
   ),
-);
+  makeDemoRow(
+    "bold link",
+    `{{ bold (link "https://rich.readthedocs.io" (green "Python Rich")) }}`,
+    styleEngine,
+  ),
+  makeDemoRow(
+    "hex link",
+    `{{ link "https://github.com" (b (hex "#58a6ff" "GitHub")) }}`,
+    styleEngine,
+  ),
+]);
 
-// ─── Section 7: Palette Functions — DRACULA ────────────────────────────────
-
-section("Palette Functions — DRACULA");
-
-{
-  const draculaEngine = makeEngine(DRACULA);
-
-  row(
+// § 6  Palette — DRACULA
+const sec6 = makeSection("Palette Functions — DRACULA", [
+  makeDemoRow(
     "semantic colors",
-    exec(
-      draculaEngine,
-      `{{ primary " primary " }}  {{ secondary " secondary " }}  ` +
-      `{{ accent " accent " }}  {{ success " success " }}  ` +
-      `{{ warning " warning " }}  {{ error " error " }}  ` +
-      `{{ surface " surface " }}`,
-    ),
-  );
-
-  row(
+    `{{ primary " primary " }}  {{ secondary " secondary " }}  ` +
+    `{{ accent " accent " }}  {{ success " success " }}  ` +
+    `{{ warning " warning " }}  {{ error " error " }}  ` +
+    `{{ surface " surface " }}`,
+    draculaEngine,
+  ),
+  makeDemoRow(
     "derived (palette func)",
-    exec(
-      draculaEngine,
-      `{{ primary "primary" }}  ` +
-      `{{ palette "primary-muted" "primary-muted" }}  ` +
-      `{{ palette "text-primary" "text-primary" }}`,
-    ),
-  );
-
-  row(
+    `{{ primary "primary" }}  ` +
+    `{{ palette "primary-muted" "primary-muted" }}  ` +
+    `{{ palette "text-primary" "text-primary" }}`,
+    draculaEngine,
+  ),
+  makeDemoRow(
     "foreground / background",
-    exec(
-      draculaEngine,
-      `{{ foreground "foreground" }}  {{ background "background" }}`,
-    ),
-  );
-}
+    `{{ foreground "foreground" }}  {{ background "background" }}`,
+    draculaEngine,
+  ),
+]);
 
-// ─── Section 8: Palette Modifiers — GRUVBOX ────────────────────────────────
-
-section("Palette Modifiers — darken · lighten · alpha");
-
-{
-  const gruvboxEngine = makeEngine(GRUVBOX);
-  const GRUVBOX_BG = "#282828";
-
-  row(
+// § 7  Palette Modifiers — GRUVBOX
+const GRUVBOX_BG = "#282828";
+const sec7 = makeSection("Palette Modifiers — darken · lighten · alpha", [
+  makeDemoRow(
     "darken gradient",
-    exec(
-      gruvboxEngine,
-      `{{ primary "base" }}  ` +
-      `{{ palette "primary-darken-1" "↓1" }}  ` +
-      `{{ palette "primary-darken-2" "↓2" }}  ` +
-      `{{ palette "primary-darken-3" "↓3" }}`,
-    ),
-  );
-
-  row(
+    `{{ primary "base" }}  ` +
+    `{{ palette "primary-darken-1" "↓1" }}  ` +
+    `{{ palette "primary-darken-2" "↓2" }}  ` +
+    `{{ palette "primary-darken-3" "↓3" }}`,
+    gruvboxEngine,
+  ),
+  makeDemoRow(
     "lighten gradient",
-    exec(
-      gruvboxEngine,
-      `{{ primary "base" }}  ` +
-      `{{ palette "primary-lighten-1" "↑1" }}  ` +
-      `{{ palette "primary-lighten-2" "↑2" }}  ` +
-      `{{ palette "primary-lighten-3" "↑3" }}`,
-    ),
-  );
-
-  row(
+    `{{ primary "base" }}  ` +
+    `{{ palette "primary-lighten-1" "↑1" }}  ` +
+    `{{ palette "primary-lighten-2" "↑2" }}  ` +
+    `{{ palette "primary-lighten-3" "↑3" }}`,
+    gruvboxEngine,
+  ),
+  makeDemoRow(
     "alpha fade (accent over bg)",
-    exec(
-      gruvboxEngine,
-      `{{ paletteOver "accent 25%" "${GRUVBOX_BG}" "█ 25%" }}  ` +
-      `{{ paletteOver "accent 50%" "${GRUVBOX_BG}" "█ 50%" }}  ` +
-      `{{ paletteOver "accent 75%" "${GRUVBOX_BG}" "█ 75%" }}  ` +
-      `{{ paletteOver "accent 100%" "${GRUVBOX_BG}" "█ 100%" }}`,
-    ),
-  );
-}
+    `{{ paletteOver "accent 25%" "${GRUVBOX_BG}" "█ 25%" }}  ` +
+    `{{ paletteOver "accent 50%" "${GRUVBOX_BG}" "█ 50%" }}  ` +
+    `{{ paletteOver "accent 75%" "${GRUVBOX_BG}" "█ 75%" }}  ` +
+    `{{ paletteOver "accent 100%" "${GRUVBOX_BG}" "█ 100%" }}`,
+    gruvboxEngine,
+  ),
+]);
 
-// ─── Section 9: Auto-Contrast ───────────────────────────────────────────────
+// § 8  Auto-Contrast
+const sec8 = makeSection("Auto-Contrast — auto()", [
+  makeDemoRow(
+    "WCAG contrast swatches",
+    [
+      "#000000", "#1a1a2e", "#2d6a4f", "#f4a261", "#e9c46a",
+      "#ffffff", "#ffecd2", "#f8f9fa", "#495057", "#dee2e6",
+    ].map((bg) => `{{ on "${bg}" (auto "${bg}" "  auto  ") }}`).join("  "),
+    makeEngine(TOKYO_NIGHT),
+  ),
+]);
 
-section("Auto-Contrast — auto()");
+// § 9  Theme Gallery (special: 1 shared input → 13 theme outputs in one StaticItem)
+const GALLERY_TMPL =
+  `{{ bold (primary "Rich") }} {{ accent "template" }} ` +
+  `{{ success "✓" }} {{ warning "!" }} {{ error "✗" }}`;
 
-{
-  const autoEngine = makeEngine(TOKYO_NIGHT);
-  const bgHexes = [
-    "#000000", "#1a1a2e", "#2d6a4f", "#f4a261", "#e9c46a",
-    "#ffffff", "#ffecd2", "#f8f9fa", "#495057", "#dee2e6",
+const galleryInput = new TextInput({
+  value: GALLERY_TMPL,
+  id: uid("gallery-ti"),
+});
+
+const galleryLabelItem = new StaticItem({
+  id: uid("gallery-lbl"),
+  render: () => [new Segment("  template", dimStyle)],
+});
+
+const galleryOutputItem = new StaticItem({
+  id: uid("gallery-out"),
+  render: (opts) => {
+    const tmpl = galleryInput.value;
+    const swatchTmpl =
+      `{{ primary "██" }}{{ accent "██" }}{{ success "██" }}{{ warning "██" }}{{ error "██" }}`;
+    const segments: Segment[] = [];
+    for (let i = 0; i < GALLERY_THEMES.length; i++) {
+      const [name, engine] = GALLERY_THEMES[i]!;
+      segments.push(new Segment(`    ${name.padEnd(22)}`, dimStyle));
+      // colour swatches
+      const swatches = renderTmpl(engine, swatchTmpl, 20);
+      segments.push(...swatches);
+      segments.push(new Segment("  "));
+      // user template
+      const result = renderTmpl(engine, tmpl, opts.maxWidth - 50);
+      segments.push(...result);
+      if (i < GALLERY_THEMES.length - 1) segments.push(new Segment("\n"));
+    }
+    return segments;
+  },
+});
+
+const sec9: Section = (() => {
+  const headerItem = new StaticItem({
+    id: uid("hdr"),
+    render: (opts) =>
+      new Rule("Theme Gallery — same template, 13 themes", { style: cyanBoldStyle }).render(opts),
+  });
+  const headerSpacer = makeStaticSpacer();
+  const trailingSpacer = makeStaticSpacer();
+
+  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
+    headerItem, headerSpacer,
+    galleryLabelItem, galleryInput, galleryOutputItem, makeStaticSpacer(),
+    trailingSpacer,
   ];
 
-  con.print(
-    new RichText(
-      "  Text color chosen automatically for WCAG contrast against each background.",
-      { style: Style.parse("dim") },
-    ),
-  );
+  return {
+    headerItem,
+    rows: [],
+    extraItems: [galleryLabelItem, galleryInput, galleryOutputItem],
+    allInteractiveWidgets,
+    mountEntries: allInteractiveWidgets as MountEntry[],
+  };
+})();
 
-  const strip = exec(
-    autoEngine,
-    bgHexes.map((bg) => `{{ on "${bg}" (auto "${bg}" "  auto  ") }}`).join(" "),
-  );
-  con.print(new RichText("  ", { end: "" }).append(strip));
-}
+// § 10  Showcase — Build Report (6 inputs → combined Panel output)
+const SHOWCASE_LINES: [string, string][] = [
+  [
+    "header",
+    `{{ bold (primary "BUILD REPORT") }}  {{ palette "surface" "·" }}  {{ dim "2026-05-10" }}`,
+  ],
+  [
+    "tests",
+    `{{ success "✓" }} {{ bold "Tests" }}    {{ dim "8,627 passed" }}  {{ palette "success-muted" "(+32)" }}`,
+  ],
+  [
+    "lint",
+    `{{ error "✗" }} {{ bold "Lint" }}     {{ dim "2 errors" }}       {{ error "fix required" }}`,
+  ],
+  [
+    "coverage",
+    `{{ warning "!" }} {{ bold "Coverage" }} {{ dim "87.4%" }}           {{ warning "below 90% threshold" }}`,
+  ],
+  [
+    "artifacts",
+    `{{ dim "Artifacts:" }}  {{ link "https://example.com/dist" (underline (accent "dist/")) }}` +
+    `  {{ link "https://example.com/docs" (underline (accent "docs/")) }}`,
+  ],
+  [
+    "footer",
+    `{{ italic (dim "Powered by ") }}{{ link "https://github.com" (cyan "rich-js") }}{{ italic (dim " template bindings") }}`,
+  ],
+];
 
-// ─── Section 10: Theme Gallery ──────────────────────────────────────────────
+const showcaseRows = SHOWCASE_LINES.map(([label, tmpl]) =>
+  makeDemoRow(label, tmpl, tokyoEngine),
+);
 
-section("Theme Gallery — same template, 13 themes");
-
-{
-  const THEMES: Array<[string, TerminalTheme]> = [
-    ["GRUVBOX",          GRUVBOX],
-    ["DRACULA",          DRACULA],
-    ["NORD",             NORD],
-    ["TOKYO_NIGHT",      TOKYO_NIGHT],
-    ["CATPPUCCIN_MOCHA", CATPPUCCIN_MOCHA],
-    ["CATPPUCCIN_LATTE", CATPPUCCIN_LATTE],
-    ["ROSE_PINE",        ROSE_PINE],
-    ["ROSE_PINE_DAWN",   ROSE_PINE_DAWN],
-    ["SOLARIZED_DARK",   SOLARIZED_DARK],
-    ["SOLARIZED_LIGHT",  SOLARIZED_LIGHT],
-    ["MONOKAI",          MONOKAI],
-    ["FLEXOKI",          FLEXOKI],
-    ["ATOM_ONE_DARK",    ATOM_ONE_DARK],
-  ];
-
-  const GALLERY_TMPL =
-    `{{ bold (primary "Rich") }} {{ accent "template" }} ` +
-    `{{ success "✓" }} {{ warning "!" }} {{ error "✗" }}`;
-
-  for (const [name, theme] of THEMES) {
-    const engine = makeEngine(theme);
-    const label = new RichText("", { end: "" });
-    label.append(`  ${name.padEnd(22)}`, Style.parse("dim"));
-    const swatches = exec(
-      engine,
-      `{{ primary "██" }}{{ accent "██" }}{{ success "██" }}{{ warning "██" }}{{ error "██" }}`,
-    );
-    const sentence = exec(engine, "  " + GALLERY_TMPL);
-    con.print(label.append(swatches).append(sentence));
-  }
-}
-
-// ─── Section 11: Showcase — Build Report ───────────────────────────────────
-
-section("Showcase — Build Report");
-
-{
-  const tokyoEngine = makeEngine(TOKYO_NIGHT);
-
-  const REPORT_TMPL =
-    `{{ bold (primary "BUILD REPORT") }}  {{ palette "surface" "·" }}  {{ dim "2026-05-10" }}
-
-  {{ success "✓" }} {{ bold "Tests"    }}  {{ dim "8,627 passed" }}  {{ palette "success-muted" "(+32)" }}
-  {{ error   "✗" }} {{ bold "Lint"     }}  {{ dim "2 errors" }}      {{ error "fix required" }}
-  {{ warning "!" }} {{ bold "Coverage" }}  {{ dim "87.4%" }}          {{ warning "below 90% threshold" }}
-
-  {{ dim "Artifacts:" }}  {{ link "https://example.com/dist" (underline (accent "dist/")) }}
-                          {{ link "https://example.com/docs" (underline (accent "docs/")) }}
-
-  {{ italic (dim "Powered by ") }}{{ link "https://github.com" (cyan "rich-js") }}{{ italic (dim " template bindings") }}`;
-
-  const report = exec(tokyoEngine, REPORT_TMPL);
-  con.print(
-    new Panel(report, {
-      borderStyle: Style.parse("bold cyan"),
-      title: new RichText(" CI / CD ", { style: Style.parse("bold cyan"), end: "" }),
+// Combined Panel output — reads ALL showcase inputs.
+// Blank lines: after header (idx 0), and before artifacts (idx 4).
+const showcasePanelItem = new StaticItem({
+  id: uid("showcase-panel"),
+  render: (opts) => {
+    // Build a renderable that joins all showcase lines with newlines.
+    const lineRenderable = {
+      render: (innerOpts: { maxWidth: number; isTerminal: boolean; encoding: string }) => {
+        const segments: Segment[] = [];
+        for (let i = 0; i < showcaseRows.length; i++) {
+          if (i > 0) segments.push(new Segment("\n"));
+          if (i === 1 || i === 4) segments.push(new Segment("\n  "));  // blank lines
+          else if (i > 0) segments.push(new Segment("  "));
+          const segs = renderTmpl(tokyoEngine, showcaseRows[i]!.input.value, innerOpts.maxWidth);
+          segments.push(...segs);
+        }
+        return segments;
+      },
+    };
+    const titleText = new RichText(" CI / CD ", { style: cyanBoldStyle, end: "" });
+    const panel = new Panel(lineRenderable, {
+      borderStyle: cyanBoldStyle,
+      title: titleText,
       padding: [1, 2],
-    }),
-  );
+    });
+    return panel.render(opts);
+  },
+});
+
+const sec10: Section = (() => {
+  const headerItem = new StaticItem({
+    id: uid("hdr"),
+    render: (opts) =>
+      new Rule("Showcase — Build Report", { style: cyanBoldStyle }).render(opts),
+  });
+  const headerSpacer = makeStaticSpacer();
+  const panelLabelItem = new StaticItem({
+    id: uid("panel-lbl"),
+    render: () => [new Segment("  combined output", dimStyle)],
+  });
+  const trailingSpacer = makeStaticSpacer();
+
+  const rowWidgets = showcaseRows.flatMap((r): (StaticItem | TextInput)[] => [
+    r.labelItem, r.input, r.outputItem, r.spacer,
+  ]);
+
+  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
+    headerItem, headerSpacer,
+    ...rowWidgets,
+    panelLabelItem,
+    showcasePanelItem,
+    trailingSpacer,
+  ];
+
+  return {
+    headerItem,
+    rows: showcaseRows,
+    extraItems: [panelLabelItem, showcasePanelItem],
+    allInteractiveWidgets,
+    mountEntries: allInteractiveWidgets as MountEntry[],
+  };
+})();
+
+// ─── All sections in display order ─────────────────────────────────────────
+// Theme Gallery (§9) appears before Showcase (§10) per user request.
+
+const SECTIONS: Section[] = [
+  sec0, sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8, sec9, sec10,
+];
+
+// ─── Always-visible header widgets ─────────────────────────────────────────
+
+const appTitleItem = new StaticItem({
+  id: "app-title",
+  render: () => {
+    const idx = state.sectionIdx;
+    const total = SECTIONS.length;
+    const title = [
+      "Text Attributes", "Named Colors", "Generic Colors", "Background Colors",
+      "Composition", "Links", "Palette (DRACULA)", "Modifiers (GRUVBOX)",
+      "Auto-Contrast", "Theme Gallery", "Build Report",
+    ][idx] ?? "";
+    return [
+      new Segment("  @promptctl/rich-js · Template Bindings", Style.parse("bold")),
+      new Segment(`   §${idx + 1}/${total}: ${title}`, cyanBoldStyle),
+    ];
+  },
+});
+
+const navHintItem = new StaticItem({
+  id: "nav-hint",
+  render: () => [
+    new Segment(
+      "  PageUp/PageDown: navigate sections  ·  Tab: cycle inputs  ·  Ctrl+C: exit",
+      dimStyle,
+    ),
+  ],
+});
+
+const headerSpacer = makeStaticSpacer();
+
+// ─── Focus manager + screen ────────────────────────────────────────────────
+
+const fm = new DefaultFocusManager();
+const screen = new DefaultScreen({ focusManager: fm, out: process.stdout });
+
+// ─── Mount list ────────────────────────────────────────────────────────────
+
+const mountList: MountEntry[] = [
+  appTitleItem,
+  navHintItem,
+  headerSpacer,
+  ...SECTIONS.flatMap((s) => s.mountEntries),
+];
+
+// ─── Visibility + focus management ─────────────────────────────────────────
+
+// Reads state.sectionIdx; fires synchronously on each section change.
+// Sets visible/disabled on all section widgets, then focuses the first input.
+const disposeVisibility = autorun(() => {
+  const idx = state.sectionIdx;
+  runInAction(() => {
+    SECTIONS.forEach((sec, si) => {
+      const active = si === idx;
+      for (const w of sec.allInteractiveWidgets) {
+        w.visible = active;
+        if (w instanceof TextInput) {
+          (w as TextInput).disabled = !active;
+        }
+      }
+    });
+    // Focus the first TextInput of the now-active section.
+    const firstInput = SECTIONS[idx]?.rows[0]?.input
+      ?? (SECTIONS[idx]?.extraItems.find((w) => w instanceof TextInput) as TextInput | undefined);
+    if (firstInput) fm.focus(firstInput);
+  });
+});
+
+// ─── Navigation ────────────────────────────────────────────────────────────
+
+const router = new EventRouter({ screen, input: process.stdin, output: process.stdout });
+
+const unsubKey = router.onKey((event) => {
+  if (event.ctrl && event.key === "c") {
+    shutdown();
+    return;
+  }
+  const n = SECTIONS.length;
+  if (event.key === "pageup") {
+    state.prev(n);
+    // Focus first input of new section (visibility autorun already ran).
+    const sec = SECTIONS[state.sectionIdx]!;
+    const first = sec.rows[0]?.input
+      ?? (sec.extraItems.find((w) => w instanceof TextInput) as TextInput | undefined);
+    if (first) fm.focus(first);
+  } else if (event.key === "pagedown") {
+    state.next(n);
+    const sec = SECTIONS[state.sectionIdx]!;
+    const first = sec.rows[0]?.input
+      ?? (sec.extraItems.find((w) => w instanceof TextInput) as TextInput | undefined);
+    if (first) fm.focus(first);
+  }
+});
+
+// ─── Lifecycle ─────────────────────────────────────────────────────────────
+
+function shutdown(): void {
+  unsubKey();
+  disposeVisibility();
+  router.stop();
+  screen.stop();
+  process.stdout.write("\x1b[?1049l"); // leave alt screen
+  process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
+  process.exit(0);
 }
 
-con.print(new RichText(""));
+process.once("SIGINT", () => shutdown());
+process.once("SIGTERM", () => shutdown());
+
+// Mount all, enter alt screen, start.
+screen.mount(...mountList);
+process.stdout.write("\x1b[?1049h"); // enter alt screen
+process.stdout.write("\x1b[H");       // move cursor to top-left
+screen.start();
+router.start();
