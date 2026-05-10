@@ -1,12 +1,15 @@
 /**
  * Template Bindings — Interactive TUI Demo
  *
- * Every displayed item has an editable TextInput containing the Go template
- * that live-generates it. Edit the template to see the output update instantly.
+ * Side-by-side layout: editable template box on the left, live rendered
+ * output on the right. Every section's TextInputs are invisible widgets
+ * (focusable, handles keys) while a paired StaticItem renders both columns
+ * by reading input.value / input.cursorPosition / input.focused (all MobX
+ * observables), so Screen's autorun re-renders on every keystroke.
  *
- * PageUp / PageDown  — navigate sections
- * Tab / Shift+Tab    — cycle inputs within the current section
- * Ctrl+C             — exit
+ * Ctrl+N / Ctrl+P — navigate sections (next / prev)
+ * Tab / Shift+Tab  — cycle inputs within the current section
+ * Ctrl+C           — exit
  */
 
 import {
@@ -62,9 +65,6 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
   });
 }
 
-// engine.compile(tmpl)(scope) returns T[]. We encode each fragment's _style
-// as a span (via stylize) before adding specific spans so later spans win
-// on conflict — matching _buildSegments accumulation order.
 function exec(engine: Engine<RichText>, tmpl: string): RichText {
   const frags = engine.compile(tmpl)({});
   const out = new RichText("", { end: "" });
@@ -105,6 +105,8 @@ const GALLERY_THEMES: [string, Engine<RichText>][] = [
 const dimStyle = Style.parse("dim");
 const cyanBoldStyle = Style.parse("bold cyan");
 const redStyle = Style.parse("red dim");
+const cursorStyle = Style.parse("reverse");
+const boxStyle = Style.parse("dim");
 
 // ─── App state ─────────────────────────────────────────────────────────────
 
@@ -130,11 +132,11 @@ const state = new AppState();
 let _uid = 0;
 const uid = (p: string): string => `${p}-${_uid++}`;
 
-function makeStaticSpacer(): StaticItem {
+function makeSpacerItem(): StaticItem {
   return new StaticItem({ id: uid("sp"), render: () => [new Segment("")] });
 }
 
-// Render a template to Segment[]. On error, returns a dim error message.
+// Render a template to Segment[]. Returns a dim error message on failure.
 function renderTmpl(
   engine: Engine<RichText>,
   tmpl: string,
@@ -144,22 +146,26 @@ function renderTmpl(
     const result = exec(engine, tmpl);
     return Array.from(result.render({ maxWidth, isTerminal: true, encoding: "utf-8" }));
   } catch (e) {
-    return [new Segment(`  [error: ${String(e).slice(0, 70)}]`, redStyle)];
+    return [new Segment(`[error: ${String(e).slice(0, 60)}]`, redStyle)];
   }
 }
 
-// ─── Demo row ──────────────────────────────────────────────────────────────
+// ─── Two-column row ────────────────────────────────────────────────────────
 //
-// Layout (all flow placement):
-//   labelItem  "  label text"        — dim label
-//   input      [template ...]        — full-width TextInput
-//   outputItem "    rendered result" — indented live output
-//   spacer                           — blank separator
+// Layout (all flow):
+//   labelItem   "  label"          — dim section label
+//   combinedItem  [template...│]  rendered output   — both columns in one item
+//   input        (invisible: focusable, handles keys, stores value)
+//   spacer
+//
+// The TextInput is always invisible. The combinedItem renders a faux TextInput
+// on the left by reading input.value / input.cursorPosition / input.focused
+// (all MobX observables) — Screen's autorun re-renders on every keystroke.
 
 interface DemoRow {
   labelItem: StaticItem;
+  combinedItem: StaticItem;
   input: TextInput;
-  outputItem: StaticItem;
   spacer: StaticItem;
 }
 
@@ -169,22 +175,57 @@ function makeDemoRow(
   engine: Engine<RichText>,
 ): DemoRow {
   const input = new TextInput({ value: template, id: uid("ti") });
+  // Invisible: takes 0 space but stays in Tab order and handles keys.
+  runInAction(() => { input.visible = false; });
 
   const labelItem = new StaticItem({
     id: uid("lbl"),
     render: () => [new Segment(`  ${label}`, dimStyle)],
   });
 
-  // Reads input.value — MobX subscribes Screen's autorun to this observable.
-  const outputItem = new StaticItem({
-    id: uid("out"),
+  const combinedItem = new StaticItem({
+    id: uid("combined"),
     render: (opts) => {
-      const segs = renderTmpl(engine, input.value, opts.maxWidth - 4);
-      return [new Segment("    "), ...segs];
+      const totalW = opts.maxWidth;
+      // Left column: faux TextInput box occupies roughly half the width.
+      // "  [" prefix (3) + content + "]  " suffix (3) = boxWidth.
+      const boxWidth = Math.floor(totalW / 2);
+      const contentW = Math.max(4, boxWidth - 6);  // inside the [ ] brackets
+      const rightW = Math.max(4, totalW - boxWidth - 2);  // remaining for output
+
+      const tmpl = input.value;          // observable read → subscription
+      const pos = input.cursorPosition;  // observable read → subscription
+      const focused = input.focused;     // observable read → subscription
+
+      // Slide a window over the template so the cursor stays visible.
+      const winStart = Math.max(0, Math.min(tmpl.length - contentW, pos - Math.floor(contentW / 2)));
+      const slice = tmpl.slice(winStart, winStart + contentW);
+      const display = slice.padEnd(contentW, " ");
+      const localCursor = pos - winStart;
+
+      const segs: Segment[] = [new Segment("  [", boxStyle)];
+
+      if (focused && localCursor >= 0 && localCursor < contentW) {
+        if (localCursor > 0) segs.push(new Segment(display.slice(0, localCursor), dimStyle));
+        segs.push(new Segment(display[localCursor] ?? " ", cursorStyle));
+        if (localCursor + 1 < contentW) {
+          segs.push(new Segment(display.slice(localCursor + 1), dimStyle));
+        }
+      } else {
+        segs.push(new Segment(display, dimStyle));
+      }
+
+      segs.push(new Segment("]  ", boxStyle));
+
+      // Right column: rendered template output.
+      const rightSegs = renderTmpl(engine, tmpl, rightW);
+      segs.push(...rightSegs);
+
+      return segs;
     },
   });
 
-  return { labelItem, input, outputItem, spacer: makeStaticSpacer() };
+  return { labelItem, combinedItem, input, spacer: makeSpacerItem() };
 }
 
 // ─── Section ───────────────────────────────────────────────────────────────
@@ -192,42 +233,48 @@ function makeDemoRow(
 interface Section {
   headerItem: StaticItem;
   rows: DemoRow[];
-  extraItems: (StaticItem | TextInput)[];
+  extraVisibleItems: StaticItem[];  // additional visible items (e.g. gallery output)
   allInteractiveWidgets: (StaticItem | TextInput)[];
   mountEntries: MountEntry[];
 }
 
-function makeSection(
-  title: string,
-  rows: DemoRow[],
-  extraItems: (StaticItem | TextInput)[] = [],
-): Section {
+function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticItem[] = []): Section {
   const headerItem = new StaticItem({
     id: uid("hdr"),
     render: (opts) => new Rule(title, { style: cyanBoldStyle }).render(opts),
   });
-  const headerSpacer = makeStaticSpacer();
-  const trailingSpacer = makeStaticSpacer();
+  const headerSpacer = makeSpacerItem();
+  const trailingSpacer = makeSpacerItem();
 
-  const rowWidgets = rows.flatMap((r): (StaticItem | TextInput)[] => [
-    r.labelItem, r.input, r.outputItem, r.spacer,
-  ]);
-
-  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
+  // All StaticItems that participate in show/hide per section.
+  const visibleItems: StaticItem[] = [
     headerItem, headerSpacer,
-    ...rowWidgets,
-    ...extraItems,
+    ...rows.flatMap((r) => [r.labelItem, r.combinedItem, r.spacer]),
+    ...extraVisibleItems,
     trailingSpacer,
   ];
 
-  const mountEntries: MountEntry[] = allInteractiveWidgets as MountEntry[];
+  // Inputs are always invisible (visible=false) but need disabled toggling.
+  const inputs = rows.map((r) => r.input);
 
-  return { headerItem, rows, extraItems, allInteractiveWidgets, mountEntries };
+  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
+    ...visibleItems,
+    ...inputs,
+  ];
+
+  // Mount order: label, combined, spacer per row; inputs at end (0-height).
+  const mountEntries: MountEntry[] = [
+    headerItem, headerSpacer,
+    ...rows.flatMap((r): MountEntry[] => [r.labelItem, r.combinedItem, r.spacer, r.input]),
+    ...extraVisibleItems,
+    trailingSpacer,
+  ];
+
+  return { headerItem, rows, extraVisibleItems, allInteractiveWidgets, mountEntries };
 }
 
 // ─── Section definitions ───────────────────────────────────────────────────
 
-// § 0  Text Attributes
 const sec0 = makeSection("Text Attributes", [
   makeDemoRow(
     "canonical names",
@@ -242,13 +289,12 @@ const sec0 = makeSection("Text Attributes", [
     styleEngine,
   ),
   makeDemoRow(
-    "negation (not_bold wins)",
+    "negation",
     `{{ not_bold (bold "un-bolded") }}  ← outer not_bold overrides inner bold`,
     styleEngine,
   ),
 ]);
 
-// § 1  Named Colors
 const sec1 = makeSection("Foreground Colors — Named", [
   makeDemoRow(
     "standard 8",
@@ -267,15 +313,13 @@ const sec1 = makeSection("Foreground Colors — Named", [
   ),
 ]);
 
-// § 2  Generic Color Forms
 const sec2 = makeSection("Foreground Colors — Generic Forms", [
-  makeDemoRow("hex #ff6b6b",          `{{ hex "#ff6b6b" "coral red" }}`,   styleEngine),
-  makeDemoRow("rgb 255 107 107",      `{{ rgb 255 107 107 "coral red" }}`, styleEngine),
-  makeDemoRow("color 203 (256-index)",`{{ color 203 "coral red" }}`,       styleEngine),
-  makeDemoRow("light_coral (named)",  `{{ light_coral "coral red" }}`,     styleEngine),
+  makeDemoRow("hex #ff6b6b",          `{{ hex "#ff6b6b" "coral red" }}`,    styleEngine),
+  makeDemoRow("rgb 255 107 107",      `{{ rgb 255 107 107 "coral red" }}`,  styleEngine),
+  makeDemoRow("color 203 (256-index)",`{{ color 203 "coral red" }}`,        styleEngine),
+  makeDemoRow("light_coral (named)",  `{{ light_coral "coral red" }}`,      styleEngine),
 ]);
 
-// § 3  Background Colors
 const sec3 = makeSection("Background Colors — on()", [
   makeDemoRow(
     "named colors",
@@ -298,17 +342,15 @@ const sec3 = makeSection("Background Colors — on()", [
   ),
 ]);
 
-// § 4  Composition
 const sec4 = makeSection("Composition", [
-  makeDemoRow("bold red",             `{{ bold (red "alert!") }}`,                                     styleEngine),
-  makeDemoRow("italic on navy",       `{{ italic (on "navy_blue" (bright_white "deep sea")) }}`,        styleEngine),
-  makeDemoRow("underline hex bold",   `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`,               styleEngine),
-  makeDemoRow("dim strike",           `{{ dim (strike "deprecated") }}`,                                styleEngine),
-  makeDemoRow("reverse cyan",         `{{ reverse (cyan "flipped") }}`,                                 styleEngine),
-  makeDemoRow("all three (aliases)",  `{{ b (i (u "all three")) }}`,                                    styleEngine),
+  makeDemoRow("bold red",            `{{ bold (red "alert!") }}`,                                     styleEngine),
+  makeDemoRow("italic on navy",      `{{ italic (on "navy_blue" (bright_white "deep sea")) }}`,        styleEngine),
+  makeDemoRow("underline hex bold",  `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`,               styleEngine),
+  makeDemoRow("dim strike",          `{{ dim (strike "deprecated") }}`,                                styleEngine),
+  makeDemoRow("reverse cyan",        `{{ reverse (cyan "flipped") }}`,                                 styleEngine),
+  makeDemoRow("all three (aliases)", `{{ b (i (u "all three")) }}`,                                    styleEngine),
 ]);
 
-// § 5  Links
 const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
   makeDemoRow(
     "underline cyan",
@@ -327,7 +369,6 @@ const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
   ),
 ]);
 
-// § 6  Palette — DRACULA
 const sec6 = makeSection("Palette Functions — DRACULA", [
   makeDemoRow(
     "semantic colors",
@@ -351,23 +392,18 @@ const sec6 = makeSection("Palette Functions — DRACULA", [
   ),
 ]);
 
-// § 7  Palette Modifiers — GRUVBOX
 const GRUVBOX_BG = "#282828";
 const sec7 = makeSection("Palette Modifiers — darken · lighten · alpha", [
   makeDemoRow(
     "darken gradient",
-    `{{ primary "base" }}  ` +
-    `{{ palette "primary-darken-1" "↓1" }}  ` +
-    `{{ palette "primary-darken-2" "↓2" }}  ` +
-    `{{ palette "primary-darken-3" "↓3" }}`,
+    `{{ primary "base" }}  {{ palette "primary-darken-1" "↓1" }}  ` +
+    `{{ palette "primary-darken-2" "↓2" }}  {{ palette "primary-darken-3" "↓3" }}`,
     gruvboxEngine,
   ),
   makeDemoRow(
     "lighten gradient",
-    `{{ primary "base" }}  ` +
-    `{{ palette "primary-lighten-1" "↑1" }}  ` +
-    `{{ palette "primary-lighten-2" "↑2" }}  ` +
-    `{{ palette "primary-lighten-3" "↑3" }}`,
+    `{{ primary "base" }}  {{ palette "primary-lighten-1" "↑1" }}  ` +
+    `{{ palette "primary-lighten-2" "↑2" }}  {{ palette "primary-lighten-3" "↑3" }}`,
     gruvboxEngine,
   ),
   makeDemoRow(
@@ -380,7 +416,6 @@ const sec7 = makeSection("Palette Modifiers — darken · lighten · alpha", [
   ),
 ]);
 
-// § 8  Auto-Contrast
 const sec8 = makeSection("Auto-Contrast — auto()", [
   makeDemoRow(
     "WCAG contrast swatches",
@@ -392,42 +427,65 @@ const sec8 = makeSection("Auto-Contrast — auto()", [
   ),
 ]);
 
-// § 9  Theme Gallery (special: 1 shared input → 13 theme outputs in one StaticItem)
+// ─── § 9  Theme Gallery ────────────────────────────────────────────────────
+// One shared TextInput (invisible) + combinedItem showing the editable box
+// on the left + a per-theme output list below.
+
 const GALLERY_TMPL =
   `{{ bold (primary "Rich") }} {{ accent "template" }} ` +
   `{{ success "✓" }} {{ warning "!" }} {{ error "✗" }}`;
 
-const galleryInput = new TextInput({
-  value: GALLERY_TMPL,
-  id: uid("gallery-ti"),
-});
+const galleryInput = new TextInput({ value: GALLERY_TMPL, id: uid("gallery-ti") });
+runInAction(() => { galleryInput.visible = false; });
 
-const galleryLabelItem = new StaticItem({
-  id: uid("gallery-lbl"),
-  render: () => [new Segment("  template", dimStyle)],
+const galleryCombinedItem = new StaticItem({
+  id: uid("gallery-combined"),
+  render: (opts) => {
+    const totalW = opts.maxWidth;
+    const boxWidth = Math.floor(totalW / 2);
+    const contentW = Math.max(4, boxWidth - 6);
+    const pos = galleryInput.cursorPosition;
+    const focused = galleryInput.focused;
+    const tmpl = galleryInput.value;
+    const winStart = Math.max(0, Math.min(tmpl.length - contentW, pos - Math.floor(contentW / 2)));
+    const slice = tmpl.slice(winStart, winStart + contentW);
+    const display = slice.padEnd(contentW, " ");
+    const localCursor = pos - winStart;
+
+    const segs: Segment[] = [new Segment("  template  [", boxStyle)];
+    if (focused && localCursor >= 0 && localCursor < contentW) {
+      if (localCursor > 0) segs.push(new Segment(display.slice(0, localCursor), dimStyle));
+      segs.push(new Segment(display[localCursor] ?? " ", cursorStyle));
+      if (localCursor + 1 < contentW) segs.push(new Segment(display.slice(localCursor + 1), dimStyle));
+    } else {
+      segs.push(new Segment(display, dimStyle));
+    }
+    segs.push(new Segment("]", boxStyle));
+    return segs;
+  },
 });
 
 const galleryOutputItem = new StaticItem({
   id: uid("gallery-out"),
   render: (opts) => {
     const tmpl = galleryInput.value;
-    const swatchTmpl =
-      `{{ primary "██" }}{{ accent "██" }}{{ success "██" }}{{ warning "██" }}{{ error "██" }}`;
+    const swatchTmpl = `{{ primary "██" }}{{ accent "██" }}{{ success "██" }}{{ warning "██" }}{{ error "██" }}`;
     const segments: Segment[] = [];
     for (let i = 0; i < GALLERY_THEMES.length; i++) {
       const [name, engine] = GALLERY_THEMES[i]!;
       segments.push(new Segment(`    ${name.padEnd(22)}`, dimStyle));
-      // colour swatches
-      const swatches = renderTmpl(engine, swatchTmpl, 20);
-      segments.push(...swatches);
+      segments.push(...renderTmpl(engine, swatchTmpl, 20));
       segments.push(new Segment("  "));
-      // user template
-      const result = renderTmpl(engine, tmpl, opts.maxWidth - 50);
-      segments.push(...result);
+      segments.push(...renderTmpl(engine, tmpl, opts.maxWidth - 50));
       if (i < GALLERY_THEMES.length - 1) segments.push(new Segment("\n"));
     }
     return segments;
   },
+});
+
+const galleryLabelItem = new StaticItem({
+  id: uid("gallery-lbl"),
+  render: () => [new Segment("  edit template to update all 13 themes simultaneously", dimStyle)],
 });
 
 const sec9: Section = (() => {
@@ -436,142 +494,119 @@ const sec9: Section = (() => {
     render: (opts) =>
       new Rule("Theme Gallery — same template, 13 themes", { style: cyanBoldStyle }).render(opts),
   });
-  const headerSpacer = makeStaticSpacer();
-  const trailingSpacer = makeStaticSpacer();
+  const headerSpacer = makeSpacerItem();
+  const trailingSpacer = makeSpacerItem();
 
-  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
-    headerItem, headerSpacer,
-    galleryLabelItem, galleryInput, galleryOutputItem, makeStaticSpacer(),
-    trailingSpacer,
-  ];
+  const visibleItems = [headerItem, headerSpacer, galleryLabelItem, galleryCombinedItem, galleryOutputItem, trailingSpacer];
 
   return {
     headerItem,
     rows: [],
-    extraItems: [galleryLabelItem, galleryInput, galleryOutputItem],
-    allInteractiveWidgets,
-    mountEntries: allInteractiveWidgets as MountEntry[],
+    extraVisibleItems: [galleryLabelItem, galleryCombinedItem, galleryOutputItem],
+    allInteractiveWidgets: [...visibleItems, galleryInput],
+    mountEntries: [
+      headerItem, headerSpacer,
+      galleryLabelItem, galleryCombinedItem, galleryInput, galleryOutputItem,
+      trailingSpacer,
+    ] as MountEntry[],
   };
 })();
 
-// § 10  Showcase — Build Report (6 inputs → combined Panel output)
+// ─── § 10  Showcase — Build Report ────────────────────────────────────────
+
 const SHOWCASE_LINES: [string, string][] = [
-  [
-    "header",
-    `{{ bold (primary "BUILD REPORT") }}  {{ palette "surface" "·" }}  {{ dim "2026-05-10" }}`,
-  ],
-  [
-    "tests",
-    `{{ success "✓" }} {{ bold "Tests" }}    {{ dim "8,627 passed" }}  {{ palette "success-muted" "(+32)" }}`,
-  ],
-  [
-    "lint",
-    `{{ error "✗" }} {{ bold "Lint" }}     {{ dim "2 errors" }}       {{ error "fix required" }}`,
-  ],
-  [
-    "coverage",
-    `{{ warning "!" }} {{ bold "Coverage" }} {{ dim "87.4%" }}           {{ warning "below 90% threshold" }}`,
-  ],
-  [
-    "artifacts",
-    `{{ dim "Artifacts:" }}  {{ link "https://example.com/dist" (underline (accent "dist/")) }}` +
-    `  {{ link "https://example.com/docs" (underline (accent "docs/")) }}`,
-  ],
-  [
-    "footer",
-    `{{ italic (dim "Powered by ") }}{{ link "https://github.com" (cyan "rich-js") }}{{ italic (dim " template bindings") }}`,
-  ],
+  ["header",    `{{ bold (primary "BUILD REPORT") }}  {{ palette "surface" "·" }}  {{ dim "2026-05-10" }}`],
+  ["tests",     `{{ success "✓" }} {{ bold "Tests" }}    {{ dim "8,627 passed" }}  {{ palette "success-muted" "(+32)" }}`],
+  ["lint",      `{{ error "✗" }} {{ bold "Lint" }}     {{ dim "2 errors" }}       {{ error "fix required" }}`],
+  ["coverage",  `{{ warning "!" }} {{ bold "Coverage" }} {{ dim "87.4%" }}           {{ warning "below 90% threshold" }}`],
+  ["artifacts", `{{ dim "Artifacts:" }}  {{ link "https://example.com/dist" (underline (accent "dist/")) }}  {{ link "https://example.com/docs" (underline (accent "docs/")) }}`],
+  ["footer",    `{{ italic (dim "Powered by ") }}{{ link "https://github.com" (cyan "rich-js") }}{{ italic (dim " template bindings") }}`],
 ];
 
 const showcaseRows = SHOWCASE_LINES.map(([label, tmpl]) =>
   makeDemoRow(label, tmpl, tokyoEngine),
 );
 
-// Combined Panel output — reads ALL showcase inputs.
-// Blank lines: after header (idx 0), and before artifacts (idx 4).
+// Combined Panel that joins all 6 showcase lines. Blank lines before
+// tests (idx 1) and artifacts (idx 4) match the original build report format.
 const showcasePanelItem = new StaticItem({
   id: uid("showcase-panel"),
   render: (opts) => {
-    // Build a renderable that joins all showcase lines with newlines.
     const lineRenderable = {
-      render: (innerOpts: { maxWidth: number; isTerminal: boolean; encoding: string }) => {
-        const segments: Segment[] = [];
+      render: (inner: { maxWidth: number; isTerminal: boolean; encoding: string }) => {
+        const segs: Segment[] = [];
         for (let i = 0; i < showcaseRows.length; i++) {
-          if (i > 0) segments.push(new Segment("\n"));
-          if (i === 1 || i === 4) segments.push(new Segment("\n  "));  // blank lines
-          else if (i > 0) segments.push(new Segment("  "));
-          const segs = renderTmpl(tokyoEngine, showcaseRows[i]!.input.value, innerOpts.maxWidth);
-          segments.push(...segs);
+          if (i > 0) segs.push(new Segment("\n"));
+          if (i === 1 || i === 4) segs.push(new Segment("\n  "));
+          else if (i > 0) segs.push(new Segment("  "));
+          segs.push(...renderTmpl(tokyoEngine, showcaseRows[i]!.input.value, inner.maxWidth));
         }
-        return segments;
+        return segs;
       },
     };
-    const titleText = new RichText(" CI / CD ", { style: cyanBoldStyle, end: "" });
-    const panel = new Panel(lineRenderable, {
-      borderStyle: cyanBoldStyle,
-      title: titleText,
-      padding: [1, 2],
-    });
-    return panel.render(opts);
+    const title = new RichText(" CI / CD ", { style: cyanBoldStyle, end: "" });
+    return new Panel(lineRenderable, { borderStyle: cyanBoldStyle, title, padding: [1, 2] }).render(opts);
   },
 });
 
 const sec10: Section = (() => {
   const headerItem = new StaticItem({
     id: uid("hdr"),
-    render: (opts) =>
-      new Rule("Showcase — Build Report", { style: cyanBoldStyle }).render(opts),
+    render: (opts) => new Rule("Showcase — Build Report", { style: cyanBoldStyle }).render(opts),
   });
-  const headerSpacer = makeStaticSpacer();
+  const headerSpacer = makeSpacerItem();
   const panelLabelItem = new StaticItem({
     id: uid("panel-lbl"),
     render: () => [new Segment("  combined output", dimStyle)],
   });
-  const trailingSpacer = makeStaticSpacer();
+  const trailingSpacer = makeSpacerItem();
 
-  const rowWidgets = showcaseRows.flatMap((r): (StaticItem | TextInput)[] => [
-    r.labelItem, r.input, r.outputItem, r.spacer,
-  ]);
-
-  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
+  const visibleItems: StaticItem[] = [
     headerItem, headerSpacer,
-    ...rowWidgets,
-    panelLabelItem,
-    showcasePanelItem,
+    ...showcaseRows.flatMap((r) => [r.labelItem, r.combinedItem, r.spacer]),
+    panelLabelItem, showcasePanelItem,
     trailingSpacer,
   ];
 
   return {
     headerItem,
     rows: showcaseRows,
-    extraItems: [panelLabelItem, showcasePanelItem],
-    allInteractiveWidgets,
-    mountEntries: allInteractiveWidgets as MountEntry[],
+    extraVisibleItems: [panelLabelItem, showcasePanelItem],
+    allInteractiveWidgets: [
+      ...visibleItems,
+      ...showcaseRows.map((r) => r.input),
+    ],
+    mountEntries: [
+      headerItem, headerSpacer,
+      ...showcaseRows.flatMap((r): MountEntry[] => [r.labelItem, r.combinedItem, r.spacer, r.input]),
+      panelLabelItem, showcasePanelItem,
+      trailingSpacer,
+    ],
   };
 })();
 
-// ─── All sections in display order ─────────────────────────────────────────
-// Theme Gallery (§9) appears before Showcase (§10) per user request.
+// ─── All sections ──────────────────────────────────────────────────────────
+// Theme Gallery (§9) before Showcase (§10).
 
 const SECTIONS: Section[] = [
   sec0, sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8, sec9, sec10,
 ];
 
-// ─── Always-visible header widgets ─────────────────────────────────────────
+const SECTION_NAMES = [
+  "Text Attributes", "Named Colors", "Generic Colors", "Backgrounds",
+  "Composition", "Links", "Palette (DRACULA)", "Modifiers (GRUVBOX)",
+  "Auto-Contrast", "Theme Gallery", "Build Report",
+];
+
+// ─── Always-visible header ─────────────────────────────────────────────────
 
 const appTitleItem = new StaticItem({
   id: "app-title",
   render: () => {
     const idx = state.sectionIdx;
-    const total = SECTIONS.length;
-    const title = [
-      "Text Attributes", "Named Colors", "Generic Colors", "Background Colors",
-      "Composition", "Links", "Palette (DRACULA)", "Modifiers (GRUVBOX)",
-      "Auto-Contrast", "Theme Gallery", "Build Report",
-    ][idx] ?? "";
     return [
       new Segment("  @promptctl/rich-js · Template Bindings", Style.parse("bold")),
-      new Segment(`   §${idx + 1}/${total}: ${title}`, cyanBoldStyle),
+      new Segment(`   §${idx + 1}/${SECTIONS.length}: ${SECTION_NAMES[idx] ?? ""}`, cyanBoldStyle),
     ];
   },
 });
@@ -580,15 +615,15 @@ const navHintItem = new StaticItem({
   id: "nav-hint",
   render: () => [
     new Segment(
-      "  PageUp/PageDown: navigate sections  ·  Tab: cycle inputs  ·  Ctrl+C: exit",
+      "  Ctrl+N/Ctrl+P: navigate sections  ·  Tab: cycle inputs  ·  Ctrl+C: exit",
       dimStyle,
     ),
   ],
 });
 
-const headerSpacer = makeStaticSpacer();
+const headerSpacer = makeSpacerItem();
 
-// ─── Focus manager + screen ────────────────────────────────────────────────
+// ─── Screen + focus manager ────────────────────────────────────────────────
 
 const fm = new DefaultFocusManager();
 const screen = new DefaultScreen({ focusManager: fm, out: process.stdout });
@@ -604,23 +639,26 @@ const mountList: MountEntry[] = [
 
 // ─── Visibility + focus management ─────────────────────────────────────────
 
-// Reads state.sectionIdx; fires synchronously on each section change.
-// Sets visible/disabled on all section widgets, then focuses the first input.
+// Sets visible on StaticItems and disabled on TextInputs per active section.
+// TextInputs are always invisible (visible=false); only disabled changes.
 const disposeVisibility = autorun(() => {
   const idx = state.sectionIdx;
   runInAction(() => {
     SECTIONS.forEach((sec, si) => {
       const active = si === idx;
       for (const w of sec.allInteractiveWidgets) {
-        w.visible = active;
         if (w instanceof TextInput) {
           (w as TextInput).disabled = !active;
+        } else {
+          w.visible = active;
         }
       }
     });
-    // Focus the first TextInput of the now-active section.
+    // Auto-focus first input of the newly active section.
     const firstInput = SECTIONS[idx]?.rows[0]?.input
-      ?? (SECTIONS[idx]?.extraItems.find((w) => w instanceof TextInput) as TextInput | undefined);
+      ?? (SECTIONS[idx]?.mountEntries.find(
+          (e) => e instanceof TextInput,
+        ) as TextInput | undefined);
     if (firstInput) fm.focus(firstInput);
   });
 });
@@ -629,25 +667,22 @@ const disposeVisibility = autorun(() => {
 
 const router = new EventRouter({ screen, input: process.stdin, output: process.stdout });
 
+function focusFirstInSection(idx: number): void {
+  const sec = SECTIONS[idx]!;
+  const firstInput = sec.rows[0]?.input
+    ?? (sec.mountEntries.find((e) => e instanceof TextInput) as TextInput | undefined);
+  if (firstInput && !firstInput.disabled) fm.focus(firstInput);
+}
+
 const unsubKey = router.onKey((event) => {
-  if (event.ctrl && event.key === "c") {
-    shutdown();
-    return;
-  }
+  if (event.ctrl && event.key === "c") { shutdown(); return; }
   const n = SECTIONS.length;
-  if (event.key === "pageup") {
+  if (event.ctrl && event.key === "p") {
     state.prev(n);
-    // Focus first input of new section (visibility autorun already ran).
-    const sec = SECTIONS[state.sectionIdx]!;
-    const first = sec.rows[0]?.input
-      ?? (sec.extraItems.find((w) => w instanceof TextInput) as TextInput | undefined);
-    if (first) fm.focus(first);
-  } else if (event.key === "pagedown") {
+    focusFirstInSection(state.sectionIdx);
+  } else if (event.ctrl && event.key === "n") {
     state.next(n);
-    const sec = SECTIONS[state.sectionIdx]!;
-    const first = sec.rows[0]?.input
-      ?? (sec.extraItems.find((w) => w instanceof TextInput) as TextInput | undefined);
-    if (first) fm.focus(first);
+    focusFirstInSection(state.sectionIdx);
   }
 });
 
@@ -658,7 +693,7 @@ function shutdown(): void {
   disposeVisibility();
   router.stop();
   screen.stop();
-  process.stdout.write("\x1b[?1049l"); // leave alt screen
+  process.stdout.write("\x1b[?1049l");
   process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
   process.exit(0);
 }
@@ -666,9 +701,8 @@ function shutdown(): void {
 process.once("SIGINT", () => shutdown());
 process.once("SIGTERM", () => shutdown());
 
-// Mount all, enter alt screen, start.
 screen.mount(...mountList);
-process.stdout.write("\x1b[?1049h"); // enter alt screen
-process.stdout.write("\x1b[H");       // move cursor to top-left
+process.stdout.write("\x1b[?1049h");
+process.stdout.write("\x1b[H");
 screen.start();
 router.start();
