@@ -16,17 +16,6 @@ export {
   STANDARD_TABLE,
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
-  ANSI_COLOR_NAMES,
-} from "./core/color.js";
-export type { DetectColorOptions } from "./core/color.js";
-
-// Themes — semantic palettes (distinct from ColorTable quantization LUTs)
-export { Palette } from "./themes/palette.js";
-export { PaletteResolver } from "./themes/paletteResolver.js";
-export type { ResolveContext } from "./themes/paletteResolver.js";
-export { buildPalette } from "./themes/buildPalette.js";
-export type { BaseColors } from "./themes/buildPalette.js";
-export {
   DEFAULT_TERMINAL_THEME,
   MONOKAI,
   SVG_EXPORT_THEME,
@@ -46,7 +35,16 @@ export {
   ROSE_PINE_DAWN,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
-} from "./themes/terminalThemes.js";
+  ANSI_COLOR_NAMES,
+} from "./core/color.js";
+export type { DetectColorOptions } from "./core/color.js";
+
+// Themes — semantic palettes (distinct from ColorTable quantization LUTs)
+export { Palette } from "./themes/palette.js";
+export { PaletteResolver } from "./themes/paletteResolver.js";
+export type { ResolveContext } from "./themes/paletteResolver.js";
+export { buildPalette } from "./themes/buildPalette.js";
+export type { BaseColors } from "./themes/buildPalette.js";
 
 export {
   Style,
@@ -237,8 +235,14 @@ export type {
   InteractiveWidget,
   FocusManager,
   Screen,
+  MountEntry,
+  Placement,
   Unsubscribe,
+  OverlayRenderable,
 } from "./widgets/types.js";
+export { FLOW, hasOverlay } from "./widgets/types.js";
+export { StaticItem } from "./widgets/static-item.js";
+export type { StaticItemOptions } from "./widgets/static-item.js";
 export { WidgetBase } from "./widgets/widget-base.js";
 export { DefaultFocusManager } from "./widgets/focus-manager.js";
 export { DefaultScreen } from "./widgets/screen.js";

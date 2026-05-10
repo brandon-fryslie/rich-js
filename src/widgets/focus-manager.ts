@@ -35,12 +35,6 @@ export class DefaultFocusManager implements FocusManager {
 
   @action
   register(widget: InteractiveWidget): void {
-    // [LAW:dataflow-not-control-flow] same call shape always behaves the same way:
-    // a duplicate registration is a programmer bug (would silently corrupt focus
-    // cycling and break unregister), so fail loud instead of silently de-duping.
-    if (this.widgetList.includes(widget)) {
-      throw new Error(`FocusManager: widget '${widget.id}' is already registered`);
-    }
     this.widgetList = [...this.widgetList, widget];
     if (!this.currentWidget && widget.focusable && !widget.disabled) {
       this.setFocus(widget);
@@ -54,12 +48,11 @@ export class DefaultFocusManager implements FocusManager {
     this.widgetList = this.widgetList.filter((w) => w !== widget);
 
     if (this.currentWidget === widget) {
-      // [LAW:single-enforcer] dispatch each transition once via handleFocus —
-      // WidgetBase.focus()/blur() now delegate there, so this is the canonical
-      // edge.
+      widget.blur();
       widget.handleFocus({ type: "blur" });
       const next = this.widgetList.find((w) => w.focusable && !w.disabled) ?? null;
       if (next) {
+        next.focus();
         next.handleFocus({ type: "focus" });
       }
       this.currentWidget = next;
@@ -97,6 +90,7 @@ export class DefaultFocusManager implements FocusManager {
   @action
   blur(): void {
     if (!this.currentWidget) return;
+    this.currentWidget.blur();
     this.currentWidget.handleFocus({ type: "blur" });
     this.currentWidget = null;
     this.emitChange();
@@ -117,9 +111,11 @@ export class DefaultFocusManager implements FocusManager {
   private setFocus(widget: InteractiveWidget): void {
     if (this.currentWidget === widget) return;
     if (this.currentWidget) {
+      this.currentWidget.blur();
       this.currentWidget.handleFocus({ type: "blur" });
     }
     this.currentWidget = widget;
+    widget.focus();
     widget.handleFocus({ type: "focus" });
     this.emitChange();
   }

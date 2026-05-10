@@ -9,7 +9,7 @@
  *   track    — `width` cells of "─" (ASCII fallback "-")
  *   marker   — "●" (ASCII fallback "*") at round((value - min) / range * (width - 1))
  *   filled   — cells left of and including the marker use primary fg
- *   unfilled — cells right of the marker use surface foreground colour, terminal-default background
+ *   unfilled — cells right of the marker use surface bg / foreground
  *   focused  — underline on the segments
  *   disabled — dim
  */
@@ -17,8 +17,7 @@
 import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
+import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
@@ -47,9 +46,7 @@ export class Slider extends WidgetBase {
   @observable.ref accessor step: number;
   @observable.ref accessor width: number;
 
-  // [LAW:dataflow-not-control-flow] theme is observable.ref so render() reads
-  // it as a reactive dependency; setTheme triggers the screen's autorun.
-  @observable.ref private accessor _theme: TerminalTheme;
+  private _theme: TerminalTheme;
   private _dragging = false;
 
   constructor(options: SliderOptions = {}) {
@@ -58,20 +55,12 @@ export class Slider extends WidgetBase {
     this.min = options.min ?? 0;
     this.max = options.max ?? 100;
     this.step = options.step ?? 1;
-    const w = options.width ?? DEFAULT_WIDTH;
-    // [LAW:types-are-the-program] width must be at least 1 — the marker
-    // always occupies one cell, so width <= 0 makes the render contract
-    // ("emits exactly `width` cells") unsatisfiable.
-    if (!Number.isInteger(w) || w < 1) {
-      throw new RangeError(`Slider width must be an integer >= 1, got ${w}`);
-    }
-    this.width = w;
+    this.width = options.width ?? DEFAULT_WIDTH;
     this.value = clampSnap(options.value ?? this.min, this.min, this.max, this.step);
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
 
-  @action
   setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
@@ -120,6 +109,11 @@ export class Slider extends WidgetBase {
       return;
     }
   }
+
+  // --- Hover mutator (router fast-path) ---
+
+  @action
+  setHovered(value: boolean): void { this.hovered = value; }
 
   // --- Value mutation ---
 

@@ -14,11 +14,9 @@
 import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
+import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { cellLen } from "../core/cells.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -57,9 +55,7 @@ export class Toggle extends WidgetBase {
   @observable accessor on: boolean;
   @observable.ref accessor variant: ToggleVariant;
 
-  // [LAW:dataflow-not-control-flow] theme is observable.ref so render() reads
-  // it as a reactive dependency; setTheme triggers the screen's autorun.
-  @observable.ref private accessor _theme: TerminalTheme;
+  private _theme: TerminalTheme;
 
   constructor(options: ToggleOptions) {
     super();
@@ -71,7 +67,6 @@ export class Toggle extends WidgetBase {
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
 
-  @action
   setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
@@ -98,6 +93,11 @@ export class Toggle extends WidgetBase {
     }
   }
 
+  // --- Hover mutator (router fast-path) ---
+
+  @action
+  setHovered(value: boolean): void { this.hovered = value; }
+
   // --- Rendering ---
 
   render(_options: RenderOptions): Iterable<Segment> {
@@ -117,7 +117,7 @@ export class Toggle extends WidgetBase {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = 5 + 1 + cellLen(this.label);
+    const width = 5 + 1 + this.label.length;
     return { minimum: width, maximum: width };
   }
 

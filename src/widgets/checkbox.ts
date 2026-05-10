@@ -14,11 +14,9 @@
 import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
+import { ColorSpec, DEFAULT_TERMINAL_THEME } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { cellLen } from "../core/cells.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -37,9 +35,7 @@ export class Checkbox extends WidgetBase {
   @observable accessor label: string;
   @observable accessor checked: boolean;
 
-  // [LAW:dataflow-not-control-flow] theme is observable.ref so render() reads
-  // it as a reactive dependency; setTheme triggers the screen's autorun.
-  @observable.ref private accessor _theme: TerminalTheme;
+  private _theme: TerminalTheme;
 
   constructor(options: CheckboxOptions) {
     super();
@@ -50,7 +46,6 @@ export class Checkbox extends WidgetBase {
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
 
-  @action
   setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
@@ -77,6 +72,11 @@ export class Checkbox extends WidgetBase {
     }
   }
 
+  // --- Hover/active mutators (router fast-path uses setHovered) ---
+
+  @action
+  setHovered(value: boolean): void { this.hovered = value; }
+
   // --- Rendering ---
 
   render(options: RenderOptions): Iterable<Segment> {
@@ -92,7 +92,7 @@ export class Checkbox extends WidgetBase {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = cellLen(this.label) + 4;
+    const width = this.label.length + 4;
     return { minimum: width, maximum: width };
   }
 
