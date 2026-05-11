@@ -1,14 +1,17 @@
 /**
  * Template Bindings — Interactive TUI Demo
  *
- * Side-by-side layout: editable template box on the left, live rendered
- * output on the right. Every section's TextInputs are invisible widgets
- * (focusable, handles keys) while a paired StaticItem renders both columns
- * by reading input.value / input.cursorPosition / input.focused (all MobX
- * observables), so Screen's autorun re-renders on every keystroke.
+ * Side-by-side textarea layout:
+ *   left  — editable template box (3 content rows, wraps long templates,
+ *            cursor tracked in 2D, border turns cyan when focused)
+ *   right — live rendered output box, updates on every keystroke
  *
- * Ctrl+N / Ctrl+P — navigate sections (next / prev)
- * Tab / Shift+Tab  — cycle inputs within the current section
+ * TextInputs are always invisible (visible=false, focusable=true).
+ * Each combinedItem reads input.value / cursorPosition / focused (all MobX
+ * observables) so Screen's autorun re-renders on every change.
+ *
+ * Ctrl+N / Ctrl+P — navigate sections
+ * Tab / Shift+Tab  — cycle inputs
  * Ctrl+C           — exit
  */
 
@@ -50,7 +53,7 @@ import {
 } from "../../src/template-bindings/index.js";
 import { makeAutoObservable, autorun, runInAction } from "mobx";
 
-// ─── Engine helpers ────────────────────────────────────────────────────────
+// ─── Engines ───────────────────────────────────────────────────────────────
 
 const styleEngine = createRichTextEngine();
 
@@ -79,10 +82,9 @@ function exec(engine: Engine<RichText>, tmpl: string): RichText {
   return out;
 }
 
-// Pre-create engines once — not per frame.
 const draculaEngine = makeEngine(DRACULA);
 const gruvboxEngine = makeEngine(GRUVBOX);
-const tokyoEngine = makeEngine(TOKYO_NIGHT);
+const tokyoEngine   = makeEngine(TOKYO_NIGHT);
 
 const GALLERY_THEMES: [string, Engine<RichText>][] = [
   ["GRUVBOX",          makeEngine(GRUVBOX)],
@@ -102,32 +104,23 @@ const GALLERY_THEMES: [string, Engine<RichText>][] = [
 
 // ─── Styles ────────────────────────────────────────────────────────────────
 
-const dimStyle = Style.parse("dim");
+const dimStyle      = Style.parse("dim");
+const cyanStyle     = Style.parse("cyan");
 const cyanBoldStyle = Style.parse("bold cyan");
-const redStyle = Style.parse("red dim");
-const cursorStyle = Style.parse("reverse");
-const boxStyle = Style.parse("dim");
+const redStyle      = Style.parse("red dim");
+const cursorStyle   = Style.parse("reverse");
 
-// ─── App state ─────────────────────────────────────────────────────────────
+// ─── State ─────────────────────────────────────────────────────────────────
 
 class AppState {
   sectionIdx = 0;
-
-  constructor() {
-    makeAutoObservable(this);
-  }
-
-  prev(n: number): void {
-    this.sectionIdx = (this.sectionIdx + n - 1) % n;
-  }
-
-  next(n: number): void {
-    this.sectionIdx = (this.sectionIdx + 1) % n;
-  }
+  constructor() { makeAutoObservable(this); }
+  prev(n: number): void { this.sectionIdx = (this.sectionIdx + n - 1) % n; }
+  next(n: number): void { this.sectionIdx = (this.sectionIdx + 1) % n; }
 }
 const state = new AppState();
 
-// ─── Widget utilities ──────────────────────────────────────────────────────
+// ─── Utilities ─────────────────────────────────────────────────────────────
 
 let _uid = 0;
 const uid = (p: string): string => `${p}-${_uid++}`;
@@ -136,104 +129,158 @@ function makeSpacerItem(): StaticItem {
   return new StaticItem({ id: uid("sp"), render: () => [new Segment("")] });
 }
 
-// Render a template to Segment[]. Returns a dim error message on failure.
-function renderTmpl(
-  engine: Engine<RichText>,
-  tmpl: string,
-  maxWidth: number,
-): Segment[] {
+// Render template to Segment[]. Returns dim error on failure.
+function renderTmpl(engine: Engine<RichText>, tmpl: string): Segment[] {
   try {
     const result = exec(engine, tmpl);
-    return Array.from(result.render({ maxWidth, isTerminal: true, encoding: "utf-8" }));
+    return Array.from(result.render({ maxWidth: 400, isTerminal: true, encoding: "utf-8" }));
   } catch (e) {
     return [new Segment(`[error: ${String(e).slice(0, 60)}]`, redStyle)];
   }
 }
 
-// ─── Two-column row ────────────────────────────────────────────────────────
+// ─── Two-column textarea layout ─────────────────────────────────────────────
 //
-// Layout (all flow):
-//   labelItem   "  label"          — dim section label
-//   combinedItem  [template...│]  rendered output   — both columns in one item
-//   input        (invisible: focusable, handles keys, stores value)
-//   spacer
+// Renders TEXTAREA_HEIGHT+2 logical rows (top border, N content, bottom border).
+// Left box:  editable textarea — wraps template at lc chars per line,
+//            tracks cursor in 2D, border turns cyan when focused.
+// Right box: rendered output — each row shows one wrapped line of output,
+//            clipped/padded to exactly rc cells.
 //
-// The TextInput is always invisible. The combinedItem renders a faux TextInput
-// on the left by reading input.value / input.cursorPosition / input.focused
-// (all MobX observables) — Screen's autorun re-renders on every keystroke.
+// All widths are derived from opts.maxWidth so the layout adapts to any
+// terminal width. No widget is placed inline — the StaticItem owns the
+// full render and Screen clips at terminal width.
+
+const TEXTAREA_HEIGHT = 3;
+
+function buildRowSegments(
+  input: TextInput,
+  label: string,
+  engine: Engine<RichText>,
+  totalW: number,
+): Segment[] {
+  // Column widths:
+  //   left outer  = leftOuter chars  ("  ┌─…─┐"  = lc+6)
+  //   gap         = 2 chars          ("  ")
+  //   right outer = totalW - leftOuter - 2  ("┌─…─┐" = rc+4)
+  const leftOuter = Math.floor(totalW / 2);
+  const lc = Math.max(8, leftOuter - 6);
+  const rc = Math.max(8, totalW - leftOuter - 2 - 4);
+
+  // ── Left: wrap template, compute cursor position ──────────────────────
+  const tmpl = input.value;
+  const pos  = input.cursorPosition;
+  const focused = input.focused;            // MobX observable read → subscription
+
+  const wrappedLines: string[] = [];
+  if (tmpl.length === 0) {
+    wrappedLines.push("");
+  } else {
+    for (let p = 0; p < tmpl.length; p += lc) {
+      wrappedLines.push(tmpl.slice(p, p + lc));
+    }
+  }
+  // Extend one empty line if cursor sits at a line-start beyond existing lines.
+  const curLine = Math.floor(pos / lc);
+  const curCol  = pos % lc;
+  if (curLine >= wrappedLines.length) wrappedLines.push("");
+
+  // Scroll: keep cursor line visible; prefer showing end of text when cursor
+  // is on the last line.
+  const scrollStart = Math.max(0, Math.min(
+    wrappedLines.length - TEXTAREA_HEIGHT,
+    curLine - TEXTAREA_HEIGHT + 1,
+  ));
+
+  // ── Right: render output, split into per-row fixed-width Segment[] ────
+  const rightRaw   = renderTmpl(engine, tmpl);
+  const rightLines = Segment.splitLines(rightRaw);
+  const rightRows  = Array.from({ length: TEXTAREA_HEIGHT }, (_, i) =>
+    Segment.adjustLineLength(rightLines[i] ?? [], rc),
+  );
+
+  // ── Border style: cyan when this input is focused ─────────────────────
+  const bStyle = focused ? cyanStyle : dimStyle;
+
+  // ── Helper: build one top border "┌─ label ────┐" of inner width iw ──
+  function topBorderLeft(): string {
+    const inner = lc + 2;
+    const prefix = `─ ${label} `;
+    const fill = Math.max(1, inner - prefix.length - 1);
+    return `  ┌${prefix}${"─".repeat(fill)}─┐`;
+  }
+  function topBorderRight(): string {
+    const inner = rc + 2;
+    const prefix = "─ output ";
+    const fill = Math.max(1, inner - prefix.length - 1);
+    return `┌${prefix}${"─".repeat(fill)}─┐`;
+  }
+
+  const segs: Segment[] = [];
+
+  // Top border
+  segs.push(new Segment(topBorderLeft(), bStyle));
+  segs.push(new Segment("  ", dimStyle));
+  segs.push(new Segment(topBorderRight(), dimStyle));
+  segs.push(new Segment("\n"));
+
+  // Content rows
+  for (let row = 0; row < TEXTAREA_HEIGHT; row++) {
+    const li      = scrollStart + row;
+    const lineText = wrappedLines[li] ?? "";
+    const display  = lineText.padEnd(lc, " ");
+
+    // Left box
+    segs.push(new Segment("  │ ", bStyle));
+    if (focused && li === curLine) {
+      const cc = curCol;
+      if (cc > 0)              segs.push(new Segment(display.slice(0, cc)));
+      segs.push(new Segment(display[cc] ?? " ", cursorStyle));
+      if (cc + 1 < display.length) segs.push(new Segment(display.slice(cc + 1)));
+    } else {
+      segs.push(new Segment(display));
+    }
+    segs.push(new Segment(" │", bStyle));
+
+    // Gap + right box
+    segs.push(new Segment("  │ ", dimStyle));
+    segs.push(...rightRows[row]!);
+    segs.push(new Segment(" │", dimStyle));
+
+    segs.push(new Segment("\n"));
+  }
+
+  // Bottom border
+  segs.push(new Segment(`  └${"─".repeat(lc + 2)}┘`, bStyle));
+  segs.push(new Segment(`  └${"─".repeat(rc + 2)}┘`, dimStyle));
+
+  return segs;
+}
+
+// ─── Demo row ──────────────────────────────────────────────────────────────
 
 interface DemoRow {
-  labelItem: StaticItem;
   combinedItem: StaticItem;
   input: TextInput;
   spacer: StaticItem;
 }
 
-function makeDemoRow(
-  label: string,
-  template: string,
-  engine: Engine<RichText>,
-): DemoRow {
+function makeDemoRow(label: string, template: string, engine: Engine<RichText>): DemoRow {
   const input = new TextInput({ value: template, id: uid("ti") });
-  // Invisible: takes 0 space but stays in Tab order and handles keys.
   runInAction(() => { input.visible = false; });
 
-  const labelItem = new StaticItem({
-    id: uid("lbl"),
-    render: () => [new Segment(`  ${label}`, dimStyle)],
-  });
-
   const combinedItem = new StaticItem({
-    id: uid("combined"),
-    render: (opts) => {
-      const totalW = opts.maxWidth;
-      // Left column: faux TextInput box occupies roughly half the width.
-      // "  [" prefix (3) + content + "]  " suffix (3) = boxWidth.
-      const boxWidth = Math.floor(totalW / 2);
-      const contentW = Math.max(4, boxWidth - 6);  // inside the [ ] brackets
-      const rightW = Math.max(4, totalW - boxWidth - 2);  // remaining for output
-
-      const tmpl = input.value;          // observable read → subscription
-      const pos = input.cursorPosition;  // observable read → subscription
-      const focused = input.focused;     // observable read → subscription
-
-      // Slide a window over the template so the cursor stays visible.
-      const winStart = Math.max(0, Math.min(tmpl.length - contentW, pos - Math.floor(contentW / 2)));
-      const slice = tmpl.slice(winStart, winStart + contentW);
-      const display = slice.padEnd(contentW, " ");
-      const localCursor = pos - winStart;
-
-      const segs: Segment[] = [new Segment("  [", boxStyle)];
-
-      if (focused && localCursor >= 0 && localCursor < contentW) {
-        if (localCursor > 0) segs.push(new Segment(display.slice(0, localCursor), dimStyle));
-        segs.push(new Segment(display[localCursor] ?? " ", cursorStyle));
-        if (localCursor + 1 < contentW) {
-          segs.push(new Segment(display.slice(localCursor + 1), dimStyle));
-        }
-      } else {
-        segs.push(new Segment(display, dimStyle));
-      }
-
-      segs.push(new Segment("]  ", boxStyle));
-
-      // Right column: rendered template output.
-      const rightSegs = renderTmpl(engine, tmpl, rightW);
-      segs.push(...rightSegs);
-
-      return segs;
-    },
+    id: uid("row"),
+    render: (opts) => buildRowSegments(input, label, engine, opts.maxWidth),
   });
 
-  return { labelItem, combinedItem, input, spacer: makeSpacerItem() };
+  return { combinedItem, input, spacer: makeSpacerItem() };
 }
 
 // ─── Section ───────────────────────────────────────────────────────────────
 
 interface Section {
-  headerItem: StaticItem;
   rows: DemoRow[];
-  extraVisibleItems: StaticItem[];  // additional visible items (e.g. gallery output)
   allInteractiveWidgets: (StaticItem | TextInput)[];
   mountEntries: MountEntry[];
 }
@@ -243,34 +290,26 @@ function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticIt
     id: uid("hdr"),
     render: (opts) => new Rule(title, { style: cyanBoldStyle }).render(opts),
   });
-  const headerSpacer = makeSpacerItem();
+  const headerSpacer  = makeSpacerItem();
   const trailingSpacer = makeSpacerItem();
 
-  // All StaticItems that participate in show/hide per section.
   const visibleItems: StaticItem[] = [
     headerItem, headerSpacer,
-    ...rows.flatMap((r) => [r.labelItem, r.combinedItem, r.spacer]),
+    ...rows.flatMap((r) => [r.combinedItem, r.spacer]),
     ...extraVisibleItems,
     trailingSpacer,
   ];
 
-  // Inputs are always invisible (visible=false) but need disabled toggling.
-  const inputs = rows.map((r) => r.input);
-
-  const allInteractiveWidgets: (StaticItem | TextInput)[] = [
-    ...visibleItems,
-    ...inputs,
-  ];
-
-  // Mount order: label, combined, spacer per row; inputs at end (0-height).
-  const mountEntries: MountEntry[] = [
-    headerItem, headerSpacer,
-    ...rows.flatMap((r): MountEntry[] => [r.labelItem, r.combinedItem, r.spacer, r.input]),
-    ...extraVisibleItems,
-    trailingSpacer,
-  ];
-
-  return { headerItem, rows, extraVisibleItems, allInteractiveWidgets, mountEntries };
+  return {
+    rows,
+    allInteractiveWidgets: [...visibleItems, ...rows.map((r) => r.input)],
+    mountEntries: [
+      headerItem, headerSpacer,
+      ...rows.flatMap((r): MountEntry[] => [r.combinedItem, r.spacer, r.input]),
+      ...extraVisibleItems,
+      trailingSpacer,
+    ] as MountEntry[],
+  };
 }
 
 // ─── Section definitions ───────────────────────────────────────────────────
@@ -283,11 +322,7 @@ const sec0 = makeSection("Text Attributes", [
     `{{ overline "overline" }}  {{ reverse "reverse" }}  {{ blink "blink" }}`,
     styleEngine,
   ),
-  makeDemoRow(
-    "short aliases",
-    `{{ b "b" }}  {{ i "i" }}  {{ u "u" }}  {{ s "s" }}`,
-    styleEngine,
-  ),
+  makeDemoRow("short aliases", `{{ b "b" }}  {{ i "i" }}  {{ u "u" }}  {{ s "s" }}`, styleEngine),
   makeDemoRow(
     "negation",
     `{{ not_bold (bold "un-bolded") }}  ← outer not_bold overrides inner bold`,
@@ -298,9 +333,8 @@ const sec0 = makeSection("Text Attributes", [
 const sec1 = makeSection("Foreground Colors — Named", [
   makeDemoRow(
     "standard 8",
-    `{{ black "black" }}  {{ red "red" }}  {{ green "green" }}  ` +
-    `{{ yellow "yellow" }}  {{ blue "blue" }}  {{ magenta "magenta" }}  ` +
-    `{{ cyan "cyan" }}  {{ white "white" }}`,
+    `{{ black "black" }}  {{ red "red" }}  {{ green "green" }}  {{ yellow "yellow" }}  ` +
+    `{{ blue "blue" }}  {{ magenta "magenta" }}  {{ cyan "cyan" }}  {{ white "white" }}`,
     styleEngine,
   ),
   makeDemoRow(
@@ -314,21 +348,18 @@ const sec1 = makeSection("Foreground Colors — Named", [
 ]);
 
 const sec2 = makeSection("Foreground Colors — Generic Forms", [
-  makeDemoRow("hex #ff6b6b",          `{{ hex "#ff6b6b" "coral red" }}`,    styleEngine),
-  makeDemoRow("rgb 255 107 107",      `{{ rgb 255 107 107 "coral red" }}`,  styleEngine),
-  makeDemoRow("color 203 (256-index)",`{{ color 203 "coral red" }}`,        styleEngine),
-  makeDemoRow("light_coral (named)",  `{{ light_coral "coral red" }}`,      styleEngine),
+  makeDemoRow("hex #ff6b6b",           `{{ hex "#ff6b6b" "coral red" }}`,    styleEngine),
+  makeDemoRow("rgb 255 107 107",       `{{ rgb 255 107 107 "coral red" }}`,  styleEngine),
+  makeDemoRow("color 203 (256-index)", `{{ color 203 "coral red" }}`,        styleEngine),
+  makeDemoRow("light_coral (named)",   `{{ light_coral "coral red" }}`,      styleEngine),
 ]);
 
 const sec3 = makeSection("Background Colors — on()", [
   makeDemoRow(
     "named colors",
-    `{{ bright_white (on "red" " red ") }}  ` +
-    `{{ bright_white (on "green" " green ") }}  ` +
-    `{{ bright_white (on "blue" " blue ") }}  ` +
-    `{{ bright_white (on "magenta" " magenta ") }}  ` +
-    `{{ bright_white (on "cyan" " cyan ") }}  ` +
-    `{{ black (on "yellow" " yellow ") }}  ` +
+    `{{ bright_white (on "red" " red ") }}  {{ bright_white (on "green" " green ") }}  ` +
+    `{{ bright_white (on "blue" " blue ") }}  {{ bright_white (on "magenta" " magenta ") }}  ` +
+    `{{ bright_white (on "cyan" " cyan ") }}  {{ black (on "yellow" " yellow ") }}  ` +
     `{{ black (on "white" " white ") }}`,
     styleEngine,
   ),
@@ -343,12 +374,12 @@ const sec3 = makeSection("Background Colors — on()", [
 ]);
 
 const sec4 = makeSection("Composition", [
-  makeDemoRow("bold red",            `{{ bold (red "alert!") }}`,                                     styleEngine),
-  makeDemoRow("italic on navy",      `{{ italic (on "navy_blue" (bright_white "deep sea")) }}`,        styleEngine),
-  makeDemoRow("underline hex bold",  `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`,               styleEngine),
-  makeDemoRow("dim strike",          `{{ dim (strike "deprecated") }}`,                                styleEngine),
-  makeDemoRow("reverse cyan",        `{{ reverse (cyan "flipped") }}`,                                 styleEngine),
-  makeDemoRow("all three (aliases)", `{{ b (i (u "all three")) }}`,                                    styleEngine),
+  makeDemoRow("bold red",            `{{ bold (red "alert!") }}`,                              styleEngine),
+  makeDemoRow("italic on navy",      `{{ italic (on "navy_blue" (bright_white "deep sea")) }}`, styleEngine),
+  makeDemoRow("underline hex bold",  `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`,        styleEngine),
+  makeDemoRow("dim strike",          `{{ dim (strike "deprecated") }}`,                         styleEngine),
+  makeDemoRow("reverse cyan",        `{{ reverse (cyan "flipped") }}`,                          styleEngine),
+  makeDemoRow("all three (aliases)", `{{ b (i (u "all three")) }}`,                             styleEngine),
 ]);
 
 const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
@@ -357,39 +388,23 @@ const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
     `{{ link "https://github.com/anthropics/anthropic-sdk-python" (underline (cyan "Anthropic SDK")) }}`,
     styleEngine,
   ),
-  makeDemoRow(
-    "bold link",
-    `{{ bold (link "https://rich.readthedocs.io" (green "Python Rich")) }}`,
-    styleEngine,
-  ),
-  makeDemoRow(
-    "hex link",
-    `{{ link "https://github.com" (b (hex "#58a6ff" "GitHub")) }}`,
-    styleEngine,
-  ),
+  makeDemoRow("bold link",  `{{ bold (link "https://rich.readthedocs.io" (green "Python Rich")) }}`, styleEngine),
+  makeDemoRow("hex link",   `{{ link "https://github.com" (b (hex "#58a6ff" "GitHub")) }}`,           styleEngine),
 ]);
 
 const sec6 = makeSection("Palette Functions — DRACULA", [
   makeDemoRow(
     "semantic colors",
-    `{{ primary " primary " }}  {{ secondary " secondary " }}  ` +
-    `{{ accent " accent " }}  {{ success " success " }}  ` +
-    `{{ warning " warning " }}  {{ error " error " }}  ` +
-    `{{ surface " surface " }}`,
+    `{{ primary " primary " }}  {{ secondary " secondary " }}  {{ accent " accent " }}  ` +
+    `{{ success " success " }}  {{ warning " warning " }}  {{ error " error " }}  {{ surface " surface " }}`,
     draculaEngine,
   ),
   makeDemoRow(
     "derived (palette func)",
-    `{{ primary "primary" }}  ` +
-    `{{ palette "primary-muted" "primary-muted" }}  ` +
-    `{{ palette "text-primary" "text-primary" }}`,
+    `{{ primary "primary" }}  {{ palette "primary-muted" "primary-muted" }}  {{ palette "text-primary" "text-primary" }}`,
     draculaEngine,
   ),
-  makeDemoRow(
-    "foreground / background",
-    `{{ foreground "foreground" }}  {{ background "background" }}`,
-    draculaEngine,
-  ),
+  makeDemoRow("foreground / background", `{{ foreground "foreground" }}  {{ background "background" }}`, draculaEngine),
 ]);
 
 const GRUVBOX_BG = "#282828";
@@ -419,100 +434,45 @@ const sec7 = makeSection("Palette Modifiers — darken · lighten · alpha", [
 const sec8 = makeSection("Auto-Contrast — auto()", [
   makeDemoRow(
     "WCAG contrast swatches",
-    [
-      "#000000", "#1a1a2e", "#2d6a4f", "#f4a261", "#e9c46a",
-      "#ffffff", "#ffecd2", "#f8f9fa", "#495057", "#dee2e6",
-    ].map((bg) => `{{ on "${bg}" (auto "${bg}" "  auto  ") }}`).join("  "),
+    ["#000000","#1a1a2e","#2d6a4f","#f4a261","#e9c46a",
+     "#ffffff","#ffecd2","#f8f9fa","#495057","#dee2e6"]
+      .map((bg) => `{{ on "${bg}" (auto "${bg}" "  auto  ") }}`).join("  "),
     makeEngine(TOKYO_NIGHT),
   ),
 ]);
 
 // ─── § 9  Theme Gallery ────────────────────────────────────────────────────
-// One shared TextInput (invisible) + combinedItem showing the editable box
-// on the left + a per-theme output list below.
 
 const GALLERY_TMPL =
-  `{{ bold (primary "Rich") }} {{ accent "template" }} ` +
-  `{{ success "✓" }} {{ warning "!" }} {{ error "✗" }}`;
+  `{{ bold (primary "Rich") }} {{ accent "template" }} {{ success "✓" }} {{ warning "!" }} {{ error "✗" }}`;
 
-const galleryInput = new TextInput({ value: GALLERY_TMPL, id: uid("gallery-ti") });
-runInAction(() => { galleryInput.visible = false; });
-
-const galleryCombinedItem = new StaticItem({
-  id: uid("gallery-combined"),
-  render: (opts) => {
-    const totalW = opts.maxWidth;
-    const boxWidth = Math.floor(totalW / 2);
-    const contentW = Math.max(4, boxWidth - 6);
-    const pos = galleryInput.cursorPosition;
-    const focused = galleryInput.focused;
-    const tmpl = galleryInput.value;
-    const winStart = Math.max(0, Math.min(tmpl.length - contentW, pos - Math.floor(contentW / 2)));
-    const slice = tmpl.slice(winStart, winStart + contentW);
-    const display = slice.padEnd(contentW, " ");
-    const localCursor = pos - winStart;
-
-    const segs: Segment[] = [new Segment("  template  [", boxStyle)];
-    if (focused && localCursor >= 0 && localCursor < contentW) {
-      if (localCursor > 0) segs.push(new Segment(display.slice(0, localCursor), dimStyle));
-      segs.push(new Segment(display[localCursor] ?? " ", cursorStyle));
-      if (localCursor + 1 < contentW) segs.push(new Segment(display.slice(localCursor + 1), dimStyle));
-    } else {
-      segs.push(new Segment(display, dimStyle));
-    }
-    segs.push(new Segment("]", boxStyle));
-    return segs;
-  },
-});
+const galleryRow = makeDemoRow("template", GALLERY_TMPL, GALLERY_THEMES[3]![1]);  // preview with TOKYO_NIGHT
 
 const galleryOutputItem = new StaticItem({
   id: uid("gallery-out"),
   render: (opts) => {
-    const tmpl = galleryInput.value;
+    const tmpl = galleryRow.input.value;  // MobX subscription
     const swatchTmpl = `{{ primary "██" }}{{ accent "██" }}{{ success "██" }}{{ warning "██" }}{{ error "██" }}`;
-    const segments: Segment[] = [];
+    const segs: Segment[] = [];
     for (let i = 0; i < GALLERY_THEMES.length; i++) {
       const [name, engine] = GALLERY_THEMES[i]!;
-      segments.push(new Segment(`    ${name.padEnd(22)}`, dimStyle));
-      segments.push(...renderTmpl(engine, swatchTmpl, 20));
-      segments.push(new Segment("  "));
-      segments.push(...renderTmpl(engine, tmpl, opts.maxWidth - 50));
-      if (i < GALLERY_THEMES.length - 1) segments.push(new Segment("\n"));
+      segs.push(new Segment(`  ${name.padEnd(22)}`, dimStyle));
+      segs.push(...Segment.adjustLineLength(renderTmpl(engine, swatchTmpl), 14));
+      segs.push(new Segment("  "));
+      segs.push(...Segment.adjustLineLength(renderTmpl(engine, tmpl), opts.maxWidth - 42));
+      if (i < GALLERY_THEMES.length - 1) segs.push(new Segment("\n"));
     }
-    return segments;
+    return segs;
   },
 });
 
-const galleryLabelItem = new StaticItem({
-  id: uid("gallery-lbl"),
-  render: () => [new Segment("  edit template to update all 13 themes simultaneously", dimStyle)],
-});
+const sec9 = makeSection(
+  "Theme Gallery — same template, 13 themes",
+  [galleryRow],
+  [galleryOutputItem],
+);
 
-const sec9: Section = (() => {
-  const headerItem = new StaticItem({
-    id: uid("hdr"),
-    render: (opts) =>
-      new Rule("Theme Gallery — same template, 13 themes", { style: cyanBoldStyle }).render(opts),
-  });
-  const headerSpacer = makeSpacerItem();
-  const trailingSpacer = makeSpacerItem();
-
-  const visibleItems = [headerItem, headerSpacer, galleryLabelItem, galleryCombinedItem, galleryOutputItem, trailingSpacer];
-
-  return {
-    headerItem,
-    rows: [],
-    extraVisibleItems: [galleryLabelItem, galleryCombinedItem, galleryOutputItem],
-    allInteractiveWidgets: [...visibleItems, galleryInput],
-    mountEntries: [
-      headerItem, headerSpacer,
-      galleryLabelItem, galleryCombinedItem, galleryInput, galleryOutputItem,
-      trailingSpacer,
-    ] as MountEntry[],
-  };
-})();
-
-// ─── § 10  Showcase — Build Report ────────────────────────────────────────
+// ─── § 10  Showcase — Build Report ─────────────────────────────────────────
 
 const SHOWCASE_LINES: [string, string][] = [
   ["header",    `{{ bold (primary "BUILD REPORT") }}  {{ palette "surface" "·" }}  {{ dim "2026-05-10" }}`],
@@ -527,8 +487,6 @@ const showcaseRows = SHOWCASE_LINES.map(([label, tmpl]) =>
   makeDemoRow(label, tmpl, tokyoEngine),
 );
 
-// Combined Panel that joins all 6 showcase lines. Blank lines before
-// tests (idx 1) and artifacts (idx 4) match the original build report format.
 const showcasePanelItem = new StaticItem({
   id: uid("showcase-panel"),
   render: (opts) => {
@@ -539,7 +497,9 @@ const showcasePanelItem = new StaticItem({
           if (i > 0) segs.push(new Segment("\n"));
           if (i === 1 || i === 4) segs.push(new Segment("\n  "));
           else if (i > 0) segs.push(new Segment("  "));
-          segs.push(...renderTmpl(tokyoEngine, showcaseRows[i]!.input.value, inner.maxWidth));
+          segs.push(...renderTmpl(tokyoEngine, showcaseRows[i]!.input.value));
+          // Clip each line to inner.maxWidth
+          void inner;
         }
         return segs;
       },
@@ -549,48 +509,20 @@ const showcasePanelItem = new StaticItem({
   },
 });
 
-const sec10: Section = (() => {
-  const headerItem = new StaticItem({
-    id: uid("hdr"),
-    render: (opts) => new Rule("Showcase — Build Report", { style: cyanBoldStyle }).render(opts),
-  });
-  const headerSpacer = makeSpacerItem();
-  const panelLabelItem = new StaticItem({
-    id: uid("panel-lbl"),
-    render: () => [new Segment("  combined output", dimStyle)],
-  });
-  const trailingSpacer = makeSpacerItem();
+const panelLabelItem = new StaticItem({
+  id: uid("panel-lbl"),
+  render: () => [new Segment("  combined output", dimStyle)],
+});
 
-  const visibleItems: StaticItem[] = [
-    headerItem, headerSpacer,
-    ...showcaseRows.flatMap((r) => [r.labelItem, r.combinedItem, r.spacer]),
-    panelLabelItem, showcasePanelItem,
-    trailingSpacer,
-  ];
+const sec10 = makeSection(
+  "Showcase — Build Report",
+  showcaseRows,
+  [panelLabelItem, showcasePanelItem],
+);
 
-  return {
-    headerItem,
-    rows: showcaseRows,
-    extraVisibleItems: [panelLabelItem, showcasePanelItem],
-    allInteractiveWidgets: [
-      ...visibleItems,
-      ...showcaseRows.map((r) => r.input),
-    ],
-    mountEntries: [
-      headerItem, headerSpacer,
-      ...showcaseRows.flatMap((r): MountEntry[] => [r.labelItem, r.combinedItem, r.spacer, r.input]),
-      panelLabelItem, showcasePanelItem,
-      trailingSpacer,
-    ],
-  };
-})();
+// ─── Section list ──────────────────────────────────────────────────────────
 
-// ─── All sections ──────────────────────────────────────────────────────────
-// Theme Gallery (§9) before Showcase (§10).
-
-const SECTIONS: Section[] = [
-  sec0, sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8, sec9, sec10,
-];
+const SECTIONS: Section[] = [sec0, sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8, sec9, sec10];
 
 const SECTION_NAMES = [
   "Text Attributes", "Named Colors", "Generic Colors", "Backgrounds",
@@ -613,34 +545,23 @@ const appTitleItem = new StaticItem({
 
 const navHintItem = new StaticItem({
   id: "nav-hint",
-  render: () => [
-    new Segment(
-      "  Ctrl+N/Ctrl+P: navigate sections  ·  Tab: cycle inputs  ·  Ctrl+C: exit",
-      dimStyle,
-    ),
-  ],
+  render: () => [new Segment("  Ctrl+N/Ctrl+P: sections  ·  Tab: cycle inputs  ·  Ctrl+C: exit", dimStyle)],
 });
 
 const headerSpacer = makeSpacerItem();
 
-// ─── Screen + focus manager ────────────────────────────────────────────────
+// ─── Screen + router ───────────────────────────────────────────────────────
 
-const fm = new DefaultFocusManager();
+const fm     = new DefaultFocusManager();
 const screen = new DefaultScreen({ focusManager: fm, out: process.stdout });
+const router = new EventRouter({ screen, input: process.stdin, output: process.stdout });
 
 // ─── Mount list ────────────────────────────────────────────────────────────
 
-const mountList: MountEntry[] = [
-  appTitleItem,
-  navHintItem,
-  headerSpacer,
-  ...SECTIONS.flatMap((s) => s.mountEntries),
-];
+screen.mount(appTitleItem, navHintItem, headerSpacer, ...SECTIONS.flatMap((s) => s.mountEntries));
 
-// ─── Visibility + focus management ─────────────────────────────────────────
+// ─── Visibility + focus ────────────────────────────────────────────────────
 
-// Sets visible on StaticItems and disabled on TextInputs per active section.
-// TextInputs are always invisible (visible=false); only disabled changes.
 const disposeVisibility = autorun(() => {
   const idx = state.sectionIdx;
   runInAction(() => {
@@ -649,41 +570,29 @@ const disposeVisibility = autorun(() => {
       for (const w of sec.allInteractiveWidgets) {
         if (w instanceof TextInput) {
           (w as TextInput).disabled = !active;
+          // TextInputs are always invisible; only disabled changes per section.
         } else {
           w.visible = active;
         }
       }
     });
-    // Auto-focus first input of the newly active section.
-    const firstInput = SECTIONS[idx]?.rows[0]?.input
-      ?? (SECTIONS[idx]?.mountEntries.find(
-          (e) => e instanceof TextInput,
-        ) as TextInput | undefined);
+    const firstInput = SECTIONS[idx]?.rows[0]?.input;
     if (firstInput) fm.focus(firstInput);
   });
 });
 
-// ─── Navigation ────────────────────────────────────────────────────────────
+// ─── Key handling ──────────────────────────────────────────────────────────
 
-const router = new EventRouter({ screen, input: process.stdin, output: process.stdout });
-
-function focusFirstInSection(idx: number): void {
-  const sec = SECTIONS[idx]!;
-  const firstInput = sec.rows[0]?.input
-    ?? (sec.mountEntries.find((e) => e instanceof TextInput) as TextInput | undefined);
-  if (firstInput && !firstInput.disabled) fm.focus(firstInput);
+function focusFirst(idx: number): void {
+  const row = SECTIONS[idx]?.rows[0];
+  if (row && !row.input.disabled) fm.focus(row.input);
 }
 
 const unsubKey = router.onKey((event) => {
   if (event.ctrl && event.key === "c") { shutdown(); return; }
   const n = SECTIONS.length;
-  if (event.ctrl && event.key === "p") {
-    state.prev(n);
-    focusFirstInSection(state.sectionIdx);
-  } else if (event.ctrl && event.key === "n") {
-    state.next(n);
-    focusFirstInSection(state.sectionIdx);
-  }
+  if (event.ctrl && event.key === "p") { state.prev(n); focusFirst(state.sectionIdx); }
+  else if (event.ctrl && event.key === "n") { state.next(n); focusFirst(state.sectionIdx); }
 });
 
 // ─── Lifecycle ─────────────────────────────────────────────────────────────
@@ -701,7 +610,6 @@ function shutdown(): void {
 process.once("SIGINT", () => shutdown());
 process.once("SIGTERM", () => shutdown());
 
-screen.mount(...mountList);
 process.stdout.write("\x1b[?1049h");
 process.stdout.write("\x1b[H");
 screen.start();
