@@ -148,64 +148,146 @@ function renderTmpl(engine: Engine<RichText>, tmpl: string): Segment[] {
 //
 // Left:  editable textarea. `\n` chars in the value are logical line breaks
 //        (rendered as visual rows but stripped before the engine renders).
-//        Lines that exceed `lc` cells soft-wrap at the nearest space.
+//        Lines that exceed `lc` cells wrap at `{{ }}` action boundaries —
+//        never mid-action — with continuation rows indented 2 spaces.
 // Right: rendered output, clipped to exactly `rc` cells per row.
 //
 // Height adapts to the template's wrapped line count, clamped to
-// [MIN_HEIGHT, MAX_HEIGHT]. Wider terminals widen the boxes; longer templates
-// grow them taller. No horizontal scrolling, ever.
+// [MIN_HEIGHT, MAX_HEIGHT]. No horizontal scrolling, ever.
 
 const MIN_HEIGHT = 1;
 const MAX_HEIGHT = 10;
+const INDENT = "  ";
 
-// Wrap text into visual rows. Splits on `\n` first (logical breaks), then
-// soft-wraps long lines at spaces (or hard-breaks if no space exists). Returns
-// the visual rows alongside each row's start position in the original text —
-// enough to map a 1D cursor position to a (row, col) for display.
-function wrapText(text: string, width: number): { rows: string[]; rowStarts: number[] } {
-  const rows: string[] = [];
-  const rowStarts: number[] = [];
+// One visual row in the textarea. `display` already includes the prefix indent;
+// `start` is the position in the source template of the first content char
+// (after the indent); `prefixLen` is how many cells the indent occupies.
+interface VisualRow {
+  display: string;
+  start: number;
+  prefixLen: number;
+}
+
+// Tokenize a logical line into atoms — each `{{ ... }}` action is one atom,
+// each run of text between actions is one atom. Used as wrap boundaries.
+function tokenize(line: string): { text: string; start: number }[] {
+  const out: { text: string; start: number }[] = [];
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] === "{" && line[i + 1] === "{") {
+      let j = i + 2;
+      while (j < line.length - 1 && !(line[j] === "}" && line[j + 1] === "}")) j++;
+      const end = j < line.length - 1 ? j + 2 : line.length;
+      out.push({ text: line.slice(i, end), start: i });
+      i = end;
+    } else {
+      let j = i;
+      while (j < line.length && !(line[j] === "{" && line[j + 1] === "{")) j++;
+      out.push({ text: line.slice(i, j), start: i });
+      i = j;
+    }
+  }
+  return out;
+}
+
+// Wrap text into visual rows. Splits on `\n` first (logical breaks); each
+// logical line is then packed by atoms (tag-or-text) up to `width` cells.
+// Continuations get a 2-space indent. Atoms wider than the available width
+// fall back to hard-break (only relevant for unusually long URLs / strings).
+function wrapText(text: string, width: number): VisualRow[] {
+  const rows: VisualRow[] = [];
   const logical = text.split("\n");
   let cum = 0;
+
   for (let li = 0; li < logical.length; li++) {
     const line = logical[li]!;
     if (line.length === 0) {
-      rows.push("");
-      rowStarts.push(cum);
-    } else {
+      rows.push({ display: "", start: cum, prefixLen: 0 });
+      cum += 1;
+      continue;
+    }
+
+    const atoms = tokenize(line);
+    let buf = "";
+    let bufStart = -1;
+    let onFirst = true;
+
+    const emitBuf = (): void => {
+      const prefix = onFirst ? "" : INDENT;
+      rows.push({ display: prefix + buf, start: bufStart, prefixLen: prefix.length });
+      onFirst = false;
+      buf = "";
+      bufStart = -1;
+    };
+
+    // Place an over-wide atom across multiple rows. Tags can only be
+    // hard-char-broken (no clean inner boundary); text atoms are word-wrapped
+    // at the last space within the available width.
+    const placeOverflow = (atom: string, atomStart: number): void => {
+      const isTag = atom.startsWith("{{") && atom.endsWith("}}");
       let p = 0;
-      while (p < line.length) {
-        const remaining = line.length - p;
-        if (remaining <= width) {
-          rows.push(line.slice(p));
-          rowStarts.push(cum + p);
-          p = line.length;
+      while (p < atom.length) {
+        const prefix = onFirst ? "" : INDENT;
+        const cap = width - prefix.length;
+        const remaining = atom.length - p;
+        let take: number;
+        if (remaining <= cap) {
+          take = remaining;
+        } else if (isTag) {
+          take = cap;
         } else {
-          const chunk = line.slice(p, p + width);
+          const chunk = atom.slice(p, p + cap);
           const lastSpace = chunk.lastIndexOf(" ");
-          // Soft-wrap at last space if it isn't too far back; otherwise hard-break.
-          const take = lastSpace > width * 0.5 ? lastSpace + 1 : width;
-          rows.push(line.slice(p, p + take));
-          rowStarts.push(cum + p);
-          p += take;
+          take = lastSpace > 0 ? lastSpace + 1 : cap;
+        }
+        rows.push({
+          display: prefix + atom.slice(p, p + take),
+          start: cum + atomStart + p,
+          prefixLen: prefix.length,
+        });
+        onFirst = false;
+        p += take;
+      }
+    };
+
+    for (const atom of atoms) {
+      const cap = onFirst ? width : width - INDENT.length;
+      if (buf === "") {
+        if (atom.text.length <= cap) {
+          buf = atom.text;
+          bufStart = cum + atom.start;
+        } else {
+          placeOverflow(atom.text, atom.start);
+        }
+      } else if (buf.length + atom.text.length <= cap) {
+        buf += atom.text;
+      } else {
+        emitBuf();
+        const cap2 = width - INDENT.length;
+        if (atom.text.length <= cap2) {
+          buf = atom.text;
+          bufStart = cum + atom.start;
+        } else {
+          placeOverflow(atom.text, atom.start);
         }
       }
     }
-    cum += line.length + 1; // +1 for the \n between logical lines
+    if (buf !== "") emitBuf();
+
+    cum += line.length + 1; // +1 for the \n
   }
-  if (rows.length === 0) {
-    rows.push("");
-    rowStarts.push(0);
-  }
-  return { rows, rowStarts };
+
+  if (rows.length === 0) rows.push({ display: "", start: 0, prefixLen: 0 });
+  return rows;
 }
 
-function findCursor(rowStarts: number[], pos: number): { row: number; col: number } {
+function findCursor(rows: VisualRow[], pos: number): { row: number; col: number } {
   let row = 0;
-  for (let i = rowStarts.length - 1; i >= 0; i--) {
-    if (rowStarts[i]! <= pos) { row = i; break; }
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (rows[i]!.start <= pos) { row = i; break; }
   }
-  return { row, col: pos - rowStarts[row]! };
+  const r = rows[row]!;
+  return { row, col: r.prefixLen + (pos - r.start) };
 }
 
 function buildRowSegments(
@@ -222,17 +304,12 @@ function buildRowSegments(
   const pos = input.cursorPosition;
   const focused = input.focused;
 
-  const wrap = wrapText(tmpl, lc);
-  const rows = wrap.rows;
-  const rowStarts = wrap.rowStarts;
-  let { row: curLine, col: curCol } = findCursor(rowStarts, pos);
+  const rows = wrapText(tmpl, lc);
+  let { row: curLine, col: curCol } = findCursor(rows, pos);
 
-  // If the cursor lands past the end of a row that's exactly `lc` cells, slide
-  // it onto an empty next row — otherwise we'd render a cursor cell at column
-  // `lc`, overflowing the box.
+  // Cursor past the right edge → slide onto a fresh empty row.
   if (curCol >= lc) {
-    rows.push("");
-    rowStarts.push(pos);
+    rows.push({ display: "", start: pos, prefixLen: 0 });
     curLine = rows.length - 1;
     curCol = 0;
   }
@@ -248,8 +325,8 @@ function buildRowSegments(
 
   const bStyle = focused ? cyanStyle : dimStyle;
 
-  function topBorder(label: string, inner: number, leading: string): string {
-    const prefix = `─ ${label} `;
+  function topBorder(text: string, inner: number, leading: string): string {
+    const prefix = `─ ${text} `;
     const fill = Math.max(1, inner - prefix.length - 1);
     return `${leading}┌${prefix}${"─".repeat(fill)}─┐`;
   }
@@ -262,7 +339,7 @@ function buildRowSegments(
 
   for (let row = 0; row < height; row++) {
     const li = scrollStart + row;
-    const lineText = rows[li] ?? "";
+    const lineText = rows[li]?.display ?? "";
     const display = lineText.padEnd(lc, " ").slice(0, lc);
 
     segs.push(new Segment("  │ ", bStyle));
@@ -394,14 +471,12 @@ const sec2 = makeSection("Foreground Colors — Generic Forms", [
 ]);
 
 const sec3 = makeSection("Background Colors — on()", [
-  makeDemoRow("named colors",
-`{{ bright_white (on "red" " red ") }}
-{{ bright_white (on "green" " green ") }}
-{{ bright_white (on "blue" " blue ") }}
-{{ bright_white (on "magenta" " magenta ") }}
-{{ bright_white (on "cyan" " cyan ") }}
-{{ black (on "yellow" " yellow ") }}
-{{ black (on "white" " white ") }}`, styleEngine),
+  makeDemoRow("named colors (auto-wrap between tags)",
+    `{{ bright_white (on "red" " red ") }} {{ bright_white (on "green" " green ") }} ` +
+    `{{ bright_white (on "blue" " blue ") }} {{ bright_white (on "magenta" " mag ") }} ` +
+    `{{ bright_white (on "cyan" " cyan ") }} {{ black (on "yellow" " yellow ") }} ` +
+    `{{ black (on "white" " white ") }}`,
+    styleEngine),
   makeDemoRow("hex + named 256",
 `{{ bright_white (on "#ff6b6b" " #ff6b6b ") }}
 {{ bright_white (on "#2d4f67" " #2d4f67 ") }}
