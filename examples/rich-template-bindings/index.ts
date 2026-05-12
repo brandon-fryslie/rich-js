@@ -68,8 +68,13 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
   });
 }
 
+// Soft-newline syntax: any run of whitespace containing a newline collapses
+// to a single space before reaching the engine. Lets template authors split
+// long expressions across lines for readability without polluting the output.
+// For a *real* newline in output, use a string literal: {{ "\n" }}.
 function exec(engine: Engine<RichText>, tmpl: string): RichText {
-  const frags = engine.compile(tmpl)({});
+  const flat = tmpl.replace(/\s*\n\s*/g, " ");
+  const frags = engine.compile(flat)({});
   const out = new RichText("", { end: "" });
   for (const f of frags) {
     const start = out.length;
@@ -141,17 +146,67 @@ function renderTmpl(engine: Engine<RichText>, tmpl: string): Segment[] {
 
 // ─── Two-column textarea layout ─────────────────────────────────────────────
 //
-// Renders TEXTAREA_HEIGHT+2 logical rows (top border, N content, bottom border).
-// Left box:  editable textarea — wraps template at lc chars per line,
-//            tracks cursor in 2D, border turns cyan when focused.
-// Right box: rendered output — each row shows one wrapped line of output,
-//            clipped/padded to exactly rc cells.
+// Left:  editable textarea. `\n` chars in the value are logical line breaks
+//        (rendered as visual rows but stripped before the engine renders).
+//        Lines that exceed `lc` cells soft-wrap at the nearest space.
+// Right: rendered output, clipped to exactly `rc` cells per row.
 //
-// All widths are derived from opts.maxWidth so the layout adapts to any
-// terminal width. No widget is placed inline — the StaticItem owns the
-// full render and Screen clips at terminal width.
+// Height adapts to the template's wrapped line count, clamped to
+// [MIN_HEIGHT, MAX_HEIGHT]. Wider terminals widen the boxes; longer templates
+// grow them taller. No horizontal scrolling, ever.
 
-const TEXTAREA_HEIGHT = 3;
+const MIN_HEIGHT = 1;
+const MAX_HEIGHT = 10;
+
+// Wrap text into visual rows. Splits on `\n` first (logical breaks), then
+// soft-wraps long lines at spaces (or hard-breaks if no space exists). Returns
+// the visual rows alongside each row's start position in the original text —
+// enough to map a 1D cursor position to a (row, col) for display.
+function wrapText(text: string, width: number): { rows: string[]; rowStarts: number[] } {
+  const rows: string[] = [];
+  const rowStarts: number[] = [];
+  const logical = text.split("\n");
+  let cum = 0;
+  for (let li = 0; li < logical.length; li++) {
+    const line = logical[li]!;
+    if (line.length === 0) {
+      rows.push("");
+      rowStarts.push(cum);
+    } else {
+      let p = 0;
+      while (p < line.length) {
+        const remaining = line.length - p;
+        if (remaining <= width) {
+          rows.push(line.slice(p));
+          rowStarts.push(cum + p);
+          p = line.length;
+        } else {
+          const chunk = line.slice(p, p + width);
+          const lastSpace = chunk.lastIndexOf(" ");
+          // Soft-wrap at last space if it isn't too far back; otherwise hard-break.
+          const take = lastSpace > width * 0.5 ? lastSpace + 1 : width;
+          rows.push(line.slice(p, p + take));
+          rowStarts.push(cum + p);
+          p += take;
+        }
+      }
+    }
+    cum += line.length + 1; // +1 for the \n between logical lines
+  }
+  if (rows.length === 0) {
+    rows.push("");
+    rowStarts.push(0);
+  }
+  return { rows, rowStarts };
+}
+
+function findCursor(rowStarts: number[], pos: number): { row: number; col: number } {
+  let row = 0;
+  for (let i = rowStarts.length - 1; i >= 0; i--) {
+    if (rowStarts[i]! <= pos) { row = i; break; }
+  }
+  return { row, col: pos - rowStarts[row]! };
+}
 
 function buildRowSegments(
   input: TextInput,
@@ -159,90 +214,68 @@ function buildRowSegments(
   engine: Engine<RichText>,
   totalW: number,
 ): Segment[] {
-  // Column widths:
-  //   left outer  = leftOuter chars  ("  ┌─…─┐"  = lc+6)
-  //   gap         = 2 chars          ("  ")
-  //   right outer = totalW - leftOuter - 2  ("┌─…─┐" = rc+4)
   const leftOuter = Math.floor(totalW / 2);
   const lc = Math.max(8, leftOuter - 6);
   const rc = Math.max(8, totalW - leftOuter - 2 - 4);
 
-  // ── Left: wrap template, compute cursor position ──────────────────────
   const tmpl = input.value;
-  const pos  = input.cursorPosition;
-  const focused = input.focused;            // MobX observable read → subscription
+  const pos = input.cursorPosition;
+  const focused = input.focused;
 
-  const wrappedLines: string[] = [];
-  if (tmpl.length === 0) {
-    wrappedLines.push("");
-  } else {
-    for (let p = 0; p < tmpl.length; p += lc) {
-      wrappedLines.push(tmpl.slice(p, p + lc));
-    }
+  const wrap = wrapText(tmpl, lc);
+  const rows = wrap.rows;
+  const rowStarts = wrap.rowStarts;
+  let { row: curLine, col: curCol } = findCursor(rowStarts, pos);
+
+  // If the cursor lands past the end of a row that's exactly `lc` cells, slide
+  // it onto an empty next row — otherwise we'd render a cursor cell at column
+  // `lc`, overflowing the box.
+  if (curCol >= lc) {
+    rows.push("");
+    rowStarts.push(pos);
+    curLine = rows.length - 1;
+    curCol = 0;
   }
-  // Extend one empty line if cursor sits at a line-start beyond existing lines.
-  const curLine = Math.floor(pos / lc);
-  const curCol  = pos % lc;
-  if (curLine >= wrappedLines.length) wrappedLines.push("");
 
-  // Scroll: keep cursor line visible; prefer showing end of text when cursor
-  // is on the last line.
-  const scrollStart = Math.max(0, Math.min(
-    wrappedLines.length - TEXTAREA_HEIGHT,
-    curLine - TEXTAREA_HEIGHT + 1,
-  ));
+  const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, rows.length));
+  const scrollStart = Math.max(0, Math.min(rows.length - height, curLine - height + 1));
 
-  // ── Right: render output, split into per-row fixed-width Segment[] ────
-  const rightRaw   = renderTmpl(engine, tmpl);
+  const rightRaw = renderTmpl(engine, tmpl);
   const rightLines = Segment.splitLines(rightRaw);
-  const rightRows  = Array.from({ length: TEXTAREA_HEIGHT }, (_, i) =>
+  const rightRows = Array.from({ length: height }, (_, i) =>
     Segment.adjustLineLength(rightLines[i] ?? [], rc),
   );
 
-  // ── Border style: cyan when this input is focused ─────────────────────
   const bStyle = focused ? cyanStyle : dimStyle;
 
-  // ── Helper: build one top border "┌─ label ────┐" of inner width iw ──
-  function topBorderLeft(): string {
-    const inner = lc + 2;
+  function topBorder(label: string, inner: number, leading: string): string {
     const prefix = `─ ${label} `;
     const fill = Math.max(1, inner - prefix.length - 1);
-    return `  ┌${prefix}${"─".repeat(fill)}─┐`;
-  }
-  function topBorderRight(): string {
-    const inner = rc + 2;
-    const prefix = "─ output ";
-    const fill = Math.max(1, inner - prefix.length - 1);
-    return `┌${prefix}${"─".repeat(fill)}─┐`;
+    return `${leading}┌${prefix}${"─".repeat(fill)}─┐`;
   }
 
   const segs: Segment[] = [];
-
-  // Top border
-  segs.push(new Segment(topBorderLeft(), bStyle));
+  segs.push(new Segment(topBorder(label, lc + 2, "  "), bStyle));
   segs.push(new Segment("  ", dimStyle));
-  segs.push(new Segment(topBorderRight(), dimStyle));
+  segs.push(new Segment(topBorder("output", rc + 2, ""), dimStyle));
   segs.push(new Segment("\n"));
 
-  // Content rows
-  for (let row = 0; row < TEXTAREA_HEIGHT; row++) {
-    const li      = scrollStart + row;
-    const lineText = wrappedLines[li] ?? "";
-    const display  = lineText.padEnd(lc, " ");
+  for (let row = 0; row < height; row++) {
+    const li = scrollStart + row;
+    const lineText = rows[li] ?? "";
+    const display = lineText.padEnd(lc, " ").slice(0, lc);
 
-    // Left box
     segs.push(new Segment("  │ ", bStyle));
     if (focused && li === curLine) {
       const cc = curCol;
-      if (cc > 0)              segs.push(new Segment(display.slice(0, cc)));
+      if (cc > 0) segs.push(new Segment(display.slice(0, cc)));
       segs.push(new Segment(display[cc] ?? " ", cursorStyle));
-      if (cc + 1 < display.length) segs.push(new Segment(display.slice(cc + 1)));
+      if (cc + 1 < lc) segs.push(new Segment(display.slice(cc + 1, lc)));
     } else {
       segs.push(new Segment(display));
     }
     segs.push(new Segment(" │", bStyle));
 
-    // Gap + right box
     segs.push(new Segment("  │ ", dimStyle));
     segs.push(...rightRows[row]!);
     segs.push(new Segment(" │", dimStyle));
@@ -250,10 +283,8 @@ function buildRowSegments(
     segs.push(new Segment("\n"));
   }
 
-  // Bottom border
   segs.push(new Segment(`  └${"─".repeat(lc + 2)}┘`, bStyle));
   segs.push(new Segment(`  └${"─".repeat(rc + 2)}┘`, dimStyle));
-
   return segs;
 }
 
@@ -315,36 +346,44 @@ function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticIt
 // ─── Section definitions ───────────────────────────────────────────────────
 
 const sec0 = makeSection("Text Attributes", [
-  makeDemoRow(
-    "canonical names",
-    `{{ bold "bold" }}  {{ dim "dim" }}  {{ italic "italic" }}  ` +
-    `{{ underline "underline" }}  {{ strike "strike" }}  ` +
-    `{{ overline "overline" }}  {{ reverse "reverse" }}  {{ blink "blink" }}`,
-    styleEngine,
-  ),
-  makeDemoRow("short aliases", `{{ b "b" }}  {{ i "i" }}  {{ u "u" }}  {{ s "s" }}`, styleEngine),
-  makeDemoRow(
-    "negation",
-    `{{ not_bold (bold "un-bolded") }}  ← outer not_bold overrides inner bold`,
-    styleEngine,
-  ),
+  makeDemoRow("canonical names",
+`{{ bold "bold" }}
+{{ dim "dim" }}
+{{ italic "italic" }}
+{{ underline "underline" }}
+{{ strike "strike" }}
+{{ overline "overline" }}
+{{ reverse "reverse" }}
+{{ blink "blink" }}`, styleEngine),
+  makeDemoRow("short aliases",
+`{{ b "b" }}
+{{ i "i" }}
+{{ u "u" }}
+{{ s "s" }}`, styleEngine),
+  makeDemoRow("negation",
+`{{ not_bold (bold "un-bolded") }}
+← outer not_bold overrides inner bold`, styleEngine),
 ]);
 
 const sec1 = makeSection("Foreground Colors — Named", [
-  makeDemoRow(
-    "standard 8",
-    `{{ black "black" }}  {{ red "red" }}  {{ green "green" }}  {{ yellow "yellow" }}  ` +
-    `{{ blue "blue" }}  {{ magenta "magenta" }}  {{ cyan "cyan" }}  {{ white "white" }}`,
-    styleEngine,
-  ),
-  makeDemoRow(
-    "bright 8",
-    `{{ bright_black "br_black" }}  {{ bright_red "br_red" }}  ` +
-    `{{ bright_green "br_green" }}  {{ bright_yellow "br_yellow" }}  ` +
-    `{{ bright_blue "br_blue" }}  {{ bright_magenta "br_mag" }}  ` +
-    `{{ bright_cyan "br_cyan" }}  {{ bright_white "br_white" }}`,
-    styleEngine,
-  ),
+  makeDemoRow("standard 8",
+`{{ black "black" }}
+{{ red "red" }}
+{{ green "green" }}
+{{ yellow "yellow" }}
+{{ blue "blue" }}
+{{ magenta "magenta" }}
+{{ cyan "cyan" }}
+{{ white "white" }}`, styleEngine),
+  makeDemoRow("bright 8",
+`{{ bright_black "br_black" }}
+{{ bright_red "br_red" }}
+{{ bright_green "br_green" }}
+{{ bright_yellow "br_yellow" }}
+{{ bright_blue "br_blue" }}
+{{ bright_magenta "br_magenta" }}
+{{ bright_cyan "br_cyan" }}
+{{ bright_white "br_white" }}`, styleEngine),
 ]);
 
 const sec2 = makeSection("Foreground Colors — Generic Forms", [
@@ -355,22 +394,19 @@ const sec2 = makeSection("Foreground Colors — Generic Forms", [
 ]);
 
 const sec3 = makeSection("Background Colors — on()", [
-  makeDemoRow(
-    "named colors",
-    `{{ bright_white (on "red" " red ") }}  {{ bright_white (on "green" " green ") }}  ` +
-    `{{ bright_white (on "blue" " blue ") }}  {{ bright_white (on "magenta" " magenta ") }}  ` +
-    `{{ bright_white (on "cyan" " cyan ") }}  {{ black (on "yellow" " yellow ") }}  ` +
-    `{{ black (on "white" " white ") }}`,
-    styleEngine,
-  ),
-  makeDemoRow(
-    "hex + named 256",
-    `{{ bright_white (on "#ff6b6b" " #ff6b6b ") }}  ` +
-    `{{ bright_white (on "#2d4f67" " #2d4f67 ") }}  ` +
-    `{{ bright_white (on "navy_blue" " navy_blue ") }}  ` +
-    `{{ black (on "light_coral" " light_coral ") }}`,
-    styleEngine,
-  ),
+  makeDemoRow("named colors",
+`{{ bright_white (on "red" " red ") }}
+{{ bright_white (on "green" " green ") }}
+{{ bright_white (on "blue" " blue ") }}
+{{ bright_white (on "magenta" " magenta ") }}
+{{ bright_white (on "cyan" " cyan ") }}
+{{ black (on "yellow" " yellow ") }}
+{{ black (on "white" " white ") }}`, styleEngine),
+  makeDemoRow("hex + named 256",
+`{{ bright_white (on "#ff6b6b" " #ff6b6b ") }}
+{{ bright_white (on "#2d4f67" " #2d4f67 ") }}
+{{ bright_white (on "navy_blue" " navy_blue ") }}
+{{ black (on "light_coral" " light_coral ") }}`, styleEngine),
 ]);
 
 const sec4 = makeSection("Composition", [
@@ -383,62 +419,60 @@ const sec4 = makeSection("Composition", [
 ]);
 
 const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
-  makeDemoRow(
-    "underline cyan",
-    `{{ link "https://github.com/anthropics/anthropic-sdk-python" (underline (cyan "Anthropic SDK")) }}`,
-    styleEngine,
-  ),
-  makeDemoRow("bold link",  `{{ bold (link "https://rich.readthedocs.io" (green "Python Rich")) }}`, styleEngine),
-  makeDemoRow("hex link",   `{{ link "https://github.com" (b (hex "#58a6ff" "GitHub")) }}`,           styleEngine),
+  makeDemoRow("underline cyan",
+`{{ link "https://github.com/anthropics/anthropic-sdk-python"
+   (underline (cyan "Anthropic SDK")) }}`, styleEngine),
+  makeDemoRow("bold link",
+`{{ bold (link "https://rich.readthedocs.io"
+              (green "Python Rich")) }}`, styleEngine),
+  makeDemoRow("hex link",
+`{{ link "https://github.com"
+   (b (hex "#58a6ff" "GitHub")) }}`, styleEngine),
 ]);
 
 const sec6 = makeSection("Palette Functions — DRACULA", [
-  makeDemoRow(
-    "semantic colors",
-    `{{ primary " primary " }}  {{ secondary " secondary " }}  {{ accent " accent " }}  ` +
-    `{{ success " success " }}  {{ warning " warning " }}  {{ error " error " }}  {{ surface " surface " }}`,
-    draculaEngine,
-  ),
-  makeDemoRow(
-    "derived (palette func)",
-    `{{ primary "primary" }}  {{ palette "primary-muted" "primary-muted" }}  {{ palette "text-primary" "text-primary" }}`,
-    draculaEngine,
-  ),
-  makeDemoRow("foreground / background", `{{ foreground "foreground" }}  {{ background "background" }}`, draculaEngine),
+  makeDemoRow("semantic colors",
+`{{ primary " primary " }}
+{{ secondary " secondary " }}
+{{ accent " accent " }}
+{{ success " success " }}
+{{ warning " warning " }}
+{{ error " error " }}
+{{ surface " surface " }}`, draculaEngine),
+  makeDemoRow("derived (palette func)",
+`{{ primary "primary" }}
+{{ palette "primary-muted" "primary-muted" }}
+{{ palette "text-primary" "text-primary" }}`, draculaEngine),
+  makeDemoRow("foreground / background",
+`{{ foreground "foreground" }}
+{{ background "background" }}`, draculaEngine),
 ]);
 
 const GRUVBOX_BG = "#282828";
 const sec7 = makeSection("Palette Modifiers — darken · lighten · alpha", [
-  makeDemoRow(
-    "darken gradient",
-    `{{ primary "base" }}  {{ palette "primary-darken-1" "↓1" }}  ` +
-    `{{ palette "primary-darken-2" "↓2" }}  {{ palette "primary-darken-3" "↓3" }}`,
-    gruvboxEngine,
-  ),
-  makeDemoRow(
-    "lighten gradient",
-    `{{ primary "base" }}  {{ palette "primary-lighten-1" "↑1" }}  ` +
-    `{{ palette "primary-lighten-2" "↑2" }}  {{ palette "primary-lighten-3" "↑3" }}`,
-    gruvboxEngine,
-  ),
-  makeDemoRow(
-    "alpha fade (accent over bg)",
-    `{{ paletteOver "accent 25%" "${GRUVBOX_BG}" "█ 25%" }}  ` +
-    `{{ paletteOver "accent 50%" "${GRUVBOX_BG}" "█ 50%" }}  ` +
-    `{{ paletteOver "accent 75%" "${GRUVBOX_BG}" "█ 75%" }}  ` +
-    `{{ paletteOver "accent 100%" "${GRUVBOX_BG}" "█ 100%" }}`,
-    gruvboxEngine,
-  ),
+  makeDemoRow("darken gradient",
+`{{ primary "base" }}
+{{ palette "primary-darken-1" "↓1" }}
+{{ palette "primary-darken-2" "↓2" }}
+{{ palette "primary-darken-3" "↓3" }}`, gruvboxEngine),
+  makeDemoRow("lighten gradient",
+`{{ primary "base" }}
+{{ palette "primary-lighten-1" "↑1" }}
+{{ palette "primary-lighten-2" "↑2" }}
+{{ palette "primary-lighten-3" "↑3" }}`, gruvboxEngine),
+  makeDemoRow("alpha fade (accent over bg)",
+`{{ paletteOver "accent 25%"  "${GRUVBOX_BG}" "█ 25%" }}
+{{ paletteOver "accent 50%"  "${GRUVBOX_BG}" "█ 50%" }}
+{{ paletteOver "accent 75%"  "${GRUVBOX_BG}" "█ 75%" }}
+{{ paletteOver "accent 100%" "${GRUVBOX_BG}" "█ 100%" }}`, gruvboxEngine),
 ]);
 
 const sec8 = makeSection("Auto-Contrast — auto()", [
-  makeDemoRow(
-    "WCAG contrast swatches",
+  makeDemoRow("WCAG contrast swatches",
     ["#000000","#1a1a2e","#2d6a4f","#f4a261","#e9c46a",
      "#ffffff","#ffecd2","#f8f9fa","#495057","#dee2e6"]
-      .map((bg) => `{{ on "${bg}" (auto "${bg}" "  auto  ") }}`).join("  "),
-    makeEngine(TOKYO_NIGHT),
-  ),
+      .map((bg) => `{{ on "${bg}" (auto "${bg}" "  auto  ") }}`).join("\n"),
+    makeEngine(TOKYO_NIGHT)),
 ]);
 
 // ─── § 9  Theme Gallery ────────────────────────────────────────────────────
