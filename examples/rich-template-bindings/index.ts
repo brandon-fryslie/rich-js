@@ -68,13 +68,49 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
   });
 }
 
-// Soft-newline syntax: any run of whitespace containing a newline collapses
-// to a single space before reaching the engine. Lets template authors split
-// long expressions across lines for readability without polluting the output.
-// For a *real* newline in output, use a string literal: {{ "\n" }}.
+// Newline rule: newlines INSIDE a `{{ ... }}` block are formatting-only
+// (collapsed to a single space along with surrounding whitespace), so a long
+// expression can be split across lines for readability:
+//     {{ link "https://..."
+//        (underline (cyan "...")) }}   → one styled span in output
+// Newlines OUTSIDE tag blocks are preserved as hard newlines, so plain
+// multi-line templates produce multi-line output:
+//     {{ b "b" }}
+//     {{ i "i" }}                       → two lines in output
 function exec(engine: Engine<RichText>, tmpl: string): RichText {
-  const flat = tmpl.replace(/\s*\n\s*/g, " ");
-  const frags = engine.compile(flat)({});
+  let cleaned = "";
+  let inTag = false;
+  let i = 0;
+  while (i < tmpl.length) {
+    if (!inTag) {
+      if (tmpl[i] === "{" && tmpl[i + 1] === "{") {
+        inTag = true;
+        cleaned += "{{";
+        i += 2;
+      } else {
+        cleaned += tmpl[i];
+        i++;
+      }
+    } else {
+      if (tmpl[i] === "}" && tmpl[i + 1] === "}") {
+        inTag = false;
+        cleaned += "}}";
+        i += 2;
+      } else if (tmpl[i] === "\n") {
+        // Drop trailing ws already written, swallow any leading ws after,
+        // emit a single space in its place.
+        while (cleaned.length > 0 && (cleaned[cleaned.length - 1] === " " || cleaned[cleaned.length - 1] === "\t")) {
+          cleaned = cleaned.slice(0, -1);
+        }
+        while (i < tmpl.length && (tmpl[i] === " " || tmpl[i] === "\t" || tmpl[i] === "\n")) i++;
+        cleaned += " ";
+      } else {
+        cleaned += tmpl[i];
+        i++;
+      }
+    }
+  }
+  const frags = engine.compile(cleaned)({});
   const out = new RichText("", { end: "" });
   for (const f of frags) {
     const start = out.length;
