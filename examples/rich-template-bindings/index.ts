@@ -109,11 +109,12 @@ const GALLERY_THEMES: [string, Engine<RichText>][] = [
 
 // ─── Styles ────────────────────────────────────────────────────────────────
 
-const dimStyle      = Style.parse("dim");
-const cyanStyle     = Style.parse("cyan");
-const cyanBoldStyle = Style.parse("bold cyan");
-const redStyle      = Style.parse("red dim");
-const cursorStyle   = Style.parse("reverse");
+const dimStyle        = Style.parse("dim");
+const cyanStyle       = Style.parse("cyan");
+const cyanBoldStyle   = Style.parse("bold cyan");
+const redStyle        = Style.parse("red dim");
+const cursorStyle     = Style.parse("reverse");
+const wrapMarkerStyle = Style.parse("dim cyan");
 
 // ─── State ─────────────────────────────────────────────────────────────────
 
@@ -157,15 +158,19 @@ function renderTmpl(engine: Engine<RichText>, tmpl: string): Segment[] {
 
 const MIN_HEIGHT = 1;
 const MAX_HEIGHT = 10;
-const INDENT = "  ";
+// Continuation marker for wrap-induced rows. Two leading spaces nest the
+// content visibly under the parent line, then "↳ " signals "this row is a
+// soft-wrap continuation, not new content". 4 cells: "  ↳ ".
+const WRAP_MARKER = "  ↳ ";
 
-// One visual row in the textarea. `display` already includes the prefix indent;
-// `start` is the position in the source template of the first content char
-// (after the indent); `prefixLen` is how many cells the indent occupies.
+// One visual row in the textarea. `prefix` is the wrap-continuation marker
+// ("" for primary rows, WRAP_MARKER for wrapped continuations) — rendered
+// separately so it can be dim-styled. `start` is the position in the source
+// template of the first char of `content` (immediately after `prefix`).
 interface VisualRow {
-  display: string;
+  prefix: string;
+  content: string;
   start: number;
-  prefixLen: number;
 }
 
 // Tokenize a logical line into atoms — each `{{ ... }}` action is one atom,
@@ -202,7 +207,7 @@ function wrapText(text: string, width: number): VisualRow[] {
   for (let li = 0; li < logical.length; li++) {
     const line = logical[li]!;
     if (line.length === 0) {
-      rows.push({ display: "", start: cum, prefixLen: 0 });
+      rows.push({ prefix: "", content: "", start: cum });
       cum += 1;
       continue;
     }
@@ -213,8 +218,7 @@ function wrapText(text: string, width: number): VisualRow[] {
     let onFirst = true;
 
     const emitBuf = (): void => {
-      const prefix = onFirst ? "" : INDENT;
-      rows.push({ display: prefix + buf, start: bufStart, prefixLen: prefix.length });
+      rows.push({ prefix: onFirst ? "" : WRAP_MARKER, content: buf, start: bufStart });
       onFirst = false;
       buf = "";
       bufStart = -1;
@@ -227,7 +231,7 @@ function wrapText(text: string, width: number): VisualRow[] {
       const isTag = atom.startsWith("{{") && atom.endsWith("}}");
       let p = 0;
       while (p < atom.length) {
-        const prefix = onFirst ? "" : INDENT;
+        const prefix = onFirst ? "" : WRAP_MARKER;
         const cap = width - prefix.length;
         const remaining = atom.length - p;
         let take: number;
@@ -241,9 +245,9 @@ function wrapText(text: string, width: number): VisualRow[] {
           take = lastSpace > 0 ? lastSpace + 1 : cap;
         }
         rows.push({
-          display: prefix + atom.slice(p, p + take),
+          prefix,
+          content: atom.slice(p, p + take),
           start: cum + atomStart + p,
-          prefixLen: prefix.length,
         });
         onFirst = false;
         p += take;
@@ -251,7 +255,7 @@ function wrapText(text: string, width: number): VisualRow[] {
     };
 
     for (const atom of atoms) {
-      const cap = onFirst ? width : width - INDENT.length;
+      const cap = onFirst ? width : width - WRAP_MARKER.length;
       if (buf === "") {
         if (atom.text.length <= cap) {
           buf = atom.text;
@@ -263,7 +267,7 @@ function wrapText(text: string, width: number): VisualRow[] {
         buf += atom.text;
       } else {
         emitBuf();
-        const cap2 = width - INDENT.length;
+        const cap2 = width - WRAP_MARKER.length;
         if (atom.text.length <= cap2) {
           buf = atom.text;
           bufStart = cum + atom.start;
@@ -277,7 +281,7 @@ function wrapText(text: string, width: number): VisualRow[] {
     cum += line.length + 1; // +1 for the \n
   }
 
-  if (rows.length === 0) rows.push({ display: "", start: 0, prefixLen: 0 });
+  if (rows.length === 0) rows.push({ prefix: "", content: "", start: 0 });
   return rows;
 }
 
@@ -287,7 +291,7 @@ function findCursor(rows: VisualRow[], pos: number): { row: number; col: number 
     if (rows[i]!.start <= pos) { row = i; break; }
   }
   const r = rows[row]!;
-  return { row, col: r.prefixLen + (pos - r.start) };
+  return { row, col: r.prefix.length + (pos - r.start) };
 }
 
 function buildRowSegments(
@@ -309,7 +313,7 @@ function buildRowSegments(
 
   // Cursor past the right edge → slide onto a fresh empty row.
   if (curCol >= lc) {
-    rows.push({ display: "", start: pos, prefixLen: 0 });
+    rows.push({ prefix: "", content: "", start: pos });
     curLine = rows.length - 1;
     curCol = 0;
   }
@@ -339,17 +343,19 @@ function buildRowSegments(
 
   for (let row = 0; row < height; row++) {
     const li = scrollStart + row;
-    const lineText = rows[li]?.display ?? "";
-    const display = lineText.padEnd(lc, " ").slice(0, lc);
+    const r = rows[li] ?? { prefix: "", content: "", start: 0 };
+    const contentWidth = Math.max(0, lc - r.prefix.length);
+    const content = r.content.padEnd(contentWidth, " ").slice(0, contentWidth);
 
     segs.push(new Segment("  │ ", bStyle));
+    if (r.prefix) segs.push(new Segment(r.prefix, wrapMarkerStyle));
     if (focused && li === curLine) {
-      const cc = curCol;
-      if (cc > 0) segs.push(new Segment(display.slice(0, cc)));
-      segs.push(new Segment(display[cc] ?? " ", cursorStyle));
-      if (cc + 1 < lc) segs.push(new Segment(display.slice(cc + 1, lc)));
+      const cc = Math.max(0, curCol - r.prefix.length);
+      if (cc > 0) segs.push(new Segment(content.slice(0, cc)));
+      segs.push(new Segment(content[cc] ?? " ", cursorStyle));
+      if (cc + 1 < content.length) segs.push(new Segment(content.slice(cc + 1)));
     } else {
-      segs.push(new Segment(display));
+      segs.push(new Segment(content));
     }
     segs.push(new Segment(" │", bStyle));
 
