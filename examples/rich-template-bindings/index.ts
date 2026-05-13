@@ -158,10 +158,10 @@ function renderTmpl(engine: Engine<RichText>, tmpl: string): Segment[] {
 
 const MIN_HEIGHT = 1;
 const MAX_HEIGHT = 10;
-// Continuation marker for wrap-induced rows. Two leading spaces nest the
-// content visibly under the parent line, then "↳ " signals "this row is a
-// soft-wrap continuation, not new content". 4 cells: "  ↳ ".
-const WRAP_MARKER = "  ↳ ";
+// Continuation marker for wrap-induced rows. Arrow at column 0, then a
+// single space — total 2 cells. Content starts at column 2, which is the
+// 2-space indent relative to the parent (non-wrapped) row's content.
+const WRAP_MARKER = "↳ ";
 
 // One visual row in the textarea. `prefix` is the wrap-continuation marker
 // ("" for primary rows, WRAP_MARKER for wrapped continuations) — rendered
