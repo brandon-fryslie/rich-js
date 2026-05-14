@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TextInput } from "../../src/widgets/text-input.js";
+import { TextInput, charGreedyWrap, type WrapStrategy } from "../../src/widgets/text-input.js";
 import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
 
 const makeKey = (key: string, character = ""): KeyEvent => ({
@@ -606,6 +606,173 @@ describe("TextInput", () => {
       t.handleKey(enterEvent);
       expect(submits).toHaveLength(1);
       expect(t.value).toBe("hi");
+    });
+  });
+
+  describe("multiline rendering + soft wrap", () => {
+    const RENDER_NARROW = { maxWidth: 10 };
+
+    it("emits one visual row per logical line when no wrap strategy is set", () => {
+      const t = new TextInput({ value: "a\nb\nc", multiline: true });
+      const text = [...t.render(RENDER_NARROW)].map((s) => s.text).join("");
+      // Three lines joined by \n; no continuation marker.
+      expect(text).toBe("a\nb\nc");
+    });
+
+    it("renders the continuation marker for soft-wrapped rows", () => {
+      const t = new TextInput({
+        value: "abcdefghijklmno",       // 15 chars
+        multiline: true,
+        wrap: charGreedyWrap,
+      });
+      // firstWidth = 10, continuationWidth = 10 - cellLen("↳ ") = 8
+      // → row 0: "abcdefghij" (10), row 1: continuation "klmno" (5)
+      const text = [...t.render(RENDER_NARROW)].map((s) => s.text).join("");
+      expect(text).toContain("abcdefghij");
+      expect(text).toContain("↳ ");
+      expect(text).toContain("klmno");
+    });
+
+    it("Up arrow moves by visual row when wrap is active (post-render)", () => {
+      const t = new TextInput({
+        value: "abcdefghijklmno",       // wraps to 2 visual rows at width 10
+        multiline: true,
+        wrap: charGreedyWrap,
+      });
+      // Render first so visual rows get cached.
+      [...t.render(RENDER_NARROW)];
+      t.cursorPosition = 13;            // on visual row 1 (continuation), col 3
+      t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+      // Visual row 0 at col 3 → cursorPosition = 3
+      expect(t.cursorPosition).toBe(3);
+    });
+
+    it("Down arrow moves by visual row across a soft-wrap boundary", () => {
+      const t = new TextInput({
+        value: "abcdefghijklmno",
+        multiline: true,
+        wrap: charGreedyWrap,
+      });
+      [...t.render(RENDER_NARROW)];
+      t.cursorPosition = 4;             // visual row 0, col 4
+      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      // Visual row 1 starts at value-offset 10; col 4 → 14
+      expect(t.cursorPosition).toBe(14);
+    });
+
+    it("custom wrap strategy is invoked and its rows drive motion", () => {
+      let called = 0;
+      const strategy: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
+        called++;
+        // Break at every 4 chars regardless of width.
+        const rows: { content: string; start: number }[] = [];
+        let p = 0;
+        while (p < line.length) {
+          const take = Math.min(4, line.length - p);
+          rows.push({ content: line.slice(p, p + take), start: p });
+          p += take;
+        }
+        // Reference unused params so the type isn't dropped.
+        void firstWidth; void continuationWidth;
+        return rows;
+      };
+      const t = new TextInput({ value: "abcdefgh", multiline: true, wrap: strategy });
+      [...t.render({ maxWidth: 80 })];
+      expect(called).toBeGreaterThan(0);
+      t.cursorPosition = 0;
+      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      // Visual row 1 starts at offset 4 (per the custom strategy)
+      expect(t.cursorPosition).toBe(4);
+    });
+
+    it("maxRows scrolls the cursor row into view", () => {
+      const t = new TextInput({
+        value: "a\nb\nc\nd\ne",            // 5 logical lines
+        multiline: true,
+        maxRows: 2,
+      });
+      t.cursorPosition = 8;                 // on line 5 ("e")
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      // Should show only lines 4 and 5 ("d" and "e") since maxRows=2 and
+      // cursor is on the last line.
+      expect(text).toContain("d");
+      expect(text).toContain("e");
+      expect(text).not.toContain("a");
+      expect(text).not.toContain("b");
+    });
+
+    it("minRows pads short content with empty rows", () => {
+      const t = new TextInput({ value: "x", multiline: true, minRows: 3 });
+      const segs = [...t.render({ maxWidth: 20 })];
+      // Count the trailing "\n" separators — should be at least minRows-1.
+      const nlCount = segs.filter((s) => s.text === "\n").length;
+      expect(nlCount).toBeGreaterThanOrEqual(2);
+    });
+
+    it("Up at first visual row (wrap active) is a no-op", () => {
+      const t = new TextInput({
+        value: "abcdefghijklmno",
+        multiline: true,
+        wrap: charGreedyWrap,
+      });
+      [...t.render(RENDER_NARROW)];
+      t.cursorPosition = 3;
+      t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+      expect(t.cursorPosition).toBe(3);
+    });
+
+    it("Down at last visual row (wrap active) is a no-op", () => {
+      const t = new TextInput({
+        value: "abcdefghijklmno",
+        multiline: true,
+        wrap: charGreedyWrap,
+      });
+      [...t.render(RENDER_NARROW)];
+      t.cursorPosition = 13;
+      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      expect(t.cursorPosition).toBe(13);
+    });
+
+    it("preferred column survives motion through a short wrap row", () => {
+      const t = new TextInput({
+        // 3 logical lines: long / short / long. Wrap will further split lines.
+        value: "abcdefghij\nxy\nuvwxyz",
+        multiline: true,
+        wrap: charGreedyWrap,
+      });
+      [...t.render(RENDER_NARROW)];
+      t.cursorPosition = 6;                 // col 6 on visual row 0 of line 1
+      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      // Visual row 1 = "xy" (start=11, length 2) → clamped to col 2 → pos 13
+      expect(t.cursorPosition).toBe(13);
+      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      // Visual row 2 = "uvwxyz" (start=14, length 6) → preferred col 6 → pos 20
+      expect(t.cursorPosition).toBe(20);
+    });
+  });
+
+  describe("charGreedyWrap", () => {
+    it("returns one row for an empty line", () => {
+      const rows = charGreedyWrap("", { firstWidth: 10, continuationWidth: 8 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.content).toBe("");
+      expect(rows[0]!.start).toBe(0);
+    });
+
+    it("splits at firstWidth then at continuationWidth", () => {
+      const rows = charGreedyWrap("0123456789abcdefghij", { firstWidth: 10, continuationWidth: 5 });
+      expect(rows[0]!.content).toBe("0123456789");
+      expect(rows[0]!.start).toBe(0);
+      expect(rows[1]!.content).toBe("abcde");
+      expect(rows[1]!.start).toBe(10);
+      expect(rows[2]!.content).toBe("fghij");
+      expect(rows[2]!.start).toBe(15);
+    });
+
+    it("returns a single row when line fits in firstWidth", () => {
+      const rows = charGreedyWrap("short", { firstWidth: 10, continuationWidth: 8 });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.content).toBe("short");
     });
   });
 

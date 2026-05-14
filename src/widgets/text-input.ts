@@ -53,11 +53,80 @@ import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
+import { cellLen } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
+
+/**
+ * A soft-wrap strategy. Given one logical line of text and width budgets,
+ * return the visual sub-rows that line wraps into. The first sub-row uses
+ * `firstWidth` as its capacity; every subsequent (continuation) sub-row uses
+ * `continuationWidth` (typically `firstWidth - cellLen(continuationMarker)`).
+ *
+ * Each returned row carries:
+ *   - `content` — the displayed text for that visual row (the widget prepends
+ *     the continuation marker itself; the strategy never includes it).
+ *   - `start`   — byte offset into the *logical line* where `content` begins,
+ *     so the widget can map visual positions back to absolute `value` offsets
+ *     for cursor projection.
+ *
+ * [LAW:types-are-the-program] The strategy returns visual rows directly
+ * rather than break points or token streams — the widget then consumes a
+ * uniform `VisualRow` shape regardless of which strategy produced it,
+ * collapsing all wrap-policy variability into one boundary.
+ *
+ * Built-in: `charGreedyWrap` (break at any character at the width limit).
+ * Custom: any function matching this signature. Template-aware wrapping
+ * (break at `{{ }}` atoms, e.g.) is provided by consumers that know the
+ * value's domain syntax — the widget stays domain-neutral.
+ */
+export type WrapStrategy = (
+  logicalLine: string,
+  budget: { firstWidth: number; continuationWidth: number },
+) => readonly WrapRow[];
+
+export interface WrapRow {
+  readonly content: string;
+  readonly start: number;
+}
+
+/**
+ * Internal: a visual row in the widget's render, with offsets absolute to
+ * `value` (not the logical line a wrap strategy sees). Cached on `render()`
+ * and consumed by `moveLineUp` / `moveLineDown` so vertical motion follows
+ * what's actually on screen — not what the logical-line model would do in
+ * the absence of wrap.
+ */
+interface VisualRow {
+  readonly content: string;
+  readonly valueStart: number;
+  readonly isContinuation: boolean;
+}
+
+/**
+ * Character-greedy soft wrap. Breaks at any character once `firstWidth`
+ * (or `continuationWidth` for continuation rows) is exhausted. The textarea
+ * default when a consumer says "wrap, I don't care how" — no syntax
+ * awareness, just fits the line to the width.
+ */
+export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
+  if (line.length === 0) return [{ content: "", start: 0 }];
+  const rows: WrapRow[] = [];
+  let pos = 0;
+  let isFirst = true;
+  while (pos < line.length) {
+    const cap = isFirst ? firstWidth : continuationWidth;
+    if (cap <= 0) break;
+    const take = Math.min(cap, line.length - pos);
+    rows.push({ content: line.slice(pos, pos + take), start: pos });
+    pos += take;
+    isFirst = false;
+  }
+  return rows;
+};
 
 export interface TextInputOptions {
   value?: string;
@@ -69,11 +138,43 @@ export interface TextInputOptions {
   password?: boolean;
   /**
    * When true, Enter inserts a `\n` into `value` instead of emitting submit,
-   * and Up/Down arrows + Ctrl+P/N navigate between logical lines. Single-line
-   * mode (the default) leaves Enter as submit and Up/Down as no-ops, which
-   * matches the conventional one-line-input widget shape.
+   * and Up/Down arrows + Ctrl+P/N navigate between visual rows.
+   * Single-line mode (the default) leaves Enter as submit and Up/Down as
+   * no-ops, which matches the conventional one-line-input widget shape.
    */
   multiline?: boolean;
+  /**
+   * Soft-wrap strategy. When set (multiline mode only), each logical line
+   * is wrapped to fit available width using this strategy; the widget
+   * renders one visual row per wrap row and Up/Down move across *visual*
+   * rows, not logical ones. When unset, multiline rendering emits each
+   * logical line as one (potentially overflowing) visual row.
+   *
+   * Pass `charGreedyWrap` for the conventional textarea wrap, or supply
+   * a custom strategy that understands the value's domain syntax (e.g. a
+   * tokenizer that breaks at expression boundaries instead of mid-token).
+   */
+  wrap?: WrapStrategy;
+  /**
+   * Continuation marker rendered at the start of each non-first visual row
+   * when a logical line wraps. Defaults to `"↳ "` (2 cells wide). The
+   * widget subtracts this marker's display width from the strategy's
+   * `continuationWidth` budget so wrapped content fits the available area.
+   */
+  continuationMarker?: string;
+  /**
+   * Maximum visible visual rows. When set and the wrapped value exceeds
+   * this many rows, the widget scrolls the visible window to keep the
+   * cursor row in view. Unset → render every row (let the host bound the
+   * pane).
+   */
+  maxRows?: number;
+  /**
+   * Minimum visible visual rows. When set and the wrapped value has fewer
+   * rows than this, the widget pads with empty rows so the rendered area
+   * occupies at least `minRows` lines (useful for stable layouts).
+   */
+  minRows?: number;
 }
 
 const MIN_CONTENT_WIDTH = 8;
@@ -108,6 +209,24 @@ export class TextInput extends WidgetBase {
   private readonly _maxLength: number | undefined;
   private readonly _password: boolean;
   private readonly _multiline: boolean;
+  private readonly _wrap: WrapStrategy | undefined;
+  private readonly _continuationMarker: string;
+  private readonly _markerWidth: number;
+  private readonly _maxRows: number | undefined;
+  private readonly _minRows: number | undefined;
+
+  /**
+   * Last computed visual-row decomposition. Cached at the end of `render()`
+   * so vertical motion (Up/Down) can step row-by-row without re-running the
+   * wrap strategy. Null before the first render — vertical motion falls
+   * back to logical-line motion in that case.
+   *
+   * [LAW:dataflow-not-control-flow] One source of truth for "what does Up
+   * mean right now": the row table the renderer just produced. No parallel
+   * "where would the cursor go" math; both the renderer and the keymap
+   * read from the same array.
+   */
+  private _visualRows: readonly VisualRow[] | null = null;
 
   // [LAW:types-are-the-program] `_preferredColumn` exists because vertical
   // motion needs to remember "what column the user *intended*" even after
@@ -135,6 +254,11 @@ export class TextInput extends WidgetBase {
     this._maxLength = options.maxLength;
     this._password = options.password ?? false;
     this._multiline = options.multiline ?? false;
+    this._wrap = options.wrap;
+    this._continuationMarker = options.continuationMarker ?? "↳ ";
+    this._markerWidth = cellLen(this._continuationMarker);
+    this._maxRows = options.maxRows;
+    this._minRows = options.minRows;
     this.multiline = this._multiline;
   }
 
@@ -256,10 +380,23 @@ export class TextInput extends WidgetBase {
   }
 
   @action moveLineUp(): void {
+    // Prefer the on-screen visual decomposition when it exists — wraps,
+    // marker offsets, and scroll alignment are all already accounted for.
+    // Fall back to logical-line motion only when no render has occurred yet
+    // (e.g. cursor motion before mount).
+    if (this._visualRows !== null && this._visualRows.length > 1) {
+      const rowIdx = this._cursorVisualRow();
+      if (rowIdx === 0) return;
+      const col = this._preferredColumn ?? this._cursorVisualCol();
+      const target = this._visualRows[rowIdx - 1]!;
+      this.cursorPosition = target.valueStart + Math.min(col, target.content.length);
+      this._preferredColumn = col;
+      return;
+    }
     const lineStart = this._lineStart();
-    if (lineStart === 0) return; // already on first line
+    if (lineStart === 0) return;
     const col = this._preferredColumn ?? (this.cursorPosition - lineStart);
-    const prevLineEnd = lineStart - 1; // the `\n` byte itself
+    const prevLineEnd = lineStart - 1;
     let prevLineStart = prevLineEnd;
     while (prevLineStart > 0 && this.value[prevLineStart - 1] !== "\n") prevLineStart--;
     const prevLineLen = prevLineEnd - prevLineStart;
@@ -268,16 +405,42 @@ export class TextInput extends WidgetBase {
   }
 
   @action moveLineDown(): void {
+    if (this._visualRows !== null && this._visualRows.length > 1) {
+      const rowIdx = this._cursorVisualRow();
+      if (rowIdx === this._visualRows.length - 1) return;
+      const col = this._preferredColumn ?? this._cursorVisualCol();
+      const target = this._visualRows[rowIdx + 1]!;
+      this.cursorPosition = target.valueStart + Math.min(col, target.content.length);
+      this._preferredColumn = col;
+      return;
+    }
     const lineEnd = this._lineEnd();
-    if (lineEnd === this.value.length) return; // already on last line
+    if (lineEnd === this.value.length) return;
     const lineStart = this._lineStart();
     const col = this._preferredColumn ?? (this.cursorPosition - lineStart);
-    const nextLineStart = lineEnd + 1; // skip the `\n`
+    const nextLineStart = lineEnd + 1;
     let nextLineEnd = nextLineStart;
     while (nextLineEnd < this.value.length && this.value[nextLineEnd] !== "\n") nextLineEnd++;
     const nextLineLen = nextLineEnd - nextLineStart;
     this.cursorPosition = nextLineStart + Math.min(col, nextLineLen);
     this._preferredColumn = col;
+  }
+
+  // Locate which cached visual row the cursor sits on. Returns the row index
+  // for use in `moveLineUp`/`moveLineDown`; caller must guard `_visualRows`.
+  private _cursorVisualRow(): number {
+    const rows = this._visualRows!;
+    let idx = 0;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i]!.valueStart <= this.cursorPosition) { idx = i; break; }
+    }
+    return idx;
+  }
+
+  private _cursorVisualCol(): number {
+    const rows = this._visualRows!;
+    const idx = this._cursorVisualRow();
+    return this.cursorPosition - rows[idx]!.valueStart;
   }
 
   @action moveLineStart(): void {
@@ -447,12 +610,17 @@ export class TextInput extends WidgetBase {
   // --- Rendering ---
 
   render(options: RenderOptions): Iterable<Segment> {
+    if (this._multiline) return this._renderMultiline(options);
+    return this._renderSingleLine(options);
+  }
+
+  private _renderSingleLine(options: RenderOptions): Segment[] {
     const showPlaceholder = this.focused && this.value.length === 0 && this.placeholder.length > 0;
 
     // [LAW:dataflow-not-control-flow] Single rawDisplay value derives from
-    // mode (password / placeholder / plain); newlines map 1:1 to a visible
-    // glyph so cursor-position math against `value.length` stays valid for
-    // both single- and multi-line content without a special branch here.
+    // mode (password / placeholder / plain); a stray newline in a *single-
+    // line* value maps to a visible glyph so cursor-position math against
+    // `value.length` stays valid without a special branch here.
     const rawDisplay = showPlaceholder
       ? this.placeholder
       : this._password
@@ -481,8 +649,6 @@ export class TextInput extends WidgetBase {
         ? new Style({ color: this.resolvePalette("foreground"), dim: true })
         : new Style({ color: this.resolvePalette("foreground") });
 
-    // Cursor cell paints on a full primary bg → use on-primary for fg so
-    // contrast is WCAG-correct across all themes, not theme-bg-dependent.
     const cursorStyle = new Style({
       color: this.resolvePalette("on-primary"),
       bgcolor: this.resolvePalette("primary"),
@@ -503,6 +669,110 @@ export class TextInput extends WidgetBase {
 
     segments.push(new Segment("]", bracketStyle));
     return segments;
+  }
+
+  private _renderMultiline(options: RenderOptions): Segment[] {
+    // [LAW:dataflow-not-control-flow] Decompose `value` into visual rows
+    // exactly once per render, cache the result, then drive both display
+    // *and* cursor projection from the same array. Vertical motion reads
+    // from the cache so Up/Down step through whatever the user actually
+    // sees, including soft-wrap continuations.
+    const visualRows = this._computeVisualRows(options.maxWidth);
+    this._visualRows = visualRows;
+
+    // Scroll window: clamp the visible range to `maxRows`, keeping the
+    // cursor row in view. When `maxRows` is unset, render every row.
+    const total = visualRows.length;
+    const cursorRow = this._cursorVisualRow();
+    let scrollStart = 0;
+    let visibleCount = total;
+    if (this._maxRows !== undefined && total > this._maxRows) {
+      scrollStart = Math.max(0, Math.min(total - this._maxRows, cursorRow - this._maxRows + 1));
+      visibleCount = this._maxRows;
+    }
+    // Pad with empty rows when the value is shorter than `minRows`.
+    let padRows = 0;
+    if (this._minRows !== undefined && total < this._minRows && this._maxRows === undefined) {
+      padRows = this._minRows - total;
+    }
+
+    const contentStyle = this.disabled
+      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
+      : new Style({ color: this.resolvePalette("foreground") });
+    const markerStyle = new Style({ color: this.resolvePalette("foreground"), dim: true });
+    const cursorStyle = new Style({
+      color: this.resolvePalette("on-primary"),
+      bgcolor: this.resolvePalette("primary"),
+    });
+
+    const segments: Segment[] = [];
+    const showCursor = this.focused && !this.disabled;
+    for (let i = 0; i < visibleCount; i++) {
+      const rowIdx = scrollStart + i;
+      const row = visualRows[rowIdx]!;
+      if (i > 0) segments.push(new Segment("\n"));
+      if (row.isContinuation) {
+        segments.push(new Segment(this._continuationMarker, markerStyle));
+      }
+      this._emitRowContent(segments, row, rowIdx === cursorRow && showCursor, contentStyle, cursorStyle);
+    }
+    // Trailing empty rows for minRows padding (no cursor, no marker).
+    for (let i = 0; i < padRows; i++) {
+      segments.push(new Segment("\n"));
+    }
+    return segments;
+  }
+
+  private _emitRowContent(
+    out: Segment[],
+    row: VisualRow,
+    cursorOnRow: boolean,
+    contentStyle: Style,
+    cursorStyle: Style,
+  ): void {
+    const content = row.content;
+    if (!cursorOnRow) {
+      if (content.length > 0) out.push(new Segment(content, contentStyle));
+      return;
+    }
+    const col = this.cursorPosition - row.valueStart;
+    const before = content.slice(0, col);
+    const at = content.slice(col, col + 1) || " ";
+    const after = content.slice(col + 1);
+    if (before.length > 0) out.push(new Segment(before, contentStyle));
+    out.push(new Segment(at, cursorStyle));
+    if (after.length > 0) out.push(new Segment(after, contentStyle));
+  }
+
+  private _computeVisualRows(maxWidth: number): VisualRow[] {
+    const firstWidth = Math.max(1, maxWidth);
+    const continuationWidth = Math.max(1, firstWidth - this._markerWidth);
+
+    const rows: VisualRow[] = [];
+    const lines = this.value.split("\n");
+    let pos = 0;
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li]!;
+      if (this._wrap !== undefined) {
+        const wrapRows = this._wrap(line, { firstWidth, continuationWidth });
+        if (wrapRows.length === 0) {
+          rows.push({ content: "", valueStart: pos, isContinuation: false });
+        } else {
+          for (let ri = 0; ri < wrapRows.length; ri++) {
+            const wr = wrapRows[ri]!;
+            rows.push({
+              content: wr.content,
+              valueStart: pos + wr.start,
+              isContinuation: ri > 0,
+            });
+          }
+        }
+      } else {
+        rows.push({ content: line, valueStart: pos, isContinuation: false });
+      }
+      pos += line.length + 1; // +1 for the \n separator
+    }
+    return rows;
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

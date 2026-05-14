@@ -700,6 +700,76 @@ describe("RichText.styled()", () => {
   });
 });
 
+describe("RichText.fromFragments()", () => {
+  it("empty input returns an empty RichText with end=''", () => {
+    const t = RichText.fromFragments([]);
+    expect(t.plain).toBe("");
+    expect(t.end).toBe("");
+    expect(t.spans).toHaveLength(0);
+  });
+
+  it("flattens each fragment's wrapping style onto a span over its range", () => {
+    const red  = RichText.styled("red",  "red");
+    const blue = RichText.styled("blue", "blue");
+    // RichText.styled puts style as a span, not as the wrapping style — so
+    // reframe: make fragments where the wrapping style is what carries colour.
+    const f1 = new RichText("hello", { style: "red" });
+    const f2 = new RichText("world", { style: "blue" });
+    const t = RichText.fromFragments([f1, f2]);
+    expect(t.plain).toBe("helloworld");
+    // Two spans: one over the red range, one over the blue range.
+    expect(t.spans).toHaveLength(2);
+    expect(t.spans[0]!.start).toBe(0);
+    expect(t.spans[0]!.end).toBe(5);
+    expect(t.spans[0]!.style.color?.name).toBe("red");
+    expect(t.spans[1]!.start).toBe(5);
+    expect(t.spans[1]!.end).toBe(10);
+    expect(t.spans[1]!.style.color?.name).toBe("blue");
+    // Silence unused locals (red/blue were sketches).
+    void red; void blue;
+  });
+
+  it("preserves a fragment's internal spans, shifted by its offset", () => {
+    const f1 = new RichText("ab");
+    f1.stylize("bold", 0, 1);   // span: "a" bold
+    const f2 = new RichText("cd");
+    f2.stylize("italic", 1, 2); // span: "d" italic
+    const t = RichText.fromFragments([f1, f2]);
+    expect(t.plain).toBe("abcd");
+    // Spans propagated and offset: "a" bold (0-1), "d" italic (3-4).
+    const bold = t.spans.find((s) => s.style.bold === true);
+    expect(bold).toBeDefined();
+    expect(bold!.start).toBe(0);
+    expect(bold!.end).toBe(1);
+    const italic = t.spans.find((s) => s.style.italic === true);
+    expect(italic).toBeDefined();
+    expect(italic!.start).toBe(3);
+    expect(italic!.end).toBe(4);
+  });
+
+  it("a fragment with no wrapping style adds no extra span", () => {
+    const f1 = new RichText("hi");                // no wrapping style
+    const f2 = new RichText("there", { style: "underline" });
+    const t = RichText.fromFragments([f1, f2]);
+    expect(t.plain).toBe("hithere");
+    // Only one span — for f2's underline.
+    expect(t.spans).toHaveLength(1);
+    expect(t.spans[0]!.style.underline).toBe(true);
+    expect(t.spans[0]!.start).toBe(2);
+    expect(t.spans[0]!.end).toBe(7);
+  });
+
+  it("default end is '' (engine-output case rarely wants trailing newline)", () => {
+    const t = RichText.fromFragments([new RichText("x")]);
+    expect(t.end).toBe("");
+  });
+
+  it("end can be overridden via options", () => {
+    const t = RichText.fromFragments([new RichText("x")], { end: "\n" });
+    expect(t.end).toBe("\n");
+  });
+});
+
 // =========================================================
 // Renderable
 // =========================================================

@@ -30,6 +30,7 @@ import {
   Segment,
   type MountEntry,
 } from "../../src/index.js";
+import type { WrapStrategy } from "../../src/widgets/text-input.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   MONOKAI,
@@ -51,6 +52,7 @@ import type { TerminalTheme } from "../../src/core/color.js";
 import {
   richTextFuncs,
   paletteFuncs,
+  renderTemplate,
 } from "../../src/template-bindings/index.js";
 import { makeAutoObservable, autorun, runInAction } from "mobx";
 
@@ -69,61 +71,6 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
       ...paletteFuncs(new PaletteResolver(theme.palette)),
     },
   });
-}
-
-// Newline rule: newlines INSIDE a `{{ ... }}` block are formatting-only
-// (collapsed to a single space along with surrounding whitespace), so a long
-// expression can be split across lines for readability:
-//     {{ link "https://..."
-//        (underline (cyan "...")) }}   → one styled span in output
-// Newlines OUTSIDE tag blocks are preserved as hard newlines, so plain
-// multi-line templates produce multi-line output:
-//     {{ b "b" }}
-//     {{ i "i" }}                       → two lines in output
-function exec(engine: Engine<RichText>, tmpl: string): RichText {
-  let cleaned = "";
-  let inTag = false;
-  let i = 0;
-  while (i < tmpl.length) {
-    if (!inTag) {
-      if (tmpl[i] === "{" && tmpl[i + 1] === "{") {
-        inTag = true;
-        cleaned += "{{";
-        i += 2;
-      } else {
-        cleaned += tmpl[i];
-        i++;
-      }
-    } else {
-      if (tmpl[i] === "}" && tmpl[i + 1] === "}") {
-        inTag = false;
-        cleaned += "}}";
-        i += 2;
-      } else if (tmpl[i] === "\n") {
-        // Drop trailing ws already written, swallow any leading ws after,
-        // emit a single space in its place.
-        while (cleaned.length > 0 && (cleaned[cleaned.length - 1] === " " || cleaned[cleaned.length - 1] === "\t")) {
-          cleaned = cleaned.slice(0, -1);
-        }
-        while (i < tmpl.length && (tmpl[i] === " " || tmpl[i] === "\t" || tmpl[i] === "\n")) i++;
-        cleaned += " ";
-      } else {
-        cleaned += tmpl[i];
-        i++;
-      }
-    }
-  }
-  const frags = engine.compile(cleaned)({});
-  const out = new RichText("", { end: "" });
-  for (const f of frags) {
-    const start = out.length;
-    out.append(f.plain);
-    if (!f.style.isNull) out.stylize(f.style, start, out.length);
-    for (const span of f.spans) {
-      out.stylize(span.style, start + span.start, start + span.end);
-    }
-  }
-  return out;
 }
 
 const gruvboxEngine = makeEngine(GRUVBOX);
@@ -147,12 +94,9 @@ const GALLERY_THEMES: [string, Engine<RichText>][] = [
 
 // ─── Styles ────────────────────────────────────────────────────────────────
 
-const dimStyle        = Style.parse("dim");
-const cyanStyle       = Style.parse("cyan");
-const cyanBoldStyle   = Style.parse("bold cyan");
-const redStyle        = Style.parse("red dim");
-const cursorStyle     = Style.parse("reverse");
-const wrapMarkerStyle = Style.parse("dim cyan");
+const dimStyle      = Style.parse("dim");
+const cyanStyle     = Style.parse("cyan");
+const cyanBoldStyle = Style.parse("bold cyan");
 
 // ─── State ─────────────────────────────────────────────────────────────────
 
@@ -173,164 +117,93 @@ function makeSpacerItem(): StaticItem {
   return new StaticItem({ id: uid("sp"), render: () => [new Segment("")] });
 }
 
-// Render template to Segment[]. Returns dim error on failure.
-function renderTmpl(engine: Engine<RichText>, tmpl: string): Segment[] {
-  try {
-    const result = exec(engine, tmpl);
-    return Array.from(result.render({ maxWidth: 400, isTerminal: true, encoding: "utf-8" }));
-  } catch (e) {
-    return [new Segment(`[error: ${String(e).slice(0, 60)}]`, redStyle)];
-  }
-}
-
-// ─── Two-column textarea layout ─────────────────────────────────────────────
+// ─── Template-atom wrap strategy ────────────────────────────────────────────
 //
-// Left:  editable textarea. `\n` chars in the value are logical line breaks
-//        (rendered as visual rows but stripped before the engine renders).
-//        Lines that exceed `lc` cells wrap at `{{ }}` action boundaries —
-//        never mid-action — with continuation rows indented 2 spaces.
-// Right: rendered output, clipped to exactly `rc` cells per row.
-//
-// Height adapts to the template's wrapped line count, clamped to
-// [MIN_HEIGHT, MAX_HEIGHT]. No horizontal scrolling, ever.
+// `WrapStrategy` that breaks at `{{ ... }}` atom boundaries instead of mid-
+// character. Atoms wider than the budget fall back to char-break (tags) or
+// last-space (text). The widget consumes this through its `wrap` option;
+// everything below "what to break on" lives in the widget itself.
 
-const MIN_HEIGHT = 1;
-const MAX_HEIGHT = 10;
-// Continuation marker for wrap-induced rows. Arrow at column 0, then a
-// single space — total 2 cells. Content starts at column 2, which is the
-// 2-space indent relative to the parent (non-wrapped) row's content.
-const WRAP_MARKER = "↳ ";
+const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
+  if (line.length === 0) return [{ content: "", start: 0 }];
 
-// One visual row in the textarea. `prefix` is the wrap-continuation marker
-// ("" for primary rows, WRAP_MARKER for wrapped continuations) — rendered
-// separately so it can be dim-styled. `start` is the position in the source
-// template of the first char of `content` (immediately after `prefix`).
-interface VisualRow {
-  prefix: string;
-  content: string;
-  start: number;
-}
-
-// Tokenize a logical line into atoms — each `{{ ... }}` action is one atom,
-// each run of text between actions is one atom. Used as wrap boundaries.
-function tokenize(line: string): { text: string; start: number }[] {
-  const out: { text: string; start: number }[] = [];
+  // Tokenize: each {{...}} is one atom; text runs between are atoms.
+  const atoms: { text: string; start: number }[] = [];
   let i = 0;
   while (i < line.length) {
     if (line[i] === "{" && line[i + 1] === "{") {
       let j = i + 2;
       while (j < line.length - 1 && !(line[j] === "}" && line[j + 1] === "}")) j++;
       const end = j < line.length - 1 ? j + 2 : line.length;
-      out.push({ text: line.slice(i, end), start: i });
+      atoms.push({ text: line.slice(i, end), start: i });
       i = end;
     } else {
       let j = i;
       while (j < line.length && !(line[j] === "{" && line[j + 1] === "{")) j++;
-      out.push({ text: line.slice(i, j), start: i });
+      atoms.push({ text: line.slice(i, j), start: i });
       i = j;
     }
   }
-  return out;
-}
 
-// Wrap text into visual rows. Splits on `\n` first (logical breaks); each
-// logical line is then packed by atoms (tag-or-text) up to `width` cells.
-// Continuations get a 2-space indent. Atoms wider than the available width
-// fall back to hard-break (only relevant for unusually long URLs / strings).
-function wrapText(text: string, width: number): VisualRow[] {
-  const rows: VisualRow[] = [];
-  const logical = text.split("\n");
-  let cum = 0;
+  const rows: { content: string; start: number }[] = [];
+  let buf = "";
+  let bufStart = -1;
+  let isFirst = true;
 
-  for (let li = 0; li < logical.length; li++) {
-    const line = logical[li]!;
-    if (line.length === 0) {
-      rows.push({ prefix: "", content: "", start: cum });
-      cum += 1;
-      continue;
-    }
+  const emitBuf = (): void => {
+    rows.push({ content: buf, start: bufStart });
+    isFirst = false;
+    buf = "";
+    bufStart = -1;
+  };
 
-    const atoms = tokenize(line);
-    let buf = "";
-    let bufStart = -1;
-    let onFirst = true;
-
-    const emitBuf = (): void => {
-      rows.push({ prefix: onFirst ? "" : WRAP_MARKER, content: buf, start: bufStart });
-      onFirst = false;
-      buf = "";
-      bufStart = -1;
-    };
-
-    // Place an over-wide atom across multiple rows. Tags can only be
-    // hard-char-broken (no clean inner boundary); text atoms are word-wrapped
-    // at the last space within the available width.
-    const placeOverflow = (atom: string, atomStart: number): void => {
-      const isTag = atom.startsWith("{{") && atom.endsWith("}}");
-      let p = 0;
-      while (p < atom.length) {
-        const prefix = onFirst ? "" : WRAP_MARKER;
-        const cap = width - prefix.length;
-        const remaining = atom.length - p;
-        let take: number;
-        if (remaining <= cap) {
-          take = remaining;
-        } else if (isTag) {
-          take = cap;
-        } else {
-          const chunk = atom.slice(p, p + cap);
-          const lastSpace = chunk.lastIndexOf(" ");
-          take = lastSpace > 0 ? lastSpace + 1 : cap;
-        }
-        rows.push({
-          prefix,
-          content: atom.slice(p, p + take),
-          start: cum + atomStart + p,
-        });
-        onFirst = false;
-        p += take;
+  const placeOverflow = (text: string, textStart: number): void => {
+    const isTag = text.startsWith("{{") && text.endsWith("}}");
+    let p = 0;
+    while (p < text.length) {
+      const cap = isFirst ? firstWidth : continuationWidth;
+      const remaining = text.length - p;
+      let take: number;
+      if (remaining <= cap) take = remaining;
+      else if (isTag) take = cap;
+      else {
+        const chunk = text.slice(p, p + cap);
+        const lastSpace = chunk.lastIndexOf(" ");
+        take = lastSpace > 0 ? lastSpace + 1 : cap;
       }
-    };
-
-    for (const atom of atoms) {
-      const cap = onFirst ? width : width - WRAP_MARKER.length;
-      if (buf === "") {
-        if (atom.text.length <= cap) {
-          buf = atom.text;
-          bufStart = cum + atom.start;
-        } else {
-          placeOverflow(atom.text, atom.start);
-        }
-      } else if (buf.length + atom.text.length <= cap) {
-        buf += atom.text;
-      } else {
-        emitBuf();
-        const cap2 = width - WRAP_MARKER.length;
-        if (atom.text.length <= cap2) {
-          buf = atom.text;
-          bufStart = cum + atom.start;
-        } else {
-          placeOverflow(atom.text, atom.start);
-        }
-      }
+      rows.push({ content: text.slice(p, p + take), start: textStart + p });
+      isFirst = false;
+      p += take;
     }
-    if (buf !== "") emitBuf();
+  };
 
-    cum += line.length + 1; // +1 for the \n
+  for (const atom of atoms) {
+    const cap = isFirst ? firstWidth : continuationWidth;
+    if (buf === "") {
+      if (atom.text.length <= cap) {
+        buf = atom.text;
+        bufStart = atom.start;
+      } else placeOverflow(atom.text, atom.start);
+    } else if (buf.length + atom.text.length <= cap) {
+      buf += atom.text;
+    } else {
+      emitBuf();
+      if (atom.text.length <= continuationWidth) {
+        buf = atom.text;
+        bufStart = atom.start;
+      } else placeOverflow(atom.text, atom.start);
+    }
   }
+  if (buf !== "") emitBuf();
+  return rows.length === 0 ? [{ content: "", start: 0 }] : rows;
+};
 
-  if (rows.length === 0) rows.push({ prefix: "", content: "", start: 0 });
-  return rows;
-}
-
-function findCursor(rows: VisualRow[], pos: number): { row: number; col: number } {
-  let row = 0;
-  for (let i = rows.length - 1; i >= 0; i--) {
-    if (rows[i]!.start <= pos) { row = i; break; }
-  }
-  const r = rows[row]!;
-  return { row, col: r.prefix.length + (pos - r.start) };
-}
+// ─── Two-column row composition ─────────────────────────────────────────────
+//
+// Left pane: the TextInput renders itself (multi-line, soft-wrapped via
+// `templateAtomWrap`, cursor and continuation markers built-in). Right pane:
+// the template's rendered output. Both fit into a half-width column flanked
+// by a labeled box border.
 
 function buildRowSegments(
   input: TextInput,
@@ -342,28 +215,12 @@ function buildRowSegments(
   const lc = Math.max(8, leftOuter - 6);
   const rc = Math.max(8, totalW - leftOuter - 2 - 4);
 
-  const tmpl = input.value;
-  const pos = input.cursorPosition;
   const focused = input.focused;
 
-  const rows = wrapText(tmpl, lc);
-  let { row: curLine, col: curCol } = findCursor(rows, pos);
-
-  // Cursor past the right edge → slide onto a fresh empty row.
-  if (curCol >= lc) {
-    rows.push({ prefix: "", content: "", start: pos });
-    curLine = rows.length - 1;
-    curCol = 0;
-  }
-
-  const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, rows.length));
-  const scrollStart = Math.max(0, Math.min(rows.length - height, curLine - height + 1));
-
-  const rightRaw = renderTmpl(engine, tmpl);
-  const rightLines = Segment.splitLines(rightRaw);
-  const rightRows = Array.from({ length: height }, (_, i) =>
-    Segment.adjustLineLength(rightLines[i] ?? [], rc),
-  );
+  const leftRaw = Array.from(input.render({ maxWidth: lc, isTerminal: true, encoding: "utf-8" }));
+  const leftLines = Segment.splitLines(leftRaw);
+  const rightLines = Segment.splitLines(renderTemplate(engine, input.value));
+  const height = Math.max(leftLines.length, rightLines.length, 1);
 
   const bStyle = focused ? cyanStyle : dimStyle;
 
@@ -380,27 +237,12 @@ function buildRowSegments(
   segs.push(new Segment("\n"));
 
   for (let row = 0; row < height; row++) {
-    const li = scrollStart + row;
-    const r = rows[li] ?? { prefix: "", content: "", start: 0 };
-    const contentWidth = Math.max(0, lc - r.prefix.length);
-    const content = r.content.padEnd(contentWidth, " ").slice(0, contentWidth);
-
     segs.push(new Segment("  │ ", bStyle));
-    if (r.prefix) segs.push(new Segment(r.prefix, wrapMarkerStyle));
-    if (focused && li === curLine) {
-      const cc = Math.max(0, curCol - r.prefix.length);
-      if (cc > 0) segs.push(new Segment(content.slice(0, cc)));
-      segs.push(new Segment(content[cc] ?? " ", cursorStyle));
-      if (cc + 1 < content.length) segs.push(new Segment(content.slice(cc + 1)));
-    } else {
-      segs.push(new Segment(content));
-    }
+    segs.push(...Segment.adjustLineLength(leftLines[row] ?? [], lc));
     segs.push(new Segment(" │", bStyle));
-
     segs.push(new Segment("  │ ", dimStyle));
-    segs.push(...rightRows[row]!);
+    segs.push(...Segment.adjustLineLength(rightLines[row] ?? [], rc));
     segs.push(new Segment(" │", dimStyle));
-
     segs.push(new Segment("\n"));
   }
 
@@ -418,7 +260,14 @@ interface DemoRow {
 }
 
 function makeDemoRow(label: string, template: string, engine: Engine<RichText>): DemoRow {
-  const input = new TextInput({ value: template, id: uid("ti"), multiline: true });
+  const input = new TextInput({
+    value: template,
+    id: uid("ti"),
+    multiline: true,
+    wrap: templateAtomWrap,
+    minRows: 1,
+    maxRows: 10,
+  });
   runInAction(() => { input.visible = false; });
 
   const combinedItem = new StaticItem({
@@ -496,7 +345,7 @@ const pushPanelItem = new StaticItem({
   id: uid("push-panel"),
   render: (opts) => {
     const tmpl = pushRow.input.value;  // MobX subscription
-    const bodyRenderable = { render: () => renderTmpl(tokyoEngine, tmpl) };
+    const bodyRenderable = { render: () => renderTemplate(tokyoEngine, tmpl) };
     const title = new RichText(" git push ", { style: cyanBoldStyle, end: "" });
     return new Panel(bodyRenderable, { borderStyle: cyanBoldStyle, title, padding: [1, 2] }).render(opts);
   },
@@ -537,9 +386,9 @@ const themeGridItem = new StaticItem({
     for (let i = 0; i < GALLERY_THEMES.length; i++) {
       const [name, engine] = GALLERY_THEMES[i]!;
       segs.push(new Segment(`  ${name.padEnd(22)}`, dimStyle));
-      segs.push(...Segment.adjustLineLength(renderTmpl(engine, swatchTmpl), 14));
+      segs.push(...Segment.adjustLineLength(renderTemplate(engine, swatchTmpl), 14));
       segs.push(new Segment("  "));
-      segs.push(...Segment.adjustLineLength(renderTmpl(engine, tmpl), opts.maxWidth - 42));
+      segs.push(...Segment.adjustLineLength(renderTemplate(engine, tmpl), opts.maxWidth - 42));
       if (i < GALLERY_THEMES.length - 1) segs.push(new Segment("\n"));
     }
     return segs;
