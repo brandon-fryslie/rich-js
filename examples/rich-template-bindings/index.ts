@@ -49,13 +49,14 @@ import type { TerminalTheme } from "../../src/core/color.js";
 import {
   richTextFuncs,
   paletteFuncs,
-  createRichTextEngine,
 } from "../../src/template-bindings/index.js";
 import { makeAutoObservable, autorun, runInAction } from "mobx";
 
 // ─── Engines ───────────────────────────────────────────────────────────────
-
-const styleEngine = createRichTextEngine();
+//
+// Every scene now uses palette-aware engines (palette/auto/paletteOver are
+// pervasive in the redesigned demo), so the plain `richTextFuncs()`-only
+// engine that the old per-attribute sections used has been retired.
 
 function makeEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>({
@@ -123,7 +124,6 @@ function exec(engine: Engine<RichText>, tmpl: string): RichText {
   return out;
 }
 
-const draculaEngine = makeEngine(DRACULA);
 const gruvboxEngine = makeEngine(GRUVBOX);
 const tokyoEngine   = makeEngine(TOKYO_NIGHT);
 
@@ -463,165 +463,74 @@ function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticIt
 }
 
 // ─── Section definitions ───────────────────────────────────────────────────
+//
+// Three pipe-first / reuse-first scenes. Every styled span uses pipe form
+// ("x | a | b"); composition reads left-to-right. Reusable styles are named
+// once at the top of each template and applied many times in the body —
+// edit one `$var` and every site downstream updates.
 
-const sec0 = makeSection("Text Attributes", [
-  makeDemoRow("canonical names",
-`{{ bold "bold" }}
-{{ dim "dim" }}
-{{ italic "italic" }}
-{{ underline "underline" }}
-{{ strike "strike" }}
-{{ overline "overline" }}
-{{ reverse "reverse" }}
-{{ blink "blink" }}`, styleEngine),
-  makeDemoRow("short aliases",
-`{{ b "b" }}
-{{ i "i" }}
-{{ u "u" }}
-{{ s "s" }}`, styleEngine),
-  makeDemoRow("negation",
-`{{ not_bold (bold "un-bolded") }}
-← outer not_bold overrides inner bold`, styleEngine),
-]);
+// ─── §1 — Push (commit-stream Panel) ───────────────────────────────────────
+// Two synthetic "commits" share five `$style` definitions. The user can
+// recolour all SHAs by editing `$sha` once; the same goes for `$when`,
+// `$branch`, `$hot`, `$linkfx`.
 
-const sec1 = makeSection("Foreground Colors — Named", [
-  makeDemoRow("standard 8",
-`{{ black "black" }}
-{{ red "red" }}
-{{ green "green" }}
-{{ yellow "yellow" }}
-{{ blue "blue" }}
-{{ magenta "magenta" }}
-{{ cyan "cyan" }}
-{{ white "white" }}`, styleEngine),
-  makeDemoRow("bright 8",
-`{{ bright_black "br_black" }}
-{{ bright_red "br_red" }}
-{{ bright_green "br_green" }}
-{{ bright_yellow "br_yellow" }}
-{{ bright_blue "br_blue" }}
-{{ bright_magenta "br_magenta" }}
-{{ bright_cyan "br_cyan" }}
-{{ bright_white "br_white" }}`, styleEngine),
-]);
+const PUSH_TMPL =
+`{{- $sha    := "#7c7c7c" -}}
+{{- $when   := "italic dim" -}}
+{{- $branch := "italic on #2d2d2d bold" -}}
+{{- $hot    := "underline #00d9ff bold" -}}
+{{- $linkfx := "underline cyan" -}}
+{{ "abc1234" | style $sha }}  {{ "2026-05-13 21:42" | style $when }}  {{ "bmf" | primary | bold }}
+  {{ " feat/sunrise " | style $branch }} → {{ "rework demo into three scenes" | accent }}
+  {{ "ci " | dim }}{{ "✓ 1458 passed" | success }}  ·  {{ "△ 1 flaky" | palette "warning-muted" }}  ·  {{ "open run" | style $linkfx | link "https://example.com/run/42" }}
+  {{ "deploy " | dim }}{{ "preview.app/sunrise" | style $hot }}
+{{ "e8c19d2" | style $sha }}  {{ "2026-05-13 21:38" | style $when }}  {{ "alice" | primary | bold }}
+  {{ " feat/measurements " | style $branch }} → {{ "tighten widget measure() contract" | accent }}
+  {{ "more" | style $linkfx | link "https://example.com/run/41" }}`;
 
-const sec2 = makeSection("Foreground Colors — Generic Forms", [
-  makeDemoRow("hex #ff6b6b",           `{{ hex "#ff6b6b" "coral red" }}`,    styleEngine),
-  makeDemoRow("rgb 255 107 107",       `{{ rgb 255 107 107 "coral red" }}`,  styleEngine),
-  makeDemoRow("color 203 (256-index)", `{{ color 203 "coral red" }}`,        styleEngine),
-  makeDemoRow("light_coral (named)",   `{{ light_coral "coral red" }}`,      styleEngine),
-]);
+const pushRow = makeDemoRow("edit any $var → every reference updates", PUSH_TMPL, tokyoEngine);
 
-const sec3 = makeSection("Background Colors — on()", [
-  makeDemoRow("named colors (auto-wrap between tags)",
-    `{{ bright_white (on "red" " red ") }} {{ bright_white (on "green" " green ") }} ` +
-    `{{ bright_white (on "blue" " blue ") }} {{ bright_white (on "magenta" " mag ") }} ` +
-    `{{ bright_white (on "cyan" " cyan ") }} {{ black (on "yellow" " yellow ") }} ` +
-    `{{ black (on "white" " white ") }}`,
-    styleEngine),
-  makeDemoRow("hex + named 256",
-`{{ bright_white (on "#ff6b6b" " #ff6b6b ") }}
-{{ bright_white (on "#2d4f67" " #2d4f67 ") }}
-{{ bright_white (on "navy_blue" " navy_blue ") }}
-{{ black (on "light_coral" " light_coral ") }}`, styleEngine),
-]);
-
-const sec4 = makeSection("Composition", [
-  makeDemoRow("bold red",            `{{ bold (red "alert!") }}`,                              styleEngine),
-  makeDemoRow("italic on navy",      `{{ italic (on "navy_blue" (bright_white "deep sea")) }}`, styleEngine),
-  makeDemoRow("underline hex bold",  `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`,        styleEngine),
-  makeDemoRow("dim strike",          `{{ dim (strike "deprecated") }}`,                         styleEngine),
-  makeDemoRow("reverse cyan",        `{{ reverse (cyan "flipped") }}`,                          styleEngine),
-  makeDemoRow("all three (aliases)", `{{ b (i (u "all three")) }}`,                             styleEngine),
-]);
-
-const secStyle = makeSection("Multi-Style — style spec + pipe form", [
-  makeDemoRow("style \"bold underline #ff6b6b\"",
-    `{{ style "bold underline #ff6b6b" "alarm!" }}`, styleEngine),
-  makeDemoRow("equivalent nested form",
-    `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`, styleEngine),
-  makeDemoRow("pipe form (last-arg piping)",
-`{{ "alarm!" | bold | underline | hex "#ff6b6b" }}
-← reads left-to-right`, styleEngine),
-  makeDemoRow("style + scope/$var reuse",
-`{{ $alert := "bold underline #ff6b6b" }}
-{{ style $alert "alarm!" }}    ← same $alert
-{{ style $alert "danger!" }}   ← applied twice`, styleEngine),
-  makeDemoRow("'on' + 'not' inside one spec",
-    `{{ style "italic on navy_blue not dim" "deep sea" }}`, styleEngine),
-  makeDemoRow("style + pipe combined",
-    `{{ "alarm!" | style "bold #ff6b6b" }}`, styleEngine),
-]);
-
-const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
-  makeDemoRow("underline cyan",
-`{{ link "https://github.com/anthropics/anthropic-sdk-python"
-   (underline (cyan "Anthropic SDK")) }}`, styleEngine),
-  makeDemoRow("bold link",
-`{{ bold (link "https://rich.readthedocs.io"
-              (green "Python Rich")) }}`, styleEngine),
-  makeDemoRow("hex link",
-`{{ link "https://github.com"
-   (b (hex "#58a6ff" "GitHub")) }}`, styleEngine),
-]);
-
-const sec6 = makeSection("Palette Functions — DRACULA", [
-  makeDemoRow("semantic colors",
-`{{ primary " primary " }}
-{{ secondary " secondary " }}
-{{ accent " accent " }}
-{{ success " success " }}
-{{ warning " warning " }}
-{{ error " error " }}
-{{ surface " surface " }}`, draculaEngine),
-  makeDemoRow("derived (palette func)",
-`{{ primary "primary" }}
-{{ palette "primary-muted" "primary-muted" }}
-{{ palette "text-primary" "text-primary" }}`, draculaEngine),
-  makeDemoRow("foreground / background",
-`{{ foreground "foreground" }}
-{{ background "background" }}`, draculaEngine),
-]);
-
-const GRUVBOX_BG = "#282828";
-const sec7 = makeSection("Palette Modifiers — darken · lighten · alpha", [
-  makeDemoRow("darken gradient",
-`{{ primary "base" }}
-{{ palette "primary-darken-1" "↓1" }}
-{{ palette "primary-darken-2" "↓2" }}
-{{ palette "primary-darken-3" "↓3" }}`, gruvboxEngine),
-  makeDemoRow("lighten gradient",
-`{{ primary "base" }}
-{{ palette "primary-lighten-1" "↑1" }}
-{{ palette "primary-lighten-2" "↑2" }}
-{{ palette "primary-lighten-3" "↑3" }}`, gruvboxEngine),
-  makeDemoRow("alpha fade (accent over bg)",
-`{{ paletteOver "accent 25%"  "${GRUVBOX_BG}" "█ 25%" }}
-{{ paletteOver "accent 50%"  "${GRUVBOX_BG}" "█ 50%" }}
-{{ paletteOver "accent 75%"  "${GRUVBOX_BG}" "█ 75%" }}
-{{ paletteOver "accent 100%" "${GRUVBOX_BG}" "█ 100%" }}`, gruvboxEngine),
-]);
-
-const sec8 = makeSection("Auto-Contrast — auto()", [
-  makeDemoRow("WCAG contrast swatches",
-    ["#000000","#1a1a2e","#2d6a4f","#f4a261","#e9c46a",
-     "#ffffff","#ffecd2","#f8f9fa","#495057","#dee2e6"]
-      .map((bg) => `{{ on "${bg}" (auto "${bg}" "  auto  ") }}`).join("\n"),
-    makeEngine(TOKYO_NIGHT)),
-]);
-
-// ─── § 9  Theme Gallery ────────────────────────────────────────────────────
-
-const GALLERY_TMPL =
-  `{{ bold (primary "Rich") }} {{ accent "template" }} {{ success "✓" }} {{ warning "!" }} {{ error "✗" }}`;
-
-const galleryRow = makeDemoRow("template", GALLERY_TMPL, GALLERY_THEMES[3]![1]);  // preview with TOKYO_NIGHT
-
-const galleryOutputItem = new StaticItem({
-  id: uid("gallery-out"),
+const pushPanelItem = new StaticItem({
+  id: uid("push-panel"),
   render: (opts) => {
-    const tmpl = galleryRow.input.value;  // MobX subscription
-    const swatchTmpl = `{{ primary "██" }}{{ accent "██" }}{{ success "██" }}{{ warning "██" }}{{ error "██" }}`;
+    const tmpl = pushRow.input.value;  // MobX subscription
+    const bodyRenderable = { render: () => renderTmpl(tokyoEngine, tmpl) };
+    const title = new RichText(" git push ", { style: cyanBoldStyle, end: "" });
+    return new Panel(bodyRenderable, { borderStyle: cyanBoldStyle, title, padding: [1, 2] }).render(opts);
+  },
+});
+
+const pushPanelLabel = new StaticItem({
+  id: uid("push-lbl"),
+  render: () => [new Segment("  composed into Panel", dimStyle)],
+});
+
+const secPush = makeSection(
+  "Push — pipes + reusable $style at scale",
+  [pushRow],
+  [pushPanelLabel, pushPanelItem],
+);
+
+// ─── §2 — Theme matrix (same notice, every theme) ──────────────────────────
+// One reusable `$bg` participates in both `auto $bg` (contrast pick) and
+// `on $bg` (painted background) — edit it once, both shift consistently.
+// The same template source renders once per theme below.
+
+const NOTICE_TMPL =
+`{{- $bg     := "#1a1a2e" -}}
+{{- $badge  := "bold" -}}
+{{- $linkfx := "underline" -}}
+{{ " ⚠ HEADS UP " | auto $bg | on $bg }}  {{ "deploy paused" | warning | style $badge }}  {{ "30s ago" | dim }}
+{{ "  retries exhausted — " | palette "warning-muted" }}{{ "see incident" | accent | style $linkfx | link "https://example.com/incident/8" }}`;
+
+const noticeRow = makeDemoRow("edit $bg → contrast + bg shift together", NOTICE_TMPL, GALLERY_THEMES[0]![1]);
+
+const themeGridItem = new StaticItem({
+  id: uid("theme-grid"),
+  render: (opts) => {
+    const tmpl = noticeRow.input.value;
+    const swatchTmpl =
+      `{{ "██" | primary }}{{ "██" | accent }}{{ "██" | success }}{{ "██" | warning }}{{ "██" | error }}`;
     const segs: Segment[] = [];
     for (let i = 0; i < GALLERY_THEMES.length; i++) {
       const [name, engine] = GALLERY_THEMES[i]!;
@@ -635,69 +544,38 @@ const galleryOutputItem = new StaticItem({
   },
 });
 
-const sec9 = makeSection(
-  "Theme Gallery — same template, 13 themes",
-  [galleryRow],
-  [galleryOutputItem],
+const secThemeMatrix = makeSection(
+  "Theme matrix — same template, every theme",
+  [noticeRow],
+  [themeGridItem],
 );
 
-// ─── § 10  Showcase — Build Report ─────────────────────────────────────────
+// ─── §3 — Ramps (palette modifiers, alpha, color forms) ────────────────────
+// The "value" axis of the binding — palette modifiers (darken/lighten),
+// alpha compositing, and the three constructor forms (hex / rgb / color N)
+// — read as side-by-side ramps. Still pipe-first.
 
-const SHOWCASE_LINES: [string, string][] = [
-  ["header",    `{{ bold (primary "BUILD REPORT") }}  {{ palette "surface" "·" }}  {{ dim "2026-05-10" }}`],
-  ["tests",     `{{ success "✓" }} {{ bold "Tests" }}    {{ dim "8,627 passed" }}  {{ palette "success-muted" "(+32)" }}`],
-  ["lint",      `{{ error "✗" }} {{ bold "Lint" }}     {{ dim "2 errors" }}       {{ error "fix required" }}`],
-  ["coverage",  `{{ warning "!" }} {{ bold "Coverage" }} {{ dim "87.4%" }}           {{ warning "below 90% threshold" }}`],
-  ["artifacts", `{{ dim "Artifacts:" }}  {{ link "https://example.com/dist" (underline (accent "dist/")) }}  {{ link "https://example.com/docs" (underline (accent "docs/")) }}`],
-  ["footer",    `{{ italic (dim "Powered by ") }}{{ link "https://github.com" (cyan "rich-js") }}{{ italic (dim " template bindings") }}`],
-];
+const RAMP_LUM =
+`{{ "███" | palette "primary-darken-3" }}{{ "███" | palette "primary-darken-2" }}{{ "███" | palette "primary-darken-1" }}{{ "███" | primary }}{{ "███" | palette "primary-lighten-1" }}{{ "███" | palette "primary-lighten-2" }}{{ "███" | palette "primary-lighten-3" }}  primary  ↓3 ↓2 ↓1  ·  ↑1 ↑2 ↑3`;
 
-const showcaseRows = SHOWCASE_LINES.map(([label, tmpl]) =>
-  makeDemoRow(label, tmpl, tokyoEngine),
-);
+const RAMP_ALPHA =
+`{{- $bg := "#282828" -}}
+{{ "█████" | paletteOver "accent 25%" $bg }}{{ "█████" | paletteOver "accent 50%" $bg }}{{ "█████" | paletteOver "accent 75%" $bg }}{{ "█████" | paletteOver "accent 100%" $bg }}  accent / #282828 @ 25 · 50 · 75 · 100`;
 
-const showcasePanelItem = new StaticItem({
-  id: uid("showcase-panel"),
-  render: (opts) => {
-    const lineRenderable = {
-      render: (inner: { maxWidth: number; isTerminal: boolean; encoding: string }) => {
-        const segs: Segment[] = [];
-        for (let i = 0; i < showcaseRows.length; i++) {
-          if (i > 0) segs.push(new Segment("\n"));
-          if (i === 1 || i === 4) segs.push(new Segment("\n  "));
-          else if (i > 0) segs.push(new Segment("  "));
-          segs.push(...renderTmpl(tokyoEngine, showcaseRows[i]!.input.value));
-          // Clip each line to inner.maxWidth
-          void inner;
-        }
-        return segs;
-      },
-    };
-    const title = new RichText(" CI / CD ", { style: cyanBoldStyle, end: "" });
-    return new Panel(lineRenderable, { borderStyle: cyanBoldStyle, title, padding: [1, 2] }).render(opts);
-  },
-});
+const RAMP_FORMS =
+`{{ "hex #ff6b6b" | hex "#ff6b6b" }}  ·  {{ "rgb(255,107,107)" | rgb 255 107 107 }}  ·  {{ "color(203)" | color 203 }}  ·  {{ "bright_blue" | bright_blue }}`;
 
-const panelLabelItem = new StaticItem({
-  id: uid("panel-lbl"),
-  render: () => [new Segment("  combined output", dimStyle)],
-});
-
-const sec10 = makeSection(
-  "Showcase — Build Report",
-  showcaseRows,
-  [panelLabelItem, showcasePanelItem],
-);
+const secRamps = makeSection("Ramps — palette modifiers · alpha · color forms", [
+  makeDemoRow("primary luminance (7-step)", RAMP_LUM,   gruvboxEngine),
+  makeDemoRow("paletteOver alpha (× $bg)",  RAMP_ALPHA, gruvboxEngine),
+  makeDemoRow("hex / rgb / color N / named", RAMP_FORMS, gruvboxEngine),
+]);
 
 // ─── Section list ──────────────────────────────────────────────────────────
 
-const SECTIONS: Section[] = [sec0, sec1, sec2, sec3, sec4, secStyle, sec5, sec6, sec7, sec8, sec9, sec10];
+const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps];
 
-const SECTION_NAMES = [
-  "Text Attributes", "Named Colors", "Generic Colors", "Backgrounds",
-  "Composition", "Multi-Style", "Links", "Palette (DRACULA)", "Modifiers (GRUVBOX)",
-  "Auto-Contrast", "Theme Gallery", "Build Report",
-];
+const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps"];
 
 // ─── Always-visible header ─────────────────────────────────────────────────
 
