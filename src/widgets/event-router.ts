@@ -341,9 +341,40 @@ export class EventRouter {
         event: { key: "escape", character: "", shift: false, ctrl: false, meta: false },
       };
     }
-    // ESC <any other byte> → unrecognised; drop the ESC, re-process from b1.
-    // This avoids treating Alt+key as an Alt sequence (out of scope) while
-    // still surfacing the key.
+    // ESC <printable> / ESC <DEL> / ESC <BS> → Alt-modified key.
+    // Terminals encode Alt+<key> as the literal byte preceded by ESC, so
+    // `ESC b` is Alt+B, `ESC <0x7f>` is Alt+Backspace, etc. The router
+    // surfaces this as `{ key, meta: true, character: "" }` — matching the
+    // shape used for Ctrl-modified keys, so handlers can branch on
+    // `event.meta` without parsing escape sequences themselves.
+    //
+    // [LAW:one-source-of-truth] Modifier decoding for *all* navigation keys
+    // lives in this file: CSI param-style modifiers (e.g. `ESC[1;3D` for
+    // Alt+Left) flow through `decodeModifier`, and ESC-prefixed Alt forms
+    // flow through this branch. Widgets read `event.meta` and never re-parse.
+    if (b1 === 0x7f || b1 === 0x08) {
+      return {
+        kind: "key",
+        bytes: 2,
+        event: { key: "backspace", character: "", shift: false, ctrl: false, meta: true },
+      };
+    }
+    if (b1 >= 0x20 && b1 <= 0x7e) {
+      const ch = String.fromCharCode(b1);
+      return {
+        kind: "key",
+        bytes: 2,
+        event: {
+          key: ch.toLowerCase(),
+          character: "",
+          shift: ch !== ch.toLowerCase(),
+          ctrl: false,
+          meta: true,
+        },
+      };
+    }
+    // Truly unrecognised follow-up byte → treat the ESC as a lone escape
+    // and re-process from b1 on the next pass.
     return {
       kind: "key",
       bytes: 1,

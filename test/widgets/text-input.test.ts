@@ -10,6 +10,25 @@ const makeKey = (key: string, character = ""): KeyEvent => ({
   meta: false,
 });
 
+const ctrl = (key: string): KeyEvent => ({
+  key,
+  character: "",
+  shift: false,
+  ctrl: true,
+  meta: false,
+});
+
+const alt = (key: string): KeyEvent => ({
+  key,
+  character: "",
+  shift: false,
+  ctrl: false,
+  meta: true,
+});
+
+const upEvent = makeKey("up");
+const downEvent = makeKey("down");
+
 const printable = (ch: string): KeyEvent => ({
   key: ch,
   character: ch,
@@ -357,6 +376,236 @@ describe("TextInput", () => {
 
       const placeholderOnly = new TextInput({ placeholder: "abcdefghijklmnop" });
       expect(placeholderOnly.measure(RENDER).maximum).toBe(18);
+    });
+  });
+
+  // ─── Readline / multiline behaviors ────────────────────────────────────
+
+  describe("readline motion (Ctrl-modified)", () => {
+    it("Ctrl+A moves cursor to line start", () => {
+      const t = new TextInput({ value: "hello" });
+      t.cursorPosition = 3;
+      t.handleKey(ctrl("a"));
+      expect(t.cursorPosition).toBe(0);
+    });
+
+    it("Ctrl+E moves cursor to line end", () => {
+      const t = new TextInput({ value: "hello" });
+      t.cursorPosition = 1;
+      t.handleKey(ctrl("e"));
+      expect(t.cursorPosition).toBe(5);
+    });
+
+    it("Ctrl+B / Ctrl+F are aliases for left / right", () => {
+      const t = new TextInput({ value: "abc" });
+      t.cursorPosition = 1;
+      t.handleKey(ctrl("b"));
+      expect(t.cursorPosition).toBe(0);
+      t.handleKey(ctrl("f"));
+      t.handleKey(ctrl("f"));
+      expect(t.cursorPosition).toBe(2);
+    });
+
+    it("Ctrl+H is a synonym for backspace", () => {
+      const t = new TextInput({ value: "abc" });
+      t.cursorPosition = 3;
+      t.handleKey(ctrl("h"));
+      expect(t.value).toBe("ab");
+      expect(t.cursorPosition).toBe(2);
+    });
+
+    it("Ctrl+D forward-deletes (synonym for Delete)", () => {
+      const t = new TextInput({ value: "abc" });
+      t.cursorPosition = 1;
+      t.handleKey(ctrl("d"));
+      expect(t.value).toBe("ac");
+      expect(t.cursorPosition).toBe(1);
+    });
+
+    it("Ctrl+W kills the previous whitespace-bounded word", () => {
+      const t = new TextInput({ value: "foo bar baz" });
+      t.cursorPosition = 11;
+      t.handleKey(ctrl("w"));
+      expect(t.value).toBe("foo bar ");
+      expect(t.cursorPosition).toBe(8);
+    });
+
+    it("Ctrl+W with trailing whitespace skips it first", () => {
+      const t = new TextInput({ value: "foo bar  " });
+      t.cursorPosition = 9;
+      t.handleKey(ctrl("w"));
+      expect(t.value).toBe("foo ");
+      expect(t.cursorPosition).toBe(4);
+    });
+
+    it("Ctrl+U kills back to line start", () => {
+      const t = new TextInput({ value: "hello" });
+      t.cursorPosition = 3;
+      t.handleKey(ctrl("u"));
+      expect(t.value).toBe("lo");
+      expect(t.cursorPosition).toBe(0);
+    });
+
+    it("Ctrl+K kills to line end", () => {
+      const t = new TextInput({ value: "hello" });
+      t.cursorPosition = 2;
+      t.handleKey(ctrl("k"));
+      expect(t.value).toBe("he");
+      expect(t.cursorPosition).toBe(2);
+    });
+
+    it("Ctrl+Y yanks the most recent kill", () => {
+      const t = new TextInput({ value: "hello" });
+      t.cursorPosition = 5;
+      t.handleKey(ctrl("u"));           // kill "hello"; value="", cursor=0
+      t.handleKey(ctrl("y"));           // paste "hello" at cursor 0
+      expect(t.value).toBe("hello");
+      expect(t.cursorPosition).toBe(5);
+    });
+
+    it("Ctrl+T transposes mid-string (swap + advance)", () => {
+      const t = new TextInput({ value: "abcd" });
+      t.cursorPosition = 2;             // between 'b' and 'c'
+      t.handleKey(ctrl("t"));
+      expect(t.value).toBe("acbd");
+      expect(t.cursorPosition).toBe(3);
+    });
+
+    it("Ctrl+T at end-of-string swaps the trailing two without advancing", () => {
+      const t = new TextInput({ value: "abcd" });
+      t.cursorPosition = 4;
+      t.handleKey(ctrl("t"));
+      expect(t.value).toBe("abdc");
+      expect(t.cursorPosition).toBe(4);
+    });
+
+    it("Ctrl+Left / Ctrl+Right do word motion", () => {
+      const t = new TextInput({ value: "foo bar baz" });
+      t.cursorPosition = 11;
+      t.handleKey({ key: "left", character: "", shift: false, ctrl: true, meta: false });
+      expect(t.cursorPosition).toBe(8);
+      t.handleKey({ key: "left", character: "", shift: false, ctrl: true, meta: false });
+      expect(t.cursorPosition).toBe(4);
+      t.handleKey({ key: "right", character: "", shift: false, ctrl: true, meta: false });
+      expect(t.cursorPosition).toBe(7);  // end of "bar"
+    });
+
+    it("Ctrl+Home / Ctrl+End jump to document bounds", () => {
+      const t = new TextInput({ value: "line1\nline2\nline3", multiline: true });
+      t.cursorPosition = 8;
+      t.handleKey({ key: "home", character: "", shift: false, ctrl: true, meta: false });
+      expect(t.cursorPosition).toBe(0);
+      t.handleKey({ key: "end", character: "", shift: false, ctrl: true, meta: false });
+      expect(t.cursorPosition).toBe(17);
+    });
+  });
+
+  describe("alt-modified motion / editing", () => {
+    it("Alt+B / Alt+F do word motion", () => {
+      const t = new TextInput({ value: "foo bar baz" });
+      t.cursorPosition = 11;
+      t.handleKey(alt("b"));
+      expect(t.cursorPosition).toBe(8);
+      t.handleKey(alt("f"));
+      expect(t.cursorPosition).toBe(11);
+    });
+
+    it("Alt+D deletes the next word forward", () => {
+      const t = new TextInput({ value: "foo bar baz" });
+      t.cursorPosition = 0;
+      t.handleKey(alt("d"));
+      expect(t.value).toBe(" bar baz");
+      expect(t.cursorPosition).toBe(0);
+    });
+
+    it("Alt+Backspace kills the previous word", () => {
+      const t = new TextInput({ value: "foo bar baz" });
+      t.cursorPosition = 11;
+      t.handleKey({ key: "backspace", character: "", shift: false, ctrl: false, meta: true });
+      expect(t.value).toBe("foo bar ");
+    });
+  });
+
+  describe("multiline mode", () => {
+    it("Enter inserts a newline rather than submitting", () => {
+      const t = new TextInput({ value: "ab", multiline: true });
+      t.cursorPosition = 1;
+      const submits: InteractiveWidget[] = [];
+      t.onSubmit((w) => submits.push(w));
+      t.handleKey(enterEvent);
+      expect(t.value).toBe("a\nb");
+      expect(t.cursorPosition).toBe(2);
+      expect(submits).toHaveLength(0);
+    });
+
+    it("Ctrl+Enter still submits in multiline mode", () => {
+      const t = new TextInput({ value: "hi", multiline: true });
+      const submits: InteractiveWidget[] = [];
+      t.onSubmit((w) => submits.push(w));
+      t.handleKey({ key: "enter", character: "\r", shift: false, ctrl: true, meta: false });
+      expect(submits).toHaveLength(1);
+      expect(t.value).toBe("hi");
+    });
+
+    it("Up arrow moves to the same column on the previous line", () => {
+      const t = new TextInput({ value: "abcdef\nxyz", multiline: true });
+      t.cursorPosition = 9;             // between 'y' and 'z' on line 2 (col 2)
+      t.handleKey(upEvent);
+      expect(t.cursorPosition).toBe(2); // col 2 on line 1
+    });
+
+    it("Down arrow preserves the preferred column across short lines", () => {
+      const t = new TextInput({ value: "abcdef\nxy\nuvwxyz", multiline: true });
+      t.cursorPosition = 5;             // col 5 on line 1
+      t.handleKey(downEvent);
+      expect(t.cursorPosition).toBe(9); // line 2 only has 2 chars; clamp to its end
+      t.handleKey(downEvent);
+      expect(t.cursorPosition).toBe(15); // line 3 col 5 ('z' position) — preferred col restored
+    });
+
+    it("Up at first line is a no-op", () => {
+      const t = new TextInput({ value: "abc\ndef", multiline: true });
+      t.cursorPosition = 2;
+      t.handleKey(upEvent);
+      expect(t.cursorPosition).toBe(2);
+    });
+
+    it("Down at last line is a no-op", () => {
+      const t = new TextInput({ value: "abc\ndef", multiline: true });
+      t.cursorPosition = 6;
+      t.handleKey(downEvent);
+      expect(t.cursorPosition).toBe(6);
+    });
+
+    it("Home jumps to the start of the current logical line, not the value", () => {
+      const t = new TextInput({ value: "abc\ndef\nghi", multiline: true });
+      t.cursorPosition = 6;             // 'f' on line 2
+      t.handleKey(homeEvent);
+      expect(t.cursorPosition).toBe(4); // start of line 2
+    });
+
+    it("End jumps to the end of the current logical line, not the value", () => {
+      const t = new TextInput({ value: "abc\ndef\nghi", multiline: true });
+      t.cursorPosition = 5;             // 'e' on line 2
+      t.handleKey(endEvent);
+      expect(t.cursorPosition).toBe(7); // end of line 2
+    });
+
+    it("Ctrl+K at the end of a non-last line joins the next line", () => {
+      const t = new TextInput({ value: "abc\ndef", multiline: true });
+      t.cursorPosition = 3;             // end of line 1
+      t.handleKey(ctrl("k"));
+      expect(t.value).toBe("abcdef");
+      expect(t.cursorPosition).toBe(3);
+    });
+
+    it("multiline=false preserves the legacy Enter=submit behavior", () => {
+      const t = new TextInput({ value: "hi" });
+      const submits: InteractiveWidget[] = [];
+      t.onSubmit((w) => submits.push(w));
+      t.handleKey(enterEvent);
+      expect(submits).toHaveLength(1);
+      expect(t.value).toBe("hi");
     });
   });
 

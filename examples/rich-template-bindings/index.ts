@@ -10,7 +10,9 @@
  * Each combinedItem reads input.value / cursorPosition / focused (all MobX
  * observables) so Screen's autorun re-renders on every change.
  *
- * Ctrl+N / Ctrl+P — navigate sections
+ * Ctrl+PageUp / Ctrl+PageDown — navigate sections
+ *                  (Ctrl+P / Ctrl+N are reserved for cursor up/down inside
+ *                  the editable templates, per readline conventions)
  * Tab / Shift+Tab  — cycle inputs
  * Ctrl+C           — exit
  */
@@ -416,7 +418,7 @@ interface DemoRow {
 }
 
 function makeDemoRow(label: string, template: string, engine: Engine<RichText>): DemoRow {
-  const input = new TextInput({ value: template, id: uid("ti") });
+  const input = new TextInput({ value: template, id: uid("ti"), multiline: true });
   runInAction(() => { input.visible = false; });
 
   const combinedItem = new StaticItem({
@@ -592,7 +594,7 @@ const appTitleItem = new StaticItem({
 
 const navHintItem = new StaticItem({
   id: "nav-hint",
-  render: () => [new Segment("  Ctrl+N/Ctrl+P: sections  ·  Tab: cycle inputs  ·  Ctrl+C: exit", dimStyle)],
+  render: () => [new Segment("  Ctrl+PgUp/PgDn: sections  ·  Tab: focus  ·  arrows/Ctrl+A·E·W·U·K·etc: edit  ·  Ctrl+C: exit", dimStyle)],
 });
 
 const headerSpacer = makeSpacerItem();
@@ -635,11 +637,15 @@ function focusFirst(idx: number): void {
   if (row && !row.input.disabled) fm.focus(row.input);
 }
 
+// Section nav uses Ctrl+PageUp / Ctrl+PageDown rather than Ctrl+P/Ctrl+N —
+// the latter are readline line-motion bindings that TextInput now consumes
+// for cursor up/down inside the editable templates. PageUp/PageDown have
+// no readline meaning, so the two layers don't fight over the same keys.
 const unsubKey = router.onKey((event) => {
   if (event.ctrl && event.key === "c") { shutdown(); return; }
   const n = SECTIONS.length;
-  if (event.ctrl && event.key === "p") { state.prev(n); focusFirst(state.sectionIdx); }
-  else if (event.ctrl && event.key === "n") { state.next(n); focusFirst(state.sectionIdx); }
+  if (event.ctrl && event.key === "pageup")        { state.prev(n); focusFirst(state.sectionIdx); }
+  else if (event.ctrl && event.key === "pagedown") { state.next(n); focusFirst(state.sectionIdx); }
 });
 
 // ─── Lifecycle ─────────────────────────────────────────────────────────────

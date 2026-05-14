@@ -220,6 +220,27 @@ describe("EventRouter — key parsing", () => {
     expect(h.keyEvents.map((e) => e.key)).toEqual(["f1", "f5", "f12"]);
   });
 
+  it("emits Alt+letter for ESC + printable byte in a single chunk", () => {
+    h.router.feed("\x1bb");
+    expect(h.keyEvents).toEqual([
+      { key: "b", character: "", shift: false, ctrl: false, meta: true },
+    ]);
+  });
+
+  it("Alt+Backspace decodes ESC + 0x7f", () => {
+    h.router.feed("\x1b\x7f");
+    expect(h.keyEvents).toEqual([
+      { key: "backspace", character: "", shift: false, ctrl: false, meta: true },
+    ]);
+  });
+
+  it("Alt+uppercase carries shift=true", () => {
+    h.router.feed("\x1bF");
+    expect(h.keyEvents).toEqual([
+      { key: "f", character: "", shift: true, ctrl: false, meta: true },
+    ]);
+  });
+
   it("treats lone ESC as the escape key (after flush)", () => {
     h.router.feed("\x1b");
     expect(h.keyEvents).toHaveLength(0); // deferred
