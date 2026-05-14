@@ -22,6 +22,8 @@ import {
   Style,
   Rule,
   Panel,
+  Layout,
+  Padding,
   EventRouter,
   DefaultScreen,
   DefaultFocusManager,
@@ -29,6 +31,8 @@ import {
   TextInput,
   Segment,
   type MountEntry,
+  type Renderable,
+  type RenderOptions,
 } from "../../src/index.js";
 import type { WrapStrategy } from "../../src/widgets/text-input.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
@@ -200,55 +204,33 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
 
 // ─── Two-column row composition ─────────────────────────────────────────────
 //
-// Left pane: the TextInput renders itself (multi-line, soft-wrapped via
-// `templateAtomWrap`, cursor and continuation markers built-in). Right pane:
-// the template's rendered output. Both fit into a half-width column flanked
-// by a labeled box border.
+// `Padding([0,0,0,2])` for the screen-edge indent, `Layout.splitRow` for the
+// multi-line side-by-side merge, `Panel` for each titled box. Each row is
+// reconstructed every frame so the left Panel's border can track
+// `input.focused` reactively via the StaticItem render callback.
+//
+// (Not `Columns`: that one is a single-row chip grid — it intentionally
+// emits only the first visual line of each item, so it doesn't compose with
+// multi-line Panel content. `Layout` is the right primitive here, with
+// `_renderRow` doing the line-by-line merge.)
 
 function buildRowSegments(
   input: TextInput,
   label: string,
   engine: Engine<RichText>,
-  totalW: number,
+  options: RenderOptions,
 ): Segment[] {
-  const leftOuter = Math.floor(totalW / 2);
-  const lc = Math.max(8, leftOuter - 6);
-  const rc = Math.max(8, totalW - leftOuter - 2 - 4);
+  const outputRenderable: Renderable = {
+    render: (opts) => renderTemplate(engine, input.value, {}, { maxWidth: opts.maxWidth }),
+  };
+  const borderStyle = input.focused ? cyanStyle : dimStyle;
 
-  const focused = input.focused;
-
-  const leftRaw = Array.from(input.render({ maxWidth: lc, isTerminal: true, encoding: "utf-8" }));
-  const leftLines = Segment.splitLines(leftRaw);
-  const rightLines = Segment.splitLines(renderTemplate(engine, input.value));
-  const height = Math.max(leftLines.length, rightLines.length, 1);
-
-  const bStyle = focused ? cyanStyle : dimStyle;
-
-  function topBorder(text: string, inner: number, leading: string): string {
-    const prefix = `─ ${text} `;
-    const fill = Math.max(1, inner - prefix.length - 1);
-    return `${leading}┌${prefix}${"─".repeat(fill)}─┐`;
-  }
-
-  const segs: Segment[] = [];
-  segs.push(new Segment(topBorder(label, lc + 2, "  "), bStyle));
-  segs.push(new Segment("  ", dimStyle));
-  segs.push(new Segment(topBorder("output", rc + 2, ""), dimStyle));
-  segs.push(new Segment("\n"));
-
-  for (let row = 0; row < height; row++) {
-    segs.push(new Segment("  │ ", bStyle));
-    segs.push(...Segment.adjustLineLength(leftLines[row] ?? [], lc));
-    segs.push(new Segment(" │", bStyle));
-    segs.push(new Segment("  │ ", dimStyle));
-    segs.push(...Segment.adjustLineLength(rightLines[row] ?? [], rc));
-    segs.push(new Segment(" │", dimStyle));
-    segs.push(new Segment("\n"));
-  }
-
-  segs.push(new Segment(`  └${"─".repeat(lc + 2)}┘`, bStyle));
-  segs.push(new Segment(`  └${"─".repeat(rc + 2)}┘`, dimStyle));
-  return segs;
+  const row = new Layout();
+  row.splitRow(
+    new Layout(new Panel(input,            { title: label,    borderStyle })),
+    new Layout(new Panel(outputRenderable, { title: "output", borderStyle: dimStyle })),
+  );
+  return [...new Padding(row, [0, 0, 0, 2]).render(options)];
 }
 
 // ─── Demo row ──────────────────────────────────────────────────────────────
@@ -272,7 +254,7 @@ function makeDemoRow(label: string, template: string, engine: Engine<RichText>):
 
   const combinedItem = new StaticItem({
     id: uid("row"),
-    render: (opts) => buildRowSegments(input, label, engine, opts.maxWidth),
+    render: (opts) => buildRowSegments(input, label, engine, opts),
   });
 
   return { combinedItem, input, spacer: makeSpacerItem() };
