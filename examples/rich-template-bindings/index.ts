@@ -535,6 +535,24 @@ const sec4 = makeSection("Composition", [
   makeDemoRow("all three (aliases)", `{{ b (i (u "all three")) }}`,                             styleEngine),
 ]);
 
+const secStyle = makeSection("Multi-Style — style spec + pipe form", [
+  makeDemoRow("style \"bold underline #ff6b6b\"",
+    `{{ style "bold underline #ff6b6b" "alarm!" }}`, styleEngine),
+  makeDemoRow("equivalent nested form",
+    `{{ underline (hex "#ff6b6b" (bold "alarm!")) }}`, styleEngine),
+  makeDemoRow("pipe form (last-arg piping)",
+`{{ "alarm!" | bold | underline | hex "#ff6b6b" }}
+← reads left-to-right`, styleEngine),
+  makeDemoRow("style + scope/$var reuse",
+`{{ $alert := "bold underline #ff6b6b" }}
+{{ style $alert "alarm!" }}    ← same $alert
+{{ style $alert "danger!" }}   ← applied twice`, styleEngine),
+  makeDemoRow("'on' + 'not' inside one spec",
+    `{{ style "italic on navy_blue not dim" "deep sea" }}`, styleEngine),
+  makeDemoRow("style + pipe combined",
+    `{{ "alarm!" | style "bold #ff6b6b" }}`, styleEngine),
+]);
+
 const sec5 = makeSection("Links — OSC 8 Hyperlinks", [
   makeDemoRow("underline cyan",
 `{{ link "https://github.com/anthropics/anthropic-sdk-python"
@@ -673,11 +691,11 @@ const sec10 = makeSection(
 
 // ─── Section list ──────────────────────────────────────────────────────────
 
-const SECTIONS: Section[] = [sec0, sec1, sec2, sec3, sec4, sec5, sec6, sec7, sec8, sec9, sec10];
+const SECTIONS: Section[] = [sec0, sec1, sec2, sec3, sec4, secStyle, sec5, sec6, sec7, sec8, sec9, sec10];
 
 const SECTION_NAMES = [
   "Text Attributes", "Named Colors", "Generic Colors", "Backgrounds",
-  "Composition", "Links", "Palette (DRACULA)", "Modifiers (GRUVBOX)",
+  "Composition", "Multi-Style", "Links", "Palette (DRACULA)", "Modifiers (GRUVBOX)",
   "Auto-Contrast", "Theme Gallery", "Build Report",
 ];
 
