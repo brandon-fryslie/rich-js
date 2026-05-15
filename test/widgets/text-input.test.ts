@@ -786,12 +786,42 @@ describe("TextInput", () => {
       expect(text).toContain("2");
     });
 
-    it("scroll arrows: top-row ▲ idle when at top, bottom-row ▼ active when more below", () => {
+    it("scroll arrows: at top of scrollable content shows ▼ only (no ▲)", () => {
       const t = new TextInput({
         value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
         multiline: true,
         maxRows: 3,
       });
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).not.toContain("▲");
+      expect(text).toContain("▼");
+    });
+
+    it("scroll arrows: at bottom of scrollable content shows ▲ only (no ▼)", () => {
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+      });
+      t.cursorPosition = t.value.length;
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).toContain("▲");
+      expect(text).not.toContain("▼");
+    });
+
+    it("scroll arrows: mid-scroll shows both ▲ and ▼", () => {
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+      });
+      // Scroll to bottom, then move cursor up by one so we're mid-buffer
+      // with content both above and below the viewport.
+      t.cursorPosition = t.value.length;
+      [...t.render({ maxWidth: 20 })];      // scrollStart = 7
+      t.handleKey(upEvent);                  // cursor row 8 → still in viewport
+      t.handleKey(upEvent);                  // cursor row 7 → still in viewport
+      t.handleKey(upEvent);                  // cursor row 6 → scrolls to 6
       const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       expect(text).toContain("▲");
       expect(text).toContain("▼");
@@ -811,55 +841,45 @@ describe("TextInput", () => {
       expect(text).not.toContain("▼");
     });
 
-    it("scroll arrows: top ▲ active after scrolling down past the start", () => {
+    it("scroll arrows: full wrap budget — no column reserved when nothing to scroll", () => {
+      // Regression: a previous design reserved one column for indicators
+      // whenever `maxRows` was set, shrinking wrap budget even when no
+      // scrolling was possible. Verify the wrap budget is now the full
+      // maxWidth: a 20-char line at maxWidth=20 fits in one visual row.
       const t = new TextInput({
-        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        value: "x".repeat(20),
         multiline: true,
-        maxRows: 3,
+        wrap: charGreedyWrap,
+        maxRows: 5,
       });
-      // Scroll to the bottom — both arrows should change state.
-      t.cursorPosition = t.value.length;
-      const segs = [...t.render({ maxWidth: 20 })];
-      const text = segs.map((s) => s.text).join("");
-      expect(text).toContain("▲");
-      expect(text).toContain("▼");
-      // ▲ should now be styled with the primary (active) color, ▼ with dim.
-      const upSeg = segs.find((s) => s.text === "▲");
-      const downSeg = segs.find((s) => s.text === "▼");
-      expect(upSeg).toBeDefined();
-      expect(downSeg).toBeDefined();
-      // Active indicator has no `dim`; idle one is dim.
-      expect(upSeg!.style?.dim).not.toBe(true);
-      expect(downSeg!.style?.dim).toBe(true);
+      [...t.render({ maxWidth: 20 })];
+      expect(t._visualRows!.length).toBe(1);
     });
 
     it("scroll arrows: cursor wins when it lands on the indicator column", () => {
-      // Width 20 → indicator at column 19 (zero-indexed). Wrap budget = 19.
-      // With unwrapped multiline (no wrap strategy), each logical line is one
-      // visual row; the indicator is overlaid by the cursor when the cursor
-      // sits at column 19 on the top row.
-      // Build a value where the first logical line is exactly 19 chars so
-      // cursor at position 19 lands at the rightmost column of row 0.
-      const longLine = "x".repeat(19);
-      const t = new TextInput({
-        value: longLine + "\n1\n2\n3\n4",  // total 5 rows
-        multiline: true,
-        maxRows: 3,
-      });
-      t.focused = true;  // cursor renders only when focused
-      // First render so visualRows is populated, then place cursor at row 0
-      // column 19 (== indicator column).
+      // Construct a state where canScrollUp is true and the cursor sits on
+      // the top visible row at column `maxWidth - 1`. The ▲ should be
+      // suppressed for that frame; ▼ (bottom) stays.
+      const longLine = "x".repeat(20);  // exactly maxWidth chars
+      const value = "line0\nline1\n" + longLine + "\nline3\nline4";
+      const t = new TextInput({ value, multiline: true, maxRows: 3 });
+      t.focused = true;
+      // Scroll to the bottom so scrollStart settles at 2 (rows 2..4 visible).
+      t.cursorPosition = t.value.length;
       [...t.render({ maxWidth: 20 })];
-      t.cursorPosition = 19;
+      // Park cursor on row 2 (top visible) at its rightmost column.
+      // row 2's valueStart = 12; column 19 → cursorPosition = 12 + 19 = 31.
+      t.cursorPosition = 31;
       const segs = [...t.render({ maxWidth: 20 })];
-      // Find the segment at the top row containing the rightmost cell.
-      // ▲ should NOT appear on row 0 — cursor takes that cell. ▼ still
-      // appears on the bottom visible row.
       const firstNewlineIdx = segs.findIndex((s) => s.text === "\n");
       const topRowText = segs.slice(0, firstNewlineIdx).map((s) => s.text).join("");
       expect(topRowText).not.toContain("▲");
-      const bottomRowText = segs.slice(firstNewlineIdx + 1).map((s) => s.text).join("");
-      expect(bottomRowText).toContain("▼");
+      // ▼ no longer shows because the cursor has moved up to the top
+      // visible row; the viewport hasn't changed (rows 2..4) but the cursor
+      // is now at the top, leaving content below — wait, scrollStart=2 and
+      // total=5, so canScrollDown = 2+3 < 5 → false. Both arrows hidden.
+      const text = segs.map((s) => s.text).join("");
+      expect(text).not.toContain("▼");
     });
 
     it("minRows pads short content with empty rows", () => {

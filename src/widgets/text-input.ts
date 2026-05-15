@@ -714,15 +714,7 @@ export class TextInput extends WidgetBase {
     // *and* cursor projection from the same array. Vertical motion reads
     // from the cache so Up/Down step through whatever the user actually
     // sees, including soft-wrap continuations.
-    //
-    // When `maxRows` is set, reserve one column on the right for the scroll
-    // direction arrows. The slot is *always reserved* (so geometry is
-    // constant across the scrollable-or-not split) and *only drawn into*
-    // when total > maxRows. This trades one column of content area for a
-    // permanent indicator slot that never collides with content.
-    const indicatorReserve = this._maxRows !== undefined ? 1 : 0;
-    const wrapMaxWidth = Math.max(1, options.maxWidth - indicatorReserve);
-    const visualRows = this._computeVisualRows(wrapMaxWidth);
+    const visualRows = this._computeVisualRows(options.maxWidth);
     this._visualRows = visualRows;
 
     // Scroll window: keep `_scrollStart` (the viewport's top row) stable
@@ -763,15 +755,15 @@ export class TextInput extends WidgetBase {
       bgcolor: this.resolvePalette("primary"),
     });
 
-    // Scroll-direction arrows live in the reserved rightmost column of the
-    // first/last visible row. "Active" (primary) when scroll is possible in
-    // that direction; "idle" (dim foreground) at the edge.
-    const indicatorsActive = this._maxRows !== undefined && total > this._maxRows;
-    const canScrollUp = indicatorsActive && this._scrollStart > 0;
-    const canScrollDown =
-      indicatorsActive && this._scrollStart + this._maxRows! < total;
-    const indicatorActiveStyle = new Style({ color: this.resolvePalette("primary") });
-    const indicatorIdleStyle = new Style({ color: this.resolvePalette("foreground"), dim: true });
+    // Scroll-direction arrows overlay the rightmost column of the
+    // first/last visible row, *only* when scroll is actually possible in
+    // that direction. No reservation: the wrap budget is full; the arrow
+    // overwrites whatever content lives in column `maxWidth - 1` for that
+    // frame. Cursor still wins over the arrow on collision.
+    const scrollable = this._maxRows !== undefined && total > this._maxRows;
+    const canScrollUp = scrollable && this._scrollStart > 0;
+    const canScrollDown = scrollable && this._scrollStart + this._maxRows! < total;
+    const indicatorStyle = new Style({ color: this.resolvePalette("primary") });
 
     const segments: Segment[] = [];
     const showCursor = this.focused && !this.disabled;
@@ -783,12 +775,10 @@ export class TextInput extends WidgetBase {
         segments.push(new Segment(this._continuationMarker, markerStyle));
       }
       let indicator: { ch: string; style: Style } | undefined;
-      if (indicatorsActive) {
-        if (i === 0) {
-          indicator = { ch: "▲", style: canScrollUp ? indicatorActiveStyle : indicatorIdleStyle };
-        } else if (i === visibleCount - 1) {
-          indicator = { ch: "▼", style: canScrollDown ? indicatorActiveStyle : indicatorIdleStyle };
-        }
+      if (i === 0 && canScrollUp) {
+        indicator = { ch: "▲", style: indicatorStyle };
+      } else if (i === visibleCount - 1 && canScrollDown) {
+        indicator = { ch: "▼", style: indicatorStyle };
       }
       // When a continuation marker was emitted, the row's printable width is
       // reduced by the marker width — the indicator column is still at
