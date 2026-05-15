@@ -81,6 +81,23 @@ describe("TextInput", () => {
     expect(t.disabled).toBe(true);
   });
 
+  it("multiline mode initializes cursor at start so pre-loaded content shows from the top", () => {
+    // Regression: a multiline TextInput pre-loaded with long content used
+    // to open with cursor at value.length, which scrolled the viewport to
+    // the bottom on first render. Convention for textareas is cursor at 0.
+    const t = new TextInput({
+      value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+      multiline: true,
+      maxRows: 3,
+    });
+    expect(t.cursorPosition).toBe(0);
+    const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+    expect(text).toContain("0");
+    expect(text).toContain("1");
+    expect(text).toContain("2");
+    expect(text).not.toContain("9");
+  });
+
   it("implements InteractiveWidget", () => {
     const t: InteractiveWidget = new TextInput();
     expect(typeof t.handleKey).toBe("function");

@@ -257,7 +257,13 @@ export class TextInput extends WidgetBase {
     this.id = options.id ?? `text-input-${Math.random().toString(36).slice(2, 8)}`;
     this.value = options.value ?? "";
     this.placeholder = options.placeholder ?? "";
-    this.cursorPosition = this.value.length;
+    // [LAW:dataflow-not-control-flow] Initial cursor position is data, not
+    // a render-time branch. Single-line inputs follow the pre-filled-form
+    // convention (cursor at end — typing continues the value). Multiline
+    // inputs follow the textarea convention (cursor at start — pre-loaded
+    // content is read top-to-bottom, and the viewport's "scroll into view"
+    // logic does nothing because row 0 is already inside the initial window).
+    this.cursorPosition = (options.multiline ?? false) ? 0 : this.value.length;
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
     this._maxLength = options.maxLength;
