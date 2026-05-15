@@ -241,6 +241,15 @@ export class TextInput extends WidgetBase {
   // pattern that's the readline 90% case.
   private _killBuffer: string = "";
 
+  // [LAW:one-source-of-truth] Top visual row of the scroll viewport.
+  // Persisted across renders so the cursor can move *within* the viewport
+  // without dragging it along — the viewport scrolls only when the cursor
+  // would leave it. Without this, recomputing scroll from cursor position
+  // alone pins the cursor to the viewport's bottom edge whenever
+  // `cursorRow >= maxRows`, making every subsequent Up/Down scroll in
+  // lockstep with the cursor.
+  private _scrollStart: number = 0;
+
   readonly multiline: boolean;
 
   constructor(options: TextInputOptions = {}) {
@@ -702,15 +711,28 @@ export class TextInput extends WidgetBase {
     const visualRows = this._computeVisualRows(options.maxWidth);
     this._visualRows = visualRows;
 
-    // Scroll window: clamp the visible range to `maxRows`, keeping the
-    // cursor row in view. When `maxRows` is unset, render every row.
+    // Scroll window: keep `_scrollStart` (the viewport's top row) stable
+    // across renders, adjusting only when the cursor would leave the
+    // viewport. This is the textarea-conventional "viewport follows cursor
+    // when it has to" behavior — cursor moves freely *within* the visible
+    // rows; the window scrolls only at the edges. When `maxRows` is unset,
+    // render every row.
     const total = visualRows.length;
     const cursorRow = this._cursorVisualRow();
     let scrollStart = 0;
     let visibleCount = total;
     if (this._maxRows !== undefined && total > this._maxRows) {
-      scrollStart = Math.max(0, Math.min(total - this._maxRows, cursorRow - this._maxRows + 1));
+      const maxStart = total - this._maxRows;
+      if (cursorRow < this._scrollStart) {
+        this._scrollStart = cursorRow;
+      } else if (cursorRow >= this._scrollStart + this._maxRows) {
+        this._scrollStart = cursorRow - this._maxRows + 1;
+      }
+      this._scrollStart = Math.max(0, Math.min(maxStart, this._scrollStart));
+      scrollStart = this._scrollStart;
       visibleCount = this._maxRows;
+    } else {
+      this._scrollStart = 0;
     }
     // Pad with empty rows when the value is shorter than `minRows`.
     let padRows = 0;

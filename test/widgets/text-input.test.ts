@@ -701,6 +701,74 @@ describe("TextInput", () => {
       expect(text).not.toContain("b");
     });
 
+    it("maxRows: cursor moves within viewport without scrolling once scrolled past top", () => {
+      // Regression: previously the viewport was a pure function of cursor
+      // position (`scrollStart = cursorRow - maxRows + 1`), which pinned the
+      // cursor to the bottom row of the viewport whenever `cursorRow >= maxRows`.
+      // Every Up/Down from there scrolled the viewport in lockstep with the
+      // cursor, and the cursor could never appear anywhere except at the
+      // viewport's bottom edge. Post-fix: the viewport is persistent state;
+      // it scrolls only when the cursor would actually leave it.
+      const value = "0\n1\n2\n3\n4\n5\n6\n7\n8\n9";  // 10 visual rows
+      const t = new TextInput({ value, multiline: true, maxRows: 3 });
+
+      // Park cursor at last row, render once → viewport scrolls to show 7,8,9.
+      t.cursorPosition = value.length;
+      let text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).toContain("7");
+      expect(text).toContain("8");
+      expect(text).toContain("9");
+      expect(text).not.toContain("6");
+
+      // Up once: cursor moves from row 9 to row 8 — still inside viewport
+      // (rows 7..9). Viewport must NOT scroll.
+      t.handleKey(upEvent);
+      text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).toContain("7");
+      expect(text).toContain("8");
+      expect(text).toContain("9");
+      expect(text).not.toContain("6");
+
+      // Up again: cursor at row 7, still inside viewport. No scroll.
+      t.handleKey(upEvent);
+      text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).toContain("7");
+      expect(text).toContain("9");
+      expect(text).not.toContain("6");
+
+      // Up once more: cursor at row 6, now ABOVE viewport → scroll up by one.
+      t.handleKey(upEvent);
+      text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).toContain("6");
+      expect(text).toContain("7");
+      expect(text).toContain("8");
+      expect(text).not.toContain("9");
+      expect(text).not.toContain("5");
+    });
+
+    it("maxRows: viewport persists when value shrinks; clamps to valid range", () => {
+      // Park cursor and scroll deep, then delete a chunk so the new total
+      // is smaller than the saved scrollStart. The render must clamp so
+      // the viewport stays within bounds rather than reading past the end.
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+      });
+      t.cursorPosition = t.value.length;
+      [...t.render({ maxWidth: 20 })];  // viewport scrolls to rows 7..9
+      // Delete back to a 4-row value.
+      t.value = "0\n1\n2\n3";
+      t.cursorPosition = t.value.length;
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      // Total rows = 4, maxRows = 3, cursor at row 3 → viewport should show
+      // rows 1..3 (clamped from the stale deeper value). Must not error and
+      // must contain the cursor row.
+      expect(text).toContain("3");
+      expect(text).toContain("1");
+      expect(text).toContain("2");
+    });
+
     it("minRows pads short content with empty rows", () => {
       const t = new TextInput({ value: "x", multiline: true, minRows: 3 });
       const segs = [...t.render({ maxWidth: 20 })];
