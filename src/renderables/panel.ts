@@ -44,6 +44,17 @@ export interface PanelOptions {
   expand?: boolean;
   style?: string | Style;
   borderStyle?: string | Style;
+  /**
+   * Style for the title text in the top border. Defaults to `borderStyle`
+   * (i.e. title inherits the border color). Set independently when the
+   * title should pop relative to the border.
+   */
+  titleStyle?: string | Style;
+  /**
+   * Style for the subtitle text in the bottom border. Defaults to
+   * `borderStyle`.
+   */
+  subtitleStyle?: string | Style;
   width?: number;
   padding?: PaddingDimensions;
 }
@@ -78,6 +89,8 @@ export class Panel implements Renderable, Measurable {
   readonly expand: boolean;
   readonly style: Style;
   readonly borderStyle: Style;
+  readonly titleStyle: Style | undefined;
+  readonly subtitleStyle: Style | undefined;
   readonly width: number | undefined;
   readonly padding: [number, number, number, number];
 
@@ -93,6 +106,8 @@ export class Panel implements Renderable, Measurable {
     this.expand = options?.expand !== false;
     this.style = resolveStyle(options?.style);
     this.borderStyle = resolveStyle(options?.borderStyle);
+    this.titleStyle = options?.titleStyle === undefined ? undefined : resolveStyle(options.titleStyle);
+    this.subtitleStyle = options?.subtitleStyle === undefined ? undefined : resolveStyle(options.subtitleStyle);
     this.width = options?.width;
     this.padding = normalizePadding(options?.padding);
   }
@@ -215,19 +230,22 @@ export class Panel implements Renderable, Measurable {
     const titleText = typeof this.title === "string" ? this.title : this.title.plain;
     const titleDisplay = ` ${titleText} `;
     const titleWidth = cellLen(titleDisplay);
+    // Title gets its own style when set, else inherits the border style —
+    // single source of truth for "what color is the title text in".
+    const titleSeg = this.titleStyle ?? border;
 
     yield new Segment(box.topLeft, border);
 
     if (titleWidth >= innerBorderWidth) {
       // Title fills the border
-      yield new Segment(titleDisplay.slice(0, innerBorderWidth), border);
+      yield new Segment(titleDisplay.slice(0, innerBorderWidth), titleSeg);
     } else {
       // Center the title in the top border
       const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
       const rightRuleWidth = innerBorderWidth - titleWidth - leftRuleWidth;
 
       if (leftRuleWidth > 0) yield new Segment(box.top.repeat(leftRuleWidth), border);
-      yield new Segment(titleDisplay, border);
+      yield new Segment(titleDisplay, titleSeg);
       if (rightRuleWidth > 0) yield new Segment(box.top.repeat(rightRuleWidth), border);
     }
 
@@ -271,14 +289,15 @@ export class Panel implements Renderable, Measurable {
         typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
       const subtitleDisplay = ` ${subtitleText} `;
       const subtitleWidth = cellLen(subtitleDisplay);
+      const subtitleSeg = this.subtitleStyle ?? border;
 
       if (subtitleWidth >= centerWidth) {
-        yield new Segment(subtitleDisplay.slice(0, centerWidth), border);
+        yield new Segment(subtitleDisplay.slice(0, centerWidth), subtitleSeg);
       } else {
         const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
         const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
         if (leftRuleWidth > 0) yield new Segment(box.bottom.repeat(leftRuleWidth), border);
-        yield new Segment(subtitleDisplay, border);
+        yield new Segment(subtitleDisplay, subtitleSeg);
         if (rightRuleWidth > 0) yield new Segment(box.bottom.repeat(rightRuleWidth), border);
       }
     }

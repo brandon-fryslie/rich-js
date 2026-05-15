@@ -189,6 +189,22 @@ export interface TextInputOptions {
    *   - `"none"`: no indicator at all.
    */
   scrollIndicator?: "arrows" | "indices" | "none";
+  /**
+   * Style override for the in-content scroll arrows (▲/▼). Defaults to the
+   * widget's `primary` palette color. Has no effect outside `"arrows"` mode.
+   */
+  indicatorStyle?: Style;
+  /**
+   * Style override for the cursor cell. Defaults to
+   * `bgcolor: primary, color: on-primary` (the WCAG-correct combination
+   * derived from the active theme).
+   */
+  cursorStyle?: Style;
+  /**
+   * Style override for the rendered content text. Defaults to the
+   * theme's `foreground` palette color.
+   */
+  contentStyle?: Style;
 }
 
 const MIN_CONTENT_WIDTH = 8;
@@ -229,6 +245,9 @@ export class TextInput extends WidgetBase {
   private readonly _maxRows: number | undefined;
   private readonly _minRows: number | undefined;
   private readonly _scrollIndicator: "arrows" | "indices" | "none";
+  @observable.ref accessor indicatorStyleOverride: Style | undefined;
+  @observable.ref accessor cursorStyleOverride: Style | undefined;
+  @observable.ref accessor contentStyleOverride: Style | undefined;
 
   /**
    * Last computed visual-row decomposition. Cached at the end of `render()`
@@ -290,6 +309,9 @@ export class TextInput extends WidgetBase {
     this._maxRows = options.maxRows;
     this._minRows = options.minRows;
     this._scrollIndicator = options.scrollIndicator ?? "arrows";
+    this.indicatorStyleOverride = options.indicatorStyle;
+    this.cursorStyleOverride = options.cursorStyle;
+    this.contentStyleOverride = options.contentStyle;
     this.multiline = this._multiline;
   }
 
@@ -700,9 +722,9 @@ export class TextInput extends WidgetBase {
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
       : showPlaceholder
         ? new Style({ color: this.resolvePalette("foreground"), dim: true })
-        : new Style({ color: this.resolvePalette("foreground") });
+        : this.contentStyleOverride ?? new Style({ color: this.resolvePalette("foreground") });
 
-    const cursorStyle = new Style({
+    const cursorStyle = this.cursorStyleOverride ?? new Style({
       color: this.resolvePalette("on-primary"),
       bgcolor: this.resolvePalette("primary"),
     });
@@ -764,9 +786,9 @@ export class TextInput extends WidgetBase {
 
     const contentStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
-      : new Style({ color: this.resolvePalette("foreground") });
+      : this.contentStyleOverride ?? new Style({ color: this.resolvePalette("foreground") });
     const markerStyle = new Style({ color: this.resolvePalette("foreground"), dim: true });
-    const cursorStyle = new Style({
+    const cursorStyle = this.cursorStyleOverride ?? new Style({
       color: this.resolvePalette("on-primary"),
       bgcolor: this.resolvePalette("primary"),
     });
@@ -783,7 +805,7 @@ export class TextInput extends WidgetBase {
     const canScrollUp = arrowsMode && scrollable && this._scrollStart > 0;
     const canScrollDown =
       arrowsMode && scrollable && this._scrollStart + this._maxRows! < total;
-    const indicatorStyle = new Style({ color: this.resolvePalette("primary") });
+    const indicatorStyle = this.indicatorStyleOverride ?? new Style({ color: this.resolvePalette("primary") });
 
     const segments: Segment[] = [];
     const showCursor = this.focused && !this.disabled;

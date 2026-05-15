@@ -43,7 +43,8 @@
     "markup-plugins": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-markup-plugins/index.js",
     "demo-inputs": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-config/index.js",
     "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js",
-    "template-bindings": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-template-bindings/index.js"
+    "template-bindings": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-template-bindings/index.js",
+    "theme-designer": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-theme-designer/index.js"
   },
   "keywords": [
     "terminal",
