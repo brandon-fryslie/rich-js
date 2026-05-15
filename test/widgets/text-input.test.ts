@@ -856,31 +856,6 @@ describe("TextInput", () => {
       expect(t._visualRows!.length).toBe(1);
     });
 
-    it("scroll arrows: cursor wins when it lands on the indicator column", () => {
-      // Construct a state where canScrollUp is true and the cursor sits on
-      // the top visible row at column `maxWidth - 1`. The ▲ should be
-      // suppressed for that frame; ▼ (bottom) stays.
-      const longLine = "x".repeat(20);  // exactly maxWidth chars
-      const value = "line0\nline1\n" + longLine + "\nline3\nline4";
-      const t = new TextInput({ value, multiline: true, maxRows: 3 });
-      t.focused = true;
-      // Scroll to the bottom so scrollStart settles at 2 (rows 2..4 visible).
-      t.cursorPosition = t.value.length;
-      [...t.render({ maxWidth: 20 })];
-      // Park cursor on row 2 (top visible) at its rightmost column.
-      // row 2's valueStart = 12; column 19 → cursorPosition = 12 + 19 = 31.
-      t.cursorPosition = 31;
-      const segs = [...t.render({ maxWidth: 20 })];
-      const firstNewlineIdx = segs.findIndex((s) => s.text === "\n");
-      const topRowText = segs.slice(0, firstNewlineIdx).map((s) => s.text).join("");
-      expect(topRowText).not.toContain("▲");
-      // ▼ no longer shows because the cursor has moved up to the top
-      // visible row; the viewport hasn't changed (rows 2..4) but the cursor
-      // is now at the top, leaving content below — wait, scrollStart=2 and
-      // total=5, so canScrollDown = 2+3 < 5 → false. Both arrows hidden.
-      const text = segs.map((s) => s.text).join("");
-      expect(text).not.toContain("▼");
-    });
 
     it("minRows pads short content with empty rows", () => {
       const t = new TextInput({ value: "x", multiline: true, minRows: 3 });

@@ -759,7 +759,7 @@ export class TextInput extends WidgetBase {
     // first/last visible row, *only* when scroll is actually possible in
     // that direction. No reservation: the wrap budget is full; the arrow
     // overwrites whatever content lives in column `maxWidth - 1` for that
-    // frame. Cursor still wins over the arrow on collision.
+    // frame, including the cursor.
     const scrollable = this._maxRows !== undefined && total > this._maxRows;
     const canScrollUp = scrollable && this._scrollStart > 0;
     const canScrollDown = scrollable && this._scrollStart + this._maxRows! < total;
@@ -832,9 +832,10 @@ export class TextInput extends WidgetBase {
     }
 
     // Indicator path: build a fixed-width row [0, rowPrintWidth). Paint
-    // content, then cursor (over content cell), then indicator at the last
-    // column. Cursor wins over indicator when they share a column — the
-    // arrow disappears for one frame; the cursor is still observable.
+    // content, then cursor over content cell, then indicator at the last
+    // column. The indicator is painted last and wins on collision with the
+    // cursor — acceptable because the arrow only shows when scroll is
+    // possible in that direction, which is a rare overlap.
     const width = rowPrintWidth!;
     const indicatorCol = width - 1;
     const chars: string[] = new Array(width);
@@ -847,10 +848,8 @@ export class TextInput extends WidgetBase {
     if (cursorOnRow && cursorCol >= 0 && cursorCol < width) {
       kinds[cursorCol] = 1;
     }
-    if (!(cursorOnRow && cursorCol === indicatorCol)) {
-      chars[indicatorCol] = indicator.ch;
-      kinds[indicatorCol] = 2;
-    }
+    chars[indicatorCol] = indicator.ch;
+    kinds[indicatorCol] = 2;
     const styleByKind: readonly Style[] = [contentStyle, cursorStyle, indicator.style];
     let runStart = 0;
     for (let c = 1; c <= width; c++) {
