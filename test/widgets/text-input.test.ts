@@ -841,6 +841,60 @@ describe("TextInput", () => {
       expect(text).not.toContain("▼");
     });
 
+    it("scrollIndicator='indices': suppresses arrows, exposes [X/Y] text", () => {
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+        scrollIndicator: "indices",
+      });
+      // First render populates the visual-row cache that the getter reads.
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).not.toContain("▲");
+      expect(text).not.toContain("▼");
+      // Cursor defaults to 0 in multiline → row 1 of 10.
+      expect(t.scrollIndicatorText).toBe("[1/10]");
+      // Move cursor to end → row 10 of 10.
+      t.cursorPosition = t.value.length;
+      [...t.render({ maxWidth: 20 })];
+      expect(t.scrollIndicatorText).toBe("[10/10]");
+    });
+
+    it("scrollIndicator='indices': returns undefined when nothing to scroll", () => {
+      const t = new TextInput({
+        value: "0\n1\n2",
+        multiline: true,
+        maxRows: 5,
+        scrollIndicator: "indices",
+      });
+      [...t.render({ maxWidth: 20 })];
+      expect(t.scrollIndicatorText).toBeUndefined();
+    });
+
+    it("scrollIndicator='none': no arrows, no text", () => {
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+        scrollIndicator: "none",
+      });
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).not.toContain("▲");
+      expect(text).not.toContain("▼");
+      expect(t.scrollIndicatorText).toBeUndefined();
+    });
+
+    it("scrollIndicatorText is undefined in default 'arrows' mode", () => {
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+      });
+      [...t.render({ maxWidth: 20 })];
+      // Defaults to arrows; the indices text is only published in 'indices' mode.
+      expect(t.scrollIndicatorText).toBeUndefined();
+    });
+
     it("scroll arrows: full wrap budget — no column reserved when nothing to scroll", () => {
       // Regression: a previous design reserved one column for indicators
       // whenever `maxRows` was set, shrinking wrap budget even when no

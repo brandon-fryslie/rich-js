@@ -175,6 +175,20 @@ export interface TextInputOptions {
    * occupies at least `minRows` lines (useful for stable layouts).
    */
   minRows?: number;
+  /**
+   * Scroll-state indicator style.
+   *
+   *   - `"arrows"` (default): the widget renders ▲/▼ inside its own content
+   *     area on the first/last visible row when scroll is possible in that
+   *     direction. Fully self-contained — host needs no wiring.
+   *   - `"indices"`: the widget suppresses in-content arrows and instead
+   *     publishes `scrollIndicatorText` (e.g. `"[14/102]"`) for the host
+   *     (typically a `Panel`'s `bottomRightAccessory`) to display in the
+   *     border. Useful when the surrounding chrome should carry the
+   *     indicator so widget content area stays untouched.
+   *   - `"none"`: no indicator at all.
+   */
+  scrollIndicator?: "arrows" | "indices" | "none";
 }
 
 const MIN_CONTENT_WIDTH = 8;
@@ -214,6 +228,7 @@ export class TextInput extends WidgetBase {
   private readonly _markerWidth: number;
   private readonly _maxRows: number | undefined;
   private readonly _minRows: number | undefined;
+  private readonly _scrollIndicator: "arrows" | "indices" | "none";
 
   /**
    * Last computed visual-row decomposition. Cached at the end of `render()`
@@ -274,6 +289,7 @@ export class TextInput extends WidgetBase {
     this._markerWidth = cellLen(this._continuationMarker);
     this._maxRows = options.maxRows;
     this._minRows = options.minRows;
+    this._scrollIndicator = options.scrollIndicator ?? "arrows";
     this.multiline = this._multiline;
   }
 
@@ -759,10 +775,14 @@ export class TextInput extends WidgetBase {
     // first/last visible row, *only* when scroll is actually possible in
     // that direction. No reservation: the wrap budget is full; the arrow
     // overwrites whatever content lives in column `maxWidth - 1` for that
-    // frame, including the cursor.
+    // frame, including the cursor. Only emitted in `"arrows"` mode; other
+    // modes leave the content area untouched and rely on the host to
+    // surface scroll state externally (e.g. Panel border accessory).
     const scrollable = this._maxRows !== undefined && total > this._maxRows;
-    const canScrollUp = scrollable && this._scrollStart > 0;
-    const canScrollDown = scrollable && this._scrollStart + this._maxRows! < total;
+    const arrowsMode = this._scrollIndicator === "arrows";
+    const canScrollUp = arrowsMode && scrollable && this._scrollStart > 0;
+    const canScrollDown =
+      arrowsMode && scrollable && this._scrollStart + this._maxRows! < total;
     const indicatorStyle = new Style({ color: this.resolvePalette("primary") });
 
     const segments: Segment[] = [];
@@ -895,6 +915,28 @@ export class TextInput extends WidgetBase {
     const minimum = MIN_CONTENT_WIDTH + 2;
     const maximum = Math.max(minimum, Math.max(this.value.length, this.placeholder.length) + 2);
     return { minimum, maximum };
+  }
+
+  /**
+   * `[X/Y]` scroll-position string when there's actually something to
+   * scroll, else `undefined`. X is the cursor's 1-indexed visual row; Y is
+   * the total visual row count. Reads cached state populated by the most
+   * recent `render()` — call from a `Panel.bottomRightAccessory` thunk so
+   * it evaluates after content has been rendered for the current frame.
+   *
+   * Returns `undefined` when:
+   *   - `scrollIndicator` is not `"indices"`, or
+   *   - `maxRows` is unset, or total visual rows ≤ maxRows (nothing to
+   *     scroll), or
+   *   - no render has happened yet (cache is empty).
+   */
+  get scrollIndicatorText(): string | undefined {
+    if (this._scrollIndicator !== "indices") return undefined;
+    if (this._maxRows === undefined) return undefined;
+    const rows = this._visualRows;
+    if (rows === null || rows.length <= this._maxRows) return undefined;
+    const cursorRow1 = this._cursorVisualRow() + 1;
+    return `[${cursorRow1}/${rows.length}]`;
   }
 
   // --- Palette resolution ---

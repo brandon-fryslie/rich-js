@@ -16,10 +16,31 @@ import type {
 } from "../core/protocol.js";
 import { isMeasurable } from "../core/protocol.js";
 
+/**
+ * A lazily-resolved border accessory. Strings render inline in the
+ * border style; `RichText` carries its own styling. A function form is
+ * evaluated at render time, *after* content has been rendered for the
+ * current frame — use this when the accessory mirrors state that the
+ * wrapped renderable populates during its own `render()` (e.g. a
+ * widget's post-render scroll position).
+ */
+export type BorderAccessory =
+  | string
+  | RichText
+  | (() => string | RichText | undefined);
+
 export interface PanelOptions {
   box?: Box;
   title?: string | RichText;
   subtitle?: string | RichText;
+  /**
+   * Right-aligned accessory in the bottom border, just left of the
+   * `bottomRight` corner. Coexists with `subtitle` — the subtitle
+   * remains centered in the remaining space. Padded with a leading/
+   * trailing space like `title`/`subtitle`, so passing `"[14/102]"`
+   * renders as `─ [14/102] ┘`.
+   */
+  bottomRightAccessory?: BorderAccessory;
   expand?: boolean;
   style?: string | Style;
   borderStyle?: string | Style;
@@ -53,6 +74,7 @@ export class Panel implements Renderable, Measurable {
   readonly box: Box;
   readonly title: string | RichText | undefined;
   readonly subtitle: string | RichText | undefined;
+  readonly bottomRightAccessory: BorderAccessory | undefined;
   readonly expand: boolean;
   readonly style: Style;
   readonly borderStyle: Style;
@@ -67,6 +89,7 @@ export class Panel implements Renderable, Measurable {
     this.box = options?.box ?? ROUNDED;
     this.title = options?.title;
     this.subtitle = options?.subtitle;
+    this.bottomRightAccessory = options?.bottomRightAccessory;
     this.expand = options?.expand !== false;
     this.style = resolveStyle(options?.style);
     this.borderStyle = resolveStyle(options?.borderStyle);
@@ -219,34 +242,64 @@ export class Panel implements Renderable, Measurable {
   ): Iterable<Segment> {
     const innerBorderWidth = panelWidth - 2;
 
-    if (!this.subtitle) {
-      yield new Segment(box.bottomLeft, border);
-      yield new Segment(box.bottom.repeat(innerBorderWidth), border);
-      yield new Segment(box.bottomRight, border);
-      yield Segment.line();
-      return;
-    }
-
-    const subtitleText =
-      typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
-    const subtitleDisplay = ` ${subtitleText} `;
-    const subtitleWidth = cellLen(subtitleDisplay);
+    // Resolve the right accessory *now*. Function form evaluates after
+    // content has been rendered (Panel.render collects content segments
+    // before yielding any borders), so the thunk sees fresh widget state.
+    const accessory = this._resolveAccessory(this.bottomRightAccessory);
+    const accessoryDisplay = accessory === undefined
+      ? ""
+      : typeof accessory === "string"
+        ? ` ${accessory} `
+        : ` ${accessory.plain} `;
+    const accessoryWidth = cellLen(accessoryDisplay);
+    const accessoryStyle =
+      accessory instanceof RichText && !accessory.style.isNull
+        ? accessory.style
+        : border;
 
     yield new Segment(box.bottomLeft, border);
 
-    if (subtitleWidth >= innerBorderWidth) {
-      yield new Segment(subtitleDisplay.slice(0, innerBorderWidth), border);
-    } else {
-      const leftRuleWidth = Math.floor((innerBorderWidth - subtitleWidth) / 2);
-      const rightRuleWidth = innerBorderWidth - subtitleWidth - leftRuleWidth;
+    // Space available for the centered subtitle / rule fill — the accessory
+    // (if any) hugs the right edge and the subtitle treats the remainder
+    // as its centering canvas.
+    const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
 
-      if (leftRuleWidth > 0) yield new Segment(box.bottom.repeat(leftRuleWidth), border);
-      yield new Segment(subtitleDisplay, border);
-      if (rightRuleWidth > 0) yield new Segment(box.bottom.repeat(rightRuleWidth), border);
+    if (!this.subtitle) {
+      if (centerWidth > 0) yield new Segment(box.bottom.repeat(centerWidth), border);
+    } else {
+      const subtitleText =
+        typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
+      const subtitleDisplay = ` ${subtitleText} `;
+      const subtitleWidth = cellLen(subtitleDisplay);
+
+      if (subtitleWidth >= centerWidth) {
+        yield new Segment(subtitleDisplay.slice(0, centerWidth), border);
+      } else {
+        const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
+        const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
+        if (leftRuleWidth > 0) yield new Segment(box.bottom.repeat(leftRuleWidth), border);
+        yield new Segment(subtitleDisplay, border);
+        if (rightRuleWidth > 0) yield new Segment(box.bottom.repeat(rightRuleWidth), border);
+      }
+    }
+
+    if (accessoryWidth > 0) {
+      const fit = accessoryWidth > innerBorderWidth
+        ? accessoryDisplay.slice(0, innerBorderWidth)
+        : accessoryDisplay;
+      yield new Segment(fit, accessoryStyle);
     }
 
     yield new Segment(box.bottomRight, border);
     yield Segment.line();
+  }
+
+  private _resolveAccessory(
+    a: BorderAccessory | undefined,
+  ): string | RichText | undefined {
+    if (a === undefined) return undefined;
+    if (typeof a === "function") return a();
+    return a;
   }
 
   private *_renderBlankLine(

@@ -236,7 +236,11 @@ function buildRowSegments(
 
   const row = new Layout();
   row.splitRow(
-    new Layout(new Panel(input,            { title: label,    borderStyle })),
+    new Layout(new Panel(input, {
+      title: label,
+      borderStyle,
+      bottomRightAccessory: () => input.scrollIndicatorText,
+    })),
     new Layout(new Panel(outputRenderable, { title: "output", borderStyle: dimStyle })),
   );
   return [...new Padding(row, [0, 0, 0, 2]).render(options)];
@@ -258,6 +262,7 @@ function makeDemoRow(label: string, template: string, engine: Engine<RichText>):
     wrap: templateAtomWrap,
     minRows: 1,
     maxRows: 10,
+    scrollIndicator: "indices",
   });
   runInAction(() => { input.visible = false; });
 
