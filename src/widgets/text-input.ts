@@ -714,7 +714,15 @@ export class TextInput extends WidgetBase {
     // *and* cursor projection from the same array. Vertical motion reads
     // from the cache so Up/Down step through whatever the user actually
     // sees, including soft-wrap continuations.
-    const visualRows = this._computeVisualRows(options.maxWidth);
+    //
+    // When `maxRows` is set, reserve one column on the right for the scroll
+    // direction arrows. The slot is *always reserved* (so geometry is
+    // constant across the scrollable-or-not split) and *only drawn into*
+    // when total > maxRows. This trades one column of content area for a
+    // permanent indicator slot that never collides with content.
+    const indicatorReserve = this._maxRows !== undefined ? 1 : 0;
+    const wrapMaxWidth = Math.max(1, options.maxWidth - indicatorReserve);
+    const visualRows = this._computeVisualRows(wrapMaxWidth);
     this._visualRows = visualRows;
 
     // Scroll window: keep `_scrollStart` (the viewport's top row) stable
@@ -755,6 +763,16 @@ export class TextInput extends WidgetBase {
       bgcolor: this.resolvePalette("primary"),
     });
 
+    // Scroll-direction arrows live in the reserved rightmost column of the
+    // first/last visible row. "Active" (primary) when scroll is possible in
+    // that direction; "idle" (dim foreground) at the edge.
+    const indicatorsActive = this._maxRows !== undefined && total > this._maxRows;
+    const canScrollUp = indicatorsActive && this._scrollStart > 0;
+    const canScrollDown =
+      indicatorsActive && this._scrollStart + this._maxRows! < total;
+    const indicatorActiveStyle = new Style({ color: this.resolvePalette("primary") });
+    const indicatorIdleStyle = new Style({ color: this.resolvePalette("foreground"), dim: true });
+
     const segments: Segment[] = [];
     const showCursor = this.focused && !this.disabled;
     for (let i = 0; i < visibleCount; i++) {
@@ -764,7 +782,30 @@ export class TextInput extends WidgetBase {
       if (row.isContinuation) {
         segments.push(new Segment(this._continuationMarker, markerStyle));
       }
-      this._emitRowContent(segments, row, rowIdx === cursorRow && showCursor, contentStyle, cursorStyle);
+      let indicator: { ch: string; style: Style } | undefined;
+      if (indicatorsActive) {
+        if (i === 0) {
+          indicator = { ch: "▲", style: canScrollUp ? indicatorActiveStyle : indicatorIdleStyle };
+        } else if (i === visibleCount - 1) {
+          indicator = { ch: "▼", style: canScrollDown ? indicatorActiveStyle : indicatorIdleStyle };
+        }
+      }
+      // When a continuation marker was emitted, the row's printable width is
+      // reduced by the marker width — the indicator column is still at
+      // `options.maxWidth - 1` in the panel's view, which is
+      // `options.maxWidth - markerWidth - 1` columns past the marker.
+      const rowPrintWidth = row.isContinuation
+        ? options.maxWidth - this._markerWidth
+        : options.maxWidth;
+      this._emitRowContent(
+        segments,
+        row,
+        rowIdx === cursorRow && showCursor,
+        contentStyle,
+        cursorStyle,
+        indicator,
+        rowPrintWidth,
+      );
     }
     // Trailing empty rows for minRows padding (no cursor, no marker).
     for (let i = 0; i < padRows; i++) {
@@ -779,19 +820,55 @@ export class TextInput extends WidgetBase {
     cursorOnRow: boolean,
     contentStyle: Style,
     cursorStyle: Style,
+    indicator?: { ch: string; style: Style },
+    rowPrintWidth?: number,
   ): void {
     const content = row.content;
-    if (!cursorOnRow) {
-      if (content.length > 0) out.push(new Segment(content, contentStyle));
+    const cursorCol = cursorOnRow ? this.cursorPosition - row.valueStart : -1;
+
+    // Fast path: no indicator on this row. Let the wrapper pad to width.
+    if (indicator === undefined) {
+      if (!cursorOnRow) {
+        if (content.length > 0) out.push(new Segment(content, contentStyle));
+        return;
+      }
+      const before = content.slice(0, cursorCol);
+      const at = content.slice(cursorCol, cursorCol + 1) || " ";
+      const after = content.slice(cursorCol + 1);
+      if (before.length > 0) out.push(new Segment(before, contentStyle));
+      out.push(new Segment(at, cursorStyle));
+      if (after.length > 0) out.push(new Segment(after, contentStyle));
       return;
     }
-    const col = this.cursorPosition - row.valueStart;
-    const before = content.slice(0, col);
-    const at = content.slice(col, col + 1) || " ";
-    const after = content.slice(col + 1);
-    if (before.length > 0) out.push(new Segment(before, contentStyle));
-    out.push(new Segment(at, cursorStyle));
-    if (after.length > 0) out.push(new Segment(after, contentStyle));
+
+    // Indicator path: build a fixed-width row [0, rowPrintWidth). Paint
+    // content, then cursor (over content cell), then indicator at the last
+    // column. Cursor wins over indicator when they share a column — the
+    // arrow disappears for one frame; the cursor is still observable.
+    const width = rowPrintWidth!;
+    const indicatorCol = width - 1;
+    const chars: string[] = new Array(width);
+    type Kind = 0 | 1 | 2;  // 0 content, 1 cursor, 2 indicator
+    const kinds: Kind[] = new Array(width);
+    for (let c = 0; c < width; c++) {
+      chars[c] = c < content.length ? content[c]! : " ";
+      kinds[c] = 0;
+    }
+    if (cursorOnRow && cursorCol >= 0 && cursorCol < width) {
+      kinds[cursorCol] = 1;
+    }
+    if (!(cursorOnRow && cursorCol === indicatorCol)) {
+      chars[indicatorCol] = indicator.ch;
+      kinds[indicatorCol] = 2;
+    }
+    const styleByKind: readonly Style[] = [contentStyle, cursorStyle, indicator.style];
+    let runStart = 0;
+    for (let c = 1; c <= width; c++) {
+      if (c === width || kinds[c] !== kinds[runStart]) {
+        out.push(new Segment(chars.slice(runStart, c).join(""), styleByKind[kinds[runStart]!]));
+        runStart = c;
+      }
+    }
   }
 
   private _computeVisualRows(maxWidth: number): VisualRow[] {

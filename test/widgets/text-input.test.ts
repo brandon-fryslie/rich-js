@@ -786,6 +786,82 @@ describe("TextInput", () => {
       expect(text).toContain("2");
     });
 
+    it("scroll arrows: top-row ▲ idle when at top, bottom-row ▼ active when more below", () => {
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+      });
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).toContain("▲");
+      expect(text).toContain("▼");
+    });
+
+    it("scroll arrows: hidden entirely when content fits within maxRows", () => {
+      const t = new TextInput({ value: "0\n1\n2", multiline: true, maxRows: 5 });
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).not.toContain("▲");
+      expect(text).not.toContain("▼");
+    });
+
+    it("scroll arrows: hidden when maxRows is unset", () => {
+      const t = new TextInput({ value: "0\n1\n2\n3\n4", multiline: true });
+      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      expect(text).not.toContain("▲");
+      expect(text).not.toContain("▼");
+    });
+
+    it("scroll arrows: top ▲ active after scrolling down past the start", () => {
+      const t = new TextInput({
+        value: "0\n1\n2\n3\n4\n5\n6\n7\n8\n9",
+        multiline: true,
+        maxRows: 3,
+      });
+      // Scroll to the bottom — both arrows should change state.
+      t.cursorPosition = t.value.length;
+      const segs = [...t.render({ maxWidth: 20 })];
+      const text = segs.map((s) => s.text).join("");
+      expect(text).toContain("▲");
+      expect(text).toContain("▼");
+      // ▲ should now be styled with the primary (active) color, ▼ with dim.
+      const upSeg = segs.find((s) => s.text === "▲");
+      const downSeg = segs.find((s) => s.text === "▼");
+      expect(upSeg).toBeDefined();
+      expect(downSeg).toBeDefined();
+      // Active indicator has no `dim`; idle one is dim.
+      expect(upSeg!.style?.dim).not.toBe(true);
+      expect(downSeg!.style?.dim).toBe(true);
+    });
+
+    it("scroll arrows: cursor wins when it lands on the indicator column", () => {
+      // Width 20 → indicator at column 19 (zero-indexed). Wrap budget = 19.
+      // With unwrapped multiline (no wrap strategy), each logical line is one
+      // visual row; the indicator is overlaid by the cursor when the cursor
+      // sits at column 19 on the top row.
+      // Build a value where the first logical line is exactly 19 chars so
+      // cursor at position 19 lands at the rightmost column of row 0.
+      const longLine = "x".repeat(19);
+      const t = new TextInput({
+        value: longLine + "\n1\n2\n3\n4",  // total 5 rows
+        multiline: true,
+        maxRows: 3,
+      });
+      t.focused = true;  // cursor renders only when focused
+      // First render so visualRows is populated, then place cursor at row 0
+      // column 19 (== indicator column).
+      [...t.render({ maxWidth: 20 })];
+      t.cursorPosition = 19;
+      const segs = [...t.render({ maxWidth: 20 })];
+      // Find the segment at the top row containing the rightmost cell.
+      // ▲ should NOT appear on row 0 — cursor takes that cell. ▼ still
+      // appears on the bottom visible row.
+      const firstNewlineIdx = segs.findIndex((s) => s.text === "\n");
+      const topRowText = segs.slice(0, firstNewlineIdx).map((s) => s.text).join("");
+      expect(topRowText).not.toContain("▲");
+      const bottomRowText = segs.slice(firstNewlineIdx + 1).map((s) => s.text).join("");
+      expect(bottomRowText).toContain("▼");
+    });
+
     it("minRows pads short content with empty rows", () => {
       const t = new TextInput({ value: "x", multiline: true, minRows: 3 });
       const segs = [...t.render({ maxWidth: 20 })];
