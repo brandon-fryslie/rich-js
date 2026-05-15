@@ -733,6 +733,109 @@ describe("TextInput", () => {
       expect(t.cursorPosition).toBe(13);
     });
 
+    // Regression suite for the wrap-boundary trap. The trap shape: a visual
+    // row of length L is followed by a continuation row of the same logical
+    // line. Cursor on the continuation at any col > L. Up targets the
+    // shorter row; pre-fix, the clamp landed cursor at `target.valueStart
+    // + L`, which equaled the continuation's `valueStart` — `_cursorVisualRow`
+    // then resolved that boundary to the *later* row, leaving the cursor
+    // visibly stuck and the position frozen for subsequent Ups.
+    //
+    // Reproduces deterministically with a strategy that emits a single-char
+    // head followed by long continuations. Default `charGreedyWrap` doesn't
+    // expose the trap because every continuation row has the same length —
+    // the trap manifests when target length < cursor col, which charGreedyWrap
+    // alone can't produce. `templateAtomWrap` in the demo does produce it
+    // (leading whitespace becomes a 2-char head row).
+    const tinyHeadWrap: WrapStrategy = (line, { continuationWidth }) => {
+      if (line.length === 0) return [{ content: "", start: 0 }];
+      if (line.length === 1) return [{ content: line, start: 0 }];
+      const out: { content: string; start: number }[] = [{ content: line[0]!, start: 0 }];
+      let p = 1;
+      while (p < line.length) {
+        const take = Math.min(continuationWidth, line.length - p);
+        out.push({ content: line.slice(p, p + take), start: p });
+        p += take;
+      }
+      return out;
+    };
+
+    it("Up onto a short head row lands strictly inside it, not at the boundary", () => {
+      const t = new TextInput({
+        value: "abcdefghijklmno",  // single logical line; wraps to head "a" + continuations
+        multiline: true,
+        wrap: tinyHeadWrap,
+      });
+      [...t.render({ maxWidth: 20 })];
+      const rows = t._visualRows!;
+      // Expected shape: row 0 "a" (vs=0, len=1, cont=false),
+      //                 row 1 long continuation (vs=1, ...).
+      expect(rows[0]!.content).toBe("a");
+      expect(rows[1]!.isContinuation).toBe(true);
+      expect(rows.length).toBeGreaterThanOrEqual(2);
+
+      // Park cursor on the continuation row at col 5 (well past head.length=1).
+      t.cursorPosition = rows[1]!.valueStart + 5;
+      expect(t._cursorVisualRow()).toBe(1);
+
+      t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+
+      // Pre-fix: cursorPosition would be `rows[0].valueStart + 1 = 1`, which
+      // equals `rows[1].valueStart` — the boundary — and `_cursorVisualRow`
+      // would still report row 1. Post-fix: clamp to `length - 1 = 0`,
+      // cursor lands at `rows[0].valueStart = 0`, unambiguously row 0.
+      expect(t.cursorPosition).toBe(0);
+      expect(t._cursorVisualRow()).toBe(0);
+    });
+
+    it("repeated Up across the trap row makes progress every press (no stuck position)", () => {
+      const t = new TextInput({
+        value: "x\nabcdefghijklmno",  // line 0 "x" (one row), line 1 wraps via tinyHeadWrap
+        multiline: true,
+        wrap: tinyHeadWrap,
+      });
+      [...t.render({ maxWidth: 20 })];
+      const rows = t._visualRows!;
+      // rows: [row 0 "x"], [row 1 "a" head of line 1], [row 2 long cont], ...
+      // Park cursor on row 2 (continuation) at col 5.
+      t.cursorPosition = rows[2]!.valueStart + 5;
+
+      const positions: number[] = [t.cursorPosition];
+      for (let i = 0; i < 3; i++) {
+        t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+        positions.push(t.cursorPosition);
+      }
+      // Three Ups from row 2: row 2 → row 1 → row 0 → (stuck at top, no further movement).
+      // Crucially, the second-to-last Up must NOT leave cursor at the same
+      // position as a prior one (boundary stuck-state).
+      expect(positions[0]).not.toBe(positions[1]);
+      expect(positions[1]).not.toBe(positions[2]);
+    });
+
+    it("Down onto a short head row also avoids the boundary trap", () => {
+      const t = new TextInput({
+        value: "AAAAAAAAAAAAAAAAAAA\nabcdefghij",  // line 0 long enough to give a col=5+ start
+        multiline: true,
+        wrap: tinyHeadWrap,
+      });
+      [...t.render({ maxWidth: 20 })];
+      const rows = t._visualRows!;
+      // From a row above the tinyHeadWrap line, Down at col 5 should land
+      // unambiguously inside the head row (length 1), which means cursor
+      // must clamp to col 0, not col 1 (the boundary).
+      // First find the head row of line 1.
+      const head = rows.findIndex((r) => r.content === "a" && !r.isContinuation);
+      expect(head).toBeGreaterThan(0);
+
+      // Park cursor on the row right above `head` at col 5.
+      t.cursorPosition = rows[head - 1]!.valueStart + 5;
+      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+
+      // Cursor should be on row `head` (valueStart), NOT at row `head+1`'s boundary.
+      expect(t.cursorPosition).toBe(rows[head]!.valueStart);
+      expect(t._cursorVisualRow()).toBe(head);
+    });
+
     it("preferred column survives motion through a short wrap row", () => {
       const t = new TextInput({
         // 3 logical lines: long / short / long. Wrap will further split lines.

@@ -389,7 +389,7 @@ export class TextInput extends WidgetBase {
       if (rowIdx === 0) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
       const target = this._visualRows[rowIdx - 1]!;
-      this.cursorPosition = target.valueStart + Math.min(col, target.content.length);
+      this.cursorPosition = target.valueStart + this._clampColForRow(col, rowIdx - 1);
       this._preferredColumn = col;
       return;
     }
@@ -409,8 +409,7 @@ export class TextInput extends WidgetBase {
       const rowIdx = this._cursorVisualRow();
       if (rowIdx === this._visualRows.length - 1) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
-      const target = this._visualRows[rowIdx + 1]!;
-      this.cursorPosition = target.valueStart + Math.min(col, target.content.length);
+      this.cursorPosition = this._visualRows[rowIdx + 1]!.valueStart + this._clampColForRow(col, rowIdx + 1);
       this._preferredColumn = col;
       return;
     }
@@ -424,6 +423,29 @@ export class TextInput extends WidgetBase {
     const nextLineLen = nextLineEnd - nextLineStart;
     this.cursorPosition = nextLineStart + Math.min(col, nextLineLen);
     this._preferredColumn = col;
+  }
+
+  // Clamp `col` to a target visual row's content length, accounting for
+  // the wrap-boundary trap. When the row IS followed by a continuation of
+  // the same logical line, the position `target.valueStart + target.length`
+  // equals the next row's `valueStart` — i.e. a boundary that
+  // `_cursorVisualRow` resolves to the *later* row. Landing there leaves
+  // cursorPosition stuck at the boundary on every subsequent Up/Down, since
+  // the clamp re-computes to the same value. Clamping to `length - 1`
+  // instead keeps cursor strictly inside the target row.
+  //
+  // For rows NOT followed by a continuation (last row of a wrap, or any
+  // non-wrapped logical line), allow end-of-line clamp (`length`) — there
+  // is no later row to collide with at that position, only the `\n`
+  // separator, so the boundary case doesn't apply.
+  private _clampColForRow(col: number, targetIdx: number): number {
+    const rows = this._visualRows!;
+    const target = rows[targetIdx]!;
+    const nextIsContinuation = targetIdx + 1 < rows.length && rows[targetIdx + 1]!.isContinuation;
+    const cap = nextIsContinuation
+      ? Math.max(0, target.content.length - 1)
+      : target.content.length;
+    return Math.min(col, cap);
   }
 
   // Locate which cached visual row the cursor sits on. Returns the row index

@@ -149,6 +149,15 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
     }
   }
 
+  // Coalesce a pure-whitespace leading atom with the atom that follows so
+  // the wrap doesn't emit a row whose content is invisible. Mid-line
+  // whitespace runs (e.g. ` → `) are left alone — only the leading edge
+  // is special, because that's where indentation lives.
+  if (atoms.length >= 2 && /^\s+$/.test(atoms[0]!.text)) {
+    atoms[0] = { text: atoms[0]!.text + atoms[1]!.text, start: atoms[0]!.start };
+    atoms.splice(1, 1);
+  }
+
   const rows: { content: string; start: number }[] = [];
   let buf = "";
   let bufStart = -1;
