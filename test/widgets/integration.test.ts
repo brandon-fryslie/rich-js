@@ -20,6 +20,7 @@ import { Button } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Toggle } from "../../src/widgets/toggle.js";
 import { TextInput } from "../../src/widgets/text-input.js";
+import { MONOKAI } from "../../src/themes/terminalThemes.js";
 
 class CapturingStream extends Writable {
   chunks: string[] = [];
@@ -266,6 +267,25 @@ describe("widget pipeline integration", () => {
 
       // queueMicrotask coalescing: one frame, not three.
       expect(h.stdout.chunks.length).toBe(1);
+    });
+  });
+
+  describe("theme reactivity", () => {
+    it("setTheme on a mounted widget schedules a new frame", async () => {
+      // [LAW:dataflow-not-control-flow] The theme reference is now
+      // @observable.ref + setTheme is @action across all 5 widgets, so a
+      // swap participates in Screen's autorun just like any other reactive
+      // mutation. This test pins that contract — it has broken once
+      // already when _theme was a plain field and went undetected because
+      // the unit tests on widget rendering didn't exercise the Screen
+      // pipeline.
+      await flush();
+      h.stdout.reset();
+
+      h.button.setTheme(MONOKAI);
+      await flush();
+
+      expect(h.stdout.chunks.length).toBeGreaterThan(0);
     });
   });
 
