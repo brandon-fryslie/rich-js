@@ -77,7 +77,7 @@ interface WidgetMouseEvent {
   ctrl: boolean;
 }
 
-interface FocusEvent {
+interface WidgetFocusEvent {
   type: "focus" | "blur";
 }
 ```
@@ -187,9 +187,25 @@ no router-side special case for any specific key.
 ### Screen
 
 ```typescript
+// A MountEntry is either a bare widget (defaults to flow placement) or
+// a widget paired with an explicit Placement.
+//   flow   — vertical stack at x=0; advances the layout cursor
+//   inline — continues the row of the preceding flow/inline item, with
+//            a one-cell gap, on the same y
+//   fixed  — absolute (x, y); does not interact with the layout cursor
+type Placement =
+  | { kind: "flow" }
+  | { kind: "inline" }
+  | { kind: "fixed"; x: number; y: number };
+
+type MountEntry =
+  | InteractiveWidget
+  | { widget: InteractiveWidget; placement: Placement };
+
 interface Screen {
-  // Register widgets to display (ordered left-to-right, top-to-bottom)
-  mount(...widgets: InteractiveWidget[]): void;
+  // Register widgets to display. Bare widgets default to flow placement;
+  // pass `{ widget, placement }` for inline / fixed layout.
+  mount(...entries: MountEntry[]): void;
   unmount(widget: InteractiveWidget): void;
 
   // Start/stop the event loop
@@ -199,6 +215,7 @@ interface Screen {
   // Access
   readonly focusManager: FocusManager;
   readonly running: boolean;
+  readonly widgets: readonly InteractiveWidget[];
 }
 ```
 
@@ -266,7 +283,9 @@ class RichJsWidgetAdapter {
   constructor(private widget: InteractiveWidget) {}
 
   // Map textual-js Key message → widget.handleKey()
-  // Map textual-js Click message → widget.handleClick()
+  // Map textual-js Click / mouse messages → widget.handleMouse() with the
+  //   appropriate WidgetMouseEvent type (mouse_down / mouse_up / mouse_move /
+  //   scroll_up / scroll_down)
   // Map textual-js Focus/Blur → widget.handleFocus()
   // Wrap widget.render() → Visual for compositor
   // Subscribe to widget.onChange/onSubmit → textual-js state updates
