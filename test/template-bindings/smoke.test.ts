@@ -58,6 +58,19 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs[0]!.style?.color?.name).toBe("yellow");
   });
 
+  it("renderTemplate degrades silently even when the user-supplied errorStyle is invalid", () => {
+    // The whole point of the helper is "never throw on the live-render path".
+    // A bogus errorStyle in the catch branch must not propagate — it falls
+    // back to a hard-coded safe Style so the caller still gets a segment.
+    const engine = createRichTextEngine();
+    expect(() =>
+      renderTemplate(engine, `{{ bogus }}`, {}, { errorStyle: "::: not a real spec :::" }),
+    ).not.toThrow();
+    const segs = renderTemplate(engine, `{{ bogus }}`, {}, { errorStyle: "::: not a real spec :::" });
+    expect(segs).toHaveLength(1);
+    expect(segs[0]!.text.startsWith("[error:")).toBe(true);
+  });
+
   it("exposes a populated FuncMap from richTextFuncs()", () => {
     // Spot-check a representative from each registration category. The
     // exhaustive inventory is asserted in style-funcs.test.ts.

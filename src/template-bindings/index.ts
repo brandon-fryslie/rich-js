@@ -123,7 +123,20 @@ export function renderTemplate(
       encoding: "utf-8",
     }));
   } catch (e) {
-    const errStyle = Style.parse(options?.errorStyle ?? "red dim");
-    return [new Segment(`[error: ${String(e).slice(0, 80)}]`, errStyle)];
+    return [new Segment(`[error: ${String(e).slice(0, 80)}]`, safeErrorStyle(options?.errorStyle))];
+  }
+}
+
+// [LAW:single-enforcer] The error-path Style must not itself throw, or
+// the whole "degrade gracefully" promise of renderTemplate is broken. A
+// bogus user-supplied `errorStyle` spec falls back to a hard-coded safe
+// Style — never propagates the parse failure to the caller.
+const FALLBACK_ERROR_STYLE = new Style({ color: "red", dim: true });
+function safeErrorStyle(spec: string | undefined): Style {
+  if (spec === undefined) return FALLBACK_ERROR_STYLE;
+  try {
+    return Style.parse(spec);
+  } catch {
+    return FALLBACK_ERROR_STYLE;
   }
 }
