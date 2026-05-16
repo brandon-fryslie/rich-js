@@ -15,6 +15,7 @@ import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
+import { cellLen } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
@@ -36,7 +37,9 @@ export class Checkbox extends WidgetBase {
   @observable accessor label: string;
   @observable accessor checked: boolean;
 
-  private _theme: TerminalTheme;
+  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // re-render — see slider.ts.
+  @observable.ref private accessor _theme: TerminalTheme;
 
   constructor(options: CheckboxOptions) {
     super();
@@ -47,6 +50,7 @@ export class Checkbox extends WidgetBase {
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
 
+  @action
   setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
@@ -75,11 +79,6 @@ export class Checkbox extends WidgetBase {
     }
   }
 
-  // --- Hover/active mutators (router fast-path uses setHovered) ---
-
-  @action
-  setHovered(value: boolean): void { this.hovered = value; }
-
   // --- Rendering ---
 
   render(options: RenderOptions): Iterable<Segment> {
@@ -95,7 +94,8 @@ export class Checkbox extends WidgetBase {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.label.length + 4;
+    // [LAW:one-source-of-truth] cellLen — see button.ts.
+    const width = cellLen(this.label) + 4;
     return { minimum: width, maximum: width };
   }
 

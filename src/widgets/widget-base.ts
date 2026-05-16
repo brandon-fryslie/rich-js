@@ -55,19 +55,33 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   // --- Programmatic control ---
 
+  // [LAW:single-enforcer] focus()/blur() route through handleFocus so any
+  // subclass override (e.g. Dropdown collapsing its overlay on blur)
+  // participates in the same transition path the event router uses. There
+  // is no second code path that flips `focused` directly from the outside.
   @action
   focus(): void {
-    this.focused = true;
+    this.handleFocus({ type: "focus" });
   }
 
   @action
   blur(): void {
-    this.focused = false;
+    this.handleFocus({ type: "blur" });
   }
 
   @action
   setDisabled(value: boolean): void {
     this.disabled = value;
+  }
+
+  // [LAW:single-enforcer] One canonical setter for hover state lives on
+  // the base. EventRouter calls it on every widget whose hit-test result
+  // diverges from `hovered`; widgets that need to react to hover transitions
+  // override handleMouse and read the synthesized `mouse_move`. The router
+  // no longer maintains a "does this widget have setHovered" fallback path.
+  @action
+  setHovered(value: boolean): void {
+    this.hovered = value;
   }
 
   // --- Hit-testing ---

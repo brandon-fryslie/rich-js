@@ -113,6 +113,7 @@ export interface InteractiveWidget extends Renderable, Measurable {
   focus(): void;
   blur(): void;
   setDisabled(value: boolean): void;
+  setHovered(value: boolean): void;
 
   // Hit-testing
   containsPoint(x: number, y: number): boolean;

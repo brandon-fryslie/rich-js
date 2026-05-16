@@ -326,6 +326,23 @@ describe("Dropdown", () => {
       const segs = [...d.render(RENDER)];
       expect(segs.some((s) => s.style?.underline === true)).toBe(true);
     });
+
+    it("programmatic blur() collapses the overlay and clears the filter", () => {
+      // [LAW:single-enforcer] focus()/blur() route through handleFocus on
+      // WidgetBase, so the subclass override sees the transition. Without
+      // dispatch, blur() would only flip `focused` and leave the overlay
+      // open — visible state surviving a blur is a real-world bug.
+      const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
+      d.focus();
+      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }));
+      expect(d.expanded).toBe(true);
+      expect(d.filter).toBe("a");
+
+      d.blur();
+      expect(d.focused).toBe(false);
+      expect(d.expanded).toBe(false);
+      expect(d.filter).toBe("");
+    });
   });
 
   describe("measure", () => {

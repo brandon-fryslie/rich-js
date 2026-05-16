@@ -47,7 +47,10 @@ export class Slider extends WidgetBase {
   @observable.ref accessor step: number;
   @observable.ref accessor width: number;
 
-  private _theme: TerminalTheme;
+  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // re-render — render() reads _theme.palette, so the theme reference must
+  // participate in MobX reactivity for Screen's autorun to fire on swap.
+  @observable.ref private accessor _theme: TerminalTheme;
   private _dragging = false;
 
   constructor(options: SliderOptions = {}) {
@@ -70,6 +73,7 @@ export class Slider extends WidgetBase {
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
 
+  @action
   setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
@@ -122,11 +126,6 @@ export class Slider extends WidgetBase {
       return;
     }
   }
-
-  // --- Hover mutator (router fast-path) ---
-
-  @action
-  setHovered(value: boolean): void { this.hovered = value; }
 
   // --- Value mutation ---
 
