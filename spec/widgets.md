@@ -230,7 +230,7 @@ interface Screen {
 ### Button
 - **State**: `label: string`, `variant: "default" | "primary" | "success" | "warning" | "danger"`
 - **Events**: key=enter/space or mouse_up → `onSubmit`
-- **Rendering**: `[ label ]` with style based on focused/disabled state and variant
+- **Rendering**: `  label  ` when unfocused, `[ label ]` when focused (brackets appear only on focus). Color states compose: `disabled > active > hover > normal`. Active and hover share the same accent-on / WCAG-contrast color pair; active differentiates with bold so the visual press still reads on terminals that don't honor bold weight as a brightness shift.
 
 ### Checkbox
 - **State**: `checked: boolean`, `label: string`
@@ -245,7 +245,8 @@ interface Screen {
 ### Dropdown
 - **State**: `options: string[]`, `selectedIndex: number`, `expanded: boolean`, `filter: string`
 - **Events**: key=enter/space or mouse_up → expand; up/down → navigate; enter → select; escape → close
-- **Rendering collapsed**: `selected ▾`; **expanded**: shows option list with highlight
+- **Rendering collapsed**: `[ <padded-label> ▾ ]` — a 1-row header at width `maxLabelLen + 4` (the `[` + space gutter + centered selected label + arrow + `]`). When filtering, the centered label is replaced by a left-aligned query with a caret (`│` normally, `|` under `asciiOnly`); the header width never changes. The arrow falls back to `v` under `asciiOnly`.
+- **Rendering expanded**: the collapsed header stays on the inline row; option rows (or `(no matches)` when filter excludes everything) paint as an overlay directly below, anchored to the header's left edge. Each option row matches the header width. Highlight uses a muted-accent bg + accent fg; the selected row uses the full accent bg + on-accent fg.
 
 #### Filtering (built-in)
 
