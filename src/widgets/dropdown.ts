@@ -251,6 +251,10 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // 1 row regardless of `expanded`/`filter`. Option rows live in
     // renderOverlay. Width invariant: maxLabelLen + 4.
     const arrowChar = options.asciiOnly ? "v" : "▾";
+    // [LAW:one-source-of-truth] render() owns the asciiOnly switch; the
+    // caret character flows into headerText as data rather than headerText
+    // re-reading the option flag. Same arrow / caret resolution path.
+    const caret = this.focused ? (options.asciiOnly ? "|" : "│") : "";
     const maxLabelLen = this.maxLabelLen();
 
     const baseStyle = this.disabled
@@ -261,7 +265,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
           underline: this.focused,
         });
 
-    const headerLabel = this.headerText(maxLabelLen);
+    const headerLabel = this.headerText(maxLabelLen, caret);
     return [
       new Segment("[", baseStyle),
       new Segment(`${headerLabel} ${arrowChar}`, baseStyle),
@@ -278,7 +282,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
   // [LAW:one-source-of-truth] All width math is in terminal cells via
   // cellLen / setCellSize / splitText — plain `.length` would miscount
   // wide / emoji characters and break the width invariant.
-  private headerText(maxLabelLen: number): string {
+  private headerText(maxLabelLen: number, caret: string): string {
     if (this.filter === "") {
       const raw = this.options[this.selectedIndex] ?? "";
       const w = cellLen(raw);
@@ -288,12 +292,11 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       const right = pad - left;
       return " ".repeat(left) + raw + " ".repeat(right);
     }
-    const cursor = this.focused ? "│" : "";
     // Leading space gives the filter input a small gutter from the [ chrome,
     // matching the visual breathing room of the centered label.
-    const filterRoom = Math.max(0, maxLabelLen - cellLen(cursor) - 1);
+    const filterRoom = Math.max(0, maxLabelLen - cellLen(caret) - 1);
     const [filterText] = splitText(this.filter, filterRoom);
-    return setCellSize(" " + filterText + cursor, maxLabelLen);
+    return setCellSize(" " + filterText + caret, maxLabelLen);
   }
 
   renderOverlay(_options: RenderOptions): Iterable<Segment> | null {

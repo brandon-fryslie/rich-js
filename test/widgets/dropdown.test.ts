@@ -326,6 +326,20 @@ describe("Dropdown", () => {
       expect(text).not.toContain("▾");
     });
 
+    it("ASCII fallback uses '|' for the filter caret (not '│')", () => {
+      // The filter-mode caret was hard-coded to the box-drawing character.
+      // render() switched the arrow on asciiOnly but the caret slipped
+      // through. The caret now comes from render() as data so headerText
+      // doesn't need to know about the option flag.
+      const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
+      d.focus();
+      d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }));
+      const segs = [...d.render({ ...RENDER, asciiOnly: true })];
+      const text = segs.map((s) => s.text).join("");
+      expect(text).toContain("|");
+      expect(text).not.toContain("│");
+    });
+
     it("overlay highlighted row uses primary-muted bg, distinct from selected primary", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
       d.handleKey(enterEvent());
