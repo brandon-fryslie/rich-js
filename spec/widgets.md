@@ -29,7 +29,7 @@ screen (render loop, ANSI output)
 
 A widget does not know about stdin, terminal escape sequences, or its host. It:
 - Holds observable state (MobX)
-- Accepts typed events via methods (`handleKey`, `handleClick`, `focus`, `blur`)
+- Accepts typed events via methods (`handleKey`, `handleMouse`, `handleFocus`, `focus`, `blur`)
 - Implements `Renderable.render()` to produce `Segment[]` from current state
 - Implements `Measurable.measure()` for width negotiation
 
@@ -68,8 +68,8 @@ class KeyEvent {
   stop(): void;                  // claim this key; halts further chain dispatch
 }
 
-interface MouseEvent {
-  type: "click" | "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
+interface WidgetMouseEvent {
+  type: "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
   x: number;             // column (0-based)
   y: number;             // row (0-based)
   button: number;        // 0=left, 1=middle, 2=right
@@ -92,23 +92,29 @@ interface InteractiveWidget extends Renderable, Measurable {
   readonly id: string;
   readonly focusable: boolean;  // [LAW:one-source-of-truth] single source for focus eligibility
 
-  // State (MobX observables)
-  readonly focused: boolean;
-  readonly disabled: boolean;
-  readonly visible: boolean;
+  // State (MobX observables — mutable; widgets and the host write them
+  // through actions, never directly. Treat as read-only from the outside,
+  // but TypeScript does not mark these `readonly` because the host
+  // (Screen, EventRouter) and the widget itself need write access.)
+  focused: boolean;
+  hovered: boolean;
+  active: boolean;
+  disabled: boolean;
+  visible: boolean;
 
   // Geometry — set by host during layout, used for hit-testing
-  readonly bounds: { x: number; y: number; width: number; height: number } | null;
+  bounds: { x: number; y: number; width: number; height: number } | null;
 
   // Event handlers — called by host
   handleKey(event: KeyEvent): void;
-  handleClick(event: MouseEvent): void;
-  handleFocus(event: FocusEvent): void;
+  handleMouse(event: WidgetMouseEvent): void;
+  handleFocus(event: WidgetFocusEvent): void;
 
   // Programmatic control
   focus(): void;
   blur(): void;
   setDisabled(value: boolean): void;
+  setHovered(value: boolean): void;
 
   // Hit-testing — does (x,y) fall within this widget's rendered area?
   containsPoint(x: number, y: number): boolean;
@@ -200,22 +206,22 @@ interface Screen {
 
 ### Button
 - **State**: `label: string`, `variant: "default" | "primary" | "success" | "warning" | "danger"`
-- **Events**: key=enter or click → `onSubmit`
+- **Events**: key=enter/space or mouse_up → `onSubmit`
 - **Rendering**: `[ label ]` with style based on focused/disabled state and variant
 
 ### Checkbox
 - **State**: `checked: boolean`, `label: string`
-- **Events**: key=space or click → toggle checked
+- **Events**: key=space or mouse_up → toggle checked
 - **Rendering**: `[✓] label` or `[ ] label`
 
 ### Toggle
 - **State**: `on: boolean`, `label: string`
-- **Events**: key=space or click → toggle on
+- **Events**: key=space or mouse_up → toggle on
 - **Rendering**: `[ON]  label` / `[OFF] label` with color
 
 ### Dropdown
 - **State**: `options: string[]`, `selectedIndex: number`, `expanded: boolean`, `filter: string`
-- **Events**: key=enter/space or click → expand; up/down → navigate; enter → select; escape → close
+- **Events**: key=enter/space or mouse_up → expand; up/down → navigate; enter → select; escape → close
 - **Rendering collapsed**: `selected ▾`; **expanded**: shows option list with highlight
 
 #### Filtering (built-in)
@@ -236,7 +242,7 @@ The Dropdown has a built-in type-to-filter. The header doubles as the filter inp
 
 ### Slider
 - **State**: `value: number`, `min: number`, `max: number`, `step: number`
-- **Events**: left/right arrows → change value; click → jump to position
+- **Events**: left/right/home/end → change value; mouse_down → jump to position + start drag; mouse_move while dragging tracks the cursor (EventRouter holds drag capture so motion outside slider bounds still updates value); mouse_up commits + emits submit
 - **Rendering**: `────●────────` with position marker
 
 ### TextInput
