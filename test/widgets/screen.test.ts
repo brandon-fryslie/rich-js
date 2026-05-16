@@ -404,6 +404,23 @@ describe("DefaultScreen", () => {
       expect(c.bounds).toEqual({ x: 0, y: 1, width: 6, height: 1 });
     });
 
+    it("rejects fixed placements with negative or non-integer coords", () => {
+      // [LAW:types-are-the-program] mount is the trust boundary for
+      // placements; negative or fractional coordinates would index out of
+      // bounds in paintLines. Reject at construction so the layout pipeline
+      // can assume non-negative integers everywhere downstream.
+      const w = new StubWidget("w", "x");
+      expect(() =>
+        screen.mount({ widget: w, placement: { kind: "fixed", x: -1, y: 0 } }),
+      ).toThrow(RangeError);
+      expect(() =>
+        screen.mount({ widget: w, placement: { kind: "fixed", x: 0, y: -3 } }),
+      ).toThrow(RangeError);
+      expect(() =>
+        screen.mount({ widget: w, placement: { kind: "fixed", x: 1.5, y: 2 } }),
+      ).toThrow(RangeError);
+    });
+
     it("fixed placement anchors at absolute coords", async () => {
       const a = new StubWidget("a", "Alpha");
       const status = new StubWidget("s", "Status", false);

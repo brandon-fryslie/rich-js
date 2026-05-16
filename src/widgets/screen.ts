@@ -399,9 +399,24 @@ function resolveSpec(
 // that pass `mount(a, b, c)` keep working unchanged.
 function normalizeEntry(entry: MountEntry): { widget: InteractiveWidget; placement: Placement } {
   if ("widget" in entry && "placement" in entry) {
+    validatePlacement(entry.placement);
     return { widget: entry.widget, placement: entry.placement };
   }
   return { widget: entry as InteractiveWidget, placement: FLOW };
+}
+
+// [LAW:types-are-the-program] mount() is the trust boundary for placements.
+// `x` and `y` are typed as `number` but the layout pipeline assumes
+// non-negative integers — negative coordinates would index out of bounds in
+// paintLines and either crash on bang-asserts or silently skip rows. Reject
+// at construction so the rest of the pipeline can assume validity.
+function validatePlacement(p: Placement): void {
+  if (p.kind !== "fixed") return;
+  if (!Number.isInteger(p.x) || !Number.isInteger(p.y) || p.x < 0 || p.y < 0) {
+    throw new RangeError(
+      `fixed Placement requires non-negative integer x and y; got (${p.x}, ${p.y})`,
+    );
+  }
 }
 
 // Paint `widgetLines` into the frame `lines` at top-left (x, y). Grows the
