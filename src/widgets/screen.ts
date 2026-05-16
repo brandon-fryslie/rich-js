@@ -111,6 +111,11 @@ export class DefaultScreen implements Screen {
   private _running = false;
   private autorunDispose: IReactionDisposer | undefined;
   private renderScheduled = false;
+  // [LAW:one-source-of-truth] The autorun computes the next frame once and
+  // stores it here; draw() reads and clears. Not observable — only the
+  // autorun writes, only draw reads, both run in the same single-threaded
+  // event loop.
+  private pendingFrame: FrameLayout | null = null;
   private lastLineCount = 0;
 
   private readonly out: NodeJS.WritableStream;
@@ -172,10 +177,14 @@ export class DefaultScreen implements Screen {
     if (this.manageCursor) this.out.write("\x1b[?25l");
 
     // [LAW:dataflow-not-control-flow] One reactive pipeline. The autorun
-    // reads observables during render; MobX subscribes to exactly what was
-    // read, so only relevant state changes trigger redraws.
+    // computes the frame (which reads observables; MobX subscribes to
+    // exactly what was read so only relevant state changes trigger redraws),
+    // caches it as `pendingFrame`, and schedules a microtask to paint it.
+    // draw() consumes the cached frame instead of recomputing — without the
+    // cache, every tick laid the frame out twice (once for subscription,
+    // once for paint).
     this.autorunDispose = autorun(() => {
-      this.computeFrame(); // touch observables to subscribe
+      this.pendingFrame = this.computeFrame();
       this.scheduleRender();
     });
   }
@@ -322,7 +331,13 @@ export class DefaultScreen implements Screen {
   }
 
   private draw(): void {
-    const { lines, bounds } = this.computeFrame();
+    // [LAW:single-enforcer] One frame per tick. The autorun populates
+    // `pendingFrame`; we consume it here. Fall back to a fresh compute if
+    // draw is reached without a pending frame (test paths that call draw
+    // outside the autorun, or the very first frame before autorun fired).
+    const frame = this.pendingFrame ?? this.computeFrame();
+    this.pendingFrame = null;
+    const { lines, bounds } = frame;
 
     // [LAW:single-enforcer] Bounds are written here, the only place that
     // computes layout. `bounds` is a plain field (see widget-base.ts) — no
