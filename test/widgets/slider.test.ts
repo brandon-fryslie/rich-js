@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { Slider } from "../../src/widgets/slider.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
-const makeKey = (key: string): KeyEvent => ({
+// Factory — KeyEvent carries a mutable `stopped` flag; fresh per call.
+const makeKey = (key: string): KeyEvent => new KeyEvent({
   key,
   character: "",
   shift: false,
@@ -10,11 +12,11 @@ const makeKey = (key: string): KeyEvent => ({
   meta: false,
 });
 
-const leftEvent = makeKey("left");
-const rightEvent = makeKey("right");
-const homeEvent = makeKey("home");
-const endEvent = makeKey("end");
-const upEvent = makeKey("up");
+const leftEvent = () => makeKey("left");
+const rightEvent = () => makeKey("right");
+const homeEvent = () => makeKey("home");
+const endEvent = () => makeKey("end");
+const upEvent = () => makeKey("up");
 
 const mouseAt = (
   type: "mouse_down" | "mouse_up" | "mouse_move",
@@ -78,43 +80,43 @@ describe("Slider", () => {
   describe("keyboard adjustment", () => {
     it("right increments by step", () => {
       const s = new Slider({ value: 10, step: 5 });
-      s.handleKey(rightEvent);
+      s.handleKey(rightEvent());
       expect(s.value).toBe(15);
     });
 
     it("left decrements by step", () => {
       const s = new Slider({ value: 10, step: 5 });
-      s.handleKey(leftEvent);
+      s.handleKey(leftEvent());
       expect(s.value).toBe(5);
     });
 
     it("right clamps at max", () => {
       const s = new Slider({ value: 99, max: 100, step: 5 });
-      s.handleKey(rightEvent);
+      s.handleKey(rightEvent());
       expect(s.value).toBe(100);
     });
 
     it("left clamps at min", () => {
       const s = new Slider({ value: 1, min: 0, step: 5 });
-      s.handleKey(leftEvent);
+      s.handleKey(leftEvent());
       expect(s.value).toBe(0);
     });
 
     it("home jumps to min", () => {
       const s = new Slider({ value: 50, min: 10 });
-      s.handleKey(homeEvent);
+      s.handleKey(homeEvent());
       expect(s.value).toBe(10);
     });
 
     it("end jumps to max", () => {
       const s = new Slider({ value: 50, max: 80 });
-      s.handleKey(endEvent);
+      s.handleKey(endEvent());
       expect(s.value).toBe(80);
     });
 
     it("ignores unrelated keys", () => {
       const s = new Slider({ value: 10 });
-      s.handleKey(upEvent);
+      s.handleKey(upEvent());
       expect(s.value).toBe(10);
     });
 
@@ -122,8 +124,8 @@ describe("Slider", () => {
       const s = new Slider({ value: 10 });
       const changes: InteractiveWidget[] = [];
       s.onChange((w) => changes.push(w));
-      s.handleKey(rightEvent);
-      s.handleKey(rightEvent);
+      s.handleKey(rightEvent());
+      s.handleKey(rightEvent());
       expect(changes).toHaveLength(2);
     });
 
@@ -131,7 +133,7 @@ describe("Slider", () => {
       const s = new Slider({ value: 100, max: 100 });
       const changes: InteractiveWidget[] = [];
       s.onChange((w) => changes.push(w));
-      s.handleKey(rightEvent);
+      s.handleKey(rightEvent());
       expect(changes).toHaveLength(0);
     });
   });
@@ -139,9 +141,9 @@ describe("Slider", () => {
   describe("snap-to-step", () => {
     it("snaps to nearest step boundary on adjustment", () => {
       const s = new Slider({ value: 0, step: 5, max: 100 });
-      s.handleKey(rightEvent);
+      s.handleKey(rightEvent());
       expect(s.value).toBe(5);
-      s.handleKey(rightEvent);
+      s.handleKey(rightEvent());
       expect(s.value).toBe(10);
     });
   });
@@ -201,7 +203,7 @@ describe("Slider", () => {
   describe("disabled gating", () => {
     it("blocks keyboard adjustment", () => {
       const s = new Slider({ value: 10, disabled: true });
-      s.handleKey(rightEvent);
+      s.handleKey(rightEvent());
       expect(s.value).toBe(10);
     });
 
@@ -264,7 +266,7 @@ describe("Slider", () => {
     it("width never changes with value", () => {
       const s = new Slider({ value: 0, width: 11 });
       const at0 = renderText(s).length;
-      s.handleKey(endEvent);
+      s.handleKey(endEvent());
       const atMax = renderText(s).length;
       expect(at0).toBe(atMax);
       expect(at0).toBe(11);

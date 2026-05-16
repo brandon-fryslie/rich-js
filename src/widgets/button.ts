@@ -74,6 +74,7 @@ export class Button extends WidgetBase {
     if (event.key === "enter" || event.key === "space") {
       this.active = true;
       this.emitSubmit();
+      event.stop();
     }
   }
 

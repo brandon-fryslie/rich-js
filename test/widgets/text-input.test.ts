@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { TextInput, charGreedyWrap, type WrapStrategy } from "../../src/widgets/text-input.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
-const makeKey = (key: string, character = ""): KeyEvent => ({
+// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
+const makeKey = (key: string, character = ""): KeyEvent => new KeyEvent({
   key,
   character,
   shift: false,
@@ -10,7 +12,7 @@ const makeKey = (key: string, character = ""): KeyEvent => ({
   meta: false,
 });
 
-const ctrl = (key: string): KeyEvent => ({
+const ctrl = (key: string): KeyEvent => new KeyEvent({
   key,
   character: "",
   shift: false,
@@ -18,7 +20,7 @@ const ctrl = (key: string): KeyEvent => ({
   meta: false,
 });
 
-const alt = (key: string): KeyEvent => ({
+const alt = (key: string): KeyEvent => new KeyEvent({
   key,
   character: "",
   shift: false,
@@ -26,10 +28,10 @@ const alt = (key: string): KeyEvent => ({
   meta: true,
 });
 
-const upEvent = makeKey("up");
-const downEvent = makeKey("down");
+const upEvent = () => makeKey("up");
+const downEvent = () => makeKey("down");
 
-const printable = (ch: string): KeyEvent => ({
+const printable = (ch: string): KeyEvent => new KeyEvent({
   key: ch,
   character: ch,
   shift: false,
@@ -37,14 +39,14 @@ const printable = (ch: string): KeyEvent => ({
   meta: false,
 });
 
-const enterEvent = makeKey("enter", "\r");
-const escapeEvent = makeKey("escape", "\x1b");
-const backspaceEvent = makeKey("backspace", "\x08");
-const deleteEvent = makeKey("delete");
-const leftEvent = makeKey("left");
-const rightEvent = makeKey("right");
-const homeEvent = makeKey("home");
-const endEvent = makeKey("end");
+const enterEvent = () => makeKey("enter", "\r");
+const escapeEvent = () => makeKey("escape", "\x1b");
+const backspaceEvent = () => makeKey("backspace", "\x08");
+const deleteEvent = () => makeKey("delete");
+const leftEvent = () => makeKey("left");
+const rightEvent = () => makeKey("right");
+const homeEvent = () => makeKey("home");
+const endEvent = () => makeKey("end");
 
 const mouseDownAt = (x: number): WidgetMouseEvent => ({
   type: "mouse_down",
@@ -138,7 +140,7 @@ describe("TextInput", () => {
 
     it("ignores ctrl-modified keys", () => {
       const t = new TextInput();
-      t.handleKey({ key: "a", character: "a", shift: false, ctrl: true, meta: false });
+      t.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: true, meta: false }));
       expect(t.value).toBe("");
     });
   });
@@ -147,7 +149,7 @@ describe("TextInput", () => {
     it("backspace removes the char before cursor and decrements", () => {
       const t = new TextInput({ value: "abc" });
       t.cursorPosition = 2;
-      t.handleKey(backspaceEvent);
+      t.handleKey(backspaceEvent());
       expect(t.value).toBe("ac");
       expect(t.cursorPosition).toBe(1);
     });
@@ -157,7 +159,7 @@ describe("TextInput", () => {
       t.cursorPosition = 0;
       const changes: InteractiveWidget[] = [];
       t.onChange((w) => changes.push(w));
-      t.handleKey(backspaceEvent);
+      t.handleKey(backspaceEvent());
       expect(t.value).toBe("abc");
       expect(t.cursorPosition).toBe(0);
       expect(changes).toHaveLength(0);
@@ -166,7 +168,7 @@ describe("TextInput", () => {
     it("delete removes the char after cursor without moving it", () => {
       const t = new TextInput({ value: "abc" });
       t.cursorPosition = 1;
-      t.handleKey(deleteEvent);
+      t.handleKey(deleteEvent());
       expect(t.value).toBe("ac");
       expect(t.cursorPosition).toBe(1);
     });
@@ -174,7 +176,7 @@ describe("TextInput", () => {
     it("delete at end is a no-op", () => {
       const t = new TextInput({ value: "abc" });
       t.cursorPosition = 3;
-      t.handleKey(deleteEvent);
+      t.handleKey(deleteEvent());
       expect(t.value).toBe("abc");
     });
   });
@@ -183,33 +185,33 @@ describe("TextInput", () => {
     it("left moves cursor back, clamped at 0", () => {
       const t = new TextInput({ value: "abc" });
       t.cursorPosition = 2;
-      t.handleKey(leftEvent);
+      t.handleKey(leftEvent());
       expect(t.cursorPosition).toBe(1);
-      t.handleKey(leftEvent);
-      t.handleKey(leftEvent);
+      t.handleKey(leftEvent());
+      t.handleKey(leftEvent());
       expect(t.cursorPosition).toBe(0);
     });
 
     it("right moves cursor forward, clamped at value.length", () => {
       const t = new TextInput({ value: "abc" });
       t.cursorPosition = 1;
-      t.handleKey(rightEvent);
+      t.handleKey(rightEvent());
       expect(t.cursorPosition).toBe(2);
-      t.handleKey(rightEvent);
-      t.handleKey(rightEvent);
+      t.handleKey(rightEvent());
+      t.handleKey(rightEvent());
       expect(t.cursorPosition).toBe(3);
     });
 
     it("home jumps cursor to 0", () => {
       const t = new TextInput({ value: "hello" });
-      t.handleKey(homeEvent);
+      t.handleKey(homeEvent());
       expect(t.cursorPosition).toBe(0);
     });
 
     it("end jumps cursor to value.length", () => {
       const t = new TextInput({ value: "hello" });
       t.cursorPosition = 0;
-      t.handleKey(endEvent);
+      t.handleKey(endEvent());
       expect(t.cursorPosition).toBe(5);
     });
   });
@@ -250,7 +252,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "hi" });
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey(enterEvent);
+      t.handleKey(enterEvent());
       expect(submits).toHaveLength(1);
     });
 
@@ -258,8 +260,8 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "hi" });
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey(escapeEvent);
-      t.handleKey(leftEvent);
+      t.handleKey(escapeEvent());
+      t.handleKey(leftEvent());
       expect(submits).toHaveLength(0);
     });
   });
@@ -274,7 +276,7 @@ describe("TextInput", () => {
     it("blocks deletion", () => {
       const t = new TextInput({ value: "ab", disabled: true });
       t.cursorPosition = 2;
-      t.handleKey(backspaceEvent);
+      t.handleKey(backspaceEvent());
       expect(t.value).toBe("ab");
     });
 
@@ -282,7 +284,7 @@ describe("TextInput", () => {
       const t = new TextInput({ disabled: true });
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey(enterEvent);
+      t.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
 
@@ -499,20 +501,20 @@ describe("TextInput", () => {
     it("Ctrl+Left / Ctrl+Right do word motion", () => {
       const t = new TextInput({ value: "foo bar baz" });
       t.cursorPosition = 11;
-      t.handleKey({ key: "left", character: "", shift: false, ctrl: true, meta: false });
+      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }));
       expect(t.cursorPosition).toBe(8);
-      t.handleKey({ key: "left", character: "", shift: false, ctrl: true, meta: false });
+      t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }));
       expect(t.cursorPosition).toBe(4);
-      t.handleKey({ key: "right", character: "", shift: false, ctrl: true, meta: false });
+      t.handleKey(new KeyEvent({ key: "right", character: "", shift: false, ctrl: true, meta: false }));
       expect(t.cursorPosition).toBe(7);  // end of "bar"
     });
 
     it("Ctrl+Home / Ctrl+End jump to document bounds", () => {
       const t = new TextInput({ value: "line1\nline2\nline3", multiline: true });
       t.cursorPosition = 8;
-      t.handleKey({ key: "home", character: "", shift: false, ctrl: true, meta: false });
+      t.handleKey(new KeyEvent({ key: "home", character: "", shift: false, ctrl: true, meta: false }));
       expect(t.cursorPosition).toBe(0);
-      t.handleKey({ key: "end", character: "", shift: false, ctrl: true, meta: false });
+      t.handleKey(new KeyEvent({ key: "end", character: "", shift: false, ctrl: true, meta: false }));
       expect(t.cursorPosition).toBe(17);
     });
   });
@@ -538,7 +540,7 @@ describe("TextInput", () => {
     it("Alt+Backspace kills the previous word", () => {
       const t = new TextInput({ value: "foo bar baz" });
       t.cursorPosition = 11;
-      t.handleKey({ key: "backspace", character: "", shift: false, ctrl: false, meta: true });
+      t.handleKey(new KeyEvent({ key: "backspace", character: "", shift: false, ctrl: false, meta: true }));
       expect(t.value).toBe("foo bar ");
     });
   });
@@ -549,7 +551,7 @@ describe("TextInput", () => {
       t.cursorPosition = 1;
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey(enterEvent);
+      t.handleKey(enterEvent());
       expect(t.value).toBe("a\nb");
       expect(t.cursorPosition).toBe(2);
       expect(submits).toHaveLength(0);
@@ -559,7 +561,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "hi", multiline: true });
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey({ key: "enter", character: "\r", shift: false, ctrl: true, meta: false });
+      t.handleKey(new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: true, meta: false }));
       expect(submits).toHaveLength(1);
       expect(t.value).toBe("hi");
     });
@@ -567,44 +569,44 @@ describe("TextInput", () => {
     it("Up arrow moves to the same column on the previous line", () => {
       const t = new TextInput({ value: "abcdef\nxyz", multiline: true });
       t.cursorPosition = 9;             // between 'y' and 'z' on line 2 (col 2)
-      t.handleKey(upEvent);
+      t.handleKey(upEvent());
       expect(t.cursorPosition).toBe(2); // col 2 on line 1
     });
 
     it("Down arrow preserves the preferred column across short lines", () => {
       const t = new TextInput({ value: "abcdef\nxy\nuvwxyz", multiline: true });
       t.cursorPosition = 5;             // col 5 on line 1
-      t.handleKey(downEvent);
+      t.handleKey(downEvent());
       expect(t.cursorPosition).toBe(9); // line 2 only has 2 chars; clamp to its end
-      t.handleKey(downEvent);
+      t.handleKey(downEvent());
       expect(t.cursorPosition).toBe(15); // line 3 col 5 ('z' position) — preferred col restored
     });
 
     it("Up at first line is a no-op", () => {
       const t = new TextInput({ value: "abc\ndef", multiline: true });
       t.cursorPosition = 2;
-      t.handleKey(upEvent);
+      t.handleKey(upEvent());
       expect(t.cursorPosition).toBe(2);
     });
 
     it("Down at last line is a no-op", () => {
       const t = new TextInput({ value: "abc\ndef", multiline: true });
       t.cursorPosition = 6;
-      t.handleKey(downEvent);
+      t.handleKey(downEvent());
       expect(t.cursorPosition).toBe(6);
     });
 
     it("Home jumps to the start of the current logical line, not the value", () => {
       const t = new TextInput({ value: "abc\ndef\nghi", multiline: true });
       t.cursorPosition = 6;             // 'f' on line 2
-      t.handleKey(homeEvent);
+      t.handleKey(homeEvent());
       expect(t.cursorPosition).toBe(4); // start of line 2
     });
 
     it("End jumps to the end of the current logical line, not the value", () => {
       const t = new TextInput({ value: "abc\ndef\nghi", multiline: true });
       t.cursorPosition = 5;             // 'e' on line 2
-      t.handleKey(endEvent);
+      t.handleKey(endEvent());
       expect(t.cursorPosition).toBe(7); // end of line 2
     });
 
@@ -620,7 +622,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "hi" });
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
-      t.handleKey(enterEvent);
+      t.handleKey(enterEvent());
       expect(submits).toHaveLength(1);
       expect(t.value).toBe("hi");
     });
@@ -659,7 +661,7 @@ describe("TextInput", () => {
       // Render first so visual rows get cached.
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = 13;            // on visual row 1 (continuation), col 3
-      t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 0 at col 3 → cursorPosition = 3
       expect(t.cursorPosition).toBe(3);
     });
@@ -672,7 +674,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = 4;             // visual row 0, col 4
-      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 1 starts at value-offset 10; col 4 → 14
       expect(t.cursorPosition).toBe(14);
     });
@@ -697,7 +699,7 @@ describe("TextInput", () => {
       [...t.render({ maxWidth: 80 })];
       expect(called).toBeGreaterThan(0);
       t.cursorPosition = 0;
-      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 1 starts at offset 4 (per the custom strategy)
       expect(t.cursorPosition).toBe(4);
     });
@@ -739,7 +741,7 @@ describe("TextInput", () => {
 
       // Up once: cursor moves from row 9 to row 8 — still inside viewport
       // (rows 7..9). Viewport must NOT scroll.
-      t.handleKey(upEvent);
+      t.handleKey(upEvent());
       text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       expect(text).toContain("7");
       expect(text).toContain("8");
@@ -747,14 +749,14 @@ describe("TextInput", () => {
       expect(text).not.toContain("6");
 
       // Up again: cursor at row 7, still inside viewport. No scroll.
-      t.handleKey(upEvent);
+      t.handleKey(upEvent());
       text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       expect(text).toContain("7");
       expect(text).toContain("9");
       expect(text).not.toContain("6");
 
       // Up once more: cursor at row 6, now ABOVE viewport → scroll up by one.
-      t.handleKey(upEvent);
+      t.handleKey(upEvent());
       text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       expect(text).toContain("6");
       expect(text).toContain("7");
@@ -819,9 +821,9 @@ describe("TextInput", () => {
       // with content both above and below the viewport.
       t.cursorPosition = t.value.length;
       [...t.render({ maxWidth: 20 })];      // scrollStart = 7
-      t.handleKey(upEvent);                  // cursor row 8 → still in viewport
-      t.handleKey(upEvent);                  // cursor row 7 → still in viewport
-      t.handleKey(upEvent);                  // cursor row 6 → scrolls to 6
+      t.handleKey(upEvent());                  // cursor row 8 → still in viewport
+      t.handleKey(upEvent());                  // cursor row 7 → still in viewport
+      t.handleKey(upEvent());                  // cursor row 6 → scrolls to 6
       const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       expect(text).toContain("▲");
       expect(text).toContain("▼");
@@ -927,7 +929,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = 3;
-      t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
       expect(t.cursorPosition).toBe(3);
     });
 
@@ -939,7 +941,7 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = 13;
-      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       expect(t.cursorPosition).toBe(13);
     });
 
@@ -988,7 +990,7 @@ describe("TextInput", () => {
       t.cursorPosition = rows[1]!.valueStart + 5;
       expect(t._cursorVisualRow()).toBe(1);
 
-      t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
 
       // Pre-fix: cursorPosition would be `rows[0].valueStart + 1 = 1`, which
       // equals `rows[1].valueStart` — the boundary — and `_cursorVisualRow`
@@ -1012,7 +1014,7 @@ describe("TextInput", () => {
 
       const positions: number[] = [t.cursorPosition];
       for (let i = 0; i < 3; i++) {
-        t.handleKey({ key: "up", character: "", shift: false, ctrl: false, meta: false });
+        t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
         positions.push(t.cursorPosition);
       }
       // Three Ups from row 2: row 2 → row 1 → row 0 → (stuck at top, no further movement).
@@ -1039,7 +1041,7 @@ describe("TextInput", () => {
 
       // Park cursor on the row right above `head` at col 5.
       t.cursorPosition = rows[head - 1]!.valueStart + 5;
-      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
 
       // Cursor should be on row `head` (valueStart), NOT at row `head+1`'s boundary.
       expect(t.cursorPosition).toBe(rows[head]!.valueStart);
@@ -1055,10 +1057,10 @@ describe("TextInput", () => {
       });
       [...t.render(RENDER_NARROW)];
       t.cursorPosition = 6;                 // col 6 on visual row 0 of line 1
-      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 1 = "xy" (start=11, length 2) → clamped to col 2 → pos 13
       expect(t.cursorPosition).toBe(13);
-      t.handleKey({ key: "down", character: "", shift: false, ctrl: false, meta: false });
+      t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 2 = "uvwxyz" (start=14, length 6) → preferred col 6 → pos 20
       expect(t.cursorPosition).toBe(20);
     });

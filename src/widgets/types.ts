@@ -11,12 +11,50 @@ import type { Segment } from "../core/segment.js";
 
 // --- Event types ---
 
-export interface KeyEvent {
+// [LAW:types-are-the-program] KeyEvent carries a single mutable signal
+// (`stopped`) that participants in the dispatch chain set by calling
+// `stop()`. Treating it as an interface would force every handler to
+// shuttle a return value upward and the router to interpret it — the
+// class collapses that into one self-describing value flowing through
+// the chain.
+export interface KeyEventInit {
   key: string;
   character: string;
   shift: boolean;
   ctrl: boolean;
   meta: boolean;
+}
+
+export class KeyEvent {
+  readonly key: string;
+  readonly character: string;
+  readonly shift: boolean;
+  readonly ctrl: boolean;
+  readonly meta: boolean;
+  private _stopped = false;
+
+  constructor(init: KeyEventInit) {
+    this.key = init.key;
+    this.character = init.character;
+    this.shift = init.shift;
+    this.ctrl = init.ctrl;
+    this.meta = init.meta;
+  }
+
+  get stopped(): boolean { return this._stopped; }
+
+  // Claim this key. Halts further chain dispatch — no high/normal handler
+  // and no focused-widget handler downstream of the caller will see it.
+  stop(): void { this._stopped = true; }
+}
+
+// Priority tier for registered key handlers. The dispatch chain walks
+// "high" first, then the focused widget, then "normal" — see
+// EventRouter.dispatchKey.
+export type KeyHandlerPriority = "high" | "normal";
+
+export interface KeyHandlerOptions {
+  priority?: KeyHandlerPriority;
 }
 
 export interface WidgetMouseEvent {
@@ -64,6 +102,9 @@ export interface InteractiveWidget extends Renderable, Measurable {
   bounds: WidgetBounds | null;
 
   // Event handlers
+  // [LAW:single-enforcer] handleKey claims a key by calling `event.stop()`.
+  // The router walks an ordered priority chain; once stopped, no later
+  // handler (including framework defaults like Tab → focus traversal) runs.
   handleKey(event: KeyEvent): void;
   handleMouse(event: WidgetMouseEvent): void;
   handleFocus(event: WidgetFocusEvent): void;
@@ -145,6 +186,10 @@ export interface FocusManager {
   prev(): void;
   focus(widget: InteractiveWidget): void;
   blur(): void;
+
+  // Dispatch participant — EventRouter registers this as a normal-priority
+  // handler so Tab/Shift+Tab participate in the chain like any other key.
+  handleKey(event: KeyEvent): void;
 
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe;
 }

@@ -325,65 +325,69 @@ export class TextInput extends WidgetBase {
 
     // ─── editing keys (modifier-conscious) ───
     if (event.key === "backspace") {
-      if (event.meta || event.ctrl) return this.deleteWordBack();
-      return this.deleteCharBack();
-    }
-    if (event.key === "delete") {
-      return this.deleteCharForward();
-    }
-    if (event.key === "enter") {
-      if (this._multiline && !event.ctrl) {
-        this._insertText("\n");
-        return;
-      }
-      this.emitSubmit();
+      if (event.meta || event.ctrl) this.deleteWordBack();
+      else this.deleteCharBack();
+      event.stop();
       return;
     }
+    if (event.key === "delete") {
+      this.deleteCharForward();
+      event.stop();
+      return;
+    }
+    if (event.key === "enter") {
+      if (this._multiline && !event.ctrl) this._insertText("\n");
+      else this.emitSubmit();
+      event.stop();
+      return;
+    }
+    // Escape is intentionally ignored — text-input does not stop it so
+    // higher-level UI (dialogs, modals) can react to it.
     if (event.key === "escape") return;
 
     // ─── unmodified motion ───
     if (!event.ctrl && !event.meta) {
       switch (event.key) {
-        case "left":  return this.moveCharLeft();
-        case "right": return this.moveCharRight();
-        case "up":    return this.moveLineUp();
-        case "down":  return this.moveLineDown();
-        case "home":  return this.moveLineStart();
-        case "end":   return this.moveLineEnd();
+        case "left":  this.moveCharLeft();  event.stop(); return;
+        case "right": this.moveCharRight(); event.stop(); return;
+        case "up":    this.moveLineUp();    event.stop(); return;
+        case "down":  this.moveLineDown();  event.stop(); return;
+        case "home":  this.moveLineStart(); event.stop(); return;
+        case "end":   this.moveLineEnd();   event.stop(); return;
       }
     }
 
     // ─── Ctrl-modified motion + readline editing ───
     if (event.ctrl && !event.meta) {
       switch (event.key) {
-        case "left":  return this.moveWordLeft();
-        case "right": return this.moveWordRight();
-        case "home":  return this.moveDocStart();
-        case "end":   return this.moveDocEnd();
-        case "a":     return this.moveLineStart();
-        case "e":     return this.moveLineEnd();
-        case "b":     return this.moveCharLeft();
-        case "f":     return this.moveCharRight();
-        case "p":     return this.moveLineUp();
-        case "n":     return this.moveLineDown();
-        case "d":     return this.deleteCharForward();
-        case "h":     return this.deleteCharBack();
-        case "w":     return this.deleteWordBack();
-        case "u":     return this.killLineBack();
-        case "k":     return this.killLineForward();
-        case "y":     return this.yank();
-        case "t":     return this.transposeChars();
+        case "left":  this.moveWordLeft();      event.stop(); return;
+        case "right": this.moveWordRight();     event.stop(); return;
+        case "home":  this.moveDocStart();      event.stop(); return;
+        case "end":   this.moveDocEnd();        event.stop(); return;
+        case "a":     this.moveLineStart();     event.stop(); return;
+        case "e":     this.moveLineEnd();       event.stop(); return;
+        case "b":     this.moveCharLeft();      event.stop(); return;
+        case "f":     this.moveCharRight();     event.stop(); return;
+        case "p":     this.moveLineUp();        event.stop(); return;
+        case "n":     this.moveLineDown();      event.stop(); return;
+        case "d":     this.deleteCharForward(); event.stop(); return;
+        case "h":     this.deleteCharBack();    event.stop(); return;
+        case "w":     this.deleteWordBack();    event.stop(); return;
+        case "u":     this.killLineBack();      event.stop(); return;
+        case "k":     this.killLineForward();   event.stop(); return;
+        case "y":     this.yank();              event.stop(); return;
+        case "t":     this.transposeChars();    event.stop(); return;
       }
     }
 
     // ─── Alt-modified (meta) motion + editing ───
     if (event.meta && !event.ctrl) {
       switch (event.key) {
-        case "left":  return this.moveWordLeft();
-        case "right": return this.moveWordRight();
-        case "b":     return this.moveWordLeft();
-        case "f":     return this.moveWordRight();
-        case "d":     return this.deleteWordForward();
+        case "left":  this.moveWordLeft();       event.stop(); return;
+        case "right": this.moveWordRight();      event.stop(); return;
+        case "b":     this.moveWordLeft();       event.stop(); return;
+        case "f":     this.moveWordRight();      event.stop(); return;
+        case "d":     this.deleteWordForward();  event.stop(); return;
       }
     }
 
@@ -399,6 +403,7 @@ export class TextInput extends WidgetBase {
       event.character !== "\x7f"
     ) {
       this._insertText(event.character);
+      event.stop();
     }
   }
 

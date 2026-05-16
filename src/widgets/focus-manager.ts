@@ -9,6 +9,7 @@ import { makeObservable, observable, action } from "mobx";
 import type {
   InteractiveWidget,
   FocusManager,
+  KeyEvent,
   Unsubscribe,
 } from "./types.js";
 
@@ -99,6 +100,17 @@ export class DefaultFocusManager implements FocusManager {
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe {
     this.changeHandlers.add(handler);
     return () => this.changeHandlers.delete(handler);
+  }
+
+  // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab semantics. The
+  // router registers this as a normal-priority handler at construction —
+  // it runs after the focused widget, so a widget can `event.stop()`
+  // to suppress traversal (e.g. Dropdown when its overlay is open).
+  handleKey(event: KeyEvent): void {
+    if (event.key !== "tab") return;
+    if (event.shift) this.prev();
+    else this.next();
+    event.stop();
   }
 
   // --- Private ---

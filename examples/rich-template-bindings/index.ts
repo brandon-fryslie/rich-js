@@ -486,12 +486,16 @@ function focusFirst(idx: number): void {
 // the latter are readline line-motion bindings that TextInput now consumes
 // for cursor up/down inside the editable templates. PageUp/PageDown have
 // no readline meaning, so the two layers don't fight over the same keys.
+// High-priority: these run BEFORE the focused widget, so a focused
+// TextInput can't accidentally swallow Ctrl+C or our section-nav chords.
+// Stopping the event prevents the focused widget from also reacting to
+// the same press.
 const unsubKey = router.onKey((event) => {
-  if (event.ctrl && event.key === "c") { shutdown(); return; }
+  if (event.ctrl && event.key === "c") { shutdown(); event.stop(); return; }
   const n = SECTIONS.length;
-  if (event.ctrl && event.key === "pageup")        { state.prev(n); focusFirst(state.sectionIdx); }
-  else if (event.ctrl && event.key === "pagedown") { state.next(n); focusFirst(state.sectionIdx); }
-});
+  if (event.ctrl && event.key === "pageup")        { state.prev(n); focusFirst(state.sectionIdx); event.stop(); }
+  else if (event.ctrl && event.key === "pagedown") { state.next(n); focusFirst(state.sectionIdx); event.stop(); }
+}, { priority: "high" });
 
 // ─── Lifecycle ─────────────────────────────────────────────────────────────
 

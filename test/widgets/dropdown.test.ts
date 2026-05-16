@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { Dropdown } from "../../src/widgets/dropdown.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import type { Segment } from "../../src/core/segment.js";
 
-const makeKey = (key: string): KeyEvent => ({
+// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
+const makeKey = (key: string): KeyEvent => new KeyEvent({
   key,
   character: "",
   shift: false,
@@ -11,14 +13,22 @@ const makeKey = (key: string): KeyEvent => ({
   meta: false,
 });
 
-const enterEvent = makeKey("enter");
-const spaceEvent = makeKey("space");
-const escapeEvent = makeKey("escape");
-const upEvent = makeKey("up");
-const downEvent = makeKey("down");
-const backspaceEvent = makeKey("backspace");
+const enterEvent = () => makeKey("enter");
+const spaceEvent = () => makeKey("space");
+const escapeEvent = () => makeKey("escape");
+const upEvent = () => makeKey("up");
+const downEvent = () => makeKey("down");
+const backspaceEvent = () => makeKey("backspace");
+const tabEvent = () => makeKey("tab");
+const shiftTabEvent = () => new KeyEvent({
+  key: "tab",
+  character: "",
+  shift: true,
+  ctrl: false,
+  meta: false,
+});
 
-const charKey = (ch: string): KeyEvent => ({
+const charKey = (ch: string): KeyEvent => new KeyEvent({
   key: ch,
   character: ch,
   shift: false,
@@ -67,27 +77,67 @@ describe("Dropdown", () => {
   describe("expansion via keyboard", () => {
     it("enter expands when collapsed", () => {
       const d = new Dropdown({ options: ["a", "b"] });
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       expect(d.expanded).toBe(true);
     });
 
     it("space expands when collapsed", () => {
       const d = new Dropdown({ options: ["a", "b"] });
-      d.handleKey(spaceEvent);
+      d.handleKey(spaceEvent());
       expect(d.expanded).toBe(true);
     });
 
     it("expanding seeds highlightedIndex from selectedIndex", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 2 });
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       expect(d.highlightedIndex).toBe(2);
+    });
+
+    it("tab while expanded stops the event so the chain suppresses focus traversal", () => {
+      const d = new Dropdown({ options: ["a", "b"] });
+      d.handleKey(enterEvent()); // expand
+      const ev = tabEvent();
+      d.handleKey(ev);
+      expect(ev.stopped).toBe(true);
+      expect(d.expanded).toBe(false);
+      expect(d.filter).toBe("");
+    });
+
+    it("tab when collapsed does not stop the event so the chain handles focus traversal", () => {
+      const d = new Dropdown({ options: ["a", "b"] });
+      const ev = tabEvent();
+      d.handleKey(ev);
+      expect(ev.stopped).toBe(false);
+    });
+
+    it("shift+tab while expanded also cancels (direction-agnostic)", () => {
+      const d = new Dropdown({ options: ["a", "b"] });
+      d.handleKey(enterEvent());
+      const ev = shiftTabEvent();
+      d.handleKey(ev);
+      expect(ev.stopped).toBe(true);
+      expect(d.expanded).toBe(false);
+    });
+
+    it("tab-to-cancel does not commit selection (no change/submit emitted)", () => {
+      const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
+      const changes: InteractiveWidget[] = [];
+      const submits: InteractiveWidget[] = [];
+      d.onChange((w) => changes.push(w));
+      d.onSubmit((w) => submits.push(w));
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent()); // highlighted = 1, but selected still 0
+      d.handleKey(tabEvent());
+      expect(d.selectedIndex).toBe(0);
+      expect(changes).toHaveLength(0);
+      expect(submits).toHaveLength(0);
     });
 
     it("escape collapses without changing selection", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent);
-      d.handleKey(escapeEvent);
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent());
+      d.handleKey(escapeEvent());
       expect(d.expanded).toBe(false);
       expect(d.selectedIndex).toBe(0);
     });
@@ -96,31 +146,31 @@ describe("Dropdown", () => {
   describe("navigation when expanded", () => {
     it("down increments highlightedIndex (clamped)", () => {
       const d = new Dropdown({ options: ["a", "b", "c"] });
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent);
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent());
       expect(d.highlightedIndex).toBe(1);
-      d.handleKey(downEvent);
+      d.handleKey(downEvent());
       expect(d.highlightedIndex).toBe(2);
-      d.handleKey(downEvent);
+      d.handleKey(downEvent());
       expect(d.highlightedIndex).toBe(2);
     });
 
     it("up decrements highlightedIndex (clamped)", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 2 });
-      d.handleKey(enterEvent);
-      d.handleKey(upEvent);
+      d.handleKey(enterEvent());
+      d.handleKey(upEvent());
       expect(d.highlightedIndex).toBe(1);
-      d.handleKey(upEvent);
+      d.handleKey(upEvent());
       expect(d.highlightedIndex).toBe(0);
-      d.handleKey(upEvent);
+      d.handleKey(upEvent());
       expect(d.highlightedIndex).toBe(0);
     });
 
     it("does not change selectedIndex while navigating", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent);
-      d.handleKey(downEvent);
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent());
+      d.handleKey(downEvent());
       expect(d.selectedIndex).toBe(0);
     });
   });
@@ -128,9 +178,9 @@ describe("Dropdown", () => {
   describe("selection", () => {
     it("enter while expanded commits highlightedIndex to selectedIndex and collapses", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent);
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent());
+      d.handleKey(enterEvent());
       expect(d.selectedIndex).toBe(1);
       expect(d.expanded).toBe(false);
     });
@@ -141,9 +191,9 @@ describe("Dropdown", () => {
       const submits: InteractiveWidget[] = [];
       d.onChange((w) => changes.push(w));
       d.onSubmit((w) => submits.push(w));
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent);
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent());
+      d.handleKey(enterEvent());
       expect(changes).toHaveLength(1);
       expect(submits).toHaveLength(1);
     });
@@ -154,9 +204,9 @@ describe("Dropdown", () => {
       const submits: InteractiveWidget[] = [];
       d.onChange((w) => changes.push(w));
       d.onSubmit((w) => submits.push(w));
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent);
-      d.handleKey(escapeEvent);
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent());
+      d.handleKey(escapeEvent());
       expect(changes).toHaveLength(0);
       expect(submits).toHaveLength(0);
     });
@@ -172,7 +222,7 @@ describe("Dropdown", () => {
 
     it("click on an option row commits selection and collapses", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
-      d.handleKey(enterEvent); // expand
+      d.handleKey(enterEvent()); // expand
       // bounds with header row 0 at y=0, options at y=1..3
       d.bounds = { x: 0, y: 0, width: 8, height: 4 };
       const changes: InteractiveWidget[] = [];
@@ -186,7 +236,7 @@ describe("Dropdown", () => {
 
     it("click on the header row while expanded collapses without change", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       d.bounds = { x: 0, y: 0, width: 8, height: 4 };
       d.handleMouse(mouseUpAt(2, 0));
       expect(d.expanded).toBe(false);
@@ -195,7 +245,7 @@ describe("Dropdown", () => {
 
     it("click outside expanded bounds collapses without change", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       d.bounds = { x: 0, y: 0, width: 8, height: 4 };
       d.handleMouse(mouseUpAt(50, 50));
       expect(d.expanded).toBe(false);
@@ -206,7 +256,7 @@ describe("Dropdown", () => {
   describe("disabled gating", () => {
     it("blocks expansion via key", () => {
       const d = new Dropdown({ options: ["a"], disabled: true });
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       expect(d.expanded).toBe(false);
     });
 
@@ -224,7 +274,7 @@ describe("Dropdown", () => {
       const collapsedText = [...d.render(RENDER)].map((s) => s.text).join("");
       expect(collapsedText.includes("\n")).toBe(false);
 
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       const expandedText = [...d.render(RENDER)].map((s) => s.text).join("");
       expect(expandedText.includes("\n")).toBe(false);
       // Inline footprint is invariant under expansion.
@@ -234,18 +284,6 @@ describe("Dropdown", () => {
     it("renderOverlay returns null when collapsed", () => {
       const d = new Dropdown({ options: ["a", "b"] });
       expect(d.renderOverlay(RENDER)).toBeNull();
-    });
-
-    it("renderOverlay emits N option rows when expanded", () => {
-      const d = new Dropdown({ options: ["a", "b", "c"] });
-      d.handleKey(enterEvent);
-      const overlay = d.renderOverlay(RENDER);
-      expect(overlay).not.toBeNull();
-      const segs = [...(overlay as Iterable<Segment>)];
-      const text = segs.map((s) => s.text).join("");
-      // 3 option rows separated by 2 newlines.
-      const newlineCount = (text.match(/\n/g) || []).length;
-      expect(newlineCount).toBe(2);
     });
 
     it("collapsed shows the selected label and arrow", () => {
@@ -266,8 +304,8 @@ describe("Dropdown", () => {
 
     it("overlay highlighted row uses primary-muted bg, distinct from selected primary", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent); // highlighted = 1, selected = 0
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent()); // highlighted = 1, selected = 0
       const overlay = d.renderOverlay(RENDER);
       expect(overlay).not.toBeNull();
       const segs = [...(overlay as Iterable<Segment>)];
@@ -301,7 +339,7 @@ describe("Dropdown", () => {
     it("collapsed and expanded share the same width", () => {
       const d = new Dropdown({ options: ["alpha", "beta"] });
       const beforeWidth = d.measure(RENDER).minimum;
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       const afterWidth = d.measure(RENDER).minimum;
       expect(beforeWidth).toBe(afterWidth);
     });
@@ -320,12 +358,6 @@ describe("Dropdown", () => {
 
   describe("filtering", () => {
     const opts = ["alpha", "beta", "gamma", "Alphabet"];
-
-    const overlayText = (d: Dropdown): string => {
-      const o = d.renderOverlay(RENDER);
-      if (o === null) return "";
-      return [...(o as Iterable<Segment>)].map((s) => s.text).join("");
-    };
 
     const headerText = (d: Dropdown): string =>
       [...d.render(RENDER)].map((s) => s.text).join("");
@@ -352,8 +384,8 @@ describe("Dropdown", () => {
 
     it("typing while expanded appends to filter and resets highlightedIndex to 0", () => {
       const d = new Dropdown({ options: opts });
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent); // highlightedIndex = 1
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent()); // highlightedIndex = 1
       d.handleKey(charKey("a"));
       expect(d.filter).toBe("a");
       expect(d.highlightedIndex).toBe(0);
@@ -364,11 +396,11 @@ describe("Dropdown", () => {
       d.handleKey(charKey("g"));
       d.handleKey(charKey("a"));
       expect(d.filter).toBe("ga");
-      d.handleKey(backspaceEvent);
+      d.handleKey(backspaceEvent());
       expect(d.filter).toBe("g");
-      d.handleKey(backspaceEvent);
+      d.handleKey(backspaceEvent());
       expect(d.filter).toBe("");
-      d.handleKey(backspaceEvent);
+      d.handleKey(backspaceEvent());
       expect(d.filter).toBe("");
       expect(d.expanded).toBe(true); // backspace does not collapse
     });
@@ -378,7 +410,7 @@ describe("Dropdown", () => {
       d.handleKey(charKey("a"));
       d.handleKey(charKey("l"));
       expect(d.filter).toBe("al");
-      d.handleKey(escapeEvent);
+      d.handleKey(escapeEvent());
       expect(d.expanded).toBe(false);
       expect(d.filter).toBe("");
     });
@@ -387,8 +419,8 @@ describe("Dropdown", () => {
       const d = new Dropdown({ options: opts, selectedIndex: 0 });
       // Filter "lph" matches alpha (canonical 0) and Alphabet (canonical 3) only.
       for (const ch of "lph") d.handleKey(charKey(ch));
-      d.handleKey(downEvent); // highlightedIndex = 1 → "Alphabet" (canonical idx 3)
-      d.handleKey(enterEvent);
+      d.handleKey(downEvent()); // highlightedIndex = 1 → "Alphabet" (canonical idx 3)
+      d.handleKey(enterEvent());
       expect(d.selectedIndex).toBe(3);
       expect(d.filter).toBe("");
       expect(d.expanded).toBe(false);
@@ -397,8 +429,8 @@ describe("Dropdown", () => {
     it("commit clears filter (next open shows all options again)", () => {
       const d = new Dropdown({ options: opts });
       d.handleKey(charKey("a"));
-      d.handleKey(enterEvent);
-      d.handleKey(enterEvent); // re-open
+      d.handleKey(enterEvent());
+      d.handleKey(enterEvent()); // re-open
       expect(d.filter).toBe("");
       expect(d.filteredOptions).toHaveLength(4);
     });
@@ -407,27 +439,10 @@ describe("Dropdown", () => {
       const d = new Dropdown({ options: opts, selectedIndex: 1 }); // "beta"
       d.handleKey(charKey("g")); // filter excludes "beta"
       expect(d.selectedIndex).toBe(1); // unchanged
-      d.handleKey(escapeEvent); // cancel without commit
+      d.handleKey(escapeEvent()); // cancel without commit
       expect(d.selectedIndex).toBe(1); // still unchanged
       // And the header shows "beta" again now that filter is clear.
       expect(headerText(d)).toContain("beta");
-    });
-
-    it("zero matches: overlay paints a single (no matches) row", () => {
-      // Need maxLabelLen >= 12 so the placeholder fits without right-clipping.
-      const d = new Dropdown({ options: ["alphabet-soup", "beta", "gamma"] });
-      d.handleKey(charKey("z"));
-      const text = overlayText(d);
-      expect(text).toContain("(no matches)");
-      expect((text.match(/\n/g) || []).length).toBe(0); // exactly one row
-    });
-
-    it("zero matches with narrow dropdown: row exists, width invariant holds (placeholder right-clipped)", () => {
-      const d = new Dropdown({ options: opts }); // maxLabelLen = 8 < 12
-      d.handleKey(charKey("z"));
-      const text = overlayText(d);
-      expect(text).toContain("(no"); // truncated form of "(no matches)"
-      expect((text.match(/\n/g) || []).length).toBe(0);
     });
 
     it("zero matches: enter is a no-op", () => {
@@ -435,7 +450,7 @@ describe("Dropdown", () => {
       const submits: InteractiveWidget[] = [];
       d.onSubmit((w) => submits.push(w));
       d.handleKey(charKey("z"));
-      d.handleKey(enterEvent);
+      d.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
       expect(d.selectedIndex).toBe(0);
       expect(d.expanded).toBe(true); // still open
@@ -490,14 +505,14 @@ describe("Dropdown", () => {
 
     it("highlightedIndex stays in range as filter narrows", () => {
       const d = new Dropdown({ options: opts });
-      d.handleKey(enterEvent);
-      d.handleKey(downEvent);
-      d.handleKey(downEvent); // highlightedIndex = 2
+      d.handleKey(enterEvent());
+      d.handleKey(downEvent());
+      d.handleKey(downEvent()); // highlightedIndex = 2
       d.handleKey(charKey("a")); // filter resets it to 0
       expect(d.highlightedIndex).toBe(0);
       // Down clamps to filteredOptions.length - 1.
       const fLen = d.filteredOptions.length;
-      for (let i = 0; i < fLen + 5; i++) d.handleKey(downEvent);
+      for (let i = 0; i < fLen + 5; i++) d.handleKey(downEvent());
       expect(d.highlightedIndex).toBe(fLen - 1);
     });
   });

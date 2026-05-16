@@ -17,14 +17,22 @@
  * if it extends the sequence. Tests can call `flush()` to drain synchronously.
  */
 
+import { KeyEvent } from "./types.js";
 import type {
   Screen,
   FocusManager,
   InteractiveWidget,
-  KeyEvent,
   WidgetMouseEvent,
+  KeyHandlerOptions,
+  KeyHandlerPriority,
   Unsubscribe,
 } from "./types.js";
+
+type KeyHandler = (event: KeyEvent) => void;
+interface RegisteredKeyHandler {
+  handler: KeyHandler;
+  priority: KeyHandlerPriority;
+}
 
 type WidgetSource = {
   focusManager: FocusManager;
@@ -139,7 +147,10 @@ export class EventRouter {
   private dataListener: ((chunk: Buffer | string) => void) | undefined;
   private escTimer: ReturnType<typeof setImmediate> | undefined;
 
-  private readonly keyHandlers = new Set<(event: KeyEvent) => void>();
+  // [LAW:dataflow-not-control-flow] Ordered chain; the dispatcher walks it
+  // in priority tiers and stops as soon as some participant calls
+  // `event.stop()`. Insertion order is preserved within each tier.
+  private readonly keyChain: RegisteredKeyHandler[] = [];
   private readonly mouseHandlers = new Set<(event: WidgetMouseEvent) => void>();
 
   constructor(options: EventRouterOptions) {
@@ -155,6 +166,14 @@ export class EventRouter {
     const outputIsTTY = !!(this.output as NodeJS.WriteStream).isTTY;
     this.manageRawMode = options.manageRawMode ?? inputIsTTY;
     this.manageMouse = options.manageMouse ?? outputIsTTY;
+
+    // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab traversal —
+    // register it as a normal-priority handler so it participates in the
+    // chain. This MUST be the first registration so it lands ahead of any
+    // user-added normal handlers; widgets that want to suppress traversal
+    // call `event.stop()` from their own handleKey and FocusManager
+    // never runs for that event.
+    this.onKey((event) => this.source.focusManager.handleKey(event));
   }
 
   // --- Lifecycle ---
@@ -202,9 +221,16 @@ export class EventRouter {
 
   // --- External hooks ---
 
-  onKey(handler: (event: KeyEvent) => void): Unsubscribe {
-    this.keyHandlers.add(handler);
-    return () => this.keyHandlers.delete(handler);
+  onKey(handler: KeyHandler, options?: KeyHandlerOptions): Unsubscribe {
+    const entry: RegisteredKeyHandler = {
+      handler,
+      priority: options?.priority ?? "normal",
+    };
+    this.keyChain.push(entry);
+    return () => {
+      const idx = this.keyChain.indexOf(entry);
+      if (idx !== -1) this.keyChain.splice(idx, 1);
+    };
   }
 
   onMouse(handler: (event: WidgetMouseEvent) => void): Unsubscribe {
@@ -241,7 +267,7 @@ export class EventRouter {
     }
     if (this.buffer.length > 0 && this.buffer[0] === ESC && this.buffer.length === 1) {
       this.buffer = this.buffer.subarray(1);
-      this.dispatchKey({ key: "escape", character: "", shift: false, ctrl: false, meta: false });
+      this.dispatchKey(new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }));
     }
   }
 
@@ -268,7 +294,7 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 1,
-        event: { key: "c", character: "", shift: false, ctrl: true, meta: false },
+        event: new KeyEvent({ key: "c", character: "", shift: false, ctrl: true, meta: false }),
       };
     }
 
@@ -278,13 +304,13 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 1,
-        event: {
+        event: new KeyEvent({
           key: named,
           character: named === "space" ? " " : "",
           shift: false,
           ctrl: false,
           meta: false,
-        },
+        }),
       };
     }
 
@@ -295,7 +321,7 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 1,
-        event: { key: letter, character: "", shift: false, ctrl: true, meta: false },
+        event: new KeyEvent({ key: letter, character: "", shift: false, ctrl: true, meta: false }),
       };
     }
 
@@ -315,13 +341,13 @@ export class EventRouter {
     return {
       kind: "key",
       bytes: len,
-      event: {
+      event: new KeyEvent({
         key: character.toLowerCase(),
         character,
         shift: character.length === 1 && character !== character.toLowerCase(),
         ctrl: false,
         meta: false,
-      },
+      }),
     };
   }
 
@@ -338,7 +364,7 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 1,
-        event: { key: "escape", character: "", shift: false, ctrl: false, meta: false },
+        event: new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
       };
     }
     // ESC <printable> / ESC <DEL> / ESC <BS> → Alt-modified key.
@@ -356,7 +382,7 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 2,
-        event: { key: "backspace", character: "", shift: false, ctrl: false, meta: true },
+        event: new KeyEvent({ key: "backspace", character: "", shift: false, ctrl: false, meta: true }),
       };
     }
     if (b1 >= 0x20 && b1 <= 0x7e) {
@@ -364,13 +390,13 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 2,
-        event: {
+        event: new KeyEvent({
           key: ch.toLowerCase(),
           character: "",
           shift: ch !== ch.toLowerCase(),
           ctrl: false,
           meta: true,
-        },
+        }),
       };
     }
     // Truly unrecognised follow-up byte → treat the ESC as a lone escape
@@ -378,7 +404,7 @@ export class EventRouter {
     return {
       kind: "key",
       bytes: 1,
-      event: { key: "escape", character: "", shift: false, ctrl: false, meta: false },
+      event: new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
     };
   }
 
@@ -390,7 +416,7 @@ export class EventRouter {
     return {
       kind: "key",
       bytes: 3,
-      event: { key: name, character: "", shift: false, ctrl: false, meta: false },
+      event: new KeyEvent({ key: name, character: "", shift: false, ctrl: false, meta: false }),
     };
   }
 
@@ -449,16 +475,28 @@ export class EventRouter {
 
   // --- Dispatch ---
 
+  // [LAW:dataflow-not-control-flow] Three-stage walk; same shape every
+  // dispatch, only the event's `stopped` flag short-circuits later stages.
+  // The router holds NO key-specific policy — Tab semantics live entirely
+  // in FocusManager (registered as a normal-priority handler at construction).
   private dispatchKey(event: KeyEvent): void {
-    for (const handler of this.keyHandlers) handler(event);
-
-    if (event.key === "tab") {
-      if (event.shift) this.source.focusManager.prev();
-      else this.source.focusManager.next();
-      return;
+    // Stage 1: high-priority handlers (global overrides like Ctrl+C).
+    for (const entry of this.keyChain) {
+      if (event.stopped) return;
+      if (entry.priority === "high") entry.handler(event);
     }
+    if (event.stopped) return;
 
+    // Stage 2: the focused widget.
     this.source.focusManager.current?.handleKey(event);
+    if (event.stopped) return;
+
+    // Stage 3: normal-priority handlers (FocusManager's Tab traversal,
+    // plus any app-registered fallbacks).
+    for (const entry of this.keyChain) {
+      if (event.stopped) return;
+      if (entry.priority === "normal") entry.handler(event);
+    }
   }
 
   private dispatchMouse(event: WidgetMouseEvent): void {
@@ -541,7 +579,7 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
     return {
       kind: "key",
       bytes,
-      event: { key: name, character: "", shift, ctrl, meta },
+      event: new KeyEvent({ key: name, character: "", shift, ctrl, meta }),
     };
   }
 
@@ -553,14 +591,14 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
     return {
       kind: "key",
       bytes,
-      event: { key: "tab", character: "\t", shift: true, ctrl: false, meta: false },
+      event: new KeyEvent({ key: "tab", character: "\t", shift: true, ctrl: false, meta: false }),
     };
   }
 
   return {
     kind: "key",
     bytes,
-    event: { key: name, character: "", shift, ctrl, meta },
+    event: new KeyEvent({ key: name, character: "", shift, ctrl, meta }),
   };
 }
 

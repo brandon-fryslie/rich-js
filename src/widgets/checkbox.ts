@@ -57,10 +57,12 @@ export class Checkbox extends WidgetBase {
     if (event.key === "space") {
       this.checked = !this.checked;
       this.emitChange();
+      event.stop();
       return;
     }
     if (event.key === "enter") {
       this.emitSubmit();
+      event.stop();
     }
   }
 

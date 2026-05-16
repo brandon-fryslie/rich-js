@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { Button } from "../../src/widgets/button.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
-const enterEvent: KeyEvent = { key: "enter", character: "\r", shift: false, ctrl: false, meta: false };
-const spaceEvent: KeyEvent = { key: "space", character: " ", shift: false, ctrl: false, meta: false };
-const escapeEvent: KeyEvent = { key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false };
+// Factories — KeyEvent carries a mutable `stopped` flag, so each call site
+// must get a fresh instance.
+const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false });
+const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
+const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
 
 const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
 const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
@@ -152,7 +155,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(enterEvent);
+      btn.handleKey(enterEvent());
       expect(submits).toHaveLength(1);
       expect(submits[0]).toBe(btn);
     });
@@ -161,7 +164,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(spaceEvent);
+      btn.handleKey(spaceEvent());
       expect(submits).toHaveLength(1);
     });
 
@@ -169,7 +172,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(escapeEvent);
+      btn.handleKey(escapeEvent());
       expect(submits).toHaveLength(0);
     });
 
@@ -177,7 +180,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go", disabled: true });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(enterEvent);
+      btn.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
 
@@ -239,7 +242,7 @@ describe("Button", () => {
       const submits: InteractiveWidget[] = [];
       const unsub = btn.onSubmit((w) => submits.push(w));
       unsub();
-      btn.handleKey(enterEvent);
+      btn.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
   });

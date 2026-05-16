@@ -230,7 +230,9 @@ export type { LayoutOptions } from "./renderables/layout.js";
 
 // Interactive widgets
 export type {
-  KeyEvent,
+  KeyEventInit,
+  KeyHandlerPriority,
+  KeyHandlerOptions,
   WidgetMouseEvent,
   WidgetFocusEvent,
   WidgetBounds,
@@ -241,7 +243,7 @@ export type {
   Placement,
   Unsubscribe,
 } from "./widgets/types.js";
-export { FLOW } from "./widgets/types.js";
+export { FLOW, KeyEvent } from "./widgets/types.js";
 export { StaticItem } from "./widgets/static-item.js";
 export type { StaticItemOptions } from "./widgets/static-item.js";
 export { WidgetBase } from "./widgets/widget-base.js";

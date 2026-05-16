@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { Toggle } from "../../src/widgets/toggle.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
-const enterEvent: KeyEvent = { key: "enter", character: "\r", shift: false, ctrl: false, meta: false };
-const spaceEvent: KeyEvent = { key: "space", character: " ", shift: false, ctrl: false, meta: false };
-const escapeEvent: KeyEvent = { key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false };
+// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
+const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false });
+const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
+const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
 
 const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
 const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
@@ -102,7 +104,7 @@ describe("Toggle", () => {
     it("toggle does not change width", () => {
       const tg = new Toggle({ label: "Go" });
       const off = [...tg.render({ maxWidth: 80 })];
-      tg.handleKey(spaceEvent);
+      tg.handleKey(spaceEvent());
       const on = [...tg.render({ maxWidth: 80 })];
       expect(off[0]!.text.length).toBe(on[0]!.text.length);
     });
@@ -158,7 +160,7 @@ describe("Toggle", () => {
     it("measure is independent of on/focused state", () => {
       const tg = new Toggle({ label: "Go" });
       const before = tg.measure({ maxWidth: 80 });
-      tg.handleKey(spaceEvent);
+      tg.handleKey(spaceEvent());
       tg.focus();
       const after = tg.measure({ maxWidth: 80 });
       expect(before).toEqual(after);
@@ -168,9 +170,9 @@ describe("Toggle", () => {
   describe("events", () => {
     it("toggles on space key", () => {
       const tg = new Toggle({ label: "Go" });
-      tg.handleKey(spaceEvent);
+      tg.handleKey(spaceEvent());
       expect(tg.on).toBe(true);
-      tg.handleKey(spaceEvent);
+      tg.handleKey(spaceEvent());
       expect(tg.on).toBe(false);
     });
 
@@ -178,7 +180,7 @@ describe("Toggle", () => {
       const tg = new Toggle({ label: "Go" });
       const changes: InteractiveWidget[] = [];
       tg.onChange((w) => changes.push(w));
-      tg.handleKey(spaceEvent);
+      tg.handleKey(spaceEvent());
       expect(changes).toHaveLength(1);
       expect(changes[0]).toBe(tg);
     });
@@ -187,7 +189,7 @@ describe("Toggle", () => {
       const tg = new Toggle({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       tg.onSubmit((w) => submits.push(w));
-      tg.handleKey(enterEvent);
+      tg.handleKey(enterEvent());
       expect(submits).toHaveLength(1);
       expect(tg.on).toBe(false);
     });
@@ -198,7 +200,7 @@ describe("Toggle", () => {
       const submits: InteractiveWidget[] = [];
       tg.onChange((w) => changes.push(w));
       tg.onSubmit((w) => submits.push(w));
-      tg.handleKey(escapeEvent);
+      tg.handleKey(escapeEvent());
       expect(changes).toHaveLength(0);
       expect(submits).toHaveLength(0);
       expect(tg.on).toBe(false);
@@ -208,7 +210,7 @@ describe("Toggle", () => {
       const tg = new Toggle({ label: "Go", disabled: true });
       const changes: InteractiveWidget[] = [];
       tg.onChange((w) => changes.push(w));
-      tg.handleKey(spaceEvent);
+      tg.handleKey(spaceEvent());
       expect(tg.on).toBe(false);
       expect(changes).toHaveLength(0);
     });
@@ -217,7 +219,7 @@ describe("Toggle", () => {
       const tg = new Toggle({ label: "Go", disabled: true });
       const submits: InteractiveWidget[] = [];
       tg.onSubmit((w) => submits.push(w));
-      tg.handleKey(enterEvent);
+      tg.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
 
@@ -279,7 +281,7 @@ describe("Toggle", () => {
       const changes: InteractiveWidget[] = [];
       const unsub = tg.onChange((w) => changes.push(w));
       unsub();
-      tg.handleKey(spaceEvent);
+      tg.handleKey(spaceEvent());
       expect(changes).toHaveLength(0);
     });
 
@@ -288,7 +290,7 @@ describe("Toggle", () => {
       const submits: InteractiveWidget[] = [];
       const unsub = tg.onSubmit((w) => submits.push(w));
       unsub();
-      tg.handleKey(enterEvent);
+      tg.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
   });

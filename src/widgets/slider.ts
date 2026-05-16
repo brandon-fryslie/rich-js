@@ -72,15 +72,19 @@ export class Slider extends WidgetBase {
     switch (event.key) {
       case "left":
         this.setValue(this.value - this.step);
+        event.stop();
         return;
       case "right":
         this.setValue(this.value + this.step);
+        event.stop();
         return;
       case "home":
         this.setValue(this.min);
+        event.stop();
         return;
       case "end":
         this.setValue(this.max);
+        event.stop();
         return;
     }
   }

@@ -8,7 +8,8 @@
  * - Parse mouse escape sequences
  */
 
-import type { KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { WidgetMouseEvent } from "../../src/widgets/types.js";
 
 // --- Terminal raw mode ---
 
@@ -66,33 +67,33 @@ const KEY_NAMES: Record<string, string> = {
 export function parseKey(data: string): KeyEvent | null {
   // Ctrl+C
   if (data === "\x03") {
-    return { key: "c", character: "", ctrl: true, shift: false, meta: false };
+    return new KeyEvent({ key: "c", character: "", ctrl: true, shift: false, meta: false });
   }
 
   // Shift+tab
   if (data === "\x1b[Z") {
-    return { key: "tab", character: "\t", shift: true, ctrl: false, meta: false };
+    return new KeyEvent({ key: "tab", character: "\t", shift: true, ctrl: false, meta: false });
   }
 
   // Escape sequences
   if (data.startsWith("\x1b[")) {
     const name = KEY_NAMES[data];
     if (name) {
-      return { key: name, character: "", shift: false, ctrl: false, meta: false };
+      return new KeyEvent({ key: name, character: "", shift: false, ctrl: false, meta: false });
     }
     return null;
   }
 
   // Plain escape
   if (data === "\x1b") {
-    return { key: "escape", character: "", shift: false, ctrl: false, meta: false };
+    return new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false });
   }
 
   // Single-character keys: check KEY_NAMES first (tab, enter, space, backspace, etc.)
   if (data.length === 1) {
     const name = KEY_NAMES[data];
     if (name) {
-      return { key: name, character: name === "space" ? " " : "", shift: false, ctrl: false, meta: false };
+      return new KeyEvent({ key: name, character: name === "space" ? " " : "", shift: false, ctrl: false, meta: false });
     }
   }
 
@@ -100,18 +101,18 @@ export function parseKey(data: string): KeyEvent | null {
   if (data.length === 1 && data.charCodeAt(0) < 32) {
     const code = data.charCodeAt(0);
     const letter = String.fromCharCode(code + 96);
-    return { key: letter, character: "", ctrl: true, shift: false, meta: false };
+    return new KeyEvent({ key: letter, character: "", ctrl: true, shift: false, meta: false });
   }
 
   // Printable character
   if (data.length === 1) {
-    return {
+    return new KeyEvent({
       key: data.toLowerCase(),
       character: data,
       shift: data !== data.toLowerCase(),
       ctrl: false,
       meta: false,
-    };
+    });
   }
 
   return null;

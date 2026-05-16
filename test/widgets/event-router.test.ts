@@ -115,7 +115,13 @@ function makeHarness(initial: StubWidget[] = []): Harness {
 
   const keyEvents: KeyEvent[] = [];
   const mouseEvents: WidgetMouseEvent[] = [];
-  router.onKey((e) => keyEvents.push(e));
+  // High priority: this is an "observe every key" hook for assertions. If
+  // it sat at normal priority, FocusManager's Tab handler would stop the
+  // event first and the observer would miss Tab events. Note this also
+  // runs ahead of any user-level high-priority handlers registered later
+  // by individual tests — fine for the few tests that need it, since
+  // those tests don't rely on the observer for their assertions.
+  router.onKey((e) => keyEvents.push(e), { priority: "high" });
   router.onMouse((e) => mouseEvents.push(e));
 
   return {
@@ -145,7 +151,7 @@ describe("EventRouter — key parsing", () => {
 
   it("parses a printable character into a key event", () => {
     h.router.feed("x");
-    expect(h.keyEvents).toEqual([
+    expect(h.keyEvents).toMatchObject([
       { key: "x", character: "x", shift: false, ctrl: false, meta: false },
     ]);
   });
@@ -164,7 +170,7 @@ describe("EventRouter — key parsing", () => {
 
   it("emits Ctrl+C as { key:'c', ctrl:true } without swallowing", () => {
     h.router.feed("\x03");
-    expect(h.keyEvents[0]).toEqual({
+    expect(h.keyEvents[0]).toMatchObject({
       key: "c",
       character: "",
       ctrl: true,
@@ -222,21 +228,21 @@ describe("EventRouter — key parsing", () => {
 
   it("emits Alt+letter for ESC + printable byte in a single chunk", () => {
     h.router.feed("\x1bb");
-    expect(h.keyEvents).toEqual([
+    expect(h.keyEvents).toMatchObject([
       { key: "b", character: "", shift: false, ctrl: false, meta: true },
     ]);
   });
 
   it("Alt+Backspace decodes ESC + 0x7f", () => {
     h.router.feed("\x1b\x7f");
-    expect(h.keyEvents).toEqual([
+    expect(h.keyEvents).toMatchObject([
       { key: "backspace", character: "", shift: false, ctrl: false, meta: true },
     ]);
   });
 
   it("Alt+uppercase carries shift=true", () => {
     h.router.feed("\x1bF");
-    expect(h.keyEvents).toEqual([
+    expect(h.keyEvents).toMatchObject([
       { key: "f", character: "", shift: true, ctrl: false, meta: true },
     ]);
   });
@@ -245,7 +251,7 @@ describe("EventRouter — key parsing", () => {
     h.router.feed("\x1b");
     expect(h.keyEvents).toHaveLength(0); // deferred
     h.router.flush();
-    expect(h.keyEvents).toEqual([
+    expect(h.keyEvents).toMatchObject([
       { key: "escape", character: "", shift: false, ctrl: false, meta: false },
     ]);
   });
@@ -286,11 +292,64 @@ describe("EventRouter — tab navigation", () => {
     expect(h.fm.current).toBe(c);
   });
 
-  it("does not deliver tab to the focused widget", () => {
+  it("delivers tab to the focused widget; falls through to focus traversal when not stopped", () => {
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    const h = makeHarness([a, b]);
+    h.router.feed("\t");
+    // StubWidget.handleKey does not call event.stop() → FocusManager (registered
+    // as a normal-priority chain handler) runs and moves focus.
+    expect(a.keyEvents).toHaveLength(1);
+    expect(a.keyEvents[0]!.key).toBe("tab");
+    expect(h.fm.current).toBe(b);
+  });
+
+  it("a widget that stops the tab event prevents focus traversal", () => {
+    class TabConsumer extends StubWidget {
+      override handleKey(event: KeyEvent): void {
+        this.keyEvents.push(event);
+        if (event.key === "tab") event.stop();
+      }
+    }
+    const a = new TabConsumer("a");
+    const b = new StubWidget("b");
+    const h = makeHarness([a, b]);
+    h.router.feed("\t");
+    expect(h.fm.current).toBe(a); // focus did not move
+  });
+
+  it("a high-priority handler runs before the focused widget and can stop the event", () => {
     const a = new StubWidget("a");
     const h = makeHarness([a]);
-    h.router.feed("\t");
-    expect(a.keyEvents).toHaveLength(0);
+    let highSawIt = false;
+    h.router.onKey(
+      (event) => {
+        if (event.key === "c" && event.ctrl) {
+          highSawIt = true;
+          event.stop();
+        }
+      },
+      { priority: "high" },
+    );
+    h.router.feed("\x03"); // Ctrl+C
+    expect(highSawIt).toBe(true);
+    // Focused widget never saw it because the high handler stopped the event.
+    expect(a.keyEvents.find((e) => e.ctrl && e.key === "c")).toBeUndefined();
+  });
+
+  it("normal-priority handlers run after the focused widget", () => {
+    const order: string[] = [];
+    class Observer extends StubWidget {
+      override handleKey(event: KeyEvent): void {
+        super.handleKey(event);
+        order.push("widget");
+      }
+    }
+    const observed = new Observer("o");
+    const h = makeHarness([observed]);
+    h.router.onKey(() => order.push("normal")); // default priority = "normal"
+    h.router.feed("x");
+    expect(order).toEqual(["widget", "normal"]);
   });
 });
 

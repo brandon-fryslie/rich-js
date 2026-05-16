@@ -31,7 +31,12 @@ import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
-import type { KeyEvent, WidgetMouseEvent, OverlayRenderable } from "./types.js";
+import type {
+  KeyEvent,
+  WidgetMouseEvent,
+  WidgetFocusEvent,
+  OverlayRenderable,
+} from "./types.js";
 
 export interface DropdownOptions {
   options: string[];
@@ -96,6 +101,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       if (event.key === "enter" || event.key === "space") {
         this.expanded = true;
         this.highlightedIndex = this.selectedIndex;
+        event.stop();
         return;
       }
       // Any other printable char auto-expands and starts filtering.
@@ -103,6 +109,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
         this.expanded = true;
         this.filter = this.filter + event.character;
         this.highlightedIndex = 0;
+        event.stop();
       }
       return;
     }
@@ -111,16 +118,19 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     switch (event.key) {
       case "up":
         this.highlightedIndex = Math.max(0, this.highlightedIndex - 1);
+        event.stop();
         return;
       case "down": {
         const max = Math.max(0, this.filteredOptions.length - 1);
         this.highlightedIndex = Math.min(max, this.highlightedIndex + 1);
+        event.stop();
         return;
       }
       case "enter": {
         // [LAW:one-source-of-truth] Map filtered position → canonical idx.
         // No-op when filteredOptions is empty (highlighted is undefined).
         const picked = this.filteredOptions[this.highlightedIndex];
+        event.stop();
         if (picked === undefined) return;
         this.selectedIndex = picked.idx;
         this.filter = "";
@@ -133,17 +143,31 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
         // Single-step: clear filter + collapse.
         this.filter = "";
         this.expanded = false;
+        event.stop();
         return;
       case "backspace":
         // [LAW:dataflow-not-control-flow] slice(0,-1) on "" is "" — no guard.
         this.filter = this.filter.slice(0, -1);
         this.highlightedIndex = 0;
+        event.stop();
+        return;
+      case "tab":
+        // First Tab while expanded cancels (clear filter + collapse) and
+        // KEEPS focus on the dropdown. event.stop() halts the chain so
+        // FocusManager's normal-priority Tab handler never runs — focus
+        // traversal only happens on the *next* Tab press, when this widget
+        // is collapsed and no longer stops the event. Shift direction is
+        // ignored: both Tab and Shift+Tab cancel.
+        this.filter = "";
+        this.expanded = false;
+        event.stop();
         return;
     }
 
     if (isPrintable) {
       this.filter = this.filter + event.character;
       this.highlightedIndex = 0;
+      event.stop();
     }
   }
 
@@ -193,6 +217,20 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     this.emitSubmit();
   }
 
+  // [LAW:single-enforcer] FocusManager is the single dispatcher of focus
+  // transitions; overriding handleFocus here catches every blur path (Tab
+  // cycling, programmatic focus, unregister) so the overlay cannot outlive
+  // the widget's focus. Collapse is the data; no separate "should I close"
+  // branch lives at the router or elsewhere.
+  @action
+  override handleFocus(event: WidgetFocusEvent): void {
+    super.handleFocus(event);
+    if (event.type === "blur") {
+      this.filter = "";
+      this.expanded = false;
+    }
+  }
+
   // --- Hover mutator (router fast-path) ---
 
   @action
@@ -226,14 +264,22 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
   // [LAW:dataflow-not-control-flow] One header text function; the data
   // (filter empty vs not) chooses between selected-label and query+cursor.
   // Both branches yield exactly maxLabelLen cells — width invariant.
+  // Selected label is centered; filter input is left-aligned so the caret
+  // doesn't jitter horizontally while typing.
   private headerText(maxLabelLen: number): string {
     if (this.filter === "") {
-      return (this.options[this.selectedIndex] ?? "").padEnd(maxLabelLen, " ");
+      const label = (this.options[this.selectedIndex] ?? "").slice(0, maxLabelLen);
+      const pad = maxLabelLen - label.length;
+      const left = Math.floor(pad / 2);
+      const right = pad - left;
+      return " ".repeat(left) + label + " ".repeat(right);
     }
     const cursor = this.focused ? "│" : "";
-    const filterRoom = Math.max(0, maxLabelLen - cursor.length);
+    // Leading space gives the filter input a small gutter from the [ chrome,
+    // matching the visual breathing room of the centered label.
+    const filterRoom = Math.max(0, maxLabelLen - cursor.length - 1);
     const filterText = this.filter.slice(0, filterRoom);
-    return (filterText + cursor).padEnd(maxLabelLen, " ");
+    return (" " + filterText + cursor).padEnd(maxLabelLen, " ");
   }
 
   renderOverlay(_options: RenderOptions): Iterable<Segment> | null {
@@ -262,9 +308,9 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
           dim: true,
         });
     return [
-      new Segment("[", style),
+      new Segment(" ", style),
       new Segment(inner, style),
-      new Segment("]", style),
+      new Segment(" ", style),
     ];
   }
 
@@ -273,8 +319,10 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     fpos: number,
     maxLabelLen: number,
   ): Segment[] {
-    // Row: "[ " + label.padEnd(maxLabelLen) + " ]"
+    // Row: "  " + label.padEnd(maxLabelLen) + "  "
     // Width = 1 + 1 + maxLabelLen + 1 + 1 = maxLabelLen + 4.
+    // Overlay rows are unbracketed — selection/highlight are conveyed by bg
+    // color; the header keeps [ ] as its focus-indicator chrome.
     const label = entry.label.padEnd(maxLabelLen, " ");
     const inner = ` ${label} `;
 
@@ -301,9 +349,9 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
             });
 
     return [
-      new Segment("[", rowStyle),
+      new Segment(" ", rowStyle),
       new Segment(inner, rowStyle),
-      new Segment("]", rowStyle),
+      new Segment(" ", rowStyle),
     ];
   }
 

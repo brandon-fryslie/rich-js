@@ -42,12 +42,30 @@ The host (rich-js standalone or textual-js wrapper) provides events and consumes
 Lightweight event types — no framework dependency. textual-js adapts these from its Message classes.
 
 ```typescript
-interface KeyEvent {
+interface KeyEventInit {
   key: string;           // key name: "enter", "tab", "escape", "space", "a", "up", etc.
   character: string;     // printable character or ""
   shift: boolean;
   ctrl: boolean;
   meta: boolean;
+}
+
+// [LAW:types-are-the-program] The "did anyone claim this key?" signal lives
+// inside the event value itself, not in a return convention up the call
+// stack. A handler that consumes the key calls `event.stop()`; downstream
+// participants in the dispatch chain (the focused widget, FocusManager's
+// Tab traversal, normal-priority observers) see `event.stopped === true`
+// and skip themselves.
+class KeyEvent {
+  readonly key: string;
+  readonly character: string;
+  readonly shift: boolean;
+  readonly ctrl: boolean;
+  readonly meta: boolean;
+  readonly stopped: boolean;     // getter; true once any handler called stop()
+
+  constructor(init: KeyEventInit);
+  stop(): void;                  // claim this key; halts further chain dispatch
 }
 
 interface MouseEvent {
@@ -117,10 +135,48 @@ interface FocusManager {
   focus(widget: InteractiveWidget): void;
   blur(): void;
 
+  // [LAW:single-enforcer] FocusManager is the sole owner of Tab/Shift+Tab
+  // semantics. EventRouter registers this as a normal-priority chain
+  // participant so Tab flows through the same dispatch as any other key —
+  // the router holds no key-specific policy.
+  handleKey(event: KeyEvent): void;
+
   // Change notification
   onChange(handler: (current: InteractiveWidget | null) => void): () => void;
 }
 ```
+
+### EventRouter dispatch chain
+
+EventRouter dispatches each parsed `KeyEvent` through a three-stage chain.
+Every stage walks the *same* shape — the only thing that varies between
+invocations is whether `event.stopped` short-circuits later stages.
+
+```typescript
+type KeyHandlerPriority = "high" | "normal";
+interface KeyHandlerOptions { priority?: KeyHandlerPriority }  // default "normal"
+
+class EventRouter {
+  onKey(handler: (event: KeyEvent) => void, options?: KeyHandlerOptions): Unsubscribe;
+  // ...
+}
+```
+
+Dispatch order for one key event:
+
+1. **High-priority handlers** (insertion order). Use this tier for global
+   overrides that must beat a focused widget — e.g. `Ctrl+C` shutdown,
+   app-level section navigation.
+2. **The focused widget**, via `focusManager.current?.handleKey(event)`.
+3. **Normal-priority handlers** (insertion order). FocusManager registers
+   its `handleKey` here at router construction, so Tab/Shift+Tab traversal
+   happens *after* the focused widget — letting a widget suppress traversal
+   simply by calling `event.stop()` from its own `handleKey` (e.g. Dropdown
+   while its overlay is open).
+
+Once any participant calls `event.stop()`, the chain skips every remaining
+stage. There is no other mechanism for halting dispatch — no return value,
+no router-side special case for any specific key.
 
 ### Screen
 

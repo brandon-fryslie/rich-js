@@ -78,10 +78,12 @@ export class Toggle extends WidgetBase {
     if (event.key === "space") {
       this.on = !this.on;
       this.emitChange();
+      event.stop();
       return;
     }
     if (event.key === "enter") {
       this.emitSubmit();
+      event.stop();
     }
   }
 
