@@ -119,7 +119,13 @@ interface InteractiveWidget extends Renderable, Measurable {
   // Hit-testing — does (x,y) fall within this widget's rendered area?
   containsPoint(x: number, y: number): boolean;
 
-  // Change notification — host subscribes to know when to re-render
+  // Semantic notifications — `onChange` fires on app-level value changes
+  // (Checkbox toggled, Slider value mutated, Dropdown selection committed);
+  // `onSubmit` fires on user-confirmed activation (Enter on Button,
+  // mouse_up on Toggle, etc.). They are NOT a render-trigger contract —
+  // re-rendering is driven by MobX observables in the widget's render path
+  // (a non-MobX host would re-render on every input tick / animation frame,
+  // not in reaction to these handlers).
   onChange(handler: (widget: InteractiveWidget) => void): () => void;
   onSubmit(handler: (widget: InteractiveWidget) => void): () => void;
 }
