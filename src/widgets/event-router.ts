@@ -511,8 +511,16 @@ export class EventRouter {
   // The router holds NO key-specific policy — Tab semantics live entirely
   // in FocusManager (registered as a normal-priority handler at construction).
   private dispatchKey(event: KeyEvent): void {
+    // [LAW:one-source-of-truth] Snapshot the chain once at the start of
+    // dispatch. A handler that unsubscribes itself (or another handler)
+    // splices the live keyChain and would shift indices under the running
+    // for-of loop, silently skipping the next handler. The snapshot
+    // freezes the participant set for this dispatch; later registrations
+    // join the chain for the next event, removals take effect after.
+    const chain = [...this.keyChain];
+
     // Stage 1: high-priority handlers (global overrides like Ctrl+C).
-    for (const entry of this.keyChain) {
+    for (const entry of chain) {
       if (event.stopped) return;
       if (entry.priority === "high") entry.handler(event);
     }
@@ -524,7 +532,7 @@ export class EventRouter {
 
     // Stage 3: normal-priority handlers (FocusManager's Tab traversal,
     // plus any app-registered fallbacks).
-    for (const entry of this.keyChain) {
+    for (const entry of chain) {
       if (event.stopped) return;
       if (entry.priority === "normal") entry.handler(event);
     }
