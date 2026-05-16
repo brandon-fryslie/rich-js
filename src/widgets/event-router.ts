@@ -202,22 +202,33 @@ export class EventRouter {
   }
 
   stop(): void {
-    if (!this.running) return;
-    this.running = false;
+    if (this.running) {
+      this.running = false;
 
-    if (this.dataListener) {
-      this.input?.off("data", this.dataListener);
-      this.dataListener = undefined;
-    }
-    if (this.escTimer) {
-      clearImmediate(this.escTimer);
-      this.escTimer = undefined;
+      if (this.dataListener) {
+        this.input?.off("data", this.dataListener);
+        this.dataListener = undefined;
+      }
+      if (this.escTimer) {
+        clearImmediate(this.escTimer);
+        this.escTimer = undefined;
+      }
+
+      if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
+      if (this.manageRawMode && this.input?.setRawMode) {
+        this.input.setRawMode(false);
+      }
     }
 
-    if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
-    if (this.manageRawMode && this.input?.setRawMode) {
-      this.input.setRawMode(false);
-    }
+    // [LAW:one-source-of-truth] Per-session parse + capture state belongs
+    // to one session. stop() leaves the router in the same shape a fresh
+    // construction would — empty parse buffer, no captured widget — even
+    // when called on an already-stopped router. Without this, a stop/start
+    // cycle could leak half-parsed bytes or a stale drag into the next
+    // session and misroute events. Clearing already-empty state is a no-op
+    // so this also stays safe on repeated stop().
+    this.buffer = Buffer.alloc(0);
+    this.capturedWidget = null;
   }
 
   // --- External hooks ---

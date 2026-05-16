@@ -593,4 +593,47 @@ describe("EventRouter — start/stop", () => {
     // No throw, no extra listeners.
     expect(h.stdin.listenerCount("data")).toBe(0);
   });
+
+  it("stop() clears the parse buffer so dangling bytes don't leak into the next session", () => {
+    // [LAW:one-source-of-truth] Per-session state belongs to a session.
+    // A half-parsed CSI must not survive a stop/start cycle.
+    const a = new StubWidget("a");
+    const h = makeHarness([a]);
+
+    h.router.feed("\x1b["); // start of a CSI; parser is mid-sequence
+    h.router.stop();
+
+    a.keyEvents.length = 0;
+    h.router.start();
+    // If the buffer had leaked, "A" would have completed "\x1b[A" → "up".
+    // After stop's reset, the bare "A" is just the letter a.
+    h.router.feed("A");
+    expect(a.keyEvents.map((e) => e.key)).toEqual(["a"]);
+  });
+
+  it("stop() clears drag capture so the next session hit-tests fresh", () => {
+    // [LAW:one-source-of-truth] capturedWidget belongs to the current
+    // session. Leaking it would misroute the first mouse_move after restart.
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
+    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    const h = makeHarness([a, b]);
+
+    // mouse_down on a: opens drag capture.
+    h.router.feed("\x1b[<0;1;1M");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
+
+    h.router.stop();
+    a.mouseEvents.length = 0;
+    b.mouseEvents.length = 0;
+
+    h.router.start();
+    // mouse_move inside b's bounds. If capture leaked, this would route to
+    // a; with capture cleared, it hit-tests fresh and routes to b's hover
+    // update (no mouse_move handler is called because no widget is captured
+    // and the cursor is over b's hover region — but the hover loop fires).
+    h.router.feed("\x1b[<32;7;1M");
+    expect(a.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
+  });
 });
