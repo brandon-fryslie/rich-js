@@ -28,11 +28,13 @@ export abstract class WidgetBase implements InteractiveWidget {
   @observable accessor active: boolean = false;
   @observable accessor disabled: boolean = false;
   @observable accessor visible: boolean = true;
-  // [LAW:types-are-the-program] Layout output, not reactive state. Only
-  // writer is Screen.draw() (single-enforcer); only readers are imperative
-  // input handlers (containsPoint, handleMouse). Modeling as observable
-  // adds reactive surface no consumer uses and creates a strict-mode hazard
-  // when draw() runs from a microtask outside its origin autorun.
+  // [LAW:types-are-the-program] Layout output, not reactive state. In
+  // DefaultScreen usage the sole writer is Screen.draw(); custom hosts
+  // (test harnesses, alternative layout loops) also write directly. The
+  // only readers are imperative input handlers (containsPoint,
+  // handleMouse). Modeling as observable adds reactive surface no
+  // consumer uses and creates a strict-mode hazard when draw() runs from
+  // a microtask outside its origin autorun.
   accessor bounds: WidgetBounds | null = null;
 
   private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
