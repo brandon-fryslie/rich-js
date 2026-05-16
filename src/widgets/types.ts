@@ -57,8 +57,12 @@ export interface KeyHandlerOptions {
   priority?: KeyHandlerPriority;
 }
 
+// [LAW:one-source-of-truth] Mouse types are exactly what EventRouter emits.
+// There is no "click" — clicks are derived by handlers from mouse_down +
+// mouse_up pairs on the same widget. Keeping unreachable values in the
+// union would force every consumer to handle a case that never arrives.
 export interface WidgetMouseEvent {
-  type: "click" | "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
+  type: "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
   x: number;
   y: number;
   button: number;
