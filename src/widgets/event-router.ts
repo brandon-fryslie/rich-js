@@ -209,10 +209,6 @@ export class EventRouter {
         this.input?.off("data", this.dataListener);
         this.dataListener = undefined;
       }
-      if (this.escTimer) {
-        clearImmediate(this.escTimer);
-        this.escTimer = undefined;
-      }
 
       if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
       if (this.manageRawMode && this.input?.setRawMode) {
@@ -220,13 +216,18 @@ export class EventRouter {
       }
     }
 
-    // [LAW:one-source-of-truth] Per-session parse + capture state belongs
-    // to one session. stop() leaves the router in the same shape a fresh
-    // construction would — empty parse buffer, no captured widget — even
-    // when called on an already-stopped router. Without this, a stop/start
-    // cycle could leak half-parsed bytes or a stale drag into the next
-    // session and misroute events. Clearing already-empty state is a no-op
-    // so this also stays safe on repeated stop().
+    // [LAW:one-source-of-truth] Per-session state belongs to one session.
+    // stop() leaves the router in the same shape a fresh construction
+    // would: empty parse buffer, no captured widget, no pending ESC timer.
+    // All cleanup is outside the `running` guard because feed() can arm
+    // escTimer (and grow buffer) even when running is false — without
+    // those, a pre-start feed could leave a deferred escape firing into
+    // the next session. Clearing already-empty state is a no-op so this
+    // stays safe on repeated stop().
+    if (this.escTimer) {
+      clearImmediate(this.escTimer);
+      this.escTimer = undefined;
+    }
     this.buffer = Buffer.alloc(0);
     this.capturedWidget = null;
   }
