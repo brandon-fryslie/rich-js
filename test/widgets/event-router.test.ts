@@ -640,10 +640,11 @@ describe("EventRouter — start/stop", () => {
     b.mouseEvents.length = 0;
 
     h.router.start();
-    // mouse_move inside b's bounds. If capture leaked, this would route to
-    // a; with capture cleared, it hit-tests fresh and routes to b's hover
-    // update (no mouse_move handler is called because no widget is captured
-    // and the cursor is over b's hover region — but the hover loop fires).
+    // mouse_move inside b's bounds. With capture cleared, the router
+    // hit-tests fresh: b receives the mouse_move (as the topmost-hit
+    // widget) and the hover loop flips b.hovered to true. The point of
+    // this assertion is that `a` — which held capture in the previous
+    // session — must NOT receive any mouse_move after restart.
     h.router.feed("\x1b[<32;7;1M");
     expect(a.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
   });
