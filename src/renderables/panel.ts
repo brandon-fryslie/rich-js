@@ -2,7 +2,7 @@
  * Panel — a bordered box that wraps content, with optional title and subtitle.
  */
 
-import { cellLen } from "../core/cells.js";
+import { cellLen, setCellSize } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, ROUNDED } from "../core/box.js";
@@ -18,11 +18,13 @@ import { isMeasurable } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
- * border style; `RichText` carries its own styling. A function form is
- * evaluated at render time, *after* content has been rendered for the
- * current frame — use this when the accessory mirrors state that the
- * wrapped renderable populates during its own `render()` (e.g. a
- * widget's post-render scroll position).
+ * border style; a `RichText` accessory contributes ONLY its wrapping
+ * `style` (per-range spans within the RichText are not preserved — the
+ * accessory is a small status indicator, not an arbitrary span carrier).
+ * A function form is evaluated at render time, *after* content has been
+ * rendered for the current frame — use this when the accessory mirrors
+ * state that the wrapped renderable populates during its own `render()`
+ * (e.g. a widget's post-render scroll position).
  */
 export type BorderAccessory =
   | string
@@ -237,8 +239,10 @@ export class Panel implements Renderable, Measurable {
     yield new Segment(box.topLeft, border);
 
     if (titleWidth >= innerBorderWidth) {
-      // Title fills the border
-      yield new Segment(titleDisplay.slice(0, innerBorderWidth), titleSeg);
+      // Title fills the border. [LAW:one-source-of-truth] cellLen / setCellSize
+      // are the cell-width authority — plain .slice would miscount wide chars
+      // and break border alignment.
+      yield new Segment(setCellSize(titleDisplay, innerBorderWidth), titleSeg);
     } else {
       // Center the title in the top border
       const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
@@ -292,7 +296,8 @@ export class Panel implements Renderable, Measurable {
       const subtitleSeg = this.subtitleStyle ?? border;
 
       if (subtitleWidth >= centerWidth) {
-        yield new Segment(subtitleDisplay.slice(0, centerWidth), subtitleSeg);
+        // Cell-aware clip — see _renderTopBorder.
+        yield new Segment(setCellSize(subtitleDisplay, centerWidth), subtitleSeg);
       } else {
         const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
         const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
@@ -303,8 +308,9 @@ export class Panel implements Renderable, Measurable {
     }
 
     if (accessoryWidth > 0) {
+      // Cell-aware clip — see _renderTopBorder.
       const fit = accessoryWidth > innerBorderWidth
-        ? accessoryDisplay.slice(0, innerBorderWidth)
+        ? setCellSize(accessoryDisplay, innerBorderWidth)
         : accessoryDisplay;
       yield new Segment(fit, accessoryStyle);
     }
