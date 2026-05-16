@@ -49,13 +49,12 @@ export class DefaultFocusManager implements FocusManager {
     this.widgetList = this.widgetList.filter((w) => w !== widget);
 
     if (this.currentWidget === widget) {
+      // [LAW:single-enforcer] WidgetBase.focus()/blur() already route through
+      // handleFocus, so calling both would double-dispatch and trigger any
+      // subclass side effect (e.g. Dropdown clearing filter/overlay) twice.
       widget.blur();
-      widget.handleFocus({ type: "blur" });
       const next = this.widgetList.find((w) => w.focusable && !w.disabled) ?? null;
-      if (next) {
-        next.focus();
-        next.handleFocus({ type: "focus" });
-      }
+      if (next) next.focus();
       this.currentWidget = next;
       this.emitChange();
     }
@@ -91,8 +90,9 @@ export class DefaultFocusManager implements FocusManager {
   @action
   blur(): void {
     if (!this.currentWidget) return;
+    // [LAW:single-enforcer] blur() already dispatches handleFocus on
+    // WidgetBase — see unregister() for the rationale.
     this.currentWidget.blur();
-    this.currentWidget.handleFocus({ type: "blur" });
     this.currentWidget = null;
     this.emitChange();
   }
@@ -122,13 +122,11 @@ export class DefaultFocusManager implements FocusManager {
   @action
   private setFocus(widget: InteractiveWidget): void {
     if (this.currentWidget === widget) return;
-    if (this.currentWidget) {
-      this.currentWidget.blur();
-      this.currentWidget.handleFocus({ type: "blur" });
-    }
+    // [LAW:single-enforcer] focus()/blur() already dispatch handleFocus —
+    // see unregister() for the rationale.
+    if (this.currentWidget) this.currentWidget.blur();
     this.currentWidget = widget;
     widget.focus();
-    widget.handleFocus({ type: "focus" });
     this.emitChange();
   }
 

@@ -181,6 +181,39 @@ describe("DefaultFocusManager", () => {
       expect(fm.current).toBeNull();
       expect(a.focused).toBe(false);
     });
+
+    it("dispatches handleFocus exactly once per focus transition", () => {
+      // [LAW:single-enforcer] WidgetBase.focus()/blur() route through
+      // handleFocus; FocusManager must not call handleFocus a second time
+      // or every subclass override (Dropdown.handleFocus, custom widgets
+      // that track focus counts, etc.) runs twice per transition.
+      class Counting extends StubWidget {
+        focusCount = 0;
+        blurCount = 0;
+        override handleFocus(event: { type: "focus" | "blur" }): void {
+          super.handleFocus(event);
+          if (event.type === "focus") this.focusCount++;
+          else this.blurCount++;
+        }
+      }
+      const fm = new DefaultFocusManager();
+      const a = new Counting("a");
+      const b = new Counting("b");
+      fm.register(a); // auto-focuses → a.focusCount = 1
+      fm.register(b);
+
+      expect(a.focusCount).toBe(1);
+      expect(a.blurCount).toBe(0);
+
+      fm.focus(b); // a blurs once, b focuses once
+      expect(a.focusCount).toBe(1);
+      expect(a.blurCount).toBe(1);
+      expect(b.focusCount).toBe(1);
+      expect(b.blurCount).toBe(0);
+
+      fm.blur(); // b blurs once
+      expect(b.blurCount).toBe(1);
+    });
   });
 
   describe("unregister()", () => {
