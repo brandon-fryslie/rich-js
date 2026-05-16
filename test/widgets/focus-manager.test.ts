@@ -55,6 +55,18 @@ describe("DefaultFocusManager", () => {
     expect(fm.current).toBe(a);
   });
 
+  it("register is idempotent — duplicate registration is a no-op", () => {
+    // The widget list is a set in spirit. Double-registration would let
+    // next()/prev() cycle through the same widget twice and unregister()
+    // would leave a stale copy behind.
+    const fm = new DefaultFocusManager();
+    const a = new StubWidget("a");
+    fm.register(a);
+    fm.register(a);
+    expect(fm.widgets).toHaveLength(1);
+    expect(fm.widgets[0]).toBe(a);
+  });
+
   describe("next() / prev()", () => {
     it("cycles forward through focusable widgets", () => {
       const fm = new DefaultFocusManager();

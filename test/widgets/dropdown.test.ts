@@ -66,6 +66,30 @@ describe("Dropdown", () => {
     expect(d.disabled).toBe(true);
   });
 
+  it("clamps an out-of-range selectedIndex to the valid range", () => {
+    // Without the clamp, an out-of-range selectedIndex left
+    // `options[selectedIndex]` as undefined → empty header and a
+    // highlightedIndex that pointed past filteredOptions, so the first
+    // Enter commit was a silent no-op. Clamp at the trust boundary so the
+    // rest of the widget can assume validity.
+    const high = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 99 });
+    expect(high.selectedIndex).toBe(2);
+    expect(high.highlightedIndex).toBe(2);
+
+    const low = new Dropdown({ options: ["a", "b", "c"], selectedIndex: -5 });
+    expect(low.selectedIndex).toBe(0);
+    expect(low.highlightedIndex).toBe(0);
+  });
+
+  it("accepts empty options without throwing", () => {
+    // Empty options is a legitimate state (e.g. options populated async).
+    // Construction shouldn't throw — render falls back to an empty label
+    // and commit becomes a no-op until options are populated.
+    const d = new Dropdown({ options: [] });
+    expect(d.options).toEqual([]);
+    expect(d.selectedIndex).toBe(0);
+  });
+
   it("implements InteractiveWidget", () => {
     const d: InteractiveWidget = new Dropdown({ options: ["a"] });
     expect(typeof d.handleKey).toBe("function");

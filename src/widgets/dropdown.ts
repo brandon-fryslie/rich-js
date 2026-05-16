@@ -79,7 +79,15 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     super();
     this.id = options.id ?? `dropdown-${Math.random().toString(36).slice(2, 8)}`;
     this.options = [...options.options];
-    this.selectedIndex = options.selectedIndex ?? 0;
+    // [LAW:types-are-the-program] selectedIndex must point to a valid
+    // option (or be 0 for the empty-options case). Clamp at the trust
+    // boundary so headerText / render / commit logic can all assume
+    // validity. Empty options is allowed — render falls back to an
+    // empty label and commit is a no-op until options are populated.
+    const requested = options.selectedIndex ?? 0;
+    this.selectedIndex = this.options.length === 0
+      ? 0
+      : Math.max(0, Math.min(requested, this.options.length - 1));
     this.highlightedIndex = this.selectedIndex;
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;

@@ -36,6 +36,11 @@ export class DefaultFocusManager implements FocusManager {
 
   @action
   register(widget: InteractiveWidget): void {
+    // [LAW:one-source-of-truth] register is idempotent — the widgetList is
+    // a set in spirit, not a multiset. Without this guard, double-registration
+    // would duplicate the widget so next/prev cycle through it twice and
+    // unregister only removes one copy.
+    if (this.widgetList.includes(widget)) return;
     this.widgetList = [...this.widgetList, widget];
     if (!this.currentWidget && widget.focusable && !widget.disabled) {
       this.setFocus(widget);
