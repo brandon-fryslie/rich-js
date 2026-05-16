@@ -5,11 +5,15 @@
  *
  * Four visual states:
  *   normal  — variant colors from theme semantic palette (muted)
- *   hover   — full variant accent color (brighter than muted)
+ *   hover   — full variant accent bg + on-accent fg (WCAG contrast)
  *   focus   — brackets [ label ] surrounding the button
- *   active  — color reversal (pressed)
+ *   active  — same color pair as hover, plus bold (pressed cue)
  *
- * States compose: active > focus > hover > normal.
+ * States compose: active > focus > hover > normal. Active and hover
+ * deliberately share colors — active differentiates via bold rather
+ * than fg/bg inversion, because inversion produces mostly-accent text
+ * on bg-tinted surface, which is unreadable for accents whose contrast
+ * partner depends on luminance.
  */
 
 import { observable, action } from "mobx";
