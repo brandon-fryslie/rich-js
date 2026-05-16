@@ -28,6 +28,7 @@ import {
   Slider,
   DefaultScreen,
   DefaultFocusManager,
+  EventRouter,
   StaticItem,
   Segment,
   Style,
@@ -55,16 +56,9 @@ import {
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent, MountEntry } from "../../src/widgets/types.js";
+import type { InteractiveWidget, MountEntry } from "../../src/widgets/types.js";
 import type { ColorRgba } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import {
-  enterRawMode,
-  leaveRawMode,
-  enableMouse,
-  disableMouse,
-  startReading,
-} from "./terminal.js";
 
 // --- Available themes ---
 
@@ -176,7 +170,14 @@ slFill.onChange(() => log(`Progress fill → ${slFill.value}%`));
 slContrast.onChange(() => log(`Contrast threshold → ${slContrast.value.toFixed(2)}`));
 inName.onSubmit(() => log(`Filter: ${JSON.stringify(inName.value)} (${themeDropdown.options.length} match)`));
 
-btnExport.onSubmit(() => log(`Exported ${state.selectedName} theme`));
+// Button.handleKey sets active=true on enter/space but has no key-up event
+// to clear it — schedule the visual flash-off here. For the mouse path,
+// Button.handleMouse already clears active on mouse_up, so the timer is a
+// harmless no-op (false → false). One mechanism, both submit paths.
+const flashOff = (b: Button): void => {
+  setTimeout(() => runInAction(() => { b.active = false; }), 80);
+};
+btnExport.onSubmit(() => { log(`Exported ${state.selectedName} theme`); flashOff(btnExport); });
 btnReset.onSubmit(() => {
   // Reset state to Default and clear the filter; the filter autorun
   // re-syncs themeDropdown.options/selectedIndex from these canonical inputs.
@@ -186,6 +187,7 @@ btnReset.onSubmit(() => {
     state.selectTheme(0);
   });
   log("Reset to Default theme");
+  flashOff(btnReset);
 });
 
 // Tab order: dropdown → text input → toggles → slider → action buttons.
@@ -203,12 +205,22 @@ const allWidgets: InteractiveWidget[] = [
   btnDisabled,
 ];
 
-// --- Focus manager + Screen ---
+// --- Focus manager + Screen + Router ---
 
 const fm = new DefaultFocusManager();
 const screen = new DefaultScreen({
   focusManager: fm,
   out: process.stdout,
+});
+
+// [LAW:single-enforcer] EventRouter owns stdin → KeyEvent / WidgetMouseEvent
+// parsing, raw-mode and mouse-tracking lifecycle, the three-stage key
+// dispatch chain (high → focused widget → normal), and the topmost-hit
+// click dispatch. The demo registers only the cross-cutting hooks below.
+const router = new EventRouter({
+  screen,
+  input: process.stdin,
+  output: process.stdout,
 });
 
 // --- Static-content rendering helpers ---
@@ -492,54 +504,24 @@ const mountList: MountEntry[] = [
 
 // --- Input handling ---
 
-function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void {
-  if (key?.ctrl && key.key === "c") { shutdown(); return; }
+// [LAW:single-enforcer] Ctrl+C is the only key this demo overrides; the
+// rest flow through the router's chain (focused widget → FocusManager
+// Tab traversal). High priority so it beats whichever widget has focus.
+router.onKey((event) => {
+  if (event.ctrl && event.key === "c") { shutdown(); event.stop(); }
+}, { priority: "high" });
 
-  if (key?.key === "tab") {
-    key.shift ? fm.prev() : fm.next();
-    return;
-  }
+// Mouse_up → focus the topmost focusable widget under the cursor. The
+// router already delivers the click to the topmost mounted widget via its
+// own hit-test and updates hover via each widget's setHovered fast-path;
+// this hook covers only the focus transfer, which is application policy.
+router.onMouse((event) => {
+  if (event.type !== "mouse_up") return;
+  const hit = focusableAt(event.x, event.y);
+  if (hit) fm.focus(hit);
+});
 
-  if (key && fm.current) {
-    fm.current.handleKey(key);
-    if (fm.current instanceof Button && (key.key === "enter" || key.key === "space")) {
-      const widget = fm.current;
-      setTimeout(() => runInAction(() => { widget.active = false; }), 80);
-    }
-    return;
-  }
-
-  if (mouse) {
-    handleMouse(mouse);
-  }
-}
-
-function handleMouse(mouse: WidgetMouseEvent): void {
-  const hit = widgetAt(mouse.x, mouse.y);
-
-  runInAction(() => {
-    for (const widget of allWidgets) {
-      widget.hovered = widget === hit;
-    }
-  });
-
-  if (hit) {
-    hit.handleMouse(mouse);
-    if (mouse.type === "mouse_up") {
-      fm.focus(hit);
-    }
-  }
-
-  if (mouse.type === "mouse_up") {
-    runInAction(() => {
-      for (const widget of allWidgets) {
-        widget.active = false;
-      }
-    });
-  }
-}
-
-function widgetAt(x: number, y: number): InteractiveWidget | null {
+function focusableAt(x: number, y: number): InteractiveWidget | null {
   // Reverse iteration so widgets drawn later (e.g. expanded Dropdown
   // option rows) hit-test before earlier ones.
   for (let i = allWidgets.length - 1; i >= 0; i--) {
@@ -551,7 +533,6 @@ function widgetAt(x: number, y: number): InteractiveWidget | null {
 
 // --- Lifecycle ---
 
-let stopReading: (() => void) | null = null;
 let disposeTheme: (() => void) | null = null;
 let disposeFilter: (() => void) | null = null;
 
@@ -561,13 +542,12 @@ function startup(): void {
     process.exit(1);
   }
 
-  enterRawMode();
-  enableMouse();
   // [LAW:single-enforcer] Switch to the alternate screen buffer so the demo
   // gets a full-terminal canvas independent of where the shell prompt was
   // sitting. The main buffer is preserved and restored on shutdown — the
   // demo's frame (LOG_Y + MAX_LOGS rows tall) lands at row 0 of a clean area
   // and never has to fight scroll-back. Standard idiom for full-screen TUIs.
+  // Raw mode + mouse tracking + stdin parsing are owned by EventRouter.start().
   process.stdout.write("\x1b[?1049h");
   process.stdout.write("\x1b[H");
 
@@ -605,20 +585,18 @@ function startup(): void {
   });
 
   screen.start();
-  stopReading = startReading((key, mouse) => handleInput(key, mouse));
+  router.start();
 }
 
 function shutdown(): void {
-  if (stopReading) stopReading();
+  router.stop();
   if (disposeTheme) disposeTheme();
   if (disposeFilter) disposeFilter();
   screen.stop();
-  disableMouse();
   // Leave the alternate screen buffer; the original main-buffer content
   // (shell prompt, scrollback) is restored as if the demo was never there.
   process.stdout.write("\x1b[?1049l");
   process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
-  leaveRawMode();
   process.exit(0);
 }
 

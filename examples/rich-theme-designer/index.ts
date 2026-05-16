@@ -21,6 +21,7 @@ import { autorun, runInAction, makeAutoObservable } from "mobx";
 import {
   DefaultScreen,
   DefaultFocusManager,
+  EventRouter,
   Dropdown,
   TextInput,
   Panel,
@@ -49,16 +50,9 @@ import {
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
 import type { TerminalTheme, ColorRgba } from "../../src/core/color.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent, MountEntry } from "../../src/widgets/types.js";
+import type { InteractiveWidget, MountEntry } from "../../src/widgets/types.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { contrastFor } from "../../src/themes/colorMath.js";
-import {
-  enterRawMode,
-  leaveRawMode,
-  enableMouse,
-  disableMouse,
-  startReading,
-} from "../rich-config/terminal.js";
 
 // ─── Catalogues ────────────────────────────────────────────────────────────
 
@@ -357,6 +351,16 @@ const footerItem = new StaticItem({
 const fm = new DefaultFocusManager();
 const screen = new DefaultScreen({ focusManager: fm, out: process.stdout });
 
+// [LAW:single-enforcer] EventRouter owns stdin → KeyEvent / WidgetMouseEvent
+// parsing, raw-mode and mouse-tracking lifecycle, the three-stage key
+// dispatch chain (high → focused widget → normal), and the topmost-hit
+// click dispatch.
+const router = new EventRouter({
+  screen,
+  input: process.stdin,
+  output: process.stdout,
+});
+
 const mountList: MountEntry[] = [
   headerItem,
   spacer("sp-0"),
@@ -378,25 +382,24 @@ const mountList: MountEntry[] = [
 
 // ─── Input handling ───────────────────────────────────────────────────────
 
-function handleInput(key: KeyEvent | null, mouse: WidgetMouseEvent | null): void {
-  if (key?.ctrl && key.key === "c") { shutdown(); return; }
-  if (key?.key === "tab") { key.shift ? fm.prev() : fm.next(); return; }
-  if (key && fm.current) { fm.current.handleKey(key); return; }
-  if (mouse) handleMouse(mouse);
-}
+// Ctrl+C is the only key this demo overrides; everything else flows through
+// the router's chain (focused widget → FocusManager Tab traversal). High
+// priority so it beats whichever widget has focus.
+router.onKey((event) => {
+  if (event.ctrl && event.key === "c") { shutdown(); event.stop(); }
+}, { priority: "high" });
 
-function handleMouse(mouse: WidgetMouseEvent): void {
-  const hit = widgetAt(mouse.x, mouse.y);
-  runInAction(() => {
-    for (const w of allInteractive) w.hovered = w === hit;
-  });
-  if (hit) {
-    hit.handleMouse(mouse);
-    if (mouse.type === "mouse_up") fm.focus(hit);
-  }
-}
+// Mouse_up → focus the topmost focusable widget under the cursor. The
+// router already delivers the click to the topmost mounted widget and
+// updates hover via each widget's setHovered fast-path; this hook covers
+// only the focus transfer, which is application policy.
+router.onMouse((event) => {
+  if (event.type !== "mouse_up") return;
+  const hit = focusableAt(event.x, event.y);
+  if (hit) fm.focus(hit);
+});
 
-function widgetAt(x: number, y: number): InteractiveWidget | null {
+function focusableAt(x: number, y: number): InteractiveWidget | null {
   for (let i = allInteractive.length - 1; i >= 0; i--) {
     const w = allInteractive[i]!;
     if (w.containsPoint(x, y)) return w;
@@ -406,15 +409,12 @@ function widgetAt(x: number, y: number): InteractiveWidget | null {
 
 // ─── Lifecycle ────────────────────────────────────────────────────────────
 
-let stopReading: (() => void) | null = null;
-
 function startup(): void {
   if (!process.stdin.isTTY) {
     process.stderr.write("Error: rich-theme-designer requires an interactive terminal.\n");
     process.exit(1);
   }
-  enterRawMode();
-  enableMouse();
+  // Raw mode + mouse tracking + stdin parsing are owned by EventRouter.start().
   process.stdout.write("\x1b[?1049h");
   process.stdout.write("\x1b[H");
 
@@ -422,18 +422,16 @@ function startup(): void {
   startThemeAutorun();
   startStyleAutorun();
   screen.start();
-  stopReading = startReading((k, m) => handleInput(k, m));
+  router.start();
 }
 
 function shutdown(): void {
-  if (stopReading) stopReading();
+  router.stop();
   if (disposeTheme) disposeTheme();
   if (disposeStyle) disposeStyle();
   screen.stop();
-  disableMouse();
   process.stdout.write("\x1b[?1049l");
   process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
-  leaveRawMode();
   process.exit(0);
 }
 
