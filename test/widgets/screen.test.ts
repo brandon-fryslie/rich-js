@@ -162,6 +162,29 @@ describe("DefaultScreen", () => {
       expect(stream.joined()).not.toMatch(/\x1b\[\d+A/);
     });
 
+    it("single-line frames emit no cursor-up on the next frame either", async () => {
+      // [LAW:types-are-the-program] Some terminals treat `\x1b[0A` as one
+      // row up — equivalent to no CSI but with a surprise off-by-one if the
+      // frame was a single line. The redraw path skips the CSI when
+      // lastLineCount ≤ 1; pin that here so the boundary case stays
+      // covered.
+      const a = new StubWidget("a", "Alpha");
+      screen.mount(a);
+      screen.start();
+      await flush();
+
+      stream.reset();
+      // Force a re-render with state that changes between frames. blur
+      // mutates `focused` (observable) so the autorun fires.
+      screen.focusManager.blur();
+      await flush();
+
+      const out = stream.joined();
+      expect(out).not.toMatch(/\x1b\[\d+A/);
+      // The re-render still has to erase-to-end-of-line and write content.
+      expect(out).toMatch(/\x1b\[K/);
+    });
+
     it("subsequent frames emit cursor-up to overwrite previous frame", async () => {
       const a = new StubWidget("a", "Alpha");
       const b = new StubWidget("b", "Beta");
