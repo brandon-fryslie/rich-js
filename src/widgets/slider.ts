@@ -56,7 +56,15 @@ export class Slider extends WidgetBase {
     this.min = options.min ?? 0;
     this.max = options.max ?? 100;
     this.step = options.step ?? 1;
-    this.width = options.width ?? DEFAULT_WIDTH;
+    // [LAW:types-are-the-program] `width` is a `number` in the option shape,
+    // but rendering and mouse math require a positive integer. This is a
+    // construction-time trust boundary — guard once so every downstream call
+    // (`trackChar.repeat(width)`, `width - 1` denominator) can assume validity.
+    const width = options.width ?? DEFAULT_WIDTH;
+    if (!Number.isInteger(width) || width < 1) {
+      throw new RangeError(`Slider width must be a positive integer; got ${width}`);
+    }
+    this.width = width;
     this.value = clampSnap(options.value ?? this.min, this.min, this.max, this.step);
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;

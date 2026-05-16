@@ -57,6 +57,16 @@ describe("Slider", () => {
     expect(s.disabled).toBe(true);
   });
 
+  it("rejects non-positive or non-integer width at construction", () => {
+    // Width drives `trackChar.repeat(width)` and `width - 1` as a divisor.
+    // Anything but a positive integer corrupts both; guard at the trust
+    // boundary so every downstream call can assume validity.
+    expect(() => new Slider({ width: 0 })).toThrow(RangeError);
+    expect(() => new Slider({ width: -1 })).toThrow(RangeError);
+    expect(() => new Slider({ width: 1.5 })).toThrow(RangeError);
+    expect(() => new Slider({ width: Number.NaN })).toThrow(RangeError);
+  });
+
   it("snaps initial value to step", () => {
     const s = new Slider({ value: 7, min: 0, max: 100, step: 5 });
     expect(s.value).toBe(5);
