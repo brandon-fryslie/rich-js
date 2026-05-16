@@ -222,8 +222,9 @@ describe("widget pipeline integration", () => {
       await flush();
 
       const out = h.stdout.joined();
-      // 4 widgets → 4 lines drawn last frame → \x1b[4A to top.
-      expect(out).toMatch(/\x1b\[4A/);
+      // 4 widgets → 4 lines drawn last frame. Cursor sits on row 4 (no
+      // trailing newline), so rewinding to the top is 3 rows up.
+      expect(out).toMatch(/\x1b\[3A/);
       // Erase-to-end-of-line on each line.
       expect(out).toMatch(/\x1b\[K/);
       // The full-screen-clear pattern is forbidden.

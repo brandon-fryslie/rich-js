@@ -332,9 +332,14 @@ export class DefaultScreen implements Screen {
     const newCount = lines.length;
     const drawCount = Math.max(newCount, this.lastLineCount);
 
+    // [LAW:types-are-the-program] After the previous frame wrote N lines
+    // with N-1 newlines between them, the cursor sits at end-of-row-N (no
+    // trailing newline). Rewinding to the top of the frame is N-1 rows up
+    // plus a CR. `\x1b[0A` is still one row up on some terminals, so we
+    // skip the CSI entirely when there's only one row to overwrite.
     let buf = "";
-    if (this.lastLineCount > 0) {
-      buf += `\x1b[${this.lastLineCount}A`;
+    if (this.lastLineCount > 1) {
+      buf += `\x1b[${this.lastLineCount - 1}A`;
     }
     buf += "\r";
 

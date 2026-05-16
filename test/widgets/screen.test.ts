@@ -175,8 +175,9 @@ describe("DefaultScreen", () => {
       await flush();
 
       const out = stream.joined();
-      // 2 widgets → 2 lines drawn last frame → \x1b[2A to top.
-      expect(out).toMatch(/\x1b\[2A/);
+      // 2 widgets → 2 lines drawn last frame. Cursor sits on row 2 (no
+      // trailing newline), so rewinding to the top is 1 row up.
+      expect(out).toMatch(/\x1b\[1A/);
       // Erase-to-end-of-line on each line.
       expect(out).toMatch(/\x1b\[K/);
     });
