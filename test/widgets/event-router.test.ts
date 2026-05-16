@@ -240,6 +240,17 @@ describe("EventRouter — key parsing", () => {
     ]);
   });
 
+  it("Alt+Space uses the canonical 'space' key name (not literal ' ')", () => {
+    // [LAW:one-source-of-truth] Named single-byte keys take their canonical
+    // name on the Alt path too. A handler matching `event.key === "space"`
+    // must catch both bare space and Alt+Space; the only difference is
+    // event.meta.
+    h.router.feed("\x1b ");
+    expect(h.keyEvents).toMatchObject([
+      { key: "space", character: "", shift: false, ctrl: false, meta: true },
+    ]);
+  });
+
   it("Alt+uppercase carries shift=true", () => {
     h.router.feed("\x1bF");
     expect(h.keyEvents).toMatchObject([
