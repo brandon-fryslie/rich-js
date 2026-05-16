@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
-import { Style } from "../../src/core/style.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import type {
   InteractiveWidget,
   KeyEvent,
-  WidgetMouseEvent,
   WidgetFocusEvent,
 } from "../../src/widgets/types.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
@@ -23,6 +21,9 @@ class StubWidget extends WidgetBase {
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     return { minimum: 4, maximum: 4 };
   }
+
+  triggerChange(): void { this.emitChange(); }
+  triggerSubmit(): void { this.emitSubmit(); }
 }
 
 describe("WidgetBase", () => {
@@ -78,12 +79,12 @@ describe("WidgetBase", () => {
     const changes: InteractiveWidget[] = [];
     const unsub = widget.onChange((w) => changes.push(w));
 
-    widget.emitChange();
+    widget.triggerChange();
     expect(changes).toHaveLength(1);
     expect(changes[0]).toBe(widget);
 
     unsub();
-    widget.emitChange();
+    widget.triggerChange();
     expect(changes).toHaveLength(1);
   });
 
@@ -92,7 +93,7 @@ describe("WidgetBase", () => {
     const submits: InteractiveWidget[] = [];
     widget.onSubmit((w) => submits.push(w));
 
-    widget.emitSubmit();
+    widget.triggerSubmit();
     expect(submits).toHaveLength(1);
   });
 
