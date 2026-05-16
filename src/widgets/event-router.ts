@@ -146,6 +146,12 @@ export class EventRouter {
   private running = false;
   private dataListener: ((chunk: Buffer | string) => void) | undefined;
   private escTimer: ReturnType<typeof setImmediate> | undefined;
+  // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's hit
+  // widget is recorded; mouse_move/mouse_up between then and the next
+  // mouse_up route to this widget unconditionally so dragging outside its
+  // bounds still drives state (e.g. Slider's _dragging). Cleared on the
+  // next mouse_up.
+  private capturedWidget: InteractiveWidget | null = null;
 
   // [LAW:dataflow-not-control-flow] Ordered chain; the dispatcher walks it
   // in priority tiers and stops as soon as some participant calls
@@ -187,11 +193,6 @@ export class EventRouter {
     }
     if (typeof (this.input as { resume?: () => void })?.resume === "function") {
       (this.input as { resume: () => void }).resume();
-    }
-    if (typeof (this.input as { setEncoding?: (e: string) => void })?.setEncoding === "function") {
-      // No-op for streams that don't support it. We always re-encode to Buffer
-      // internally — the encoding hint just keeps Node from splitting multibyte
-      // characters when stdin is set to raw mode.
     }
 
     if (this.manageMouse) this.output.write(MOUSE_TRACK_ON);
@@ -359,11 +360,14 @@ export class EventRouter {
     if (b1 === LBRACKET) return this.consumeCSI(buf);
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
-    // ESC ESC → escape key (some terminals double-send)
+    // ESC ESC → escape key (some terminals double-send). Consume BOTH bytes
+    // so the user sees one escape event, not two. Without this, the second
+    // ESC remained in the buffer and produced a second escape via the
+    // lone-ESC flush path.
     if (b1 === ESC) {
       return {
         kind: "key",
-        bytes: 1,
+        bytes: 2,
         event: new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
       };
     }
@@ -504,25 +508,31 @@ export class EventRouter {
 
     const widgets = this.source.getWidgets();
 
-    // Hover tracking: any widget whose hover state changed gets an update.
+    // Hover tracking: any widget whose hover state changed gets an update
+    // via the canonical setHovered (on WidgetBase). One setter, no fallback.
     if (event.type === "mouse_move") {
       for (const w of widgets) {
         if (!w.visible) continue;
         const inside = w.containsPoint(event.x, event.y);
-        if (inside !== w.hovered) updateHover(w, inside, event);
+        if (inside !== w.hovered) w.setHovered(inside);
       }
     }
 
-    // Click / button event: deliver to topmost widget under the pointer.
-    // [LAW:dataflow-not-control-flow] reverse iteration runs every event;
-    // an empty hit produces an empty effect, no early-mode branch.
-    for (let i = widgets.length - 1; i >= 0; i--) {
-      const w = widgets[i]!;
-      if (!w.visible) continue;
-      if (!w.containsPoint(event.x, event.y)) continue;
-      w.handleMouse(event);
-      break;
-    }
+    // [LAW:dataflow-not-control-flow] Same pipeline every event; the
+    // capture value and event type pick the target. mouse_down opens a
+    // capture, mouse_up closes it, mouse_move in between routes to the
+    // captured widget regardless of pointer position. Scroll events
+    // bypass capture (they're not drag-scoped).
+    const useCapture =
+      this.capturedWidget !== null &&
+      (event.type === "mouse_move" || event.type === "mouse_up");
+    const target = useCapture
+      ? this.capturedWidget
+      : topmostHit(widgets, event.x, event.y);
+    if (target) target.handleMouse(event);
+
+    if (event.type === "mouse_down") this.capturedWidget = target;
+    else if (event.type === "mouse_up") this.capturedWidget = null;
   }
 }
 
@@ -614,17 +624,15 @@ function decodeModifier(mod: number): { shift: boolean; ctrl: boolean; meta: boo
   };
 }
 
-function updateHover(
-  widget: InteractiveWidget,
-  hovered: boolean,
-  event: WidgetMouseEvent,
-): void {
-  const setHovered = (widget as { setHovered?: (v: boolean) => void }).setHovered;
-  if (typeof setHovered === "function") {
-    setHovered.call(widget, hovered);
-    return;
+function topmostHit(
+  widgets: readonly InteractiveWidget[],
+  x: number,
+  y: number,
+): InteractiveWidget | null {
+  for (let i = widgets.length - 1; i >= 0; i--) {
+    const w = widgets[i]!;
+    if (!w.visible) continue;
+    if (w.containsPoint(x, y)) return w;
   }
-  // [LAW:dataflow-not-control-flow] Fallback path: the synthesized event
-  // carries the hover transition; widgets that care can read `event.type`.
-  widget.handleMouse(event);
+  return null;
 }

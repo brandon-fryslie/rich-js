@@ -256,6 +256,18 @@ describe("EventRouter — key parsing", () => {
     ]);
   });
 
+  it("collapses ESC ESC into exactly one escape event (terminals that double-send)", () => {
+    // Some terminals send the escape key as two consecutive ESC bytes. The
+    // parser must consume both and emit ONE event, not two — otherwise the
+    // user pressing Esc once gets handled twice.
+    h.router.feed("\x1b\x1b");
+    h.router.flush(); // drain any deferred lone-ESC timer (defensive — should be empty)
+    expect(h.keyEvents).toHaveLength(1);
+    expect(h.keyEvents[0]).toMatchObject({
+      key: "escape", character: "", shift: false, ctrl: false, meta: false,
+    });
+  });
+
   it("does not emit lone ESC when followed by a CSI sequence in a later chunk", () => {
     h.router.feed("\x1b");
     h.router.feed("[A");
@@ -415,6 +427,54 @@ describe("EventRouter — mouse parsing", () => {
     const h = makeHarness([a]);
     h.router.feed("\x1b[<0;3;1M");
     expect(a.mouseEvents).toHaveLength(0);
+  });
+});
+
+describe("EventRouter — drag capture", () => {
+  it("mouse_move outside the original widget's bounds still routes to it after mouse_down", () => {
+    // A widget that captures the drag (slider, scrollbar, etc.) must keep
+    // receiving mouse_move events even when the pointer leaves its bounds.
+    // Without capture, the move would dispatch to the topmost-hit widget at
+    // the new position — breaking drag-to-scrub behavior.
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
+    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    const h = makeHarness([a, b]);
+
+    // Press inside a.
+    h.router.feed("\x1b[<0;1;1M");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
+    expect(b.mouseEvents).toHaveLength(0);
+
+    // Move into b's bounds — STILL routes to a because a captured the drag.
+    h.router.feed("\x1b[<32;7;1M");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_move"]);
+    expect(b.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
+
+    // Release outside a — routes to a (captured), then capture clears.
+    h.router.feed("\x1b[<0;7;1m");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_move", "mouse_up"]);
+
+    // A fresh move after release goes by hit-test again.
+    h.router.feed("\x1b[<35;7;1M");
+    expect(b.mouseEvents.some((e) => e.type === "mouse_move")).toBe(true);
+  });
+
+  it("scroll events bypass capture (they're not drag-scoped)", () => {
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
+    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    const h = makeHarness([a, b]);
+
+    // Capture on a.
+    h.router.feed("\x1b[<0;1;1M");
+
+    // Scroll over b — routes to b (topmost hit), not the captured a.
+    h.router.feed("\x1b[<64;7;1M");
+    expect(b.mouseEvents.some((e) => e.type === "scroll_up")).toBe(true);
+    expect(a.mouseEvents.some((e) => e.type === "scroll_up")).toBe(false);
   });
 });
 
