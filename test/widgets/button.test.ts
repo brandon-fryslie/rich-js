@@ -168,6 +168,18 @@ describe("Button", () => {
       expect(submits).toHaveLength(1);
     });
 
+    it("clears active on the next microtask after keyboard activation", async () => {
+      // Mouse activation is paired (mouse_down sets active, mouse_up clears).
+      // Keyboard activation has no natural "up" event, so the widget must
+      // schedule its own clear — otherwise the button stays visually pressed
+      // forever after a single keyboard submit.
+      const btn = new Button({ label: "Go" });
+      btn.handleKey(enterEvent());
+      expect(btn.active).toBe(true);
+      await Promise.resolve(); // drain microtask
+      expect(btn.active).toBe(false);
+    });
+
     it("does not fire onSubmit on other keys", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];

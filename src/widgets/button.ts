@@ -74,6 +74,13 @@ export class Button extends WidgetBase {
     if (event.key === "enter" || event.key === "space") {
       this.active = true;
       this.emitSubmit();
+      // [LAW:one-source-of-truth] Keyboard activation must leave the widget
+      // in the same end state as mouse activation: `active` cleared after
+      // the press. Mouse has a natural mouse_up to clear it; keyboard does
+      // not, so we schedule the clear on the next microtask. The single-
+      // frame `active=true` paint gives the user the visual "pressed" cue
+      // and is then cleared, matching mouse behaviour.
+      queueMicrotask(() => { if (this.active) this.setActive(false); });
       event.stop();
     }
   }
