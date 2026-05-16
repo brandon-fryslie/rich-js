@@ -17,7 +17,7 @@
  * every time.
  */
 
-import type { Segment } from "../core/segment.js";
+import { Segment } from "../core/segment.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent } from "./types.js";
@@ -62,18 +62,18 @@ export class StaticItem extends WidgetBase {
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     if (this.measureFn) return this.measureFn(options);
-    // Render once and use the resulting line width as both min and max.
+    // [LAW:one-source-of-truth] Segment.splitLines is the line-break
+    // authority — it handles newlines embedded inside longer segment.text
+    // values too, not just the "\n" sentinel segment. Walking segments and
+    // testing `seg.text === "\n"` miscounts widths for any renderable
+    // that emits "a\nb" as a single segment.
+    const segments = Array.from(this.renderFn(options));
+    const lines = Segment.splitLines(segments);
     let max = 0;
-    let cur = 0;
-    for (const seg of this.renderFn(options)) {
-      if (seg.text === "\n") {
-        if (cur > max) max = cur;
-        cur = 0;
-      } else {
-        cur += seg.cellLength;
-      }
+    for (const line of lines) {
+      const w = Segment.getLineLength(line);
+      if (w > max) max = w;
     }
-    if (cur > max) max = cur;
     return { minimum: max, maximum: max };
   }
 }
