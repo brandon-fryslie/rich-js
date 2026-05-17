@@ -198,6 +198,14 @@ export class DefaultScreen implements Screen {
       this.autorunDispose = undefined;
     }
 
+    // [LAW:one-source-of-truth] stop() returns the screen to a clean
+    // baseline. Without these resets a stopped screen would retain the
+    // last FrameLayout (segments + bounds) — unnecessary memory and a
+    // restart hazard where the first frame after restart could leak the
+    // pre-stop layout. Same idempotent-cleanup pattern as EventRouter.stop.
+    this.pendingFrame = null;
+    this.renderScheduled = false;
+
     if (this.manageCursor) this.out.write("\x1b[?25h");
     if (this.lastLineCount > 0) this.out.write("\n");
   }
