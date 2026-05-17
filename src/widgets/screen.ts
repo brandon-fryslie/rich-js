@@ -88,6 +88,11 @@ export interface ScreenOptions {
 }
 
 interface FrameLayout {
+  // [LAW:one-source-of-truth] The width used to compute this frame.
+  // Captured once so layout + clipping + paint all see the same value
+  // even if the terminal is resized between the autorun's compute and
+  // the microtask-scheduled draw.
+  width: number;
   lines: Segment[][];
   bounds: { widget: InteractiveWidget; bounds: WidgetBounds }[];
 }
@@ -219,8 +224,14 @@ export class DefaultScreen implements Screen {
   }
 
   private computeFrame(): FrameLayout {
+    // [LAW:one-source-of-truth] Snapshot the width ONCE at the top of
+    // the frame so layout, per-widget clipping, per-line clipping, and
+    // the final paint all see the same value. Reading `this.width`
+    // multiple times can drift across a microtask boundary if the
+    // terminal is resized between compute and draw.
+    const width = this.width;
     const renderOptions: RenderOptions = {
-      maxWidth: this.width,
+      maxWidth: width,
       isTerminal: true,
       encoding: "utf-8",
     };
@@ -286,7 +297,7 @@ export class DefaultScreen implements Screen {
       // widget, or an inline placement overflowing the screen edge) would
       // otherwise compute bounds wider than reality, breaking hit-testing
       // and the inline rightX that subsequent inline widgets pack against.
-      const available = Math.max(0, this.width - x);
+      const available = Math.max(0, width - x);
       const widgetLines = available > 0
         ? rawLines.map((line) => Segment.adjustLineLength(line, available, undefined, false))
         : [];
@@ -325,7 +336,7 @@ export class DefaultScreen implements Screen {
 
       // [LAW:single-enforcer] Same per-line clip as the base pass — bounds
       // (used for hit-testing the overlay) match the painted output.
-      const overlayAvailable = Math.max(0, this.width - entry.bounds.x);
+      const overlayAvailable = Math.max(0, width - entry.bounds.x);
       const overlayLines = overlayAvailable > 0
         ? overlayRawLines.map((line) => Segment.adjustLineLength(line, overlayAvailable, undefined, false))
         : [];
@@ -343,7 +354,7 @@ export class DefaultScreen implements Screen {
       };
     }
 
-    return { lines, bounds: boundsList };
+    return { width, lines, bounds: boundsList };
   }
 
   private scheduleRender(): void {
@@ -362,7 +373,7 @@ export class DefaultScreen implements Screen {
     // outside the autorun, or the very first frame before autorun fired).
     const frame = this.pendingFrame ?? this.computeFrame();
     this.pendingFrame = null;
-    const { lines, bounds } = frame;
+    const { width, lines, bounds } = frame;
 
     // [LAW:single-enforcer] Bounds are written here, the only place that
     // computes layout. `bounds` is a plain field (see widget-base.ts) — no
@@ -392,7 +403,9 @@ export class DefaultScreen implements Screen {
         // line shifts every later row down by one terminal cell, which
         // misaligns overlays and leaves wrap-continuation residue when later
         // frames write narrower content over the same logical row.
-        const clipped = Segment.adjustLineLength(line, this.width, undefined, false);
+        // Use the frame's captured width, not a re-read of this.width —
+        // see FrameLayout for the rationale.
+        const clipped = Segment.adjustLineLength(line, width, undefined, false);
         buf += segmentsToString(clipped, this.colorSystem);
       }
       // [LAW:single-enforcer] Erase-to-end-of-line is the single mechanism
