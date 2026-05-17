@@ -242,8 +242,9 @@ export type {
   MountEntry,
   Placement,
   Unsubscribe,
+  OverlayRenderable,
 } from "./widgets/types.js";
-export { FLOW, KeyEvent } from "./widgets/types.js";
+export { FLOW, KeyEvent, hasOverlay } from "./widgets/types.js";
 export { StaticItem } from "./widgets/static-item.js";
 export type { StaticItemOptions } from "./widgets/static-item.js";
 export { WidgetBase } from "./widgets/widget-base.js";

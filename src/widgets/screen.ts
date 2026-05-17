@@ -235,58 +235,67 @@ export class DefaultScreen implements Screen {
       // The same operations execute every iteration.
       const visible = widget.visible;
       const segments = visible ? Array.from(widget.render(renderOptions)) : [];
-      const widgetLines = visible ? Segment.splitLines(segments) : [];
-      const [w, h] = Segment.getShape(widgetLines);
+      const rawLines = visible ? Segment.splitLines(segments) : [];
 
       const placement = this.placements.get(widget) ?? FLOW;
 
       // [LAW:types-are-the-program] Single total switch on the discriminated
       // union: every legal placement gets exactly one branch, the compiler
-      // enforces exhaustiveness, and the rest of the pipeline (paint into
-      // `lines`, record bounds) is identical for every kind.
+      // enforces exhaustiveness, and the rest of the pipeline (clip to the
+      // remaining screen width, paint into `lines`, record bounds) is
+      // identical for every kind. x/y come from the placement; the available
+      // width comes from `this.width - x`.
       let x: number;
       let y: number;
+      let prevAtPlacement: FlowRow | null = null;
       switch (placement.kind) {
-        case "flow": {
+        case "flow":
           x = 0;
           y = cursorY;
-          paintLines(lines, widgetLines, x, y);
-          if (h > 0) {
-            cursorY = y + h;
-            lastFlowRow = { startY: y, height: h, rightX: x + w };
-          }
           break;
-        }
         case "inline": {
           // Pack onto the most recent flow/inline row. If there is no prior
           // row (inline used as the first item), fall back to flow at x=0.
-          const prev: FlowRow | null = lastFlowRow;
-          if (prev === null) {
+          prevAtPlacement = lastFlowRow;
+          if (prevAtPlacement === null) {
             x = 0;
             y = cursorY;
           } else {
-            x = prev.rightX + (prev.rightX > 0 ? 1 : 0);
-            y = prev.startY;
-          }
-          paintLines(lines, widgetLines, x, y);
-          if (h > 0) {
-            const rowStart: number = prev?.startY ?? y;
-            const rowHeight: number = Math.max(prev?.height ?? 0, h);
-            cursorY = Math.max(cursorY, rowStart + rowHeight);
-            lastFlowRow = { startY: rowStart, height: rowHeight, rightX: x + w };
+            x = prevAtPlacement.rightX + (prevAtPlacement.rightX > 0 ? 1 : 0);
+            y = prevAtPlacement.startY;
           }
           break;
         }
-        case "fixed": {
+        case "fixed":
           x = placement.x;
           y = placement.y;
-          paintLines(lines, widgetLines, x, y);
-          // Fixed placements never advance the flow cursor — they are
-          // independent anchors. We still grow the canvas if needed
-          // (paintLines handles that).
           break;
-        }
       }
+
+      // [LAW:single-enforcer] Clip widget lines to the remaining screen
+      // width here so widget bounds match what actually gets painted. A
+      // renderable that emits more cells than its allotted slot (rogue
+      // widget, or an inline placement overflowing the screen edge) would
+      // otherwise compute bounds wider than reality, breaking hit-testing
+      // and the inline rightX that subsequent inline widgets pack against.
+      const available = Math.max(0, this.width - x);
+      const widgetLines = available > 0
+        ? rawLines.map((line) => Segment.adjustLineLength(line, available, undefined, false))
+        : [];
+      const [w, h] = Segment.getShape(widgetLines);
+
+      paintLines(lines, widgetLines, x, y);
+      if (placement.kind === "flow" && h > 0) {
+        cursorY = y + h;
+        lastFlowRow = { startY: y, height: h, rightX: x + w };
+      } else if (placement.kind === "inline" && h > 0) {
+        const rowStart: number = prevAtPlacement?.startY ?? y;
+        const rowHeight: number = Math.max(prevAtPlacement?.height ?? 0, h);
+        cursorY = Math.max(cursorY, rowStart + rowHeight);
+        lastFlowRow = { startY: rowStart, height: rowHeight, rightX: x + w };
+      }
+      // Fixed placements never advance the flow cursor — they are
+      // independent anchors. paintLines grows the canvas as needed.
 
       boundsList.push({ widget, bounds: { x, y, width: w, height: h } });
     }
@@ -303,7 +312,15 @@ export class DefaultScreen implements Screen {
       if (!hasOverlay(widget)) continue;
       const overlaySegs = widget.renderOverlay(renderOptions);
       if (overlaySegs === null) continue;
-      const overlayLines = Segment.splitLines(Array.from(overlaySegs));
+      const overlayRawLines = Segment.splitLines(Array.from(overlaySegs));
+      if (overlayRawLines.length === 0) continue;
+
+      // [LAW:single-enforcer] Same per-line clip as the base pass — bounds
+      // (used for hit-testing the overlay) match the painted output.
+      const overlayAvailable = Math.max(0, this.width - entry.bounds.x);
+      const overlayLines = overlayAvailable > 0
+        ? overlayRawLines.map((line) => Segment.adjustLineLength(line, overlayAvailable, undefined, false))
+        : [];
       if (overlayLines.length === 0) continue;
 
       const startY = entry.bounds.y + entry.bounds.height;
