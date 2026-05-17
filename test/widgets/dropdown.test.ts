@@ -90,6 +90,20 @@ describe("Dropdown", () => {
     expect(d.selectedIndex).toBe(0);
   });
 
+  it("clamps the seeded highlightedIndex when selectedIndex is mutated out of range externally", () => {
+    // selectedIndex is a public observable; external code can move it
+    // past the valid range. When the dropdown next expands, the seeded
+    // highlightedIndex must still be a legal option index — otherwise
+    // the first Enter commits filteredOptions[oor] = undefined as a
+    // silent no-op.
+    const d = new Dropdown({ options: ["a", "b", "c"] });
+    d.selectedIndex = 99; // simulating external out-of-range write
+    d.handleKey(enterEvent());
+    expect(d.expanded).toBe(true);
+    expect(d.highlightedIndex).toBeGreaterThanOrEqual(0);
+    expect(d.highlightedIndex).toBeLessThan(d.filteredOptions.length);
+  });
+
   it("implements InteractiveWidget", () => {
     const d: InteractiveWidget = new Dropdown({ options: ["a"] });
     expect(typeof d.handleKey).toBe("function");

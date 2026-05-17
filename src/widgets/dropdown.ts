@@ -84,13 +84,21 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // boundary so headerText / render / commit logic can all assume
     // validity. Empty options is allowed — render falls back to an
     // empty label and commit is a no-op until options are populated.
-    const requested = options.selectedIndex ?? 0;
-    this.selectedIndex = this.options.length === 0
-      ? 0
-      : Math.max(0, Math.min(requested, this.options.length - 1));
+    this.selectedIndex = this.clampIndex(options.selectedIndex ?? 0);
     this.highlightedIndex = this.selectedIndex;
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
+  }
+
+  // [LAW:single-enforcer] One place owns "is this index valid for the
+  // current options". selectedIndex and options are public observables —
+  // external code can move them out of range. Anywhere internal code
+  // seeds highlightedIndex from selectedIndex (constructor + every
+  // expand path), route through this clamp so the seeded value is
+  // always a legal option index (or 0 for empty options).
+  private clampIndex(n: number): number {
+    if (this.options.length === 0) return 0;
+    return Math.max(0, Math.min(n, this.options.length - 1));
   }
 
   @action
@@ -113,7 +121,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       // enter/space remain the explicit "open with selection seeded" gesture.
       if (event.key === "enter" || event.key === "space") {
         this.expanded = true;
-        this.highlightedIndex = this.selectedIndex;
+        this.highlightedIndex = this.clampIndex(this.selectedIndex);
         event.stop();
         return;
       }
@@ -201,7 +209,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     if (!this.expanded) {
       if (inside) {
         this.expanded = true;
-        this.highlightedIndex = this.selectedIndex;
+        this.highlightedIndex = this.clampIndex(this.selectedIndex);
       }
       return;
     }
