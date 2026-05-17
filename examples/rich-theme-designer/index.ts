@@ -159,15 +159,20 @@ keyDD.onSubmit(() => runInAction(() => { state.paletteKeyIdx = keyDD.selectedInd
 
 // ─── Preview widgets ──────────────────────────────────────────────────────
 
+// Static showcase content. These TextInputs are rendered as preview
+// panels — they are NOT registered with the FocusManager (Tab does not
+// land on them) and so don't receive key/mouse events. The sample text
+// is here to give the scroll-indicator showcase real multi-line content
+// to wrap; it is not meant to suggest the previews are interactive.
 const sampleText =
   "Multi-line content that\n" +
   "extends past the\n" +
   "viewport so the scroll\n" +
   "arrows and cursor\n" +
   "styling are exercised.\n" +
-  "Hit Tab to focus, then\n" +
-  "use arrows or Ctrl+P/N\n" +
-  "to move the cursor.";
+  "This preview is read-only —\n" +
+  "the dropdowns above are\n" +
+  "the editable widgets.";
 
 const tiArrows = new TextInput({
   value: sampleText,
@@ -185,7 +190,14 @@ const tiIndices = new TextInput({
   id: "ti-indices",
 });
 
-const allInteractive: InteractiveWidget[] = [catDD, themeDD, keyDD, tiArrows, tiIndices];
+// Focus targets: dropdowns only. The preview TextInputs are NOT in
+// this list because they aren't mounted on the Screen / registered with
+// the FocusManager — including them would let focusableAt(x, y) return
+// a widget that fm.focus() then rejects (silent no-op, confusing UX).
+const focusTargets: InteractiveWidget[] = [catDD, themeDD, keyDD];
+// Theme-target widgets: everything that resolves palette colors,
+// including the read-only previews so swapping the theme repaints them.
+const themeTargets: InteractiveWidget[] = [catDD, themeDD, keyDD, tiArrows, tiIndices];
 
 // ─── Style autorun ────────────────────────────────────────────────────────
 
@@ -215,7 +227,7 @@ let disposeTheme: (() => void) | null = null;
 function startThemeAutorun(): void {
   disposeTheme = autorun(() => {
     const theme = state.theme;
-    for (const w of allInteractive) {
+    for (const w of themeTargets) {
       const setTheme = (w as { setTheme?: (t: TerminalTheme) => void }).setTheme;
       if (typeof setTheme === "function") setTheme.call(w, theme);
     }
@@ -400,8 +412,8 @@ router.onMouse((event) => {
 });
 
 function focusableAt(x: number, y: number): InteractiveWidget | null {
-  for (let i = allInteractive.length - 1; i >= 0; i--) {
-    const w = allInteractive[i]!;
+  for (let i = focusTargets.length - 1; i >= 0; i--) {
+    const w = focusTargets[i]!;
     if (w.containsPoint(x, y)) return w;
   }
   return null;

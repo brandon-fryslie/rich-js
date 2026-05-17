@@ -632,11 +632,16 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
   if (!name) return { kind: "skip", bytes };
 
   // Special case: ESC[Z is shift+tab regardless of explicit modifier.
+  // [LAW:one-source-of-truth] `character` is the printable character the
+  // key would produce, or "" for non-printable / modifier-only events.
+  // The non-shifted tab path emits character: "" (Tab is named, not
+  // printed) — keep shift+tab consistent. Distinguish via key === "tab"
+  // + shift, not character.
   if (final === "Z") {
     return {
       kind: "key",
       bytes,
-      event: new KeyEvent({ key: "tab", character: "\t", shift: true, ctrl: false, meta: false }),
+      event: new KeyEvent({ key: "tab", character: "", shift: true, ctrl: false, meta: false }),
     };
   }
 
