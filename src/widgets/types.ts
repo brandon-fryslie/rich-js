@@ -159,10 +159,14 @@ export const FLOW: Placement = { kind: "flow" };
 // The host (Screen / demo render loop) is the single enforcer that runs
 // the overlay pass: it iterates widgets in mount order, calls
 // renderOverlay on those that opt in, paints the segments at
-// (bounds.x, bounds.y + bounds.height), and grows widget.bounds to
-// include the overlay area for hit-testing. Render order = z-order:
-// the overlay pass runs last, so overlay content wins over anything
-// rendered earlier in the frame.
+// (bounds.x, bounds.y + bounds.height), grows widget.bounds to include
+// the overlay area, AND publishes hit-test z-order so EventRouter routes
+// clicks on overlay rows to the overlay owner instead of widgets mounted
+// underneath. Render order = z-order for both paint and hit-test: the
+// overlay pass runs last, so overlay content wins on the screen, and
+// overlay-active widgets sort last in `Screen.widgets`, so the router's
+// topmost-hit returns them ahead of base widgets that happen to be
+// mounted later.
 export interface OverlayRenderable {
   renderOverlay(options: RenderOptions): Iterable<Segment> | null;
 }

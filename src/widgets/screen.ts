@@ -95,6 +95,13 @@ interface FrameLayout {
   width: number;
   lines: Segment[][];
   bounds: { widget: InteractiveWidget; bounds: WidgetBounds }[];
+  // [LAW:single-enforcer] The set of widgets whose overlay produced rows
+  // this frame. Screen is the sole authority on overlay z-order; this set
+  // is the data EventRouter consumes (via the `widgets` accessor) to route
+  // clicks to the visually-topmost widget. Without it, paint z-order and
+  // hit-test z-order diverge — overlays paint on top but clicks fall
+  // through to widgets mounted underneath.
+  activeOverlays: Set<InteractiveWidget>;
 }
 
 const DEFAULT_WIDTH = 80;
@@ -112,6 +119,13 @@ export class DefaultScreen implements Screen {
   // mutates them, so they don't need to be observable. The observable
   // `widgetList` above already fires reactivity on mount/unmount.
   private readonly placements = new Map<InteractiveWidget, Placement>();
+
+  // [LAW:single-enforcer] Set of widgets whose overlay rendered visible
+  // rows in the most recent frame. Updated by draw() from FrameLayout;
+  // consumed by the `widgets` getter to expose hit-test z-order to
+  // EventRouter. Mount/unmount don't touch this — it's a per-frame
+  // derivation, not mount state.
+  private _activeOverlays: Set<InteractiveWidget> = new Set();
 
   private _running = false;
   private autorunDispose: IReactionDisposer | undefined;
@@ -144,8 +158,21 @@ export class DefaultScreen implements Screen {
     return this._running;
   }
 
+  // [LAW:types-are-the-program] `widgets` is the *output* of layout: the
+  // list EventRouter uses for hit-testing, in z-order — non-overlay widgets
+  // first (in mount order), overlay-active widgets last. `topmostHit`
+  // iterates this in reverse and returns the first containing widget, so
+  // overlay-active widgets win against anything mounted under them.
+  // [LAW:single-enforcer] Screen is the sole authority on z-order; the
+  // router consumes the result, never derives it itself.
   get widgets(): readonly InteractiveWidget[] {
-    return this.widgetList;
+    if (this._activeOverlays.size === 0) return this.widgetList;
+    const base: InteractiveWidget[] = [];
+    const top: InteractiveWidget[] = [];
+    for (const w of this.widgetList) {
+      (this._activeOverlays.has(w) ? top : base).push(w);
+    }
+    return [...base, ...top];
   }
 
   // --- Lifecycle ---
@@ -171,6 +198,10 @@ export class DefaultScreen implements Screen {
       this.widgetList = this.widgetList.filter((w) => w !== widget);
       this.placements.delete(widget);
       this.focusManager.unregister(widget);
+      // [LAW:one-source-of-truth] Drop any z-order entry for the removed
+      // widget so a later getter doesn't return a dangling reference.
+      // The next draw will rebuild this from scratch.
+      this._activeOverlays.delete(widget);
     });
   }
 
@@ -210,6 +241,7 @@ export class DefaultScreen implements Screen {
     // pre-stop layout. Same idempotent-cleanup pattern as EventRouter.stop.
     this.pendingFrame = null;
     this.renderScheduled = false;
+    this._activeOverlays = new Set();
 
     if (this.manageCursor) this.out.write("\x1b[?25h");
     if (this.lastLineCount > 0) this.out.write("\n");
@@ -238,6 +270,10 @@ export class DefaultScreen implements Screen {
 
     const lines: Segment[][] = [];
     const boundsList: { widget: InteractiveWidget; bounds: WidgetBounds }[] = [];
+    // [LAW:single-enforcer] Populated by pass 2 below. Pass 2 is the only
+    // place that decides whether a widget's overlay produced visible rows
+    // this frame — exactly where the z-order discriminator belongs.
+    const activeOverlays = new Set<InteractiveWidget>();
 
     // Layout cursor for flow placement. `cursorY` is the next free row.
     // `lastFlowRow` tracks the most recent flow/inline row so that a
@@ -323,8 +359,11 @@ export class DefaultScreen implements Screen {
     // ON TOP of the frame, anchored directly below their inline footprint.
     // Render order = z-order: the overlay pass runs last, so overlay rows
     // overwrite anything that was placed below the widget by pass 1.
-    // [LAW:single-enforcer] Overlay placement and bounds-union both happen
-    // here; widgets never draw their own overlays.
+    // [LAW:single-enforcer] Overlay placement, bounds-union, AND z-order
+    // for hit-testing all happen here; widgets never draw their own
+    // overlays and the router never re-derives z-order. Each widget that
+    // produces visible overlay rows is added to `activeOverlays` so the
+    // `widgets` getter can surface it as topmost.
     for (const entry of boundsList) {
       const widget = entry.widget;
       if (!widget.visible) continue;
@@ -352,9 +391,10 @@ export class DefaultScreen implements Screen {
         width: Math.max(entry.bounds.width, overlayW),
         height: entry.bounds.height + overlayLines.length,
       };
+      activeOverlays.add(widget);
     }
 
-    return { width, lines, bounds: boundsList };
+    return { width, lines, bounds: boundsList, activeOverlays };
   }
 
   private scheduleRender(): void {
@@ -373,12 +413,18 @@ export class DefaultScreen implements Screen {
     // outside the autorun, or the very first frame before autorun fired).
     const frame = this.pendingFrame ?? this.computeFrame();
     this.pendingFrame = null;
-    const { width, lines, bounds } = frame;
+    const { width, lines, bounds, activeOverlays } = frame;
 
     // [LAW:single-enforcer] Bounds are written here, the only place that
     // computes layout. `bounds` is a plain field (see widget-base.ts) — no
     // MobX action required.
     for (const { widget, bounds: b } of bounds) widget.bounds = b;
+
+    // [LAW:single-enforcer] Hit-test z-order is published by the same
+    // pass that wrote the bounds. The `widgets` getter reads this set to
+    // partition `widgetList` into [base, overlay-active] so EventRouter's
+    // topmostHit sees overlay owners as topmost.
+    this._activeOverlays = activeOverlays;
 
     const newCount = lines.length;
     const drawCount = Math.max(newCount, this.lastLineCount);

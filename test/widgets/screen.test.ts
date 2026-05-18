@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { Writable } from "stream";
-import { runInAction } from "mobx";
+import { observable, runInAction } from "mobx";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
@@ -314,6 +314,106 @@ describe("DefaultScreen", () => {
       expect(a.bounds).toEqual({ x: 0, y: 0, width: 0, height: 0 });
       // b should now sit at y=0 since a took zero rows.
       expect(b.bounds).toEqual({ x: 0, y: 0, width: 5, height: 1 });
+    });
+  });
+
+  describe("overlay z-order", () => {
+    // OverlayStub implements OverlayRenderable. `expanded` toggles whether
+    // it contributes overlay rows; mutating it (via runInAction) triggers
+    // the autorun. The overlay paints two rows below its inline footprint.
+    class OverlayStub extends WidgetBase {
+      // Observable so toggling `expanded` after start() triggers the
+      // autorun → recompute → draw cycle. Without observability the
+      // OverlayStub would render the wrong way once and never recover.
+      @observable accessor expanded: boolean = false;
+      constructor(readonly id: string, readonly inline: string) {
+        super();
+      }
+      setExpanded(value: boolean): void {
+        runInAction(() => {
+          this.expanded = value;
+        });
+      }
+      handleKey(_event: KeyEvent): void {}
+      render(_options: RenderOptions): Iterable<Segment> {
+        return [new Segment(this.inline)];
+      }
+      renderOverlay(_options: RenderOptions): Iterable<Segment> | null {
+        if (!this.expanded) return null;
+        return [
+          new Segment(`${this.id}-row1`),
+          new Segment("\n"),
+          new Segment(`${this.id}-row2`),
+        ];
+      }
+      measure(_options: RenderOptions): { minimum: number; maximum: number } {
+        return { minimum: this.inline.length, maximum: this.inline.length };
+      }
+    }
+
+    it("widgets returns mount order while no overlays are active", async () => {
+      // [LAW:one-source-of-truth] When no overlay paints, the z-order has
+      // no overlay-active widgets to lift, so `widgets` equals widgetList.
+      const a = new OverlayStub("a", "header");
+      const b = new StubWidget("b", "Beta");
+      screen.mount(a, b);
+      screen.start();
+      await flush();
+      expect(screen.widgets).toEqual([a, b]);
+    });
+
+    it("widgets puts overlay-active widgets last (visual topmost wins hit-test)", async () => {
+      // Bug shape: A is mounted FIRST and paints an active overlay that
+      // visually covers B's row. Without z-order in `widgets`, EventRouter's
+      // topmostHit iterates reverse mount order and returns B, so clicks on
+      // overlay rows are stolen by B. With the fix, `widgets` exposes A
+      // last so the router returns A.
+      const a = new OverlayStub("a", "AAA");
+      const b = new StubWidget("b", "Beta");
+      screen.mount(a, b);
+      a.setExpanded(true);
+      screen.start();
+      await flush();
+
+      expect(screen.widgets).toEqual([b, a]);
+      // Overlay rows are unioned into A's bounds so B's row is inside A.
+      // A occupies y=0 (header) + y=1,y=2 (overlay).
+      expect(a.bounds!.height).toBeGreaterThanOrEqual(3);
+    });
+
+    it("collapsing the overlay drops the widget back to mount order", async () => {
+      // [LAW:dataflow-not-control-flow] No branch in the consumer — the
+      // discriminator (whether the overlay produced rows) lives entirely
+      // in the per-frame Set. Toggling expanded triggers a fresh draw,
+      // which rebuilds the set, which rearranges `widgets`.
+      const a = new OverlayStub("a", "AAA");
+      const b = new StubWidget("b", "Beta");
+      screen.mount(a, b);
+      a.setExpanded(true);
+      screen.start();
+      await flush();
+      expect(screen.widgets).toEqual([b, a]);
+
+      a.setExpanded(false);
+      await flush();
+      expect(screen.widgets).toEqual([a, b]);
+    });
+
+    it("unmounting an overlay-active widget drops it from z-order", async () => {
+      // The active-overlay set is per-frame derivation, but it persists
+      // between draws; unmount must remove the widget so a stale reference
+      // doesn't surface from `widgets` after the next observable read.
+      const a = new OverlayStub("a", "AAA");
+      const b = new StubWidget("b", "Beta");
+      screen.mount(a, b);
+      a.setExpanded(true);
+      screen.start();
+      await flush();
+      expect(screen.widgets).toEqual([b, a]);
+
+      screen.unmount(a);
+      // Before the next draw fires, the getter must already not return `a`.
+      expect(screen.widgets).toEqual([b]);
     });
   });
 
