@@ -120,6 +120,39 @@ function attributeFuncs(): FuncMap {
   return out;
 }
 
+// --- Style spec (multi-attribute one-shot) ---
+//
+// [LAW:one-source-of-truth] `style` accepts the same space-separated grammar
+// `Style.parse` consults — i.e. the inside of `[...]` markup. There is no
+// second parser: a spec that `Style.parse` accepts produces a fragment
+// byte-equivalent to the same spec inside markup, and one that `Style.parse`
+// rejects raises the same `StyleSyntaxError` surface.
+//
+// Motivation: the per-attribute functions (`bold`, `underline`, `hex`, …)
+// compose by nesting. For "apply a fixed set of styles to this child" or
+// "apply this named style set everywhere", nesting is awkward and the
+// style description is fragmented across multiple call sites. `style`
+// collapses that to a single call, and because the spec is a string it
+// flows through Go-template `$vars` and through scope without further
+// machinery:
+//
+//   {{ $alert := "bold underline #ff6b6b" }}
+//   {{ style $alert "alarm!" }}
+//   {{ style $alert .otherField }}
+//
+// [LAW:dataflow-not-control-flow] Same shape as every other style function:
+// a `Style` value (here built by `Style.parse(spec)`) plus a child, in,
+// styled child out. The variability is the spec string; the operation is
+// fixed.
+
+const styleSpecFunc: TemplateFunc = {
+  fn: ((spec: string, child: unknown) => {
+    return applyStyleToFragment(child, Style.parse(spec));
+  }) as TemplateFunc["fn"],
+  argTypes: ["string", "liftable"],
+  returnType: "T",
+};
+
 // --- Hyperlink ---
 //
 // `link` is the cell-splitter for the multi-cell consumer contract.
@@ -167,5 +200,6 @@ export function richTextStyleFuncs(): FuncMap {
     on: onFunc,
     ...attributeFuncs(),
     link: linkFunc,
+    style: styleSpecFunc,
   };
 }

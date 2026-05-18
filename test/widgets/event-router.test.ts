@@ -115,7 +115,13 @@ function makeHarness(initial: StubWidget[] = []): Harness {
 
   const keyEvents: KeyEvent[] = [];
   const mouseEvents: WidgetMouseEvent[] = [];
-  router.onKey((e) => keyEvents.push(e));
+  // High priority: this is an "observe every key" hook for assertions. If
+  // it sat at normal priority, FocusManager's Tab handler would stop the
+  // event first and the observer would miss Tab events. Note this also
+  // runs ahead of any user-level high-priority handlers registered later
+  // by individual tests — fine for the few tests that need it, since
+  // those tests don't rely on the observer for their assertions.
+  router.onKey((e) => keyEvents.push(e), { priority: "high" });
   router.onMouse((e) => mouseEvents.push(e));
 
   return {
@@ -145,7 +151,7 @@ describe("EventRouter — key parsing", () => {
 
   it("parses a printable character into a key event", () => {
     h.router.feed("x");
-    expect(h.keyEvents).toEqual([
+    expect(h.keyEvents).toMatchObject([
       { key: "x", character: "x", shift: false, ctrl: false, meta: false },
     ]);
   });
@@ -164,7 +170,7 @@ describe("EventRouter — key parsing", () => {
 
   it("emits Ctrl+C as { key:'c', ctrl:true } without swallowing", () => {
     h.router.feed("\x03");
-    expect(h.keyEvents[0]).toEqual({
+    expect(h.keyEvents[0]).toMatchObject({
       key: "c",
       character: "",
       ctrl: true,
@@ -220,30 +226,63 @@ describe("EventRouter — key parsing", () => {
     expect(h.keyEvents.map((e) => e.key)).toEqual(["f1", "f5", "f12"]);
   });
 
+  it("emits Alt+letter for ESC + printable byte in a single chunk", () => {
+    h.router.feed("\x1bb");
+    expect(h.keyEvents).toMatchObject([
+      { key: "b", character: "", shift: false, ctrl: false, meta: true },
+    ]);
+  });
+
+  it("Alt+Backspace decodes ESC + 0x7f", () => {
+    h.router.feed("\x1b\x7f");
+    expect(h.keyEvents).toMatchObject([
+      { key: "backspace", character: "", shift: false, ctrl: false, meta: true },
+    ]);
+  });
+
+  it("Alt+Space uses the canonical 'space' key name (not literal ' ')", () => {
+    // [LAW:one-source-of-truth] Named single-byte keys take their canonical
+    // name on the Alt path too. A handler matching `event.key === "space"`
+    // must catch both bare space and Alt+Space; the only difference is
+    // event.meta.
+    h.router.feed("\x1b ");
+    expect(h.keyEvents).toMatchObject([
+      { key: "space", character: "", shift: false, ctrl: false, meta: true },
+    ]);
+  });
+
+  it("Alt+uppercase carries shift=true", () => {
+    h.router.feed("\x1bF");
+    expect(h.keyEvents).toMatchObject([
+      { key: "f", character: "", shift: true, ctrl: false, meta: true },
+    ]);
+  });
+
   it("treats lone ESC as the escape key (after flush)", () => {
     h.router.feed("\x1b");
     expect(h.keyEvents).toHaveLength(0); // deferred
     h.router.flush();
-    expect(h.keyEvents).toEqual([
+    expect(h.keyEvents).toMatchObject([
       { key: "escape", character: "", shift: false, ctrl: false, meta: false },
     ]);
+  });
+
+  it("collapses ESC ESC into exactly one escape event (terminals that double-send)", () => {
+    // Some terminals send the escape key as two consecutive ESC bytes. The
+    // parser must consume both and emit ONE event, not two — otherwise the
+    // user pressing Esc once gets handled twice.
+    h.router.feed("\x1b\x1b");
+    h.router.flush(); // drain any deferred lone-ESC timer (defensive — should be empty)
+    expect(h.keyEvents).toHaveLength(1);
+    expect(h.keyEvents[0]).toMatchObject({
+      key: "escape", character: "", shift: false, ctrl: false, meta: false,
+    });
   });
 
   it("does not emit lone ESC when followed by a CSI sequence in a later chunk", () => {
     h.router.feed("\x1b");
     h.router.feed("[A");
     expect(h.keyEvents.map((e) => e.key)).toEqual(["up"]);
-  });
-
-  it("collapses ESC ESC into a single escape event (consumes both bytes)", () => {
-    h.router.feed("\x1b\x1b");
-    // Both bytes consumed in one shot; no lone-ESC timer arms.
-    expect(h.keyEvents).toEqual([
-      { key: "escape", character: "", shift: false, ctrl: false, meta: false },
-    ]);
-    // Flushing is a no-op — buffer is empty, no second escape leaks out.
-    h.router.flush();
-    expect(h.keyEvents).toHaveLength(1);
   });
 
   it("handles a CSI sequence split across multiple chunks", () => {
@@ -276,11 +315,64 @@ describe("EventRouter — tab navigation", () => {
     expect(h.fm.current).toBe(c);
   });
 
-  it("does not deliver tab to the focused widget", () => {
+  it("delivers tab to the focused widget; falls through to focus traversal when not stopped", () => {
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    const h = makeHarness([a, b]);
+    h.router.feed("\t");
+    // StubWidget.handleKey does not call event.stop() → FocusManager (registered
+    // as a normal-priority chain handler) runs and moves focus.
+    expect(a.keyEvents).toHaveLength(1);
+    expect(a.keyEvents[0]!.key).toBe("tab");
+    expect(h.fm.current).toBe(b);
+  });
+
+  it("a widget that stops the tab event prevents focus traversal", () => {
+    class TabConsumer extends StubWidget {
+      override handleKey(event: KeyEvent): void {
+        this.keyEvents.push(event);
+        if (event.key === "tab") event.stop();
+      }
+    }
+    const a = new TabConsumer("a");
+    const b = new StubWidget("b");
+    const h = makeHarness([a, b]);
+    h.router.feed("\t");
+    expect(h.fm.current).toBe(a); // focus did not move
+  });
+
+  it("a high-priority handler runs before the focused widget and can stop the event", () => {
     const a = new StubWidget("a");
     const h = makeHarness([a]);
-    h.router.feed("\t");
-    expect(a.keyEvents).toHaveLength(0);
+    let highSawIt = false;
+    h.router.onKey(
+      (event) => {
+        if (event.key === "c" && event.ctrl) {
+          highSawIt = true;
+          event.stop();
+        }
+      },
+      { priority: "high" },
+    );
+    h.router.feed("\x03"); // Ctrl+C
+    expect(highSawIt).toBe(true);
+    // Focused widget never saw it because the high handler stopped the event.
+    expect(a.keyEvents.find((e) => e.ctrl && e.key === "c")).toBeUndefined();
+  });
+
+  it("normal-priority handlers run after the focused widget", () => {
+    const order: string[] = [];
+    class Observer extends StubWidget {
+      override handleKey(event: KeyEvent): void {
+        super.handleKey(event);
+        order.push("widget");
+      }
+    }
+    const observed = new Observer("o");
+    const h = makeHarness([observed]);
+    h.router.onKey(() => order.push("normal")); // default priority = "normal"
+    h.router.feed("x");
+    expect(order).toEqual(["widget", "normal"]);
   });
 });
 
@@ -349,69 +441,51 @@ describe("EventRouter — mouse parsing", () => {
   });
 });
 
-describe("EventRouter — mouse capture", () => {
-  // After mouse_down on a widget, subsequent mouse_move and mouse_up events
-  // are routed to that widget regardless of bounds, until release. This is
-  // what makes Slider drag and Dropdown outside-click collapse work.
-
-  it("routes mouse_move to the captured widget when pointer leaves bounds", () => {
-    const a = new StubWidget("a");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    const h = makeHarness([a]);
-
-    h.router.feed("\x1b[<0;3;1M"); // mouse_down at (2,0) — inside a
-    h.router.feed("\x1b[<32;20;1M"); // mouse_move at (19,0) — outside a (bit 32 = motion)
-    h.router.feed("\x1b[<0;20;1m"); // mouse_up at (19,0) — outside a
-
-    const types = a.mouseEvents.map((e) => e.type);
-    expect(types).toEqual(["mouse_down", "mouse_move", "mouse_up"]);
-  });
-
-  it("releases capture on mouse_up so the next mouse_move is hit-tested again", () => {
+describe("EventRouter — drag capture", () => {
+  it("mouse_move outside the original widget's bounds still routes to it after mouse_down", () => {
+    // A widget that captures the drag (slider, scrollbar, etc.) must keep
+    // receiving mouse_move events even when the pointer leaves its bounds.
+    // Without capture, the move would dispatch to the topmost-hit widget at
+    // the new position — breaking drag-to-scrub behavior.
     const a = new StubWidget("a");
     const b = new StubWidget("b");
     a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
     b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
-    // Press inside a → capture a, then release outside → capture cleared.
-    h.router.feed("\x1b[<0;3;1M");
-    h.router.feed("\x1b[<0;20;1m");
+    // Press inside a.
+    h.router.feed("\x1b[<0;1;1M");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
+    expect(b.mouseEvents).toHaveLength(0);
 
-    // A subsequent move into b should go to b normally.
+    // Move into b's bounds — STILL routes to a because a captured the drag.
     h.router.feed("\x1b[<32;7;1M");
-    const bTypes = b.mouseEvents.map((e) => e.type);
-    expect(bTypes).toContain("mouse_move");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_move"]);
+    expect(b.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
+
+    // Release outside a — routes to a (captured), then capture clears.
+    h.router.feed("\x1b[<0;7;1m");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_move", "mouse_up"]);
+
+    // A fresh move after release goes by hit-test again.
+    h.router.feed("\x1b[<35;7;1M");
+    expect(b.mouseEvents.some((e) => e.type === "mouse_move")).toBe(true);
   });
 
-  it("delivers click outside the dropdown's bounds when capture seeded a press inside", () => {
-    // Simulates the Dropdown outside-click-collapse pattern: a press starts
-    // inside the expanded list, the user drags out and releases — capture
-    // ensures the dropdown still receives mouse_up to act on the gesture.
-    const dd = new StubWidget("dd");
-    dd.setBounds({ x: 0, y: 0, width: 10, height: 5 });
-    const h = makeHarness([dd]);
-
-    h.router.feed("\x1b[<0;3;1M"); // press inside
-    h.router.feed("\x1b[<0;20;10m"); // release way outside
-
-    expect(dd.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_up"]);
-  });
-
-  it("dispatches mouse_down by hit-test when no capture exists (capture seeded for the new gesture)", () => {
+  it("scroll events bypass capture (they're not drag-scoped)", () => {
     const a = new StubWidget("a");
     const b = new StubWidget("b");
     a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
     b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
-    // First gesture: press in a, release in a.
-    h.router.feed("\x1b[<0;3;1M");
-    h.router.feed("\x1b[<0;3;1m");
+    // Capture on a.
+    h.router.feed("\x1b[<0;1;1M");
 
-    // Second gesture: press in b. With capture cleared, b receives it.
-    h.router.feed("\x1b[<0;7;1M");
-    expect(b.mouseEvents.map((e) => e.type)).toContain("mouse_down");
+    // Scroll over b — routes to b (topmost hit), not the captured a.
+    h.router.feed("\x1b[<64;7;1M");
+    expect(b.mouseEvents.some((e) => e.type === "scroll_up")).toBe(true);
+    expect(a.mouseEvents.some((e) => e.type === "scroll_up")).toBe(false);
   });
 });
 
@@ -529,5 +603,49 @@ describe("EventRouter — start/stop", () => {
     h.router.stop();
     // No throw, no extra listeners.
     expect(h.stdin.listenerCount("data")).toBe(0);
+  });
+
+  it("stop() clears the parse buffer so dangling bytes don't leak into the next session", () => {
+    // [LAW:one-source-of-truth] Per-session state belongs to a session.
+    // A half-parsed CSI must not survive a stop/start cycle.
+    const a = new StubWidget("a");
+    const h = makeHarness([a]);
+
+    h.router.feed("\x1b["); // start of a CSI; parser is mid-sequence
+    h.router.stop();
+
+    a.keyEvents.length = 0;
+    h.router.start();
+    // If the buffer had leaked, "A" would have completed "\x1b[A" → "up".
+    // After stop's reset, the bare "A" is just the letter a.
+    h.router.feed("A");
+    expect(a.keyEvents.map((e) => e.key)).toEqual(["a"]);
+  });
+
+  it("stop() clears drag capture so the next session hit-tests fresh", () => {
+    // [LAW:one-source-of-truth] capturedWidget belongs to the current
+    // session. Leaking it would misroute the first mouse_move after restart.
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
+    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    const h = makeHarness([a, b]);
+
+    // mouse_down on a: opens drag capture.
+    h.router.feed("\x1b[<0;1;1M");
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
+
+    h.router.stop();
+    a.mouseEvents.length = 0;
+    b.mouseEvents.length = 0;
+
+    h.router.start();
+    // mouse_move inside b's bounds. With capture cleared, the router
+    // hit-tests fresh: b receives the mouse_move (as the topmost-hit
+    // widget) and the hover loop flips b.hovered to true. The point of
+    // this assertion is that `a` — which held capture in the previous
+    // session — must NOT receive any mouse_move after restart.
+    h.router.feed("\x1b[<32;7;1M");
+    expect(a.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
   });
 });

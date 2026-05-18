@@ -1,10 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { Button } from "../../src/widgets/button.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
-const enterEvent: KeyEvent = { key: "enter", character: "\r", shift: false, ctrl: false, meta: false };
-const spaceEvent: KeyEvent = { key: "space", character: " ", shift: false, ctrl: false, meta: false };
-const escapeEvent: KeyEvent = { key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false };
+// Factories — KeyEvent carries a mutable `stopped` flag, so each call site
+// must get a fresh instance.
+const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false });
+const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
+const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
 
 const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
 const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
@@ -100,7 +103,7 @@ describe("Button", () => {
       expect(isBlack || isWhite).toBe(true);
     });
 
-    it("renders active state with bold and full accent bg", () => {
+    it("renders active state with bold and full accent bg (no fg/bg inversion)", () => {
       const btn = new Button({ label: "Go", variant: "primary" });
       btn.setActive(true);
       const segments = [...btn.render({ maxWidth: 80 })];
@@ -127,7 +130,7 @@ describe("Button", () => {
       expect(hoverStyle.bold).toBeFalsy();
     });
 
-    it("active + focused shows brackets and bold", () => {
+    it("active + focused shows brackets and bold without inverting colours", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       btn.setActive(true);
@@ -152,7 +155,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(enterEvent);
+      btn.handleKey(enterEvent());
       expect(submits).toHaveLength(1);
       expect(submits[0]).toBe(btn);
     });
@@ -161,19 +164,19 @@ describe("Button", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(spaceEvent);
+      btn.handleKey(spaceEvent());
       expect(submits).toHaveLength(1);
     });
 
-    it("keyboard activation makes active=true observable across MobX cycles", async () => {
-      // [LAW:dataflow-not-control-flow] toggling active true→false inside a
-      // single @action would only ever expose the post-action state to MobX
-      // autoruns. The handler exits with active=true and schedules the clear
-      // on a microtask so observers see both states.
+    it("clears active on the next microtask after keyboard activation", async () => {
+      // Mouse activation is paired (mouse_down sets active, mouse_up clears).
+      // Keyboard activation has no natural "up" event, so the widget must
+      // schedule its own clear — otherwise the button stays visually pressed
+      // forever after a single keyboard submit.
       const btn = new Button({ label: "Go" });
-      btn.handleKey(enterEvent);
+      btn.handleKey(enterEvent());
       expect(btn.active).toBe(true);
-      await Promise.resolve(); // drain microtask queue
+      await Promise.resolve(); // drain microtask
       expect(btn.active).toBe(false);
     });
 
@@ -181,7 +184,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(escapeEvent);
+      btn.handleKey(escapeEvent());
       expect(submits).toHaveLength(0);
     });
 
@@ -189,7 +192,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go", disabled: true });
       const submits: InteractiveWidget[] = [];
       btn.onSubmit((w) => submits.push(w));
-      btn.handleKey(enterEvent);
+      btn.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
 
@@ -251,7 +254,7 @@ describe("Button", () => {
       const submits: InteractiveWidget[] = [];
       const unsub = btn.onSubmit((w) => submits.push(w));
       unsub();
-      btn.handleKey(enterEvent);
+      btn.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
   });

@@ -2,7 +2,6 @@
  * WidgetBase — shared MobX observable foundation for interactive widgets.
  * [LAW:one-type-per-behavior] All widgets share the same base; differences
  * are in configuration and state, not in infrastructure.
- * [LAW:single-enforcer] Subscription emission lives here, not duplicated per widget.
  *
  * Uses makeObservable (not makeAutoObservable) because subclasses extend this.
  * MobX 6.x with TC39 decorators requires `accessor` keyword.
@@ -29,7 +28,14 @@ export abstract class WidgetBase implements InteractiveWidget {
   @observable accessor active: boolean = false;
   @observable accessor disabled: boolean = false;
   @observable accessor visible: boolean = true;
-  @observable.ref accessor bounds: WidgetBounds | null = null;
+  // [LAW:types-are-the-program] Layout output, not reactive state. In
+  // DefaultScreen usage the sole writer is Screen.draw(); custom hosts
+  // (test harnesses, alternative layout loops) also write directly. The
+  // only readers are imperative input handlers (containsPoint,
+  // handleMouse). Modeling as observable adds reactive surface no
+  // consumer uses and creates a strict-mode hazard when draw() runs from
+  // a microtask outside its origin autorun.
+  accessor bounds: WidgetBounds | null = null;
 
   private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
   private readonly submitHandlers = new Set<(w: InteractiveWidget) => void>();
@@ -47,41 +53,37 @@ export abstract class WidgetBase implements InteractiveWidget {
   @action
   handleFocus(event: WidgetFocusEvent): void {
     this.focused = event.type === "focus";
-    this.emitChange();
   }
 
   // --- Programmatic control ---
-  // [LAW:single-enforcer] `handleFocus` is the canonical site that mutates
-  // `focused` and emits change. `focus()` / `blur()` are public-API
-  // delegates so external callers and the focus manager converge on one
-  // implementation rather than dispatching the transition twice.
 
+  // [LAW:single-enforcer] focus()/blur() route through handleFocus so any
+  // subclass override (e.g. Dropdown collapsing its overlay on blur)
+  // participates in the same transition path the event router uses. There
+  // is no second code path that flips `focused` directly from the outside.
+  @action
   focus(): void {
     this.handleFocus({ type: "focus" });
   }
 
+  @action
   blur(): void {
     this.handleFocus({ type: "blur" });
-  }
-
-  // [LAW:single-enforcer] One canonical mutator for the hovered observable.
-  // The router and tests both call this; widgets never need to override it.
-  @action
-  setHovered(value: boolean): void {
-    this.hovered = value;
-    this.emitChange();
-  }
-
-  @action
-  setActive(value: boolean): void {
-    this.active = value;
-    this.emitChange();
   }
 
   @action
   setDisabled(value: boolean): void {
     this.disabled = value;
-    this.emitChange();
+  }
+
+  // [LAW:single-enforcer] One canonical setter for hover state lives on
+  // the base. EventRouter calls it on every widget whose hit-test result
+  // diverges from `hovered`; widgets that need to react to hover transitions
+  // override handleMouse and read the synthesized `mouse_move`. The router
+  // no longer maintains a "does this widget have setHovered" fallback path.
+  @action
+  setHovered(value: boolean): void {
+    this.hovered = value;
   }
 
   // --- Hit-testing ---

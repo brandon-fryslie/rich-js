@@ -230,15 +230,23 @@ export type { LayoutOptions } from "./renderables/layout.js";
 
 // Interactive widgets
 export type {
-  KeyEvent,
+  KeyEventInit,
+  KeyHandlerPriority,
+  KeyHandlerOptions,
   WidgetMouseEvent,
   WidgetFocusEvent,
   WidgetBounds,
   InteractiveWidget,
   FocusManager,
   Screen,
+  MountEntry,
+  Placement,
   Unsubscribe,
+  OverlayRenderable,
 } from "./widgets/types.js";
+export { FLOW, KeyEvent, hasOverlay } from "./widgets/types.js";
+export { StaticItem } from "./widgets/static-item.js";
+export type { StaticItemOptions } from "./widgets/static-item.js";
 export { WidgetBase } from "./widgets/widget-base.js";
 export { DefaultFocusManager } from "./widgets/focus-manager.js";
 export { DefaultScreen } from "./widgets/screen.js";

@@ -201,6 +201,60 @@ describe("Panel", () => {
     expect(lines.length).toBeGreaterThanOrEqual(5);
   });
 
+  // --- bottomRightAccessory ---
+
+  it("renders a string bottomRightAccessory just left of the bottom-right corner", () => {
+    const panel = new Panel("Content", {
+      bottomRightAccessory: "[14/102]",
+      box: ASCII,
+    });
+    const lines = collectLines(panel, { maxWidth: 30 });
+    const lastLine = lines[lines.length - 1]!;
+    expect(lastLine).toContain("[14/102]");
+    // Accessory hugs the right corner: " [14/102] " then the corner "+".
+    expect(lastLine.endsWith(" [14/102] +")).toBe(true);
+  });
+
+  it("evaluates a function bottomRightAccessory at render time", () => {
+    let frame = 0;
+    const panel = new Panel("Content", {
+      bottomRightAccessory: () => `frame=${++frame}`,
+      box: ASCII,
+    });
+    const first = collectLines(panel, { maxWidth: 30 });
+    const second = collectLines(panel, { maxWidth: 30 });
+    // Function called per render — second frame sees a different value.
+    expect(first[first.length - 1]).toContain("frame=1");
+    expect(second[second.length - 1]).toContain("frame=2");
+  });
+
+  it("omits bottomRightAccessory when its thunk returns undefined", () => {
+    const panel = new Panel("Content", {
+      bottomRightAccessory: () => undefined,
+      box: ASCII,
+    });
+    const lines = collectLines(panel, { maxWidth: 30 });
+    const lastLine = lines[lines.length - 1]!;
+    // Plain bottom border: rule chars from corner to corner.
+    expect(lastLine.startsWith("+")).toBe(true);
+    expect(lastLine.endsWith("+")).toBe(true);
+    expect(lastLine).not.toContain("undefined");
+  });
+
+  it("coexists with subtitle: subtitle centered, accessory right-aligned", () => {
+    const panel = new Panel("Content", {
+      subtitle: "Sub",
+      bottomRightAccessory: "[2/9]",
+      box: ASCII,
+    });
+    const lines = collectLines(panel, { maxWidth: 30 });
+    const lastLine = lines[lines.length - 1]!;
+    expect(lastLine).toContain("Sub");
+    expect(lastLine).toContain("[2/9]");
+    // Accessory still on the right edge.
+    expect(lastLine.endsWith(" [2/9] +")).toBe(true);
+  });
+
   // --- Measurement ---
   // Spec: minimum > 0, maximum >= minimum
 
