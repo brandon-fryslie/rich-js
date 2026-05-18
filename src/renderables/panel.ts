@@ -2,7 +2,7 @@
  * Panel — a bordered box that wraps content, with optional title and subtitle.
  */
 
-import { cellLen } from "../core/cells.js";
+import { cellLen, setCellSize } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, ROUNDED } from "../core/box.js";
@@ -16,13 +16,47 @@ import type {
 } from "../core/protocol.js";
 import { isMeasurable } from "../core/protocol.js";
 
+/**
+ * A lazily-resolved border accessory. Strings render inline in the
+ * border style; a `RichText` accessory contributes ONLY its wrapping
+ * `style` (per-range spans within the RichText are not preserved — the
+ * accessory is a small status indicator, not an arbitrary span carrier).
+ * A function form is evaluated at render time, *after* content has been
+ * rendered for the current frame — use this when the accessory mirrors
+ * state that the wrapped renderable populates during its own `render()`
+ * (e.g. a widget's post-render scroll position).
+ */
+export type BorderAccessory =
+  | string
+  | RichText
+  | (() => string | RichText | undefined);
+
 export interface PanelOptions {
   box?: Box;
   title?: string | RichText;
   subtitle?: string | RichText;
+  /**
+   * Right-aligned accessory in the bottom border, just left of the
+   * `bottomRight` corner. Coexists with `subtitle` — the subtitle
+   * remains centered in the remaining space. Padded with a leading/
+   * trailing space like `title`/`subtitle`, so passing `"[14/102]"`
+   * renders as `─ [14/102] ┘`.
+   */
+  bottomRightAccessory?: BorderAccessory;
   expand?: boolean;
   style?: string | Style;
   borderStyle?: string | Style;
+  /**
+   * Style for the title text in the top border. Defaults to `borderStyle`
+   * (i.e. title inherits the border color). Set independently when the
+   * title should pop relative to the border.
+   */
+  titleStyle?: string | Style;
+  /**
+   * Style for the subtitle text in the bottom border. Defaults to
+   * `borderStyle`.
+   */
+  subtitleStyle?: string | Style;
   width?: number;
   padding?: PaddingDimensions;
 }
@@ -53,9 +87,12 @@ export class Panel implements Renderable, Measurable {
   readonly box: Box;
   readonly title: string | RichText | undefined;
   readonly subtitle: string | RichText | undefined;
+  readonly bottomRightAccessory: BorderAccessory | undefined;
   readonly expand: boolean;
   readonly style: Style;
   readonly borderStyle: Style;
+  readonly titleStyle: Style | undefined;
+  readonly subtitleStyle: Style | undefined;
   readonly width: number | undefined;
   readonly padding: [number, number, number, number];
 
@@ -67,9 +104,12 @@ export class Panel implements Renderable, Measurable {
     this.box = options?.box ?? ROUNDED;
     this.title = options?.title;
     this.subtitle = options?.subtitle;
+    this.bottomRightAccessory = options?.bottomRightAccessory;
     this.expand = options?.expand !== false;
     this.style = resolveStyle(options?.style);
     this.borderStyle = resolveStyle(options?.borderStyle);
+    this.titleStyle = options?.titleStyle === undefined ? undefined : resolveStyle(options.titleStyle);
+    this.subtitleStyle = options?.subtitleStyle === undefined ? undefined : resolveStyle(options.subtitleStyle);
     this.width = options?.width;
     this.padding = normalizePadding(options?.padding);
   }
@@ -192,19 +232,24 @@ export class Panel implements Renderable, Measurable {
     const titleText = typeof this.title === "string" ? this.title : this.title.plain;
     const titleDisplay = ` ${titleText} `;
     const titleWidth = cellLen(titleDisplay);
+    // Title gets its own style when set, else inherits the border style —
+    // single source of truth for "what color is the title text in".
+    const titleSeg = this.titleStyle ?? border;
 
     yield new Segment(box.topLeft, border);
 
     if (titleWidth >= innerBorderWidth) {
-      // Title fills the border
-      yield new Segment(titleDisplay.slice(0, innerBorderWidth), border);
+      // Title fills the border. [LAW:one-source-of-truth] cellLen / setCellSize
+      // are the cell-width authority — plain .slice would miscount wide chars
+      // and break border alignment.
+      yield new Segment(setCellSize(titleDisplay, innerBorderWidth), titleSeg);
     } else {
       // Center the title in the top border
       const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
       const rightRuleWidth = innerBorderWidth - titleWidth - leftRuleWidth;
 
       if (leftRuleWidth > 0) yield new Segment(box.top.repeat(leftRuleWidth), border);
-      yield new Segment(titleDisplay, border);
+      yield new Segment(titleDisplay, titleSeg);
       if (rightRuleWidth > 0) yield new Segment(box.top.repeat(rightRuleWidth), border);
     }
 
@@ -219,34 +264,67 @@ export class Panel implements Renderable, Measurable {
   ): Iterable<Segment> {
     const innerBorderWidth = panelWidth - 2;
 
-    if (!this.subtitle) {
-      yield new Segment(box.bottomLeft, border);
-      yield new Segment(box.bottom.repeat(innerBorderWidth), border);
-      yield new Segment(box.bottomRight, border);
-      yield Segment.line();
-      return;
-    }
-
-    const subtitleText =
-      typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
-    const subtitleDisplay = ` ${subtitleText} `;
-    const subtitleWidth = cellLen(subtitleDisplay);
+    // Resolve the right accessory *now*. Function form evaluates after
+    // content has been rendered (Panel.render collects content segments
+    // before yielding any borders), so the thunk sees fresh widget state.
+    const accessory = this._resolveAccessory(this.bottomRightAccessory);
+    const accessoryDisplay = accessory === undefined
+      ? ""
+      : typeof accessory === "string"
+        ? ` ${accessory} `
+        : ` ${accessory.plain} `;
+    const accessoryWidth = cellLen(accessoryDisplay);
+    const accessoryStyle =
+      accessory instanceof RichText && !accessory.style.isNull
+        ? accessory.style
+        : border;
 
     yield new Segment(box.bottomLeft, border);
 
-    if (subtitleWidth >= innerBorderWidth) {
-      yield new Segment(subtitleDisplay.slice(0, innerBorderWidth), border);
-    } else {
-      const leftRuleWidth = Math.floor((innerBorderWidth - subtitleWidth) / 2);
-      const rightRuleWidth = innerBorderWidth - subtitleWidth - leftRuleWidth;
+    // Space available for the centered subtitle / rule fill — the accessory
+    // (if any) hugs the right edge and the subtitle treats the remainder
+    // as its centering canvas.
+    const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
 
-      if (leftRuleWidth > 0) yield new Segment(box.bottom.repeat(leftRuleWidth), border);
-      yield new Segment(subtitleDisplay, border);
-      if (rightRuleWidth > 0) yield new Segment(box.bottom.repeat(rightRuleWidth), border);
+    if (!this.subtitle) {
+      if (centerWidth > 0) yield new Segment(box.bottom.repeat(centerWidth), border);
+    } else {
+      const subtitleText =
+        typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
+      const subtitleDisplay = ` ${subtitleText} `;
+      const subtitleWidth = cellLen(subtitleDisplay);
+      const subtitleSeg = this.subtitleStyle ?? border;
+
+      if (subtitleWidth >= centerWidth) {
+        // Cell-aware clip — see _renderTopBorder.
+        yield new Segment(setCellSize(subtitleDisplay, centerWidth), subtitleSeg);
+      } else {
+        const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
+        const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
+        if (leftRuleWidth > 0) yield new Segment(box.bottom.repeat(leftRuleWidth), border);
+        yield new Segment(subtitleDisplay, subtitleSeg);
+        if (rightRuleWidth > 0) yield new Segment(box.bottom.repeat(rightRuleWidth), border);
+      }
+    }
+
+    if (accessoryWidth > 0) {
+      // Cell-aware clip — see _renderTopBorder.
+      const fit = accessoryWidth > innerBorderWidth
+        ? setCellSize(accessoryDisplay, innerBorderWidth)
+        : accessoryDisplay;
+      yield new Segment(fit, accessoryStyle);
     }
 
     yield new Segment(box.bottomRight, border);
     yield Segment.line();
+  }
+
+  private _resolveAccessory(
+    a: BorderAccessory | undefined,
+  ): string | RichText | undefined {
+    if (a === undefined) return undefined;
+    if (typeof a === "function") return a();
+    return a;
   }
 
   private *_renderBlankLine(

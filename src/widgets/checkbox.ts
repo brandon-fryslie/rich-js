@@ -15,10 +15,10 @@ import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
+import { cellLen } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { cellLen } from "../core/cells.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -37,8 +37,8 @@ export class Checkbox extends WidgetBase {
   @observable accessor label: string;
   @observable accessor checked: boolean;
 
-  // [LAW:dataflow-not-control-flow] theme is observable.ref so render() reads
-  // it as a reactive dependency; setTheme triggers the screen's autorun.
+  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // re-render — see slider.ts.
   @observable.ref private accessor _theme: TerminalTheme;
 
   constructor(options: CheckboxOptions) {
@@ -61,10 +61,12 @@ export class Checkbox extends WidgetBase {
     if (event.key === "space") {
       this.checked = !this.checked;
       this.emitChange();
+      event.stop();
       return;
     }
     if (event.key === "enter") {
       this.emitSubmit();
+      event.stop();
     }
   }
 
@@ -92,6 +94,7 @@ export class Checkbox extends WidgetBase {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
+    // [LAW:one-source-of-truth] cellLen — see button.ts.
     const width = cellLen(this.label) + 4;
     return { minimum: width, maximum: width };
   }

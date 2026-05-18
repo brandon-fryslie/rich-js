@@ -64,6 +64,22 @@ The thirteen attributes documented in `spec/style.md` are each registered as a o
 
 Short aliases from the same source are also registered, so authors can write either form: `b`/`bold`, `d`/`dim`, `i`/`italic`, `u`/`underline`, `s`/`strike`, `r`/`reverse`, `o`/`overline`, `uu`/`underline2`. Both forms produce the same fragment; the canonical name is used in the resulting `Style`.
 
+#### Multi-attribute style spec
+
+A single `style` function takes a space-separated style spec and a child fragment: `{{ style "bold underline #ff6b6b" "alarm!" }}`, `{{ style "italic on white" .username }}`, `{{ style "not dim" .field }}`. The first argument is parsed by the same grammar `Style.parse` consults — the inside of `[...]` markup — so any spec accepted in markup is accepted here, and any spec rejected by markup raises the same `StyleSyntaxError` surface through `EvalError`. Tokens accepted: every named foreground colour, hex (`#RRGGBB` / `#RRGGBBAA`), `color(N)`, `rgb(r,g,b)`, every text attribute and its short alias, `not <attr>`, `on <bg-color>`, and `link <url>`.
+
+Reason for the single-function shape: the per-attribute functions (`bold`, `underline`, `hex`, …) compose by nesting, which is awkward when the styling for a fragment is a fixed bundle of attributes or when the same bundle is applied in many places. `style` collapses that bundle into one call, and because the spec is a string it flows through ordinary Go-template `$var` assignment and through scope — naming a reusable style set requires no additional API:
+
+```
+{{ $alert := "bold underline #ff6b6b" }}
+{{ style $alert "alarm!" }}
+{{ style $alert .otherField }}
+```
+
+A spec passed through scope works the same way: `engine.evaluate(tpl, { styles: { alert: "bold #ff6b6b" } })` followed by `{{ style .styles.alert .field }}`. The same template source produces the same fragment as a directly-constructed `Style.parse(spec)` applied to the child — the "round-trip through `Style` without semantic drift" property the binding's tests assert.
+
+`style` is the natural escape valve for "apply many styles at once"; for one-or-two-attribute cases the per-attribute functions (or the pipe form documented under **Composition**) are usually shorter.
+
 #### Negated attributes
 
 For each attribute, a `not_<name>` form turns the attribute off rather than on: `{{ not_bold "x" }}`, `{{ not_italic "x" }}`. This is the templating analogue of the string-form `not bold` / `not italic`. Negated forms are not aliased — the `not_*` family stays canonical-only to keep the inventory predictable.
@@ -126,6 +142,14 @@ When two styles meet on the same fragment, conflict resolution follows `Style.ad
 - `{{ on "white" (red "x") }}` → fragment with `color = red, bgcolor = white`. Foreground and background are independent slots.
 
 A fragment built by template composition is equivalent to the same styling expressed by directly constructing a `Style` chain — `Style.parse("red").add(Style.parse("bold"))` produces the same final `Style` as `red (bold …)`. This is the "round-trip through `Style` without semantic drift" property the binding's tests assert.
+
+**Pipe form.** Go template's last-arg piping (`x | f a b` ≡ `f a b x`) gives a flat alternative to nested composition. Because every style function takes its child in the trailing `liftable` slot, the pipe form composes uniformly across the entire vocabulary:
+
+- `{{ "alarm!" | bold | underline | red }}` is equivalent to `{{ red (underline (bold "alarm!")) }}` — read left-to-right ("take 'alarm!', make it bold, then underline it, then red").
+- Parameterised styles work the same way: `{{ "alarm!" | hex "#ff6b6b" | bold }}` is equivalent to `{{ bold (hex "#ff6b6b" "alarm!") }}` — the colour spec stays positional, the child arrives at the trailing slot via the pipe.
+- The pipe form composes with `style`: `{{ "alarm!" | style "bold underline #ff6b6b" }}` and `{{ style $alert .field }}` are the two canonical "many styles at once" forms; pick whichever reads more naturally for the surrounding template.
+
+The pipe form is plain Go template syntax — it is documented here only because it changes the typical reading order. Nested and piped templates produce byte-identical fragments; choose by readability.
 
 ### The `link` function and the multi-cell contract
 

@@ -48,6 +48,10 @@ describe("richTextFuncs() inventory", () => {
     }
   });
 
+  it("registers the multi-attribute style spec function", () => {
+    expect(richTextFuncs().style).toBeDefined();
+  });
+
   it("registers short attribute aliases", () => {
     const funcs = richTextFuncs();
     for (const alias of ["b", "d", "i", "u", "s", "r", "o", "uu"]) {
@@ -223,6 +227,116 @@ describe("multi-fragment templates", () => {
     expect(out[0]!.style.color?.name).toBe("red");
     expect(out[1]!.plain).toBe("b");
     expect(out[1]!.style.color?.name).toBe("blue");
+  });
+});
+
+describe("style function (multi-attribute spec)", () => {
+  it("applies a single attribute spec", () => {
+    const rt = evalOne(`{{ style "bold" "x" }}`);
+    expect(rt.style.bold).toBe(true);
+  });
+
+  it("applies multiple attributes from one spec", () => {
+    const rt = evalOne(`{{ style "bold underline" "x" }}`);
+    expect(rt.style.bold).toBe(true);
+    expect(rt.style.underline).toBe(true);
+  });
+
+  it("mixes attributes and a foreground color in one spec", () => {
+    const rt = evalOne(`{{ style "bold #ff6b6b" "alarm!" }}`);
+    expect(rt.style.bold).toBe(true);
+    expect(rt.style.color?.getTruecolor().hex).toBe("#ff6b6b");
+  });
+
+  it("accepts 'on <bg>' for background", () => {
+    const rt = evalOne(`{{ style "italic on white" "x" }}`);
+    expect(rt.style.italic).toBe(true);
+    expect(rt.style.bgcolor?.name).toBe("white");
+  });
+
+  it("accepts 'not <attr>' for negation", () => {
+    const rt = evalOne(`{{ style "not bold" "x" }}`);
+    expect(rt.style.bold).toBe(false);
+  });
+
+  it("accepts 'link <url>' inside the spec", () => {
+    const rt = evalOne(`{{ style "bold link https://example.com" "x" }}`);
+    expect(rt.style.bold).toBe(true);
+    expect(rt.style.link).toBe("https://example.com");
+  });
+
+  it("empty spec is a no-op (matches Style.parse semantics)", () => {
+    const rt = evalOne(`{{ style "" "x" }}`);
+    expect(rt.plain).toBe("x");
+    expect(rt.style.bold).toBeUndefined();
+    expect(rt.style.color).toBeUndefined();
+  });
+
+  it("'none' spec is a no-op (DEFAULT_STYLES lookup)", () => {
+    const rt = evalOne(`{{ style "none" "x" }}`);
+    expect(rt.style.bold).toBeUndefined();
+    expect(rt.style.color).toBeUndefined();
+  });
+
+  it("produces the same fragment as nested per-attribute calls", () => {
+    const spec = evalOne(`{{ style "bold underline #ff6b6b" "x" }}`);
+    const nested = evalOne(`{{ underline (hex "#ff6b6b" (bold "x")) }}`);
+    expect(spec.style.bold).toBe(nested.style.bold);
+    expect(spec.style.underline).toBe(nested.style.underline);
+    expect(spec.style.color?.getTruecolor().hex).toBe(nested.style.color?.getTruecolor().hex);
+  });
+
+  it("composes with outer style functions (outer wins on conflict)", () => {
+    const rt = evalOne(`{{ blue (style "red bold" "x") }}`);
+    expect(rt.style.bold).toBe(true);
+    expect(rt.style.color?.name).toBe("blue");
+  });
+
+  it("composes inside a style spec (style spec wins over inner)", () => {
+    const rt = evalOne(`{{ style "blue" (red "x") }}`);
+    expect(rt.style.color?.name).toBe("blue");
+  });
+
+  it("reusable via Go template $var assignment", () => {
+    const out = engine
+      .parse(`{{ $s := "bold #ff6b6b" }}{{ style $s "a" }}{{ style $s "b" }}`)
+      .evaluate({});
+    expect(out.length).toBe(2);
+    expect(out[0]!.plain).toBe("a");
+    expect(out[1]!.plain).toBe("b");
+    for (const rt of out) {
+      expect(rt.style.bold).toBe(true);
+      expect(rt.style.color?.getTruecolor().hex).toBe("#ff6b6b");
+    }
+  });
+
+  it("reusable via scope field", () => {
+    const out = engine
+      .parse(`{{ style .alert "danger" }}`)
+      .evaluate({ alert: "bold red" });
+    expect(out[0]!.plain).toBe("danger");
+    expect(out[0]!.style.bold).toBe(true);
+    expect(out[0]!.style.color?.name).toBe("red");
+  });
+
+  it("works via the pipe form (last-arg piping)", () => {
+    const a = evalOne(`{{ "alarm!" | style "bold red" }}`);
+    const b = evalOne(`{{ style "bold red" "alarm!" }}`);
+    expect(a.plain).toBe(b.plain);
+    expect(a.style.bold).toBe(b.style.bold);
+    expect(a.style.color?.name).toBe(b.style.color?.name);
+  });
+
+  it("an invalid token raises StyleSyntaxError through the engine", () => {
+    expect(() => evalOne(`{{ style "notarealthing" "x" }}`)).toThrowError(
+      /Invalid style definition/,
+    );
+  });
+
+  it("a non-string spec is rejected by the argType gate, not the body", () => {
+    expect(() => engine.parse(`{{ style 5 "x" }}`).evaluate({})).toThrowError(
+      /TypeMismatch|expected/i,
+    );
   });
 });
 

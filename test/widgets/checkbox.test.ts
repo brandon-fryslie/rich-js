@@ -1,10 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { Checkbox } from "../../src/widgets/checkbox.js";
-import type { InteractiveWidget, KeyEvent, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { KeyEvent } from "../../src/widgets/types.js";
+import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
-const enterEvent: KeyEvent = { key: "enter", character: "\r", shift: false, ctrl: false, meta: false };
-const spaceEvent: KeyEvent = { key: "space", character: " ", shift: false, ctrl: false, meta: false };
-const escapeEvent: KeyEvent = { key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false };
+// Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
+const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false });
+const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
+const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
 
 const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
 const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
@@ -106,7 +108,7 @@ describe("Checkbox", () => {
     it("toggle does not change width", () => {
       const cb = new Checkbox({ label: "Go" });
       const uncheckedSegs = [...cb.render({ maxWidth: 80 })];
-      cb.handleKey(spaceEvent);
+      cb.handleKey(spaceEvent());
       const checkedSegs = [...cb.render({ maxWidth: 80 })];
       expect(uncheckedSegs[0]!.text.length).toBe(checkedSegs[0]!.text.length);
     });
@@ -133,7 +135,7 @@ describe("Checkbox", () => {
     it("measure is independent of checked/focused state", () => {
       const cb = new Checkbox({ label: "Go" });
       const before = cb.measure({ maxWidth: 80 });
-      cb.handleKey(spaceEvent);
+      cb.handleKey(spaceEvent());
       cb.focus();
       const after = cb.measure({ maxWidth: 80 });
       expect(before).toEqual(after);
@@ -143,9 +145,9 @@ describe("Checkbox", () => {
   describe("events", () => {
     it("toggles checked on space key", () => {
       const cb = new Checkbox({ label: "Go" });
-      cb.handleKey(spaceEvent);
+      cb.handleKey(spaceEvent());
       expect(cb.checked).toBe(true);
-      cb.handleKey(spaceEvent);
+      cb.handleKey(spaceEvent());
       expect(cb.checked).toBe(false);
     });
 
@@ -153,7 +155,7 @@ describe("Checkbox", () => {
       const cb = new Checkbox({ label: "Go" });
       const changes: InteractiveWidget[] = [];
       cb.onChange((w) => changes.push(w));
-      cb.handleKey(spaceEvent);
+      cb.handleKey(spaceEvent());
       expect(changes).toHaveLength(1);
       expect(changes[0]).toBe(cb);
     });
@@ -162,7 +164,7 @@ describe("Checkbox", () => {
       const cb = new Checkbox({ label: "Go" });
       const submits: InteractiveWidget[] = [];
       cb.onSubmit((w) => submits.push(w));
-      cb.handleKey(enterEvent);
+      cb.handleKey(enterEvent());
       expect(submits).toHaveLength(1);
       expect(cb.checked).toBe(false);
     });
@@ -173,7 +175,7 @@ describe("Checkbox", () => {
       const submits: InteractiveWidget[] = [];
       cb.onChange((w) => changes.push(w));
       cb.onSubmit((w) => submits.push(w));
-      cb.handleKey(escapeEvent);
+      cb.handleKey(escapeEvent());
       expect(changes).toHaveLength(0);
       expect(submits).toHaveLength(0);
       expect(cb.checked).toBe(false);
@@ -183,7 +185,7 @@ describe("Checkbox", () => {
       const cb = new Checkbox({ label: "Go", disabled: true });
       const changes: InteractiveWidget[] = [];
       cb.onChange((w) => changes.push(w));
-      cb.handleKey(spaceEvent);
+      cb.handleKey(spaceEvent());
       expect(cb.checked).toBe(false);
       expect(changes).toHaveLength(0);
     });
@@ -192,7 +194,7 @@ describe("Checkbox", () => {
       const cb = new Checkbox({ label: "Go", disabled: true });
       const submits: InteractiveWidget[] = [];
       cb.onSubmit((w) => submits.push(w));
-      cb.handleKey(enterEvent);
+      cb.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
 
@@ -254,7 +256,7 @@ describe("Checkbox", () => {
       const changes: InteractiveWidget[] = [];
       const unsub = cb.onChange((w) => changes.push(w));
       unsub();
-      cb.handleKey(spaceEvent);
+      cb.handleKey(spaceEvent());
       expect(changes).toHaveLength(0);
     });
 
@@ -263,7 +265,7 @@ describe("Checkbox", () => {
       const submits: InteractiveWidget[] = [];
       const unsub = cb.onSubmit((w) => submits.push(w));
       unsub();
-      cb.handleKey(enterEvent);
+      cb.handleKey(enterEvent());
       expect(submits).toHaveLength(0);
     });
   });

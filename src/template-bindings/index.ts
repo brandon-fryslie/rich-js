@@ -29,6 +29,8 @@
 
 import { createEngine, type Engine, type FuncMap } from "@promptctl/go-template-js";
 import { RichText } from "../core/text.js";
+import { Style } from "../core/style.js";
+import { Segment } from "../core/segment.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
@@ -74,4 +76,67 @@ export function createRichTextEngine(): Engine<RichText> {
     toString: (rt) => rt.plain,
     funcs: richTextFuncs(),
   });
+}
+
+/**
+ * Compile a template source against `engine` and render the result to a
+ * flat `Segment[]`. The 90%-case convenience over chaining `engine.compile`,
+ * `RichText.fromFragments`, and `.render` by hand:
+ *
+ * - Runs `engine.compile(source)(scope)` to get the engine's `RichText[]`.
+ * - Flattens that fragment list into a single styled `RichText` via
+ *   `RichText.fromFragments` so every fragment's wrapping style survives.
+ * - Renders to a `Segment[]` at the requested `maxWidth`.
+ * - Wraps the whole flow in a try/catch — on parse/evaluate failure,
+ *   emits a single dim styled `[error: <message>]` segment the caller can
+ *   drop into their layout. No bespoke fallback wiring required at every
+ *   call site.
+ *
+ * [LAW:single-enforcer] One place owns "render a template to segments,
+ * degrade gracefully on errors" — every consumer that wants this exact
+ * shape reads from here rather than re-implementing the same try/catch +
+ * error-formatting glue.
+ *
+ * For the 10% — custom error UX, intermediate access to the `RichText`,
+ * pre-compiled templates re-used many times — call the engine directly
+ * and use `RichText.fromFragments` to flatten. This helper is sugar for
+ * the live-render case (e.g. a preview pane), not a replacement for the
+ * compile-once-evaluate-many pattern.
+ *
+ * @param maxWidth defaults to 400 — large enough that downstream `splitLines`
+ * / `adjustLineLength` clipping decides actual width, matching the typical
+ * "render wide, fit on output" pipeline.
+ * @param errorStyle is a `Style.parse` spec (default `"red dim"`).
+ */
+export function renderTemplate(
+  engine: Engine<RichText>,
+  source: string,
+  scope: unknown = {},
+  options?: { maxWidth?: number; errorStyle?: string },
+): Segment[] {
+  try {
+    const frags = engine.compile(source)(scope);
+    const rt = RichText.fromFragments(frags);
+    return Array.from(rt.render({
+      maxWidth: options?.maxWidth ?? 400,
+      isTerminal: true,
+      encoding: "utf-8",
+    }));
+  } catch (e) {
+    return [new Segment(`[error: ${String(e).slice(0, 80)}]`, safeErrorStyle(options?.errorStyle))];
+  }
+}
+
+// [LAW:single-enforcer] The error-path Style must not itself throw, or
+// the whole "degrade gracefully" promise of renderTemplate is broken. A
+// bogus user-supplied `errorStyle` spec falls back to a hard-coded safe
+// Style — never propagates the parse failure to the caller.
+const FALLBACK_ERROR_STYLE = new Style({ color: "red", dim: true });
+function safeErrorStyle(spec: string | undefined): Style {
+  if (spec === undefined) return FALLBACK_ERROR_STYLE;
+  try {
+    return Style.parse(spec);
+  } catch {
+    return FALLBACK_ERROR_STYLE;
+  }
 }

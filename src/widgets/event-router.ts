@@ -17,14 +17,22 @@
  * if it extends the sequence. Tests can call `flush()` to drain synchronously.
  */
 
+import { KeyEvent } from "./types.js";
 import type {
   Screen,
   FocusManager,
   InteractiveWidget,
-  KeyEvent,
   WidgetMouseEvent,
+  KeyHandlerOptions,
+  KeyHandlerPriority,
   Unsubscribe,
 } from "./types.js";
+
+type KeyHandler = (event: KeyEvent) => void;
+interface RegisteredKeyHandler {
+  handler: KeyHandler;
+  priority: KeyHandlerPriority;
+}
 
 type WidgetSource = {
   focusManager: FocusManager;
@@ -138,14 +146,17 @@ export class EventRouter {
   private running = false;
   private dataListener: ((chunk: Buffer | string) => void) | undefined;
   private escTimer: ReturnType<typeof setImmediate> | undefined;
-  // [LAW:single-enforcer] Mouse capture: the widget that received `mouse_down`
-  // owns the subsequent `mouse_move` / `mouse_up` events until release, even
-  // if the pointer leaves its bounds. This lets Slider drag stay live and
-  // Dropdown receive the outside-click that collapses it. Capture is data,
-  // not a mode — the same dispatch pipeline runs every event.
-  private mouseCapture: InteractiveWidget | null = null;
+  // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's hit
+  // widget is recorded; mouse_move/mouse_up between then and the next
+  // mouse_up route to this widget unconditionally so dragging outside its
+  // bounds still drives state (e.g. Slider's _dragging). Cleared on the
+  // next mouse_up.
+  private capturedWidget: InteractiveWidget | null = null;
 
-  private readonly keyHandlers = new Set<(event: KeyEvent) => void>();
+  // [LAW:dataflow-not-control-flow] Ordered chain; the dispatcher walks it
+  // in priority tiers and stops as soon as some participant calls
+  // `event.stop()`. Insertion order is preserved within each tier.
+  private readonly keyChain: RegisteredKeyHandler[] = [];
   private readonly mouseHandlers = new Set<(event: WidgetMouseEvent) => void>();
 
   constructor(options: EventRouterOptions) {
@@ -161,6 +172,14 @@ export class EventRouter {
     const outputIsTTY = !!(this.output as NodeJS.WriteStream).isTTY;
     this.manageRawMode = options.manageRawMode ?? inputIsTTY;
     this.manageMouse = options.manageMouse ?? outputIsTTY;
+
+    // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab traversal —
+    // register it as a normal-priority handler so it participates in the
+    // chain. This MUST be the first registration so it lands ahead of any
+    // user-added normal handlers; widgets that want to suppress traversal
+    // call `event.stop()` from their own handleKey and FocusManager
+    // never runs for that event.
+    this.onKey((event) => this.source.focusManager.handleKey(event));
   }
 
   // --- Lifecycle ---
@@ -183,30 +202,48 @@ export class EventRouter {
   }
 
   stop(): void {
-    if (!this.running) return;
-    this.running = false;
+    if (this.running) {
+      this.running = false;
 
-    if (this.dataListener) {
-      this.input?.off("data", this.dataListener);
-      this.dataListener = undefined;
+      if (this.dataListener) {
+        this.input?.off("data", this.dataListener);
+        this.dataListener = undefined;
+      }
+
+      if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
+      if (this.manageRawMode && this.input?.setRawMode) {
+        this.input.setRawMode(false);
+      }
     }
+
+    // [LAW:one-source-of-truth] Per-session state belongs to one session.
+    // stop() leaves the router in the same shape a fresh construction
+    // would: empty parse buffer, no captured widget, no pending ESC timer.
+    // All cleanup is outside the `running` guard because feed() can arm
+    // escTimer (and grow buffer) even when running is false — without
+    // those, a pre-start feed could leave a deferred escape firing into
+    // the next session. Clearing already-empty state is a no-op so this
+    // stays safe on repeated stop().
     if (this.escTimer) {
       clearImmediate(this.escTimer);
       this.escTimer = undefined;
     }
-    this.mouseCapture = null;
-
-    if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
-    if (this.manageRawMode && this.input?.setRawMode) {
-      this.input.setRawMode(false);
-    }
+    this.buffer = Buffer.alloc(0);
+    this.capturedWidget = null;
   }
 
   // --- External hooks ---
 
-  onKey(handler: (event: KeyEvent) => void): Unsubscribe {
-    this.keyHandlers.add(handler);
-    return () => this.keyHandlers.delete(handler);
+  onKey(handler: KeyHandler, options?: KeyHandlerOptions): Unsubscribe {
+    const entry: RegisteredKeyHandler = {
+      handler,
+      priority: options?.priority ?? "normal",
+    };
+    this.keyChain.push(entry);
+    return () => {
+      const idx = this.keyChain.indexOf(entry);
+      if (idx !== -1) this.keyChain.splice(idx, 1);
+    };
   }
 
   onMouse(handler: (event: WidgetMouseEvent) => void): Unsubscribe {
@@ -243,7 +280,7 @@ export class EventRouter {
     }
     if (this.buffer.length > 0 && this.buffer[0] === ESC && this.buffer.length === 1) {
       this.buffer = this.buffer.subarray(1);
-      this.dispatchKey({ key: "escape", character: "", shift: false, ctrl: false, meta: false });
+      this.dispatchKey(new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }));
     }
   }
 
@@ -270,7 +307,7 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 1,
-        event: { key: "c", character: "", shift: false, ctrl: true, meta: false },
+        event: new KeyEvent({ key: "c", character: "", shift: false, ctrl: true, meta: false }),
       };
     }
 
@@ -280,13 +317,13 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 1,
-        event: {
+        event: new KeyEvent({
           key: named,
           character: named === "space" ? " " : "",
           shift: false,
           ctrl: false,
           meta: false,
-        },
+        }),
       };
     }
 
@@ -297,7 +334,7 @@ export class EventRouter {
       return {
         kind: "key",
         bytes: 1,
-        event: { key: letter, character: "", shift: false, ctrl: true, meta: false },
+        event: new KeyEvent({ key: letter, character: "", shift: false, ctrl: true, meta: false }),
       };
     }
 
@@ -317,13 +354,13 @@ export class EventRouter {
     return {
       kind: "key",
       bytes: len,
-      event: {
+      event: new KeyEvent({
         key: character.toLowerCase(),
         character,
         shift: character.length === 1 && character !== character.toLowerCase(),
         ctrl: false,
         meta: false,
-      },
+      }),
     };
   }
 
@@ -335,22 +372,70 @@ export class EventRouter {
     if (b1 === LBRACKET) return this.consumeCSI(buf);
     // ESC O X → SS3 (F1–F4 / arrows on some terms)
     if (b1 === O_BYTE) return this.consumeSS3(buf);
-    // ESC ESC → escape key (some terminals double-send). Consume both bytes so
-    // the second ESC doesn't re-enter the lone-ESC timer and produce a phantom
-    // duplicate event.
+    // ESC ESC → escape key (some terminals double-send). Consume BOTH bytes
+    // so the user sees one escape event, not two. Without this, the second
+    // ESC remained in the buffer and produced a second escape via the
+    // lone-ESC flush path.
     if (b1 === ESC) {
       return {
         kind: "key",
         bytes: 2,
-        event: { key: "escape", character: "", shift: false, ctrl: false, meta: false },
+        event: new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
       };
     }
-    // ESC <any other byte> → unrecognised sequence; emit Escape for the lone ESC
-    // (bytes: 1 consumed), then b1 is re-processed on the next call.
+    // ESC <named> / ESC <printable> → Alt-modified key.
+    // Terminals encode Alt+<key> as the literal byte preceded by ESC, so
+    // `ESC b` is Alt+B, `ESC <0x7f>` is Alt+Backspace, `ESC <0x20>` is
+    // Alt+Space, etc. The router surfaces this as `{ key, meta: true }` —
+    // matching the shape used for Ctrl-modified keys, so handlers can
+    // branch on `event.meta` without parsing escape sequences themselves.
+    //
+    // [LAW:one-source-of-truth] Named single-byte keys (space, tab,
+    // enter, backspace) use the SAME canonical key names on the Alt path
+    // as on the non-Alt path. Without this, `Alt+Space` decoded as
+    // `key: " "` while a bare space decoded as `key: "space"`, so a
+    // handler couldn't match Alt+Space via `event.key === "space" &&
+    // event.meta`. Routing through SINGLE_BYTE_KEYS first preserves the
+    // canonical naming.
+    //
+    // [LAW:one-source-of-truth] Modifier decoding for *all* navigation keys
+    // lives in this file: CSI param-style modifiers (e.g. `ESC[1;3D` for
+    // Alt+Left) flow through `decodeModifier`, and ESC-prefixed Alt forms
+    // flow through this branch. Widgets read `event.meta` and never re-parse.
+    const namedAlt = SINGLE_BYTE_KEYS[b1];
+    if (namedAlt && namedAlt !== "escape") {
+      return {
+        kind: "key",
+        bytes: 2,
+        event: new KeyEvent({
+          key: namedAlt,
+          character: "",
+          shift: false,
+          ctrl: false,
+          meta: true,
+        }),
+      };
+    }
+    if (b1 >= 0x20 && b1 <= 0x7e) {
+      const ch = String.fromCharCode(b1);
+      return {
+        kind: "key",
+        bytes: 2,
+        event: new KeyEvent({
+          key: ch.toLowerCase(),
+          character: "",
+          shift: ch !== ch.toLowerCase(),
+          ctrl: false,
+          meta: true,
+        }),
+      };
+    }
+    // Truly unrecognised follow-up byte → treat the ESC as a lone escape
+    // and re-process from b1 on the next pass.
     return {
       kind: "key",
       bytes: 1,
-      event: { key: "escape", character: "", shift: false, ctrl: false, meta: false },
+      event: new KeyEvent({ key: "escape", character: "", shift: false, ctrl: false, meta: false }),
     };
   }
 
@@ -362,7 +447,7 @@ export class EventRouter {
     return {
       kind: "key",
       bytes: 3,
-      event: { key: name, character: "", shift: false, ctrl: false, meta: false },
+      event: new KeyEvent({ key: name, character: "", shift: false, ctrl: false, meta: false }),
     };
   }
 
@@ -421,16 +506,36 @@ export class EventRouter {
 
   // --- Dispatch ---
 
+  // [LAW:dataflow-not-control-flow] Three-stage walk; same shape every
+  // dispatch, only the event's `stopped` flag short-circuits later stages.
+  // The router holds NO key-specific policy — Tab semantics live entirely
+  // in FocusManager (registered as a normal-priority handler at construction).
   private dispatchKey(event: KeyEvent): void {
-    for (const handler of this.keyHandlers) handler(event);
+    // [LAW:one-source-of-truth] Snapshot the chain once at the start of
+    // dispatch. A handler that unsubscribes itself (or another handler)
+    // splices the live keyChain and would shift indices under the running
+    // for-of loop, silently skipping the next handler. The snapshot
+    // freezes the participant set for this dispatch; later registrations
+    // join the chain for the next event, removals take effect after.
+    const chain = [...this.keyChain];
 
-    if (event.key === "tab") {
-      if (event.shift) this.source.focusManager.prev();
-      else this.source.focusManager.next();
-      return;
+    // Stage 1: high-priority handlers (global overrides like Ctrl+C).
+    for (const entry of chain) {
+      if (event.stopped) return;
+      if (entry.priority === "high") entry.handler(event);
     }
+    if (event.stopped) return;
 
+    // Stage 2: the focused widget.
     this.source.focusManager.current?.handleKey(event);
+    if (event.stopped) return;
+
+    // Stage 3: normal-priority handlers (FocusManager's Tab traversal,
+    // plus any app-registered fallbacks).
+    for (const entry of chain) {
+      if (event.stopped) return;
+      if (entry.priority === "normal") entry.handler(event);
+    }
   }
 
   private dispatchMouse(event: WidgetMouseEvent): void {
@@ -438,10 +543,8 @@ export class EventRouter {
 
     const widgets = this.source.getWidgets();
 
-    // Hover tracking is independent of capture — it always reflects which
-    // widget the pointer is physically over, regardless of which widget owns
-    // the gesture. Slider dragging outside its own bounds therefore clears
-    // its hover even while it keeps receiving mouse_move events.
+    // Hover tracking: any widget whose hover state changed gets an update
+    // via the canonical setHovered (on WidgetBase). One setter, no fallback.
     if (event.type === "mouse_move") {
       for (const w of widgets) {
         if (!w.visible) continue;
@@ -450,43 +553,22 @@ export class EventRouter {
       }
     }
 
-    // [LAW:dataflow-not-control-flow] Resolve target as data: capture wins
-    // for mid-gesture move/up events; everything else falls back to the
-    // topmost-hit widget. Mouse_down also seeds the capture.
-    const hit = topmostHit(widgets, event.x, event.y);
-    const target = pickMouseTarget(this.mouseCapture, hit, event.type);
-    if (event.type === "mouse_down") this.mouseCapture = hit;
-    if (event.type === "mouse_up") this.mouseCapture = null;
-
+    // [LAW:dataflow-not-control-flow] Same pipeline every event; the
+    // capture value and event type pick the target. mouse_down opens a
+    // capture, mouse_up closes it, mouse_move in between routes to the
+    // captured widget regardless of pointer position. Scroll events
+    // bypass capture (they're not drag-scoped).
+    const useCapture =
+      this.capturedWidget !== null &&
+      (event.type === "mouse_move" || event.type === "mouse_up");
+    const target = useCapture
+      ? this.capturedWidget
+      : topmostHit(widgets, event.x, event.y);
     if (target) target.handleMouse(event);
-  }
-}
 
-function topmostHit(
-  widgets: readonly InteractiveWidget[],
-  x: number,
-  y: number,
-): InteractiveWidget | null {
-  for (let i = widgets.length - 1; i >= 0; i--) {
-    const w = widgets[i]!;
-    if (!w.visible) continue;
-    if (!w.containsPoint(x, y)) continue;
-    return w;
+    if (event.type === "mouse_down") this.capturedWidget = target;
+    else if (event.type === "mouse_up") this.capturedWidget = null;
   }
-  return null;
-}
-
-// [LAW:dataflow-not-control-flow] Target selection is a pure function of
-// (capture, hit, event-type). `mouse_move` and `mouse_up` honour capture so
-// drag gestures and outside-click collapses keep working when the pointer
-// exits widget bounds; everything else uses the hit-test result.
-function pickMouseTarget(
-  capture: InteractiveWidget | null,
-  hit: InteractiveWidget | null,
-  type: WidgetMouseEvent["type"],
-): InteractiveWidget | null {
-  if (capture && (type === "mouse_move" || type === "mouse_up")) return capture;
-  return hit;
 }
 
 // --- Helpers ---
@@ -542,7 +624,7 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
     return {
       kind: "key",
       bytes,
-      event: { key: name, character: "", shift, ctrl, meta },
+      event: new KeyEvent({ key: name, character: "", shift, ctrl, meta }),
     };
   }
 
@@ -550,18 +632,23 @@ function decodeCSI(params: string, final: string, bytes: number): ConsumeResult 
   if (!name) return { kind: "skip", bytes };
 
   // Special case: ESC[Z is shift+tab regardless of explicit modifier.
+  // [LAW:one-source-of-truth] `character` is the printable character the
+  // key would produce, or "" for non-printable / modifier-only events.
+  // The non-shifted tab path emits character: "" (Tab is named, not
+  // printed) — keep shift+tab consistent. Distinguish via key === "tab"
+  // + shift, not character.
   if (final === "Z") {
     return {
       kind: "key",
       bytes,
-      event: { key: "tab", character: "\t", shift: true, ctrl: false, meta: false },
+      event: new KeyEvent({ key: "tab", character: "", shift: true, ctrl: false, meta: false }),
     };
   }
 
   return {
     kind: "key",
     bytes,
-    event: { key: name, character: "", shift, ctrl, meta },
+    event: new KeyEvent({ key: name, character: "", shift, ctrl, meta }),
   };
 }
 
@@ -577,3 +664,15 @@ function decodeModifier(mod: number): { shift: boolean; ctrl: boolean; meta: boo
   };
 }
 
+function topmostHit(
+  widgets: readonly InteractiveWidget[],
+  x: number,
+  y: number,
+): InteractiveWidget | null {
+  for (let i = widgets.length - 1; i >= 0; i--) {
+    const w = widgets[i]!;
+    if (!w.visible) continue;
+    if (w.containsPoint(x, y)) return w;
+  }
+  return null;
+}

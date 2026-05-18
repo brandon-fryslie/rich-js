@@ -537,6 +537,41 @@ export class RichText implements Renderable, Measurable {
     return result;
   }
 
+  /**
+   * Concatenate a sequence of `RichText` fragments into a single `RichText`,
+   * flattening each fragment's wrapping `style` onto a span over that
+   * fragment's range so downstream rendering preserves the original styling.
+   *
+   * Designed for the template engine's `RichText[]` output: a top-level
+   * `{{ red "x" }}{{ blue "y" }}` evaluates to two fragments — one with
+   * wrapping `style = red`, one with `blue` — and consumers that want a
+   * single styled string for downstream rendering need both styles
+   * preserved as spans on the concatenated result. The plain `append()`
+   * propagates spans only, so this static does the additional work of
+   * lifting `frag.style` into a span before appending.
+   *
+   * Empty input → empty `RichText` with `end: ""`. Caller can override
+   * `end` (defaults to `""` — the engine-output case rarely wants a
+   * trailing newline added by the container).
+   */
+  static fromFragments(
+    fragments: readonly RichText[],
+    options?: { end?: string },
+  ): RichText {
+    const result = new RichText("", { end: options?.end ?? "" });
+    for (const frag of fragments) {
+      const start = result.length;
+      result.append(frag.plain);
+      if (!frag.style.isNull) {
+        result.stylize(frag.style, start, result.length);
+      }
+      for (const span of frag.spans) {
+        result.stylize(span.style, start + span.start, start + span.end);
+      }
+    }
+    return result;
+  }
+
   // --- Renderable ---
 
   *render(options: RenderOptions): Iterable<Segment> {

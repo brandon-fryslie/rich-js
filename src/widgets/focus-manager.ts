@@ -9,6 +9,7 @@ import { makeObservable, observable, action } from "mobx";
 import type {
   InteractiveWidget,
   FocusManager,
+  KeyEvent,
   Unsubscribe,
 } from "./types.js";
 
@@ -35,12 +36,11 @@ export class DefaultFocusManager implements FocusManager {
 
   @action
   register(widget: InteractiveWidget): void {
-    // [LAW:dataflow-not-control-flow] same call shape always behaves the same way:
-    // a duplicate registration is a programmer bug (would silently corrupt focus
-    // cycling and break unregister), so fail loud instead of silently de-duping.
-    if (this.widgetList.includes(widget)) {
-      throw new Error(`FocusManager: widget '${widget.id}' is already registered`);
-    }
+    // [LAW:one-source-of-truth] register is idempotent — the widgetList is
+    // a set in spirit, not a multiset. Without this guard, double-registration
+    // would duplicate the widget so next/prev cycle through it twice and
+    // unregister only removes one copy.
+    if (this.widgetList.includes(widget)) return;
     this.widgetList = [...this.widgetList, widget];
     if (!this.currentWidget && widget.focusable && !widget.disabled) {
       this.setFocus(widget);
@@ -54,14 +54,12 @@ export class DefaultFocusManager implements FocusManager {
     this.widgetList = this.widgetList.filter((w) => w !== widget);
 
     if (this.currentWidget === widget) {
-      // [LAW:single-enforcer] dispatch each transition once via handleFocus —
-      // WidgetBase.focus()/blur() now delegate there, so this is the canonical
-      // edge.
-      widget.handleFocus({ type: "blur" });
+      // [LAW:single-enforcer] WidgetBase.focus()/blur() already route through
+      // handleFocus, so calling both would double-dispatch and trigger any
+      // subclass side effect (e.g. Dropdown clearing filter/overlay) twice.
+      widget.blur();
       const next = this.widgetList.find((w) => w.focusable && !w.disabled) ?? null;
-      if (next) {
-        next.handleFocus({ type: "focus" });
-      }
+      if (next) next.focus();
       this.currentWidget = next;
       this.emitChange();
     }
@@ -97,7 +95,9 @@ export class DefaultFocusManager implements FocusManager {
   @action
   blur(): void {
     if (!this.currentWidget) return;
-    this.currentWidget.handleFocus({ type: "blur" });
+    // [LAW:single-enforcer] blur() already dispatches handleFocus on
+    // WidgetBase — see unregister() for the rationale.
+    this.currentWidget.blur();
     this.currentWidget = null;
     this.emitChange();
   }
@@ -105,6 +105,17 @@ export class DefaultFocusManager implements FocusManager {
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe {
     this.changeHandlers.add(handler);
     return () => this.changeHandlers.delete(handler);
+  }
+
+  // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab semantics. The
+  // router registers this as a normal-priority handler at construction —
+  // it runs after the focused widget, so a widget can `event.stop()`
+  // to suppress traversal (e.g. Dropdown when its overlay is open).
+  handleKey(event: KeyEvent): void {
+    if (event.key !== "tab") return;
+    if (event.shift) this.prev();
+    else this.next();
+    event.stop();
   }
 
   // --- Private ---
@@ -116,11 +127,11 @@ export class DefaultFocusManager implements FocusManager {
   @action
   private setFocus(widget: InteractiveWidget): void {
     if (this.currentWidget === widget) return;
-    if (this.currentWidget) {
-      this.currentWidget.handleFocus({ type: "blur" });
-    }
+    // [LAW:single-enforcer] focus()/blur() already dispatch handleFocus —
+    // see unregister() for the rationale.
+    if (this.currentWidget) this.currentWidget.blur();
     this.currentWidget = widget;
-    widget.handleFocus({ type: "focus" });
+    widget.focus();
     this.emitChange();
   }
 

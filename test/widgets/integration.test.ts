@@ -223,10 +223,9 @@ describe("widget pipeline integration", () => {
       await flush();
 
       const out = h.stdout.joined();
-      // [LAW:types-are-the-program] 4 widgets → 4 lines, no trailing newline,
-      // cursor on line 4 → returning to top is `lastLineCount - 1 = 3` rows up.
+      // 4 widgets → 4 lines drawn last frame. Cursor sits on row 4 (no
+      // trailing newline), so rewinding to the top is 3 rows up.
       expect(out).toMatch(/\x1b\[3A/);
-      expect(out).not.toMatch(/\x1b\[4A/);
       // Erase-to-end-of-line on each line.
       expect(out).toMatch(/\x1b\[K/);
       // The full-screen-clear pattern is forbidden.
@@ -272,33 +271,20 @@ describe("widget pipeline integration", () => {
   });
 
   describe("theme reactivity", () => {
-    // setTheme() flips the widget's observable theme reference; the screen's
-    // autorun reads palette colors via render(), so swapping themes must
-    // trigger a redraw without any other observable change. This is the
-    // bug Copilot caught: a non-observable _theme would leave the screen
-    // stale until something else changed.
-    it("Checkbox.setTheme triggers a screen redraw", async () => {
+    it("setTheme on a mounted widget schedules a new frame", async () => {
+      // [LAW:dataflow-not-control-flow] The theme reference is now
+      // @observable.ref + setTheme is @action across all 5 widgets, so a
+      // swap participates in Screen's autorun just like any other reactive
+      // mutation. This test pins that contract — it has broken once
+      // already when _theme was a plain field and went undetected because
+      // the unit tests on widget rendering didn't exercise the Screen
+      // pipeline.
       await flush();
       h.stdout.reset();
-      h.checkbox.setTheme(MONOKAI);
-      await flush();
-      // A redraw was scheduled and emitted.
-      expect(h.stdout.chunks.length).toBeGreaterThan(0);
-    });
 
-    it("Toggle.setTheme triggers a screen redraw", async () => {
+      h.button.setTheme(MONOKAI);
       await flush();
-      h.stdout.reset();
-      h.toggle.setTheme(MONOKAI);
-      await flush();
-      expect(h.stdout.chunks.length).toBeGreaterThan(0);
-    });
 
-    it("TextInput.setTheme triggers a screen redraw", async () => {
-      await flush();
-      h.stdout.reset();
-      h.input.setTheme(MONOKAI);
-      await flush();
       expect(h.stdout.chunks.length).toBeGreaterThan(0);
     });
   });

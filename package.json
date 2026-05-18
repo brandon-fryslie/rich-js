@@ -1,6 +1,6 @@
 {
-  "name": "rich-js",
-  "version": "0.0.1",
+  "name": "@promptctl/rich-js",
+  "version": "0.2.0",
   "description": "Rich text and beautiful formatting in the terminal — a TypeScript port of Python's Rich",
   "type": "module",
   "main": "dist/index.js",
@@ -42,7 +42,9 @@
     "strip": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-strip/index.js",
     "markup-plugins": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-markup-plugins/index.js",
     "demo-inputs": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-config/index.js",
-    "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js"
+    "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js",
+    "template-bindings": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-template-bindings/index.js",
+    "theme-designer": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-theme-designer/index.js"
   },
   "keywords": [
     "terminal",

@@ -9,7 +9,11 @@
  *   track    — `width` cells of "─" (ASCII fallback "-")
  *   marker   — "●" (ASCII fallback "*") at round((value - min) / range * (width - 1))
  *   filled   — cells left of and including the marker use primary fg
- *   unfilled — cells right of the marker use surface foreground colour, terminal-default background
+ *              on the default terminal bg
+ *   unfilled — cells right of the marker use surface fg on the default
+ *              terminal bg (no explicit bgcolor — the unfilled track
+ *              should sit transparently against whatever the panel /
+ *              parent paints underneath)
  *   focused  — underline on the segments
  *   disabled — dim
  */
@@ -47,8 +51,9 @@ export class Slider extends WidgetBase {
   @observable.ref accessor step: number;
   @observable.ref accessor width: number;
 
-  // [LAW:dataflow-not-control-flow] theme is observable.ref so render() reads
-  // it as a reactive dependency; setTheme triggers the screen's autorun.
+  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // re-render — render() reads _theme.palette, so the theme reference must
+  // participate in MobX reactivity for Screen's autorun to fire on swap.
   @observable.ref private accessor _theme: TerminalTheme;
   private _dragging = false;
 
@@ -58,14 +63,15 @@ export class Slider extends WidgetBase {
     this.min = options.min ?? 0;
     this.max = options.max ?? 100;
     this.step = options.step ?? 1;
-    const w = options.width ?? DEFAULT_WIDTH;
-    // [LAW:types-are-the-program] width must be at least 1 — the marker
-    // always occupies one cell, so width <= 0 makes the render contract
-    // ("emits exactly `width` cells") unsatisfiable.
-    if (!Number.isInteger(w) || w < 1) {
-      throw new RangeError(`Slider width must be an integer >= 1, got ${w}`);
+    // [LAW:types-are-the-program] `width` is a `number` in the option shape,
+    // but rendering and mouse math require a positive integer. This is a
+    // construction-time trust boundary — guard once so every downstream call
+    // (`trackChar.repeat(width)`, `width - 1` denominator) can assume validity.
+    const width = options.width ?? DEFAULT_WIDTH;
+    if (!Number.isInteger(width) || width < 1) {
+      throw new RangeError(`Slider width must be a positive integer; got ${width}`);
     }
-    this.width = w;
+    this.width = width;
     this.value = clampSnap(options.value ?? this.min, this.min, this.max, this.step);
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
@@ -82,15 +88,19 @@ export class Slider extends WidgetBase {
     switch (event.key) {
       case "left":
         this.setValue(this.value - this.step);
+        event.stop();
         return;
       case "right":
         this.setValue(this.value + this.step);
+        event.stop();
         return;
       case "home":
         this.setValue(this.min);
+        event.stop();
         return;
       case "end":
         this.setValue(this.max);
+        event.stop();
         return;
     }
   }
