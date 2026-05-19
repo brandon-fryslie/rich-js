@@ -104,6 +104,12 @@ function clamp01(v: number): number {
 // chroma reduction on colors that are already representable.
 const GAMUT_EPS = 1e-4;
 
+// [LAW:one-source-of-truth] Below this chroma a color is treated as
+// achromatic, and hue is pinned to 0 so round-trips stay stable. Used
+// by `fromRgba` (after polar conversion) and `applyKey` (after chroma
+// scaling collapses C toward 0). Same threshold both places.
+const ACHROMATIC_EPS = 1e-7;
+
 function inGamut(r: number, g: number, b: number): boolean {
   return (
     r >= -GAMUT_EPS && r <= 1 + GAMUT_EPS &&
@@ -165,8 +171,7 @@ export class Oklch {
     const C = Math.sqrt(aLab * aLab + bLab * bLab);
     let H = Math.atan2(bLab, aLab) * (180 / Math.PI);
     if (H < 0) H += 360;
-    // Achromatic colors have undefined hue; pin to 0 for a stable round-trip.
-    if (C < 1e-7) H = 0;
+    if (C < ACHROMATIC_EPS) H = 0;
 
     return new Oklch(L, C, H, a);
   }
@@ -200,6 +205,9 @@ export class Oklch {
     const newC = Math.max(0, this.c * k.chromaScale);
     let newH = (this.h + k.hueShift) % 360;
     if (newH < 0) newH += 360;
+    // Same achromatic convention as fromRgba: collapsed chroma → pinned hue,
+    // so applyKey({chromaScale:0}).toRgba() → fromRgba round-trips stably.
+    if (newC < ACHROMATIC_EPS) newH = 0;
     return new Oklch(newL, newC, newH, this.alpha);
   }
 
