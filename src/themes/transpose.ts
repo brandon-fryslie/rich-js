@@ -61,8 +61,17 @@ export function isAnchored(varName: string): boolean {
  * colors — fast-pathed so identity does not pay the sRGB↔OKLCH round-trip
  * quantization cost.
  *
- * The `dark` flag flips when `key.lightnessScale < 0` (negative scale is
- * the L-axis mirror that turns a dark theme into its light octave).
+ * The `dark` flag of the result is derived from the actual lightness of
+ * the resulting `background` var (`Oklch.fromRgba(bg).l < 0.5`) — *not*
+ * from the key's coefficients. The strongest theorem: "dark iff
+ * background is dark." This is honest under every transform — pure
+ * lightness shifts, mirror-inversions, hue rotations that don't touch L,
+ * and combinations of all three. [LAW:types-are-the-program]
+ *
+ * Throws if the palette has no `background` var (the derivation has
+ * nothing to read). Failing loudly is preferred over a silent fallback
+ * because the alternative — trusting the source `palette.dark` after an
+ * arbitrary L-transform — produces flags that lie.
  *
  * @param name Optional override for the resulting palette name. Defaults
  *   to the source palette's name. Callers building a family of transposed
@@ -85,6 +94,13 @@ export function transposePalette(
     const effective = isAnchored(varName) ? anchorKey : key;
     next.set(varName, Oklch.fromRgba(color).applyKey(effective).toRgba());
   }
-  const flippedDark = key.lightnessScale < 0 ? !palette.dark : palette.dark;
-  return new Palette(name ?? palette.name, flippedDark, next);
+  const newBackground = next.get("background");
+  if (newBackground === undefined) {
+    throw new Error(
+      `transposePalette: palette "${palette.name}" has no "background" ` +
+        `var; cannot derive the dark flag without a background color.`,
+    );
+  }
+  const newDark = Oklch.fromRgba(newBackground).l < 0.5;
+  return new Palette(name ?? palette.name, newDark, next);
 }

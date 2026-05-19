@@ -153,6 +153,23 @@ describe("Oklch.applyKey", () => {
     expect(Math.abs(gray.green - gray.blue)).toBeLessThanOrEqual(1);
   });
 
+  it("chroma collapse pins h=0 even when hueShift is non-zero", () => {
+    // Without pinning, applyKey({chromaScale:0, hueShift:60}).h would be
+    // (this.h + 60). With pinning, it's 0 — matching fromRgba's convention
+    // for achromatic colors so the round-trip is stable.
+    const c = Oklch.fromRgba(new ColorRgba(200, 100, 50));
+    const muted = c.applyKey({
+      hueShift: 60,
+      chromaScale: 0,
+      lightnessScale: 1,
+      lightnessShift: 0,
+    });
+    expect(muted.c).toBe(0);
+    expect(muted.h).toBe(0);
+    // Round-trip stability: fromRgba(muted.toRgba()).h should also be 0.
+    expect(Oklch.fromRgba(muted.toRgba()).h).toBe(0);
+  });
+
   it("INVERT_LIGHTNESS flips L around the midpoint", () => {
     const dark = new Oklch(0.15, 0.0, 0, 1);   // near-black
     const flipped = dark.applyKey(INVERT_LIGHTNESS);

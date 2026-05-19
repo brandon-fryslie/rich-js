@@ -76,9 +76,11 @@ describe("transposePalette — identity", () => {
 
 describe("transposePalette — anchor hue is locked", () => {
   // Build a synthetic palette so we can assert hue exactly without
-  // entangling the test with theme-data values.
+  // entangling the test with theme-data values. A `background` is required
+  // — `transposePalette` reads it to derive the resulting `dark` flag.
   function syntheticPalette(): Palette {
     return new Palette("synth", true, new Map<string, ColorRgba>([
+      ["background", new ColorRgba(30, 30, 30)],   // a dark gray
       ["primary",  new ColorRgba(80, 140, 200)],   // a blue
       ["accent",   new ColorRgba(220, 180, 60)],   // a yellow
       ["error",    new ColorRgba(220, 60, 60)],    // a red
@@ -164,6 +166,44 @@ describe("transposePalette — INVERT_LIGHTNESS", () => {
     const bgAfter  = Oklch.fromRgba(flipped.get("background")!);
     expect(bgAfter.l).toBeGreaterThan(bgBefore.l);
     expect(bgAfter.l).toBeGreaterThan(0.5);
+  });
+
+  it("dark flag follows the resulting background, not the key coefficients", () => {
+    // A pure additive shift (no scale flip) on a dark theme should still
+    // produce dark=false when it makes the background bright enough.
+    const gruv = getThemePalette("gruvbox")!;
+    const brightened = transposePalette(gruv, {
+      hueShift: 0,
+      chromaScale: 1,
+      lightnessScale: 1,
+      lightnessShift: 0.8,
+    });
+    expect(brightened.dark).toBe(false);
+
+    // Conversely, a "flip" that crushes everything toward L=0 should
+    // report dark=true even though lightnessScale is negative.
+    const crushed = transposePalette(gruv, {
+      hueShift: 0,
+      chromaScale: 1,
+      lightnessScale: -1,
+      lightnessShift: 0,
+    });
+    expect(crushed.dark).toBe(true);
+  });
+
+  it("throws if the palette has no background var (loud failure)", () => {
+    const noBg = new Palette("no-bg", true, new Map<string, ColorRgba>([
+      ["primary", new ColorRgba(80, 140, 200)],
+      ["foreground", new ColorRgba(220, 220, 220)],
+    ]));
+    expect(() =>
+      transposePalette(noBg, {
+        hueShift: 30,
+        chromaScale: 1,
+        lightnessScale: 1,
+        lightnessShift: 0,
+      }),
+    ).toThrow(/no "background" var/);
   });
 });
 
