@@ -1,7 +1,12 @@
-// Barrel: collects every per-theme file into a single typed map. The 18
-// imports below are the *only* place this list of names is hardcoded —
-// everything else (registry, ThemeName type) is derived from `THEMES`,
-// so adding a theme means: drop a new file, add it here, done.
+// Barrel: collects every per-theme file into a single typed map. `ThemeName`
+// and the registry's name list are *derived* from `THEMES`, so the keys
+// below define the canonical name set for the registry. Adding a theme:
+//   1. drop a new `data/<name>.ts` file,
+//   2. add it here,
+//   3. (optional) add a matching `<NAME>` export in `terminalThemes.ts`
+//      if you want a pre-built `TerminalTheme` constant alongside the
+//      registry palette. Without step 3 the theme is still fully usable
+//      via `getThemePalette(name)`.
 
 import type { ThemePaletteData } from "./types.js";
 
