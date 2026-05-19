@@ -46,7 +46,12 @@ export {
   ROSE_PINE_DAWN,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
+  TEXTUAL_DARK,
+  TEXTUAL_LIGHT,
+  TEXTUAL_ANSI,
 } from "./themes/terminalThemes.js";
+export { getThemePalette, listThemePalettes } from "./themes/registry.js";
+export type { ThemeName } from "./themes/registry.js";
 
 export {
   Style,
