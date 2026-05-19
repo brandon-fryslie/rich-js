@@ -61,6 +61,11 @@ export {
 } from "./themes/terminalThemes.js";
 export { getThemePalette, listThemePalettes } from "./themes/registry.js";
 export type { ThemeName } from "./themes/registry.js";
+export {
+  transposePalette,
+  isAnchored,
+  ANCHORED_ROOTS,
+} from "./themes/transpose.js";
 
 export {
   Style,
