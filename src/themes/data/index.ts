@@ -34,10 +34,11 @@ import textualLight from "./textual-light.js";
 import tokyoNight from "./tokyo-night.js";
 
 /**
- * The 18 bundled Textual theme palettes, keyed by name. `as const` preserves
- * the literal-type keys so `ThemeName` (below) is `"atom-one-dark" | "..."`,
- * not `string`. Note: callers must type their input as `ThemeName` explicitly
- * to get compile-time safety; `getThemePalette(string)` still returns nullable.
+ * All bundled theme palettes, keyed by name (20 Textual-ported + 2 rich-js
+ * synthetic: `default` and `svg-export`). `as const` preserves the literal-
+ * type keys so `ThemeName` (below) is `"atom-one-dark" | "..."`, not
+ * `string`. Callers must type their input as `ThemeName` explicitly to get
+ * compile-time safety; `getThemePalette(string)` still returns nullable.
  */
 export const THEMES = {
   "atom-one-dark": atomOneDark,

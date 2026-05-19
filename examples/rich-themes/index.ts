@@ -22,10 +22,6 @@ import {
   getThemePalette,
   listThemePalettes,
 } from "../../src/index.js";
-// alphaBlend is internal to the themes module; the demo reaches in to flatten
-// translucent ColorRgbas against the theme bg before passing them to the
-// ANSI-only Style (terminals don't render alpha).
-import { alphaBlend } from "../../src/themes/colorMath.js";
 
 const consoleOut = new Console({ forceTerminal: true });
 
@@ -45,14 +41,13 @@ const RESOLVER_SPECS = [
   "auto 80%",
 ] as const;
 
-function bgFgStyle(bg: ColorRgba, fg: ColorRgba): Style {
-  // Alpha-bearing colors must be flattened against an opaque surface before
-  // ANSI emits them — terminals don't render alpha. We composite onto the
-  // theme bg (which is itself fully opaque by Textual convention).
-  // [LAW:dataflow-not-control-flow] always blend; if alpha=1 the blend is a
-  // no-op, so the same operation runs every time and the data decides.
-  const flatBg = alphaBlend(bg, bg, bg.alpha);
-  const flatFg = alphaBlend(fg, bg, fg.alpha);
+function bgFgStyle(bg: ColorRgba, fg: ColorRgba, substrate: ColorRgba): Style {
+  // Terminals don't render alpha; both colors must be opaque before Style
+  // emits them. compositeOver short-circuits when alpha=1 (the common case)
+  // and RGB-blends otherwise — same call every time, data decides.
+  // [LAW:dataflow-not-control-flow]
+  const flatBg = bg.compositeOver(substrate);
+  const flatFg = fg.compositeOver(flatBg);
   return Style.parse(`${flatFg.hex} on ${flatBg.hex}`);
 }
 
@@ -66,7 +61,7 @@ function header(palette: Palette): RichText {
   // RichText and is dropped when this is appended into another.
   return new RichText("").append(
     `  ${palette.name.padEnd(20)} [${tag}]  `,
-    bgFgStyle(bg, fg),
+    bgFgStyle(bg, fg, bg),
   );
 }
 
@@ -81,7 +76,7 @@ function swatchRow(palette: Palette): RichText {
       out.append(` ${name}=∅ `, "dim");
       continue;
     }
-    out.append(` ${name} ${c.hex} `, bgFgStyle(c, fg));
+    out.append(` ${name} ${c.hex} `, bgFgStyle(c, fg, bg));
   }
   return out;
 }
@@ -98,7 +93,7 @@ function resolverRow(palette: Palette): RichText {
       out.append(` ${spec}=∅ `, "dim");
       continue;
     }
-    out.append(` "${spec}" `, bgFgStyle(resolved, fg));
+    out.append(` "${spec}" `, bgFgStyle(resolved, fg, bg));
   }
   return out;
 }
