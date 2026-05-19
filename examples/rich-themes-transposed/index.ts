@@ -34,7 +34,19 @@ import {
   type ThemeKey,
 } from "../../src/index.js";
 
-const out = new Console({ forceTerminal: true });
+// When EXPORT_HTML is set, Console records every print into an internal
+// buffer so we can dump a CSS-styled HTML file at the end. The render
+// pipeline below runs identically regardless — only the boundary
+// (stdout vs file) varies. [LAW:dataflow-not-control-flow]
+//
+// Width is wide enough that the swatch rows (~100 cells) do not wrap on
+// a default 80-col terminal. The HTML export inherits this layout.
+const htmlExportPath = process.env["EXPORT_HTML"];
+const out = new Console({
+  forceTerminal: true,
+  record: Boolean(htmlExportPath),
+  width: 120,
+});
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -212,6 +224,10 @@ function main(): void {
 
 try {
   main();
+  if (htmlExportPath) {
+    out.saveHtml(htmlExportPath);
+    console.error(`\nHTML export written to ${htmlExportPath}`);
+  }
 } catch (err) {
   console.error("Error:", err instanceof Error ? err.message : String(err));
   process.exit(1);
