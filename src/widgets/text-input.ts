@@ -423,7 +423,7 @@ export class TextInput extends WidgetBase {
   // --- Hover mutator (router fast-path) ---
 
   @action
-  setHovered(value: boolean): void { this.hovered = value; }
+  override setHovered(value: boolean): void { this.hovered = value; }
 
   // ─── Public motion primitives ───────────────────────────────────────────
 

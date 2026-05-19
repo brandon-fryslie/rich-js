@@ -79,8 +79,8 @@ export class RegexHighlighter extends Highlighter {
 
 // [LAW:one-type-per-behavior] All repr patterns use the same RegexHighlighter mechanism
 export class ReprHighlighter extends RegexHighlighter {
-  static baseStyle = "repr.";
-  static highlights = [
+  static override baseStyle = "repr.";
+  static override highlights = [
     // URLs
     /(?<url>https?:\/\/[^\s<>"']+)/g,
     // UUIDs
@@ -99,8 +99,8 @@ export class ReprHighlighter extends RegexHighlighter {
 // --- JSONHighlighter ---
 
 export class JSONHighlighter extends RegexHighlighter {
-  static baseStyle = "json.";
-  static highlights = [
+  static override baseStyle = "json.";
+  static override highlights = [
     /(?<key>"[^"]*")\s*:/g,
     /:\s*(?<str>"[^"]*")/g,
     /(?<bool>\btrue\b|\bfalse\b)/g,
@@ -113,8 +113,8 @@ export class JSONHighlighter extends RegexHighlighter {
 // --- ISO8601Highlighter ---
 
 export class ISO8601Highlighter extends RegexHighlighter {
-  static baseStyle = "iso8601.";
-  static highlights = [
+  static override baseStyle = "iso8601.";
+  static override highlights = [
     /(?<date>\d{4}-\d{2}-\d{2})/g,
     /(?<time>\d{2}:\d{2}:\d{2}(?:\.\d+)?)/g,
     /(?<timezone>[+-]\d{2}:\d{2}|Z)/g,

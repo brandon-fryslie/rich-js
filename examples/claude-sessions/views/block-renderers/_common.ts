@@ -56,8 +56,8 @@ export function highlightSearch(text: RichText, query: string | undefined): void
   if (!query || query.length === 0) return;
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   class SearchHighlighter extends RegexHighlighter {
-    static baseStyle = "bold on yellow";
-    static highlights = [new RegExp(`(?<match>${escaped})`, "gi")];
+    static override baseStyle = "bold on yellow";
+    static override highlights = [new RegExp(`(?<match>${escaped})`, "gi")];
   }
   new SearchHighlighter().highlight(text);
 }
