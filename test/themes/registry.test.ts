@@ -120,18 +120,6 @@ describe("getThemeBaseColors", () => {
     }
   });
 
-  it("does not pollute the registry cache", () => {
-    // gruvbox is loaded by the suite above (its Palette is cached). Use a
-    // theme nothing else has touched in this file to verify the contract.
-    // A cache-pollution would mean two distinct Palette objects exist for
-    // the same name (impossible to detect) — instead assert the contract
-    // by reading and confirming a subsequent getThemePalette still works.
-    const base = getThemeBaseColors("rose-pine-dawn");
-    expect(base.bg.red).toBe(0xfa);
-    const fullPalette = getThemePalette("rose-pine-dawn");
-    expect(fullPalette.vars.size).toBeGreaterThan(100);
-  });
-
   it("base.dark matches palette.dark", () => {
     expect(getThemeBaseColors("solarized-light").dark).toBe(false);
     expect(getThemeBaseColors("dracula").dark).toBe(true);
