@@ -1,26 +1,23 @@
 /**
- * Pre-built `TerminalTheme` constants — default + the named Textual themes.
+ * Pre-built `TerminalTheme` constants — every theme in the registry has a
+ * matching `<NAME>` export here. There is no inline-only theme; the data
+ * file is the single source of truth for every theme's hex values.
  *
- * Two groups live here:
+ * Editing `data/<name>.ts` updates both the registry's full ~150-var
+ * palette (via `getThemePalette(name)`) AND the matching `TerminalTheme`
+ * constant exported below (via `getThemeBaseColors(name)`, which pulls
+ * just the 8 substrate keys). The two views never drift because both
+ * derive from the same authored data.
  *
- *   1. Themes with authored data files in `./data/*.ts`. Their base colours
- *      are pulled from the data file via `getThemeBaseColors`, which parses
- *      only the 8 substrate keys (background/foreground/primary/secondary/
- *      accent/success/warning/error) — no full-palette hydration, no
- *      registry-cache pollution. Editing a hex in `data/<name>.ts` updates
- *      both the registry's full palette AND the matching `TerminalTheme`
- *      constant exported below.
+ * [LAW:one-source-of-truth] Hex values live in `data/<name>.ts`. This
+ * module is a derived view that builds a `TerminalTheme` from each
+ * theme's eight base colors via `buildPalette` for the substrate palette
+ * and `STANDARD_TABLE` for the ANSI substrate.
  *
- *   2. Themes without a data file (`default`, `svg-export`,
- *      `catppuccin-frappe`, `catppuccin-macchiato`). These stay stated
- *      inline as `ThemeBaseColors` literals. Each one's bg/fg are stated
- *      once and forwarded by `defineTheme` to both the `TerminalTheme`
- *      constructor and the `buildPalette` base.
- *
- * [LAW:one-source-of-truth] For data-backed themes the truth lives in
- * `data/<name>.ts`; this module is a derived view. For inline themes the
- * truth lives in the `defineTheme` call below; `defineTheme` forwards
- * bg/fg into both sinks so they cannot drift.
+ * [LAW:one-type-per-behavior] Every theme has the same shape — name,
+ * `dark` flag, full Palette in the registry, `TerminalTheme` constant
+ * here. Consumers can pick any theme by name without branching on which
+ * APIs work for it.
  *
  * [LAW:one-way-deps] `core/color → themes/palette` remains the only edge
  * into themes/. This file imports only sibling theme modules and core
@@ -33,7 +30,6 @@
  */
 
 import {
-  ColorRgba,
   STANDARD_TABLE,
   TerminalTheme,
 } from "../core/color.js";
@@ -58,62 +54,8 @@ function defineTheme(d: ThemeBaseColors): TerminalTheme {
   );
 }
 
-// --- Inline themes (no data file backing) ---
-
-export const DEFAULT_TERMINAL_THEME = defineTheme({
-  name: "default",
-  dark: true,
-  bg: new ColorRgba(0, 0, 0),
-  fg: new ColorRgba(255, 255, 255),
-  primary: new ColorRgba(0, 111, 184),
-  secondary: new ColorRgba(118, 38, 113),
-  accent: new ColorRgba(0, 111, 184),
-  success: new ColorRgba(0, 128, 0),
-  warning: new ColorRgba(128, 128, 0),
-  error: new ColorRgba(128, 0, 0),
-});
-
-export const SVG_EXPORT_THEME = defineTheme({
-  name: "svg-export",
-  dark: true,
-  bg: new ColorRgba(41, 41, 41),
-  fg: new ColorRgba(197, 200, 198),
-  primary: new ColorRgba(97, 175, 239),
-  secondary: new ColorRgba(198, 120, 221),
-  accent: new ColorRgba(86, 182, 194),
-  success: new ColorRgba(152, 195, 121),
-  warning: new ColorRgba(229, 192, 123),
-  error: new ColorRgba(204, 85, 90),
-});
-
-export const CATPPUCCIN_FRAPPE = defineTheme({
-  name: "catppuccin-frappe",
-  dark: true,
-  bg: new ColorRgba(48, 52, 70),
-  fg: new ColorRgba(198, 208, 245),
-  primary: new ColorRgba(202, 158, 230),
-  secondary: new ColorRgba(239, 159, 118),
-  accent: new ColorRgba(244, 184, 228),
-  success: new ColorRgba(166, 209, 137),
-  warning: new ColorRgba(229, 200, 144),
-  error: new ColorRgba(231, 130, 132),
-});
-
-export const CATPPUCCIN_MACCHIATO = defineTheme({
-  name: "catppuccin-macchiato",
-  dark: true,
-  bg: new ColorRgba(36, 39, 58),
-  fg: new ColorRgba(202, 211, 245),
-  primary: new ColorRgba(198, 160, 246),
-  secondary: new ColorRgba(245, 169, 127),
-  accent: new ColorRgba(245, 189, 230),
-  success: new ColorRgba(166, 218, 149),
-  warning: new ColorRgba(238, 212, 159),
-  error: new ColorRgba(237, 135, 150),
-});
-
-// --- Data-backed themes (truth lives in src/themes/data/<name>.ts) ---
-
+export const DEFAULT_TERMINAL_THEME = defineTheme(getThemeBaseColors("default"));
+export const SVG_EXPORT_THEME = defineTheme(getThemeBaseColors("svg-export"));
 export const MONOKAI = defineTheme(getThemeBaseColors("monokai"));
 export const NORD = defineTheme(getThemeBaseColors("nord"));
 export const GRUVBOX = defineTheme(getThemeBaseColors("gruvbox"));
@@ -122,6 +64,8 @@ export const TOKYO_NIGHT = defineTheme(getThemeBaseColors("tokyo-night"));
 export const FLEXOKI = defineTheme(getThemeBaseColors("flexoki"));
 export const CATPPUCCIN_MOCHA = defineTheme(getThemeBaseColors("catppuccin-mocha"));
 export const CATPPUCCIN_LATTE = defineTheme(getThemeBaseColors("catppuccin-latte"));
+export const CATPPUCCIN_FRAPPE = defineTheme(getThemeBaseColors("catppuccin-frappe"));
+export const CATPPUCCIN_MACCHIATO = defineTheme(getThemeBaseColors("catppuccin-macchiato"));
 export const SOLARIZED_DARK = defineTheme(getThemeBaseColors("solarized-dark"));
 export const SOLARIZED_LIGHT = defineTheme(getThemeBaseColors("solarized-light"));
 export const ROSE_PINE = defineTheme(getThemeBaseColors("rose-pine"));
