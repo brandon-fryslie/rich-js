@@ -12,8 +12,11 @@ import type { ThemePaletteData } from "./types.js";
 
 import atomOneDark from "./atom-one-dark.js";
 import atomOneLight from "./atom-one-light.js";
+import catppuccinFrappe from "./catppuccin-frappe.js";
 import catppuccinLatte from "./catppuccin-latte.js";
+import catppuccinMacchiato from "./catppuccin-macchiato.js";
 import catppuccinMocha from "./catppuccin-mocha.js";
+import defaultTheme from "./default.js";
 import dracula from "./dracula.js";
 import flexoki from "./flexoki.js";
 import gruvbox from "./gruvbox.js";
@@ -24,6 +27,7 @@ import rosePineDawn from "./rose-pine-dawn.js";
 import rosePineMoon from "./rose-pine-moon.js";
 import solarizedDark from "./solarized-dark.js";
 import solarizedLight from "./solarized-light.js";
+import svgExport from "./svg-export.js";
 import textualAnsi from "./textual-ansi.js";
 import textualDark from "./textual-dark.js";
 import textualLight from "./textual-light.js";
@@ -38,8 +42,11 @@ import tokyoNight from "./tokyo-night.js";
 export const THEMES = {
   "atom-one-dark": atomOneDark,
   "atom-one-light": atomOneLight,
+  "catppuccin-frappe": catppuccinFrappe,
   "catppuccin-latte": catppuccinLatte,
+  "catppuccin-macchiato": catppuccinMacchiato,
   "catppuccin-mocha": catppuccinMocha,
+  "default": defaultTheme,
   "dracula": dracula,
   "flexoki": flexoki,
   "gruvbox": gruvbox,
@@ -50,6 +57,7 @@ export const THEMES = {
   "rose-pine-moon": rosePineMoon,
   "solarized-dark": solarizedDark,
   "solarized-light": solarizedLight,
+  "svg-export": svgExport,
   "textual-ansi": textualAnsi,
   "textual-dark": textualDark,
   "textual-light": textualLight,

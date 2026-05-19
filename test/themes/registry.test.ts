@@ -10,8 +10,11 @@ import {
 const ALL_NAMES = [
   "atom-one-dark",
   "atom-one-light",
+  "catppuccin-frappe",
   "catppuccin-latte",
+  "catppuccin-macchiato",
   "catppuccin-mocha",
+  "default",
   "dracula",
   "flexoki",
   "gruvbox",
@@ -22,6 +25,7 @@ const ALL_NAMES = [
   "rose-pine-moon",
   "solarized-dark",
   "solarized-light",
+  "svg-export",
   "textual-ansi",
   "textual-dark",
   "textual-light",
@@ -29,7 +33,7 @@ const ALL_NAMES = [
 ];
 
 describe("listThemePalettes", () => {
-  it("returns all 18 registered theme names", () => {
+  it("registers every theme that ships with a data file", () => {
     const names = listThemePalettes();
     expect([...names].sort()).toEqual([...ALL_NAMES].sort());
   });
@@ -42,7 +46,7 @@ describe("getThemePalette", () => {
     expect(getThemePalette("GRUVBOX")).toBeNull(); // case-sensitive
   });
 
-  it("loads each of the 18 themes into a Palette without error", () => {
+  it("loads every registered theme into a Palette without error", () => {
     for (const name of ALL_NAMES) {
       const p = getThemePalette(name);
       expect(p, `theme ${name}`).toBeInstanceOf(Palette);
