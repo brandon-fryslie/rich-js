@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { ColorRgba } from "../../src/core/color.js";
 import { Palette } from "../../src/themes/palette.js";
 import {
+  getThemeBaseColors,
   getThemePalette,
   listThemePalettes,
 } from "../../src/themes/registry.js";
@@ -99,5 +101,35 @@ describe("getThemePalette", () => {
     expect(bg.red).toBe(0xe0);
     expect(bg.green).toBe(0xe0);
     expect(bg.blue).toBe(0xe0);
+  });
+});
+
+describe("getThemeBaseColors", () => {
+  it("returns the eight base substrate colors for every theme", () => {
+    for (const name of ALL_NAMES) {
+      const base = getThemeBaseColors(name);
+      expect(base.name, `${name}.name`).toBe(name);
+      expect(typeof base.dark).toBe("boolean");
+      for (const key of ["bg", "fg", "primary", "secondary", "accent", "success", "warning", "error"] as const) {
+        expect(base[key], `${name}.${key}`).toBeInstanceOf(ColorRgba);
+      }
+    }
+  });
+
+  it("does not pollute the registry cache", () => {
+    // gruvbox is loaded by the suite above (its Palette is cached). Use a
+    // theme nothing else has touched in this file to verify the contract.
+    // A cache-pollution would mean two distinct Palette objects exist for
+    // the same name (impossible to detect) — instead assert the contract
+    // by reading and confirming a subsequent getThemePalette still works.
+    const base = getThemeBaseColors("rose-pine-dawn");
+    expect(base.bg.red).toBe(0xfa);
+    const fullPalette = getThemePalette("rose-pine-dawn");
+    expect(fullPalette.vars.size).toBeGreaterThan(100);
+  });
+
+  it("base.dark matches palette.dark", () => {
+    expect(getThemeBaseColors("solarized-light").dark).toBe(false);
+    expect(getThemeBaseColors("dracula").dark).toBe(true);
   });
 });

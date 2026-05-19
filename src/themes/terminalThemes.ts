@@ -4,16 +4,18 @@
  * Two groups live here:
  *
  *   1. Themes with authored data files in `./data/*.ts`. Their base colours
- *      are pulled out of the registry's `Palette` so the data file is the
- *      single source of truth — editing a hex in `data/<name>.ts` updates
+ *      are pulled from the data file via `getThemeBaseColors`, which parses
+ *      only the 8 substrate keys (background/foreground/primary/secondary/
+ *      accent/success/warning/error) — no full-palette hydration, no
+ *      registry-cache pollution. Editing a hex in `data/<name>.ts` updates
  *      both the registry's full palette AND the matching `TerminalTheme`
  *      constant exported below.
  *
  *   2. Themes without a data file (`default`, `svg-export`,
  *      `catppuccin-frappe`, `catppuccin-macchiato`). These stay stated
- *      inline. Each one's bg/fg are stated once and forwarded by
- *      `defineTheme` to both the `TerminalTheme` constructor and the
- *      `buildPalette` base.
+ *      inline as `ThemeBaseColors` literals. Each one's bg/fg are stated
+ *      once and forwarded by `defineTheme` to both the `TerminalTheme`
+ *      constructor and the `buildPalette` base.
  *
  * [LAW:one-source-of-truth] For data-backed themes the truth lives in
  * `data/<name>.ts`; this module is a derived view. For inline themes the
@@ -21,8 +23,8 @@
  * bg/fg into both sinks so they cannot drift.
  *
  * [LAW:one-way-deps] `core/color → themes/palette` remains the only edge
- * into themes/. This file imports only sibling theme modules and core color
- * primitives; nothing in `core/` imports back.
+ * into themes/. This file imports only sibling theme modules and core
+ * color primitives; nothing in `core/` imports back.
  *
  * Note on `ansiColors`: every preset theme uses `STANDARD_TABLE`. Theme
  * identity lives in the semantic `palette`, not in the standard ANSI
@@ -36,27 +38,14 @@ import {
   TerminalTheme,
 } from "../core/color.js";
 import { buildPalette } from "./buildPalette.js";
-import { getThemePalette, type ThemeName } from "./registry.js";
+import { getThemeBaseColors, type ThemeBaseColors } from "./registry.js";
 
-interface ThemeDef {
-  readonly name: string;
-  readonly isDark: boolean;
-  readonly bg: ColorRgba;
-  readonly fg: ColorRgba;
-  readonly primary: ColorRgba;
-  readonly secondary: ColorRgba;
-  readonly accent: ColorRgba;
-  readonly success: ColorRgba;
-  readonly warning: ColorRgba;
-  readonly error: ColorRgba;
-}
-
-function defineTheme(d: ThemeDef): TerminalTheme {
+function defineTheme(d: ThemeBaseColors): TerminalTheme {
   return new TerminalTheme(
     d.bg,
     d.fg,
     STANDARD_TABLE,
-    buildPalette(d.name, d.isDark, {
+    buildPalette(d.name, d.dark, {
       primary: d.primary,
       secondary: d.secondary,
       accent: d.accent,
@@ -69,41 +58,11 @@ function defineTheme(d: ThemeDef): TerminalTheme {
   );
 }
 
-/**
- * Derive a `ThemeDef` from a data-backed Palette. Throws if any of the eight
- * required base vars is missing — invalid data fails loud at module init
- * rather than producing a half-built theme.
- */
-function defFromData(name: ThemeName): ThemeDef {
-  const palette = getThemePalette(name);
-  const must = (key: string): ColorRgba => {
-    const v = palette.get(key);
-    if (!v) {
-      throw new Error(
-        `Theme ${palette.name}: required var "${key}" missing from data/${name}.ts`,
-      );
-    }
-    return v;
-  };
-  return {
-    name: palette.name,
-    isDark: palette.dark,
-    bg: must("background"),
-    fg: must("foreground"),
-    primary: must("primary"),
-    secondary: must("secondary"),
-    accent: must("accent"),
-    success: must("success"),
-    warning: must("warning"),
-    error: must("error"),
-  };
-}
-
 // --- Inline themes (no data file backing) ---
 
 export const DEFAULT_TERMINAL_THEME = defineTheme({
   name: "default",
-  isDark: true,
+  dark: true,
   bg: new ColorRgba(0, 0, 0),
   fg: new ColorRgba(255, 255, 255),
   primary: new ColorRgba(0, 111, 184),
@@ -116,7 +75,7 @@ export const DEFAULT_TERMINAL_THEME = defineTheme({
 
 export const SVG_EXPORT_THEME = defineTheme({
   name: "svg-export",
-  isDark: true,
+  dark: true,
   bg: new ColorRgba(41, 41, 41),
   fg: new ColorRgba(197, 200, 198),
   primary: new ColorRgba(97, 175, 239),
@@ -129,7 +88,7 @@ export const SVG_EXPORT_THEME = defineTheme({
 
 export const CATPPUCCIN_FRAPPE = defineTheme({
   name: "catppuccin-frappe",
-  isDark: true,
+  dark: true,
   bg: new ColorRgba(48, 52, 70),
   fg: new ColorRgba(198, 208, 245),
   primary: new ColorRgba(202, 158, 230),
@@ -142,7 +101,7 @@ export const CATPPUCCIN_FRAPPE = defineTheme({
 
 export const CATPPUCCIN_MACCHIATO = defineTheme({
   name: "catppuccin-macchiato",
-  isDark: true,
+  dark: true,
   bg: new ColorRgba(36, 39, 58),
   fg: new ColorRgba(202, 211, 245),
   primary: new ColorRgba(198, 160, 246),
@@ -155,21 +114,21 @@ export const CATPPUCCIN_MACCHIATO = defineTheme({
 
 // --- Data-backed themes (truth lives in src/themes/data/<name>.ts) ---
 
-export const MONOKAI = defineTheme(defFromData("monokai"));
-export const NORD = defineTheme(defFromData("nord"));
-export const GRUVBOX = defineTheme(defFromData("gruvbox"));
-export const DRACULA = defineTheme(defFromData("dracula"));
-export const TOKYO_NIGHT = defineTheme(defFromData("tokyo-night"));
-export const FLEXOKI = defineTheme(defFromData("flexoki"));
-export const CATPPUCCIN_MOCHA = defineTheme(defFromData("catppuccin-mocha"));
-export const CATPPUCCIN_LATTE = defineTheme(defFromData("catppuccin-latte"));
-export const SOLARIZED_DARK = defineTheme(defFromData("solarized-dark"));
-export const SOLARIZED_LIGHT = defineTheme(defFromData("solarized-light"));
-export const ROSE_PINE = defineTheme(defFromData("rose-pine"));
-export const ROSE_PINE_MOON = defineTheme(defFromData("rose-pine-moon"));
-export const ROSE_PINE_DAWN = defineTheme(defFromData("rose-pine-dawn"));
-export const ATOM_ONE_DARK = defineTheme(defFromData("atom-one-dark"));
-export const ATOM_ONE_LIGHT = defineTheme(defFromData("atom-one-light"));
-export const TEXTUAL_DARK = defineTheme(defFromData("textual-dark"));
-export const TEXTUAL_LIGHT = defineTheme(defFromData("textual-light"));
-export const TEXTUAL_ANSI = defineTheme(defFromData("textual-ansi"));
+export const MONOKAI = defineTheme(getThemeBaseColors("monokai"));
+export const NORD = defineTheme(getThemeBaseColors("nord"));
+export const GRUVBOX = defineTheme(getThemeBaseColors("gruvbox"));
+export const DRACULA = defineTheme(getThemeBaseColors("dracula"));
+export const TOKYO_NIGHT = defineTheme(getThemeBaseColors("tokyo-night"));
+export const FLEXOKI = defineTheme(getThemeBaseColors("flexoki"));
+export const CATPPUCCIN_MOCHA = defineTheme(getThemeBaseColors("catppuccin-mocha"));
+export const CATPPUCCIN_LATTE = defineTheme(getThemeBaseColors("catppuccin-latte"));
+export const SOLARIZED_DARK = defineTheme(getThemeBaseColors("solarized-dark"));
+export const SOLARIZED_LIGHT = defineTheme(getThemeBaseColors("solarized-light"));
+export const ROSE_PINE = defineTheme(getThemeBaseColors("rose-pine"));
+export const ROSE_PINE_MOON = defineTheme(getThemeBaseColors("rose-pine-moon"));
+export const ROSE_PINE_DAWN = defineTheme(getThemeBaseColors("rose-pine-dawn"));
+export const ATOM_ONE_DARK = defineTheme(getThemeBaseColors("atom-one-dark"));
+export const ATOM_ONE_LIGHT = defineTheme(getThemeBaseColors("atom-one-light"));
+export const TEXTUAL_DARK = defineTheme(getThemeBaseColors("textual-dark"));
+export const TEXTUAL_LIGHT = defineTheme(getThemeBaseColors("textual-light"));
+export const TEXTUAL_ANSI = defineTheme(getThemeBaseColors("textual-ansi"));
