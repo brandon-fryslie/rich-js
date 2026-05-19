@@ -46,7 +46,8 @@
     "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js",
     "template-bindings": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-template-bindings/index.js",
     "theme-designer": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-theme-designer/index.js",
-    "themes": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-themes/index.js"
+    "themes": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-themes/index.js",
+    "themes:transposed": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-themes-transposed/index.js"
   },
   "keywords": [
     "terminal",
