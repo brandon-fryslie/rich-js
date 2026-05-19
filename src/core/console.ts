@@ -291,9 +291,12 @@ export class Console {
       ? styled
       : [...Segment.applyStyle(styled, this._style)];
 
-    // Output
+    // Output. The line-end goes through the same writeSegments funnel as
+    // every other emitted text so it survives recording — otherwise
+    // `exportText` and `exportHtml` would join consecutive prints onto a
+    // single line. [LAW:single-enforcer]
     this._writeSegments(final);
-    if (end) this._write(end);
+    if (end) this._writeSegments([new Segment(end)]);
   }
 
   log(...args: unknown[]): void {
