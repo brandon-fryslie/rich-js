@@ -20,6 +20,15 @@ export {
 } from "./core/color.js";
 export type { DetectColorOptions } from "./core/color.js";
 
+// Perceptually-uniform color space (manipulation, transposition).
+export {
+  Oklch,
+  IDENTITY,
+  INVERT_LIGHTNESS,
+  isIdentityKey,
+} from "./core/oklch.js";
+export type { ThemeKey } from "./core/oklch.js";
+
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";
 export { PaletteResolver } from "./themes/paletteResolver.js";
@@ -52,6 +61,11 @@ export {
 } from "./themes/terminalThemes.js";
 export { getThemePalette, listThemePalettes } from "./themes/registry.js";
 export type { ThemeName } from "./themes/registry.js";
+export {
+  transposePalette,
+  isAnchored,
+  ANCHORED_ROOTS,
+} from "./themes/transpose.js";
 
 export {
   Style,
