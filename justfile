@@ -34,8 +34,5 @@ strip:
 markup-plugins:
     npm run markup-plugins
 
-themes-transposed:
-    npm run themes:transposed
-
-themes-transposed-html out="/tmp/transpose-demo.html":
-    EXPORT_HTML={{ out }} npm run themes:transposed
+# OKLCH theme-transposition demo (see oklsh.just)
+mod oklsh
