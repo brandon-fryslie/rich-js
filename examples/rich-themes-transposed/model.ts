@@ -20,8 +20,12 @@ import {
   ColorSpec,
   Oklch,
   Palette,
+  Panel,
+  ProgressBar,
+  RichText,
   Segment,
   Style,
+  Table,
   cellLen,
   getThemePalette,
   listThemePalettes,
@@ -29,6 +33,7 @@ import {
   transposePalette,
   type ThemeKey,
 } from "../../src/index.js";
+import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import {
   contrastRatio,
   ensureContrast,
@@ -341,7 +346,127 @@ function controlLine(
   ];
 }
 
-function rightPane(state: ExplorerState): Segment[][] {
+// ---------------------------------------------------------------------------
+// Application mock — a representative dashboard recolored from the palette.
+//
+// Decorative roles (primary border, accent nav/progress, secondary button)
+// appear as *fills* so their hue is visible and rotates with the root note.
+// Semantic roles (success/warning/error) are anchored, so the service
+// statuses keep their meaning in every key — "down" stays red. All text is
+// run through ensureContrast against its actual fill, so nothing renders
+// unreadable. [LAW:single-enforcer]
+// ---------------------------------------------------------------------------
+
+interface ServiceRow {
+  readonly name: string;
+  readonly statusVar: "success" | "warning" | "error";
+  readonly label: string;
+  readonly latency: string;
+}
+
+const SERVICES: readonly ServiceRow[] = [
+  { name: "auth-gateway", statusVar: "success", label: "ok", latency: "12 ms" },
+  { name: "billing", statusVar: "warning", label: "degraded", latency: "88 ms" },
+  { name: "search-index", statusVar: "error", label: "down", latency: "—" },
+  { name: "cdn-edge", statusVar: "success", label: "ok", latency: "9 ms" },
+];
+
+/** Foreground readable against `bg`, as a ColorSpec. */
+function readable(fg: ColorRgba, bg: ColorRgba, min: number): ColorSpec {
+  return spec(ensureContrast(fg, bg, min));
+}
+
+/** Append a filled "pill": the fill color as background (its hue shows), with
+ * readable text on top. */
+function appendPill(
+  rt: RichText,
+  label: string,
+  fill: ColorRgba,
+  palette: Palette,
+  min: number,
+): void {
+  const bg = palette.get("background")!;
+  const fgBase = palette.get("foreground")!;
+  const flat = fill.compositeOver(bg);
+  rt.append(label, new Style({ bgcolor: spec(flat), color: readable(fgBase, flat, min) }));
+}
+
+function collectLines(r: Renderable, width: number): Segment[][] {
+  const opts: RenderOptions = { maxWidth: width };
+  return Segment.splitLines([...r.render(opts)]);
+}
+
+/** Render `lines` back as a Renderable. Splitting each child into its own
+ * lines and concatenating the arrays avoids Group's segment-concatenation,
+ * which merges adjacent single-line renderables onto one row. */
+function linesToRenderable(lines: Segment[][]): Renderable {
+  return { render: () => framesToSegments(lines) };
+}
+
+export function appMock(palette: Palette, min: number, width: number): Segment[][] {
+  const bg = palette.get("background")!;
+  const fg = palette.get("foreground")!;
+  const get = (v: string): ColorRgba => palette.get(v) ?? fg;
+  const accent = get("accent");
+  const primary = get("primary");
+  const secondary = get("secondary");
+  const bodyFg = readable(fg, bg, min);
+
+  const nav = new RichText("");
+  nav.append(" ", new Style({}));
+  appendPill(nav, " Dashboard ", accent, palette, min);
+  nav.append("   Services    Logs    Settings", new Style({ color: bodyFg, dim: true }));
+
+  const reqLabel = new RichText("Requests / min          78%", { style: new Style({ color: bodyFg }) });
+  const progress = new ProgressBar({
+    total: 100,
+    completed: 78,
+    width: Math.min(48, Math.max(10, width - 6)),
+    completeStyle: new Style({ color: spec(accent.compositeOver(bg)) }),
+    style: new Style({ color: bodyFg, dim: true }),
+  });
+
+  const table = new Table({ box: null, expand: false, padding: [0, 2, 0, 0], showEdge: false });
+  const headCell = (t: string): RichText => new RichText(t, { style: new Style({ bold: true, color: bodyFg }) });
+  table.addColumn(headCell("Service"));
+  table.addColumn(headCell("Status"));
+  table.addColumn(headCell("Latency"), { justify: "right" });
+  for (const s of SERVICES) {
+    const nameCell = new RichText(s.name, { style: new Style({ color: bodyFg }) });
+    const statusCell = new RichText("");
+    appendPill(statusCell, ` ${s.label} `, get(s.statusVar), palette, min);
+    const latCell = new RichText(s.latency, { style: new Style({ color: bodyFg, dim: true }) });
+    table.addRow(nameCell, statusCell, latCell);
+  }
+
+  const buttons = new RichText("");
+  appendPill(buttons, " Deploy ", primary, palette, min);
+  buttons.append("  ");
+  appendPill(buttons, " Rollback ", secondary, palette, min);
+
+  const innerWidth = Math.max(20, width - 4); // 2 border + 2 horizontal padding
+  const body: Segment[][] = [
+    ...collectLines(nav, innerWidth),
+    [],
+    ...collectLines(reqLabel, innerWidth),
+    ...collectLines(progress, innerWidth),
+    [],
+    ...collectLines(table, innerWidth),
+    [],
+    ...collectLines(buttons, innerWidth),
+  ];
+  const panel = new Panel(linesToRenderable(body), {
+    title: "aurora-api  ·  dashboard",
+    titleStyle: new Style({ bold: true, color: readable(accent.compositeOver(bg), bg, min) }),
+    borderStyle: new Style({ color: spec(primary.compositeOver(bg)) }),
+    style: new Style({ bgcolor: spec(bg), color: bodyFg }),
+    width,
+    padding: [0, 1, 0, 1],
+  });
+  return collectLines(panel, width);
+}
+
+function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
   const palette = transposedPalette(state);
   const src = sourcePalette(state);
   const lines: Segment[][] = [];
@@ -395,29 +520,24 @@ function rightPane(state: ExplorerState): Segment[][] {
   );
   lines.push([]);
 
-  // Swatch row — each var as its own background, label in contrast-checked fg.
-  const swatch: Segment[] = [];
-  for (const cell of previewCells(state)) {
-    swatch.push(
-      new Segment(
-        ` ${cell.varName} `,
-        new Style({ bgcolor: spec(cell.bg), color: spec(cell.fg) }),
-      ),
-    );
-    swatch.push(new Segment(" "));
+  // Live application preview — the same renderables a real app uses, recolored
+  // from the transposed palette. This is where transposition earns its keep:
+  // the decorative chrome rotates with the root note while the service
+  // statuses hold their meaning.
+  for (const l of appMock(palette, state.minContrast, Math.max(40, rightWidth))) {
+    lines.push(l);
   }
-  lines.push(swatch);
   lines.push([]);
 
-  // Background/foreground sample — the readability money shot.
-  const sample = sampleCell(state);
-  const ratio = contrastRatio(sample.fg, sample.bg);
+  // Honest readout: the weakest text/background contrast currently in view.
+  const ratios = [...previewCells(state), sampleCell(state)].map((c) =>
+    contrastRatio(c.fg, c.bg),
+  );
+  const worst = Math.min(...ratios);
   lines.push([
-    new Segment(
-      " The quick brown fox jumps over the lazy dog ",
-      new Style({ bgcolor: spec(sample.bg), color: spec(sample.fg) }),
-    ),
-    new Segment(`  ${ratio.toFixed(1)}:1`, DIM),
+    new Segment("weakest text contrast in view: ", DIM),
+    new Segment(`${worst.toFixed(1)}:1`, BOLD),
+    new Segment(`   (floor ${state.minContrast.toFixed(1)}:1)`, DIM),
   ]);
   lines.push([]);
   lines.push([
@@ -436,12 +556,13 @@ function rightPane(state: ExplorerState): Segment[][] {
  */
 export function renderFrame(
   state: ExplorerState,
-  _width: number,
+  width: number,
   height: number,
 ): Segment[][] {
   const capacity = Math.max(1, height - 1);
   const left = themeColumn(state, capacity);
-  const right = rightPane(state);
+  const rightWidth = width - LIST_WIDTH - cellLen(GAP);
+  const right = rightPane(state, rightWidth);
   const rows = Math.max(left.length, right.length);
   const out: Segment[][] = [];
   for (let i = 0; i < rows; i++) {
