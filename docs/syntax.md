@@ -7,7 +7,7 @@
 The most practical form — load a file and auto-detect the language from the extension:
 
 ```typescript
-import { Console, Syntax } from "rich-js";
+import { Console, Syntax } from "@promptctl/rich-js";
 
 const console = new Console();
 

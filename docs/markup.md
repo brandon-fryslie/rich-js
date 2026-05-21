@@ -85,7 +85,7 @@ If you embed user-provided content directly in a markup string, a user could inj
 Always escape untrusted content with `escapeMarkup()`:
 
 ```typescript
-import { escapeMarkup } from "rich-js";
+import { escapeMarkup } from "@promptctl/rich-js";
 
 // ✗ Vulnerable — user controls `userInput`
 console.print(`Hello, [bold]${userInput}[/bold]!`);
@@ -128,7 +128,7 @@ const console = new Console({ markup: false });
 Parse markup explicitly into a `RichText` object when you need to manipulate it further before printing:
 
 ```typescript
-import { renderMarkup } from "rich-js";
+import { renderMarkup } from "@promptctl/rich-js";
 
 const text = renderMarkup("[bold red]Hello[/bold red]");
 // text is a RichText — can be modified, measured, or embedded in other renderables

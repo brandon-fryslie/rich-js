@@ -7,7 +7,7 @@ rich-js renders flicker-free, continuously updating progress bars for long-runni
 The fastest path to a progress bar — wrap any iterable:
 
 ```typescript
-import { track } from "rich-js";
+import { track } from "@promptctl/rich-js";
 
 for (const step of track(Array.from({ length: 100 }), { description: "Processing..." })) {
   await doStep(step);
@@ -25,7 +25,7 @@ Use `Progress` directly when you need multiple tasks, custom columns, or manual 
 `Progress` is designed as a context manager via its `run()` method:
 
 ```typescript
-import { Progress } from "rich-js";
+import { Progress } from "@promptctl/rich-js";
 
 await progress.run(async () => {
   const task = progress.addTask("Downloading...", { total: 100 });
@@ -131,7 +131,7 @@ The columns shown per task are configurable via positional arguments to the `Pro
 import {
   Progress, TextColumn, BarColumn,
   TaskProgressColumn, TimeRemainingColumn, SpinnerColumn,
-} from "rich-js";
+} from "@promptctl/rich-js";
 
 const progress = new Progress(
   new SpinnerColumn(),
@@ -229,7 +229,7 @@ Inner bars refresh at the outer bar's refresh rate.
 A single `Progress` instance cannot have different column layouts per task. For that, use multiple `Progress` instances inside a `Live` display:
 
 ```typescript
-import { Live, Group } from "rich-js";
+import { Live, Group } from "@promptctl/rich-js";
 
 const downloadProgress = new Progress(new BarColumn(), new DownloadColumn());
 const processProgress  = new Progress(new BarColumn(), new TimeRemainingColumn());

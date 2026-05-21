@@ -5,7 +5,7 @@
 ## Basic string prompt
 
 ```typescript
-import { Prompt } from "rich-js";
+import { Prompt } from "@promptctl/rich-js";
 
 const name = await Prompt.ask("[bold cyan]What is your name?[/bold cyan]");
 console.print(`Hello, [bold]${name}[/bold]!`);
@@ -43,7 +43,7 @@ const level = await Prompt.ask(
 Specialized prompt types parse and validate the input type:
 
 ```typescript
-import { IntPrompt, FloatPrompt } from "rich-js";
+import { IntPrompt, FloatPrompt } from "@promptctl/rich-js";
 
 const port = await IntPrompt.ask("Port number", { default: 3000 });
 // Returns: number
@@ -57,7 +57,7 @@ const threshold = await FloatPrompt.ask("Threshold (0.0–1.0)");
 A yes/no question that returns a boolean:
 
 ```typescript
-import { Confirm } from "rich-js";
+import { Confirm } from "@promptctl/rich-js";
 
 const proceed = await Confirm.ask("Deploy to production?");
 // Displays: Deploy to production? [y/n]:

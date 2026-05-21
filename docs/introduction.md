@@ -20,13 +20,13 @@ rich-js detects your terminal's capabilities automatically and downsamples color
 ## Installation
 
 ```sh
-npm install rich-js
+npm install @promptctl/rich-js
 ```
 
 ## Quick start
 
 ```typescript
-import { Console } from "rich-js";
+import { Console } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -53,7 +53,7 @@ Hello, World! 👋
 
 ```typescript
 // console.ts
-import { Console } from "rich-js";
+import { Console } from "@promptctl/rich-js";
 
 export const console = new Console();
 ```

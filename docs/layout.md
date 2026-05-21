@@ -7,7 +7,7 @@
 An empty layout renders as a placeholder box showing its name and dimensions:
 
 ```typescript
-import { Console, Layout } from "rich-js";
+import { Console, Layout } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -129,7 +129,7 @@ console.print(layout.tree);
 The primary use case for `Layout` is driving a fullscreen application with `Live`:
 
 ```typescript
-import { Live, Layout, Panel } from "rich-js";
+import { Live, Layout, Panel } from "@promptctl/rich-js";
 
 const layout = new Layout();
 layout.splitColumn(

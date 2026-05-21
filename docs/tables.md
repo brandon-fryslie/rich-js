@@ -7,7 +7,7 @@
 Three steps: construct a table, add columns, add rows, print:
 
 ```typescript
-import { Console, Table } from "rich-js";
+import { Console, Table } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -114,7 +114,7 @@ table.addColumn("Name");
 table.addColumn("Score", { justify: "right", style: "bold cyan" });
 
 // Via constructor — mix plain strings and Column objects
-import { Column } from "rich-js";
+import { Column } from "@promptctl/rich-js";
 
 const table = new Table(
   "Name",
@@ -127,7 +127,7 @@ const table = new Table(
 Pass a box constant from the named exports:
 
 ```typescript
-import { ROUNDED, HEAVY, DOUBLE, ASCII, MINIMAL } from "rich-js";
+import { ROUNDED, HEAVY, DOUBLE, ASCII, MINIMAL } from "@promptctl/rich-js";
 
 const table = new Table({ box: ROUNDED });
 ```
@@ -174,7 +174,7 @@ if (table.rowCount === 0) {
 Use the `Align` renderable to vertically align content within a cell when the per-column `vertical` option isn't enough:
 
 ```typescript
-import { Align } from "rich-js";
+import { Align } from "@promptctl/rich-js";
 
 table.addRow(new Align("Top content", { vertical: "top" }), otherCell);
 ```
@@ -184,7 +184,7 @@ table.addRow(new Align("Top content", { vertical: "top" }), otherCell);
 A table with no headers or borders is a general-purpose layout grid. The `Table.grid()` alternative constructor creates one:
 
 ```typescript
-import { Table } from "rich-js";
+import { Table } from "@promptctl/rich-js";
 
 const grid = Table.grid();
 grid.addColumn();

@@ -7,7 +7,7 @@
 Apply a style to a character range (start, end). Positions are character indices, not byte offsets:
 
 ```typescript
-import { RichText, Style } from "rich-js";
+import { RichText, Style } from "@promptctl/rich-js";
 
 const text = new RichText("Hello, World!");
 text.stylize(0, 5, "bold magenta");  // "Hello"
@@ -84,7 +84,7 @@ const text = new RichText("Right-aligned heading", {
 These options take effect wherever the text is rendered — inside a Panel, Table cell, or directly via `print`:
 
 ```typescript
-import { Panel } from "rich-js";
+import { Panel } from "@promptctl/rich-js";
 
 const heading = new RichText("Total", { justify: "right" });
 console.print(new Panel(heading));

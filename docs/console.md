@@ -8,7 +8,7 @@ Most applications need one `Console` instance. Create it once and import it wher
 
 ```typescript
 // shared/console.ts
-import { Console } from "rich-js";
+import { Console } from "@promptctl/rich-js";
 
 export const console = new Console();
 ```

@@ -7,7 +7,7 @@
 Pass a single value to apply equal padding on all four sides:
 
 ```typescript
-import { Console, Padding } from "rich-js";
+import { Console, Padding } from "@promptctl/rich-js";
 
 const console = new Console();
 
