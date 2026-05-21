@@ -29,11 +29,11 @@ import {
   Palette,
   RichText,
   Style,
+  ensureContrast,
   getThemePalette,
   transposePalette,
   type ThemeKey,
 } from "../../src/index.js";
-import { ensureContrast } from "../../src/themes/colorMath.js";
 
 // When EXPORT_HTML is set, Console records every print into an internal
 // buffer so we can dump a CSS-styled HTML file at the end. The render

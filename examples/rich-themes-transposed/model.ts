@@ -26,16 +26,14 @@ import {
   Style,
   Table,
   cellLen,
+  contrastRatio,
+  ensureContrast,
   getThemePalette,
   listThemePalettes,
   transposePalette,
   type ThemeKey,
 } from "../../src/index.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import {
-  contrastRatio,
-  ensureContrast,
-} from "../../src/themes/colorMath.js";
 
 // ---------------------------------------------------------------------------
 // Catalogues
