@@ -9,7 +9,7 @@ Many renderables — `Panel`, `Layout`, and others — accept only a **single** 
 console.print(new Panel(text1, text2)); // error
 
 // ✓ Wrap them in a Group
-import { Group } from "rich-js";
+import { Group } from "@promptctl/rich-js";
 
 console.print(new Panel(new Group(text1, text2)));
 ```
@@ -19,7 +19,7 @@ console.print(new Panel(new Group(text1, text2)));
 Pass multiple renderables as positional arguments:
 
 ```typescript
-import { Console, Group, Panel } from "rich-js";
+import { Console, Group, Panel } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -50,7 +50,7 @@ console.print(
 For a dynamic or large set of renderables, yield from a generator — more ergonomic than building a list:
 
 ```typescript
-import { RenderGroup } from "rich-js";
+import { RenderGroup } from "@promptctl/rich-js";
 
 function* buildContent(items: string[]) {
   yield "[bold cyan]Results[/bold cyan]";

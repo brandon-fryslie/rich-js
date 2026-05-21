@@ -7,7 +7,7 @@ A live display keeps a renderable fixed at the bottom of the terminal, refreshin
 Pass a renderable to the `Live` constructor and mutate it inside the block. The display updates automatically:
 
 ```typescript
-import { Console, Live, Table } from "rich-js";
+import { Console, Live, Table } from "@promptctl/rich-js";
 
 const console = new Console();
 

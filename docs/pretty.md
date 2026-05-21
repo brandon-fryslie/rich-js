@@ -68,7 +68,7 @@ console.print(longStringObject, { maxString: 80 });
 Use the `Pretty` class to embed pretty-printed data inside another renderable:
 
 ```typescript
-import { Pretty, Panel } from "rich-js";
+import { Pretty, Panel } from "@promptctl/rich-js";
 
 const data = { name: "Alice", scores: [98, 87, 95] };
 
@@ -148,7 +148,7 @@ console.print(new Point(10, 20));
 A decorator that generates the rich repr automatically when constructor parameter names match attribute names:
 
 ```typescript
-import { richReprAuto } from "rich-js";
+import { richReprAuto } from "@promptctl/rich-js";
 
 @richReprAuto
 class Color {

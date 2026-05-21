@@ -7,7 +7,7 @@
 Construct a tree with a root label. Add branches with `add()`. `add()` returns a new `Tree` — chain it to build depth:
 
 ```typescript
-import { Console, Tree } from "rich-js";
+import { Console, Tree } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -42,7 +42,7 @@ console.print(tree);
 Labels can be plain strings (markup is supported), `RichText` objects, or **any renderable** — panels, tables, grids:
 
 ```typescript
-import { Panel, Table } from "rich-js";
+import { Panel, Table } from "@promptctl/rich-js";
 
 const tree = new Tree("[bold magenta]Servers[/bold magenta]");
 

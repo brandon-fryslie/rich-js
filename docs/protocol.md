@@ -7,8 +7,8 @@ Any object can opt into rich formatting by implementing a known interface. When 
 The simplest form: implement a method that returns another renderable. Returning a string causes it to be rendered as markup:
 
 ```typescript
-import { Console } from "rich-js";
-import type { Renderable } from "rich-js";
+import { Console } from "@promptctl/rich-js";
+import type { Renderable } from "@promptctl/rich-js";
 
 class User {
   constructor(public name: string, public role: string) {}
@@ -30,8 +30,8 @@ You can return any renderable, not just strings — a `Table`, `Panel`, `Tree`, 
 The simple form is limited to returning a single object. For multi-part output or width-responsive rendering, implement the full `Renderable` interface:
 
 ```typescript
-import type { Renderable, RenderOptions } from "rich-js";
-import { Table } from "rich-js";
+import type { Renderable, RenderOptions } from "@promptctl/rich-js";
+import { Table } from "@promptctl/rich-js";
 
 class UserReport implements Renderable {
   constructor(private users: Array<{ name: string; score: number }>) {}
@@ -65,8 +65,8 @@ The `render` method:
 For complete character-level control, yield `Segment` objects directly — a text string paired with an optional style:
 
 ```typescript
-import type { Renderable, RenderOptions } from "rich-js";
-import { Segment, Style } from "rich-js";
+import type { Renderable, RenderOptions } from "@promptctl/rich-js";
+import { Segment, Style } from "@promptctl/rich-js";
 
 class Checkerboard implements Renderable {
   constructor(private rows: number, private cols: number) {}
@@ -95,8 +95,8 @@ This bypasses higher-level layout and is only needed for precise character-level
 Components like `Table` need to know how wide a renderable is before they can compute column widths. If you embed a custom renderable inside a `Table` or `Layout`, it must declare its width range by implementing `Measurable`:
 
 ```typescript
-import type { Measurable, RenderOptions } from "rich-js";
-import { Measurement } from "rich-js";
+import type { Measurable, RenderOptions } from "@promptctl/rich-js";
+import { Measurement } from "@promptctl/rich-js";
 
 class ChessBoard implements Measurable {
   // A chess board is always exactly 8×2 characters per square

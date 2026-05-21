@@ -20,7 +20,7 @@ Endpoints (`null` left or right) are explicit positions in the protocol — ever
 ## Basic use
 
 ```typescript
-import { Console, Strip, StripCell, PowerlineJoiner, Style } from "rich-js";
+import { Console, Strip, StripCell, PowerlineJoiner, Style } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -94,7 +94,7 @@ new GradientJoiner({ steps: 4 });
 A joiner is a pure function `(leftItem | null, rightItem | null) -> Renderable`. Implement the interface to define your own:
 
 ```typescript
-import { Joiner, StyledRenderable, Renderable } from "rich-js";
+import { Joiner, StyledRenderable, Renderable } from "@promptctl/rich-js";
 
 class FadeJoiner<T extends StyledRenderable> implements Joiner<T> {
   join(left: T | null, right: T | null): Renderable {
@@ -175,7 +175,7 @@ Each part contributes one segment whose bg is always the cell-level bg; the part
 `FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Joiner` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
 
 ```typescript
-import { FlexStrip, StripCell, PowerlineJoiner, Style } from "rich-js";
+import { FlexStrip, StripCell, PowerlineJoiner, Style } from "@promptctl/rich-js";
 
 const strip = new FlexStrip(
   tags.map((t) => new StripCell(` ${t} `, Style.parse("white on blue"))),
