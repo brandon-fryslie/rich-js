@@ -104,3 +104,39 @@ export function transposePalette(
   const newDark = Oklch.fromRgba(newBackground).l < 0.5;
   return new Palette(name ?? palette.name, newDark, next);
 }
+
+/**
+ * Build the `ThemeKey` that rotates `palette` so its *tonic* var lands on
+ * `targetHueDeg`. The musical operation directly: a key is the set of
+ * intervals from the tonic, so "play this theme in the key of <hue>" means
+ * "shift every color by exactly the interval that carries the tonic's
+ * current hue to the target." Pick the tonic's pitch and the rest follows.
+ *
+ * Returns a hue-only key (chroma and lightness untouched). Callers that also
+ * want to scale chroma or shift lightness spread their own axes over the
+ * result — those are independent transposition dimensions, not part of
+ * choosing the key. [LAW:one-type-per-behavior] a degree-shift key and a
+ * root-note key are the *same* transform; this is just a second constructor
+ * for it, so `transposePalette` stays untouched.
+ *
+ * Throws if `tonicVar` is absent — the interval has no anchor to measure
+ * from, so there is no honest key to return. Failing loudly beats inventing
+ * a zero shift that would silently mean "no transposition."
+ */
+export function themeKeyForRoot(
+  palette: Palette,
+  tonicVar: string,
+  targetHueDeg: number,
+): ThemeKey {
+  const tonic = palette.get(tonicVar);
+  if (tonic === undefined) {
+    throw new Error(
+      `themeKeyForRoot: palette "${palette.name}" has no "${tonicVar}" var ` +
+        `to use as the tonic; cannot measure the transposition interval.`,
+    );
+  }
+  const tonicHue = Oklch.fromRgba(tonic).h;
+  let hueShift = (targetHueDeg - tonicHue) % 360;
+  if (hueShift < 0) hueShift += 360;
+  return { hueShift, chromaScale: 1, lightnessScale: 1, lightnessShift: 0 };
+}

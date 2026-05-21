@@ -12,6 +12,7 @@ import {
   ANCHORED_ROOTS,
   isAnchored,
   transposePalette,
+  themeKeyForRoot,
 } from "../../src/themes/transpose.js";
 
 describe("ANCHORED_ROOTS / isAnchored", () => {
@@ -204,6 +205,64 @@ describe("transposePalette — INVERT_LIGHTNESS", () => {
         lightnessShift: 0,
       }),
     ).toThrow(/no "background" var/);
+  });
+});
+
+describe("themeKeyForRoot", () => {
+  it("lands the tonic var on the requested hue (round-trip ±2°)", () => {
+    const gruv = getThemePalette("gruvbox")!;
+    for (const target of [0, 60, 137, 240, 300]) {
+      const key = themeKeyForRoot(gruv, "primary", target);
+      const transposed = transposePalette(gruv, key);
+      const resultHue = Oklch.fromRgba(transposed.get("primary")!).h;
+      const delta = Math.min(
+        Math.abs(resultHue - target),
+        360 - Math.abs(resultHue - target),
+      );
+      expect(delta).toBeLessThan(2);
+    }
+  });
+
+  it("requesting the tonic's own hue is a no-op shift (~0°)", () => {
+    const gruv = getThemePalette("gruvbox")!;
+    const natural = Oklch.fromRgba(gruv.get("primary")!).h;
+    const key = themeKeyForRoot(gruv, "primary", natural);
+    // hueShift wraps to [0,360); a self-request is either ~0 or ~360.
+    expect(Math.min(key.hueShift, 360 - key.hueShift)).toBeLessThan(1);
+  });
+
+  it("returns a hue-only key: chroma and lightness are identity", () => {
+    const gruv = getThemePalette("gruvbox")!;
+    const key = themeKeyForRoot(gruv, "accent", 123);
+    expect(key.chromaScale).toBe(1);
+    expect(key.lightnessScale).toBe(1);
+    expect(key.lightnessShift).toBe(0);
+  });
+
+  it("hueShift is normalized into [0, 360)", () => {
+    const gruv = getThemePalette("gruvbox")!;
+    const key = themeKeyForRoot(gruv, "primary", 10);
+    expect(key.hueShift).toBeGreaterThanOrEqual(0);
+    expect(key.hueShift).toBeLessThan(360);
+  });
+
+  it("anchored vars still hold their hue when transposing to a root", () => {
+    // root-note selection produces a normal ThemeKey, so transposePalette's
+    // anchor logic applies unchanged: error stays red-ish.
+    const gruv = getThemePalette("gruvbox")!;
+    const errorBefore = Oklch.fromRgba(gruv.get("error")!).h;
+    const key = themeKeyForRoot(gruv, "primary", 300);
+    const transposed = transposePalette(gruv, key);
+    const errorAfter = Oklch.fromRgba(transposed.get("error")!).h;
+    expect(Math.abs(errorAfter - errorBefore)).toBeLessThan(2);
+  });
+
+  it("throws when the tonic var is missing (loud failure)", () => {
+    const noTonic = new Palette("no-tonic", true, new Map<string, ColorRgba>([
+      ["background", new ColorRgba(30, 30, 30)],
+      ["foreground", new ColorRgba(220, 220, 220)],
+    ]));
+    expect(() => themeKeyForRoot(noTonic, "primary", 120)).toThrow(/no "primary" var/);
   });
 });
 
