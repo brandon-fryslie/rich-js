@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
+import { Oklch } from "../../src/core/oklch.js";
 import {
   darken,
   lighten,
@@ -139,14 +140,35 @@ describe("ensureContrast", () => {
     expect(ensureContrast(white, black, 4.5)).toBe(white);
   });
 
-  it("escalates to a readable black/white when the themed fg fails", () => {
-    // dark-grey text on a near-black bg fails 4.5:1; ensureContrast must
-    // replace it with contrastFor's pick (white here).
-    const darkGrey = new ColorRgba(50, 50, 50);
-    const nearBlack = new ColorRgba(20, 20, 20);
-    const out = ensureContrast(darkGrey, nearBlack, 4.5);
-    expect(out).toEqual(contrastFor(nearBlack));
-    expect(contrastRatio(out, nearBlack)).toBeGreaterThanOrEqual(4.5);
+  it("lightens/darkens within the hue instead of flipping to black/white", () => {
+    // A blue foreground on a darker-blue background fails 4.5:1. ensureContrast
+    // must lighten it to a *readable blue* — hue preserved, not white.
+    const blue = new ColorRgba(60, 90, 200);
+    const darkBlue = new ColorRgba(20, 30, 70);
+    const out = ensureContrast(blue, darkBlue, 4.5);
+    expect(contrastRatio(out, darkBlue)).toBeGreaterThanOrEqual(4.5);
+    // Hue is preserved (still recognizably blue), not collapsed to b/w.
+    const hIn = Oklch.fromRgba(blue).h;
+    const hOut = Oklch.fromRgba(out).h;
+    expect(Math.min(Math.abs(hOut - hIn), 360 - Math.abs(hOut - hIn))).toBeLessThan(8);
+    expect([out.red, out.green, out.blue]).not.toEqual([255, 255, 255]);
+    expect([out.red, out.green, out.blue]).not.toEqual([0, 0, 0]);
+  });
+
+  it("makes the smallest lightness change that clears the ratio", () => {
+    // The result should sit just past the threshold, not slammed to the pole:
+    // its contrast is close to the floor, not the maximum.
+    const blue = new ColorRgba(60, 90, 200);
+    const darkBlue = new ColorRgba(20, 30, 70);
+    const out = ensureContrast(blue, darkBlue, 4.5);
+    expect(contrastRatio(out, darkBlue)).toBeLessThan(7); // not pushed all the way to white
+  });
+
+  it("falls back to the pole only when no hue lightness can meet the ratio", () => {
+    // Against a mid-grey, even pure black/white tops out near 4.58:1, so a
+    // target of 7 is physically impossible — return the max-contrast pole.
+    const out = ensureContrast(new ColorRgba(120, 120, 120), mid, 7);
+    expect(contrastRatio(out, mid)).toBeCloseTo(contrastRatio(contrastFor(mid), mid), 1);
   });
 
   it("the result always achieves min(target, best-possible-for-bg)", () => {
