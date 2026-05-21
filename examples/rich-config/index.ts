@@ -9,7 +9,7 @@
  *
  * Layout uses three placement kinds (see src/widgets/types.ts):
  *   flow   — vertical stack at x=0 (header/subtitle/heading/content)
- *   inline — horizontal continuation of the preceding row (filter input
+ *   inline — horizontal continuation of the preceding row (palette search
  *            beside the dropdown; checkbox/slider/button clusters)
  *   fixed  — absolute (x, y) for the status row and log buffer that
  *            anchor at the bottom regardless of content growth.
@@ -135,10 +135,12 @@ const btnDisabled = new Button({ label: "Locked", variant: "default", disabled: 
 // --- Interactive widgets ---
 
 // [LAW:one-source-of-truth] state.selectedThemeIdx is the canonical
-// "selected theme" — it indexes the global THEMES array and survives
-// filter changes. themeDropdown.options is filter-derived; the dropdown's
+// "selected theme" — it indexes the global THEMES array and survives the
+// dark-only narrowing. themeDropdown.options is the dark-only-derived view;
 // selectedIndex is a positional projection of state.selectedThemeIdx into
-// that filtered list, maintained by the filter autorun in startup().
+// that view, maintained by the dark-only autorun in startup(). Text search
+// within the themes is the dropdown's own built-in filter — not a sibling
+// widget. [LAW:single-enforcer] one text-filter for themes, owned by Dropdown.
 const themeDropdown = new Dropdown({
   options: THEMES.map((t) => t.name),
   selectedIndex: 0,
@@ -150,7 +152,11 @@ const cbProgress = new Checkbox({ label: "Progress", checked: true, id: "cb-prog
 const tgDarkOnly = new Toggle({ label: "Dark only", variant: "success", id: "tg-dark-only" });
 const slFill = new Slider({ value: 60, min: 0, max: 100, step: 5, width: 25, id: "sl-fill" });
 const slContrast = new Slider({ value: 0.179, min: 0, max: 1, step: 0.05, width: 25, id: "sl-contrast" });
-const inName = new TextInput({ placeholder: "Filter themes", id: "in-filter" });
+// Repurposed from a (now-redundant) theme filter into a live palette-color
+// search: its value narrows the swatch chips below to matching palette
+// variable names. Themes are text-filtered by the Dropdown's own built-in
+// filter, so this input drives a different dataset entirely.
+const inSearch = new TextInput({ placeholder: "Search palette", id: "in-search" });
 
 themeDropdown.onSubmit(() => {
   // Resolve the picked option back to its canonical THEMES index by name —
@@ -168,7 +174,7 @@ cbProgress.onChange(() => log(`Progress bars → ${cbProgress.checked ? "shown" 
 tgDarkOnly.onChange(() => log(`Dark only → ${tgDarkOnly.on ? "ON" : "OFF"}`));
 slFill.onChange(() => log(`Progress fill → ${slFill.value}%`));
 slContrast.onChange(() => log(`Contrast threshold → ${slContrast.value.toFixed(2)}`));
-inName.onSubmit(() => log(`Filter: ${JSON.stringify(inName.value)} (${themeDropdown.options.length} match)`));
+inSearch.onSubmit(() => log(`Palette search: ${JSON.stringify(inSearch.value)}`));
 
 // Button.handleKey sets active=true on enter/space but has no key-up event
 // to clear it — schedule the visual flash-off here. For the mouse path,
@@ -179,21 +185,22 @@ const flashOff = (b: Button): void => {
 };
 btnExport.onSubmit(() => { log(`Exported ${state.selectedName} theme`); flashOff(btnExport); });
 btnReset.onSubmit(() => {
-  // Reset state to Default and clear the filter; the filter autorun
-  // re-syncs themeDropdown.options/selectedIndex from these canonical inputs.
+  // Reset selection to Default and clear the palette search. The dark-only
+  // autorun re-syncs themeDropdown.options/selectedIndex from the canonical
+  // selection; the swatch chips re-derive from the cleared search.
   runInAction(() => {
-    inName.value = "";
-    inName.cursorPosition = 0;
+    inSearch.value = "";
+    inSearch.cursorPosition = 0;
     state.selectTheme(0);
   });
   log("Reset to Default theme");
   flashOff(btnReset);
 });
 
-// Tab order: dropdown → text input → toggles → slider → action buttons.
+// Tab order: dropdown → palette search → toggles → slider → action buttons.
 const allWidgets: InteractiveWidget[] = [
   themeDropdown,
-  inName,
+  inSearch,
   cbMuted,
   cbAnsi,
   cbProgress,
@@ -345,6 +352,45 @@ const swatchesItem = new StaticItem({
   },
 });
 
+// Palette search results — the live target of inSearch. Renders one chip per
+// palette variable whose name matches the query (empty query = all 27), each
+// painted in its own colour. [LAW:dataflow-not-control-flow] the chip list is
+// re-derived from inSearch.value every frame; there is no "filter changed"
+// branch. [LAW:one-source-of-truth] palette.vars is canonical; chips are a
+// pure projection. Width-capped to one row (the last-inch UI concern), with a
+// "+N" overflow marker so a broad query never spills into the fixed rows below.
+const PALETTE_ROW_WIDTH = 76;
+const paletteSearchItem = new StaticItem({
+  id: "static-palette-search",
+  render: (_options) => {
+    const palette = state.selectedTheme.palette;
+    const query = inSearch.value.toLowerCase();
+    const all = [...palette.vars.entries()];
+    const matches = all.filter(([key]) => key.toLowerCase().includes(query));
+    const header = `palette ${matches.length}/${all.length}  `;
+    const out: Segment[] = [new Segment(header, sectionHeadStyle)];
+    let used = header.length;
+    let shown = 0;
+    for (const [key, c] of matches) {
+      const chip = ` ${key} `;
+      if (used + chip.length + 1 > PALETTE_ROW_WIDTH) break;
+      const fgLight = luminance(c) > 0.179;
+      out.push(
+        new Segment(chip, new Style({
+          bgcolor: ColorSpec.fromRgba(c),
+          color: fgLight ? ColorSpec.fromRgb(0, 0, 0) : ColorSpec.fromRgb(255, 255, 255),
+        })),
+      );
+      out.push(new Segment(" "));
+      used += chip.length + 1;
+      shown++;
+    }
+    const overflow = matches.length - shown;
+    if (overflow > 0) out.push(new Segment(`+${overflow}`, dimStyle));
+    return out;
+  },
+});
+
 // Progress section. When cbProgress.checked is false, render returns [] —
 // pass 1 produces a 0-height widget and the flow cursor doesn't advance
 // (dataflow-not-control-flow: variability lives in the data, not in
@@ -458,9 +504,9 @@ const mountList: MountEntry[] = [
   spacer("sp-1"),
   widgetsHeading,
 
-  // Row of dropdown + filter input.
+  // Row of dropdown + palette search.
   themeDropdown,
-  { widget: inName, placement: { kind: "inline" } },
+  { widget: inSearch, placement: { kind: "inline" } },
 
   spacer("sp-2"),
 
@@ -489,6 +535,7 @@ const mountList: MountEntry[] = [
   titlePanelItem,
   spacer("sp-6"),
   swatchesItem,
+  paletteSearchItem,
   spacer("sp-7"),
 
   // Optional sections (each renders 0 rows when its checkbox is off).
@@ -555,18 +602,16 @@ function startup(): void {
   // produces a complete frame in one go.
   screen.mount(...mountList);
 
-  // [LAW:single-enforcer] Filter pipeline: inName.value (substring) +
-  // tgDarkOnly.on (dark-only) + state.selectedThemeIdx (canonical
-  // selection) → themeDropdown.options (filtered names) +
-  // themeDropdown.selectedIndex (filtered position of the canonical
-  // theme, or -1 if filtered out).
+  // [LAW:single-enforcer] Dark-only is the only external narrowing of the
+  // dropdown's option set: tgDarkOnly.on + state.selectedThemeIdx (canonical
+  // selection) → themeDropdown.options (dark-only-filtered names) +
+  // themeDropdown.selectedIndex (position of the canonical theme in that
+  // view, or -1 if narrowed out). Text search within these themes is the
+  // Dropdown's own built-in filter — a different layer, not a sibling widget.
   disposeFilter = autorun(() => {
-    const filterText = inName.value.toLowerCase();
     const darkOnly = tgDarkOnly.on;
     const canonicalTheme = THEMES[state.selectedThemeIdx]!;
-    const filtered = THEMES
-      .filter((t) => !darkOnly || t.theme.palette.dark)
-      .filter((t) => filterText === "" || t.name.toLowerCase().includes(filterText));
+    const filtered = THEMES.filter((t) => !darkOnly || t.theme.palette.dark);
     runInAction(() => {
       themeDropdown.options = filtered.map((t) => t.name);
       themeDropdown.selectedIndex = filtered.indexOf(canonicalTheme);
