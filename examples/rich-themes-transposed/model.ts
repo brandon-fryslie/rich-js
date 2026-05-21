@@ -67,6 +67,11 @@ export const CONTROLS = [
 ] as const;
 export type Control = (typeof CONTROLS)[number];
 
+// The two preview views. `showcase` is the dense single page that exercises
+// nearly every theme var; `app` is the focused dashboard. Toggled with `v`.
+export const VIEWS_ORDER = ["showcase", "app"] as const;
+export type View = (typeof VIEWS_ORDER)[number];
+
 // Swatches shown in the preview — one decorative trio and the three semantic
 // anchors, so anchor-hue-locking is visible next to free rotation.
 const SWATCH_VARS = [
@@ -90,6 +95,7 @@ export interface ExplorerState {
   readonly lightnessShift: number; // [-0.4, 0.4]
   readonly minContrast: number; // WCAG ratio, [3, 7]
   readonly focusedControl: Control;
+  readonly view: View;
 }
 
 const HUE_STEP = 6;
@@ -132,6 +138,7 @@ export function initialState(): ExplorerState {
     lightnessShift: 0,
     minContrast: 4.5,
     focusedControl: "rootHue",
+    view: "showcase",
   };
 }
 
@@ -202,6 +209,11 @@ export function reduce(state: ExplorerState, input: KeyInput): ExplorerState {
       chromaScale: 1,
       lightnessShift: 0,
     };
+  }
+  // 'v' toggles the preview between the dense showcase and the app dashboard.
+  if (input.character === "v") {
+    const idx = VIEWS_ORDER.indexOf(state.view);
+    return { ...state, view: VIEWS_ORDER[wrap(idx + 1, VIEWS_ORDER.length)]! };
   }
   return state;
 }
@@ -486,6 +498,305 @@ export function appMock(palette: Palette, min: number, width: number): Segment[]
   return collectLines(panel, width);
 }
 
+// ===========================================================================
+// Showcase view — a dense single page exercising as many theme vars as
+// possible. Each family of vars drives the UI element it was designed for:
+// markdown-h* → a document, footer-* → a command bar, *-darken/lighten-* → a
+// tonal ramp, and so on. Color coverage is a consequence of using every
+// family for its purpose, not of dumping swatches.
+// ===========================================================================
+
+const RAMP_ROLES = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
+const RAMP_STEPS = ["darken-3", "darken-2", "darken-1", "", "lighten-1", "lighten-2", "lighten-3"] as const;
+
+/** A var's color flattened over `onBg`, defaulting to foreground if absent. */
+function colorOf(palette: Palette, varName: string, onBg: ColorRgba): ColorRgba {
+  return (palette.get(varName) ?? palette.get("foreground")!).compositeOver(onBg);
+}
+
+/** A solid block of `color` drawn as foreground glyphs (covers its cells
+ * regardless of the surface stamp behind it). */
+function solid(color: ColorRgba, width: number): Segment {
+  return new Segment("█".repeat(width), new Style({ color: spec(color) }));
+}
+
+/** Readable text in `varName`'s color against `onBg`. */
+function textIn(
+  palette: Palette,
+  varName: string,
+  onBg: ColorRgba,
+  min: number,
+  extra?: { bold?: boolean; underline?: boolean; dim?: boolean },
+): Style {
+  const c = palette.get(varName) ?? palette.get("foreground")!;
+  return new Style({ color: spec(ensureContrast(c, onBg, min)), ...extra });
+}
+
+function pad2(text: string, width: number): string {
+  const len = cellLen(text);
+  return len >= width ? text : text + " ".repeat(width - len);
+}
+
+function headerBar(palette: Palette, min: number, width: number): Segment[][] {
+  const barBg = colorOf(palette, "primary-background", palette.get("background")!);
+  const line: Segment[] = [
+    new Segment(" ⬢ aurora ", new Style({ bgcolor: spec(barBg), color: textIn(palette, "text", barBg, min, { bold: true }).color })),
+    new Segment("  Files   Edit   View   ", new Style({ bgcolor: spec(barBg), color: textIn(palette, "text-muted", barBg, min).color })),
+    new Segment("Run", new Style({ bgcolor: spec(barBg), color: textIn(palette, "text-accent", barBg, min, { bold: true }).color })),
+    new Segment("   ⌘K to search", new Style({ bgcolor: spec(barBg), color: textIn(palette, "text-disabled", barBg, min).color })),
+  ];
+  return stampSurface([line], spec(barBg), width);
+}
+
+function markdownCard(palette: Palette, min: number, width: number): Segment[][] {
+  const cardBg = colorOf(palette, "panel", palette.get("background")!);
+  const lines: Segment[][] = [];
+  lines.push([new Segment(" Document ", new Style({ color: textIn(palette, "text-muted", cardBg, min, { bold: true }).color })) ]);
+  for (const lvl of [1, 2, 3, 4, 5, 6] as const) {
+    const hbg = colorOf(palette, `markdown-h${lvl}-background`, cardBg);
+    const fgc = palette.get(`markdown-h${lvl}-color`) ?? palette.get("foreground")!;
+    lines.push([
+      new Segment(
+        pad2(` H${lvl}  Heading level ${lvl}`, width),
+        new Style({ bgcolor: spec(hbg), color: spec(ensureContrast(fgc, hbg, min)), bold: lvl <= 2 }),
+      ),
+    ]);
+  }
+  lines.push([
+    new Segment("Body copy in ", textIn(palette, "text", cardBg, min)),
+    new Segment("text", textIn(palette, "text", cardBg, min, { bold: true })),
+    new Segment(", ", textIn(palette, "text", cardBg, min)),
+    new Segment("muted", textIn(palette, "text-muted", cardBg, min)),
+    new Segment(", ", textIn(palette, "text", cardBg, min)),
+    new Segment("disabled", textIn(palette, "text-disabled", cardBg, min)),
+  ]);
+  lines.push([
+    new Segment("→ a hyperlink", textIn(palette, "link-color", cardBg, min, { underline: true })),
+    new Segment("   visited", textIn(palette, "link-color-hover", cardBg, min, { underline: true })),
+  ]);
+  return stampSurface(lines, spec(cardBg), width);
+}
+
+function rampGrid(palette: Palette, min: number, width: number): Segment[][] {
+  const bg = palette.get("background")!;
+  const lines: Segment[][] = [];
+  lines.push([
+    new Segment("Tonal ramps  ", textIn(palette, "text-muted", bg, min, { bold: true })),
+    new Segment("darken ◂ base ▸ lighten        muted", textIn(palette, "text-disabled", bg, min)),
+  ]);
+  for (const role of RAMP_ROLES) {
+    const segs: Segment[] = [new Segment(pad2(role, 10), textIn(palette, `text-${role}`, bg, min, { bold: true }))];
+    for (const step of RAMP_STEPS) {
+      const v = step ? `${role}-${step}` : role;
+      segs.push(solid(colorOf(palette, v, bg), 4));
+      segs.push(new Segment(" "));
+    }
+    segs.push(new Segment("  "));
+    segs.push(solid(colorOf(palette, `${role}-muted`, bg), 5));
+    lines.push(segs);
+  }
+  return stampSurface(lines, spec(bg), width);
+}
+
+const SURFACE_ROLES = ["background", "surface", "panel", "boost"] as const;
+
+function surfaceRamp(palette: Palette, min: number, width: number): Segment[][] {
+  const bg = palette.get("background")!;
+  const lines: Segment[][] = [
+    [
+      new Segment("Surfaces  ", textIn(palette, "text-muted", bg, min, { bold: true })),
+      new Segment("darken ◂ base ▸ lighten", textIn(palette, "text-disabled", bg, min)),
+    ],
+  ];
+  const ramp = (label: string, prefix: string, tailVar?: string): Segment[] => {
+    const segs: Segment[] = [new Segment(pad2(label, 11), textIn(palette, "text", bg, min))];
+    for (const step of RAMP_STEPS) {
+      segs.push(solid(colorOf(palette, step ? `${prefix}-${step}` : prefix, bg), 4));
+      segs.push(new Segment(" "));
+    }
+    if (tailVar) {
+      segs.push(new Segment("  "));
+      segs.push(solid(colorOf(palette, tailVar, bg), 5));
+    }
+    return segs;
+  };
+  for (const role of SURFACE_ROLES) lines.push(ramp(role, role));
+  lines.push(ramp("foreground", "foreground", "foreground-disabled"));
+  return stampSurface(lines, spec(bg), width);
+}
+
+function sidebar(palette: Palette, min: number, width: number): Segment[][] {
+  const cardBg = colorOf(palette, "panel", palette.get("background")!);
+  const fg = palette.get("foreground")!;
+  const railWidth = Math.max(8, width - 1);
+  const lines: Segment[][] = [
+    [new Segment(" Navigation ", new Style({ color: textIn(palette, "text-muted", cardBg, min, { bold: true }).color }))],
+  ];
+  // selected (block cursor), hovered (block hover), then plain items; a
+  // scrollbar rail on the right edge uses thumb/active/track colors.
+  const cursorBg = colorOf(palette, "block-cursor-background", cardBg);
+  const hoverBg = colorOf(palette, "block-hover-background", cardBg);
+  const thumb = colorOf(palette, "scrollbar", cardBg);
+  const thumbActive = colorOf(palette, "scrollbar-active", cardBg);
+  const track = colorOf(palette, "scrollbar-background", cardBg);
+  const rail = (color: ColorRgba): Segment => new Segment("█", new Style({ color: spec(color) }));
+  const items: Array<[string, "selected" | "hover" | "plain", ColorRgba]> = [
+    ["Overview", "selected", thumbActive],
+    ["Services", "hover", thumb],
+    ["Metrics", "plain", thumb],
+    ["Logs", "plain", track],
+    ["Alerts", "plain", track],
+  ];
+  for (const [label, kind, railColor] of items) {
+    const cellWidth = railWidth;
+    let cell: Segment;
+    if (kind === "selected") {
+      cell = new Segment(pad2(` ▸ ${label}`, cellWidth), new Style({ bgcolor: spec(cursorBg), color: spec(ensureContrast(palette.get("block-cursor-foreground") ?? fg, cursorBg, min)) }));
+    } else if (kind === "hover") {
+      cell = new Segment(pad2(`   ${label}`, cellWidth), new Style({ bgcolor: spec(hoverBg), color: spec(ensureContrast(fg, hoverBg, min)) }));
+    } else {
+      cell = new Segment(pad2(`   ${label}`, cellWidth), textIn(palette, "text-muted", cardBg, min));
+    }
+    lines.push([cell, rail(railColor)]);
+  }
+  // a hairline using the border var
+  lines.push([new Segment("─".repeat(railWidth), new Style({ color: spec(colorOf(palette, "border", cardBg)) }))]);
+  return stampSurface(lines, spec(cardBg), width);
+}
+
+function statusLog(palette: Palette, min: number, width: number): Segment[][] {
+  const cardBg = colorOf(palette, "surface", palette.get("background")!);
+  const rows: Array<[string, string, string]> = [
+    ["error", "search-index", "connection refused (ECONNREFUSED)"],
+    ["warning", "billing", "p99 latency 88ms exceeds budget"],
+    ["success", "auth-gateway", "health check passed in 12ms"],
+    ["success", "cdn-edge", "cache hit ratio 99.2%"],
+  ];
+  const lines: Segment[][] = [];
+  lines.push([new Segment(" Activity ", new Style({ color: textIn(palette, "text-muted", cardBg, min, { bold: true }).color }))]);
+  for (const [sev, svc, msg] of rows) {
+    const tag = colorOf(palette, sev, cardBg);
+    lines.push([
+      new Segment(` ${pad2(sev.toUpperCase(), 8)}`, new Style({ bgcolor: spec(tag), color: spec(ensureContrast(palette.get("foreground")!, tag, min)) })),
+      new Segment(`  ${pad2(svc, 14)}`, textIn(palette, `text-${sev}`, cardBg, min, { bold: true })),
+      new Segment(msg, textIn(palette, "foreground-muted", cardBg, min)),
+    ]);
+  }
+  return stampSurface(lines, spec(cardBg), width);
+}
+
+function componentsCard(palette: Palette, min: number, width: number): Segment[][] {
+  const cardBg = colorOf(palette, "surface", palette.get("background")!);
+  const lines: Segment[][] = [];
+  lines.push([new Segment(" Controls ", new Style({ color: textIn(palette, "text-muted", cardBg, min, { bold: true }).color }))]);
+
+  const button = (label: string, fillVar: string): Segment => {
+    const fill = colorOf(palette, fillVar, cardBg);
+    return new Segment(` ${label} `, new Style({ bgcolor: spec(fill), color: spec(ensureContrast(palette.get("button-foreground") ?? palette.get("foreground")!, fill, min)) }));
+  };
+  lines.push([
+    button("Deploy", "primary"),
+    new Segment(" "),
+    button("pressed", "primary-darken-1"),
+    new Segment("  "),
+    button("Stage", "secondary"),
+    new Segment(" "),
+    button("Review", "accent"),
+  ]);
+
+  // Text input mock with a selection span and a block cursor.
+  const selBg = colorOf(palette, "input-selection-background", cardBg);
+  const curBg = colorOf(palette, "input-cursor-background", cardBg);
+  lines.push([
+    new Segment(" ", textIn(palette, "text", cardBg, min)),
+    new Segment("search ", textIn(palette, "text-muted", cardBg, min)),
+    new Segment("aurora", new Style({ bgcolor: spec(selBg), color: spec(ensureContrast(palette.get("foreground")!, selBg, min)) })),
+    new Segment("-api", textIn(palette, "text", cardBg, min)),
+    new Segment(" ", new Style({ bgcolor: spec(curBg), color: spec(ensureContrast(palette.get("input-cursor-foreground") ?? palette.get("foreground")!, curBg, min)) })),
+  ]);
+
+  // A toggle (on = success fill) and a muted off state.
+  const onBg = colorOf(palette, "success", cardBg);
+  const offBg = colorOf(palette, "surface-lighten-2", cardBg);
+  lines.push([
+    new Segment(" ●ON ", new Style({ bgcolor: spec(onBg), color: spec(ensureContrast(palette.get("foreground")!, onBg, min)) })),
+    new Segment("  "),
+    new Segment(" OFF○ ", new Style({ bgcolor: spec(offBg), color: spec(ensureContrast(palette.get("foreground")!, offBg, min)) })),
+  ]);
+  return stampSurface(lines, spec(cardBg), width);
+}
+
+function footerBar(palette: Palette, min: number, width: number): Segment[][] {
+  const barBg = colorOf(palette, "footer-background", palette.get("background")!);
+  const keyBg = colorOf(palette, "footer-key-background", barBg);
+  const descBg = colorOf(palette, "footer-description-background", barBg);
+  const seg: Segment[] = [];
+  const bind = (key: string, desc: string): void => {
+    seg.push(new Segment(` ${key} `, new Style({ bgcolor: spec(keyBg), color: spec(ensureContrast(palette.get("footer-key-foreground") ?? palette.get("foreground")!, keyBg, min)) })));
+    seg.push(new Segment(` ${desc} `, new Style({ bgcolor: spec(descBg), color: spec(ensureContrast(palette.get("footer-description-foreground") ?? palette.get("foreground")!, descBg, min)) })));
+    seg.push(new Segment(" ", new Style({ bgcolor: spec(barBg) })));
+  };
+  bind("^p", "palette");
+  bind("^s", "save");
+  bind("^r", "run");
+  bind("^q", "quit");
+  return stampSurface([seg], spec(barBg), width);
+}
+
+function joinColumns(left: Segment[][], right: Segment[][], leftWidth: number, gap: number): Segment[][] {
+  const rows = Math.max(left.length, right.length);
+  const out: Segment[][] = [];
+  for (let i = 0; i < rows; i++) {
+    const l = pad(left[i] ?? [], leftWidth);
+    out.push([...l, new Segment(" ".repeat(gap)), ...(right[i] ?? [])]);
+  }
+  return out;
+}
+
+/**
+ * The dense single-page showcase. Pure: `renderShowcase(palette)` is the one
+ * source of what the page shows. Lays out a header, a two-column body, and a
+ * footer command bar, then stamps the page background so margins and gaps
+ * read as one surface. [LAW:dataflow-not-control-flow]
+ */
+export function renderShowcase(palette: Palette, min: number, width: number): Segment[][] {
+  const bg = palette.get("background")!;
+  const gap = 3;
+  const leftWidth = Math.max(30, Math.floor((width - gap) * 0.5));
+  const rightWidth = Math.max(30, width - gap - leftWidth);
+
+  const leftCol: Segment[][] = [
+    ...markdownCard(palette, min, leftWidth),
+    [],
+    ...sidebar(palette, min, leftWidth),
+    [],
+    ...statusLog(palette, min, leftWidth),
+  ];
+  const rightCol: Segment[][] = [
+    ...rampGrid(palette, min, rightWidth),
+    [],
+    ...surfaceRamp(palette, min, rightWidth),
+    [],
+    ...componentsCard(palette, min, rightWidth),
+  ];
+
+  const page: Segment[][] = [
+    ...headerBar(palette, min, width),
+    [],
+    ...joinColumns(leftCol, rightCol, leftWidth, gap),
+    [],
+    ...footerBar(palette, min, width),
+  ];
+  return stampSurface(page, spec(bg), width);
+}
+
+// [LAW:dataflow-not-control-flow] The view is a value; this registry maps it
+// to a renderer. `rightPane` indexes it instead of branching on the view.
+const VIEWS: Record<View, (palette: Palette, min: number, width: number) => Segment[][]> = {
+  showcase: renderShowcase,
+  app: appMock,
+};
+
 function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
   const palette = transposedPalette(state);
   const src = sourcePalette(state);
@@ -540,11 +851,9 @@ function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
   );
   lines.push([]);
 
-  // Live application preview — the same renderables a real app uses, recolored
-  // from the transposed palette. This is where transposition earns its keep:
-  // the decorative chrome rotates with the root note while the service
-  // statuses hold their meaning.
-  for (const l of appMock(palette, state.minContrast, Math.max(40, rightWidth))) {
+  // Live preview, recolored from the transposed palette. The view is data:
+  // VIEWS selects which renderer runs, both pure. [LAW:dataflow-not-control-flow]
+  for (const l of VIEWS[state.view](palette, state.minContrast, Math.max(40, rightWidth))) {
     lines.push(l);
   }
   lines.push([]);
@@ -562,7 +871,7 @@ function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
   lines.push([]);
   lines.push([
     new Segment(
-      "↑/↓ theme · Tab control · ←/→ adjust · r reset · q quit",
+      `↑/↓ theme · Tab control · ←/→ adjust · r reset · v view [${state.view}] · q quit`,
       DIM,
     ),
   ]);

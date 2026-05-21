@@ -32,6 +32,7 @@ import {
   renderFrame,
   framesToSegments,
   appMock,
+  renderShowcase,
   sourcePalette,
   transposedPalette,
   type ExplorerState,
@@ -154,12 +155,28 @@ describe("explorer model — frame", () => {
     expect(plainOf(initialState())).toMatch(/\d+\.\d+:1/);
   });
 
-  it("renders the application mock with its chrome and service rows", () => {
-    const text = plainOf(initialState(), 40);
+  it("renders the application mock with its chrome and service rows (app view)", () => {
+    const text = plainOf({ ...initialState(), view: "app" }, 40);
     expect(text).toContain("aurora-api");
     expect(text).toContain("auth-gateway");
     expect(text).toContain("down"); // the failing-service status label
     expect(text).toContain("Deploy");
+  });
+
+  it("renders the dense showcase by default", () => {
+    const text = plainOf(initialState(), 50);
+    expect(text).toContain("Tonal ramps");
+    expect(text).toContain("Heading level 1");
+    expect(text).toContain("Navigation");
+  });
+
+  it("v toggles between the showcase and the app dashboard", () => {
+    const start = initialState();
+    expect(start.view).toBe("showcase");
+    const toggled = reduce(start, ch("v"));
+    expect(toggled.view).toBe("app");
+    expect(plainOf(toggled, 40)).toContain("aurora-api  ·  dashboard");
+    expect(reduce(toggled, ch("v")).view).toBe("showcase");
   });
 });
 
@@ -232,6 +249,56 @@ describe("explorer model — readability invariant", () => {
       }
     }
     expect(checked).toBeGreaterThan(1000);
+  });
+});
+
+describe("explorer model — dense showcase", () => {
+  it("exercises a large fraction of the theme's vars (dozens and dozens)", () => {
+    // Wrap the palette so we can record every var the showcase reads.
+    const base = transposedPalette(initialState());
+    const seen = new Set<string>();
+    const recording = new Proxy(base, {
+      get(target, prop, receiver) {
+        if (prop === "get") {
+          return (k: string) => {
+            seen.add(k);
+            return target.get(k);
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+    renderShowcase(recording, 4.5, 150);
+    expect(seen.size).toBeGreaterThanOrEqual(100);
+  });
+
+  it("renders without throwing for every theme, light and dark", () => {
+    for (let i = 0; i < THEME_NAMES.length; i++) {
+      const palette = transposedPalette({ ...initialState(), themeIndex: i });
+      expect(() => renderShowcase(palette, 4.5, 150)).not.toThrow();
+    }
+  });
+
+  it("every readable cell clears the contrast floor across all themes", () => {
+    // Walk the rendered segments; for any cell with real text and both fg+bg
+    // resolved to RGBA, the WCAG ratio must meet the floor. Solid color blocks
+    // (█) and separators carry no readable text and are skipped.
+    const min = 4.5;
+    let checked = 0;
+    for (let i = 0; i < THEME_NAMES.length; i++) {
+      const palette = transposedPalette({ ...initialState(), themeIndex: i, rootHue: 120 });
+      for (const line of renderShowcase(palette, min, 150)) {
+        for (const seg of line) {
+          if (!/[A-Za-z0-9]/.test(seg.text)) continue;
+          const fg = seg.style?.color?.value;
+          const bg = seg.style?.bgcolor?.value;
+          if (!fg || !bg) continue;
+          checked++;
+          expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(min - 0.05);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(500);
   });
 });
 
