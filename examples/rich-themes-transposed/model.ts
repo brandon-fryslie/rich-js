@@ -18,7 +18,6 @@
 import {
   ColorRgba,
   ColorSpec,
-  Oklch,
   Palette,
   Panel,
   ProgressBar,
@@ -29,7 +28,6 @@ import {
   cellLen,
   getThemePalette,
   listThemePalettes,
-  themeKeyForRoot,
   transposePalette,
   type ThemeKey,
 } from "../../src/index.js";
@@ -45,21 +43,9 @@ import {
 
 export const THEME_NAMES: readonly string[] = listThemePalettes();
 
-// Which palette var acts as the musical tonic — the note whose pitch the
-// "root hue" control sets. Every theme defines all of these.
-export const TONIC_VARS = [
-  "primary",
-  "accent",
-  "secondary",
-  "background",
-  "foreground",
-] as const;
-export type TonicVar = (typeof TONIC_VARS)[number];
-
 // The adjustable controls. `theme` is *not* here — it is always driven by
 // up/down on the left column, independent of which control has focus.
 export const CONTROLS = [
-  "tonic",
   "rootHue",
   "chroma",
   "lightness",
@@ -89,8 +75,7 @@ const SWATCH_VARS = [
 
 export interface ExplorerState {
   readonly themeIndex: number;
-  readonly tonicIndex: number;
-  readonly rootHue: number; // offset in degrees from the theme's natural tonic hue
+  readonly rootHue: number; // uniform hue-rotation offset in degrees
   readonly chromaScale: number; // [0, 2]
   readonly lightnessShift: number; // [-0.4, 0.4]
   readonly minContrast: number; // WCAG ratio, [3, 7]
@@ -124,20 +109,11 @@ function signedDeg(deg: number): number {
   return ((wrap360(deg) + 180) % 360) - 180;
 }
 
-/** Natural hue of a theme's tonic var — the rootHue value that means "no
- * transposition" for that theme. */
-function naturalRootHue(themeIndex: number, tonicIndex: number): number {
-  const palette = getThemePalette(THEME_NAMES[themeIndex]!)!;
-  const tonic = palette.get(TONIC_VARS[tonicIndex]!)!;
-  return Math.round(Oklch.fromRgba(tonic).h);
-}
-
 /** Initial state: 0° offset, so every theme opens exactly as authored and
  * flipping themes keeps you at "as authored" until you dial. */
 export function initialState(): ExplorerState {
   return {
     themeIndex: 0,
-    tonicIndex: 0,
     rootHue: 0,
     chromaScale: 1,
     lightnessShift: 0,
@@ -145,14 +121,6 @@ export function initialState(): ExplorerState {
     focusedControl: "rootHue",
     view: "showcase",
   };
-}
-
-/** The absolute target hue the controls resolve to: the theme's natural tonic
- * hue plus the stored offset. Because the offset is what's stored, it stays
- * fixed across theme changes while the effective hue tracks each theme. The
- * single place the offset is resolved. [LAW:one-source-of-truth] */
-function effectiveTargetHue(state: ExplorerState): number {
-  return wrap360(naturalRootHue(state.themeIndex, state.tonicIndex) + state.rootHue);
 }
 
 // ---------------------------------------------------------------------------
@@ -169,8 +137,6 @@ export interface KeyInput {
  * adding a control without a case here is a compile error. */
 function adjustFocused(state: ExplorerState, dir: -1 | 1): ExplorerState {
   switch (state.focusedControl) {
-    case "tonic":
-      return { ...state, tonicIndex: wrap(state.tonicIndex + dir, TONIC_VARS.length) };
     case "rootHue":
       return { ...state, rootHue: wrap360(state.rootHue + dir * HUE_STEP) };
     case "chroma":
@@ -236,19 +202,21 @@ export function reduce(state: ExplorerState, input: KeyInput): ExplorerState {
 // Derivations
 // ---------------------------------------------------------------------------
 
-export function tonicVar(state: ExplorerState): TonicVar {
-  return TONIC_VARS[state.tonicIndex]!;
-}
-
 export function sourcePalette(state: ExplorerState): Palette {
   return getThemePalette(THEME_NAMES[state.themeIndex]!)!;
 }
 
-/** The ThemeKey the current controls compose into: root-note hue rotation
- * plus the independent chroma/lightness axes. */
+/** The ThemeKey the current controls compose into: a uniform hue-rotation
+ * offset plus the independent chroma/lightness axes. Transposition is a
+ * uniform rotation, so the offset is the hue shift directly — no reference
+ * note needed. */
 export function keyFor(state: ExplorerState): ThemeKey {
-  const base = themeKeyForRoot(sourcePalette(state), tonicVar(state), effectiveTargetHue(state));
-  return { ...base, chromaScale: state.chromaScale, lightnessShift: state.lightnessShift };
+  return {
+    hueShift: wrap360(state.rootHue),
+    chromaScale: state.chromaScale,
+    lightnessScale: 1,
+    lightnessShift: state.lightnessShift,
+  };
 }
 
 export function transposedPalette(state: ExplorerState): Palette {
@@ -826,7 +794,6 @@ function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
   ]);
   lines.push([]);
 
-  lines.push(controlLine(state, "tonic", "Tonic", tonicVar(state), ""));
   {
     // One independent number: the offset applied to the theme. It does not
     // change on theme switch. The effective hue lives in the rendered colors,

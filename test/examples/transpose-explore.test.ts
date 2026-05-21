@@ -22,7 +22,6 @@ import { contrastRatio, contrastFor } from "../../src/themes/colorMath.js";
 import { Oklch } from "../../src/index.js";
 import {
   THEME_NAMES,
-  TONIC_VARS,
   CONTROLS,
   initialState,
   reduce,
@@ -75,7 +74,6 @@ describe("explorer model — reducer", () => {
     expect(after.lightnessShift).toBe(before.lightnessShift);
     expect(after.rootHue).toBe(before.rootHue);
     expect(after.minContrast).toBe(before.minContrast);
-    expect(after.tonicIndex).toBe(before.tonicIndex);
     expect(after.focusedControl).toBe(before.focusedControl);
   });
 
@@ -94,12 +92,6 @@ describe("explorer model — reducer", () => {
     // rootHue wraps modulo 360.
     s = { ...initialState(), focusedControl: "rootHue" as const, rootHue: 2 };
     expect(reduce(s, k("left")).rootHue).toBeGreaterThan(300);
-  });
-
-  it("tonic control cycles through the tonic vars", () => {
-    const s = { ...initialState(), focusedControl: "tonic" as const, tonicIndex: 0 };
-    expect(reduce(s, k("right")).tonicIndex).toBe(1);
-    expect(reduce(s, k("left")).tonicIndex).toBe(TONIC_VARS.length - 1);
   });
 
   it("r resets the transposition but keeps the contrast knob and theme", () => {
