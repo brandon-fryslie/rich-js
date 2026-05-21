@@ -1,6 +1,6 @@
 # Introduction
 
-**rich-js** is a library for rich text and beautiful formatting in the terminal. It gives you color, styles, tables, progress bars, markdown rendering, and syntax highlighting out of the box — making CLI output visually appealing and debugging faster via pretty-printing and automatic highlighting.
+**rich-js** is a library for rich text and beautiful formatting in the terminal. It gives you color, styles, tables, progress bars, markdown rendering, and syntax highlighting out of the box — making CLI output visually appealing and debugging faster via pretty-printing and automatic highlighting. It also includes OKLCH-based [theme transposition](/transpose) and an [accessibility-aware contrast toolkit](/contrast) for working with color at runtime.
 
 ## Compatibility
 
