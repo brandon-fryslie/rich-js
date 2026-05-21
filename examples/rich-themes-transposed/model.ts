@@ -855,17 +855,21 @@ function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
 
   lines.push(controlLine(state, "tonic", "Tonic", tonicVar(state), ""));
   if (state.hueMode === "relative") {
+    // One independent number: the offset applied to the theme. It does not
+    // change on theme switch. The effective hue lives in the rendered colors,
+    // not as a second (derived) number that would appear to mutate.
     const off = signedDeg(state.rootHue);
     lines.push(
       controlLine(
         state,
         "rootHue",
         "Root hue",
-        `${off >= 0 ? "+" : ""}${off}°  → ${effectiveTargetHue(state)}°`,
+        `${off >= 0 ? "+" : ""}${off}°`,
         bar(off, -180, 180, 16),
       ),
     );
   } else {
+    // The actual target hue the tonic lands on — matches reality.
     lines.push(
       controlLine(
         state,
