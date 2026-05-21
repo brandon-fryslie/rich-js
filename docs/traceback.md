@@ -7,7 +7,7 @@ Rich tracebacks show the code that caused an error, syntax-highlighted, with mor
 Catch an error and print a rich traceback:
 
 ```typescript
-import { Console, Traceback } from "rich-js";
+import { Console, Traceback } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -50,7 +50,7 @@ try {
 Register rich tracebacks for all unhandled exceptions. Put this at the entry point of your application:
 
 ```typescript
-import { Traceback } from "rich-js";
+import { Traceback } from "@promptctl/rich-js";
 
 // All uncaught exceptions now use rich formatting
 Traceback.install({ showLocals: true });

@@ -6,7 +6,7 @@ rich-js provides a logging handler that formats log records with colors and layo
 
 ```typescript
 import { createLogger, transports, format } from "winston";  // or pino, etc.
-import { RichHandler } from "rich-js";
+import { RichHandler } from "@promptctl/rich-js";
 
 // Using with a standard logging library
 const logger = createLogger({
@@ -22,7 +22,7 @@ logger.error("Connection refused", { host: "db.internal" });
 Or with Node.js's built-in `console`:
 
 ```typescript
-import { RichHandler, Console } from "rich-js";
+import { RichHandler, Console } from "@promptctl/rich-js";
 
 const console = new Console();
 const handler = new RichHandler({ console });
@@ -56,7 +56,7 @@ If your logger receives messages from third-party libraries, those messages may 
 Override the highlighter for a specific log call:
 
 ```typescript
-import { NullHighlighter } from "rich-js";
+import { NullHighlighter } from "@promptctl/rich-js";
 
 // Disable highlighting for this specific message
 logger.info("Raw output: [no highlighting here]", {

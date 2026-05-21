@@ -5,7 +5,7 @@
 ## Basic usage
 
 ```typescript
-import { Console, Markdown } from "rich-js";
+import { Console, Markdown } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -61,7 +61,7 @@ Code blocks inside Markdown are rendered with full syntax highlighting. The lang
 The most common real-world pattern — read a Markdown file from disk and render it:
 
 ```typescript
-import { Console, Markdown } from "rich-js";
+import { Console, Markdown } from "@promptctl/rich-js";
 import { readFileSync } from "fs";
 
 const console = new Console();

@@ -7,7 +7,7 @@
 Pass a string (markup supported) to the constructor and print it:
 
 ```typescript
-import { Console, Panel } from "rich-js";
+import { Console, Panel } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -69,7 +69,7 @@ Both `title` and `subtitle` support markup.
 Change the box-drawing characters by passing a box constant:
 
 ```typescript
-import { ROUNDED, HEAVY, DOUBLE } from "rich-js";
+import { ROUNDED, HEAVY, DOUBLE } from "@promptctl/rich-js";
 
 console.print(new Panel("Content", { box: ROUNDED }));  // ╭──╮
 console.print(new Panel("Content", { box: HEAVY   }));  // ┏━━┓
