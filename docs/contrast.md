@@ -49,7 +49,7 @@ contrastRatio(readable, panel);                 // >= 4.5
 
 Key properties:
 
-- **Already passing?** The foreground is returned untouched.
+- **Already passing?** The (flattened) foreground is returned as-is, opaque. An opaque `fg` that already clears the ratio comes back unchanged.
 - **Minimal change.** It bisects for the lightness *nearest the original* that clears the floor — the smallest perceptual adjustment that achieves accessibility, the way professional tone systems (Radix, Material) do it.
 - **Translucent input is flattened.** A `#FFFFFF60` text-disabled color is composited over `bg` first, so the guarantee reflects what the eye actually sees; the result is opaque.
 - **Honest fallback.** Against a mid-toned background where *no* lightness of that hue can reach the target (e.g. asking for `7:1` over mid-grey, which tops out around `5.3:1`), it falls back to `contrastFor`'s pure black/white — the true maximum.
