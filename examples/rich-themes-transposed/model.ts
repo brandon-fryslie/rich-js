@@ -61,21 +61,11 @@ export type TonicVar = (typeof TONIC_VARS)[number];
 export const CONTROLS = [
   "tonic",
   "rootHue",
-  "hueMode",
   "chroma",
   "lightness",
   "contrast",
 ] as const;
 export type Control = (typeof CONTROLS)[number];
-
-// How the root-hue control value is interpreted:
-//   absolute — `rootHue` is the target hue; held constant across themes, so
-//              every theme's tonic lands on the same hue ("all in one key").
-//   relative — `rootHue` is an *offset* from the current theme's natural tonic
-//              hue, so 0° = the theme as authored and the effective hue tracks
-//              whichever theme is selected.
-export const HUE_MODES = ["relative", "absolute"] as const;
-export type HueMode = (typeof HUE_MODES)[number];
 
 // The two preview views. `showcase` is the dense single page that exercises
 // nearly every theme var; `app` is the focused dashboard. Toggled with `v`.
@@ -100,8 +90,7 @@ const SWATCH_VARS = [
 export interface ExplorerState {
   readonly themeIndex: number;
   readonly tonicIndex: number;
-  readonly rootHue: number; // degrees, [0, 360); meaning depends on hueMode
-  readonly hueMode: HueMode;
+  readonly rootHue: number; // offset in degrees from the theme's natural tonic hue
   readonly chromaScale: number; // [0, 2]
   readonly lightnessShift: number; // [-0.4, 0.4]
   readonly minContrast: number; // WCAG ratio, [3, 7]
@@ -143,14 +132,13 @@ function naturalRootHue(themeIndex: number, tonicIndex: number): number {
   return Math.round(Oklch.fromRgba(tonic).h);
 }
 
-/** Initial state: relative mode at 0° offset, so every theme opens exactly as
- * authored and flipping themes keeps you at "as authored" until you dial. */
+/** Initial state: 0° offset, so every theme opens exactly as authored and
+ * flipping themes keeps you at "as authored" until you dial. */
 export function initialState(): ExplorerState {
   return {
     themeIndex: 0,
     tonicIndex: 0,
     rootHue: 0,
-    hueMode: "relative",
     chromaScale: 1,
     lightnessShift: 0,
     minContrast: 4.5,
@@ -159,12 +147,11 @@ export function initialState(): ExplorerState {
   };
 }
 
-/** The absolute target hue the controls resolve to. In relative mode the
- * stored `rootHue` is an offset from the theme's natural tonic hue, so the
- * effective hue tracks the selected theme; in absolute mode it is the target
- * directly. The single place the mode is interpreted. [LAW:one-source-of-truth] */
+/** The absolute target hue the controls resolve to: the theme's natural tonic
+ * hue plus the stored offset. Because the offset is what's stored, it stays
+ * fixed across theme changes while the effective hue tracks each theme. The
+ * single place the offset is resolved. [LAW:one-source-of-truth] */
 function effectiveTargetHue(state: ExplorerState): number {
-  if (state.hueMode === "absolute") return state.rootHue;
   return wrap360(naturalRootHue(state.themeIndex, state.tonicIndex) + state.rootHue);
 }
 
@@ -186,8 +173,6 @@ function adjustFocused(state: ExplorerState, dir: -1 | 1): ExplorerState {
       return { ...state, tonicIndex: wrap(state.tonicIndex + dir, TONIC_VARS.length) };
     case "rootHue":
       return { ...state, rootHue: wrap360(state.rootHue + dir * HUE_STEP) };
-    case "hueMode":
-      return toggleHueMode(state);
     case "chroma":
       return {
         ...state,
@@ -204,17 +189,6 @@ function adjustFocused(state: ExplorerState, dir: -1 | 1): ExplorerState {
         minContrast: clamp(state.minContrast + dir * CONTRAST_STEP, CONTRAST_RANGE.min, CONTRAST_RANGE.max),
       };
   }
-}
-
-/** Flip absolute↔relative while holding the *effective* hue fixed, by
- * converting the stored value. Toggling the representation must not change the
- * rendered colors. [LAW:dataflow-not-control-flow] */
-function toggleHueMode(state: ExplorerState): ExplorerState {
-  const natural = naturalRootHue(state.themeIndex, state.tonicIndex);
-  if (state.hueMode === "absolute") {
-    return { ...state, hueMode: "relative", rootHue: wrap360(state.rootHue - natural) };
-  }
-  return { ...state, hueMode: "absolute", rootHue: wrap360(natural + state.rootHue) };
 }
 
 function cycleControl(state: ExplorerState, dir: -1 | 1): ExplorerState {
@@ -240,13 +214,12 @@ export function reduce(state: ExplorerState, input: KeyInput): ExplorerState {
     case "tab":
       return cycleControl(state, input.shift ? -1 : 1);
   }
-  // 'r' resets the transposition (not the theme selection or contrast knob).
-  // Identity is mode-relative: 0° offset in relative mode, the theme's natural
-  // hue in absolute mode.
+  // 'r' resets the transposition (not the theme selection or contrast knob):
+  // 0° offset = the theme as authored.
   if (input.character === "r") {
     return {
       ...state,
-      rootHue: state.hueMode === "relative" ? 0 : naturalRootHue(state.themeIndex, state.tonicIndex),
+      rootHue: 0,
       chromaScale: 1,
       lightnessShift: 0,
     };
@@ -854,7 +827,7 @@ function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
   lines.push([]);
 
   lines.push(controlLine(state, "tonic", "Tonic", tonicVar(state), ""));
-  if (state.hueMode === "relative") {
+  {
     // One independent number: the offset applied to the theme. It does not
     // change on theme switch. The effective hue lives in the rendered colors,
     // not as a second (derived) number that would appear to mutate.
@@ -868,29 +841,7 @@ function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
         bar(off, -180, 180, 16),
       ),
     );
-  } else {
-    // The actual target hue the tonic lands on — matches reality.
-    lines.push(
-      controlLine(
-        state,
-        "rootHue",
-        "Root hue",
-        `${state.rootHue}°`,
-        bar(state.rootHue, 0, 360, 16),
-      ),
-    );
   }
-  lines.push(
-    controlLine(
-      state,
-      "hueMode",
-      "Hue mode",
-      state.hueMode === "relative"
-        ? "◀ relative ▶  (0° = as authored)"
-        : "◀ absolute ▶  (held across themes)",
-      "",
-    ),
-  );
   lines.push(
     controlLine(
       state,
