@@ -19,6 +19,7 @@ import { EventRouter } from "../../src/widgets/event-router.js";
 import { StaticItem } from "../../src/widgets/static-item.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { contrastRatio, contrastFor } from "../../src/themes/colorMath.js";
+import { Oklch } from "../../src/index.js";
 import {
   THEME_NAMES,
   TONIC_VARS,
@@ -30,6 +31,9 @@ import {
   themeWindow,
   renderFrame,
   framesToSegments,
+  appMock,
+  sourcePalette,
+  transposedPalette,
   type ExplorerState,
   type KeyInput,
 } from "../../examples/rich-themes-transposed/model.js";
@@ -146,8 +150,39 @@ describe("explorer model — frame", () => {
     expect(text).not.toContain(`▸ ${THEME_NAMES[1]}`);
   });
 
-  it("shows a contrast readout for the sample line", () => {
+  it("shows a contrast readout", () => {
     expect(plainOf(initialState())).toMatch(/\d+\.\d+:1/);
+  });
+
+  it("renders the application mock with its chrome and service rows", () => {
+    const text = plainOf(initialState(), 40);
+    expect(text).toContain("aurora-api");
+    expect(text).toContain("auth-gateway");
+    expect(text).toContain("down"); // the failing-service status label
+    expect(text).toContain("Deploy");
+  });
+});
+
+describe("explorer model — app mock", () => {
+  it("returns a multi-line dashboard", () => {
+    const lines = appMock(transposedPalette(initialState()), 4.5, 90);
+    expect(lines.length).toBeGreaterThan(8);
+  });
+
+  it("keeps the failing-service status red-hued across every root rotation", () => {
+    // The 'down' status draws from the anchored `error` var. Its hue must
+    // hold no matter where the decorative root note is rotated — the demo's
+    // whole point: chrome rotates, meaning stays put.
+    const srcErr = Oklch.fromRgba(sourcePalette(initialState()).get("error")!).h;
+    for (const rootHue of [0, 60, 120, 180, 240, 300]) {
+      const palette = transposedPalette({ ...initialState(), rootHue });
+      const errHue = Oklch.fromRgba(palette.get("error")!).h;
+      const drift = Math.min(
+        Math.abs(errHue - srcErr),
+        360 - Math.abs(errHue - srcErr),
+      );
+      expect(drift).toBeLessThan(2);
+    }
   });
 });
 
