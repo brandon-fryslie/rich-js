@@ -1,4 +1,5 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
+import { Oklch } from "../core/oklch.js";
 
 const LEVEL_STEP = 0.1;
 
@@ -107,10 +108,96 @@ export function contrastFor(bg: ColorRgba): ColorRgba {
     : new ColorRgba(255, 255, 255);
 }
 
-function relativeLuminance(c: ColorRgba): number {
+/**
+ * WCAG 2.x relative luminance (0..1) of an opaque color. The single
+ * luminance function in the codebase — `contrastFor`, `contrastRatio`, and
+ * any caller that needs to reason about readability all funnel through it.
+ * [LAW:one-source-of-truth]
+ */
+export function relativeLuminance(c: ColorRgba): number {
   const ch = (v: number): number => {
     const x = v / 255;
     return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
   };
   return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue);
+}
+
+/**
+ * WCAG 2.x contrast ratio between two colors, in [1, 21]. Symmetric — the
+ * order of arguments does not matter. 4.5 is the AA threshold for normal
+ * text, 3.0 for large text.
+ *
+ * Assumes opaque inputs: alpha is ignored, since the displayed contrast of a
+ * translucent color depends on what it composites over. For a translucent
+ * foreground, flatten it first (or use `ensureContrast`, which does).
+ */
+export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const hi = la > lb ? la : lb;
+  const lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+// Iterations for the lightness bisection below. 20 resolves L to ~1e-6 — far
+// finer than 8-bit quantization or the eye.
+const CONTRAST_ITERS = 20;
+
+/**
+ * Return a foreground guaranteed to clear `minRatio` against `bg`, keeping the
+ * color *recognizably itself*. If the themed `fg` already passes it is returned
+ * untouched. Otherwise its OKLCH lightness is slid toward the pole that raises
+ * contrast — holding hue, and chroma where it stays in gamut (near the poles
+ * gamut clamping may reduce chroma, but hue is preserved) — until the ratio is
+ * met, so a blue on a dark-blue background becomes a lighter blue, not white.
+ * Only when no lightness of that hue can meet the ratio (a mid-toned
+ * background where even pure black-or-white tops out below the target) does it
+ * fall back to `contrastFor`'s black/white — the true maximum-contrast pick.
+ *
+ * A translucent `fg` is flattened over `bg` first (the displayed color is
+ * `fg` composited over `bg`), so the ratio is measured on what the eye
+ * actually sees and the returned color is opaque. `bg` is treated as the
+ * opaque substrate.
+ *
+ * [LAW:single-enforcer] The one place "is this text readable, and if not fix
+ * it" is decided. Callers route every fg/bg pair through here and the
+ * unreadable state never reaches output. [LAW:dataflow-not-control-flow] the
+ * function always runs; the measured ratio (data) decides how far the
+ * lightness moves — there is no caller-side "should I check contrast" branch.
+ */
+export function ensureContrast(
+  fg: ColorRgba,
+  bg: ColorRgba,
+  minRatio = 4.5, // WCAG AA for normal text
+): ColorRgba {
+  // Flatten translucency so the guarantee holds for the displayed color, not
+  // the raw bytes (e.g. a "#FFFFFF60" text-disabled over a light surface).
+  const opaqueFg = fg.compositeOver(bg);
+  if (contrastRatio(opaqueFg, bg) >= minRatio) return opaqueFg;
+
+  const lab = Oklch.fromRgba(opaqueFg);
+  // The pole that increases contrast: lighten toward white on a dark bg, darken
+  // toward black on a light one. `contrastFor`'s 0.179 cutoff names it.
+  const poleL = relativeLuminance(bg) > 0.179 ? 0 : 1;
+
+  // If even the pole of this hue can't reach the ratio, the hue physically
+  // can't — return the true maximum-contrast pick (pure black/white from
+  // contrastFor). The gamut-clamped OKLCH pole is only *near* b/w, so
+  // contrastFor is at least as strong and is the honest maximum.
+  const pole = new Oklch(poleL, lab.c, lab.h, lab.alpha).toRgba();
+  if (contrastRatio(pole, bg) < minRatio) return contrastFor(bg);
+
+  // Bisect for the lightness nearest the original that still clears the ratio:
+  // the smallest perceptual change that achieves accessibility. Contrast is
+  // monotone in L over [lab.l, poleL] (everything below the crossing fails),
+  // so the search is well-posed.
+  let fail = lab.l;
+  let pass = poleL;
+  for (let i = 0; i < CONTRAST_ITERS; i++) {
+    const mid = (fail + pass) / 2;
+    const candidate = new Oklch(mid, lab.c, lab.h, lab.alpha).toRgba();
+    if (contrastRatio(candidate, bg) >= minRatio) pass = mid;
+    else fail = mid;
+  }
+  return new Oklch(pass, lab.c, lab.h, lab.alpha).toRgba();
 }

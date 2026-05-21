@@ -544,6 +544,25 @@ describe("Console record and export", () => {
     expect(html2).toContain("First");
   });
 
+  it("exportText preserves line breaks between prints", () => {
+    // The print() end ("\n" by default) must survive recording so
+    // consecutive prints don't run together in the export. [LAW:single-enforcer]
+    const { console: c } = makeConsole({ record: true });
+    c.print("first row");
+    c.print("second row");
+    expect(c.exportText()).toBe("first row\nsecond row\n");
+  });
+
+  it("exportHtml preserves line breaks between prints", () => {
+    const { console: c } = makeConsole({ record: true });
+    c.print("first row");
+    c.print("second row");
+    const html = c.exportHtml();
+    // The newlines land inside the <pre> block which preserves whitespace.
+    expect(html).toContain("first row\n");
+    expect(html).toContain("second row\n");
+  });
+
   it("saveText() writes plain text to a file", async () => {
     const { mkdtempSync, rmSync } = await import("fs");
     const { tmpdir } = await import("os");

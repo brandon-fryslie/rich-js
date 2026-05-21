@@ -33,3 +33,6 @@ strip:
 
 markup-plugins:
     npm run markup-plugins
+
+# OKLCH theme-transposition demo (see oklsh.just)
+mod oklsh
