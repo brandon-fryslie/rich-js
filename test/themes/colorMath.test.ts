@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
+import { Oklch } from "../../src/core/oklch.js";
 import {
   darken,
   lighten,
   alphaBlend,
   contrastFor,
+  contrastRatio,
+  ensureContrast,
+  relativeLuminance,
 } from "../../src/themes/colorMath.js";
 
 const mid = new ColorRgba(128, 128, 128);
@@ -106,5 +110,89 @@ describe("contrastFor", () => {
   it("dark blue counts as dark even though it's a primary color", () => {
     const navy = new ColorRgba(0, 0, 128);
     expect(contrastFor(navy)).toEqual(white);
+  });
+});
+
+describe("contrastRatio", () => {
+  it("black on white is the maximum 21:1", () => {
+    expect(contrastRatio(black, white)).toBeCloseTo(21, 1);
+  });
+
+  it("a color against itself is 1:1", () => {
+    expect(contrastRatio(red, red)).toBeCloseTo(1, 5);
+  });
+
+  it("is symmetric in its arguments", () => {
+    expect(contrastRatio(red, white)).toBeCloseTo(contrastRatio(white, red), 10);
+  });
+
+  it("matches the WCAG formula via relativeLuminance", () => {
+    const la = relativeLuminance(red);
+    const lb = relativeLuminance(white);
+    const expected = (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    expect(contrastRatio(red, white)).toBeCloseTo(expected, 10);
+  });
+});
+
+describe("ensureContrast", () => {
+  it("passes the themed fg through untouched when it already clears the bar", () => {
+    // white on black is 21:1 — far above 4.5, so it must be returned as-is.
+    expect(ensureContrast(white, black, 4.5)).toBe(white);
+  });
+
+  it("lightens/darkens within the hue instead of flipping to black/white", () => {
+    // A blue foreground on a darker-blue background fails 4.5:1. ensureContrast
+    // must lighten it to a *readable blue* — hue preserved, not white.
+    const blue = new ColorRgba(60, 90, 200);
+    const darkBlue = new ColorRgba(20, 30, 70);
+    const out = ensureContrast(blue, darkBlue, 4.5);
+    expect(contrastRatio(out, darkBlue)).toBeGreaterThanOrEqual(4.5);
+    // Hue is preserved (still recognizably blue), not collapsed to b/w.
+    const hIn = Oklch.fromRgba(blue).h;
+    const hOut = Oklch.fromRgba(out).h;
+    expect(Math.min(Math.abs(hOut - hIn), 360 - Math.abs(hOut - hIn))).toBeLessThan(8);
+    expect([out.red, out.green, out.blue]).not.toEqual([255, 255, 255]);
+    expect([out.red, out.green, out.blue]).not.toEqual([0, 0, 0]);
+  });
+
+  it("makes the smallest lightness change that clears the ratio", () => {
+    // The result should sit just past the threshold, not slammed to the pole:
+    // its contrast is close to the floor, not the maximum.
+    const blue = new ColorRgba(60, 90, 200);
+    const darkBlue = new ColorRgba(20, 30, 70);
+    const out = ensureContrast(blue, darkBlue, 4.5);
+    expect(contrastRatio(out, darkBlue)).toBeLessThan(7); // not pushed all the way to white
+  });
+
+  it("flattens a translucent foreground so the guarantee reflects what's seen", () => {
+    // A 38%-opaque near-white over a near-white surface looks near-white —
+    // unreadable. The raw bytes (255,255,255) would falsely "pass"; flattening
+    // first exposes the real low contrast, and the result is opaque + readable.
+    const translucent = new ColorRgba(255, 255, 255, 0.38);
+    const lightBg = new ColorRgba(235, 235, 235);
+    const out = ensureContrast(translucent, lightBg, 4.5);
+    expect(out.alpha).toBe(1);
+    expect(contrastRatio(out, lightBg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("falls back to pure black/white when no hue lightness can meet the ratio", () => {
+    // Against this mid-grey (128), even pure black tops out around 5.3:1, so a
+    // target of 7 is physically impossible — return contrastFor's max pick.
+    const out = ensureContrast(new ColorRgba(120, 120, 120), mid, 7);
+    expect(out).toEqual(contrastFor(mid));
+  });
+
+  it("the result always achieves min(target, best-possible-for-bg)", () => {
+    // The honest theorem: at the AA threshold, contrastFor guarantees ≥4.58
+    // for every background, so ensureContrast always reaches 4.5.
+    const fgs = [black, white, red, new ColorRgba(90, 90, 90)];
+    const bgs = [black, white, mid, red, new ColorRgba(128, 64, 200)];
+    for (const fg of fgs) {
+      for (const bg of bgs) {
+        const out = ensureContrast(fg, bg, 4.5);
+        const best = contrastRatio(contrastFor(bg), bg);
+        expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(Math.min(4.5, best) - 1e-9);
+      }
+    }
   });
 });

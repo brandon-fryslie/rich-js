@@ -20,6 +20,15 @@ export {
 } from "./core/color.js";
 export type { DetectColorOptions } from "./core/color.js";
 
+// Perceptually-uniform color space (manipulation, transposition).
+export {
+  Oklch,
+  IDENTITY,
+  INVERT_LIGHTNESS,
+  isIdentityKey,
+} from "./core/oklch.js";
+export type { ThemeKey } from "./core/oklch.js";
+
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";
 export { PaletteResolver } from "./themes/paletteResolver.js";
@@ -52,6 +61,22 @@ export {
 } from "./themes/terminalThemes.js";
 export { getThemePalette, listThemePalettes } from "./themes/registry.js";
 export type { ThemeName } from "./themes/registry.js";
+export {
+  transposePalette,
+  themeKeyForRoot,
+  isAnchored,
+  ANCHORED_ROOTS,
+} from "./themes/transpose.js";
+// WCAG contrast toolkit — accessibility-aware color for styled output.
+// `ensureContrast` keeps a color's hue and only slides its OKLCH lightness to
+// meet the ratio, so themed text stays themed; `contrastFor` picks black/white
+// from scratch when there is no color to preserve.
+export {
+  relativeLuminance,
+  contrastRatio,
+  contrastFor,
+  ensureContrast,
+} from "./themes/colorMath.js";
 
 export {
   Style,
