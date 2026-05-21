@@ -37,9 +37,15 @@ import { Palette } from "./palette.js";
  * transform for these roles, so they invert correctly during dark↔light
  * flips and respond to chroma scaling alongside everything else.
  */
-export const ANCHORED_ROOTS: ReadonlySet<string> = Object.freeze(
-  new Set(["error", "success", "warning"]),
-);
+// [LAW:types-are-the-program] The `ReadonlySet` type is the immutability
+// enforcement — typed code cannot call `add`/`delete`. (`Object.freeze` is
+// not used here because it is a no-op on Set membership; relying on it would
+// imply a runtime guarantee it does not provide.)
+export const ANCHORED_ROOTS: ReadonlySet<string> = new Set([
+  "error",
+  "success",
+  "warning",
+]);
 
 function rootOf(varName: string): string {
   const dash = varName.indexOf("-");
@@ -68,10 +74,12 @@ export function isAnchored(varName: string): boolean {
  * lightness shifts, mirror-inversions, hue rotations that don't touch L,
  * and combinations of all three. [LAW:types-are-the-program]
  *
- * Throws if the palette has no `background` var (the derivation has
- * nothing to read). Failing loudly is preferred over a silent fallback
- * because the alternative — trusting the source `palette.dark` after an
- * arbitrary L-transform — produces flags that lie.
+ * The transposing path throws if the palette has no `background` var (the
+ * `dark`-flag derivation has nothing to read). Failing loudly is preferred
+ * over a silent fallback because the alternative — trusting the source
+ * `palette.dark` after an arbitrary L-transform — produces flags that lie.
+ * The identity fast-path is exempt: it preserves the source `dark` flag
+ * verbatim (no derivation), so it needs no `background` and never throws.
  *
  * @param name Optional override for the resulting palette name. Defaults
  *   to the source palette's name. Callers building a family of transposed

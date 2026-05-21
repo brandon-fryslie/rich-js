@@ -15,6 +15,13 @@ import {
   themeKeyForRoot,
 } from "../../src/themes/transpose.js";
 
+/** Circular distance between two hue angles (degrees), handling the 0°/360°
+ * wrap so e.g. 359.5° and 0.5° are 1° apart, not 359°. */
+function hueDelta(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return Math.min(d, 360 - d);
+}
+
 describe("ANCHORED_ROOTS / isAnchored", () => {
   it("anchors the three semantic roots", () => {
     expect(ANCHORED_ROOTS).toEqual(new Set(["error", "success", "warning"]));
@@ -130,7 +137,7 @@ describe("transposePalette — anchor hue is locked", () => {
         lightnessShift: 0,
       });
       const errorAfter = Oklch.fromRgba(transposed.get("error")!);
-      expect(Math.abs(errorAfter.h - errorBefore.h)).toBeLessThan(2);
+      expect(hueDelta(errorAfter.h, errorBefore.h)).toBeLessThan(2);
     }
   });
 });
@@ -254,7 +261,7 @@ describe("themeKeyForRoot", () => {
     const key = themeKeyForRoot(gruv, "primary", 300);
     const transposed = transposePalette(gruv, key);
     const errorAfter = Oklch.fromRgba(transposed.get("error")!).h;
-    expect(Math.abs(errorAfter - errorBefore)).toBeLessThan(2);
+    expect(hueDelta(errorAfter, errorBefore)).toBeLessThan(2);
   });
 
   it("throws when the tonic var is missing (loud failure)", () => {
