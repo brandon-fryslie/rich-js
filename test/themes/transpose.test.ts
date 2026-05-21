@@ -271,6 +271,12 @@ describe("themeKeyForRoot", () => {
     ]));
     expect(() => themeKeyForRoot(noTonic, "primary", 120)).toThrow(/no "primary" var/);
   });
+
+  it("throws on a non-finite target hue at the boundary, not downstream", () => {
+    const gruv = getThemePalette("gruvbox")!;
+    expect(() => themeKeyForRoot(gruv, "primary", NaN)).toThrow(/finite/);
+    expect(() => themeKeyForRoot(gruv, "primary", Infinity)).toThrow(/finite/);
+  });
 });
 
 describe("transposePalette — composition", () => {
