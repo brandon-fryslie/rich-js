@@ -252,10 +252,9 @@ describe("explorer model — readability invariant", () => {
   });
 });
 
-describe("explorer model — hue mode (relative vs absolute)", () => {
-  it("defaults to relative at 0° offset — every theme opens as authored", () => {
+describe("explorer model — root hue offset", () => {
+  it("defaults to 0° offset — every theme opens as authored", () => {
     const s0 = initialState();
-    expect(s0.hueMode).toBe("relative");
     expect(s0.rootHue).toBe(0);
     for (let i = 0; i < THEME_NAMES.length; i++) {
       const s = { ...s0, themeIndex: i };
@@ -269,52 +268,26 @@ describe("explorer model — hue mode (relative vs absolute)", () => {
     }
   });
 
-  it("the hueMode control flips via left/right", () => {
-    const focused = { ...initialState(), focusedControl: "hueMode" as const };
-    expect(reduce(focused, k("right")).hueMode).toBe("absolute");
-    expect(reduce(reduce(focused, k("right")), k("left")).hueMode).toBe("relative");
-  });
-
-  it("toggling the mode preserves the rendered colors (representation only)", () => {
-    let s: ExplorerState = {
-      ...initialState(),
-      themeIndex: THEME_NAMES.indexOf("nord"),
-      focusedControl: "rootHue",
-    };
-    for (let n = 0; n < 5; n++) s = reduce(s, k("right")); // +30° offset
-    const before = transposedPalette(s).get("accent")!;
-    const toggled = reduce({ ...s, focusedControl: "hueMode" }, k("right"));
-    expect(toggled.hueMode).toBe("absolute");
-    const after = transposedPalette(toggled).get("accent")!;
-    expect([after.red, after.green, after.blue]).toEqual([
-      before.red,
-      before.green,
-      before.blue,
-    ]);
-  });
-
-  it("absolute mode forces every theme's tonic onto the same hue", () => {
-    const abs = { ...initialState(), hueMode: "absolute" as const, rootHue: 200 };
-    const hueOf = (theme: string) =>
-      Oklch.fromRgba(
-        transposedPalette({ ...abs, themeIndex: THEME_NAMES.indexOf(theme) }).get("primary")!,
-      ).h;
-    const nord = hueOf("nord");
-    const gruv = hueOf("gruvbox");
-    expect(Math.min(Math.abs(nord - gruv), 360 - Math.abs(nord - gruv))).toBeLessThan(2);
-    expect(Math.min(Math.abs(nord - 200), 360 - Math.abs(nord - 200))).toBeLessThan(2);
-  });
-
-  it("changing theme preserves the stored rootHue in both modes", () => {
-    for (const hueMode of ["relative", "absolute"] as const) {
-      const before = { ...initialState(), hueMode, rootHue: 137 };
-      const after = reduce(reduce(before, k("down")), k("down"));
-      expect(after.rootHue).toBe(137);
-      expect(after.hueMode).toBe(hueMode);
+  it("the offset is an offset: same value rotates each theme from its own root", () => {
+    // At +90° every theme's tonic should sit 90° from where that theme placed
+    // it — i.e. the *effective* hue differs per theme, but the offset doesn't.
+    const off90 = { ...initialState(), rootHue: 90 };
+    for (const theme of ["nord", "gruvbox", "dracula"]) {
+      const s = { ...off90, themeIndex: THEME_NAMES.indexOf(theme) };
+      const natural = Oklch.fromRgba(sourcePalette(s).get("primary")!).h;
+      const rotated = Oklch.fromRgba(transposedPalette(s).get("primary")!).h;
+      const delta = ((rotated - natural) % 360 + 360) % 360;
+      expect(Math.min(Math.abs(delta - 90), 360 - Math.abs(delta - 90))).toBeLessThan(3);
     }
   });
 
-  it("relative root-hue display is one number, unchanged across theme switches", () => {
+  it("changing theme preserves the stored offset", () => {
+    const before = { ...initialState(), rootHue: 137 };
+    const after = reduce(reduce(before, k("down")), k("down"));
+    expect(after.rootHue).toBe(137);
+  });
+
+  it("the root-hue display is one signed offset, unchanged across theme switches", () => {
     const rootHueText = (st: ExplorerState): string | undefined =>
       framesToSegments(renderFrame(st, 120, 40))
         .map((s) => s.text)
@@ -324,11 +297,11 @@ describe("explorer model — hue mode (relative vs absolute)", () => {
     for (let n = 0; n < 5; n++) s = reduce(s, k("right")); // +30°
     const v1 = rootHueText(s);
     const v2 = rootHueText(reduce(reduce(s, k("down")), k("down")));
-    expect(v1).toBe("+30°"); // a single signed offset, no derived value
+    expect(v1).toBe("+30°");
     expect(v2).toBe(v1); // does not change when the theme changes
   });
 
-  it("reset returns to identity for the mode (0° in relative)", () => {
+  it("reset returns the offset to 0°", () => {
     let s: ExplorerState = { ...initialState(), focusedControl: "rootHue" };
     s = reduce(s, k("right"));
     expect(reduce(s, ch("r")).rootHue).toBe(0);
