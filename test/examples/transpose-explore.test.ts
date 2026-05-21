@@ -314,6 +314,20 @@ describe("explorer model — hue mode (relative vs absolute)", () => {
     }
   });
 
+  it("relative root-hue display is one number, unchanged across theme switches", () => {
+    const rootHueText = (st: ExplorerState): string | undefined =>
+      framesToSegments(renderFrame(st, 120, 40))
+        .map((s) => s.text)
+        .join("")
+        .match(/Root hue:\s*([+\-]?\d+°)/)?.[1];
+    let s: ExplorerState = { ...initialState(), focusedControl: "rootHue" };
+    for (let n = 0; n < 5; n++) s = reduce(s, k("right")); // +30°
+    const v1 = rootHueText(s);
+    const v2 = rootHueText(reduce(reduce(s, k("down")), k("down")));
+    expect(v1).toBe("+30°"); // a single signed offset, no derived value
+    expect(v2).toBe(v1); // does not change when the theme changes
+  });
+
   it("reset returns to identity for the mode (0° in relative)", () => {
     let s: ExplorerState = { ...initialState(), focusedControl: "rootHue" };
     s = reduce(s, k("right"));
