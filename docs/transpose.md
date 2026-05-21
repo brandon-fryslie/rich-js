@@ -84,7 +84,7 @@ Rotating *every* hue would make a UI lie: an error message must look red, succes
 ```typescript
 import { isAnchored, ANCHORED_ROOTS } from "@promptctl/rich-js";
 
-ANCHORED_ROOTS;                 // ReadonlySet { "error", "success", "warning" }
+ANCHORED_ROOTS;                 // a ReadonlySet — at runtime: Set(3) { "error", "success", "warning" }
 isAnchored("error");            // true
 isAnchored("error-darken-1");   // true — variants of an anchored root anchor too
 isAnchored("primary");          // false — decorative, free to rotate
