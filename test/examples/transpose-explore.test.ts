@@ -169,6 +169,26 @@ describe("explorer model — app mock", () => {
     expect(lines.length).toBeGreaterThan(8);
   });
 
+  it("paints the surface background on content rows for a light theme", () => {
+    // Regression: foreground-only segments used to fall through to the
+    // terminal's ambient background, so light themes rendered text rows on a
+    // dark page. Every cell of a content row must carry an explicit bg.
+    const light = transposedPalette({
+      ...initialState(),
+      themeIndex: THEME_NAMES.indexOf("solarized-light"),
+    });
+    const lines = appMock(light, 4.5, 90);
+    const row = lines.find((l) => l.map((s) => s.text).join("").includes("auth-gateway"));
+    expect(row).toBeDefined();
+    for (const seg of row!) {
+      if (seg.text.length === 0) continue;
+      // Panel border glyphs sit on the page background by design — only the
+      // interior surface must be stamped.
+      if (/^[│╭╮╰╯─]+$/.test(seg.text.trim())) continue;
+      expect(seg.style?.bgcolor).toBeDefined();
+    }
+  });
+
   it("keeps the failing-service status red-hued across every root rotation", () => {
     // The 'down' status draws from the anchored `error` var. Its hue must
     // hold no matter where the decorative root note is rotated — the demo's

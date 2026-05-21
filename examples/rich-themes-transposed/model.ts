@@ -403,6 +403,25 @@ function linesToRenderable(lines: Segment[][]): Renderable {
   return { render: () => framesToSegments(lines) };
 }
 
+/**
+ * Stamp the app surface background onto every cell of every line and pad each
+ * line to `width`. Segments in this codebase carry independent styles with no
+ * cascade, so a foreground-only segment otherwise falls through to the
+ * terminal's ambient background — fine on a dark theme, wrong on a light one.
+ * Using `surfaceBase.add(seg.style)` lets a pill's own bg win while everything
+ * else inherits the theme background. [LAW:single-enforcer] one place owns
+ * "the app surface is this color"; no renderable has to remember to set it.
+ */
+function stampSurface(lines: Segment[][], bgSpec: ColorSpec, width: number): Segment[][] {
+  const base = new Style({ bgcolor: bgSpec });
+  return lines.map((line) => {
+    const stamped = line.map((s) => new Segment(s.text, base.add(s.style)));
+    const used = stamped.reduce((n, s) => n + cellLen(s.text), 0);
+    if (used < width) stamped.push(new Segment(" ".repeat(width - used), base));
+    return stamped;
+  });
+}
+
 export function appMock(palette: Palette, min: number, width: number): Segment[][] {
   const bg = palette.get("background")!;
   const fg = palette.get("foreground")!;
@@ -455,7 +474,8 @@ export function appMock(palette: Palette, min: number, width: number): Segment[]
     [],
     ...collectLines(buttons, innerWidth),
   ];
-  const panel = new Panel(linesToRenderable(body), {
+  const surface = stampSurface(body, spec(bg), innerWidth);
+  const panel = new Panel(linesToRenderable(surface), {
     title: "aurora-api  ·  dashboard",
     titleStyle: new Style({ bold: true, color: readable(accent.compositeOver(bg), bg, min) }),
     borderStyle: new Style({ color: spec(primary.compositeOver(bg)) }),
