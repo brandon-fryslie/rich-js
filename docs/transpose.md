@@ -30,12 +30,12 @@ A `ThemeKey` is the transform applied to each color. It is **data**, not code:
 interface ThemeKey {
   hueShift: number;        // degrees to rotate hue
   chromaScale: number;     // multiply chroma: 0 = grayscale, 1 = identity, >1 = more saturated
-  lightnessScale: number;  // multiply lightness: 1 = identity, -1 = invert around the L axis
+  lightnessScale: number;  // multiply lightness: 1 = identity (negative values flip the axis)
   lightnessShift: number;  // add to lightness, after the scale
 }
 ```
 
-Lightness is `L' = clamp01(L * lightnessScale + lightnessShift)`, which makes "invert" expressible without a boolean flag. Two keys ship built-in:
+Lightness is `L' = clamp01(L * lightnessScale + lightnessShift)`, which makes "invert" expressible without a boolean flag — note that inversion needs *both* axes: `lightnessScale: -1` with `lightnessShift: 1` gives `L' = 1 - L` (a `-1` scale alone would clamp everything to black). Two keys ship built-in:
 
 ```typescript
 import { IDENTITY, INVERT_LIGHTNESS, isIdentityKey } from "@promptctl/rich-js";
