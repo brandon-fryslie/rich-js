@@ -158,7 +158,7 @@ const CONTRAST_ITERS = 20;
 export function ensureContrast(
   fg: ColorRgba,
   bg: ColorRgba,
-  minRatio: number,
+  minRatio = 4.5, // WCAG AA for normal text
 ): ColorRgba {
   if (contrastRatio(fg, bg) >= minRatio) return fg;
 

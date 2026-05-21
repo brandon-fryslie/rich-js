@@ -18,8 +18,9 @@ import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
 import { StaticItem } from "../../src/widgets/static-item.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
-import { contrastRatio, contrastFor } from "../../src/themes/colorMath.js";
-import { Oklch } from "../../src/index.js";
+// Imported from the public surface on purpose: this also asserts the WCAG
+// contrast toolkit is exported for downstream clients.
+import { contrastRatio, contrastFor, Oklch } from "../../src/index.js";
 import {
   THEME_NAMES,
   CONTROLS,

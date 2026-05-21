@@ -67,6 +67,16 @@ export {
   isAnchored,
   ANCHORED_ROOTS,
 } from "./themes/transpose.js";
+// WCAG contrast toolkit — accessibility-aware color for styled output.
+// `ensureContrast` keeps a color's hue and only slides its OKLCH lightness to
+// meet the ratio, so themed text stays themed; `contrastFor` picks black/white
+// from scratch when there is no color to preserve.
+export {
+  relativeLuminance,
+  contrastRatio,
+  contrastFor,
+  ensureContrast,
+} from "./themes/colorMath.js";
 
 export {
   Style,
