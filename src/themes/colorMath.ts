@@ -149,11 +149,10 @@ const CONTRAST_ITERS = 20;
  * untouched. Otherwise its OKLCH lightness is slid toward the pole that raises
  * contrast — holding hue, and chroma where it stays in gamut (near the poles
  * gamut clamping may reduce chroma, but hue is preserved) — until the ratio is
- * met, so a blue on a
- * dark-blue background becomes a lighter blue, not white. Only when no
- * lightness of that hue can meet the ratio (a mid-toned background where even
- * black-or-white tops out below the target) does it return the pole, which is
- * the maximum achievable and matches `contrastFor`.
+ * met, so a blue on a dark-blue background becomes a lighter blue, not white.
+ * Only when no lightness of that hue can meet the ratio (a mid-toned
+ * background where even pure black-or-white tops out below the target) does it
+ * fall back to `contrastFor`'s black/white — the true maximum-contrast pick.
  *
  * A translucent `fg` is flattened over `bg` first (the displayed color is
  * `fg` composited over `bg`), so the ratio is measured on what the eye
@@ -181,10 +180,12 @@ export function ensureContrast(
   // toward black on a light one. `contrastFor`'s 0.179 cutoff names it.
   const poleL = relativeLuminance(bg) > 0.179 ? 0 : 1;
 
-  // If even the pole of this hue can't reach the ratio, it's physically
-  // impossible against this background — return the pole (the max achievable).
+  // If even the pole of this hue can't reach the ratio, the hue physically
+  // can't — return the true maximum-contrast pick (pure black/white from
+  // contrastFor). The gamut-clamped OKLCH pole is only *near* b/w, so
+  // contrastFor is at least as strong and is the honest maximum.
   const pole = new Oklch(poleL, lab.c, lab.h, lab.alpha).toRgba();
-  if (contrastRatio(pole, bg) < minRatio) return pole;
+  if (contrastRatio(pole, bg) < minRatio) return contrastFor(bg);
 
   // Bisect for the lightness nearest the original that still clears the ratio:
   // the smallest perceptual change that achieves accessibility. Contrast is
