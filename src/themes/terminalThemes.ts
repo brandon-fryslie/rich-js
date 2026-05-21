@@ -62,6 +62,7 @@ export const GRUVBOX = defineTheme(getThemeBaseColors("gruvbox"));
 export const DRACULA = defineTheme(getThemeBaseColors("dracula"));
 export const TOKYO_NIGHT = defineTheme(getThemeBaseColors("tokyo-night"));
 export const FLEXOKI = defineTheme(getThemeBaseColors("flexoki"));
+export const CYBERPUNK = defineTheme(getThemeBaseColors("cyberpunk"));
 export const CATPPUCCIN_MOCHA = defineTheme(getThemeBaseColors("catppuccin-mocha"));
 export const CATPPUCCIN_LATTE = defineTheme(getThemeBaseColors("catppuccin-latte"));
 export const CATPPUCCIN_FRAPPE = defineTheme(getThemeBaseColors("catppuccin-frappe"));
