@@ -126,6 +126,10 @@ export function relativeLuminance(c: ColorRgba): number {
  * WCAG 2.x contrast ratio between two colors, in [1, 21]. Symmetric — the
  * order of arguments does not matter. 4.5 is the AA threshold for normal
  * text, 3.0 for large text.
+ *
+ * Assumes opaque inputs: alpha is ignored, since the displayed contrast of a
+ * translucent color depends on what it composites over. For a translucent
+ * foreground, flatten it first (or use `ensureContrast`, which does).
  */
 export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
   const la = relativeLuminance(a);
@@ -149,6 +153,11 @@ const CONTRAST_ITERS = 20;
  * black-or-white tops out below the target) does it return the pole, which is
  * the maximum achievable and matches `contrastFor`.
  *
+ * A translucent `fg` is flattened over `bg` first (the displayed color is
+ * `fg` composited over `bg`), so the ratio is measured on what the eye
+ * actually sees and the returned color is opaque. `bg` is treated as the
+ * opaque substrate.
+ *
  * [LAW:single-enforcer] The one place "is this text readable, and if not fix
  * it" is decided. Callers route every fg/bg pair through here and the
  * unreadable state never reaches output. [LAW:dataflow-not-control-flow] the
@@ -160,9 +169,12 @@ export function ensureContrast(
   bg: ColorRgba,
   minRatio = 4.5, // WCAG AA for normal text
 ): ColorRgba {
-  if (contrastRatio(fg, bg) >= minRatio) return fg;
+  // Flatten translucency so the guarantee holds for the displayed color, not
+  // the raw bytes (e.g. a "#FFFFFF60" text-disabled over a light surface).
+  const opaqueFg = fg.compositeOver(bg);
+  if (contrastRatio(opaqueFg, bg) >= minRatio) return opaqueFg;
 
-  const lab = Oklch.fromRgba(fg);
+  const lab = Oklch.fromRgba(opaqueFg);
   // The pole that increases contrast: lighten toward white on a dark bg, darken
   // toward black on a light one. `contrastFor`'s 0.179 cutoff names it.
   const poleL = relativeLuminance(bg) > 0.179 ? 0 : 1;

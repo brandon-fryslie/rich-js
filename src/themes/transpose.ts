@@ -57,7 +57,7 @@ export function isAnchored(varName: string): boolean {
 
 /**
  * Return a new `Palette` whose colors are the transposition of `palette`'s
- * by `key`. Pure. Identity (`IDENTITY`) returns a Palette with byte-exact
+ * colors by `key`. Pure. Identity (`IDENTITY`) returns a Palette with byte-exact
  * colors — fast-pathed so identity does not pay the sRGB↔OKLCH round-trip
  * quantization cost.
  *

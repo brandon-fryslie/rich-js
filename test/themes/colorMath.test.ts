@@ -164,6 +164,17 @@ describe("ensureContrast", () => {
     expect(contrastRatio(out, darkBlue)).toBeLessThan(7); // not pushed all the way to white
   });
 
+  it("flattens a translucent foreground so the guarantee reflects what's seen", () => {
+    // A 38%-opaque near-white over a near-white surface looks near-white —
+    // unreadable. The raw bytes (255,255,255) would falsely "pass"; flattening
+    // first exposes the real low contrast, and the result is opaque + readable.
+    const translucent = new ColorRgba(255, 255, 255, 0.38);
+    const lightBg = new ColorRgba(235, 235, 235);
+    const out = ensureContrast(translucent, lightBg, 4.5);
+    expect(out.alpha).toBe(1);
+    expect(contrastRatio(out, lightBg)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("falls back to the pole only when no hue lightness can meet the ratio", () => {
     // Against a mid-grey, even pure black/white tops out near 4.58:1, so a
     // target of 7 is physically impossible — return the max-contrast pole.
