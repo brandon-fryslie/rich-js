@@ -77,7 +77,7 @@ export const INVERT_LIGHTNESS: ThemeKey = Object.freeze({
  */
 export function isIdentityKey(k: ThemeKey): boolean {
   return (
-    k.hueShift === 0 &&
+    k.hueShift % 360 === 0 && // a whole turn (0, 360, -360, …) is a no-op
     k.chromaScale === 1 &&
     k.lightnessScale === 1 &&
     k.lightnessShift === 0
@@ -184,8 +184,15 @@ export class Oklch {
    * `ColorRgba` or a thrown error.
    */
   toRgba(): ColorRgba {
-    const cInGamut = this.findInGamutChroma();
-    const { r, g, b } = this.toLinearRgb(cInGamut);
+    // The normalization boundary the constructor promises: clamp L into [0,1]
+    // and C to non-negative here, so out-of-range intermediates (e.g. c = -0.1
+    // from a mid-pipeline transform) canonicalize to a valid color rather than
+    // flipping hue through a negative chroma. H needs no wrap — the cos/sin in
+    // the conversion are periodic. [LAW:single-enforcer]
+    const l = clamp01(this.l);
+    const c = Math.max(0, this.c);
+    const cInGamut = this.findInGamutChroma(l, c, this.h);
+    const { r, g, b } = this.toLinearRgb(l, cInGamut, this.h);
     const sR = Math.round(clamp01(linearToSrgb(r)) * 255);
     const sG = Math.round(clamp01(linearToSrgb(g)) * 255);
     const sB = Math.round(clamp01(linearToSrgb(b)) * 255);
@@ -211,15 +218,16 @@ export class Oklch {
     return new Oklch(newL, newC, newH, this.alpha);
   }
 
-  /** Linear-sRGB coordinates at a given chroma (kept here for gamut search reuse). */
-  private toLinearRgb(C: number): { r: number; g: number; b: number } {
-    const hRad = this.h * (Math.PI / 180);
+  /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
+   * already-normalized values so this never sees out-of-range inputs. */
+  private toLinearRgb(l: number, C: number, h: number): { r: number; g: number; b: number } {
+    const hRad = h * (Math.PI / 180);
     const aLab = C * Math.cos(hRad);
     const bLab = C * Math.sin(hRad);
 
-    const lCube = this.l + 0.3963377774 * aLab + 0.2158037573 * bLab;
-    const mCube = this.l - 0.1055613458 * aLab - 0.0638541728 * bLab;
-    const sCube = this.l - 0.0894841775 * aLab - 1.2914855480 * bLab;
+    const lCube = l + 0.3963377774 * aLab + 0.2158037573 * bLab;
+    const mCube = l - 0.1055613458 * aLab - 0.0638541728 * bLab;
+    const sCube = l - 0.0894841775 * aLab - 1.2914855480 * bLab;
 
     const lLong = lCube * lCube * lCube;
     const mLong = mCube * mCube * mCube;
@@ -233,18 +241,18 @@ export class Oklch {
   }
 
   /**
-   * Largest chroma ≤ `this.c` whose (l, h) projection lies in sRGB.
+   * Largest chroma ≤ `c` whose (l, h) projection lies in sRGB.
    * Standard chroma-reduction-by-bisection: 24 iterations gives ~1e-7
    * precision, more than enough since the next step quantizes to 1/255.
    */
-  private findInGamutChroma(): number {
-    const direct = this.toLinearRgb(this.c);
-    if (inGamut(direct.r, direct.g, direct.b)) return this.c;
+  private findInGamutChroma(l: number, c: number, h: number): number {
+    const direct = this.toLinearRgb(l, c, h);
+    if (inGamut(direct.r, direct.g, direct.b)) return c;
     let lo = 0;
-    let hi = this.c;
+    let hi = c;
     for (let i = 0; i < 24; i++) {
       const mid = (lo + hi) / 2;
-      const probe = this.toLinearRgb(mid);
+      const probe = this.toLinearRgb(l, mid, h);
       if (inGamut(probe.r, probe.g, probe.b)) lo = mid;
       else hi = mid;
     }

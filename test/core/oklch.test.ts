@@ -103,6 +103,15 @@ describe("Oklch.applyKey", () => {
     expect(isIdentityKey({ ...IDENTITY, chromaScale: 1.0001 })).toBe(false);
   });
 
+  it("treats a whole-turn hueShift as identity (it is a no-op)", () => {
+    expect(isIdentityKey({ ...IDENTITY, hueShift: 360 })).toBe(true);
+    expect(isIdentityKey({ ...IDENTITY, hueShift: -360 })).toBe(true);
+    expect(isIdentityKey({ ...IDENTITY, hueShift: 720 })).toBe(true);
+    // applyKey then short-circuits a whole-turn rotation to the same instance.
+    const c = Oklch.fromRgba(new ColorRgba(120, 80, 200));
+    expect(c.applyKey({ ...IDENTITY, hueShift: 360 })).toBe(c);
+  });
+
   it("rotates hue and wraps at 360", () => {
     const red = Oklch.fromRgba(new ColorRgba(255, 0, 0)); // h ~29°
     const rotated = red.applyKey({
@@ -215,6 +224,24 @@ describe("Oklch.toRgba — gamut clamping", () => {
     expect(back.l).toBeCloseTo(0.5, 2);
     expect(back.h).toBeCloseTo(30, 1);
     expect(back.c).toBeLessThan(2.0);
+  });
+
+  it("normalizes a negative chroma to achromatic, not a flipped hue", () => {
+    // toRgba is the promised normalization boundary: negative C clamps to 0
+    // (gray), rather than feeding -C through and flipping the hue 180°.
+    const negative = new Oklch(0.6, -0.1, 30, 1);
+    const out = negative.toRgba();
+    // Gray: channels equal (within rounding), no chromatic content.
+    expect(Math.abs(out.red - out.green)).toBeLessThanOrEqual(1);
+    expect(Math.abs(out.green - out.blue)).toBeLessThanOrEqual(1);
+    // Matches the same lightness at C=0 exactly.
+    const gray = new Oklch(0.6, 0, 0, 1).toRgba();
+    expect([out.red, out.green, out.blue]).toEqual([gray.red, gray.green, gray.blue]);
+  });
+
+  it("clamps lightness outside [0,1] at toRgba", () => {
+    expect(new Oklch(1.5, 0, 0, 1).toRgba()).toEqual(new ColorRgba(255, 255, 255));
+    expect(new Oklch(-0.5, 0, 0, 1).toRgba()).toEqual(new ColorRgba(0, 0, 0));
   });
 });
 
