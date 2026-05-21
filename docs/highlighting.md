@@ -37,7 +37,7 @@ console.print("42 and /usr/bin", { highlight: true });
 The most common pattern: extend `RegexHighlighter` with a list of named-group regular expressions and a `baseStyle` prefix.
 
 ```typescript
-import { RegexHighlighter, Theme, Console } from "rich-js";
+import { RegexHighlighter, Theme, Console } from "@promptctl/rich-js";
 
 class RequestHighlighter extends RegexHighlighter {
   highlights = [
@@ -71,7 +71,7 @@ console.print(richText);
 For complete control, extend the base `Highlighter` class and implement `highlight(text)`:
 
 ```typescript
-import { Highlighter, RichText } from "rich-js";
+import { Highlighter, RichText } from "@promptctl/rich-js";
 
 const COLORS = ["red", "green", "yellow", "blue", "magenta", "cyan"];
 
@@ -97,7 +97,7 @@ console.print("Hello, World!");
 | `ISO8601Highlighter` | ISO 8601 date/time strings |
 
 ```typescript
-import { JSONHighlighter, Console } from "rich-js";
+import { JSONHighlighter, Console } from "@promptctl/rich-js";
 
 const console = new Console({ highlighter: new JSONHighlighter() });
 console.print('{"name": "Alice", "age": 30}');

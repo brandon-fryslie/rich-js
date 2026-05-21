@@ -9,7 +9,7 @@ All four functions operate on `ColorRgba` and are pure.
 `relativeLuminance(color)` is the WCAG relative luminance in `[0, 1]`. `contrastRatio(a, b)` is the WCAG contrast ratio in `[1, 21]` — symmetric, so argument order doesn't matter.
 
 ```typescript
-import { relativeLuminance, contrastRatio, ColorRgba } from "rich-js";
+import { relativeLuminance, contrastRatio, ColorRgba } from "@promptctl/rich-js";
 
 const white = new ColorRgba(255, 255, 255);
 const black = new ColorRgba(0, 0, 0);
@@ -26,7 +26,7 @@ contrastRatio(white, white);     // 1    (the minimum)
 `contrastFor(bg)` returns pure black or white — whichever reads better on `bg` — using the perceptual luminance cutoff (`0.179`) where the two are equally legible. Use it when you have no color to preserve and just need *a* readable foreground.
 
 ```typescript
-import { contrastFor, ColorRgba } from "rich-js";
+import { contrastFor, ColorRgba } from "@promptctl/rich-js";
 
 contrastFor(new ColorRgba(240, 240, 240)); // black  → ColorRgba(0,0,0)
 contrastFor(new ColorRgba(30, 30, 30));    // white  → ColorRgba(255,255,255)
@@ -37,7 +37,7 @@ contrastFor(new ColorRgba(30, 30, 30));    // white  → ColorRgba(255,255,255)
 Flipping text to black/white is a cop-out: it throws away the theme. `ensureContrast(fg, bg, minRatio = 4.5)` instead keeps the foreground **recognizably itself** — it slides only the OKLCH *lightness* toward the contrast-raising pole (holding hue, and chroma where it stays in gamut) until the ratio is met. A blue link on a dark-blue panel becomes a *lighter blue*, not white.
 
 ```typescript
-import { ensureContrast, contrastRatio, ColorRgba } from "rich-js";
+import { ensureContrast, contrastRatio, ColorRgba } from "@promptctl/rich-js";
 
 const panel = new ColorRgba(20, 30, 70);   // dark blue
 const link  = new ColorRgba(60, 90, 200);  // blue — too low contrast as-is

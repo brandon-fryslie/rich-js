@@ -82,7 +82,7 @@ Link rendering depends on the terminal — most modern terminals support clickab
 The string definition is parsed into a `Style` object. You can construct one directly instead:
 
 ```typescript
-import { Style } from "rich-js";
+import { Style } from "@promptctl/rich-js";
 
 const s = new Style({ bold: true, color: "red", bgcolor: "white" });
 ```
@@ -108,7 +108,7 @@ const full = base.add(Style.parse("red on white"));
 If styles are scattered through code as strings, changing a color means hunting down every occurrence. **Themes** solve this by naming styles centrally.
 
 ```typescript
-import { Console, Theme } from "rich-js";
+import { Console, Theme } from "@promptctl/rich-js";
 
 const theme = new Theme({
   "my.header":  "bold magenta",

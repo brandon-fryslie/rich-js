@@ -9,7 +9,7 @@ The machinery has three layers: the **OKLCH** color space (the substrate), the *
 Hue rotation only "feels even" if equal numerical steps look like equal perceptual steps. In HSL they don't — a 60° turn through green looks nothing like 60° through blue. [OKLCH](https://bottosson.github.io/posts/oklab/) (the polar form of OKLab) is built for exactly this: lightness `L ∈ [0,1]`, chroma `C ≥ 0`, hue `H ∈ [0,360)`, and equal deltas are perceptually even.
 
 ```typescript
-import { Oklch, ColorRgba } from "rich-js";
+import { Oklch, ColorRgba } from "@promptctl/rich-js";
 
 const blue = Oklch.fromRgba(new ColorRgba(60, 90, 200));
 blue.l; // ~0.51  lightness
@@ -38,7 +38,7 @@ interface ThemeKey {
 Lightness is `L' = clamp01(L * lightnessScale + lightnessShift)`, which makes "invert" expressible without a boolean flag. Two keys ship built-in:
 
 ```typescript
-import { IDENTITY, INVERT_LIGHTNESS, isIdentityKey } from "rich-js";
+import { IDENTITY, INVERT_LIGHTNESS, isIdentityKey } from "@promptctl/rich-js";
 
 IDENTITY;          // { hueShift: 0, chromaScale: 1, lightnessScale: 1, lightnessShift: 0 }
 INVERT_LIGHTNESS;  // flips L→1-L; turns a dark theme into its light "octave"
@@ -60,7 +60,7 @@ const rotated = Oklch.fromRgba(someColor).applyKey({
 `transposePalette(palette, key, name?)` returns a new `Palette` with every color transposed. It is pure, and `IDENTITY` is byte-exact (no lossy round-trip):
 
 ```typescript
-import { getThemePalette, transposePalette } from "rich-js";
+import { getThemePalette, transposePalette } from "@promptctl/rich-js";
 
 const gruvbox = getThemePalette("gruvbox")!;
 
@@ -82,7 +82,7 @@ The resulting palette's `dark` flag is derived from the **actual lightness of th
 Rotating *every* hue would make a UI lie: an error message must look red, success green, warning amber, no matter the key. Those roles are **anchored** — their hue is held while lightness and chroma still transform (so they still invert correctly and respond to chroma scaling).
 
 ```typescript
-import { isAnchored, ANCHORED_ROOTS } from "rich-js";
+import { isAnchored, ANCHORED_ROOTS } from "@promptctl/rich-js";
 
 ANCHORED_ROOTS;                 // ReadonlySet { "error", "success", "warning" }
 isAnchored("error");            // true
@@ -97,7 +97,7 @@ The classification is by hyphen-prefix, so the whole `error-*` / `success-*` / `
 Thinking in raw `hueShift` degrees is like transposing by counting semitones. Usually you'd rather say "play this in the key of teal." `themeKeyForRoot(palette, tonicVar, targetHueDeg)` builds the `ThemeKey` that lands a chosen **tonic** var on a target hue:
 
 ```typescript
-import { getThemePalette, themeKeyForRoot, transposePalette } from "rich-js";
+import { getThemePalette, themeKeyForRoot, transposePalette } from "@promptctl/rich-js";
 
 const gruvbox = getThemePalette("gruvbox")!;
 

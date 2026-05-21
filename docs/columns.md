@@ -7,7 +7,7 @@
 A common use case is laying out a directory listing — the same way `ls` does:
 
 ```typescript
-import { Console, Columns } from "rich-js";
+import { Console, Columns } from "@promptctl/rich-js";
 import { readdirSync } from "fs";
 
 const console = new Console();
@@ -41,7 +41,7 @@ console.print(new Columns(files, { columnFirst: true, expand: true }));
 Columns can contain any renderable, not just strings — `Panel`, `Table`, `Tree`, etc.:
 
 ```typescript
-import { Panel } from "rich-js";
+import { Panel } from "@promptctl/rich-js";
 
 const cards = items.map((item) =>
   new Panel(item.description, { title: item.name, expand: false })
