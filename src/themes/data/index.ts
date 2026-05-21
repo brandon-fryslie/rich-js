@@ -16,6 +16,7 @@ import catppuccinFrappe from "./catppuccin-frappe.js";
 import catppuccinLatte from "./catppuccin-latte.js";
 import catppuccinMacchiato from "./catppuccin-macchiato.js";
 import catppuccinMocha from "./catppuccin-mocha.js";
+import cyberpunk from "./cyberpunk.js";
 import defaultTheme from "./default.js";
 import dracula from "./dracula.js";
 import flexoki from "./flexoki.js";
@@ -47,6 +48,7 @@ export const THEMES = {
   "catppuccin-latte": catppuccinLatte,
   "catppuccin-macchiato": catppuccinMacchiato,
   "catppuccin-mocha": catppuccinMocha,
+  "cyberpunk": cyberpunk,
   "default": defaultTheme,
   "dracula": dracula,
   "flexoki": flexoki,
