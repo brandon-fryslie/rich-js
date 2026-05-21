@@ -14,6 +14,7 @@ const ALL_NAMES = [
   "catppuccin-latte",
   "catppuccin-macchiato",
   "catppuccin-mocha",
+  "cyberpunk",
   "default",
   "dracula",
   "flexoki",
