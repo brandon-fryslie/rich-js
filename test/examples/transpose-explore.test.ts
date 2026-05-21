@@ -252,6 +252,75 @@ describe("explorer model — readability invariant", () => {
   });
 });
 
+describe("explorer model — hue mode (relative vs absolute)", () => {
+  it("defaults to relative at 0° offset — every theme opens as authored", () => {
+    const s0 = initialState();
+    expect(s0.hueMode).toBe("relative");
+    expect(s0.rootHue).toBe(0);
+    for (let i = 0; i < THEME_NAMES.length; i++) {
+      const s = { ...s0, themeIndex: i };
+      const src = sourcePalette(s).get("primary")!;
+      const out = transposedPalette(s).get("primary")!;
+      const drift =
+        Math.abs(out.red - src.red) +
+        Math.abs(out.green - src.green) +
+        Math.abs(out.blue - src.blue);
+      expect(drift).toBeLessThanOrEqual(6); // round-trip only
+    }
+  });
+
+  it("the hueMode control flips via left/right", () => {
+    const focused = { ...initialState(), focusedControl: "hueMode" as const };
+    expect(reduce(focused, k("right")).hueMode).toBe("absolute");
+    expect(reduce(reduce(focused, k("right")), k("left")).hueMode).toBe("relative");
+  });
+
+  it("toggling the mode preserves the rendered colors (representation only)", () => {
+    let s: ExplorerState = {
+      ...initialState(),
+      themeIndex: THEME_NAMES.indexOf("nord"),
+      focusedControl: "rootHue",
+    };
+    for (let n = 0; n < 5; n++) s = reduce(s, k("right")); // +30° offset
+    const before = transposedPalette(s).get("accent")!;
+    const toggled = reduce({ ...s, focusedControl: "hueMode" }, k("right"));
+    expect(toggled.hueMode).toBe("absolute");
+    const after = transposedPalette(toggled).get("accent")!;
+    expect([after.red, after.green, after.blue]).toEqual([
+      before.red,
+      before.green,
+      before.blue,
+    ]);
+  });
+
+  it("absolute mode forces every theme's tonic onto the same hue", () => {
+    const abs = { ...initialState(), hueMode: "absolute" as const, rootHue: 200 };
+    const hueOf = (theme: string) =>
+      Oklch.fromRgba(
+        transposedPalette({ ...abs, themeIndex: THEME_NAMES.indexOf(theme) }).get("primary")!,
+      ).h;
+    const nord = hueOf("nord");
+    const gruv = hueOf("gruvbox");
+    expect(Math.min(Math.abs(nord - gruv), 360 - Math.abs(nord - gruv))).toBeLessThan(2);
+    expect(Math.min(Math.abs(nord - 200), 360 - Math.abs(nord - 200))).toBeLessThan(2);
+  });
+
+  it("changing theme preserves the stored rootHue in both modes", () => {
+    for (const hueMode of ["relative", "absolute"] as const) {
+      const before = { ...initialState(), hueMode, rootHue: 137 };
+      const after = reduce(reduce(before, k("down")), k("down"));
+      expect(after.rootHue).toBe(137);
+      expect(after.hueMode).toBe(hueMode);
+    }
+  });
+
+  it("reset returns to identity for the mode (0° in relative)", () => {
+    let s: ExplorerState = { ...initialState(), focusedControl: "rootHue" };
+    s = reduce(s, k("right"));
+    expect(reduce(s, ch("r")).rootHue).toBe(0);
+  });
+});
+
 describe("explorer model — dense showcase", () => {
   it("exercises a large fraction of the theme's vars (dozens and dozens)", () => {
     // Wrap the palette so we can record every var the showcase reads.

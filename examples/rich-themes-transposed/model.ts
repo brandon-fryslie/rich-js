@@ -61,11 +61,21 @@ export type TonicVar = (typeof TONIC_VARS)[number];
 export const CONTROLS = [
   "tonic",
   "rootHue",
+  "hueMode",
   "chroma",
   "lightness",
   "contrast",
 ] as const;
 export type Control = (typeof CONTROLS)[number];
+
+// How the root-hue control value is interpreted:
+//   absolute — `rootHue` is the target hue; held constant across themes, so
+//              every theme's tonic lands on the same hue ("all in one key").
+//   relative — `rootHue` is an *offset* from the current theme's natural tonic
+//              hue, so 0° = the theme as authored and the effective hue tracks
+//              whichever theme is selected.
+export const HUE_MODES = ["relative", "absolute"] as const;
+export type HueMode = (typeof HUE_MODES)[number];
 
 // The two preview views. `showcase` is the dense single page that exercises
 // nearly every theme var; `app` is the focused dashboard. Toggled with `v`.
@@ -90,7 +100,8 @@ const SWATCH_VARS = [
 export interface ExplorerState {
   readonly themeIndex: number;
   readonly tonicIndex: number;
-  readonly rootHue: number; // degrees, [0, 360)
+  readonly rootHue: number; // degrees, [0, 360); meaning depends on hueMode
+  readonly hueMode: HueMode;
   readonly chromaScale: number; // [0, 2]
   readonly lightnessShift: number; // [-0.4, 0.4]
   readonly minContrast: number; // WCAG ratio, [3, 7]
@@ -119,6 +130,11 @@ function wrap360(deg: number): number {
   return ((deg % 360) + 360) % 360;
 }
 
+/** Map [0,360) to a signed offset in (-180, 180] for relative-mode display. */
+function signedDeg(deg: number): number {
+  return ((wrap360(deg) + 180) % 360) - 180;
+}
+
 /** Natural hue of a theme's tonic var — the rootHue value that means "no
  * transposition" for that theme. */
 function naturalRootHue(themeIndex: number, tonicIndex: number): number {
@@ -127,19 +143,29 @@ function naturalRootHue(themeIndex: number, tonicIndex: number): number {
   return Math.round(Oklch.fromRgba(tonic).h);
 }
 
-/** Initial state: theme 0 shown as-is (rootHue = its tonic's natural hue, so
- * the starting transposition is identity). */
+/** Initial state: relative mode at 0° offset, so every theme opens exactly as
+ * authored and flipping themes keeps you at "as authored" until you dial. */
 export function initialState(): ExplorerState {
   return {
     themeIndex: 0,
     tonicIndex: 0,
-    rootHue: naturalRootHue(0, 0),
+    rootHue: 0,
+    hueMode: "relative",
     chromaScale: 1,
     lightnessShift: 0,
     minContrast: 4.5,
     focusedControl: "rootHue",
     view: "showcase",
   };
+}
+
+/** The absolute target hue the controls resolve to. In relative mode the
+ * stored `rootHue` is an offset from the theme's natural tonic hue, so the
+ * effective hue tracks the selected theme; in absolute mode it is the target
+ * directly. The single place the mode is interpreted. [LAW:one-source-of-truth] */
+function effectiveTargetHue(state: ExplorerState): number {
+  if (state.hueMode === "absolute") return state.rootHue;
+  return wrap360(naturalRootHue(state.themeIndex, state.tonicIndex) + state.rootHue);
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +186,8 @@ function adjustFocused(state: ExplorerState, dir: -1 | 1): ExplorerState {
       return { ...state, tonicIndex: wrap(state.tonicIndex + dir, TONIC_VARS.length) };
     case "rootHue":
       return { ...state, rootHue: wrap360(state.rootHue + dir * HUE_STEP) };
+    case "hueMode":
+      return toggleHueMode(state);
     case "chroma":
       return {
         ...state,
@@ -176,6 +204,17 @@ function adjustFocused(state: ExplorerState, dir: -1 | 1): ExplorerState {
         minContrast: clamp(state.minContrast + dir * CONTRAST_STEP, CONTRAST_RANGE.min, CONTRAST_RANGE.max),
       };
   }
+}
+
+/** Flip absolute↔relative while holding the *effective* hue fixed, by
+ * converting the stored value. Toggling the representation must not change the
+ * rendered colors. [LAW:dataflow-not-control-flow] */
+function toggleHueMode(state: ExplorerState): ExplorerState {
+  const natural = naturalRootHue(state.themeIndex, state.tonicIndex);
+  if (state.hueMode === "absolute") {
+    return { ...state, hueMode: "relative", rootHue: wrap360(state.rootHue - natural) };
+  }
+  return { ...state, hueMode: "absolute", rootHue: wrap360(natural + state.rootHue) };
 }
 
 function cycleControl(state: ExplorerState, dir: -1 | 1): ExplorerState {
@@ -202,10 +241,12 @@ export function reduce(state: ExplorerState, input: KeyInput): ExplorerState {
       return cycleControl(state, input.shift ? -1 : 1);
   }
   // 'r' resets the transposition (not the theme selection or contrast knob).
+  // Identity is mode-relative: 0° offset in relative mode, the theme's natural
+  // hue in absolute mode.
   if (input.character === "r") {
     return {
       ...state,
-      rootHue: naturalRootHue(state.themeIndex, state.tonicIndex),
+      rootHue: state.hueMode === "relative" ? 0 : naturalRootHue(state.themeIndex, state.tonicIndex),
       chromaScale: 1,
       lightnessShift: 0,
     };
@@ -233,7 +274,7 @@ export function sourcePalette(state: ExplorerState): Palette {
 /** The ThemeKey the current controls compose into: root-note hue rotation
  * plus the independent chroma/lightness axes. */
 export function keyFor(state: ExplorerState): ThemeKey {
-  const base = themeKeyForRoot(sourcePalette(state), tonicVar(state), state.rootHue);
+  const base = themeKeyForRoot(sourcePalette(state), tonicVar(state), effectiveTargetHue(state));
   return { ...base, chromaScale: state.chromaScale, lightnessShift: state.lightnessShift };
 }
 
@@ -813,13 +854,37 @@ function rightPane(state: ExplorerState, rightWidth: number): Segment[][] {
   lines.push([]);
 
   lines.push(controlLine(state, "tonic", "Tonic", tonicVar(state), ""));
+  if (state.hueMode === "relative") {
+    const off = signedDeg(state.rootHue);
+    lines.push(
+      controlLine(
+        state,
+        "rootHue",
+        "Root hue",
+        `${off >= 0 ? "+" : ""}${off}°  → ${effectiveTargetHue(state)}°`,
+        bar(off, -180, 180, 16),
+      ),
+    );
+  } else {
+    lines.push(
+      controlLine(
+        state,
+        "rootHue",
+        "Root hue",
+        `${state.rootHue}°`,
+        bar(state.rootHue, 0, 360, 16),
+      ),
+    );
+  }
   lines.push(
     controlLine(
       state,
-      "rootHue",
-      "Root hue",
-      `${state.rootHue}°`,
-      bar(state.rootHue, 0, 360, 18),
+      "hueMode",
+      "Hue mode",
+      state.hueMode === "relative"
+        ? "◀ relative ▶  (0° = as authored)"
+        : "◀ absolute ▶  (held across themes)",
+      "",
     ),
   );
   lines.push(
