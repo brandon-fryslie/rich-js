@@ -33,6 +33,7 @@ import {
   transposePalette,
   type ThemeKey,
 } from "../../src/index.js";
+import { ensureContrast } from "../../src/themes/colorMath.js";
 
 // When EXPORT_HTML is set, Console records every print into an internal
 // buffer so we can dump a CSS-styled HTML file at the end. The render
@@ -56,9 +57,13 @@ const out = new Console({
 // theme's bg, then flatten fg over that, before emitting via Style.
 // compositeOver short-circuits at alpha=1 (the typical case) so this is
 // effectively free for opaque inputs. [LAW:dataflow-not-control-flow].
+//
+// The flattened fg passes through ensureContrast against its actual cell bg
+// so an inverted/darkened palette can't render dark-on-dark — the same
+// readability authority the interactive explorer uses. [LAW:single-enforcer]
 function bgFgStyle(bg: ColorRgba, fg: ColorRgba, substrate: ColorRgba): Style {
   const flatBg = bg.compositeOver(substrate);
-  const flatFg = fg.compositeOver(flatBg);
+  const flatFg = ensureContrast(fg.compositeOver(flatBg), flatBg, 4.5);
   return Style.parse(`${flatFg.hex} on ${flatBg.hex}`);
 }
 

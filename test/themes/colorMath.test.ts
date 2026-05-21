@@ -5,6 +5,9 @@ import {
   lighten,
   alphaBlend,
   contrastFor,
+  contrastRatio,
+  ensureContrast,
+  relativeLuminance,
 } from "../../src/themes/colorMath.js";
 
 const mid = new ColorRgba(128, 128, 128);
@@ -106,5 +109,57 @@ describe("contrastFor", () => {
   it("dark blue counts as dark even though it's a primary color", () => {
     const navy = new ColorRgba(0, 0, 128);
     expect(contrastFor(navy)).toEqual(white);
+  });
+});
+
+describe("contrastRatio", () => {
+  it("black on white is the maximum 21:1", () => {
+    expect(contrastRatio(black, white)).toBeCloseTo(21, 1);
+  });
+
+  it("a color against itself is 1:1", () => {
+    expect(contrastRatio(red, red)).toBeCloseTo(1, 5);
+  });
+
+  it("is symmetric in its arguments", () => {
+    expect(contrastRatio(red, white)).toBeCloseTo(contrastRatio(white, red), 10);
+  });
+
+  it("matches the WCAG formula via relativeLuminance", () => {
+    const la = relativeLuminance(red);
+    const lb = relativeLuminance(white);
+    const expected = (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    expect(contrastRatio(red, white)).toBeCloseTo(expected, 10);
+  });
+});
+
+describe("ensureContrast", () => {
+  it("passes the themed fg through untouched when it already clears the bar", () => {
+    // white on black is 21:1 — far above 4.5, so it must be returned as-is.
+    expect(ensureContrast(white, black, 4.5)).toBe(white);
+  });
+
+  it("escalates to a readable black/white when the themed fg fails", () => {
+    // dark-grey text on a near-black bg fails 4.5:1; ensureContrast must
+    // replace it with contrastFor's pick (white here).
+    const darkGrey = new ColorRgba(50, 50, 50);
+    const nearBlack = new ColorRgba(20, 20, 20);
+    const out = ensureContrast(darkGrey, nearBlack, 4.5);
+    expect(out).toEqual(contrastFor(nearBlack));
+    expect(contrastRatio(out, nearBlack)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("the result always achieves min(target, best-possible-for-bg)", () => {
+    // The honest theorem: at the AA threshold, contrastFor guarantees ≥4.58
+    // for every background, so ensureContrast always reaches 4.5.
+    const fgs = [black, white, red, new ColorRgba(90, 90, 90)];
+    const bgs = [black, white, mid, red, new ColorRgba(128, 64, 200)];
+    for (const fg of fgs) {
+      for (const bg of bgs) {
+        const out = ensureContrast(fg, bg, 4.5);
+        const best = contrastRatio(contrastFor(bg), bg);
+        expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(Math.min(4.5, best) - 1e-9);
+      }
+    }
   });
 });

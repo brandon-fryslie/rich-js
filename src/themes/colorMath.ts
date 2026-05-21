@@ -107,10 +107,50 @@ export function contrastFor(bg: ColorRgba): ColorRgba {
     : new ColorRgba(255, 255, 255);
 }
 
-function relativeLuminance(c: ColorRgba): number {
+/**
+ * WCAG 2.x relative luminance (0..1) of an opaque color. The single
+ * luminance function in the codebase — `contrastFor`, `contrastRatio`, and
+ * any caller that needs to reason about readability all funnel through it.
+ * [LAW:one-source-of-truth]
+ */
+export function relativeLuminance(c: ColorRgba): number {
   const ch = (v: number): number => {
     const x = v / 255;
     return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
   };
   return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue);
+}
+
+/**
+ * WCAG 2.x contrast ratio between two colors, in [1, 21]. Symmetric — the
+ * order of arguments does not matter. 4.5 is the AA threshold for normal
+ * text, 3.0 for large text.
+ */
+export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const hi = la > lb ? la : lb;
+  const lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * Return a foreground guaranteed to clear `minRatio` against `bg`. If the
+ * themed `fg` already passes it is returned untouched (text keeps its theme
+ * color); otherwise it escalates to `contrastFor`'s black/white pick, which
+ * is the maximum-contrast choice for any background.
+ *
+ * [LAW:single-enforcer] The one place "is this text readable, and if not fix
+ * it" is decided. Callers route every fg/bg pair through here and the
+ * unreadable state never reaches output. [LAW:dataflow-not-control-flow] the
+ * function always runs; the measured ratio (data) decides whether the themed
+ * color passes through or is replaced — there is no caller-side "should I
+ * check contrast" branch.
+ */
+export function ensureContrast(
+  fg: ColorRgba,
+  bg: ColorRgba,
+  minRatio: number,
+): ColorRgba {
+  return contrastRatio(fg, bg) >= minRatio ? fg : contrastFor(bg);
 }
