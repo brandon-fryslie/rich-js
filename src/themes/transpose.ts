@@ -136,6 +136,14 @@ export function themeKeyForRoot(
   tonicVar: string,
   targetHueDeg: number,
 ): ThemeKey {
+  // Validate the numeric input at the boundary: a non-finite target would
+  // propagate as NaN to Oklch's constructor several calls downstream, where
+  // the error is far less actionable.
+  if (!Number.isFinite(targetHueDeg)) {
+    throw new RangeError(
+      `themeKeyForRoot: targetHueDeg must be a finite number; got ${targetHueDeg}`,
+    );
+  }
   const tonic = palette.get(tonicVar);
   if (tonic === undefined) {
     throw new Error(

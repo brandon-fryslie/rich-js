@@ -147,7 +147,9 @@ const CONTRAST_ITERS = 20;
  * Return a foreground guaranteed to clear `minRatio` against `bg`, keeping the
  * color *recognizably itself*. If the themed `fg` already passes it is returned
  * untouched. Otherwise its OKLCH lightness is slid toward the pole that raises
- * contrast — holding hue and chroma — until the ratio is met, so a blue on a
+ * contrast — holding hue, and chroma where it stays in gamut (near the poles
+ * gamut clamping may reduce chroma, but hue is preserved) — until the ratio is
+ * met, so a blue on a
  * dark-blue background becomes a lighter blue, not white. Only when no
  * lightness of that hue can meet the ratio (a mid-toned background where even
  * black-or-white tops out below the target) does it return the pole, which is
