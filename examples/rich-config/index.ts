@@ -386,7 +386,10 @@ const paletteSearchItem = new StaticItem({
       shown++;
     }
     const overflow = matches.length - shown;
-    if (overflow > 0) out.push(new Segment(`+${overflow}`, dimStyle));
+    if (overflow > 0) {
+      const marker = `+${overflow}`;
+      if (used + marker.length <= PALETTE_ROW_WIDTH) out.push(new Segment(marker, dimStyle));
+    }
     return out;
   },
 });
