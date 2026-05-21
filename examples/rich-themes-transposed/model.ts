@@ -892,7 +892,7 @@ export function renderFrame(
 export function framesToSegments(lines: Segment[][]): Segment[] {
   const out: Segment[] = [];
   for (let i = 0; i < lines.length; i++) {
-    if (i > 0) out.push(new Segment("\n"));
+    if (i > 0) out.push(Segment.line()); // cached newline; hot render path
     out.push(...lines[i]!);
   }
   return out;
