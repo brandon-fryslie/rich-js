@@ -175,11 +175,11 @@ describe("ensureContrast", () => {
     expect(contrastRatio(out, lightBg)).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("falls back to the pole only when no hue lightness can meet the ratio", () => {
-    // Against a mid-grey, even pure black/white tops out near 4.58:1, so a
-    // target of 7 is physically impossible — return the max-contrast pole.
+  it("falls back to pure black/white when no hue lightness can meet the ratio", () => {
+    // Against this mid-grey (128), even pure black tops out around 5.3:1, so a
+    // target of 7 is physically impossible — return contrastFor's max pick.
     const out = ensureContrast(new ColorRgba(120, 120, 120), mid, 7);
-    expect(contrastRatio(out, mid)).toBeCloseTo(contrastRatio(contrastFor(mid), mid), 1);
+    expect(out).toEqual(contrastFor(mid));
   });
 
   it("the result always achieves min(target, best-possible-for-bg)", () => {
