@@ -20,7 +20,7 @@ blue.h; // ~265   hue degrees
 const back = blue.toRgba(); // ColorRgba
 ```
 
-`Oklch` is immutable. `toRgba()` is the normalization boundary: it clamps lightness into `[0,1]`, clamps chroma to `≥ 0`, and reduces chroma by bisection to land inside the sRGB gamut — so a vivid hue desaturates near black/white rather than producing an invalid color, and the hue is always preserved.
+`Oklch` is immutable. `toRgba()` is the normalization boundary: it clamps lightness into `[0,1]`, clamps chroma to `≥ 0`, and reduces chroma by bisection to land inside the sRGB gamut — so a vivid hue desaturates near black/white rather than producing an invalid color, with hue preserved wherever the color is chromatic. (At zero chroma, or at the lightness extremes where everything collapses to black/white, hue is moot and pinned to 0.)
 
 ## ThemeKey — the key signature
 
