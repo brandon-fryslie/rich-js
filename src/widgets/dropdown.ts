@@ -27,7 +27,7 @@ import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
-import { cellLen, setCellSize, splitText } from "../core/cells.js";
+import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
@@ -294,7 +294,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     if (this.filter === "") {
       const raw = this.options[this.selectedIndex] ?? "";
       const w = cellLen(raw);
-      if (w >= maxLabelLen) return setCellSize(raw, maxLabelLen);
+      if (w >= maxLabelLen) return setCellSize(raw, asCellCol(maxLabelLen));
       const pad = maxLabelLen - w;
       const left = Math.floor(pad / 2);
       const right = pad - left;
@@ -303,8 +303,8 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // Leading space gives the filter input a small gutter from the [ chrome,
     // matching the visual breathing room of the centered label.
     const filterRoom = Math.max(0, maxLabelLen - cellLen(caret) - 1);
-    const [filterText] = splitText(this.filter, filterRoom);
-    return setCellSize(" " + filterText + caret, maxLabelLen);
+    const [filterText] = splitText(this.filter, asCellCol(filterRoom));
+    return setCellSize(" " + filterText + caret, asCellCol(maxLabelLen));
   }
 
   renderOverlay(_options: RenderOptions): Iterable<Segment> | null {
@@ -323,7 +323,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
 
   private renderNoMatchRow(maxLabelLen: number): Segment[] {
     // Right-clipped + padded so width matches a normal option row.
-    const text = setCellSize("(no matches)", maxLabelLen);
+    const text = setCellSize("(no matches)", asCellCol(maxLabelLen));
     const inner = ` ${text} `;
     const style = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
@@ -348,7 +348,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // Width = 1 + 1 + maxLabelLen + 1 + 1 = maxLabelLen + 4.
     // Overlay rows are unbracketed — selection/highlight are conveyed by bg
     // color; the header keeps [ ] as its focus-indicator chrome.
-    const label = setCellSize(entry.label, maxLabelLen);
+    const label = setCellSize(entry.label, asCellCol(maxLabelLen));
     const inner = ` ${label} `;
 
     const isSelected = entry.idx === this.selectedIndex;

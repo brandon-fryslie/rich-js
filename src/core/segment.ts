@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, splitText } from "./cells.js";
+import { cellLen, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
 
 // --- ControlType ---
@@ -61,7 +61,7 @@ export class Segment {
   /**
    * Splits at a cell position. Returns [left, right].
    */
-  splitCells(position: number): [Segment, Segment] {
+  splitCells(position: CellCol): [Segment, Segment] {
     const len = this.cellLength;
     if (position >= len) return [this, new Segment("")];
     if (position <= 0) return [new Segment(""), this];
@@ -182,7 +182,7 @@ export class Segment {
         result.push(segment);
         remaining -= segWidth;
       } else {
-        const [left] = segment.splitCells(remaining);
+        const [left] = segment.splitCells(asCellCol(remaining));
         result.push(left);
         remaining = 0;
         break;
@@ -302,7 +302,7 @@ export class Segment {
       }
 
       if (currentSegment && !currentSegment.isControl && cellOffset < cut) {
-        const splitAt = cut - cellOffset;
+        const splitAt = asCellCol(cut - cellOffset);
         const [left, right] = currentSegment.splitCells(splitAt);
         if (left.hasText) section.push(left);
         cellOffset += left.cellLength;

@@ -32,7 +32,7 @@ import {
   STANDARD_TABLE, WINDOWS_TABLE,
   ColorParseError, ColorDepth, ColorSpec, parseRgbHex,
   // Cells
-  cellLen, setCellSize, splitText, chopCells,
+  cellLen, setCellSize, splitText, chopCells, asCellCol,
   // Measurement
   Measurement, measureRenderables,
   // Segment / protocol
@@ -157,9 +157,9 @@ export class CoverageRenderable implements Renderable {
     // ── 8. Cell functions ────────────────────────────────────────────
     items.push(new Rule("Cell Functions", { style: "bold cyan" }));
     items.push(new RichText(`cellLen("hello") = ${cellLen("hello")}`, { end: "" }));
-    items.push(new RichText(`splitText("abcdef", 3) = ${JSON.stringify(splitText("abcdef", 3))}`, { end: "" }));
-    items.push(new RichText(`chopCells("hello world", 7) = "${chopCells("hello world", 7)}"`, { end: "" }));
-    setCellSize("A", 1); // exercise the function; restore to default width
+    items.push(new RichText(`splitText("abcdef", 3) = ${JSON.stringify(splitText("abcdef", asCellCol(3)))}`, { end: "" }));
+    items.push(new RichText(`chopCells("hello world", 7) = "${chopCells("hello world", asCellCol(7))}"`, { end: "" }));
+    setCellSize("A", asCellCol(1)); // exercise the function; restore to default width
 
     // ── 9. Measurement + measureRenderables ──────────────────────────
     items.push(new Rule("Measurement", { style: "bold cyan" }));
