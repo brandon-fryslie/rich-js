@@ -19,6 +19,13 @@
  * as single-line; with no `\n` in `value`, line bounds collapse to value
  * bounds, so single-line semantics are recovered without a special case.
  *
+ * [LAW:types-are-the-program] Three integer spaces coexist: `CellCol` (terminal
+ * cell columns), `CodeUnit` (JS UTF-16 indices), and `CodePoint` (code-unit
+ * offsets that are additionally on a Unicode code-point boundary — a subtype of
+ * `CodeUnit`). `cursorPosition` is `CodePoint`; it is never inside a surrogate
+ * pair by construction. Visual positions are `CellCol`. The three are never
+ * interchangeable — the type system enforces this at every crossing point.
+ *
  * Keymap (readline / emacs compatible):
  *
  *   ─── motion ───
@@ -53,7 +60,19 @@ import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
-import { cellLen } from "../core/cells.js";
+import {
+  cellLen,
+  setCellSize,
+  splitText,
+  cellFitFrom,
+  cellColToCodeUnitOffset,
+  asCellCol,
+  asCodePoint,
+  nextCodePoint,
+  prevCodePoint,
+  type CellCol,
+  type CodePoint,
+} from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
@@ -61,7 +80,7 @@ import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 /**
- * A soft-wrap strategy. Given one logical line of text and width budgets,
+ * A soft-wrap strategy. Given one logical line of text and cell-width budgets,
  * return the visual sub-rows that line wraps into. The first sub-row uses
  * `firstWidth` as its capacity; every subsequent (continuation) sub-row uses
  * `continuationWidth` (typically `firstWidth - cellLen(continuationMarker)`).
@@ -69,14 +88,13 @@ import type { KeyEvent, WidgetMouseEvent } from "./types.js";
  * Each returned row carries:
  *   - `content` — the displayed text for that visual row (the widget prepends
  *     the continuation marker itself; the strategy never includes it).
- *   - `start`   — byte offset into the *logical line* where `content` begins,
- *     so the widget can map visual positions back to absolute `value` offsets
- *     for cursor projection.
+ *   - `start`   — code-unit offset into the *logical line* where `content`
+ *     begins, so the widget can map visual positions back to absolute `value`
+ *     offsets for cursor projection.
  *
- * [LAW:types-are-the-program] The strategy returns visual rows directly
- * rather than break points or token streams — the widget then consumes a
- * uniform `VisualRow` shape regardless of which strategy produced it,
- * collapsing all wrap-policy variability into one boundary.
+ * [LAW:types-are-the-program] Budget params are `CellCol`; `start` is
+ * `CodePoint` (a `CodeUnit` on a code-point boundary) — the type system
+ * prevents mixing these integer spaces inside a custom strategy.
  *
  * Built-in: `charGreedyWrap` (break at any character at the width limit).
  * Custom: any function matching this signature. Template-aware wrapping
@@ -85,12 +103,13 @@ import type { KeyEvent, WidgetMouseEvent } from "./types.js";
  */
 export type WrapStrategy = (
   logicalLine: string,
-  budget: { firstWidth: number; continuationWidth: number },
+  budget: { firstWidth: CellCol; continuationWidth: CellCol },
 ) => readonly WrapRow[];
 
 export interface WrapRow {
   readonly content: string;
-  readonly start: number;
+  /** Code-point offset into the logical line where `content` begins. */
+  readonly start: CodePoint;
 }
 
 /**
@@ -102,27 +121,39 @@ export interface WrapRow {
  */
 interface VisualRow {
   readonly content: string;
-  readonly valueStart: number;
+  /** Code-point offset into `value` where this row's content begins. */
+  readonly valueStart: CodePoint;
   readonly isContinuation: boolean;
 }
 
 /**
  * Character-greedy soft wrap. Breaks at any character once `firstWidth`
- * (or `continuationWidth` for continuation rows) is exhausted. The textarea
- * default when a consumer says "wrap, I don't care how" — no syntax
+ * (or `continuationWidth` for continuation rows) cells are exhausted. The
+ * textarea default when a consumer says "wrap, I don't care how" — no syntax
  * awareness, just fits the line to the width.
+ *
+ * Wide characters (CJK, emoji) are treated as atomic: a char that would
+ * straddle the budget is moved to the next row rather than split. When the
+ * budget is too narrow to fit even one character, that character is
+ * force-taken to guarantee progress (avoids an infinite loop).
  */
 export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
-  if (line.length === 0) return [{ content: "", start: 0 }];
+  if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
   const rows: WrapRow[] = [];
-  let pos = 0;
+  let pos: CodePoint = asCodePoint(0);
   let isFirst = true;
   while (pos < line.length) {
     const cap = isFirst ? firstWidth : continuationWidth;
     if (cap <= 0) break;
-    const take = Math.min(cap, line.length - pos);
-    rows.push({ content: line.slice(pos, pos + take), start: pos });
-    pos += take;
+    let end = cellFitFrom(line, pos, cap);
+    if (end === pos) {
+      // Leading character exceeds cap — force-take one code point to guarantee
+      // progress when the terminal is extremely narrow.
+      end = nextCodePoint(line, pos);
+      if (end === pos) break;
+    }
+    rows.push({ content: line.slice(pos, end), start: pos });
+    pos = end;
     isFirst = false;
   }
   return rows;
@@ -208,9 +239,6 @@ export interface TextInputOptions {
 }
 
 const MIN_CONTENT_WIDTH = 8;
-// Visible placeholder for a `\n` in the rendered single-line view. Picked so
-// the cursor's 1:1 char-index ↔ display-column mapping is preserved — every
-// raw char in `value` (newlines included) shows as exactly one cell.
 const NEWLINE_GLYPH = "↵";
 
 // Word-character regex used by Alt+B/F and Ctrl+Left/Right. Matches the
@@ -232,7 +260,7 @@ export class TextInput extends WidgetBase {
   readonly focusable = true;
 
   @observable accessor value: string;
-  @observable accessor cursorPosition: number;
+  @observable accessor cursorPosition: CodePoint;
   @observable.ref accessor placeholder: string;
 
   private _theme: TerminalTheme;
@@ -241,7 +269,7 @@ export class TextInput extends WidgetBase {
   private readonly _multiline: boolean;
   private readonly _wrap: WrapStrategy | undefined;
   private readonly _continuationMarker: string;
-  private readonly _markerWidth: number;
+  private readonly _markerWidth: CellCol;
   private readonly _maxRows: number | undefined;
   private readonly _minRows: number | undefined;
   private readonly _scrollIndicator: "arrows" | "indices" | "none";
@@ -262,13 +290,13 @@ export class TextInput extends WidgetBase {
    */
   private _visualRows: readonly VisualRow[] | null = null;
 
-  // [LAW:types-are-the-program] `_preferredColumn` exists because vertical
-  // motion needs to remember "what column the user *intended*" even after
-  // passing through a short line that clamped them right. Reset to null on
-  // every non-vertical motion or edit so the next Up/Down captures a fresh
-  // intent. Without this, Down through a short line then back Up would
-  // land at the short-line column instead of the original.
-  private _preferredColumn: number | null = null;
+  // [LAW:types-are-the-program] `_preferredColumn` is a cell column (not a
+  // code-unit index) — vertical motion navigates the visual surface, not the
+  // string's byte layout. Reset to null on every non-vertical motion or edit
+  // so the next Up/Down captures a fresh intent. Without this, Down through a
+  // short line then back Up would land at the short-line column instead of the
+  // original.
+  private _preferredColumn: CellCol | null = null;
 
   // Single-slot kill buffer used by Ctrl+U / Ctrl+K → Ctrl+Y. Not a full
   // kill ring (no Alt+Y rotation) — sufficient for the common cut/paste
@@ -284,6 +312,11 @@ export class TextInput extends WidgetBase {
   // lockstep with the cursor.
   private _scrollStart: number = 0;
 
+  // [LAW:one-source-of-truth] Viewport scroll offset in cells for the
+  // single-line renderer. Captured by _renderSingleLine and read by
+  // handleMouse so the hit-test uses the same visual origin the user sees.
+  private _singleLineViewportStart: CellCol = asCellCol(0);
+
   readonly multiline: boolean;
 
   constructor(options: TextInputOptions = {}) {
@@ -297,7 +330,7 @@ export class TextInput extends WidgetBase {
     // inputs follow the textarea convention (cursor at start — pre-loaded
     // content is read top-to-bottom, and the viewport's "scroll into view"
     // logic does nothing because row 0 is already inside the initial window).
-    this.cursorPosition = (options.multiline ?? false) ? 0 : this.value.length;
+    this.cursorPosition = (options.multiline ?? false) ? asCodePoint(0) : asCodePoint(this.value.length);
     this.disabled = options.disabled ?? false;
     this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
     this._maxLength = options.maxLength;
@@ -305,7 +338,7 @@ export class TextInput extends WidgetBase {
     this._multiline = options.multiline ?? false;
     this._wrap = options.wrap;
     this._continuationMarker = options.continuationMarker ?? "↳ ";
-    this._markerWidth = cellLen(this._continuationMarker);
+    this._markerWidth = asCellCol(cellLen(this._continuationMarker));
     this._maxRows = options.maxRows;
     this._minRows = options.minRows;
     this._scrollIndicator = options.scrollIndicator ?? "arrows";
@@ -414,9 +447,57 @@ export class TextInput extends WidgetBase {
 
     const b = this.bounds;
     if (!b) return;
-    // Click position relative to the content area (skip the leading "[" bracket).
-    const relX = event.x - b.x - 1;
-    this.cursorPosition = Math.max(0, Math.min(this.value.length, relX));
+
+    if (this._multiline) {
+      // Multiline has no brackets; rows may have a leading continuation marker.
+      // Use event.y to pick the visual row, then project event.x into its content.
+      const rows = this._visualRows;
+      if (!rows || rows.length === 0) return;
+      const relY = event.y - b.y;
+      const rawRowIdx = this._scrollStart + relY;
+      // Clicks on minRows-padded empty rows (beyond the last real row) snap to end.
+      if (rawRowIdx >= rows.length) {
+        this.cursorPosition = asCodePoint(this.value.length);
+        this._preferredColumn = null;
+        return;
+      }
+      const rowIdx = Math.max(0, rawRowIdx);
+      const row = rows[rowIdx]!;
+      // Continuation rows start after the marker; non-continuation rows start at column 0.
+      const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
+      const relX = asCellCol(Math.max(0, event.x - b.x - contentXOff));
+      const pos = cellColToCodeUnitOffset(row.content, relX);
+      const absPos = row.valueStart + pos;
+      const chu = absPos < this.value.length ? this.value.charCodeAt(absPos) : 0;
+      const prevChu = absPos > 0 ? this.value.charCodeAt(absPos - 1) : 0;
+      this.cursorPosition = asCodePoint(
+        chu >= 0xDC00 && chu <= 0xDFFF && prevChu >= 0xD800 && prevChu <= 0xDBFF
+          ? absPos + 1
+          : absPos,
+      );
+    } else {
+      // [LAW:types-are-the-program] relX is a cell-column offset into the full
+      // display string. Add _singleLineViewportStart (the scroll offset captured
+      // by _renderSingleLine) so a click on a scrolled viewport maps to the
+      // correct code-unit in the underlying value.
+      const relX = asCellCol(Math.max(0, event.x - b.x - 1) + this._singleLineViewportStart);
+      const displayForHitTest = this._password
+        ? "•".repeat(this.value.length)
+        : this.value.indexOf("\n") >= 0
+          ? this.value.replace(/\n/g, NEWLINE_GLYPH)
+          : this.value;
+      const pos = cellColToCodeUnitOffset(displayForHitTest, relX);
+      // Snap forward only when pos lands on a valid surrogate pair, never on a
+      // lone low surrogate (malformed string). Verify the preceding code unit is
+      // the high-surrogate half before advancing.
+      const chu = pos < this.value.length ? this.value.charCodeAt(pos) : 0;
+      const prevChu = pos > 0 ? this.value.charCodeAt(pos - 1) : 0;
+      this.cursorPosition = asCodePoint(
+        chu >= 0xDC00 && chu <= 0xDFFF && prevChu >= 0xD800 && prevChu <= 0xDBFF
+          ? pos + 1
+          : pos,
+      );
+    }
     this._preferredColumn = null;
   }
 
@@ -428,12 +509,12 @@ export class TextInput extends WidgetBase {
   // ─── Public motion primitives ───────────────────────────────────────────
 
   @action moveCharLeft(): void {
-    this.cursorPosition = Math.max(0, this.cursorPosition - 1);
+    this.cursorPosition = prevCodePoint(this.value, this.cursorPosition);
     this._preferredColumn = null;
   }
 
   @action moveCharRight(): void {
-    this.cursorPosition = Math.min(this.value.length, this.cursorPosition + 1);
+    this.cursorPosition = nextCodePoint(this.value, this.cursorPosition);
     this._preferredColumn = null;
   }
 
@@ -447,18 +528,19 @@ export class TextInput extends WidgetBase {
       if (rowIdx === 0) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
       const target = this._visualRows[rowIdx - 1]!;
-      this.cursorPosition = target.valueStart + this._clampColForRow(col, rowIdx - 1);
+      this.cursorPosition = asCodePoint(target.valueStart + this._clampColForRow(col, rowIdx - 1));
       this._preferredColumn = col;
       return;
     }
     const lineStart = this._lineStart();
     if (lineStart === 0) return;
-    const col = this._preferredColumn ?? (this.cursorPosition - lineStart);
+    // Fallback: no render cache yet; use cell-space arithmetic for wide-char correctness.
+    const col = this._preferredColumn ?? asCellCol(cellLen(this.value.slice(lineStart, this.cursorPosition)));
     const prevLineEnd = lineStart - 1;
-    let prevLineStart = prevLineEnd;
+    let prevLineStart: number = prevLineEnd;
     while (prevLineStart > 0 && this.value[prevLineStart - 1] !== "\n") prevLineStart--;
-    const prevLineLen = prevLineEnd - prevLineStart;
-    this.cursorPosition = prevLineStart + Math.min(col, prevLineLen);
+    const prevLineContent = this.value.slice(prevLineStart, prevLineEnd);
+    this.cursorPosition = asCodePoint(prevLineStart + cellColToCodeUnitOffset(prevLineContent, asCellCol(Math.min(col, cellLen(prevLineContent)))));
     this._preferredColumn = col;
   }
 
@@ -467,43 +549,44 @@ export class TextInput extends WidgetBase {
       const rowIdx = this._cursorVisualRow();
       if (rowIdx === this._visualRows.length - 1) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
-      this.cursorPosition = this._visualRows[rowIdx + 1]!.valueStart + this._clampColForRow(col, rowIdx + 1);
+      this.cursorPosition = asCodePoint(this._visualRows[rowIdx + 1]!.valueStart + this._clampColForRow(col, rowIdx + 1));
       this._preferredColumn = col;
       return;
     }
     const lineEnd = this._lineEnd();
     if (lineEnd === this.value.length) return;
     const lineStart = this._lineStart();
-    const col = this._preferredColumn ?? (this.cursorPosition - lineStart);
+    // Fallback: no render cache yet; use cell-space arithmetic for wide-char correctness.
+    const col = this._preferredColumn ?? asCellCol(cellLen(this.value.slice(lineStart, this.cursorPosition)));
     const nextLineStart = lineEnd + 1;
-    let nextLineEnd = nextLineStart;
+    let nextLineEnd: number = nextLineStart;
     while (nextLineEnd < this.value.length && this.value[nextLineEnd] !== "\n") nextLineEnd++;
-    const nextLineLen = nextLineEnd - nextLineStart;
-    this.cursorPosition = nextLineStart + Math.min(col, nextLineLen);
+    const nextLineContent = this.value.slice(nextLineStart, nextLineEnd);
+    this.cursorPosition = asCodePoint(nextLineStart + cellColToCodeUnitOffset(nextLineContent, asCellCol(Math.min(col, cellLen(nextLineContent)))));
     this._preferredColumn = col;
   }
 
-  // Clamp `col` to a target visual row's content length, accounting for
-  // the wrap-boundary trap. When the row IS followed by a continuation of
-  // the same logical line, the position `target.valueStart + target.length`
-  // equals the next row's `valueStart` — i.e. a boundary that
-  // `_cursorVisualRow` resolves to the *later* row. Landing there leaves
-  // cursorPosition stuck at the boundary on every subsequent Up/Down, since
-  // the clamp re-computes to the same value. Clamping to `length - 1`
-  // instead keeps cursor strictly inside the target row.
+  // Clamp `col` (a cell column) to the target visual row's content, returning
+  // the code-unit offset within that row. When the row IS followed by a
+  // continuation of the same logical line, we clamp to the last valid
+  // code-point boundary strictly inside the row (which may be more than
+  // one cell before the visual end when the last code point is wide) so the
+  // cursor stays strictly inside the target row — landing at the boundary
+  // would cause `_cursorVisualRow` to resolve to the *later* row, making
+  // every subsequent Up/Down stick at the boundary.
   //
-  // For rows NOT followed by a continuation (last row of a wrap, or any
-  // non-wrapped logical line), allow end-of-line clamp (`length`) — there
-  // is no later row to collide with at that position, only the `\n`
-  // separator, so the boundary case doesn't apply.
-  private _clampColForRow(col: number, targetIdx: number): number {
+  // For rows NOT followed by a continuation (last wrap row, or any unwrapped
+  // logical line), the end-of-line position is valid — there is no adjacent
+  // continuation row to collide with.
+  private _clampColForRow(col: CellCol, targetIdx: number): CodePoint {
     const rows = this._visualRows!;
     const target = rows[targetIdx]!;
     const nextIsContinuation = targetIdx + 1 < rows.length && rows[targetIdx + 1]!.isContinuation;
-    const cap = nextIsContinuation
-      ? Math.max(0, target.content.length - 1)
-      : target.content.length;
-    return Math.min(col, cap);
+    const contentCellWidth = asCellCol(cellLen(target.content));
+    const capCells = nextIsContinuation
+      ? asCellCol(Math.max(0, contentCellWidth - 1))
+      : contentCellWidth;
+    return cellColToCodeUnitOffset(target.content, asCellCol(Math.min(col, capCells)));
   }
 
   // Locate which cached visual row the cursor sits on. Returns the row index
@@ -517,10 +600,12 @@ export class TextInput extends WidgetBase {
     return idx;
   }
 
-  private _cursorVisualCol(): number {
+  // Returns the cursor's cell column within its current visual row.
+  private _cursorVisualCol(): CellCol {
     const rows = this._visualRows!;
     const idx = this._cursorVisualRow();
-    return this.cursorPosition - rows[idx]!.valueStart;
+    const row = rows[idx]!;
+    return asCellCol(cellLen(row.content.slice(0, this.cursorPosition - row.valueStart)));
   }
 
   @action moveLineStart(): void {
@@ -534,27 +619,43 @@ export class TextInput extends WidgetBase {
   }
 
   @action moveDocStart(): void {
-    this.cursorPosition = 0;
+    this.cursorPosition = asCodePoint(0);
     this._preferredColumn = null;
   }
 
   @action moveDocEnd(): void {
-    this.cursorPosition = this.value.length;
+    this.cursorPosition = asCodePoint(this.value.length);
     this._preferredColumn = null;
   }
 
   @action moveWordLeft(): void {
-    let p = this.cursorPosition;
-    while (p > 0 && !isWordChar(this.value[p - 1])) p--;
-    while (p > 0 && isWordChar(this.value[p - 1])) p--;
+    let p: CodePoint = this.cursorPosition;
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (isWordChar(this.value.slice(prev, p))) break;
+      p = prev;
+    }
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (!isWordChar(this.value.slice(prev, p))) break;
+      p = prev;
+    }
     this.cursorPosition = p;
     this._preferredColumn = null;
   }
 
   @action moveWordRight(): void {
-    let p = this.cursorPosition;
-    while (p < this.value.length && !isWordChar(this.value[p])) p++;
-    while (p < this.value.length && isWordChar(this.value[p])) p++;
+    let p: CodePoint = this.cursorPosition;
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (!isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
     this.cursorPosition = p;
     this._preferredColumn = null;
   }
@@ -563,15 +664,17 @@ export class TextInput extends WidgetBase {
 
   @action deleteCharBack(): void {
     if (this.cursorPosition === 0) return;
-    this.value = this.value.slice(0, this.cursorPosition - 1) + this.value.slice(this.cursorPosition);
-    this.cursorPosition -= 1;
+    const newPos = prevCodePoint(this.value, this.cursorPosition);
+    this.value = this.value.slice(0, newPos) + this.value.slice(this.cursorPosition);
+    this.cursorPosition = newPos;
     this._preferredColumn = null;
     this.emitChange();
   }
 
   @action deleteCharForward(): void {
     if (this.cursorPosition >= this.value.length) return;
-    this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(this.cursorPosition + 1);
+    const nextPos = nextCodePoint(this.value, this.cursorPosition);
+    this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(nextPos);
     this._preferredColumn = null;
     this.emitChange();
   }
@@ -580,9 +683,17 @@ export class TextInput extends WidgetBase {
     // Readline `unix-word-rubout` semantics: delete back to nearest whitespace,
     // skipping trailing whitespace first so successive Ctrl+W at "foo bar |"
     // → "foo |" → "|" rather than getting stuck on the trailing space.
-    let p = this.cursorPosition;
-    while (p > 0 && isWhitespace(this.value[p - 1])) p--;
-    while (p > 0 && !isWhitespace(this.value[p - 1])) p--;
+    let p: CodePoint = this.cursorPosition;
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (!isWhitespace(this.value.slice(prev, p))) break;
+      p = prev;
+    }
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (isWhitespace(this.value.slice(prev, p))) break;
+      p = prev;
+    }
     if (p === this.cursorPosition) return;
     this._killBuffer = this.value.slice(p, this.cursorPosition);
     this.value = this.value.slice(0, p) + this.value.slice(this.cursorPosition);
@@ -592,9 +703,17 @@ export class TextInput extends WidgetBase {
   }
 
   @action deleteWordForward(): void {
-    let p = this.cursorPosition;
-    while (p < this.value.length && !isWordChar(this.value[p])) p++;
-    while (p < this.value.length && isWordChar(this.value[p])) p++;
+    let p: CodePoint = this.cursorPosition;
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (!isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
     if (p === this.cursorPosition) return;
     this._killBuffer = this.value.slice(this.cursorPosition, p);
     this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(p);
@@ -641,33 +760,39 @@ export class TextInput extends WidgetBase {
     // two chars without advancing. At position 0, no-op.
     const len = this.value.length;
     if (len < 2 || this.cursorPosition === 0) return;
-    let p = this.cursorPosition;
+    const p = this.cursorPosition;
     if (p === len) {
-      this.value = this.value.slice(0, p - 2) + this.value[p - 1] + this.value[p - 2];
+      // End-of-value: swap the trailing two code points; cursor stays.
+      const cp2 = prevCodePoint(this.value, p);
+      const cp1 = prevCodePoint(this.value, cp2);
+      this.value = this.value.slice(0, cp1) + this.value.slice(cp2) + this.value.slice(cp1, cp2);
       this._preferredColumn = null;
       this.emitChange();
       return;
     }
-    const a = this.value[p - 1]!;
-    const b = this.value[p]!;
-    this.value = this.value.slice(0, p - 1) + b + a + this.value.slice(p + 1);
-    this.cursorPosition = p + 1;
+    // Normal case: find full code-point substrings for the char before and at cursor.
+    const cpBefore = prevCodePoint(this.value, p);
+    const cpAfter = nextCodePoint(this.value, p);
+    const charBefore = this.value.slice(cpBefore, p);
+    const charAt = this.value.slice(p, cpAfter);
+    this.value = this.value.slice(0, cpBefore) + charAt + charBefore + this.value.slice(cpAfter);
+    this.cursorPosition = asCodePoint(cpAfter);
     this._preferredColumn = null;
     this.emitChange();
   }
 
   // ─── Internal helpers ───────────────────────────────────────────────────
 
-  private _lineStart(): number {
-    let p = this.cursorPosition;
+  private _lineStart(): CodePoint {
+    let p: number = this.cursorPosition;
     while (p > 0 && this.value[p - 1] !== "\n") p--;
-    return p;
+    return asCodePoint(p);
   }
 
-  private _lineEnd(): number {
-    let p = this.cursorPosition;
+  private _lineEnd(): CodePoint {
+    let p: number = this.cursorPosition;
     while (p < this.value.length && this.value[p] !== "\n") p++;
-    return p;
+    return asCodePoint(p);
   }
 
   @action
@@ -682,7 +807,7 @@ export class TextInput extends WidgetBase {
       this.value.slice(0, this.cursorPosition) +
       toInsert +
       this.value.slice(this.cursorPosition);
-    this.cursorPosition += toInsert.length;
+    this.cursorPosition = asCodePoint(this.cursorPosition + toInsert.length);
     this._preferredColumn = null;
     this.emitChange();
   }
@@ -698,9 +823,9 @@ export class TextInput extends WidgetBase {
     const showPlaceholder = this.focused && this.value.length === 0 && this.placeholder.length > 0;
 
     // [LAW:dataflow-not-control-flow] Single rawDisplay value derives from
-    // mode (password / placeholder / plain); a stray newline in a *single-
-    // line* value maps to a visible glyph so cursor-position math against
-    // `value.length` stays valid without a special branch here.
+    // mode (password / placeholder / plain). NEWLINE_GLYPH substitution maps
+    // every code unit in value 1:1 to rawDisplay so cursorPosition (a code-
+    // unit index) is a valid index into rawDisplay regardless of mode.
     const rawDisplay = showPlaceholder
       ? this.placeholder
       : this._password
@@ -709,15 +834,24 @@ export class TextInput extends WidgetBase {
           ? this.value.replace(/\n/g, NEWLINE_GLYPH)
           : this.value;
 
-    const maxAvailable = Math.max(MIN_CONTENT_WIDTH, options.maxWidth - 2);
-    const desiredWidth = Math.max(MIN_CONTENT_WIDTH, rawDisplay.length, this.cursorPosition + 1);
-    const contentWidth = Math.min(maxAvailable, desiredWidth);
+    // Measure in cell space — cursorPosition is a code-unit index; convert to
+    // cell column for all viewport arithmetic.
+    const rawCellWidth = asCellCol(cellLen(rawDisplay));
+    const cursorCellCol = asCellCol(cellLen(rawDisplay.slice(0, this.cursorPosition)));
+    const maxAvailable = asCellCol(Math.max(MIN_CONTENT_WIDTH, options.maxWidth - 2));
+    const desiredWidth = asCellCol(Math.max(MIN_CONTENT_WIDTH, rawCellWidth, cursorCellCol + 1));
+    const contentWidth = asCellCol(Math.min(maxAvailable, desiredWidth));
 
-    // Slide window to keep cursor visible when content overflows.
-    const startIdx = Math.max(0, Math.min(rawDisplay.length - contentWidth, this.cursorPosition - contentWidth + 1));
-    const sliced = rawDisplay.slice(Math.max(0, startIdx), Math.max(0, startIdx) + contentWidth);
-    const display = sliced.padEnd(contentWidth, " ");
-    const cursorDisplayIdx = this.cursorPosition - Math.max(0, startIdx);
+    // Slide viewport (in cells) to keep cursor visible when content overflows.
+    const startCell = asCellCol(Math.max(0, Math.min(rawCellWidth - contentWidth, cursorCellCol - contentWidth + 1)));
+    const [, afterStart] = splitText(rawDisplay, startCell);
+    // splitText snaps backward when startCell falls mid-wide-char, so afterStart
+    // may start 1 cell earlier than requested. actualStartCell is the real offset.
+    const actualStartCell = asCellCol(rawCellWidth - cellLen(afterStart));
+    this._singleLineViewportStart = actualStartCell;
+    const [visible] = splitText(afterStart, contentWidth);
+    const display = setCellSize(visible, contentWidth);
+    const cursorDisplayCellCol = asCellCol(cursorCellCol - actualStartCell);
 
     const bracketStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
@@ -736,12 +870,14 @@ export class TextInput extends WidgetBase {
 
     const segments: Segment[] = [new Segment("[", bracketStyle)];
 
-    if (this.focused && !this.disabled && cursorDisplayIdx >= 0 && cursorDisplayIdx < contentWidth) {
-      const before = display.slice(0, cursorDisplayIdx);
-      const at = display.slice(cursorDisplayIdx, cursorDisplayIdx + 1);
-      const after = display.slice(cursorDisplayIdx + 1);
+    if (this.focused && !this.disabled && cursorDisplayCellCol >= 0 && cursorDisplayCellCol < contentWidth) {
+      const [before, rest] = splitText(display, cursorDisplayCellCol);
+      let firstCh = "";
+      for (const ch of rest) { firstCh = ch; break; }
+      const at = firstCh || " ";
+      const after = rest.slice(firstCh.length);
       if (before.length > 0) segments.push(new Segment(before, contentStyle));
-      segments.push(new Segment(at.length > 0 ? at : " ", cursorStyle));
+      segments.push(new Segment(at, cursorStyle));
       if (after.length > 0) segments.push(new Segment(after, contentStyle));
     } else {
       segments.push(new Segment(display, contentStyle));
@@ -798,13 +934,12 @@ export class TextInput extends WidgetBase {
       bgcolor: this.resolvePalette("primary"),
     });
 
-    // Scroll-direction arrows overlay the rightmost column of the
-    // first/last visible row, *only* when scroll is actually possible in
-    // that direction. No reservation: the wrap budget is full; the arrow
-    // overwrites whatever content lives in column `maxWidth - 1` for that
-    // frame, including the cursor. Only emitted in `"arrows"` mode; other
-    // modes leave the content area untouched and rely on the host to
-    // surface scroll state externally (e.g. Panel border accessory).
+    // Scroll-direction arrows appear in the rightmost cell of the first/last
+    // visible row, *only* when scroll is actually possible in that direction.
+    // _emitRowContent reserves the indicator's cells so content never
+    // collides with the arrow. Only emitted in `"arrows"` mode; other modes
+    // leave the content area untouched and rely on the host to surface scroll
+    // state externally (e.g. Panel border accessory).
     const scrollable = this._maxRows !== undefined && total > this._maxRows;
     const arrowsMode = this._scrollIndicator === "arrows";
     const canScrollUp = arrowsMode && scrollable && this._scrollStart > 0;
@@ -831,9 +966,9 @@ export class TextInput extends WidgetBase {
       // reduced by the marker width — the indicator column is still at
       // `options.maxWidth - 1` in the panel's view, which is
       // `options.maxWidth - markerWidth - 1` columns past the marker.
-      const rowPrintWidth = row.isContinuation
-        ? options.maxWidth - this._markerWidth
-        : options.maxWidth;
+      const rowPrintWidth: CellCol = row.isContinuation
+        ? asCellCol(Math.max(0, options.maxWidth - this._markerWidth))
+        : asCellCol(options.maxWidth);
       this._emitRowContent(
         segments,
         row,
@@ -845,8 +980,12 @@ export class TextInput extends WidgetBase {
       );
     }
     // Trailing empty rows for minRows padding (no cursor, no marker).
+    // Emit a whitespace segment of the full content width so Segment.splitLines
+    // does not drop the row — an empty segment before a newline would produce
+    // an invisible row that the renderer discards.
     for (let i = 0; i < padRows; i++) {
       segments.push(new Segment("\n"));
+      segments.push(new Segment(setCellSize("", asCellCol(options.maxWidth)), contentStyle));
     }
     return segments;
   }
@@ -858,10 +997,13 @@ export class TextInput extends WidgetBase {
     contentStyle: Style,
     cursorStyle: Style,
     indicator?: { ch: string; style: Style },
-    rowPrintWidth?: number,
+    rowPrintWidth?: CellCol,
   ): void {
     const content = row.content;
-    const cursorCol = cursorOnRow ? this.cursorPosition - row.valueStart : -1;
+    // cursorCol is a code-unit offset into row.content; both cursorPosition
+    // and valueStart are CodePoint, so their difference lands on a code-point
+    // boundary within content and is safe for string slicing.
+    const cursorCol: number = cursorOnRow ? this.cursorPosition - row.valueStart : -1;
 
     // Fast path: no indicator on this row. Let the wrapper pad to width.
     if (indicator === undefined) {
@@ -870,46 +1012,48 @@ export class TextInput extends WidgetBase {
         return;
       }
       const before = content.slice(0, cursorCol);
-      const at = content.slice(cursorCol, cursorCol + 1) || " ";
-      const after = content.slice(cursorCol + 1);
+      const nextCp = nextCodePoint(content, asCodePoint(cursorCol));
+      const at = content.slice(cursorCol, nextCp) || " ";
+      const after = content.slice(nextCp);
       if (before.length > 0) out.push(new Segment(before, contentStyle));
       out.push(new Segment(at, cursorStyle));
       if (after.length > 0) out.push(new Segment(after, contentStyle));
       return;
     }
 
-    // Indicator path: build a fixed-width row [0, rowPrintWidth). Paint
-    // content, then cursor over content cell, then indicator at the last
-    // column. The indicator is painted last and wins on collision with the
-    // cursor — acceptable because the arrow only shows when scroll is
-    // possible in that direction, which is a rare overlap.
-    const width = rowPrintWidth!;
-    const indicatorCol = width - 1;
-    const chars: string[] = new Array(width);
-    type Kind = 0 | 1 | 2;  // 0 content, 1 cursor, 2 indicator
-    const kinds: Kind[] = new Array(width);
-    for (let c = 0; c < width; c++) {
-      chars[c] = c < content.length ? content[c]! : " ";
-      kinds[c] = 0;
+    // Indicator path: reserve the indicator's cells at the end of the row so
+    // wide characters never collide with it. Content fills [0, contentCellWidth)
+    // cells; the indicator occupies the remaining cells.
+    const indicatorWidth = asCellCol(cellLen(indicator.ch));
+    const contentCellWidth = asCellCol(Math.max(0, rowPrintWidth! - indicatorWidth));
+
+    // Clip row content to the non-indicator region and pad to exact cell width.
+    const [visibleContent] = splitText(content, contentCellWidth);
+    const paddedContent = setCellSize(visibleContent, contentCellWidth);
+
+    // Map the code-unit cursor offset to a cell column within this row.
+    const cursorCellColInRow = cursorOnRow && cursorCol >= 0
+      ? cellLen(content.slice(0, cursorCol))
+      : -1;
+
+    if (cursorCellColInRow >= 0 && cursorCellColInRow < contentCellWidth) {
+      const [before, rest] = splitText(paddedContent, asCellCol(cursorCellColInRow));
+      let firstCh = "";
+      for (const ch of rest) { firstCh = ch; break; }
+      const at = firstCh || " ";
+      const after = rest.slice(firstCh.length);
+      if (before.length > 0) out.push(new Segment(before, contentStyle));
+      out.push(new Segment(at, cursorStyle));
+      if (after.length > 0) out.push(new Segment(after, contentStyle));
+    } else {
+      if (paddedContent.length > 0) out.push(new Segment(paddedContent, contentStyle));
     }
-    if (cursorOnRow && cursorCol >= 0 && cursorCol < width) {
-      kinds[cursorCol] = 1;
-    }
-    chars[indicatorCol] = indicator.ch;
-    kinds[indicatorCol] = 2;
-    const styleByKind: readonly Style[] = [contentStyle, cursorStyle, indicator.style];
-    let runStart = 0;
-    for (let c = 1; c <= width; c++) {
-      if (c === width || kinds[c] !== kinds[runStart]) {
-        out.push(new Segment(chars.slice(runStart, c).join(""), styleByKind[kinds[runStart]!]));
-        runStart = c;
-      }
-    }
+    out.push(new Segment(indicator.ch, indicator.style));
   }
 
   private _computeVisualRows(maxWidth: number): VisualRow[] {
-    const firstWidth = Math.max(1, maxWidth);
-    const continuationWidth = Math.max(1, firstWidth - this._markerWidth);
+    const firstWidth = asCellCol(Math.max(1, maxWidth));
+    const continuationWidth = asCellCol(Math.max(1, firstWidth - this._markerWidth));
 
     const rows: VisualRow[] = [];
     const lines = this.value.split("\n");
@@ -919,19 +1063,19 @@ export class TextInput extends WidgetBase {
       if (this._wrap !== undefined) {
         const wrapRows = this._wrap(line, { firstWidth, continuationWidth });
         if (wrapRows.length === 0) {
-          rows.push({ content: "", valueStart: pos, isContinuation: false });
+          rows.push({ content: "", valueStart: asCodePoint(pos), isContinuation: false });
         } else {
           for (let ri = 0; ri < wrapRows.length; ri++) {
             const wr = wrapRows[ri]!;
             rows.push({
               content: wr.content,
-              valueStart: pos + wr.start,
+              valueStart: asCodePoint(pos + wr.start),
               isContinuation: ri > 0,
             });
           }
         }
       } else {
-        rows.push({ content: line, valueStart: pos, isContinuation: false });
+        rows.push({ content: line, valueStart: asCodePoint(pos), isContinuation: false });
       }
       pos += line.length + 1; // +1 for the \n separator
     }
@@ -940,7 +1084,7 @@ export class TextInput extends WidgetBase {
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     const minimum = MIN_CONTENT_WIDTH + 2;
-    const maximum = Math.max(minimum, Math.max(this.value.length, this.placeholder.length) + 2);
+    const maximum = Math.max(minimum, Math.max(cellLen(this.value), cellLen(this.placeholder)) + 2);
     return { minimum, maximum };
   }
 

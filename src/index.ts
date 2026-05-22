@@ -1,5 +1,19 @@
 // Core primitives
-export { cellLen, setCellSize, splitText, chopCells } from "./core/cells.js";
+export {
+  cellLen,
+  setCellSize,
+  splitText,
+  chopCells,
+  cellFit,
+  cellFitFrom,
+  cellColToCodeUnitOffset,
+  asCellCol,
+  asCodeUnit,
+  asCodePoint,
+  nextCodePoint,
+  prevCodePoint,
+} from "./core/cells.js";
+export type { CellCol, CodeUnit, CodePoint } from "./core/cells.js";
 
 export {
   ColorRgba,

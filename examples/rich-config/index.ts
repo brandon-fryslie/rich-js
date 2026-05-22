@@ -37,6 +37,7 @@ import {
   ProgressBar,
   ROUNDED,
   DEFAULT_TERMINAL_THEME,
+  asCodePoint,
   MONOKAI,
   SVG_EXPORT_THEME,
   NORD,
@@ -192,7 +193,7 @@ btnReset.onSubmit(() => {
   // selection; the swatch chips re-derive from the cleared search.
   runInAction(() => {
     inSearch.value = "";
-    inSearch.cursorPosition = 0;
+    inSearch.cursorPosition = asCodePoint(0);
     state.selectTheme(0);
   });
   log("Reset to Default theme");
