@@ -116,38 +116,15 @@ export class Layout implements Renderable, Measurable {
     children: Layout[],
     options: RenderOptions,
   ): Iterable<Segment> {
-    // Horizontal side-by-side: distribute width
+    // Horizontal side-by-side: distribute width, then merge child lines.
     const widths = this._distributeSpace(children, options.maxWidth);
-
-    // Render each child and collect their lines
-    const childLines: Segment[][][] = [];
-    let maxLines = 0;
-
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i]!;
-      const childWidth = widths[i]!;
-      const childOptions: RenderOptions = { ...options, maxWidth: childWidth };
-      const segs = [...child.render(childOptions)];
-      const lines = Segment.splitLines(segs);
-      childLines.push(lines);
-      maxLines = Math.max(maxLines, lines.length);
-    }
-
-    // Merge lines side by side
-    for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
-      for (let childIdx = 0; childIdx < children.length; childIdx++) {
-        const lines = childLines[childIdx]!;
-        const width = widths[childIdx]!;
-        const line = lines[lineIdx];
-        if (line) {
-          const adjusted = Segment.adjustLineLength(line, width);
-          yield* adjusted;
-        } else {
-          yield new Segment(" ".repeat(width));
-        }
-      }
-      yield Segment.line();
-    }
+    const cells = children.map((child, i) => ({
+      width: widths[i]!,
+      lines: Segment.splitLines([
+        ...child.render({ ...options, maxWidth: widths[i]! }),
+      ]),
+    }));
+    yield* Segment.mergeHorizontal(cells);
   }
 
   private _distributeSpace(children: Layout[], totalSpace: number): number[] {

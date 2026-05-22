@@ -218,6 +218,33 @@ export class Segment {
   }
 
   /**
+   * Composes cells side by side into full lines. Each cell contributes its
+   * own lines cropped/padded to its declared width; a cell shorter than the
+   * tallest is filled with blank space so the grid stays aligned. Adjacent
+   * cells are separated by a gutter of spaces, and each merged row ends with a
+   * line break. This is the single side-by-side merge used by every horizontal
+   * layout (Columns grid rows, Layout row splits).
+   */
+  static *mergeHorizontal(
+    cells: readonly { readonly lines: Segment[][]; readonly width: number }[],
+    gutter = 0,
+  ): Iterable<Segment> {
+    let height = 0;
+    for (const cell of cells) {
+      if (cell.lines.length > height) height = cell.lines.length;
+    }
+    const gap = gutter > 0 ? [new Segment(" ".repeat(gutter))] : [];
+    for (let row = 0; row < height; row++) {
+      for (let col = 0; col < cells.length; col++) {
+        if (col > 0) yield* gap;
+        const cell = cells[col]!;
+        yield* Segment.adjustLineLength(cell.lines[row] ?? [], cell.width);
+      }
+      yield Segment.line();
+    }
+  }
+
+  /**
    * Merges contiguous segments with the same style.
    */
   static *simplify(segments: Iterable<Segment>): Iterable<Segment> {
