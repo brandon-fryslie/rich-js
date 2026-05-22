@@ -762,9 +762,12 @@ export class TextInput extends WidgetBase {
     // Slide viewport (in cells) to keep cursor visible when content overflows.
     const startCell = asCellCol(Math.max(0, Math.min(rawCellWidth - contentWidth, cursorCellCol - contentWidth + 1)));
     const [, afterStart] = splitText(rawDisplay, startCell);
+    // splitText snaps backward when startCell falls mid-wide-char, so afterStart
+    // may start 1 cell earlier than requested. actualStartCell is the real offset.
+    const actualStartCell = asCellCol(rawCellWidth - cellLen(afterStart));
     const [visible] = splitText(afterStart, contentWidth);
     const display = setCellSize(visible, contentWidth);
-    const cursorDisplayCellCol = asCellCol(cursorCellCol - startCell);
+    const cursorDisplayCellCol = asCellCol(cursorCellCol - actualStartCell);
 
     const bracketStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
@@ -880,7 +883,7 @@ export class TextInput extends WidgetBase {
       // `options.maxWidth - 1` in the panel's view, which is
       // `options.maxWidth - markerWidth - 1` columns past the marker.
       const rowPrintWidth: CellCol = row.isContinuation
-        ? asCellCol(options.maxWidth - this._markerWidth)
+        ? asCellCol(Math.max(0, options.maxWidth - this._markerWidth))
         : asCellCol(options.maxWidth);
       this._emitRowContent(
         segments,
