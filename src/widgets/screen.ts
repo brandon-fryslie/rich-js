@@ -52,7 +52,7 @@
 
 import { autorun, makeObservable, observable, runInAction, type IReactionDisposer } from "mobx";
 import { Segment } from "../core/segment.js";
-import { asCellCol } from "../core/cells.js";
+import { asCellCol, type CellCol } from "../core/cells.js";
 import { segmentsToString } from "../core/render.js";
 import { ColorDepth, resolveColorSystem } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
@@ -528,14 +528,14 @@ function paintLines(
       lines[y + i] = source.slice();
       continue;
     }
-    lines[y + i] = spliceCells(target, x, sourceWidth, source);
+    lines[y + i] = spliceCells(target, asCellCol(x), sourceWidth, source);
   }
 }
 
-function lineCellLength(line: Segment[]): number {
+function lineCellLength(line: Segment[]): CellCol {
   let total = 0;
   for (const s of line) total += s.cellLength;
-  return total;
+  return asCellCol(total);
 }
 
 // Return a new row with cells [start, start+length) replaced by
@@ -544,8 +544,8 @@ function lineCellLength(line: Segment[]): number {
 // boundaries.
 function spliceCells(
   row: Segment[],
-  start: number,
-  length: number,
+  start: CellCol,
+  length: CellCol,
   replacement: Segment[],
 ): Segment[] {
   const rowWidth = lineCellLength(row);

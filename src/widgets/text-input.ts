@@ -491,13 +491,13 @@ export class TextInput extends WidgetBase {
     }
     const lineStart = this._lineStart();
     if (lineStart === 0) return;
-    // Fallback: no render cache yet (ASCII-only assumption is acceptable here).
-    const col = this._preferredColumn ?? asCellCol(this.cursorPosition - lineStart);
+    // Fallback: no render cache yet; use cell-space arithmetic for wide-char correctness.
+    const col = this._preferredColumn ?? asCellCol(cellLen(this.value.slice(lineStart, this.cursorPosition)));
     const prevLineEnd = lineStart - 1;
     let prevLineStart: number = prevLineEnd;
     while (prevLineStart > 0 && this.value[prevLineStart - 1] !== "\n") prevLineStart--;
-    const prevLineLen = prevLineEnd - prevLineStart;
-    this.cursorPosition = asCodePoint(prevLineStart + Math.min(col, prevLineLen));
+    const prevLineContent = this.value.slice(prevLineStart, prevLineEnd);
+    this.cursorPosition = asCodePoint(prevLineStart + cellColToCodeUnitOffset(prevLineContent, asCellCol(Math.min(col, cellLen(prevLineContent)))));
     this._preferredColumn = col;
   }
 
@@ -513,13 +513,13 @@ export class TextInput extends WidgetBase {
     const lineEnd = this._lineEnd();
     if (lineEnd === this.value.length) return;
     const lineStart = this._lineStart();
-    // Fallback: no render cache yet (ASCII-only assumption is acceptable here).
-    const col = this._preferredColumn ?? asCellCol(this.cursorPosition - lineStart);
+    // Fallback: no render cache yet; use cell-space arithmetic for wide-char correctness.
+    const col = this._preferredColumn ?? asCellCol(cellLen(this.value.slice(lineStart, this.cursorPosition)));
     const nextLineStart = lineEnd + 1;
     let nextLineEnd: number = nextLineStart;
     while (nextLineEnd < this.value.length && this.value[nextLineEnd] !== "\n") nextLineEnd++;
-    const nextLineLen = nextLineEnd - nextLineStart;
-    this.cursorPosition = asCodePoint(nextLineStart + Math.min(col, nextLineLen));
+    const nextLineContent = this.value.slice(nextLineStart, nextLineEnd);
+    this.cursorPosition = asCodePoint(nextLineStart + cellColToCodeUnitOffset(nextLineContent, asCellCol(Math.min(col, cellLen(nextLineContent)))));
     this._preferredColumn = col;
   }
 
