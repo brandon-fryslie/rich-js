@@ -151,9 +151,11 @@ export function cellFit(text: string, cap: CellCol): string {
 }
 
 /**
- * Returns the code-unit index into `content` where the cumulative cell width
- * first reaches `cellCol`. Clamps to `content.length` if `cellCol` exceeds
- * the string's total cell width.
+ * Returns the largest code-unit offset into `content` whose prefix has
+ * cell width ≤ `cellCol`. When `cellCol` falls mid-wide-character the
+ * function stops before that character (never advances into it).
+ * Clamps to `content.length` if `cellCol` exceeds the string's total
+ * cell width.
  *
  * This is the inverse of `cellLen(content.slice(0, codeUnit))` — given a
  * visual column, return the corresponding string index.

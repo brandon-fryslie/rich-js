@@ -438,10 +438,17 @@ export class TextInput extends WidgetBase {
 
     const b = this.bounds;
     if (!b) return;
-    // [LAW:types-are-the-program] relX is a cell-column offset; map to code-unit
-    // via cellColToCodeUnitOffset so wide chars (1 cu = 2 cells) land correctly.
+    // [LAW:types-are-the-program] relX is a cell-column offset; convert to
+    // code-unit via the same display string _renderSingleLine produces so that
+    // password bullets (1 cell/code-unit) and NEWLINE_GLYPH substitution
+    // (also 1:1) yield correct positions for wide-char values.
     const relX = asCellCol(Math.max(0, event.x - b.x - 1));
-    this.cursorPosition = cellColToCodeUnitOffset(this.value, relX);
+    const displayForHitTest = this._password
+      ? "•".repeat(this.value.length)
+      : this.value.indexOf("\n") >= 0
+        ? this.value.replace(/\n/g, NEWLINE_GLYPH)
+        : this.value;
+    this.cursorPosition = cellColToCodeUnitOffset(displayForHitTest, relX);
     this._preferredColumn = null;
   }
 
