@@ -454,7 +454,12 @@ export class TextInput extends WidgetBase {
       : this.value.indexOf("\n") >= 0
         ? this.value.replace(/\n/g, NEWLINE_GLYPH)
         : this.value;
-    this.cursorPosition = cellColToCodeUnitOffset(displayForHitTest, relX);
+    const pos = cellColToCodeUnitOffset(displayForHitTest, relX);
+    // In password mode displayForHitTest CU indices map 1:1 to value CU indices,
+    // but some may fall mid-surrogate-pair. Low surrogate (0xDC00–0xDFFF) at pos
+    // means we're inside a pair; advance 1 to the next code-point boundary.
+    const chu = pos < this.value.length ? this.value.charCodeAt(pos) : 0;
+    this.cursorPosition = asCodePoint(chu >= 0xDC00 && chu <= 0xDFFF ? pos + 1 : pos);
     this._preferredColumn = null;
   }
 
@@ -683,17 +688,23 @@ export class TextInput extends WidgetBase {
     // two chars without advancing. At position 0, no-op.
     const len = this.value.length;
     if (len < 2 || this.cursorPosition === 0) return;
-    let p: number = this.cursorPosition;
+    const p = this.cursorPosition;
     if (p === len) {
-      this.value = this.value.slice(0, p - 2) + this.value[p - 1] + this.value[p - 2];
+      // End-of-value: swap the trailing two code points; cursor stays.
+      const cp2 = prevCodePoint(this.value, p);
+      const cp1 = prevCodePoint(this.value, cp2);
+      this.value = this.value.slice(0, cp1) + this.value.slice(cp2) + this.value.slice(cp1, cp2);
       this._preferredColumn = null;
       this.emitChange();
       return;
     }
-    const a = this.value[p - 1]!;
-    const b = this.value[p]!;
-    this.value = this.value.slice(0, p - 1) + b + a + this.value.slice(p + 1);
-    this.cursorPosition = asCodePoint(p + 1);
+    // Normal case: find full code-point substrings for the char before and at cursor.
+    const cpBefore = prevCodePoint(this.value, p);
+    const cpAfter = nextCodePoint(this.value, p);
+    const charBefore = this.value.slice(cpBefore, p);
+    const charAt = this.value.slice(p, cpAfter);
+    this.value = this.value.slice(0, cpBefore) + charAt + charBefore + this.value.slice(cpAfter);
+    this.cursorPosition = asCodePoint(cpAfter);
     this._preferredColumn = null;
     this.emitChange();
   }
