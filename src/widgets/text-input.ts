@@ -312,6 +312,11 @@ export class TextInput extends WidgetBase {
   // lockstep with the cursor.
   private _scrollStart: number = 0;
 
+  // [LAW:one-source-of-truth] Viewport scroll offset in cells for the
+  // single-line renderer. Captured by _renderSingleLine and read by
+  // handleMouse so the hit-test uses the same visual origin the user sees.
+  private _singleLineViewportStart: CellCol = asCellCol(0);
+
   readonly multiline: boolean;
 
   constructor(options: TextInputOptions = {}) {
@@ -464,24 +469,34 @@ export class TextInput extends WidgetBase {
       const pos = cellColToCodeUnitOffset(row.content, relX);
       const absPos = row.valueStart + pos;
       const chu = absPos < this.value.length ? this.value.charCodeAt(absPos) : 0;
-      this.cursorPosition = asCodePoint(chu >= 0xDC00 && chu <= 0xDFFF ? absPos + 1 : absPos);
+      const prevChu = absPos > 0 ? this.value.charCodeAt(absPos - 1) : 0;
+      this.cursorPosition = asCodePoint(
+        chu >= 0xDC00 && chu <= 0xDFFF && prevChu >= 0xD800 && prevChu <= 0xDBFF
+          ? absPos + 1
+          : absPos,
+      );
     } else {
-      // [LAW:types-are-the-program] relX is a cell-column offset; convert to
-      // code-unit via the same display string _renderSingleLine produces so that
-      // password bullets (1 cell/code-unit) and NEWLINE_GLYPH substitution
-      // (also 1:1) yield correct positions for wide-char values.
-      const relX = asCellCol(Math.max(0, event.x - b.x - 1));
+      // [LAW:types-are-the-program] relX is a cell-column offset into the full
+      // display string. Add _singleLineViewportStart (the scroll offset captured
+      // by _renderSingleLine) so a click on a scrolled viewport maps to the
+      // correct code-unit in the underlying value.
+      const relX = asCellCol(Math.max(0, event.x - b.x - 1) + this._singleLineViewportStart);
       const displayForHitTest = this._password
         ? "•".repeat(this.value.length)
         : this.value.indexOf("\n") >= 0
           ? this.value.replace(/\n/g, NEWLINE_GLYPH)
           : this.value;
       const pos = cellColToCodeUnitOffset(displayForHitTest, relX);
-      // In password mode displayForHitTest CU indices map 1:1 to value CU indices,
-      // but some may fall mid-surrogate-pair. Low surrogate (0xDC00–0xDFFF) at pos
-      // means we're inside a pair; advance 1 to the next code-point boundary.
+      // Snap forward only when pos lands on a valid surrogate pair, never on a
+      // lone low surrogate (malformed string). Verify the preceding code unit is
+      // the high-surrogate half before advancing.
       const chu = pos < this.value.length ? this.value.charCodeAt(pos) : 0;
-      this.cursorPosition = asCodePoint(chu >= 0xDC00 && chu <= 0xDFFF ? pos + 1 : pos);
+      const prevChu = pos > 0 ? this.value.charCodeAt(pos - 1) : 0;
+      this.cursorPosition = asCodePoint(
+        chu >= 0xDC00 && chu <= 0xDFFF && prevChu >= 0xD800 && prevChu <= 0xDBFF
+          ? pos + 1
+          : pos,
+      );
     }
     this._preferredColumn = null;
   }
@@ -833,6 +848,7 @@ export class TextInput extends WidgetBase {
     // splitText snaps backward when startCell falls mid-wide-char, so afterStart
     // may start 1 cell earlier than requested. actualStartCell is the real offset.
     const actualStartCell = asCellCol(rawCellWidth - cellLen(afterStart));
+    this._singleLineViewportStart = actualStartCell;
     const [visible] = splitText(afterStart, contentWidth);
     const display = setCellSize(visible, contentWidth);
     const cursorDisplayCellCol = asCellCol(cursorCellCol - actualStartCell);
@@ -964,10 +980,12 @@ export class TextInput extends WidgetBase {
       );
     }
     // Trailing empty rows for minRows padding (no cursor, no marker).
+    // Emit a whitespace segment of the full content width so Segment.splitLines
+    // does not drop the row — an empty segment before a newline would produce
+    // an invisible row that the renderer discards.
     for (let i = 0; i < padRows; i++) {
       segments.push(new Segment("\n"));
-      const emptyRow: VisualRow = { content: "", valueStart: asCodePoint(this.value.length), isContinuation: false };
-      this._emitRowContent(segments, emptyRow, false, contentStyle, cursorStyle, undefined, asCellCol(options.maxWidth));
+      segments.push(new Segment(setCellSize("", asCellCol(options.maxWidth)), contentStyle));
     }
     return segments;
   }

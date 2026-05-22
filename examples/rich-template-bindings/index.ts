@@ -34,6 +34,9 @@ import {
   type Renderable,
   type RenderOptions,
   asCodePoint,
+  asCellCol,
+  cellLen,
+  cellFit,
 } from "../../src/index.js";
 import type { WrapStrategy, WrapRow } from "../../src/widgets/text-input.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
@@ -175,34 +178,37 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
     const isTag = text.startsWith("{{") && text.endsWith("}}");
     let p = 0;
     while (p < text.length) {
-      const cap = isFirst ? firstWidth : continuationWidth;
-      const remaining = text.length - p;
-      let take: number;
-      if (remaining <= cap) take = remaining;
-      else if (isTag) take = cap;
-      else {
-        const chunk = text.slice(p, p + cap);
+      const cap = asCellCol(isFirst ? firstWidth : continuationWidth);
+      const slice = text.slice(p);
+      if (cellLen(slice) === 0) break;
+      let chunk: string;
+      if (isTag) {
+        chunk = cellFit(slice, cap);
+        if (chunk.length === 0) chunk = [...slice][0]!; // force-take first code point
+      } else {
+        chunk = cellFit(slice, cap);
+        if (chunk.length === 0) chunk = [...slice][0]!;
         const lastSpace = chunk.lastIndexOf(" ");
-        take = lastSpace > 0 ? lastSpace + 1 : cap;
+        if (lastSpace > 0) chunk = chunk.slice(0, lastSpace + 1);
       }
-      rows.push({ content: text.slice(p, p + take), start: asCodePoint(textStart + p) });
+      rows.push({ content: chunk, start: asCodePoint(textStart + p) });
       isFirst = false;
-      p += take;
+      p += chunk.length;
     }
   };
 
   for (const atom of atoms) {
     const cap = isFirst ? firstWidth : continuationWidth;
     if (buf === "") {
-      if (atom.text.length <= cap) {
+      if (cellLen(atom.text) <= cap) {
         buf = atom.text;
         bufStart = atom.start;
       } else placeOverflow(atom.text, atom.start);
-    } else if (buf.length + atom.text.length <= cap) {
+    } else if (cellLen(buf) + cellLen(atom.text) <= cap) {
       buf += atom.text;
     } else {
       emitBuf();
-      if (atom.text.length <= continuationWidth) {
+      if (cellLen(atom.text) <= continuationWidth) {
         buf = atom.text;
         bufStart = atom.start;
       } else placeOverflow(atom.text, atom.start);
