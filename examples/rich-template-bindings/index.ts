@@ -33,8 +33,9 @@ import {
   type MountEntry,
   type Renderable,
   type RenderOptions,
+  asCodePoint,
 } from "../../src/index.js";
-import type { WrapStrategy } from "../../src/widgets/text-input.js";
+import type { WrapStrategy, WrapRow } from "../../src/widgets/text-input.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   MONOKAI,
@@ -129,7 +130,7 @@ function makeSpacerItem(): StaticItem {
 // everything below "what to break on" lives in the widget itself.
 
 const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
-  if (line.length === 0) return [{ content: "", start: 0 }];
+  if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
 
   // Tokenize: each {{...}} is one atom; text runs between are atoms.
   const atoms: { text: string; start: number }[] = [];
@@ -158,13 +159,13 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
     atoms.splice(1, 1);
   }
 
-  const rows: { content: string; start: number }[] = [];
+  const rows: WrapRow[] = [];
   let buf = "";
   let bufStart = -1;
   let isFirst = true;
 
   const emitBuf = (): void => {
-    rows.push({ content: buf, start: bufStart });
+    rows.push({ content: buf, start: asCodePoint(bufStart) });
     isFirst = false;
     buf = "";
     bufStart = -1;
@@ -184,7 +185,7 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
         const lastSpace = chunk.lastIndexOf(" ");
         take = lastSpace > 0 ? lastSpace + 1 : cap;
       }
-      rows.push({ content: text.slice(p, p + take), start: textStart + p });
+      rows.push({ content: text.slice(p, p + take), start: asCodePoint(textStart + p) });
       isFirst = false;
       p += take;
     }
@@ -208,7 +209,7 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
     }
   }
   if (buf !== "") emitBuf();
-  return rows.length === 0 ? [{ content: "", start: 0 }] : rows;
+  return rows.length === 0 ? [{ content: "", start: asCodePoint(0) }] : rows;
 };
 
 // ─── Two-column row composition ─────────────────────────────────────────────

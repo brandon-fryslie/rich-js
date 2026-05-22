@@ -234,13 +234,18 @@ export function nextCodePoint(s: string, cu: CodeUnit): CodePoint {
  * offset of the start of the *previous* code point. Returns 0 when already
  * at the start.
  *
- * Handles surrogate pairs: when the code unit at `cu - 1` is a low
- * surrogate (the trailing half of a pair), steps back 2 code units.
+ * Handles surrogate pairs: when the code unit at `cu - 1` is a low surrogate
+ * AND the code unit at `cu - 2` is a high surrogate, steps back 2 code units.
+ * Unpaired surrogates are treated as 1-CU characters.
  */
 export function prevCodePoint(s: string, cu: CodeUnit): CodePoint {
   if (cu <= 0) return asCodePoint(0);
-  const prevCU = s.charCodeAt(cu - 1);
-  return asCodePoint(cu - (prevCU >= 0xDC00 && prevCU <= 0xDFFF ? 2 : 1));
+  const low = s.charCodeAt(cu - 1);
+  if (low >= 0xDC00 && low <= 0xDFFF && cu >= 2) {
+    const high = s.charCodeAt(cu - 2);
+    if (high >= 0xD800 && high <= 0xDBFF) return asCodePoint(cu - 2);
+  }
+  return asCodePoint(cu - 1);
 }
 
 // --- internal ---
