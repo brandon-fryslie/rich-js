@@ -460,20 +460,12 @@ export class TextInput extends WidgetBase {
   // ─── Public motion primitives ───────────────────────────────────────────
 
   @action moveCharLeft(): void {
-    // Step back one Unicode code point — a low surrogate means the previous
-    // two code units form a pair, so step 2 to avoid landing inside the pair.
-    const prevCU = this.cursorPosition > 0 ? this.value.charCodeAt(this.cursorPosition - 1) : 0;
-    const step = prevCU >= 0xDC00 && prevCU <= 0xDFFF ? 2 : 1;
-    this.cursorPosition = asCodeUnit(Math.max(0, this.cursorPosition - step));
+    this.cursorPosition = asCodeUnit(Math.max(0, this.cursorPosition - 1));
     this._preferredColumn = null;
   }
 
   @action moveCharRight(): void {
-    // Step forward one Unicode code point — a high surrogate means the next
-    // two code units form a pair, so step 2 to avoid landing inside the pair.
-    const cp = this.value.codePointAt(this.cursorPosition);
-    const step = cp !== undefined && cp > 0xFFFF ? 2 : 1;
-    this.cursorPosition = asCodeUnit(Math.min(this.value.length, this.cursorPosition + step));
+    this.cursorPosition = asCodeUnit(Math.min(this.value.length, this.cursorPosition + 1));
     this._preferredColumn = null;
   }
 
@@ -605,23 +597,15 @@ export class TextInput extends WidgetBase {
 
   @action deleteCharBack(): void {
     if (this.cursorPosition === 0) return;
-    // Low surrogate at cursorPosition-1 means the two code units before the
-    // cursor form a surrogate pair; delete both to avoid splitting the pair.
-    const prevCU = this.value.charCodeAt(this.cursorPosition - 1);
-    const step = prevCU >= 0xDC00 && prevCU <= 0xDFFF ? 2 : 1;
-    this.value = this.value.slice(0, this.cursorPosition - step) + this.value.slice(this.cursorPosition);
-    this.cursorPosition = asCodeUnit(this.cursorPosition - step);
+    this.value = this.value.slice(0, this.cursorPosition - 1) + this.value.slice(this.cursorPosition);
+    this.cursorPosition = asCodeUnit(this.cursorPosition - 1);
     this._preferredColumn = null;
     this.emitChange();
   }
 
   @action deleteCharForward(): void {
     if (this.cursorPosition >= this.value.length) return;
-    // High surrogate at cursorPosition means the next two code units form a
-    // surrogate pair; delete both to avoid splitting the pair.
-    const cp = this.value.codePointAt(this.cursorPosition);
-    const step = cp !== undefined && cp > 0xFFFF ? 2 : 1;
-    this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(this.cursorPosition + step);
+    this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(this.cursorPosition + 1);
     this._preferredColumn = null;
     this.emitChange();
   }
@@ -931,11 +915,8 @@ export class TextInput extends WidgetBase {
         return;
       }
       const before = content.slice(0, cursorCol);
-      // Extract the full Unicode code point — codePointAt handles surrogate pairs
-      // that slice(n, n+1) would split into an unpaired surrogate.
-      const cp = content.codePointAt(cursorCol);
-      const at = cp !== undefined ? String.fromCodePoint(cp) : " ";
-      const after = content.slice(cursorCol + at.length);
+      const at = content.slice(cursorCol, cursorCol + 1) || " ";
+      const after = content.slice(cursorCol + 1);
       if (before.length > 0) out.push(new Segment(before, contentStyle));
       out.push(new Segment(at, cursorStyle));
       if (after.length > 0) out.push(new Segment(after, contentStyle));
