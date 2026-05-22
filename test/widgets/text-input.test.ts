@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TextInput, charGreedyWrap, type WrapStrategy } from "../../src/widgets/text-input.js";
-import { asCodePoint, asCellCol } from "../../src/core/cells.js";
+import { asCodePoint, asCellCol, type CodePoint } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
@@ -685,7 +685,7 @@ describe("TextInput", () => {
       const strategy: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
         called++;
         // Break at every 4 chars regardless of width.
-        const rows: { content: string; start: ReturnType<typeof asCodeUnit> }[] = [];
+        const rows: { content: string; start: CodePoint }[] = [];
         let p = 0;
         while (p < line.length) {
           const take = Math.min(4, line.length - p);

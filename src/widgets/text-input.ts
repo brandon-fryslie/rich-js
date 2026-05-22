@@ -939,7 +939,7 @@ export class TextInput extends WidgetBase {
     // wide characters never collide with it. Content fills [0, contentCellWidth)
     // cells; the indicator occupies the remaining cells.
     const indicatorWidth = asCellCol(cellLen(indicator.ch));
-    const contentCellWidth = asCellCol(rowPrintWidth! - indicatorWidth);
+    const contentCellWidth = asCellCol(Math.max(0, rowPrintWidth! - indicatorWidth));
 
     // Clip row content to the non-indicator region and pad to exact cell width.
     const [visibleContent] = splitText(content, contentCellWidth);
