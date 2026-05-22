@@ -589,18 +589,34 @@ export class TextInput extends WidgetBase {
   }
 
   @action moveWordLeft(): void {
-    let p: number = this.cursorPosition;
-    while (p > 0 && !isWordChar(this.value[p - 1])) p--;
-    while (p > 0 && isWordChar(this.value[p - 1])) p--;
-    this.cursorPosition = asCodePoint(p);
+    let p: CodePoint = this.cursorPosition;
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (isWordChar(this.value.slice(prev, p))) break;
+      p = prev;
+    }
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (!isWordChar(this.value.slice(prev, p))) break;
+      p = prev;
+    }
+    this.cursorPosition = p;
     this._preferredColumn = null;
   }
 
   @action moveWordRight(): void {
-    let p: number = this.cursorPosition;
-    while (p < this.value.length && !isWordChar(this.value[p])) p++;
-    while (p < this.value.length && isWordChar(this.value[p])) p++;
-    this.cursorPosition = asCodePoint(p);
+    let p: CodePoint = this.cursorPosition;
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (!isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
+    this.cursorPosition = p;
     this._preferredColumn = null;
   }
 
@@ -627,21 +643,37 @@ export class TextInput extends WidgetBase {
     // Readline `unix-word-rubout` semantics: delete back to nearest whitespace,
     // skipping trailing whitespace first so successive Ctrl+W at "foo bar |"
     // → "foo |" → "|" rather than getting stuck on the trailing space.
-    let p: number = this.cursorPosition;
-    while (p > 0 && isWhitespace(this.value[p - 1])) p--;
-    while (p > 0 && !isWhitespace(this.value[p - 1])) p--;
+    let p: CodePoint = this.cursorPosition;
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (!isWhitespace(this.value.slice(prev, p))) break;
+      p = prev;
+    }
+    while (p > 0) {
+      const prev = prevCodePoint(this.value, p);
+      if (isWhitespace(this.value.slice(prev, p))) break;
+      p = prev;
+    }
     if (p === this.cursorPosition) return;
     this._killBuffer = this.value.slice(p, this.cursorPosition);
     this.value = this.value.slice(0, p) + this.value.slice(this.cursorPosition);
-    this.cursorPosition = asCodePoint(p);
+    this.cursorPosition = p;
     this._preferredColumn = null;
     this.emitChange();
   }
 
   @action deleteWordForward(): void {
-    let p: number = this.cursorPosition;
-    while (p < this.value.length && !isWordChar(this.value[p])) p++;
-    while (p < this.value.length && isWordChar(this.value[p])) p++;
+    let p: CodePoint = this.cursorPosition;
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
+    while (p < this.value.length) {
+      const next = nextCodePoint(this.value, p);
+      if (!isWordChar(this.value.slice(p, next))) break;
+      p = next;
+    }
     if (p === this.cursorPosition) return;
     this._killBuffer = this.value.slice(this.cursorPosition, p);
     this.value = this.value.slice(0, this.cursorPosition) + this.value.slice(p);
