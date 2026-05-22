@@ -52,6 +52,7 @@
 
 import { autorun, makeObservable, observable, runInAction, type IReactionDisposer } from "mobx";
 import { Segment } from "../core/segment.js";
+import { asCellCol } from "../core/cells.js";
 import { segmentsToString } from "../core/render.js";
 import { ColorDepth, resolveColorSystem } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
@@ -564,11 +565,11 @@ function spliceCells(
       suffix.push(seg);
     } else {
       if (cursor < start) {
-        const [head] = seg.splitCells(start - cursor);
+        const [head] = seg.splitCells(asCellCol(start - cursor));
         if (head.hasText) prefix.push(head);
       }
       if (segEnd > start + length) {
-        const [, tail] = seg.splitCells(start + length - cursor);
+        const [, tail] = seg.splitCells(asCellCol(start + length - cursor));
         if (tail.hasText) suffix.push(tail);
       }
     }

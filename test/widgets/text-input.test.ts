@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TextInput, charGreedyWrap, type WrapStrategy } from "../../src/widgets/text-input.js";
-import { asCodeUnit } from "../../src/core/cells.js";
+import { asCodeUnit, asCellCol } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
@@ -1069,14 +1069,14 @@ describe("TextInput", () => {
 
   describe("charGreedyWrap", () => {
     it("returns one row for an empty line", () => {
-      const rows = charGreedyWrap("", { firstWidth: 10, continuationWidth: 8 });
+      const rows = charGreedyWrap("", { firstWidth: asCellCol(10), continuationWidth: asCellCol(8) });
       expect(rows).toHaveLength(1);
       expect(rows[0]!.content).toBe("");
       expect(rows[0]!.start).toBe(0);
     });
 
     it("splits at firstWidth then at continuationWidth", () => {
-      const rows = charGreedyWrap("0123456789abcdefghij", { firstWidth: 10, continuationWidth: 5 });
+      const rows = charGreedyWrap("0123456789abcdefghij", { firstWidth: asCellCol(10), continuationWidth: asCellCol(5) });
       expect(rows[0]!.content).toBe("0123456789");
       expect(rows[0]!.start).toBe(0);
       expect(rows[1]!.content).toBe("abcde");
@@ -1086,7 +1086,7 @@ describe("TextInput", () => {
     });
 
     it("returns a single row when line fits in firstWidth", () => {
-      const rows = charGreedyWrap("short", { firstWidth: 10, continuationWidth: 8 });
+      const rows = charGreedyWrap("short", { firstWidth: asCellCol(10), continuationWidth: asCellCol(8) });
       expect(rows).toHaveLength(1);
       expect(rows[0]!.content).toBe("short");
     });
@@ -1095,7 +1095,7 @@ describe("TextInput", () => {
     it("does not overflow budget for wide chars (CJK)", () => {
       // "AAあ" = 3 code units, 4 cells.  Budget of 3 cells → "AA" (2 cells) fits,
       // "あ" (2 cells) does not; it must go to the next row.
-      const rows = charGreedyWrap("AAあ", { firstWidth: 3, continuationWidth: 3 });
+      const rows = charGreedyWrap("AAあ", { firstWidth: asCellCol(3), continuationWidth: asCellCol(3) });
       expect(rows).toHaveLength(2);
       expect(rows[0]!.content).toBe("AA");
       expect(rows[1]!.content).toBe("あ");
@@ -1106,7 +1106,7 @@ describe("TextInput", () => {
 
     it("places a leading wide char on its own row when budget is 2 cells", () => {
       // "あAA" — wide char first.  Budget 2 → "あ" fits (2 cells), then "AA".
-      const rows = charGreedyWrap("あAA", { firstWidth: 2, continuationWidth: 2 });
+      const rows = charGreedyWrap("あAA", { firstWidth: asCellCol(2), continuationWidth: asCellCol(2) });
       expect(rows).toHaveLength(2);
       expect(rows[0]!.content).toBe("あ");
       expect(rows[1]!.content).toBe("AA");
@@ -1115,7 +1115,7 @@ describe("TextInput", () => {
     it("force-takes a wide char when budget is 1 cell (no infinite loop)", () => {
       // Degenerate: budget too narrow for the wide char.  Force-take to avoid
       // an infinite loop.
-      const rows = charGreedyWrap("あ", { firstWidth: 1, continuationWidth: 1 });
+      const rows = charGreedyWrap("あ", { firstWidth: asCellCol(1), continuationWidth: asCellCol(1) });
       expect(rows).toHaveLength(1);
       expect(rows[0]!.content).toBe("あ");
     });

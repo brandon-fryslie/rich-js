@@ -438,9 +438,10 @@ export class TextInput extends WidgetBase {
 
     const b = this.bounds;
     if (!b) return;
-    // Click position relative to the content area (skip the leading "[" bracket).
-    const relX = event.x - b.x - 1;
-    this.cursorPosition = asCodeUnit(Math.max(0, Math.min(this.value.length, relX)));
+    // [LAW:types-are-the-program] relX is a cell-column offset; map to code-unit
+    // via cellColToCodeUnitOffset so wide chars (1 cu = 2 cells) land correctly.
+    const relX = asCellCol(Math.max(0, event.x - b.x - 1));
+    this.cursorPosition = cellColToCodeUnitOffset(this.value, relX);
     this._preferredColumn = null;
   }
 
@@ -831,13 +832,12 @@ export class TextInput extends WidgetBase {
       bgcolor: this.resolvePalette("primary"),
     });
 
-    // Scroll-direction arrows overlay the rightmost column of the
-    // first/last visible row, *only* when scroll is actually possible in
-    // that direction. No reservation: the wrap budget is full; the arrow
-    // overwrites whatever content lives in column `maxWidth - 1` for that
-    // frame, including the cursor. Only emitted in `"arrows"` mode; other
-    // modes leave the content area untouched and rely on the host to
-    // surface scroll state externally (e.g. Panel border accessory).
+    // Scroll-direction arrows appear in the rightmost cell of the first/last
+    // visible row, *only* when scroll is actually possible in that direction.
+    // _emitRowContent reserves the indicator's cells so content never
+    // collides with the arrow. Only emitted in `"arrows"` mode; other modes
+    // leave the content area untouched and rely on the host to surface scroll
+    // state externally (e.g. Panel border accessory).
     const scrollable = this._maxRows !== undefined && total > this._maxRows;
     const arrowsMode = this._scrollIndicator === "arrows";
     const canScrollUp = arrowsMode && scrollable && this._scrollStart > 0;
