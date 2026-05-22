@@ -5,6 +5,7 @@ export {
   splitText,
   chopCells,
   cellFit,
+  cellFitFrom,
   cellColToCodeUnitOffset,
   asCellCol,
   asCodeUnit,

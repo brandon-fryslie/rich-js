@@ -64,7 +64,7 @@ import {
   cellLen,
   setCellSize,
   splitText,
-  cellFit,
+  cellFitFrom,
   cellColToCodeUnitOffset,
   asCellCol,
   asCodePoint,
@@ -140,22 +140,20 @@ interface VisualRow {
 export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
   if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
   const rows: WrapRow[] = [];
-  let pos = 0;
+  let pos: CodePoint = asCodePoint(0);
   let isFirst = true;
   while (pos < line.length) {
     const cap = isFirst ? firstWidth : continuationWidth;
     if (cap <= 0) break;
-    let take = cellFit(line.slice(pos), cap);
-    if (take.length === 0) {
+    let end = cellFitFrom(line, pos, cap);
+    if (end === pos) {
       // Leading character exceeds cap — force-take one code point to guarantee
       // progress when the terminal is extremely narrow.
-      for (const ch of line.slice(pos)) { take = ch; break; }
-      if (take.length === 0) break;
+      end = nextCodePoint(line, pos);
+      if (end === pos) break;
     }
-    // pos advances by take.length — cellFit uses for...of (code-point iteration)
-    // so pos always lands on a code-point boundary.
-    rows.push({ content: take, start: asCodePoint(pos) });
-    pos += take.length;
+    rows.push({ content: line.slice(pos, end), start: pos });
+    pos = end;
     isFirst = false;
   }
   return rows;
@@ -530,10 +528,12 @@ export class TextInput extends WidgetBase {
 
   // Clamp `col` (a cell column) to the target visual row's content, returning
   // the code-unit offset within that row. When the row IS followed by a
-  // continuation of the same logical line, we clamp to one cell before the
-  // end so the cursor stays strictly inside the target row — landing at the
-  // boundary would cause `_cursorVisualRow` to resolve to the *later* row,
-  // which makes every subsequent Up/Down stick at the boundary.
+  // continuation of the same logical line, we clamp to the last valid
+  // code-point boundary strictly inside the row (which may be more than
+  // one cell before the visual end when the last code point is wide) so the
+  // cursor stays strictly inside the target row — landing at the boundary
+  // would cause `_cursorVisualRow` to resolve to the *later* row, making
+  // every subsequent Up/Down stick at the boundary.
   //
   // For rows NOT followed by a continuation (last wrap row, or any unwrapped
   // logical line), the end-of-line position is valid — there is no adjacent

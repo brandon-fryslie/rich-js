@@ -166,6 +166,29 @@ export function cellFit(text: string, cap: CellCol): string {
 }
 
 /**
+ * Returns the largest code-unit end offset starting from `startCU` whose
+ * prefix (from `startCU`) has cell width ≤ `cap`. Iterates from the given
+ * offset without slicing the tail, avoiding O(N²) allocation when called
+ * repeatedly across a long string.
+ *
+ * [LAW:types-are-the-program] returns CodePoint because for...of always
+ * stops on a code-point boundary.
+ */
+export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
+  let w = 0;
+  let i: CodePoint = startCU;
+  while (i < text.length) {
+    const cp = text.codePointAt(i)!;
+    const ch = String.fromCodePoint(cp);
+    const cw = cellLen(ch);
+    if (w + cw > cap) break;
+    w += cw;
+    i = asCodePoint(i + ch.length);
+  }
+  return i;
+}
+
+/**
  * Returns the largest code-unit offset into `content` whose prefix has
  * cell width ≤ `cellCol`. When `cellCol` falls mid-wide-character the
  * function stops before that character (never advances into it).
