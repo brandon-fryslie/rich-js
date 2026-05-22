@@ -449,7 +449,14 @@ export class TextInput extends WidgetBase {
       const rows = this._visualRows;
       if (!rows || rows.length === 0) return;
       const relY = event.y - b.y;
-      const rowIdx = Math.max(0, Math.min(rows.length - 1, this._scrollStart + relY));
+      const rawRowIdx = this._scrollStart + relY;
+      // Clicks on minRows-padded empty rows (beyond the last real row) snap to end.
+      if (rawRowIdx >= rows.length) {
+        this.cursorPosition = asCodePoint(this.value.length);
+        this._preferredColumn = null;
+        return;
+      }
+      const rowIdx = Math.max(0, rawRowIdx);
       const row = rows[rowIdx]!;
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
