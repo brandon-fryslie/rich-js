@@ -2,7 +2,7 @@
  * Panel — a bordered box that wraps content, with optional title and subtitle.
  */
 
-import { cellLen, setCellSize } from "../core/cells.js";
+import { cellLen, setCellSize, asCellCol } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, ROUNDED } from "../core/box.js";
@@ -242,7 +242,7 @@ export class Panel implements Renderable, Measurable {
       // Title fills the border. [LAW:one-source-of-truth] cellLen / setCellSize
       // are the cell-width authority — plain .slice would miscount wide chars
       // and break border alignment.
-      yield new Segment(setCellSize(titleDisplay, innerBorderWidth), titleSeg);
+      yield new Segment(setCellSize(titleDisplay, asCellCol(innerBorderWidth)), titleSeg);
     } else {
       // Center the title in the top border
       const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
@@ -297,7 +297,7 @@ export class Panel implements Renderable, Measurable {
 
       if (subtitleWidth >= centerWidth) {
         // Cell-aware clip — see _renderTopBorder.
-        yield new Segment(setCellSize(subtitleDisplay, centerWidth), subtitleSeg);
+        yield new Segment(setCellSize(subtitleDisplay, asCellCol(centerWidth)), subtitleSeg);
       } else {
         const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
         const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
@@ -310,7 +310,7 @@ export class Panel implements Renderable, Measurable {
     if (accessoryWidth > 0) {
       // Cell-aware clip — see _renderTopBorder.
       const fit = accessoryWidth > innerBorderWidth
-        ? setCellSize(accessoryDisplay, innerBorderWidth)
+        ? setCellSize(accessoryDisplay, asCellCol(innerBorderWidth))
         : accessoryDisplay;
       yield new Segment(fit, accessoryStyle);
     }

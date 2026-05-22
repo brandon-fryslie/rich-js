@@ -27,18 +27,50 @@ export function cellLen(text: string): number {
   return width;
 }
 
+// ── Branded number spaces ────────────────────────────────────────────────────
+//
+// [LAW:types-are-the-program] The two integer spaces used throughout terminal
+// rendering are not interchangeable; treating them as the same `number` is the
+// root cause of wide-char bugs. Branding them makes the illegal mix-up a
+// compile-time error at every crossing point.
+//
+// `CellCol`  — a column offset measured in terminal cells (what the terminal
+//   hardware counts when positioning the cursor or wrapping a line).
+// `CodeUnit` — an index into a JS string measured in UTF-16 code units (what
+//   JS `String.length`, `.slice`, and array-indexing operate on).
+//
+// Arithmetic on branded types produces plain `number`; re-brand with
+// `asCellCol` / `asCodeUnit` only at trust boundaries (external input,
+// known-safe derivations such as `string.length` as a code-unit count).
+
+declare const _cellCol: unique symbol;
+declare const _codeUnit: unique symbol;
+
+/** Terminal cell-column offset. Never interchangeable with a code-unit index. */
+export type CellCol = number & { readonly [_cellCol]: true };
+
+/** JS string code-unit index. Never interchangeable with a cell-column offset. */
+export type CodeUnit = number & { readonly [_codeUnit]: true };
+
+/** Brand a raw number as a CellCol. Use only at trust boundaries. */
+export function asCellCol(n: number): CellCol { return n as CellCol; }
+
+/** Brand a raw number as a CodeUnit. Use only at trust boundaries. */
+export function asCodeUnit(n: number): CodeUnit { return n as CodeUnit; }
+
+// ── Cell-aware string utilities ──────────────────────────────────────────────
+
 /**
  * Pads or crops a string to exactly `totalWidth` terminal cells.
  * Invariant: cellLen(setCellSize(text, n)) === n (unless n is 0)
  */
-export function setCellSize(text: string, totalWidth: number): string {
+export function setCellSize(text: string, totalWidth: CellCol): string {
   if (totalWidth === 0) return "";
   const currentWidth = cellLen(text);
   if (currentWidth === totalWidth) return text;
   if (currentWidth < totalWidth) {
     return text + " ".repeat(totalWidth - currentWidth);
   }
-  // Crop: walk characters, tracking cell width
   return cropToWidth(text, totalWidth);
 }
 
@@ -49,7 +81,7 @@ export function setCellSize(text: string, totalWidth: number): string {
  */
 export function splitText(
   text: string,
-  position: number,
+  position: CellCol,
 ): [string, string] {
   if (position <= 0) return ["", text];
   const totalWidth = cellLen(text);
@@ -78,7 +110,7 @@ export function splitText(
 /**
  * Wraps text into lines of at most `maxWidth` cells.
  */
-export function chopCells(text: string, maxWidth: number): string[] {
+export function chopCells(text: string, maxWidth: CellCol): string[] {
   if (maxWidth <= 0 || text.length === 0) return [text];
   const totalWidth = cellLen(text);
   if (totalWidth <= maxWidth) return [text];
@@ -96,6 +128,47 @@ export function chopCells(text: string, maxWidth: number): string[] {
     remaining = rest;
   }
   return lines;
+}
+
+/**
+ * Returns the largest prefix of `text` whose cell width fits within `cap` cells.
+ * No padding — the returned string may be narrower than `cap` when the next
+ * character is wide and would overshoot. Never wider than `cap` cells.
+ *
+ * When the first character already exceeds `cap` cells, returns "" (the caller
+ * must decide whether to force-take the character or skip it).
+ */
+export function cellFit(text: string, cap: CellCol): string {
+  let w = 0;
+  let i = 0;
+  for (const ch of text) {
+    const cw = cellLen(ch);
+    if (w + cw > cap) break;
+    w += cw;
+    i += ch.length;
+  }
+  return text.slice(0, i);
+}
+
+/**
+ * Returns the code-unit index into `content` where the cumulative cell width
+ * first reaches `cellCol`. Clamps to `content.length` if `cellCol` exceeds
+ * the string's total cell width.
+ *
+ * This is the inverse of `cellLen(content.slice(0, codeUnit))` — given a
+ * visual column, return the corresponding string index.
+ */
+export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): CodeUnit {
+  let w = 0;
+  let i = 0;
+  for (const ch of content) {
+    if (w >= cellCol) break;
+    const cw = cellLen(ch);
+    if (w + cw > cellCol) break;
+    w += cw;
+    i += ch.length;
+  }
+  return asCodeUnit(i);
 }
 
 // --- internal ---

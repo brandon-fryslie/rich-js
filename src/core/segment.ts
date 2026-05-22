@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, splitText } from "./cells.js";
+import { cellLen, splitText, asCellCol } from "./cells.js";
 import { Style } from "./style.js";
 
 // --- ControlType ---
@@ -65,7 +65,7 @@ export class Segment {
     const len = this.cellLength;
     if (position >= len) return [this, new Segment("")];
     if (position <= 0) return [new Segment(""), this];
-    const [leftText, rightText] = splitText(this.text, position);
+    const [leftText, rightText] = splitText(this.text, asCellCol(position));
     return [
       new Segment(leftText, this.style),
       new Segment(rightText, this.style),
