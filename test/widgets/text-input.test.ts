@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { TextInput, charGreedyWrap, type WrapStrategy } from "../../src/widgets/text-input.js";
-import { asCodeUnit, asCellCol } from "../../src/core/cells.js";
+import { asCodePoint, asCellCol } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 
@@ -119,7 +119,7 @@ describe("TextInput", () => {
 
     it("inserts in the middle of existing text", () => {
       const t = new TextInput({ value: "ac" });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       t.handleKey(printable("b"));
       expect(t.value).toBe("abc");
       expect(t.cursorPosition).toBe(2);
@@ -149,7 +149,7 @@ describe("TextInput", () => {
   describe("deletion", () => {
     it("backspace removes the char before cursor and decrements", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(2);
+      t.cursorPosition = asCodePoint(2);
       t.handleKey(backspaceEvent());
       expect(t.value).toBe("ac");
       expect(t.cursorPosition).toBe(1);
@@ -157,7 +157,7 @@ describe("TextInput", () => {
 
     it("backspace at position 0 is a no-op", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(0);
+      t.cursorPosition = asCodePoint(0);
       const changes: InteractiveWidget[] = [];
       t.onChange((w) => changes.push(w));
       t.handleKey(backspaceEvent());
@@ -168,7 +168,7 @@ describe("TextInput", () => {
 
     it("delete removes the char after cursor without moving it", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       t.handleKey(deleteEvent());
       expect(t.value).toBe("ac");
       expect(t.cursorPosition).toBe(1);
@@ -176,7 +176,7 @@ describe("TextInput", () => {
 
     it("delete at end is a no-op", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(3);
+      t.cursorPosition = asCodePoint(3);
       t.handleKey(deleteEvent());
       expect(t.value).toBe("abc");
     });
@@ -185,7 +185,7 @@ describe("TextInput", () => {
   describe("cursor movement", () => {
     it("left moves cursor back, clamped at 0", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(2);
+      t.cursorPosition = asCodePoint(2);
       t.handleKey(leftEvent());
       expect(t.cursorPosition).toBe(1);
       t.handleKey(leftEvent());
@@ -195,7 +195,7 @@ describe("TextInput", () => {
 
     it("right moves cursor forward, clamped at value.length", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       t.handleKey(rightEvent());
       expect(t.cursorPosition).toBe(2);
       t.handleKey(rightEvent());
@@ -211,7 +211,7 @@ describe("TextInput", () => {
 
     it("end jumps cursor to value.length", () => {
       const t = new TextInput({ value: "hello" });
-      t.cursorPosition = asCodeUnit(0);
+      t.cursorPosition = asCodePoint(0);
       t.handleKey(endEvent());
       expect(t.cursorPosition).toBe(5);
     });
@@ -242,7 +242,7 @@ describe("TextInput", () => {
 
     it("ignores mouse_down when bounds is unset", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       t.handleMouse(mouseDownAt(2));
       expect(t.cursorPosition).toBe(1);
     });
@@ -276,7 +276,7 @@ describe("TextInput", () => {
 
     it("blocks deletion", () => {
       const t = new TextInput({ value: "ab", disabled: true });
-      t.cursorPosition = asCodeUnit(2);
+      t.cursorPosition = asCodePoint(2);
       t.handleKey(backspaceEvent());
       expect(t.value).toBe("ab");
     });
@@ -404,21 +404,21 @@ describe("TextInput", () => {
   describe("readline motion (Ctrl-modified)", () => {
     it("Ctrl+A moves cursor to line start", () => {
       const t = new TextInput({ value: "hello" });
-      t.cursorPosition = asCodeUnit(3);
+      t.cursorPosition = asCodePoint(3);
       t.handleKey(ctrl("a"));
       expect(t.cursorPosition).toBe(0);
     });
 
     it("Ctrl+E moves cursor to line end", () => {
       const t = new TextInput({ value: "hello" });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       t.handleKey(ctrl("e"));
       expect(t.cursorPosition).toBe(5);
     });
 
     it("Ctrl+B / Ctrl+F are aliases for left / right", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       t.handleKey(ctrl("b"));
       expect(t.cursorPosition).toBe(0);
       t.handleKey(ctrl("f"));
@@ -428,7 +428,7 @@ describe("TextInput", () => {
 
     it("Ctrl+H is a synonym for backspace", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(3);
+      t.cursorPosition = asCodePoint(3);
       t.handleKey(ctrl("h"));
       expect(t.value).toBe("ab");
       expect(t.cursorPosition).toBe(2);
@@ -436,7 +436,7 @@ describe("TextInput", () => {
 
     it("Ctrl+D forward-deletes (synonym for Delete)", () => {
       const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       t.handleKey(ctrl("d"));
       expect(t.value).toBe("ac");
       expect(t.cursorPosition).toBe(1);
@@ -444,7 +444,7 @@ describe("TextInput", () => {
 
     it("Ctrl+W kills the previous whitespace-bounded word", () => {
       const t = new TextInput({ value: "foo bar baz" });
-      t.cursorPosition = asCodeUnit(11);
+      t.cursorPosition = asCodePoint(11);
       t.handleKey(ctrl("w"));
       expect(t.value).toBe("foo bar ");
       expect(t.cursorPosition).toBe(8);
@@ -452,7 +452,7 @@ describe("TextInput", () => {
 
     it("Ctrl+W with trailing whitespace skips it first", () => {
       const t = new TextInput({ value: "foo bar  " });
-      t.cursorPosition = asCodeUnit(9);
+      t.cursorPosition = asCodePoint(9);
       t.handleKey(ctrl("w"));
       expect(t.value).toBe("foo ");
       expect(t.cursorPosition).toBe(4);
@@ -460,7 +460,7 @@ describe("TextInput", () => {
 
     it("Ctrl+U kills back to line start", () => {
       const t = new TextInput({ value: "hello" });
-      t.cursorPosition = asCodeUnit(3);
+      t.cursorPosition = asCodePoint(3);
       t.handleKey(ctrl("u"));
       expect(t.value).toBe("lo");
       expect(t.cursorPosition).toBe(0);
@@ -468,7 +468,7 @@ describe("TextInput", () => {
 
     it("Ctrl+K kills to line end", () => {
       const t = new TextInput({ value: "hello" });
-      t.cursorPosition = asCodeUnit(2);
+      t.cursorPosition = asCodePoint(2);
       t.handleKey(ctrl("k"));
       expect(t.value).toBe("he");
       expect(t.cursorPosition).toBe(2);
@@ -476,7 +476,7 @@ describe("TextInput", () => {
 
     it("Ctrl+Y yanks the most recent kill", () => {
       const t = new TextInput({ value: "hello" });
-      t.cursorPosition = asCodeUnit(5);
+      t.cursorPosition = asCodePoint(5);
       t.handleKey(ctrl("u"));           // kill "hello"; value="", cursor=0
       t.handleKey(ctrl("y"));           // paste "hello" at cursor 0
       expect(t.value).toBe("hello");
@@ -485,7 +485,7 @@ describe("TextInput", () => {
 
     it("Ctrl+T transposes mid-string (swap + advance)", () => {
       const t = new TextInput({ value: "abcd" });
-      t.cursorPosition = asCodeUnit(2);             // between 'b' and 'c'
+      t.cursorPosition = asCodePoint(2);             // between 'b' and 'c'
       t.handleKey(ctrl("t"));
       expect(t.value).toBe("acbd");
       expect(t.cursorPosition).toBe(3);
@@ -493,7 +493,7 @@ describe("TextInput", () => {
 
     it("Ctrl+T at end-of-string swaps the trailing two without advancing", () => {
       const t = new TextInput({ value: "abcd" });
-      t.cursorPosition = asCodeUnit(4);
+      t.cursorPosition = asCodePoint(4);
       t.handleKey(ctrl("t"));
       expect(t.value).toBe("abdc");
       expect(t.cursorPosition).toBe(4);
@@ -501,7 +501,7 @@ describe("TextInput", () => {
 
     it("Ctrl+Left / Ctrl+Right do word motion", () => {
       const t = new TextInput({ value: "foo bar baz" });
-      t.cursorPosition = asCodeUnit(11);
+      t.cursorPosition = asCodePoint(11);
       t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }));
       expect(t.cursorPosition).toBe(8);
       t.handleKey(new KeyEvent({ key: "left", character: "", shift: false, ctrl: true, meta: false }));
@@ -512,7 +512,7 @@ describe("TextInput", () => {
 
     it("Ctrl+Home / Ctrl+End jump to document bounds", () => {
       const t = new TextInput({ value: "line1\nline2\nline3", multiline: true });
-      t.cursorPosition = asCodeUnit(8);
+      t.cursorPosition = asCodePoint(8);
       t.handleKey(new KeyEvent({ key: "home", character: "", shift: false, ctrl: true, meta: false }));
       expect(t.cursorPosition).toBe(0);
       t.handleKey(new KeyEvent({ key: "end", character: "", shift: false, ctrl: true, meta: false }));
@@ -523,7 +523,7 @@ describe("TextInput", () => {
   describe("alt-modified motion / editing", () => {
     it("Alt+B / Alt+F do word motion", () => {
       const t = new TextInput({ value: "foo bar baz" });
-      t.cursorPosition = asCodeUnit(11);
+      t.cursorPosition = asCodePoint(11);
       t.handleKey(alt("b"));
       expect(t.cursorPosition).toBe(8);
       t.handleKey(alt("f"));
@@ -532,7 +532,7 @@ describe("TextInput", () => {
 
     it("Alt+D deletes the next word forward", () => {
       const t = new TextInput({ value: "foo bar baz" });
-      t.cursorPosition = asCodeUnit(0);
+      t.cursorPosition = asCodePoint(0);
       t.handleKey(alt("d"));
       expect(t.value).toBe(" bar baz");
       expect(t.cursorPosition).toBe(0);
@@ -540,7 +540,7 @@ describe("TextInput", () => {
 
     it("Alt+Backspace kills the previous word", () => {
       const t = new TextInput({ value: "foo bar baz" });
-      t.cursorPosition = asCodeUnit(11);
+      t.cursorPosition = asCodePoint(11);
       t.handleKey(new KeyEvent({ key: "backspace", character: "", shift: false, ctrl: false, meta: true }));
       expect(t.value).toBe("foo bar ");
     });
@@ -549,7 +549,7 @@ describe("TextInput", () => {
   describe("multiline mode", () => {
     it("Enter inserts a newline rather than submitting", () => {
       const t = new TextInput({ value: "ab", multiline: true });
-      t.cursorPosition = asCodeUnit(1);
+      t.cursorPosition = asCodePoint(1);
       const submits: InteractiveWidget[] = [];
       t.onSubmit((w) => submits.push(w));
       t.handleKey(enterEvent());
@@ -569,14 +569,14 @@ describe("TextInput", () => {
 
     it("Up arrow moves to the same column on the previous line", () => {
       const t = new TextInput({ value: "abcdef\nxyz", multiline: true });
-      t.cursorPosition = asCodeUnit(9);             // between 'y' and 'z' on line 2 (col 2)
+      t.cursorPosition = asCodePoint(9);             // between 'y' and 'z' on line 2 (col 2)
       t.handleKey(upEvent());
       expect(t.cursorPosition).toBe(2); // col 2 on line 1
     });
 
     it("Down arrow preserves the preferred column across short lines", () => {
       const t = new TextInput({ value: "abcdef\nxy\nuvwxyz", multiline: true });
-      t.cursorPosition = asCodeUnit(5);             // col 5 on line 1
+      t.cursorPosition = asCodePoint(5);             // col 5 on line 1
       t.handleKey(downEvent());
       expect(t.cursorPosition).toBe(9); // line 2 only has 2 chars; clamp to its end
       t.handleKey(downEvent());
@@ -585,35 +585,35 @@ describe("TextInput", () => {
 
     it("Up at first line is a no-op", () => {
       const t = new TextInput({ value: "abc\ndef", multiline: true });
-      t.cursorPosition = asCodeUnit(2);
+      t.cursorPosition = asCodePoint(2);
       t.handleKey(upEvent());
       expect(t.cursorPosition).toBe(2);
     });
 
     it("Down at last line is a no-op", () => {
       const t = new TextInput({ value: "abc\ndef", multiline: true });
-      t.cursorPosition = asCodeUnit(6);
+      t.cursorPosition = asCodePoint(6);
       t.handleKey(downEvent());
       expect(t.cursorPosition).toBe(6);
     });
 
     it("Home jumps to the start of the current logical line, not the value", () => {
       const t = new TextInput({ value: "abc\ndef\nghi", multiline: true });
-      t.cursorPosition = asCodeUnit(6);             // 'f' on line 2
+      t.cursorPosition = asCodePoint(6);             // 'f' on line 2
       t.handleKey(homeEvent());
       expect(t.cursorPosition).toBe(4); // start of line 2
     });
 
     it("End jumps to the end of the current logical line, not the value", () => {
       const t = new TextInput({ value: "abc\ndef\nghi", multiline: true });
-      t.cursorPosition = asCodeUnit(5);             // 'e' on line 2
+      t.cursorPosition = asCodePoint(5);             // 'e' on line 2
       t.handleKey(endEvent());
       expect(t.cursorPosition).toBe(7); // end of line 2
     });
 
     it("Ctrl+K at the end of a non-last line joins the next line", () => {
       const t = new TextInput({ value: "abc\ndef", multiline: true });
-      t.cursorPosition = asCodeUnit(3);             // end of line 1
+      t.cursorPosition = asCodePoint(3);             // end of line 1
       t.handleKey(ctrl("k"));
       expect(t.value).toBe("abcdef");
       expect(t.cursorPosition).toBe(3);
@@ -661,7 +661,7 @@ describe("TextInput", () => {
       });
       // Render first so visual rows get cached.
       [...t.render(RENDER_NARROW)];
-      t.cursorPosition = asCodeUnit(13);            // on visual row 1 (continuation), col 3
+      t.cursorPosition = asCodePoint(13);            // on visual row 1 (continuation), col 3
       t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 0 at col 3 → cursorPosition = 3
       expect(t.cursorPosition).toBe(3);
@@ -674,7 +674,7 @@ describe("TextInput", () => {
         wrap: charGreedyWrap,
       });
       [...t.render(RENDER_NARROW)];
-      t.cursorPosition = asCodeUnit(4);             // visual row 0, col 4
+      t.cursorPosition = asCodePoint(4);             // visual row 0, col 4
       t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 1 starts at value-offset 10; col 4 → 14
       expect(t.cursorPosition).toBe(14);
@@ -689,7 +689,7 @@ describe("TextInput", () => {
         let p = 0;
         while (p < line.length) {
           const take = Math.min(4, line.length - p);
-          rows.push({ content: line.slice(p, p + take), start: asCodeUnit(p) });
+          rows.push({ content: line.slice(p, p + take), start: asCodePoint(p) });
           p += take;
         }
         // Reference unused params so the type isn't dropped.
@@ -699,7 +699,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "abcdefgh", multiline: true, wrap: strategy });
       [...t.render({ maxWidth: 80 })];
       expect(called).toBeGreaterThan(0);
-      t.cursorPosition = asCodeUnit(0);
+      t.cursorPosition = asCodePoint(0);
       t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 1 starts at offset 4 (per the custom strategy)
       expect(t.cursorPosition).toBe(4);
@@ -711,7 +711,7 @@ describe("TextInput", () => {
         multiline: true,
         maxRows: 2,
       });
-      t.cursorPosition = asCodeUnit(8);                 // on line 5 ("e")
+      t.cursorPosition = asCodePoint(8);                 // on line 5 ("e")
       const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       // Should show only lines 4 and 5 ("d" and "e") since maxRows=2 and
       // cursor is on the last line.
@@ -929,7 +929,7 @@ describe("TextInput", () => {
         wrap: charGreedyWrap,
       });
       [...t.render(RENDER_NARROW)];
-      t.cursorPosition = asCodeUnit(3);
+      t.cursorPosition = asCodePoint(3);
       t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
       expect(t.cursorPosition).toBe(3);
     });
@@ -941,7 +941,7 @@ describe("TextInput", () => {
         wrap: charGreedyWrap,
       });
       [...t.render(RENDER_NARROW)];
-      t.cursorPosition = asCodeUnit(13);
+      t.cursorPosition = asCodePoint(13);
       t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       expect(t.cursorPosition).toBe(13);
     });
@@ -1057,7 +1057,7 @@ describe("TextInput", () => {
         wrap: charGreedyWrap,
       });
       [...t.render(RENDER_NARROW)];
-      t.cursorPosition = asCodeUnit(6);                 // col 6 on visual row 0 of line 1
+      t.cursorPosition = asCodePoint(6);                 // col 6 on visual row 0 of line 1
       t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
       // Visual row 1 = "xy" (start=11, length 2) → clamped to col 2 → pos 13
       expect(t.cursorPosition).toBe(13);
@@ -1150,7 +1150,7 @@ describe("TextInput", () => {
         wrap: charGreedyWrap,
       });
       [...t.render(RENDER)];
-      t.cursorPosition = asCodeUnit(1); // after 日
+      t.cursorPosition = asCodePoint(1); // after 日
       t.moveLineDown();
       expect(t.cursorPosition).toBe(4);
     });
@@ -1164,7 +1164,7 @@ describe("TextInput", () => {
         multiline: true,
       });
       [...t.render(RENDER)];
-      t.cursorPosition = asCodeUnit(1); // after first 日, cell col 2
+      t.cursorPosition = asCodePoint(1); // after first 日, cell col 2
       t.moveLineDown();                  // → "A" row, clamped to end (cu 1 from "A" start)
       // "日日\n" = 3 code units; "A" is at cu 3; clamp cell 2→1→cu1 → cursorPosition 4
       expect(t.cursorPosition).toBe(4);

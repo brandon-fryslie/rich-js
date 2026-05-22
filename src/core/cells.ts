@@ -29,22 +29,26 @@ export function cellLen(text: string): number {
 
 // ── Branded number spaces ────────────────────────────────────────────────────
 //
-// [LAW:types-are-the-program] The two integer spaces used throughout terminal
-// rendering are not interchangeable; treating them as the same `number` is the
-// root cause of wide-char bugs. Branding them makes the illegal mix-up a
-// compile-time error at every crossing point.
+// [LAW:types-are-the-program] Three distinct integer spaces coexist in terminal
+// rendering. Treating any two as the same `number` is the root cause of wide-char
+// and surrogate-pair bugs. Branding them makes every illegal mix-up a compile-time
+// error at every crossing point.
 //
-// `CellCol`  — a column offset measured in terminal cells (what the terminal
-//   hardware counts when positioning the cursor or wrapping a line).
-// `CodeUnit` — an index into a JS string measured in UTF-16 code units (what
-//   JS `String.length`, `.slice`, and array-indexing operate on).
+// `CellCol`   — column offset in terminal cells (what the hardware counts for
+//   cursor positioning / line wrapping).
+// `CodeUnit`  — index in JS UTF-16 code units (what `.length`, `.slice`, and
+//   array-indexing operate on; can fall mid-surrogate-pair).
+// `CodePoint` — a `CodeUnit` that additionally falls on a Unicode code-point
+//   boundary (never inside a surrogate pair). `CodePoint extends CodeUnit`:
+//   a `CodePoint` is usable wherever `CodeUnit` is required, but a raw
+//   `CodeUnit` cannot be used where `CodePoint` is required.
 //
-// Arithmetic on branded types produces plain `number`; re-brand with
-// `asCellCol` / `asCodeUnit` only at trust boundaries (external input,
-// known-safe derivations such as `string.length` as a code-unit count).
+// Arithmetic on branded types produces plain `number`; re-brand with the
+// factory functions only at trust boundaries.
 
 declare const _cellCol: unique symbol;
 declare const _codeUnit: unique symbol;
+declare const _codePoint: unique symbol;
 
 /** Terminal cell-column offset. Never interchangeable with a code-unit index. */
 export type CellCol = number & { readonly [_cellCol]: true };
@@ -52,11 +56,22 @@ export type CellCol = number & { readonly [_cellCol]: true };
 /** JS string code-unit index. Never interchangeable with a cell-column offset. */
 export type CodeUnit = number & { readonly [_codeUnit]: true };
 
+/**
+ * A `CodeUnit` index that is additionally guaranteed to fall on a Unicode
+ * code-point boundary (i.e. never inside a surrogate pair). Assignable to
+ * `CodeUnit`; the reverse assignment is forbidden.
+ */
+export type CodePoint = CodeUnit & { readonly [_codePoint]: true };
+
 /** Brand a raw number as a CellCol. Use only at trust boundaries. */
 export function asCellCol(n: number): CellCol { return n as CellCol; }
 
 /** Brand a raw number as a CodeUnit. Use only at trust boundaries. */
 export function asCodeUnit(n: number): CodeUnit { return n as CodeUnit; }
+
+/** Brand a raw number as a CodePoint. Use only when the value is known to be
+ *  on a Unicode code-point boundary. */
+export function asCodePoint(n: number): CodePoint { return n as CodePoint; }
 
 // ── Cell-aware string utilities ──────────────────────────────────────────────
 
@@ -159,8 +174,11 @@ export function cellFit(text: string, cap: CellCol): string {
  *
  * This is the inverse of `cellLen(content.slice(0, codeUnit))` — given a
  * visual column, return the corresponding string index.
+ *
+ * Returns `CodePoint` because `for...of` iteration always stops on a
+ * code-point boundary.
  */
-export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): CodeUnit {
+export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): CodePoint {
   let w = 0;
   let i = 0;
   for (const ch of content) {
@@ -170,7 +188,36 @@ export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): Code
     w += cw;
     i += ch.length;
   }
-  return asCodeUnit(i);
+  return asCodePoint(i);
+}
+
+/**
+ * Advance one full Unicode code point from `cu`, returning the code-unit
+ * offset of the start of the *next* code point. Returns `s.length` when
+ * already at or past the end.
+ *
+ * Handles surrogate pairs: when the code point at `cu` is a supplementary
+ * character (U+10000…U+10FFFF) it occupies 2 UTF-16 code units, so the
+ * returned offset advances by 2.
+ */
+export function nextCodePoint(s: string, cu: CodeUnit): CodePoint {
+  if (cu >= s.length) return asCodePoint(s.length);
+  const cp = s.codePointAt(cu)!;
+  return asCodePoint(cu + (cp > 0xFFFF ? 2 : 1));
+}
+
+/**
+ * Step back one full Unicode code point from `cu`, returning the code-unit
+ * offset of the start of the *previous* code point. Returns 0 when already
+ * at the start.
+ *
+ * Handles surrogate pairs: when the code unit at `cu - 1` is a low
+ * surrogate (the trailing half of a pair), steps back 2 code units.
+ */
+export function prevCodePoint(s: string, cu: CodeUnit): CodePoint {
+  if (cu <= 0) return asCodePoint(0);
+  const prevCU = s.charCodeAt(cu - 1);
+  return asCodePoint(cu - (prevCU >= 0xDC00 && prevCU <= 0xDFFF ? 2 : 1));
 }
 
 // --- internal ---

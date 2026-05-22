@@ -8,8 +8,11 @@ export {
   cellColToCodeUnitOffset,
   asCellCol,
   asCodeUnit,
+  asCodePoint,
+  nextCodePoint,
+  prevCodePoint,
 } from "./core/cells.js";
-export type { CellCol, CodeUnit } from "./core/cells.js";
+export type { CellCol, CodeUnit, CodePoint } from "./core/cells.js";
 
 export {
   ColorRgba,
