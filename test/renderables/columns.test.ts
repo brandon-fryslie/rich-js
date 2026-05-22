@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Columns } from "../../src/renderables/columns.js";
+import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -113,6 +114,31 @@ describe("Columns", () => {
     const allText = lines.join(" ");
     expect(allText).toContain("alpha");
     expect(allText).toContain("beta");
+  });
+
+  // --- Multi-line children (rich-columns-9wd) ---
+
+  it("renders every row of a multi-line child, not just the first", () => {
+    // A single Panel renders as several visual rows (borders + content).
+    // Columns must emit all of them, not truncate to lines[0].
+    const panel = new Panel("hello", { expand: false });
+    const standalone = collectLines(panel, { maxWidth: 40 });
+    const cols = collectLines(new Columns([panel]), { maxWidth: 40 });
+    expect(standalone.length).toBeGreaterThan(1);
+    expect(cols.length).toBe(standalone.length);
+  });
+
+  it("merges multi-line children side by side row-by-row", () => {
+    const cols = new Columns([
+      new Panel("AAA", { expand: false }),
+      new Panel("BBB", { expand: false }),
+    ]);
+    const lines = collectLines(cols, { maxWidth: 60 });
+    // The content row carries both panels' text on the same visual line —
+    // proof the two children are merged horizontally, not stacked.
+    const contentRow = lines.find((l) => l.includes("AAA"));
+    expect(contentRow).toBeDefined();
+    expect(contentRow).toContain("BBB");
   });
 
   // --- Measurement (columns-behavior.md) ---

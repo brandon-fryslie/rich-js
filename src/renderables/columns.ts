@@ -80,33 +80,24 @@ export class Columns implements Renderable, Measurable {
     // Layout items into rows
     const numRows = Math.ceil(items.length / numCols);
 
+    // [LAW:types-are-the-program] The element type is Renderable — any number
+    // of lines. Each grid cell renders to its full set of lines; an out-of-range
+    // slot (the last row is rarely full) is an empty cell. mergeHorizontal then
+    // stacks every row of every cell line-by-line, so multi-line children
+    // (Panels, Tables) compose instead of being truncated to their first row.
     for (let row = 0; row < numRows; row++) {
-      for (let col = 0; col < numCols; col++) {
-        const idx = this.columnFirst
-          ? col * numRows + row
-          : row * numCols + col;
-
-        if (idx >= items.length) {
-          if (col < numCols - 1) {
-            yield new Segment(" ".repeat(colWidths[col]! + this.gutterWidth));
-          }
-          continue;
-        }
-
-        const item = items[idx]!;
-        const cellWidth = colWidths[col]!;
-        const cellOpts: RenderOptions = { ...options, maxWidth: cellWidth };
-        const segs = [...item.render(cellOpts)];
-        const lines = Segment.splitLines(segs);
-        const firstLine = lines[0] ?? [];
-        const adjusted = Segment.adjustLineLength(firstLine, cellWidth);
-        yield* adjusted;
-
-        if (col < numCols - 1) {
-          yield new Segment(" ".repeat(this.gutterWidth));
-        }
-      }
-      yield Segment.line();
+      const cells = colWidths.map((width, col) => {
+        const idx = this.columnFirst ? col * numRows + row : row * numCols + col;
+        const item = items[idx];
+        const lines =
+          item === undefined
+            ? []
+            : Segment.splitLines([
+                ...item.render({ ...options, maxWidth: width }),
+              ]);
+        return { lines, width };
+      });
+      yield* Segment.mergeHorizontal(cells, this.gutterWidth);
     }
   }
 
