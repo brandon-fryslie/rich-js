@@ -442,22 +442,40 @@ export class TextInput extends WidgetBase {
 
     const b = this.bounds;
     if (!b) return;
-    // [LAW:types-are-the-program] relX is a cell-column offset; convert to
-    // code-unit via the same display string _renderSingleLine produces so that
-    // password bullets (1 cell/code-unit) and NEWLINE_GLYPH substitution
-    // (also 1:1) yield correct positions for wide-char values.
-    const relX = asCellCol(Math.max(0, event.x - b.x - 1));
-    const displayForHitTest = this._password
-      ? "•".repeat(this.value.length)
-      : this.value.indexOf("\n") >= 0
-        ? this.value.replace(/\n/g, NEWLINE_GLYPH)
-        : this.value;
-    const pos = cellColToCodeUnitOffset(displayForHitTest, relX);
-    // In password mode displayForHitTest CU indices map 1:1 to value CU indices,
-    // but some may fall mid-surrogate-pair. Low surrogate (0xDC00–0xDFFF) at pos
-    // means we're inside a pair; advance 1 to the next code-point boundary.
-    const chu = pos < this.value.length ? this.value.charCodeAt(pos) : 0;
-    this.cursorPosition = asCodePoint(chu >= 0xDC00 && chu <= 0xDFFF ? pos + 1 : pos);
+
+    if (this._multiline) {
+      // Multiline has no brackets; rows may have a leading continuation marker.
+      // Use event.y to pick the visual row, then project event.x into its content.
+      const rows = this._visualRows;
+      if (!rows || rows.length === 0) return;
+      const relY = event.y - b.y;
+      const rowIdx = Math.max(0, Math.min(rows.length - 1, this._scrollStart + relY));
+      const row = rows[rowIdx]!;
+      // Continuation rows start after the marker; non-continuation rows start at column 0.
+      const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
+      const relX = asCellCol(Math.max(0, event.x - b.x - contentXOff));
+      const pos = cellColToCodeUnitOffset(row.content, relX);
+      const absPos = row.valueStart + pos;
+      const chu = absPos < this.value.length ? this.value.charCodeAt(absPos) : 0;
+      this.cursorPosition = asCodePoint(chu >= 0xDC00 && chu <= 0xDFFF ? absPos + 1 : absPos);
+    } else {
+      // [LAW:types-are-the-program] relX is a cell-column offset; convert to
+      // code-unit via the same display string _renderSingleLine produces so that
+      // password bullets (1 cell/code-unit) and NEWLINE_GLYPH substitution
+      // (also 1:1) yield correct positions for wide-char values.
+      const relX = asCellCol(Math.max(0, event.x - b.x - 1));
+      const displayForHitTest = this._password
+        ? "•".repeat(this.value.length)
+        : this.value.indexOf("\n") >= 0
+          ? this.value.replace(/\n/g, NEWLINE_GLYPH)
+          : this.value;
+      const pos = cellColToCodeUnitOffset(displayForHitTest, relX);
+      // In password mode displayForHitTest CU indices map 1:1 to value CU indices,
+      // but some may fall mid-surrogate-pair. Low surrogate (0xDC00–0xDFFF) at pos
+      // means we're inside a pair; advance 1 to the next code-point boundary.
+      const chu = pos < this.value.length ? this.value.charCodeAt(pos) : 0;
+      this.cursorPosition = asCodePoint(chu >= 0xDC00 && chu <= 0xDFFF ? pos + 1 : pos);
+    }
     this._preferredColumn = null;
   }
 
