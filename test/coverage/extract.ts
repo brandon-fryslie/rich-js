@@ -122,32 +122,92 @@ export function makeProgram(): {
   ];
   const program = ts.createProgram({
     rootNames,
-    options: {
-      target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.Node16,
-      moduleResolution: ts.ModuleResolutionKind.Node16,
-      strict: true,
-      skipLibCheck: true,
-      esModuleInterop: true,
-      noEmit: true,
-      allowJs: false,
-      // Canonical lib *name* form matching tsconfig.json — programmatic
-      // callers that pass the `lib.X.d.ts` filename bypass TS's
-      // lib-name resolution path. `"ES2022"` is the same string the
-      // repo's tsconfig uses, so the verifier sees the same ambient
-      // declaration surface the build does.
-      lib: ["ES2022"],
-      // `["node"]` (not `[]`) because both `src/` and `examples/` reference
-      // Node builtins (`node:fs`, `node:path`, `process`, `NodeJS.*`).
-      // Without `@types/node` loaded, those resolutions degrade to `any`
-      // and the symbol-alias chain we rely on can in principle fall
-      // through to unexpected origins. We don't link to tsconfig.demo.json
-      // directly — coupling the verifier to demo-build settings would
-      // make this test brittle to unrelated config changes.
-      types: ["node"],
-    },
+    options: loadCompilerOptions(),
   });
   return { program, checker: program.getTypeChecker(), exampleFiles };
+}
+
+/**
+ * Load the repo's actual `tsconfig.json` compiler options so the
+ * verifier's program sees the same ambient declarations and the same
+ * lib/target/module-resolution surface as the build does.
+ *
+ * [LAW:one-source-of-truth] We tried hand-listing options here, and
+ * each version drifted from tsconfig.json in subtle ways (e.g.
+ * programmatic `lib: ["ES2022"]` doesn't pull in `lib.es2022.object.d.ts`
+ * the way tsconfig's `"lib": ["ES2022"]` does, so `Object.hasOwn` was
+ * unrecognized and the program's diagnostics flagged real source code
+ * as broken). Reusing the parsed config eliminates the drift entirely
+ * — the verifier's view of the type system IS the build's view.
+ *
+ * Local overrides: `noEmit: true` (we never emit), `noUnusedLocals` /
+ * `noUnusedParameters` off (those would flag legitimate example-file
+ * patterns and aren't relevant to symbol resolution), and `types`
+ * extended with `node` if absent (both src/ and examples/ touch Node
+ * builtins).
+ */
+function loadCompilerOptions(): ts.CompilerOptions {
+  const configPath = path.join(REPO_ROOT, "tsconfig.json");
+  const read = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (read.error) {
+    throw new Error(
+      `Coverage verifier: failed to read ${configPath}: ` +
+        ts.flattenDiagnosticMessageText(read.error.messageText, "\n"),
+    );
+  }
+  const parsed = ts.parseJsonConfigFileContent(read.config, ts.sys, REPO_ROOT);
+  if (parsed.errors.length > 0) {
+    throw new Error(
+      `Coverage verifier: failed to parse ${configPath}:\n` +
+        parsed.errors.map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n")).join("\n"),
+    );
+  }
+  // Strip emit-shape options that only matter for `tsc` and that the
+  // diagnostics pass would otherwise flag against our wider rootNames
+  // (examples/ files would violate `rootDir: src`).
+  const { rootDir: _rootDir, outDir: _outDir, ...rest } = parsed.options;
+  return {
+    ...rest,
+    noEmit: true,
+    noUnusedLocals: false,
+    noUnusedParameters: false,
+    types: Array.from(new Set([...(parsed.options.types ?? []), "node"])),
+  };
+}
+
+/**
+ * Precondition for any analysis on the program: it must compile cleanly.
+ *
+ * [LAW:no-silent-fallbacks] If `getSymbolAtLocation` returns `undefined`
+ * because of an upstream TS error (broken import, missing type,
+ * resolution failure), `collectReferencedOrigins` would silently skip
+ * that binding — recording the affected symbol as *uncovered* even
+ * though a demo references it. That's a false-uncovered failure mode
+ * the verifier itself cannot detect, so we check it up front: any
+ * non-`node_modules` syntactic or semantic diagnostic = the program
+ * is unsafe to analyze, fail loudly with the full diagnostic list so
+ * the operator fixes the compile first.
+ *
+ * `skipLibCheck` is on in `makeProgram`, so diagnostics in `lib.*.d.ts`
+ * are already filtered. We additionally drop anything under
+ * `node_modules/` (dep typings the verifier doesn't own).
+ */
+export function assertProgramClean(program: ts.Program): void {
+  const diagnostics = ts.getPreEmitDiagnostics(program).filter((d) => {
+    const f = d.file?.fileName;
+    return !(f && f.includes("/node_modules/"));
+  });
+  if (diagnostics.length === 0) return;
+  const host: ts.FormatDiagnosticsHost = {
+    getCanonicalFileName: (f) => f,
+    getCurrentDirectory: () => REPO_ROOT,
+    getNewLine: () => "\n",
+  };
+  throw new Error(
+    `Coverage verifier: TypeScript reported ${diagnostics.length} diagnostic(s) ` +
+      `in src/ + examples/. Symbol resolution may be unreliable; fix these first.\n\n` +
+      ts.formatDiagnosticsWithColorAndContext(diagnostics, host),
+  );
 }
 
 /**
