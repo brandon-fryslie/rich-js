@@ -266,9 +266,10 @@ tagged `markup-and-text-lab` from `test/coverage/coverage-allowlist.ts`
 a render loop, a tick, or a transient region of the terminal:
 `Live`, `Status`, `Spinner` + `SPINNERS` + `DEFAULT_SPINNER`,
 `Progress` (with every column type and `track`), `ProgressBar`,
-`Prompt` family, and `Traceback`. Console-only surfaces — record /
-export-html / export-svg / logging / file-stream output — also live
-here.
+`Prompt` family, and `Traceback`. Console-only surfaces also live
+here: recording (`record` option), `exportText` / `exportHtml`,
+`saveText` / `saveHtml`, the logging entry points (`log`, `print`),
+and file-stream output via `ConsoleOptions.file`.
 
 **Folds in.**
 - `rich-dash` — pluggable dashboard with Live updates. Becomes a
