@@ -195,7 +195,12 @@ function loadCompilerOptions(): ts.CompilerOptions {
 export function assertProgramClean(program: ts.Program): void {
   const diagnostics = ts.getPreEmitDiagnostics(program).filter((d) => {
     const f = d.file?.fileName;
-    return !(f && f.includes("/node_modules/"));
+    if (!f) return true;
+    // Split on both POSIX and Windows separators and check for
+    // `node_modules` as a path segment. TS normalizes to `/` on
+    // every platform in practice, but this stays robust if that
+    // ever changes (or if a custom host hands us native paths).
+    return !f.split(/[\\/]/).includes("node_modules");
   });
   if (diagnostics.length === 0) return;
   const host: ts.FormatDiagnosticsHost = {
@@ -378,16 +383,33 @@ export function groupByOrigin(rows: readonly PublicExport[]): Map<string, Origin
 }
 
 /**
- * Identifier used in the allowlist file. We pick a single canonical
- * name per origin — the first exposed-as name, alphabetically across
- * entry modules. This keeps allowlist keys stable: if the same origin
- * is re-exposed under more entries later, the canonical key does not
- * shift.
+ * Identifier used in the allowlist file.
+ *
+ * [LAW:types-are-the-program] The selection rule itself enforces the
+ * stability claim: prefer the exposure from the *primary* entry module
+ * (ENTRY_MODULES[0], which is `.` from package.json#exports —
+ * `src/index.ts` here) and walk down the entry-module list in
+ * package.json order as fallback. Within a single entry, ties break
+ * alphabetically (rare — happens when one origin is re-exported under
+ * multiple names from the same module, e.g. `escape as escapeMarkup`).
+ *
+ * Stability follows directly: adding a new exposure from a
+ * lower-priority entry cannot shift the canonical key, because a
+ * higher-priority exposure already exists. A rename within the
+ * primary entry DOES shift the key — which is correct, because that
+ * is a meaningful change to the public API surface.
  */
 export function canonicalNameFor(info: OriginInfo): string {
-  const sorted = [...info.exposures].sort((a, b) => {
-    if (a.exposedAs !== b.exposedAs) return a.exposedAs.localeCompare(b.exposedAs);
-    return a.entry.localeCompare(b.entry);
-  });
-  return sorted[0]!.exposedAs;
+  for (const entry of ENTRY_MODULES) {
+    const hits = info.exposures.filter((e) => e.entry === entry);
+    if (hits.length === 0) continue;
+    return hits.map((h) => h.exposedAs).sort((a, b) => a.localeCompare(b))[0]!;
+  }
+  // Unreachable in practice — every exposure belongs to an entry
+  // module by construction — but the type system can't see that.
+  // Fall back to an alphabetic pick rather than risk a thrown error
+  // that would mask the real coverage failure downstream.
+  return [...info.exposures]
+    .map((e) => e.exposedAs)
+    .sort((a, b) => a.localeCompare(b))[0]!;
 }
