@@ -4,15 +4,22 @@
     {
       "version": "pr-33",
       "ref": "refs/pull/33/merge",
-      "sha": "afc4728f13e88f141fe6a8795b205645b167862a",
-      "timestamp": "2026-05-23T22:23:51.654Z",
+      "sha": "520bbee88ce94441f68937407c0257a5dd8b0ee1",
+      "timestamp": "2026-05-23T22:27:33.817Z",
       "commits": [
         {
-          "sha": "afc4728f13e88f141fe6a8795b205645b167862a",
+          "sha": "520bbee88ce94441f68937407c0257a5dd8b0ee1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-23T22:23:26Z",
-          "message": "Merge 83f3f79c2f16c763e5c9d78a2e6770ce4c5ac0f2 into 631f89e1d7fd320aae675ef065f3f69a0364441b\n"
+          "timestamp": "2026-05-23T22:27:07Z",
+          "message": "Merge 699d8b937b3203879b2ec473e70b4b7609b57d80 into 631f89e1d7fd320aae675ef065f3f69a0364441b\n"
+        },
+        {
+          "sha": "699d8b937b3203879b2ec473e70b4b7609b57d80",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T16:26:58-06:00",
+          "message": "docs(spec): align live-progress-console surfaces with actual Console API\n\nCopilot caught a load-bearing-false claim: the spec said\nlive-progress-console owned an 'export-svg' Console surface, but\nsrc/core/console.ts only has exportText/exportHtml/saveText/saveHtml\n— there is no exportSvg/saveSvg method. [LAW:one-source-of-truth]\n[LAW:verifiable-goals]\n\nReplaced the made-up surface list with the actual Console methods:\nrecording (record option), exportText/exportHtml, saveText/saveHtml,\nthe logging entry points (log, print), and file-stream output via\nConsoleOptions.file. Each verified against console.ts grep before\nclaiming.\n\nSVG_EXPORT_THEME (the palette data) is unaffected — that's owned by\nthemes-and-color-studio. SVG-export the verb simply doesn't exist on\nConsole.\n"
         },
         {
           "sha": "83f3f79c2f16c763e5c9d78a2e6770ce4c5ac0f2",
