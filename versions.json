@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-33",
+      "ref": "refs/pull/33/merge",
+      "sha": "c1d2b505716f01cb043f551fbbf41167b8a0d523",
+      "timestamp": "2026-05-23T22:17:56.579Z",
+      "commits": [
+        {
+          "sha": "c1d2b505716f01cb043f551fbbf41167b8a0d523",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T16:17:31-06:00",
+          "message": "Merge 12b1bf6c06f2e5a4bdebb43503d16bfafeac721f into 631f89e1d7fd320aae675ef065f3f69a0364441b\n"
+        },
+        {
+          "sha": "12b1bf6c06f2e5a4bdebb43503d16bfafeac721f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T16:16:51-06:00",
+          "message": "docs(spec): flagship demo set + every-export→flagship map (rich-demos-l2x.2)\n\nAdds spec/demos.md — the single source of truth that the five flagship\nbuild tickets (rich-demos-l2x.3 through .7) read in fresh /next sessions.\n[LAW:one-source-of-truth]\n\nDesign:\n- Five flagships keyed by the canonical kebab-case names already in the\n  `Flagship` type at test/coverage/coverage-allowlist.ts:\n  themes-and-color-studio, renderables-gallery, widgets-playground,\n  markup-and-text-lab, live-progress-console.\n- Ownership rule: by source module. Each src/ module is owned by exactly\n  one flagship; every export from that module belongs to that flagship.\n  [LAW:types-are-the-program] — turns per-export ownership from a\n  judgment call into a mechanical lookup.\n- Folding plan for every existing demo. claude-sessions and rich-explore\n  are deleted (TUI apps whose patterns are reused inside\n  renderables-gallery) so examples/ contains only the five flagships per\n  the parent epic's mandate. [LAW:no-mode-explosion]\n\nVerified mechanically against the verifier's export universe and the\nallowlist's existing flagship tagging:\n- 267 canonical public exports, each appears in exactly one flagship\n  section (0 missing, 0 duplicates).\n- All 120 burndown allowlist entries match their flagship section.\n- npm run lint clean; coverage.test.ts green.\n\nBuild tickets l2x.3-l2x.7 already point at spec/demos.md with explicit\n'do not infer scope from this ticket' wording — no retitle/re-split\nneeded since the canonical flagship names match the proposed grouping\nin the parent epic verbatim.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "631f89e1d7fd320aae675ef065f3f69a0364441b",
