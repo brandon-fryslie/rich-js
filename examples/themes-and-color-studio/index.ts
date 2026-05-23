@@ -163,8 +163,8 @@ function dim(text: string): RichText {
 }
 
 // The semantic vars we sample across the demo. Ordered roughly by role:
-// brand → highlight → state. Six is the sweet spot for a one-line row at
-// 120 cells.
+// brand → highlight → state. Sized to fit on one line of the configured
+// console width.
 const SEMANTIC_VARS = [
   "primary",
   "secondary",
@@ -202,7 +202,7 @@ function section1ColorValues(): void {
   out.print(blank());
 
   // blendRgb interpolates two ColorRgba values; ratio 0 → first, 1 → second.
-  out.print(dim("    blendRgb(sky, ink, t) — five steps across the gradient:"));
+  out.print(dim("    blendRgb(sky, ink, t) — steps across the gradient:"));
   const gradient = new RichText("    ");
   for (const t of [0, 0.25, 0.5, 0.75, 1]) {
     const blended = blendRgb(sky, ink, t);
@@ -253,9 +253,10 @@ function section2ColorSpec(): void {
   out.print(
     blurb(
       "ColorSpec wraps a value at a given ColorDepth (TRUECOLOR / EIGHT_BIT / " +
-        "STANDARD / DEFAULT / WINDOWS) and emits ANSI SGR codes. Downgrade " +
-        "uses one of three ColorTables: STANDARD_TABLE, EIGHT_BIT_TABLE, " +
-        "WINDOWS_TABLE.",
+        "STANDARD / DEFAULT / WINDOWS) and emits ANSI SGR codes. " +
+        "`ColorSpec.downgrade` quantizes truecolor into STANDARD_TABLE and " +
+        "EIGHT_BIT_TABLE; WINDOWS_TABLE is a public LUT for the Windows " +
+        "console palette but is a detection target, not a downgrade target.",
     ),
   );
   out.print(blank());
@@ -283,9 +284,9 @@ function section2ColorSpec(): void {
   }
   out.print(blank());
 
-  // Downgrade walk — same TRUECOLOR input, three targets. Each ColorTable
-  // is exercised by going through `downgrade`, which routes through the
-  // appropriate table internally.
+  // Downgrade walk — same TRUECOLOR input, rendered at TRUECOLOR plus the
+  // two quantization targets `ColorSpec.downgrade` accepts (EIGHT_BIT via
+  // EIGHT_BIT_TABLE.match, STANDARD via STANDARD_TABLE.match).
   const ribbon = ColorSpec.parse("#ff7e2a");
   const eightBit = ribbon.downgrade(ColorDepth.EIGHT_BIT);
   const standard = ribbon.downgrade(ColorDepth.STANDARD);
@@ -361,9 +362,11 @@ function section3ColorSystem(): void {
   );
   out.print(blank());
 
-  // Three deterministic env fixtures — DetectColorOptions lets us bypass
+  // Deterministic env fixtures — DetectColorOptions lets us bypass
   // process.env so the demo's output is reproducible regardless of where
-  // it runs. [LAW:single-enforcer] — same authority, different inputs.
+  // it runs. Each case targets a specific detection branch (COLORTERM
+  // promotion, TERM fall-through, NO_COLOR opt-out, no-TTY null result).
+  // [LAW:single-enforcer] — same authority, different inputs.
   const cases: Array<{ label: string; opts: DetectColorOptions }> = [
     {
       label: "TTY + COLORTERM=truecolor",
@@ -677,12 +680,16 @@ function section7Transposition(): void {
   );
   out.print(blank());
 
-  // 7a — Hue circle: six rotations of gruvbox. The same swatchRow shape as
-  // section 4 / 6, but the data flowing through is the *transposed* palette.
+  // 7a — Hue circle: rotations of gruvbox at evenly-spaced hue offsets.
+  // Same swatchRow shape as section 4 / 6, but the data flowing through
+  // is the *transposed* palette.
   const base = getThemePalette("gruvbox");
-  out.print(bold("    7a. Hue circle — gruvbox, six rotations"));
+  const HUE_ROTATIONS = [0, 60, 120, 180, 240, 300];
+  out.print(
+    bold(`    7a. Hue circle — gruvbox, ${HUE_ROTATIONS.length} rotations`),
+  );
   out.print(blurb("Decorative colors rotate; anchored vars (error/success/warning) hold."));
-  for (const deg of [0, 60, 120, 180, 240, 300]) {
+  for (const deg of HUE_ROTATIONS) {
     const key: ThemeKey = {
       hueShift: deg,
       chromaScale: 1,
@@ -705,9 +712,12 @@ function section7Transposition(): void {
 
   // 7b — Chroma sweep on nord. Same dataflow, different ThemeKey axis.
   const nord = getThemePalette("nord");
-  out.print(bold("    7b. Chroma sweep — nord, five saturation levels"));
+  const CHROMA_SCALES = [0.3, 0.6, 1.0, 1.3, 1.6];
+  out.print(
+    bold(`    7b. Chroma sweep — nord, ${CHROMA_SCALES.length} saturation levels`),
+  );
   out.print(blurb("chromaScale 0 = grayscale, 1 = identity, >1 = supersaturated."));
-  for (const scale of [0.3, 0.6, 1.0, 1.3, 1.6]) {
+  for (const scale of CHROMA_SCALES) {
     const key: ThemeKey = {
       hueShift: 0,
       chromaScale: scale,
