@@ -4,15 +4,22 @@
     {
       "version": "pr-34",
       "ref": "refs/pull/34/merge",
-      "sha": "2f9ac234a67ec91bd20fb1c360be68e373f0a7e3",
-      "timestamp": "2026-05-23T23:38:54.518Z",
+      "sha": "94a5549d97c2a486ad2932d511d74aa27bd2355a",
+      "timestamp": "2026-05-23T23:44:29.432Z",
       "commits": [
         {
-          "sha": "2f9ac234a67ec91bd20fb1c360be68e373f0a7e3",
+          "sha": "94a5549d97c2a486ad2932d511d74aa27bd2355a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-23T23:38:31Z",
-          "message": "Merge 3d25b120d7abdbb2e956333306cc7ada33a16f65 into ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c\n"
+          "timestamp": "2026-05-23T23:44:08Z",
+          "message": "Merge 1b1794669499c1893e90d0811a971a7c305e6a2d into ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c\n"
+        },
+        {
+          "sha": "1b1794669499c1893e90d0811a971a7c305e6a2d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T17:43:58-06:00",
+          "message": "docs(demos): address PR-34 round-3 review — exhaustive parse-outcome match + honest demo list\n\nTwo moderate findings, both about loud-failure boundaries [LAW:no-silent-fallbacks]:\n\n- Section 1's parse-error assertion only printed a diagnostic *if* parse\n  threw — so a regression that made parse silently return some default\n  would have emitted nothing and the demo would have appeared to pass.\n  Replaced the try/catch with a discriminated-union ParseOutcome (correct\n  | wrong-type | no-throw) computed once and matched into exactly one\n  printed line, so every possible outcome surfaces a diagnostic. The\n  type forbids the 'silent on no-throw' case at compile time rather\n  than at vibes. [LAW:types-are-the-program] The exhaustive match is\n  the proof: any new ParseOutcome variant would force a new diagnostic\n  branch before the code compiles.\n\n- README \"## Demos\" claimed 'Two interactive TUI demos' but package.json\n  actually defines seven other demo scripts (rich-config / dropdown-demo /\n  rich-dash / rich-template-bindings / rich-strip / rich-markup-plugins /\n  themes-and-color-studio). Restructured the section to list every demo\n  script that exists, grouped by 'detailed below', 'other interactive',\n  and 'non-interactive transcripts', with one-line summaries. The note\n  'the full set of available npm scripts is the authoritative list' makes\n  the relationship explicit: package.json is the canonical source, the\n  README is a curated view. [LAW:one-source-of-truth]\n\nnpm run lint clean; coverage verifier green; the new parse-outcome\nmatch preserves the original green ✓ output on the happy path.\n"
         },
         {
           "sha": "3d25b120d7abdbb2e956333306cc7ada33a16f65",
