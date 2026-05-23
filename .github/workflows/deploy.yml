@@ -1,0 +1,75 @@
+# [LAW:single-enforcer] Deployment is owned by this workflow alone.
+# Every event that produces a deployable artifact (master push, PR)
+# flows through the same pipeline; the multiplexer enforces the
+# versioned-subdirectory layout for both cases.
+#
+# [LAW:one-source-of-truth] The deploy "slot" name is computed once
+# (steps.version.outputs.slot) and read by both the VitePress build
+# (via VITEPRESS_BASE) and the multiplexer action (via `version:`).
+# Drift between the two would 404 every asset on the deployed page.
+#
+# [LAW:dataflow-not-control-flow] The same job runs on every event;
+# variability lives in the slot value (`master` vs `pr-<N>`), not in
+# whether steps execute. The shell branch on event_name produces a
+# single output value — data, not control flow at the workflow level.
+
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Serialize all deploys against the shared gh-pages branch — concurrent
+# pushes would force the multiplexer's rebase-retry path. One queue,
+# no cancel-on-supersede (we want every event to actually deploy).
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push to gh-pages
+      pull-requests: write  # sticky PR preview comment
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0    # multiplexer reads full git history for the per-deploy commit manifest
+
+      # Slot is the version subdirectory name. Master push → `master`;
+      # PR → `pr-<number>`. The multiplexer's auto-derivation produces
+      # the same names, but passing `version:` explicitly ties the
+      # build's base URL to the action's deploy slot via one shared
+      # variable, so the two cannot drift.
+      - name: Compute version slot
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "slot=pr-${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "slot=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build docs
+        env:
+          # docs/.vitepress/config.ts reads this. Must match the
+          # `version:` input below exactly or every deep asset 404s.
+          VITEPRESS_BASE: /${{ github.event.repository.name }}/${{ steps.version.outputs.slot }}/
+        run: npm run docs:build
+
+      - uses: brandon-fryslie/gh-pages-multiplexer@v1
+        with:
+          source-dir: docs/.vitepress/dist
+          version: ${{ steps.version.outputs.slot }}
+          # The VitePress build already emits absolute URLs rooted at
+          # VITEPRESS_BASE — no post-hoc rewriting needed.
+          base-path-mode: none
