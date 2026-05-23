@@ -4,15 +4,22 @@
     {
       "version": "pr-34",
       "ref": "refs/pull/34/merge",
-      "sha": "13fcddf7809799382b1c044fb4bc97dcd2aa989f",
-      "timestamp": "2026-05-23T23:24:31.419Z",
+      "sha": "f52777d19037ace1e8482edd679c338141f1b068",
+      "timestamp": "2026-05-23T23:33:02.573Z",
       "commits": [
         {
-          "sha": "13fcddf7809799382b1c044fb4bc97dcd2aa989f",
+          "sha": "f52777d19037ace1e8482edd679c338141f1b068",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-23T17:24:05-06:00",
-          "message": "Merge 8b2c2c2d4b96c74cc142a327f2d76a43855b3aa3 into ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c\n"
+          "timestamp": "2026-05-23T23:32:39Z",
+          "message": "Merge 14dfcfd6a5bef27f76e402bedf536417fc69a75d into ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c\n"
+        },
+        {
+          "sha": "14dfcfd6a5bef27f76e402bedf536417fc69a75d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T17:32:23-06:00",
+          "message": "docs(demos): address PR-34 review — derive count, fix SVG/section-7 labels, sync README\n\nFour Copilot findings, three architectural in shape:\n\n- Section 6's title hard-coded '19 bundled themes' against a 23-entry\n  catalog. Fixed at the right level: hoist TERMINAL_THEME_CATALOG to\n  module scope and derive the count from .length so the title and data\n  cannot disagree. [LAW:one-source-of-truth] Adding a theme bumps the\n  printed count automatically — the prose tracks the data.\n\n- Section 6's SVG_EXPORT_THEME blurb claimed it was 'paper-on-ink' and\n  used a 'light substrate', but the data file declares dark:true with\n  bg=#292929 (a near-black, not light). Rewrote the description to\n  match the actual theme: both DEFAULT and SVG_EXPORT are dark; SVG\n  lifts off pure black so an embedded SVG substrate is distinguishable\n  from a possible host-page background. (Pure inverted claim → load-\n  bearing-false comment; fix is to make the description honest, not\n  preserve the wrong framing.)\n\n- Section 7's printed sub-labels (7a/7b/7c/7d) were correct, but the\n  source comments numbered the five blocks 7a–7e (counting the\n  introductory Oklch-round-trip block). Re-numbered the comments to\n  match the printed labels: the intro is now labelled 'Setup' and the\n  four labeled sub-demos line up 7a/7b/7c/7d in both source and output.\n\n- README still listed 'npm run colors' and carried a full\n  '### rich-colors' demo section for a demo this PR removed. Replaced\n  the demo-command entry with 'npm run themes-and-color-studio' and\n  rewrote the section to describe the new flagship (eight sub-sections,\n  EXPORT_HTML usage, the actual modules/symbols exercised). Also\n  dropped two now-stale 'Not yet exercised' entries that proposed\n  features for the deleted rich-colors demo and that this flagship now\n  covers directly (Color downgrading, theme switcher hooks).\n\nnpm run lint clean; coverage verifier (test/coverage/coverage.test.ts)\nremains green — the themes-and-color-studio burn-down block stays\nempty because every owned export is still referenced by the demo.\n"
         },
         {
           "sha": "8b2c2c2d4b96c74cc142a327f2d76a43855b3aa3",
