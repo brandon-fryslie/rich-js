@@ -12,6 +12,7 @@ import { describe, it, expect } from "vitest";
 import path from "node:path";
 import {
   makeProgram,
+  assertProgramClean,
   collectPublicExports,
   collectReferencedOrigins,
   groupByOrigin,
@@ -30,6 +31,11 @@ describe("API → demo coverage", () => {
   // from — we use the same list for reference-collection so a single
   // directory walk underlies both halves of the check.
   const { program, checker, exampleFiles } = makeProgram();
+  // [LAW:no-silent-fallbacks] Precondition: the program compiles cleanly.
+  // Otherwise `getSymbolAtLocation` can quietly return undefined and the
+  // coverage results become misleading — a TS error masquerading as a
+  // missing demo.
+  assertProgramClean(program);
   const publicRows = collectPublicExports(program, checker);
   const universe = groupByOrigin(publicRows);
   const referenced = collectReferencedOrigins(exampleFiles, program, checker);
