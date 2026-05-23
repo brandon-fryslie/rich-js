@@ -119,13 +119,13 @@ WCAG contrast tooling (`contrastRatio`, `contrastFor`,
 barrel. The verifier deduplicates by origin, so referencing them
 through either entry counts once.
 
-**npm script.** `npm run themes-studio` →
+**npm script.** `npm run themes-and-color-studio` →
 `tsc -p tsconfig.demo.json && node dist-demo/examples/themes-and-color-studio/index.js`.
 
-**Allowlist burn-down.** Build ticket removes the
-`themes-and-color-studio` block of
-`test/coverage/coverage-allowlist.ts` (currently 23 entries) as real
-references land.
+**Allowlist burn-down.** Build ticket removes every burndown entry
+tagged `themes-and-color-studio` from
+`test/coverage/coverage-allowlist.ts` — i.e. the block under the
+`// -- Themes & Color Studio --` header — as real references land.
 
 ### renderables-gallery
 
@@ -162,8 +162,9 @@ but does not own a render loop or input. Boxes, the `Renderable` /
 
 **npm script.** `npm run renderables-gallery`.
 
-**Allowlist burn-down.** Build ticket removes the `renderables-gallery`
-block of `test/coverage/coverage-allowlist.ts` (currently 21 entries).
+**Allowlist burn-down.** Build ticket removes every burndown entry
+tagged `renderables-gallery` from `test/coverage/coverage-allowlist.ts`
+— i.e. the block under the `// -- Renderables Gallery --` header.
 
 ### widgets-playground
 
@@ -203,8 +204,9 @@ widget events, and every type the host integration needs to wire up
 
 **npm script.** `npm run widgets-playground`.
 
-**Allowlist burn-down.** Build ticket removes the `widgets-playground`
-block (currently 26 entries).
+**Allowlist burn-down.** Build ticket removes every burndown entry
+tagged `widgets-playground` from `test/coverage/coverage-allowlist.ts`
+— i.e. the block under the `// -- Widgets Playground --` header.
 
 ### markup-and-text-lab
 
@@ -242,8 +244,8 @@ and the `@promptctl/go-template-js` template bindings.
 `unregisterMarkupTag`, `renderMarkup`,
 `MarkupTagContext`, `MarkupTagHandler`, `RenderMarkupOptions`,
 `EMOJI`, `emojiReplace`, `Emoji`, `NoEmoji`,
-`Tag`, `MarkupError`, `escapeMarkup` (re-exposed as `escape`'s public
-name),
+`Tag`, `MarkupError`, `escapeMarkup` (the public name of `escape`
+from `core/markup`),
 `Highlighter`, `NullHighlighter`, `RegexHighlighter`, `ReprHighlighter`,
 `JSONHighlighter`, `ISO8601Highlighter`,
 `FlexStrip`, `FlexStripOptions`, `FlexAlign`.
@@ -252,10 +254,11 @@ name),
 `createRichTextEngine`, `richTextFuncs`, `paletteFuncs`,
 `renderTemplate`.
 
-**npm script.** `npm run markup-text-lab`.
+**npm script.** `npm run markup-and-text-lab`.
 
-**Allowlist burn-down.** Build ticket removes the
-`markup-and-text-lab` block (currently 37 entries).
+**Allowlist burn-down.** Build ticket removes every burndown entry
+tagged `markup-and-text-lab` from `test/coverage/coverage-allowlist.ts`
+— i.e. the block under the `// -- Markup & Text Lab --` header.
 
 ### live-progress-console
 
@@ -288,8 +291,10 @@ here.
 
 **npm script.** `npm run live-progress-console`.
 
-**Allowlist burn-down.** Build ticket removes the
-`live-progress-console` block (currently 12 entries).
+**Allowlist burn-down.** Build ticket removes every burndown entry
+tagged `live-progress-console` from
+`test/coverage/coverage-allowlist.ts` — i.e. the block under the
+`// -- Live, Progress & Console --` header.
 
 ## Deletions
 
@@ -298,20 +303,20 @@ Their `package.json` scripts are deleted at the same time — no shims,
 no aliases. [feedback:no-legacy-code]
 
 ```
-Existing demo                Fate                            Owning ticket
-───────────────────────────  ──────────────────────────────  ────────────────────
-rich-themes                  folded → themes-and-color       rich-demos-l2x.3
-rich-themes-transposed       folded → themes-and-color       rich-demos-l2x.3
-rich-theme-designer          folded → themes-and-color       rich-demos-l2x.3
-rich-colors                  folded → themes-and-color       rich-demos-l2x.3
-rich-config                  folded → widgets-playground     rich-demos-l2x.5
-dropdown-demo                folded → widgets-playground     rich-demos-l2x.5
-rich-markup-plugins          folded → markup-and-text-lab    rich-demos-l2x.6
-rich-strip                   folded → markup-and-text-lab    rich-demos-l2x.6
-rich-template-bindings       folded → markup-and-text-lab    rich-demos-l2x.6
-rich-dash                    folded → live-progress-console  rich-demos-l2x.7
-claude-sessions              deleted (see below)             rich-demos-l2x.4
-rich-explore                 deleted (see below)             rich-demos-l2x.4
+Existing demo                Fate                                  Owning ticket
+───────────────────────────  ────────────────────────────────────  ────────────────────
+rich-themes                  folded → themes-and-color-studio      rich-demos-l2x.3
+rich-themes-transposed       folded → themes-and-color-studio      rich-demos-l2x.3
+rich-theme-designer          folded → themes-and-color-studio      rich-demos-l2x.3
+rich-colors                  folded → themes-and-color-studio      rich-demos-l2x.3
+rich-config                  folded → widgets-playground           rich-demos-l2x.5
+dropdown-demo                folded → widgets-playground           rich-demos-l2x.5
+rich-markup-plugins          folded → markup-and-text-lab          rich-demos-l2x.6
+rich-strip                   folded → markup-and-text-lab          rich-demos-l2x.6
+rich-template-bindings       folded → markup-and-text-lab          rich-demos-l2x.6
+rich-dash                    folded → live-progress-console        rich-demos-l2x.7
+claude-sessions              deleted (see below)                   rich-demos-l2x.4
+rich-explore                 deleted (see below)                   rich-demos-l2x.4
 ```
 
 `claude-sessions` and `rich-explore` are deleted rather than folded as
