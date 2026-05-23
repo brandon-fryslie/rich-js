@@ -103,8 +103,18 @@ export interface PublicExport {
  * Build a TS Program that includes every entry module and every
  * `examples/**\/*.ts`. We compile both halves under one program so the
  * type-checker resolves symbols across the boundary cleanly.
+ *
+ * [LAW:one-source-of-truth] Returns the `exampleFiles` list the
+ * program was actually constructed from. Callers consume this list
+ * directly (e.g. for `collectReferencedOrigins`) rather than walking
+ * `examples/` a second time; two walks could resolve a different set
+ * than the program saw.
  */
-export function makeProgram(): { program: ts.Program; checker: ts.TypeChecker } {
+export function makeProgram(): {
+  program: ts.Program;
+  checker: ts.TypeChecker;
+  exampleFiles: readonly string[];
+} {
   const exampleFiles = listExampleFiles();
   const rootNames = [
     ...ENTRY_MODULES.map((p) => path.join(REPO_ROOT, p)),
@@ -121,7 +131,12 @@ export function makeProgram(): { program: ts.Program; checker: ts.TypeChecker } 
       esModuleInterop: true,
       noEmit: true,
       allowJs: false,
-      lib: ["lib.es2022.d.ts"],
+      // Canonical lib *name* form matching tsconfig.json — programmatic
+      // callers that pass the `lib.X.d.ts` filename bypass TS's
+      // lib-name resolution path. `"ES2022"` is the same string the
+      // repo's tsconfig uses, so the verifier sees the same ambient
+      // declaration surface the build does.
+      lib: ["ES2022"],
       // `["node"]` (not `[]`) because both `src/` and `examples/` reference
       // Node builtins (`node:fs`, `node:path`, `process`, `NodeJS.*`).
       // Without `@types/node` loaded, those resolutions degrade to `any`
@@ -132,7 +147,7 @@ export function makeProgram(): { program: ts.Program; checker: ts.TypeChecker } 
       types: ["node"],
     },
   });
-  return { program, checker: program.getTypeChecker() };
+  return { program, checker: program.getTypeChecker(), exampleFiles };
 }
 
 /**

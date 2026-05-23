@@ -35,7 +35,14 @@ const burndown = (flagship: Flagship, note?: string): AllowlistEntry =>
 
 /**
  * Keyed by canonical exposed name (see `extract.ts: canonicalNameFor`).
- * Order: alphabetical, to keep diffs reviewable.
+ *
+ * Order: grouped by flagship (themes-and-color-studio,
+ * renderables-gallery, widgets-playground, markup-and-text-lab,
+ * live-progress-console), alphabetical within each group. The
+ * flagship grouping makes the burn-down ergonomic — when ticket
+ * rich-demos-l2x.N lands its flagship's demos, the diff to this file
+ * is a single contiguous block deletion, not entries scattered across
+ * the file.
  */
 export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   // -- Themes & Color Studio ----------------------------------------------

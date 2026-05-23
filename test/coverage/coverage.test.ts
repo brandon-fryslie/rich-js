@@ -14,7 +14,6 @@ import {
   makeProgram,
   collectPublicExports,
   collectReferencedOrigins,
-  listExampleFiles,
   groupByOrigin,
   canonicalNameFor,
   originKey,
@@ -26,9 +25,11 @@ import { ALLOWLIST } from "./coverage-allowlist.js";
 describe("API → demo coverage", () => {
   // One Program / TypeChecker is reused across the three invariants
   // below — building it is the expensive step, and the three checks
-  // partition the same (universe, references) tuple.
-  const { program, checker } = makeProgram();
-  const exampleFiles = listExampleFiles();
+  // partition the same (universe, references) tuple. `exampleFiles`
+  // is the list `makeProgram()` actually constructed the program
+  // from — we use the same list for reference-collection so a single
+  // directory walk underlies both halves of the check.
+  const { program, checker, exampleFiles } = makeProgram();
   const publicRows = collectPublicExports(program, checker);
   const universe = groupByOrigin(publicRows);
   const referenced = collectReferencedOrigins(exampleFiles, program, checker);
