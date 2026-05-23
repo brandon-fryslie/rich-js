@@ -18,20 +18,59 @@
 import ts from "typescript";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readdirSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(TEST_DIR, "..", "..");
 
-// Derived once from `package.json` — the four public entry points. Adding
-// a new entry to `exports` (or removing one) requires updating this list,
-// and the verifier should fail if a listed path is missing or unparseable.
-export const ENTRY_MODULES: readonly string[] = [
-  "src/index.ts",
-  "src/themes/data/index.ts",
-  "src/themes/registry.ts",
-  "src/template-bindings/index.ts",
-] as const;
+// [LAW:one-source-of-truth] The public entry-module set is derived from
+// the `exports` field of `package.json` at test-load time — never a
+// hand-maintained list. Each subpath export's `import` target is a
+// `./dist/X.js` path, which the repo's tsconfig (rootDir: src, outDir:
+// dist) deterministically pairs with `src/X.ts`. We invert that pairing
+// here and assert each derived source file exists; a missing file
+// fails the verifier load loudly rather than silently dropping a
+// public surface from the coverage check.
+export const ENTRY_MODULES: readonly string[] = deriveEntryModules();
+
+function deriveEntryModules(): readonly string[] {
+  const pkgPath = path.join(REPO_ROOT, "package.json");
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+    exports?: Record<string, string | { import?: string }>;
+  };
+  if (!pkg.exports) {
+    throw new Error(
+      `coverage verifier: ${pkgPath} has no \`exports\` field; ` +
+        `nothing to derive the public entry-module set from`,
+    );
+  }
+  const entries: string[] = [];
+  for (const [exposed, target] of Object.entries(pkg.exports)) {
+    const importPath = typeof target === "string" ? target : target.import;
+    if (!importPath) {
+      throw new Error(
+        `coverage verifier: package.json exports['${exposed}'] has no ` +
+          `\`import\` field — cannot resolve its source entry`,
+      );
+    }
+    // Invert the tsc rootDir/outDir mapping: ./dist/X.js -> src/X.ts.
+    // This is the repo's convention encoded in tsconfig.json; if it
+    // changes, this transform changes with it (one place, not 4+).
+    const srcPath = importPath
+      .replace(/^\.\/dist\//, "src/")
+      .replace(/\.js$/, ".ts");
+    const absPath = path.join(REPO_ROOT, srcPath);
+    if (!existsSync(absPath)) {
+      throw new Error(
+        `coverage verifier: package.json exports['${exposed}'] -> ` +
+          `${importPath} mapped to ${srcPath}, but that file does not exist. ` +
+          `Check the dist→src convention in deriveEntryModules().`,
+      );
+    }
+    entries.push(srcPath);
+  }
+  return Object.freeze([...new Set(entries)]);
+}
 
 export const EXAMPLES_ROOT = "examples";
 
@@ -83,7 +122,14 @@ export function makeProgram(): { program: ts.Program; checker: ts.TypeChecker } 
       noEmit: true,
       allowJs: false,
       lib: ["lib.es2022.d.ts"],
-      types: [],
+      // `["node"]` (not `[]`) because both `src/` and `examples/` reference
+      // Node builtins (`node:fs`, `node:path`, `process`, `NodeJS.*`).
+      // Without `@types/node` loaded, those resolutions degrade to `any`
+      // and the symbol-alias chain we rely on can in principle fall
+      // through to unexpected origins. We don't link to tsconfig.demo.json
+      // directly — coupling the verifier to demo-build settings would
+      // make this test brittle to unrelated config changes.
+      types: ["node"],
     },
   });
   return { program, checker: program.getTypeChecker() };
@@ -220,8 +266,14 @@ function visitImports(sf: ts.SourceFile, onName: (id: ts.Identifier) => void): v
 }
 
 function isUnderSrc(absPath: string): boolean {
-  const srcRoot = path.join(REPO_ROOT, "src") + path.sep;
-  return absPath.startsWith(srcRoot);
+  // Use `path.relative` rather than `startsWith` on raw strings: this
+  // is robust to OS path-separator differences and to symlink/realpath
+  // variation. A path is "under src/" iff its relative form is non-empty,
+  // not absolute, and doesn't start with `..` (i.e. lives strictly
+  // inside the src tree).
+  const srcRoot = path.join(REPO_ROOT, "src");
+  const rel = path.relative(srcRoot, absPath);
+  return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
 /**
