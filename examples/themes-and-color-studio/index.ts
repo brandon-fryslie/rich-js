@@ -228,19 +228,44 @@ function section1ColorValues(): void {
   // ColorParseError is raised by ColorSpec.parse on unknown specs. The pixel
   // parsers above are intentionally permissive (they trust their callers);
   // see section 2 for the parse-time loud-failure boundary.
+  //
+  // The assertion runs the parse, catches the thrown value, and prints
+  // exactly one diagnostic line for every possible outcome — thrown the
+  // right type, thrown the wrong type, didn't throw at all. The "didn't
+  // throw" branch matters: without it, a regression that made parse
+  // silently return some default would emit nothing here and the demo
+  // would pass for the wrong reason. [LAW:no-silent-fallbacks]
+  type ParseOutcome =
+    | { kind: "correct" }
+    | { kind: "wrong-type"; got: string }
+    | { kind: "no-throw" };
+
+  let outcome: ParseOutcome;
   try {
     ColorSpec.parse("not-a-color");
+    outcome = { kind: "no-throw" };
   } catch (err) {
-    const ok = err instanceof ColorParseError;
-    out.print(
-      new RichText(
-        ok
-          ? "    ColorSpec.parse(\"not-a-color\") → ColorParseError thrown ✓"
-          : "    ColorSpec.parse(\"not-a-color\") raised the WRONG error type",
-        { style: ok ? "green" : "bold red" },
-      ),
-    );
+    outcome =
+      err instanceof ColorParseError
+        ? { kind: "correct" }
+        : { kind: "wrong-type", got: err instanceof Error ? err.name : typeof err };
   }
+  const diag: { text: string; style: string } =
+    outcome.kind === "correct"
+      ? {
+          text: '    ColorSpec.parse("not-a-color") → ColorParseError thrown ✓',
+          style: "green",
+        }
+      : outcome.kind === "wrong-type"
+      ? {
+          text: `    ColorSpec.parse("not-a-color") raised the WRONG error type (${outcome.got})`,
+          style: "bold red",
+        }
+      : {
+          text: '    ColorSpec.parse("not-a-color") DID NOT THROW — parse-time loud-failure regressed',
+          style: "bold red",
+        };
+  out.print(new RichText(diag.text, { style: diag.style }));
   out.print(blank());
 }
 

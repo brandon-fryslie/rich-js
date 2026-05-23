@@ -298,13 +298,23 @@ console.saveHtml("output.html");
 
 ## Demos
 
-Two interactive TUI demos exercise the library's renderables against real-world use cases (alt-screen mode, flicker-free rendering). The themes-and-color-studio and rich-strip demos are non-interactive one-shot transcripts.
+A handful of demos under `examples/` exercise the library against realistic use cases. Two are explained in detail below (`rich-explore` and `claude-sessions`); the rest are listed here with one-line summaries. The full set of available npm scripts is the authoritative list — `cat package.json | jq .scripts` to see them all.
 
 ```sh
-npm run demo                       # rich-explore: file browser
-npm run sessions                   # claude-sessions: Claude Code session browser
-npm run themes-and-color-studio    # themes-and-color-studio: color/palette/theme/contrast tour (one-shot)
-npm run strip                      # rich-strip: side-by-side joiner showcase (one-shot)
+# Detailed below
+npm run demo                       # rich-explore — TUI file browser + markdown/code reader (interactive)
+npm run sessions                   # claude-sessions — Claude Code session browser (interactive)
+
+# Other interactive demos
+npm run demo-inputs                # rich-config — TextInput / palette search
+npm run demo:dropdown              # dropdown-demo — Dropdown widget showcase
+npm run dash                       # rich-dash — Live dashboard
+npm run template-bindings          # rich-template-bindings — go-template / reactive bindings playground
+
+# Non-interactive transcripts
+npm run themes-and-color-studio    # color / palette / theme / contrast tour (eight sections)
+npm run strip                      # rich-strip — side-by-side joiner showcase
+npm run markup-plugins             # rich-markup-plugins — plugin-tag examples
 ```
 
 ### rich-explore — TUI file browser + markdown/code reader
