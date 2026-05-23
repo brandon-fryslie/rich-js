@@ -298,13 +298,13 @@ console.saveHtml("output.html");
 
 ## Demos
 
-Three interactive TUI demos exercise the library's renderables against real-world use cases. Each runs in alt-screen mode with flicker-free rendering. A fourth one-shot demo prints every built-in `Joiner` for visual comparison.
+Two interactive TUI demos exercise the library's renderables against real-world use cases (alt-screen mode, flicker-free rendering). The themes-and-color-studio and rich-strip demos are non-interactive one-shot transcripts.
 
 ```sh
-npm run demo               # rich-explore: file browser
-npm run sessions           # claude-sessions: Claude Code session browser
-npm run colors             # rich-colors: interactive color palette generator
-npm run strip              # rich-strip: side-by-side joiner showcase (one-shot)
+npm run demo                       # rich-explore: file browser
+npm run sessions                   # claude-sessions: Claude Code session browser
+npm run themes-and-color-studio    # themes-and-color-studio: color/palette/theme/contrast tour (one-shot)
+npm run strip                      # rich-strip: side-by-side joiner showcase (one-shot)
 ```
 
 ### rich-explore — TUI file browser + markdown/code reader
@@ -357,23 +357,28 @@ npm run sessions
 | `Panel` | Six distinct border-color schemes by block kind (cyan/blue/yellow/red/magenta/green) |
 | `Layout` | Column split (browser-on-top / viewer-on-bottom), dynamic height budgeting |
 
-### rich-colors — Interactive color palette generator
+### themes-and-color-studio — color, palette, theme, and contrast tour
 
-An interactive palette generator exploring `Color`, `Style`, and terminal color math. Generates palettes from seed colors, displays color swatches, and lets you adjust parameters interactively.
+A one-shot non-interactive demo that walks every public surface of the color subsystem in eight sections: ColorRgba values and parsing, ColorSpec and downgrade tables, color-system detection, the theme registry, PaletteResolver spec forms, every bundled `TerminalTheme` constant, OKLCH transposition (hue circle / chroma sweep / lightness invert / themeKeyForRoot), and the WCAG contrast toolkit.
 
 ```sh
-npm run colors
+npm run themes-and-color-studio                       # terminal output
+EXPORT_HTML=out.html npm run themes-and-color-studio  # also write a styled HTML transcript
 ```
 
 **Features exercised (incremental to above):**
 
 | Module | How it's used |
 |---|---|
-| `Color` | Direct `Color` construction, `blendRgb`, color math, palette generation |
-| `TerminalTheme` | `DEFAULT_TERMINAL_THEME`, `MONOKAI`, `SVG_EXPORT_THEME` theme constants |
-| `ANSI_COLOR_NAMES` | Named ANSI color enumeration and display |
-| `Style` | Direct `Style` construction from `Color` objects (not just string parsing) |
-| `Spinner` | Visual activity indicator in input mode |
+| `ColorRgba` / `parseRgbHex` / `parseRgbaHex` / `blendRgb` | Pixel-level values, two hex parsers, linear blend, alpha compositing |
+| `ColorSpec` / `ColorDepth` | Every factory; downgrade across `STANDARD_TABLE` / `EIGHT_BIT_TABLE` / `WINDOWS_TABLE`; `ANSI_COLOR_NAMES` lookups; `ColorParseError` |
+| `detectColorSystem` / `resolveColorSystem` | Env-driven color-system detection with `DetectColorOptions` fixtures; spec-string resolution |
+| `Palette` / `PaletteResolver` / `buildPalette` | Bare / modifier / alpha / auto spec forms against gruvbox; `BaseColors` → derived `text-*` / `on-*` / `*-muted` vars |
+| Theme registry | `getThemePalette` / `listThemePalettes` / `getThemeBaseColors` walking every bundled theme; raw `THEMES` / `ThemePaletteData` via subpath |
+| `TerminalTheme` constants | All bundled constants (`DEFAULT`, `SVG_EXPORT`, `MONOKAI`, `NORD`, `GRUVBOX`, `DRACULA`, `TOKYO_NIGHT`, `FLEXOKI`, `CYBERPUNK`, `CATPPUCCIN_*`, `SOLARIZED_*`, `ROSE_PINE*`, `ATOM_ONE_*`, `TEXTUAL_*`) |
+| `Oklch` / `transposePalette` / `themeKeyForRoot` | Round-trip + `IDENTITY` / `INVERT_LIGHTNESS`; hue circle; chroma sweep; light↔dark invert; `ANCHORED_ROOTS` / `isAnchored` |
+| `relativeLuminance` / `contrastRatio` / `contrastFor` / `ensureContrast` | WCAG contrast matrix, hue-preserving lightness adjustment to clear the AA threshold |
+| `Console` record / `saveHtml` | Optional HTML export via `EXPORT_HTML=path`; same render pipeline drives both terminal and file output |
 
 ---
 
@@ -402,8 +407,7 @@ Renderables: `Layout`, `Panel`, `Tree`, `Table`/`Column`, `Markdown`, `Syntax`, 
 | `Prompt` / `IntPrompt` / `FloatPrompt` / `Confirm` | Interactive input via readline | Add a go-to-path prompt in rich-explore; incompatible with raw-mode loops so needs a modal switch |
 | `emoji` | Shortcode substitution (`:smiley:` → 😃) | Enable in markup-rendered block text in claude-sessions |
 | `NullHighlighter` / `RegexHighlighter` | Specialized highlighters not yet exercised | `RegexHighlighter` for search-term highlighting in claude-sessions |
-| `StyleStack` / `Theme` / `DEFAULT_STYLES` | Theme customization | Add a theme switcher to rich-colors |
-| `Color` downgrading | `standard` / `256` / `windows` color system fallbacks | Add a color-system picker to rich-colors |
+| `StyleStack` / `Theme` / `DEFAULT_STYLES` | Theme customization | Add a Console style-theme switcher demo |
 | `Console` recording | `record`, `exportText`, `exportHtml`, `saveHtml` | Add an export-to-HTML feature to claude-sessions |
 | Most `Box` variants | `ASCII`, `SQUARE`, `MINIMAL`, `HEAVY`, `DOUBLE`, `MARKDOWN`, etc. | Add a box-style picker to rich-explore's Panel borders |
 | `Measurement.get()` / `measureRenderables` | Explicit width measurement | Used internally; could add a measurement debug overlay |

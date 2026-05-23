@@ -554,8 +554,43 @@ function section5PaletteResolver(): void {
 // SECTION 6 — Every pre-built TerminalTheme constant
 // ===========================================================================
 
+// [LAW:one-source-of-truth] One catalog of (label, TerminalTheme) tuples;
+// every reference to a pre-built constant happens here. Adding a theme means
+// adding one row — the section title's count derives from `catalog.length`,
+// so the prose can't drift the way a hardcoded "N bundled themes" would.
+const TERMINAL_THEME_CATALOG: ReadonlyArray<{ label: string; theme: TerminalTheme }> = [
+  { label: "DEFAULT_TERMINAL_THEME", theme: DEFAULT_TERMINAL_THEME },
+  { label: "SVG_EXPORT_THEME",       theme: SVG_EXPORT_THEME },
+  { label: "MONOKAI",                theme: MONOKAI },
+  { label: "NORD",                   theme: NORD },
+  { label: "GRUVBOX",                theme: GRUVBOX },
+  { label: "DRACULA",                theme: DRACULA },
+  { label: "TOKYO_NIGHT",            theme: TOKYO_NIGHT },
+  { label: "FLEXOKI",                theme: FLEXOKI },
+  { label: "CYBERPUNK",              theme: CYBERPUNK },
+  { label: "CATPPUCCIN_MOCHA",       theme: CATPPUCCIN_MOCHA },
+  { label: "CATPPUCCIN_LATTE",       theme: CATPPUCCIN_LATTE },
+  { label: "CATPPUCCIN_FRAPPE",      theme: CATPPUCCIN_FRAPPE },
+  { label: "CATPPUCCIN_MACCHIATO",   theme: CATPPUCCIN_MACCHIATO },
+  { label: "SOLARIZED_DARK",         theme: SOLARIZED_DARK },
+  { label: "SOLARIZED_LIGHT",        theme: SOLARIZED_LIGHT },
+  { label: "ROSE_PINE",              theme: ROSE_PINE },
+  { label: "ROSE_PINE_MOON",         theme: ROSE_PINE_MOON },
+  { label: "ROSE_PINE_DAWN",         theme: ROSE_PINE_DAWN },
+  { label: "ATOM_ONE_DARK",          theme: ATOM_ONE_DARK },
+  { label: "ATOM_ONE_LIGHT",         theme: ATOM_ONE_LIGHT },
+  { label: "TEXTUAL_DARK",           theme: TEXTUAL_DARK },
+  { label: "TEXTUAL_LIGHT",          theme: TEXTUAL_LIGHT },
+  { label: "TEXTUAL_ANSI",           theme: TEXTUAL_ANSI },
+];
+
 function section6TerminalThemes(): void {
-  out.print(sectionHeader(6, "TerminalTheme constants — 19 bundled themes"));
+  out.print(
+    sectionHeader(
+      6,
+      `TerminalTheme constants — ${TERMINAL_THEME_CATALOG.length} bundled themes`,
+    ),
+  );
   out.print(
     blurb(
       "Each bundled theme exposes a `TerminalTheme` constant alongside its " +
@@ -566,34 +601,7 @@ function section6TerminalThemes(): void {
   );
   out.print(blank());
 
-  // [LAW:one-source-of-truth] One catalog of (label, TerminalTheme) tuples;
-  // every reference to a pre-built constant happens here. Adding a theme
-  // means adding one row.
-  const catalog: Array<{ label: string; theme: TerminalTheme }> = [
-    { label: "DEFAULT_TERMINAL_THEME", theme: DEFAULT_TERMINAL_THEME },
-    { label: "SVG_EXPORT_THEME",       theme: SVG_EXPORT_THEME },
-    { label: "MONOKAI",                theme: MONOKAI },
-    { label: "NORD",                   theme: NORD },
-    { label: "GRUVBOX",                theme: GRUVBOX },
-    { label: "DRACULA",                theme: DRACULA },
-    { label: "TOKYO_NIGHT",            theme: TOKYO_NIGHT },
-    { label: "FLEXOKI",                theme: FLEXOKI },
-    { label: "CYBERPUNK",              theme: CYBERPUNK },
-    { label: "CATPPUCCIN_MOCHA",       theme: CATPPUCCIN_MOCHA },
-    { label: "CATPPUCCIN_LATTE",       theme: CATPPUCCIN_LATTE },
-    { label: "CATPPUCCIN_FRAPPE",      theme: CATPPUCCIN_FRAPPE },
-    { label: "CATPPUCCIN_MACCHIATO",   theme: CATPPUCCIN_MACCHIATO },
-    { label: "SOLARIZED_DARK",         theme: SOLARIZED_DARK },
-    { label: "SOLARIZED_LIGHT",        theme: SOLARIZED_LIGHT },
-    { label: "ROSE_PINE",              theme: ROSE_PINE },
-    { label: "ROSE_PINE_MOON",         theme: ROSE_PINE_MOON },
-    { label: "ROSE_PINE_DAWN",         theme: ROSE_PINE_DAWN },
-    { label: "ATOM_ONE_DARK",          theme: ATOM_ONE_DARK },
-    { label: "ATOM_ONE_LIGHT",         theme: ATOM_ONE_LIGHT },
-    { label: "TEXTUAL_DARK",           theme: TEXTUAL_DARK },
-    { label: "TEXTUAL_LIGHT",          theme: TEXTUAL_LIGHT },
-    { label: "TEXTUAL_ANSI",           theme: TEXTUAL_ANSI },
-  ];
+  const catalog = TERMINAL_THEME_CATALOG;
 
   for (const { label, theme } of catalog) {
     const bg = theme.backgroundColor;
@@ -617,14 +625,16 @@ function section6TerminalThemes(): void {
   }
   out.print(blank());
 
-  // Highlight the SVG-export theme: it intentionally uses a *light* substrate
-  // (because rendered SVG is typically viewed on a light page), distinct from
-  // DEFAULT_TERMINAL_THEME's terminal-friendly dark.
+  // SVG_EXPORT_THEME is the palette intended for SVG-format transcripts of
+  // terminal output (a near-black `#292929` substrate distinct from pure
+  // `#000000`, plus alpha-laden overlay colors in its data file for cursor
+  // and selection shading). It is still a `dark: true` theme — the comparison
+  // is between two dark substrates, not a dark-vs-light flip.
   out.print(
     dim(
       `    SVG_EXPORT_THEME.bg=${SVG_EXPORT_THEME.backgroundColor.hex}  ` +
         `vs DEFAULT_TERMINAL_THEME.bg=${DEFAULT_TERMINAL_THEME.backgroundColor.hex} — ` +
-        `the SVG theme is paper-on-ink because SVGs render on web pages, not terminals.`,
+        `both dark; SVG_EXPORT lifts off pure black so the substrate is visible against an SVG-host page.`,
     ),
   );
   out.print(blank());
@@ -646,7 +656,8 @@ function section7Transposition(): void {
   );
   out.print(blank());
 
-  // 7a — Oklch round-trip and the IDENTITY fast path.
+  // Setup: Oklch round-trip + IDENTITY/INVERT_LIGHTNESS shape checks. The
+  // labeled sub-demos (7a–7d) start after this intro.
   const sample = parseRgbHex("83a598"); // gruvbox aqua
   const okl = Oklch.fromRgba(sample);
   const back = okl.toRgba();
@@ -666,7 +677,7 @@ function section7Transposition(): void {
   );
   out.print(blank());
 
-  // 7b — Hue circle: six rotations of gruvbox. The same swatchRow shape as
+  // 7a — Hue circle: six rotations of gruvbox. The same swatchRow shape as
   // section 4 / 6, but the data flowing through is the *transposed* palette.
   const base = getThemePalette("gruvbox");
   out.print(bold("    7a. Hue circle — gruvbox, six rotations"));
@@ -692,7 +703,7 @@ function section7Transposition(): void {
   out.print(blurb("ʟ = anchored (hue locked by ANCHORED_ROOTS)."));
   out.print(blank());
 
-  // 7c — Chroma sweep on nord. Same dataflow, different ThemeKey axis.
+  // 7b — Chroma sweep on nord. Same dataflow, different ThemeKey axis.
   const nord = getThemePalette("nord");
   out.print(bold("    7b. Chroma sweep — nord, five saturation levels"));
   out.print(blurb("chromaScale 0 = grayscale, 1 = identity, >1 = supersaturated."));
@@ -715,7 +726,7 @@ function section7Transposition(): void {
   }
   out.print(blank());
 
-  // 7d — INVERT_LIGHTNESS: algorithmic light theme from a dark one.
+  // 7c — INVERT_LIGHTNESS: algorithmic light theme from a dark one.
   out.print(bold("    7c. INVERT_LIGHTNESS — algorithmic vs hand-authored light"));
   out.print(
     blurb(
@@ -742,7 +753,7 @@ function section7Transposition(): void {
   }
   out.print(blank());
 
-  // 7e — themeKeyForRoot: aim a theme's *tonic* at a target hue and watch
+  // 7d — themeKeyForRoot: aim a theme's *tonic* at a target hue and watch
   // the rest follow. Anchored vars still keep their hue; everything else
   // shifts by exactly the interval that carries `primary` to 200°.
   out.print(bold("    7d. themeKeyForRoot — aim gruvbox's primary at 200°"));
