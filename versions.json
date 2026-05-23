@@ -4,15 +4,22 @@
     {
       "version": "pr-34",
       "ref": "refs/pull/34/merge",
-      "sha": "f52777d19037ace1e8482edd679c338141f1b068",
-      "timestamp": "2026-05-23T23:33:02.573Z",
+      "sha": "2f9ac234a67ec91bd20fb1c360be68e373f0a7e3",
+      "timestamp": "2026-05-23T23:38:54.518Z",
       "commits": [
         {
-          "sha": "f52777d19037ace1e8482edd679c338141f1b068",
+          "sha": "2f9ac234a67ec91bd20fb1c360be68e373f0a7e3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-23T23:32:39Z",
-          "message": "Merge 14dfcfd6a5bef27f76e402bedf536417fc69a75d into ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c\n"
+          "timestamp": "2026-05-23T23:38:31Z",
+          "message": "Merge 3d25b120d7abdbb2e956333306cc7ada33a16f65 into ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c\n"
+        },
+        {
+          "sha": "3d25b120d7abdbb2e956333306cc7ada33a16f65",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T17:38:22-06:00",
+          "message": "docs(demos): address PR-34 round-2 review — derive every prose count from data\n\nThree more Copilot findings, all the same shape as round 1's first finding:\nprose-count drift. The fix isn't 'update the number' — it's to design the\nshape so the number cannot drift in the first place. [LAW:one-source-of-truth]\n\nThe reported findings:\n- Section 2 blurb claimed downgrade uses 'one of three ColorTables:\n  STANDARD/EIGHT_BIT/WINDOWS'. The source explicitly treats WINDOWS as\n  unreachable from performDowngrade (it's a *detection* result, not a\n  downgrade target). Rewrote the blurb to describe what actually happens:\n  downgrade quantizes through STANDARD_TABLE and EIGHT_BIT_TABLE;\n  WINDOWS_TABLE is a public LUT for the Windows console palette.\n- Section 2 downgrade-walk comment said 'three targets'; the code only\n  downgrades to two. Reworded to describe the three *renderings*\n  (truecolor original + two quantization steps) accurately.\n- Section 3 fixture comment said 'Three deterministic env fixtures' but\n  the cases array has four. Dropped the count and replaced with the WHY\n  (each fixture exercises a specific detection branch).\n\nProactive sweep — same anti-pattern, other instances:\n- 'blendRgb — five steps' → 'steps' (count dropped; the array is the\n  truth).\n- 'Six is the sweet spot ... at 120 cells' (SEMANTIC_VARS comment) →\n  'Sized to fit on one line of the configured console width' (drops both\n  the hardcoded 6 and the hardcoded 120).\n- '7a. Hue circle — six rotations' (printed + comment) → derived from\n  HUE_ROTATIONS.length, so adding or removing a rotation updates the\n  printed count automatically. Same fix as round 1's catalog.length.\n- '7b. Chroma sweep — five saturation levels' → derived from\n  CHROMA_SCALES.length, same shape.\n\nAfter this pass there are no hand-maintained counts in prose anywhere\nin this file; every numeric mention in section titles either describes\na real domain quantity (degrees, ratios, indices in standard ANSI) or\nis derived from the data it claims to count.\n\nnpm run lint clean; test/coverage/coverage.test.ts green.\n"
         },
         {
           "sha": "14dfcfd6a5bef27f76e402bedf536417fc69a75d",
