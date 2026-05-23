@@ -4,15 +4,22 @@
     {
       "version": "pr-32",
       "ref": "refs/pull/32/merge",
-      "sha": "6b0ecf167eada2339b06cad4d4e0693cff6ae6b2",
-      "timestamp": "2026-05-23T03:48:15.828Z",
+      "sha": "7508af5843da514f8827bee224dda12e0e42bd7f",
+      "timestamp": "2026-05-23T03:53:18.960Z",
       "commits": [
         {
-          "sha": "6b0ecf167eada2339b06cad4d4e0693cff6ae6b2",
+          "sha": "7508af5843da514f8827bee224dda12e0e42bd7f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-23T03:47:54Z",
-          "message": "Merge 47c76e66ed06a2136a68a0be69f137471c511f70 into 7162eec80728085ba63a052a7d75923d421c5580\n"
+          "timestamp": "2026-05-23T03:52:57Z",
+          "message": "Merge 2887895236d8f51431287f30aaa1e5441953cd93 into 7162eec80728085ba63a052a7d75923d421c5580\n"
+        },
+        {
+          "sha": "2887895236d8f51431287f30aaa1e5441953cd93",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-22T21:52:48-06:00",
+          "message": "fix(coverage): canonicalNameFor stability + cross-platform node_modules filter\n\nA. canonicalNameFor's old strategy (alphabetically smallest exposedAs\n   across all entries) could shift if a new earlier-named re-export\n   was added — the doc-comment claimed stability the implementation\n   could not honor.\n\n   New rule encodes the stability claim into the type:\n   walk ENTRY_MODULES in package.json#exports order; return the\n   exposure from the highest-priority entry the origin appears in\n   (alphabetic tie-break only within one entry, for the rare same-\n   module rename case). Since ENTRY_MODULES[0] is the primary public\n   surface (./ -> src/index.ts), and most multi-exposed symbols are\n   surfaced there first, the canonical key cannot shift by adding a\n   new exposure to a lower-priority entry. A rename within the\n   primary entry DOES shift the key — correct, because that is a\n   meaningful change to the public API.\n\n   Verified: ThemeName, createRichTextEngine, richTextFuncs (and other\n   multi-exposed symbols) all resolve their canonical name to the\n   src/index.ts exposure name.\n\nB. assertProgramClean's node_modules path filter used .includes('/node_modules/')\n   — likely fine because TS normalizes paths to / internally, but\n   brittle on a custom host that hands back native Windows separators.\n   Now splits on /[\\\\/]/ and checks for 'node_modules' as a path\n   segment. Robust across platforms and reads more clearly as 'is\n   this path under a node_modules directory.'\n"
         },
         {
           "sha": "47c76e66ed06a2136a68a0be69f137471c511f70",
