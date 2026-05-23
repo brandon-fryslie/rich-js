@@ -4,15 +4,22 @@
     {
       "version": "pr-32",
       "ref": "refs/pull/32/merge",
-      "sha": "fe5d3161ad6927813a4271817fa20e56a518e136",
-      "timestamp": "2026-05-23T03:20:08.735Z",
+      "sha": "91ab86510c70026873cd625170b8122a6bdb431a",
+      "timestamp": "2026-05-23T03:31:37.518Z",
       "commits": [
         {
-          "sha": "fe5d3161ad6927813a4271817fa20e56a518e136",
+          "sha": "91ab86510c70026873cd625170b8122a6bdb431a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-23T03:19:44Z",
-          "message": "Merge 70310d15d63849215ad83b1faa3595a1c1e56ab4 into 7162eec80728085ba63a052a7d75923d421c5580\n"
+          "timestamp": "2026-05-23T03:31:15Z",
+          "message": "Merge 06732009bceac8b0fa65aa6f182b7cfe17b5e08a into 7162eec80728085ba63a052a7d75923d421c5580\n"
+        },
+        {
+          "sha": "06732009bceac8b0fa65aa6f182b7cfe17b5e08a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-22T21:30:57-06:00",
+          "message": "fix(coverage,deploy): address PR-32 review findings\n\nSix findings from Copilot, all valid:\n\n1. extract.ts: ENTRY_MODULES is now derived from package.json#exports\n   at test-load time, not a hand-list. The dist→src mapping inverts the\n   tsc rootDir/outDir convention; each derived source path is asserted\n   to exist on disk so a misconfigured exports entry fails the verifier\n   load loudly. [LAW:one-source-of-truth] now honored by the\n   implementation as well as the comment.\n\n2. extract.ts: types: ['node'] (not []) so Node-builtin references in\n   src/ and examples/ resolve through the proper @types/node ambient\n   declarations rather than degrading to any. Not coupled to\n   tsconfig.demo.json — coupling would make the verifier brittle to\n   unrelated build-config changes.\n\n3. extract.ts: isUnderSrc() uses path.relative + isAbsolute/startsWith('..')\n   instead of raw-string startsWith. Robust to OS path separator and\n   symlink/realpath differences.\n\n4. coverage.test.ts: fix redundant.push indentation to match the\n   enclosing if-block body.\n\n5. coverage.test.ts: formatGap renders origin.file relative to\n   REPO_ROOT — portable error output, not tied to checkout path.\n\n6. deploy.yml: skip deploy job on fork PRs. GitHub forces GITHUB_TOKEN\n   to read-only for fork pull_request events (correctly), so the\n   gh-pages push and sticky-comment write would otherwise fail noisily.\n   The if-condition lives at the exact trust boundary\n   (head.repo.full_name == github.repository). Fork PRs still run\n   ci.yml; preview-for-fork-PRs requires the workflow_run two-stage\n   pattern, deferred.\n\nAll checks: vitest green (8867 pass / 7 skip), tsc clean, yaml valid.\n"
         },
         {
           "sha": "70310d15d63849215ad83b1faa3595a1c1e56ab4",
