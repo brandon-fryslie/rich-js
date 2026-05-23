@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-34",
+      "ref": "refs/pull/34/merge",
+      "sha": "13fcddf7809799382b1c044fb4bc97dcd2aa989f",
+      "timestamp": "2026-05-23T23:24:31.419Z",
+      "commits": [
+        {
+          "sha": "13fcddf7809799382b1c044fb4bc97dcd2aa989f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T17:24:05-06:00",
+          "message": "Merge 8b2c2c2d4b96c74cc142a327f2d76a43855b3aa3 into ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c\n"
+        },
+        {
+          "sha": "8b2c2c2d4b96c74cc142a327f2d76a43855b3aa3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T17:22:37-06:00",
+          "message": "feat(demos): themes-and-color-studio flagship — folds 4 demos, burns down 23 allowlist entries (rich-demos-l2x.3)\n\nOne non-interactive flagship demo replaces four overlapping ones\n(rich-themes, rich-themes-transposed, rich-theme-designer, rich-colors).\n[LAW:no-mode-explosion] [LAW:one-source-of-truth]\n\n# Shape\n\nSingle file orchestrating eight sections as data, each exercising a layer\nof the public API:\n\n  1. Color values — ColorRgba, parseRgbHex/parseRgbaHex, blendRgb,\n     compositeOver, ColorParseError.\n  2. ColorSpec — factories (parse/fromAnsi/fromRgba/fromRgb/default),\n     ColorDepth enum, downgrade across STANDARD_TABLE / EIGHT_BIT_TABLE /\n     WINDOWS_TABLE, ANSI_COLOR_NAMES lookups.\n  3. System detection — detectColorSystem with DetectColorOptions over\n     four env fixtures, resolveColorSystem spec strings.\n  4. Theme registry — listThemePalettes / getThemePalette /\n     getThemeBaseColors walking every bundled theme, plus the raw\n     THEMES / ThemePaletteData / ThemeName / ThemeBaseColors via the\n     ./themes/data and ./themes/registry subpaths.\n  5. PaletteResolver — bare / modifier / alpha / auto / composed specs\n     against gruvbox; buildPalette + BaseColors to show derived\n     primary-muted / text-primary / on-primary vars.\n  6. TerminalTheme constants — all 23 bundled constants in one catalog\n     row each (DEFAULT, SVG_EXPORT, MONOKAI, NORD, GRUVBOX, DRACULA,\n     TOKYO_NIGHT, FLEXOKI, CYBERPUNK, CATPPUCCIN_*, SOLARIZED_*,\n     ROSE_PINE*, ATOM_ONE_*, TEXTUAL_*).\n  7. OKLCH transposition — Oklch / IDENTITY / INVERT_LIGHTNESS /\n     isIdentityKey, transposePalette hue circle + chroma sweep + invert,\n     themeKeyForRoot aiming a tonic at 200°, ANCHORED_ROOTS / isAnchored\n     visibly locking error/success/warning hue.\n  8. WCAG contrast — relativeLuminance / contrastRatio / contrastFor /\n     ensureContrast across a gruvbox matrix plus three hard cases where\n     ensureContrast slides L from <2:1 up to ≥4.5:1 while preserving hue.\n\n[LAW:dataflow-not-control-flow] SECTIONS is the order; the orchestrator\nloops over a function array. Section internals iterate data tables\n(theme catalogs, spec lists, env fixtures) so adding a row never\nrequires editing logic.\n\n[LAW:single-enforcer] bgFgStyle is the only place the demo flattens\nalpha + applies ensureContrast(4.5). Every styled cell goes through it.\n\n# Folded\n\n- examples/rich-themes/                    (palette walk)\n- examples/rich-themes-transposed/         (hue circle, chroma, invert)\n- examples/rich-theme-designer/            (interactive picker)\n- examples/rich-colors/                    (interactive color browser)\n\nThe interactive widget-based demos (theme-designer, colors) intentionally\ndo not get a TUI replacement here — their widget references belong to\nwidgets-playground (rich-demos-l2x.5) and the actual coverage they\nprovided for color/theme APIs is now satisfied non-interactively. The\nflagship's spec contract was 'exercises every mapped API,' not 'preserves\nevery UX.' [feedback:no-legacy-code]\n\n# Allowlist burn-down (23 entries → 0)\n\nANCHORED_ROOTS, BaseColors, ColorTable, DetectColorOptions,\nEIGHT_BIT_TABLE, Oklch, ResolveContext, TEXTUAL_ANSI, TEXTUAL_DARK,\nTEXTUAL_LIGHT, THEMES, ThemeBaseColors, ThemeName, ThemePaletteData,\nbuildPalette, detectColorSystem, getThemeBaseColors, isAnchored,\nisIdentityKey, parseRgbaHex, relativeLuminance, resolveColorSystem,\nthemeKeyForRoot.\n\nVerified via test/coverage/coverage.test.ts: removing the entries with\nthe demo in place leaves the verifier green; removing any one without a\nmatching reference would fail loudly.\n\n# Test cleanup\n\ntest/examples/transpose-explore.test.ts is removed alongside its\ndemo — it tested the explorer's internal model (reduce, previewCells,\nrenderFrame, framesToSegments, appMock, renderShowcase), not the public\nAPI. [LAW:behavior-not-structure] Public-API behavior is covered by\ntest/themes/transpose.test.ts, test/themes/colorMath.test.ts, and\ntest/core/oklch.test.ts.\n\n# npm script\n\n  npm run themes-and-color-studio                # terminal\n  EXPORT_HTML=out.html npm run themes-and-color-studio  # +HTML export\n\nOld scripts removed: colors, theme-designer, themes, themes:transposed,\nthemes:explore.\n\nCloses rich-demos-l2x.3.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ed7e2ed3fdefc8f99d32fe32a733a95f6a6b195c",
