@@ -9,6 +9,7 @@
 // time; the *invariants* are stable.
 
 import { describe, it, expect } from "vitest";
+import path from "node:path";
 import {
   makeProgram,
   collectPublicExports,
@@ -17,6 +18,7 @@ import {
   groupByOrigin,
   canonicalNameFor,
   originKey,
+  REPO_ROOT,
   type OriginInfo,
 } from "./extract.js";
 import { ALLOWLIST } from "./coverage-allowlist.js";
@@ -93,7 +95,7 @@ describe("API → demo coverage", () => {
           entry.kind === "burndown"
             ? `burndown → ${entry.flagship}`
             : `permanent: ${entry.reason}`;
-      redundant.push(`${name} (${detail})`);
+        redundant.push(`${name} (${detail})`);
       }
     }
     if (redundant.length > 0) {
@@ -110,5 +112,8 @@ function formatGap(canonicalName: string, info: OriginInfo): string {
   const exposures = info.exposures
     .map((e) => `${e.exposedAs} (from ${e.entry})`)
     .join(", ");
-  return `  - ${canonicalName}: exposed as ${exposures}; declared in ${info.origin.file}`;
+  // Render relative to REPO_ROOT so error output is portable across
+  // checkout locations and machines (CI vs local agent worktrees etc.).
+  const relFile = path.relative(REPO_ROOT, info.origin.file);
+  return `  - ${canonicalName}: exposed as ${exposures}; declared in ${relFile}`;
 }

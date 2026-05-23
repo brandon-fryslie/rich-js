@@ -29,6 +29,16 @@ concurrency:
 
 jobs:
   deploy:
+    # [LAW:single-enforcer] Trust boundary lives at exactly one place.
+    # For fork PRs, GitHub forces GITHUB_TOKEN to read-only (correctly —
+    # untrusted PR code cannot have write access to the base repo), so
+    # the push to gh-pages and the sticky comment would both fail. Skip
+    # the deploy job entirely in that case. Fork PRs still get CI (via
+    # ci.yml) for correctness checks; previewing fork PRs requires the
+    # workflow_run pattern (build in untrusted ctx → deploy in trusted
+    # ctx), which is out of scope for now. Master pushes and same-repo
+    # PRs always deploy.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write       # push to gh-pages
