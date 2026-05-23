@@ -4,15 +4,22 @@
     {
       "version": "pr-32",
       "ref": "refs/pull/32/merge",
-      "sha": "91ab86510c70026873cd625170b8122a6bdb431a",
-      "timestamp": "2026-05-23T03:31:37.518Z",
+      "sha": "58804bee09f9b3d7b7a0609d9cb7cc1bdca9043c",
+      "timestamp": "2026-05-23T03:38:29.823Z",
       "commits": [
         {
-          "sha": "91ab86510c70026873cd625170b8122a6bdb431a",
+          "sha": "58804bee09f9b3d7b7a0609d9cb7cc1bdca9043c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-23T03:31:15Z",
-          "message": "Merge 06732009bceac8b0fa65aa6f182b7cfe17b5e08a into 7162eec80728085ba63a052a7d75923d421c5580\n"
+          "timestamp": "2026-05-23T03:38:06Z",
+          "message": "Merge c9463de08415b3be56a03c6f9f43bc63ed7e54ac into 7162eec80728085ba63a052a7d75923d421c5580\n"
+        },
+        {
+          "sha": "c9463de08415b3be56a03c6f9f43bc63ed7e54ac",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-22T21:37:52-06:00",
+          "message": "fix(coverage): canonical lib name, single examples walk, accurate allowlist comment\n\nThree more findings from Copilot's second pass:\n\nA. extract.ts: lib option uses canonical name 'ES2022' (matching\n   tsconfig.json) instead of 'lib.es2022.d.ts'. The d.ts-filename form\n   bypasses TS's lib-name resolution path; the name form is what the\n   compiler processes through parseCompilerOptions.\n\nB. extract.ts + coverage.test.ts: examples/ is now walked exactly once.\n   makeProgram() returns the exampleFiles list it actually constructed\n   the program from, and the test consumes that list directly for\n   collectReferencedOrigins. [LAW:one-source-of-truth] — two walks of\n   the same tree are two derivations of the same logical set, and\n   could in principle diverge. One walk, one set, two consumers.\n\nC. coverage-allowlist.ts: comment no longer lies about ordering. The\n   entries are grouped by flagship and alphabetical within each group;\n   the comment now says that. [LAW:comments-explain-why-only] — the\n   correct version also explains why (contiguous block deletion when\n   a flagship lands its demos).\n"
         },
         {
           "sha": "06732009bceac8b0fa65aa6f182b7cfe17b5e08a",
