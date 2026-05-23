@@ -1,0 +1,34 @@
+{
+  "schema": 2,
+  "versions": [
+    {
+      "version": "pr-32",
+      "ref": "refs/pull/32/merge",
+      "sha": "fe5d3161ad6927813a4271817fa20e56a518e136",
+      "timestamp": "2026-05-23T03:20:08.735Z",
+      "commits": [
+        {
+          "sha": "fe5d3161ad6927813a4271817fa20e56a518e136",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-23T03:19:44Z",
+          "message": "Merge 70310d15d63849215ad83b1faa3595a1c1e56ab4 into 7162eec80728085ba63a052a7d75923d421c5580\n"
+        },
+        {
+          "sha": "70310d15d63849215ad83b1faa3595a1c1e56ab4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-22T21:19:20-06:00",
+          "message": "ci(deploy): docs via gh-pages-multiplexer (master + PR previews)\n\nReplace the single-deployment actions/deploy-pages workflow with the\ngh-pages-multiplexer action. This deploys to versioned subdirectories\non the gh-pages branch, generates an index page, injects a nav widget,\nand posts sticky PR preview comments.\n\nTriggers: push to master AND every pull_request — same job, same\nsteps; the only variance is the version slot value (`master` for\nmaster pushes, `pr-<N>` for PRs).\n\nPath A integration per the action's install guide: VitePress already\nreads process.env.VITEPRESS_BASE in docs/.vitepress/config.ts, so the\nbuild emits absolute URLs rooted at the deploy slot at build time and\nthe action runs with base-path-mode: none (no post-hoc rewriting).\n\nThe slot value (`steps.version.outputs.slot`) is the single source\nof truth read by both the VITEPRESS_BASE env var and the action's\n`version:` input — drift between them would 404 every deep asset.\n\nVerified locally with VITEPRESS_BASE=/rich-js/pr-32/: every href and\nsrc in the built dist resolves under that path with no <base> tag.\n\nAfter this lands, the repo's Pages source must be flipped from\n'workflow' to 'branch / gh-pages' for the multiplexer's pushes to be\nserved. The branch will be created by the first successful run.\n\n[LAW:single-enforcer] One workflow owns deployment; ci.yml continues\nto own validation. [LAW:one-source-of-truth] slot value is computed\nonce, consumed twice. [LAW:dataflow-not-control-flow] the workflow\nsteps run unconditionally; the slot value carries the variance.\n"
+        },
+        {
+          "sha": "30442a6500cf5e9d8fca81729b2a6b8379fa84ce",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-22T18:40:26-06:00",
+          "message": "test(coverage): API→demo coverage verifier (rich-demos-l2x.1)\n\nTurn 'every public export is demonstrated in examples/' into a machine\ncheck, keystone of epic rich-demos-l2x.\n\nThe verifier compiles src/ + examples/ as one TypeScript program and\nuses the type checker to resolve symbols across the boundary. Public\nexports are derived from getExportsOfModule() on the four entry\nmodules in package.json's exports field — never a hand-maintained\nlist. References in examples/ are resolved through SymbolFlags.Alias\nchains back to the same declaration sites, so deep imports cover the\nbarrel export for the same underlying symbol.\n\nThe allowlist (test/coverage/coverage-allowlist.ts) is the explicit\nescape hatch: every entry is either *burndown* (tagged with the\nflagship demo that will own coverage) or *permanent* (justified). The\ntest enforces three invariants over (universe, references, allowlist):\n\n  1. Every uncovered export is allowlisted with a justification.\n  2. Every allowlist entry points to a real public export.\n  3. No allowlist entry is already covered by a demo.\n\nInvariants 2 and 3 prevent the allowlist itself from becoming a silent\nfallback — dead entries fail loudly, redundant entries fail loudly.\n\nSeeded the burndown list (~100 entries) from today's uncovered set,\neach tagged with the flagship that will absorb it (themes-and-color-\nstudio, renderables-gallery, widgets-playground, markup-and-text-lab,\nlive-progress-console). Flagship-build tickets remove their entries\nas coverage lands.\n\nBehavior verified by injecting each of the three failure cases and\nobserving the precise error message.\n\n[LAW:verifiable-goals] 'All public functionality is demoed' is now a\nbuild that fails when a new export has no demo. [LAW:one-source-of-\ntruth] The public-export set comes from the entry modules; no hand-\nmaintained list. [LAW:no-silent-fallbacks] Three orthogonal invariants\nprevent allowlist drift.\n\nRefs: rich-demos-l2x.1\n"
+        }
+      ]
+    }
+  ]
+}
