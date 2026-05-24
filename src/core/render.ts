@@ -65,7 +65,6 @@ interface Piece {
   readonly text: string;
   readonly sgrCodes: string;
   readonly link: string | undefined;
-  readonly linkId: number;
 }
 
 function segmentToPiece(
@@ -76,13 +75,12 @@ function segmentToPiece(
   if (segment.text.length === 0) return undefined;
   const style = segment.style;
   if (!style || style.isNull || colorSystem === null) {
-    return { text: segment.text, sgrCodes: "", link: undefined, linkId: 0 };
+    return { text: segment.text, sgrCodes: "", link: undefined };
   }
   return {
     text: segment.text,
     sgrCodes: style.toSgrCodes(colorSystem),
     link: style.link,
-    linkId: style._linkId,
   };
 }
 
@@ -129,7 +127,7 @@ export function segmentsToString(
       let l = k + 1;
       while (l < j && pieces[l]!.link === link) l++;
       if (link) {
-        parts.push(`\x1b]8;id=${pieces[k]!.linkId};${link}\x1b\\`);
+        parts.push(`\x1b]8;;${link}\x1b\\`);
         for (let m = k; m < l; m++) parts.push(pieces[m]!.text);
         parts.push("\x1b]8;;\x1b\\");
       } else {

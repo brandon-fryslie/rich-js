@@ -107,8 +107,6 @@ export class StyleSyntaxError extends Error {
 // [LAW:one-source-of-truth] Parse cache is the single source for parsed Style instances
 const styleParseCache = new Map<string, Style>();
 
-let nextLinkId = 1;
-
 // --- Style ---
 
 export class Style {
@@ -129,8 +127,6 @@ export class Style {
   readonly overline: boolean | undefined;
   readonly link: string | undefined;
   readonly meta: Record<string, unknown> | undefined;
-  /** @internal */
-  readonly _linkId: number;
 
   constructor(options?: StyleOptions) {
     if (!options) {
@@ -151,7 +147,6 @@ export class Style {
       this.overline = undefined;
       this.link = undefined;
       this.meta = undefined;
-      this._linkId = 0;
       return;
     }
 
@@ -172,7 +167,6 @@ export class Style {
     this.overline = options.overline;
     this.link = options.link;
     this.meta = options.meta;
-    this._linkId = options.link ? nextLinkId++ : 0;
   }
 
   get isNull(): boolean {
@@ -356,7 +350,14 @@ export class Style {
     let result = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
 
     if (this.link) {
-      result = `\x1b]8;id=${this._linkId};${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
+      // [LAW:types-are-the-program] OSC 8 emits with empty params. The id=N
+      // annotation only matters when callers need to associate non-adjacent
+      // OSC 8 spans as one hover-group, which this pipeline never produces:
+      // adjacent same-link segments already share one OSC 8 wrap via the
+      // tree coalescer in render.ts. Omitting the id makes the byte stream a
+      // pure function of (style, text, colorSystem) — no global counter, no
+      // ordering dependence — which is the strongest true theorem about it.
+      result = `\x1b]8;;${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
     }
 
     return result;
