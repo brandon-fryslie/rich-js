@@ -206,4 +206,36 @@ describe("segmentsToString coalescing", () => {
     const out = segmentsToString(segs, ColorDepth.TRUECOLOR);
     expect(countSgrOpens(out)).toBeLessThan(3);
   });
+
+  // [LAW:types-are-the-program] segmentsToString must be a pure function of
+  // (segments, colorSystem). Two pipeline runs over independently-constructed
+  // Style instances for the same link URL must emit byte-identical OSC 8 —
+  // no global-counter dependence on construction order.
+  it("emits byte-identical OSC 8 for independently-constructed link Styles with the same URL", () => {
+    new Style({ link: "https://noise.example/a" });
+    const a = new Style({
+      color: STYLE.color,
+      bgcolor: STYLE.bgcolor,
+      link: "https://target.example",
+    });
+    new Style({ link: "https://noise.example/b" });
+    const b = new Style({
+      color: STYLE.color,
+      bgcolor: STYLE.bgcolor,
+      link: "https://target.example",
+    });
+    const outA = segmentsToString([new Segment("x", a)], ColorDepth.TRUECOLOR);
+    const outB = segmentsToString([new Segment("x", b)], ColorDepth.TRUECOLOR);
+    expect(outA).toBe(outB);
+  });
+
+  it("emits OSC 8 with empty params (no id= annotation) in the coalesced pipeline", () => {
+    const linked = new Style({ link: "https://example.com" });
+    const out = segmentsToString(
+      [new Segment("click", linked)],
+      ColorDepth.TRUECOLOR,
+    );
+    expect(out).toContain("\x1b]8;;https://example.com\x1b\\");
+    expect(out).not.toMatch(/\x1b\]8;id=/);
+  });
 });

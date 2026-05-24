@@ -107,8 +107,6 @@ export class StyleSyntaxError extends Error {
 // [LAW:one-source-of-truth] Parse cache is the single source for parsed Style instances
 const styleParseCache = new Map<string, Style>();
 
-let nextLinkId = 1;
-
 // --- Style ---
 
 export class Style {
@@ -129,8 +127,6 @@ export class Style {
   readonly overline: boolean | undefined;
   readonly link: string | undefined;
   readonly meta: Record<string, unknown> | undefined;
-  /** @internal */
-  readonly _linkId: number;
 
   constructor(options?: StyleOptions) {
     if (!options) {
@@ -151,7 +147,6 @@ export class Style {
       this.overline = undefined;
       this.link = undefined;
       this.meta = undefined;
-      this._linkId = 0;
       return;
     }
 
@@ -172,7 +167,6 @@ export class Style {
     this.overline = options.overline;
     this.link = options.link;
     this.meta = options.meta;
-    this._linkId = options.link ? nextLinkId++ : 0;
   }
 
   get isNull(): boolean {
@@ -356,7 +350,15 @@ export class Style {
     let result = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
 
     if (this.link) {
-      result = `\x1b]8;id=${this._linkId};${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
+      // [LAW:types-are-the-program] OSC 8 emits with empty params so the
+      // byte stream is a pure function of (style, text, colorSystem) — no
+      // global counter, no construction-order dependence. Tradeoff: terminals
+      // can no longer hover-group non-adjacent same-URL spans (when linked
+      // segments are separated by other content, each becomes its own OSC 8
+      // pair instead of sharing an id). The coalescer in render.ts already
+      // merges adjacent same-link runs into one wrap, so the common case is
+      // unaffected; non-adjacent hover-grouping is the intentional sacrifice.
+      result = `\x1b]8;;${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
     }
 
     return result;
