@@ -410,14 +410,13 @@ export class Console {
   // one pair per segment. Recording captures every non-control segment for
   // replay regardless of how the bytes coalesce.
   private _writeSegments(segments: Segment[]): void {
-    let hasOutput = false;
-    for (const segment of segments) {
-      if (segment.isControl) continue;
-      hasOutput = true;
-      if (this._record) this._recorded.push(segment);
+    if (this._record) {
+      for (const segment of segments) {
+        if (!segment.isControl) this._recorded.push(segment);
+      }
     }
-    if (!hasOutput) return;
-    this._write(segmentsToString(segments, this._colorSystem));
+    const encoded = segmentsToString(segments, this._colorSystem);
+    if (encoded.length > 0) this._write(encoded);
   }
 
   private _write(text: string): void {

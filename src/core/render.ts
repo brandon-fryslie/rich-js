@@ -110,31 +110,34 @@ export function segmentsToString(
   }
   if (pieces.length === 0) return "";
 
-  let out = "";
+  // [LAW:dataflow-not-control-flow] One linear chunk accumulator for the
+  // entire output; SGR / OSC 8 boundaries and piece texts all push into it
+  // in order. No per-link-run intermediate string, no quadratic `+=` chains.
+  const parts: string[] = [];
   let i = 0;
   while (i < pieces.length) {
     const sgr = pieces[i]!.sgrCodes;
     let j = i + 1;
     while (j < pieces.length && pieces[j]!.sgrCodes === sgr) j++;
-    if (sgr.length > 0) out += `\x1b[${sgr}m`;
+    if (sgr.length > 0) parts.push(`\x1b[${sgr}m`);
     let k = i;
     while (k < j) {
       const link = pieces[k]!.link;
       let l = k + 1;
       while (l < j && pieces[l]!.link === link) l++;
-      let text = "";
-      for (let m = k; m < l; m++) text += pieces[m]!.text;
       if (link) {
-        out += `\x1b]8;id=${pieces[k]!.linkId};${link}\x1b\\${text}\x1b]8;;\x1b\\`;
+        parts.push(`\x1b]8;id=${pieces[k]!.linkId};${link}\x1b\\`);
+        for (let m = k; m < l; m++) parts.push(pieces[m]!.text);
+        parts.push("\x1b]8;;\x1b\\");
       } else {
-        out += text;
+        for (let m = k; m < l; m++) parts.push(pieces[m]!.text);
       }
       k = l;
     }
-    if (sgr.length > 0) out += "\x1b[0m";
+    if (sgr.length > 0) parts.push("\x1b[0m");
     i = j;
   }
-  return out;
+  return parts.join("");
 }
 
 export function renderToString(
