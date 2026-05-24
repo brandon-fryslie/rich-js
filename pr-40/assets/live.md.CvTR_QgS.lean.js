@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as e}from"./chunks/framework.DuHDBkAt.js";const g=JSON.parse('{"title":"Live Display","description":"","frontmatter":{},"headers":[],"relativePath":"live.md","filePath":"live.md"}'),n={name:"live.md"};function h(l,s,p,k,r,d){return a(),t("div",null,[...s[0]||(s[0]=[e("",40)])])}const y=i(n,[["render",h]]);export{g as __pageData,y as default};

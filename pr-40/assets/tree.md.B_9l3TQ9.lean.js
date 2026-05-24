@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as t}from"./chunks/framework.DuHDBkAt.js";const g=JSON.parse('{"title":"Tree","description":"","frontmatter":{},"headers":[],"relativePath":"tree.md","filePath":"tree.md"}'),h={name:"tree.md"};function l(p,s,e,k,r,d){return a(),n("div",null,[...s[0]||(s[0]=[t("",17)])])}const y=i(h,[["render",l]]);export{g as __pageData,y as default};

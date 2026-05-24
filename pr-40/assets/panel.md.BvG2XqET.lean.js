@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.DuHDBkAt.js";const B=JSON.parse('{"title":"Panel","description":"","frontmatter":{},"headers":[],"relativePath":"panel.md","filePath":"panel.md"}'),h={name:"panel.md"};function l(p,s,e,k,d,r){return a(),t("div",null,[...s[0]||(s[0]=[n("",28)])])}const g=i(h,[["render",l]]);export{B as __pageData,g as default};

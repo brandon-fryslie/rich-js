@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-40",
-      "ref": "refs/pull/40/merge",
-      "sha": "db8e08534ee18ded503cf7c1259d256195ad6e06",
-      "timestamp": "2026-05-24T23:28:25.534Z",
-      "commits": [
-        {
-          "sha": "db8e08534ee18ded503cf7c1259d256195ad6e06",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T17:28:03-06:00",
-          "message": "Merge fd2e6debed4ea4993b7d3a82ed72cc561862495e into 5b484576c695e54e9e74595d7921a5dbd0c4486d\n"
-        },
-        {
-          "sha": "fd2e6debed4ea4993b7d3a82ed72cc561862495e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T17:27:10-06:00",
-          "message": "chore(release): v0.3.1\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5b484576c695e54e9e74595d7921a5dbd0c4486d",
-      "timestamp": "2026-05-24T23:24:57.818Z",
+      "sha": "e68f9296ba02ac9504629912de25523d3d0c1d5d",
+      "timestamp": "2026-05-24T23:29:10.074Z",
       "commits": [
         {
-          "sha": "5b484576c695e54e9e74595d7921a5dbd0c4486d",
+          "sha": "e68f9296ba02ac9504629912de25523d3d0c1d5d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T17:24:36-06:00",
-          "message": "fix(strip): collapse PowerlineJoiner middle segment when neighbors share a bg (#39)\n\nPowerlineJoiner.join's middle branch always emitted a FixedSegment with\n{ color: left.bg, bgcolor: right.bg }. When left.bg === right.bg, the glyph\nwas visually invisible (fg === bg) but the segment's SGR codes were still\ndistinct from the neighboring cells' SGR — defeating adjacent-same-style\ncoalescing in segmentsToString. Three same-style cells emitted 3 SGR\nopen/close pairs instead of 1.\n\nReturn EMPTY in the middle branch when bgcolor names match (mirroring the\nexisting `left === null` → EMPTY path). The producer now stops emitting\nsegments whose SGR diverges from their visible meaning; the coalescer's job\nbecomes correct by construction.\n\n[LAW:dataflow-not-control-flow] Variability lives in input colors (data).\nThe visibility of the transition follows from those colors; the producer\nshould not emit an invisible glyph carrying a different SGR.\n\n[LAW:types-are-the-program] \"Invisible glyph with mismatched SGR\" was a\nrepresentable state that shouldn't have been. The strongest true theorem\nabout a PowerlineJoiner middle segment is \"emit a transition iff one is\nvisible\" — encoded as a structural shortcut, not a runtime defense.\n\n[LAW:single-enforcer] Coalescing logic stays in segmentsToString. The fix\nlives at the producer because that's where the SGR-vs-visibility mismatch\nwas created.\n\nSurfaced by cc-candybar brandon-segment-dsl-protocol-vhi.3 parity test\nagainst rich-js@0.3.0. Closes rich-strip-render-d5z.3."
+          "timestamp": "2026-05-24T17:28:44-06:00",
+          "message": "chore(release): v0.3.1 (#40)"
         }
       ]
     },
