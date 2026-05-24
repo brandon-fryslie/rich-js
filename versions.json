@@ -4,15 +4,22 @@
     {
       "version": "pr-37",
       "ref": "refs/pull/37/merge",
-      "sha": "40da7421d93287e46acb07feaab48328de63e4a3",
-      "timestamp": "2026-05-24T22:46:22.568Z",
+      "sha": "66df168cae0fa9b9a80c060a6f4f301ac6f368d3",
+      "timestamp": "2026-05-24T22:50:48.325Z",
       "commits": [
         {
-          "sha": "40da7421d93287e46acb07feaab48328de63e4a3",
+          "sha": "66df168cae0fa9b9a80c060a6f4f301ac6f368d3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T16:45:56-06:00",
-          "message": "Merge 5c1cf85e320bc90a99ec8dff845a88be67d2bca9 into 758b8c50102a461c10ee2d1180f0f18753e76ad7\n"
+          "timestamp": "2026-05-24T22:50:20Z",
+          "message": "Merge 1044ed445e3acf80c3e553fa08c31a55e7c293d5 into 758b8c50102a461c10ee2d1180f0f18753e76ad7\n"
+        },
+        {
+          "sha": "1044ed445e3acf80c3e553fa08c31a55e7c293d5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T16:50:11-06:00",
+          "message": "docs(style): correct OSC 8 rationale — non-adjacent spans are possible\n\nThe previous comment overstated the case by claiming this pipeline \"never\nproduces\" non-adjacent OSC 8 spans for the same URL. It does — the tree\ncoalescer only merges *adjacent* same-link runs, so two linked segments\nseparated by other content emit two distinct OSC 8 pairs.\n\nReword to reflect the real tradeoff: dropping id= sacrifices hover-grouping\nof non-adjacent same-URL spans in exchange for byte-determinism. The common\ncase (adjacent same-link cells sharing one wrap via the coalescer) is\nunaffected.\n"
         },
         {
           "sha": "5c1cf85e320bc90a99ec8dff845a88be67d2bca9",
