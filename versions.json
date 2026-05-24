@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-35",
+      "ref": "refs/pull/35/merge",
+      "sha": "3fd783663dd0950dd2a90331a653b2765ddfb78d",
+      "timestamp": "2026-05-24T13:01:57.062Z",
+      "commits": [
+        {
+          "sha": "3fd783663dd0950dd2a90331a653b2765ddfb78d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T07:01:36-06:00",
+          "message": "Merge 7fcaf3e4e2bcd9426b9339ffa153598b81941362 into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+        },
+        {
+          "sha": "7fcaf3e4e2bcd9426b9339ffa153598b81941362",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T07:00:34-06:00",
+          "message": "chore(demos): retire flagship-per-domain spec and typing\n\nRemoves the artifacts that encoded the over-fit \"exactly five flagships\nwith strict source-module ownership\" model the previous demo-tune-up\ndesign produced. The lit epic (rich-demos-l2x) has already been\nrewritten back to the user's original ask (dedupe / expand / consolidate\n/ reorganize / tweak — fewer + more interesting demos, with existing\nworking demos preserved until something better replaces them).\n\n# Changes\n\n- **Deleted `spec/demos.md`** — the 392-line spec that defined five\n  flagships with rigid source-module ownership and mandated deleting the\n  interactive TUIs (rich-explore, claude-sessions) to satisfy the count.\n  Retired in favor of judgment-driven concrete improvements.\n\n- **`test/coverage/coverage-allowlist.ts`** — dropped the `Flagship`\n  string-literal union, the `burndown(flagship)` helper, and the\n  discriminated-union `AllowlistEntry` (`{ kind: \"burndown\" }`\n  vs `{ kind: \"permanent\" }`). Collapsed to one flat shape:\n  `AllowlistEntry { reason: string }`. Per-flagship comment headers\n  replaced with factual \"-- from src/X --\" sectioning. [LAW:absorbed-variance]\n  — the discriminated union only had one realized case (burndown);\n  collapse to one shape.\n\n- **`test/coverage/coverage.test.ts`** — softened the file header\n  comment (no longer claims to be \"the keystone\" of an epic; explicitly\n  notes the verifier is a *floor*, not a quality measure). Updated the\n  error messages and the redundant-entry detail to match the new\n  AllowlistEntry shape.\n\n- **`examples/themes-and-color-studio/index.ts`** — header comment no\n  longer calls the demo \"the flagship\"; describes what it actually is\n  (a printed-tour reference kept for the color subsystem, not a template\n  for future demos). One-liner inside main() and one in-line infra\n  comment updated to match.\n\n# Verification\n\n- npm run lint: clean\n- npx vitest run: 8838 passed | 7 skipped (328 files)\n- npm run themes-and-color-studio: runs to completion\n\n# What is NOT changed\n\nNo demos under `examples/` are deleted. All existing demos\n(`rich-explore`, `claude-sessions`, `rich-themes`, `rich-themes-transposed`,\n`rich-theme-designer`, `rich-colors`, `rich-config`, `dropdown-demo`,\n`rich-dash`, `rich-markup-plugins`, `rich-strip`, `rich-template-bindings`,\n`themes-and-color-studio`, `shared`) remain on disk; their npm scripts\nremain wired. Per parent epic non-goal: working demos are not deleted\nbefore something concrete has replaced them and been judged a\nreplacement.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0722e9611cb0aa2b14561b03ff634a1c5c879502",
