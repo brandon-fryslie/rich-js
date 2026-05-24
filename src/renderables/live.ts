@@ -11,6 +11,7 @@
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
+import { segmentsToString } from "../core/render.js";
 import type { Renderable } from "../core/protocol.js";
 
 export interface LiveOptions {
@@ -130,18 +131,14 @@ export class Live {
       }
     }
 
-    // Apply styles via the Console's color system. When colorSystem is null
-    // (NO_COLOR, dumb terminal), match Console._renderSegment and emit plain
-    // text — Style.render would otherwise still produce ANSI codes.
-    // [LAW:single-enforcer] Color-system gating mirrors Console's policy.
+    // [LAW:single-enforcer] Per-line encoding routes through the same
+    // tree-coalescer `Console._writeSegments` uses, so Live frames coalesce
+    // adjacent same-style segments into shared SGR pairs on the wire and
+    // honor `colorSystem === null` (NO_COLOR, dumb terminal) the same way.
     const colorSystem = this._console.colorSystem;
-    const output = displayLines.map((line) =>
-      line.map((s) =>
-        colorSystem !== null && s.style && !s.style.isNull
-          ? s.style.render(s.text, colorSystem)
-          : s.text,
-      ).join(""),
-    ).join("\n");
+    const output = displayLines
+      .map((line) => segmentsToString(line, colorSystem))
+      .join("\n");
 
     this._console.file.write(output + "\n");
     this._lastLineCount = displayLines.length;
