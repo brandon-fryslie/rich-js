@@ -1,18 +1,15 @@
 /**
- * themes-and-color-studio — the flagship Themes & Color demo.
+ * themes-and-color-studio — a non-interactive printed reference for the
+ * public color / palette / theme / contrast surface.
  *
- * One non-interactive tour through every public surface of the color /
- * palette / theme / contrast subsystem. Eight sections, each a deterministic
- * pipeline of `print(renderable)` calls; section order is data (`SECTIONS`
- * below), not control flow. The same render path drives terminal output and
- * the optional HTML export — only the boundary varies.
- *   [LAW:dataflow-not-control-flow]
+ * Eight sections, each a deterministic pipeline of `print(renderable)`
+ * calls; section order is data (`SECTIONS` below), not control flow. The
+ * same render path drives terminal output and the optional HTML export —
+ * only the boundary varies. [LAW:dataflow-not-control-flow]
  *
- * This demo replaces four earlier demos that grew separately and overlapped
- * (rich-themes, rich-themes-transposed, rich-theme-designer, rich-colors).
- * The consolidated ownership map is `spec/demos.md` — every export this
- * file references is one that map assigns to this flagship.
- *   [LAW:one-source-of-truth]
+ * Shape: this is a printed-tour demo (scripted, not interactive). Kept
+ * as a reference for the color subsystem; not the template for future
+ * demos — see the rich-demos-l2x epic for the qualitative bar.
  *
  * Run:    npm run themes-and-color-studio
  * Export: EXPORT_HTML=out.html npm run themes-and-color-studio
@@ -83,7 +80,7 @@ import {
   contrastRatio,
   contrastFor,
   ensureContrast,
-  // Infrastructure (owned by other flagships; we only consume)
+  // Infrastructure (consumed, not the focus of this demo)
   Console,
   RichText,
   Style,
@@ -923,7 +920,7 @@ const SECTIONS: ReadonlyArray<() => void> = [
 function main(): void {
   out.print(
     new RichText("themes-and-color-studio", { style: "bold" }).append(
-      "  ·  the flagship Themes & Color demo",
+      "  ·  printed reference for the Themes & Color surface",
       "dim",
     ),
   );

@@ -1,7 +1,8 @@
 // [LAW:verifiable-goals] "Every public export is demonstrated in
 // `examples/`" is a machine check, not eyeballing. This file is that
-// check, and it is the keystone of epic rich-demos-l2x: adding a new
-// public export with no demo and no allowlist entry must fail CI.
+// check: adding a new public export with no demo and no allowlist
+// entry must fail CI. The check is a coverage *floor* — what makes a
+// demo interesting is judgment, not something this file can verify.
 //
 // [LAW:behavior-not-structure] The test asserts three invariants over
 // the (universe, references, allowlist) tuple — not a specific list of
@@ -73,8 +74,8 @@ describe("API → demo coverage", () => {
       throw new Error(
         `Public exports without demo coverage or allowlist entry:\n${gaps.join("\n")}\n\n` +
           `Either reference the symbol from a file under examples/, ` +
-          `or add an entry to test/coverage/coverage-allowlist.ts ` +
-          `(burndown: tag a flagship; permanent: explain why a demo cannot exercise it).`,
+          `or add an entry to test/coverage/coverage-allowlist.ts with ` +
+          `a real reason explaining why it isn't yet demoed.`,
       );
     }
   });
@@ -98,11 +99,7 @@ describe("API → demo coverage", () => {
       const info = universeByCanonicalName.get(name);
       if (!info) continue; // dead-entry case is handled by the previous test
       if (referenced.has(originKey(info.origin))) {
-        const detail =
-          entry.kind === "burndown"
-            ? `burndown → ${entry.flagship}`
-            : `permanent: ${entry.reason}`;
-        redundant.push(`${name} (${detail})`);
+        redundant.push(`${name} (was allowlisted: "${entry.reason}")`);
       }
     }
     if (redundant.length > 0) {
