@@ -4,15 +4,22 @@
     {
       "version": "pr-36",
       "ref": "refs/pull/36/merge",
-      "sha": "bbe82f3857fd4a7ab5d939a95ed930cccd55a7e9",
-      "timestamp": "2026-05-24T21:04:02.926Z",
+      "sha": "cdbcf22ed66fec9214b958d4351e22ba404b160d",
+      "timestamp": "2026-05-24T21:09:32.909Z",
       "commits": [
         {
-          "sha": "bbe82f3857fd4a7ab5d939a95ed930cccd55a7e9",
+          "sha": "cdbcf22ed66fec9214b958d4351e22ba404b160d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T15:03:34-06:00",
-          "message": "Merge 912186c2e68a8062650643c2a9a12033fb05b26c into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+          "timestamp": "2026-05-24T21:09:06Z",
+          "message": "Merge dee1e93a3c55463a14839aa903bacaa7299caa88 into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+        },
+        {
+          "sha": "dee1e93a3c55463a14839aa903bacaa7299caa88",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T15:08:57-06:00",
+          "message": "perf(render): unified parts[] accumulator; drop empty _write call\n\nsegmentsToString now pushes every chunk (SGR / OSC 8 boundaries and\npiece texts) into one parts: string[] and join(\"\") once at the end —\navoiding the quadratic risk of += inside nested loops on large batches.\nPer-link-run intermediate strings are gone; piece texts push directly\ninto the unified array.\n\nConsole._writeSegments encodes first, then writes only when the result\nis non-empty. Recording still captures every non-control segment so\nreplay is unchanged.\n\nAddresses two Copilot review findings on rich-strip-render-d5z.\n"
         },
         {
           "sha": "912186c2e68a8062650643c2a9a12033fb05b26c",
