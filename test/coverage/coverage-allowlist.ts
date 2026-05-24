@@ -46,29 +46,9 @@ const burndown = (flagship: Flagship, note?: string): AllowlistEntry =>
  */
 export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   // -- Themes & Color Studio ----------------------------------------------
-  ANCHORED_ROOTS: burndown("themes-and-color-studio"),
-  BaseColors: burndown("themes-and-color-studio"),
-  ColorTable: burndown("themes-and-color-studio"),
-  DetectColorOptions: burndown("themes-and-color-studio"),
-  EIGHT_BIT_TABLE: burndown("themes-and-color-studio"),
-  Oklch: burndown("themes-and-color-studio"),
-  ResolveContext: burndown("themes-and-color-studio"),
-  TEXTUAL_ANSI: burndown("themes-and-color-studio"),
-  TEXTUAL_DARK: burndown("themes-and-color-studio"),
-  TEXTUAL_LIGHT: burndown("themes-and-color-studio"),
-  THEMES: burndown("themes-and-color-studio"),
-  ThemeBaseColors: burndown("themes-and-color-studio"),
-  ThemeName: burndown("themes-and-color-studio"),
-  ThemePaletteData: burndown("themes-and-color-studio"),
-  buildPalette: burndown("themes-and-color-studio"),
-  detectColorSystem: burndown("themes-and-color-studio"),
-  getThemeBaseColors: burndown("themes-and-color-studio"),
-  isAnchored: burndown("themes-and-color-studio"),
-  isIdentityKey: burndown("themes-and-color-studio"),
-  parseRgbaHex: burndown("themes-and-color-studio"),
-  relativeLuminance: burndown("themes-and-color-studio"),
-  resolveColorSystem: burndown("themes-and-color-studio"),
-  themeKeyForRoot: burndown("themes-and-color-studio"),
+  // All entries burned down by examples/themes-and-color-studio
+  // (rich-demos-l2x.3). [LAW:no-silent-fallbacks] — removing an entry
+  // without a real demo reference fails the verifier loudly.
 
   // -- Renderables Gallery ------------------------------------------------
   Alignment: burndown("renderables-gallery"),
