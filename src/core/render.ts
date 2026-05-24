@@ -11,9 +11,9 @@
  * `isTTY` in the options so detection does not consult ambient process state.
  *
  * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentsToString`
- * and is the single way segments become wire bytes. `Console._renderSegment`
- * and `segmentToString` both delegate here, so terminal output, string export,
- * and single-segment encoding agree by construction.
+ * and is the single way segments become wire bytes. `Console._writeSegments`,
+ * `Live.refresh`, and `segmentToString` all delegate here, so terminal output,
+ * live frames, string export, and single-segment encoding agree by construction.
  *
  * [LAW:dataflow-not-control-flow] The same pipeline runs every render: collect
  * non-control non-empty pieces, partition by SGR-codes (SGR-runs), partition
