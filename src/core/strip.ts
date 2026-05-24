@@ -236,6 +236,14 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
       // terminal background.
       return new FixedSegment(this._glyph, bgAsFg(left));
     }
+    // [LAW:dataflow-not-control-flow] The transition is a function of the
+    // input colors. When both neighbors share a bg, there is no visual
+    // transition to paint — emit EMPTY so the coalescer in segmentsToString
+    // can merge adjacent same-style cells under one SGR wrap. Without this,
+    // a same-bg "transition" would emit an invisible glyph whose SGR codes
+    // still split the SGR run, defeating coalescing for everyone downstream.
+    // Equality uses `.name` to match Style.equals' precedent (style.ts:276).
+    if (left.style.bgcolor?.name === right.style.bgcolor?.name) return EMPTY;
     // Middle: fg = left.bg, bg = right.bg.
     return new FixedSegment(
       this._glyph,
