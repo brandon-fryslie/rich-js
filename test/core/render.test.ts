@@ -163,6 +163,12 @@ describe("segmentsToString coalescing", () => {
     expect(segmentsToString(segs, null)).toBe("hi there");
   });
 
+  it("strips OSC 8 hyperlinks too when colorSystem is null (not just SGR)", () => {
+    const linked = new Style({ link: "https://example.com" });
+    const segs = [new Segment("click me", linked)];
+    expect(segmentsToString(segs, null)).toBe("click me");
+  });
+
   it("agrees with segmentToString for a single segment (single-enforcer)", () => {
     const seg = new Segment("hi", STYLE);
     expect(segmentToString(seg, ColorDepth.TRUECOLOR)).toBe(

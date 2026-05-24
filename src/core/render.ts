@@ -18,8 +18,10 @@
  * [LAW:dataflow-not-control-flow] The same pipeline runs every render: collect
  * non-control non-empty pieces, partition by SGR-codes (SGR-runs), partition
  * each run by link (link-runs), emit one SGR open/close per run with link
- * open/close pairs sitting inside. `colorSystem === null` is data — it makes
- * every SGR-codes string empty — not a separate code path.
+ * open/close pairs sitting inside. `colorSystem === null` is data: every piece
+ * is collected with empty SGR-codes *and* no link, so the same pipeline emits
+ * plain text — no SGR wraps and no OSC 8 hyperlink wraps. NO_COLOR therefore
+ * strips *all* ANSI escape emission, not just colors.
  *
  * [LAW:types-are-the-program] Adjacent same-style segments share an SGR wrap
  * because the SGR-codes string is the same group key for both — the
@@ -38,7 +40,8 @@ export interface RenderToStringOptions {
   /**
    * Color encoding to emit. Accepts a string spec (`"auto"`, `"truecolor"`,
    * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value, or `null` to
-   * strip all color codes. Default truecolor.
+   * strip *all* ANSI escape emission — SGR colors/attributes *and* OSC 8
+   * hyperlinks. Default truecolor.
    */
   colorSystem?: string | ColorDepth | null;
   /**
