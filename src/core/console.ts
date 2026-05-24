@@ -11,7 +11,7 @@ import { render as renderMarkup } from "./markup.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 import { Rule } from "../renderables/rule.js";
-import { segmentToString } from "./render.js";
+import { segmentsToString } from "./render.js";
 import type {
   Renderable,
   RenderOptions,
@@ -404,22 +404,20 @@ export class Console {
 
   // --- Internal ---
 
+  // [LAW:single-enforcer] One encode call per write batch routes through the
+  // same `segmentsToString` tree-coalescer used by `renderToString`. Adjacent
+  // same-style segments share one SGR open/close pair on the wire instead of
+  // one pair per segment. Recording captures every non-control segment for
+  // replay regardless of how the bytes coalesce.
   private _writeSegments(segments: Segment[]): void {
+    let hasOutput = false;
     for (const segment of segments) {
       if (segment.isControl) continue;
-      const text = this._renderSegment(segment);
-      this._write(text);
-      if (this._record) {
-        this._recorded.push(segment);
-      }
+      hasOutput = true;
+      if (this._record) this._recorded.push(segment);
     }
-  }
-
-  // [LAW:single-enforcer] Defers to the same Segment-to-ANSI encoder used by
-  // `renderToString`, so terminal output and string export agree by
-  // construction.
-  private _renderSegment(segment: Segment): string {
-    return segmentToString(segment, this._colorSystem);
+    if (!hasOutput) return;
+    this._write(segmentsToString(segments, this._colorSystem));
   }
 
   private _write(text: string): void {
