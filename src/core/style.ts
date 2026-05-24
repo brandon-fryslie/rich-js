@@ -299,11 +299,17 @@ export class Style {
   }
 
   /**
-   * Render text with this style's ANSI escape codes.
+   * Returns the SGR parameter list this style emits (e.g. `"1;31;48;2;0;0;255"`),
+   * or `""` when the style has no SGR contribution. Excludes OSC 8 link bytes —
+   * links are not SGR. The Strip renderer uses this string as the group key for
+   * adjacent-same-style coalescing; the per-segment `render` path wraps the
+   * returned codes in `\x1b[...m`.
+   *
+   * [LAW:one-source-of-truth] One computation of SGR codes — both `render` and
+   * the segment coalescer derive from this.
    */
-  render(text: string, colorSystem?: ColorDepth): string {
-    if (text.length === 0) return "";
-    if (this.isNull) return text;
+  toSgrCodes(colorSystem?: ColorDepth): string {
+    if (this.isNull) return "";
 
     const attrs: string[] = [];
 
@@ -327,7 +333,6 @@ export class Style {
       attrs.push(...c.getAnsiCodes(false));
     }
 
-    // Attributes
     for (const name of ATTRIBUTE_NAMES) {
       const val = this[name];
       if (val === true) {
@@ -337,15 +342,21 @@ export class Style {
       }
     }
 
-    let result = text;
-    if (attrs.length > 0) {
-      result = `\x1b[${attrs.join(";")}m${text}\x1b[0m`;
-    }
+    return attrs.join(";");
+  }
 
-    // Link (OSC 8)
+  /**
+   * Render text with this style's ANSI escape codes.
+   */
+  render(text: string, colorSystem?: ColorDepth): string {
+    if (text.length === 0) return "";
+    if (this.isNull) return text;
+
+    const codes = this.toSgrCodes(colorSystem);
+    let result = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
+
     if (this.link) {
-      const id = this._linkId;
-      result = `\x1b]8;id=${id};${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
+      result = `\x1b]8;id=${this._linkId};${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
     }
 
     return result;
