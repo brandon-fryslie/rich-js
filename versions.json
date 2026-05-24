@@ -4,15 +4,22 @@
     {
       "version": "pr-35",
       "ref": "refs/pull/35/merge",
-      "sha": "3fd783663dd0950dd2a90331a653b2765ddfb78d",
-      "timestamp": "2026-05-24T13:01:57.062Z",
+      "sha": "9a9dce6d689f7318de0984ca478156b6c80eed88",
+      "timestamp": "2026-05-24T13:06:29.189Z",
       "commits": [
         {
-          "sha": "3fd783663dd0950dd2a90331a653b2765ddfb78d",
+          "sha": "9a9dce6d689f7318de0984ca478156b6c80eed88",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T07:01:36-06:00",
-          "message": "Merge 7fcaf3e4e2bcd9426b9339ffa153598b81941362 into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+          "timestamp": "2026-05-24T13:06:07Z",
+          "message": "Merge 9c2593b199f21be3fe3f1c33baec659fad6e64a7 into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+        },
+        {
+          "sha": "9c2593b199f21be3fe3f1c33baec659fad6e64a7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T07:05:56-06:00",
+          "message": "fix(coverage): label every allowlist entry by its actual export kind\n\nCopilot review on PR #35 flagged that the reason string for KeyEvent\ncalled it a \"type\" when src/widgets/types.ts declares it as a class.\nA reader debugging a coverage failure consumes that reason string\nverbatim — a wrong label is misleading guidance, not just imprecision.\n\nThe same pattern was repeated across many entries (I had labeled most\ninterfaces as \"type\" and several classes as \"type\"). Rather than\nfix only the entry Copilot named, a derivation pass over src/ rewrote\nevery reason string from the actual export declaration:\n\n  - class      → \"<scope>: <Name> class\"\n  - interface  → \"<scope>: <Name> interface\"\n  - type       → \"<scope>: <Name> type alias\"\n  - const      → \"<scope>: <Name> constant\"\n  - function   → \"<scope>: <Name> function\"\n  - enum       → \"<scope>: <Name> enum\"\n\n83 lines of labels updated. Existing parenthetical context (e.g.\n\"used transitively via Pretty\") is preserved.\n\n[LAW:one-source-of-truth] The src/ declaration is the canonical\ndescription of an export's kind. A reason string that disagrees with\nit is a divergent copy — fix the divergence by deriving from the\nsource, not by patching the copy point-by-point.\n\nVerification: npm run lint clean; coverage verifier still green\n(4/4).\n"
         },
         {
           "sha": "7fcaf3e4e2bcd9426b9339ffa153598b81941362",
