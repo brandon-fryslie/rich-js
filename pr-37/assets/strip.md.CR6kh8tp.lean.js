@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ag as e}from"./chunks/framework.BdBYqW7C.js";const g=JSON.parse('{"title":"Strip + Joiner","description":"","frontmatter":{},"headers":[],"relativePath":"strip.md","filePath":"strip.md"}'),n={name:"strip.md"};function l(h,s,p,k,r,o){return a(),t("div",null,[...s[0]||(s[0]=[e("",54)])])}const y=i(n,[["render",l]]);export{g as __pageData,y as default};

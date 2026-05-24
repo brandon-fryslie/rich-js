@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-37",
+      "ref": "refs/pull/37/merge",
+      "sha": "40da7421d93287e46acb07feaab48328de63e4a3",
+      "timestamp": "2026-05-24T22:46:22.568Z",
+      "commits": [
+        {
+          "sha": "40da7421d93287e46acb07feaab48328de63e4a3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T16:45:56-06:00",
+          "message": "Merge 5c1cf85e320bc90a99ec8dff845a88be67d2bca9 into 758b8c50102a461c10ee2d1180f0f18753e76ad7\n"
+        },
+        {
+          "sha": "5c1cf85e320bc90a99ec8dff845a88be67d2bca9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T16:45:12-06:00",
+          "message": "fix(style): deterministic OSC 8 link bytes — drop module-level id counter\n\nStyle.render previously assigned each linked Style a unique _linkId from a\nprocess-wide nextLinkId counter, leaking that id into the OSC 8 sequence as\nid=N. Same logical link → different bytes across calls, which made byte-level\nparity tests (rich-js + downstream cc-candybar parity harness) impossible.\n\nThe id=N parameter is optional in the OSC 8 protocol; its sole use is\nhover-grouping non-adjacent spans, which the tree coalescer in render.ts\nalready handles by sharing a single OSC 8 wrap for adjacent same-link\nsegments. Omitting the id makes Style.render and segmentsToString pure\nfunctions of their inputs — no global counter, no construction-order\ndependence.\n\nTests added at both byte-producing seams (Style.render and segmentsToString)\nthat bracket the target Style with \"noise\" link constructions, then assert\nbyte-identical output for two independently-constructed same-URL Styles.\n\n[LAW:types-are-the-program] The strongest true theorem about Style.render is\nthat it's a pure function of (style, text, colorSystem) — encoding the id\nas part of the byte stream forced that theorem to be false; removing it\nmakes it true.\n\n[LAW:no-shared-mutable-globals] The nextLinkId module-level counter was a\nshared mutable global without an owning API. Deleting it (rather than\nadding a reset hook) removes the type problem at its source.\n\n[LAW:single-enforcer] Both byte producers (Style.render, segmentsToString)\nnow emit the same canonical OSC 8 form by construction, not by convention.\n\nCloses rich-strip-render-d5z.1\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "758b8c50102a461c10ee2d1180f0f18753e76ad7",
