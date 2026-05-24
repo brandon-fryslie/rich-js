@@ -4,15 +4,22 @@
     {
       "version": "pr-36",
       "ref": "refs/pull/36/merge",
-      "sha": "13bba2d02b8e71469f7633459305d20146653a84",
-      "timestamp": "2026-05-24T21:13:22.444Z",
+      "sha": "390d9fca12bc74a805ff1d3211981efba3845c99",
+      "timestamp": "2026-05-24T21:17:52.697Z",
       "commits": [
         {
-          "sha": "13bba2d02b8e71469f7633459305d20146653a84",
+          "sha": "390d9fca12bc74a805ff1d3211981efba3845c99",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T21:12:59Z",
-          "message": "Merge 74189ae20c953591b8f1b0e4051169be0a6b59bf into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+          "timestamp": "2026-05-24T21:17:30Z",
+          "message": "Merge 61b63029168feee60e74c3ebf2826fe668567acc into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+        },
+        {
+          "sha": "61b63029168feee60e74c3ebf2826fe668567acc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T15:17:21-06:00",
+          "message": "docs(render): NO_COLOR strips OSC 8 hyperlinks too, not just SGR\n\nsegmentToPiece already clears link bytes when colorSystem === null\n(preserved from pre-coalescer Style.render behavior); make that\nexplicit in both the module header and RenderToStringOptions.colorSystem\nJSDoc. Add a test that asserts a linked segment renders as plain text\nunder colorSystem === null so the doc claim stays grounded.\n"
         },
         {
           "sha": "74189ae20c953591b8f1b0e4051169be0a6b59bf",
