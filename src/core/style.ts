@@ -350,13 +350,14 @@ export class Style {
     let result = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
 
     if (this.link) {
-      // [LAW:types-are-the-program] OSC 8 emits with empty params. The id=N
-      // annotation only matters when callers need to associate non-adjacent
-      // OSC 8 spans as one hover-group, which this pipeline never produces:
-      // adjacent same-link segments already share one OSC 8 wrap via the
-      // tree coalescer in render.ts. Omitting the id makes the byte stream a
-      // pure function of (style, text, colorSystem) — no global counter, no
-      // ordering dependence — which is the strongest true theorem about it.
+      // [LAW:types-are-the-program] OSC 8 emits with empty params so the
+      // byte stream is a pure function of (style, text, colorSystem) — no
+      // global counter, no construction-order dependence. Tradeoff: terminals
+      // can no longer hover-group non-adjacent same-URL spans (when linked
+      // segments are separated by other content, each becomes its own OSC 8
+      // pair instead of sharing an id). The coalescer in render.ts already
+      // merges adjacent same-link runs into one wrap, so the common case is
+      // unaffected; non-adjacent hover-grouping is the intentional sacrifice.
       result = `\x1b]8;;${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
     }
 
