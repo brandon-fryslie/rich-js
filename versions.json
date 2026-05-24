@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-38",
-      "ref": "refs/pull/38/merge",
-      "sha": "c85000e12c3d1850a40fc3fc6bcc833e95300953",
-      "timestamp": "2026-05-24T23:09:19.390Z",
-      "commits": [
-        {
-          "sha": "c85000e12c3d1850a40fc3fc6bcc833e95300953",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T17:08:55-06:00",
-          "message": "Merge b2e49c43f73e5dd2b748d0461a0be99e952e2629 into 62c693bca686546f50f643f3abb8fbe23eca7635\n"
-        },
-        {
-          "sha": "b2e49c43f73e5dd2b748d0461a0be99e952e2629",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T17:03:05-06:00",
-          "message": "chore(release): v0.3.0\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "62c693bca686546f50f643f3abb8fbe23eca7635",
-      "timestamp": "2026-05-24T22:57:24.566Z",
+      "sha": "5f2c4bb5697965a296f79c114eb3a380973d2d5e",
+      "timestamp": "2026-05-24T23:10:36.056Z",
       "commits": [
         {
-          "sha": "62c693bca686546f50f643f3abb8fbe23eca7635",
+          "sha": "5f2c4bb5697965a296f79c114eb3a380973d2d5e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T16:57:02-06:00",
-          "message": "fix(style): deterministic OSC 8 link bytes (rich-strip-render-d5z.1) (#37)\n\n* fix(style): deterministic OSC 8 link bytes — drop module-level id counter\n\nStyle.render previously assigned each linked Style a unique _linkId from a\nprocess-wide nextLinkId counter, leaking that id into the OSC 8 sequence as\nid=N. Same logical link → different bytes across calls, which made byte-level\nparity tests (rich-js + downstream cc-candybar parity harness) impossible.\n\nThe id=N parameter is optional in the OSC 8 protocol; its sole use is\nhover-grouping non-adjacent spans, which the tree coalescer in render.ts\nalready handles by sharing a single OSC 8 wrap for adjacent same-link\nsegments. Omitting the id makes Style.render and segmentsToString pure\nfunctions of their inputs — no global counter, no construction-order\ndependence.\n\nTests added at both byte-producing seams (Style.render and segmentsToString)\nthat bracket the target Style with \"noise\" link constructions, then assert\nbyte-identical output for two independently-constructed same-URL Styles.\n\n[LAW:types-are-the-program] The strongest true theorem about Style.render is\nthat it's a pure function of (style, text, colorSystem) — encoding the id\nas part of the byte stream forced that theorem to be false; removing it\nmakes it true.\n\n[LAW:no-shared-mutable-globals] The nextLinkId module-level counter was a\nshared mutable global without an owning API. Deleting it (rather than\nadding a reset hook) removes the type problem at its source.\n\n[LAW:single-enforcer] Both byte producers (Style.render, segmentsToString)\nnow emit the same canonical OSC 8 form by construction, not by convention.\n\nCloses rich-strip-render-d5z.1\n\n* docs(style): correct OSC 8 rationale — non-adjacent spans are possible\n\nThe previous comment overstated the case by claiming this pipeline \"never\nproduces\" non-adjacent OSC 8 spans for the same URL. It does — the tree\ncoalescer only merges *adjacent* same-link runs, so two linked segments\nseparated by other content emit two distinct OSC 8 pairs.\n\nReword to reflect the real tradeoff: dropping id= sacrifices hover-grouping\nof non-adjacent same-URL spans in exchange for byte-determinism. The common\ncase (adjacent same-link cells sharing one wrap via the coalescer) is\nunaffected."
+          "timestamp": "2026-05-24T17:10:09-06:00",
+          "message": "chore(release): v0.3.0 (#38)"
         }
       ]
     },
