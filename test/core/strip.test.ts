@@ -10,6 +10,8 @@ import {
 import { Style } from "../../src/core/style.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
+import { segmentsToString } from "../../src/core/render.js";
+import { ColorDepth } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert what consumers observe — segment
 // text, fg/bg pairs, ordering — not the internal walk.
@@ -74,6 +76,49 @@ describe("PowerlineJoiner color inheritance", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
     const mid = segs[1]!;
+    expect(mid.style?.color?.name).toBe(RED.style.bgcolor?.name);
+    expect(mid.style?.bgcolor?.name).toBe(BLUE.style.bgcolor?.name);
+  });
+});
+
+// [LAW:dataflow-not-control-flow] The PowerlineJoiner's middle transition is a
+// function of the input colors: when both neighbors share a bg, the arrow is
+// visually invisible (fg === bg) and should not emit a segment at all. An
+// "invisible glyph with its own SGR" was a representable state that defeated
+// the coalescer in segmentsToString — same-style cells produced N SGR pairs
+// instead of one.
+describe("PowerlineJoiner same-bg coalescing", () => {
+  const RED_A = new StripCell(" a ", Style.parse("white on red"));
+  const RED_B = new StripCell(" b ", Style.parse("white on red"));
+  const RED_C = new StripCell(" c ", Style.parse("white on red"));
+
+  it("emits no mid-join segment when both neighbors share a bg", () => {
+    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
+    // End cap still fires (last cell bleeds out to terminal bg); middle joiner
+    // collapses to EMPTY.
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", " b ", ">"]);
+  });
+
+  it("emits one shared SGR pair around three same-bg cells (not three)", () => {
+    const strip = new Strip(
+      [RED_A, RED_B, RED_C],
+      new PowerlineJoiner({ glyph: ">" }),
+    );
+    const out = segmentsToString(strip.render(OPTIONS), ColorDepth.TRUECOLOR);
+    const opens = (out.match(/\x1b\[(?!0m)[0-9;]+m/g) ?? []).length;
+    const resets = (out.match(/\x1b\[0m/g) ?? []).length;
+    // One SGR run for the three-cell same-bg body, one more for the end cap
+    // (which intentionally has different style: fg=bg of last cell, no bg).
+    expect(opens).toBe(2);
+    expect(resets).toBe(2);
+  });
+
+  it("still emits a visible arrow when neighbor bgs differ (no over-coalescing)", () => {
+    // Regression sanity: the same-bg shortcut must not collapse genuine
+    // transitions. RED → BLUE must still produce the colored arrow.
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
+    const mid = render(strip)[1]!;
+    expect(mid.text).toBe(">");
     expect(mid.style?.color?.name).toBe(RED.style.bgcolor?.name);
     expect(mid.style?.bgcolor?.name).toBe(BLUE.style.bgcolor?.name);
   });
