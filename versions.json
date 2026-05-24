@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-36",
+      "ref": "refs/pull/36/merge",
+      "sha": "bbe82f3857fd4a7ab5d939a95ed930cccd55a7e9",
+      "timestamp": "2026-05-24T21:04:02.926Z",
+      "commits": [
+        {
+          "sha": "bbe82f3857fd4a7ab5d939a95ed930cccd55a7e9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T15:03:34-06:00",
+          "message": "Merge 912186c2e68a8062650643c2a9a12033fb05b26c into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
+        },
+        {
+          "sha": "912186c2e68a8062650643c2a9a12033fb05b26c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T15:02:59-06:00",
+          "message": "feat(render): coalesce adjacent same-style segments into shared SGR pairs (rich-strip-render-d5z)\n\nThe byte producer is now a single tree-shaped pass: collect non-control\nnon-empty pieces, partition by SGR-codes (SGR-runs), partition each run\nby link (link-runs), emit one SGR open/close per run with OSC 8 link\npairs nested inside. Adjacent cells with the same SGR codes share one\nwrap on the wire instead of one wrap per cell, and adjacent cells with\nthe same link share one OSC 8 pair inside it.\n\nStyle.toSgrCodes is extracted as the single SGR-string computation;\nStyle.render and the coalescer both derive from it.\n\nConsole._writeSegments and Live.refresh now route through\nsegmentsToString so every byte path applies the same coalescing.\nsegmentToString delegates to segmentsToString([seg]) so single-segment\nencoding agrees byte-for-byte with the multi-segment path.\n\nAcceptance tests in test/core/render.test.ts: 3 same-style cells → 1\nSGR pair; 2 same-style + different links → 1 SGR wrap, 2 OSC 8 pairs\nnested inside; 2 same-style + same link → 1 SGR wrap, 1 OSC 8 pair;\ndistinct-style transitions emit exactly one SGR change.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-35",
       "ref": "refs/pull/35/merge",
       "sha": "9a9dce6d689f7318de0984ca478156b6c80eed88",
