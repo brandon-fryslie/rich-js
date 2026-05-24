@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-37",
-      "ref": "refs/pull/37/merge",
-      "sha": "66df168cae0fa9b9a80c060a6f4f301ac6f368d3",
-      "timestamp": "2026-05-24T22:50:48.325Z",
-      "commits": [
-        {
-          "sha": "66df168cae0fa9b9a80c060a6f4f301ac6f368d3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T22:50:20Z",
-          "message": "Merge 1044ed445e3acf80c3e553fa08c31a55e7c293d5 into 758b8c50102a461c10ee2d1180f0f18753e76ad7\n"
-        },
-        {
-          "sha": "1044ed445e3acf80c3e553fa08c31a55e7c293d5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T16:50:11-06:00",
-          "message": "docs(style): correct OSC 8 rationale — non-adjacent spans are possible\n\nThe previous comment overstated the case by claiming this pipeline \"never\nproduces\" non-adjacent OSC 8 spans for the same URL. It does — the tree\ncoalescer only merges *adjacent* same-link runs, so two linked segments\nseparated by other content emit two distinct OSC 8 pairs.\n\nReword to reflect the real tradeoff: dropping id= sacrifices hover-grouping\nof non-adjacent same-URL spans in exchange for byte-determinism. The common\ncase (adjacent same-link cells sharing one wrap via the coalescer) is\nunaffected.\n"
-        },
-        {
-          "sha": "5c1cf85e320bc90a99ec8dff845a88be67d2bca9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T16:45:12-06:00",
-          "message": "fix(style): deterministic OSC 8 link bytes — drop module-level id counter\n\nStyle.render previously assigned each linked Style a unique _linkId from a\nprocess-wide nextLinkId counter, leaking that id into the OSC 8 sequence as\nid=N. Same logical link → different bytes across calls, which made byte-level\nparity tests (rich-js + downstream cc-candybar parity harness) impossible.\n\nThe id=N parameter is optional in the OSC 8 protocol; its sole use is\nhover-grouping non-adjacent spans, which the tree coalescer in render.ts\nalready handles by sharing a single OSC 8 wrap for adjacent same-link\nsegments. Omitting the id makes Style.render and segmentsToString pure\nfunctions of their inputs — no global counter, no construction-order\ndependence.\n\nTests added at both byte-producing seams (Style.render and segmentsToString)\nthat bracket the target Style with \"noise\" link constructions, then assert\nbyte-identical output for two independently-constructed same-URL Styles.\n\n[LAW:types-are-the-program] The strongest true theorem about Style.render is\nthat it's a pure function of (style, text, colorSystem) — encoding the id\nas part of the byte stream forced that theorem to be false; removing it\nmakes it true.\n\n[LAW:no-shared-mutable-globals] The nextLinkId module-level counter was a\nshared mutable global without an owning API. Deleting it (rather than\nadding a reset hook) removes the type problem at its source.\n\n[LAW:single-enforcer] Both byte producers (Style.render, segmentsToString)\nnow emit the same canonical OSC 8 form by construction, not by convention.\n\nCloses rich-strip-render-d5z.1\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "758b8c50102a461c10ee2d1180f0f18753e76ad7",
-      "timestamp": "2026-05-24T21:22:34.408Z",
+      "sha": "62c693bca686546f50f643f3abb8fbe23eca7635",
+      "timestamp": "2026-05-24T22:57:24.566Z",
       "commits": [
         {
-          "sha": "758b8c50102a461c10ee2d1180f0f18753e76ad7",
+          "sha": "62c693bca686546f50f643f3abb8fbe23eca7635",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T15:22:11-06:00",
-          "message": "feat(render): tree-based SGR coalescing for adjacent same-style segments (rich-strip-render-d5z) (#36)\n\n* feat(render): coalesce adjacent same-style segments into shared SGR pairs (rich-strip-render-d5z)\n\nThe byte producer is now a single tree-shaped pass: collect non-control\nnon-empty pieces, partition by SGR-codes (SGR-runs), partition each run\nby link (link-runs), emit one SGR open/close per run with OSC 8 link\npairs nested inside. Adjacent cells with the same SGR codes share one\nwrap on the wire instead of one wrap per cell, and adjacent cells with\nthe same link share one OSC 8 pair inside it.\n\nStyle.toSgrCodes is extracted as the single SGR-string computation;\nStyle.render and the coalescer both derive from it.\n\nConsole._writeSegments and Live.refresh now route through\nsegmentsToString so every byte path applies the same coalescing.\nsegmentToString delegates to segmentsToString([seg]) so single-segment\nencoding agrees byte-for-byte with the multi-segment path.\n\nAcceptance tests in test/core/render.test.ts: 3 same-style cells → 1\nSGR pair; 2 same-style + different links → 1 SGR wrap, 2 OSC 8 pairs\nnested inside; 2 same-style + same link → 1 SGR wrap, 1 OSC 8 pair;\ndistinct-style transitions emit exactly one SGR change.\n\n* perf(render): unified parts[] accumulator; drop empty _write call\n\nsegmentsToString now pushes every chunk (SGR / OSC 8 boundaries and\npiece texts) into one parts: string[] and join(\"\") once at the end —\navoiding the quadratic risk of += inside nested loops on large batches.\nPer-link-run intermediate strings are gone; piece texts push directly\ninto the unified array.\n\nConsole._writeSegments encodes first, then writes only when the result\nis non-empty. Recording still captures every non-control segment so\nreplay is unchanged.\n\nAddresses two Copilot review findings on rich-strip-render-d5z.\n\n* docs(render): fix dead reference to removed Console._renderSegment\n\nUpdate render.ts module docstring to list the three current\ndelegating call sites: Console._writeSegments, Live.refresh, and\nsegmentToString. _renderSegment was removed when _writeSegments\nstarted batching through segmentsToString directly.\n\n* docs(render): NO_COLOR strips OSC 8 hyperlinks too, not just SGR\n\nsegmentToPiece already clears link bytes when colorSystem === null\n(preserved from pre-coalescer Style.render behavior); make that\nexplicit in both the module header and RenderToStringOptions.colorSystem\nJSDoc. Add a test that asserts a linked segment renders as plain text\nunder colorSystem === null so the doc claim stays grounded."
+          "timestamp": "2026-05-24T16:57:02-06:00",
+          "message": "fix(style): deterministic OSC 8 link bytes (rich-strip-render-d5z.1) (#37)\n\n* fix(style): deterministic OSC 8 link bytes — drop module-level id counter\n\nStyle.render previously assigned each linked Style a unique _linkId from a\nprocess-wide nextLinkId counter, leaking that id into the OSC 8 sequence as\nid=N. Same logical link → different bytes across calls, which made byte-level\nparity tests (rich-js + downstream cc-candybar parity harness) impossible.\n\nThe id=N parameter is optional in the OSC 8 protocol; its sole use is\nhover-grouping non-adjacent spans, which the tree coalescer in render.ts\nalready handles by sharing a single OSC 8 wrap for adjacent same-link\nsegments. Omitting the id makes Style.render and segmentsToString pure\nfunctions of their inputs — no global counter, no construction-order\ndependence.\n\nTests added at both byte-producing seams (Style.render and segmentsToString)\nthat bracket the target Style with \"noise\" link constructions, then assert\nbyte-identical output for two independently-constructed same-URL Styles.\n\n[LAW:types-are-the-program] The strongest true theorem about Style.render is\nthat it's a pure function of (style, text, colorSystem) — encoding the id\nas part of the byte stream forced that theorem to be false; removing it\nmakes it true.\n\n[LAW:no-shared-mutable-globals] The nextLinkId module-level counter was a\nshared mutable global without an owning API. Deleting it (rather than\nadding a reset hook) removes the type problem at its source.\n\n[LAW:single-enforcer] Both byte producers (Style.render, segmentsToString)\nnow emit the same canonical OSC 8 form by construction, not by convention.\n\nCloses rich-strip-render-d5z.1\n\n* docs(style): correct OSC 8 rationale — non-adjacent spans are possible\n\nThe previous comment overstated the case by claiming this pipeline \"never\nproduces\" non-adjacent OSC 8 spans for the same URL. It does — the tree\ncoalescer only merges *adjacent* same-link runs, so two linked segments\nseparated by other content emit two distinct OSC 8 pairs.\n\nReword to reflect the real tradeoff: dropping id= sacrifices hover-grouping\nof non-adjacent same-URL spans in exchange for byte-determinism. The common\ncase (adjacent same-link cells sharing one wrap via the coalescer) is\nunaffected."
         }
       ]
     },
