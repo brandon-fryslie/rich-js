@@ -509,6 +509,27 @@ describe("Style.render", () => {
     expect(result).toContain("click");
   });
 
+  // [LAW:types-are-the-program] Style.render is a pure function of
+  // (style, text, colorSystem). Two Styles constructed with the same link URL
+  // must produce byte-identical OSC 8 output regardless of construction order
+  // or how many other linked Styles have been created in the process. The
+  // previous module-level nextLinkId counter broke this theorem; this test
+  // locks it in.
+  it("renders byte-identical OSC 8 for two independently-constructed link Styles with the same URL", () => {
+    new Style({ link: "https://noise.example/a" });
+    const a = new Style({ link: "https://target.example" });
+    new Style({ link: "https://noise.example/b" });
+    const b = new Style({ link: "https://target.example" });
+    expect(a.render("x")).toBe(b.render("x"));
+  });
+
+  it("emits OSC 8 with empty params (no id=N annotation)", () => {
+    const s = new Style({ link: "https://example.com" });
+    expect(s.render("click")).toBe(
+      "\x1b]8;;https://example.com\x1b\\click\x1b]8;;\x1b\\",
+    );
+  });
+
   it("renders negated attribute (bold false) with the off SGR code", () => {
     const s = new Style({ bold: false });
     const result = s.render("test");
