@@ -69,8 +69,16 @@ describe("hostStream", () => {
     const host = makeRecordingHost();
     const stream = hostStream(host);
 
-    // The Writable-shaped contract: Console reads `.writable` in code paths
-    // it doesn't currently exercise, but Node's stream consumers rely on it.
-    expect((stream as unknown as { writable: boolean }).writable).toBe(true);
+    // The narrow Writable contract: callers read `.writable` to detect a
+    // live sink. No cast needed — the return type tells the truth about
+    // what's there.
+    expect(stream.writable).toBe(true);
+  });
+
+  it("end() returns the stream itself for chaining", () => {
+    const host = makeRecordingHost();
+    const stream = hostStream(host);
+
+    expect(stream.end()).toBe(stream);
   });
 });

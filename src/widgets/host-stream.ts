@@ -1,49 +1,71 @@
 /**
- * hostStream — adapt a TerminalHost into a NodeJS.WritableStream-shaped value
- * that Console (and Live) can accept as its `file` option.
+ * hostStream — adapt a `TerminalHost` into the narrow Writable surface that
+ * Console (and Live) actually exercise.
  *
- * [LAW:locality-or-seam] The Console-using demos (rich-strip, rich-markup-plugins,
- * themes-and-color-studio, rich-dash, claude-sessions, rich-explore) need their
- * Console output to go through a TerminalHost so the same demo code runs against
- * NodeTerminalHost in the terminal and BrowserTerminalHost in the browser. The
- * missing seam was a writable-shaped value that forwards to host.write(); this
- * adapter is exactly that, with no Console-class change required.
+ * [LAW:types-are-the-program] The returned object's type tells the truth
+ * about what it implements: `.write(chunk) → boolean`, `.end() → self`, and
+ * `.writable: true`. It is NOT a full `NodeJS.WritableStream`; calling
+ * `.pipe()`, `.cork()`, `.on('error')`, etc. is a programming error that
+ * TypeScript will reject at compile time.
  *
- * [LAW:single-enforcer] One adapter, one direction (TerminalHost → Console sink).
- * Console writes only via `.write()` (verified across core/console.ts and
- * renderables/live.ts), so this is the entire contract the adapter must satisfy.
- * The `as unknown as NodeJS.WritableStream` cast at the return crosses a boundary
- * where the runtime contract is narrower than the structural type — Console's
- * `file:` option is typed as the full stream, but the implementation only
- * exercises `.write(string)`.
+ * [LAW:locality-or-seam] Console + Live access their `_file` only via
+ * `.write()` (verified in src/core/console.ts and src/renderables/live.ts) —
+ * so this narrow surface is the entire contract they need. Console's
+ * declared `file:` type is wider (`NodeJS.WritableStream`) than what its
+ * implementation uses; callers cross that boundary with an explicit cast at
+ * the Console construction site, where the imprecision belongs.
  *
- * [LAW:dataflow-not-control-flow] Demos never branch on environment. They build
- * a Console with `file: hostStream(host)`; whether `host` is a NodeTerminalHost
- * or a BrowserTerminalHost is the value that differs, not a code path.
+ * [LAW:single-enforcer] One adapter, one direction (TerminalHost → Console
+ * sink). The cast Console requires is callers' responsibility — making this
+ * function itself honest keeps the seam diagnostic about which side is wide
+ * (Console's `file:` option) vs narrow (the adapter's implementation).
+ *
+ * Followup `rich-demo-site-pek.3.4` will widen Console's `file:` type to
+ * the narrow shape (since Console only needs `.write`), eliminating the
+ * caller-side cast altogether.
  */
 
 import type { TerminalHost } from "./terminal-host.js";
 
 /**
- * Wrap a `TerminalHost` so its output can be threaded into `Console` via the
- * existing `file:` option. The returned object forwards `.write(chunk)` to
- * `host.write(chunk)` and reports as writable; all other Writable surface is
- * unused by Rich's render pipeline.
- *
- * Pair with `forceTerminal: true` on the Console — without it, Console treats
- * any non-undefined `file` option as non-TTY and disables color, which defeats
- * the point of routing through xterm.js.
+ * The narrow Writable surface this adapter implements — the entire contract
+ * Console + Live exercise on their `_file` sink. Returned by `hostStream`.
  */
-export function hostStream(host: TerminalHost): NodeJS.WritableStream {
-  const stream = {
+export interface RichWritable {
+  /** Mirrors `NodeJS.WritableStream.writable` — always true for this adapter. */
+  readonly writable: true;
+  /** Forwards the chunk to `host.write(chunk)`. Returns `true` to mirror Node's contract. */
+  write(chunk: string | Uint8Array): boolean;
+  /** No-op; the adapter does not buffer. Returns the same stream for chaining. */
+  end(): RichWritable;
+}
+
+/**
+ * Wrap a `TerminalHost` so its output can be threaded into `Console` via the
+ * existing `file:` option. The returned object implements only `.write()`
+ * (which forwards to `host.write()`), `.end()` (no-op), and `.writable`.
+ *
+ * To pass the result into Console's `file:` option (which is typed as the
+ * full `NodeJS.WritableStream`), cast at the call site:
+ *
+ *     new Console({
+ *       forceTerminal: true,
+ *       file: hostStream(host) as unknown as NodeJS.WritableStream,
+ *     });
+ *
+ * Pair with `forceTerminal: true` — without it, Console treats any non-undefined
+ * `file` option as non-TTY and disables color, which defeats the point.
+ */
+export function hostStream(host: TerminalHost): RichWritable {
+  const stream: RichWritable = {
     writable: true,
     write(chunk: string | Uint8Array): boolean {
       host.write(chunk);
       return true;
     },
-    end(): unknown {
+    end(): RichWritable {
       return stream;
     },
   };
-  return stream as unknown as NodeJS.WritableStream;
+  return stream;
 }

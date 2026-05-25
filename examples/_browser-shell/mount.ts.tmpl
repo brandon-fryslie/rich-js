@@ -32,7 +32,20 @@ declare const Terminal: new (opts: Record<string, unknown>) => {
   focus(): void;
 };
 
-const statusEl = document.getElementById("status") as HTMLSpanElement;
+// [LAW:no-defensive-null-guards exception: trust boundary — DOM lookup is
+// genuinely optional; null check throws a precise error if the shell HTML
+// is missing its #status / #term elements.
+function requireEl<T extends HTMLElement>(id: string): T {
+  const el = document.getElementById(id);
+  if (el === null) {
+    throw new Error(
+      `rich-js mount: missing required element #${id} in the page shell.`,
+    );
+  }
+  return el as T;
+}
+
+const statusEl = requireEl<HTMLSpanElement>("status");
 const setStatus = (msg: string, cls?: string): void => {
   statusEl.textContent = msg;
   statusEl.className = cls ?? "";
@@ -45,7 +58,7 @@ try {
     cursorBlink: true,
     theme: { background: "#1e1e1e" },
   });
-  term.open(document.getElementById("term") as HTMLElement);
+  term.open(requireEl<HTMLDivElement>("term"));
   term.focus();
   // No cast: the local `Terminal` instance shape matches the wire's
   // `XtermTerminal` parameter type structurally.

@@ -19,7 +19,9 @@ export function runDemo(host: TerminalHost): DemoHandle {
   const { cols } = host.size();
   const consoleOut = new Console({
     forceTerminal: true,
-    file: hostStream(host),
+    // hostStream returns a narrow Writable; Console's file: type is wider.
+    // See followup rich-demo-site-pek.3.4 for the structural fix.
+    file: hostStream(host) as unknown as NodeJS.WritableStream,
     width: cols,
   });
   const runtime = new DashboardRuntime({

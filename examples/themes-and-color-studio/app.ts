@@ -126,7 +126,9 @@ export function runDemo(
 ): DemoHandle {
   const out = new Console({
     forceTerminal: true,
-    file: hostStream(host),
+    // hostStream returns a narrow Writable; Console's file: type is wider.
+    // See followup rich-demo-site-pek.3.4 for the structural fix.
+    file: hostStream(host) as unknown as NodeJS.WritableStream,
     record: options?.record ?? false,
     width: 120,
   });

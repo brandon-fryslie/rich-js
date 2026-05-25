@@ -90,12 +90,15 @@ function stageDemos(demos: readonly string[]): void {
   }
 }
 
-// Vite plugin: stage at `buildStart` (build only — `preview`/`dev` don't fire
-// this hook), so reading the config without invoking a build doesn't write to
-// the filesystem.
+// Vite plugin: stage at `buildStart`, scoped via `apply: "build"` so the
+// plugin object itself is only active during `vite build`. Reading the
+// config or running `vite preview` / `vite dev` skips this plugin entirely.
+// [LAW:types-are-the-program] `apply` makes the build-only constraint a
+// property of the plugin object, not a property of which hooks fire.
 function stagingPlugin(demos: readonly string[]): Plugin {
   return {
     name: "rich-js-demo-staging",
+    apply: "build",
     buildStart() {
       stageDemos(demos);
     },
