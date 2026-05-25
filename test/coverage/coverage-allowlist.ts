@@ -162,13 +162,13 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   unregisterMarkupTag: burndown("markup-and-text-lab"),
 
   // -- Live, Progress & Console -------------------------------------------
+  ConsoleOptions: burndown("live-progress-console"),
   // Structural type for Console's `file:` option — exposed by
   // rich-demo-site-pek.3.4 when NodeJS.WritableStream came out of the
   // public surface. Every demo that calls `new Console({ file: hostStream(host) })`
   // depends on this contract structurally; an explicit type annotation in a
   // future live-progress-console scenario lands the natural coverage.
   ConsoleSink: burndown("live-progress-console"),
-  ConsoleOptions: burndown("live-progress-console"),
   LiveOptions: burndown("live-progress-console"),
   PrintOptions: burndown("live-progress-console"),
   // Node-only plain-text exporter; the HTML sibling (`saveHtml`) is already
