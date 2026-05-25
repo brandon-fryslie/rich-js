@@ -4,15 +4,22 @@
     {
       "version": "pr-47",
       "ref": "refs/pull/47/merge",
-      "sha": "0bebc963afda7ea8a6d804a65d14f330dc921dc4",
-      "timestamp": "2026-05-25T17:16:34.226Z",
+      "sha": "ca76efff05bb9d60ff187a9bdc8103fb241cbfbf",
+      "timestamp": "2026-05-25T17:23:49.423Z",
       "commits": [
         {
-          "sha": "0bebc963afda7ea8a6d804a65d14f330dc921dc4",
+          "sha": "ca76efff05bb9d60ff187a9bdc8103fb241cbfbf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T17:16:04Z",
-          "message": "Merge e4f09708a1636f56034476acdac4475adb69e1ce into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+          "timestamp": "2026-05-25T17:23:22Z",
+          "message": "Merge 1ae44fbeadcc095a2eed2b9d26e6539c54e84152 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "1ae44fbeadcc095a2eed2b9d26e6539c54e84152",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:23:13-06:00",
+          "message": "fix(demos): track host width live in Console + hoist TextDecoder\n\n[LAW:dataflow-not-control-flow] Console.width falls back to\nprocess.stdout.columns (undefined in browser → 80), causing layout to\nrender at 80 cols while xterm.js is at 100. Override consoleOut.width\nwith a live getter that reads host.size().cols — render width tracks\nthe actual terminal in both environments with no env-branching, and\nresize is followed naturally because the getter re-reads on every\naccess.\n\nHoist the input-path TextDecoder out of the onData closure so we don't\nallocate one per keystroke. Hot path; small savings but right hygiene.\n\nAddresses Copilot review round 2 on PR #47.\n"
         },
         {
           "sha": "e4f09708a1636f56034476acdac4475adb69e1ce",
