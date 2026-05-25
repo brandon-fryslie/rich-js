@@ -40,26 +40,39 @@ const shellDir = resolve(examplesDir, "_browser-shell");
 // ---- Demo discovery --------------------------------------------------------
 //
 // A demo is *any* directory under examples/ that has a wire.ts (the
-// authoring source) AND a compiled wire.js under dist-demo/ (the bundler
-// input). Vite bundles the already-tsc-compiled JS so the decorator-using
-// modules (mobx accessors in src/widgets/) don't need a second TS toolchain
-// inside the bundler — tsc is the single TypeScript compiler in this repo.
-// [LAW:single-enforcer]
+// authoring source). Discovery runs at config-evaluation time because Vite
+// needs the input set declared up front; preview / config-reading tooling
+// must be able to load this file with no filesystem writes and no build-
+// only preconditions.
 //
-// If a demo has wire.ts but no matching wire.js, the discovery throws a
-// precise error naming the missing compiled files. Silently excluding such
-// demos would let a fresh `vite build --config vite.config.demos.ts`
-// (skipping the tsc step that `npm run demos:build` chains) appear to
-// succeed while quietly dropping new demos from the output. Loud failure
-// instead. [LAW:verifiable-goals]
+// [LAW:single-enforcer] The "compiled wire.js exists" check is a *build*
+// constraint and lives in the build-only path (the `stagingPlugin` below,
+// scoped via `apply: "build"`). Splitting validation from enumeration this
+// way means `vite preview --config vite.config.demos.ts` loads cleanly
+// even when `dist-demo/` is absent — only `vite build` requires it.
 function discoverDemos(): readonly string[] {
-  const candidates = readdirSync(examplesDir, { withFileTypes: true })
+  return readdirSync(examplesDir, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith("_"))
     .map((d) => d.name)
     .filter((name) => existsSync(resolve(examplesDir, name, "wire.ts")))
     .sort();
+}
 
-  const missing = candidates.filter(
+// ---- Staging ---------------------------------------------------------------
+//
+// For each demo, materialise `.vite-demos/<name>/{index.html,mount.ts}` from
+// the templates with `__DEMO_NAME__` / `__DEMO_WIRE__` substituted. The mount
+// imports the compiled wire by *relative* path — uniform across platforms,
+// unlike an absolute path which would become `C:/...` on Windows and reject
+// as a module specifier in most resolvers.
+//
+// This is also where the "compiled wire.js exists" build constraint is
+// enforced. Silently excluding demos missing their compiled wire would let
+// `vite build` (skipping the tsc step that `npm run demos:build` chains)
+// appear to succeed while quietly dropping new demos from the output. Loud
+// failure instead. [LAW:verifiable-goals]
+function stageDemos(demos: readonly string[]): void {
+  const missing = demos.filter(
     (name) => !existsSync(resolve(compiledExamplesDir, name, "wire.js")),
   );
   if (missing.length > 0) {
@@ -72,17 +85,6 @@ function discoverDemos(): readonly string[] {
     );
   }
 
-  return candidates;
-}
-
-// ---- Staging ---------------------------------------------------------------
-//
-// For each demo, materialise `.vite-demos/<name>/{index.html,mount.ts}` from
-// the templates with `__DEMO_NAME__` / `__DEMO_WIRE__` substituted. The mount
-// imports the compiled wire by *relative* path — uniform across platforms,
-// unlike an absolute path which would become `C:/...` on Windows and reject
-// as a module specifier in most resolvers.
-function stageDemos(demos: readonly string[]): void {
   rmSync(stagingDir, { recursive: true, force: true });
   mkdirSync(stagingDir, { recursive: true });
 

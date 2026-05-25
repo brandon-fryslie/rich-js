@@ -540,9 +540,19 @@ const unsubKey = router.onKey((event) => {
     host.write("\x1b[?1049l\x1b[1;36mGoodbye!\x1b[0m\n");
   }
 
-  host.write("\x1b[?1049h\x1b[H");
-  screen.start();
-  router.start();
+  // [LAW:single-enforcer] Alt-screen state has exactly one restore site
+  // (`shutdown()`). If `screen.start()` / `router.start()` throws after the
+  // alt-screen entry, the catch routes through the same `shutdown()` so
+  // the restore sequence runs and the terminal is never left in the
+  // alternate buffer.
+  try {
+    host.write("\x1b[?1049h\x1b[H");
+    screen.start();
+    router.start();
+  } catch (err) {
+    shutdown();
+    throw err;
+  }
 
   return { stop: shutdown };
 }

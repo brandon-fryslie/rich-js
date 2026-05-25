@@ -183,6 +183,11 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     return null;
   };
 
+  // [LAW:types-are-the-program] mutationTimer is initialised to null BEFORE
+  // `handle` so `handle.stop()` is structurally safe to call during partial
+  // startup (e.g. when the alt-screen has been entered but setInterval hasn't
+  // yet assigned). The discriminator "timer running?" lives in the value.
+  let mutationTimer: ReturnType<typeof setInterval> | null = null;
   let stopped = false;
   const handle: DemoHandle = {
     stop(): void {
@@ -215,22 +220,29 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     if (hit) fm.focus(hit);
   });
 
-  // Alt-screen buffer — main buffer is restored on stop().
-  host.write("\x1b[?1049h\x1b[H");
-
-  screen.mount(...mountList);
-
-  let cycleIdx = 0;
-  let mutationTimer: ReturnType<typeof setInterval> | null = setInterval(() => {
-    cycleIdx = (cycleIdx + 1) % MUTATION_CYCLE.length;
-    runInAction(() => {
-      ddMutating.options = MUTATION_CYCLE[cycleIdx]!;
-      ddMutating.selectedIndex = 0;
-    });
-  }, 3000);
-
-  screen.start();
-  router.start();
+  // [LAW:single-enforcer] Alt-screen state has exactly one restore site
+  // (`handle.stop()`). The startup block below enters the alt-screen and
+  // brings the screen/router online; if anything in here throws, the catch
+  // routes through the same `handle.stop()` so the restore sequence runs
+  // and the terminal is never left in the alternate buffer.
+  try {
+    // Alt-screen buffer — main buffer is restored on stop().
+    host.write("\x1b[?1049h\x1b[H");
+    screen.mount(...mountList);
+    let cycleIdx = 0;
+    mutationTimer = setInterval(() => {
+      cycleIdx = (cycleIdx + 1) % MUTATION_CYCLE.length;
+      runInAction(() => {
+        ddMutating.options = MUTATION_CYCLE[cycleIdx]!;
+        ddMutating.selectedIndex = 0;
+      });
+    }, 3000);
+    screen.start();
+    router.start();
+  } catch (err) {
+    handle.stop();
+    throw err;
+  }
 
   return handle;
 }

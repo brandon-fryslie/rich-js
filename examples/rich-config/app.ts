@@ -429,29 +429,39 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     if (hit) fm.focus(hit);
   });
 
-  host.write("\x1b[?1049h\x1b[H");
-  screen.mount(...mountList);
+  // [LAW:single-enforcer] Alt-screen state has exactly one restore site
+  // (`handle.stop()`). The startup block below enters the alt-screen and
+  // brings the autoruns/screen/router online; if anything throws inside,
+  // the catch routes through the same `handle.stop()` so the restore
+  // sequence runs and the terminal is never left in the alternate buffer.
+  try {
+    host.write("\x1b[?1049h\x1b[H");
+    screen.mount(...mountList);
 
-  disposeFilter = autorun(() => {
-    const darkOnly = tgDarkOnly.on;
-    const canonicalTheme = THEMES[state.selectedThemeIdx]!;
-    const filtered = THEMES.filter((t) => !darkOnly || t.theme.palette.dark);
-    runInAction(() => {
-      themeDropdown.options = filtered.map((t) => t.name);
-      themeDropdown.selectedIndex = filtered.indexOf(canonicalTheme);
+    disposeFilter = autorun(() => {
+      const darkOnly = tgDarkOnly.on;
+      const canonicalTheme = THEMES[state.selectedThemeIdx]!;
+      const filtered = THEMES.filter((t) => !darkOnly || t.theme.palette.dark);
+      runInAction(() => {
+        themeDropdown.options = filtered.map((t) => t.name);
+        themeDropdown.selectedIndex = filtered.indexOf(canonicalTheme);
+      });
     });
-  });
 
-  disposeTheme = autorun(() => {
-    const theme = state.selectedTheme;
-    for (const widget of allWidgets) {
-      const setTheme = (widget as { setTheme?: (t: typeof theme) => void }).setTheme;
-      if (typeof setTheme === "function") setTheme.call(widget, theme);
-    }
-  });
+    disposeTheme = autorun(() => {
+      const theme = state.selectedTheme;
+      for (const widget of allWidgets) {
+        const setTheme = (widget as { setTheme?: (t: typeof theme) => void }).setTheme;
+        if (typeof setTheme === "function") setTheme.call(widget, theme);
+      }
+    });
 
-  screen.start();
-  router.start();
+    screen.start();
+    router.start();
+  } catch (err) {
+    handle.stop();
+    throw err;
+  }
 
   return handle;
 }
