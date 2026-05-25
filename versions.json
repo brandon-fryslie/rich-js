@@ -4,15 +4,22 @@
     {
       "version": "pr-41",
       "ref": "refs/pull/41/merge",
-      "sha": "a7b13bad99e795358e2b0ebbc940ff557236a2b9",
-      "timestamp": "2026-05-25T00:01:38.429Z",
+      "sha": "bf1d90f76c18f9db70edbb6630dab5113319d8d4",
+      "timestamp": "2026-05-25T00:09:26.678Z",
       "commits": [
         {
-          "sha": "a7b13bad99e795358e2b0ebbc940ff557236a2b9",
+          "sha": "bf1d90f76c18f9db70edbb6630dab5113319d8d4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T18:01:13-06:00",
-          "message": "Merge 79ff3711283b598ad5cb950e83444b35650487bf into e68f9296ba02ac9504629912de25523d3d0c1d5d\n"
+          "timestamp": "2026-05-25T00:09:01Z",
+          "message": "Merge b7820a16d8271bcf7ce41cc2be7ada2a6bb3cacc into e68f9296ba02ac9504629912de25523d3d0c1d5d\n"
+        },
+        {
+          "sha": "b7820a16d8271bcf7ce41cc2be7ada2a6bb3cacc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T18:08:45-06:00",
+          "message": "fix(terminal-host): absorb setRawMode exceptions in node adapter\n\n`node`'s `setRawMode` throws on closed or non-TTY streams; the original\ndemos guarded every call with `try { stdin.setRawMode(false); } catch\n{ /* ignore */ }`. Removing those try/catches without moving the\nbehavior into the host was a behavior-preservation miss — interactive\ndemos could now fail teardown on stream-close races.\n\nExtracts a private `applyRawMode(raw)` helper. Both the public\n`setRawMode` and the `stop` cleanup path delegate to it; the catch\nlives in exactly one place.\n\n[LAW:single-enforcer] One site decides what happens when toggling raw\nmode on the underlying transport fails — not two scattered call sites\nand not every consumer.\n\n[LAW:dataflow-not-control-flow] The host absorbs both shapes of \"the\ntransport can't honor this\": optional chain for \"method missing\",\ntry/catch for \"method threw\". Callers always call setRawMode(bool); the\nhost decides what's possible.\n\nThe catch is silent because the only call sites are lifecycle\ntransitions — if the stream is already gone, there is no recovery path\nand surfacing the exception would only make teardown brittle.\n"
         },
         {
           "sha": "79ff3711283b598ad5cb950e83444b35650487bf",
