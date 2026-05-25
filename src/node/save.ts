@@ -17,17 +17,17 @@ import { writeFileSync } from "node:fs";
 import type { Console } from "../core/console.js";
 
 export function saveText(
-  console: Console,
+  out: Console,
   path: string,
   options?: { clear?: boolean },
 ): void {
-  writeFileSync(path, console.exportText(options), "utf-8");
+  writeFileSync(path, out.exportText(options), "utf-8");
 }
 
 export function saveHtml(
-  console: Console,
+  out: Console,
   path: string,
   options?: { clear?: boolean },
 ): void {
-  writeFileSync(path, console.exportHtml(options), "utf-8");
+  writeFileSync(path, out.exportHtml(options), "utf-8");
 }

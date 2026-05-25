@@ -11,8 +11,13 @@
  * [LAW:types-are-the-program] `ask` is a positional, required parameter —
  * not an optional in `PromptOptions`. The previous shape allowed
  * `Prompt.ask("name?")` at the type level and threw at runtime; the new
- * shape makes the missing-capability state unrepresentable. The runtime
- * "missing input" guard is gone because the type now forbids it.
+ * shape makes the missing-capability state unrepresentable to TS callers.
+ *
+ * A trust-boundary `typeof === "function"` check remains because the public
+ * API surface is reachable from JS (no compile-time types) and from
+ * `any`-typed TS callers. The check makes the failure *diagnostic* (points
+ * the caller at the node helper), not gatekeep-against-bugs — TS users
+ * never see it because the type already forbids the bad state.
  */
 
 import { render as renderMarkup } from "../core/markup.js";
@@ -39,6 +44,18 @@ export interface PromptOptions<T> {
 // --- Base ---
 
 function ask(promptText: string, input: PromptInput): Promise<string> {
+  // [LAW:single-enforcer] Trust-boundary validation for non-TS callers
+  // (JS, or TS with `any` laundering). TS callers can't reach this branch
+  // because `PromptInput` is required at every static `.ask`. The message
+  // points at the node helper rather than letting the call site die with
+  // a generic `TypeError: input is not a function`.
+  if (typeof input !== "function") {
+    throw new TypeError(
+      "Prompt: `input` must be a `PromptInput` function. Pass `nodeAsk` from " +
+        "`@promptctl/rich-js/node/prompt` for Node, or supply a custom " +
+        "`PromptInput` for tests/browsers.",
+    );
+  }
   const rendered = renderMarkup(promptText);
   return input(rendered.plain + " ");
 }
