@@ -4,15 +4,22 @@
     {
       "version": "pr-47",
       "ref": "refs/pull/47/merge",
-      "sha": "bee48e15fe3a8b8016a2cea192466ee7396ebc63",
-      "timestamp": "2026-05-25T17:29:09.979Z",
+      "sha": "5877f396b8e7b72d5b8ac30512385901f5a5636b",
+      "timestamp": "2026-05-25T17:33:52.864Z",
       "commits": [
         {
-          "sha": "bee48e15fe3a8b8016a2cea192466ee7396ebc63",
+          "sha": "5877f396b8e7b72d5b8ac30512385901f5a5636b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T17:28:39Z",
-          "message": "Merge bf987e4af2137aafec181495648e88063a1316d7 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+          "timestamp": "2026-05-25T17:33:21Z",
+          "message": "Merge 96f475f868f5c46fc1af2df801e379e8cde987b9 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "96f475f868f5c46fc1af2df801e379e8cde987b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:33:11-06:00",
+          "message": "docs(demos): describe MemoryFileSystem.lookup resolution rules precisely\n\n[LAW:comments-explain-why-only] The inline comment claimed \"any ancestor\nof home resolves to the root directory\" but the implementation returns\nnull for filesystem root `/` when home is non-root, and only treats\n*non-empty* partial prefixes as synthetic directories. Replaced the\ntwo-clause comment with four explicit resolution rules so the doc\nmatches behavior.\n\nAddresses Copilot review round 4 on PR #47.\n"
         },
         {
           "sha": "bf987e4af2137aafec181495648e88063a1316d7",
