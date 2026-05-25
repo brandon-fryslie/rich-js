@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "6d14711873ec34d5418f36f0478b796716e6dd5e",
-      "timestamp": "2026-05-25T07:14:49.473Z",
+      "sha": "310377a4a6524054661a0dab4f062a897dbe97a0",
+      "timestamp": "2026-05-25T07:22:46.055Z",
       "commits": [
         {
-          "sha": "6d14711873ec34d5418f36f0478b796716e6dd5e",
+          "sha": "310377a4a6524054661a0dab4f062a897dbe97a0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T07:14:25Z",
-          "message": "Merge 84d4112c88a159714833de951ed29297171dc20a into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T07:22:22Z",
+          "message": "Merge 12e567ab5791cec7876b4f8f443ec77d051de60f into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "12e567ab5791cec7876b4f8f443ec77d051de60f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T01:22:12-06:00",
+          "message": "fix(demos): fail loud when wire.ts has no compiled wire.js\n\nPreviously discoverDemos() silently filtered out demos missing their\ntsc-compiled artifact, so running `vite build --config vite.config.demos.ts`\ndirectly (without `npm run demos:build`, which chains tsc first) would\nappear to succeed while quietly dropping the new demo from the output.\n\nNow the discovery raises a precise error listing every wire.ts that lacks\na compiled wire.js, with the remediation command spelled out. [LAW:verifiable-goals,\nLAW:dataflow-not-control-flow] — no silent exclusion path.\n"
         },
         {
           "sha": "84d4112c88a159714833de951ed29297171dc20a",
