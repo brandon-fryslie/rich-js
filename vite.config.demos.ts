@@ -37,6 +37,17 @@ const compiledExamplesDir = resolve(__dirname, "dist-demo", "examples");
 const stagingDir = resolve(__dirname, ".vite-demos");
 const shellDir = resolve(examplesDir, "_browser-shell");
 
+// [LAW:single-enforcer] Demo bundles land in VitePress's `public/` so the
+// docs build copies them to the deployed dist with zero extra wiring — one
+// pipeline, one deploy.
+// [LAW:one-source-of-truth] The manifest `docs/.vitepress/demos.json` is the
+// authoritative list of demos that exist for the docs site to render. The
+// VitePress config and the dynamic-route `paths.ts` both read this file;
+// no second list to keep in sync.
+const docsDir = resolve(__dirname, "docs");
+const demosOutDir = resolve(docsDir, "public", "demos-app");
+const manifestPath = resolve(docsDir, ".vitepress", "demos.json");
+
 // ---- Demo discovery --------------------------------------------------------
 //
 // A demo is *any* directory under examples/ that has a wire.ts (the
@@ -109,6 +120,15 @@ function stageDemos(demos: readonly string[]): void {
       mountTmpl.replaceAll("__DEMO_WIRE__", wirePath),
     );
   }
+
+  // [LAW:one-source-of-truth] Manifest is the demo list the docs site renders
+  // from. Writing it here (in the build-only path) ties manifest contents to
+  // the exact set of demos that just got staged — they cannot drift.
+  mkdirSync(dirname(manifestPath), { recursive: true });
+  writeFileSync(
+    manifestPath,
+    JSON.stringify({ demos: demos.map((name) => ({ name })) }, null, 2) + "\n",
+  );
 }
 
 // Vite plugin: stage at `buildStart`, scoped via `apply: "build"` so the
@@ -157,7 +177,11 @@ export default defineConfig({
   },
   plugins: [stagingPlugin(demos)],
   build: {
-    outDir: resolve(__dirname, "dist-demos"),
+    // [LAW:single-enforcer] Outputting into VitePress's `public/` makes the
+    // docs build the single deploy boundary — VitePress copies the demo
+    // bundles to `dist/demos-app/` verbatim. No second pipeline, no second
+    // copy step. The directory is gitignored; treat it as build artifact.
+    outDir: demosOutDir,
     emptyOutDir: true,
     target: "es2022",
     rollupOptions: { input },

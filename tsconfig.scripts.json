@@ -7,5 +7,9 @@
     "moduleResolution": "Bundler",
     "types": ["node"]
   },
-  "include": ["vite.config.demos.ts"]
+  "include": [
+    "vite.config.demos.ts",
+    "docs/.vitepress/config.ts",
+    "docs/demos/**/*.ts"
+  ]
 }
