@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "fd052f0457ca48500c6810a7b4027ebc0f57c95d",
-      "timestamp": "2026-05-25T07:35:48.445Z",
+      "sha": "b43fd2d5c5eba1b7c09cdd6997555ac3c390f1fc",
+      "timestamp": "2026-05-25T07:52:42.914Z",
       "commits": [
         {
-          "sha": "fd052f0457ca48500c6810a7b4027ebc0f57c95d",
+          "sha": "b43fd2d5c5eba1b7c09cdd6997555ac3c390f1fc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T07:35:24Z",
-          "message": "Merge ab7c454fd84058445c93f11691252ba502a9c97f into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T07:52:19Z",
+          "message": "Merge 5eb2ded56b658136c47d61e8fc3f8d888cce2b32 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "5eb2ded56b658136c47d61e8fc3f8d888cce2b32",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T01:41:05-06:00",
+          "message": "fix(demos): close LAW marker bracket in mount template\n\nThe `[LAW:no-defensive-null-guards exception: …]` comment was missing its\nclosing bracket, so the observability marker did not parse as a tagged\nexception. The CLAUDE.md format is `[LAW:<token>] exception: reason` —\ndownstream agents grep for that exact shape when reasoning about\narchitectural ground truth, so the bracket is a syntactic contract, not a\ntypo. [LAW:one-source-of-truth] the marker now matches the canonical\nformat used everywhere else in the repo.\n"
         },
         {
           "sha": "ab7c454fd84058445c93f11691252ba502a9c97f",
