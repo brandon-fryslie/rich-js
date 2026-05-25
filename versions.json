@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "fd979f6f79f62e54a80d0205b699a42ffaefe57d",
-      "timestamp": "2026-05-25T06:51:42.466Z",
+      "sha": "97bf80e5d9676f040dba3dd16029deed52e924a5",
+      "timestamp": "2026-05-25T06:57:33.995Z",
       "commits": [
         {
-          "sha": "fd979f6f79f62e54a80d0205b699a42ffaefe57d",
+          "sha": "97bf80e5d9676f040dba3dd16029deed52e924a5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T06:51:19Z",
-          "message": "Merge 3533b238d324478e333d59c6df1d6896feff7507 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T06:57:09Z",
+          "message": "Merge 6e6aaca62020fab2f4226878408f84938eec09ee into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "6e6aaca62020fab2f4226878408f84938eec09ee",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T00:57:00-06:00",
+          "message": "fix(demos): expand mount template's Terminal shape to match XtermTerminal\n\nThe mount.ts.tmpl declared `Terminal` with only `.open()` and `.focus()`,\nwhich forced an `as unknown as Parameters<typeof mount>[0]` cast at the\nboundary — laundering the type rather than expressing it.\n\n[LAW:types-are-the-program] Declare the full surface every wire's\n`mount(terminal: XtermTerminal)` expects: `cols`/`rows`, `write`, `onData`,\n`onResize`, plus the DOM helpers (`open`, `focus`). TypeScript matches\nstructurally; the cast disappears. The type now describes the real shape\nof the value flowing across the boundary instead of papering over a gap.\n"
         },
         {
           "sha": "3533b238d324478e333d59c6df1d6896feff7507",
