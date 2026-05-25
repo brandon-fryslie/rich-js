@@ -4,15 +4,22 @@
     {
       "version": "pr-47",
       "ref": "refs/pull/47/merge",
-      "sha": "ca76efff05bb9d60ff187a9bdc8103fb241cbfbf",
-      "timestamp": "2026-05-25T17:23:49.423Z",
+      "sha": "bee48e15fe3a8b8016a2cea192466ee7396ebc63",
+      "timestamp": "2026-05-25T17:29:09.979Z",
       "commits": [
         {
-          "sha": "ca76efff05bb9d60ff187a9bdc8103fb241cbfbf",
+          "sha": "bee48e15fe3a8b8016a2cea192466ee7396ebc63",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T17:23:22Z",
-          "message": "Merge 1ae44fbeadcc095a2eed2b9d26e6539c54e84152 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+          "timestamp": "2026-05-25T17:28:39Z",
+          "message": "Merge bf987e4af2137aafec181495648e88063a1316d7 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "bf987e4af2137aafec181495648e88063a1316d7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:28:29-06:00",
+          "message": "docs(demos): tighten readFirstBytes and scanner header accuracy\n\n[LAW:comments-explain-why-only] The readFirstBytes comment claimed the\nreturned byte length \"matches the requested cap\" — but a truncated\nmultibyte UTF-8 sequence decodes to U+FFFD (3 bytes), which can exceed\nthe cap. The existing test pins this case. Comment now describes what\nactually happens: the *read* is capped at maxBytes; decoding may emit\nreplacement chars and the returned text's byte length is not strictly\n≤ maxBytes, matching node's Buffer.toString.\n\nThe scanner header said the first-line peek is \"for slug extraction\"\nbut extractMeta() also derives firstPrompt from the same line.\nUpdated to mention both.\n\nAddresses Copilot review round 3 on PR #47.\n"
         },
         {
           "sha": "1ae44fbeadcc095a2eed2b9d26e6539c54e84152",
