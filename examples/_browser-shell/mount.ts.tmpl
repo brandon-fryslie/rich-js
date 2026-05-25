@@ -32,9 +32,9 @@ declare const Terminal: new (opts: Record<string, unknown>) => {
   focus(): void;
 };
 
-// [LAW:no-defensive-null-guards exception: trust boundary — DOM lookup is
-// genuinely optional; null check throws a precise error if the shell HTML
-// is missing its #status / #term elements.
+// [LAW:no-defensive-null-guards] exception: trust boundary — DOM lookup
+// is genuinely optional; null check throws a precise error if the shell
+// HTML is missing its #status / #term elements.
 function requireEl<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (el === null) {
