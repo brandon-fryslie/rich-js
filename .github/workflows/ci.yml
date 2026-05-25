@@ -20,9 +20,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # [LAW:one-source-of-truth] `package.json#engines.node` is the canonical
+      # supported-runtime declaration; setup-node reads it via
+      # `node-version-file` so the workflow cannot drift from the engine
+      # constraint (which is `^20.19.0 || >=22.12.0`, dictated by a transitive
+      # dep). Bumping the engine in package.json automatically bumps CI.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: package.json
           cache: npm
 
       - run: npm ci

@@ -62,8 +62,14 @@ for (const { name } of manifest.demos) {
 
     await page.goto(`demos-app/${name}/`);
 
-    const status = page.locator("#status.ok");
+    // Locate #status by id only, then assert class and text separately.
+    // On boot failure mount.ts.tmpl sets class="err" with a "boot error: ..."
+    // message — using the composite selector `#status.ok` would time out
+    // without surfacing that text, so the failure output reduces to
+    // "selector timeout" instead of the real error.
+    const status = page.locator("#status");
     await expect(status).toBeAttached();
+    await expect(status).toHaveClass("ok");
     await expect(status).toContainText("ready");
 
     const rows = page.locator(".xterm-rows");
