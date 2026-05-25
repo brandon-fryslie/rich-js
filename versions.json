@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "217356b005ffc90f636ec58129b0cb958b9195f1",
-      "timestamp": "2026-05-25T07:07:05.214Z",
+      "sha": "6d14711873ec34d5418f36f0478b796716e6dd5e",
+      "timestamp": "2026-05-25T07:14:49.473Z",
       "commits": [
         {
-          "sha": "217356b005ffc90f636ec58129b0cb958b9195f1",
+          "sha": "6d14711873ec34d5418f36f0478b796716e6dd5e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T07:06:39Z",
-          "message": "Merge 693853f3a0bb226c5077e7b3ddce621f6e0564a9 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T07:14:25Z",
+          "message": "Merge 84d4112c88a159714833de951ed29297171dc20a into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "84d4112c88a159714833de951ed29297171dc20a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T01:14:15-06:00",
+          "message": "style(themes-and-color-studio): indent runDemo body to match its scope\n\nThe surgical wrap from rich-demo-site-pek.3 left ~820 lines of demo body\nat column 0 inside `runDemo()`. Visually the body read as module-level\neven though it lives inside the function — a real readability hazard\nfor anyone editing the demo later. Mechanical 2-space indent on lines\n136-956, no behavior change.\n"
         },
         {
           "sha": "693853f3a0bb226c5077e7b3ddce621f6e0564a9",
