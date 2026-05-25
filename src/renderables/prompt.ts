@@ -3,15 +3,16 @@
  *
  * [LAW:locality-or-seam] The renderable owns prompt logic (display, choice
  * validation, default fallback, retry loop) — but not where the answer comes
- * from. Input is a required capability passed at the call site. Node
- * consumers pass `nodeAsk` from `@promptctl/rich-js/node/prompt`; tests pass
- * a fake; the browser bundle gets the classes without dragging
- * `node:readline` into the main barrel.
+ * from. The input source is a required `PromptInput` capability passed at the
+ * call site. Node consumers pass `nodeAsk` from
+ * `@promptctl/rich-js/node/prompt`; tests pass a fake; the browser bundle
+ * gets the classes without dragging `node:readline` into the main barrel.
  *
- * [LAW:types-are-the-program] `ask` is a positional, required parameter —
- * not an optional in `PromptOptions`. The previous shape allowed
- * `Prompt.ask("name?")` at the type level and threw at runtime; the new
- * shape makes the missing-capability state unrepresentable to TS callers.
+ * [LAW:types-are-the-program] The `input: PromptInput` parameter is
+ * positional and required on every `*.ask()` static — not an optional in
+ * `PromptOptions`. The previous shape allowed `Prompt.ask("name?")` at the
+ * type level and threw at runtime; the new shape makes the missing-capability
+ * state unrepresentable to TS callers.
  *
  * A trust-boundary `typeof === "function"` check remains because the public
  * API surface is reachable from JS (no compile-time types) and from
