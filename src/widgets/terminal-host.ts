@@ -167,10 +167,35 @@ export class NodeTerminalHost implements TerminalHost {
 
   setRawMode(raw: boolean): void {
     this.rawModeRequested = raw;
-    // [LAW:dataflow-not-control-flow] No-op when the transport doesn't
-    // expose setRawMode (non-TTY streams, mock streams in tests). The host
-    // absorbs the capability check so callers do not branch on it.
-    this.stdin.setRawMode?.(raw);
+    this.applyRawMode(raw);
+  }
+
+  // [LAW:single-enforcer] One site decides what to do when toggling raw
+  // mode on the underlying transport fails. Both `setRawMode` (call from
+  // outside) and `stop` (cleanup) go through this helper so neither
+  // caller has to branch on capability or exception-handling.
+  //
+  // [LAW:dataflow-not-control-flow] Two shapes of "the transport can't do
+  // this" are absorbed identically: the optional chain handles "method
+  // missing" (non-TTY streams, PassThrough in tests); the try/catch
+  // handles "method exists but threw" (node's `setRawMode` throws on
+  // closed or non-TTY streams). Callers see neither shape — they always
+  // call `setRawMode(bool)`, and the host decides what's possible.
+  //
+  // The catch is silent because the only call sites are lifecycle
+  // transitions: if the stream is already gone, there is nothing
+  // semantically meaningful for the host to do, and surfacing the
+  // exception would only make teardown brittle without giving the caller
+  // a recovery path. The demos this replaces did `try { ... } catch {}`
+  // at every call site for exactly this reason — absorbing it once here
+  // means the pattern stops spreading.
+  private applyRawMode(raw: boolean): void {
+    try {
+      this.stdin.setRawMode?.(raw);
+    } catch {
+      // Underlying stream couldn't honor the request (closed, no longer
+      // a TTY, etc.). Lifecycle continues.
+    }
   }
 
   onData(handler: DataHandler): Unsubscribe {
@@ -242,7 +267,7 @@ export class NodeTerminalHost implements TerminalHost {
     this.dataHandlers.clear();
     this.resizeHandlers.clear();
     if (this.rawModeRequested) {
-      this.stdin.setRawMode?.(false);
+      this.applyRawMode(false);
       this.rawModeRequested = false;
     }
   }
