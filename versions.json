@@ -4,15 +4,22 @@
     {
       "version": "pr-48",
       "ref": "refs/pull/48/merge",
-      "sha": "2a46597c6b333c27652ca0dcd08a3ff1de8e60b6",
-      "timestamp": "2026-05-25T18:16:12.374Z",
+      "sha": "ea4167bb78db9a2dddaabb6ff3c12d84c3ec5a1e",
+      "timestamp": "2026-05-25T18:22:09.764Z",
       "commits": [
         {
-          "sha": "2a46597c6b333c27652ca0dcd08a3ff1de8e60b6",
+          "sha": "ea4167bb78db9a2dddaabb6ff3c12d84c3ec5a1e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T12:15:38-06:00",
-          "message": "Merge dcd2be18d390a4f0b50d9eb5fc3da64080fd017b into ad93c972c6119f443743ed0969fdeadd13bcb7a0\n"
+          "timestamp": "2026-05-25T18:21:42Z",
+          "message": "Merge 06f52e76e81cb06e0ac35610f8130f2a454428f0 into ad93c972c6119f443743ed0969fdeadd13bcb7a0\n"
+        },
+        {
+          "sha": "06f52e76e81cb06e0ac35610f8130f2a454428f0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T12:21:31-06:00",
+          "message": "fix(demos): override Console.height for Live in browser; preserve kind on stat failure\n\n`Live.refresh` (src/renderables/live.ts:124) reads `Console.height` to crop\nframes, and `Console.height` falls back to 24 in the browser (no real\n`process.stdout`). Without an override matching the width pattern, browser\nframes clipped to 24 rows regardless of the xterm viewport — a real bug\nfor any tall xterm instance. Mirror the width override using the same\n`Object.defineProperty` shape; both fields are now data flowing from the\nhost. claude-sessions does not hit this because it uses manual\n`Console.print` rather than Live; rich-explore is the first demo in the\n\"Live × browser\" cell so the gap surfaced here.\n\nIn fs/walk.ts: when `fs.stat` returns null, classify the entry by\nextension via `kindForPath(name, false)` rather than hard-coding\n\"fallback\". This preserves tree styling for files we know the kind of\neven when we can't read size/mtime (a `.png` still renders as binary in\nthe tree). Error message now includes the full path so the failing entry\nis identifiable. `isDirectory: false` is the right default because\nreaddir surfaced the name — the entry exists, the per-entry stat is what\nfailed, and per-entry stat failures are overwhelmingly files (broken\nsymlinks, perm issues) rather than directories.\n"
         },
         {
           "sha": "dcd2be18d390a4f0b50d9eb5fc3da64080fd017b",
