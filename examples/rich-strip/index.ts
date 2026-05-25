@@ -12,5 +12,8 @@ import { runDemo } from "./app.js";
 
 const host = new NodeTerminalHost();
 host.start();
-runDemo(host);
-host.stop();
+try {
+  runDemo(host);
+} finally {
+  host.stop();
+}

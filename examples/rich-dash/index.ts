@@ -11,7 +11,14 @@ import { runDemo } from "./app.js";
 
 const host = new NodeTerminalHost();
 host.start();
-const demo = runDemo(host);
+
+let demo: ReturnType<typeof runDemo>;
+try {
+  demo = runDemo(host);
+} catch (err) {
+  host.stop();
+  throw err;
+}
 
 const shutdown = (): void => {
   demo.stop();
