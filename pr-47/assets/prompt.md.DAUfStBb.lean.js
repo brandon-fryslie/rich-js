@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.DksfFinf.js";const y=JSON.parse('{"title":"Prompts","description":"","frontmatter":{},"headers":[],"relativePath":"prompt.md","filePath":"prompt.md"}'),h={name:"prompt.md"};function p(l,s,k,e,r,d){return a(),t("div",null,[...s[0]||(s[0]=[n("",20)])])}const g=i(h,[["render",p]]);export{y as __pageData,g as default};
