@@ -4,15 +4,22 @@
     {
       "version": "pr-47",
       "ref": "refs/pull/47/merge",
-      "sha": "934cae16876934e8392c6d949bf3d9260005e616",
-      "timestamp": "2026-05-25T17:39:42.180Z",
+      "sha": "56ac608246ca7b497284b0c144b34f62b55cf01a",
+      "timestamp": "2026-05-25T17:49:50.145Z",
       "commits": [
         {
-          "sha": "934cae16876934e8392c6d949bf3d9260005e616",
+          "sha": "56ac608246ca7b497284b0c144b34f62b55cf01a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T17:39:17Z",
-          "message": "Merge a0e2aff1fce4df88f4109e3e658e1c3b1d74f4d1 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+          "timestamp": "2026-05-25T17:49:17Z",
+          "message": "Merge bc89e98c9e0f2608747aee6e57e45dacb9303974 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "bc89e98c9e0f2608747aee6e57e45dacb9303974",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:49:07-06:00",
+          "message": "docs(demos): correct MemoryFileSystem path doc + fixture key hint\n\n[LAW:comments-explain-why-only] The MemoryFileSystem header said paths\nare \"always absolute\", but join/basename/dirname all accept relative\ninputs and tests rely on that — claim was wrong. Reworded to describe\nthe actual behavior (slash-separated; both absolute and relative\nsupported; tree lookup always works in absolute terms under `home`).\n\nThe embedded session fixture hinted at `r` to toggle raw view, but\nkeymap.ts maps `v` to toggle-view-mode. Updated the fixture text.\n\nAddresses Copilot review round 7 on PR #47.\n"
         },
         {
           "sha": "a0e2aff1fce4df88f4109e3e658e1c3b1d74f4d1",
