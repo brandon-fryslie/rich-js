@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "397b610d78da4598e24fc42d97e0c362be342632",
-      "timestamp": "2026-05-25T06:43:40.037Z",
+      "sha": "fd979f6f79f62e54a80d0205b699a42ffaefe57d",
+      "timestamp": "2026-05-25T06:51:42.466Z",
       "commits": [
         {
-          "sha": "397b610d78da4598e24fc42d97e0c362be342632",
+          "sha": "fd979f6f79f62e54a80d0205b699a42ffaefe57d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T06:43:17Z",
-          "message": "Merge c8eba0b7b48342aafab5f43338ec5392157ba409 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T06:51:19Z",
+          "message": "Merge 3533b238d324478e333d59c6df1d6896feff7507 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "3533b238d324478e333d59c6df1d6896feff7507",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T00:50:56-06:00",
+          "message": "fix(demos): relative wire paths + staging in plugin buildStart hook\n\nTwo round-3 review findings on vite.config.demos.ts, both about staging:\n\n- Absolute filesystem paths in the generated mount.ts wouldn't resolve as\n  module specifiers on Windows (`C:/...` is rejected by most ESM resolvers).\n  Use `path.relative()` so the import is platform-uniform.\n\n- Staging ran at module-evaluation time, so `vite preview` (and any tooling\n  that just reads the config) re-staged on every load. Move staging into a\n  `buildStart` plugin hook — fires only on build, not on preview or config\n  reads. [LAW:dataflow-not-control-flow] the discriminator \"are we building\n  right now?\" is data Vite exposes via the plugin lifecycle, not a branch\n  the config has to make.\n"
         },
         {
           "sha": "c8eba0b7b48342aafab5f43338ec5392157ba409",
