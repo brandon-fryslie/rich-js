@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-47",
+      "ref": "refs/pull/47/merge",
+      "sha": "875d522dd543d4500c71fdaea021be4fde1db1ec",
+      "timestamp": "2026-05-25T17:09:10.692Z",
+      "commits": [
+        {
+          "sha": "875d522dd543d4500c71fdaea021be4fde1db1ec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:08:41-06:00",
+          "message": "Merge 38cd95ca0f8cc8cdb47c35a70fc479c946e7bd03 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "38cd95ca0f8cc8cdb47c35a70fc479c946e7bd03",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:08:07-06:00",
+          "message": "feat(demos): FileSystem capability + claude-sessions browser bundle (rich-demo-site-pek.3.1)\n\n[LAW:capabilities-over-context] Extract a FileSystem capability covering exactly\nthe operations claude-sessions performs (homeDir, join, basename, dirname,\nexists, readDir, stat, readFile, readFirstBytes) and thread it through the\ndemo. NodeFileSystem wraps node:fs/path/os for the terminal entry;\nMemoryFileSystem serves an embedded session fixture for the browser entry.\n\n[LAW:dataflow-not-control-flow] The demo body never branches on environment —\nindex.ts and wire.ts differ only in which capability instances they construct.\nThe same run(host, fs) call drives both.\n\n[LAW:single-enforcer] node-file-system.ts is the only file in the demo tree\nthat touches node:fs/path/os. _capabilities/index.ts deliberately omits\nNodeFileSystem so the browser-safe barrel cannot transitively pull node\nmodules at bundle time.\n\nConsole writes now flow through hostStream(host) so the same render path\ndrives node stdout and xterm.js. Existing node entry (npm run sessions)\nbehaves identically.\n\nVerified: lint clean, 1736 tests pass, demos:build produces the\nclaude-sessions bundle, headless-browser gate (8/8) covers it via the\nmanifest-driven test.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a480b2c4436f3139c74467572c9fdf3becb7a39d",
