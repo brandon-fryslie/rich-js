@@ -4,15 +4,22 @@
     {
       "version": "pr-44",
       "ref": "refs/pull/44/merge",
-      "sha": "5a194033e22c84c441e4933a2776793b76cf33e3",
-      "timestamp": "2026-05-25T09:38:52.736Z",
+      "sha": "9c4475612e49a53ef407b0bfcb44dbd675030010",
+      "timestamp": "2026-05-25T09:43:54.563Z",
       "commits": [
         {
-          "sha": "5a194033e22c84c441e4933a2776793b76cf33e3",
+          "sha": "9c4475612e49a53ef407b0bfcb44dbd675030010",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T03:38:21-06:00",
-          "message": "Merge e95d7c3878c90deb69fa70418793cf78ca7b8968 into c2572a527d2212cb9910553b41b1c58db70496bf\n"
+          "timestamp": "2026-05-25T09:43:26Z",
+          "message": "Merge 673cef10db0beefbef120b288c849ab8ff4bf42b into c2572a527d2212cb9910553b41b1c58db70496bf\n"
+        },
+        {
+          "sha": "673cef10db0beefbef120b288c849ab8ff4bf42b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T03:43:17-06:00",
+          "message": "chore(lint): extend tsc --noEmit to docs/ TypeScript files\n\ndocs/.vitepress/config.ts and docs/demos/*.ts were authoring TypeScript\nfiles that no lint command touched — neither the main `tsc --noEmit`\n(which scopes to src/) nor tsconfig.scripts.json (which only included\nvite.config.demos.ts). Pulling them into tsconfig.scripts.json puts\nevery TS file in the repo under exactly one type-check gate.\n[LAW:single-enforcer] [LAW:verifiable-goals]\n\nSurfaced a pre-existing latent bug in config.ts: `process.env.VITEPRESS_BASE`\nviolated noPropertyAccessFromIndexSignature. Fixed in place.\n"
         },
         {
           "sha": "e95d7c3878c90deb69fa70418793cf78ca7b8968",
