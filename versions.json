@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "172cd93ebf7e7ae4c22e2f60eb65342df87f6ce2",
-      "timestamp": "2026-05-25T19:25:37.868Z",
+      "sha": "c6153fee98b18d4721dc041c565e665c47f760dd",
+      "timestamp": "2026-05-25T19:30:38.672Z",
       "commits": [
         {
-          "sha": "172cd93ebf7e7ae4c22e2f60eb65342df87f6ce2",
+          "sha": "c6153fee98b18d4721dc041c565e665c47f760dd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T19:25:05Z",
-          "message": "Merge 37a78c17130503da370da511e502ff813ca66bad into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T19:30:06Z",
+          "message": "Merge 1f94fcc14caf4f3603f0236f02bfc905f42881db into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "1f94fcc14caf4f3603f0236f02bfc905f42881db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T13:29:56-06:00",
+          "message": "chore(coverage): keep allowlist live-progress-console block alphabetical\n\nConsoleOptions sorts before ConsoleSink (ASCII: 'O' < 'S'). Suppressed\nCopilot finding from review pass 3 — no thread to resolve, the commit\nis the record.\n"
         },
         {
           "sha": "37a78c17130503da370da511e502ff813ca66bad",
