@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "a752e87d572edf8a757ebc9f0bb2f97c0884ced2",
-      "timestamp": "2026-05-25T19:54:58.900Z",
+      "sha": "2d35d4fcd475961c8c9273d49fec21e7c8a7ba70",
+      "timestamp": "2026-05-25T20:01:13.791Z",
       "commits": [
         {
-          "sha": "a752e87d572edf8a757ebc9f0bb2f97c0884ced2",
+          "sha": "2d35d4fcd475961c8c9273d49fec21e7c8a7ba70",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T19:54:28Z",
-          "message": "Merge ca4479a074734af80af9279bb705ccd17e8160dc into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T20:00:45Z",
+          "message": "Merge 761932c17461bf25019509fdcb740c175ab48c46 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "761932c17461bf25019509fdcb740c175ab48c46",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T14:00:35-06:00",
+          "message": "docs: update console/prompt docs for the node-seam API change\n\nThree findings from review pass 8 — all stale-doc consequences of the\npublic API changes:\n\n- docs/console.md: Exporting section now uses\n  `saveText`/`saveHtml` from `@promptctl/rich-js/node/save`. Removed\n  `exportSvg`/`saveSvg` lines — neither exists in src/, the doc was\n  already lying about them.\n- README.md: same update for the recording snippet, with a one-line\n  callout explaining why `saveText`/`saveHtml` live on a subpath\n  (browser-safety of the main barrel).\n- docs/prompt.md: rewritten so every example passes `nodeAsk` as the\n  second positional argument matching the new `Prompt.ask(text, input,\n  options?)` signature. Added an \"Input capability\" section explaining\n  the design, and a \"Custom input sources\" section showing the test\n  fake pattern. The old \"Customization\" section that talked about\n  overriding nonexistent `process()`/`render()` methods was replaced —\n  pre-existing inaccuracy easier to fix during the rewrite than to\n  leave standing.\n\nCapture API bug (raised in pass 7 again as suppressed finding 1) tracked\nseparately in lit `rich-demo-site-pek.6` — pre-existing dead code with\nno callers and a design question (redirect vs tee) that doesn't belong\nin this PR.\n"
         },
         {
           "sha": "ca4479a074734af80af9279bb705ccd17e8160dc",
