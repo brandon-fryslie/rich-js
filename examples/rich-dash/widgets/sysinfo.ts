@@ -1,12 +1,19 @@
 /**
  * sysinfo — host name, uptime, load averages, and memory usage.
  *
- * Pure tick: snapshot `node:os` into a state record. Pure render: project the
- * record into a Table. The widget never touches the screen.
+ * Pure tick: snapshot the host's vitals into a state record. Pure render:
+ * project the record into a Table. The widget never touches the screen.
+ *
+ * [LAW:capabilities-over-context] The widget takes a `SystemInfo` capability
+ * rather than importing `node:os` directly. Same render path in node and
+ * browser; only the capability value differs.
+ *
+ * [LAW:dataflow-not-control-flow] No "am I in node" branch — the capability
+ * passed in is the variability.
  */
 
-import { hostname, loadavg, totalmem, freemem, uptime, platform, arch } from "node:os";
 import { RichText, Style, Table, type Renderable } from "../../../src/index.js";
+import type { SystemInfo } from "../../_capabilities/index.js";
 import { defineWidget } from "../runtime/widget.js";
 
 interface SysinfoState {
@@ -22,17 +29,17 @@ interface SysinfoState {
 
 const BYTES_PER_GIB = 1024 ** 3;
 
-function snapshot(): SysinfoState {
-  const total = totalmem();
-  const free = freemem();
-  const load = loadavg();
+function snapshot(sysinfo: SystemInfo): SysinfoState {
+  const total = sysinfo.totalMemoryBytes();
+  const free = sysinfo.freeMemoryBytes();
+  const load = sysinfo.loadAverage();
   return {
-    host: hostname(),
-    platform: `${platform()}/${arch()}`,
-    uptimeSec: Math.floor(uptime()),
-    load1: load[0] ?? 0,
-    load5: load[1] ?? 0,
-    load15: load[2] ?? 0,
+    host: sysinfo.hostname(),
+    platform: `${sysinfo.platform()}/${sysinfo.arch()}`,
+    uptimeSec: sysinfo.uptimeSeconds(),
+    load1: load[0],
+    load5: load[1],
+    load15: load[2],
     memUsedGiB: (total - free) / BYTES_PER_GIB,
     memTotalGiB: total / BYTES_PER_GIB,
   };
@@ -72,11 +79,13 @@ function renderState(state: SysinfoState): Renderable {
   return table;
 }
 
-export const sysinfoWidget = defineWidget<SysinfoState>({
-  id: "sysinfo",
-  title: " sysinfo ",
-  borderStyle: "green",
-  init: snapshot,
-  tick: () => snapshot(),
-  render: renderState,
-});
+export function sysinfoWidget(sysinfo: SystemInfo) {
+  return defineWidget<SysinfoState>({
+    id: "sysinfo",
+    title: " sysinfo ",
+    borderStyle: "green",
+    init: () => snapshot(sysinfo),
+    tick: () => snapshot(sysinfo),
+    render: renderState,
+  });
+}
