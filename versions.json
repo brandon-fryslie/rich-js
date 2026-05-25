@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "fdb62ea3e09e18245427203ceea235b095eb5edc",
-      "timestamp": "2026-05-25T20:05:19.591Z",
+      "sha": "6f1635c5a3ec3dd2335536c37ee2e7e5fbe85763",
+      "timestamp": "2026-05-25T20:10:36.384Z",
       "commits": [
         {
-          "sha": "fdb62ea3e09e18245427203ceea235b095eb5edc",
+          "sha": "6f1635c5a3ec3dd2335536c37ee2e7e5fbe85763",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T16:04:51-04:00",
-          "message": "Merge 2f5faa151460fe3144a2e3afd758380d3ec3c157 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T20:10:07Z",
+          "message": "Merge 04cf4ef91464dd21854a3af720791078b6f064dc into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "04cf4ef91464dd21854a3af720791078b6f064dc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T14:09:56-06:00",
+          "message": "docs: fix clear-knob direction + add missing imports to prompt snippet\n\n- docs/console.md: the buffer-clear knob description was backwards.\n  `exportText`/`exportHtml` default `clear: true` (and `saveText`/\n  `saveHtml` forward the option), so the actionable knob is\n  `{ clear: false }` to preserve the buffer for a second export\n  (e.g. saving both .txt and .html from one recorded run). Doc now\n  reflects that.\n- docs/prompt.md: \"Custom input sources\" snippet now imports\n  `Prompt` and `Confirm` alongside the `PromptInput` type, so the\n  block is genuinely self-contained and copy-pasteable.\n"
         },
         {
           "sha": "2f5faa151460fe3144a2e3afd758380d3ec3c157",
