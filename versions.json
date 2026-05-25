@@ -4,15 +4,22 @@
     {
       "version": "pr-46",
       "ref": "refs/pull/46/merge",
-      "sha": "9da8c99984222c087bbbcc6c2163f873f331f4e2",
-      "timestamp": "2026-05-25T16:42:55.371Z",
+      "sha": "4b1ca9842e97469fdbba90e2ac2f2990d05bc941",
+      "timestamp": "2026-05-25T16:46:55.457Z",
       "commits": [
         {
-          "sha": "9da8c99984222c087bbbcc6c2163f873f331f4e2",
+          "sha": "4b1ca9842e97469fdbba90e2ac2f2990d05bc941",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T16:42:28Z",
-          "message": "Merge 4721306be94664a02778ab38e2835a1c55e89ce8 into 167f6041b389ad40e301891694427a2ae3341161\n"
+          "timestamp": "2026-05-25T16:46:23Z",
+          "message": "Merge 038beeffb95854aa54df4407d015898a9cb74a65 into 167f6041b389ad40e301891694427a2ae3341161\n"
+        },
+        {
+          "sha": "038beeffb95854aa54df4407d015898a9cb74a65",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T10:46:13-06:00",
+          "message": "docs: update style.ts one-way-deps comment to reflect sanitize.js import\n\nComment at style.ts:13-16 had become stale after the previous commit\nadded `import { stripOscTerminators } from \"./sanitize.js\"`. Update\nthe dep-direction note to accurately list both `core/color` and the\nleaf `core/sanitize` module. Caught by Copilot review on PR #46.\n\n[LAW:one-source-of-truth] LAW: markers are load-bearing claims about\narchitecture — keeping them accurate is required, not optional.\n"
         },
         {
           "sha": "4721306be94664a02778ab38e2835a1c55e89ce8",
