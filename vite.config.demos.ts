@@ -3,19 +3,23 @@
  *
  * [LAW:single-enforcer] One pipeline produces every demo bundle that the docs
  * site consumes. There is no second build path: a demo is bundleable iff it
- * has a `wire.ts` exporting `mount(terminal): HarnessHandle` (the shape
+ * has a `wire.ts` exporting `mount(terminal): MountHandle` (the shape
  * established in rich-demo-site-pek.2's harness).
  *
  * [LAW:dataflow-not-control-flow] The set of demos is data, not code — the
  * config enumerates `examples/<name>/wire.ts` at build time. Adding a demo
- * is "create the directory and the wire.ts"; no list to edit here.
+ * is "create the directory and the wire.ts"; no list to edit here. Staging
+ * runs in a plugin's `buildStart` hook, not at config-evaluation time, so
+ * `vite preview` (and any tooling that just reads the config) doesn't trigger
+ * filesystem writes — the discriminator "are we building right now?" is data
+ * Vite exposes via the plugin lifecycle, not a branch the config has to make.
  *
  * [LAW:one-source-of-truth] The HTML shell + mount glue live as templates in
  * `examples/_browser-shell/`; per-demo staged copies under `.vite-demos/` are
  * derived. Edit the template, every demo gets the change.
  */
 
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import {
   readdirSync,
   existsSync,
@@ -24,7 +28,7 @@ import {
   mkdirSync,
   rmSync,
 } from "node:fs";
-import { resolve, dirname } from "node:path";
+import { resolve, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -55,9 +59,10 @@ function discoverDemos(): readonly string[] {
 // ---- Staging ---------------------------------------------------------------
 //
 // For each demo, materialise `.vite-demos/<name>/{index.html,mount.ts}` from
-// the templates with `__DEMO_NAME__` / `__DEMO_WIRE__` substituted. The HTML
-// references `./mount.ts` (a Vite-handled TS entry); the mount imports the
-// demo's wire by absolute path so Vite resolves it without alias gymnastics.
+// the templates with `__DEMO_NAME__` / `__DEMO_WIRE__` substituted. The mount
+// imports the compiled wire by *relative* path — uniform across platforms,
+// unlike an absolute path which would become `C:/...` on Windows and reject
+// as a module specifier in most resolvers.
 function stageDemos(demos: readonly string[]): void {
   rmSync(stagingDir, { recursive: true, force: true });
   mkdirSync(stagingDir, { recursive: true });
@@ -68,12 +73,12 @@ function stageDemos(demos: readonly string[]): void {
   for (const name of demos) {
     const dir = resolve(stagingDir, name);
     mkdirSync(dir, { recursive: true });
-    // Absolute, forward-slashed path to the tsc-compiled wire — Vite/Rollup
-    // expects POSIX-style module specifiers even on Windows.
-    const wirePath = resolve(compiledExamplesDir, name, "wire.js").replace(
-      /\\/g,
-      "/",
-    );
+    // Relative path from the staged mount.ts to the compiled wire.js,
+    // forward-slashed for module-specifier consumption.
+    const wirePath = relative(
+      dir,
+      resolve(compiledExamplesDir, name, "wire.js"),
+    ).replace(/\\/g, "/");
     writeFileSync(
       resolve(dir, "index.html"),
       htmlTmpl.replaceAll("__DEMO_NAME__", name),
@@ -85,25 +90,33 @@ function stageDemos(demos: readonly string[]): void {
   }
 }
 
-const demos = discoverDemos();
-stageDemos(demos);
+// Vite plugin: stage at `buildStart` (build only — `preview`/`dev` don't fire
+// this hook), so reading the config without invoking a build doesn't write to
+// the filesystem.
+function stagingPlugin(demos: readonly string[]): Plugin {
+  return {
+    name: "rich-js-demo-staging",
+    buildStart() {
+      stageDemos(demos);
+    },
+  };
+}
 
-// Build one HTML input per demo. Vite's multi-page-app mode handles the rest.
+const demos = discoverDemos();
+
+// HTML inputs declared at config time (so Rollup knows the entry set), but
+// the files behind them are written at buildStart — Vite reads inputs only
+// after `buildStart` resolves, so the files exist by the time it tries to.
 const input: Record<string, string> = {};
 for (const name of demos) {
   input[name] = resolve(stagingDir, name, "index.html");
 }
 
 // Boundary stubs for node-only modules the library happens to import at
-// module top level. Today this is just `fs` (used by Console.saveText /
-// Console.saveHtml — Node-only operations). [LAW:locality-or-seam] These
-// aliases mark the seam where a structural fix should land: the fs-using
-// methods should be extracted out of the Console class so the type itself
-// forbids them in environments without a filesystem.
-// Two node-only modules are reachable from `src/index.ts` via the renderables
-// barrel: `fs` (Console.saveText/saveHtml) and `node:readline` (the prompt
-// renderable). Both stub to the same module — calling either at runtime in a
-// browser bundle throws a clear error.
+// module top level: `fs` (Console.saveText/saveHtml) and `node:readline`
+// (the prompt renderable). [LAW:locality-or-seam] These aliases mark the
+// seam where a structural fix should land: the node-using methods should
+// be extracted out so the type forbids them in browser environments.
 const nodeStub = resolve(shellDir, "node-stub.js");
 const browserStubs = {
   fs: nodeStub,
@@ -118,6 +131,7 @@ export default defineConfig({
   resolve: {
     alias: browserStubs,
   },
+  plugins: [stagingPlugin(demos)],
   build: {
     outDir: resolve(__dirname, "dist-demos"),
     emptyOutDir: true,
