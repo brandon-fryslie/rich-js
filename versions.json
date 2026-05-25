@@ -4,15 +4,22 @@
     {
       "version": "pr-45",
       "ref": "refs/pull/45/merge",
-      "sha": "c9645edf22ff40c2b101d934bb2c923baacabec7",
-      "timestamp": "2026-05-25T15:57:48.794Z",
+      "sha": "37490ca3cb573c9de9000f3fc439e98fe853aee5",
+      "timestamp": "2026-05-25T16:05:13.916Z",
       "commits": [
         {
-          "sha": "c9645edf22ff40c2b101d934bb2c923baacabec7",
+          "sha": "37490ca3cb573c9de9000f3fc439e98fe853aee5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T15:57:17Z",
-          "message": "Merge 2d605e1883379d196bbf9a5e8ebb0069c3e081d4 into 424d242c2c3229666e79910fb6649cc46648ecbb\n"
+          "timestamp": "2026-05-25T16:04:42Z",
+          "message": "Merge c7a236699572e4a4bf7cc9ac60e9f198059ce0e9 into 424d242c2c3229666e79910fb6649cc46648ecbb\n"
+        },
+        {
+          "sha": "c7a236699572e4a4bf7cc9ac60e9f198059ce0e9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T10:04:32-06:00",
+          "message": "chore(ci): debuggable status assertion + engine-anchored node version\n\nTwo findings from the Copilot re-review:\n\n1. `#status.ok` composite selector hid boot-error text. On crash,\n   mount.ts.tmpl sets `class=\"err\"` with a \"boot error: ...\" message;\n   waiting on the composite selector reduced the failure output to\n   \"selector timeout\" instead of the real error. Locate `#status` by id\n   only, then assert class and text separately so Playwright prints the\n   actual received class and current text on failure. The triple-assert\n   semantics are unchanged; only the failure surface improves.\n   [LAW:verifiable-goals]\n\n2. `node-version: 20` could in principle resolve to a 20.x older than\n   the `engines.node` constraint (`^20.19.0 || >=22.12.0`, set by a\n   transitive dep). Use `node-version-file: package.json` so setup-node\n   consults the canonical engine declaration — the workflow cannot\n   drift from the package.json constraint, and an engine bump\n   propagates to CI automatically. [LAW:one-source-of-truth]\n\nAll 7 demos still pass; `npm run lint` clean.\n"
         },
         {
           "sha": "2d605e1883379d196bbf9a5e8ebb0069c3e081d4",
