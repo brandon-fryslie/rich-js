@@ -16,11 +16,15 @@ Reusing `nodeAsk` keeps the main `@promptctl/rich-js` barrel browser-safe — `n
 ## Basic string prompt
 
 ```typescript
+import { Console, Prompt } from "@promptctl/rich-js";
+import { nodeAsk } from "@promptctl/rich-js/node/prompt";
+
+const out = new Console();
 const name = await Prompt.ask(
   "[bold cyan]What is your name?[/bold cyan]",
   nodeAsk,
 );
-console.print(`Hello, [bold]${name}[/bold]!`);
+out.print(`Hello, [bold]${name}[/bold]!`);
 ```
 
 ## Default value
