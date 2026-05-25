@@ -4,15 +4,22 @@
     {
       "version": "pr-42",
       "ref": "refs/pull/42/merge",
-      "sha": "175da1f4d0c73def59c4a39fe133cf2863160aa3",
-      "timestamp": "2026-05-25T01:01:26.563Z",
+      "sha": "0fa5b3cbdc5e5cc9ba36b6029eef2dff6fc828af",
+      "timestamp": "2026-05-25T01:07:48.518Z",
       "commits": [
         {
-          "sha": "175da1f4d0c73def59c4a39fe133cf2863160aa3",
+          "sha": "0fa5b3cbdc5e5cc9ba36b6029eef2dff6fc828af",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T01:01:04Z",
-          "message": "Merge 84bd53fcfa89e5126836ece4716060974727f5cf into 469f44e33be8ae6f89b23f6eb35998b768b88987\n"
+          "timestamp": "2026-05-25T01:07:24Z",
+          "message": "Merge b9b36fb64c7d36cdce616e7a5b0f663c530bbba1 into 469f44e33be8ae6f89b23f6eb35998b768b88987\n"
+        },
+        {
+          "sha": "b9b36fb64c7d36cdce616e7a5b0f663c530bbba1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T19:07:12-06:00",
+          "message": "chore(harness): pin http-server; add SRI to xterm.js CDN imports\n\nAddresses four Copilot review findings on PR #42 about the scratch\nbrowser harness (one on `package.json`, three on the same CDN-import\nshape in `index.html`).\n\n1. `harness:browser-host` script pins `http-server@14.1.1`. Removes the\n   reproducibility concern of a floating `npx http-server` for a script\n   that runs on developer machines. Cost is one line; benefit is a\n   deterministic dev-tool version.\n\n2. xterm.js and xterm.css CDN imports now carry `integrity` + `crossorigin`\n   attributes (SHA-384 hashes computed against jsdelivr's xterm@5.3.0\n   payload). [LAW:single-enforcer] The SRI hash is the single source of\n   truth for \"what bytes the browser will accept from this URL\" — moves\n   the trust model from \"trust the CDN\" (ambient) to \"this exact byte\n   sequence\" (explicit constraint encoded in the HTML). Defense-in-depth\n   for a dev-only harness, but the harness will likely be the seed for\n   ticket .3's bundled demo page, where the SRI discipline carries\n   over to whatever build artifact replaces the CDN script tags.\n\nVerification: `npm run lint` clean; 8876 passed | 7 skipped (329 files);\nchrome-mcp re-confirmed the harness still loads with SRI in place\n(first frame renders, no SRI-mismatch errors in console, only the\npre-existing favicon 404).\n"
         },
         {
           "sha": "84bd53fcfa89e5126836ece4716060974727f5cf",
