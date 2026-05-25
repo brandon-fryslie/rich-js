@@ -4,15 +4,22 @@
     {
       "version": "pr-45",
       "ref": "refs/pull/45/merge",
-      "sha": "bfc496437b43468b202d135e4641375b06c33189",
-      "timestamp": "2026-05-25T15:51:44.687Z",
+      "sha": "c9645edf22ff40c2b101d934bb2c923baacabec7",
+      "timestamp": "2026-05-25T15:57:48.794Z",
       "commits": [
         {
-          "sha": "bfc496437b43468b202d135e4641375b06c33189",
+          "sha": "c9645edf22ff40c2b101d934bb2c923baacabec7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T09:51:16-06:00",
-          "message": "Merge 8513720b294ab82b9e606a8b968d32596b3321db into 424d242c2c3229666e79910fb6649cc46648ecbb\n"
+          "timestamp": "2026-05-25T15:57:17Z",
+          "message": "Merge 2d605e1883379d196bbf9a5e8ebb0069c3e081d4 into 424d242c2c3229666e79910fb6649cc46648ecbb\n"
+        },
+        {
+          "sha": "2d605e1883379d196bbf9a5e8ebb0069c3e081d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T09:57:08-06:00",
+          "message": "chore(ci): assert .xterm-rows textContent, not .xterm-screen child count\n\nxterm.js populates .xterm-screen's layer children (helpers, style,\n.xterm-rows, .xterm-selection, .xterm-decoration-container — six in total)\nduring term.open(), *before* any write. Asserting `screen.children.length\n> 0` therefore proves only that xterm initialised, not that the demo\nproduced output — a demo that crashed silently between term.open() and\nits first write() would have passed the previous check.\n\nThe correct demo-wrote-data signal is `.xterm-rows` textContent: 30 row\ndivs are present unconditionally, but their textContent is whitespace\nuntil something writes. `expect(rows).toContainText(/\\S/)` polls until at\nleast one non-whitespace character appears — the failure mode the gate\nwas designed to catch.\n\nVerified by probing the live DOM: .xterm-rows.textContent on rich-strip\ncontained the rendered banner (\"main | claude.ai | 3.4k tok | 12%\n...\") with 1326 chars across 30 rows; all 7 demos still pass.\n[LAW:verifiable-goals]\n"
         },
         {
           "sha": "8513720b294ab82b9e606a8b968d32596b3321db",
