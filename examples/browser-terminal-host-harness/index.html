@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>rich-js · BrowserTerminalHost harness</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <style>
+      html, body { margin: 0; padding: 0; background: #1e1e1e; color: #ddd; font-family: ui-monospace, monospace; }
+      header { padding: 12px 16px; border-bottom: 1px solid #333; font-size: 13px; }
+      header strong { color: #fff; }
+      #term { padding: 12px; height: calc(100vh - 80px); }
+      .ok { color: #6c6; }
+      .err { color: #f66; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>BrowserTerminalHost</strong> · scratch harness (ticket
+      <code>rich-demo-site-pek.2</code>) ·
+      <span id="status">booting…</span>
+    </header>
+    <div id="term"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script type="module">
+      // Wire the compiled harness module against a real xterm.js Terminal.
+      //
+      // [LAW:dataflow-not-control-flow] This script does not branch on
+      // environment — it constructs an xterm.js Terminal and hands it
+      // to mountHarness as the XtermTerminal-shaped value. The wire
+      // code that follows is the same code path tests exercise with a
+      // fake terminal.
+      //
+      // Path: tsc -p tsconfig.demo.json emits the wire module to
+      // dist-demo/examples/browser-terminal-host-harness/wire.js. Serve
+      // the project root and visit /examples/browser-terminal-host-harness/
+      // for this HTML to find the compiled module via the relative
+      // import below.
+      const statusEl = document.getElementById("status");
+      const setStatus = (msg, cls) => {
+        statusEl.textContent = msg;
+        statusEl.className = cls ?? "";
+      };
+
+      try {
+        const { mountHarness } = await import(
+          "../../dist-demo/examples/browser-terminal-host-harness/wire.js"
+        );
+        const term = new window.Terminal({
+          cols: 80,
+          rows: 24,
+          cursorBlink: true,
+          theme: { background: "#1e1e1e" },
+        });
+        term.open(document.getElementById("term"));
+        term.focus();
+        const handle = mountHarness(term);
+        window.__harness = handle; // for chrome-mcp poking
+        setStatus("ready · first frame rendered", "ok");
+      } catch (err) {
+        setStatus("boot error: " + (err && err.message ? err.message : String(err)), "err");
+        console.error(err);
+      }
+    </script>
+  </body>
+</html>
