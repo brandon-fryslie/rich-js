@@ -4,15 +4,22 @@
     {
       "version": "pr-49",
       "ref": "refs/pull/49/merge",
-      "sha": "0b990666ed7accf4ff1feb639e77f6da50fdfb3f",
-      "timestamp": "2026-05-25T18:42:11.780Z",
+      "sha": "c147574728f4c8b6710e643c2bf2450d25aa046b",
+      "timestamp": "2026-05-25T18:48:18.797Z",
       "commits": [
         {
-          "sha": "0b990666ed7accf4ff1feb639e77f6da50fdfb3f",
+          "sha": "c147574728f4c8b6710e643c2bf2450d25aa046b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T12:41:41-06:00",
-          "message": "Merge b5d4e3780fc9117d9c2a730069790f1c565090a3 into d9df2004fd847106c2129c7dcab3d9d96bb92aa8\n"
+          "timestamp": "2026-05-25T18:47:51Z",
+          "message": "Merge 6454c272190d7e76e7d3848d090873af26ae70cd into d9df2004fd847106c2129c7dcab3d9d96bb92aa8\n"
+        },
+        {
+          "sha": "6454c272190d7e76e7d3848d090873af26ae70cd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T12:47:42-06:00",
+          "message": "review: collapse notes.ts dual error path + pin MemorySystemInfo contract\n\nnotes.ts had two branches (`!fs.exists` precheck and `catch` block) that\nconverged on the same fallback Markdown body. Both `FileSystem` impls\nalready throw on missing files per the interface contract\n(`file-system.ts:65-66`), so the exists check is redundant. Folding both\npaths into a single try/catch removes the redundant branch AND eliminates\nthe literal-string duplication Copilot flagged — one path, one outcome,\nno constant needed.\n\n[LAW:dataflow-not-control-flow] Same outcome (fallback Markdown) means\none path, not two. The thrown error from readFile is the data the catch\nacts on; there is no separate \"is this file present\" branch.\n\nAlso pins MemorySystemInfo's behavior with a vitest suite — snapshot\npassthroughs, wall-clock-advanced uptime (whole-second flooring, multi-\nday survival), and per-instance boot-instant isolation. Mirrors the\nexisting `test/examples/_capabilities/memory-file-system.test.ts` shape.\n\n[LAW:behavior-not-structure] Tests assert what calling each accessor\nyields under known clock state, not how the class lays out its fields.\n"
         },
         {
           "sha": "b5d4e3780fc9117d9c2a730069790f1c565090a3",
