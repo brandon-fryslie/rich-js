@@ -7,6 +7,8 @@ docs/.vitepress/dist/
 docs/.vitepress/cache/
 docs/.vitepress/demos.json
 docs/public/demos-app/
+playwright-report/
+test-results/
 .idea/
 .mcp.json
 .claude/*.lock
