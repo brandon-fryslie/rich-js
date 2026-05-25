@@ -1,0 +1,46 @@
+/**
+ * AUTO-GENERATED per demo by vite.config.demos.ts at build time. Do not edit
+ * the staged copies — the source of truth is the template in
+ * examples/_browser-shell/mount.ts.tmpl.
+ *
+ * [LAW:one-source-of-truth] One template; one substituted import path per
+ * demo. The HTML stays uniform; only the wire module changes.
+ *
+ * [LAW:dataflow-not-control-flow] This mount does not branch on which demo
+ * it is bootstrapping — the wire module is a value substituted at build
+ * time, the rest of the boot sequence is identical for every demo.
+ */
+import mount from "__DEMO_WIRE__";
+
+declare const Terminal: new (opts: Record<string, unknown>) => {
+  open(el: HTMLElement): void;
+  focus(): void;
+};
+
+const statusEl = document.getElementById("status") as HTMLSpanElement;
+const setStatus = (msg: string, cls?: string): void => {
+  statusEl.textContent = msg;
+  statusEl.className = cls ?? "";
+};
+
+try {
+  const term = new Terminal({
+    cols: 100,
+    rows: 30,
+    cursorBlink: true,
+    theme: { background: "#1e1e1e" },
+  });
+  term.open(document.getElementById("term") as HTMLElement);
+  term.focus();
+  // The wire module's default export is mount(terminal): HarnessHandle.
+  // The bundled wire takes whatever XtermTerminal-shaped value we pass —
+  // the xterm.js Terminal above satisfies it structurally.
+  const handle = mount(term as unknown as Parameters<typeof mount>[0]);
+  (window as unknown as { __handle: unknown }).__handle = handle;
+  setStatus("ready · first frame rendered", "ok");
+} catch (err) {
+  const e = err as Error | undefined;
+  setStatus("boot error: " + (e?.message ?? String(err)), "err");
+  // eslint-disable-next-line no-console
+  console.error(err);
+}

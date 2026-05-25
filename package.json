@@ -45,7 +45,9 @@
     "dash": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-dash/index.js",
     "template-bindings": "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-template-bindings/index.js",
     "themes-and-color-studio": "tsc -p tsconfig.demo.json && node dist-demo/examples/themes-and-color-studio/index.js",
-    "harness:browser-host": "tsc -p tsconfig.demo.json && echo 'Serving harness at http://localhost:8080/examples/browser-terminal-host-harness/' && npx --yes http-server@14.1.1 -p 8080 -c-1 -s ."
+    "harness:browser-host": "tsc -p tsconfig.demo.json && echo 'Serving harness at http://localhost:8080/examples/browser-terminal-host-harness/' && npx --yes http-server@14.1.1 -p 8080 -c-1 -s .",
+    "demos:build": "tsc -p tsconfig.demo.json && vite build --config vite.config.demos.ts",
+    "demos:preview": "vite preview --config vite.config.demos.ts"
   },
   "keywords": [
     "terminal",
@@ -67,6 +69,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "typescript": "^5.7.0",
+    "vite": "^7.3.3",
     "vitepress": "^1.6.4",
     "vitest": "^3.0.0"
   },
