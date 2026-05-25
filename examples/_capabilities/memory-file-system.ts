@@ -100,6 +100,39 @@ export class MemoryFileSystem implements FileSystem {
     return absolute ? SEP + body : body;
   }
 
+  resolve(...parts: string[]): string {
+    // Mirror node:path.resolve: walk right-to-left until an absolute segment
+    // appears; if none, prepend `homeDir()` as the absolute base (node uses
+    // process.cwd, which the browser has no analogue for). The result is
+    // always absolute. `.` and `..` resolve against the assembled path *after*
+    // the base is prepended, so `resolve("..", "x")` collapses one level
+    // above the base.
+    let path = "";
+    let absolute = false;
+    for (let i = parts.length - 1; i >= 0 && !absolute; i--) {
+      const part = parts[i]!;
+      if (part.length === 0) continue;
+      path = path.length === 0 ? part : part + SEP + path;
+      absolute = part.startsWith(SEP);
+    }
+    if (!absolute) {
+      path = path.length === 0 ? this.tree.home : this.tree.home + SEP + path;
+    }
+    // Filter drops empty segments produced by `//` or `home="/"` concat —
+    // the same normalisation node:path.resolve performs internally.
+    const segments = path.split(SEP).filter((s) => s.length > 0);
+    const out: string[] = [];
+    for (const s of segments) {
+      if (s === ".") continue;
+      if (s === "..") {
+        if (out.length > 0) out.pop();
+        continue;
+      }
+      out.push(s);
+    }
+    return SEP + out.join(SEP);
+  }
+
   basename(path: string, ext?: string): string {
     const segments = splitSegments(path);
     const last = segments.length === 0 ? "" : segments[segments.length - 1]!;

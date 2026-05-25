@@ -38,6 +38,14 @@ export interface FileSystem {
   /** Concatenate path segments using the implementation's separator. */
   join(...parts: string[]): string;
 
+  /** Resolve path segments to an absolute path. Walks right-to-left until an
+   *  absolute segment appears; if none, prepends an implementation-defined
+   *  base (`process.cwd()` for node, `homeDir()` for memory) so the result
+   *  is always absolute. Empty segments are ignored. `.` and `..` collapse
+   *  after the base is applied (so `resolve("..", "x")` is relative to the
+   *  parent of the base, not the base). */
+  resolve(...parts: string[]): string;
+
   /** Trailing component, with optional extension stripped. */
   basename(path: string, ext?: string): string;
 

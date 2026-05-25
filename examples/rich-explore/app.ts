@@ -1,9 +1,17 @@
 /**
- * Main loop: raw-mode stdin → action → reducer → render.
- * Uses rich-js Live with altScreen mode for flicker-free full-screen TUI.
+ * Main loop: data → reducer → render. Built on rich-js Live with altScreen
+ * for flicker-free full-screen TUI.
+ *
+ * [LAW:capabilities-over-context] `run` is parameterised on a `TerminalHost`
+ * (where I/O goes) and a `FileSystem` (where files come from). The demo
+ * body never branches on environment; the two capabilities are the values
+ * that differ between node and browser entries.
  */
 
-import { Console, Live, NodeTerminalHost } from "../../src/index.js";
+import { Console, Live } from "../../src/index.js";
+import { hostStream } from "../../src/widgets/host-stream.js";
+import type { FileSystem } from "../_capabilities/index.js";
+import type { TerminalHost } from "../../src/widgets/terminal-host.js";
 import {
   initialState,
   toggleExpand,
@@ -98,21 +106,34 @@ function reduce(state: AppState, action: Action): AppState {
   }
 }
 
-export async function run(startPath: string): Promise<void> {
-  // [LAW:no-shared-mutable-globals] Single host owns all node TTY access for
-  // this demo. Live + Console still write through process.stdout (a follow-up
-  // ticket migrates them to a host-backed sink); raw mode, input bytes, and
-  // size queries already flow through the host.
-  const host = new NodeTerminalHost();
-  const consoleOut = new Console({ forceTerminal: true });
-  let state = initialState(startPath);
+export async function run(
+  host: TerminalHost,
+  fs: FileSystem,
+  startPath: string,
+): Promise<void> {
+  // [LAW:single-enforcer] Console writes through the host via hostStream so
+  // there is exactly one sink for terminal output. Node wraps process.stdout;
+  // browser wraps xterm.js — same render path, different backing.
+  const consoleOut = new Console({
+    forceTerminal: true,
+    file: hostStream(host) as unknown as NodeJS.WritableStream,
+  });
+  // [LAW:dataflow-not-control-flow] Width is data flowing from the host.
+  // Console's default `process.stdout.columns` fallback returns 80 in the
+  // browser (no real stdout), so layout would clip to 80 cols even though
+  // xterm.js is at 100. Reading `host.size().cols` lazily makes render width
+  // track the actual terminal in both environments and on resize.
+  Object.defineProperty(consoleOut, "width", {
+    get: () => host.size().cols,
+  });
+  let state = initialState(fs, startPath);
 
   if (!host.isTTY) {
     throw new Error("rich-explore requires an interactive TTY");
   }
 
-  // Use Live with altScreen for full-screen TUI rendering.
-  // autoRefresh: false — we refresh on keypress only.
+  // Live + altScreen drives flicker-free full-screen TUI rendering through
+  // the host-backed Console. autoRefresh: false — refresh on keypress only.
   const live = new Live(undefined, {
     console: consoleOut,
     altScreen: true,
@@ -133,8 +154,12 @@ export async function run(startPath: string): Promise<void> {
 
   await new Promise<void>((resolve, reject) => {
     let unsubscribe: (() => void) | undefined;
+    // Hoist the decoder out of the hot path — node delivers Buffer chunks on
+    // every keystroke; one shared decoder avoids per-event allocation and
+    // keeps the demo body free of `Buffer`, which the browser lacks.
+    const decoder = new TextDecoder();
     const onData = (chunk: Uint8Array | string) => {
-      const text = typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
+      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk);
       const action = lookup(text);
       if (action.type === "quit") {
         unsubscribe?.();

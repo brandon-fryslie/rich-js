@@ -2,10 +2,14 @@
  * Directory listing at the FS trust boundary. Per-entry stat failures
  * (permission denied, broken symlinks) are captured on the Entry so the
  * UI can render them explicitly rather than the whole listing crashing.
+ *
+ * [LAW:capabilities-over-context] The directory walk takes a `FileSystem`;
+ * there is no `node:fs` import. The same code runs against `NodeFileSystem`
+ * in the terminal entry and a `MemoryFileSystem` populated with a fixture
+ * in the browser entry.
  */
 
-import { readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import type { FileSystem } from "../../_capabilities/index.js";
 import { kindForPath, type FileKind } from "./kinds.js";
 
 export interface Entry {
@@ -17,30 +21,33 @@ export interface Entry {
   readonly error: string | null;
 }
 
-export function listDir(path: string): Entry[] {
-  const dirents = readdirSync(path, { withFileTypes: true });
-  const result: Entry[] = dirents.map((d) => {
-    const full = join(path, d.name);
-    try {
-      const s = statSync(full);
+export function listDir(fs: FileSystem, path: string): Entry[] {
+  // [LAW:single-enforcer] All filesystem variance flows through `fs`. The
+  // FileSystem.readDir contract returns `[]` for unreadable directories
+  // rather than throwing; a stat-each pass below classifies survivors and
+  // produces per-entry errors for any individual stat failures.
+  const names = fs.readDir(path);
+  const result: Entry[] = names.map((name) => {
+    const full = fs.join(path, name);
+    const s = fs.stat(full);
+    if (s === null) {
       return {
-        name: d.name,
+        name,
         path: full,
-        kind: kindForPath(d.name, d.isDirectory()),
-        size: s.size,
-        mtime: s.mtime,
-        error: null,
-      };
-    } catch (err) {
-      return {
-        name: d.name,
-        path: full,
-        kind: d.isDirectory() ? "directory" : "fallback",
+        kind: "fallback",
         size: 0,
         mtime: new Date(0),
-        error: err instanceof Error ? err.message : String(err),
+        error: "stat failed",
       };
     }
+    return {
+      name,
+      path: full,
+      kind: kindForPath(name, s.isDirectory),
+      size: s.size,
+      mtime: s.mtime,
+      error: null,
+    };
   });
   result.sort((a, b) => {
     if (a.kind === "directory" && b.kind !== "directory") return -1;
