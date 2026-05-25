@@ -4,15 +4,22 @@
     {
       "version": "pr-41",
       "ref": "refs/pull/41/merge",
-      "sha": "992a36915a0131d0e097d7c52d09f99f7157a09a",
-      "timestamp": "2026-05-25T00:18:54.520Z",
+      "sha": "31dfb1fe6f3376fb502753f34aebd294e976f49a",
+      "timestamp": "2026-05-25T00:27:14.021Z",
       "commits": [
         {
-          "sha": "992a36915a0131d0e097d7c52d09f99f7157a09a",
+          "sha": "31dfb1fe6f3376fb502753f34aebd294e976f49a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T00:18:29Z",
-          "message": "Merge 0885804cf05347181b06a846036d754884695b1a into e68f9296ba02ac9504629912de25523d3d0c1d5d\n"
+          "timestamp": "2026-05-25T00:26:52Z",
+          "message": "Merge e8b95fcb196244e9143a37880925269a4766e7b6 into e68f9296ba02ac9504629912de25523d3d0c1d5d\n"
+        },
+        {
+          "sha": "e8b95fcb196244e9143a37880925269a4766e7b6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T18:26:37-06:00",
+          "message": "fix(event-router): replace setImmediate with cross-runtime setTimeout(0)\n\nEventRouter still used node's `setImmediate`/`clearImmediate` for\nlone-ESC deferral, which conflicts with the cross-runtime promise of\nthe TerminalHost seam — browsers don't expose `setImmediate` and would\nrequire a polyfill for the runtime to load.\n\nSwapped to `setTimeout(fn, 0)` + `clearTimeout` (both universal). The\nsemantics match for our use case: deferral until current sync work +\nqueued microtasks drain so a follow-up chunk in the same tick can\nextend a lone ESC into a CSI sequence. The explicit `0` documents that\nthis is structural deferral, not a throttle — `setImmediate`'s \"after\nI/O, before timers\" distinction is irrelevant when the goal is just\n\"next macrotask.\"\n\nType swap: ReturnType<typeof setImmediate> → ReturnType<typeof setTimeout>.\n\n[LAW:types-are-the-program] Timer types now honestly represent what's\navailable in every runtime the seam claims to support, not a node-only\ndialect. 8854 tests pass — defer-and-flush behavior is identical.\n\nThis addresses both an inline review thread and a suppressed Copilot\nfinding (cap overflow on the same review session) that flagged the\nsame setImmediate concern at two different line ranges.\n"
         },
         {
           "sha": "0885804cf05347181b06a846036d754884695b1a",
