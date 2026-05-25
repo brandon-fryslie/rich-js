@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "87f142b3aead969b56cf2fb168685e2957345e10",
-      "timestamp": "2026-05-25T19:37:21.425Z",
+      "sha": "77229a65e6a80b67cd51e3b6296da751df259ceb",
+      "timestamp": "2026-05-25T19:41:26.621Z",
       "commits": [
         {
-          "sha": "87f142b3aead969b56cf2fb168685e2957345e10",
+          "sha": "77229a65e6a80b67cd51e3b6296da751df259ceb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T19:36:50Z",
-          "message": "Merge 62bac2ea60c4eeae9db8468b3740eaadd65e6d7d into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T19:40:57Z",
+          "message": "Merge 2b6079449da1e5ac61b902582bea3674e421bd2d into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "2b6079449da1e5ac61b902582bea3674e421bd2d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T13:40:47-06:00",
+          "message": "fix: freeze constant size object + sync nodeAsk doc example\n\nBoth findings from review pass 5:\n\n- src/core/console.ts: Object.freeze the captured fixed-size object in\n  resolveGetSize's all-static path. Without this, a caller could mutate\n  console.size and silently change every subsequent read — a divergence\n  from the dynamic-closure path (which allocates a fresh object per call\n  and is therefore implicitly safe to expose). [LAW:one-source-of-truth]\n  — both paths now share the same immutability guarantee.\n\n- src/node/prompt.ts: doc example uses the new positional signature\n  `Prompt.ask(\"What's your name?\", nodeAsk)` and shows a second form\n  with options. (Missed this in pass 4 when the signature changed.)\n"
         },
         {
           "sha": "62bac2ea60c4eeae9db8468b3740eaadd65e6d7d",
