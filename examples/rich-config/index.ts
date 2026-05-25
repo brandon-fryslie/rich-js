@@ -29,6 +29,7 @@ import {
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
+  NodeTerminalHost,
   StaticItem,
   Segment,
   Style,
@@ -104,6 +105,11 @@ const state = new AppState();
 
 // --- Layout constants (0-indexed; Screen owns absolute coordinates) ---
 
+// [LAW:no-shared-mutable-globals] Single host owns all node TTY access for
+// this demo. Screen, EventRouter, and the bottom-anchor layout all read
+// I/O through it; nothing else in this file reaches for process.stdin/stdout.
+const host = new NodeTerminalHost();
+
 // [LAW:dataflow-not-control-flow] Bottom-anchored rows derive from the
 // terminal's height at startup so the demo fits any reasonable size instead
 // of forcing a hardcoded 45-row layout that scrolls off short terminals.
@@ -111,7 +117,7 @@ const state = new AppState();
 // without overlap; smaller terminals still render but the bottom anchors
 // will overlap the flow content.
 const MAX_LOGS = 3;
-const TERMINAL_ROWS = process.stdout.rows ?? 45;
+const TERMINAL_ROWS = host.size().rows;
 const LOG_Y = Math.max(MAX_LOGS, TERMINAL_ROWS - MAX_LOGS);
 const SEPARATOR_Y = LOG_Y - 1;
 const STATUS_Y = LOG_Y - 2;
@@ -220,18 +226,14 @@ const allWidgets: InteractiveWidget[] = [
 const fm = new DefaultFocusManager();
 const screen = new DefaultScreen({
   focusManager: fm,
-  out: process.stdout,
+  host,
 });
 
 // [LAW:single-enforcer] EventRouter owns stdin → KeyEvent / WidgetMouseEvent
 // parsing, raw-mode and mouse-tracking lifecycle, the three-stage key
 // dispatch chain (high → focused widget → normal), and the topmost-hit
 // click dispatch. The demo registers only the cross-cutting hooks below.
-const router = new EventRouter({
-  screen,
-  input: process.stdin,
-  output: process.stdout,
-});
+const router = new EventRouter({ screen, host });
 
 // --- Static-content rendering helpers ---
 
@@ -590,19 +592,19 @@ let disposeTheme: (() => void) | null = null;
 let disposeFilter: (() => void) | null = null;
 
 function startup(): void {
-  if (!process.stdin.isTTY) {
+  if (!host.isTTY) {
     process.stderr.write("Error: demo-inputs requires an interactive terminal.\n");
     process.exit(1);
   }
 
+  host.start();
   // [LAW:single-enforcer] Switch to the alternate screen buffer so the demo
   // gets a full-terminal canvas independent of where the shell prompt was
   // sitting. The main buffer is preserved and restored on shutdown — the
   // demo's frame (LOG_Y + MAX_LOGS rows tall) lands at row 0 of a clean area
   // and never has to fight scroll-back. Standard idiom for full-screen TUIs.
   // Raw mode + mouse tracking + stdin parsing are owned by EventRouter.start().
-  process.stdout.write("\x1b[?1049h");
-  process.stdout.write("\x1b[H");
+  host.write("\x1b[?1049h\x1b[H");
 
   // Mount everything before starting Screen — Screen's first render then
   // produces a complete frame in one go.
@@ -646,8 +648,8 @@ function shutdown(): void {
   screen.stop();
   // Leave the alternate screen buffer; the original main-buffer content
   // (shell prompt, scrollback) is restored as if the demo was never there.
-  process.stdout.write("\x1b[?1049l");
-  process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
+  host.write("\x1b[?1049l\x1b[1;36mGoodbye!\x1b[0m\n");
+  host.stop();
   process.exit(0);
 }
 

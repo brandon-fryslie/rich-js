@@ -16,6 +16,7 @@ import { PassThrough, Writable } from "stream";
 import { DefaultScreen } from "../../src/widgets/screen.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
+import { NodeTerminalHost } from "../../src/widgets/terminal-host.js";
 import { Button } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Toggle } from "../../src/widgets/toggle.js";
@@ -62,8 +63,16 @@ function makeHarness(): Harness {
   const stdin = new PassThrough();
   const fm = new DefaultFocusManager();
 
+  // [LAW:single-enforcer] One host wraps the mock streams for both Screen
+  // and EventRouter — same contract production code uses, just satisfied by
+  // PassThrough + CapturingStream instead of process.stdin/stdout.
+  const host = new NodeTerminalHost({
+    stdin: stdin as unknown as NodeJS.ReadStream,
+    stdout: stdout as unknown as NodeJS.WriteStream,
+  });
+
   const screen = new DefaultScreen({
-    out: stdout,
+    host,
     width: 80,
     colorSystem: null,
     manageCursor: false,
@@ -72,8 +81,7 @@ function makeHarness(): Harness {
 
   const router = new EventRouter({
     screen,
-    input: stdin as unknown as NodeJS.ReadableStream & { setRawMode?: (raw: boolean) => unknown; isTTY?: boolean },
-    output: stdout,
+    host,
     manageMouse: false,
     manageRawMode: false,
   });
@@ -297,8 +305,12 @@ describe("widget pipeline integration", () => {
 
       const stdout = new CapturingStream();
       const stdin = new PassThrough();
+      const host = new NodeTerminalHost({
+        stdin: stdin as unknown as NodeJS.ReadStream,
+        stdout: stdout as unknown as NodeJS.WriteStream,
+      });
       const screen = new DefaultScreen({
-        out: stdout,
+        host,
         width: 80,
         colorSystem: null,
         manageCursor: false,
@@ -306,8 +318,7 @@ describe("widget pipeline integration", () => {
       });
       const router = new EventRouter({
         screen,
-        input: stdin as unknown as NodeJS.ReadableStream & { setRawMode?: (raw: boolean) => unknown; isTTY?: boolean },
-        output: stdout,
+        host,
         manageMouse: false,
         manageRawMode: false,
       });
