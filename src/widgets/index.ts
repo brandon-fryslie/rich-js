@@ -47,3 +47,4 @@ export type {
   XtermDisposable,
   XtermResizeEvent,
 } from "./terminal-host.js";
+export { hostStream } from "./host-stream.js";

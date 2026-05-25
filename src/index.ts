@@ -322,6 +322,7 @@ export type {
   XtermDisposable,
   XtermResizeEvent,
 } from "./widgets/terminal-host.js";
+export { hostStream } from "./widgets/host-stream.js";
 
 // Template bindings — register rich-js styling as @promptctl/go-template-js functions
 export { createRichTextEngine, richTextFuncs } from "./template-bindings/index.js";
