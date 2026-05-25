@@ -92,15 +92,14 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   ScreenOptions: burndown("widgets-playground"),
   SliderOptions: burndown("widgets-playground"),
   StaticItemOptions: burndown("widgets-playground"),
-  // TerminalHost contract types — the runtime value (NodeTerminalHost)
-  // is exercised by the interactive demos today; the type annotations
-  // are exercised directly by the browser adapter (rich-demo-site-pek.2)
-  // and by demo pages that surface size/resize (rich-demo-site-pek.4).
-  DataHandler: burndown("widgets-playground"),
+  // TerminalHost contract types — burned down by
+  // examples/browser-terminal-host-harness (rich-demo-site-pek.2):
+  // `TerminalHost`, `TerminalSize`, `DataHandler`, `ResizeHandler` are
+  // exercised as explicit type annotations on the harness's host /
+  // size / dataHandler / resizeHandler values. `NodeTerminalHostOptions`
+  // remains burndown until an interactive demo constructs a node host
+  // with explicit options (rich-demos-l2x widget playground).
   NodeTerminalHostOptions: burndown("widgets-playground"),
-  ResizeHandler: burndown("widgets-playground"),
-  TerminalHost: burndown("widgets-playground"),
-  TerminalSize: burndown("widgets-playground"),
   TextInputOptions: burndown("widgets-playground"),
   ToggleOptions: burndown("widgets-playground"),
   ToggleVariant: burndown("widgets-playground"),
