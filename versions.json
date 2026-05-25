@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-48",
+      "ref": "refs/pull/48/merge",
+      "sha": "2a46597c6b333c27652ca0dcd08a3ff1de8e60b6",
+      "timestamp": "2026-05-25T18:16:12.374Z",
+      "commits": [
+        {
+          "sha": "2a46597c6b333c27652ca0dcd08a3ff1de8e60b6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T12:15:38-06:00",
+          "message": "Merge dcd2be18d390a4f0b50d9eb5fc3da64080fd017b into ad93c972c6119f443743ed0969fdeadd13bcb7a0\n"
+        },
+        {
+          "sha": "dcd2be18d390a4f0b50d9eb5fc3da64080fd017b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T12:14:53-06:00",
+          "message": "feat(demos): rich-explore browser bundle + FileSystem.resolve() (rich-demo-site-pek.3.2)\n\nExtends the FileSystem capability with `resolve(...parts): string` so paths\ncan be normalised against an implementation-defined base (process.cwd in\nnode, homeDir in memory). Refactors rich-explore to consume the capability\ninstead of `node:fs`/`node:path`: fs is now carried on AppState and\nthreaded through listDir + the renderer dispatch table; the entry splits\ninto a node-side index.ts (NodeTerminalHost + NodeFileSystem) and a new\nwire.ts (BrowserTerminalHost + MemoryFileSystem + a kind-diverse fixture\ntree). Run() takes (host, fs, startPath) and routes Console through\nhostStream(host) with a live Console.width override that tracks\nhost.size().cols — same pattern claude-sessions established in\nrich-demo-site-pek.3.1.\n\nPer-keystroke TextDecoder is hoisted out of the onData closure (avoids\nboth per-event allocation and a Buffer reference the browser lacks). The\nRENDERERS dispatch table adopts a uniform (fs, entry) signature; the\nmetadata-only binary renderer is adapted at the dispatch site rather than\nhaving its real signature lie about its dependencies.\n\nHeadless gate green: 9/9 demos boot cleanly, rich-explore now included.\n\n- npm run lint: passes\n- npm run test: 1741 passed, 1 skipped (includes 3 new resolve() parity cases)\n- npm run docs:build: rich-explore bundles to 45.28 kB / 14.26 kB gzipped\n- npm run test:demos: 9/9 demos pass the Playwright headless gate\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ad93c972c6119f443743ed0969fdeadd13bcb7a0",
