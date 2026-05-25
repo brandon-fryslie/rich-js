@@ -94,6 +94,7 @@ const ok = await Confirm.ask("Continue?", nodeAsk, { default: true });
 `PromptInput` is `(prompt: string) => Promise<string>`. Use it to wire tests, browser shells, or non-stdin sources:
 
 ```typescript
+import { Prompt, Confirm } from "@promptctl/rich-js";
 import type { PromptInput } from "@promptctl/rich-js";
 
 // In a test: a queue of pre-canned answers

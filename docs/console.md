@@ -226,7 +226,7 @@ saveText(console, "output.txt");
 saveHtml(console, "output.html");
 ```
 
-These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. Both functions accept an optional `{ clear: true }` to drop the recording buffer after writing.
+These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. The recording buffer is cleared after writing by default; pass `{ clear: false }` to preserve it for a second export (e.g. saving both `.txt` and `.html` from the same recorded run).
 
 ## Error / stderr output
 
