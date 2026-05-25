@@ -10,10 +10,11 @@ import {
 import type { TerminalTheme } from "./color.js";
 import { stripOscTerminators } from "./sanitize.js";
 
-// [LAW:one-way-deps] `core/style` depends only on `core/color`; the substrate
-// fallback is the canonical canvas color (black), inlined to avoid pulling in
-// any preset theme constants. Preset themes live in `src/themes/` and depend
-// on core, never the reverse.
+// [LAW:one-way-deps] `core/style` depends only on `core/color` and the leaf
+// `core/sanitize` (a dep-free utility module). The substrate fallback is the
+// canonical canvas color (black), inlined to avoid pulling in any preset
+// theme constants. Preset themes live in `src/themes/` and depend on core,
+// never the reverse.
 const SURFACE_BLACK = new ColorRgba(0, 0, 0);
 
 // --- Attribute definitions ---
