@@ -4,15 +4,22 @@
     {
       "version": "pr-42",
       "ref": "refs/pull/42/merge",
-      "sha": "f9352b93b4ee91303350860874204fa34bfca6a0",
-      "timestamp": "2026-05-25T00:55:01.647Z",
+      "sha": "175da1f4d0c73def59c4a39fe133cf2863160aa3",
+      "timestamp": "2026-05-25T01:01:26.563Z",
       "commits": [
         {
-          "sha": "f9352b93b4ee91303350860874204fa34bfca6a0",
+          "sha": "175da1f4d0c73def59c4a39fe133cf2863160aa3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T18:54:40-06:00",
-          "message": "Merge 8954713c18b394556fce2eb55617bb4655b87a09 into 469f44e33be8ae6f89b23f6eb35998b768b88987\n"
+          "timestamp": "2026-05-25T01:01:04Z",
+          "message": "Merge 84bd53fcfa89e5126836ece4716060974727f5cf into 469f44e33be8ae6f89b23f6eb35998b768b88987\n"
+        },
+        {
+          "sha": "84bd53fcfa89e5126836ece4716060974727f5cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T19:00:51-06:00",
+          "message": "fix(widgets): tighten TerminalSize to readonly; reconcile start() contract docs\n\nAddresses three Copilot review findings on PR #42, each rooted in the\nsame underlying drift: the type was weaker than the invariant the host\nalready relied on, and a contract doc described the old design rather\nthan the shipped one.\n\n1. `TerminalSize` fields are now `readonly`. [LAW:types-are-the-program]\n   The snapshot contract (\"size at the moment of the event, immutable\n   thereafter\") moves from an unwritten invariant — that the\n   BrowserTerminalHost.onResize fan-out implicitly relied on — into the\n   type. Every subscriber callsite is now statically forbidden from\n   mutating shared state out from under later subscribers in the same\n   event. No runtime guard, no Object.freeze; the type does the work.\n\n2. `TerminalHost.start()` JSDoc was claiming the browser adapter\n   attaches to the DOM. [LAW:one-source-of-truth] BrowserTerminalHost.\n   start() is a no-op because the caller owns terminal.open/dispose; the\n   contract doc described the design before that decision was made.\n   Reconciled: the interface promises only \"begin lifecycle; idempotent\"\n   and points readers to each implementation's own JSDoc for what its\n   start() actually does. stop() doc tightened the same way.\n\n3. The \"snapshot is independent\" test was self-contradictory — its\n   name promised mutation isolation but its assertion (`toBe`) locked in\n   shared-reference fan-out. [LAW:behavior-not-structure] Replaced with\n   a value-equivalence assertion (`toEqual`) that describes what callers\n   actually depend on, plus a separate `@ts-expect-error`-based test\n   that pins the readonly contract into the lint pass so a regression\n   surfaces at type-check time rather than at runtime.\n\nVerification: npm run lint clean; 8876 passed | 7 skipped (329 files).\n"
         },
         {
           "sha": "8954713c18b394556fce2eb55617bb4655b87a09",
