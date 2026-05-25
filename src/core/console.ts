@@ -159,12 +159,22 @@ function defaultSink(useStderr: boolean): ConsoleSink {
 // getter is then unconditional — it always calls `_getSize()`. Variability
 // lives in the captured closure (which source it consults), not in branches
 // the getter has to evaluate on every read.
+//
+// The all-static and mixed cases get *different* closures: when both
+// dimensions are fixed, the returned function is a constant — no
+// `getTerminalSize` call on every read, since neither value can change.
+// When at least one dimension is dynamic, the closure consults
+// `getTerminalSize` to fill in the missing side.
 function resolveGetSize(
   options?: ConsoleOptions,
 ): () => { width: number; height: number } {
   if (options?.getSize) return options.getSize;
   const staticWidth = options?.width;
   const staticHeight = options?.height;
+  if (staticWidth !== undefined && staticHeight !== undefined) {
+    const fixed = { width: staticWidth, height: staticHeight };
+    return () => fixed;
+  }
   return () => {
     const term = getTerminalSize();
     return {

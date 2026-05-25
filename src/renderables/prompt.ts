@@ -3,10 +3,16 @@
  *
  * [LAW:locality-or-seam] The renderable owns prompt logic (display, choice
  * validation, default fallback, retry loop) — but not where the answer comes
- * from. Input is a capability injected via options: pass `ask` per call to
- * supply an answer source. Node consumers pass `nodeAsk` from
- * `@promptctl/rich-js/node/prompt`; tests pass a fake; the browser bundle
- * gets the classes without dragging `node:readline` into the main barrel.
+ * from. Input is a required capability passed at the call site. Node
+ * consumers pass `nodeAsk` from `@promptctl/rich-js/node/prompt`; tests pass
+ * a fake; the browser bundle gets the classes without dragging
+ * `node:readline` into the main barrel.
+ *
+ * [LAW:types-are-the-program] `ask` is a positional, required parameter —
+ * not an optional in `PromptOptions`. The previous shape allowed
+ * `Prompt.ask("name?")` at the type level and threw at runtime; the new
+ * shape makes the missing-capability state unrepresentable. The runtime
+ * "missing input" guard is gone because the type now forbids it.
  */
 
 import { render as renderMarkup } from "../core/markup.js";
@@ -28,28 +34,12 @@ export interface PromptOptions<T> {
   caseSensitive?: boolean;
   showChoices?: boolean;
   showDefault?: boolean;
-  /**
-   * Input source. Required per call — there is no module-level default by
-   * design ([LAW:no-shared-mutable-globals]). When unset, calls throw with a
-   * pointer at the node helper — missing capability becomes a loud error
-   * rather than a silent hang.
-   */
-  ask?: PromptInput;
 }
 
 // --- Base ---
 
-function missingInput(): never {
-  throw new Error(
-    "Prompt: no `ask` capability provided. Pass `{ ask }` in options, e.g. " +
-      "`import { nodeAsk } from '@promptctl/rich-js/node/prompt'` for Node, " +
-      "or supply a custom `PromptInput` for tests/browsers.",
-  );
-}
-
-function ask(promptText: string, input: PromptInput | undefined): Promise<string> {
+function ask(promptText: string, input: PromptInput): Promise<string> {
   const rendered = renderMarkup(promptText);
-  if (!input) missingInput();
   return input(rendered.plain + " ");
 }
 
@@ -58,6 +48,7 @@ function ask(promptText: string, input: PromptInput | undefined): Promise<string
 export class Prompt {
   static async ask(
     promptText: string,
+    input: PromptInput,
     options?: PromptOptions<string>,
   ): Promise<string> {
     const showDefault = options?.showDefault !== false;
@@ -73,7 +64,7 @@ export class Prompt {
     display += ":";
 
     while (true) {
-      const answer = await ask(display, options?.ask);
+      const answer = await ask(display, input);
       const value = answer.trim();
 
       if (value === "" && options?.default !== undefined) {
@@ -97,6 +88,7 @@ export class Prompt {
 export class IntPrompt {
   static async ask(
     promptText: string,
+    input: PromptInput,
     options?: PromptOptions<number>,
   ): Promise<number> {
     const showDefault = options?.showDefault !== false;
@@ -107,7 +99,7 @@ export class IntPrompt {
     display += ":";
 
     while (true) {
-      const answer = await ask(display, options?.ask);
+      const answer = await ask(display, input);
       const value = answer.trim();
 
       if (value === "" && options?.default !== undefined) {
@@ -123,6 +115,7 @@ export class IntPrompt {
 export class FloatPrompt {
   static async ask(
     promptText: string,
+    input: PromptInput,
     options?: PromptOptions<number>,
   ): Promise<number> {
     const showDefault = options?.showDefault !== false;
@@ -133,7 +126,7 @@ export class FloatPrompt {
     display += ":";
 
     while (true) {
-      const answer = await ask(display, options?.ask);
+      const answer = await ask(display, input);
       const value = answer.trim();
 
       if (value === "" && options?.default !== undefined) {
@@ -149,6 +142,7 @@ export class FloatPrompt {
 export class Confirm {
   static async ask(
     promptText: string,
+    input: PromptInput,
     options?: PromptOptions<boolean>,
   ): Promise<boolean> {
     const defaultVal = options?.default;
@@ -156,7 +150,7 @@ export class Confirm {
     const display = `${promptText} [${yesNo}]:`;
 
     while (true) {
-      const answer = await ask(display, options?.ask);
+      const answer = await ask(display, input);
       const value = answer.trim().toLowerCase();
 
       if (value === "" && defaultVal !== undefined) return defaultVal;
