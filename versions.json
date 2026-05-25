@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "97bf80e5d9676f040dba3dd16029deed52e924a5",
-      "timestamp": "2026-05-25T06:57:33.995Z",
+      "sha": "217356b005ffc90f636ec58129b0cb958b9195f1",
+      "timestamp": "2026-05-25T07:07:05.214Z",
       "commits": [
         {
-          "sha": "97bf80e5d9676f040dba3dd16029deed52e924a5",
+          "sha": "217356b005ffc90f636ec58129b0cb958b9195f1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T06:57:09Z",
-          "message": "Merge 6e6aaca62020fab2f4226878408f84938eec09ee into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T07:06:39Z",
+          "message": "Merge 693853f3a0bb226c5077e7b3ddce621f6e0564a9 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "693853f3a0bb226c5077e7b3ddce621f6e0564a9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T01:06:28-06:00",
+          "message": "fix(demos): honest hostStream return type, requireEl, build-only plugin, lint scripts\n\nFour round-5 review findings:\n\n1. **hostStream return type honest**: was declared as the full\n   `NodeJS.WritableStream` but only `.write` / `.end` / `.writable` are\n   implemented. Narrowed to a new `RichWritable` interface that says exactly\n   what's there; callers crossing the boundary to Console's wider `file:`\n   option cast inline with a comment pointing at followup\n   `rich-demo-site-pek.3.4` (which will widen Console's type). [LAW:types-are-the-program]\n   the type now matches the value's real surface.\n\n2. **requireEl helper in mount.ts.tmpl**: replace `getElementById(...) as\n   HTMLElement` casts with a tiny helper that throws a precise error\n   (\"missing #status\" / \"missing #term\") if the shell HTML is missing the\n   element. Trust-boundary null check, not a defensive shim.\n\n3. **Build-only staging plugin**: added `apply: \"build\"` so the plugin\n   itself is scoped to `vite build`. The comment previously claimed dev/\n   preview didn't trigger staging; now that's a *property of the plugin\n   object*, not a property of which hooks fire.\n\n4. **Type-check vite.config.demos.ts**: new `tsconfig.scripts.json` covers\n   the build config; `npm run lint` chains both check passes.\n\nPlus one new hostStream test pinning `.end()`'s chain-returns-self contract.\n"
         },
         {
           "sha": "6e6aaca62020fab2f4226878408f84938eec09ee",
