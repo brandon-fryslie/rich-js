@@ -158,11 +158,13 @@ export class MemoryFileSystem implements FileSystem {
     const node = this.lookup(path);
     if (node === null || node.kind !== "file") return null;
     if (node.content.length === 0) return null;
-    // The capability documents "bytes", but for the demos that consume this
-    // (slug/firstPrompt extraction from JSONL) the contents are ASCII-ish and
-    // the consumers only look at the first newline. Slicing characters is a
-    // close-enough proxy and avoids encoding work in the browser path.
-    return node.content.slice(0, maxBytes);
+    // Encode to bytes, slice, decode — matches NodeFileSystem precisely so
+    // a multibyte codepoint split at the boundary becomes a replacement
+    // char in both impls, and the byte count of the returned text matches
+    // the requested cap.
+    const encoded = new TextEncoder().encode(node.content);
+    const slice = encoded.subarray(0, Math.min(maxBytes, encoded.length));
+    return new TextDecoder("utf-8", { fatal: false }).decode(slice);
   }
 
   // ---- Internals ----------------------------------------------------------

@@ -134,14 +134,18 @@ export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
   host.start();
   const fs = new MemoryFileSystem(FIXTURE_TREE);
-  // The run() promise resolves on quit; the browser never quits, but kicking
-  // it off here drives the first paint. Surface any boot-time throw to the
-  // page shell so the #status badge shows "boot error" instead of going
-  // green-and-empty.
-  const runPromise = run(host, fs).catch((err: unknown) => {
+  // run() resolves on a "quit" action; in the browser that never fires, so
+  // the promise stays pending while the page lives. It can still reject if
+  // initialization throws — when that happens, log to the browser console
+  // and release the host so a partially-started subscription set doesn't
+  // hang on. We deliberately do not update the page-shell status badge:
+  // mount.ts.tmpl has already set it to "ready" by the time this would
+  // fire, and reaching back into the DOM from here would couple wire.ts
+  // to the shell's structure (a separate seam).
+  void run(host, fs).catch((err: unknown) => {
     // eslint-disable-next-line no-console
-    console.error("claude-sessions: run() rejected", err);
-    throw err;
+    console.error("claude-sessions: run() rejected after mount", err);
+    host.stop();
   });
   return {
     host,
@@ -150,9 +154,6 @@ export function mount(terminal: XtermTerminal): MountHandle {
       // outer Promise stop receiving keystrokes. The Promise itself remains
       // pending — that's fine, the page is going away.
       host.stop();
-      // Reference runPromise so the lint/build doesn't drop it as unused;
-      // production code paths can chain off it if they ever need to.
-      void runPromise;
     },
   };
 }
