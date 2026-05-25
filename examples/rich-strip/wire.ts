@@ -5,10 +5,6 @@
  * [LAW:one-source-of-truth] The demo logic lives in app.ts. This file is the
  * browser-side mirror of index.ts; the only difference is which `TerminalHost`
  * implementation is constructed.
- *
- * The default export is `mount(terminal) → MountHandle` — the contract every
- * demo wire publishes, consumed by the staged mount.ts shell in
- * `.vite-demos/<demo>/mount.ts`.
  */
 
 import {
@@ -26,7 +22,13 @@ export interface MountHandle {
 export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
   host.start();
-  const demo = runDemo(host);
+  let demo: ReturnType<typeof runDemo>;
+  try {
+    demo = runDemo(host);
+  } catch (err) {
+    host.stop();
+    throw err;
+  }
   return {
     host,
     stop(): void {

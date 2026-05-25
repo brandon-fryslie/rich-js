@@ -23,8 +23,11 @@ try {
   }
   demo.stop();
 } catch (err) {
+  // [LAW:dataflow-not-control-flow] Set process.exitCode (a value) instead
+  // of calling process.exit (a control-flow jump that bypasses finally).
+  // The finally block must run host.stop() either way.
   process.stderr.write(`Error: ${err instanceof Error ? err.message : String(err)}\n`);
-  process.exit(1);
+  process.exitCode = 1;
 } finally {
   host.stop();
 }

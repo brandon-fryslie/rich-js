@@ -20,7 +20,13 @@ export interface MountHandle {
 export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
   host.start();
-  const demo = runDemo(host);
+  let demo: ReturnType<typeof runDemo>;
+  try {
+    demo = runDemo(host);
+  } catch (err) {
+    host.stop();
+    throw err;
+  }
   return {
     host,
     stop(): void {
