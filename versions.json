@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-44",
+      "ref": "refs/pull/44/merge",
+      "sha": "5a194033e22c84c441e4933a2776793b76cf33e3",
+      "timestamp": "2026-05-25T09:38:52.736Z",
+      "commits": [
+        {
+          "sha": "5a194033e22c84c441e4933a2776793b76cf33e3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T03:38:21-06:00",
+          "message": "Merge e95d7c3878c90deb69fa70418793cf78ca7b8968 into c2572a527d2212cb9910553b41b1c58db70496bf\n"
+        },
+        {
+          "sha": "e95d7c3878c90deb69fa70418793cf78ca7b8968",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T03:37:39-06:00",
+          "message": "feat(docs): VitePress Demos section with live xterm.js terminals (rich-demo-site-pek.4)\n\nSurface every browser-bundled demo as a runnable page inside the existing\ndocs site. One pipeline (npm run docs:build), one deploy (docs.yml +\ngh-pages-multiplexer), one source of truth for the demo list (the manifest\nthe bundle pipeline writes).\n\n- vite.config.demos.ts: output to docs/public/demos-app/ so VitePress's\n  public-files convention copies bundles to dist/demos-app/ verbatim; also\n  emit docs/.vitepress/demos.json (the canonical demo list).\n- docs/demos/[demo].md + [demo].paths.ts: VitePress dynamic-route page\n  that iframes /demos-app/<name>/, with paths derived from the manifest.\n- docs/demos/index.md: landing page listing all demos from the same\n  manifest — adding/removing a demo updates the index automatically.\n- docs/.vitepress/config.ts: read manifest at config-load, add Demos nav\n  + sidebar section. No second list to maintain.\n- package.json: docs:build / docs:dev chain demos:build first; demos.json\n  is a precondition, not a fallback. Missing manifest fails loud.\n- .gitignore: docs/public/demos-app/ + docs/.vitepress/demos.json are\n  build artifacts; dist-demos/ is retired.\n\nVerified via Chrome MCP against docs:preview: index lists 7 demos with\ncorrect /rich-js/ base; rich-strip + themes-and-color-studio both load\nstatus=\"ready\", xterm-screen rendered with content, zero console errors.\n8881/8881 vitest pass.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c2572a527d2212cb9910553b41b1c58db70496bf",
