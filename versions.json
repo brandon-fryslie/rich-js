@@ -4,15 +4,22 @@
     {
       "version": "pr-46",
       "ref": "refs/pull/46/merge",
-      "sha": "4779e92288734936e44272fd469f7e50e7c46499",
-      "timestamp": "2026-05-25T16:33:59.125Z",
+      "sha": "9da8c99984222c087bbbcc6c2163f873f331f4e2",
+      "timestamp": "2026-05-25T16:42:55.371Z",
       "commits": [
         {
-          "sha": "4779e92288734936e44272fd469f7e50e7c46499",
+          "sha": "9da8c99984222c087bbbcc6c2163f873f331f4e2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T16:33:25Z",
-          "message": "Merge 8fdbc19ae68da976a425813d9b2fb8177f9d1ec4 into 167f6041b389ad40e301891694427a2ae3341161\n"
+          "timestamp": "2026-05-25T16:42:28Z",
+          "message": "Merge 4721306be94664a02778ab38e2835a1c55e89ce8 into 167f6041b389ad40e301891694427a2ae3341161\n"
+        },
+        {
+          "sha": "4721306be94664a02778ab38e2835a1c55e89ce8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T10:42:19-06:00",
+          "message": "fix(security): wire-byte sanitization at OSC 8 emit + extract shared rule\n\nCopilot round 2 on PR #46 was right: the RichText boundary alone leaves\ngaps. A Style with a hostile link can still enter the rendering\npipeline without passing through RichText — `Console.print({ style:\nnew Style({ link: dirty }) })` routes via Segment.applyStyle and\nStyle.add (both faithful — preserve link verbatim), so the dirty URL\nreaches render.ts and escapes the OSC 8 wrap.\n\nFix: layered enforcement at two distinct seams, sharing one rule.\n\n- Extract `stripOscTerminators` to `src/core/sanitize.ts` — a leaf\n  module that depends on nothing, so render.ts, style.ts, and text.ts\n  can all import without inverting the dep graph. [LAW:one-source-of-truth]\n  the regex lives in exactly one place.\n\n- text.ts: data-model boundary (unchanged behavior, now imports the\n  shared helper). Required by the ticket's acceptance criterion that\n  \"the stored URL has the ESC/ST stripped\" — RichText.spans[].style.link\n  is sanitized in-memory so inspection matches what the renderer emits.\n\n- render.ts:segmentsToString and style.ts:Style.render: wire-byte\n  boundary. The two OSC 8 byte producers in the codebase now both\n  pipe the link through `stripOscTerminators` before interpolation.\n  Style itself stays a faithful container — only the bytes going out\n  the door are sanitized, the in-memory `style.link` is unchanged.\n\n[LAW:single-enforcer] One rule (the regex in sanitize.ts), applied\nat every seam the URL crosses. Forgetting to wrap a future API is no\nlonger possible — wire bytes are always safe regardless of which\nupstream path constructed the Style.\n\n[LAW:locality-or-seam] The two layers are not redundant — they cover\ndistinct seams: in-memory model cleanness (RichText) vs wire-byte\nsafety (renderer/Style emit). Together they guarantee dirty bytes\nneither live in the data model nor escape on the wire.\n\nUpdates the over-claiming comment in text.ts to reflect the layered\nenforcement (Copilot was right that the prior text implied a global\ninvariant the rest of the pipeline didn't enforce).\n\n2 new tests pin the wire-byte boundary: a dirty Style handed straight\nto segmentsToString or to Style.render — bypassing RichText, markup,\nand every input-sanitizing layer — still produces safe OSC 8 bytes.\n"
         },
         {
           "sha": "8fdbc19ae68da976a425813d9b2fb8177f9d1ec4",
