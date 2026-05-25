@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-46",
+      "ref": "refs/pull/46/merge",
+      "sha": "e4366f33dc29c52e0e20c45287d95487cb605459",
+      "timestamp": "2026-05-25T16:28:04.901Z",
+      "commits": [
+        {
+          "sha": "e4366f33dc29c52e0e20c45287d95487cb605459",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T10:27:36-06:00",
+          "message": "Merge 8f269ee05b7e9b6c4d0e58d4d4f5d6c667c6786d into 167f6041b389ad40e301891694427a2ae3341161\n"
+        },
+        {
+          "sha": "8f269ee05b7e9b6c4d0e58d4d4f5d6c667c6786d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T10:26:56-06:00",
+          "message": "fix(security): strip OSC terminators from link URLs at the RichText boundary (rich-strip-render-d5z.2)\n\nA URL containing ESC (\\x1b), BEL (\\x07), or ST (\\x9c) bytes could\nprematurely terminate an OSC 8 hyperlink wrap and inject arbitrary\nterminal control bytes. The fix sanitizes link URLs at the trust\nboundary — RichText — without modifying the Style value type.\n\n- Add Style.withLink(link): structural clone helper, mirrors withoutColor.\n- Add sanitizeStyleLink in text.ts as a module-private peer to the\n  existing stripControlChars, applied at all four RichText inflow points:\n  constructor options.style, the style setter, stylize, append.\n- Style stays a faithful container; raw new Style({ link }) does not\n  sanitize, so internal callers that already sanitized are not silently\n  re-mutated.\n- Sanitizer is reference-preserving on clean URLs (no needless clone).\n\n[LAW:single-enforcer] [LAW:locality-or-seam] One sanitizer rule, applied\nat the boundary the data crosses. Renderer downstream trusts the\ninvariant and emits without guards.\n\n7 new tests pin the contract end-to-end: markup/stylize/append/\nconstructor/setter all strip; raw Style does not; rendered output cannot\nescape the OSC 8 wrap.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "167f6041b389ad40e301891694427a2ae3341161",
