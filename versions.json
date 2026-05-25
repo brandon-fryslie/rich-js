@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "310377a4a6524054661a0dab4f062a897dbe97a0",
-      "timestamp": "2026-05-25T07:22:46.055Z",
+      "sha": "fd052f0457ca48500c6810a7b4027ebc0f57c95d",
+      "timestamp": "2026-05-25T07:35:48.445Z",
       "commits": [
         {
-          "sha": "310377a4a6524054661a0dab4f062a897dbe97a0",
+          "sha": "fd052f0457ca48500c6810a7b4027ebc0f57c95d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T07:22:22Z",
-          "message": "Merge 12e567ab5791cec7876b4f8f443ec77d051de60f into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T07:35:24Z",
+          "message": "Merge ab7c454fd84058445c93f11691252ba502a9c97f into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "ab7c454fd84058445c93f11691252ba502a9c97f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T01:34:36-06:00",
+          "message": "fix(demos): alt-screen restore on startup throws; build-only wire validation\n\nThree interactive demos (dropdown-demo, rich-config, rich-template-bindings)\nentered the alt-screen with `host.write(\"\\x1b[?1049h…\")` and only restored it\nin `handle.stop()` / `shutdown()`. The bootstrap's catch only calls\n`host.stop()`, which doesn't touch alt-screen state — so a throw from\n`screen.mount`, `screen.start`, `router.start`, or an `autorun` left the\nterminal in the alternate buffer. Wrap startup in try/catch routing through\nthe demo's own stop/shutdown so alt-screen state has exactly one restore\nsite that runs regardless of which startup step failed. [LAW:single-enforcer]\n\ndropdown-demo additionally initialises `mutationTimer` to `null` *before*\n`handle` so `handle.stop()` is structurally safe during partial startup.\n[LAW:types-are-the-program]\n\n`vite.config.demos.ts`: separate enumeration from validation. `discoverDemos()`\nnow only reads directory names with `wire.ts` (safe to run at config-evaluation\ntime, including from `vite preview`). The \"compiled wire.js exists\" build\nconstraint moves into `stageDemos()`, which is reached only via the\n`stagingPlugin` (already scoped `apply: \"build\"`). `vite preview` no longer\nrequires `dist-demo/` to exist; `vite build` still fails loudly on missing\ncompiled wires. [LAW:dataflow-not-control-flow] the build-vs-preview\ndiscriminator is data the plugin lifecycle carries; the config no longer\nmakes that decision implicitly.\n"
         },
         {
           "sha": "12e567ab5791cec7876b4f8f443ec77d051de60f",
