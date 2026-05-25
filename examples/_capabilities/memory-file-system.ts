@@ -173,27 +173,25 @@ export class MemoryFileSystem implements FileSystem {
 
   private lookup(path: string): MemoryNode | null {
     const segments = splitSegments(path);
-    // Walk from the tree root, which represents `home`. Strip the home
-    // prefix from the requested path; anything outside `home` is treated as
-    // missing — the memory FS does not model a wider filesystem.
+    // Resolution rules:
+    //   - Paths at `home` or below resolve against the materialised tree.
+    //   - The filesystem root `/` (when home is non-root) is missing — the
+    //     memory FS does not model a wider filesystem.
+    //   - Non-empty partial prefixes of `home` (e.g. `/Users` when home is
+    //     `/Users/x`) resolve to synthetic empty directories so that a
+    //     prefix `exists()` check returns true; demos never list above
+    //     `home`, so the synthetic node's empty children are never observed.
+    //   - Anything not matching the home prefix is missing.
     if (segments.length < this.homeSegments.length) {
-      // Allow `home` itself or any ancestor of `home` to resolve to the
-      // root directory — `homeDir()` itself must exist for the demo.
       if (segments.length === 0 && this.homeSegments.length === 0) {
         return this.tree.root;
       }
       if (segments.length === 0) {
-        // Path is the filesystem root "/"; the memory FS only knows `home`.
         return null;
       }
-      // Partial prefix of `home` (e.g., `/Users` when home is `/Users/x`).
       for (let i = 0; i < segments.length; i++) {
         if (segments[i] !== this.homeSegments[i]) return null;
       }
-      // The partial-prefix node isn't materialised in the tree; report it
-      // as a directory by exposing only the next segment of `home`. Demos
-      // don't list directories above `home`, so this synthetic node is
-      // never observed in `readDir`.
       return { kind: "directory", children: {} };
     }
     for (let i = 0; i < this.homeSegments.length; i++) {
