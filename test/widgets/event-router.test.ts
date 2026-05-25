@@ -6,6 +6,7 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
+import { NodeTerminalHost } from "../../src/widgets/terminal-host.js";
 import type {
   KeyEvent,
   WidgetMouseEvent,
@@ -59,6 +60,8 @@ class StubWidget extends WidgetBase {
 class CapturingStream extends Writable {
   chunks: string[] = [];
   isTTY = false;
+  columns = 80;
+  rows = 24;
 
   override _write(
     chunk: Buffer | string,
@@ -72,6 +75,19 @@ class CapturingStream extends Writable {
   joined(): string {
     return this.chunks.join("");
   }
+}
+
+// [LAW:single-enforcer] One helper builds the host over mock streams for
+// every router test. PassThrough + CapturingStream structurally satisfy
+// NodeTerminalHost's internal `NodeReadable` / `NodeWritable` shapes (both
+// have .on/.off/resume/pause; CapturingStream adds columns/rows/isTTY in
+// this file). The unknown-cast launders the strict node typing without
+// weakening NodeTerminalHost itself.
+function makeNodeHost(stdin: PassThrough, stdout: CapturingStream): NodeTerminalHost {
+  return new NodeTerminalHost({
+    stdin: stdin as unknown as NodeJS.ReadStream,
+    stdout: stdout as unknown as NodeJS.WriteStream,
+  });
 }
 
 interface Harness {
@@ -105,10 +121,10 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     },
   } as Screen & { widgets: readonly InteractiveWidget[] };
 
+  const host = makeNodeHost(stdin, stdout);
   const router = new EventRouter({
     screen,
-    input: stdin as unknown as NodeJS.ReadableStream & { isTTY?: boolean },
-    output: stdout,
+    host,
     manageMouse: false,
     manageRawMode: false,
   });
@@ -545,10 +561,10 @@ describe("EventRouter — start/stop", () => {
       },
     } as Screen & { widgets: readonly InteractiveWidget[] };
 
+    const host = makeNodeHost(stdin, stdout);
     const router = new EventRouter({
       screen,
-      input: stdin as unknown as NodeJS.ReadableStream,
-      output: stdout,
+      host,
       manageMouse: false,
       manageRawMode: false,
     });
@@ -579,10 +595,10 @@ describe("EventRouter — start/stop", () => {
       },
     } as Screen & { widgets: readonly InteractiveWidget[] };
 
+    const host = makeNodeHost(stdin, stdout);
     const router = new EventRouter({
       screen,
-      input: stdin as unknown as NodeJS.ReadableStream,
-      output: stdout,
+      host,
       manageMouse: true,
       manageRawMode: false,
     });

@@ -27,6 +27,7 @@ import type {
   KeyHandlerPriority,
   Unsubscribe,
 } from "./types.js";
+import type { TerminalHost } from "./terminal-host.js";
 
 type KeyHandler = (event: KeyEvent) => void;
 interface RegisteredKeyHandler {
@@ -41,19 +42,21 @@ type WidgetSource = {
 
 export interface EventRouterOptions {
   screen: Screen | WidgetSource;
-  input?: NodeJS.ReadableStream & {
-    setRawMode?: (raw: boolean) => unknown;
-    isTTY?: boolean;
-  };
-  output?: NodeJS.WritableStream;
   /**
-   * When true (default when output is a TTY), enable mouse tracking on
-   * start() and disable on stop(). Disable in tests / non-TTY environments.
+   * The I/O capability the router reads input from and writes
+   * mouse-tracking sequences to. Construct a `NodeTerminalHost` for
+   * production node demos; tests pass a host that wraps mock streams.
+   */
+  host: TerminalHost;
+  /**
+   * When true (default when the host reports `isTTY`), enable mouse
+   * tracking on `start()` and disable on `stop()`. Disable in tests /
+   * non-TTY environments.
    */
   manageMouse?: boolean;
   /**
-   * When true (default when input is a TTY), put stdin into raw mode on
-   * start() and restore on stop().
+   * When true (default when the host reports `isTTY`), switch the host
+   * into raw mode on `start()` and restore on `stop()`.
    */
   manageRawMode?: boolean;
 }
@@ -137,14 +140,13 @@ type ConsumeResult =
 
 export class EventRouter {
   private readonly source: WidgetSource;
-  private readonly input: EventRouterOptions["input"];
-  private readonly output: NodeJS.WritableStream;
+  private readonly host: TerminalHost;
   private readonly manageMouse: boolean;
   private readonly manageRawMode: boolean;
 
   private buffer: Buffer = Buffer.alloc(0);
   private running = false;
-  private dataListener: ((chunk: Buffer | string) => void) | undefined;
+  private dataUnsubscribe: Unsubscribe | undefined;
   private escTimer: ReturnType<typeof setImmediate> | undefined;
   // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's hit
   // widget is recorded; mouse_move/mouse_up between then and the next
@@ -165,13 +167,14 @@ export class EventRouter {
       ? screen
       : { focusManager: screen.focusManager, getWidgets: () => screen.widgets };
 
-    this.input = options.input ?? (process.stdin as EventRouterOptions["input"]);
-    this.output = options.output ?? process.stdout;
+    this.host = options.host;
 
-    const inputIsTTY = !!this.input?.isTTY;
-    const outputIsTTY = !!(this.output as NodeJS.WriteStream).isTTY;
-    this.manageRawMode = options.manageRawMode ?? inputIsTTY;
-    this.manageMouse = options.manageMouse ?? outputIsTTY;
+    // [LAW:one-source-of-truth] The host owns the "is this a real
+    // terminal?" question. Both raw-mode and mouse-tracking defaults
+    // derive from the same isTTY — no separate input/output skew.
+    const isTTY = this.host.isTTY;
+    this.manageRawMode = options.manageRawMode ?? isTTY;
+    this.manageMouse = options.manageMouse ?? isTTY;
 
     // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab traversal —
     // register it as a normal-priority handler so it participates in the
@@ -188,32 +191,27 @@ export class EventRouter {
     if (this.running) return;
     this.running = true;
 
-    if (this.manageRawMode && this.input?.setRawMode) {
-      this.input.setRawMode(true);
-    }
-    if (typeof (this.input as { resume?: () => void })?.resume === "function") {
-      (this.input as { resume: () => void }).resume();
-    }
+    // [LAW:dataflow-not-control-flow] No `if (host.setRawMode)` capability
+    // check — the host absorbs that. Same goes for resume(): subscribing
+    // via host.onData triggers the underlying stream's flow on node, no-ops
+    // on transports that don't have a paused mode.
+    if (this.manageRawMode) this.host.setRawMode(true);
+    if (this.manageMouse) this.host.write(MOUSE_TRACK_ON);
 
-    if (this.manageMouse) this.output.write(MOUSE_TRACK_ON);
-
-    this.dataListener = (chunk: Buffer | string) => this.feed(chunk);
-    this.input?.on("data", this.dataListener);
+    this.dataUnsubscribe = this.host.onData((chunk) => this.feed(chunk));
   }
 
   stop(): void {
     if (this.running) {
       this.running = false;
 
-      if (this.dataListener) {
-        this.input?.off("data", this.dataListener);
-        this.dataListener = undefined;
+      if (this.dataUnsubscribe) {
+        this.dataUnsubscribe();
+        this.dataUnsubscribe = undefined;
       }
 
-      if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
-      if (this.manageRawMode && this.input?.setRawMode) {
-        this.input.setRawMode(false);
-      }
+      if (this.manageMouse) this.host.write(MOUSE_TRACK_OFF);
+      if (this.manageRawMode) this.host.setRawMode(false);
     }
 
     // [LAW:one-source-of-truth] Per-session state belongs to one session.
@@ -254,7 +252,7 @@ export class EventRouter {
   // --- Test / advanced API ---
 
   /** Feed a chunk of bytes (or a string of bytes) into the parser. */
-  feed(chunk: Buffer | string): void {
+  feed(chunk: Uint8Array | string): void {
     const next = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk;
     this.buffer = this.buffer.length === 0 ? Buffer.from(next) : Buffer.concat([this.buffer, next]);
     if (this.escTimer) {

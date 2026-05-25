@@ -25,6 +25,7 @@ import {
   Layout,
   Padding,
   EventRouter,
+  NodeTerminalHost,
   DefaultScreen,
   DefaultFocusManager,
   StaticItem,
@@ -453,9 +454,13 @@ const headerSpacer = makeSpacerItem();
 
 // ─── Screen + router ───────────────────────────────────────────────────────
 
+// [LAW:no-shared-mutable-globals] Single host owns all node TTY access for
+// this demo. Screen and EventRouter both render and read through it; nothing
+// else in this file reaches for process.stdin/stdout.
+const host   = new NodeTerminalHost();
 const fm     = new DefaultFocusManager();
-const screen = new DefaultScreen({ focusManager: fm, out: process.stdout });
-const router = new EventRouter({ screen, input: process.stdin, output: process.stdout });
+const screen = new DefaultScreen({ focusManager: fm, host });
+const router = new EventRouter({ screen, host });
 
 // ─── Mount list ────────────────────────────────────────────────────────────
 
@@ -511,15 +516,15 @@ function shutdown(): void {
   disposeVisibility();
   router.stop();
   screen.stop();
-  process.stdout.write("\x1b[?1049l");
-  process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
+  host.write("\x1b[?1049l\x1b[1;36mGoodbye!\x1b[0m\n");
+  host.stop();
   process.exit(0);
 }
 
 process.once("SIGINT", () => shutdown());
 process.once("SIGTERM", () => shutdown());
 
-process.stdout.write("\x1b[?1049h");
-process.stdout.write("\x1b[H");
+host.start();
+host.write("\x1b[?1049h\x1b[H");
 screen.start();
 router.start();

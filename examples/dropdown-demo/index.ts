@@ -32,6 +32,7 @@ import {
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
+  NodeTerminalHost,
   StaticItem,
   Segment,
   Style,
@@ -103,13 +104,13 @@ const allWidgets: InteractiveWidget[] = [ddShort, ddLong, ddMutating];
 
 // --- Screen / FocusManager / EventRouter ---
 
+// [LAW:no-shared-mutable-globals] Single host owns all node TTY access for
+// this demo. Screen and EventRouter both render and read through it; nothing
+// else in this file reaches for process.stdin/stdout.
+const host = new NodeTerminalHost();
 const fm = new DefaultFocusManager();
-const screen = new DefaultScreen({ focusManager: fm, out: process.stdout });
-const router = new EventRouter({
-  screen,
-  input: process.stdin,
-  output: process.stdout,
-});
+const screen = new DefaultScreen({ focusManager: fm, host });
+const router = new EventRouter({ screen, host });
 
 // --- Static-content helpers (same shape as rich-config) ---
 
@@ -203,7 +204,7 @@ const cheatSheetItem = new StaticItem({
 
 // --- Bottom-anchored coordinates (status row below the flow content) ---
 
-const TERMINAL_ROWS = process.stdout.rows ?? 30;
+const TERMINAL_ROWS = host.size().rows;
 const STATUS_Y = Math.max(15, TERMINAL_ROWS - 2);
 const CHEAT_Y = STATUS_Y + 1;
 
@@ -264,17 +265,17 @@ function focusableAt(x: number, y: number): InteractiveWidget | null {
 let mutationTimer: NodeJS.Timeout | null = null;
 
 function startup(): void {
-  if (!process.stdin.isTTY) {
+  if (!host.isTTY) {
     process.stderr.write(
       "Error: demo:dropdown requires an interactive terminal.\n",
     );
     process.exit(1);
   }
 
+  host.start();
   // Alternate screen buffer — standard full-screen TUI idiom; main buffer
   // (shell prompt, scrollback) is restored on shutdown.
-  process.stdout.write("\x1b[?1049h");
-  process.stdout.write("\x1b[H");
+  host.write("\x1b[?1049h\x1b[H");
 
   screen.mount(...mountList);
 
@@ -306,8 +307,8 @@ function shutdown(): void {
   }
   router.stop();
   screen.stop();
-  process.stdout.write("\x1b[?1049l");
-  process.stdout.write("\x1b[1;36mGoodbye!\x1b[0m\n");
+  host.write("\x1b[?1049l\x1b[1;36mGoodbye!\x1b[0m\n");
+  host.stop();
   process.exit(0);
 }
 

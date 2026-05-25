@@ -6,6 +6,7 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { DefaultScreen } from "../../src/widgets/screen.js";
+import { NodeTerminalHost } from "../../src/widgets/terminal-host.js";
 import type { KeyEvent } from "../../src/widgets/types.js";
 
 class StubWidget extends WidgetBase {
@@ -67,8 +68,15 @@ function makeScreen(opts: { stream?: CapturingStream } = {}): {
   stream: CapturingStream;
 } {
   const stream = opts.stream ?? new CapturingStream();
+  // [LAW:single-enforcer] Screen reaches I/O exclusively through the host;
+  // tests build one that wraps the CapturingStream so writes land in
+  // `stream.chunks` instead of going to process.stdout. stdin is unused
+  // (Screen never reads input) — process.stdin is fine as a placeholder.
+  const host = new NodeTerminalHost({
+    stdout: stream as unknown as NodeJS.WriteStream,
+  });
   const screen = new DefaultScreen({
-    out: stream,
+    host,
     width: 40,
     colorSystem: null, // strip color codes — tests assert plain text
     manageCursor: false,
@@ -420,8 +428,9 @@ describe("DefaultScreen", () => {
   describe("cursor management", () => {
     it("emits hide-cursor on start when manageCursor is true", () => {
       const stream2 = new CapturingStream();
+      const host2 = new NodeTerminalHost({ stdout: stream2 as unknown as NodeJS.WriteStream });
       const s = new DefaultScreen({
-        out: stream2,
+        host: host2,
         width: 40,
         colorSystem: null,
         manageCursor: true,
@@ -433,8 +442,9 @@ describe("DefaultScreen", () => {
 
     it("emits show-cursor on stop when manageCursor is true", () => {
       const stream2 = new CapturingStream();
+      const host2 = new NodeTerminalHost({ stdout: stream2 as unknown as NodeJS.WriteStream });
       const s = new DefaultScreen({
-        out: stream2,
+        host: host2,
         width: 40,
         colorSystem: null,
         manageCursor: true,

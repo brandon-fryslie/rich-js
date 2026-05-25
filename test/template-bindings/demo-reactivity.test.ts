@@ -26,6 +26,7 @@ import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { DefaultScreen } from "../../src/widgets/screen.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
+import { NodeTerminalHost } from "../../src/widgets/terminal-host.js";
 import { StaticItem } from "../../src/widgets/static-item.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { RichText } from "../../src/core/text.js";
@@ -98,8 +99,13 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
     stdin = new PassThrough();
     const fm = new DefaultFocusManager();
 
+    const host = new NodeTerminalHost({
+      stdin: stdin as unknown as NodeJS.ReadStream,
+      stdout: stdout as unknown as NodeJS.WriteStream,
+    });
+
     screen = new DefaultScreen({
-      out: stdout,
+      host,
       width: 60,
       colorSystem: null, // strip color codes so assertions check plain text
       manageCursor: false,
@@ -108,11 +114,7 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
 
     router = new EventRouter({
       screen,
-      input: stdin as unknown as NodeJS.ReadableStream & {
-        setRawMode?: (raw: boolean) => unknown;
-        isTTY?: boolean;
-      },
-      output: stdout,
+      host,
       manageMouse: false,
       manageRawMode: false,
     });
