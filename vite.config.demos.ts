@@ -156,25 +156,15 @@ for (const name of demos) {
   input[name] = resolve(stagingDir, name, "index.html");
 }
 
-// Boundary stubs for node-only modules the library happens to import at
-// module top level: `fs` (Console.saveText/saveHtml) and `node:readline`
-// (the prompt renderable). [LAW:locality-or-seam] These aliases mark the
-// seam where a structural fix should land: the node-using methods should
-// be extracted out so the type forbids them in browser environments.
-const nodeStub = resolve(shellDir, "node-stub.js");
-const browserStubs = {
-  fs: nodeStub,
-  "node:fs": nodeStub,
-  readline: nodeStub,
-  "node:readline": nodeStub,
-};
-
+// [LAW:locality-or-seam] No node-shim aliases here. `fs` and `node:readline`
+// are not imported from any path the main barrel reaches: saveText/saveHtml
+// moved to `src/node/save.ts` and the prompt renderable's readline binding
+// moved to `src/node/prompt.ts`. The browser bundle should fail loud if a
+// future change reintroduces a top-level node import — aliasing them away
+// would mask exactly that regression.
 export default defineConfig({
   root: stagingDir,
   base: "./",
-  resolve: {
-    alias: browserStubs,
-  },
   plugins: [stagingPlugin(demos)],
   build: {
     // [LAW:single-enforcer] Outputting into VitePress's `public/` makes the

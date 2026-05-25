@@ -52,6 +52,18 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
 
   // -- Renderables Gallery ------------------------------------------------
   Alignment: burndown("renderables-gallery"),
+  // Prompt input capability + options type — exposed by rich-demo-site-pek.3.4
+  // when readline left the main barrel. The Prompt classes themselves are
+  // exercised by examples/rich-explore/renderers/coverage.ts (typeof check);
+  // the companion types are advanced API for callers wiring custom input
+  // sources and will be exercised in a renderables-gallery prompt scenario.
+  PromptInput: burndown("renderables-gallery"),
+  PromptOptions: burndown("renderables-gallery"),
+  // node:readline-backed PromptInput implementation. Demonstrable only by a
+  // demo that actually accepts interactive input via readline, which the
+  // current TUI demos (raw-mode stdin) do not — a gallery scenario is the
+  // natural home.
+  nodeAsk: burndown("renderables-gallery"),
   Box: burndown("renderables-gallery"),
   BoxChars: burndown("renderables-gallery"),
   Column: burndown("renderables-gallery"),
@@ -150,9 +162,20 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   unregisterMarkupTag: burndown("markup-and-text-lab"),
 
   // -- Live, Progress & Console -------------------------------------------
+  // Structural type for Console's `file:` option — exposed by
+  // rich-demo-site-pek.3.4 when NodeJS.WritableStream came out of the
+  // public surface. Every demo that calls `new Console({ file: hostStream(host) })`
+  // depends on this contract structurally; an explicit type annotation in a
+  // future live-progress-console scenario lands the natural coverage.
+  ConsoleSink: burndown("live-progress-console"),
   ConsoleOptions: burndown("live-progress-console"),
   LiveOptions: burndown("live-progress-console"),
   PrintOptions: burndown("live-progress-console"),
+  // Node-only plain-text exporter; the HTML sibling (`saveHtml`) is already
+  // covered by examples/themes-and-color-studio/index.ts. saveText has no
+  // organic touchpoint yet because the existing demo wants HTML; a future
+  // live-progress-console scenario will exercise the plain-text path.
+  saveText: burndown("live-progress-console"),
   ProgressBarOptions: burndown("live-progress-console"),
   ProgressOptions: burndown("live-progress-console"),
   Spinner: burndown("live-progress-console"),

@@ -64,21 +64,4 @@ describe("hostStream", () => {
 
     expect(host.writes).toEqual(["a", "b", "c"]);
   });
-
-  it("reports writable as true so Console treats it as a live sink", () => {
-    const host = makeRecordingHost();
-    const stream = hostStream(host);
-
-    // The narrow Writable contract: callers read `.writable` to detect a
-    // live sink. No cast needed — the return type tells the truth about
-    // what's there.
-    expect(stream.writable).toBe(true);
-  });
-
-  it("end() returns the stream itself for chaining", () => {
-    const host = makeRecordingHost();
-    const stream = hostStream(host);
-
-    expect(stream.end()).toBe(stream);
-  });
 });

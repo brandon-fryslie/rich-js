@@ -2,7 +2,6 @@
  * Console — the central orchestrator for rendering styled output to the terminal.
  */
 
-import { writeFileSync } from "fs";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme } from "./style.js";
 import { ColorDepth, resolveColorSystem } from "./color.js";
@@ -20,6 +19,17 @@ import { isRenderable } from "./protocol.js";
 
 // --- Types ---
 
+// [LAW:types-are-the-program] The strongest theorem about Console's output
+// sink is "we call .write(chunk) on it." Nothing else. Narrowing to that
+// exact surface lets every structurally-compatible writable (process.stdout,
+// process.stderr, hostStream(host), any test double) be passed without a
+// cast. `NodeJS.WritableStream` over-promised ~30 methods Console never
+// touched, and the lie forced callers wrapping non-stream sinks (e.g. the
+// browser TerminalHost adapter) to launder through `as unknown as`.
+export interface ConsoleSink {
+  write(chunk: string | Uint8Array): unknown;
+}
+
 export interface ConsoleOptions {
   /**
    * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
@@ -27,13 +37,32 @@ export interface ConsoleOptions {
    * which has no string spec), or `null` for no color. Default `"auto"`.
    */
   colorSystem?: string | ColorDepth | null;
+  /**
+   * Static width (cells). Ignored when `getSize` is provided. Falls back to
+   * `process.stdout.columns` / `COLUMNS` env / 80.
+   */
   width?: number;
+  /**
+   * Static height (lines). Ignored when `getSize` is provided. Falls back to
+   * `process.stdout.rows` / `LINES` env / 24.
+   */
   height?: number;
+  /**
+   * Live size source. When provided, the console reads its width/height from
+   * this function on every access, overriding any static `width`/`height` and
+   * the `process.stdout` fallback. Pass this when the output target's
+   * dimensions can change at runtime (e.g. xterm.js in a browser).
+   *
+   * [LAW:dataflow-not-control-flow] Live size is a function value the
+   * console reads, not a branch the call site has to install via
+   * `Object.defineProperty`.
+   */
+  getSize?: () => { width: number; height: number };
   style?: string | Style;
   forceTerminal?: boolean;
   forceInteractive?: boolean;
   stderr?: boolean;
-  file?: NodeJS.WritableStream;
+  file?: ConsoleSink;
   record?: boolean;
   markup?: boolean;
   highlight?: boolean;
@@ -107,16 +136,39 @@ function getTerminalSize(): { width: number; height: number } {
   return { width: 80, height: 24 };
 }
 
+// [LAW:dataflow-not-control-flow] Build one size-reading function at
+// construction time from whichever options the caller supplied. The width
+// getter is then unconditional — it always calls `_getSize()`. Variability
+// lives in the captured closure (which source it consults), not in branches
+// the getter has to evaluate on every read.
+function resolveGetSize(
+  options?: ConsoleOptions,
+): () => { width: number; height: number } {
+  if (options?.getSize) return options.getSize;
+  const staticWidth = options?.width;
+  const staticHeight = options?.height;
+  return () => {
+    const term = getTerminalSize();
+    return {
+      width: staticWidth ?? term.width,
+      height: staticHeight ?? term.height,
+    };
+  };
+}
+
 // --- Console ---
 
 export class Console {
   private _colorSystem: ColorDepth | null;
-  private _width: number | undefined;
-  private _height: number | undefined;
+  // [LAW:one-source-of-truth] Size flows through a single function. Static
+  // `width`/`height` options collapse into a closure that returns them; a
+  // caller-supplied `getSize` overrides. Every size read in this class goes
+  // through `_getSize()` — no second path, no second source to drift.
+  private _getSize: () => { width: number; height: number };
   private _style: Style;
   private _forceTerminal: boolean;
   private _forceInteractive: boolean | undefined;
-  private _file: NodeJS.WritableStream | undefined;
+  private _file: ConsoleSink | undefined;
   private _stderr: boolean;
   private _record: boolean;
   private _markup: boolean;
@@ -131,8 +183,7 @@ export class Console {
       options?.colorSystem,
       effectiveIsTTY(options),
     );
-    this._width = options?.width;
-    this._height = options?.height;
+    this._getSize = resolveGetSize(options);
     this._style = resolveStyle(options?.style);
     this._forceTerminal = options?.forceTerminal ?? false;
     this._forceInteractive = options?.forceInteractive;
@@ -150,19 +201,15 @@ export class Console {
   // --- Properties ---
 
   get size(): { width: number; height: number } {
-    const term = getTerminalSize();
-    return {
-      width: this._width ?? term.width,
-      height: this._height ?? term.height,
-    };
+    return this._getSize();
   }
 
   get width(): number {
-    return this._width ?? getTerminalSize().width;
+    return this._getSize().width;
   }
 
   get height(): number {
-    return this._height ?? getTerminalSize().height;
+    return this._getSize().height;
   }
 
   get encoding(): string {
@@ -187,11 +234,13 @@ export class Console {
     return this._colorSystem;
   }
 
-  // [LAW:one-source-of-truth] Output target lookup matches _renderSegment's:
+  // [LAW:one-source-of-truth] Output target lookup matches `_write`'s:
   // explicit `file` wins, otherwise stderr/stdout per the _stderr flag. Exposed
   // so renderables that bypass the segment pipeline (e.g. Live's raw control
-  // sequences) still write to the caller's configured stream.
-  get file(): NodeJS.WritableStream {
+  // sequences) still write to the caller's configured stream. Return type is
+  // the narrow `ConsoleSink` — Live (and any external consumer) only needs
+  // `.write()`, so the type tells the truth about what the surface guarantees.
+  get file(): ConsoleSink {
     return this._file ?? (this._stderr ? process.stderr : process.stdout);
   }
 
@@ -370,14 +419,6 @@ export class Console {
     parts.push('</pre></body></html>');
     if (clear) this._recorded = [];
     return parts.join("");
-  }
-
-  saveText(path: string, options?: { clear?: boolean }): void {
-    writeFileSync(path, this.exportText(options), "utf-8");
-  }
-
-  saveHtml(path: string, options?: { clear?: boolean }): void {
-    writeFileSync(path, this.exportHtml(options), "utf-8");
   }
 
   private _styleToCss(style: Style | undefined): string {

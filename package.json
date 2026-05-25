@@ -21,6 +21,14 @@
     "./template-bindings": {
       "types": "./dist/template-bindings/index.d.ts",
       "import": "./dist/template-bindings/index.js"
+    },
+    "./node/save": {
+      "types": "./dist/node/save.d.ts",
+      "import": "./dist/node/save.js"
+    },
+    "./node/prompt": {
+      "types": "./dist/node/prompt.d.ts",
+      "import": "./dist/node/prompt.js"
     }
   },
   "files": [

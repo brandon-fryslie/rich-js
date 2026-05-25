@@ -34,11 +34,9 @@ export function runDemo(host: TerminalHost): DemoHandle {
   const { cols } = host.size();
   const consoleOut = new Console({
     forceTerminal: true,
-    // [LAW:locality-or-seam] hostStream returns a narrow Writable (just
-    // .write/.end/.writable) — exactly what Console + Live touch on _file.
-    // Cast at this boundary; followup rich-demo-site-pek.3.4 widens
-    // Console's file: type so the cast goes away.
-    file: hostStream(host) as unknown as NodeJS.WritableStream,
+    // [LAW:locality-or-seam] hostStream returns the narrow ConsoleSink shape
+    // (just `.write`) — exactly what Console + Live touch on `_file`.
+    file: hostStream(host),
     width: cols,
   });
 

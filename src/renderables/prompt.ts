@@ -1,12 +1,25 @@
 /**
  * Prompt — interactive prompts for user input.
+ *
+ * [LAW:locality-or-seam] The renderable owns prompt logic (display, choice
+ * validation, default fallback, retry loop) — but not where the answer comes
+ * from. Input is a capability injected via options: pass `ask` per call to
+ * supply an answer source. Node consumers pass `nodeAsk` from
+ * `rich-js/node/prompt`; tests pass a fake; the browser bundle gets the
+ * classes without dragging `node:readline` into the main barrel.
  */
 
-import * as readline from "node:readline";
-import { Console } from "../core/console.js";
+import type { Console } from "../core/console.js";
 import { render as renderMarkup } from "../core/markup.js";
 
 // --- Types ---
+
+/**
+ * Input capability: receives the rendered prompt string (with trailing space
+ * if any), resolves with the raw user response. Implementations decide where
+ * the input comes from (stdin readline, network, in-memory queue, etc.).
+ */
+export type PromptInput = (prompt: string) => Promise<string>;
 
 export interface PromptOptions<T> {
   default?: T;
@@ -15,26 +28,28 @@ export interface PromptOptions<T> {
   console?: Console;
   showChoices?: boolean;
   showDefault?: boolean;
+  /**
+   * Input source. Required at the call site (or supply a module-level default
+   * before invoking). When unset, calls throw with a pointer at the node
+   * helper — making missing capability a loud error rather than a silent hang.
+   */
+  ask?: PromptInput;
 }
 
 // --- Base ---
 
-function ask(
-  promptText: string,
-  _options?: { console?: Console },
-): Promise<string> {
-  const rendered = renderMarkup(promptText);
+function missingInput(): never {
+  throw new Error(
+    "Prompt: no `ask` capability provided. Pass `{ ask }` in options, e.g. " +
+      "`import { nodeAsk } from 'rich-js/node/prompt'` for Node, " +
+      "or supply a custom `PromptInput` for tests/browsers.",
+  );
+}
 
-  return new Promise<string>((resolve) => {
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    rl.question(rendered.plain + " ", (answer) => {
-      rl.close();
-      resolve(answer);
-    });
-  });
+function ask(promptText: string, input: PromptInput | undefined): Promise<string> {
+  const rendered = renderMarkup(promptText);
+  if (!input) missingInput();
+  return input(rendered.plain + " ");
 }
 
 // --- Prompt ---
@@ -57,7 +72,7 @@ export class Prompt {
     display += ":";
 
     while (true) {
-      const answer = await ask(display, { console: options?.console });
+      const answer = await ask(display, options?.ask);
       const value = answer.trim();
 
       if (value === "" && options?.default !== undefined) {
@@ -70,7 +85,6 @@ export class Prompt {
           caseSensitive ? c === value : c.toLowerCase() === value.toLowerCase(),
         );
         if (match) return match;
-        // Invalid choice — retry
         continue;
       }
 
@@ -92,7 +106,7 @@ export class IntPrompt {
     display += ":";
 
     while (true) {
-      const answer = await ask(display, { console: options?.console });
+      const answer = await ask(display, options?.ask);
       const value = answer.trim();
 
       if (value === "" && options?.default !== undefined) {
@@ -101,7 +115,6 @@ export class IntPrompt {
 
       const num = parseInt(value, 10);
       if (!isNaN(num) && String(num) === value) return num;
-      // Invalid — retry
     }
   }
 }
@@ -119,7 +132,7 @@ export class FloatPrompt {
     display += ":";
 
     while (true) {
-      const answer = await ask(display, { console: options?.console });
+      const answer = await ask(display, options?.ask);
       const value = answer.trim();
 
       if (value === "" && options?.default !== undefined) {
@@ -142,7 +155,7 @@ export class Confirm {
     const display = `${promptText} [${yesNo}]:`;
 
     while (true) {
-      const answer = await ask(display, { console: options?.console });
+      const answer = await ask(display, options?.ask);
       const value = answer.trim().toLowerCase();
 
       if (value === "" && defaultVal !== undefined) return defaultVal;
