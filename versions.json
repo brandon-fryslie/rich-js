@@ -4,15 +4,22 @@
     {
       "version": "pr-47",
       "ref": "refs/pull/47/merge",
-      "sha": "875d522dd543d4500c71fdaea021be4fde1db1ec",
-      "timestamp": "2026-05-25T17:09:10.692Z",
+      "sha": "0bebc963afda7ea8a6d804a65d14f330dc921dc4",
+      "timestamp": "2026-05-25T17:16:34.226Z",
       "commits": [
         {
-          "sha": "875d522dd543d4500c71fdaea021be4fde1db1ec",
+          "sha": "0bebc963afda7ea8a6d804a65d14f330dc921dc4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T11:08:41-06:00",
-          "message": "Merge 38cd95ca0f8cc8cdb47c35a70fc479c946e7bd03 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+          "timestamp": "2026-05-25T17:16:04Z",
+          "message": "Merge e4f09708a1636f56034476acdac4475adb69e1ce into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "e4f09708a1636f56034476acdac4475adb69e1ce",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:15:49-06:00",
+          "message": "fix(demos): byte-precise MemoryFileSystem.readFirstBytes + honest wire.ts catch\n\n[LAW:types-are-the-program] readFirstBytes' contract was `maxBytes` but the\nmemory impl was character-slicing — that's a hidden divergence from\nNodeFileSystem on multibyte input. Memory now encodes via TextEncoder,\nslices the byte buffer, and decodes with a non-fatal TextDecoder so both\nimpls behave identically at the byte boundary (split multibyte → replacement\nchar, returned byte length never exceeds the cap). New test pins this with\na 4-char/8-byte fixture.\n\nThe wire.ts catch handler claimed it would surface boot-time failures to\nthe page-shell status badge, but mount.ts.tmpl only catches synchronous\nmount() throws — an async run() rejection wouldn't update the badge, and\nthe `.catch(throw)` was creating an unhandled rejection in the browser.\nNow: log to console.error + host.stop(), no rethrow. The comment describes\nwhat actually happens, including why we deliberately don't reach into the\nDOM shell to update the badge (that would couple wire.ts to the shell's\nstructure — a separate seam).\n\nAddresses Copilot review on PR #47.\n"
         },
         {
           "sha": "38cd95ca0f8cc8cdb47c35a70fc479c946e7bd03",
