@@ -1,11 +1,12 @@
 node_modules/
 dist/
 dist-demo/
-dist-demos/
 .vite-demos/
 *.tsbuildinfo
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+docs/.vitepress/demos.json
+docs/public/demos-app/
 .idea/
 .mcp.json
 .claude/*.lock

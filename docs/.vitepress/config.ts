@@ -1,9 +1,31 @@
 import { defineConfig } from 'vitepress'
+import { readFileSync } from 'node:fs'
+import { resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// [LAW:one-source-of-truth] The Demos sidebar is derived from the same
+// manifest the bundle pipeline writes and the dynamic-route paths file
+// reads — exactly one list of demos for the entire docs site.
+// [LAW:dataflow-not-control-flow] No branch on "manifest may or may not
+// exist"; demos:build is a prerequisite of docs:build/docs:dev (wired in
+// package.json). A missing manifest fails loudly here with a clear path,
+// which is the verifiable build constraint we want. [LAW:verifiable-goals]
+interface DemoManifest {
+  readonly demos: ReadonlyArray<{ readonly name: string }>
+}
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const manifestPath = resolve(__dirname, 'demos.json')
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as DemoManifest
+const demoSidebarItems = manifest.demos.map((d) => ({
+  text: d.name,
+  link: `/demos/${d.name}`,
+}))
 
 export default defineConfig({
   title: 'rich-js',
   description: 'Rich text and beautiful formatting in the terminal — a TypeScript port of Python\'s Rich',
-  base: process.env.VITEPRESS_BASE ?? '/rich-js/',
+  base: process.env['VITEPRESS_BASE'] ?? '/rich-js/',
 
   cleanUrls: true,
 
@@ -19,6 +41,7 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/introduction', activeMatch: '^/(introduction|console|style|markup|text|highlighting|pretty|panel|tables|tree|columns|group|padding|progress|live|layout|syntax|markdown|traceback|logging|prompt|transpose|contrast)' },
+      { text: 'Demos', link: '/demos/', activeMatch: '^/demos' },
       { text: 'Protocol', link: '/protocol' },
     ],
 
@@ -85,6 +108,13 @@ export default defineConfig({
         text: 'Advanced',
         items: [
           { text: 'Renderable Protocol', link: '/protocol' },
+        ],
+      },
+      {
+        text: 'Demos',
+        items: [
+          { text: 'All demos', link: '/demos/' },
+          ...demoSidebarItems,
         ],
       },
     ],
