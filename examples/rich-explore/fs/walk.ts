@@ -31,13 +31,19 @@ export function listDir(fs: FileSystem, path: string): Entry[] {
     const full = fs.join(path, name);
     const s = fs.stat(full);
     if (s === null) {
+      // readdir surfaced the name, so the entry exists; the stat call itself
+      // failed (permission, broken symlink, race with deletion). The
+      // capability hides the underlying errno, but we can still classify by
+      // extension so tree styling stays meaningful — `.png` reads as binary
+      // even when we can't read its size — and surface the path so the user
+      // can identify which entry failed.
       return {
         name,
         path: full,
-        kind: "fallback",
+        kind: kindForPath(name, false),
         size: 0,
         mtime: new Date(0),
-        error: "stat failed",
+        error: `stat failed: ${full}`,
       };
     }
     return {

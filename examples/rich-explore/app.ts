@@ -118,13 +118,20 @@ export async function run(
     forceTerminal: true,
     file: hostStream(host) as unknown as NodeJS.WritableStream,
   });
-  // [LAW:dataflow-not-control-flow] Width is data flowing from the host.
-  // Console's default `process.stdout.columns` fallback returns 80 in the
-  // browser (no real stdout), so layout would clip to 80 cols even though
-  // xterm.js is at 100. Reading `host.size().cols` lazily makes render width
-  // track the actual terminal in both environments and on resize.
+  // [LAW:dataflow-not-control-flow] Width and height are data flowing from
+  // the host. Console's defaults fall back to `process.stdout` dimensions,
+  // which are 80×24 in the browser (no real stdout), so layout would clip
+  // even though xterm.js is at 100×N. Both overrides are required for Live:
+  // `Live.refresh` reads `console.height` to crop frames (src/renderables/
+  // live.ts:124), so without the height override, browser frames would be
+  // truncated to 24 rows regardless of the xterm viewport size. Reading
+  // `host.size()` lazily makes render dimensions track the terminal in both
+  // environments and on resize.
   Object.defineProperty(consoleOut, "width", {
     get: () => host.size().cols,
+  });
+  Object.defineProperty(consoleOut, "height", {
+    get: () => host.size().rows,
   });
   let state = initialState(fs, startPath);
 
