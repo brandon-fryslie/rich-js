@@ -45,15 +45,34 @@ const shellDir = resolve(examplesDir, "_browser-shell");
 // modules (mobx accessors in src/widgets/) don't need a second TS toolchain
 // inside the bundler — tsc is the single TypeScript compiler in this repo.
 // [LAW:single-enforcer]
+//
+// If a demo has wire.ts but no matching wire.js, the discovery throws a
+// precise error naming the missing compiled files. Silently excluding such
+// demos would let a fresh `vite build --config vite.config.demos.ts`
+// (skipping the tsc step that `npm run demos:build` chains) appear to
+// succeed while quietly dropping new demos from the output. Loud failure
+// instead. [LAW:verifiable-goals]
 function discoverDemos(): readonly string[] {
-  return readdirSync(examplesDir, { withFileTypes: true })
+  const candidates = readdirSync(examplesDir, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith("_"))
     .map((d) => d.name)
     .filter((name) => existsSync(resolve(examplesDir, name, "wire.ts")))
-    .filter((name) =>
-      existsSync(resolve(compiledExamplesDir, name, "wire.js")),
-    )
     .sort();
+
+  const missing = candidates.filter(
+    (name) => !existsSync(resolve(compiledExamplesDir, name, "wire.js")),
+  );
+  if (missing.length > 0) {
+    const list = missing.map((n) => `  - examples/${n}/wire.ts`).join("\n");
+    throw new Error(
+      `vite.config.demos.ts: ${missing.length} demo(s) have wire.ts but no compiled wire.js:\n` +
+        list +
+        `\nRun \`npm run demos:build\` (which chains tsc first), or run ` +
+        `\`tsc -p tsconfig.demo.json\` before invoking vite directly.`,
+    );
+  }
+
+  return candidates;
 }
 
 // ---- Staging ---------------------------------------------------------------
