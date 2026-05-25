@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "1b1581bdd35e9316d9598ee1d9df1bb6a52ddefb",
-      "timestamp": "2026-05-25T06:26:44.606Z",
+      "sha": "2a8f6ff997c036ece60599665176ea8e2ef95c1c",
+      "timestamp": "2026-05-25T06:35:52.619Z",
       "commits": [
         {
-          "sha": "1b1581bdd35e9316d9598ee1d9df1bb6a52ddefb",
+          "sha": "2a8f6ff997c036ece60599665176ea8e2ef95c1c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T00:26:16-06:00",
-          "message": "Merge 5b7db84001f66898697d173fae427432ab9bb3aa into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T06:35:28Z",
+          "message": "Merge 668cd0d42517072005a4713edf199075746ee114 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "668cd0d42517072005a4713edf199075746ee114",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T00:35:17-06:00",
+          "message": "fix(demos): bootstrap robustness — TDZ-safe onShutdown, try/finally, vite engines\n\nThree concerns from PR #43 review:\n\n1. **engines.node**: bump to `^20.19.0 || >=22.12.0` to match Vite 7.3.3's\n   requirement (the `>=20` range allowed Node 20.0–20.18 which Vite rejects).\n\n2. **TDZ-safe onShutdown for interactive bootstraps** (dropdown-demo,\n   rich-config, rich-template-bindings): the `onShutdown` callback no longer\n   references the `demo` binding. The demo body calls `handle.stop()` *before*\n   invoking `onShutdown`, so the bootstrap callback only needs `host.stop()`\n   + `process.exit(0)`. This removes the temporal-dead-zone window where a\n   synchronous Ctrl-C inside `runDemo()` could reference an uninitialized\n   `demo`. [LAW:types-are-the-program] the type of `onShutdown` shouldn't\n   require a value that hasn't been bound yet.\n\n3. **Cleanup on startup failure** (all 6 node bootstraps): wrap the\n   `runDemo(host)` call in try/catch (interactive demos) or try/finally\n   (one-shot demos) so `host.stop()` runs even if startup throws. Without\n   this, a crash during construction would leave the terminal in alt-screen\n   / raw mode.\n\nPlus a focused unit test for `hostStream` pinning the\n`.write(chunk) → host.write(chunk)` forwarding contract — the seam between\nConsole's existing `file:` option and any TerminalHost.\n"
         },
         {
           "sha": "5b7db84001f66898697d173fae427432ab9bb3aa",
