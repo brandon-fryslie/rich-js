@@ -171,11 +171,6 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   ConsoleSink: burndown("live-progress-console"),
   LiveOptions: burndown("live-progress-console"),
   PrintOptions: burndown("live-progress-console"),
-  // Node-only plain-text exporter; the HTML sibling (`saveHtml`) is already
-  // covered by examples/themes-and-color-studio/index.ts. saveText has no
-  // organic touchpoint yet because the existing demo wants HTML; a future
-  // live-progress-console scenario will exercise the plain-text path.
-  saveText: burndown("live-progress-console"),
   ProgressBarOptions: burndown("live-progress-console"),
   ProgressOptions: burndown("live-progress-console"),
   Spinner: burndown("live-progress-console"),
@@ -185,4 +180,10 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   TaskOptions: burndown("live-progress-console"),
   TaskUpdateOptions: burndown("live-progress-console"),
   TracebackOptions: burndown("live-progress-console"),
+  // Node-only plain-text exporter; the HTML sibling (`saveHtml`) is already
+  // covered by examples/themes-and-color-studio/index.ts. saveText has no
+  // organic touchpoint yet because the existing demo wants HTML; a future
+  // live-progress-console scenario will exercise the plain-text path.
+  // Sorts at end of block per ASCII (lowercase 's' > uppercase 'T').
+  saveText: burndown("live-progress-console"),
 };
