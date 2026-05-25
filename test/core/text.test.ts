@@ -926,4 +926,32 @@ describe("OSC-terminator stripping at the RichText trust boundary", () => {
     // be silently re-mutated by Style itself.
     expect(new Style({ link: dirty }).link).toBe(dirty);
   });
+
+  it("strips ESC/BEL/ST from a link added via highlightRegex(pattern, style)", () => {
+    // [LAW:single-enforcer] Coverage of every style-accepting public method is
+    // structural: `resolveStyle` is the canonical normalizer, and the
+    // sanitizer lives inside it. New style-accepting APIs inherit the
+    // invariant automatically.
+    const t = new RichText("click here");
+    t.highlightRegex(/click/, new Style({ link: dirty }));
+    expect((t.spans[0]!.style as Style).link).toBe(clean);
+  });
+
+  it("strips ESC/BEL/ST from a link added via highlightWords(words, style)", () => {
+    const t = new RichText("click here");
+    t.highlightWords(["click"], new Style({ link: dirty }));
+    expect((t.spans[0]!.style as Style).link).toBe(clean);
+  });
+
+  it("the rendered segment for a span with a (dirty-at-construction) link carries a sanitized URL", () => {
+    // [LAW:behavior-not-structure] End-to-end: `_buildSegments` re-normalizes
+    // span styles through `resolveStyle`, so any link reaching a Segment
+    // emitted by render() is sanitized — independent of which API attached it.
+    const t = new RichText("click");
+    t.stylize(new Style({ link: dirty }));
+    const segments = [...t.render({ maxWidth: 80 })];
+    const linkSegment = segments.find((s) => s.style?.link !== undefined);
+    expect(linkSegment).toBeDefined();
+    expect(linkSegment!.style!.link).toBe(clean);
+  });
 });

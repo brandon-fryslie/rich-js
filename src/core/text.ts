@@ -18,12 +18,15 @@ function stripControlChars(text: string): string {
 // [LAW:single-enforcer] Strip OSC-sequence terminators (ESC, BEL, ST) from a
 // URL before it is rendered into an OSC 8 hyperlink wrap. RichText is the
 // trust boundary for "user-authored URL becomes part of the rendering
-// pipeline"; every entry point onto a RichText (constructor, style setter,
-// stylize, append) routes through `sanitizeStyleLink`. Below this seam the
-// renderer trusts the invariant and emits without guards.
+// pipeline"; every entry point routes through `resolveStyle`, which applies
+// `sanitizeStyleLink` as the last step of normalization. Below this seam
+// the renderer trusts the invariant and emits without guards.
 //
 // [LAW:locality-or-seam] The peer of `stripControlChars` for text — same
-// trust boundary, same enforcement shape.
+// trust boundary, same enforcement shape. Co-located inside `resolveStyle`
+// so any current or future RichText method that normalizes a `string | Style`
+// argument inherits sanitization automatically; no per-callsite wrap to
+// forget.
 const OSC_TERMINATOR_RE = /[\x1b\x07\x9c]/g;
 
 function sanitizeStyleLink(style: Style): Style {
@@ -36,9 +39,10 @@ function sanitizeStyleLink(style: Style): Style {
 
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
+  let resolved: Style;
   if (typeof style === "string") {
     try {
-      return Style.parse(style);
+      resolved = Style.parse(style);
     } catch (err) {
       // [LAW:single-enforcer] Styling is non-critical — an unrecognized style
       // name (typo, missing theme key, bad concatenation) degrades to unstyled
@@ -47,8 +51,10 @@ function resolveStyle(style: string | Style | undefined): Style {
       if (err instanceof StyleSyntaxError) return NULL_STYLE;
       throw err;
     }
+  } else {
+    resolved = style;
   }
-  return style;
+  return sanitizeStyleLink(resolved);
 }
 
 // --- Span ---
@@ -118,9 +124,9 @@ export class RichText implements Renderable, Measurable {
   constructor(text?: string, options?: RichTextOptions) {
     this._text = text ? stripControlChars(text) : "";
     this._spans = [];
-    // [LAW:single-enforcer] Sanitize any link URL crossing the RichText
-    // boundary; downstream renderer trusts the invariant.
-    this._style = sanitizeStyleLink(resolveStyle(options?.style));
+    // [LAW:single-enforcer] `resolveStyle` is the boundary that sanitizes
+    // any link URL crossing into a RichText; downstream trusts the invariant.
+    this._style = resolveStyle(options?.style);
     this._justify = options?.justify;
     this._overflow = options?.overflow;
     this._end = options?.end ?? "\n";
@@ -161,8 +167,9 @@ export class RichText implements Renderable, Measurable {
   }
 
   set style(value: Style) {
-    // [LAW:single-enforcer] Same boundary rule as the constructor — every
-    // Style entering RichText has its link sanitized.
+    // [LAW:single-enforcer] The setter is the only entry that doesn't pass
+    // through `resolveStyle` (its argument is already a Style); sanitize
+    // directly so the boundary contract holds for every Style assignment.
     this._style = sanitizeStyleLink(value);
   }
 
@@ -213,7 +220,7 @@ export class RichText implements Renderable, Measurable {
     const start = this._text.length;
     this._text += sanitized;
     if (style !== undefined) {
-      const resolved = sanitizeStyleLink(resolveStyle(style));
+      const resolved = resolveStyle(style);
       if (!resolved.isNull) {
         this._spans.push(new Span(start, this._text.length, resolved));
       }
@@ -262,7 +269,7 @@ export class RichText implements Renderable, Measurable {
   // --- Styling Operations ---
 
   stylize(style: string | Style, start?: number, end?: number): this {
-    const resolved = sanitizeStyleLink(resolveStyle(style));
+    const resolved = resolveStyle(style);
     if (resolved.isNull) return this;
 
     const len = this._text.length;
