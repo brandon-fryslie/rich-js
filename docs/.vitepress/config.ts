@@ -25,7 +25,7 @@ const demoSidebarItems = manifest.demos.map((d) => ({
 export default defineConfig({
   title: 'rich-js',
   description: 'Rich text and beautiful formatting in the terminal — a TypeScript port of Python\'s Rich',
-  base: process.env.VITEPRESS_BASE ?? '/rich-js/',
+  base: process.env['VITEPRESS_BASE'] ?? '/rich-js/',
 
   cleanUrls: true,
 
