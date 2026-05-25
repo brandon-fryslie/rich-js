@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "c470597cf9af0a3401134d985ceb5632e09f76b3",
-      "timestamp": "2026-05-25T19:19:34.091Z",
+      "sha": "172cd93ebf7e7ae4c22e2f60eb65342df87f6ce2",
+      "timestamp": "2026-05-25T19:25:37.868Z",
       "commits": [
         {
-          "sha": "c470597cf9af0a3401134d985ceb5632e09f76b3",
+          "sha": "172cd93ebf7e7ae4c22e2f60eb65342df87f6ce2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T20:19:07+01:00",
-          "message": "Merge 88d531e93d4bb206b221f17da8441f829e71ad36 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T19:25:05Z",
+          "message": "Merge 37a78c17130503da370da511e502ff813ca66bad into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "37a78c17130503da370da511e502ff813ca66bad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T13:24:54-06:00",
+          "message": "docs(prompt): finish the package-name + PromptInput contract pass\n\nTwo follow-ups from the second review pass:\n\n- Module doc in src/renderables/prompt.ts now uses the full\n  `@promptctl/rich-js/node/prompt` specifier. The runtime error and\n  node helper doc got this in pass 1; the module-level doc was missed.\n- `PromptInput` doc now matches the renderable's actual behavior — the\n  trailing space is always appended by `ask()` (single enforcer), so\n  implementations should not add their own. Keeps the four prompt\n  classes consistent without each having to re-implement the convention.\n"
         },
         {
           "sha": "88d531e93d4bb206b221f17da8441f829e71ad36",
