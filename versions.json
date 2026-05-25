@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-45",
+      "ref": "refs/pull/45/merge",
+      "sha": "bfc496437b43468b202d135e4641375b06c33189",
+      "timestamp": "2026-05-25T15:51:44.687Z",
+      "commits": [
+        {
+          "sha": "bfc496437b43468b202d135e4641375b06c33189",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T09:51:16-06:00",
+          "message": "Merge 8513720b294ab82b9e606a8b968d32596b3321db into 424d242c2c3229666e79910fb6649cc46648ecbb\n"
+        },
+        {
+          "sha": "8513720b294ab82b9e606a8b968d32596b3321db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T09:50:41-06:00",
+          "message": "chore(ci): headless-browser gate for live demo pages (rich-demo-site-pek.5)\n\nPlaywright smokes every demo in `docs/.vitepress/demos.json` against the\nreal built docs output (`vitepress preview docs`). For each manifest entry\nthe test asserts the triple pattern that catches every demo-boot failure\nmode independently: `#status.ok` contains \"ready\" (mount shell completed),\n`.xterm-screen` is attached with rendered rows (xterm initialised AND\ndemo wrote data), and zero console errors / uncaught exceptions (no silent\nthrows on the boot path). [LAW:verifiable-goals]\n\nThe demo list lives in the manifest — adding or removing a demo updates\nCI coverage with no test edits. [LAW:dataflow-not-control-flow]\n[LAW:one-source-of-truth]\n\nCI gains `npm run docs:build` → `playwright install --with-deps chromium`\n→ `npm run test:demos`, with the HTML report uploaded as an artefact only\non failure. A minimal `vitest.config.ts` scopes vitest to `test/` so the\ntwo runners don't fight over `*.spec.ts`. [LAW:locality-or-seam]\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "424d242c2c3229666e79910fb6649cc46648ecbb",
