@@ -131,6 +131,30 @@ const M_LOWER = 0x6d; // m
 const MOUSE_TRACK_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
 const MOUSE_TRACK_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
 
+// [LAW:single-enforcer] Shared encode/decode singletons. The parser
+// receives `Uint8Array | string` from the host and walks bytes through
+// its state machine; conversion happens at the two boundaries (string
+// input → bytes via TextEncoder; printable-byte run → JS string via
+// TextDecoder) and only there. Module-level instances keep the seam
+// allocation-free and runtime-agnostic — both APIs are universal across
+// node and browser.
+const UTF8_ENCODER = new TextEncoder();
+const UTF8_DECODER = new TextDecoder("utf-8");
+const ASCII_DECODER = new TextDecoder("ascii");
+
+const EMPTY_BYTES = new Uint8Array(0);
+
+// Concatenate two byte arrays into a fresh Uint8Array. Replaces
+// `Buffer.concat([...])` so the parser holds no node-specific globals.
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  if (a.length === 0) return b;
+  if (b.length === 0) return a;
+  const merged = new Uint8Array(a.length + b.length);
+  merged.set(a, 0);
+  merged.set(b, a.length);
+  return merged;
+}
+
 // Result of attempting to consume one event from the head of the buffer.
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyEvent }
@@ -144,7 +168,12 @@ export class EventRouter {
   private readonly manageMouse: boolean;
   private readonly manageRawMode: boolean;
 
-  private buffer: Buffer = Buffer.alloc(0);
+  // [LAW:types-are-the-program] The parse buffer is `Uint8Array`, not
+  // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
+  // process.stdin satisfy this type and the parser still works on node,
+  // while a browser host can emit native Uint8Array without the runtime
+  // depending on a Buffer global polyfill.
+  private buffer: Uint8Array = EMPTY_BYTES;
   private running = false;
   private dataUnsubscribe: Unsubscribe | undefined;
   private escTimer: ReturnType<typeof setImmediate> | undefined;
@@ -226,7 +255,7 @@ export class EventRouter {
       clearImmediate(this.escTimer);
       this.escTimer = undefined;
     }
-    this.buffer = Buffer.alloc(0);
+    this.buffer = EMPTY_BYTES;
     this.capturedWidget = null;
   }
 
@@ -253,8 +282,8 @@ export class EventRouter {
 
   /** Feed a chunk of bytes (or a string of bytes) into the parser. */
   feed(chunk: Uint8Array | string): void {
-    const next = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk;
-    this.buffer = this.buffer.length === 0 ? Buffer.from(next) : Buffer.concat([this.buffer, next]);
+    const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
+    this.buffer = concatBytes(this.buffer, next);
     if (this.escTimer) {
       clearImmediate(this.escTimer);
       this.escTimer = undefined;
@@ -295,7 +324,7 @@ export class EventRouter {
     }
   }
 
-  private consumeOne(buf: Buffer): ConsumeResult {
+  private consumeOne(buf: Uint8Array): ConsumeResult {
     const b0 = buf[0]!;
 
     if (b0 === ESC) return this.consumeEscape(buf);
@@ -340,7 +369,7 @@ export class EventRouter {
     return this.consumePrintable(buf);
   }
 
-  private consumePrintable(buf: Buffer): ConsumeResult {
+  private consumePrintable(buf: Uint8Array): ConsumeResult {
     const b0 = buf[0]!;
     let len = 1;
     if (b0 >= 0xc0 && b0 < 0xe0) len = 2;
@@ -348,7 +377,7 @@ export class EventRouter {
     else if (b0 >= 0xf0) len = 4;
     if (buf.length < len) return { kind: "incomplete" };
 
-    const character = buf.subarray(0, len).toString("utf8");
+    const character = UTF8_DECODER.decode(buf.subarray(0, len));
     return {
       kind: "key",
       bytes: len,
@@ -362,7 +391,7 @@ export class EventRouter {
     };
   }
 
-  private consumeEscape(buf: Buffer): ConsumeResult {
+  private consumeEscape(buf: Uint8Array): ConsumeResult {
     if (buf.length === 1) return { kind: "incomplete" };
     const b1 = buf[1]!;
 
@@ -437,7 +466,7 @@ export class EventRouter {
     };
   }
 
-  private consumeSS3(buf: Buffer): ConsumeResult {
+  private consumeSS3(buf: Uint8Array): ConsumeResult {
     if (buf.length < 3) return { kind: "incomplete" };
     const final = String.fromCharCode(buf[2]!);
     const name = SS3_KEYS[final];
@@ -449,7 +478,7 @@ export class EventRouter {
     };
   }
 
-  private consumeCSI(buf: Buffer): ConsumeResult {
+  private consumeCSI(buf: Uint8Array): ConsumeResult {
     // buf starts with ESC [
     const next = buf[2];
     if (next === undefined) return { kind: "incomplete" };
@@ -469,7 +498,7 @@ export class EventRouter {
       for (let i = 3; i < buf.length; i++) {
         const b = buf[i]!;
         if (b === M_UPPER || b === M_LOWER) {
-          const params = buf.subarray(3, i).toString("ascii");
+          const params = ASCII_DECODER.decode(buf.subarray(3, i));
           const parts = params.split(";");
           if (parts.length !== 3) return { kind: "skip", bytes: i + 1 };
           const cb = parseInt(parts[0]!, 10);
