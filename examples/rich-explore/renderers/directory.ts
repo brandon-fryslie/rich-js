@@ -1,9 +1,10 @@
 import { Table } from "../../../src/index.js";
 import type { Renderable } from "../../../src/index.js";
+import type { FileSystem } from "../../_capabilities/index.js";
 import { listDir, formatSize, type Entry } from "../fs/walk.js";
 
-export function renderDirectory(entry: Entry): Renderable {
-  const children = listDir(entry.path);
+export function renderDirectory(fs: FileSystem, entry: Entry): Renderable {
+  const children = listDir(fs, entry.path);
   const table = new Table({ expand: true, showLines: false });
   table.addColumn("Name", { style: "bold" });
   table.addColumn("Kind", { style: "dim" });

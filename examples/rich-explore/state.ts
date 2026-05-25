@@ -6,9 +6,13 @@
  *
  * Extension points: add a new Mode variant for search/debug/diff without
  * touching existing reducers.
+ *
+ * [LAW:capabilities-over-context] `fs` is part of state, not a global or
+ * ambient `node:fs` import. Reducers spread it forward unchanged; views
+ * read `state.fs` to pass it into per-file renderers.
  */
 
-import { basename } from "node:path";
+import type { FileSystem } from "../_capabilities/index.js";
 import { listDir, type Entry } from "./fs/walk.js";
 
 export type Mode = "browse" | "coverage";
@@ -23,6 +27,7 @@ export interface NodeData {
 }
 
 export interface AppState {
+  readonly fs: FileSystem;
   readonly rootPath: string;
   readonly nodes: ReadonlyMap<string, NodeData>;
   readonly selectedPath: string;
@@ -31,9 +36,9 @@ export interface AppState {
   readonly mode: Mode;
 }
 
-function rootEntry(path: string): Entry {
+function rootEntry(fs: FileSystem, path: string): Entry {
   return {
-    name: basename(path) || path,
+    name: fs.basename(path) || path,
     path,
     kind: "directory",
     size: 0,
@@ -42,14 +47,15 @@ function rootEntry(path: string): Entry {
   };
 }
 
-export function initialState(rootPath: string): AppState {
+export function initialState(fs: FileSystem, rootPath: string): AppState {
   const root: NodeData = {
-    entry: rootEntry(rootPath),
+    entry: rootEntry(fs, rootPath),
     depth: 0,
     expanded: true,
     children: null,
   };
   const base: AppState = {
+    fs,
     rootPath,
     nodes: new Map([[rootPath, root]]),
     selectedPath: rootPath,
@@ -77,33 +83,26 @@ export function loadChildren(state: AppState, path: string): AppState {
     return { ...state, nodes };
   }
 
-  try {
-    const entries = listDir(path);
-    const nodes = new Map(state.nodes);
-    const childPaths: string[] = [];
-    for (const e of entries) {
-      childPaths.push(e.path);
-      if (!nodes.has(e.path)) {
-        nodes.set(e.path, {
-          entry: e,
-          depth: existing.depth + 1,
-          expanded: false,
-          children: null,
-        });
-      }
+  // [LAW:capabilities-over-context] FileSystem.readDir returns `[]` for
+  // unreadable directories rather than throwing — the per-entry stat in
+  // listDir surfaces individual failures on Entry.error. No try/catch
+  // wrapping the capability call.
+  const entries = listDir(state.fs, path);
+  const nodes = new Map(state.nodes);
+  const childPaths: string[] = [];
+  for (const e of entries) {
+    childPaths.push(e.path);
+    if (!nodes.has(e.path)) {
+      nodes.set(e.path, {
+        entry: e,
+        depth: existing.depth + 1,
+        expanded: false,
+        children: null,
+      });
     }
-    nodes.set(path, { ...existing, children: childPaths });
-    return { ...state, nodes };
-  } catch (err) {
-    const nodes = new Map(state.nodes);
-    const msg = err instanceof Error ? err.message : String(err);
-    nodes.set(path, {
-      ...existing,
-      children: [],
-      entry: { ...existing.entry, error: msg },
-    });
-    return { ...state, nodes };
   }
+  nodes.set(path, { ...existing, children: childPaths });
+  return { ...state, nodes };
 }
 
 export function toggleExpand(state: AppState, path: string): AppState {
