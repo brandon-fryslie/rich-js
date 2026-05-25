@@ -33,6 +33,7 @@ import { ColorDepth, resolveColorSystem } from "./color.js";
 import type { DetectColorOptions } from "./color.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
+import { stripOscTerminators } from "./sanitize.js";
 
 export interface RenderToStringOptions {
   /** Cell width to render into. Default 80. */
@@ -127,7 +128,13 @@ export function segmentsToString(
       let l = k + 1;
       while (l < j && pieces[l]!.link === link) l++;
       if (link) {
-        parts.push(`\x1b]8;;${link}\x1b\\`);
+        // [LAW:single-enforcer] Wire-byte trust boundary — sanitize the URL
+        // at the one place it becomes an OSC 8 sequence, regardless of which
+        // upstream API attached it to the Style. Defense-in-depth for the
+        // RichText data-model boundary in text.ts; also covers Style paths
+        // that don't go through RichText (Console.print({style: ...}), any
+        // direct `Segment.applyStyle(... new Style({ link })) ...`).
+        parts.push(`\x1b]8;;${stripOscTerminators(link)}\x1b\\`);
         for (let m = k; m < l; m++) parts.push(pieces[m]!.text);
         parts.push("\x1b]8;;\x1b\\");
       } else {

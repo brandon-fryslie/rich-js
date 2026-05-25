@@ -8,6 +8,7 @@ import {
   ColorDepth,
 } from "./color.js";
 import type { TerminalTheme } from "./color.js";
+import { stripOscTerminators } from "./sanitize.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color`; the substrate
 // fallback is the canonical canvas color (black), inlined to avoid pulling in
@@ -384,7 +385,13 @@ export class Style {
       // pair instead of sharing an id). The coalescer in render.ts already
       // merges adjacent same-link runs into one wrap, so the common case is
       // unaffected; non-adjacent hover-grouping is the intentional sacrifice.
-      result = `\x1b]8;;${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
+      //
+      // [LAW:single-enforcer] Wire-byte sanitization at the OSC 8 emit site
+      // — paired with the same call in render.ts:segmentsToString so every
+      // path that turns `Style.link` into bytes goes through one rule. Style
+      // itself stays a faithful container (this.link is unchanged); only the
+      // bytes going out the door are stripped.
+      result = `\x1b]8;;${stripOscTerminators(this.link)}\x1b\\${result}\x1b]8;;\x1b\\`;
     }
 
     return result;

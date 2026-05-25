@@ -5,6 +5,7 @@
 import { cellLen } from "./cells.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
+import { stripOscTerminators } from "./sanitize.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
 // Strip control characters except \t and \n
@@ -15,24 +16,23 @@ function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
 }
 
-// [LAW:single-enforcer] Strip OSC-sequence terminators (ESC, BEL, ST) from a
-// URL before it is rendered into an OSC 8 hyperlink wrap. RichText is the
-// trust boundary for "user-authored URL becomes part of the rendering
-// pipeline"; every entry point routes through `resolveStyle`, which applies
-// `sanitizeStyleLink` as the last step of normalization. Below this seam
-// the renderer trusts the invariant and emits without guards.
+// [LAW:single-enforcer] RichText is the *data-model* trust boundary for
+// link URLs — any Style carrying a link that enters a RichText is sanitized
+// in place, so callers that inspect `richText.style.link` or
+// `richText.spans[].style.link` see the same clean URL the renderer will
+// emit. Wire-byte safety is enforced separately in render.ts and style.ts
+// via the same shared `stripOscTerminators` helper (one rule, applied at
+// both seams). Together those layers guarantee the dirty bytes can neither
+// live in the in-memory model nor escape on the wire — even if a Style is
+// constructed and rendered via a path that bypasses RichText entirely.
 //
-// [LAW:locality-or-seam] The peer of `stripControlChars` for text — same
-// trust boundary, same enforcement shape. Co-located inside `resolveStyle`
-// so any current or future RichText method that normalizes a `string | Style`
-// argument inherits sanitization automatically; no per-callsite wrap to
-// forget.
-const OSC_TERMINATOR_RE = /[\x1b\x07\x9c]/g;
-
+// Co-located inside `resolveStyle` so any current or future RichText method
+// that normalizes a `string | Style` argument inherits sanitization
+// automatically; no per-callsite wrap to forget.
 function sanitizeStyleLink(style: Style): Style {
   const link = style.link;
   if (!link) return style;
-  const cleaned = link.replace(OSC_TERMINATOR_RE, "");
+  const cleaned = stripOscTerminators(link);
   if (cleaned === link) return style;
   return style.withLink(cleaned);
 }
