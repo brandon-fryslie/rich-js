@@ -9,7 +9,10 @@
   },
   "include": [
     "vite.config.demos.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
     "docs/.vitepress/config.ts",
-    "docs/demos/**/*.ts"
+    "docs/demos/**/*.ts",
+    "e2e/**/*.ts"
   ]
 }
