@@ -201,22 +201,41 @@ describe("BrowserTerminalHost", () => {
       expect(term.resizeHandlerCount).toBe(1);
     });
 
-    it("the snapshot is independent across subscribers (mutation does not bleed)", () => {
-      let captured: TerminalSize | undefined;
-      host.onResize((s) => {
-        captured = s;
-        (s as { cols: number }).cols = 999; // simulate caller mutating
-      });
-      const second: TerminalSize[] = [];
-      host.onResize((s) => second.push(s));
+    it("delivers value-equivalent snapshots to every subscriber", () => {
+      // [LAW:behavior-not-structure] The contract is "every subscriber
+      // observes the same size value at the moment of the event." Whether
+      // the host hands out one shared object or N fresh ones is an
+      // implementation detail — asserting that with `toBe` would lock in
+      // the current shape and break a legitimate future change to either
+      // strategy. Value-equivalence is what callers actually depend on.
+      const a: TerminalSize[] = [];
+      const b: TerminalSize[] = [];
+      host.onResize((s) => a.push(s));
+      host.onResize((s) => b.push(s));
       term.setSize(70, 22);
-      // Both subscribers see the same snapshot object — host fans out once.
-      // The contract is "size at the moment of the event," so consumers
-      // must treat it as read-only. The point of this assertion is to lock
-      // down whether the snapshot is shared or per-subscriber so future
-      // change cannot drift the contract silently.
-      expect(captured).toBeDefined();
-      expect(second[0]).toBe(captured); // shared snapshot
+      expect(a).toEqual([{ cols: 70, rows: 22 }]);
+      expect(b).toEqual([{ cols: 70, rows: 22 }]);
+    });
+
+    it("`TerminalSize` fields are statically `readonly` — mutation is a compile error", () => {
+      // [LAW:types-are-the-program] The mutation-isolation invariant
+      // lives in the type, not in a runtime guard or `Object.freeze`.
+      // The two `@ts-expect-error` directives below ARE the assertion:
+      // they require the next line to fail type-checking. If `readonly`
+      // is ever removed from `TerminalSize`, the assignments type-check
+      // and the directives themselves become compile errors — `npm run
+      // lint` fails, surfacing the regression before runtime.
+      //
+      // (No runtime expect is meaningful here: `readonly` is purely a
+      // TypeScript-time constraint; the runtime assignments still
+      // mutate the object. The test exists to bind the type-level
+      // contract into a place that is checked on every lint run.)
+      const s: TerminalSize = { cols: 1, rows: 1 };
+      // @ts-expect-error — TerminalSize.cols is readonly
+      s.cols = 2;
+      // @ts-expect-error — TerminalSize.rows is readonly
+      s.rows = 2;
+      expect(s).toBeDefined();
     });
 
     it("unsubscribe stops further events for that subscriber", () => {

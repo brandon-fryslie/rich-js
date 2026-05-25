@@ -29,9 +29,16 @@
 
 import type { Unsubscribe } from "./types.js";
 
+// [LAW:types-are-the-program] `TerminalSize` is a *snapshot* — a value
+// captured at a point in time, never mutated after construction. The
+// `readonly` fields make that constraint a compile-time fact: every
+// subscriber that receives one is statically forbidden from mutating
+// shared state out from under later subscribers in the same fan-out.
+// Hosts are free to allocate one snapshot per event and reuse the
+// reference across subscribers without aliasing hazard.
 export interface TerminalSize {
-  cols: number;
-  rows: number;
+  readonly cols: number;
+  readonly rows: number;
 }
 
 export type DataHandler = (chunk: Uint8Array | string) => void;
@@ -75,17 +82,22 @@ export interface TerminalHost {
   readonly isTTY: boolean;
 
   /**
-   * Begin the host's lifecycle. For node this is a no-op (process streams
-   * are always available); for browser xterm.js this attaches to the DOM.
-   * Idempotent.
+   * Begin the host's lifecycle. Implementations attach whatever resources
+   * they own — or no-op when there is nothing to attach. Idempotent. See
+   * the concrete host's own JSDoc for what its `start()` actually does:
+   * `NodeTerminalHost` and `BrowserTerminalHost` both no-op because their
+   * underlying transports (process streams; a caller-managed xterm.js
+   * Terminal) are already live by the time the host is constructed.
    */
   start(): void;
 
   /**
    * Stop the host's lifecycle. Pairs with `start`. Idempotent. After
-   * `stop()`, any future writes still go to the underlying transport but
-   * subscribers will not be notified of further data (the host removes
-   * its underlying listeners).
+   * `stop()`, the host releases its own subscriptions to the underlying
+   * transport and clears its handler sets; the transport itself is not
+   * torn down (that is the caller's concern — process streams persist;
+   * an xterm.js Terminal is disposed by the caller). Re-subscribing via
+   * `onData` / `onResize` after `stop()` re-engages the host.
    */
   stop(): void;
 }
