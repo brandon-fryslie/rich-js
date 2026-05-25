@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-43",
+      "ref": "refs/pull/43/merge",
+      "sha": "1b1581bdd35e9316d9598ee1d9df1bb6a52ddefb",
+      "timestamp": "2026-05-25T06:26:44.606Z",
+      "commits": [
+        {
+          "sha": "1b1581bdd35e9316d9598ee1d9df1bb6a52ddefb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T00:26:16-06:00",
+          "message": "Merge 5b7db84001f66898697d173fae427432ab9bb3aa into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "5b7db84001f66898697d173fae427432ab9bb3aa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T00:25:24-06:00",
+          "message": "feat(demos): browser bundle pipeline + 7 demos refactored for host injection (rich-demo-site-pek.3)\n\nEach demo splits into three files: app.ts (runDemo body taking a TerminalHost),\nindex.ts (node bootstrap), wire.ts (browser bootstrap). The node and browser\nentrypoints differ only in which TerminalHost implementation they construct;\nthe demo logic is identical. [LAW:dataflow-not-control-flow]\n\nBundle pipeline (vite.config.demos.ts): data-driven enumeration of\nexamples/*/wire.ts (paired with tsc-compiled dist-demo/examples/*/wire.js).\nHTML + mount template in examples/_browser-shell/ stamped per demo into\n.vite-demos/<name>/ at config time. [LAW:single-enforcer, one-source-of-truth]\n\nConsole-using demos route output through a new hostStream(host) adapter\n(src/widgets/host-stream.ts) — a NodeJS.WritableStream-shaped wrapper whose\n.write() forwards to host.write(). No Console-class change required.\n\nDemos bundled for browser (7): browser-terminal-host-harness, rich-strip,\ndropdown-demo, rich-config, rich-markup-plugins, themes-and-color-studio,\nrich-template-bindings. Each verified in headless Chrome — first frame\nrenders, zero console errors.\n\nDeferred (followups): claude-sessions (.3.1), rich-explore (.3.2), rich-dash\n(.3.3) all reach node:fs/path/os/url directly; they need a FileSystem (and\nSystemInfo) capability extracted before bundling. Console.saveText/saveHtml\nand the prompt renderable's node:readline usage need the same lift-out (.3.4)\n— stubbed for now via examples/_browser-shell/node-stub.js + a vite alias.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c35a578a4af3a341f4412d22c0631a39dba803d6",
