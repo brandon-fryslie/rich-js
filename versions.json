@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-45",
-      "ref": "refs/pull/45/merge",
-      "sha": "37490ca3cb573c9de9000f3fc439e98fe853aee5",
-      "timestamp": "2026-05-25T16:05:13.916Z",
-      "commits": [
-        {
-          "sha": "37490ca3cb573c9de9000f3fc439e98fe853aee5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T16:04:42Z",
-          "message": "Merge c7a236699572e4a4bf7cc9ac60e9f198059ce0e9 into 424d242c2c3229666e79910fb6649cc46648ecbb\n"
-        },
-        {
-          "sha": "c7a236699572e4a4bf7cc9ac60e9f198059ce0e9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T10:04:32-06:00",
-          "message": "chore(ci): debuggable status assertion + engine-anchored node version\n\nTwo findings from the Copilot re-review:\n\n1. `#status.ok` composite selector hid boot-error text. On crash,\n   mount.ts.tmpl sets `class=\"err\"` with a \"boot error: ...\" message;\n   waiting on the composite selector reduced the failure output to\n   \"selector timeout\" instead of the real error. Locate `#status` by id\n   only, then assert class and text separately so Playwright prints the\n   actual received class and current text on failure. The triple-assert\n   semantics are unchanged; only the failure surface improves.\n   [LAW:verifiable-goals]\n\n2. `node-version: 20` could in principle resolve to a 20.x older than\n   the `engines.node` constraint (`^20.19.0 || >=22.12.0`, set by a\n   transitive dep). Use `node-version-file: package.json` so setup-node\n   consults the canonical engine declaration — the workflow cannot\n   drift from the package.json constraint, and an engine bump\n   propagates to CI automatically. [LAW:one-source-of-truth]\n\nAll 7 demos still pass; `npm run lint` clean.\n"
-        },
-        {
-          "sha": "2d605e1883379d196bbf9a5e8ebb0069c3e081d4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T09:57:08-06:00",
-          "message": "chore(ci): assert .xterm-rows textContent, not .xterm-screen child count\n\nxterm.js populates .xterm-screen's layer children (helpers, style,\n.xterm-rows, .xterm-selection, .xterm-decoration-container — six in total)\nduring term.open(), *before* any write. Asserting `screen.children.length\n> 0` therefore proves only that xterm initialised, not that the demo\nproduced output — a demo that crashed silently between term.open() and\nits first write() would have passed the previous check.\n\nThe correct demo-wrote-data signal is `.xterm-rows` textContent: 30 row\ndivs are present unconditionally, but their textContent is whitespace\nuntil something writes. `expect(rows).toContainText(/\\S/)` polls until at\nleast one non-whitespace character appears — the failure mode the gate\nwas designed to catch.\n\nVerified by probing the live DOM: .xterm-rows.textContent on rich-strip\ncontained the rendered banner (\"main | claude.ai | 3.4k tok | 12%\n...\") with 1326 chars across 30 rows; all 7 demos still pass.\n[LAW:verifiable-goals]\n"
-        },
-        {
-          "sha": "8513720b294ab82b9e606a8b968d32596b3321db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T09:50:41-06:00",
-          "message": "chore(ci): headless-browser gate for live demo pages (rich-demo-site-pek.5)\n\nPlaywright smokes every demo in `docs/.vitepress/demos.json` against the\nreal built docs output (`vitepress preview docs`). For each manifest entry\nthe test asserts the triple pattern that catches every demo-boot failure\nmode independently: `#status.ok` contains \"ready\" (mount shell completed),\n`.xterm-screen` is attached with rendered rows (xterm initialised AND\ndemo wrote data), and zero console errors / uncaught exceptions (no silent\nthrows on the boot path). [LAW:verifiable-goals]\n\nThe demo list lives in the manifest — adding or removing a demo updates\nCI coverage with no test edits. [LAW:dataflow-not-control-flow]\n[LAW:one-source-of-truth]\n\nCI gains `npm run docs:build` → `playwright install --with-deps chromium`\n→ `npm run test:demos`, with the HTML report uploaded as an artefact only\non failure. A minimal `vitest.config.ts` scopes vitest to `test/` so the\ntwo runners don't fight over `*.spec.ts`. [LAW:locality-or-seam]\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "424d242c2c3229666e79910fb6649cc46648ecbb",
-      "timestamp": "2026-05-25T09:48:04.708Z",
+      "sha": "167f6041b389ad40e301891694427a2ae3341161",
+      "timestamp": "2026-05-25T16:09:55.466Z",
       "commits": [
         {
-          "sha": "424d242c2c3229666e79910fb6649cc46648ecbb",
+          "sha": "167f6041b389ad40e301891694427a2ae3341161",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T03:47:36-06:00",
-          "message": "feat(docs): live demos on docs site (rich-demo-site-pek.4) (#44)\n\n* feat(docs): VitePress Demos section with live xterm.js terminals (rich-demo-site-pek.4)\n\nSurface every browser-bundled demo as a runnable page inside the existing\ndocs site. One pipeline (npm run docs:build), one deploy (docs.yml +\ngh-pages-multiplexer), one source of truth for the demo list (the manifest\nthe bundle pipeline writes).\n\n- vite.config.demos.ts: output to docs/public/demos-app/ so VitePress's\n  public-files convention copies bundles to dist/demos-app/ verbatim; also\n  emit docs/.vitepress/demos.json (the canonical demo list).\n- docs/demos/[demo].md + [demo].paths.ts: VitePress dynamic-route page\n  that iframes /demos-app/<name>/, with paths derived from the manifest.\n- docs/demos/index.md: landing page listing all demos from the same\n  manifest — adding/removing a demo updates the index automatically.\n- docs/.vitepress/config.ts: read manifest at config-load, add Demos nav\n  + sidebar section. No second list to maintain.\n- package.json: docs:build / docs:dev chain demos:build first; demos.json\n  is a precondition, not a fallback. Missing manifest fails loud.\n- .gitignore: docs/public/demos-app/ + docs/.vitepress/demos.json are\n  build artifacts; dist-demos/ is retired.\n\nVerified via Chrome MCP against docs:preview: index lists 7 demos with\ncorrect /rich-js/ base; rich-strip + themes-and-color-studio both load\nstatus=\"ready\", xterm-screen rendered with content, zero console errors.\n8881/8881 vitest pass.\n\n* chore(lint): extend tsc --noEmit to docs/ TypeScript files\n\ndocs/.vitepress/config.ts and docs/demos/*.ts were authoring TypeScript\nfiles that no lint command touched — neither the main `tsc --noEmit`\n(which scopes to src/) nor tsconfig.scripts.json (which only included\nvite.config.demos.ts). Pulling them into tsconfig.scripts.json puts\nevery TS file in the repo under exactly one type-check gate.\n[LAW:single-enforcer] [LAW:verifiable-goals]\n\nSurfaced a pre-existing latent bug in config.ts: `process.env.VITEPRESS_BASE`\nviolated noPropertyAccessFromIndexSignature. Fixed in place."
+          "timestamp": "2026-05-25T10:09:22-06:00",
+          "message": "chore(ci): headless-browser gate for live demo pages (rich-demo-site-pek.5) (#45)\n\n* chore(ci): headless-browser gate for live demo pages (rich-demo-site-pek.5)\n\nPlaywright smokes every demo in `docs/.vitepress/demos.json` against the\nreal built docs output (`vitepress preview docs`). For each manifest entry\nthe test asserts the triple pattern that catches every demo-boot failure\nmode independently: `#status.ok` contains \"ready\" (mount shell completed),\n`.xterm-screen` is attached with rendered rows (xterm initialised AND\ndemo wrote data), and zero console errors / uncaught exceptions (no silent\nthrows on the boot path). [LAW:verifiable-goals]\n\nThe demo list lives in the manifest — adding or removing a demo updates\nCI coverage with no test edits. [LAW:dataflow-not-control-flow]\n[LAW:one-source-of-truth]\n\nCI gains `npm run docs:build` → `playwright install --with-deps chromium`\n→ `npm run test:demos`, with the HTML report uploaded as an artefact only\non failure. A minimal `vitest.config.ts` scopes vitest to `test/` so the\ntwo runners don't fight over `*.spec.ts`. [LAW:locality-or-seam]\n\n* chore(ci): assert .xterm-rows textContent, not .xterm-screen child count\n\nxterm.js populates .xterm-screen's layer children (helpers, style,\n.xterm-rows, .xterm-selection, .xterm-decoration-container — six in total)\nduring term.open(), *before* any write. Asserting `screen.children.length\n> 0` therefore proves only that xterm initialised, not that the demo\nproduced output — a demo that crashed silently between term.open() and\nits first write() would have passed the previous check.\n\nThe correct demo-wrote-data signal is `.xterm-rows` textContent: 30 row\ndivs are present unconditionally, but their textContent is whitespace\nuntil something writes. `expect(rows).toContainText(/\\S/)` polls until at\nleast one non-whitespace character appears — the failure mode the gate\nwas designed to catch.\n\nVerified by probing the live DOM: .xterm-rows.textContent on rich-strip\ncontained the rendered banner (\"main | claude.ai | 3.4k tok | 12%\n...\") with 1326 chars across 30 rows; all 7 demos still pass.\n[LAW:verifiable-goals]\n\n* chore(ci): debuggable status assertion + engine-anchored node version\n\nTwo findings from the Copilot re-review:\n\n1. `#status.ok` composite selector hid boot-error text. On crash,\n   mount.ts.tmpl sets `class=\"err\"` with a \"boot error: ...\" message;\n   waiting on the composite selector reduced the failure output to\n   \"selector timeout\" instead of the real error. Locate `#status` by id\n   only, then assert class and text separately so Playwright prints the\n   actual received class and current text on failure. The triple-assert\n   semantics are unchanged; only the failure surface improves.\n   [LAW:verifiable-goals]\n\n2. `node-version: 20` could in principle resolve to a 20.x older than\n   the `engines.node` constraint (`^20.19.0 || >=22.12.0`, set by a\n   transitive dep). Use `node-version-file: package.json` so setup-node\n   consults the canonical engine declaration — the workflow cannot\n   drift from the package.json constraint, and an engine bump\n   propagates to CI automatically. [LAW:one-source-of-truth]\n\nAll 7 demos still pass; `npm run lint` clean."
         }
       ]
     },
