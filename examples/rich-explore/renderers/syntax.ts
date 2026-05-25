@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
 import { Syntax } from "../../../src/index.js";
 import type { Renderable } from "../../../src/index.js";
+import type { FileSystem } from "../../_capabilities/index.js";
 import type { Entry } from "../fs/walk.js";
 
 const EXT_TO_LANG: Record<string, string> = {
@@ -34,8 +34,8 @@ const EXT_TO_LANG: Record<string, string> = {
 
 const MAX_BYTES = 256 * 1024;
 
-export function renderSyntax(entry: Entry): Renderable {
-  const code = readFileSync(entry.path, "utf-8").slice(0, MAX_BYTES);
+export function renderSyntax(fs: FileSystem, entry: Entry): Renderable {
+  const code = fs.readFile(entry.path).slice(0, MAX_BYTES);
   const dot = entry.name.lastIndexOf(".");
   const ext = dot >= 0 ? entry.name.slice(dot).toLowerCase() : "";
   const lang = EXT_TO_LANG[ext] ?? "text";

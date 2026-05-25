@@ -87,6 +87,33 @@ describe("MemoryFileSystem path operations", () => {
     expect(fs.dirname("a/b")).toBe("a");
     expect(fs.dirname("a/b/c")).toBe("a/b");
   });
+
+  it("resolve returns absolute inputs unchanged (matches node:path.resolve)", () => {
+    // When an absolute segment appears, the base (home vs cwd) is never
+    // consulted, so memory's output is identical to node:path.resolve.
+    expect(fs.resolve("/a")).toBe("/a");
+    expect(fs.resolve("/a", "b")).toBe("/a/b");
+    expect(fs.resolve("/a", "/b")).toBe("/b");
+    expect(fs.resolve("/a/", "/b", "c")).toBe("/b/c");
+    expect(fs.resolve("/a", "..", "..")).toBe("/");
+  });
+
+  it("resolve prepends homeDir for relative inputs", () => {
+    // The cwd-vs-home divergence from node:path lives here. Inputs that are
+    // purely relative resolve against `homeDir()` as the absolute base.
+    expect(fs.resolve("a")).toBe("/home/x/a");
+    expect(fs.resolve("a", "b", "..", "c")).toBe("/home/x/a/c");
+    expect(fs.resolve()).toBe("/home/x");
+    // `..` collapses against the assembled path *after* prepending home —
+    // mirrors node, where `resolve("..", "x")` is parent-of-cwd/x rather
+    // than (cwd) + ../x with .. consumed in isolation.
+    expect(fs.resolve("..", "y")).toBe("/home/y");
+  });
+
+  it("resolve ignores empty segments and normalises duplicate slashes", () => {
+    expect(fs.resolve("", "/a", "", "b")).toBe("/a/b");
+    expect(fs.resolve("/a//b", "c")).toBe("/a/b/c");
+  });
 });
 
 describe("MemoryFileSystem lookup operations", () => {

@@ -1,14 +1,20 @@
 /**
- * rich-explore — TUI file browser + markdown/code reader.
- * Entry point. Usage: `npm run demo -- [path]` (defaults to cwd).
+ * rich-explore — TUI file browser + markdown/code reader. Usage:
+ *   `npm run demo -- [path]` (defaults to cwd).
+ *
+ * Node entry: constructs the node-backed `TerminalHost` and `FileSystem`
+ * capabilities and hands them to the shared demo body. The browser entry
+ * lives in `wire.ts` and constructs `BrowserTerminalHost` + `MemoryFileSystem`.
  */
 
-import { resolve } from "node:path";
+import { NodeTerminalHost } from "../../src/index.js";
+import { NodeFileSystem } from "../_capabilities/node-file-system.js";
 import { run } from "./app.js";
 
-const startPath = resolve(process.argv[2] ?? process.cwd());
+const fs = new NodeFileSystem();
+const startPath = fs.resolve(process.argv[2] ?? process.cwd());
 
-run(startPath).catch((err) => {
+run(new NodeTerminalHost(), fs, startPath).catch((err) => {
   process.stderr.write(
     `rich-explore error: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`,
   );

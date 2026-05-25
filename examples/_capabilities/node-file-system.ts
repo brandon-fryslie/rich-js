@@ -21,7 +21,7 @@ import {
   readSync,
   statSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve as resolvePath } from "node:path";
 import { homedir } from "node:os";
 
 import type { FileStat, FileSystem } from "./file-system.js";
@@ -33,6 +33,10 @@ export class NodeFileSystem implements FileSystem {
 
   join(...parts: string[]): string {
     return join(...parts);
+  }
+
+  resolve(...parts: string[]): string {
+    return resolvePath(...parts);
   }
 
   basename(path: string, ext?: string): string {

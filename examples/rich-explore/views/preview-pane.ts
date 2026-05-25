@@ -1,5 +1,6 @@
 import { Panel, RichText, Constrain } from "../../../src/index.js";
 import type { Renderable } from "../../../src/index.js";
+import type { FileSystem } from "../../_capabilities/index.js";
 import type { Entry } from "../fs/walk.js";
 import type { FileKind } from "../fs/kinds.js";
 import type { Mode } from "../state.js";
@@ -14,16 +15,22 @@ import { Window } from "./window.js";
 
 // Kind → renderer dispatch table. To support a new file type, add a
 // variant to FileKind in fs/kinds.ts, a renderer module, and a row here.
-const RENDERERS: Record<FileKind, (entry: Entry) => Renderable> = {
+// [LAW:dataflow-not-control-flow] Both file-reading renderers (markdown,
+// source, json, fallback, directory) and metadata-only renderers (binary)
+// share the same signature — the unused `fs` parameter for binary is the
+// price of one uniform dispatch instead of two parallel tables.
+type RenderFn = (fs: FileSystem, entry: Entry) => Renderable;
+const RENDERERS: Record<FileKind, RenderFn> = {
   markdown: renderMarkdown,
   source: renderSyntax,
   json: renderJson,
   directory: renderDirectory,
-  binary: renderBinary,
+  binary: (_fs, entry) => renderBinary(entry),
   fallback: renderFallback,
 };
 
 export function buildPreviewPane(
+  fs: FileSystem,
   entry: Entry | undefined,
   innerHeight: number,
   offset: number,
@@ -59,7 +66,7 @@ export function buildPreviewPane(
   }
 
   try {
-    const inner = RENDERERS[entry.kind](entry);
+    const inner = RENDERERS[entry.kind](fs, entry);
     return wrap(inner, `${entry.name}  [${entry.kind}]`, "green");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
