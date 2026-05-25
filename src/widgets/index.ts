@@ -35,3 +35,11 @@ export { Slider } from "./slider.js";
 export type { SliderOptions } from "./slider.js";
 export { EventRouter } from "./event-router.js";
 export type { EventRouterOptions } from "./event-router.js";
+export { NodeTerminalHost } from "./terminal-host.js";
+export type {
+  TerminalHost,
+  TerminalSize,
+  DataHandler,
+  ResizeHandler,
+  NodeTerminalHostOptions,
+} from "./terminal-host.js";

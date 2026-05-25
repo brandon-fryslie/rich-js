@@ -13,7 +13,7 @@
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
  * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * router defers emission via setImmediate. The next chunk cancels the timer
+ * router defers emission via setTimeout(0). The next chunk cancels the timer
  * if it extends the sequence. Tests can call `flush()` to drain synchronously.
  */
 
@@ -27,6 +27,7 @@ import type {
   KeyHandlerPriority,
   Unsubscribe,
 } from "./types.js";
+import type { TerminalHost } from "./terminal-host.js";
 
 type KeyHandler = (event: KeyEvent) => void;
 interface RegisteredKeyHandler {
@@ -41,19 +42,21 @@ type WidgetSource = {
 
 export interface EventRouterOptions {
   screen: Screen | WidgetSource;
-  input?: NodeJS.ReadableStream & {
-    setRawMode?: (raw: boolean) => unknown;
-    isTTY?: boolean;
-  };
-  output?: NodeJS.WritableStream;
   /**
-   * When true (default when output is a TTY), enable mouse tracking on
-   * start() and disable on stop(). Disable in tests / non-TTY environments.
+   * The I/O capability the router reads input from and writes
+   * mouse-tracking sequences to. Construct a `NodeTerminalHost` for
+   * production node demos; tests pass a host that wraps mock streams.
+   */
+  host: TerminalHost;
+  /**
+   * When true (default when the host reports `isTTY`), enable mouse
+   * tracking on `start()` and disable on `stop()`. Disable in tests /
+   * non-TTY environments.
    */
   manageMouse?: boolean;
   /**
-   * When true (default when input is a TTY), put stdin into raw mode on
-   * start() and restore on stop().
+   * When true (default when the host reports `isTTY`), switch the host
+   * into raw mode on `start()` and restore on `stop()`.
    */
   manageRawMode?: boolean;
 }
@@ -128,6 +131,30 @@ const M_LOWER = 0x6d; // m
 const MOUSE_TRACK_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
 const MOUSE_TRACK_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
 
+// [LAW:single-enforcer] Shared encode/decode singletons. The parser
+// receives `Uint8Array | string` from the host and walks bytes through
+// its state machine; conversion happens at the two boundaries (string
+// input → bytes via TextEncoder; printable-byte run → JS string via
+// TextDecoder) and only there. Module-level instances keep the seam
+// allocation-free and runtime-agnostic — both APIs are universal across
+// node and browser.
+const UTF8_ENCODER = new TextEncoder();
+const UTF8_DECODER = new TextDecoder("utf-8");
+const ASCII_DECODER = new TextDecoder("ascii");
+
+const EMPTY_BYTES = new Uint8Array(0);
+
+// Concatenate two byte arrays into a fresh Uint8Array. Replaces
+// `Buffer.concat([...])` so the parser holds no node-specific globals.
+function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+  if (a.length === 0) return b;
+  if (b.length === 0) return a;
+  const merged = new Uint8Array(a.length + b.length);
+  merged.set(a, 0);
+  merged.set(b, a.length);
+  return merged;
+}
+
 // Result of attempting to consume one event from the head of the buffer.
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyEvent }
@@ -137,15 +164,24 @@ type ConsumeResult =
 
 export class EventRouter {
   private readonly source: WidgetSource;
-  private readonly input: EventRouterOptions["input"];
-  private readonly output: NodeJS.WritableStream;
+  private readonly host: TerminalHost;
   private readonly manageMouse: boolean;
   private readonly manageRawMode: boolean;
 
-  private buffer: Buffer = Buffer.alloc(0);
+  // [LAW:types-are-the-program] The parse buffer is `Uint8Array`, not
+  // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
+  // process.stdin satisfy this type and the parser still works on node,
+  // while a browser host can emit native Uint8Array without the runtime
+  // depending on a Buffer global polyfill.
+  private buffer: Uint8Array = EMPTY_BYTES;
   private running = false;
-  private dataListener: ((chunk: Buffer | string) => void) | undefined;
-  private escTimer: ReturnType<typeof setImmediate> | undefined;
+  private dataUnsubscribe: Unsubscribe | undefined;
+  // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
+  // across node and browser; `setImmediate` is node-only. Same one-macrotask
+  // semantics for our purpose (defer until current sync work + queued
+  // microtasks drain), without forcing a `setImmediate` polyfill on the
+  // browser host.
+  private escTimer: ReturnType<typeof setTimeout> | undefined;
   // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's hit
   // widget is recorded; mouse_move/mouse_up between then and the next
   // mouse_up route to this widget unconditionally so dragging outside its
@@ -165,13 +201,14 @@ export class EventRouter {
       ? screen
       : { focusManager: screen.focusManager, getWidgets: () => screen.widgets };
 
-    this.input = options.input ?? (process.stdin as EventRouterOptions["input"]);
-    this.output = options.output ?? process.stdout;
+    this.host = options.host;
 
-    const inputIsTTY = !!this.input?.isTTY;
-    const outputIsTTY = !!(this.output as NodeJS.WriteStream).isTTY;
-    this.manageRawMode = options.manageRawMode ?? inputIsTTY;
-    this.manageMouse = options.manageMouse ?? outputIsTTY;
+    // [LAW:one-source-of-truth] The host owns the "is this a real
+    // terminal?" question. Both raw-mode and mouse-tracking defaults
+    // derive from the same isTTY — no separate input/output skew.
+    const isTTY = this.host.isTTY;
+    this.manageRawMode = options.manageRawMode ?? isTTY;
+    this.manageMouse = options.manageMouse ?? isTTY;
 
     // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab traversal —
     // register it as a normal-priority handler so it participates in the
@@ -188,32 +225,27 @@ export class EventRouter {
     if (this.running) return;
     this.running = true;
 
-    if (this.manageRawMode && this.input?.setRawMode) {
-      this.input.setRawMode(true);
-    }
-    if (typeof (this.input as { resume?: () => void })?.resume === "function") {
-      (this.input as { resume: () => void }).resume();
-    }
+    // [LAW:dataflow-not-control-flow] No `if (host.setRawMode)` capability
+    // check — the host absorbs that. Same goes for resume(): subscribing
+    // via host.onData triggers the underlying stream's flow on node, no-ops
+    // on transports that don't have a paused mode.
+    if (this.manageRawMode) this.host.setRawMode(true);
+    if (this.manageMouse) this.host.write(MOUSE_TRACK_ON);
 
-    if (this.manageMouse) this.output.write(MOUSE_TRACK_ON);
-
-    this.dataListener = (chunk: Buffer | string) => this.feed(chunk);
-    this.input?.on("data", this.dataListener);
+    this.dataUnsubscribe = this.host.onData((chunk) => this.feed(chunk));
   }
 
   stop(): void {
     if (this.running) {
       this.running = false;
 
-      if (this.dataListener) {
-        this.input?.off("data", this.dataListener);
-        this.dataListener = undefined;
+      if (this.dataUnsubscribe) {
+        this.dataUnsubscribe();
+        this.dataUnsubscribe = undefined;
       }
 
-      if (this.manageMouse) this.output.write(MOUSE_TRACK_OFF);
-      if (this.manageRawMode && this.input?.setRawMode) {
-        this.input.setRawMode(false);
-      }
+      if (this.manageMouse) this.host.write(MOUSE_TRACK_OFF);
+      if (this.manageRawMode) this.host.setRawMode(false);
     }
 
     // [LAW:one-source-of-truth] Per-session state belongs to one session.
@@ -225,10 +257,10 @@ export class EventRouter {
     // the next session. Clearing already-empty state is a no-op so this
     // stays safe on repeated stop().
     if (this.escTimer) {
-      clearImmediate(this.escTimer);
+      clearTimeout(this.escTimer);
       this.escTimer = undefined;
     }
-    this.buffer = Buffer.alloc(0);
+    this.buffer = EMPTY_BYTES;
     this.capturedWidget = null;
   }
 
@@ -254,28 +286,30 @@ export class EventRouter {
   // --- Test / advanced API ---
 
   /** Feed a chunk of bytes (or a string of bytes) into the parser. */
-  feed(chunk: Buffer | string): void {
-    const next = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : chunk;
-    this.buffer = this.buffer.length === 0 ? Buffer.from(next) : Buffer.concat([this.buffer, next]);
+  feed(chunk: Uint8Array | string): void {
+    const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
+    this.buffer = concatBytes(this.buffer, next);
     if (this.escTimer) {
-      clearImmediate(this.escTimer);
+      clearTimeout(this.escTimer);
       this.escTimer = undefined;
     }
     this.drain();
     // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
-    // until the next macrotask so a follow-up chunk can extend it.
+    // until the next macrotask so a follow-up chunk can extend it. The
+    // explicit `0` is structural deferral, not a throttle — it just lets
+    // the current sync work + queued microtasks drain before flushing.
     if (this.buffer.length === 1 && this.buffer[0] === ESC) {
-      this.escTimer = setImmediate(() => {
+      this.escTimer = setTimeout(() => {
         this.escTimer = undefined;
         this.flush();
-      });
+      }, 0);
     }
   }
 
   /** Force any pending lone ESC out of the buffer. */
   flush(): void {
     if (this.escTimer) {
-      clearImmediate(this.escTimer);
+      clearTimeout(this.escTimer);
       this.escTimer = undefined;
     }
     if (this.buffer.length > 0 && this.buffer[0] === ESC && this.buffer.length === 1) {
@@ -297,7 +331,7 @@ export class EventRouter {
     }
   }
 
-  private consumeOne(buf: Buffer): ConsumeResult {
+  private consumeOne(buf: Uint8Array): ConsumeResult {
     const b0 = buf[0]!;
 
     if (b0 === ESC) return this.consumeEscape(buf);
@@ -342,7 +376,7 @@ export class EventRouter {
     return this.consumePrintable(buf);
   }
 
-  private consumePrintable(buf: Buffer): ConsumeResult {
+  private consumePrintable(buf: Uint8Array): ConsumeResult {
     const b0 = buf[0]!;
     let len = 1;
     if (b0 >= 0xc0 && b0 < 0xe0) len = 2;
@@ -350,7 +384,7 @@ export class EventRouter {
     else if (b0 >= 0xf0) len = 4;
     if (buf.length < len) return { kind: "incomplete" };
 
-    const character = buf.subarray(0, len).toString("utf8");
+    const character = UTF8_DECODER.decode(buf.subarray(0, len));
     return {
       kind: "key",
       bytes: len,
@@ -364,7 +398,7 @@ export class EventRouter {
     };
   }
 
-  private consumeEscape(buf: Buffer): ConsumeResult {
+  private consumeEscape(buf: Uint8Array): ConsumeResult {
     if (buf.length === 1) return { kind: "incomplete" };
     const b1 = buf[1]!;
 
@@ -439,7 +473,7 @@ export class EventRouter {
     };
   }
 
-  private consumeSS3(buf: Buffer): ConsumeResult {
+  private consumeSS3(buf: Uint8Array): ConsumeResult {
     if (buf.length < 3) return { kind: "incomplete" };
     const final = String.fromCharCode(buf[2]!);
     const name = SS3_KEYS[final];
@@ -451,7 +485,7 @@ export class EventRouter {
     };
   }
 
-  private consumeCSI(buf: Buffer): ConsumeResult {
+  private consumeCSI(buf: Uint8Array): ConsumeResult {
     // buf starts with ESC [
     const next = buf[2];
     if (next === undefined) return { kind: "incomplete" };
@@ -471,7 +505,7 @@ export class EventRouter {
       for (let i = 3; i < buf.length; i++) {
         const b = buf[i]!;
         if (b === M_UPPER || b === M_LOWER) {
-          const params = buf.subarray(3, i).toString("ascii");
+          const params = ASCII_DECODER.decode(buf.subarray(3, i));
           const parts = params.split(";");
           if (parts.length !== 3) return { kind: "skip", bytes: i + 1 };
           const cb = parseInt(parts[0]!, 10);

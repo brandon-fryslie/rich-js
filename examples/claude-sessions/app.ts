@@ -3,7 +3,7 @@
  * Search-typing mode bypasses the keymap and consumes raw characters directly.
  */
 
-import { Console } from "../../src/index.js";
+import { Console, NodeTerminalHost } from "../../src/index.js";
 import {
   initialState,
   moveSidebar,
@@ -112,46 +112,53 @@ function reduceSearchTyping(state: AppState, chunk: string): AppState {
 }
 
 export async function run(): Promise<void> {
+  // [LAW:no-shared-mutable-globals] Single host owns all node TTY access for
+  // this demo. Console still writes through process.stdout for now (a
+  // follow-up ticket migrates Console to a host-backed sink); every other
+  // I/O concern here — raw mode, alt-screen, cursor visibility, size,
+  // input bytes — flows through the host.
+  const host = new NodeTerminalHost();
   const consoleOut = new Console({ forceTerminal: true });
   let state = initialState();
 
-  const stdin = process.stdin;
-  if (!stdin.isTTY) {
+  if (!host.isTTY) {
     throw new Error("claude-sessions requires an interactive TTY");
   }
 
+  host.start();
+
   const cleanup = () => {
-    try { stdin.setRawMode(false); } catch { /* ignore */ }
-    stdin.pause();
-    process.stdout.write("\x1b[?25h\x1b[0m\x1b[?1049l");
+    host.setRawMode(false);
+    host.write("\x1b[?25h\x1b[0m\x1b[?1049l");
+    host.stop();
   };
 
-  process.stdout.write("\x1b[?1049h\x1b[?25l");
-  stdin.setRawMode(true);
-  stdin.resume();
-  stdin.setEncoding("utf-8");
+  host.write("\x1b[?1049h\x1b[?25l");
+  host.setRawMode(true);
 
   const render = (initial = false) => {
-    const termHeight = process.stdout.rows || 24;
+    const termHeight = host.size().rows;
     // On first paint, clear the alt screen. Subsequent frames just
     // cursor-home and overwrite — Window pads to exact height so there's
     // no stale content, and no visible flicker.
-    process.stdout.write(initial ? "\x1b[2J\x1b[H" : "\x1b[H");
+    host.write(initial ? "\x1b[2J\x1b[H" : "\x1b[H");
     consoleOut.print(buildShell(state, termHeight));
   };
 
   render(true);
 
   await new Promise<void>((resolve, reject) => {
-    const onData = (chunk: string) => {
+    let unsubscribe: (() => void) | undefined;
+    const onData = (chunk: Uint8Array | string) => {
+      const text = typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
       try {
         let next: AppState;
         if (isTyping(state)) {
-          next = reduceSearchTyping(state, chunk);
+          next = reduceSearchTyping(state, text);
         } else {
-          const action = lookup(chunk);
+          const action = lookup(text);
           if (action.type === "quit") {
-            stdin.off("data", onData);
+            unsubscribe?.();
             resolve();
             return;
           }
@@ -162,10 +169,10 @@ export async function run(): Promise<void> {
           render();
         }
       } catch (err) {
-        stdin.off("data", onData);
+        unsubscribe?.();
         reject(err instanceof Error ? err : new Error(String(err)));
       }
     };
-    stdin.on("data", onData);
+    unsubscribe = host.onData(onData);
   }).finally(cleanup);
 }

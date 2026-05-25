@@ -66,6 +66,7 @@ import type {
   Placement,
   WidgetBounds,
 } from "./types.js";
+import type { TerminalHost } from "./terminal-host.js";
 
 export type ColorSystemSpec =
   | ColorDepth
@@ -77,13 +78,19 @@ export type ColorSystemSpec =
   | null;
 
 export interface ScreenOptions {
-  out?: NodeJS.WritableStream;
+  /**
+   * The I/O capability the screen renders against. Construct a
+   * `NodeTerminalHost` for production node demos, or pass a host that
+   * wraps mock streams for tests. The seam is the type — Screen never
+   * reaches for `process.*`.
+   */
+  host: TerminalHost;
   width?: number;
   colorSystem?: ColorSystemSpec;
   focusManager?: FocusManager;
   /**
-   * When true (default when stdout is a TTY), hide the cursor on start and
-   * restore it on stop. Disable for non-TTY output and tests.
+   * When true (default when the host reports `isTTY`), hide the cursor
+   * on start and restore it on stop. Disable for non-TTY output and tests.
    */
   manageCursor?: boolean;
 }
@@ -104,8 +111,6 @@ interface FrameLayout {
   // through to widgets mounted underneath.
   activeOverlays: Set<InteractiveWidget>;
 }
-
-const DEFAULT_WIDTH = 80;
 
 export class DefaultScreen implements Screen {
   readonly focusManager: FocusManager;
@@ -138,17 +143,17 @@ export class DefaultScreen implements Screen {
   private pendingFrame: FrameLayout | null = null;
   private lastLineCount = 0;
 
-  private readonly out: NodeJS.WritableStream;
+  private readonly host: TerminalHost;
   private readonly widthOverride: number | undefined;
   private readonly colorSystem: ColorDepth | null;
   private readonly manageCursor: boolean;
 
-  constructor(options: ScreenOptions = {}) {
-    this.out = options.out ?? process.stdout;
+  constructor(options: ScreenOptions) {
+    this.host = options.host;
     this.widthOverride = options.width;
     this.focusManager = options.focusManager ?? new DefaultFocusManager();
 
-    const isTTY = (this.out as NodeJS.WriteStream).isTTY ?? false;
+    const isTTY = this.host.isTTY;
     this.colorSystem = resolveSpec(options.colorSystem, isTTY);
     this.manageCursor = options.manageCursor ?? isTTY;
 
@@ -211,7 +216,7 @@ export class DefaultScreen implements Screen {
     this._running = true;
     this.lastLineCount = 0;
 
-    if (this.manageCursor) this.out.write("\x1b[?25l");
+    if (this.manageCursor) this.host.write("\x1b[?25l");
 
     // [LAW:dataflow-not-control-flow] One reactive pipeline. The autorun
     // computes the frame (which reads observables; MobX subscribes to
@@ -244,16 +249,15 @@ export class DefaultScreen implements Screen {
     this.renderScheduled = false;
     this._activeOverlays = new Set();
 
-    if (this.manageCursor) this.out.write("\x1b[?25h");
-    if (this.lastLineCount > 0) this.out.write("\n");
+    if (this.manageCursor) this.host.write("\x1b[?25h");
+    if (this.lastLineCount > 0) this.host.write("\n");
   }
 
   // --- Internal: layout + draw ---
 
   private get width(): number {
     if (this.widthOverride !== undefined) return this.widthOverride;
-    const cols = (this.out as NodeJS.WriteStream).columns;
-    return cols ?? DEFAULT_WIDTH;
+    return this.host.size().cols;
   }
 
   private computeFrame(): FrameLayout {
@@ -461,7 +465,7 @@ export class DefaultScreen implements Screen {
       if (i < drawCount - 1) buf += "\n";
     }
 
-    this.out.write(buf);
+    this.host.write(buf);
     this.lastLineCount = drawCount;
   }
 }

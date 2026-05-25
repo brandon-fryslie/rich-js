@@ -3,7 +3,7 @@
  * Uses rich-js Live with altScreen mode for flicker-free full-screen TUI.
  */
 
-import { Console, Live } from "../../src/index.js";
+import { Console, Live, NodeTerminalHost } from "../../src/index.js";
 import {
   initialState,
   toggleExpand,
@@ -99,11 +99,15 @@ function reduce(state: AppState, action: Action): AppState {
 }
 
 export async function run(startPath: string): Promise<void> {
+  // [LAW:no-shared-mutable-globals] Single host owns all node TTY access for
+  // this demo. Live + Console still write through process.stdout (a follow-up
+  // ticket migrates them to a host-backed sink); raw mode, input bytes, and
+  // size queries already flow through the host.
+  const host = new NodeTerminalHost();
   const consoleOut = new Console({ forceTerminal: true });
   let state = initialState(startPath);
 
-  const stdin = process.stdin;
-  if (!stdin.isTTY) {
+  if (!host.isTTY) {
     throw new Error("rich-explore requires an interactive TTY");
   }
 
@@ -116,23 +120,24 @@ export async function run(startPath: string): Promise<void> {
     verticalOverflow: "crop",
   });
 
-  stdin.setRawMode(true);
-  stdin.resume();
-  stdin.setEncoding("utf-8");
+  host.start();
+  host.setRawMode(true);
   live.start();
 
   const render = () => {
-    const termHeight = process.stdout.rows || 24;
+    const termHeight = host.size().rows;
     live.update(buildShell(state, termHeight), { refresh: true });
   };
 
   render();
 
   await new Promise<void>((resolve, reject) => {
-    const onData = (chunk: string) => {
-      const action = lookup(chunk);
+    let unsubscribe: (() => void) | undefined;
+    const onData = (chunk: Uint8Array | string) => {
+      const text = typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
+      const action = lookup(text);
       if (action.type === "quit") {
-        stdin.off("data", onData);
+        unsubscribe?.();
         resolve();
         return;
       }
@@ -143,14 +148,14 @@ export async function run(startPath: string): Promise<void> {
           render();
         }
       } catch (err) {
-        stdin.off("data", onData);
+        unsubscribe?.();
         reject(err instanceof Error ? err : new Error(String(err)));
       }
     };
-    stdin.on("data", onData);
+    unsubscribe = host.onData(onData);
   }).finally(() => {
     live.stop();
-    try { stdin.setRawMode(false); } catch { /* ignore */ }
-    stdin.pause();
+    host.setRawMode(false);
+    host.stop();
   });
 }
