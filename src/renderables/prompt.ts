@@ -5,8 +5,8 @@
  * validation, default fallback, retry loop) — but not where the answer comes
  * from. Input is a capability injected via options: pass `ask` per call to
  * supply an answer source. Node consumers pass `nodeAsk` from
- * `rich-js/node/prompt`; tests pass a fake; the browser bundle gets the
- * classes without dragging `node:readline` into the main barrel.
+ * `@promptctl/rich-js/node/prompt`; tests pass a fake; the browser bundle
+ * gets the classes without dragging `node:readline` into the main barrel.
  */
 
 import { render as renderMarkup } from "../core/markup.js";
@@ -14,9 +14,11 @@ import { render as renderMarkup } from "../core/markup.js";
 // --- Types ---
 
 /**
- * Input capability: receives the rendered prompt string (with trailing space
- * if any), resolves with the raw user response. Implementations decide where
- * the input comes from (stdin readline, network, in-memory queue, etc.).
+ * Input capability: receives the rendered prompt string (always with a
+ * trailing space appended by the renderable, so implementations should not
+ * add their own), resolves with the raw user response. Implementations
+ * decide where the input comes from (stdin readline, network, in-memory
+ * queue, etc.).
  */
 export type PromptInput = (prompt: string) => Promise<string>;
 
