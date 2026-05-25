@@ -158,10 +158,12 @@ export class MemoryFileSystem implements FileSystem {
     const node = this.lookup(path);
     if (node === null || node.kind !== "file") return null;
     if (node.content.length === 0) return null;
-    // Encode to bytes, slice, decode — matches NodeFileSystem precisely so
-    // a multibyte codepoint split at the boundary becomes a replacement
-    // char in both impls, and the byte count of the returned text matches
-    // the requested cap.
+    // Encode to bytes, slice to the maxBytes cap, decode with a non-fatal
+    // decoder — matches NodeFileSystem precisely: the *read* is capped at
+    // maxBytes, and a multibyte codepoint split at the boundary decodes to
+    // U+FFFD in both impls. Note the returned text's byte length is *not*
+    // strictly ≤ maxBytes when truncation produces replacement chars
+    // (U+FFFD encodes to 3 bytes), matching node's Buffer.toString.
     const encoded = new TextEncoder().encode(node.content);
     const slice = encoded.subarray(0, Math.min(maxBytes, encoded.length));
     return new TextDecoder("utf-8", { fatal: false }).decode(slice);

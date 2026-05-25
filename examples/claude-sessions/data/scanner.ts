@@ -1,8 +1,8 @@
 /**
  * Scans `<home>/.claude/projects/` for project directories and their session
- * JSONL files. Reads only stats + the first line of each file (for slug
- * extraction). Skips subagent/tool-results subdirectories — only top-level
- * `*.jsonl` in each project directory counts as a "session".
+ * JSONL files. Reads only stats + the first line of each file (for slug and
+ * first-prompt extraction). Skips subagent/tool-results subdirectories —
+ * only top-level `*.jsonl` in each project directory counts as a "session".
  *
  * [LAW:capabilities-over-context] All filesystem access is via the injected
  * `FileSystem` capability — there is no `node:fs` import here. The same code
