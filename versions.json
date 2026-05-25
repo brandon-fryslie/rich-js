@@ -4,15 +4,22 @@
     {
       "version": "pr-47",
       "ref": "refs/pull/47/merge",
-      "sha": "5877f396b8e7b72d5b8ac30512385901f5a5636b",
-      "timestamp": "2026-05-25T17:33:52.864Z",
+      "sha": "934cae16876934e8392c6d949bf3d9260005e616",
+      "timestamp": "2026-05-25T17:39:42.180Z",
       "commits": [
         {
-          "sha": "5877f396b8e7b72d5b8ac30512385901f5a5636b",
+          "sha": "934cae16876934e8392c6d949bf3d9260005e616",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T17:33:21Z",
-          "message": "Merge 96f475f868f5c46fc1af2df801e379e8cde987b9 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+          "timestamp": "2026-05-25T17:39:17Z",
+          "message": "Merge a0e2aff1fce4df88f4109e3e658e1c3b1d74f4d1 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "a0e2aff1fce4df88f4109e3e658e1c3b1d74f4d1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:39:07-06:00",
+          "message": "fix(demos): derive empty-state path from fs; correct wire.ts quit comment\n\n[LAW:one-source-of-truth] The empty-state status message hardcoded\n\"~/.claude/projects/\" but the actual root depends on fs.homeDir() and\nfs.join — wrong in the browser fixture (/home/demo/.claude/projects)\nand on any non-POSIX host. Now derives the displayed path from the\nfs capability so the message always reflects the actual root scanned.\n\n[LAW:comments-explain-why-only] The wire.ts catch-handler comment said\nthe browser \"never fires\" quit, but keymap.ts maps both `q` and Ctrl-C\nto {type:\"quit\"} and xterm delivers those keystrokes normally. Comment\nnow says run() can resolve cleanly on quit; the page shell just does\nnot auto-unmount on that resolve, so the demo sits idle in restored\nalt-screen state.\n\nAddresses Copilot review round 5 on PR #47.\n"
         },
         {
           "sha": "96f475f868f5c46fc1af2df801e379e8cde987b9",
