@@ -1,10 +1,10 @@
 /**
  * Shared demo capabilities barrel — browser-safe re-exports.
  *
- * [LAW:one-source-of-truth] One barrel for the `FileSystem` interface and
- * its browser-side implementation. Node-only implementations
- * (`NodeFileSystem`) are NOT re-exported here — node entries import them
- * directly from their own file. Keeping the barrel browser-safe means a
+ * [LAW:one-source-of-truth] One barrel for capability interfaces and their
+ * browser-side implementations. Node-only implementations (`NodeFileSystem`,
+ * `NodeSystemInfo`) are NOT re-exported here — node entries import them
+ * directly from their own files. Keeping the barrel browser-safe means a
  * browser bundle that goes through `_capabilities/index.js` cannot
  * transitively pull in `node:fs`/`node:path`/`node:os` and fail to bundle.
  *
@@ -22,3 +22,8 @@ export {
   type MemoryNode,
   type MemoryTree,
 } from "./memory-file-system.js";
+export type { SystemInfo } from "./system-info.js";
+export {
+  MemorySystemInfo,
+  type SystemInfoSnapshot,
+} from "./memory-system-info.js";
