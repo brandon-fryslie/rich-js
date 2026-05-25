@@ -4,15 +4,22 @@
     {
       "version": "pr-41",
       "ref": "refs/pull/41/merge",
-      "sha": "bf1d90f76c18f9db70edbb6630dab5113319d8d4",
-      "timestamp": "2026-05-25T00:09:26.678Z",
+      "sha": "992a36915a0131d0e097d7c52d09f99f7157a09a",
+      "timestamp": "2026-05-25T00:18:54.520Z",
       "commits": [
         {
-          "sha": "bf1d90f76c18f9db70edbb6630dab5113319d8d4",
+          "sha": "992a36915a0131d0e097d7c52d09f99f7157a09a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T00:09:01Z",
-          "message": "Merge b7820a16d8271bcf7ce41cc2be7ada2a6bb3cacc into e68f9296ba02ac9504629912de25523d3d0c1d5d\n"
+          "timestamp": "2026-05-25T00:18:29Z",
+          "message": "Merge 0885804cf05347181b06a846036d754884695b1a into e68f9296ba02ac9504629912de25523d3d0c1d5d\n"
+        },
+        {
+          "sha": "0885804cf05347181b06a846036d754884695b1a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T18:18:11-06:00",
+          "message": "fix(event-router): replace Buffer with Uint8Array + TextEncoder/TextDecoder\n\nEventRouter accepts `Uint8Array | string` from the host but the parser\nimplementation still relied on node's `Buffer` global — `Buffer.from`,\n`Buffer.concat`, `private buffer: Buffer`, `.toString(\"utf8\" | \"ascii\")`.\nA browser host emitting Uint8Array would crash on the missing global\nunless the bundler polyfilled Buffer; the type signature was making a\ncross-runtime promise the implementation didn't keep.\n\nRefactored to Uint8Array + TextEncoder/TextDecoder end-to-end:\n- private buffer: Buffer → private buffer: Uint8Array\n- Buffer.from(chunk, \"utf8\") → UTF8_ENCODER.encode(chunk)\n- Buffer.concat([a, b]) → concatBytes(a, b) helper (Uint8Array.set)\n- buf.subarray(...).toString(\"utf8\") → UTF8_DECODER.decode(...)\n- buf.subarray(...).toString(\"ascii\") → ASCII_DECODER.decode(...)\n- Parser method signatures: (buf: Buffer) → (buf: Uint8Array)\n\n[LAW:types-are-the-program] The type signature is now the strongest\ntrue theorem about the data — the parser actually accepts what the\nhost promises to emit, instead of widening the type while requiring\nnarrower runtime support.\n\nBuffer extends Uint8Array, so node stdin Buffer chunks satisfy the\nnew parameter type unchanged. Node behavior preserved (8854 tests\npass); browser runtime no longer needs a Buffer polyfill.\n"
         },
         {
           "sha": "b7820a16d8271bcf7ce41cc2be7ada2a6bb3cacc",
