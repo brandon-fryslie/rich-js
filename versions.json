@@ -4,15 +4,22 @@
     {
       "version": "pr-46",
       "ref": "refs/pull/46/merge",
-      "sha": "e4366f33dc29c52e0e20c45287d95487cb605459",
-      "timestamp": "2026-05-25T16:28:04.901Z",
+      "sha": "4779e92288734936e44272fd469f7e50e7c46499",
+      "timestamp": "2026-05-25T16:33:59.125Z",
       "commits": [
         {
-          "sha": "e4366f33dc29c52e0e20c45287d95487cb605459",
+          "sha": "4779e92288734936e44272fd469f7e50e7c46499",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T10:27:36-06:00",
-          "message": "Merge 8f269ee05b7e9b6c4d0e58d4d4f5d6c667c6786d into 167f6041b389ad40e301891694427a2ae3341161\n"
+          "timestamp": "2026-05-25T16:33:25Z",
+          "message": "Merge 8fdbc19ae68da976a425813d9b2fb8177f9d1ec4 into 167f6041b389ad40e301891694427a2ae3341161\n"
+        },
+        {
+          "sha": "8fdbc19ae68da976a425813d9b2fb8177f9d1ec4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T10:33:15-06:00",
+          "message": "fix(security): centralize link sanitization in resolveStyle to close bypass paths\n\nCopilot review on PR #46 identified that the original 4-point wrap\n(constructor / style setter / stylize / append) missed three other\nstyle-accepting paths: highlightRegex, highlightWords, and the\nper-region span re-resolution in _buildSegments. A caller passing\n`new Style({ link: dirty })` to any of those produced a span whose\nURL bytes could still escape the OSC 8 wrap downstream.\n\nFix: move sanitizeStyleLink into `resolveStyle` itself — the single\ncanonical normalizer for `string | Style | undefined → Style` inside\ntext.ts. Every current and future RichText method that normalizes\na style argument now inherits sanitization structurally; no\nper-callsite wrap to forget.\n\n[LAW:single-enforcer] One enforcement point, applied at the\ncanonicalization boundary. The 4 explicit `sanitizeStyleLink(...)`\nwraps at the original sites become plain `resolveStyle(...)` calls —\nthe rule lives in one place instead of four. The `style` setter is\nthe only path that doesn't pass through `resolveStyle` (its argument\nis already a Style), and continues to call sanitizeStyleLink\ndirectly so the boundary contract holds for every assignment.\n\n[LAW:locality-or-seam] `_buildSegments`' per-region\n`resolveStyle(span.style)` call now provides structural enforcement\nat the last render-pipeline step before bytes leave RichText — a\nstricter placement than per-entry-method sanitization.\n\n3 new tests pin the previously-bypassed coverage:\n- highlightRegex sanitizes\n- highlightWords sanitizes\n- the Segment emitted by render() carries a sanitized URL end-to-end\n"
         },
         {
           "sha": "8f269ee05b7e9b6c4d0e58d4d4f5d6c667c6786d",
