@@ -291,10 +291,14 @@ const console = new Console({
 When `record: true`, export output after the fact:
 
 ```typescript
+import { saveHtml } from "@promptctl/rich-js/node/save";
+
 const text = console.exportText();
 const html = console.exportHtml();
-console.saveHtml("output.html");
+saveHtml(console, "output.html");
 ```
+
+`saveText` / `saveHtml` live on the `node/save` subpath because they import `node:fs`; the main barrel stays browser-safe.
 
 ## Demos
 
