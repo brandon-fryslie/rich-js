@@ -4,15 +4,22 @@
     {
       "version": "pr-48",
       "ref": "refs/pull/48/merge",
-      "sha": "ea4167bb78db9a2dddaabb6ff3c12d84c3ec5a1e",
-      "timestamp": "2026-05-25T18:22:09.764Z",
+      "sha": "88695fec861757f53e4850dd21713b209714de5e",
+      "timestamp": "2026-05-25T18:27:43.360Z",
       "commits": [
         {
-          "sha": "ea4167bb78db9a2dddaabb6ff3c12d84c3ec5a1e",
+          "sha": "88695fec861757f53e4850dd21713b209714de5e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T18:21:42Z",
-          "message": "Merge 06f52e76e81cb06e0ac35610f8130f2a454428f0 into ad93c972c6119f443743ed0969fdeadd13bcb7a0\n"
+          "timestamp": "2026-05-25T18:27:16Z",
+          "message": "Merge 1ba42237f2d2f9ec18fc3f7dee092931aa72c7c7 into ad93c972c6119f443743ed0969fdeadd13bcb7a0\n"
+        },
+        {
+          "sha": "1ba42237f2d2f9ec18fc3f7dee092931aa72c7c7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T12:27:06-06:00",
+          "message": "fix(demos): TextDecoder streaming mode; memory-fs resolve uses homeDir() surface\n\n`TextDecoder.decode(chunk)` without `{ stream: true }` resets the decoder\nstate each call, so a multibyte UTF-8 codepoint split across two onData\nchunks (paste of non-ASCII text) decodes to U+FFFD. Streaming mode\npreserves the partial bytes for the next call. The hoisted decoder's\nlifetime already matches the lifetime of the input subscription, so the\nstate buffer is structurally already set up for this — just one\nkeyword change. A suppressed duplicate Copilot finding pointing at\nlines 167-170 is also fixed by this same change.\n\nMemoryFileSystem.resolve now reads the home base through the public\n`this.homeDir()` surface rather than the private `this.tree.home`\nfield. Functionally identical, but the docstring (\"homeDir() as base\")\nand the implementation now share one source of truth — they cannot\ndrift if `homeDir()` ever changes shape.\n"
         },
         {
           "sha": "06f52e76e81cb06e0ac35610f8130f2a454428f0",
