@@ -4,9 +4,14 @@
  *
  * Synchronous by design — tested fast enough on ~10K files with early
  * termination at maxHits. Streaming/async is a future extension if needed.
+ *
+ * [LAW:capabilities-over-context] All file reads go through the injected
+ * `FileSystem`; no `node:fs` import. Browser bundles supply a
+ * `MemoryFileSystem` and the search runs against fixture data without any
+ * code-path branching.
  */
 
-import { readFileSync } from "node:fs";
+import type { FileSystem } from "../../_capabilities/index.js";
 import type { ProjectMeta } from "./types.js";
 
 export interface GlobalHit {
@@ -36,13 +41,17 @@ function makeSnippet(line: string, matchStart: number, radius = 60): string {
 }
 
 function extractUuid(line: string): string | null {
-  // Fast path: try regex first, only fall back to JSON.parse if the raw scan
-  // matches, since parsing a multi-MB line is expensive
+  // Regex-only by design — JSON.parse on a multi-MB line is expensive and
+  // any line that hit a substring match is already a candidate to open.
+  // The uuid pattern is unambiguous enough that false positives are
+  // tolerable (they map to "no block found by uuid" downstream, which
+  // gracefully falls back to opening the session at line 0).
   const m = line.match(/"uuid"\s*:\s*"([^"]+)"/);
   return m ? (m[1] ?? null) : null;
 }
 
 export function searchGlobal(
+  fs: FileSystem,
   projects: ReadonlyArray<ProjectMeta>,
   query: string,
   opts?: GlobalSearchOptions,
@@ -61,7 +70,7 @@ export function searchGlobal(
 
       let text: string;
       try {
-        text = readFileSync(session.path, "utf-8");
+        text = fs.readFile(session.path);
       } catch {
         continue;
       }

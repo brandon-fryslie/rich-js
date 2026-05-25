@@ -3,13 +3,17 @@
  *
  * Reducers produce new states; views are pure functions of state.
  *
+ * [LAW:capabilities-over-context] The `FileSystem` capability is part of
+ * AppState — it is an injected dependency, fixed at construction time, and
+ * the reducers that touch I/O read it from state rather than from ambient
+ * `node:fs` imports. Spreading `...state` carries it forward unchanged.
+ *
  * Extension points:
  * - SearchMode: add more variants for alternate search scopes
  * - Mode: add a top-level mode for filter expressions / REPL
  */
 
-import { basename, dirname, join } from "node:path";
-import { existsSync } from "node:fs";
+import type { FileSystem } from "../_capabilities/index.js";
 import type { Block, ProjectMeta, SessionMeta } from "./data/types.js";
 import { scanProjects } from "./data/scanner.js";
 import { loadSession, type RawLine } from "./data/loader.js";
@@ -60,6 +64,9 @@ export interface StackFrame {
 }
 
 export interface AppState {
+  // Injected capability — read by reducers that touch I/O.
+  readonly fs: FileSystem;
+
   // Sidebar
   readonly projects: ReadonlyArray<ProjectMeta>;
   readonly selectedProjectIndex: number;
@@ -90,9 +97,11 @@ export interface AppState {
   readonly errorMessage: string | null;
 }
 
-export function initialState(): AppState {
-  const projects = scanProjects();
+export function initialState(fs: FileSystem): AppState {
+  const projects = scanProjects(fs);
+  const projectsPath = fs.join(fs.homeDir(), ".claude", "projects");
   return {
+    fs,
     projects,
     selectedProjectIndex: 0,
     selectedSessionIndex: 0,
@@ -109,7 +118,7 @@ export function initialState(): AppState {
     focus: "sidebar",
     search: EMPTY_SEARCH,
     statusMessage: projects.length === 0
-      ? "No projects found in ~/.claude/projects/"
+      ? `No projects found in ${projectsPath}`
       : `${projects.length} projects loaded`,
     errorMessage: null,
   };
@@ -181,7 +190,7 @@ function loadPath(state: AppState, path: string, opts: {
   statusPrefix?: string;
 }): AppState {
   try {
-    const result = loadSession(path);
+    const result = loadSession(state.fs, path);
     const showHidden = opts.showHidden ?? false;
     const blocks = parseBlocks(result.lines, { showHidden });
     const blockCount = blocks.length;
@@ -304,10 +313,11 @@ export function jumpToParent(state: AppState): AppState {
  *  current session path is unknown or the subagent file doesn't exist. */
 function subagentPath(state: AppState, agentId: string): string | null {
   if (!state.loadedSessionPath) return null;
-  const sessionUuid = basename(state.loadedSessionPath, ".jsonl");
-  const projectDir = dirname(state.loadedSessionPath);
-  const path = join(projectDir, sessionUuid, "subagents", `agent-${agentId}.jsonl`);
-  if (!existsSync(path)) return null;
+  const fs = state.fs;
+  const sessionUuid = fs.basename(state.loadedSessionPath, ".jsonl");
+  const projectDir = fs.dirname(state.loadedSessionPath);
+  const path = fs.join(projectDir, sessionUuid, "subagents", `agent-${agentId}.jsonl`);
+  if (!fs.exists(path)) return null;
   return path;
 }
 
@@ -447,7 +457,7 @@ export function globalSearchEnter(state: AppState): AppState {
 
 function submitGlobal(state: AppState): AppState {
   const query = state.search.query;
-  const hits = searchGlobal(state.projects, query, { maxHits: 200 });
+  const hits = searchGlobal(state.fs, state.projects, query, { maxHits: 200 });
   return {
     ...state,
     search: {
