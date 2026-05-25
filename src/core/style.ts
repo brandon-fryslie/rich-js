@@ -8,11 +8,13 @@ import {
   ColorDepth,
 } from "./color.js";
 import type { TerminalTheme } from "./color.js";
+import { stripOscTerminators } from "./sanitize.js";
 
-// [LAW:one-way-deps] `core/style` depends only on `core/color`; the substrate
-// fallback is the canonical canvas color (black), inlined to avoid pulling in
-// any preset theme constants. Preset themes live in `src/themes/` and depend
-// on core, never the reverse.
+// [LAW:one-way-deps] `core/style` depends only on `core/color` and the leaf
+// `core/sanitize` (a dep-free utility module). The substrate fallback is the
+// canonical canvas color (black), inlined to avoid pulling in any preset
+// theme constants. Preset themes live in `src/themes/` and depend on core,
+// never the reverse.
 const SURFACE_BLACK = new ColorRgba(0, 0, 0);
 
 // --- Attribute definitions ---
@@ -219,6 +221,32 @@ export class Style {
     });
   }
 
+  // [LAW:types-are-the-program] Structural clone helper — pure rearrangement
+  // of fields, no policy. Sanitization of the URL is the trust boundary's
+  // job (see RichText in text.ts); Style stays a faithful container so
+  // callers that have already sanitized are not silently re-mutated.
+  withLink(link: string | undefined): Style {
+    return new Style({
+      color: this.color,
+      bgcolor: this.bgcolor,
+      bold: this.bold,
+      dim: this.dim,
+      italic: this.italic,
+      underline: this.underline,
+      blink: this.blink,
+      blink2: this.blink2,
+      reverse: this.reverse,
+      conceal: this.conceal,
+      strike: this.strike,
+      underline2: this.underline2,
+      frame: this.frame,
+      encircle: this.encircle,
+      overline: this.overline,
+      link,
+      meta: this.meta,
+    });
+  }
+
   clearMetaAndLinks(): Style {
     return new Style({
       color: this.color,
@@ -358,7 +386,13 @@ export class Style {
       // pair instead of sharing an id). The coalescer in render.ts already
       // merges adjacent same-link runs into one wrap, so the common case is
       // unaffected; non-adjacent hover-grouping is the intentional sacrifice.
-      result = `\x1b]8;;${this.link}\x1b\\${result}\x1b]8;;\x1b\\`;
+      //
+      // [LAW:single-enforcer] Wire-byte sanitization at the OSC 8 emit site
+      // — paired with the same call in render.ts:segmentsToString so every
+      // path that turns `Style.link` into bytes goes through one rule. Style
+      // itself stays a faithful container (this.link is unchanged); only the
+      // bytes going out the door are stripped.
+      result = `\x1b]8;;${stripOscTerminators(this.link)}\x1b\\${result}\x1b]8;;\x1b\\`;
     }
 
     return result;

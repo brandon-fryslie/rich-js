@@ -5,6 +5,7 @@
 import { cellLen } from "./cells.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
+import { stripOscTerminators } from "./sanitize.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
 // Strip control characters except \t and \n
@@ -15,11 +16,33 @@ function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
 }
 
+// [LAW:single-enforcer] RichText is the *data-model* trust boundary for
+// link URLs — any Style carrying a link that enters a RichText is sanitized
+// in place, so callers that inspect `richText.style.link` or
+// `richText.spans[].style.link` see the same clean URL the renderer will
+// emit. Wire-byte safety is enforced separately in render.ts and style.ts
+// via the same shared `stripOscTerminators` helper (one rule, applied at
+// both seams). Together those layers guarantee the dirty bytes can neither
+// live in the in-memory model nor escape on the wire — even if a Style is
+// constructed and rendered via a path that bypasses RichText entirely.
+//
+// Co-located inside `resolveStyle` so any current or future RichText method
+// that normalizes a `string | Style` argument inherits sanitization
+// automatically; no per-callsite wrap to forget.
+function sanitizeStyleLink(style: Style): Style {
+  const link = style.link;
+  if (!link) return style;
+  const cleaned = stripOscTerminators(link);
+  if (cleaned === link) return style;
+  return style.withLink(cleaned);
+}
+
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
+  let resolved: Style;
   if (typeof style === "string") {
     try {
-      return Style.parse(style);
+      resolved = Style.parse(style);
     } catch (err) {
       // [LAW:single-enforcer] Styling is non-critical — an unrecognized style
       // name (typo, missing theme key, bad concatenation) degrades to unstyled
@@ -28,8 +51,10 @@ function resolveStyle(style: string | Style | undefined): Style {
       if (err instanceof StyleSyntaxError) return NULL_STYLE;
       throw err;
     }
+  } else {
+    resolved = style;
   }
-  return style;
+  return sanitizeStyleLink(resolved);
 }
 
 // --- Span ---
@@ -99,6 +124,8 @@ export class RichText implements Renderable, Measurable {
   constructor(text?: string, options?: RichTextOptions) {
     this._text = text ? stripControlChars(text) : "";
     this._spans = [];
+    // [LAW:single-enforcer] `resolveStyle` is the boundary that sanitizes
+    // any link URL crossing into a RichText; downstream trusts the invariant.
     this._style = resolveStyle(options?.style);
     this._justify = options?.justify;
     this._overflow = options?.overflow;
@@ -140,7 +167,10 @@ export class RichText implements Renderable, Measurable {
   }
 
   set style(value: Style) {
-    this._style = value;
+    // [LAW:single-enforcer] The setter is the only entry that doesn't pass
+    // through `resolveStyle` (its argument is already a Style); sanitize
+    // directly so the boundary contract holds for every Style assignment.
+    this._style = sanitizeStyleLink(value);
   }
 
   get justify(): "left" | "center" | "right" | "full" | undefined {
