@@ -9,10 +9,25 @@
  * [LAW:dataflow-not-control-flow] This mount does not branch on which demo
  * it is bootstrapping — the wire module is a value substituted at build
  * time, the rest of the boot sequence is identical for every demo.
+ *
+ * [LAW:types-are-the-program] The `Terminal` global declared here is the
+ * minimum surface every wire's `mount(terminal: XtermTerminal)` expects:
+ * cols/rows, write, onData, onResize, plus the DOM-mount helpers we call
+ * locally (open, focus). Declaring the full shape lets TypeScript match
+ * structurally — no `as unknown as` cast needed at the boundary.
  */
 import mount from "__DEMO_WIRE__";
 
+interface XtermDisposable {
+  dispose(): void;
+}
+
 declare const Terminal: new (opts: Record<string, unknown>) => {
+  readonly cols: number;
+  readonly rows: number;
+  write(data: Uint8Array | string): void;
+  onData(handler: (data: string) => void): XtermDisposable;
+  onResize(handler: (size: { cols: number; rows: number }) => void): XtermDisposable;
   open(el: HTMLElement): void;
   focus(): void;
 };
@@ -32,10 +47,9 @@ try {
   });
   term.open(document.getElementById("term") as HTMLElement);
   term.focus();
-  // The wire module's default export is mount(terminal): HarnessHandle.
-  // The bundled wire takes whatever XtermTerminal-shaped value we pass —
-  // the xterm.js Terminal above satisfies it structurally.
-  const handle = mount(term as unknown as Parameters<typeof mount>[0]);
+  // No cast: the local `Terminal` instance shape matches the wire's
+  // `XtermTerminal` parameter type structurally.
+  const handle = mount(term);
   (window as unknown as { __handle: unknown }).__handle = handle;
   setStatus("ready · first frame rendered", "ok");
 } catch (err) {
