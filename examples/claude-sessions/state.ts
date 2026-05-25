@@ -99,6 +99,7 @@ export interface AppState {
 
 export function initialState(fs: FileSystem): AppState {
   const projects = scanProjects(fs);
+  const projectsPath = fs.join(fs.homeDir(), ".claude", "projects");
   return {
     fs,
     projects,
@@ -117,7 +118,7 @@ export function initialState(fs: FileSystem): AppState {
     focus: "sidebar",
     search: EMPTY_SEARCH,
     statusMessage: projects.length === 0
-      ? "No projects found in ~/.claude/projects/"
+      ? `No projects found in ${projectsPath}`
       : `${projects.length} projects loaded`,
     errorMessage: null,
   };

@@ -134,14 +134,17 @@ export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
   host.start();
   const fs = new MemoryFileSystem(FIXTURE_TREE);
-  // run() resolves on a "quit" action; in the browser that never fires, so
-  // the promise stays pending while the page lives. It can still reject if
-  // initialization throws — when that happens, log to the browser console
-  // and release the host so a partially-started subscription set doesn't
-  // hang on. We deliberately do not update the page-shell status badge:
-  // mount.ts.tmpl has already set it to "ready" by the time this would
-  // fire, and reaching back into the DOM from here would couple wire.ts
-  // to the shell's structure (a separate seam).
+  // run() resolves on a "quit" action — `q` and Ctrl-C both map to quit in
+  // keymap.ts, and xterm delivers those keystrokes here just like a terminal
+  // would. When that happens the promise resolves cleanly; the page shell
+  // does not auto-unmount or close the tab, so the user sees the post-quit
+  // alt-screen restore but no further interaction. The promise can also
+  // reject if initialization throws — when that happens, log to the browser
+  // console and release the host so a partially-started subscription set
+  // doesn't hang on. We deliberately do not update the page-shell status
+  // badge: mount.ts.tmpl has already set it to "ready" by the time this
+  // would fire, and reaching back into the DOM from here would couple
+  // wire.ts to the shell's structure (a separate seam).
   void run(host, fs).catch((err: unknown) => {
     // eslint-disable-next-line no-console
     console.error("claude-sessions: run() rejected after mount", err);
