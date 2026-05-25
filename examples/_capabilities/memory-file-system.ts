@@ -6,8 +6,11 @@
  * There is no implicit "empty filesystem" branch — if a demo wants nothing,
  * it passes an empty tree, and that is a representable, legal value.
  *
- * [LAW:dataflow-not-control-flow] Paths are always slash-separated and
- * always absolute (relative to the configured `home`). The implementation
+ * [LAW:dataflow-not-control-flow] Paths are slash-separated; both absolute
+ * (starting with `/`) and relative forms are supported, mirroring the
+ * input shapes node:path accepts. Lookup against the materialised tree
+ * always works in terms of absolute paths under `home`; relative inputs
+ * are useful primarily for `join`/`basename`/`dirname`. The implementation
  * does not branch on platform; the memory FS picks one convention and
  * applies it uniformly.
  *

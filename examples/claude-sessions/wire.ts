@@ -64,7 +64,7 @@ const SESSION_JSONL = [
       content: [
         {
           type: "text",
-          text: "Use the arrow keys to move between blocks, Tab to switch focus between the sidebar and viewer, and `r` to toggle the raw JSONL view. Press `q` to quit (in a real terminal — the browser tab just stays open).",
+          text: "Use the arrow keys to move between blocks, Tab to switch focus between the sidebar and viewer, and `v` to toggle the raw JSONL view. Press `q` to quit (in a real terminal — the browser tab just stays open).",
         },
       ],
       usage: { input_tokens: 42, output_tokens: 58 },
