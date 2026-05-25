@@ -219,6 +219,32 @@ export class Style {
     });
   }
 
+  // [LAW:types-are-the-program] Structural clone helper — pure rearrangement
+  // of fields, no policy. Sanitization of the URL is the trust boundary's
+  // job (see RichText in text.ts); Style stays a faithful container so
+  // callers that have already sanitized are not silently re-mutated.
+  withLink(link: string | undefined): Style {
+    return new Style({
+      color: this.color,
+      bgcolor: this.bgcolor,
+      bold: this.bold,
+      dim: this.dim,
+      italic: this.italic,
+      underline: this.underline,
+      blink: this.blink,
+      blink2: this.blink2,
+      reverse: this.reverse,
+      conceal: this.conceal,
+      strike: this.strike,
+      underline2: this.underline2,
+      frame: this.frame,
+      encircle: this.encircle,
+      overline: this.overline,
+      link,
+      meta: this.meta,
+    });
+  }
+
   clearMetaAndLinks(): Style {
     return new Style({
       color: this.color,

@@ -15,6 +15,25 @@ function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
 }
 
+// [LAW:single-enforcer] Strip OSC-sequence terminators (ESC, BEL, ST) from a
+// URL before it is rendered into an OSC 8 hyperlink wrap. RichText is the
+// trust boundary for "user-authored URL becomes part of the rendering
+// pipeline"; every entry point onto a RichText (constructor, style setter,
+// stylize, append) routes through `sanitizeStyleLink`. Below this seam the
+// renderer trusts the invariant and emits without guards.
+//
+// [LAW:locality-or-seam] The peer of `stripControlChars` for text — same
+// trust boundary, same enforcement shape.
+const OSC_TERMINATOR_RE = /[\x1b\x07\x9c]/g;
+
+function sanitizeStyleLink(style: Style): Style {
+  const link = style.link;
+  if (!link) return style;
+  const cleaned = link.replace(OSC_TERMINATOR_RE, "");
+  if (cleaned === link) return style;
+  return style.withLink(cleaned);
+}
+
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
   if (typeof style === "string") {
@@ -99,7 +118,9 @@ export class RichText implements Renderable, Measurable {
   constructor(text?: string, options?: RichTextOptions) {
     this._text = text ? stripControlChars(text) : "";
     this._spans = [];
-    this._style = resolveStyle(options?.style);
+    // [LAW:single-enforcer] Sanitize any link URL crossing the RichText
+    // boundary; downstream renderer trusts the invariant.
+    this._style = sanitizeStyleLink(resolveStyle(options?.style));
     this._justify = options?.justify;
     this._overflow = options?.overflow;
     this._end = options?.end ?? "\n";
@@ -140,7 +161,9 @@ export class RichText implements Renderable, Measurable {
   }
 
   set style(value: Style) {
-    this._style = value;
+    // [LAW:single-enforcer] Same boundary rule as the constructor — every
+    // Style entering RichText has its link sanitized.
+    this._style = sanitizeStyleLink(value);
   }
 
   get justify(): "left" | "center" | "right" | "full" | undefined {
@@ -190,7 +213,7 @@ export class RichText implements Renderable, Measurable {
     const start = this._text.length;
     this._text += sanitized;
     if (style !== undefined) {
-      const resolved = resolveStyle(style);
+      const resolved = sanitizeStyleLink(resolveStyle(style));
       if (!resolved.isNull) {
         this._spans.push(new Span(start, this._text.length, resolved));
       }
@@ -239,7 +262,7 @@ export class RichText implements Renderable, Measurable {
   // --- Styling Operations ---
 
   stylize(style: string | Style, start?: number, end?: number): this {
-    const resolved = resolveStyle(style);
+    const resolved = sanitizeStyleLink(resolveStyle(style));
     if (resolved.isNull) return this;
 
     const len = this._text.length;

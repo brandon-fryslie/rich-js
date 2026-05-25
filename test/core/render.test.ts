@@ -6,6 +6,7 @@ import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
 import { Strip, StripCell, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { render as parseMarkup } from "../../src/core/markup.js";
 
 // [LAW:behavior-not-structure] Tests assert observable bytes — ANSI codes,
 // terminator newlines, color stripping — not internal walk shape.
@@ -237,5 +238,36 @@ describe("segmentsToString coalescing", () => {
     );
     expect(out).toContain("\x1b]8;;https://example.com\x1b\\");
     expect(out).not.toMatch(/\x1b\]8;id=/);
+  });
+});
+
+// =========================================================
+// OSC 8 wrap is escape-safe (end-to-end trust-boundary contract)
+// =========================================================
+
+// [LAW:behavior-not-structure] Pin the observable invariant at the byte
+// level: hostile URL bytes routed through the markup parser cannot break
+// out of the OSC 8 wrap. The renderer trusts that link sanitization
+// happened at the RichText boundary upstream; this test holds that contract.
+
+describe("OSC 8 wrap is escape-safe", () => {
+  it("cannot be terminated early by a hostile URL routed through the markup parser", () => {
+    const t = parseMarkup("[link=https://evil.example/\x1b\\BAD]click[/link]");
+    const out = segmentsToString(
+      [...t.render({ maxWidth: 80 })],
+      ColorDepth.TRUECOLOR,
+    );
+    // Extract the URL slot of the opening OSC 8 introducer: the bytes between
+    // `\x1b]8;;` and the terminating `\x1b\` of that introducer.
+    const match = /\x1b\]8;;([^\x1b\x07\x9c]*)\x1b\\/.exec(out);
+    expect(match).not.toBeNull();
+    // The URL slot must contain zero OSC terminators — otherwise an attacker
+    // could close the OSC 8 early and inject arbitrary terminal control bytes.
+    expect(match![1]).not.toContain("\x1b");
+    expect(match![1]).not.toContain("\x07");
+    expect(match![1]).not.toContain("\x9c");
+    // And the "BAD" suffix from the dirty URL is now part of the (sanitized)
+    // URL, not arbitrary terminal-control text following an escaped OSC.
+    expect(match![1]).toBe("https://evil.example/\\BAD");
   });
 });

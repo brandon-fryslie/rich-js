@@ -871,3 +871,59 @@ describe("RichText.measure()", () => {
     expect(m.maximum).toBe(13); // "a longer line"
   });
 });
+
+// =========================================================
+// OSC-terminator stripping at the trust boundary
+// =========================================================
+
+// [LAW:behavior-not-structure] Pin the architectural contract: RichText is
+// the trust boundary for link URLs. Any URL bytes that could prematurely
+// terminate an OSC 8 wrap (ESC \x1b, BEL \x07, ST \x9c) are stripped from
+// any Style.link entering RichText (constructor, style setter, stylize,
+// append, and the markup parser which routes through stylize). The Style
+// value type itself stays a faithful container.
+
+describe("OSC-terminator stripping at the RichText trust boundary", () => {
+  const dirty = "https://evil.example/\x1b\\hostile\x07more\x9cend";
+  const clean = "https://evil.example/\\hostilemoreend";
+
+  it("strips ESC/BEL/ST from a link added via stylize()", () => {
+    const t = new RichText("click");
+    t.stylize(new Style({ link: dirty }));
+    expect((t.spans[0]!.style as Style).link).toBe(clean);
+  });
+
+  it("strips ESC/BEL/ST from a link added via append(content, style)", () => {
+    const t = new RichText("");
+    t.append("click", new Style({ link: dirty }));
+    expect((t.spans[0]!.style as Style).link).toBe(clean);
+  });
+
+  it("strips ESC/BEL/ST from options.style.link in the constructor", () => {
+    const t = new RichText("click", { style: new Style({ link: dirty }) });
+    expect(t.style.link).toBe(clean);
+  });
+
+  it("strips ESC/BEL/ST from a link assigned via the style setter", () => {
+    const t = new RichText("click");
+    t.style = new Style({ link: dirty });
+    expect(t.style.link).toBe(clean);
+  });
+
+  it("returns the same Style reference when the URL is already clean (no needless clone)", () => {
+    // [LAW:dataflow-not-control-flow] The sanitizer always runs; the data
+    // (already-clean URL) decides that the result is the identity Style.
+    // This is observable as referential identity, not a branch in callsites.
+    const base = new Style({ link: "https://safe.example/" });
+    const t = new RichText("click");
+    t.stylize(base);
+    expect(t.spans[0]!.style).toBe(base);
+  });
+
+  it("does NOT sanitize a raw `new Style({ link })` — Style is a faithful container", () => {
+    // [LAW:locality-or-seam] Sanitization is the boundary's job, not the value
+    // type's. Internal callers that already produced a sanitized URL must not
+    // be silently re-mutated by Style itself.
+    expect(new Style({ link: dirty }).link).toBe(dirty);
+  });
+});
