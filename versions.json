@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-41",
+      "ref": "refs/pull/41/merge",
+      "sha": "a7b13bad99e795358e2b0ebbc940ff557236a2b9",
+      "timestamp": "2026-05-25T00:01:38.429Z",
+      "commits": [
+        {
+          "sha": "a7b13bad99e795358e2b0ebbc940ff557236a2b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T18:01:13-06:00",
+          "message": "Merge 79ff3711283b598ad5cb950e83444b35650487bf into e68f9296ba02ac9504629912de25523d3d0c1d5d\n"
+        },
+        {
+          "sha": "79ff3711283b598ad5cb950e83444b35650487bf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T18:00:10-06:00",
+          "message": "feat(runtime): extract TerminalHost capability seam; node adapter (rich-demo-site-pek.1)\n\nIntroduces `TerminalHost` — the I/O capability the interactive widget\nruntime renders against — and `NodeTerminalHost`, its node-TTY adapter.\nScreen and EventRouter now receive a host instead of reaching for\nambient `process.stdin`/`process.stdout`/`setRawMode`. The five demos\nthat touched those globals (dropdown-demo, rich-config,\nrich-template-bindings, claude-sessions, rich-explore) construct a\n`NodeTerminalHost` at startup and route every I/O concern through it.\n\n[LAW:locality-or-seam] The missing seam was the missing type. With a\nhost value flowing across one boundary, the same runtime code runs\nagainst any implementation — node TTY today, browser xterm.js in\nrich-demo-site-pek.2.\n\n[LAW:no-shared-mutable-globals] `terminal-host.ts` is the single owner\nof node TTY access; every other file receives a host from outside.\n\n[LAW:dataflow-not-control-flow] No \"am I in node or browser\" branches\nanywhere. The host is the value that differs; the code path is the same.\n\nBehavior is preserved on node — every test (8854) passes, both\ninteractive smoke tests (non-TTY exit path) behave identically. Console\nclass redirection is intentionally out of scope (separate concern; the\nfollow-up browser-bundling ticket will sink Console into the host).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e68f9296ba02ac9504629912de25523d3d0c1d5d",
