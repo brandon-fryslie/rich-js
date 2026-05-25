@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "b269a2fabf9c5f7d7ec51e521bf2d98f08bb8d06",
-      "timestamp": "2026-05-25T19:09:42.064Z",
+      "sha": "c470597cf9af0a3401134d985ceb5632e09f76b3",
+      "timestamp": "2026-05-25T19:19:34.091Z",
       "commits": [
         {
-          "sha": "b269a2fabf9c5f7d7ec51e521bf2d98f08bb8d06",
+          "sha": "c470597cf9af0a3401134d985ceb5632e09f76b3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T13:09:14-06:00",
-          "message": "Merge 3c5473f34d21030abe3cac2f27150670e45e81ea into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T20:19:07+01:00",
+          "message": "Merge 88d531e93d4bb206b221f17da8441f829e71ad36 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "88d531e93d4bb206b221f17da8441f829e71ad36",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T13:18:57-06:00",
+          "message": "refactor(node-seam): address review — single-enforcer browser-sink check, doc fixes, dead-field removal\n\n- Console: add `defaultSink(useStderr)` trust-boundary helper. The `file`\n  getter and `_write` fallback both route through it, throwing a clear\n  actionable error when `process` is undefined instead of the opaque\n  `ReferenceError: process is not defined` deep inside `_write`.\n  [LAW:single-enforcer] keeps the two consumers identical; no second copy\n  of the check to drift.\n- Prompt: drop dead `console?: Console` field from `PromptOptions` — the\n  original `ask()` accepted it as `_options?.console` but never read it.\n  Public surface now matches actual behavior, and the type-only `Console`\n  import goes with it.\n- Prompt: doc now says input is required per call and cites\n  [LAW:no-shared-mutable-globals] as the reason there is no\n  module-level default. Error message references the correct package\n  name `@promptctl/rich-js/node/prompt`.\n- node/prompt: module doc shows the correct call signature —\n  `Prompt.ask(promptText, { ask: nodeAsk })`.\n- host-stream: docstring no longer promises a boolean return — narrowed\n  prose to match `ConsoleSink.write(chunk): unknown`, with a note that\n  this implementation returns `true` for Node-stream parity but callers\n  may not rely on it.\n- coverage allowlist: re-sort new entries within their blocks per ASCII\n  order (PromptInput/PromptOptions between PrettyOptions and RowLevel;\n  lowercase nodeAsk at the end of the renderables-gallery block).\n\nLint, full vitest, demos:build, and the playwright headless gate all\nremain green.\n"
         },
         {
           "sha": "3c5473f34d21030abe3cac2f27150670e45e81ea",
