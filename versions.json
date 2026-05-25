@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-42",
+      "ref": "refs/pull/42/merge",
+      "sha": "f9352b93b4ee91303350860874204fa34bfca6a0",
+      "timestamp": "2026-05-25T00:55:01.647Z",
+      "commits": [
+        {
+          "sha": "f9352b93b4ee91303350860874204fa34bfca6a0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T18:54:40-06:00",
+          "message": "Merge 8954713c18b394556fce2eb55617bb4655b87a09 into 469f44e33be8ae6f89b23f6eb35998b768b88987\n"
+        },
+        {
+          "sha": "8954713c18b394556fce2eb55617bb4655b87a09",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-24T18:53:55-06:00",
+          "message": "feat(widgets): BrowserTerminalHost adapter over xterm.js (rich-demo-site-pek.2)\n\nThe browser implementation of the TerminalHost capability seam introduced\nin #41. The same runtime that drives node demos now runs against an\nxterm.js Terminal — one host interface, two adapters, zero forked demo\ncode. [LAW:one-source-of-truth] [LAW:locality-or-seam]\n\nShape\n\n- BrowserTerminalHost wraps an XtermTerminal-shaped value; the caller\n  owns the terminal's DOM lifecycle (open/dispose), the host owns its\n  own subscriber lifecycle (lazy attach on first onData/onResize, single\n  underlying subscription with fan-out, symmetric stop()).\n- Minimal XtermTerminal / XtermDisposable / XtermResizeEvent interfaces\n  declare the dependency by shape, not by importing xterm.js — keeps\n  rich-js free of an xterm.js dep at the type level and lets tests pass\n  a fake without one. Mirrors the NodeReadable / NodeWritable pattern\n  already used by NodeTerminalHost.\n- setRawMode is a no-op (xterm.js delivers keystrokes raw by default);\n  isTTY is true; start() is a no-op (caller-owned lifecycle); stop()\n  disposes subscriptions and clears handler sets, leaving the terminal\n  itself alive so re-subscribing after stop() works.\n\nScratch harness (examples/browser-terminal-host-harness)\n\n- wire.ts mounts the host onto an xterm.js Terminal and demonstrates the\n  full TerminalHost contract end-to-end (write greeting, size readout,\n  onData echo with CR/backspace/Ctrl-D handling, onResize callback).\n- index.html loads xterm.js from CDN and imports the compiled wire\n  module so the same `src/widgets/terminal-host.ts` runs in the browser.\n- `npm run harness:browser-host` compiles and serves on :8080.\n\nVerification\n\n- npm run lint: clean\n- npx vitest run: 8875 passed | 7 skipped (329 files); 21 new unit tests\n  exercise every method including subscribe/unsubscribe symmetry,\n  multi-subscriber fan-out, idempotent stop, and re-attach after stop.\n- Headless Chrome (chrome-mcp): page loads, first frame renders, host\n  reports size 80x24 + isTTY=true, keystroke round-trip echoes \"hi\" then\n  CRLF + new prompt on Enter. No console errors. [LAW:verifiable-goals]\n\nCoverage allowlist\n\n- TerminalHost, TerminalSize, DataHandler, ResizeHandler now exercised\n  as explicit type annotations in the harness wire — removed from\n  burndown. NodeTerminalHostOptions stays until an interactive demo\n  constructs a node host with explicit options.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "469f44e33be8ae6f89b23f6eb35998b768b88987",
