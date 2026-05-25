@@ -13,7 +13,7 @@
  *
  * Lone-ESC handling: a bare `\x1b` is ambiguous (escape key vs. start of a
  * CSI sequence). When the buffer is drained but ends with a lone ESC, the
- * router defers emission via setImmediate. The next chunk cancels the timer
+ * router defers emission via setTimeout(0). The next chunk cancels the timer
  * if it extends the sequence. Tests can call `flush()` to drain synchronously.
  */
 
@@ -176,7 +176,12 @@ export class EventRouter {
   private buffer: Uint8Array = EMPTY_BYTES;
   private running = false;
   private dataUnsubscribe: Unsubscribe | undefined;
-  private escTimer: ReturnType<typeof setImmediate> | undefined;
+  // [LAW:types-are-the-program] `setTimeout`/`clearTimeout` are universal
+  // across node and browser; `setImmediate` is node-only. Same one-macrotask
+  // semantics for our purpose (defer until current sync work + queued
+  // microtasks drain), without forcing a `setImmediate` polyfill on the
+  // browser host.
+  private escTimer: ReturnType<typeof setTimeout> | undefined;
   // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's hit
   // widget is recorded; mouse_move/mouse_up between then and the next
   // mouse_up route to this widget unconditionally so dragging outside its
@@ -252,7 +257,7 @@ export class EventRouter {
     // the next session. Clearing already-empty state is a no-op so this
     // stays safe on repeated stop().
     if (this.escTimer) {
-      clearImmediate(this.escTimer);
+      clearTimeout(this.escTimer);
       this.escTimer = undefined;
     }
     this.buffer = EMPTY_BYTES;
@@ -285,24 +290,26 @@ export class EventRouter {
     const next = typeof chunk === "string" ? UTF8_ENCODER.encode(chunk) : chunk;
     this.buffer = concatBytes(this.buffer, next);
     if (this.escTimer) {
-      clearImmediate(this.escTimer);
+      clearTimeout(this.escTimer);
       this.escTimer = undefined;
     }
     this.drain();
     // [LAW:dataflow-not-control-flow] If a lone ESC remains, defer emission
-    // until the next macrotask so a follow-up chunk can extend it.
+    // until the next macrotask so a follow-up chunk can extend it. The
+    // explicit `0` is structural deferral, not a throttle — it just lets
+    // the current sync work + queued microtasks drain before flushing.
     if (this.buffer.length === 1 && this.buffer[0] === ESC) {
-      this.escTimer = setImmediate(() => {
+      this.escTimer = setTimeout(() => {
         this.escTimer = undefined;
         this.flush();
-      });
+      }, 0);
     }
   }
 
   /** Force any pending lone ESC out of the buffer. */
   flush(): void {
     if (this.escTimer) {
-      clearImmediate(this.escTimer);
+      clearTimeout(this.escTimer);
       this.escTimer = undefined;
     }
     if (this.buffer.length > 0 && this.buffer[0] === ESC && this.buffer.length === 1) {
