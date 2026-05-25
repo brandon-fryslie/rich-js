@@ -9,9 +9,10 @@
  * absolute `readmePath`; it does not know whether the path resolves on disk
  * (node) or in a memory tree (browser). Same body, different capability.
  *
- * [LAW:dataflow-not-control-flow] A missing README is data, not a branch on
- * environment — the renderable falls back to a placeholder Markdown body
- * with no path-search logic in the widget itself.
+ * [LAW:dataflow-not-control-flow] Missing-file and unreadable-file converge
+ * on the same fallback Markdown — both `FileSystem` impls throw on read
+ * failure per the interface contract, so one try/catch handles both. No
+ * separate `exists` precheck branch; the data (the thrown error) decides.
  */
 
 import { Markdown, type Renderable } from "../../../src/index.js";
@@ -25,9 +26,6 @@ interface NotesState {
 const MAX_LINES = 60;
 
 function loadReadme(fs: FileSystem, readmePath: string): NotesState {
-  if (!fs.exists(readmePath)) {
-    return { body: new Markdown("# README not found\n\nNo README.md was located.") };
-  }
   try {
     const md = fs.readFile(readmePath);
     const truncated = md.split("\n").slice(0, MAX_LINES).join("\n");
