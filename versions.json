@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "2d35d4fcd475961c8c9273d49fec21e7c8a7ba70",
-      "timestamp": "2026-05-25T20:01:13.791Z",
+      "sha": "fdb62ea3e09e18245427203ceea235b095eb5edc",
+      "timestamp": "2026-05-25T20:05:19.591Z",
       "commits": [
         {
-          "sha": "2d35d4fcd475961c8c9273d49fec21e7c8a7ba70",
+          "sha": "fdb62ea3e09e18245427203ceea235b095eb5edc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T20:00:45Z",
-          "message": "Merge 761932c17461bf25019509fdcb740c175ab48c46 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T16:04:51-04:00",
+          "message": "Merge 2f5faa151460fe3144a2e3afd758380d3ec3c157 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "2f5faa151460fe3144a2e3afd758380d3ec3c157",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T14:04:41-06:00",
+          "message": "docs(prompt): align module doc with actual `input` parameter name\n\nModule-level comment said the required positional parameter was named\n`ask`, but the public API uses `input: PromptInput`. Doc now matches.\n"
         },
         {
           "sha": "761932c17461bf25019509fdcb740c175ab48c46",
