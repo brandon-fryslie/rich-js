@@ -218,7 +218,7 @@ export type { SpinnerData } from "./core/spinnerData.js";
 
 // Console
 export { Console } from "./core/console.js";
-export type { ConsoleOptions, PrintOptions } from "./core/console.js";
+export type { ConsoleOptions, ConsoleSink, PrintOptions } from "./core/console.js";
 
 // Renderables
 export { Constrain } from "./renderables/constrain.js";
@@ -264,6 +264,7 @@ export {
 } from "./renderables/progress.js";
 export type { ProgressOptions, TaskOptions, TaskUpdateOptions } from "./renderables/progress.js";
 export { Prompt, IntPrompt, FloatPrompt, Confirm } from "./renderables/prompt.js";
+export type { PromptInput, PromptOptions } from "./renderables/prompt.js";
 export { Traceback } from "./renderables/traceback.js";
 export type { TracebackOptions } from "./renderables/traceback.js";
 export { Syntax } from "./renderables/syntax.js";

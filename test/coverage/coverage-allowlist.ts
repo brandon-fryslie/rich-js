@@ -65,6 +65,13 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   PaddingDimensions: burndown("renderables-gallery"),
   PanelOptions: burndown("renderables-gallery"),
   PrettyOptions: burndown("renderables-gallery"),
+  // Prompt input capability + options type — exposed by rich-demo-site-pek.3.4
+  // when readline left the main barrel. The Prompt classes themselves are
+  // exercised by examples/rich-explore/renderers/coverage.ts (typeof check);
+  // the companion types are advanced API for callers wiring custom input
+  // sources and will be exercised in a renderables-gallery prompt scenario.
+  PromptInput: burndown("renderables-gallery"),
+  PromptOptions: burndown("renderables-gallery"),
   RowLevel: burndown("renderables-gallery"),
   RuleAlign: burndown("renderables-gallery"),
   RuleOptions: burndown("renderables-gallery"),
@@ -72,6 +79,11 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   SyntaxOptions: burndown("renderables-gallery"),
   TableOptions: burndown("renderables-gallery"),
   TreeOptions: burndown("renderables-gallery"),
+  // node:readline-backed PromptInput implementation. Demonstrable only by a
+  // demo that actually accepts interactive input via readline, which the
+  // current TUI demos (raw-mode stdin) do not — a gallery scenario is the
+  // natural home. Sorts at end of the block per ASCII (lowercase > upper).
+  nodeAsk: burndown("renderables-gallery"),
 
   // -- Widgets Playground -------------------------------------------------
   ButtonOptions: burndown("widgets-playground"),
@@ -151,6 +163,12 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
 
   // -- Live, Progress & Console -------------------------------------------
   ConsoleOptions: burndown("live-progress-console"),
+  // Structural type for Console's `file:` option — exposed by
+  // rich-demo-site-pek.3.4 when NodeJS.WritableStream came out of the
+  // public surface. Every demo that calls `new Console({ file: hostStream(host) })`
+  // depends on this contract structurally; an explicit type annotation in a
+  // future live-progress-console scenario lands the natural coverage.
+  ConsoleSink: burndown("live-progress-console"),
   LiveOptions: burndown("live-progress-console"),
   PrintOptions: burndown("live-progress-console"),
   ProgressBarOptions: burndown("live-progress-console"),
@@ -162,4 +180,10 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   TaskOptions: burndown("live-progress-console"),
   TaskUpdateOptions: burndown("live-progress-console"),
   TracebackOptions: burndown("live-progress-console"),
+  // Node-only plain-text exporter; the HTML sibling (`saveHtml`) is already
+  // covered by examples/themes-and-color-studio/index.ts. saveText has no
+  // organic touchpoint yet because the existing demo wants HTML; a future
+  // live-progress-console scenario will exercise the plain-text path.
+  // Sorts at end of block per ASCII (lowercase 's' > uppercase 'T').
+  saveText: burndown("live-progress-console"),
 };
