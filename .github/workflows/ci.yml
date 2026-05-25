@@ -1,3 +1,12 @@
+# [LAW:single-enforcer] One gate per concern: lint, unit tests, and the
+# headless-browser demo gate all run in this single workflow. The
+# demo gate (rich-demo-site-pek.5) builds the docs site and asserts every
+# demo in docs/.vitepress/demos.json boots cleanly in real Chromium.
+#
+# [LAW:dataflow-not-control-flow] The set of demos under test comes from
+# the manifest — the same JSON the VitePress config / paths file / landing
+# page read. CI does not enumerate demos; it runs whatever the manifest says.
+
 name: CI
 
 on:
@@ -11,9 +20,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # [LAW:one-source-of-truth] `package.json#engines.node` is the canonical
+      # supported-runtime declaration; setup-node reads it via
+      # `node-version-file` so the workflow cannot drift from the engine
+      # constraint (which is `^20.19.0 || >=22.12.0`, dictated by a transitive
+      # dep). Bumping the engine in package.json automatically bumps CI.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: package.json
           cache: npm
 
       - run: npm ci
@@ -21,3 +35,29 @@ jobs:
       - run: npm run lint
 
       - run: npm test
+
+      # Build the docs site so the headless gate has real output to probe.
+      # No VITEPRESS_BASE override — the default `/rich-js/` matches the
+      # baseURL in playwright.config.ts.
+      - name: Build docs site
+        run: npm run docs:build
+
+      # `--with-deps` installs the system libraries Chromium needs on
+      # ubuntu-latest (fonts, libnss, etc.). Chromium-only — we don't run
+      # Webkit/Firefox; the bundle output is the same for every browser.
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Headless-browser gate (demo pages)
+        run: npm run test:demos
+
+      # On failure, the HTML report (with traces + screenshots) is the
+      # primary debugging artefact. Skip upload on green to keep the run
+      # tidy.
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
