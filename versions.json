@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "c6153fee98b18d4721dc041c565e665c47f760dd",
-      "timestamp": "2026-05-25T19:30:38.672Z",
+      "sha": "87f142b3aead969b56cf2fb168685e2957345e10",
+      "timestamp": "2026-05-25T19:37:21.425Z",
       "commits": [
         {
-          "sha": "c6153fee98b18d4721dc041c565e665c47f760dd",
+          "sha": "87f142b3aead969b56cf2fb168685e2957345e10",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T19:30:06Z",
-          "message": "Merge 1f94fcc14caf4f3603f0236f02bfc905f42881db into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T19:36:50Z",
+          "message": "Merge 62bac2ea60c4eeae9db8468b3740eaadd65e6d7d into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "62bac2ea60c4eeae9db8468b3740eaadd65e6d7d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T13:36:40-06:00",
+          "message": "refactor: tighten PromptInput contract + skip dead getTerminalSize call\n\nBoth findings from review pass 4 — constraint-design wins, not patches:\n\n- Prompt API: `ask` is now a required positional parameter, not an\n  optional in `PromptOptions`. The old shape allowed `Prompt.ask(\"name?\")`\n  at the type level and always threw at runtime — the type was lying.\n  The new shape `Prompt.ask(promptText, input, options?)` makes the\n  missing-capability state unrepresentable, and the runtime\n  `missingInput()` helper collapses out because the type system now\n  enforces what the body was checking. [LAW:types-are-the-program] —\n  the implementation is residue once the constraint is right.\n  No real callers were affected — only the rich-explore coverage\n  renderer references the Prompt classes (typeof check, never invoked).\n\n- Console.resolveGetSize: return a *different* closure for the all-static\n  case. When both `width` and `height` are provided at construction, the\n  returned function is a constant `() => fixed` — no `getTerminalSize()`\n  call (and no `process.env`/`process.stdout` read) on every size read.\n  Mixed cases keep the existing dynamic closure. [LAW:dataflow-not-\n  control-flow] — the variability lives in which closure was captured at\n  construction time, not in branches per call.\n\nLint, full vitest, demos:build, and the playwright headless gate all\nremain green.\n"
         },
         {
           "sha": "1f94fcc14caf4f3603f0236f02bfc905f42881db",
