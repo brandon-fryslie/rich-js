@@ -116,7 +116,11 @@ export class MemoryFileSystem implements FileSystem {
       absolute = part.startsWith(SEP);
     }
     if (!absolute) {
-      path = path.length === 0 ? this.tree.home : this.tree.home + SEP + path;
+      // [LAW:one-source-of-truth] Use the public `homeDir()` surface rather
+      // than the private `tree.home` field so the docstring ("homeDir() as
+      // base") and the implementation cannot drift.
+      const home = this.homeDir();
+      path = path.length === 0 ? home : home + SEP + path;
     }
     // Filter drops empty segments produced by `//` or `home="/"` concat —
     // the same normalisation node:path.resolve performs internally.

@@ -164,9 +164,12 @@ export async function run(
     // Hoist the decoder out of the hot path — node delivers Buffer chunks on
     // every keystroke; one shared decoder avoids per-event allocation and
     // keeps the demo body free of `Buffer`, which the browser lacks.
+    // `{ stream: true }` preserves partial multibyte sequences across chunks
+    // (a UTF-8 codepoint split between two onData calls — possible on paste
+    // of non-ASCII text — would otherwise decode to U+FFFD).
     const decoder = new TextDecoder();
     const onData = (chunk: Uint8Array | string) => {
-      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk);
+      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
       const action = lookup(text);
       if (action.type === "quit") {
         unsubscribe?.();
