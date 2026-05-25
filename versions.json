@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "6f1635c5a3ec3dd2335536c37ee2e7e5fbe85763",
-      "timestamp": "2026-05-25T20:10:36.384Z",
+      "sha": "2254db8aeef29c38eec32b6b28be6ac8de0fc8a6",
+      "timestamp": "2026-05-25T20:15:01.748Z",
       "commits": [
         {
-          "sha": "6f1635c5a3ec3dd2335536c37ee2e7e5fbe85763",
+          "sha": "2254db8aeef29c38eec32b6b28be6ac8de0fc8a6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T20:10:07Z",
-          "message": "Merge 04cf4ef91464dd21854a3af720791078b6f064dc into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T20:14:33Z",
+          "message": "Merge f3753b637dc5d5fcce892c82e678235f386ab997 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "f3753b637dc5d5fcce892c82e678235f386ab997",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T14:14:23-06:00",
+          "message": "docs(prompt): make Basic string prompt snippet self-contained\n\nSnippet referenced `console.print(...)` without instantiating a Console.\nNow imports Console + Prompt + nodeAsk, constructs an `out` Console,\nand uses `out.print(...)`. Each example block stands alone — matching\nthe convention adopted in \"Custom input sources\".\n"
         },
         {
           "sha": "04cf4ef91464dd21854a3af720791078b6f064dc",
