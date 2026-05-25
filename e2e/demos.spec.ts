@@ -11,11 +11,15 @@
  * read. No second list of demos lives in the test repo.
  *
  * [LAW:verifiable-goals] The triple-assert below is the operational definition
- * of "this demo rendered for real": mount shell completed (#status.ok), xterm
- * initialised AND the demo wrote data (.xterm-screen rows > 0), no silent
- * throws on the boot path (zero console errors, zero uncaught exceptions).
- * Each assertion catches a distinct failure mode; any one alone would be
- * spoofable.
+ * of "this demo rendered for real": mount shell completed (#status.ok), the
+ * demo's first frame produced visible characters (.xterm-rows textContent has
+ * non-whitespace), no silent throws on the boot path (zero console errors,
+ * zero uncaught exceptions). Each assertion catches a distinct failure mode;
+ * any one alone would be spoofable. We assert on `.xterm-rows` text rather
+ * than `.xterm-screen` structure because xterm.js populates the screen's
+ * layer children during `term.open()` *before* any write — so a structural
+ * child-count check passes even if the demo crashes before its first write.
+ * The row textContent is the only DOM signal that survives that distinction.
  */
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -62,13 +66,13 @@ for (const { name } of manifest.demos) {
     await expect(status).toBeAttached();
     await expect(status).toContainText("ready");
 
-    const screen = page.locator(".xterm-screen");
-    await expect(screen).toBeAttached();
-    const childCount = await screen.evaluate((el) => el.children.length);
-    expect(
-      childCount,
-      "expected .xterm-screen to contain rendered rows",
-    ).toBeGreaterThan(0);
+    const rows = page.locator(".xterm-rows");
+    await expect(rows).toBeAttached();
+    // Polls until the demo's first frame contains at least one non-whitespace
+    // character. An empty 30-row terminal still has 30 row divs (just with
+    // whitespace textContent), so `/\S/` is what distinguishes "demo wrote"
+    // from "demo crashed before writing".
+    await expect(rows).toContainText(/\S/);
 
     expect(
       consoleErrors,
