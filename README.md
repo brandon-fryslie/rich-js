@@ -13,7 +13,7 @@ Works on Linux, macOS, and Windows. Requires Node.js >= 20. ESM-only.
 ## Installing
 
 ```sh
-npm install rich-js
+npm install @promptctl/rich-js
 ```
 
 ## Using the Console
@@ -21,7 +21,7 @@ npm install rich-js
 Import and construct a `Console` object:
 
 ```typescript
-import { Console } from "rich-js";
+import { Console } from "@promptctl/rich-js";
 
 const console = new Console();
 ```
@@ -54,7 +54,7 @@ Rich includes a number of built-in renderables for creating elegant terminal out
 The `Console` object has a `log()` method similar to `print()`, but adds a timestamp column on the left. Rich will syntax-highlight data structures automatically.
 
 ```typescript
-import { Console } from "rich-js";
+import { Console } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -82,7 +82,7 @@ console.print(":smiley: :vampire: :pile_of_poo: :thumbs_up: :raccoon:");
 Rich can render flexible tables with unicode box characters. There is a large variety of formatting options for borders, styles, and cell alignment.
 
 ```typescript
-import { Console, Table } from "rich-js";
+import { Console, Table } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -111,7 +111,7 @@ Rich can render multiple flicker-free progress bars to track long-running tasks.
 For basic usage, wrap any iterable with `track`:
 
 ```typescript
-import { track } from "rich-js";
+import { track } from "@promptctl/rich-js";
 
 for (const step of track(Array.from({ length: 100 }), { description: "Processing..." })) {
   await doStep(step);
@@ -121,7 +121,7 @@ for (const step of track(Array.from({ length: 100 }), { description: "Processing
 For multiple progress bars and custom columns, use `Progress` directly:
 
 ```typescript
-import { Progress, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn } from "rich-js";
+import { Progress, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn } from "@promptctl/rich-js";
 
 const progress = new Progress(
   new TextColumn("{task.description}"),
@@ -145,7 +145,7 @@ await progress.run(async () => {
 For situations where it is hard to calculate progress, use `Status` to display a spinner animation with a message:
 
 ```typescript
-import { Console } from "rich-js";
+import { Console } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -168,7 +168,7 @@ status.stop();
 Rich can render a tree with guide lines — ideal for displaying file structures or any other hierarchical data:
 
 ```typescript
-import { Console, Tree } from "rich-js";
+import { Console, Tree } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -191,7 +191,7 @@ Tree labels can be plain text, markup strings, or any `Renderable`.
 Rich can render content in neat columns with equal or optimal width:
 
 ```typescript
-import { Console, Columns } from "rich-js";
+import { Console, Columns } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -207,7 +207,7 @@ console.print(new Columns(items));
 Rich can render Markdown and translates the formatting to the terminal:
 
 ```typescript
-import { Console, Markdown } from "rich-js";
+import { Console, Markdown } from "@promptctl/rich-js";
 import { readFileSync } from "fs";
 
 const console = new Console();
@@ -223,7 +223,7 @@ console.print(md);
 Rich can render syntax-highlighted source code:
 
 ```typescript
-import { Console, Syntax } from "rich-js";
+import { Console, Syntax } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -245,7 +245,7 @@ console.print(syntax);
 Rich can render beautiful tracebacks that are easier to read and show more context than standard Node.js errors:
 
 ```typescript
-import { Console, Traceback } from "rich-js";
+import { Console, Traceback } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -263,8 +263,8 @@ try {
 All Rich renderables use the `Renderable` protocol. You can implement your own:
 
 ```typescript
-import type { Renderable, RenderOptions } from "rich-js";
-import { Segment } from "rich-js";
+import type { Renderable, RenderOptions } from "@promptctl/rich-js";
+import { Segment } from "@promptctl/rich-js";
 
 class Greeting implements Renderable {
   render(options: RenderOptions): Iterable<Segment> {
