@@ -111,9 +111,11 @@ export class MemoryFileSystem implements FileSystem {
 
   dirname(path: string): string {
     const normalised = normalise(path);
-    if (normalised === SEP || normalised === "") return SEP;
+    if (normalised === SEP) return SEP;
+    if (normalised === "") return ".";
     const idx = normalised.lastIndexOf(SEP);
-    if (idx <= 0) return SEP;
+    if (idx < 0) return ".";        // relative path with no parent ("a")
+    if (idx === 0) return SEP;      // immediate child of root ("/a")
     return normalised.slice(0, idx);
   }
 

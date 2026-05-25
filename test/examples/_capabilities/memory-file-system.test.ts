@@ -72,10 +72,20 @@ describe("MemoryFileSystem path operations", () => {
     expect(fs.basename("/a/b/c.txt", ".md")).toBe("c.txt");
   });
 
-  it("dirname returns parent", () => {
+  it("dirname returns parent for absolute paths", () => {
     expect(fs.dirname("/a/b/c.txt")).toBe("/a/b");
     expect(fs.dirname("/a")).toBe("/");
     expect(fs.dirname("/")).toBe("/");
+  });
+
+  it("dirname matches node:path semantics for relative paths", () => {
+    // Pin parity with node:path.dirname so the two FileSystem impls agree
+    // on the edge cases that arise when consumers pass non-absolute paths.
+    expect(fs.dirname("")).toBe(".");
+    expect(fs.dirname("a")).toBe(".");
+    expect(fs.dirname("a/")).toBe(".");
+    expect(fs.dirname("a/b")).toBe("a");
+    expect(fs.dirname("a/b/c")).toBe("a/b");
   });
 });
 

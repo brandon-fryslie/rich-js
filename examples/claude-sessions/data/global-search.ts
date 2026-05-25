@@ -41,8 +41,11 @@ function makeSnippet(line: string, matchStart: number, radius = 60): string {
 }
 
 function extractUuid(line: string): string | null {
-  // Fast path: try regex first, only fall back to JSON.parse if the raw scan
-  // matches, since parsing a multi-MB line is expensive
+  // Regex-only by design — JSON.parse on a multi-MB line is expensive and
+  // any line that hit a substring match is already a candidate to open.
+  // The uuid pattern is unambiguous enough that false positives are
+  // tolerable (they map to "no block found by uuid" downstream, which
+  // gracefully falls back to opening the session at line 0).
   const m = line.match(/"uuid"\s*:\s*"([^"]+)"/);
   return m ? (m[1] ?? null) : null;
 }
