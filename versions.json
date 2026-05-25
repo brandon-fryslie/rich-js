@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-50",
+      "ref": "refs/pull/50/merge",
+      "sha": "b269a2fabf9c5f7d7ec51e521bf2d98f08bb8d06",
+      "timestamp": "2026-05-25T19:09:42.064Z",
+      "commits": [
+        {
+          "sha": "b269a2fabf9c5f7d7ec51e521bf2d98f08bb8d06",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T13:09:14-06:00",
+          "message": "Merge 3c5473f34d21030abe3cac2f27150670e45e81ea into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "3c5473f34d21030abe3cac2f27150670e45e81ea",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T13:08:21-06:00",
+          "message": "refactor(node-seam): lift Console saveText/saveHtml + prompt readline out of main barrel (rich-demo-site-pek.3.4)\n\nThe Console.file: type widened from NodeJS.WritableStream to a structural\nConsoleSink ({ write(chunk): unknown }) — exactly the surface Console + Live\nactually exercise. That single narrowing collapses six demo-site casts, the\ndefineProperty(consoleOut, \"width\") hacks at three sites (folded into a new\ngetSize option on Console), and the vite resolve.alias stubs for fs and\nnode:readline that previously papered over the boundary.\n\nsaveText/saveHtml moved to src/node/save.ts (consume Console.exportText /\nexportHtml). The prompt renderable drops node:readline in favor of an `ask`\nPromptInput capability passed via options; the readline binding lives in\nsrc/node/prompt.ts as `nodeAsk`. examples/_browser-shell/node-stub.js is\ngone and vite.config.demos.ts no longer aliases node modules — any future\ntop-level fs/readline regression now fails loud at bundle time, which is\nthe point.\n\nVerification:\n- lint: clean\n- vitest: 1748 passed\n- demos:build: 10 demos bundled cleanly\n- e2e (playwright): 10/10 demos boot with no console.error\n- saveHtml end-to-end via EXPORT_HTML=... npm run themes-and-color-studio\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c5c34bd89085d7ab1411808e3d1bc027c2fcebb2",
