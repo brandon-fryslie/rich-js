@@ -128,6 +128,15 @@ export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
     forceTerminal: true,
     file: hostStream(host) as unknown as NodeJS.WritableStream,
   });
+  // [LAW:dataflow-not-control-flow] Width is data flowing from the host.
+  // Console's default `process.stdout.columns` fallback returns 80 in the
+  // browser (process is undefined / shimmed), so layout would render at
+  // 80 cols even though xterm.js is at 100. Replacing the getter with a
+  // live read of `host.size().cols` makes render width track the actual
+  // terminal in both environments and on resize, with no env-branching.
+  Object.defineProperty(consoleOut, "width", {
+    get: () => host.size().cols,
+  });
   let state = initialState(fs);
 
   if (!host.isTTY) {
@@ -158,10 +167,11 @@ export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
 
   await new Promise<void>((resolve, reject) => {
     let unsubscribe: (() => void) | undefined;
+    // Hoist the decoder out of the hot path — node delivers Buffer chunks on
+    // every keystroke; one shared decoder avoids per-event allocation.
+    const decoder = new TextDecoder();
     const onData = (chunk: Uint8Array | string) => {
-      const text = typeof chunk === "string"
-        ? chunk
-        : new TextDecoder().decode(chunk);
+      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk);
       try {
         let next: AppState;
         if (isTyping(state)) {
