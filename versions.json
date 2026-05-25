@@ -4,15 +4,22 @@
     {
       "version": "pr-43",
       "ref": "refs/pull/43/merge",
-      "sha": "2a8f6ff997c036ece60599665176ea8e2ef95c1c",
-      "timestamp": "2026-05-25T06:35:52.619Z",
+      "sha": "397b610d78da4598e24fc42d97e0c362be342632",
+      "timestamp": "2026-05-25T06:43:40.037Z",
       "commits": [
         {
-          "sha": "2a8f6ff997c036ece60599665176ea8e2ef95c1c",
+          "sha": "397b610d78da4598e24fc42d97e0c362be342632",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T06:35:28Z",
-          "message": "Merge 668cd0d42517072005a4713edf199075746ee114 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+          "timestamp": "2026-05-25T06:43:17Z",
+          "message": "Merge c8eba0b7b48342aafab5f43338ec5392157ba409 into c35a578a4af3a341f4412d22c0631a39dba803d6\n"
+        },
+        {
+          "sha": "c8eba0b7b48342aafab5f43338ec5392157ba409",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T00:42:54-06:00",
+          "message": "fix(demos): try/catch around runDemo in browser wires + exitCode over exit(1)\n\nRound-2 review findings, all the same architectural shape applied uniformly:\n\n- Browser wires (6 files): `runDemo(host)` is now wrapped in `try/catch` that\n  calls `host.stop()` and re-throws on startup failure. Mirrors the node\n  bootstrap fix from the previous commit; same problem shape, same fix.\n  [LAW:dataflow-not-control-flow] same code path either side; only the host\n  implementation differs.\n\n- themes-and-color-studio/index.ts: `process.exit(1)` inside the catch\n  bypassed the `finally` block, so `host.stop()` didn't run on error. Use\n  `process.exitCode = 1` instead — set the exit code as data, let `finally`\n  run, let the event loop drain. [LAW:dataflow-not-control-flow] exit code\n  is a value, not a control-flow jump.\n"
         },
         {
           "sha": "668cd0d42517072005a4713edf199075746ee114",
