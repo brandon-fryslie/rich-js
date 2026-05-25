@@ -3,7 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <title>rich-js · BrowserTerminalHost harness</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css"
+      integrity="sha384-LJcOxlx9IMbNXDqJ2axpfEQKkAYbFjJfhXexLfiRJhjDU81mzgkiQq8rkV0j6dVh"
+      crossorigin="anonymous"
+    />
     <style>
       html, body { margin: 0; padding: 0; background: #1e1e1e; color: #ddd; font-family: ui-monospace, monospace; }
       header { padding: 12px 16px; border-bottom: 1px solid #333; font-size: 13px; }
@@ -21,7 +26,11 @@
     </header>
     <div id="term"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"
+      integrity="sha384-/nfmYPUzWMS6v2atn8hbljz7NE0EI1iGx34lJaNzyVjWGDzMv+ciUZUeJpKA3Glc"
+      crossorigin="anonymous"
+    ></script>
     <script type="module">
       // Wire the compiled harness module against a real xterm.js Terminal.
       //
