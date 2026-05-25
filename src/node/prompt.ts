@@ -5,7 +5,11 @@
  * [LAW:locality-or-seam] `node:readline` lives only here, on the node side
  * of the API boundary. The main barrel stays browser-safe; consumers that
  * want interactive prompts in Node opt in by importing `nodeAsk` and
- * passing it to `Prompt.ask({ ask: nodeAsk })`.
+ * passing it as the input capability:
+ *
+ *     import { Prompt } from "@promptctl/rich-js";
+ *     import { nodeAsk } from "@promptctl/rich-js/node/prompt";
+ *     const answer = await Prompt.ask("What's your name?", { ask: nodeAsk });
  *
  * [LAW:single-enforcer] One readline interface per `nodeAsk` call —
  * created, asked, closed. No shared `rl` across prompts, no listener-leak

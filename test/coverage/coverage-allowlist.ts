@@ -52,18 +52,6 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
 
   // -- Renderables Gallery ------------------------------------------------
   Alignment: burndown("renderables-gallery"),
-  // Prompt input capability + options type — exposed by rich-demo-site-pek.3.4
-  // when readline left the main barrel. The Prompt classes themselves are
-  // exercised by examples/rich-explore/renderers/coverage.ts (typeof check);
-  // the companion types are advanced API for callers wiring custom input
-  // sources and will be exercised in a renderables-gallery prompt scenario.
-  PromptInput: burndown("renderables-gallery"),
-  PromptOptions: burndown("renderables-gallery"),
-  // node:readline-backed PromptInput implementation. Demonstrable only by a
-  // demo that actually accepts interactive input via readline, which the
-  // current TUI demos (raw-mode stdin) do not — a gallery scenario is the
-  // natural home.
-  nodeAsk: burndown("renderables-gallery"),
   Box: burndown("renderables-gallery"),
   BoxChars: burndown("renderables-gallery"),
   Column: burndown("renderables-gallery"),
@@ -77,6 +65,13 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   PaddingDimensions: burndown("renderables-gallery"),
   PanelOptions: burndown("renderables-gallery"),
   PrettyOptions: burndown("renderables-gallery"),
+  // Prompt input capability + options type — exposed by rich-demo-site-pek.3.4
+  // when readline left the main barrel. The Prompt classes themselves are
+  // exercised by examples/rich-explore/renderers/coverage.ts (typeof check);
+  // the companion types are advanced API for callers wiring custom input
+  // sources and will be exercised in a renderables-gallery prompt scenario.
+  PromptInput: burndown("renderables-gallery"),
+  PromptOptions: burndown("renderables-gallery"),
   RowLevel: burndown("renderables-gallery"),
   RuleAlign: burndown("renderables-gallery"),
   RuleOptions: burndown("renderables-gallery"),
@@ -84,6 +79,11 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   SyntaxOptions: burndown("renderables-gallery"),
   TableOptions: burndown("renderables-gallery"),
   TreeOptions: burndown("renderables-gallery"),
+  // node:readline-backed PromptInput implementation. Demonstrable only by a
+  // demo that actually accepts interactive input via readline, which the
+  // current TUI demos (raw-mode stdin) do not — a gallery scenario is the
+  // natural home. Sorts at end of the block per ASCII (lowercase > upper).
+  nodeAsk: burndown("renderables-gallery"),
 
   // -- Widgets Playground -------------------------------------------------
   ButtonOptions: burndown("widgets-playground"),

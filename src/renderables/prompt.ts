@@ -9,7 +9,6 @@
  * classes without dragging `node:readline` into the main barrel.
  */
 
-import type { Console } from "../core/console.js";
 import { render as renderMarkup } from "../core/markup.js";
 
 // --- Types ---
@@ -25,13 +24,13 @@ export interface PromptOptions<T> {
   default?: T;
   choices?: string[];
   caseSensitive?: boolean;
-  console?: Console;
   showChoices?: boolean;
   showDefault?: boolean;
   /**
-   * Input source. Required at the call site (or supply a module-level default
-   * before invoking). When unset, calls throw with a pointer at the node
-   * helper — making missing capability a loud error rather than a silent hang.
+   * Input source. Required per call — there is no module-level default by
+   * design ([LAW:no-shared-mutable-globals]). When unset, calls throw with a
+   * pointer at the node helper — missing capability becomes a loud error
+   * rather than a silent hang.
    */
   ask?: PromptInput;
 }
@@ -41,7 +40,7 @@ export interface PromptOptions<T> {
 function missingInput(): never {
   throw new Error(
     "Prompt: no `ask` capability provided. Pass `{ ask }` in options, e.g. " +
-      "`import { nodeAsk } from 'rich-js/node/prompt'` for Node, " +
+      "`import { nodeAsk } from '@promptctl/rich-js/node/prompt'` for Node, " +
       "or supply a custom `PromptInput` for tests/browsers.",
   );
 }

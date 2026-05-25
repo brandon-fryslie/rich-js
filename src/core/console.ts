@@ -136,6 +136,24 @@ function getTerminalSize(): { width: number; height: number } {
   return { width: 80, height: 24 };
 }
 
+// [LAW:single-enforcer] One trust-boundary check: when no `file:` was
+// provided, the console falls back to `process.stderr`/`process.stdout`,
+// which only exist in node-like environments. Browser bundles without an
+// explicit `file:` would otherwise hit a `ReferenceError: process is not
+// defined` deep inside `_write`. Centralizing the fallback here makes the
+// failure diagnostic and keeps both consumers (`file` getter, `_write`)
+// behaving identically — no second copy of the check to drift.
+function defaultSink(useStderr: boolean): ConsoleSink {
+  if (typeof process === "undefined") {
+    throw new Error(
+      "Console: no `file` provided and `process` is not defined (e.g. " +
+        "running in a browser). Pass `file: hostStream(host)` or any other " +
+        "ConsoleSink so output has somewhere to go.",
+    );
+  }
+  return useStderr ? process.stderr : process.stdout;
+}
+
 // [LAW:dataflow-not-control-flow] Build one size-reading function at
 // construction time from whichever options the caller supplied. The width
 // getter is then unconditional — it always calls `_getSize()`. Variability
@@ -235,13 +253,14 @@ export class Console {
   }
 
   // [LAW:one-source-of-truth] Output target lookup matches `_write`'s:
-  // explicit `file` wins, otherwise stderr/stdout per the _stderr flag. Exposed
+  // explicit `file` wins, otherwise `defaultSink` resolves to stderr/stdout
+  // (or throws clearly in environments where `process` is absent). Exposed
   // so renderables that bypass the segment pipeline (e.g. Live's raw control
   // sequences) still write to the caller's configured stream. Return type is
   // the narrow `ConsoleSink` — Live (and any external consumer) only needs
   // `.write()`, so the type tells the truth about what the surface guarantees.
   get file(): ConsoleSink {
-    return this._file ?? (this._stderr ? process.stderr : process.stdout);
+    return this._file ?? defaultSink(this._stderr);
   }
 
   get theme(): Theme {
@@ -465,7 +484,7 @@ export class Console {
       this._buffer += text;
     }
 
-    const target = this._file ?? (this._stderr ? process.stderr : process.stdout);
+    const target = this._file ?? defaultSink(this._stderr);
     target.write(text);
   }
 }

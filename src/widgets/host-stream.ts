@@ -3,10 +3,13 @@
  * Console (and Live) actually exercise.
  *
  * [LAW:types-are-the-program] The return type matches Console's `ConsoleSink`
- * exactly: `.write(chunk) → boolean`. Anything wider would lie about what
- * this adapter implements. Anything narrower would force a cast at the call
- * site. Calling `.pipe()`, `.cork()`, `.on('error')`, etc. is a programming
- * error that TypeScript will reject at compile time.
+ * exactly: a single `.write(chunk)` method whose return value Console never
+ * inspects (so the type leaves it as `unknown`; this implementation happens
+ * to return `true` to mirror Node's stream contract, but callers may not
+ * rely on that). Anything wider would lie about what this adapter
+ * implements; anything narrower would force a cast at the call site.
+ * Calling `.pipe()`, `.cork()`, `.on('error')`, etc. is a programming error
+ * that TypeScript will reject at compile time.
  *
  * [LAW:locality-or-seam] Console + Live access their sink only via `.write()`
  * — verified in src/core/console.ts (one `_file.write` call) and
