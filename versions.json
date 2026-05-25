@@ -4,15 +4,22 @@
     {
       "version": "pr-50",
       "ref": "refs/pull/50/merge",
-      "sha": "2254db8aeef29c38eec32b6b28be6ac8de0fc8a6",
-      "timestamp": "2026-05-25T20:15:01.748Z",
+      "sha": "38d16db5bfa9c6d39641fb88c886806f7a06b629",
+      "timestamp": "2026-05-25T20:20:13.413Z",
       "commits": [
         {
-          "sha": "2254db8aeef29c38eec32b6b28be6ac8de0fc8a6",
+          "sha": "38d16db5bfa9c6d39641fb88c886806f7a06b629",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T20:14:33Z",
-          "message": "Merge f3753b637dc5d5fcce892c82e678235f386ab997 into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+          "timestamp": "2026-05-25T20:19:41Z",
+          "message": "Merge 9c92c78d8bf65f2ea97d176d4f7335f4f765bacb into c5c34bd89085d7ab1411808e3d1bc027c2fcebb2\n"
+        },
+        {
+          "sha": "9c92c78d8bf65f2ea97d176d4f7335f4f765bacb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T14:19:30-06:00",
+          "message": "docs(README): use the scoped package name in all import specifiers\n\nThe README had 13 `from \"rich-js\"` imports and an `npm install rich-js`\ncommand — but package.json declares the published name as\n`@promptctl/rich-js`. Both forms would fail when a user copy-pasted them,\nmaking the README a worse onboarding artifact the larger it got. Now\nevery import statement and the install command use the scoped name.\n\nTitle and prose references to \"rich-js\" (the project display name) are\nleft alone — those aren't package-specifier copy/paste hazards.\n"
         },
         {
           "sha": "f3753b637dc5d5fcce892c82e678235f386ab997",
