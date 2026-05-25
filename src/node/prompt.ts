@@ -9,7 +9,9 @@
  *
  *     import { Prompt } from "@promptctl/rich-js";
  *     import { nodeAsk } from "@promptctl/rich-js/node/prompt";
- *     const answer = await Prompt.ask("What's your name?", { ask: nodeAsk });
+ *     const answer = await Prompt.ask("What's your name?", nodeAsk);
+ *     // or with options:
+ *     const choice = await Prompt.ask("Pick one", nodeAsk, { choices: ["a", "b"] });
  *
  * [LAW:single-enforcer] One readline interface per `nodeAsk` call —
  * created, asked, closed. No shared `rl` across prompts, no listener-leak

@@ -172,7 +172,11 @@ function resolveGetSize(
   const staticWidth = options?.width;
   const staticHeight = options?.height;
   if (staticWidth !== undefined && staticHeight !== undefined) {
-    const fixed = { width: staticWidth, height: staticHeight };
+    // [LAW:one-source-of-truth] Freeze the captured object so consumers can't
+    // mutate `console.size` and silently change every subsequent read.
+    // Matches the dynamic-closure path (which builds a fresh object per call
+    // and is therefore implicitly immutable from a sharing standpoint).
+    const fixed = Object.freeze({ width: staticWidth, height: staticHeight });
     return () => fixed;
   }
   return () => {
