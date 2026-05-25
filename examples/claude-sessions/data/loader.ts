@@ -4,9 +4,13 @@
  * Strategy: synchronous full-file read. Even 50MB files are split + parsed
  * in well under 2s on modern hardware. Streaming is an extension point for
  * future giant-file handling.
+ *
+ * [LAW:capabilities-over-context] File reads go through the injected
+ * `FileSystem`; there is no `node:fs` import. This is the seam that lets
+ * the browser bundle load embedded session fixtures via the same code path.
  */
 
-import { readFileSync } from "node:fs";
+import type { FileSystem } from "../../_capabilities/index.js";
 
 export interface RawLine {
   readonly lineNumber: number;
@@ -20,8 +24,8 @@ export interface LoadResult {
   readonly skipped: number;            // unparseable / blank lines skipped
 }
 
-export function loadSession(path: string): LoadResult {
-  const text = readFileSync(path, "utf-8");
+export function loadSession(fs: FileSystem, path: string): LoadResult {
+  const text = fs.readFile(path);
   const rawLines = text.split("\n");
   const lines: RawLine[] = [];
   let skipped = 0;

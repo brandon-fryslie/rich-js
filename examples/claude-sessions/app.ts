@@ -1,9 +1,17 @@
 /**
  * Main loop for claude-sessions. Raw-mode stdin → action → reducer → render.
  * Search-typing mode bypasses the keymap and consumes raw characters directly.
+ *
+ * [LAW:capabilities-over-context] `run` is parameterised on both a
+ * `TerminalHost` (where I/O goes) and a `FileSystem` (where session data
+ * comes from). The demo body never branches on environment; the two
+ * capabilities are the values that differ between node and browser entries.
  */
 
-import { Console, NodeTerminalHost } from "../../src/index.js";
+import { Console } from "../../src/index.js";
+import { hostStream } from "../../src/widgets/host-stream.js";
+import type { FileSystem } from "../_capabilities/index.js";
+import type { TerminalHost } from "../../src/widgets/terminal-host.js";
 import {
   initialState,
   moveSidebar,
@@ -111,15 +119,16 @@ function reduceSearchTyping(state: AppState, chunk: string): AppState {
   return state;
 }
 
-export async function run(): Promise<void> {
-  // [LAW:no-shared-mutable-globals] Single host owns all node TTY access for
-  // this demo. Console still writes through process.stdout for now (a
-  // follow-up ticket migrates Console to a host-backed sink); every other
-  // I/O concern here — raw mode, alt-screen, cursor visibility, size,
-  // input bytes — flows through the host.
-  const host = new NodeTerminalHost();
-  const consoleOut = new Console({ forceTerminal: true });
-  let state = initialState();
+export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
+  // [LAW:single-enforcer] Console writes through the host via hostStream so
+  // there is exactly one sink for terminal output. On node the host wraps
+  // process.stdout (identical effective path to the old default); on browser
+  // it wraps xterm.js so the same render calls drive the bundled demo.
+  const consoleOut = new Console({
+    forceTerminal: true,
+    file: hostStream(host) as unknown as NodeJS.WritableStream,
+  });
+  let state = initialState(fs);
 
   if (!host.isTTY) {
     throw new Error("claude-sessions requires an interactive TTY");
@@ -150,7 +159,9 @@ export async function run(): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     let unsubscribe: (() => void) | undefined;
     const onData = (chunk: Uint8Array | string) => {
-      const text = typeof chunk === "string" ? chunk : Buffer.from(chunk).toString("utf8");
+      const text = typeof chunk === "string"
+        ? chunk
+        : new TextDecoder().decode(chunk);
       try {
         let next: AppState;
         if (isTyping(state)) {
