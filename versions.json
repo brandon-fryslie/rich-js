@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-49",
+      "ref": "refs/pull/49/merge",
+      "sha": "0b990666ed7accf4ff1feb639e77f6da50fdfb3f",
+      "timestamp": "2026-05-25T18:42:11.780Z",
+      "commits": [
+        {
+          "sha": "0b990666ed7accf4ff1feb639e77f6da50fdfb3f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T12:41:41-06:00",
+          "message": "Merge b5d4e3780fc9117d9c2a730069790f1c565090a3 into d9df2004fd847106c2129c7dcab3d9d96bb92aa8\n"
+        },
+        {
+          "sha": "b5d4e3780fc9117d9c2a730069790f1c565090a3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T12:40:56-06:00",
+          "message": "feat(demos): SystemInfo capability + rich-dash browser bundle (rich-demo-site-pek.3.3)\n\nAdds the third demo to the browser-bundle pipeline (after claude-sessions\nand rich-explore) and introduces a `SystemInfo` capability mirroring the\nshape of `FileSystem` — interface + node impl + memory impl + browser-safe\nbarrel that re-exports only the interface and memory impl.\n\nWidgets refactored to capability factories:\n- `sysinfoWidget(sysinfo)` — no longer imports `node:os` at module load.\n- `notesWidget(fs, readmePath)` — no longer imports `node:fs`/`node:url`;\n  the path-search logic moved to the node entry where it belongs.\n\n`runDemo(host, caps)` accepts a capability bag (`fs`, `sysinfo`,\n`readmePath`); same demo body powers both entries. The node entry resolves\nthe real repo README via `fs.exists` against two candidate paths (source\nand dist-compiled layouts). The browser `wire.ts` ships a small README\nfixture + a plausible sysinfo snapshot.\n\nApplies the corrected Console pattern from #48 — both `width` AND `height`\noverrides — because rich-dash uses Live, and `Live.refresh` reads\n`Console.height` to crop frames (a width-only override would clip the\nbrowser UI to 24 rows regardless of viewport).\n\nBundle pipeline autodiscovers `wire.ts`, manifest auto-updates, headless\ngate auto-covers the new demo. All 1741 unit tests + 10 demo headless\ngates pass; node `npm run dash` still boots and SIGTERMs cleanly.\n\n[LAW:capabilities-over-context] Widgets receive only the capability they\n  use — sysinfo never sees FileSystem, notes never sees SystemInfo.\n[LAW:one-source-of-truth] One barrel decides what's reachable in the\n  browser; node impls live in their own files and are not re-exported.\n[LAW:dataflow-not-control-flow] Same `runDemo` for node and browser; the\n  capability values are the variability.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d9df2004fd847106c2129c7dcab3d9d96bb92aa8",
