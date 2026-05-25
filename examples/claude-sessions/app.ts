@@ -124,18 +124,19 @@ export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
   // there is exactly one sink for terminal output. On node the host wraps
   // process.stdout (identical effective path to the old default); on browser
   // it wraps xterm.js so the same render calls drive the bundled demo.
+  // [LAW:dataflow-not-control-flow] Size flows from the host through
+  // `getSize`. Console's default `process.stdout.columns` returns 80 in the
+  // browser (process is undefined / shimmed), so layout would render at
+  // 80 cols even though xterm.js is at 100. A live `host.size()` reader
+  // makes render width track the actual terminal in both environments and
+  // on resize, with no env-branching.
   const consoleOut = new Console({
     forceTerminal: true,
-    file: hostStream(host) as unknown as NodeJS.WritableStream,
-  });
-  // [LAW:dataflow-not-control-flow] Width is data flowing from the host.
-  // Console's default `process.stdout.columns` fallback returns 80 in the
-  // browser (process is undefined / shimmed), so layout would render at
-  // 80 cols even though xterm.js is at 100. Replacing the getter with a
-  // live read of `host.size().cols` makes render width track the actual
-  // terminal in both environments and on resize, with no env-branching.
-  Object.defineProperty(consoleOut, "width", {
-    get: () => host.size().cols,
+    file: hostStream(host),
+    getSize: () => {
+      const { cols, rows } = host.size();
+      return { width: cols, height: rows };
+    },
   });
   let state = initialState(fs);
 

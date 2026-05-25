@@ -568,12 +568,13 @@ describe("Console record and export", () => {
     const { tmpdir } = await import("os");
     const { join } = await import("path");
     const { readFileSync } = await import("fs");
+    const { saveText } = await import("../../src/node/save.js");
     const dir = mkdtempSync(join(tmpdir(), "rich-test-"));
     const path = join(dir, "out.txt");
     try {
       const { console: c } = makeConsole({ record: true });
       c.print("Saved text");
-      c.saveText(path);
+      saveText(c, path);
       const content = readFileSync(path, "utf-8");
       expect(content).toContain("Saved text");
     } finally {
@@ -586,12 +587,13 @@ describe("Console record and export", () => {
     const { tmpdir } = await import("os");
     const { join } = await import("path");
     const { readFileSync } = await import("fs");
+    const { saveHtml } = await import("../../src/node/save.js");
     const dir = mkdtempSync(join(tmpdir(), "rich-test-"));
     const path = join(dir, "out.html");
     try {
       const { console: c } = makeConsole({ record: true });
       c.print("Saved HTML");
-      c.saveHtml(path);
+      saveHtml(c, path);
       const content = readFileSync(path, "utf-8");
       expect(content).toContain("Saved HTML");
       expect(content.toLowerCase()).toContain("<!doctype html>");

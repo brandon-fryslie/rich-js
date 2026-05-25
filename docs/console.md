@@ -215,14 +215,18 @@ console.print(table);
 
 const text = console.exportText();       // plain text
 const html = console.exportHtml();       // HTML with inline styles
-const svg  = console.exportSvg();        // SVG image
-
-console.saveText("output.txt");
-console.saveHtml("output.html");
-console.saveSvg("output.svg");           // width = terminal width; height scales to content
 ```
 
-For SVG, pass `{ clear: true }` to flush the buffer after export. The SVG theme can be customized via the `theme` option.
+To persist the exported output to disk, use the node-only helpers from the `node/save` subpath:
+
+```typescript
+import { saveText, saveHtml } from "@promptctl/rich-js/node/save";
+
+saveText(console, "output.txt");
+saveHtml(console, "output.html");
+```
+
+These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. The recording buffer is cleared after writing by default; pass `{ clear: false }` to preserve it for a second export (e.g. saving both `.txt` and `.html` from the same recorded run).
 
 ## Error / stderr output
 

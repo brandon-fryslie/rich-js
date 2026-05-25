@@ -8,6 +8,7 @@
  */
 
 import { NodeTerminalHost } from "../../src/index.js";
+import { saveHtml } from "../../src/node/save.js";
 import { runDemo } from "./app.js";
 
 const host = new NodeTerminalHost();
@@ -18,7 +19,7 @@ const htmlExportPath = process.env["EXPORT_HTML"];
 try {
   const demo = runDemo(host, { record: Boolean(htmlExportPath) });
   if (htmlExportPath !== undefined && htmlExportPath !== "") {
-    demo.out.saveHtml(htmlExportPath);
+    saveHtml(demo.out, htmlExportPath);
     process.stderr.write(`\nHTML export written to ${htmlExportPath}\n`);
   }
   demo.stop();

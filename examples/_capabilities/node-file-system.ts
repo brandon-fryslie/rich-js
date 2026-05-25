@@ -4,9 +4,9 @@
  *
  * [LAW:single-enforcer] This module is the only place demo code touches
  * those node-only imports. Every other demo file consumes a `FileSystem`
- * value and stays environment-agnostic. The browser bundle pipeline aliases
- * `node:fs` to a stub (examples/_browser-shell/node-stub.js) so any leak
- * elsewhere is caught loudly at runtime.
+ * value and stays environment-agnostic. The browser bundle pipeline only
+ * pulls in `MemoryFileSystem`, so a stray `node:fs` reference reaching the
+ * bundler would fail loud at build time — which is exactly what we want.
  *
  * [LAW:no-shared-mutable-globals] Constructors take no shared state; each
  * instance is a thin wrapper around stateless node primitives.
