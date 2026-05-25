@@ -4,15 +4,22 @@
     {
       "version": "pr-47",
       "ref": "refs/pull/47/merge",
-      "sha": "56ac608246ca7b497284b0c144b34f62b55cf01a",
-      "timestamp": "2026-05-25T17:49:50.145Z",
+      "sha": "03a11bbcdf28eaf170fa352d16a37edc55d146bd",
+      "timestamp": "2026-05-25T17:56:20.538Z",
       "commits": [
         {
-          "sha": "56ac608246ca7b497284b0c144b34f62b55cf01a",
+          "sha": "03a11bbcdf28eaf170fa352d16a37edc55d146bd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-25T17:49:17Z",
-          "message": "Merge bc89e98c9e0f2608747aee6e57e45dacb9303974 into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+          "timestamp": "2026-05-25T17:55:52Z",
+          "message": "Merge 41fdd9ef7837472178f0ecfefe7ec379d7e82a8d into a480b2c4436f3139c74467572c9fdf3becb7a39d\n"
+        },
+        {
+          "sha": "41fdd9ef7837472178f0ecfefe7ec379d7e82a8d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-25T11:55:42-06:00",
+          "message": "fix(demos): align MemoryFileSystem.dirname with node:path + correct stale comment\n\n[LAW:types-are-the-program] MemoryFileSystem.dirname diverged from\nnode:path.dirname for relative inputs — \"a\", \"a/\", \"a/b\", \"\" all\nreturned \"/\" because the `idx <= 0` branch conflated \"no slash\" with\n\"slash at position 0\". Split the two cases: idx < 0 → \".\" (relative\nparent), idx === 0 → \"/\" (immediate child of root). The two FileSystem\nimpls now agree on every relative-path edge case node:path covers.\n\nNew tests pin parity with node:path.dirname for the five relative-path\ncases: \"\", \"a\", \"a/\", \"a/b\", \"a/b/c\". Pulled the absolute-path tests\ninto their own block so the parity check is legible as its own concern.\n\n[LAW:comments-explain-why-only] (suppressed Copilot finding, no thread)\nThe extractUuid comment claimed it \"falls back to JSON.parse\" but the\nimplementation has been regex-only — comment was inherited from an\nearlier draft and never updated. Rewrote to describe what the code\nactually does (regex-only by design; false positives tolerable because\ndownstream falls back to opening at line 0).\n\nAddresses Copilot review round 8 on PR #47.\n"
         },
         {
           "sha": "bc89e98c9e0f2608747aee6e57e45dacb9303974",
