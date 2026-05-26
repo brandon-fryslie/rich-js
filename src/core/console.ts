@@ -208,7 +208,12 @@ export class Console {
   private _theme: Theme;
   private _highlighter: Highlighter;
   private _recorded: Segment[];
-  private _buffer: string;
+  // [LAW:types-are-the-program] The capture state is carried in the *type*
+  // of this field, not in a sentinel value. `null` = not capturing; any
+  // string (including "") = capturing, this is the buffer. A paired
+  // boolean+string would admit the impossible state "not capturing, buffer
+  // non-empty" — `string | null` makes that unrepresentable.
+  private _capture: string | null;
 
   constructor(options?: ConsoleOptions) {
     this._colorSystem = resolveOptionColorSystem(
@@ -227,7 +232,7 @@ export class Console {
     this._theme = options?.theme ?? new Theme();
     this._highlighter = options?.highlighter ?? new ReprHighlighter();
     this._recorded = [];
-    this._buffer = "";
+    this._capture = null;
   }
 
   // --- Properties ---
@@ -413,13 +418,18 @@ export class Console {
 
   // --- Capture ---
 
+  // [LAW:one-source-of-truth] Redirect semantics match Python Rich's
+  // `Console.capture()`: while a capture is active the underlying target
+  // (file / stdout / stderr) receives nothing, and `endCapture()` returns
+  // the full text that would otherwise have been written. This is not a
+  // tee — callers wanting both must compose explicitly.
   beginCapture(): void {
-    this._buffer = "";
+    this._capture = "";
   }
 
   endCapture(): string {
-    const result = this._buffer;
-    this._buffer = "";
+    const result = this._capture ?? "";
+    this._capture = null;
     return result;
   }
 
@@ -494,10 +504,14 @@ export class Console {
   }
 
   private _write(text: string): void {
-    if (this._buffer !== undefined && this._buffer !== "") {
-      this._buffer += text;
+    // [LAW:types-are-the-program] `_capture !== null` is a discriminator
+    // narrow on `string | null`, not a sentinel comparison — the type
+    // carries the active/inactive state. The early return is what makes
+    // this a redirect (not a tee); see beginCapture for semantics.
+    if (this._capture !== null) {
+      this._capture += text;
+      return;
     }
-
     const target = this._file ?? defaultSink(this._stderr);
     target.write(text);
   }
