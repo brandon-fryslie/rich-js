@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-51",
+      "ref": "refs/pull/51/merge",
+      "sha": "c8f78b1b2873ae6fd87b7df8d9bcd2d7b41ee8bd",
+      "timestamp": "2026-05-26T10:01:24.560Z",
+      "commits": [
+        {
+          "sha": "c8f78b1b2873ae6fd87b7df8d9bcd2d7b41ee8bd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-26T04:00:54-06:00",
+          "message": "Merge 03eca82bc49ed1298a0c8b6ece71919bba9f6481 into 2a098549d729608494485f2cbdc6a9b8ad28af90\n"
+        },
+        {
+          "sha": "03eca82bc49ed1298a0c8b6ece71919bba9f6481",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-26T04:00:07-06:00",
+          "message": "fix(console): make beginCapture/endCapture actually capture (rich-demo-site-pek.6)\n\nThe capture API was dead code: `_buffer: string` used `\"\"` as both the\n\"not capturing\" sentinel and the empty-buffer state, so `_write`'s\n`_buffer !== \"\"` guard could never be true while a capture was active.\n`endCapture()` always returned `\"\"`.\n\n[LAW:types-are-the-program] [LAW:enumeration-gap] — replace the\nsentinel-string scheme with `_capture: string | null` so the type\nitself carries the discriminator. `null` = not capturing; any string\n(including `\"\"`) = capturing, this is the buffer. The impossible state\n\"not capturing, buffer non-empty\" is unrepresentable.\n\n[LAW:one-source-of-truth] — adopt redirect semantics (matching Python\nRich's `Console.capture()`): during capture the target receives\nnothing. The previous code attempted a tee but was broken in a way\nthat produced neither outcome.\n\nTests cover round-trip, redirect (target unaffected), restoration\nafter endCapture, default-on-misuse, and independent sequential\nsessions. 4/5 fail on master, all 5 pass after the fix.\n\nSpec updated to document the redirect semantics.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2a098549d729608494485f2cbdc6a9b8ad28af90",
