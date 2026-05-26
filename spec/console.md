@@ -115,6 +115,8 @@ Show two patterns for capturing what would have been printed:
 1. A capture context object with a `get()` method
 2. Passing a string buffer as the `file` option (recommended for tests)
 
+The primitive form is `console.beginCapture()` / `console.endCapture()`. While a capture is active the underlying target (file / stdout / stderr) receives **nothing** — capture is a redirect, matching Python Rich's `Console.capture()`. `endCapture()` returns the full text that would otherwise have been written and restores normal output. Callers wanting both capture and live output must compose explicitly (tee is not built in).
+
 ### Paging
 
 Describe `pager()` for sending long output to the system pager. Note that most pagers don't support color (Rich strips it by default), but `styles: true` can be passed if the pager is known to support it. Mention the `MANPAGER`/`PAGER` environment variables.

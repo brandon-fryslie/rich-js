@@ -628,6 +628,63 @@ describe("Console terminal detection", () => {
   });
 });
 
+// --- Capture ---
+
+describe("Console capture", () => {
+  it("endCapture returns text printed between begin/end", () => {
+    // [LAW:behavior-not-structure] Asserts the contract: capture round-trip
+    // returns what was printed. Replaces the dead-code state where the buffer
+    // was never appended to (rich-demo-site-pek.6).
+    const { console: c, chunks } = makeConsole();
+    c.beginCapture();
+    c.print("captured");
+    const captured = c.endCapture();
+    expect(captured).toContain("captured");
+  });
+
+  it("redirects: target sink does not receive output during capture", () => {
+    // [LAW:one-source-of-truth] Matches Python Rich's redirect semantics.
+    // "Capture" means redirect, not tee — the file/terminal does not also
+    // receive the output during the capture window.
+    const { console: c, chunks } = makeConsole();
+    c.beginCapture();
+    c.print("hidden");
+    c.endCapture();
+    expect(captured(chunks)).not.toContain("hidden");
+  });
+
+  it("after endCapture, subsequent prints reach the target", () => {
+    // [LAW:types-are-the-program] The string|null discriminator returns the
+    // sink to the terminal target once capture ends; no leak across boundary.
+    const { console: c, chunks } = makeConsole();
+    c.beginCapture();
+    c.print("inside");
+    c.endCapture();
+    c.print("after");
+    expect(captured(chunks)).toContain("after");
+    expect(captured(chunks)).not.toContain("inside");
+  });
+
+  it("endCapture without beginCapture returns empty string", () => {
+    const { console: c } = makeConsole();
+    expect(c.endCapture()).toBe("");
+  });
+
+  it("nested-style sequential capture sessions are independent", () => {
+    const { console: c } = makeConsole();
+    c.beginCapture();
+    c.print("first");
+    const a = c.endCapture();
+    c.beginCapture();
+    c.print("second");
+    const b = c.endCapture();
+    expect(a).toContain("first");
+    expect(a).not.toContain("second");
+    expect(b).toContain("second");
+    expect(b).not.toContain("first");
+  });
+});
+
 // --- File/Error Output ---
 
 describe("Console file/error output", () => {
