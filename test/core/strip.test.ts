@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   Strip,
-  StripCell,
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
 } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
+import { RichText } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { segmentsToString } from "../../src/core/render.js";
@@ -22,9 +22,13 @@ function render(strip: Strip): Segment[] {
   return [...strip.render(OPTIONS)];
 }
 
-const RED = new StripCell(" red ", Style.parse("white on red"));
-const BLUE = new StripCell(" blue ", Style.parse("white on blue"));
-const GREEN = new StripCell(" green ", Style.parse("white on green"));
+function cell(text: string, style: string | Style): RichText {
+  return new RichText(text, { style, end: "" });
+}
+
+const RED = cell(" red ", "white on red");
+const BLUE = cell(" blue ", "white on blue");
+const GREEN = cell(" green ", "white on green");
 
 describe("Strip render walk", () => {
   it("emits nothing for an empty strip", () => {
@@ -64,38 +68,33 @@ describe("PowerlineJoiner color inheritance", () => {
     expect(segs[0]!.text).toBe(" red ");
   });
 
-  it("end cap fg = last item's bg, no bg", () => {
+  it("end cap fg = last item's right-edge bg, no bg", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
     const end = segs[segs.length - 1]!;
-    expect(end.style?.color?.name).toBe(BLUE.style.bgcolor?.name);
+    expect(end.style?.color?.name).toBe(BLUE.edgeStyle("right").bgcolor?.name);
     expect(end.style?.bgcolor).toBeUndefined();
   });
 
-  it("middle join fg = left.bg, bg = right.bg", () => {
+  it("middle join fg = left.right-edge.bg, bg = right.left-edge.bg", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
     const mid = segs[1]!;
-    expect(mid.style?.color?.name).toBe(RED.style.bgcolor?.name);
-    expect(mid.style?.bgcolor?.name).toBe(BLUE.style.bgcolor?.name);
+    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
+    expect(mid.style?.bgcolor?.name).toBe(BLUE.edgeStyle("left").bgcolor?.name);
   });
 });
 
 // [LAW:dataflow-not-control-flow] The PowerlineJoiner's middle transition is a
-// function of the input colors: when both neighbors share a bg, the arrow is
-// visually invisible (fg === bg) and should not emit a segment at all. An
-// "invisible glyph with its own SGR" was a representable state that defeated
-// the coalescer in segmentsToString — same-style cells produced N SGR pairs
-// instead of one.
+// function of the input edge colors: when both neighbors share an edge bg, the
+// arrow is visually invisible (fg === bg) and should not emit a segment at all.
 describe("PowerlineJoiner same-bg coalescing", () => {
-  const RED_A = new StripCell(" a ", Style.parse("white on red"));
-  const RED_B = new StripCell(" b ", Style.parse("white on red"));
-  const RED_C = new StripCell(" c ", Style.parse("white on red"));
+  const RED_A = cell(" a ", "white on red");
+  const RED_B = cell(" b ", "white on red");
+  const RED_C = cell(" c ", "white on red");
 
   it("emits no mid-join segment when both neighbors share a bg", () => {
     const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
-    // End cap still fires (last cell bleeds out to terminal bg); middle joiner
-    // collapses to EMPTY.
     expect(render(strip).map((s) => s.text)).toEqual([" a ", " b ", ">"]);
   });
 
@@ -107,36 +106,32 @@ describe("PowerlineJoiner same-bg coalescing", () => {
     const out = segmentsToString(strip.render(OPTIONS), ColorDepth.TRUECOLOR);
     const opens = (out.match(/\x1b\[(?!0m)[0-9;]+m/g) ?? []).length;
     const resets = (out.match(/\x1b\[0m/g) ?? []).length;
-    // One SGR run for the three-cell same-bg body, one more for the end cap
-    // (which intentionally has different style: fg=bg of last cell, no bg).
     expect(opens).toBe(2);
     expect(resets).toBe(2);
   });
 
   it("still emits a visible arrow when neighbor bgs differ (no over-coalescing)", () => {
-    // Regression sanity: the same-bg shortcut must not collapse genuine
-    // transitions. RED → BLUE must still produce the colored arrow.
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const mid = render(strip)[1]!;
     expect(mid.text).toBe(">");
-    expect(mid.style?.color?.name).toBe(RED.style.bgcolor?.name);
-    expect(mid.style?.bgcolor?.name).toBe(BLUE.style.bgcolor?.name);
+    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
+    expect(mid.style?.bgcolor?.name).toBe(BLUE.edgeStyle("left").bgcolor?.name);
   });
 });
 
 describe("CapsuleJoiner", () => {
-  it("start cap uses left glyph with right.bg as fg", () => {
+  it("start cap uses left glyph with right.left-edge.bg as fg", () => {
     const strip = new Strip(
       [RED],
       new CapsuleJoiner({ left: "(", right: ")" }),
     );
     const [start] = render(strip);
     expect(start!.text).toBe("(");
-    expect(start!.style?.color?.name).toBe(RED.style.bgcolor?.name);
+    expect(start!.style?.color?.name).toBe(RED.edgeStyle("left").bgcolor?.name);
     expect(start!.style?.bgcolor).toBeUndefined();
   });
 
-  it("end cap uses right glyph with left.bg as fg", () => {
+  it("end cap uses right glyph with left.right-edge.bg as fg", () => {
     const strip = new Strip(
       [RED],
       new CapsuleJoiner({ left: "(", right: ")" }),
@@ -144,7 +139,7 @@ describe("CapsuleJoiner", () => {
     const segs = render(strip);
     const end = segs[segs.length - 1]!;
     expect(end.text).toBe(")");
-    expect(end.style?.color?.name).toBe(RED.style.bgcolor?.name);
+    expect(end.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
   });
 
   it("middle emits close-cap, separator, open-cap", () => {
@@ -153,12 +148,11 @@ describe("CapsuleJoiner", () => {
       new CapsuleJoiner({ left: "(", right: ")", separator: "·" }),
     );
     const segs = render(strip);
-    // ( red ) · ( blue )
     expect(segs.map((s) => s.text)).toEqual([
       "(", " red ", ")", "·", "(", " blue ", ")",
     ]);
-    expect(segs[2]!.style?.color?.name).toBe(RED.style.bgcolor?.name);
-    expect(segs[4]!.style?.color?.name).toBe(BLUE.style.bgcolor?.name);
+    expect(segs[2]!.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
+    expect(segs[4]!.style?.color?.name).toBe(BLUE.edgeStyle("left").bgcolor?.name);
   });
 });
 
@@ -182,31 +176,26 @@ describe("PlainJoiner", () => {
 });
 
 describe("GradientJoiner", () => {
-  const FF0000 = new StripCell(" a ", Style.parse("on #ff0000"));
-  const BLUE00FF = new StripCell(" b ", Style.parse("on #0000ff"));
+  const FF0000 = cell(" a ", "on #ff0000");
+  const BLUE00FF = cell(" b ", "on #0000ff");
 
   it("emits half-block cells carrying two colour samples each", () => {
     const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner({ steps: 3 }));
     const segs = render(strip);
-    // walk: item, gradient*3, item.
-    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258c", "\u258c", "\u258c", " b "]);
+    expect(segs.map((s) => s.text)).toEqual([" a ", "▌", "▌", "▌", " b "]);
     const grad = segs.slice(1, 4);
-    // Each cell carries fg (left half) and bg (right half) — both real colours.
     for (const s of grad) {
       expect(s.style!.color).toBeDefined();
       expect(s.style!.bgcolor).toBeDefined();
     }
-    // Flatten to the 6 sub-cell samples in visual order.
     const samples = grad.flatMap((s) => [
       s.style!.color!.getTruecolor(),
       s.style!.bgcolor!.getTruecolor(),
     ]);
-    // Strictly monotonic across all 6 samples: R decreases, B increases.
     for (let i = 1; i < samples.length; i++) {
       expect(samples[i]!.red).toBeLessThan(samples[i - 1]!.red);
       expect(samples[i]!.blue).toBeGreaterThan(samples[i - 1]!.blue);
     }
-    // No sample equals either anchor (midpoint sampling).
     expect(samples[0]!.red).toBeLessThan(255);
     expect(samples[samples.length - 1]!.blue).toBeLessThan(255);
   });
@@ -216,8 +205,8 @@ describe("GradientJoiner", () => {
     expect(render(strip).map((s) => s.text)).toEqual([" a "]);
   });
 
-  it("renders empty when an item lacks a bgcolor", () => {
-    const noBg = new StripCell(" x ", Style.parse("white"));
+  it("renders empty when an item lacks an edge bgcolor", () => {
+    const noBg = cell(" x ", "white");
     const strip = new Strip([FF0000, noBg], new GradientJoiner({ steps: 2 }));
     expect(render(strip).map((s) => s.text)).toEqual([" a ", " x "]);
   });
@@ -225,95 +214,44 @@ describe("GradientJoiner", () => {
   it("defaults to steps=4", () => {
     const strip = new Strip([FF0000, BLUE00FF], new GradientJoiner());
     const segs = render(strip);
-    expect(segs.map((s) => s.text)).toEqual([" a ", "\u258c", "\u258c", "\u258c", "\u258c", " b "]);
+    expect(segs.map((s) => s.text)).toEqual([" a ", "▌", "▌", "▌", "▌", " b "]);
   });
 });
 
-describe("StripCell", () => {
-  it("yields one segment with the configured style", () => {
-    const cell = new StripCell("hi", Style.parse("white on red"));
-    const segs = [...cell.render(OPTIONS)];
-    expect(segs).toHaveLength(1);
-    expect(segs[0]!.text).toBe("hi");
-    expect(segs[0]!.style?.bgcolor?.name).toBe("red");
+// [LAW:locality-or-seam] The bg constraint that the joiner needs lives at the
+// edge of the item, not as a uniform-bg constraint on the interior. These
+// tests pin that contract: a RichText with varying-bg spans reports its
+// edge styles accurately, and joiners paint transitions using those edges.
+describe("edge-aware joiner protocol with varying interior styling", () => {
+  it("RichText.edgeStyle returns base style for unspanned text", () => {
+    const r = cell("hello", "white on red");
+    expect(r.edgeStyle("left").bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right").bgcolor?.name).toBe("red");
   });
 
-  it("parts form: yields one segment per part, all sharing cell bg", () => {
-    const cell = new StripCell(
-      [
-        { text: " main " },
-        { text: "S", style: Style.parse("green") },
-        { text: " " },
-        { text: "+3", style: Style.parse("green") },
-        { text: " " },
-        { text: "-2", style: Style.parse("red") },
-        { text: " " },
-      ],
-      Style.parse("white on blue"),
-    );
-    const segs = [...cell.render(OPTIONS)];
-    expect(segs.map((s) => s.text)).toEqual([" main ", "S", " ", "+3", " ", "-2", " "]);
-    // Every segment carries the cell-level bg — the single-style invariant.
-    for (const s of segs) {
-      expect(s.style?.bgcolor?.name).toBe("blue");
-    }
-    // Per-part fg overlays land on the right runs.
-    expect(segs[0]!.style?.color?.name).toBe("white"); // cell fg, no overlay
-    expect(segs[1]!.style?.color?.name).toBe("green"); // S
-    expect(segs[3]!.style?.color?.name).toBe("green"); // +3
-    expect(segs[5]!.style?.color?.name).toBe("red");   // -2
+  it("RichText.edgeStyle reports span-overridden bg at the matching edge", () => {
+    const r = new RichText("hello", { style: "white on red", end: "" });
+    // Spans override bg on the right edge.
+    r.stylize("on green", 4, 5);
+    expect(r.edgeStyle("left").bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right").bgcolor?.name).toBe("green");
   });
 
-  it("parts form: text property is the concatenation of parts", () => {
-    const cell = new StripCell(
-      [{ text: " a " }, { text: "b", style: Style.parse("green") }, { text: " c " }],
-      Style.parse("on blue"),
-    );
-    expect(cell.text).toBe(" a b c ");
-  });
-
-  it("parts form: cell.style is what joiners read (joiner-visible bg)", () => {
-    // [LAW:single-enforcer] joiners must see the cell-level bg, not any per-part bg.
-    const cellA = new StripCell(
-      [{ text: "a" }, { text: "!", style: Style.parse("yellow bold") }],
-      Style.parse("white on blue"),
-    );
-    const cellB = new StripCell(" b ", Style.parse("white on green"));
-    const strip = new Strip([cellA, cellB], new PowerlineJoiner({ glyph: ">" }));
+  it("PowerlineJoiner paints the transition using the actual edge bgs", () => {
+    const left = new RichText("ab", { style: "white on red", end: "" });
+    left.stylize("on yellow", 1, 2); // right edge becomes yellow
+    const right = new RichText("cd", { style: "white on blue", end: "" });
+    right.stylize("on green", 0, 1); // left edge is green
+    const strip = new Strip([left, right], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
-    // Mid-join: fg = cellA.bg = blue, bg = cellB.bg = green.
     const mid = segs.find((s) => s.text === ">")!;
-    expect(mid.style?.color?.name).toBe("blue");
+    expect(mid.style?.color?.name).toBe("yellow");
     expect(mid.style?.bgcolor?.name).toBe("green");
   });
 
-  it("parts form: rejects part styles that set bgcolor", () => {
-    expect(
-      () =>
-        new StripCell(
-          [{ text: "x", style: Style.parse("white on red") }],
-          Style.parse("white on blue"),
-        ),
-    ).toThrow(/bgcolor/);
-  });
-
-  it("parts form: empty parts array yields no segments", () => {
-    const cell = new StripCell([] as const, Style.parse("on blue"));
-    expect([...cell.render(OPTIONS)]).toEqual([]);
-    expect(cell.text).toBe("");
-  });
-
-  it("parts form: parts without overlay inherit cell fg + bg", () => {
-    const cell = new StripCell(
-      [{ text: "x" }, { text: "y", style: Style.parse("bold") }],
-      Style.parse("white on blue"),
-    );
-    const segs = [...cell.render(OPTIONS)];
-    expect(segs[0]!.style?.color?.name).toBe("white");
-    expect(segs[0]!.style?.bgcolor?.name).toBe("blue");
-    expect(segs[0]!.style?.bold).toBeUndefined();
-    expect(segs[1]!.style?.color?.name).toBe("white"); // cell fg preserved
-    expect(segs[1]!.style?.bgcolor?.name).toBe("blue");
-    expect(segs[1]!.style?.bold).toBe(true); // attr overlay applied
+  it("empty RichText falls back to base style at both edges", () => {
+    const r = cell("", "white on red");
+    expect(r.edgeStyle("left").bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right").bgcolor?.name).toBe("red");
   });
 });

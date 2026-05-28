@@ -15,131 +15,35 @@
  * is the single authority for how strips lay out. Every joiner participates
  * in the same protocol; "look up the previous segment's bg" is no longer a
  * powerline-specific hack but the contract every joiner shares.
+ *
+ * [LAW:locality-or-seam] The joiner protocol asks each item only for its
+ * *edge* style — the column adjacent to the joiner — not for a single
+ * whole-item style. This pushes the bg-uniformity requirement out of the
+ * cell type and into the narrowest place that actually needs it: the column
+ * boundary. Items with uniform styling report the same style at both edges;
+ * items with varying styling report the actual boundary column. There is no
+ * single-style invariant on the cell type — the terminal supports per-column
+ * styling, so the cell type does too.
  */
 
 import { Segment } from "./segment.js";
-import { Style, NULL_STYLE } from "./style.js";
+import { Style } from "./style.js";
 import { ColorSpec, blendRgb } from "./color.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
 
 /**
- * Items in a `Strip` expose a single dominant `style` so joiners can read
- * fg/bg without inspecting the rendered output.
+ * Items in a `Strip` expose their per-edge style so joiners can paint the
+ * transition glyph at each boundary.
  *
- * ## Single-style invariant (load-bearing)
- *
- * Joiners — `PowerlineJoiner`, `CapsuleJoiner`, `GradientJoiner` — paint edges
- * by reading `item.style.bgcolor` for adjacent items. If `render()` emits a
- * `Segment` whose `style.bgcolor` diverges from `this.style.bgcolor`, the
- * arrow/cap glyph between this item and its neighbour will use the *declared*
- * bg even though the item *displayed* a different bg. The result is a
- * visually wrong transition (e.g. a powerline arrow whose source colour
- * doesn't match the cell it's bleeding out of).
- *
- * **The invariant**: for every `Segment` yielded by `render()`, either
- *   - `segment.style.bgcolor === this.style.bgcolor`, or
- *   - `segment.style.bgcolor === undefined` (transparent — terminal default).
- *
- * Foreground colour and text attributes (bold, italic, underline, etc.) may
- * vary freely within a single item — only `bgcolor` is constrained, because
- * that's the only field joiners read.
- *
- * ## What breaks the invariant
- *
- * - Yielding inline `Segment`s with their own `bgcolor` set to a different
- *   value (e.g. an embedded "warning" highlight with a yellow background).
- * - Wrapping a renderable that paints its own background — `Panel`, a styled
- *   `Group`, or any `RichText` whose base style includes a bg.
- *
- * ## The safe path
- *
- * Use `StripCell(text, style)` for plain styled text — it satisfies the
- * invariant by construction. For richer items, implement this interface
- * directly and ensure your `render()` only emits Segments whose bg matches
- * `this.style.bgcolor` (or is undefined). Inline fg variation is fine; bg
- * variation is not.
+ * `edgeStyle("left")` reports the style of the item's leftmost cell column;
+ * `edgeStyle("right")` reports the rightmost. Joiners read only these — the
+ * item's interior may carry any per-column variation without breaking the
+ * join.
  */
 export interface StyledRenderable extends Renderable {
-  readonly style: Style;
-}
-
-// --- StripCell ---
-
-/**
- * A styled run within a `StripCell` — text plus an optional foreground /
- * text-attribute overlay. Used to express inline fg variation inside a single
- * cell (e.g. a status string where some characters render green and others
- * red, all on the same cell-level bg).
- *
- * The overlay must NOT set `bgcolor`. Cell-level bg is the joiner-visible bg
- * per the single-style invariant on `StyledRenderable`; allowing parts to
- * override it would silently violate that invariant. `StripCell` rejects parts
- * with a `bgcolor` overlay at construction.
- */
-export interface StripCellPart {
-  readonly text: string;
-  readonly style?: Style;
-}
-
-/**
- * Canonical safe implementation of `StyledRenderable`. Two construction
- * shapes:
- *
- * - `new StripCell(text, style)` — a single styled run. One segment out.
- * - `new StripCell(parts, style)` — multiple runs sharing one cell-level
- *   `style`. Each part may carry its own fg / attribute overlay; cell-level
- *   `style` always governs the bg. Consumers needing inline fg variation
- *   (e.g. `[ main S +3 -2 ]` where `S`/`+3` are green, `-2` is red, all on
- *   the same blue bg) use this shape instead of writing a custom
- *   `StyledRenderable`.
- *
- * Both shapes satisfy the single-style invariant by construction: parts with
- * `bgcolor` set are rejected, so every emitted `Segment`'s bg matches
- * `this.style.bgcolor` (or is undefined when the cell has no bg).
- */
-export class StripCell implements StyledRenderable {
-  readonly text: string;
-  readonly style: Style;
-  private readonly _parts: readonly StripCellPart[];
-
-  constructor(text: string, style?: Style);
-  constructor(parts: readonly StripCellPart[], style?: Style);
-  constructor(textOrParts: string | readonly StripCellPart[], style?: Style) {
-    this.style = style ?? NULL_STYLE;
-    if (typeof textOrParts === "string") {
-      this.text = textOrParts;
-      this._parts = [{ text: textOrParts }];
-      return;
-    }
-    // [LAW:single-enforcer] cell-level bg is the only joiner-visible bg.
-    // Reject parts that try to set their own bg at construction so the
-    // invariant cannot be silently broken downstream.
-    for (const part of textOrParts) {
-      if (part.style?.bgcolor !== undefined) {
-        throw new Error(
-          "StripCell part style must not set bgcolor — cell-level style governs the bg (single-style invariant). Use the cell `style` argument for bg.",
-        );
-      }
-    }
-    this._parts = textOrParts.slice();
-    this.text = textOrParts.map((p) => p.text).join("");
-  }
-
-  *render(_options: RenderOptions): Iterable<Segment> {
-    // [LAW:dataflow-not-control-flow] The walk is identical for both
-    // construction shapes: one part for the (text, style) form, N parts for
-    // the parts form. Variability lives in `_parts`, not in branching here.
-    for (const part of this._parts) {
-      const partStyle = part.style;
-      // `Style.add` keeps `this.style.bgcolor` whenever the overlay's bg is
-      // undefined — and the constructor guarantees that. So the merged style
-      // always satisfies `merged.bgcolor === this.style.bgcolor`.
-      const style = partStyle ? this.style.add(partStyle) : this.style;
-      yield new Segment(part.text, style);
-    }
-  }
+  edgeStyle(side: "left" | "right"): Style;
 }
 
 // --- Joiner ---
@@ -204,12 +108,12 @@ class FixedSegment implements Renderable {
   }
 }
 
-function bgAsFg(item: StyledRenderable): Style {
-  // Endpoint and powerline join glyphs paint the previous/next item's bg
-  // *as* their fg. If the source item has no bgcolor, the glyph degrades to
-  // the default fg — which renders as nothing visible against the terminal
-  // background, the right outcome for an unstyled cell.
-  return new Style({ color: item.style.bgcolor });
+// Endpoint and powerline join glyphs paint the adjacent item's edge bg
+// *as* their fg. If the edge has no bgcolor, the glyph degrades to the
+// default fg — which renders as nothing visible against the terminal
+// background, the right outcome for an unstyled edge.
+function bgAsFg(edge: Style): Style {
+  return new Style({ color: edge.bgcolor });
 }
 
 // --- PowerlineJoiner ---
@@ -223,7 +127,7 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
   private readonly _glyph: string;
 
   constructor(options?: PowerlineJoinerOptions) {
-    this._glyph = options?.glyph ?? "\ue0b0";
+    this._glyph = options?.glyph ?? "";
   }
 
   join(left: T | null, right: T | null): Renderable {
@@ -232,22 +136,20 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     // cleanly. This matches vim-airline / tmux-powerline / claude-powerline.
     if (left === null) return EMPTY;
     if (right === null) {
-      // End cap: fg = left.bg, no bg — last segment bleeds out into the
-      // terminal background.
-      return new FixedSegment(this._glyph, bgAsFg(left));
+      // End cap: fg = left's right edge bg, no bg — bleed out into terminal bg.
+      return new FixedSegment(this._glyph, bgAsFg(left.edgeStyle("right")));
     }
     // [LAW:dataflow-not-control-flow] The transition is a function of the
-    // input colors. When both neighbors share a bg, there is no visual
-    // transition to paint — emit EMPTY so the coalescer in segmentsToString
-    // can merge adjacent same-style cells under one SGR wrap. Without this,
-    // a same-bg "transition" would emit an invisible glyph whose SGR codes
-    // still split the SGR run, defeating coalescing for everyone downstream.
-    // Equality uses `.name` to match Style.equals' precedent (style.ts:276).
-    if (left.style.bgcolor?.name === right.style.bgcolor?.name) return EMPTY;
-    // Middle: fg = left.bg, bg = right.bg.
+    // edge colors. When both neighbors' adjacent edges share a bg, there is
+    // no visual transition to paint — emit EMPTY so the coalescer in
+    // segmentsToString can merge adjacent same-style cells under one SGR
+    // wrap. Equality uses `.name` to match Style.equals' precedent.
+    const leftEdge = left.edgeStyle("right");
+    const rightEdge = right.edgeStyle("left");
+    if (leftEdge.bgcolor?.name === rightEdge.bgcolor?.name) return EMPTY;
     return new FixedSegment(
       this._glyph,
-      new Style({ color: left.style.bgcolor, bgcolor: right.style.bgcolor }),
+      new Style({ color: leftEdge.bgcolor, bgcolor: rightEdge.bgcolor }),
     );
   }
 }
@@ -269,25 +171,25 @@ export class CapsuleJoiner<T extends StyledRenderable = StyledRenderable> implem
   private readonly _separator: string;
 
   constructor(options?: CapsuleJoinerOptions) {
-    this._left = options?.left ?? "\ue0b6";
-    this._right = options?.right ?? "\ue0b4";
+    this._left = options?.left ?? "";
+    this._right = options?.right ?? "";
     this._separator = options?.separator ?? " ";
   }
 
   *_emit(left: T | null, right: T | null, options: RenderOptions): Iterable<Segment> {
     if (left === null && right === null) return;
     if (left === null) {
-      yield new Segment(this._left, bgAsFg(right!));
+      yield new Segment(this._left, bgAsFg(right!.edgeStyle("left")));
       return;
     }
     if (right === null) {
-      yield new Segment(this._right, bgAsFg(left));
+      yield new Segment(this._right, bgAsFg(left.edgeStyle("right")));
       return;
     }
     // Middle: close the left capsule, separator (unstyled), open the right.
-    yield new Segment(this._right, bgAsFg(left));
+    yield new Segment(this._right, bgAsFg(left.edgeStyle("right")));
     if (this._separator.length > 0) yield new Segment(this._separator);
-    yield new Segment(this._left, bgAsFg(right));
+    yield new Segment(this._left, bgAsFg(right.edgeStyle("left")));
     void options;
   }
 
@@ -337,7 +239,7 @@ export interface GradientJoinerOptions {
  * two colour samples — `2 * steps` samples in `steps` cells — so the gradient
  * looks twice as smooth as one-colour-per-cell at the same width.
  */
-const HALF_BLOCK = "\u258c"; // ▌
+const HALF_BLOCK = "▌"; // ▌
 
 export class GradientJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   private readonly _steps: number;
@@ -349,10 +251,10 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
   join(left: T | null, right: T | null): Renderable {
     // [LAW:dataflow-not-control-flow] Endpoints have no opposite anchor to
     // interpolate toward — the data (a missing neighbor) makes the gradient
-    // empty. Same for items lacking a bgcolor: nothing to blend between.
+    // empty. Same for edges lacking a bgcolor: nothing to blend between.
     if (left === null || right === null) return EMPTY;
-    const lbg = left.style.bgcolor;
-    const rbg = right.style.bgcolor;
+    const lbg = left.edgeStyle("right").bgcolor;
+    const rbg = right.edgeStyle("left").bgcolor;
     if (!lbg || !rbg) return EMPTY;
     const lTrip = lbg.getTruecolor();
     const rTrip = rbg.getTruecolor();
