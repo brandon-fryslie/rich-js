@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-52",
-      "ref": "refs/pull/52/merge",
-      "sha": "08b1cf72117d8d151a9d18b39ec4d065746131ec",
-      "timestamp": "2026-05-28T08:13:52.856Z",
-      "commits": [
-        {
-          "sha": "08b1cf72117d8d151a9d18b39ec4d065746131ec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T08:13:23Z",
-          "message": "Merge 0d5fee91dc6af383bf2300d61f3ca822ff40003c into 0d72302987fba20861d225f36578402439df4e9a\n"
-        },
-        {
-          "sha": "0d5fee91dc6af383bf2300d61f3ca822ff40003c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T02:13:12-06:00",
-          "message": "chore(demo): drop blank line left over from StripCell import removal\n\nThe rich-strip demo's import block carried an empty line where\n`StripCell,` used to be. Trivial cleanup; no behavior change.\n"
-        },
-        {
-          "sha": "d412ef579f090fd4c1f5528c5206e0a5216b3542",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T02:07:40-06:00",
-          "message": "feat(text): public noWrap getter/setter on RichText\n\nStrip cells need to opt out of wrap-to-width when used as Strip items\n(otherwise the cell folds internally when the render passes a maxWidth).\n`_noWrap` was settable only via the constructor; adding a public accessor\nlets consumers configure it after construction — e.g. when assembling a\ncell via `fromFragments` and then setting properties.\n\n[LAW:locality-or-seam] The accessor sits alongside the other RichText\nfield accessors (`end`, `justify`, `overflow`); no new seam, just\nexposing an existing private field through the same boundary the type\nalready uses for its other configurables.\n"
-        },
-        {
-          "sha": "e7c871368a06624a359d87e11d3e99917785a52f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T01:16:52-06:00",
-          "message": "feat(strip): collapse StripCell into RichText; edge-style joiner protocol\n\nStripCell existed as a parallel cell type to RichText, with two construction\nshapes — `(text, style)` and `(parts, style)` — and a \"single-style invariant\"\nthat forced the entire cell interior to share one bg, because joiners read\n`item.style.bgcolor` to paint transitions between adjacent strip items.\n\nThat invariant was [LAW:locality-or-seam] violated in reverse: a\njoiner-specific concern (what color the join glyph touches) was pushed up\ninto the cell type, constraining its interior. The terminal supports\nper-column bg natively; the cell type did not, because the joiner protocol\nasked the wrong question.\n\nThis collapses StripCell into RichText and narrows the joiner protocol to\nthe question it actually needs:\n\n- StyledRenderable.edgeStyle(side: \"left\" | \"right\"): Style — the style of\n  the cell-column adjacent to the joiner on the named side. Joiners\n  (PowerlineJoiner, CapsuleJoiner, GradientJoiner) read edgeStyle instead\n  of `style.bgcolor`. For uniform-styled items both edges return the same\n  style; for items with span variation each edge reports the actual\n  boundary column.\n- RichText implements edgeStyle via span-at-position lookup merged with\n  the wrapping base style. RichText already had `spans` for per-character\n  styling, `truncate`/`align`/`pad*`/`slice`/`divide` that preserve spans\n  through every operation, and `fromFragments` to assemble from a styled-\n  template engine output. It was already the cell type we needed; we\n  just hadn't been using it as one.\n- StripCell + StripCellPart deleted from src and exports.\n- RichText.truncate extended with mode: \"right\" | \"left\" | \"middle\" and\n  custom marker. Existing `overflow: \"ellipsis\"` form preserved.\n\n[LAW:one-type-per-behavior] StripCell and RichText had the same behavior\n(styled cell-column-sequence with a renderable). Two types → one type.\n\n[LAW:single-enforcer] One truncate/align/pad implementation on RichText.\nConsumers no longer need to construct intermediate cells and then mutate\nthem — the operation is on the cell type directly, lossless by\nconstruction.\n\nTests updated: strip.test.ts + flexStrip.test.ts + render.test.ts +\ntext.test.ts (new truncate mode tests). All 1757 tests pass. Bumped to\n0.4.0. Docs (docs/strip.md, spec/demos.md) reference StripCell in prose\nand will be updated in a follow-up.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0d72302987fba20861d225f36578402439df4e9a",
-      "timestamp": "2026-05-26T10:03:55.508Z",
+      "sha": "b00db90994d5849a5271c17de63054877b040197",
+      "timestamp": "2026-05-28T08:18:06.733Z",
       "commits": [
         {
-          "sha": "0d72302987fba20861d225f36578402439df4e9a",
+          "sha": "b00db90994d5849a5271c17de63054877b040197",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-26T04:03:24-06:00",
-          "message": "fix(console): make beginCapture/endCapture actually capture (rich-demo-site-pek.6) (#51)\n\nThe capture API was dead code: `_buffer: string` used `\"\"` as both the\n\"not capturing\" sentinel and the empty-buffer state, so `_write`'s\n`_buffer !== \"\"` guard could never be true while a capture was active.\n`endCapture()` always returned `\"\"`.\n\n[LAW:types-are-the-program] [LAW:enumeration-gap] — replace the\nsentinel-string scheme with `_capture: string | null` so the type\nitself carries the discriminator. `null` = not capturing; any string\n(including `\"\"`) = capturing, this is the buffer. The impossible state\n\"not capturing, buffer non-empty\" is unrepresentable.\n\n[LAW:one-source-of-truth] — adopt redirect semantics (matching Python\nRich's `Console.capture()`): during capture the target receives\nnothing. The previous code attempted a tee but was broken in a way\nthat produced neither outcome.\n\nTests cover round-trip, redirect (target unaffected), restoration\nafter endCapture, default-on-misuse, and independent sequential\nsessions. 4/5 fail on master, all 5 pass after the fix.\n\nSpec updated to document the redirect semantics."
+          "timestamp": "2026-05-28T02:17:36-06:00",
+          "message": "feat(strip): collapse StripCell into RichText; edge-style joiner protocol (#52)\n\n* feat(strip): collapse StripCell into RichText; edge-style joiner protocol\n\nStripCell existed as a parallel cell type to RichText, with two construction\nshapes — `(text, style)` and `(parts, style)` — and a \"single-style invariant\"\nthat forced the entire cell interior to share one bg, because joiners read\n`item.style.bgcolor` to paint transitions between adjacent strip items.\n\nThat invariant was [LAW:locality-or-seam] violated in reverse: a\njoiner-specific concern (what color the join glyph touches) was pushed up\ninto the cell type, constraining its interior. The terminal supports\nper-column bg natively; the cell type did not, because the joiner protocol\nasked the wrong question.\n\nThis collapses StripCell into RichText and narrows the joiner protocol to\nthe question it actually needs:\n\n- StyledRenderable.edgeStyle(side: \"left\" | \"right\"): Style — the style of\n  the cell-column adjacent to the joiner on the named side. Joiners\n  (PowerlineJoiner, CapsuleJoiner, GradientJoiner) read edgeStyle instead\n  of `style.bgcolor`. For uniform-styled items both edges return the same\n  style; for items with span variation each edge reports the actual\n  boundary column.\n- RichText implements edgeStyle via span-at-position lookup merged with\n  the wrapping base style. RichText already had `spans` for per-character\n  styling, `truncate`/`align`/`pad*`/`slice`/`divide` that preserve spans\n  through every operation, and `fromFragments` to assemble from a styled-\n  template engine output. It was already the cell type we needed; we\n  just hadn't been using it as one.\n- StripCell + StripCellPart deleted from src and exports.\n- RichText.truncate extended with mode: \"right\" | \"left\" | \"middle\" and\n  custom marker. Existing `overflow: \"ellipsis\"` form preserved.\n\n[LAW:one-type-per-behavior] StripCell and RichText had the same behavior\n(styled cell-column-sequence with a renderable). Two types → one type.\n\n[LAW:single-enforcer] One truncate/align/pad implementation on RichText.\nConsumers no longer need to construct intermediate cells and then mutate\nthem — the operation is on the cell type directly, lossless by\nconstruction.\n\nTests updated: strip.test.ts + flexStrip.test.ts + render.test.ts +\ntext.test.ts (new truncate mode tests). All 1757 tests pass. Bumped to\n0.4.0. Docs (docs/strip.md, spec/demos.md) reference StripCell in prose\nand will be updated in a follow-up.\n\n* feat(text): public noWrap getter/setter on RichText\n\nStrip cells need to opt out of wrap-to-width when used as Strip items\n(otherwise the cell folds internally when the render passes a maxWidth).\n`_noWrap` was settable only via the constructor; adding a public accessor\nlets consumers configure it after construction — e.g. when assembling a\ncell via `fromFragments` and then setting properties.\n\n[LAW:locality-or-seam] The accessor sits alongside the other RichText\nfield accessors (`end`, `justify`, `overflow`); no new seam, just\nexposing an existing private field through the same boundary the type\nalready uses for its other configurables.\n\n* chore(demo): drop blank line left over from StripCell import removal\n\nThe rich-strip demo's import block carried an empty line where\n`StripCell,` used to be. Trivial cleanup; no behavior change."
         }
       ]
     },
