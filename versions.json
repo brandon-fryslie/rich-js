@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-53",
-      "ref": "refs/pull/53/merge",
-      "sha": "2a14dae78d6a05e647f86dec714a0b48daf85587",
-      "timestamp": "2026-05-28T08:26:09.702Z",
-      "commits": [
-        {
-          "sha": "2a14dae78d6a05e647f86dec714a0b48daf85587",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T02:25:40-06:00",
-          "message": "Merge 123a42398be0f8b4497ae56e0b0d00f054c0fe55 into b00db90994d5849a5271c17de63054877b040197\n"
-        },
-        {
-          "sha": "123a42398be0f8b4497ae56e0b0d00f054c0fe55",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T02:24:53-06:00",
-          "message": "docs(strip): drop StripCell refs; describe edgeStyle(side) joiner protocol (rich-strip-docs-4x7)\n\nPR #52 collapsed StripCell/StripCellPart into RichText, but prose in\ndocs/strip.md and spec/demos.md still referenced the removed types.\n\n- Switch examples to the RichText cell form:\n  new RichText(text, { style, end: \"\", noWrap: true })\n- Replace the \"single-style invariant\" section with \"edge styles are\n  the protocol\" — joiners now read edgeStyle(\"left\"/\"right\")\n  independently, so interior bg variation is free.\n- Show inline per-character variation via RichText.stylize spans\n  instead of the old StripCell parts form.\n- Drop StripCell / StripCellPart from spec/demos.md owned-exports.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b00db90994d5849a5271c17de63054877b040197",
-      "timestamp": "2026-05-28T08:18:06.733Z",
+      "sha": "5f0814781c591a85696bd6de82f74f36c2187c69",
+      "timestamp": "2026-05-28T08:27:46.840Z",
       "commits": [
         {
-          "sha": "b00db90994d5849a5271c17de63054877b040197",
+          "sha": "5f0814781c591a85696bd6de82f74f36c2187c69",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T02:17:36-06:00",
-          "message": "feat(strip): collapse StripCell into RichText; edge-style joiner protocol (#52)\n\n* feat(strip): collapse StripCell into RichText; edge-style joiner protocol\n\nStripCell existed as a parallel cell type to RichText, with two construction\nshapes — `(text, style)` and `(parts, style)` — and a \"single-style invariant\"\nthat forced the entire cell interior to share one bg, because joiners read\n`item.style.bgcolor` to paint transitions between adjacent strip items.\n\nThat invariant was [LAW:locality-or-seam] violated in reverse: a\njoiner-specific concern (what color the join glyph touches) was pushed up\ninto the cell type, constraining its interior. The terminal supports\nper-column bg natively; the cell type did not, because the joiner protocol\nasked the wrong question.\n\nThis collapses StripCell into RichText and narrows the joiner protocol to\nthe question it actually needs:\n\n- StyledRenderable.edgeStyle(side: \"left\" | \"right\"): Style — the style of\n  the cell-column adjacent to the joiner on the named side. Joiners\n  (PowerlineJoiner, CapsuleJoiner, GradientJoiner) read edgeStyle instead\n  of `style.bgcolor`. For uniform-styled items both edges return the same\n  style; for items with span variation each edge reports the actual\n  boundary column.\n- RichText implements edgeStyle via span-at-position lookup merged with\n  the wrapping base style. RichText already had `spans` for per-character\n  styling, `truncate`/`align`/`pad*`/`slice`/`divide` that preserve spans\n  through every operation, and `fromFragments` to assemble from a styled-\n  template engine output. It was already the cell type we needed; we\n  just hadn't been using it as one.\n- StripCell + StripCellPart deleted from src and exports.\n- RichText.truncate extended with mode: \"right\" | \"left\" | \"middle\" and\n  custom marker. Existing `overflow: \"ellipsis\"` form preserved.\n\n[LAW:one-type-per-behavior] StripCell and RichText had the same behavior\n(styled cell-column-sequence with a renderable). Two types → one type.\n\n[LAW:single-enforcer] One truncate/align/pad implementation on RichText.\nConsumers no longer need to construct intermediate cells and then mutate\nthem — the operation is on the cell type directly, lossless by\nconstruction.\n\nTests updated: strip.test.ts + flexStrip.test.ts + render.test.ts +\ntext.test.ts (new truncate mode tests). All 1757 tests pass. Bumped to\n0.4.0. Docs (docs/strip.md, spec/demos.md) reference StripCell in prose\nand will be updated in a follow-up.\n\n* feat(text): public noWrap getter/setter on RichText\n\nStrip cells need to opt out of wrap-to-width when used as Strip items\n(otherwise the cell folds internally when the render passes a maxWidth).\n`_noWrap` was settable only via the constructor; adding a public accessor\nlets consumers configure it after construction — e.g. when assembling a\ncell via `fromFragments` and then setting properties.\n\n[LAW:locality-or-seam] The accessor sits alongside the other RichText\nfield accessors (`end`, `justify`, `overflow`); no new seam, just\nexposing an existing private field through the same boundary the type\nalready uses for its other configurables.\n\n* chore(demo): drop blank line left over from StripCell import removal\n\nThe rich-strip demo's import block carried an empty line where\n`StripCell,` used to be. Trivial cleanup; no behavior change."
+          "timestamp": "2026-05-28T02:27:11-06:00",
+          "message": "docs(strip): drop StripCell refs; describe edgeStyle(side) joiner protocol (rich-strip-docs-4x7) (#53)\n\nPR #52 collapsed StripCell/StripCellPart into RichText, but prose in\ndocs/strip.md and spec/demos.md still referenced the removed types.\n\n- Switch examples to the RichText cell form:\n  new RichText(text, { style, end: \"\", noWrap: true })\n- Replace the \"single-style invariant\" section with \"edge styles are\n  the protocol\" — joiners now read edgeStyle(\"left\"/\"right\")\n  independently, so interior bg variation is free.\n- Show inline per-character variation via RichText.stylize spans\n  instead of the old StripCell parts form.\n- Drop StripCell / StripCellPart from spec/demos.md owned-exports."
         }
       ]
     },
