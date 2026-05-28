@@ -197,8 +197,47 @@ export class RichText implements Renderable, Measurable {
     this._end = value;
   }
 
+  get noWrap(): boolean {
+    return this._noWrap;
+  }
+
+  set noWrap(value: boolean) {
+    this._noWrap = value;
+  }
+
   get spans(): readonly Span[] {
     return this._spans;
+  }
+
+  /**
+   * The style of the cell-column at the named edge — base style merged with
+   * any spans covering the leftmost (side="left") or rightmost (side="right")
+   * character.
+   *
+   * [LAW:locality-or-seam] Used by `Joiner`s to paint the transition between
+   * adjacent `Strip` items. Joiners only ever need the column adjacent to
+   * them, so the cell type exposes that column rather than constraining its
+   * interior to be uniform. For RichText with uniform styling, both edges
+   * return the same style; for RichText with edge variation, each edge
+   * accurately reports the column the joiner actually meets.
+   *
+   * Position is by character index (not cell column). For wide-character
+   * text, the last character occupies the rightmost cell column — the bg
+   * of that character covers both columns, so character-index lookup gives
+   * the correct edge color.
+   */
+  edgeStyle(side: "left" | "right"): Style {
+    if (this._text.length === 0) return this._style;
+    const pos = side === "left" ? 0 : this._text.length - 1;
+    let result = this._style;
+    for (const span of this._spans) {
+      if (span.start <= pos && pos < span.end) {
+        const spanStyle =
+          typeof span.style === "string" ? Style.parse(span.style) : span.style;
+        result = result.add(spanStyle);
+      }
+    }
+    return result;
   }
 
   // --- Content Operations ---
@@ -470,22 +509,131 @@ export class RichText implements Renderable, Measurable {
 
   // --- Truncation ---
 
-  truncate(width: number, options?: { overflow?: "fold" | "crop" | "ellipsis" }): this {
+  /**
+   * Truncate to a fixed cell-column width. Three modes, plus a back-compat
+   * `overflow` form.
+   *
+   * - `mode: "right"` (default) \u2014 drop characters from the right; append
+   *   `marker` (if any) at the cut.
+   * - `mode: "left"` \u2014 drop characters from the left; prepend `marker` at
+   *   the cut.
+   * - `mode: "middle"` \u2014 keep equal halves from both ends; place `marker`
+   *   in the middle.
+   *
+   * Marker default is `"\u2026"`. Pass `marker: ""` for raw cropping without an
+   * indicator glyph.
+   *
+   * Legacy form: `{ overflow: "ellipsis" }` is equivalent to
+   * `{ mode: "right", marker: "\u2026" }`; `{ overflow: "crop" | "fold" }` is
+   * equivalent to `{ marker: "" }`.
+   *
+   * Spans are preserved through the cut: characters that survive keep their
+   * styling; the marker (if any) is inserted as plain text with no span.
+   * Use `stylize(...)` on the result to color the marker if needed.
+   *
+   * [LAW:dataflow-not-control-flow] mode/marker/width all flow as values;
+   * the walk is the same shape regardless. No "if truncated then rebuild"
+   * branch \u2014 the unchanged path just early-returns when content fits.
+   */
+  truncate(
+    width: number,
+    options?: {
+      overflow?: "fold" | "crop" | "ellipsis";
+      mode?: "right" | "left" | "middle";
+      marker?: string;
+    },
+  ): this {
     if (this.cellLength <= width) return this;
-    const overflow = options?.overflow ?? "crop";
 
-    if (overflow === "ellipsis" && width > 0) {
-      // Truncate to width-1 and append ellipsis
-      this._truncateToWidth(width - 1);
-      this._text += "\u2026";
-    } else {
-      this._truncateToWidth(width);
+    const overflow = options?.overflow;
+    const mode = options?.mode ?? "right";
+    const marker =
+      options?.marker !== undefined
+        ? options.marker
+        : overflow === "ellipsis"
+          ? "\u2026"
+          : overflow === undefined && options?.mode !== undefined
+            ? "\u2026"
+            : "";
+
+    const markerWidth = cellLen(marker);
+    if (width <= 0) {
+      this.plain = "";
+      return this;
+    }
+    const budget = Math.max(0, width - markerWidth);
+
+    if (mode === "right") {
+      this._cropRightTo(budget);
+      if (marker) this._text += marker;
+      return this;
     }
 
+    if (mode === "left") {
+      this._cropLeftTo(budget);
+      if (marker) {
+        this._spans = this._spans.map((s) => s.move(marker.length));
+        this._text = marker + this._text;
+      }
+      return this;
+    }
+
+    // middle
+    const leftBudget = Math.floor(budget / 2);
+    const rightBudget = budget - leftBudget;
+    // Find the char-index ranges to keep from each side.
+    const leftEndCharIdx = this._cellPrefixCharLength(leftBudget);
+    const rightStartCharIdx = this._cellSuffixStartCharIndex(rightBudget);
+    const leftText = this._text.slice(0, leftEndCharIdx);
+    const rightText = this._text.slice(rightStartCharIdx);
+    const droppedStart = leftEndCharIdx;
+    const droppedEnd = rightStartCharIdx;
+    const shift = marker.length - (droppedEnd - droppedStart);
+    // Spans falling entirely before the drop stay; entirely after shift by
+    // (marker.length - dropped chars); spans crossing the drop are clipped.
+    const newSpans: Span[] = [];
+    for (const s of this._spans) {
+      if (s.end <= droppedStart) {
+        newSpans.push(s);
+      } else if (s.start >= droppedEnd) {
+        newSpans.push(s.move(shift));
+      } else {
+        // crosses \u2014 clip to left side and to right side as two spans
+        if (s.start < droppedStart) {
+          newSpans.push(new Span(s.start, droppedStart, s.style));
+        }
+        if (s.end > droppedEnd) {
+          newSpans.push(new Span(droppedEnd + shift, s.end + shift, s.style));
+        }
+      }
+    }
+    this._text = leftText + marker + rightText;
+    this._spans = newSpans;
     return this;
   }
 
-  private _truncateToWidth(targetWidth: number): void {
+  private _cropRightTo(targetWidth: number): void {
+    const charIdx = this._cellPrefixCharLength(targetWidth);
+    this.plain = this._text.slice(0, charIdx);
+  }
+
+  private _cropLeftTo(targetWidth: number): void {
+    const charIdx = this._cellSuffixStartCharIndex(targetWidth);
+    // Shift spans left by charIdx; clip spans that started before.
+    const shift = -charIdx;
+    this._spans = this._spans
+      .map((s) => {
+        if (s.end <= charIdx) return undefined;
+        const newStart = Math.max(0, s.start + shift);
+        const newEnd = s.end + shift;
+        return new Span(newStart, newEnd, s.style);
+      })
+      .filter((s): s is Span => s !== undefined);
+    this._text = this._text.slice(charIdx);
+  }
+
+  /** Number of char-index code units that fit within `targetWidth` cell columns from the left. */
+  private _cellPrefixCharLength(targetWidth: number): number {
     let width = 0;
     let charIndex = 0;
     for (const char of this._text) {
@@ -494,7 +642,22 @@ export class RichText implements Renderable, Measurable {
       width += charWidth;
       charIndex += char.length;
     }
-    this.plain = this._text.slice(0, charIndex);
+    return charIndex;
+  }
+
+  /** Char-index at which the suffix of `targetWidth` cell columns starts. */
+  private _cellSuffixStartCharIndex(targetWidth: number): number {
+    // Walk from right: accumulate widths of trailing chars until we hit the budget.
+    const chars: string[] = [...this._text];
+    let width = 0;
+    let kept = 0;
+    for (let i = chars.length - 1; i >= 0; i--) {
+      const w = cellLen(chars[i]!);
+      if (width + w > targetWidth) break;
+      width += w;
+      kept += chars[i]!.length;
+    }
+    return this._text.length - kept;
   }
 
   // --- Alignment ---

@@ -13,7 +13,6 @@
 import {
   Console,
   Strip,
-  StripCell,
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
@@ -41,10 +40,10 @@ export function runDemo(host: TerminalHost): DemoHandle {
   });
 
   const cells = [
-    new StripCell(" main ", Style.parse("white on #1e3a8a")),
-    new StripCell(" claude.ai ", Style.parse("white on #0e7490")),
-    new StripCell(" 3.4k tok ", Style.parse("white on #15803d")),
-    new StripCell(" 12% ", Style.parse("white on #b45309")),
+    new RichText(" main ", { style: Style.parse("white on #1e3a8a"), end: "", noWrap: true }),
+    new RichText(" claude.ai ", { style: Style.parse("white on #0e7490"), end: "", noWrap: true }),
+    new RichText(" 3.4k tok ", { style: Style.parse("white on #15803d"), end: "", noWrap: true }),
+    new RichText(" 12% ", { style: Style.parse("white on #b45309"), end: "", noWrap: true }),
   ];
 
   const showcase = (label: string, strip: Strip): void => {
@@ -60,8 +59,8 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   // "Unbounded" gradient: fill the row between two anchor cells with as many
   // steps as the terminal can show.
-  const LEFT_ANCHOR = new StripCell(" #ff0066 ", Style.parse("white on #ff0066"));
-  const RIGHT_ANCHOR = new StripCell(" #00ccff ", Style.parse("white on #00ccff"));
+  const LEFT_ANCHOR = new RichText(" #ff0066 ", { style: Style.parse("white on #ff0066"), end: "", noWrap: true });
+  const RIGHT_ANCHOR = new RichText(" #00ccff ", { style: Style.parse("white on #00ccff"), end: "", noWrap: true });
   const anchorWidth = " #ff0066 ".length + " #00ccff ".length;
   const fillSteps = Math.max(1, consoleOut.width - anchorWidth);
   showcase(
@@ -79,7 +78,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
     "scala", "erlang", "nim", "crystal", "rescript", "purescript",
   ];
   const tagCells = tags.map(
-    (t, i) => new StripCell(` ${t} `, Style.parse(`white on ${PALETTE[i % PALETTE.length]!}`)),
+    (t, i) => new RichText(` ${t} `, { style: Style.parse(`white on ${PALETTE[i % PALETTE.length]!}`), end: "", noWrap: true }),
   );
 
   consoleOut.print(new RichText("FlexStrip + PowerlineJoiner (wrap-to-width)", { style: "bold" }));

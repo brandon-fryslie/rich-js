@@ -144,7 +144,6 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
   ReprHighlighter: burndown("markup-and-text-lab"),
   RichTextOptions: burndown("markup-and-text-lab"),
   Span: burndown("markup-and-text-lab"),
-  StripCellPart: burndown("markup-and-text-lab"),
   StyleOptions: burndown("markup-and-text-lab"),
   StyledRenderable: burndown("markup-and-text-lab"),
   Tag: burndown("markup-and-text-lab"),
