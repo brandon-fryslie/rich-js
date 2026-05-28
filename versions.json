@@ -4,15 +4,22 @@
     {
       "version": "pr-52",
       "ref": "refs/pull/52/merge",
-      "sha": "81ba5b0997c3d2eecc5e06873a6097da21017984",
-      "timestamp": "2026-05-28T08:08:35.607Z",
+      "sha": "08b1cf72117d8d151a9d18b39ec4d065746131ec",
+      "timestamp": "2026-05-28T08:13:52.856Z",
       "commits": [
         {
-          "sha": "81ba5b0997c3d2eecc5e06873a6097da21017984",
+          "sha": "08b1cf72117d8d151a9d18b39ec4d065746131ec",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T08:07:50Z",
-          "message": "Merge d412ef579f090fd4c1f5528c5206e0a5216b3542 into 0d72302987fba20861d225f36578402439df4e9a\n"
+          "timestamp": "2026-05-28T08:13:23Z",
+          "message": "Merge 0d5fee91dc6af383bf2300d61f3ca822ff40003c into 0d72302987fba20861d225f36578402439df4e9a\n"
+        },
+        {
+          "sha": "0d5fee91dc6af383bf2300d61f3ca822ff40003c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-28T02:13:12-06:00",
+          "message": "chore(demo): drop blank line left over from StripCell import removal\n\nThe rich-strip demo's import block carried an empty line where\n`StripCell,` used to be. Trivial cleanup; no behavior change.\n"
         },
         {
           "sha": "d412ef579f090fd4c1f5528c5206e0a5216b3542",
