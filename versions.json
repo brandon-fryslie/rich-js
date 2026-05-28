@@ -4,15 +4,22 @@
     {
       "version": "pr-52",
       "ref": "refs/pull/52/merge",
-      "sha": "cc9ad4ae925ae28bab078383111ee8965275d77f",
-      "timestamp": "2026-05-28T08:07:55.959Z",
+      "sha": "81ba5b0997c3d2eecc5e06873a6097da21017984",
+      "timestamp": "2026-05-28T08:08:35.607Z",
       "commits": [
         {
-          "sha": "cc9ad4ae925ae28bab078383111ee8965275d77f",
+          "sha": "81ba5b0997c3d2eecc5e06873a6097da21017984",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T02:07:22-06:00",
-          "message": "Merge e7c871368a06624a359d87e11d3e99917785a52f into 0d72302987fba20861d225f36578402439df4e9a\n"
+          "timestamp": "2026-05-28T08:07:50Z",
+          "message": "Merge d412ef579f090fd4c1f5528c5206e0a5216b3542 into 0d72302987fba20861d225f36578402439df4e9a\n"
+        },
+        {
+          "sha": "d412ef579f090fd4c1f5528c5206e0a5216b3542",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-05-28T02:07:40-06:00",
+          "message": "feat(text): public noWrap getter/setter on RichText\n\nStrip cells need to opt out of wrap-to-width when used as Strip items\n(otherwise the cell folds internally when the render passes a maxWidth).\n`_noWrap` was settable only via the constructor; adding a public accessor\nlets consumers configure it after construction — e.g. when assembling a\ncell via `fromFragments` and then setting properties.\n\n[LAW:locality-or-seam] The accessor sits alongside the other RichText\nfield accessors (`end`, `justify`, `overflow`); no new seam, just\nexposing an existing private field through the same boundary the type\nalready uses for its other configurables.\n"
         },
         {
           "sha": "e7c871368a06624a359d87e11d3e99917785a52f",
