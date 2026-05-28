@@ -197,6 +197,14 @@ export class RichText implements Renderable, Measurable {
     this._end = value;
   }
 
+  get noWrap(): boolean {
+    return this._noWrap;
+  }
+
+  set noWrap(value: boolean) {
+    this._noWrap = value;
+  }
+
   get spans(): readonly Span[] {
     return this._spans;
   }
