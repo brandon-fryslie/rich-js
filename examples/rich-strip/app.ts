@@ -13,7 +13,6 @@
 import {
   Console,
   Strip,
-
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
