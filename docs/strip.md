@@ -20,15 +20,18 @@ Endpoints (`null` left or right) are explicit positions in the protocol — ever
 ## Basic use
 
 ```typescript
-import { Console, Strip, StripCell, PowerlineJoiner, Style } from "@promptctl/rich-js";
+import { Console, Strip, RichText, PowerlineJoiner, Style } from "@promptctl/rich-js";
 
 const console = new Console();
 
+const cell = (text: string, style: string) =>
+  new RichText(text, { style: Style.parse(style), end: "", noWrap: true });
+
 const strip = new Strip(
   [
-    new StripCell(" main ", Style.parse("white on blue")),
-    new StripCell(" claude.ai ", Style.parse("white on cyan")),
-    new StripCell(" 3.4k tok ", Style.parse("white on green")),
+    cell(" main ", "white on blue"),
+    cell(" claude.ai ", "white on cyan"),
+    cell(" 3.4k tok ", "white on green"),
   ],
   new PowerlineJoiner(), // default glyph: U+E0B0 ()
 );
@@ -36,7 +39,9 @@ const strip = new Strip(
 console.print(strip);
 ```
 
-The arrow between two cells inherits `fg = left.bgcolor` and `bg = right.bgcolor`. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's bg with no bg, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells inherits `fg = left.edgeStyle("right").bgcolor` and `bg = right.edgeStyle("left").bgcolor`. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's right-edge bg with no bg of its own, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
+
+The `end: ""` option suppresses RichText's default trailing newline (so cells concatenate on one line); `noWrap: true` keeps a cell from being broken across lines. Together they make a `RichText` behave as a single inline cell.
 
 ## Built-in joiners
 
@@ -98,71 +103,42 @@ import { Joiner, StyledRenderable, Renderable } from "@promptctl/rich-js";
 
 class FadeJoiner<T extends StyledRenderable> implements Joiner<T> {
   join(left: T | null, right: T | null): Renderable {
-    // ...interpolate between left.style.bgcolor and right.style.bgcolor...
+    // ...interpolate between left.edgeStyle("right").bgcolor
+    //                  and right.edgeStyle("left").bgcolor...
   }
 }
 ```
 
-Items in a Strip implement `StyledRenderable` — a `Renderable` plus a single `style: Style` the joiner reads. `StripCell` is the simplest implementation; consumers with richer items can implement the interface directly.
+Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right"): Style` that reports the style of the item's leftmost and rightmost cell columns. `RichText` implements this directly; consumers with richer items can implement the interface themselves.
 
-## Single-style invariant
+## Edge styles are the protocol
 
-Joiners read `item.style.bgcolor` to paint the transition between adjacent items. The arrow/cap glyph for a powerline transition uses `fg = left.style.bgcolor` and `bg = right.style.bgcolor` — those colours come from the *declared* `.style`, not from inspecting what the item rendered.
+Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` and `R` paints its glyph with:
 
-This means a custom `StyledRenderable` must uphold an invariant:
+- `fg = L.edgeStyle("right").bgcolor`
+- `bg = R.edgeStyle("left").bgcolor`
 
-> Every `Segment` yielded by `render()` must have a `bgcolor` that is either equal to `this.style.bgcolor`, or `undefined` (transparent). Inline foreground and text-attribute variation is fine; background variation is not.
+The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 
-If you violate this, the joiner glyph will use the wrong colour and produce a visually wrong transition — a powerline arrow whose source colour doesn't match the cell it's bleeding out of.
+### Inline variation inside a cell
 
-### What breaks it
-
-```typescript
-// BAD: yields a segment with a different bg than the declared style
-class Warning implements StyledRenderable {
-  readonly style = Style.parse("white on blue");
-  *render() {
-    yield new Segment("ok ", this.style);
-    yield new Segment("!", Style.parse("white on red")); // ← wrong bg
-  }
-}
-```
+A single `RichText` cell can carry per-character variation through styled spans:
 
 ```typescript
-// BAD: wrapping a Panel whose own style paints a different background
-class Boxed implements StyledRenderable {
-  readonly style = Style.parse("white on blue");
-  private panel = new Panel("hi", { style: "yellow on black" });
-  *render(opts) { yield* this.panel.render(opts); }
-}
-```
-
-### The safe path
-
-Use `StripCell(text, style)` whenever the content is plain styled text — it satisfies the invariant by construction. Inline `fg` variation within a single bg is the canonical extension point and is supported by the underlying segment model; the constraint is only on `bgcolor`.
-
-For genuinely rich content (multiple bg regions, embedded panels), the right pattern is to render that content separately rather than as a `Strip` item, or to split it into multiple `StyledRenderable`s with consistent declared `style`s.
-
-### Inline foreground variation — `StripCell` parts form
-
-When a single cell needs inline `fg` (or attribute) variation under one shared bg — a status segment where `S` is green, `+3` is green, `-2` is red, all on a blue cell — pass parts instead of a string:
-
-```typescript
-new StripCell(
-  [
-    { text: " main " },
-    { text: "S",  style: Style.parse("green") },
-    { text: " " },
-    { text: "+3", style: Style.parse("green") },
-    { text: " " },
-    { text: "-2", style: Style.parse("red") },
-    { text: " " },
-  ],
-  Style.parse("white on blue"),
+const status = new RichText(
+  " main S +3 -2 ",
+  { style: Style.parse("white on blue"), end: "", noWrap: true },
 );
+status.stylize("green", 6, 7);   // "S"
+status.stylize("green", 8, 10);  // "+3"
+status.stylize("red",   11, 13); // "-2"
 ```
 
-Each part contributes one segment whose bg is always the cell-level bg; the part's `style` overlays foreground and text attributes. The single-style invariant is enforced by construction — passing a part whose `style` sets `bgcolor` throws.
+The cell's left and right edges both report `white on blue` (the base style), so the powerline arrows on either side stay consistent. The `S`/`+3`/`-2` runs in the interior have their own fg without touching the joiner.
+
+### When the two edges differ
+
+If the leftmost and rightmost columns of a cell carry different backgrounds (e.g. a gradient cell, or a cell whose first or last character has a span that overrides `bgcolor`), the joiner on each side picks up that edge's actual bg. This is by design — the join meets the column it visually abuts. The constraint that used to require uniform bg across the whole cell is gone; the protocol now asks each item to be honest about what its edges look like, and the joiner adapts.
 
 ## Why this is a primitive
 
@@ -175,10 +151,17 @@ Each part contributes one segment whose bg is always the cell-level bg; the part
 `FlexStrip` packs styled items into as many fit on a line and breaks to the next, like CSS `flex-wrap`. It uses the same `Joiner` protocol — every line is its own sub-strip, so a line break is just a pair of endpoints.
 
 ```typescript
-import { FlexStrip, StripCell, PowerlineJoiner, Style } from "@promptctl/rich-js";
+import { FlexStrip, RichText, PowerlineJoiner, Style } from "@promptctl/rich-js";
 
 const strip = new FlexStrip(
-  tags.map((t) => new StripCell(` ${t} `, Style.parse("white on blue"))),
+  tags.map(
+    (t) =>
+      new RichText(` ${t} `, {
+        style: Style.parse("white on blue"),
+        end: "",
+        noWrap: true,
+      }),
+  ),
   { joiner: new PowerlineJoiner(), gap: 0, align: "left" },
 );
 console.print(strip);
