@@ -154,7 +154,6 @@ export type { RichTextOptions } from "./core/text.js";
 // Strip + Joiner
 export {
   Strip,
-  StripCell,
   PowerlineJoiner,
   CapsuleJoiner,
   PlainJoiner,
@@ -162,7 +161,6 @@ export {
 } from "./core/strip.js";
 export type {
   StyledRenderable,
-  StripCellPart,
   Joiner,
   PowerlineJoinerOptions,
   CapsuleJoinerOptions,

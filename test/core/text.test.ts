@@ -595,6 +595,65 @@ describe("RichText.truncate()", () => {
     expect(t.plain).toContain("\u2026");
     expect(t.cellLength).toBeLessThanOrEqual(6);
   });
+
+  it("mode: right with default marker", () => {
+    const t = new RichText("hello world");
+    t.truncate(6, { mode: "right" });
+    expect(t.plain).toBe("hello\u2026");
+    expect(t.cellLength).toBe(6);
+  });
+
+  it("mode: left prepends marker; keeps the right side", () => {
+    const t = new RichText("hello world");
+    t.truncate(6, { mode: "left" });
+    expect(t.plain).toBe("\u2026world");
+    expect(t.cellLength).toBe(6);
+  });
+
+  it("mode: middle keeps halves; inserts marker in the middle", () => {
+    const t = new RichText("hello world!");
+    t.truncate(6, { mode: "middle" });
+    expect(t.plain).toBe("he\u2026ld!");
+    expect(t.cellLength).toBe(6);
+  });
+
+  it("custom marker for mode: right", () => {
+    const t = new RichText("hello world");
+    t.truncate(7, { mode: "right", marker: ">>" });
+    expect(t.plain).toBe("hello>>");
+    expect(t.cellLength).toBe(7);
+  });
+
+  it("empty marker = raw crop", () => {
+    const t = new RichText("hello world");
+    t.truncate(5, { mode: "right", marker: "" });
+    expect(t.plain).toBe("hello");
+  });
+
+  it("mode: left preserves spans on the kept right side", () => {
+    const t = new RichText("hello world");
+    t.stylize("red", 6, 11); // "world" is red
+    t.truncate(6, { mode: "left" });
+    expect(t.plain).toBe("\u2026world");
+    // The "world" span should still cover "world" in the new text (chars 1..6).
+    const redSpan = t.spans.find(
+      (s) => (typeof s.style === "string" ? s.style : s.style.toString()).includes("red") ||
+             (typeof s.style !== "string" && s.style.color?.name === "red"),
+    );
+    expect(redSpan).toBeDefined();
+    expect(redSpan!.start).toBe(1);
+    expect(redSpan!.end).toBe(6);
+  });
+
+  it("mode: right preserves spans on the kept left side", () => {
+    const t = new RichText("hello world");
+    t.stylize("red", 0, 5); // "hello" is red
+    t.truncate(6, { mode: "right" });
+    expect(t.plain).toBe("hello\u2026");
+    const redSpan = t.spans[0];
+    expect(redSpan!.start).toBe(0);
+    expect(redSpan!.end).toBe(5);
+  });
 });
 
 // =========================================================

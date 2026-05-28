@@ -4,7 +4,7 @@ import { ColorDepth } from "../../src/core/color.js";
 import { RichText } from "../../src/core/text.js";
 import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
-import { Strip, StripCell, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
+import { Strip, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { render as parseMarkup } from "../../src/core/markup.js";
 
@@ -49,8 +49,8 @@ describe("renderToString", () => {
   it("renders a Strip with PowerlineJoiner end-to-end as ANSI", () => {
     const strip = new Strip(
       [
-        new StripCell(" main ", Style.parse("white on blue")),
-        new StripCell(" foo ", Style.parse("white on cyan")),
+        new RichText(" main ", { style: "white on blue", end: "" }),
+        new RichText(" foo ", { style: "white on cyan", end: "" }),
       ],
       new PowerlineJoiner({ glyph: ">" }),
     );
@@ -183,9 +183,9 @@ describe("segmentsToString coalescing", () => {
     // cells the three text pieces become one SGR run on the wire.
     const strip = new Strip(
       [
-        new StripCell(" a ", STYLE),
-        new StripCell(" b ", STYLE),
-        new StripCell(" c ", STYLE),
+        new RichText(" a ", { style: STYLE, end: "" }),
+        new RichText(" b ", { style: STYLE, end: "" }),
+        new RichText(" c ", { style: STYLE, end: "" }),
       ],
       new PlainJoiner({ separator: "" }),
     );

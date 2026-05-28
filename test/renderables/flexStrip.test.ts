@@ -1,8 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { FlexStrip } from "../../src/renderables/flexStrip.js";
-import { StripCell, PowerlineJoiner } from "../../src/core/strip.js";
+import { PowerlineJoiner } from "../../src/core/strip.js";
 import { Style } from "../../src/core/style.js";
+import { RichText } from "../../src/core/text.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
+
+function cell(text: string, style?: string | Style): RichText {
+  return new RichText(text, { style, end: "", noWrap: true });
+}
 
 // [LAW:behavior-not-structure] Tests assert what callers observe — packed
 // lines, line widths, joiner placement at line boundaries — not the packer's
@@ -33,7 +38,7 @@ describe("FlexStrip", () => {
   });
 
   it("packs a single item onto one line", () => {
-    const strip = new FlexStrip([new StripCell("hello")]);
+    const strip = new FlexStrip([cell("hello")]);
     expect(renderLines(strip, OPTS(40))).toEqual(["hello"]);
   });
 
@@ -42,7 +47,7 @@ describe("FlexStrip", () => {
     // First fit on line: a(5) + 2 + b(5) + 2 + c(5) = 19 cells. Next add: 2 + 5 = 26 ≤ 40 → fits all five? 5+2+5+2+5+2+5+2+5 = 29.
     // Use width 18 so only 3 fit: 5+2+5+2+5 = 19 > 18, so 5+2+5 = 12 fits, +2+5 = 19 > 18 → break after 2 items.
     const items = ["aaaaa", "bbbbb", "ccccc", "ddddd", "eeeee"].map(
-      (t) => new StripCell(t),
+      (t) => cell(t),
     );
     const strip = new FlexStrip(items, { gap: 1 });
     const lines = renderLines(strip, OPTS(18));
@@ -59,10 +64,10 @@ describe("FlexStrip", () => {
 
   it("wraps with a PowerlineJoiner: end-of-line uses end-cap, start-of-line uses start-cap", () => {
     const items = [
-      new StripCell(" main ", Style.parse("white on blue")),
-      new StripCell(" foo ", Style.parse("white on cyan")),
-      new StripCell(" bar ", Style.parse("white on green")),
-      new StripCell(" baz ", Style.parse("white on magenta")),
+      cell(" main ", "white on blue"),
+      cell(" foo ", "white on cyan"),
+      cell(" bar ", "white on green"),
+      cell(" baz ", "white on magenta"),
     ];
     // PowerlineJoiner: start-cap = glyph fg=item.bg no bg; end-cap = same; mid = glyph fg=L.bg bg=R.bg.
     const strip = new FlexStrip(items, { joiner: new PowerlineJoiner({ glyph: ">" }) });
@@ -79,8 +84,8 @@ describe("FlexStrip", () => {
 
   it("falls back gracefully when an item is wider than the terminal", () => {
     const items = [
-      new StripCell("aaaaaaaaaa"),
-      new StripCell("bbbbbbbbbb"),
+      cell("aaaaaaaaaa"),
+      cell("bbbbbbbbbb"),
     ];
     const strip = new FlexStrip(items);
     const lines = renderLines(strip, OPTS(5));
@@ -88,7 +93,7 @@ describe("FlexStrip", () => {
   });
 
   it("right-aligns lines by padding on the left", () => {
-    const items = [new StripCell("hi"), new StripCell("yo")];
+    const items = [cell("hi"), cell("yo")];
     const strip = new FlexStrip(items, { align: "right", gap: 1 });
     // width 10, content = "hi  yo" (2+2+2=6), pad 4 spaces left.
     const lines = renderLines(strip, OPTS(10));
@@ -96,14 +101,14 @@ describe("FlexStrip", () => {
   });
 
   it("center-aligns lines", () => {
-    const items = [new StripCell("hi")];
+    const items = [cell("hi")];
     const strip = new FlexStrip(items, { align: "center" });
     const lines = renderLines(strip, OPTS(10));
     expect(lines).toEqual(["    hi"]);
   });
 
   it("measures: minimum = widest item+caps; maximum = single-line total", () => {
-    const items = [new StripCell("aaa"), new StripCell("bbbbb")];
+    const items = [cell("aaa"), cell("bbbbb")];
     const strip = new FlexStrip(items, { gap: 1 });
     const m = strip.measure(OPTS(80));
     expect(m.minimum).toBe(5);
