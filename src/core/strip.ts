@@ -139,14 +139,18 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
       // End cap: fg = left's right edge bg, no bg — bleed out into terminal bg.
       return new FixedSegment(this._glyph, bgAsFg(left.edgeStyle("right")));
     }
-    // [LAW:dataflow-not-control-flow] The transition is a function of the
-    // edge colors. When both neighbors' adjacent edges share a bg, there is
-    // no visual transition to paint — emit EMPTY so the coalescer in
-    // segmentsToString can merge adjacent same-style cells under one SGR
-    // wrap. Equality uses `.name` to match Style.equals' precedent.
+    // [LAW:dataflow-not-control-flow] A join exists between every pair of
+    // items, structurally — the same FixedSegment every transition, never a
+    // branch that skips emission. The chevron is PAINT: fg = left's edge bg,
+    // bg = right's edge bg. When the two edge bgs are equal the glyph is drawn
+    // in its own background colour and is invisible — the correct outcome for
+    // "no visual transition", reached by colour data, not by deciding whether
+    // the join is present. Equal-bg coalescing is NOT structure: an item-aware
+    // consumer (one segment = one item) never relies on the joiner to merge
+    // an item's interior, and a same-bg seam between two distinct items is a
+    // real boundary that must survive.
     const leftEdge = left.edgeStyle("right");
     const rightEdge = right.edgeStyle("left");
-    if (leftEdge.bgcolor?.name === rightEdge.bgcolor?.name) return EMPTY;
     return new FixedSegment(
       this._glyph,
       new Style({ color: leftEdge.bgcolor, bgcolor: rightEdge.bgcolor }),
