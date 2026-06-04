@@ -10,8 +10,6 @@ import { Style } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
-import { segmentsToString } from "../../src/core/render.js";
-import { ColorDepth } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert what consumers observe — segment
 // text, fg/bg pairs, ordering — not the internal walk.
@@ -86,36 +84,70 @@ describe("PowerlineJoiner color inheritance", () => {
 });
 
 // [LAW:dataflow-not-control-flow] The PowerlineJoiner's middle transition is a
-// function of the input edge colors: when both neighbors share an edge bg, the
-// arrow is visually invisible (fg === bg) and should not emit a segment at all.
-describe("PowerlineJoiner same-bg coalescing", () => {
+// pure function of the input edge colours. Background colour is paint, never
+// structure: when the two edge bgs MATCH the chevron is still emitted, just
+// painted in its own bg (invisible) — a same-bg boundary between two distinct
+// items survives as a real structural seam, equal bg does not coalesce them.
+// The one thing that elides the separator is the ABSENCE of a left colour to
+// paint (no bg, or the terminal default) — that is paint logic (nothing to
+// paint), not bg deciding structure. See the no-bg suite further below.
+describe("PowerlineJoiner same-bg structural join", () => {
   const RED_A = cell(" a ", "white on red");
   const RED_B = cell(" b ", "white on red");
-  const RED_C = cell(" c ", "white on red");
 
-  it("emits no mid-join segment when both neighbors share a bg", () => {
+  it("emits the mid-join chevron structurally even when both neighbors share a bg", () => {
     const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
-    expect(render(strip).map((s) => s.text)).toEqual([" a ", " b ", ">"]);
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", ">", " b ", ">"]);
   });
 
-  it("emits one shared SGR pair around three same-bg cells (not three)", () => {
-    const strip = new Strip(
-      [RED_A, RED_B, RED_C],
-      new PowerlineJoiner({ glyph: ">" }),
-    );
-    const out = segmentsToString(strip.render(OPTIONS), ColorDepth.TRUECOLOR);
-    const opens = (out.match(/\x1b\[(?!0m)[0-9;]+m/g) ?? []).length;
-    const resets = (out.match(/\x1b\[0m/g) ?? []).length;
-    expect(opens).toBe(2);
-    expect(resets).toBe(2);
+  it("paints the equal-bg mid-join invisibly (fg === bg), not as a skipped segment", () => {
+    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
+    const mid = render(strip)[1]!;
+    expect(mid.text).toBe(">");
+    expect(mid.style?.color?.name).toBe("red");
+    expect(mid.style?.bgcolor?.name).toBe("red");
   });
 
-  it("still emits a visible arrow when neighbor bgs differ (no over-coalescing)", () => {
+  it("still emits a visible arrow when neighbor bgs differ", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const mid = render(strip)[1]!;
     expect(mid.text).toBe(">");
     expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
     expect(mid.style?.bgcolor?.name).toBe(BLUE.edgeStyle("left").bgcolor?.name);
+  });
+});
+
+// The separator is painted in the LEFT edge's bg (the colour bleeding right).
+// With no left bg there is no colour to paint, so no separator is emitted —
+// the same data rule that makes the start cap empty (left === null ⇒ no left
+// bg). This is paint logic (nothing to paint), not bg deciding structure: two
+// items with REAL equal bgs still emit (see above).
+describe("PowerlineJoiner no-bg edges paint nothing", () => {
+  const FG_A = cell("a", "red"); // fg only — no bgcolor
+  const FG_B = cell("b", "blue"); // fg only — no bgcolor
+
+  it("emits no separator anywhere when items are fg-only (no bg to bleed)", () => {
+    const strip = new Strip([FG_A, FG_B], new PowerlineJoiner({ glyph: ">" }));
+    // start (no left), mid (left has no bg), end (left has no bg) all paint
+    // nothing — the glyph never appears.
+    expect(render(strip).map((s) => s.text)).toEqual(["a", "b"]);
+  });
+
+  it("a left item WITH a bg still bleeds into a right item without one", () => {
+    const strip = new Strip([RED, FG_B], new PowerlineJoiner({ glyph: ">" }));
+    const mid = render(strip)[1]!;
+    expect(mid.text).toBe(">");
+    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
+    expect(mid.style?.bgcolor).toBeUndefined();
+  });
+
+  it("an explicit terminal-default bg counts as no bg (transparent — nothing to paint)", () => {
+    // `… on default` is a real ColorSpec (not undefined) but renders as the
+    // terminal background. It must behave like a fg-only edge: no separator.
+    const DEF_A = cell("a", "red on default");
+    const DEF_B = cell("b", "blue on default");
+    const strip = new Strip([DEF_A, DEF_B], new PowerlineJoiner({ glyph: ">" }));
+    expect(render(strip).map((s) => s.text)).toEqual(["a", "b"]);
   });
 });
 

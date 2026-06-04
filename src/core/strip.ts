@@ -116,6 +116,14 @@ function bgAsFg(edge: Style): Style {
   return new Style({ color: edge.bgcolor });
 }
 
+// A bg with a real colour to paint. `undefined` (no bg) and the terminal
+// DEFAULT colour (transparent — identical to the terminal background) are the
+// two representations of "nothing to paint"; the powerline separator treats
+// them the same, so the gate cannot be fooled by an explicit `… on default`.
+function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
+  return bg !== undefined && !bg.isDefault ? bg : undefined;
+}
+
 // --- PowerlineJoiner ---
 
 export interface PowerlineJoinerOptions {
@@ -131,25 +139,29 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
   }
 
   join(left: T | null, right: T | null): Renderable {
-    // Start cap: empty. A right-pointing arrow with no source segment to its
-    // left has nothing to bleed out *from*, so the first segment just begins
-    // cleanly. This matches vim-airline / tmux-powerline / claude-powerline.
-    if (left === null) return EMPTY;
-    if (right === null) {
-      // End cap: fg = left's right edge bg, no bg — bleed out into terminal bg.
-      return new FixedSegment(this._glyph, bgAsFg(left.edgeStyle("right")));
-    }
-    // [LAW:dataflow-not-control-flow] The transition is a function of the
-    // edge colors. When both neighbors' adjacent edges share a bg, there is
-    // no visual transition to paint — emit EMPTY so the coalescer in
-    // segmentsToString can merge adjacent same-style cells under one SGR
-    // wrap. Equality uses `.name` to match Style.equals' precedent.
-    const leftEdge = left.edgeStyle("right");
-    const rightEdge = right.edgeStyle("left");
-    if (leftEdge.bgcolor?.name === rightEdge.bgcolor?.name) return EMPTY;
+    // [LAW:dataflow-not-control-flow] One expression for all three positions
+    // (start cap, mid-join, end cap). The powerline separator is painted in the
+    // LEFT edge's bg — the colour bleeding rightward — over the RIGHT edge's bg.
+    // The endpoints are not control-flow special cases; they are the DATA cases
+    // where a neighbour (hence its bg) is absent:
+    //   • no left bg — the start cap, OR a left item with no background — has no
+    //     colour to bleed, so there is no separator to paint: EMPTY. (This
+    //     matches vim-airline / tmux-powerline: a colourless arrow is not drawn.)
+    //   • no right bg — the end cap — bleeds the left colour out over the
+    //     terminal background (fg = left bg, no bg).
+    // Equal REAL bgs still emit: the glyph is drawn in its own background colour
+    // and is invisible, but the cell is present — a same-bg seam between two
+    // distinct items is a structural boundary, never suppressed. Background
+    // colour is paint, not structure; its ABSENCE (nothing to paint) is the only
+    // thing that elides the separator, and that is paint logic, not structure.
+    // "Absent" = no bg OR the terminal default (transparent) — paintableBg folds
+    // both to undefined so an explicit `… on default` cannot smuggle a separator.
+    const leftBg = paintableBg(left?.edgeStyle("right").bgcolor);
+    if (leftBg === undefined) return EMPTY;
+    const rightBg = paintableBg(right?.edgeStyle("left").bgcolor);
     return new FixedSegment(
       this._glyph,
-      new Style({ color: leftEdge.bgcolor, bgcolor: rightEdge.bgcolor }),
+      new Style({ color: leftBg, bgcolor: rightBg }),
     );
   }
 }
