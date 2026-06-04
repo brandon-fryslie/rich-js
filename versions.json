@@ -4,15 +4,22 @@
     {
       "version": "pr-54",
       "ref": "refs/pull/54/merge",
-      "sha": "524fee2073694de741958becf28908a23db955f3",
-      "timestamp": "2026-06-04T00:45:46.251Z",
+      "sha": "6438fbd98e5016e6c3cd6a31c51483bfb628bfb1",
+      "timestamp": "2026-06-04T00:56:17.001Z",
       "commits": [
         {
-          "sha": "524fee2073694de741958becf28908a23db955f3",
+          "sha": "6438fbd98e5016e6c3cd6a31c51483bfb628bfb1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-04T00:45:15Z",
-          "message": "Merge 4c5d32f469dc8932a99c6249fca29ae07dd638c1 into 5f0814781c591a85696bd6de82f74f36c2187c69\n"
+          "timestamp": "2026-06-04T00:55:48Z",
+          "message": "Merge f08cc8ef14a7cd45b3d6b36f6ca4ba1c09f31a84 into 5f0814781c591a85696bd6de82f74f36c2187c69\n"
+        },
+        {
+          "sha": "f08cc8ef14a7cd45b3d6b36f6ca4ba1c09f31a84",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-06-03T18:55:40-06:00",
+          "message": "fix(strip): treat terminal-default bg as no-paint (close enumeration gap) (0.5.2)\n\nThe no-bg gate matched only `undefined`, missing the equivalent representation:\nan explicit terminal-DEFAULT bgcolor (`Style.parse('… on default')`, isDefault\n=== true) is a real ColorSpec but renders as the terminal background — transparent,\nnothing to paint. It slipped past the gate and emitted a separator bleeding the\n'default' colour. paintableBg folds both 'undefined' and 'isDefault' to one\n'no colour' case, so the gate cannot be fooled by an explicit on-default bg.\n\nAlso corrects the test-suite header comment (the middle join is no longer\n'UNCONDITIONAL' — absence of a left colour elides it) and adds an on-default test.\n"
         },
         {
           "sha": "4c5d32f469dc8932a99c6249fca29ae07dd638c1",
