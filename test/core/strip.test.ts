@@ -84,11 +84,13 @@ describe("PowerlineJoiner color inheritance", () => {
 });
 
 // [LAW:dataflow-not-control-flow] The PowerlineJoiner's middle transition is a
-// function of the input edge colors, emitted UNCONDITIONALLY. Background colour
-// is paint, never structure: a join exists between every pair of items, and when
-// the two edge bgs match the chevron is simply painted in its own bg (invisible)
-// rather than skipped. So a same-bg boundary between two distinct items survives
-// as a real structural seam — equal bg does not coalesce two items into one.
+// pure function of the input edge colours. Background colour is paint, never
+// structure: when the two edge bgs MATCH the chevron is still emitted, just
+// painted in its own bg (invisible) — a same-bg boundary between two distinct
+// items survives as a real structural seam, equal bg does not coalesce them.
+// The one thing that elides the separator is the ABSENCE of a left colour to
+// paint (no bg, or the terminal default) — that is paint logic (nothing to
+// paint), not bg deciding structure. See the no-bg suite further below.
 describe("PowerlineJoiner same-bg structural join", () => {
   const RED_A = cell(" a ", "white on red");
   const RED_B = cell(" b ", "white on red");
@@ -137,6 +139,15 @@ describe("PowerlineJoiner no-bg edges paint nothing", () => {
     expect(mid.text).toBe(">");
     expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
     expect(mid.style?.bgcolor).toBeUndefined();
+  });
+
+  it("an explicit terminal-default bg counts as no bg (transparent — nothing to paint)", () => {
+    // `… on default` is a real ColorSpec (not undefined) but renders as the
+    // terminal background. It must behave like a fg-only edge: no separator.
+    const DEF_A = cell("a", "red on default");
+    const DEF_B = cell("b", "blue on default");
+    const strip = new Strip([DEF_A, DEF_B], new PowerlineJoiner({ glyph: ">" }));
+    expect(render(strip).map((s) => s.text)).toEqual(["a", "b"]);
   });
 });
 

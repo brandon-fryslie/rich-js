@@ -116,6 +116,14 @@ function bgAsFg(edge: Style): Style {
   return new Style({ color: edge.bgcolor });
 }
 
+// A bg with a real colour to paint. `undefined` (no bg) and the terminal
+// DEFAULT colour (transparent — identical to the terminal background) are the
+// two representations of "nothing to paint"; the powerline separator treats
+// them the same, so the gate cannot be fooled by an explicit `… on default`.
+function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
+  return bg !== undefined && !bg.isDefault ? bg : undefined;
+}
+
 // --- PowerlineJoiner ---
 
 export interface PowerlineJoinerOptions {
@@ -146,9 +154,11 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     // distinct items is a structural boundary, never suppressed. Background
     // colour is paint, not structure; its ABSENCE (nothing to paint) is the only
     // thing that elides the separator, and that is paint logic, not structure.
-    const leftBg = left?.edgeStyle("right").bgcolor;
+    // "Absent" = no bg OR the terminal default (transparent) — paintableBg folds
+    // both to undefined so an explicit `… on default` cannot smuggle a separator.
+    const leftBg = paintableBg(left?.edgeStyle("right").bgcolor);
     if (leftBg === undefined) return EMPTY;
-    const rightBg = right?.edgeStyle("left").bgcolor;
+    const rightBg = paintableBg(right?.edgeStyle("left").bgcolor);
     return new FixedSegment(
       this._glyph,
       new Style({ color: leftBg, bgcolor: rightBg }),
