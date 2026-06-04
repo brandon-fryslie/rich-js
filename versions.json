@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-54",
-      "ref": "refs/pull/54/merge",
-      "sha": "6438fbd98e5016e6c3cd6a31c51483bfb628bfb1",
-      "timestamp": "2026-06-04T00:56:17.001Z",
-      "commits": [
-        {
-          "sha": "6438fbd98e5016e6c3cd6a31c51483bfb628bfb1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-04T00:55:48Z",
-          "message": "Merge f08cc8ef14a7cd45b3d6b36f6ca4ba1c09f31a84 into 5f0814781c591a85696bd6de82f74f36c2187c69\n"
-        },
-        {
-          "sha": "f08cc8ef14a7cd45b3d6b36f6ca4ba1c09f31a84",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-03T18:55:40-06:00",
-          "message": "fix(strip): treat terminal-default bg as no-paint (close enumeration gap) (0.5.2)\n\nThe no-bg gate matched only `undefined`, missing the equivalent representation:\nan explicit terminal-DEFAULT bgcolor (`Style.parse('… on default')`, isDefault\n=== true) is a real ColorSpec but renders as the terminal background — transparent,\nnothing to paint. It slipped past the gate and emitted a separator bleeding the\n'default' colour. paintableBg folds both 'undefined' and 'isDefault' to one\n'no colour' case, so the gate cannot be fooled by an explicit on-default bg.\n\nAlso corrects the test-suite header comment (the middle join is no longer\n'UNCONDITIONAL' — absence of a left colour elides it) and adds an on-default test.\n"
-        },
-        {
-          "sha": "4c5d32f469dc8932a99c6249fca29ae07dd638c1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-03T18:45:04-06:00",
-          "message": "fix(strip): no left bg → no separator; unify PowerlineJoiner positions (0.5.1)\n\nA no-bg edge made the always-emit join paint a glyph in the terminal's\ndefault styling — a visible stray arrow between fg-only items, where the\nprevious code returned EMPTY. The separator is painted in the LEFT edge's\nbg (the colour bleeding rightward); with no left bg there is nothing to\npaint, so there is no separator.\n\nCollapses the start-cap / mid-join / end-cap branches into one expression:\nthe endpoints are the DATA cases where a neighbour's bg is absent (no left\nbg ⇒ EMPTY, the start cap; no right bg ⇒ bleed out, the end cap), not\ncontrol-flow special cases. Equal REAL bgs still emit (invisible, present)\n— a same-bg seam between two items stays a structural boundary.\n\nAdds tests: fg-only items emit no separator anywhere; a left item with a bg\nstill bleeds into a right item without one.\n"
-        },
-        {
-          "sha": "c5aa4b289ef15fdea877f31b3b5a179bc3d734a0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-03T02:43:27-06:00",
-          "message": "fix(strip): PowerlineJoiner join is structural, not bg-decided (bump 0.5.0)\n\nThe mid-join early-returned EMPTY when adjacent edge bgs matched, making\nbackground colour decide whether a join cell exists at all — paint\nmasquerading as structure ([LAW:dataflow-not-control-flow]). A join now\nexists between every pair of items unconditionally; the chevron is painted\nfrom the two edge bgs and is simply invisible when they are equal. A same-bg\nseam between two distinct items survives as a real boundary, and an\nitem-aware consumer (one segment = one strip item) never relies on the\njoiner to coalesce an item's interior.\n\nRewrites the same-bg test block to assert the structural join + invisible\npaint instead of suppression; drops the now-unused SGR-count test.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5f0814781c591a85696bd6de82f74f36c2187c69",
-      "timestamp": "2026-05-28T08:27:46.840Z",
+      "sha": "b550b36a024914e9826c609283270a129c710490",
+      "timestamp": "2026-06-04T01:05:19.559Z",
       "commits": [
         {
-          "sha": "5f0814781c591a85696bd6de82f74f36c2187c69",
+          "sha": "b550b36a024914e9826c609283270a129c710490",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-28T02:27:11-06:00",
-          "message": "docs(strip): drop StripCell refs; describe edgeStyle(side) joiner protocol (rich-strip-docs-4x7) (#53)\n\nPR #52 collapsed StripCell/StripCellPart into RichText, but prose in\ndocs/strip.md and spec/demos.md still referenced the removed types.\n\n- Switch examples to the RichText cell form:\n  new RichText(text, { style, end: \"\", noWrap: true })\n- Replace the \"single-style invariant\" section with \"edge styles are\n  the protocol\" — joiners now read edgeStyle(\"left\"/\"right\")\n  independently, so interior bg variation is free.\n- Show inline per-character variation via RichText.stylize spans\n  instead of the old StripCell parts form.\n- Drop StripCell / StripCellPart from spec/demos.md owned-exports."
+          "timestamp": "2026-06-03T19:04:49-06:00",
+          "message": "fix(strip): PowerlineJoiner join is structural, not bg-decided (0.5.2) (#54)\n\n* fix(strip): PowerlineJoiner join is structural, not bg-decided (bump 0.5.0)\n\nThe mid-join early-returned EMPTY when adjacent edge bgs matched, making\nbackground colour decide whether a join cell exists at all — paint\nmasquerading as structure ([LAW:dataflow-not-control-flow]). A join now\nexists between every pair of items unconditionally; the chevron is painted\nfrom the two edge bgs and is simply invisible when they are equal. A same-bg\nseam between two distinct items survives as a real boundary, and an\nitem-aware consumer (one segment = one strip item) never relies on the\njoiner to coalesce an item's interior.\n\nRewrites the same-bg test block to assert the structural join + invisible\npaint instead of suppression; drops the now-unused SGR-count test.\n\n* fix(strip): no left bg → no separator; unify PowerlineJoiner positions (0.5.1)\n\nA no-bg edge made the always-emit join paint a glyph in the terminal's\ndefault styling — a visible stray arrow between fg-only items, where the\nprevious code returned EMPTY. The separator is painted in the LEFT edge's\nbg (the colour bleeding rightward); with no left bg there is nothing to\npaint, so there is no separator.\n\nCollapses the start-cap / mid-join / end-cap branches into one expression:\nthe endpoints are the DATA cases where a neighbour's bg is absent (no left\nbg ⇒ EMPTY, the start cap; no right bg ⇒ bleed out, the end cap), not\ncontrol-flow special cases. Equal REAL bgs still emit (invisible, present)\n— a same-bg seam between two items stays a structural boundary.\n\nAdds tests: fg-only items emit no separator anywhere; a left item with a bg\nstill bleeds into a right item without one.\n\n* fix(strip): treat terminal-default bg as no-paint (close enumeration gap) (0.5.2)\n\nThe no-bg gate matched only `undefined`, missing the equivalent representation:\nan explicit terminal-DEFAULT bgcolor (`Style.parse('… on default')`, isDefault\n=== true) is a real ColorSpec but renders as the terminal background — transparent,\nnothing to paint. It slipped past the gate and emitted a separator bleeding the\n'default' colour. paintableBg folds both 'undefined' and 'isDefault' to one\n'no colour' case, so the gate cannot be fooled by an explicit on-default bg.\n\nAlso corrects the test-suite header comment (the middle join is no longer\n'UNCONDITIONAL' — absence of a left colour elides it) and adds an on-default test."
         }
       ]
     },
