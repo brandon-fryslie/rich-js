@@ -115,6 +115,31 @@ describe("PowerlineJoiner same-bg structural join", () => {
   });
 });
 
+// The separator is painted in the LEFT edge's bg (the colour bleeding right).
+// With no left bg there is no colour to paint, so no separator is emitted —
+// the same data rule that makes the start cap empty (left === null ⇒ no left
+// bg). This is paint logic (nothing to paint), not bg deciding structure: two
+// items with REAL equal bgs still emit (see above).
+describe("PowerlineJoiner no-bg edges paint nothing", () => {
+  const FG_A = cell("a", "red"); // fg only — no bgcolor
+  const FG_B = cell("b", "blue"); // fg only — no bgcolor
+
+  it("emits no separator anywhere when items are fg-only (no bg to bleed)", () => {
+    const strip = new Strip([FG_A, FG_B], new PowerlineJoiner({ glyph: ">" }));
+    // start (no left), mid (left has no bg), end (left has no bg) all paint
+    // nothing — the glyph never appears.
+    expect(render(strip).map((s) => s.text)).toEqual(["a", "b"]);
+  });
+
+  it("a left item WITH a bg still bleeds into a right item without one", () => {
+    const strip = new Strip([RED, FG_B], new PowerlineJoiner({ glyph: ">" }));
+    const mid = render(strip)[1]!;
+    expect(mid.text).toBe(">");
+    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
+    expect(mid.style?.bgcolor).toBeUndefined();
+  });
+});
+
 describe("CapsuleJoiner", () => {
   it("start cap uses left glyph with right.left-edge.bg as fg", () => {
     const strip = new Strip(
