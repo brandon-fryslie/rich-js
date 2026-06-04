@@ -4,15 +4,22 @@
     {
       "version": "pr-54",
       "ref": "refs/pull/54/merge",
-      "sha": "dcc36d3dd9b2acf76f7bd85a36c04eb409f3d90b",
-      "timestamp": "2026-06-04T00:30:30.140Z",
+      "sha": "524fee2073694de741958becf28908a23db955f3",
+      "timestamp": "2026-06-04T00:45:46.251Z",
       "commits": [
         {
-          "sha": "dcc36d3dd9b2acf76f7bd85a36c04eb409f3d90b",
+          "sha": "524fee2073694de741958becf28908a23db955f3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-03T18:29:59-06:00",
-          "message": "Merge c5aa4b289ef15fdea877f31b3b5a179bc3d734a0 into 5f0814781c591a85696bd6de82f74f36c2187c69\n"
+          "timestamp": "2026-06-04T00:45:15Z",
+          "message": "Merge 4c5d32f469dc8932a99c6249fca29ae07dd638c1 into 5f0814781c591a85696bd6de82f74f36c2187c69\n"
+        },
+        {
+          "sha": "4c5d32f469dc8932a99c6249fca29ae07dd638c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-06-03T18:45:04-06:00",
+          "message": "fix(strip): no left bg → no separator; unify PowerlineJoiner positions (0.5.1)\n\nA no-bg edge made the always-emit join paint a glyph in the terminal's\ndefault styling — a visible stray arrow between fg-only items, where the\nprevious code returned EMPTY. The separator is painted in the LEFT edge's\nbg (the colour bleeding rightward); with no left bg there is nothing to\npaint, so there is no separator.\n\nCollapses the start-cap / mid-join / end-cap branches into one expression:\nthe endpoints are the DATA cases where a neighbour's bg is absent (no left\nbg ⇒ EMPTY, the start cap; no right bg ⇒ bleed out, the end cap), not\ncontrol-flow special cases. Equal REAL bgs still emit (invisible, present)\n— a same-bg seam between two items stays a structural boundary.\n\nAdds tests: fg-only items emit no separator anywhere; a left item with a bg\nstill bleeds into a right item without one.\n"
         },
         {
           "sha": "c5aa4b289ef15fdea877f31b3b5a179bc3d734a0",
