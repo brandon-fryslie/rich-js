@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-54",
+      "ref": "refs/pull/54/merge",
+      "sha": "dcc36d3dd9b2acf76f7bd85a36c04eb409f3d90b",
+      "timestamp": "2026-06-04T00:30:30.140Z",
+      "commits": [
+        {
+          "sha": "dcc36d3dd9b2acf76f7bd85a36c04eb409f3d90b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-06-03T18:29:59-06:00",
+          "message": "Merge c5aa4b289ef15fdea877f31b3b5a179bc3d734a0 into 5f0814781c591a85696bd6de82f74f36c2187c69\n"
+        },
+        {
+          "sha": "c5aa4b289ef15fdea877f31b3b5a179bc3d734a0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-06-03T02:43:27-06:00",
+          "message": "fix(strip): PowerlineJoiner join is structural, not bg-decided (bump 0.5.0)\n\nThe mid-join early-returned EMPTY when adjacent edge bgs matched, making\nbackground colour decide whether a join cell exists at all — paint\nmasquerading as structure ([LAW:dataflow-not-control-flow]). A join now\nexists between every pair of items unconditionally; the chevron is painted\nfrom the two edge bgs and is simply invisible when they are equal. A same-bg\nseam between two distinct items survives as a real boundary, and an\nitem-aware consumer (one segment = one strip item) never relies on the\njoiner to coalesce an item's interior.\n\nRewrites the same-bg test block to assert the structural join + invisible\npaint instead of suppression; drops the now-unused SGR-count test.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5f0814781c591a85696bd6de82f74f36c2187c69",
