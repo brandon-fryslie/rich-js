@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-56",
-      "ref": "refs/pull/56/merge",
-      "sha": "ceb6768fa4838433af53f1abfb2b9bcaef7ff4b1",
-      "timestamp": "2026-06-15T15:17:41.857Z",
-      "commits": [
-        {
-          "sha": "ceb6768fa4838433af53f1abfb2b9bcaef7ff4b1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-15T09:17:10-06:00",
-          "message": "Merge 420996e39dfe340652daf2150c8549d8682c3a8f into 629a19e18273ce99ed8350ee4487347c516c4ee7\n"
-        },
-        {
-          "sha": "420996e39dfe340652daf2150c8549d8682c3a8f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-15T09:16:12-06:00",
-          "message": "release: rich-js v0.6.0\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "629a19e18273ce99ed8350ee4487347c516c4ee7",
-      "timestamp": "2026-06-15T15:16:16.939Z",
+      "sha": "ccd754ff3ddf98bd6ac03b455da94426c5597b09",
+      "timestamp": "2026-06-15T15:19:54.549Z",
       "commits": [
         {
-          "sha": "629a19e18273ce99ed8350ee4487347c516c4ee7",
+          "sha": "ccd754ff3ddf98bd6ac03b455da94426c5597b09",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-15T09:15:40-06:00",
-          "message": "feat(color): export lighten/darken; migrate style-funcs to int argType (#55)\n\n* feat(color): export lighten/darken; migrate style-funcs to int argType\n\n- Export lighten/darken from the package index (relative HSL-lightness transforms\n  consumers reach for to tint a resolved color against itself — e.g. a focused\n  cell a step above its own background). Demoed in themes-and-color-studio.\n- style-funcs: the retired permissive \"number\" argType → \"int\" for the ANSI\n  index + RGB channel funcs (they are integer-valued; the fns already enforce it).\n  Requires @promptctl/go-template-js with the int/float numeric carriers (^0.4.0).\n\n* build(deps): @promptctl/go-template-js ^0.5.0; drop local pnpm link override\n\ngo-template-js 0.5.0 is published (adds Template.referencedFunctions(),\nretains int/float argTypes). Bump the dep to the published range and remove\nthe pnpm.overrides link to ../go-template-js — the package no longer needs a\nlocal link. Regenerate package-lock.json so `npm ci` (the CI gate) resolves\n0.5.0 and its @noble/hashes dependency, fixing the stale-lockfile failure."
+          "timestamp": "2026-06-15T09:19:17-06:00",
+          "message": "release: rich-js v0.6.0 (#56)"
         }
       ]
     },
