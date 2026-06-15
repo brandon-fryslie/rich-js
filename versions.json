@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-55",
-      "ref": "refs/pull/55/merge",
-      "sha": "cee5b6c1a755d708c2ebbdc94fadeab740e738e2",
-      "timestamp": "2026-06-15T15:14:44.846Z",
-      "commits": [
-        {
-          "sha": "cee5b6c1a755d708c2ebbdc94fadeab740e738e2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-15T15:14:10Z",
-          "message": "Merge 0182021402f45e1b77b2b0f7fa24413fadf39418 into b550b36a024914e9826c609283270a129c710490\n"
-        },
-        {
-          "sha": "0182021402f45e1b77b2b0f7fa24413fadf39418",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-15T09:13:59-06:00",
-          "message": "build(deps): @promptctl/go-template-js ^0.5.0; drop local pnpm link override\n\ngo-template-js 0.5.0 is published (adds Template.referencedFunctions(),\nretains int/float argTypes). Bump the dep to the published range and remove\nthe pnpm.overrides link to ../go-template-js — the package no longer needs a\nlocal link. Regenerate package-lock.json so `npm ci` (the CI gate) resolves\n0.5.0 and its @noble/hashes dependency, fixing the stale-lockfile failure.\n"
-        },
-        {
-          "sha": "e9a0d4d8881f99cf21f51c800972d28b5fb104ac",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-15T02:04:05-06:00",
-          "message": "feat(color): export lighten/darken; migrate style-funcs to int argType\n\n- Export lighten/darken from the package index (relative HSL-lightness transforms\n  consumers reach for to tint a resolved color against itself — e.g. a focused\n  cell a step above its own background). Demoed in themes-and-color-studio.\n- style-funcs: the retired permissive \"number\" argType → \"int\" for the ANSI\n  index + RGB channel funcs (they are integer-valued; the fns already enforce it).\n  Requires @promptctl/go-template-js with the int/float numeric carriers (^0.4.0).\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b550b36a024914e9826c609283270a129c710490",
-      "timestamp": "2026-06-04T01:05:19.559Z",
+      "sha": "629a19e18273ce99ed8350ee4487347c516c4ee7",
+      "timestamp": "2026-06-15T15:16:16.939Z",
       "commits": [
         {
-          "sha": "b550b36a024914e9826c609283270a129c710490",
+          "sha": "629a19e18273ce99ed8350ee4487347c516c4ee7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-06-03T19:04:49-06:00",
-          "message": "fix(strip): PowerlineJoiner join is structural, not bg-decided (0.5.2) (#54)\n\n* fix(strip): PowerlineJoiner join is structural, not bg-decided (bump 0.5.0)\n\nThe mid-join early-returned EMPTY when adjacent edge bgs matched, making\nbackground colour decide whether a join cell exists at all — paint\nmasquerading as structure ([LAW:dataflow-not-control-flow]). A join now\nexists between every pair of items unconditionally; the chevron is painted\nfrom the two edge bgs and is simply invisible when they are equal. A same-bg\nseam between two distinct items survives as a real boundary, and an\nitem-aware consumer (one segment = one strip item) never relies on the\njoiner to coalesce an item's interior.\n\nRewrites the same-bg test block to assert the structural join + invisible\npaint instead of suppression; drops the now-unused SGR-count test.\n\n* fix(strip): no left bg → no separator; unify PowerlineJoiner positions (0.5.1)\n\nA no-bg edge made the always-emit join paint a glyph in the terminal's\ndefault styling — a visible stray arrow between fg-only items, where the\nprevious code returned EMPTY. The separator is painted in the LEFT edge's\nbg (the colour bleeding rightward); with no left bg there is nothing to\npaint, so there is no separator.\n\nCollapses the start-cap / mid-join / end-cap branches into one expression:\nthe endpoints are the DATA cases where a neighbour's bg is absent (no left\nbg ⇒ EMPTY, the start cap; no right bg ⇒ bleed out, the end cap), not\ncontrol-flow special cases. Equal REAL bgs still emit (invisible, present)\n— a same-bg seam between two items stays a structural boundary.\n\nAdds tests: fg-only items emit no separator anywhere; a left item with a bg\nstill bleeds into a right item without one.\n\n* fix(strip): treat terminal-default bg as no-paint (close enumeration gap) (0.5.2)\n\nThe no-bg gate matched only `undefined`, missing the equivalent representation:\nan explicit terminal-DEFAULT bgcolor (`Style.parse('… on default')`, isDefault\n=== true) is a real ColorSpec but renders as the terminal background — transparent,\nnothing to paint. It slipped past the gate and emitted a separator bleeding the\n'default' colour. paintableBg folds both 'undefined' and 'isDefault' to one\n'no colour' case, so the gate cannot be fooled by an explicit on-default bg.\n\nAlso corrects the test-suite header comment (the middle join is no longer\n'UNCONDITIONAL' — absence of a left colour elides it) and adds an on-default test."
+          "timestamp": "2026-06-15T09:15:40-06:00",
+          "message": "feat(color): export lighten/darken; migrate style-funcs to int argType (#55)\n\n* feat(color): export lighten/darken; migrate style-funcs to int argType\n\n- Export lighten/darken from the package index (relative HSL-lightness transforms\n  consumers reach for to tint a resolved color against itself — e.g. a focused\n  cell a step above its own background). Demoed in themes-and-color-studio.\n- style-funcs: the retired permissive \"number\" argType → \"int\" for the ANSI\n  index + RGB channel funcs (they are integer-valued; the fns already enforce it).\n  Requires @promptctl/go-template-js with the int/float numeric carriers (^0.4.0).\n\n* build(deps): @promptctl/go-template-js ^0.5.0; drop local pnpm link override\n\ngo-template-js 0.5.0 is published (adds Template.referencedFunctions(),\nretains int/float argTypes). Bump the dep to the published range and remove\nthe pnpm.overrides link to ../go-template-js — the package no longer needs a\nlocal link. Regenerate package-lock.json so `npm ci` (the CI gate) resolves\n0.5.0 and its @noble/hashes dependency, fixing the stale-lockfile failure."
         }
       ]
     },
