@@ -86,7 +86,14 @@ export {
 // `ensureContrast` keeps a color's hue and only slides its OKLCH lightness to
 // meet the ratio, so themed text stays themed; `contrastFor` picks black/white
 // from scratch when there is no color to preserve.
+// `lighten`/`darken` slide a color's HSL lightness by whole "levels" (each
+// level ≈ 10%), returning a new ColorRgba — the relative transform a consumer
+// reaches for to tint a resolved color against itself (e.g. a focused-while-open
+// menu cell lightening its inherited background) without re-deriving from a
+// palette name. Negative levels invert (lighten(c,-n) === darken(c,n)).
 export {
+  lighten,
+  darken,
   relativeLuminance,
   contrastRatio,
   contrastFor,
