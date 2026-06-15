@@ -83,6 +83,8 @@ import {
   contrastRatio,
   contrastFor,
   ensureContrast,
+  lighten,
+  darken,
   // Infrastructure (owned by other flagships; we only consume)
   Console,
   RichText,
@@ -912,6 +914,24 @@ export function runDemo(
         new RichText(`      after   ${label}  `)
           .append("  Aa text  ", Style.parse(`${fixed.hex} on ${lightBg.hex}`))
           .append(`   ratio ${contrastRatio(fixed, lightBg).toFixed(2)}:1   (${fixed.hex})`),
+      );
+    }
+    out.print(blank());
+
+    // lighten / darken: slide a color's HSL lightness by whole levels (≈10% each),
+    // relative to the color itself — the transform a consumer reaches for to tint a
+    // resolved surface against itself (e.g. a focused/active cell a step above its
+    // own background) without re-deriving from a palette name.
+    out.print(bold("    lighten / darken — relative ±lightness levels of a base color:"));
+    const baseTint = palette.get("primary")!;
+    for (const levels of [2, 1, 0, -1, -2] as const) {
+      const shifted =
+        levels === 0 ? baseTint : levels > 0 ? lighten(baseTint, levels) : darken(baseTint, -levels);
+      const label =
+        levels === 0 ? "base      " : levels > 0 ? `lighten +${levels}` : `darken  ${-levels}`;
+      out.print(
+        new RichText(`      ${label}  `)
+          .append(`   ${shifted.hex}   `, Style.parse(`${contrastFor(shifted).hex} on ${shifted.hex}`)),
       );
     }
     out.print(blank());

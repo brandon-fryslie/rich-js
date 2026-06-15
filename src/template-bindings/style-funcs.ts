@@ -55,7 +55,7 @@ const colorPaletteFunc: TemplateFunc = {
     }
     return applyStyleToFragment(child, new Style({ color: ColorSpec.fromAnsi(index) }));
   }) as TemplateFunc["fn"],
-  argTypes: ["number", "liftable"],
+  argTypes: ["int", "liftable"],
   returnType: "T",
 };
 
@@ -83,7 +83,7 @@ const colorRgbFunc: TemplateFunc = {
   fn: ((r: number, g: number, b: number, child: unknown) => {
     return applyStyleToFragment(child, new Style({ color: ColorSpec.fromRgb(r, g, b) }));
   }) as TemplateFunc["fn"],
-  argTypes: ["number", "number", "number", "liftable"],
+  argTypes: ["int", "int", "int", "liftable"],
   returnType: "T",
 };
 
