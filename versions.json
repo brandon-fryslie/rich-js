@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-56",
+      "ref": "refs/pull/56/merge",
+      "sha": "ceb6768fa4838433af53f1abfb2b9bcaef7ff4b1",
+      "timestamp": "2026-06-15T15:17:41.857Z",
+      "commits": [
+        {
+          "sha": "ceb6768fa4838433af53f1abfb2b9bcaef7ff4b1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-06-15T09:17:10-06:00",
+          "message": "Merge 420996e39dfe340652daf2150c8549d8682c3a8f into 629a19e18273ce99ed8350ee4487347c516c4ee7\n"
+        },
+        {
+          "sha": "420996e39dfe340652daf2150c8549d8682c3a8f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-06-15T09:16:12-06:00",
+          "message": "release: rich-js v0.6.0\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "629a19e18273ce99ed8350ee4487347c516c4ee7",
