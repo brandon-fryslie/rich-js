@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-58",
+      "ref": "refs/pull/58/merge",
+      "sha": "35560b0fdc9a297f679927815a6d92ab21741631",
+      "timestamp": "2026-08-23T16:09:04.547Z",
+      "commits": [
+        {
+          "sha": "35560b0fdc9a297f679927815a6d92ab21741631",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-08-23T10:08:37-06:00",
+          "message": "Merge ba3796be9f582928548e715ac69f396e583c7d7f into cffd85ccb5f1717bcfd7713bafa4c5e5d8e4eda3\n"
+        },
+        {
+          "sha": "ba3796be9f582928548e715ac69f396e583c7d7f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-08-23T10:08:28-06:00",
+          "message": "ci: publish to npm from CI on a version tag\n\nrich-js had no publish automation — every release was a manual `npm publish`\nfrom a laptop. The account is 2FA auth-and-writes, and npm now also restricts\nlegacy tokens that bypass 2FA, so a manual publish requires an interactive OTP\nprompt. That turned the 0.7.0 release into a hard block and would block every\nrelease after it.\n\ncc-candybar already publishes from CI with an NPM_TOKEN repo secret; this gives\nrich-js the same path. Triggered by the version tag, so the tag is the single\nsource of truth for what is released, and the job fails loudly if the tag and\npackage.json disagree rather than shipping a mislabeled version.\n\nRequires an NPM_TOKEN secret on this repo (a granular automation token).\n\nClaude-Session: https://claude.ai/code/session_01T9iwWatBXz9QF6ZjWkygUf\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "cffd85ccb5f1717bcfd7713bafa4c5e5d8e4eda3",
