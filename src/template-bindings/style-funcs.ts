@@ -2,12 +2,11 @@
  * Style-function registrations for the rich-js template binding.
  *
  * [LAW:one-source-of-truth] The function inventory below mirrors the
- * string-syntax style vocabulary documented in `spec/style.md` —
- * foreground colours (named, palette index, hex, RGB), background
- * (`on`), text attributes (positive + negated), and short aliases.
- * Each registration is a templating-time analogue of a piece of
- * `Style.parse`, so a template fragment composed by these functions
- * round-trips through `Style` without semantic drift.
+ * string-syntax style vocabulary documented in `spec/style.md` — the two
+ * colour slots (`fg`/`bg`), text attributes (positive + negated), short
+ * aliases, and the hyperlink. Each registration is a templating-time analogue
+ * of a piece of `Style.parse`, so a template fragment composed by these
+ * functions round-trips through `Style` without semantic drift.
  *
  * [LAW:dataflow-not-control-flow] Every function follows the same
  * shape: child `RichText` in, `RichText` out. The styling difference
@@ -24,10 +23,10 @@ import {
   ATTRIBUTE_SHORT_ALIASES,
   type AttributeName,
 } from "../core/style.js";
-import { ColorSpec, ANSI_COLOR_NAMES } from "../core/color.js";
+import { ColorSpec } from "../core/color.js";
 import { applyStyleToFragment } from "./helpers.js";
 
-function fgFunc(style: Style): TemplateFunc {
+function attrFunc(style: Style): TemplateFunc {
   return {
     fn: ((child: unknown) => applyStyleToFragment(child, style)) as TemplateFunc["fn"],
     argTypes: ["liftable"],
@@ -35,67 +34,40 @@ function fgFunc(style: Style): TemplateFunc {
   };
 }
 
-// --- Foreground colours: named ---
+// --- Colour sinks ---
+//
+// `fg` and `bg` are the only two colour-applying functions, and they are the
+// terminal step of the colour pipeline: `color` names a colour, the functions
+// in `color-funcs.ts` transform it, these paint it onto text.
+//
+// [LAW:composability] They replace five separate families — one function per
+// ANSI colour name (`red`, `bright_blue`, …), `hex`, `rgb`, `color` (256-index),
+// and `on` (background). Every one of those encoded *which colour* in the
+// function's identity, so the vocabulary could only grow by adding names, and
+// a colour computed at render time could not be applied at all. Here the colour
+// is an argument, so the sink admits every colour that exists and every colour
+// that will ever exist. Two functions, unbounded reach.
+//
+// [LAW:types-are-the-program] The slot accepts the full `ColorSpec.parse`
+// vocabulary, which is wider than the hex the colour math produces — and that
+// width is deliberate, not laxity. `#7aa2f7` is a *concrete* colour; `"red"`
+// and `"color(42)"` are *symbolic* ones the terminal resolves against its own
+// theme. Only concrete colours can be darkened or blended, which is why the
+// colour-math functions take hex alone; but both kinds can be painted, so the
+// sink takes the union. The type of each slot is exactly the set of values that
+// slot can mean something for.
 
-function namedColorFuncs(): FuncMap {
-  const out: FuncMap = {};
-  for (const name of Object.keys(ANSI_COLOR_NAMES)) {
-    const colorSpec = ColorSpec.parse(name);
-    out[name] = fgFunc(new Style({ color: colorSpec }));
-  }
-  return out;
+function colorSinkFunc(slot: "color" | "bgcolor"): TemplateFunc {
+  return {
+    fn: ((spec: string, child: unknown) =>
+      applyStyleToFragment(
+        child,
+        new Style({ [slot]: ColorSpec.parse(spec) }),
+      )) as TemplateFunc["fn"],
+    argTypes: ["string", "liftable"],
+    returnType: "T",
+  };
 }
-
-// --- Foreground colours: generic forms ---
-
-const colorPaletteFunc: TemplateFunc = {
-  fn: ((index: number, child: unknown) => {
-    if (!Number.isInteger(index) || index < 0 || index > 255) {
-      throw new RangeError(`color index ${index} is out of range (0-255)`);
-    }
-    return applyStyleToFragment(child, new Style({ color: ColorSpec.fromAnsi(index) }));
-  }) as TemplateFunc["fn"],
-  argTypes: ["int", "liftable"],
-  returnType: "T",
-};
-
-// [LAW:types-are-the-program] `hex` advertises a narrower domain than the
-// general colour-spec parser — only `#RRGGBB` / `#RRGGBBAA` is admitted.
-// Without this gate, `ColorSpec.parse` would silently accept any colour-spec
-// string (named colours, `rgb(...)`, `color(N)`), letting `hex "red"` succeed
-// and masking author mistakes.
-const HEX_INPUT_RE = /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/;
-
-const colorHexFunc: TemplateFunc = {
-  fn: ((hex: string, child: unknown) => {
-    if (!HEX_INPUT_RE.test(hex)) {
-      throw new RangeError(
-        `hex expected #RRGGBB or #RRGGBBAA, got ${JSON.stringify(hex)}`,
-      );
-    }
-    return applyStyleToFragment(child, new Style({ color: ColorSpec.parse(hex) }));
-  }) as TemplateFunc["fn"],
-  argTypes: ["string", "liftable"],
-  returnType: "T",
-};
-
-const colorRgbFunc: TemplateFunc = {
-  fn: ((r: number, g: number, b: number, child: unknown) => {
-    return applyStyleToFragment(child, new Style({ color: ColorSpec.fromRgb(r, g, b) }));
-  }) as TemplateFunc["fn"],
-  argTypes: ["int", "int", "int", "liftable"],
-  returnType: "T",
-};
-
-// --- Background ---
-
-const onFunc: TemplateFunc = {
-  fn: ((spec: string, child: unknown) => {
-    return applyStyleToFragment(child, new Style({ bgcolor: ColorSpec.parse(spec) }));
-  }) as TemplateFunc["fn"],
-  argTypes: ["string", "liftable"],
-  returnType: "T",
-};
 
 // --- Text attributes ---
 //
@@ -111,11 +83,11 @@ function attrStyle(name: AttributeName, value: boolean): Style {
 function attributeFuncs(): FuncMap {
   const out: FuncMap = {};
   for (const name of ATTRIBUTE_NAMES) {
-    out[name] = fgFunc(attrStyle(name, true));
-    out[`not_${name}`] = fgFunc(attrStyle(name, false));
+    out[name] = attrFunc(attrStyle(name, true));
+    out[`not_${name}`] = attrFunc(attrStyle(name, false));
   }
   for (const [alias, canonical] of Object.entries(ATTRIBUTE_SHORT_ALIASES)) {
-    out[alias] = fgFunc(attrStyle(canonical, true));
+    out[alias] = attrFunc(attrStyle(canonical, true));
   }
   return out;
 }
@@ -128,7 +100,7 @@ function attributeFuncs(): FuncMap {
 // byte-equivalent to the same spec inside markup, and one that `Style.parse`
 // rejects raises the same `StyleSyntaxError` surface.
 //
-// Motivation: the per-attribute functions (`bold`, `underline`, `hex`, …)
+// Motivation: the per-attribute functions (`bold`, `underline`, `fg`, …)
 // compose by nesting. For "apply a fixed set of styles to this child" or
 // "apply this named style set everywhere", nesting is awkward and the
 // style description is fragmented across multiple call sites. `style`
@@ -163,7 +135,7 @@ const styleSpecFunc: TemplateFunc = {
 //
 // The cell-boundary signal that consumers (cc-candybar et al.) walk is
 // `fragment.style.link` being truthy. `Style.add` propagates `link`
-// through any outer wrapping call, so `{{ red (link "u" "x") }}` and
+// through any outer wrapping call, so `{{ fg "red" (link "u" "x") }}` and
 // `{{ link "u" "x" }}` produce shapes that both qualify as cells from
 // the consumer's perspective. Outer-wins on nested links comes for free
 // from `Style.add`'s right-wins-on-conflict rule.
@@ -183,21 +155,18 @@ const linkFunc: TemplateFunc = {
 // --- Public assembly ---
 
 /**
- * The full binding registration set populated by the template-bindings
- * style epics — foreground colours (named + generic forms), background
- * (`on`), text attributes (canonical names, short aliases, and `not_*`
- * negations), and the hyperlink cell-splitter (`link`).
+ * Text-styling registrations: the two colour sinks (`fg`, `bg`), text
+ * attributes (canonical names, short aliases, and `not_*` negations), the
+ * hyperlink cell-splitter (`link`), and the multi-attribute `style` spec.
  *
- * Palette/theme/auto-contrast and per-position hue rotation are
- * deliberately absent — they ship in `rich-template-bindings-83q`.
+ * Colours themselves come from elsewhere: `colorFuncs()` for the palette-free
+ * math, `paletteFuncs()` for naming a theme colour. This module only paints.
+ * [LAW:one-way-deps] — nothing here imports a palette.
  */
 export function richTextStyleFuncs(): FuncMap {
   return {
-    ...namedColorFuncs(),
-    color: colorPaletteFunc,
-    hex: colorHexFunc,
-    rgb: colorRgbFunc,
-    on: onFunc,
+    fg: colorSinkFunc("color"),
+    bg: colorSinkFunc("bgcolor"),
     ...attributeFuncs(),
     link: linkFunc,
     style: styleSpecFunc,

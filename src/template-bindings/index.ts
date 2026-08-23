@@ -3,20 +3,27 @@
  *
  * [LAW:one-source-of-truth] This module is the public entry point for
  * rich-js's styling vocabulary as `@promptctl/go-template-js` template
- * functions. Two complementary registrations are exported:
+ * functions. The split between the two exported registrations is exactly the
+ * split between what needs a theme and what does not:
  *
- * - `richTextFuncs()` — foreground colours, background, text attributes, and
- *   `link`. Does not require configuration; safe to register unconditionally.
- * - `paletteFuncs(resolver)` — semantic palette, auto-contrast, and extended
- *   spec forms. Requires a `PaletteResolver` argument bound to the active
- *   theme; consumers merge it alongside `richTextFuncs()`.
+ * - `richTextFuncs()` — the colour sinks (`fg`/`bg`), the palette-free colour
+ *   math (`darken`, `mix`, `contrastOn`, the OKLCH axes …), text attributes,
+ *   and `link`. Needs no configuration; safe to register unconditionally. A
+ *   consumer with no theme system still gets the complete colour vocabulary by
+ *   feeding it hex literals.
+ * - `paletteFuncs(getPalette)` — the single function `color`, which turns a
+ *   palette variable name into a colour. This is the *only* registration that
+ *   knows a palette exists, which is why it is the only one that takes an
+ *   argument. [LAW:one-way-deps]
  *
- * `createRichTextEngine()` is convenience sugar that wires up `richTextFuncs()`
- * only — it does not include `paletteFuncs`, because palette functions require
- * a resolver the factory cannot supply. Consumers that need palette access
- * call `paletteFuncs(resolver)` and merge it into their own engine config.
- * Nesting is plain function composition (`{{ red (bold "x") }}`), not a
- * second markup grammar.
+ * `createRichTextEngine()` wires up `richTextFuncs()` only — it cannot supply a
+ * palette. Consumers that name theme colours call `paletteFuncs(getPalette)`
+ * and merge it into their own engine config.
+ *
+ * Colours compose by nesting, like every other function:
+ * `{{ fg (darken (color "primary") 2) (bold "x") }}`. There is no second
+ * markup grammar and no colour-spec mini-language — the template *is* the
+ * composition mechanism.
  *
  * Fragment type: `RichText`. Chosen because it is the library's primary
  * text type (implements `Renderable` + `Measurable`), composes via
@@ -32,16 +39,17 @@ import { RichText } from "../core/text.js";
 import { Style } from "../core/style.js";
 import { Segment } from "../core/segment.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
+import { colorFuncs } from "./color-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
+export { colorFuncs } from "./color-funcs.js";
 
 /**
- * Funcs registered by the rich-js binding — style functions (foreground,
- * background, attributes) and the `link` cell-splitter. Exposed as a factory
- * so future registrations that need configuration have a place to receive
- * arguments. Palette/theme/auto-contrast functions ship separately via
- * `paletteFuncs(resolver)` and are merged at consumer side — they require a
- * `PaletteResolver` argument and so cannot be included in this generic call.
+ * Funcs registered by the rich-js binding — the colour sinks, the palette-free
+ * colour math, text attributes, and the `link` cell-splitter. Everything here
+ * is configuration-free by construction; the one function that needs a theme
+ * (`color`) ships separately via `paletteFuncs(getPalette)` and is merged
+ * consumer-side.
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output
@@ -55,7 +63,7 @@ export { paletteFuncs } from "./palette-funcs.js";
  * whose `T` is something else will compile but fail at evaluation time.
  */
 export function richTextFuncs(): FuncMap {
-  return richTextStyleFuncs();
+  return { ...richTextStyleFuncs(), ...colorFuncs() };
 }
 
 /**

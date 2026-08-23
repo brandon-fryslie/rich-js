@@ -56,20 +56,29 @@ import {
   SOLARIZED_LIGHT,
   ATOM_ONE_DARK,
 } from "../../src/themes/terminalThemes.js";
-import { PaletteResolver } from "../../src/themes/paletteResolver.js";
 import type { TerminalTheme } from "../../src/core/color.js";
 import {
   richTextFuncs,
   paletteFuncs,
+  colorFuncs,
   renderTemplate,
 } from "../../src/template-bindings/index.js";
 import { makeAutoObservable, autorun, runInAction } from "mobx";
 
 // ─── Engines ───────────────────────────────────────────────────────────────
 //
-// Every scene now uses palette-aware engines (palette/auto/paletteOver are
-// pervasive in the redesigned demo), so the plain `richTextFuncs()`-only
-// engine that the old per-attribute sections used has been retired.
+// Two registrations, split by what needs a theme:
+//
+//   richTextFuncs()          — the colour sinks `fg`/`bg`, the palette-free
+//                              colour math (`darken`, `mix`, `contrastOn`, the
+//                              OKLCH axes…), text attributes, `link`.
+//   paletteFuncs(getPalette) — the single function `color`, which turns a
+//                              palette variable name into a `#RRGGBB` value.
+//
+// `paletteFuncs` takes a *getter*, not a palette: templates are parsed once and
+// evaluated many times, so a captured palette would freeze a live theme picker
+// to whatever was current at construction. Every engine here has a fixed theme,
+// but the getter is the shape the API asks for and costs nothing.
 
 function makeEngine(theme: TerminalTheme): Engine<RichText> {
   return createEngine<RichText>({
@@ -77,13 +86,32 @@ function makeEngine(theme: TerminalTheme): Engine<RichText> {
     toString: (rt) => rt.plain,
     funcs: {
       ...richTextFuncs(),
-      ...paletteFuncs(new PaletteResolver(theme.palette)),
+      ...paletteFuncs(() => theme.palette),
     },
   });
 }
 
-const gruvboxEngine = makeEngine(GRUVBOX);
-const tokyoEngine   = makeEngine(TOKYO_NIGHT);
+// A deliberately *sink-free* engine: `colorFuncs()` (the palette-free colour
+// math) plus `color` — and nothing that can paint. Every expression it can
+// evaluate therefore produces a colour *value*, which lands in the output as
+// the literal `#RRGGBB` text it is. That is the point of §4 below: colours are
+// ordinary values that flow through the template language, hold in `$vars`, and
+// only become style when a sink (`fg`/`bg`) consumes them.
+
+function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
+  return createEngine<RichText>({
+    fromString: (s) => new RichText(s),
+    toString: (rt) => rt.plain,
+    funcs: {
+      ...colorFuncs(),
+      ...paletteFuncs(() => theme.palette),
+    },
+  });
+}
+
+const gruvboxEngine    = makeEngine(GRUVBOX);
+const tokyoEngine      = makeEngine(TOKYO_NIGHT);
+const gruvboxCalcEngine = makeCalculatorEngine(GRUVBOX);
 
 const GALLERY_THEMES: [string, Engine<RichText>][] = [
   ["GRUVBOX",          makeEngine(GRUVBOX)],
@@ -325,9 +353,10 @@ function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticIt
 // edit one `$var` and every site downstream updates.
 
 // ─── §1 — Push (commit-stream Panel) ───────────────────────────────────────
-// Two synthetic "commits" share five `$style` definitions. The user can
-// recolour all SHAs by editing `$sha` once; the same goes for `$when`,
-// `$branch`, `$hot`, `$linkfx`.
+// Two synthetic "commits" share eight `$` definitions — five style specs and
+// three colours. The user can recolour every author name by editing `$who`
+// once, exactly the way `$sha` governs every SHA. Colours name-once/use-many
+// like any other value because `color` *returns* one instead of applying it.
 
 const PUSH_TMPL =
 `{{- $sha    := "#7c7c7c" -}}
@@ -335,15 +364,18 @@ const PUSH_TMPL =
 {{- $branch := "italic on #2d2d2d bold" -}}
 {{- $hot    := "underline #00d9ff bold" -}}
 {{- $linkfx := "underline cyan" -}}
-{{ "abc1234" | style $sha }}  {{ "2026-05-13 21:42" | style $when }}  {{ "bmf" | primary | bold }}
-  {{ " feat/sunrise " | style $branch }} → {{ "rework demo into three scenes" | accent }}
-  {{ "ci " | dim }}{{ "✓ 1458 passed" | success }}  ·  {{ "△ 1 flaky" | palette "warning-muted" }}  ·  {{ "open run" | style $linkfx | link "https://example.com/run/42" }}
+{{- $who    := color "primary" -}}
+{{- $topic  := color "accent" -}}
+{{- $flaky  := color "warning-muted" -}}
+{{ "abc1234" | style $sha }}  {{ "2026-05-13 21:42" | style $when }}  {{ "bmf" | fg $who | bold }}
+  {{ " feat/sunrise " | style $branch }} → {{ "rework demo into three scenes" | fg $topic }}
+  {{ "ci " | dim }}{{ "✓ 1458 passed" | fg (color "success") }}  ·  {{ "△ 1 flaky" | fg $flaky }}  ·  {{ "open run" | style $linkfx | link "https://example.com/run/42" }}
   {{ "deploy " | dim }}{{ "preview.app/sunrise" | style $hot }}
-{{ "e8c19d2" | style $sha }}  {{ "2026-05-13 21:38" | style $when }}  {{ "alice" | primary | bold }}
-  {{ " feat/measurements " | style $branch }} → {{ "tighten widget measure() contract" | accent }}
+{{ "e8c19d2" | style $sha }}  {{ "2026-05-13 21:38" | style $when }}  {{ "alice" | fg $who | bold }}
+  {{ " feat/measurements " | style $branch }} → {{ "tighten widget measure() contract" | fg $topic }}
   {{ "more" | style $linkfx | link "https://example.com/run/41" }}`;
 
-const pushRow = makeDemoRow("edit any $var → every reference updates", PUSH_TMPL, tokyoEngine);
+const pushRow = makeDemoRow("edit any $var (spec or colour) → every reference updates", PUSH_TMPL, tokyoEngine);
 
 const pushPanelItem = new StaticItem({
   id: uid("push-panel"),
@@ -367,16 +399,17 @@ const secPush = makeSection(
 );
 
 // ─── §2 — Theme matrix (same notice, every theme) ──────────────────────────
-// One reusable `$bg` participates in both `auto $bg` (contrast pick) and
-// `on $bg` (painted background) — edit it once, both shift consistently.
-// The same template source renders once per theme below.
+// One reusable `$bg` feeds both `contrastOn $bg` (pick readable ink for it)
+// and `bg $bg` (paint it) — edit it once, both shift consistently. That pairing
+// is only expressible because `contrastOn` hands back a colour instead of
+// consuming it. The same template source renders once per theme below.
 
 const NOTICE_TMPL =
 `{{- $bg     := "#1a1a2e" -}}
 {{- $badge  := "bold" -}}
 {{- $linkfx := "underline" -}}
-{{ " ⚠ HEADS UP " | auto $bg | on $bg }}  {{ "deploy paused" | warning | style $badge }}  {{ "30s ago" | dim }}
-{{ "  retries exhausted — " | palette "warning-muted" }}{{ "see incident" | accent | style $linkfx | link "https://example.com/incident/8" }}`;
+{{ " ⚠ HEADS UP " | fg (contrastOn $bg) | bg $bg }}  {{ "deploy paused" | fg (color "warning") | style $badge }}  {{ "30s ago" | dim }}
+{{ "  retries exhausted — " | fg (color "warning-muted") }}{{ "see incident" | fg (color "accent") | style $linkfx | link "https://example.com/incident/8" }}`;
 
 const noticeRow = makeDemoRow("edit $bg → contrast + bg shift together", NOTICE_TMPL, GALLERY_THEMES[0]![1]);
 
@@ -385,7 +418,7 @@ const themeGridItem = new StaticItem({
   render: (opts) => {
     const tmpl = noticeRow.input.value;
     const swatchTmpl =
-      `{{ "██" | primary }}{{ "██" | accent }}{{ "██" | success }}{{ "██" | warning }}{{ "██" | error }}`;
+      `{{ "██" | fg (color "primary") }}{{ "██" | fg (color "accent") }}{{ "██" | fg (color "success") }}{{ "██" | fg (color "warning") }}{{ "██" | fg (color "error") }}`;
     const segs: Segment[] = [];
     for (let i = 0; i < GALLERY_THEMES.length; i++) {
       const [name, engine] = GALLERY_THEMES[i]!;
@@ -405,32 +438,89 @@ const secThemeMatrix = makeSection(
   [themeGridItem],
 );
 
-// ─── §3 — Ramps (palette modifiers, alpha, color forms) ────────────────────
-// The "value" axis of the binding — palette modifiers (darken/lighten),
-// alpha compositing, and the three constructor forms (hex / rgb / color N)
-// — read as side-by-side ramps. Still pipe-first.
+// ─── §3 — Ramps (lightness, mixing, the colour-spec vocabulary) ────────────
+// The "value" axis of the binding. A ramp used to need one spec-grammar
+// production per step (`"primary-darken-3"`, `"accent 50%"`); now each step is
+// the same function applied with a different number, so the ramp is a fold over
+// data rather than a list of hand-spelled strings.
 
 const RAMP_LUM =
-`{{ "███" | palette "primary-darken-3" }}{{ "███" | palette "primary-darken-2" }}{{ "███" | palette "primary-darken-1" }}{{ "███" | primary }}{{ "███" | palette "primary-lighten-1" }}{{ "███" | palette "primary-lighten-2" }}{{ "███" | palette "primary-lighten-3" }}  primary  ↓3 ↓2 ↓1  ·  ↑1 ↑2 ↑3`;
+`{{- $p := color "primary" -}}
+{{ "███" | fg (darken $p 3) }}{{ "███" | fg (darken $p 2) }}{{ "███" | fg (darken $p 1) }}{{ "███" | fg $p }}{{ "███" | fg (lighten $p 1) }}{{ "███" | fg (lighten $p 2) }}{{ "███" | fg (lighten $p 3) }}  primary  ↓3 ↓2 ↓1  ·  ↑1 ↑2 ↑3`;
 
-const RAMP_ALPHA =
+const RAMP_MIX =
 `{{- $bg := "#282828" -}}
-{{ "█████" | paletteOver "accent 25%" $bg }}{{ "█████" | paletteOver "accent 50%" $bg }}{{ "█████" | paletteOver "accent 75%" $bg }}{{ "█████" | paletteOver "accent 100%" $bg }}  accent / #282828 @ 25 · 50 · 75 · 100`;
+{{- $a  := color "accent" -}}
+{{ "█████" | fg (mix $bg $a 25) }}{{ "█████" | fg (mix $bg $a 50) }}{{ "█████" | fg (mix $bg $a 75) }}{{ "█████" | fg (mix $bg $a 100) }}  mix $bg → accent @ 25 · 50 · 75 · 100`;
 
+// `fg`/`bg` accept the whole `ColorSpec.parse` vocabulary, not just the hex the
+// colour math produces: `"red"` and `"color(203)"` are *symbolic* colours the
+// terminal resolves against its own theme, so they can be painted but not
+// darkened. One sink, every colour that can mean something in a terminal.
 const RAMP_FORMS =
-`{{ "hex #ff6b6b" | hex "#ff6b6b" }}  ·  {{ "rgb(255,107,107)" | rgb 255 107 107 }}  ·  {{ "color(203)" | color 203 }}  ·  {{ "bright_blue" | bright_blue }}`;
+`{{ "hex #ff6b6b" | fg "#ff6b6b" }}  ·  {{ "rgb(255,107,107)" | fg "rgb(255,107,107)" }}  ·  {{ "color(203)" | fg "color(203)" }}  ·  {{ "bright_blue" | fg "bright_blue" }}`;
 
-const secRamps = makeSection("Ramps — palette modifiers · alpha · color forms", [
-  makeDemoRow("primary luminance (7-step)", RAMP_LUM,   gruvboxEngine),
-  makeDemoRow("paletteOver alpha (× $bg)",  RAMP_ALPHA, gruvboxEngine),
-  makeDemoRow("hex / rgb / color N / named", RAMP_FORMS, gruvboxEngine),
+const secRamps = makeSection("Ramps — lightness · mixing · the fg colour vocabulary", [
+  makeDemoRow("primary luminance (7-step)",  RAMP_LUM,   gruvboxEngine),
+  makeDemoRow("mix toward accent (× $bg)",   RAMP_MIX,   gruvboxEngine),
+  makeDemoRow("hex / rgb() / color(N) / named", RAMP_FORMS, gruvboxEngine),
+]);
+
+// ─── §4 — Colour values (compute → name → paint) ───────────────────────────
+//
+// The redesign in one scene. `color` and everything in `colorFuncs()` take
+// colours and return colours, carried across the template seam as `#RRGGBB`
+// strings — so a colour holds in a `$var`, prints, and only becomes *style*
+// when a sink (`fg`/`bg`) consumes it.
+//
+// The first row proves it by removing the sinks entirely: `gruvboxCalcEngine`
+// registers `colorFuncs()` + `color` and nothing that can paint, so every
+// expression lands in the output as the literal hex it evaluates to. The two
+// rows below it feed those same expressions to a sink.
+
+const CALC_TMPL =
+`{{- $p := color "primary" -}}
+color "primary"                  → {{ $p }}
+darken $p 3                      → {{ darken $p 3 }}
+lighten $p 2                     → {{ lighten $p 2 }}
+mix (color "background") $p 50   → {{ mix (color "background") $p 50 }}
+contrastOn (color "surface")     → {{ contrastOn (color "surface") }}
+readableOn "#4b6a8a" $p          → {{ readableOn "#4b6a8a" $p }}
+shiftHue $p 120                  → {{ shiftHue $p 120 }}
+scaleChroma $p 0.2               → {{ scaleChroma $p 0.2 }}
+scaleLightness $p 1.25           → {{ scaleLightness $p 1.25 }}
+shiftLightness $p -0.08          → {{ shiftLightness $p -0.08 }}`;
+
+// Every swatch picks its own ink with `contrastOn`, so a computed background
+// can never end up with unreadable text on it — the old `"auto"` spec form,
+// now an ordinary call whose result you can also hold in a `$var`.
+const SWATCH_TMPL =
+`{{- $p := color "primary" -}}
+{{- $d := darken $p 3 -}}
+{{- $l := lighten $p 2 -}}
+{{- $h := shiftHue $p 120 -}}
+{{- $g := scaleChroma $p 0.2 -}}
+{{ " darken 3 " | bg $d | fg (contrastOn $d) }}{{ " base " | bg $p | fg (contrastOn $p) }}{{ " lighten 2 " | bg $l | fg (contrastOn $l) }}{{ " hue +120 " | bg $h | fg (contrastOn $h) }}{{ " chroma ×0.2 " | bg $g | fg (contrastOn $g) }}`;
+
+// `contrastOn` maximizes legibility (black or white); `readableOn` keeps the
+// colour recognizably itself and only slides its OKLCH lightness until it
+// clears WCAG AA — so the "after" swatch is still blue, just a legible blue.
+const READABLE_TMPL =
+`{{- $bg  := color "surface" -}}
+{{- $raw := "#4b6a8a" -}}
+{{ "  raw #4b6a8a on surface  " | bg $bg | fg $raw }}  {{ "  readableOn → clears AA  " | bg $bg | fg (readableOn $raw $bg) }}`;
+
+const secColorValues = makeSection("Colour values — compute · name · paint", [
+  makeDemoRow("no sinks registered → colours print as hex", CALC_TMPL, gruvboxCalcEngine),
+  makeDemoRow("same expressions, painted (contrastOn ink)", SWATCH_TMPL, gruvboxEngine),
+  makeDemoRow("contrastOn vs readableOn",                   READABLE_TMPL, gruvboxEngine),
 ]);
 
 // ─── Section list ──────────────────────────────────────────────────────────
 
-const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps];
+const SECTIONS: Section[] = [secPush, secThemeMatrix, secRamps, secColorValues];
 
-const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps"];
+const SECTION_NAMES = ["Push", "Theme Matrix", "Ramps", "Colour Values"];
 
 // ─── Always-visible header ─────────────────────────────────────────────────
 

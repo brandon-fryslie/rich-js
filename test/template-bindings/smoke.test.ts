@@ -3,10 +3,11 @@ import { createRichTextEngine, richTextFuncs, renderTemplate } from "../../src/t
 import { RichText } from "../../src/core/text.js";
 
 // [LAW:behavior-not-structure] Tests assert the binding contract, not internals.
-// This is the bootstrap smoke test for rich-template-bindings-eeg: it proves
-// the wiring end-to-end (engine constructs, parser runs, evaluator runs,
-// fragments come back as RichText). Per-function behavioral tests land with
-// each follow-up epic that registers the function.
+// This is the bootstrap smoke test: it proves the wiring end-to-end (engine
+// constructs, parser runs, evaluator runs, fragments come back as RichText) and
+// that the configuration-free half of the vocabulary — the colour sinks, the
+// palette-free colour math, attributes, link — works with no theme in sight.
+// Per-function behaviour lives in style-funcs.test.ts.
 
 describe("template-bindings — bootstrap smoke", () => {
   it("evaluates a literal-only template to a single RichText fragment", () => {
@@ -31,7 +32,7 @@ describe("template-bindings — bootstrap smoke", () => {
 
   it("renderTemplate returns segments for a valid template", () => {
     const engine = createRichTextEngine();
-    const segs = renderTemplate(engine, `{{ red "hi" }}`);
+    const segs = renderTemplate(engine, `{{ fg "red" "hi" }}`);
     expect(segs.length).toBeGreaterThan(0);
     expect(segs.map((s) => s.text).join("")).toContain("hi");
     const styled = segs.find((s) => s.style?.color?.name === "red");
@@ -40,7 +41,7 @@ describe("template-bindings — bootstrap smoke", () => {
 
   it("renderTemplate scope is threaded through to the engine", () => {
     const engine = createRichTextEngine();
-    const segs = renderTemplate(engine, `{{ red .who }}`, { who: "world" });
+    const segs = renderTemplate(engine, `{{ fg "red" .who }}`, { who: "world" });
     expect(segs.map((s) => s.text).join("")).toContain("world");
   });
 
@@ -71,18 +72,46 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs[0]!.text.startsWith("[error:")).toBe(true);
   });
 
-  it("exposes a populated FuncMap from richTextFuncs()", () => {
-    // Spot-check a representative from each registration category. The
-    // exhaustive inventory is asserted in style-funcs.test.ts.
+  it("the theme-free engine covers the whole colour vocabulary via hex literals", () => {
+    // [LAW:one-way-deps] `richTextFuncs()` needs no configuration: a consumer
+    // with no theme system still composes colours, because the colour math is
+    // palette-free and the sinks take any colour.
+    const engine = createRichTextEngine();
+    const segs = renderTemplate(
+      engine,
+      `{{ bg (darken "#3465a4" 2) (fg (contrastOn "#3465a4") (bold "ok")) }}`,
+    );
+    expect(segs.map((s) => s.text).join("")).toContain("ok");
+    expect(segs.some((s) => s.style?.bold === true)).toBe(true);
+    expect(segs.every((s) => !s.text.startsWith("[error:"))).toBe(true);
+  });
+
+  it("naming a theme colour needs paletteFuncs, which the bare engine does not register", () => {
+    // `color` is the one palette-dependent function and ships separately, so a
+    // template that names a theme colour fails loudly here rather than
+    // silently rendering an unthemed colour. [LAW:no-silent-failure]
+    const engine = createRichTextEngine();
+    const segs = renderTemplate(engine, `{{ fg (color "primary") "x" }}`);
+    expect(segs).toHaveLength(1);
+    expect(segs[0]!.text.startsWith("[error:")).toBe(true);
+  });
+
+  it("richTextFuncs() is the union of the style set and the colour-math set", () => {
+    // The one structural guarantee worth pinning: `richTextFuncs()` merges
+    // both halves, so a consumer registering it gets painting AND colour
+    // arithmetic from a single call. Behaviour per function lives in
+    // style-funcs.test.ts.
     const funcs = richTextFuncs();
-    expect(funcs.red).toBeDefined();   // named foreground
-    expect(funcs.bold).toBeDefined();  // canonical attribute
-    expect(funcs.b).toBeDefined();     // short alias
-    expect(funcs.not_bold).toBeDefined(); // negation
-    expect(funcs.on).toBeDefined();    // background
-    expect(funcs.color).toBeDefined(); // palette index
-    expect(funcs.hex).toBeDefined();   // hex
-    expect(funcs.rgb).toBeDefined();   // rgb
-    expect(funcs.link).toBeDefined();  // hyperlink (cell splitter)
+    const styleOnly = ["fg", "bg", "bold", "b", "not_bold", "style", "link"];
+    const colorOnly = ["darken", "lighten", "mix", "contrastOn", "readableOn", "shiftHue"];
+    for (const name of [...styleOnly, ...colorOnly]) {
+      expect(funcs[name]).toBeDefined();
+    }
+  });
+
+  it("does not register a palette-dependent function", () => {
+    // [LAW:one-way-deps] Nothing in `richTextFuncs()` knows a palette exists;
+    // `color` arrives only via `paletteFuncs(getPalette)`.
+    expect(richTextFuncs()["color"]).toBeUndefined();
   });
 });

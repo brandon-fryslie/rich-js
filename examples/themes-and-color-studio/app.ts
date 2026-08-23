@@ -40,9 +40,12 @@ import {
   // Section 4 — theme registry (also via subpath, see below)
   getThemePalette,
   listThemePalettes,
-  // Section 5 — Palettes, resolver, build
+  // Section 5 — Palettes, colour references, build
   Palette,
-  PaletteResolver,
+  resolveColorRef,
+  parseHexColor,
+  ColorRefError,
+  HEX_COLOR_RE,
   buildPalette,
   // Section 6 — Pre-built TerminalTheme constants
   TerminalTheme,
@@ -96,7 +99,6 @@ import {
 import type {
   DetectColorOptions,
   ThemeName,
-  ResolveContext,
   BaseColors,
   ThemeKey,
 } from "../../src/index.js";
@@ -175,6 +177,13 @@ export function runDemo(
 
   function dim(text: string): RichText {
     return new RichText(text, { style: "dim" });
+  }
+
+  // Error messages carry a near-miss suggestion list and can run long. Cap
+  // them so one diagnostic can't take over the section, while leaving room
+  // for the suggestions themselves — those are the useful half of the message.
+  function truncate(text: string, max: number): string {
+    return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
   }
 
   // The semantic vars we sample across the demo. Ordered roughly by role:
@@ -516,52 +525,161 @@ export function runDemo(
   }
 
   // ===========================================================================
-  // SECTION 5 — Palette, PaletteResolver, buildPalette
+  // SECTION 5 — Colour references (resolveColorRef / parseHexColor), buildPalette
   // ===========================================================================
 
-  function section5PaletteResolver(): void {
-    out.print(sectionHeader(5, "Palette resolution — bare / modifier / alpha / auto"));
+  function section5ColorRefs(): void {
+    out.print(sectionHeader(5, "Colour references — one string, one checkpoint"));
     out.print(
       blurb(
-        "PaletteResolver parses Textual-style spec strings against a Palette. " +
-          "Four spec forms — a bare name, a -darken-N/-lighten-N modifier, " +
-          "a trailing alpha percent, and the synthetic \"auto\" name that " +
-          "picks black-or-white against the target.",
+        "A colour reference is a palette variable name OR a #RRGGBB / #RRGGBBAA " +
+          "literal, and resolveColorRef is the single checkpoint that turns one " +
+          "into a ColorRgba. It is idempotent — hand it the hex it just produced " +
+          "and you get the same colour back — so callers never branch on \"is this " +
+          "a name or already a colour\". A miss throws ColorRefError; there is no " +
+          "spec mini-language left to learn.",
       ),
     );
     out.print(blank());
 
-    // Use gruvbox as the substrate. ResolveContext.against is required for
-    // the alpha and auto forms; bare names and modifiers don't need it.
+    // Use gruvbox as the substrate throughout the section.
     const palette: Palette = getThemePalette("gruvbox");
-    const resolver = new PaletteResolver(palette);
     const bg = palette.get("background")!;
     const fg = palette.get("foreground")!;
-    const ctx: ResolveContext = { against: bg };
 
-    const specs: Array<{ spec: string; note: string }> = [
-      { spec: "primary",                note: "bare palette var" },
-      { spec: "primary-darken-2",       note: "modifier: 2 levels darker" },
-      { spec: "primary-lighten-1",      note: "modifier: 1 level lighter" },
-      { spec: "accent 50%",             note: "alpha: 50% over background" },
-      { spec: "auto",                   note: "synthetic: contrastFor(against)" },
-      { spec: "auto 80%",               note: "auto + alpha together" },
-      { spec: "error-darken-3 30%",     note: "modifier + alpha" },
+    // Both reference kinds — and the round trip that proves idempotence — go
+    // through the same call. [LAW:dataflow-not-control-flow]
+    const named = resolveColorRef(palette, "primary");
+    const literal = resolveColorRef(palette, "#d3869b");
+    const roundTrip = resolveColorRef(palette, named.hex);
+    const refRows: Array<{ call: string; color: ColorRgba; note: string }> = [
+      { call: 'resolveColorRef(p, "primary")', color: named, note: "palette variable name" },
+      { call: 'resolveColorRef(p, "#d3869b")', color: literal, note: "literal — no lookup happens" },
+      {
+        call: `resolveColorRef(p, "${named.hex}")`,
+        color: roundTrip,
+        note:
+          roundTrip.hex === named.hex
+            ? "idempotent: re-resolving its own output ✓"
+            : "IDEMPOTENCE BROKEN — re-resolve diverged",
+      },
     ];
-
-    for (const { spec, note } of specs) {
-      const resolved = resolver.resolve(spec, ctx);
-      if (resolved === null) {
-        out.print(new RichText(`    "${spec.padEnd(22)}" → null (${note})`, { style: "bold red" }));
-        continue;
-      }
+    for (const { call, color, note } of refRows) {
       out.print(
-        new RichText(`    "${spec.padEnd(22)}" → `)
-          .append(`  ${resolved.hex}  `, bgFgStyle(resolved, fg, bg))
+        new RichText(`    ${call.padEnd(34)} → `)
+          .append(`  ${color.hex}  `, bgFgStyle(color, fg, bg))
           .append("  ")
           .append(dim(note)),
       );
     }
+    out.print(blank());
+
+    // parseHexColor is the hex arm on its own — the parser a caller reaches for
+    // when only a literal can mean anything (colour math cannot operate on a
+    // name). It carries the alpha channel through, like parseRgbaHex in §1.
+    const translucent = parseHexColor("#3b82f680");
+    out.print(
+      new RichText('    parseHexColor("#3b82f680")         → ')
+        .append(`  ${translucent.hex}  `, bgFgStyle(translucent, fg, bg))
+        .append(dim(`   alpha=${translucent.alpha}`)),
+    );
+    out.print(blank());
+
+    // HEX_COLOR_RE is exported so a caller gates on the *same* pattern the
+    // parser consults — one regex, never a second private copy that drifts.
+    // [LAW:one-source-of-truth]
+    out.print(dim("    HEX_COLOR_RE — the literal-shape gate the parser itself uses:"));
+    for (const probe of ["#7aa2f7", "#7aa2f780", "primary", "#7aa2f", "7aa2f7"]) {
+      const isLiteral = HEX_COLOR_RE.test(probe);
+      out.print(
+        new RichText(
+          `      HEX_COLOR_RE.test("${probe}")${" ".repeat(Math.max(0, 12 - probe.length))} → ${isLiteral}`,
+        ).append(dim(isLiteral ? "   (hex arm)" : "   (palette-name arm)")),
+      );
+    }
+    out.print(blank());
+
+    // Loud failure, both mistakes. Same three-outcome shape as §1's
+    // ColorParseError probe: the "didn't throw" branch is what keeps a
+    // regression to silent-default from passing unnoticed.
+    // [LAW:no-silent-fallbacks]
+    type RefOutcome =
+      | { kind: "correct"; message: string }
+      | { kind: "wrong-type"; got: string }
+      | { kind: "no-throw"; got: string };
+
+    function probeBadRef(ref: string): RefOutcome {
+      try {
+        return { kind: "no-throw", got: resolveColorRef(palette, ref).hex };
+      } catch (err) {
+        return err instanceof ColorRefError
+          ? { kind: "correct", message: err.message }
+          : { kind: "wrong-type", got: err instanceof Error ? err.name : typeof err };
+      }
+    }
+
+    out.print(bold("    ColorRefError — a bad reference is a broken config, so it throws:"));
+    for (const { ref, why } of [
+      { ref: "text-primry", why: "typo'd palette name — near misses come from the live palette" },
+      { ref: "#12345", why: "malformed hex — caught by the hex arm, not reported as a bad name" },
+    ]) {
+      const outcome = probeBadRef(ref);
+      const line: { text: string; style: string } =
+        outcome.kind === "correct"
+          ? { text: `      "${ref}" → ${truncate(outcome.message, 200)}`, style: "green" }
+          : outcome.kind === "wrong-type"
+          ? { text: `      "${ref}" raised the WRONG error type (${outcome.got})`, style: "bold red" }
+          : {
+              text: `      "${ref}" DID NOT THROW (got ${outcome.got}) — loud-failure regressed`,
+              style: "bold red",
+            };
+      out.print(new RichText(line.text, { style: line.style }));
+      out.print(blurb(why));
+    }
+    out.print(blank());
+
+    // The composition that replaced the old spec-string grammar. Every form
+    // the resolver used to parse inside a string ("primary-darken-3",
+    // "accent 50%", "auto") is now an ordinary function applied to a resolved
+    // colour — so the vocabulary grows by composing, not by adding grammar
+    // productions. [LAW:composability]
+    const primary = resolveColorRef(palette, "primary");
+    const accent = resolveColorRef(palette, "accent");
+    const surface = resolveColorRef(palette, "surface");
+    out.print(bold("    Old spec string → the composition that replaced it:"));
+    out.print(blurb('ref(x) abbreviates resolveColorRef(palette, x); bg is the gruvbox background.'));
+    const compositions: Array<{ was: string; now: string; color: ColorRgba }> = [
+      { was: '"primary-darken-3"', now: 'darken(ref("primary"), 3)', color: darken(primary, 3) },
+      { was: '"primary-lighten-1"', now: 'lighten(ref("primary"), 1)', color: lighten(primary, 1) },
+      { was: '"accent 50%"', now: 'blendRgb(bg, ref("accent"), 0.5)', color: blendRgb(bg, accent, 0.5) },
+      { was: '"auto"', now: 'contrastFor(ref("surface"))', color: contrastFor(surface) },
+    ];
+    for (const { was, now, color } of compositions) {
+      out.print(
+        new RichText(`      ${was.padEnd(20)} → ${now.padEnd(32)} `)
+          .append(`  ${color.hex}  `, bgFgStyle(color, fg, bg)),
+      );
+    }
+    // The theme *also* ships a pre-derived `-darken-N` / `-lighten-N` ramp as
+    // real palette variables (buildPalette's own formula, tuned per theme), and
+    // resolveColorRef reaches every one of them by name — it is total over the
+    // palette, not over a hand-picked list of "spec-able" roots. So the two
+    // spellings are both available and neither is a special case: the named
+    // ramp is the theme's opinion, the composed one is arithmetic on the spot.
+    out.print(blank());
+    out.print(bold("    …and the theme's own pre-derived ramp, reached by plain name:"));
+    const namedRamp = new RichText("      ");
+    for (const name of [
+      "primary-darken-3",
+      "primary-darken-1",
+      "primary",
+      "primary-lighten-1",
+      "primary-lighten-3",
+    ]) {
+      const c = resolveColorRef(palette, name);
+      namedRamp.append(`  ${c.hex}  `, bgFgStyle(c, fg, bg));
+    }
+    out.print(namedRamp.append(dim("   resolveColorRef(p, \"primary-darken-3\") …")));
     out.print(blank());
 
     // buildPalette directly — construct a BaseColors bundle and watch the
@@ -947,7 +1065,7 @@ export function runDemo(
     section2ColorSpec,
     section3ColorSystem,
     section4ThemeRegistry,
-    section5PaletteResolver,
+    section5ColorRefs,
     section6TerminalThemes,
     section7Transposition,
     section8Contrast,
@@ -963,7 +1081,7 @@ export function runDemo(
     out.print(
       dim(
         "Eight sections. Color values → ColorSpec → system detection → registry → " +
-          "resolver → terminal themes → OKLCH transposition → WCAG contrast.",
+          "colour references → terminal themes → OKLCH transposition → WCAG contrast.",
       ),
     );
     out.print(blank());
