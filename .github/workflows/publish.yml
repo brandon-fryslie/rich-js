@@ -1,0 +1,71 @@
+# Publish rich-js to npm from CI.
+#
+# Why this exists: rich-js had no publish automation, so every release was a
+# manual `npm publish` from a laptop. npm now refuses that for legacy tokens
+# ("Two-factor authentication or granular access token with bypass 2fa enabled
+# is required to publish packages"), which turned a routine release into a hard
+# block. CI publishing is the fix, and it is what the sibling repo
+# (@promptctl/cc-candybar) already does.
+#
+# The trigger is the version tag, so the tag is the single source of truth for
+# "this commit is released" — the workflow refuses to publish if the tag and
+# package.json disagree, rather than silently shipping a mislabeled version.
+#
+# Release procedure:
+#   npm version <major|minor|patch> --no-git-tag-version   # bump on a branch
+#   # PR, review, merge to master
+#   git checkout master && git pull
+#   git tag v$(node -p "require('./package.json').version") && git push --tags
+
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for npm provenance — attests that this tarball was built by
+      # this workflow from this commit, which is exactly the guarantee a manual
+      # laptop publish cannot make.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: "https://registry.npmjs.org"
+
+      - run: npm ci
+
+      # The full gate, in the same order the repo's own scripts define it. A
+      # tag must not be able to publish something that does not typecheck or
+      # whose tests fail.
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+      # [LAW:no-silent-failure] A tag that disagrees with package.json is a
+      # release-process bug, and publishing anyway would put a version on npm
+      # that no git tag describes. Fail loudly, before the irreversible step.
+      - name: Verify tag matches package.json version
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v${tag} does not match package.json version ${pkg}"
+            exit 1
+          fi
+          echo "publishing ${pkg}"
+
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
