@@ -29,7 +29,13 @@ const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "
  * Build a full semantic palette from base colors.
  *
  * Derived entries follow Textual's formulas:
- * - `*-muted` = color blended 70% toward background
+ * - `*-muted` = color blended 70% toward its opposite base role. Defined for
+ *              every accent AND for the two base roles themselves
+ *              (`foreground-muted` blends toward `background`,
+ *              `background-muted` blends toward `foreground`) — a caller
+ *              de-emphasizing body/structural text reaches for
+ *              `foreground-muted` the same way it reaches for
+ *              `primary-muted` to de-emphasize an accent.
  * - `text-*`  = contrast text tinted 66% with the accent color (use as
  *              foreground in muted/background-tinted contexts)
  * - `on-*`    = WCAG-correct contrast colour (black or white) for use as
@@ -47,6 +53,15 @@ export function buildPalette(name: string, dark: boolean, base: BaseColors): Pal
   for (const key of ACCENT_KEYS) {
     vars.set(key, base[key]);
   }
+
+  // Muted variants of the two base roles, same "blend 70% toward
+  // background" formula as the accent `*-muted` family below — every
+  // base color the palette defines gets a de-emphasized variant, not just
+  // the accents. `foreground-muted` is what a caller reaches for to draw
+  // structural/contextual text (labels, punctuation, ids) at reduced visual
+  // weight without a terminal-support-dependent SGR attribute.
+  vars.set("foreground-muted", blendRgb(base.foreground, base.background, MUTED_BLEND));
+  vars.set("background-muted", blendRgb(base.background, base.foreground, MUTED_BLEND));
 
   // Surface — subtle lift from background
   vars.set("surface", blendRgb(base.background, base.foreground, SURFACE_LIFT));

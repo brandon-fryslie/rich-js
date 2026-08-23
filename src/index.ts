@@ -45,8 +45,14 @@ export type { ThemeKey } from "./core/oklch.js";
 
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";
-export { PaletteResolver } from "./themes/paletteResolver.js";
-export type { ResolveContext } from "./themes/paletteResolver.js";
+// The one checkpoint turning an author-written colour string — a palette
+// variable name or a `#RRGGBB` literal — into a colour. [LAW:parse-dont-validate]
+export {
+  resolveColorRef,
+  parseHexColor,
+  ColorRefError,
+  HEX_COLOR_RE,
+} from "./themes/colorRef.js";
 export { buildPalette } from "./themes/buildPalette.js";
 export type { BaseColors } from "./themes/buildPalette.js";
 export {

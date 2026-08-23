@@ -8,8 +8,10 @@ import type { ColorRgba } from "../core/color.js";
  * `accent`, `error`, etc. — and are the foundation of the theming system.
  *
  * Storage is uniformly ColorRgba; consumers that load from hex JSON
- * parse to ColorRgba at load time. Spec resolution (modifier, alpha,
- * auto-contrast) lives in PaletteResolver, not here.
+ * parse to ColorRgba at load time. `get` is a bare lookup — turning an
+ * author-written *reference* (a name, or a `#RRGGBB` literal) into a colour
+ * is `resolveColorRef`'s job in `colorRef.ts`, so a Palette never has to
+ * know about the syntax callers write.
  */
 export class Palette {
   readonly name: string;

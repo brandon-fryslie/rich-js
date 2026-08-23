@@ -52,6 +52,21 @@ describe("buildPalette", () => {
     expect(muted.blue).toBeGreaterThan(TEST_BASE.background.blue);
   });
 
+  it("derives foreground-muted and background-muted for the two base roles", () => {
+    const p = buildPalette("test", true, TEST_BASE);
+    const fgMuted = p.get("foreground-muted")!;
+    // Muted foreground (white, blended 70% toward black bg) should be
+    // dimmer than plain foreground but still brighter than background.
+    expect(fgMuted.red).toBeLessThan(TEST_BASE.foreground.red);
+    expect(fgMuted.red).toBeGreaterThan(TEST_BASE.background.red);
+
+    const bgMuted = p.get("background-muted")!;
+    // Muted background (black, blended 70% toward white fg) should be
+    // brighter than plain background but still darker than foreground.
+    expect(bgMuted.red).toBeGreaterThan(TEST_BASE.background.red);
+    expect(bgMuted.red).toBeLessThan(TEST_BASE.foreground.red);
+  });
+
   it("derives text- variants as tinted contrast text", () => {
     const p = buildPalette("test", true, TEST_BASE);
     const textPrimary = p.get("text-primary")!;

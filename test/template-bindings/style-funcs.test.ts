@@ -1,13 +1,32 @@
 import { describe, it, expect } from "vitest";
-import { createRichTextEngine, richTextFuncs } from "../../src/template-bindings/index.js";
-import { Style } from "../../src/core/style.js";
-import { ColorSpec } from "../../src/core/color.js";
+import { createEngine, type Engine } from "@promptctl/go-template-js";
+import {
+  createRichTextEngine,
+  richTextFuncs,
+  paletteFuncs,
+} from "../../src/template-bindings/index.js";
+import {
+  Style,
+  ATTRIBUTE_NAMES,
+  ATTRIBUTE_SHORT_ALIASES,
+} from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
+import type { Palette } from "../../src/themes/palette.js";
+import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
+import { darken, lighten, contrastFor, ensureContrast } from "../../src/themes/colorMath.js";
+import { blendRgb, ColorRgba } from "../../src/core/color.js";
+import { Oklch, IDENTITY, type ThemeKey } from "../../src/core/oklch.js";
 
 // [LAW:behavior-not-structure] Tests assert the binding contract — fragments
 // produced by template evaluation are equivalent to fragments produced by
-// directly constructing the corresponding Style chain. The "round-trip
-// through Style without semantic drift" criterion in the ticket.
+// directly constructing the corresponding Style chain, and colours produced by
+// template evaluation are equivalent to colours produced by calling the
+// underlying rich-js colour function directly.
+//
+// The colour surface is three separable pieces and the tests follow that split:
+//   `color "name"`  (palette-dependent)  → a hex string
+//   `darken` / `mix` / … (palette-free)  → hex string in, hex string out
+//   `fg` / `bg`     (sinks)              → paint a colour spec onto a fragment
 
 const engine = createRichTextEngine();
 
@@ -17,163 +36,300 @@ function evalOne(template: string): RichText {
   return result[0]!;
 }
 
-describe("richTextFuncs() inventory", () => {
-  it("registers every named color from ANSI_COLOR_NAMES", () => {
-    const funcs = richTextFuncs();
-    expect(funcs.red).toBeDefined();
-    expect(funcs.blue).toBeDefined();
-    expect(funcs.bright_red).toBeDefined();
-    expect(funcs.deep_pink4).toBeDefined();
-    // grey/gray aliases both registered (color.ts mirrors them)
-    expect(funcs.grey0).toBeDefined();
-    expect(funcs.gray0).toBeDefined();
+/** Build an engine whose `color` resolves against a caller-controlled palette. */
+function makePaletteEngine(getPalette: () => Palette): Engine<RichText> {
+  return createEngine<RichText>({
+    fromString: (s) => new RichText(s),
+    toString: (rt) => rt.plain,
+    funcs: { ...richTextFuncs(), ...paletteFuncs(getPalette) },
   });
+}
 
-  it("registers the four generic foreground / background forms", () => {
-    const funcs = richTextFuncs();
-    expect(funcs.color).toBeDefined();
-    expect(funcs.hex).toBeDefined();
-    expect(funcs.rgb).toBeDefined();
-    expect(funcs.on).toBeDefined();
-  });
+const gruvbox = GRUVBOX.palette;
+const gruvboxEngine = makePaletteEngine(() => gruvbox);
 
-  it("registers every text attribute and its negation", () => {
-    const funcs = richTextFuncs();
-    for (const name of [
-      "bold", "dim", "italic", "underline", "blink", "blink2",
-      "reverse", "conceal", "strike", "underline2", "frame", "encircle", "overline",
-    ]) {
-      expect(funcs[name]).toBeDefined();
-      expect(funcs[`not_${name}`]).toBeDefined();
-    }
-  });
+// Backgrounds for the readability functions, built here rather than parsed by
+// the module under test, so the expectation is independent of it.
+const DARK_BG = new ColorRgba(20, 20, 20);
+const LIGHT_BG = new ColorRgba(240, 240, 240);
 
-  it("registers the multi-attribute style spec function", () => {
-    expect(richTextFuncs().style).toBeDefined();
-  });
+function evalOneWith(e: Engine<RichText>, template: string): RichText {
+  const result = e.parse(template).evaluate({});
+  expect(result.length).toBe(1);
+  return result[0]!;
+}
 
-  it("registers short attribute aliases", () => {
-    const funcs = richTextFuncs();
-    for (const alias of ["b", "d", "i", "u", "s", "r", "o", "uu"]) {
-      expect(funcs[alias]).toBeDefined();
-    }
-  });
-});
+/** The truecolor hex a fragment's foreground resolves to. */
+function fgHex(rt: RichText): string | undefined {
+  return rt.style.color?.getTruecolor().hex;
+}
 
-describe("named foreground colors", () => {
-  it("red wraps a string literal with foreground red", () => {
-    const rt = evalOne(`{{ red "x" }}`);
+// ─── Colour sinks: fg / bg ──────────────────────────────────────────────────
+
+describe("fg / bg accept the whole ColorSpec vocabulary", () => {
+  it("fg paints a hex literal as truecolor", () => {
+    const rt = evalOne(`{{ fg "#af00ff" "x" }}`);
     expect(rt.plain).toBe("x");
-    expect(rt.style.color?.name).toBe("red");
+    expect(fgHex(rt)).toBe("#af00ff");
   });
 
-  it("bright_blue wraps with the bright_blue color spec", () => {
-    const rt = evalOne(`{{ bright_blue "y" }}`);
-    expect(rt.style.color?.name).toBe("bright_blue");
+  it("fg preserves the eight-digit RGBA form", () => {
+    const rt = evalOne(`{{ fg "#af00ff80" "x" }}`);
+    expect(fgHex(rt)).toBe("#af00ff80");
   });
 
-  it("matches Style.parse semantics for the same color name", () => {
-    const rt = evalOne(`{{ magenta "z" }}`);
-    const direct = Style.parse("magenta");
-    expect(rt.style.color?.name).toBe(direct.color?.name);
-  });
-});
-
-describe("text attributes", () => {
-  it("bold sets the bold flag", () => {
-    const rt = evalOne(`{{ bold "x" }}`);
-    expect(rt.style.bold).toBe(true);
+  it("fg paints a symbolic ANSI colour name, matching Style.parse", () => {
+    const rt = evalOne(`{{ fg "magenta" "x" }}`);
+    expect(rt.style.color?.name).toBe(Style.parse("magenta").color?.name);
   });
 
-  it("italic alias 'i' produces the same style as canonical 'italic'", () => {
-    const a = evalOne(`{{ italic "x" }}`);
-    const b = evalOne(`{{ i "x" }}`);
-    expect(b.style.italic).toBe(a.style.italic);
-    expect(b.style.italic).toBe(true);
+  it("fg paints a 256-index colour, matching Style.parse", () => {
+    // The sink takes symbolic colours the terminal resolves itself — the
+    // reach the old one-function-per-colour-name family could never have.
+    const rt = evalOne(`{{ fg "color(196)" "x" }}`);
+    expect(rt.style.color?.name).toBe(Style.parse("color(196)").color?.name);
   });
 
-  it("not_bold sets bold to false", () => {
-    const rt = evalOne(`{{ not_bold "x" }}`);
-    expect(rt.style.bold).toBe(false);
-  });
-});
-
-describe("generic foreground / background forms", () => {
-  it("color N applies palette index N", () => {
-    const rt = evalOne(`{{ color 196 "x" }}`);
-    const expected = ColorSpec.fromAnsi(196);
-    expect(rt.style.color?.name).toBe(expected.name);
-  });
-
-  it("hex parses #af00ff as truecolor", () => {
-    const rt = evalOne(`{{ hex "#af00ff" "x" }}`);
-    expect(rt.style.color?.name).toBe("#af00ff");
-  });
-
-  it("hex accepts the eight-digit RGBA form", () => {
-    const rt = evalOne(`{{ hex "#af00ff80" "x" }}`);
-    expect(rt.style.color?.getTruecolor().hex).toBe("#af00ff80");
-  });
-
-  it("hex rejects non-hex colour-spec strings", () => {
-    // [LAW:types-are-the-program] hex advertises a narrower domain than
-    // ColorSpec.parse; named colours, rgb(...), color(N) must not slip through.
-    expect(() => evalOne(`{{ hex "red" "x" }}`)).toThrow(/hex expected/);
-    expect(() => evalOne(`{{ hex "rgb(1,2,3)" "x" }}`)).toThrow(/hex expected/);
-    expect(() => evalOne(`{{ hex "color(42)" "x" }}`)).toThrow(/hex expected/);
-    expect(() => evalOne(`{{ hex "af00ff" "x" }}`)).toThrow(/hex expected/);
-    expect(() => evalOne(`{{ hex "#af00f" "x" }}`)).toThrow(/hex expected/);
-  });
-
-  it("rgb 175 0 255 produces the same color as hex #af00ff", () => {
-    const rgb = evalOne(`{{ rgb 175 0 255 "x" }}`);
-    const hex = evalOne(`{{ hex "#af00ff" "x" }}`);
-    expect(rgb.style.color?.getTruecolor().hex).toBe(
-      hex.style.color?.getTruecolor().hex,
+  it("fg paints an rgb() triplet identically to the equivalent hex", () => {
+    expect(fgHex(evalOne(`{{ fg "rgb(175,0,255)" "x" }}`))).toBe(
+      fgHex(evalOne(`{{ fg "#af00ff" "x" }}`)),
     );
   });
 
-  it("on parses any color spec for the background slot", () => {
-    const rt = evalOne(`{{ on "white" "x" }}`);
+  it("bg paints the background slot and leaves the foreground untouched", () => {
+    const rt = evalOne(`{{ bg "white" "x" }}`);
     expect(rt.style.bgcolor?.name).toBe("white");
     expect(rt.style.color).toBeUndefined();
   });
 
-  it("on accepts hex / rgb / palette strings via Color.parse", () => {
-    expect(evalOne(`{{ on "#112233" "x" }}`).style.bgcolor?.name).toBe("#112233");
-    expect(evalOne(`{{ on "rgb(10,20,30)" "x" }}`).style.bgcolor?.name).toBe("rgb(10,20,30)");
-    expect(evalOne(`{{ on "color(42)" "x" }}`).style.bgcolor?.name).toBe("color(42)");
+  it("bg accepts hex / rgb / color(N) via ColorSpec.parse", () => {
+    expect(evalOne(`{{ bg "#112233" "x" }}`).style.bgcolor?.name).toBe("#112233");
+    expect(evalOne(`{{ bg "rgb(10,20,30)" "x" }}`).style.bgcolor?.name).toBe("rgb(10,20,30)");
+    expect(evalOne(`{{ bg "color(42)" "x" }}`).style.bgcolor?.name).toBe("color(42)");
+  });
+
+  it("a spec ColorSpec.parse rejects fails loudly at the sink", () => {
+    expect(() => evalOne(`{{ fg "notarealcolour" "x" }}`)).toThrowError(/parse color/i);
   });
 });
 
+// ─── Text attributes ────────────────────────────────────────────────────────
+
+describe("text attributes", () => {
+  // [LAW:one-source-of-truth] Driven by the same inventory `Style.parse`
+  // consults, so a new attribute is covered the moment it is declared.
+  it.each([...ATTRIBUTE_NAMES])("%s sets its flag and its negation clears it", (name) => {
+    expect(evalOne(`{{ ${name} "x" }}`).style[name]).toBe(true);
+    expect(evalOne(`{{ not_${name} "x" }}`).style[name]).toBe(false);
+  });
+
+  it.each(Object.entries(ATTRIBUTE_SHORT_ALIASES))(
+    "short alias %s applies the same style as its canonical name",
+    (alias, canonical) => {
+      expect(evalOne(`{{ ${alias} "x" }}`).style[canonical]).toBe(
+        evalOne(`{{ ${canonical} "x" }}`).style[canonical],
+      );
+      expect(evalOne(`{{ ${alias} "x" }}`).style[canonical]).toBe(true);
+    },
+  );
+});
+
+// ─── Colours are values ─────────────────────────────────────────────────────
+
+describe("color produces a value, not a styled fragment", () => {
+  it("resolves a palette name to that palette's hex", () => {
+    const rt = evalOneWith(gruvboxEngine, `{{ color "primary" }}`);
+    expect(rt.plain).toBe(gruvbox.get("primary")!.hex);
+  });
+
+  it("renders as its literal hex in text position — visibly wrong, never silently wrong", () => {
+    // A colour that lands where text was expected must show up, not vanish.
+    const rt = evalOneWith(gruvboxEngine, `{{ color "#af00ff" }}`);
+    expect(rt.plain).toBe("#af00ff");
+  });
+
+  it("is idempotent: an already-literal colour passes through unchanged", () => {
+    const once = evalOneWith(gruvboxEngine, `{{ color "primary" }}`).plain;
+    const twice = evalOneWith(gruvboxEngine, `{{ color (color "primary") }}`).plain;
+    expect(twice).toBe(once);
+  });
+
+  it("survives a $var and paints through fg", () => {
+    const rt = evalOneWith(gruvboxEngine, `{{ $c := color "primary" }}{{ fg $c "x" }}`);
+    expect(rt.plain).toBe("x");
+    expect(fgHex(rt)).toBe(gruvbox.get("primary")!.hex);
+  });
+
+  it("one $var colour paints many fragments", () => {
+    const out = gruvboxEngine
+      .parse(`{{ $c := color "accent" }}{{ fg $c "a" }}{{ bg $c "b" }}`)
+      .evaluate({});
+    expect(out.length).toBe(2);
+    expect(fgHex(out[0]!)).toBe(gruvbox.get("accent")!.hex);
+    expect(out[1]!.style.bgcolor?.getTruecolor().hex).toBe(gruvbox.get("accent")!.hex);
+  });
+});
+
+// ─── Colour math composes by nesting ────────────────────────────────────────
+
+describe("colour math composes by nesting and matches the underlying function", () => {
+  const primary = gruvbox.get("primary")!;
+  const surface = gruvbox.get("surface")!;
+
+  it("darken (color name) n equals darken(palette colour, n)", () => {
+    const rt = evalOneWith(gruvboxEngine, `{{ fg (darken (color "primary") 2) "x" }}`);
+    expect(fgHex(rt)).toBe(darken(primary, 2).hex);
+  });
+
+  it("lighten (color name) n equals lighten(palette colour, n)", () => {
+    const rt = evalOneWith(gruvboxEngine, `{{ fg (lighten (color "primary") 2) "x" }}`);
+    expect(fgHex(rt)).toBe(lighten(primary, 2).hex);
+  });
+
+  it("mix at 0 returns the first colour and at 100 the second", () => {
+    const a = "#000000";
+    const b = "#ffffff";
+    expect(evalOne(`{{ fg (mix "${a}" "${b}" 0) "x" }}`).style.color?.getTruecolor().hex).toBe(a);
+    expect(evalOne(`{{ fg (mix "${a}" "${b}" 100) "x" }}`).style.color?.getTruecolor().hex).toBe(b);
+  });
+
+  it("mix at an intermediate percentage equals blendRgb at the matching fraction", () => {
+    const rt = evalOneWith(
+      gruvboxEngine,
+      `{{ fg (mix (color "primary") (color "surface") 65) "x" }}`,
+    );
+    expect(fgHex(rt)).toBe(blendRgb(primary, surface, 0.65).hex);
+  });
+
+  it("mix rejects a percentage outside 0..100", () => {
+    expect(() => evalOne(`{{ fg (mix "#000000" "#ffffff" 140) "x" }}`)).toThrowError(
+      /within 0\.\.100/,
+    );
+  });
+
+  it("contrastOn equals contrastFor for the same background", () => {
+    for (const bg of [DARK_BG, LIGHT_BG]) {
+      const rt = evalOne(`{{ fg (contrastOn "${bg.hex}") "x" }}`);
+      expect(fgHex(rt)).toBe(contrastFor(bg).hex);
+    }
+  });
+
+  it("readableOn equals ensureContrast for the same pair", () => {
+    const rt = evalOneWith(
+      gruvboxEngine,
+      `{{ fg (readableOn (color "primary") "${DARK_BG.hex}" 4.5) "x" }}`,
+    );
+    expect(fgHex(rt)).toBe(ensureContrast(primary, DARK_BG).hex);
+  });
+
+  it("each OKLCH axis function equals the matching single-axis ThemeKey", () => {
+    const cases: [string, number, keyof ThemeKey][] = [
+      ["shiftHue", 40, "hueShift"],
+      ["scaleChroma", 0, "chromaScale"],
+      ["scaleLightness", 1.2, "lightnessScale"],
+      ["shiftLightness", 0.1, "lightnessShift"],
+    ];
+    for (const [func, amount, axis] of cases) {
+      const rt = evalOneWith(
+        gruvboxEngine,
+        `{{ fg (${func} (color "primary") ${amount}) "x" }}`,
+      );
+      const expected = Oklch.fromRgba(primary)
+        .applyKey({ ...IDENTITY, [axis]: amount })
+        .toRgba().hex;
+      expect(fgHex(rt)).toBe(expected);
+    }
+  });
+
+  it("operations chain: fg (darken (mix a b 50) 1)", () => {
+    const rt = evalOneWith(
+      gruvboxEngine,
+      `{{ fg (darken (mix (color "primary") (color "surface") 50) 1) "x" }}`,
+    );
+    expect(fgHex(rt)).toBe(darken(blendRgb(primary, surface, 0.5), 1).hex);
+  });
+
+  it("a palette name passed to colour math throws with the wrap-it hint", () => {
+    // The one mistake that actually happens: `darken "primary" 2`. The error
+    // must name the fix rather than just rejecting the shape.
+    expect(() => evalOneWith(gruvboxEngine, `{{ fg (darken "primary" 2) "x" }}`)).toThrowError(
+      /to use a palette name here, wrap it:/,
+    );
+    expect(() => evalOne(`{{ fg (contrastOn "red") "x" }}`)).toThrowError(
+      /to use a palette name here, wrap it:/,
+    );
+  });
+});
+
+// ─── The palette getter is live ─────────────────────────────────────────────
+
+describe("paletteFuncs reads its palette at evaluate time, not registration time", () => {
+  it("one parsed template follows a palette swap", () => {
+    // The whole reason the signature is `() => Palette`: templates are parsed
+    // once and evaluated many times, and a consumer whose theme changes at
+    // runtime must not be frozen to whichever palette was current when the
+    // engine was built. [LAW:one-source-of-truth]
+    let currentPalette: Palette = GRUVBOX.palette;
+    const live = makePaletteEngine(() => currentPalette);
+    const parsed = live.parse(`{{ fg (color "primary") "x" }}`);
+
+    const before = parsed.evaluate({});
+    expect(fgHex(before[0]!)).toBe(GRUVBOX.palette.get("primary")!.hex);
+
+    currentPalette = DRACULA.palette;
+
+    const after = parsed.evaluate({});
+    expect(fgHex(after[0]!)).toBe(DRACULA.palette.get("primary")!.hex);
+    expect(fgHex(after[0]!)).not.toBe(fgHex(before[0]!));
+  });
+
+  it("the swap reaches colours computed through the math chain too", () => {
+    let currentPalette: Palette = GRUVBOX.palette;
+    const live = makePaletteEngine(() => currentPalette);
+    const parsed = live.parse(`{{ fg (darken (color "accent") 2) "x" }}`);
+
+    expect(fgHex(parsed.evaluate({})[0]!)).toBe(
+      darken(GRUVBOX.palette.get("accent")!, 2).hex,
+    );
+
+    currentPalette = DRACULA.palette;
+
+    expect(fgHex(parsed.evaluate({})[0]!)).toBe(
+      darken(DRACULA.palette.get("accent")!, 2).hex,
+    );
+  });
+});
+
+// ─── Composition semantics ──────────────────────────────────────────────────
+
 describe("composition: outer wraps inner additively (Style.add semantics)", () => {
-  it("red (bold \"x\") combines bold + red", () => {
-    const rt = evalOne(`{{ red (bold "x") }}`);
+  it("fg over an inner attribute combines both", () => {
+    const rt = evalOne(`{{ fg "red" (bold "x") }}`);
     expect(rt.plain).toBe("x");
     expect(rt.style.bold).toBe(true);
     expect(rt.style.color?.name).toBe("red");
   });
 
-  it("bold (red \"x\") produces the same combined style as red (bold \"x\")", () => {
-    const a = evalOne(`{{ red (bold "x") }}`);
-    const b = evalOne(`{{ bold (red "x") }}`);
+  it("nesting order does not matter for disjoint slots", () => {
+    const a = evalOne(`{{ fg "red" (bold "x") }}`);
+    const b = evalOne(`{{ bold (fg "red" "x") }}`);
     expect(b.style.bold).toBe(a.style.bold);
     expect(b.style.color?.name).toBe(a.style.color?.name);
   });
 
-  it("on \"white\" (red \"x\") combines fg + bg", () => {
-    const rt = evalOne(`{{ on "white" (red "x") }}`);
+  it("bg over fg combines foreground and background", () => {
+    const rt = evalOne(`{{ bg "white" (fg "red" "x") }}`);
     expect(rt.style.color?.name).toBe("red");
     expect(rt.style.bgcolor?.name).toBe("white");
   });
 
-  it("conflicts: outer wins (red over blue)", () => {
-    const rt = evalOne(`{{ red (blue "x") }}`);
+  it("conflicting slots: the outer call wins", () => {
+    const rt = evalOne(`{{ fg "red" (fg "blue" "x") }}`);
     expect(rt.style.color?.name).toBe("red");
   });
 
   it("template-built fragment equals the directly-constructed Style chain", () => {
-    const rt = evalOne(`{{ on "white" (bold (red "hello")) }}`);
+    const rt = evalOne(`{{ bg "white" (bold (fg "red" "hello")) }}`);
     const expected = Style.combine([
       Style.parse("red"),
       Style.parse("bold"),
@@ -185,31 +341,35 @@ describe("composition: outer wraps inner additively (Style.add semantics)", () =
   });
 });
 
+// ─── String lifting ─────────────────────────────────────────────────────────
+
 describe("string lifting via the engine's fromString bridge", () => {
   it("a string literal is accepted and lifted to RichText", () => {
-    const rt = evalOne(`{{ red "literal" }}`);
+    const rt = evalOne(`{{ fg "red" "literal" }}`);
     expect(rt).toBeInstanceOf(RichText);
     expect(rt.plain).toBe("literal");
   });
 
   it("a scope field that resolves to a string is lifted the same way", () => {
-    const rt = engine.parse(`{{ red .name }}`).evaluate({ name: "Brandon" });
+    const rt = engine.parse(`{{ fg "red" .name }}`).evaluate({ name: "Brandon" });
     expect(rt[0]!.plain).toBe("Brandon");
     expect(rt[0]!.style.color?.name).toBe("red");
   });
 });
 
+// ─── Error surface ──────────────────────────────────────────────────────────
+
 describe("error surface", () => {
   it("arity / type errors raise from the engine, not from the body", () => {
-    // First arg of `on` is declared "string" — passing a non-string is a
-    // TypeMismatchError before the body runs.
-    expect(() => engine.parse(`{{ on 5 "x" }}`).evaluate({})).toThrowError(
+    // First arg of `bg` is declared "string" — a number is a TypeMismatchError
+    // before the body ever runs.
+    expect(() => engine.parse(`{{ bg 5 "x" }}`).evaluate({})).toThrowError(
       /TypeMismatch|expected/i,
     );
   });
 
   it("a number passed where a fragment is expected fails the liftable gate", () => {
-    expect(() => engine.parse(`{{ red 5 }}`).evaluate({})).toThrowError();
+    expect(() => engine.parse(`{{ bold 5 }}`).evaluate({})).toThrowError();
   });
 
   it("an unknown function name is a FuncNotFoundError", () => {
@@ -217,11 +377,21 @@ describe("error surface", () => {
       /neonpurple|FuncNotFound/,
     );
   });
+
+  it("color is unavailable on an engine built without a palette", () => {
+    // [LAW:one-way-deps] `richTextFuncs()` is palette-free by construction;
+    // naming a theme colour requires the consumer to merge `paletteFuncs`.
+    expect(() => engine.parse(`{{ fg (color "primary") "x" }}`).evaluate({})).toThrowError(
+      /color|FuncNotFound/,
+    );
+  });
 });
+
+// ─── Multi-fragment ─────────────────────────────────────────────────────────
 
 describe("multi-fragment templates", () => {
   it("two top-level expressions emit two separate RichText fragments", () => {
-    const out = engine.parse(`{{ red "a" }}{{ blue "b" }}`).evaluate({});
+    const out = engine.parse(`{{ fg "red" "a" }}{{ fg "blue" "b" }}`).evaluate({});
     expect(out.length).toBe(2);
     expect(out[0]!.plain).toBe("a");
     expect(out[0]!.style.color?.name).toBe("red");
@@ -229,6 +399,8 @@ describe("multi-fragment templates", () => {
     expect(out[1]!.style.color?.name).toBe("blue");
   });
 });
+
+// ─── style spec ─────────────────────────────────────────────────────────────
 
 describe("style function (multi-attribute spec)", () => {
   it("applies a single attribute spec", () => {
@@ -245,7 +417,7 @@ describe("style function (multi-attribute spec)", () => {
   it("mixes attributes and a foreground color in one spec", () => {
     const rt = evalOne(`{{ style "bold #ff6b6b" "alarm!" }}`);
     expect(rt.style.bold).toBe(true);
-    expect(rt.style.color?.getTruecolor().hex).toBe("#ff6b6b");
+    expect(fgHex(rt)).toBe("#ff6b6b");
   });
 
   it("accepts 'on <bg>' for background", () => {
@@ -280,20 +452,35 @@ describe("style function (multi-attribute spec)", () => {
 
   it("produces the same fragment as nested per-attribute calls", () => {
     const spec = evalOne(`{{ style "bold underline #ff6b6b" "x" }}`);
-    const nested = evalOne(`{{ underline (hex "#ff6b6b" (bold "x")) }}`);
+    const nested = evalOne(`{{ underline (fg "#ff6b6b" (bold "x")) }}`);
     expect(spec.style.bold).toBe(nested.style.bold);
     expect(spec.style.underline).toBe(nested.style.underline);
-    expect(spec.style.color?.getTruecolor().hex).toBe(nested.style.color?.getTruecolor().hex);
+    expect(fgHex(spec)).toBe(fgHex(nested));
+  });
+
+  it("takes a computed colour through the spec string, same as fg", () => {
+    // A colour is a hex string, so it flows into the `style` grammar via
+    // `printf` with no extra machinery.
+    const viaSpec = evalOneWith(
+      gruvboxEngine,
+      `{{ style (printf "bold %s" (darken (color "primary") 2)) "x" }}`,
+    );
+    const viaFg = evalOneWith(
+      gruvboxEngine,
+      `{{ bold (fg (darken (color "primary") 2) "x") }}`,
+    );
+    expect(fgHex(viaSpec)).toBe(fgHex(viaFg));
+    expect(viaSpec.style.bold).toBe(true);
   });
 
   it("composes with outer style functions (outer wins on conflict)", () => {
-    const rt = evalOne(`{{ blue (style "red bold" "x") }}`);
+    const rt = evalOne(`{{ fg "blue" (style "red bold" "x") }}`);
     expect(rt.style.bold).toBe(true);
     expect(rt.style.color?.name).toBe("blue");
   });
 
   it("composes inside a style spec (style spec wins over inner)", () => {
-    const rt = evalOne(`{{ style "blue" (red "x") }}`);
+    const rt = evalOne(`{{ style "blue" (fg "red" "x") }}`);
     expect(rt.style.color?.name).toBe("blue");
   });
 
@@ -306,14 +493,12 @@ describe("style function (multi-attribute spec)", () => {
     expect(out[1]!.plain).toBe("b");
     for (const rt of out) {
       expect(rt.style.bold).toBe(true);
-      expect(rt.style.color?.getTruecolor().hex).toBe("#ff6b6b");
+      expect(fgHex(rt)).toBe("#ff6b6b");
     }
   });
 
   it("reusable via scope field", () => {
-    const out = engine
-      .parse(`{{ style .alert "danger" }}`)
-      .evaluate({ alert: "bold red" });
+    const out = engine.parse(`{{ style .alert "danger" }}`).evaluate({ alert: "bold red" });
     expect(out[0]!.plain).toBe("danger");
     expect(out[0]!.style.bold).toBe(true);
     expect(out[0]!.style.color?.name).toBe("red");
@@ -340,6 +525,8 @@ describe("style function (multi-attribute spec)", () => {
   });
 });
 
+// ─── link ───────────────────────────────────────────────────────────────────
+
 describe("link function (cell-splitter contract)", () => {
   it("link wraps a string literal with the link slot set", () => {
     const rt = evalOne(`{{ link "https://example.com" "label" }}`);
@@ -358,29 +545,32 @@ describe("link function (cell-splitter contract)", () => {
   });
 
   it("link inside a non-link style preserves both", () => {
-    // `{{ bold (link "u" "x") }}` — outer is bold, inner sets link.
-    // Style.add propagates link from inner to outer fragment.
     const rt = evalOne(`{{ bold (link "u" "x") }}`);
     expect(rt.style.bold).toBe(true);
     expect(rt.style.link).toBe("u");
   });
 
   it("non-link style inside a link preserves both", () => {
-    // `{{ link "u" (bold "x") }}` — outer is link, inner is bold.
     const rt = evalOne(`{{ link "u" (bold "x") }}`);
     expect(rt.style.bold).toBe(true);
     expect(rt.style.link).toBe("u");
   });
 
   it("link composes with foreground / background colour", () => {
-    const rt = evalOne(`{{ link "u" (red (on "white" "x")) }}`);
+    const rt = evalOne(`{{ link "u" (fg "red" (bg "white" "x")) }}`);
     expect(rt.style.link).toBe("u");
     expect(rt.style.color?.name).toBe("red");
     expect(rt.style.bgcolor?.name).toBe("white");
   });
 
+  it("link composes with a palette-derived colour", () => {
+    const rt = evalOneWith(gruvboxEngine, `{{ link "u" (fg (color "primary") "x") }}`);
+    expect(rt.style.link).toBe("u");
+    expect(fgHex(rt)).toBe(gruvbox.get("primary")!.hex);
+  });
+
   it("a link-bearing fragment's Style equals the directly-constructed equivalent", () => {
-    const rt = evalOne(`{{ red (link "u" (bold "hello")) }}`);
+    const rt = evalOne(`{{ fg "red" (link "u" (bold "hello")) }}`);
     const expected = Style.combine([
       Style.parse("bold"),
       Style.parse("link u"),
@@ -392,11 +582,11 @@ describe("link function (cell-splitter contract)", () => {
   });
 });
 
+// ─── Consumer-side cell splitting ───────────────────────────────────────────
+
 describe("multi-cell contract (consumer-side cell splitting)", () => {
   // Test renderer implementing the contract described in
   // spec/template-bindings.md → "Cell-splitting algorithm (consumer side)".
-  // Consumers (cc-candybar et al.) build their own equivalent — this
-  // verifies the binding produces fragments the contract can interpret.
   function splitCells(fragments: readonly RichText[]): {
     cells: { fragment: RichText; before: RichText[] }[];
     trailing: RichText[];
@@ -429,12 +619,10 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
     const { cells, trailing } = splitCells(out);
     expect(cells.length).toBe(2);
 
-    // First cell: link u1, no joiner before.
     expect(cells[0]!.fragment.plain).toBe("a");
     expect(cells[0]!.fragment.style.link).toBe("u1");
     expect(cells[0]!.before).toEqual([]);
 
-    // Second cell: link u2, joined by " ".
     expect(cells[1]!.fragment.plain).toBe("b");
     expect(cells[1]!.fragment.style.link).toBe("u2");
     expect(cells[1]!.before.length).toBe(1);
@@ -462,7 +650,7 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
   });
 
   it("a link-free template yields no cells; everything is trailing joiner content", () => {
-    const out = engine.parse(`{{ red "hello" }}`).evaluate({});
+    const out = engine.parse(`{{ fg "red" "hello" }}`).evaluate({});
     const { cells, trailing } = splitCells(out);
     expect(cells.length).toBe(0);
     expect(trailing.length).toBe(1);
