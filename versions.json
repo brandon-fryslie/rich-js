@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-58",
-      "ref": "refs/pull/58/merge",
-      "sha": "35560b0fdc9a297f679927815a6d92ab21741631",
-      "timestamp": "2026-08-23T16:09:04.547Z",
-      "commits": [
-        {
-          "sha": "35560b0fdc9a297f679927815a6d92ab21741631",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-08-23T10:08:37-06:00",
-          "message": "Merge ba3796be9f582928548e715ac69f396e583c7d7f into cffd85ccb5f1717bcfd7713bafa4c5e5d8e4eda3\n"
-        },
-        {
-          "sha": "ba3796be9f582928548e715ac69f396e583c7d7f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-08-23T10:08:28-06:00",
-          "message": "ci: publish to npm from CI on a version tag\n\nrich-js had no publish automation — every release was a manual `npm publish`\nfrom a laptop. The account is 2FA auth-and-writes, and npm now also restricts\nlegacy tokens that bypass 2FA, so a manual publish requires an interactive OTP\nprompt. That turned the 0.7.0 release into a hard block and would block every\nrelease after it.\n\ncc-candybar already publishes from CI with an NPM_TOKEN repo secret; this gives\nrich-js the same path. Triggered by the version tag, so the tag is the single\nsource of truth for what is released, and the job fails loudly if the tag and\npackage.json disagree rather than shipping a mislabeled version.\n\nRequires an NPM_TOKEN secret on this repo (a granular automation token).\n\nClaude-Session: https://claude.ai/code/session_01T9iwWatBXz9QF6ZjWkygUf\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "cffd85ccb5f1717bcfd7713bafa4c5e5d8e4eda3",
-      "timestamp": "2026-08-23T15:38:42.868Z",
+      "sha": "6391ee567d2f6fc02e7bdf9577168b6eb213d916",
+      "timestamp": "2026-08-23T21:02:52.017Z",
       "commits": [
         {
-          "sha": "cffd85ccb5f1717bcfd7713bafa4c5e5d8e4eda3",
+          "sha": "6391ee567d2f6fc02e7bdf9577168b6eb213d916",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-08-23T09:38:14-06:00",
-          "message": "feat(color)!: colors are values — delete the spec grammar and name families (v0.7.0) (#57)\n\n* feat(color)!: colors are values; delete the spec grammar and name families\n\nA color could not survive between two operations — every color function\nresolved and applied in one breath — so composing two color operations had to\nbe spelled as a string grammar (\"primary-darken-3 50%\"), which is function\napplication with the calls written as punctuation. Every new color operation\nneeded a new grammar production, and the grammar could only ever modify colors\nalready registered in a palette.\n\nA color now crosses the template seam as a #RRGGBB string, so it holds in a\n$var, passes between operations, and composes by nesting. The simple case is a\nliteral prefix of the composed case, so an author adds an adjustment by\nwrapping working code rather than rewriting it into a different form.\n\nAdded:\n- themes/colorRef.ts — resolveColorRef/parseHexColor, the ONE checkpoint from\n  an author-written reference (palette name or hex) to a ColorRgba. Idempotent\n  on hex, so callers never branch on \"name or already a color\".\n- template-bindings/color-funcs.ts — colorFuncs(): darken, lighten, mix,\n  contrastOn, readableOn, and one function per ThemeKey OKLCH axis, derived\n  from the axis set so the table is compiler-proven total. Palette-free: a\n  consumer with no theme system gets the whole vocabulary from hex literals.\n- fg/bg as the only two color sinks, taking the color as an argument.\n\nDeleted:\n- PaletteResolver and its modifier/alpha/auto grammar. With the grammar gone\n  the class was Palette.get plus hex parsing, and it had zero other callers.\n- palette, paletteOver, auto, hex, rgb, color(256-index), on, the 16 ANSI\n  name appliers, and the generated per-palette-variable appliers. A themed\n  palette carries ~150 variables of which ~14 are legal template identifiers,\n  so that name family reached under a tenth of its own domain and the rest\n  needed a different expression shape for the same intent.\n\npaletteFuncs now takes `() => Palette` and registers exactly one function,\n`color`. A captured palette froze template bodies to whichever theme was\ncurrent at engine construction while the rest of a consumer's colors moved on\n— two palettes in one render. The getter costs nothing structurally: FuncMap\nbodies run at evaluate time, so parse-once/evaluate-many is untouched.\n\nreadableOn takes its WCAG ratio explicitly rather than defaulting to 4.5: the\nthreshold is the decision the function makes, and a caller muting text on\npurpose would be silently un-muted by an implicit AA floor.\n\nAlso derives foreground-muted/background-muted in buildPalette, and adds a\nnumeric-argument gate so an under-supplied call reports the missing argument\ninstead of surfacing as a NaN RGB channel three layers away.\n\nClaude-Session: https://claude.ai/code/session_01T9iwWatBXz9QF6ZjWkygUf\n\n* release: rich-js v0.7.0\n\nBreaking: colors are values. See 9686d36.\n\nClaude-Session: https://claude.ai/code/session_01T9iwWatBXz9QF6ZjWkygUf"
+          "timestamp": "2026-08-23T15:02:22-06:00",
+          "message": "ci: publish to npm from CI on a version tag (#58)\n\nrich-js had no publish automation — every release was a manual `npm publish`\nfrom a laptop. The account is 2FA auth-and-writes, and npm now also restricts\nlegacy tokens that bypass 2FA, so a manual publish requires an interactive OTP\nprompt. That turned the 0.7.0 release into a hard block and would block every\nrelease after it.\n\ncc-candybar already publishes from CI with an NPM_TOKEN repo secret; this gives\nrich-js the same path. Triggered by the version tag, so the tag is the single\nsource of truth for what is released, and the job fails loudly if the tag and\npackage.json disagree rather than shipping a mislabeled version.\n\nRequires an NPM_TOKEN secret on this repo (a granular automation token).\n\nClaude-Session: https://claude.ai/code/session_01T9iwWatBXz9QF6ZjWkygUf"
         }
       ]
     },
