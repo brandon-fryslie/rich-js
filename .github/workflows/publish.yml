@@ -11,6 +11,16 @@
 # "this commit is released" — the workflow refuses to publish if the tag and
 # package.json disagree, rather than silently shipping a mislabeled version.
 #
+# Publishing uses npm Trusted Publishing (OIDC) — brandon-release-vcr. There
+# is no NPM_TOKEN secret; `npm publish` exchanges this job's GitHub Actions
+# OIDC identity for a short-lived publish credential, gated by a trust
+# relationship configured on npmjs.com (Package → Settings → Trusted
+# Publisher). That trust binds THIS FILENAME (publish.yml) and THIS REPO —
+# renaming the workflow file silently breaks publishing (npm falls back to
+# "no credentials" and CI will start failing E401 on the next tag). If this
+# file is ever renamed, the trust config on npmjs.com must be updated in the
+# same change.
+#
 # Release procedure:
 #   npm version <major|minor|patch> --no-git-tag-version   # bump on a branch
 #   # PR, review, merge to master
@@ -42,6 +52,11 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
+      # Trusted Publishing needs npm CLI >= 11.5.1; Node 22's bundled npm
+      # lags that on some runner images, so pin explicitly rather than
+      # depend on whatever setup-node happens to ship.
+      - run: npm install -g npm@^11.5.1
+
       - run: npm ci
 
       # The full gate, in the same order the repo's own scripts define it. A
@@ -65,7 +80,10 @@ jobs:
           fi
           echo "publishing ${pkg}"
 
+      # No NODE_AUTH_TOKEN: npm CLI >= 11.5.1 detects the GitHub Actions OIDC
+      # environment (id-token: write, above) and exchanges it for a
+      # short-lived publish token automatically, gated by the trust
+      # relationship configured on npmjs.com. Setting an explicit token here
+      # would make npm use that token path instead and skip OIDC entirely.
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance
