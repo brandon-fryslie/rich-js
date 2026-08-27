@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-60",
-      "ref": "refs/pull/60/merge",
-      "sha": "0caeb75db1842ae1e5e9806bb074c48675f33a0b",
-      "timestamp": "2026-08-27T03:22:53.861Z",
-      "commits": [
-        {
-          "sha": "0caeb75db1842ae1e5e9806bb074c48675f33a0b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-08-26T21:22:22-06:00",
-          "message": "Merge d4a1e5a614a5d60a46b4da4a4e35e8c1d4b19dff into 6391ee567d2f6fc02e7bdf9577168b6eb213d916\n"
-        },
-        {
-          "sha": "d4a1e5a614a5d60a46b4da4a4e35e8c1d4b19dff",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-08-26T21:22:02-06:00",
-          "message": "ci: switch npm publish to Trusted Publishing (OIDC)\n\nRemoves the NPM_TOKEN secret dependency in favor of npm's OIDC-based\nTrusted Publishing, and pins npm CLI >=11.5.1 on the runner since\nTrusted Publishing support requires it.\n\nClaude-Session: https://claude.ai/code/session_016rjsWFbVdedsfXPXDtfqtY\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6391ee567d2f6fc02e7bdf9577168b6eb213d916",
-      "timestamp": "2026-08-23T21:02:52.017Z",
+      "sha": "f41699df1dada16725e8d0d1016e40987446aaf0",
+      "timestamp": "2026-08-27T03:24:11.928Z",
       "commits": [
         {
-          "sha": "6391ee567d2f6fc02e7bdf9577168b6eb213d916",
+          "sha": "f41699df1dada16725e8d0d1016e40987446aaf0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-08-23T15:02:22-06:00",
-          "message": "ci: publish to npm from CI on a version tag (#58)\n\nrich-js had no publish automation — every release was a manual `npm publish`\nfrom a laptop. The account is 2FA auth-and-writes, and npm now also restricts\nlegacy tokens that bypass 2FA, so a manual publish requires an interactive OTP\nprompt. That turned the 0.7.0 release into a hard block and would block every\nrelease after it.\n\ncc-candybar already publishes from CI with an NPM_TOKEN repo secret; this gives\nrich-js the same path. Triggered by the version tag, so the tag is the single\nsource of truth for what is released, and the job fails loudly if the tag and\npackage.json disagree rather than shipping a mislabeled version.\n\nRequires an NPM_TOKEN secret on this repo (a granular automation token).\n\nClaude-Session: https://claude.ai/code/session_01T9iwWatBXz9QF6ZjWkygUf"
+          "timestamp": "2026-08-26T21:23:43-06:00",
+          "message": "ci: switch npm publish to Trusted Publishing (OIDC) (#60)\n\nRemoves the NPM_TOKEN secret dependency in favor of npm's OIDC-based\nTrusted Publishing, and pins npm CLI >=11.5.1 on the runner since\nTrusted Publishing support requires it.\n\nClaude-Session: https://claude.ai/code/session_016rjsWFbVdedsfXPXDtfqtY"
         }
       ]
     },
