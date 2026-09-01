@@ -4,15 +4,22 @@
     {
       "version": "pr-63",
       "ref": "refs/pull/63/merge",
-      "sha": "2a15a9bdbd7f44613d0e149f5634346bd810112e",
-      "timestamp": "2026-09-01T10:15:41.211Z",
+      "sha": "cc4920a5d125325c29a140efd25ee87d8ad9349c",
+      "timestamp": "2026-09-01T10:28:10.529Z",
       "commits": [
         {
-          "sha": "2a15a9bdbd7f44613d0e149f5634346bd810112e",
+          "sha": "cc4920a5d125325c29a140efd25ee87d8ad9349c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T04:15:10-06:00",
-          "message": "Merge c4d90bb426f772e8c1e90aecc1998419a0da4f82 into e5910077e1e4d41bed480a0b805bceb1a0d26445\n"
+          "timestamp": "2026-09-01T10:27:40Z",
+          "message": "Merge ab8faaeb4dbeb52880f8608a7330b3efdcdcfcea into e5910077e1e4d41bed480a0b805bceb1a0d26445\n"
+        },
+        {
+          "sha": "ab8faaeb4dbeb52880f8608a7330b3efdcdcfcea",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T04:27:31-06:00",
+          "message": "docs: correct four widget claims the source contradicts\n\nReview found four places where the page described intent rather than what\n`src/widgets/` does, and a fifth where a sample was wrong on its own.\n\n`onMouse` handlers run BEFORE hit-testing, not after: `dispatchMouse`\nopens with `for (const handler of this.mouseHandlers) handler(event)`,\nahead of `getWidgets()`, hover tracking, and `target.handleMouse`. That\nmakes `onMouse` an interception point, which is what click-to-focus\ndepends on — the page now says so and shows the pattern.\n\nDropdown's Tab does not move between options. While expanded it clears\nthe filter, collapses, keeps focus, and stops the chain; traversal\nhappens on the next Tab, once the widget no longer claims the key.\n\n`StaticItem` takes neither `disabled` nor `theme`, and its `id` is\nrequired — the blanket sentence covering \"all widgets\" now covers the six\ninteractive ones and names StaticItem as the exception. Generated ids are\nsplit the same way: Button/Checkbox/Toggle slugify their label and are\nstable, while Dropdown/Slider/TextInput have no label and get a random\nsuffix, which is the difference that bites anyone writing a test selector.\n\nThe custom-widget sample used a plain `count` field. `makeObservable`\nwires only decorated members, so the widget fired `onChange` and never\nrepainted. It now carries `@observable accessor` — and `@action`, because\nrunning the corrected sample surfaced a MobX strict-mode warning on every\nkeypress that the field fix alone left in place.\n\nRe-verified through the same harness: samples type-check under the strict\ntsconfig, and four assertions now execute — the Counter's autorun refires\non keypress, Button ids repeat while Slider ids do not, and Tab on an\nexpanded Dropdown collapses it with the event stopped.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "c4d90bb426f772e8c1e90aecc1998419a0da4f82",
