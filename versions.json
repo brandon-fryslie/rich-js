@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-62",
+      "ref": "refs/pull/62/merge",
+      "sha": "f3f4cf2e74bac19a022f9e232766d8bdc6018b64",
+      "timestamp": "2026-09-01T10:00:20.954Z",
+      "commits": [
+        {
+          "sha": "f3f4cf2e74bac19a022f9e232766d8bdc6018b64",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T03:59:50-06:00",
+          "message": "Merge 8cd1e06417914ff670c7a5cd64b205158dd6c580 into f41699df1dada16725e8d0d1016e40987446aaf0\n"
+        },
+        {
+          "sha": "8cd1e06417914ff670c7a5cd64b205158dd6c580",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T03:59:34-06:00",
+          "message": "ci: install the agent code review action\n\nPRs here carry no automated review, so `address-pr-reviews` halts at preflight\nrather than reporting a clean pass on a reviewer that was never there. This is\nthe reviewer.\n\nPinned to the moving `@v1` tag so non-breaking releases arrive without a commit\nhere. `CLAUDE_CODE_OAUTH_TOKEN` is provisioned into both the Actions and the\nDependabot secret stores — GitHub feeds Dependabot-triggered runs from the\nseparate store, and an Actions-only secret would leave every Dependabot PR\nreview silently unauthenticated.\n\nTakes effect once it lands on master.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "pr-61",
       "ref": "refs/pull/61/merge",
       "sha": "b961c1fb24d70625c4815f01533714f561d76236",
