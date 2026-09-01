@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-63",
+      "ref": "refs/pull/63/merge",
+      "sha": "2a15a9bdbd7f44613d0e149f5634346bd810112e",
+      "timestamp": "2026-09-01T10:15:41.211Z",
+      "commits": [
+        {
+          "sha": "2a15a9bdbd7f44613d0e149f5634346bd810112e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T04:15:10-06:00",
+          "message": "Merge c4d90bb426f772e8c1e90aecc1998419a0da4f82 into e5910077e1e4d41bed480a0b805bceb1a0d26445\n"
+        },
+        {
+          "sha": "c4d90bb426f772e8c1e90aecc1998419a0da4f82",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T04:14:45-06:00",
+          "message": "docs: write the widgets documentation page (rich-docs-vk9.1)\n\n`src/widgets/` is fifteen modules — focus manager, event router, screen,\nsix widgets and the terminal-host adapters — with no page on the published\nsite. Its only description was the authoring brief at `spec/widgets.md`,\nwhich predates the code: it documents `Screen` without the `host` seam,\nomits Dropdown's built-in filter and the overlay protocol, and lists\n\"keyboard shortcuts beyond tab/shift-tab\" as out of scope when TextInput\nnow ships a full readline key map.\n\n`docs/widgets.md` is written from `src/widgets/` rather than from the\nbrief. Every code sample was extracted into a scratch module, type-checked\nagainst `src/index.ts` under the repo's strict tsconfig, and executed —\nthe headless `Checkbox` + `KeyEvent` example is a real passing assertion,\nnot an illustration.\n\nTwo things the brief would have gotten wrong and the source did not: the\n`wrap` option is described by its signature rather than by the\n`WrapStrategy`/`charGreedyWrap` names, because neither is re-exported from\nthe package root and a reader cannot import them; and the quick-start\ncarries a Ctrl+C handler, since `router.start()` puts the terminal in raw\nmode and a sample without one strands the reader.\n\nSidebar gains an \"Interactive\" section and the Guide nav `activeMatch`\ngains `widgets`, so the page is reachable. `npm run lint` and\n`npm run docs:build` are green.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e5910077e1e4d41bed480a0b805bceb1a0d26445",
