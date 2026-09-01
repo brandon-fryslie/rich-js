@@ -5,6 +5,7 @@ import {
   getThemeBaseColors,
   getThemePalette,
   listThemePalettes,
+  type ThemeName,
 } from "../../src/themes/registry.js";
 
 const ALL_NAMES = [
@@ -31,7 +32,11 @@ const ALL_NAMES = [
   "textual-dark",
   "textual-light",
   "tokyo-night",
-];
+] as const satisfies readonly ThemeName[];
+// `satisfies` makes the spelling of every entry a compile-time fact rather than
+// a runtime hope: rename a theme in the data and this list stops compiling.
+// Completeness stays a runtime claim — the listThemePalettes round-trip below
+// is what catches a theme added to the data and not to this list.
 
 describe("listThemePalettes", () => {
   it("registers every theme that ships with a data file", () => {

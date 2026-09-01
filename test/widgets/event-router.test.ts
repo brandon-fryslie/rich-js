@@ -33,7 +33,7 @@ class StubWidget extends WidgetBase {
     });
   }
 
-  setHovered(value: boolean): void {
+  override setHovered(value: boolean): void {
     runInAction(() => {
       this.hovered = value;
     });

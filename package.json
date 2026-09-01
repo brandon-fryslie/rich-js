@@ -38,7 +38,7 @@
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "tsc --noEmit && tsc -p tsconfig.scripts.json",
+    "lint": "tsc --noEmit && tsc -p tsconfig.scripts.json && tsc -p tsconfig.test.json",
     "clean": "rm -rf dist",
     "docs:dev": "npm run demos:build && vitepress dev docs",
     "docs:build": "npm run demos:build && vitepress build docs",

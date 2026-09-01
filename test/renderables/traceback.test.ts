@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { Traceback } from "../../src/renderables/traceback.js";
-import { Segment } from "../../src/core/segment.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
