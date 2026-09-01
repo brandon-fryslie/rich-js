@@ -109,7 +109,7 @@ One key event walks a three-stage chain, in this order:
 
 Any participant claims the key by calling `event.stop()`. Once stopped, the chain skips every remaining stage. There is no other way to halt dispatch — no return value, no key-specific branch inside the router.
 
-That ordering has a deliberate consequence: Tab traversal runs *after* the focused widget, so a widget suppresses it by claiming Tab itself. `Dropdown` does exactly this while its overlay is open, letting Tab move between options instead of leaving the widget.
+That ordering has a deliberate consequence: Tab traversal runs *after* the focused widget, so a widget suppresses it by claiming Tab itself. `Dropdown` does exactly this while its overlay is open — Tab clears the filter, collapses the list, and keeps focus. Traversal happens on the next Tab, once the widget is collapsed and no longer claims the key.
 
 ```typescript
 // A global handler that beats the focused widget.
@@ -129,7 +129,7 @@ router.onKey((event) => {
 });
 ```
 
-Mouse events do not use the chain. Subscribe with `router.onMouse(handler)`; the router has already hit-tested and delivered the event to the widget under the cursor before your handler runs.
+Mouse events do not use the chain. Subscribe with `router.onMouse(handler)` and your handler runs *first* — before the router hit-tests, updates hover state, and delivers the event to the widget under the cursor. That order makes `onMouse` the place to intercept, which is how an app implements click-to-focus: hit-test yourself with `containsPoint`, call `focusManager.focus(hit)`, and the widget still receives its own event afterwards.
 
 ## Layout
 
@@ -154,7 +154,9 @@ screen.mount(
 
 ## The widgets
 
-All of them accept `id` (auto-derived from the label if you omit it), `disabled`, and `theme` — a [`TerminalTheme`](/transpose) whose palette supplies the widget's colors. All of them expose the observable state `focused`, `hovered`, `active`, `disabled`, and `visible`, plus `bounds` written by the screen during layout.
+The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/transpose) whose palette supplies the widget's colors — and all expose the observable state `focused`, `hovered`, `active`, `disabled`, and `visible`, plus `bounds` written by the screen during layout. `StaticItem`, described last, is the exception: it takes none of those.
+
+Omit `id` and you get a generated one, but the two kinds differ in a way that matters if you are writing test selectors. `Button`, `Checkbox`, and `Toggle` slugify their label — `new Button({ label: "Save changes" })` is `button-save-changes`, and it is stable. `Dropdown`, `Slider`, and `TextInput` have no label to work from and fall back to a random suffix (`slider-k3f9x1`), which changes on every construction. Pass an explicit `id` to those three whenever anything downstream needs to name them.
 
 ### Button
 
@@ -230,6 +232,7 @@ Because `render` runs inside the screen's autorun, reading `volume.value` there 
 Extend `WidgetBase`. It provides the observable state, focus and hover plumbing, hit-testing, and the `onChange` / `onSubmit` machinery; you supply an `id`, whether the widget is `focusable`, and the three abstract members `handleKey`, `render`, and `measure`. Call the protected `emitChange()` and `emitSubmit()` to fire subscriptions.
 
 ```typescript
+import { observable, action } from "mobx";
 import { WidgetBase, Segment, Style } from "@promptctl/rich-js";
 import type { KeyEvent, RenderOptions } from "@promptctl/rich-js";
 
@@ -237,8 +240,9 @@ class Counter extends WidgetBase {
   readonly id = "counter";
   readonly focusable = true;
 
-  private count = 0;
+  @observable accessor count = 0;
 
+  @action
   handleKey(event: KeyEvent): void {
     if (event.key === "up") {
       this.count++;
@@ -259,7 +263,7 @@ class Counter extends WidgetBase {
 
 Two rules keep a custom widget composable. Return a stable width from `measure()` where you can — the screen uses it for layout and hit-testing, and a widget whose width changes with its state makes neighbouring `inline` items jump. And never emit cursor-positioning control segments: the host owns the screen, and a widget that moves the cursor corrupts the frame around it.
 
-For the counter above to repaint, `count` has to be observable. Decorate it as MobX state (`@observable accessor count = 0`) so the screen's autorun sees the read; a plain field changes the value but never triggers a frame.
+Both decorators are load-bearing. `WidgetBase` calls `makeObservable(this)`, which wires up only decorated members, so without `@observable accessor` the counter would change its value, fire `onChange`, and never repaint — the screen's autorun would have no read to react to. And `@action` on the handler is what keeps MobX's strict mode quiet; mutating an observable outside one warns on every keypress. MobX is a dependency of rich-js, so importing from `"mobx"` adds nothing to your install.
 
 ## Overlays
 
