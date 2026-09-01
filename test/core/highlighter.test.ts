@@ -48,8 +48,8 @@ describe("RegexHighlighter", () => {
   it("named capture groups produce baseStyle + groupName style applied to matching text", () => {
     // Use repr.number which exists in DEFAULT_STYLES, with baseStyle "repr."
     class TestHighlighter extends RegexHighlighter {
-      static highlights = ["(?<number>\\d+)"];
-      static baseStyle = "repr.";
+      static override highlights = ["(?<number>\\d+)"];
+      static override baseStyle = "repr.";
     }
     const h = new TestHighlighter();
     const text = new RichText("value is 42");
@@ -60,8 +60,8 @@ describe("RegexHighlighter", () => {
 
   it("call creates a new RichText with spans applied", () => {
     class TestHighlighter extends RegexHighlighter {
-      static highlights = [/(?<number>\d+)/g];
-      static baseStyle = "repr.";
+      static override highlights = [/(?<number>\d+)/g];
+      static override baseStyle = "repr.";
     }
     const h = new TestHighlighter();
     const result = h.call("count = 99");
@@ -73,8 +73,8 @@ describe("RegexHighlighter", () => {
   it("supports RegExp patterns with named groups", () => {
     // Use repr.str which is a valid DEFAULT_STYLES key
     class QuoteHighlighter extends RegexHighlighter {
-      static baseStyle = "repr.";
-      static highlights = [/(?<str>'[^']*')/g];
+      static override baseStyle = "repr.";
+      static override highlights = [/(?<str>'[^']*')/g];
     }
     const h = new QuoteHighlighter();
     const text = new RichText("say 'hello' now");
@@ -85,8 +85,8 @@ describe("RegexHighlighter", () => {
 
   it("multiple named groups in one pattern each get their own style", () => {
     class MultiHighlighter extends RegexHighlighter {
-      static highlights = [/(?<number>\d+)\s+(?<bool>true|false)/g];
-      static baseStyle = "repr.";
+      static override highlights = [/(?<number>\d+)\s+(?<bool>true|false)/g];
+      static override baseStyle = "repr.";
     }
     const h = new MultiHighlighter();
     const text = new RichText("42 true");

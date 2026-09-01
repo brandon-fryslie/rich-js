@@ -330,6 +330,11 @@ describe("DefaultScreen", () => {
     // it contributes overlay rows; mutating it (via runInAction) triggers
     // the autorun. The overlay paints two rows below its inline footprint.
     class OverlayStub extends WidgetBase {
+      // WidgetBase declares `focusable` abstract; this stub never did, so every
+      // instance carried `undefined` where a boolean was required and read as
+      // not-focusable everywhere it was tested. `false` states what was already
+      // true — an overlay under z-order test takes no focus.
+      readonly focusable = false;
       // Observable so toggling `expanded` after start() triggers the
       // autorun → recompute → draw cycle. Without observability the
       // OverlayStub would render the wrong way once and never recover.

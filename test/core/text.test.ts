@@ -5,6 +5,25 @@ import { Segment } from "../../src/core/segment.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
+/**
+ * [LAW:parse-dont-validate] `Span.style` is `string | Style`, but assertions
+ * about colour and attributes only mean anything against a resolved `Style`.
+ * Cross that boundary once, here, and hand back the narrowed type — so no
+ * assertion downstream has to re-ask, and a span carrying an unresolved style
+ * name fails loudly with its range instead of silently.
+ *
+ * This is not merely a compiler formality. `String.prototype` still carries the
+ * legacy HTML wrappers, so `span.style.bold` type-checks against the `string`
+ * arm and quietly compares a *function* to `true` — an assertion that can never
+ * fire. Narrowing first is what makes these tests mean what they read as.
+ */
+function styleOf(span: Span): Style {
+  if (span.style instanceof Style) return span.style;
+  throw new Error(
+    `expected a resolved Style on span [${span.start}, ${span.end}), got the style name ${JSON.stringify(span.style)}`,
+  );
+}
+
 /** Collect an iterable into an array. */
 function collect<T>(iter: Iterable<T>): T[] {
   return [...iter];
@@ -768,10 +787,6 @@ describe("RichText.fromFragments()", () => {
   });
 
   it("flattens each fragment's wrapping style onto a span over its range", () => {
-    const red  = RichText.styled("red",  "red");
-    const blue = RichText.styled("blue", "blue");
-    // RichText.styled puts style as a span, not as the wrapping style — so
-    // reframe: make fragments where the wrapping style is what carries colour.
     const f1 = new RichText("hello", { style: "red" });
     const f2 = new RichText("world", { style: "blue" });
     const t = RichText.fromFragments([f1, f2]);
@@ -780,12 +795,10 @@ describe("RichText.fromFragments()", () => {
     expect(t.spans).toHaveLength(2);
     expect(t.spans[0]!.start).toBe(0);
     expect(t.spans[0]!.end).toBe(5);
-    expect(t.spans[0]!.style.color?.name).toBe("red");
+    expect(styleOf(t.spans[0]!).color?.name).toBe("red");
     expect(t.spans[1]!.start).toBe(5);
     expect(t.spans[1]!.end).toBe(10);
-    expect(t.spans[1]!.style.color?.name).toBe("blue");
-    // Silence unused locals (red/blue were sketches).
-    void red; void blue;
+    expect(styleOf(t.spans[1]!).color?.name).toBe("blue");
   });
 
   it("preserves a fragment's internal spans, shifted by its offset", () => {
@@ -796,11 +809,11 @@ describe("RichText.fromFragments()", () => {
     const t = RichText.fromFragments([f1, f2]);
     expect(t.plain).toBe("abcd");
     // Spans propagated and offset: "a" bold (0-1), "d" italic (3-4).
-    const bold = t.spans.find((s) => s.style.bold === true);
+    const bold = t.spans.find((s) => styleOf(s).bold === true);
     expect(bold).toBeDefined();
     expect(bold!.start).toBe(0);
     expect(bold!.end).toBe(1);
-    const italic = t.spans.find((s) => s.style.italic === true);
+    const italic = t.spans.find((s) => styleOf(s).italic === true);
     expect(italic).toBeDefined();
     expect(italic!.start).toBe(3);
     expect(italic!.end).toBe(4);
@@ -813,7 +826,7 @@ describe("RichText.fromFragments()", () => {
     expect(t.plain).toBe("hithere");
     // Only one span — for f2's underline.
     expect(t.spans).toHaveLength(1);
-    expect(t.spans[0]!.style.underline).toBe(true);
+    expect(styleOf(t.spans[0]!).underline).toBe(true);
     expect(t.spans[0]!.start).toBe(2);
     expect(t.spans[0]!.end).toBe(7);
   });

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Padding } from "../../src/renderables/padding.js";
 import { Segment } from "../../src/core/segment.js";
-import { Style } from "../../src/core/style.js";
 import type { Renderable, Measurable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
