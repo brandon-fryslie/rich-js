@@ -2,63 +2,41 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-62",
-      "ref": "refs/pull/62/merge",
-      "sha": "f3f4cf2e74bac19a022f9e232766d8bdc6018b64",
-      "timestamp": "2026-09-01T10:00:20.954Z",
-      "commits": [
-        {
-          "sha": "f3f4cf2e74bac19a022f9e232766d8bdc6018b64",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T03:59:50-06:00",
-          "message": "Merge 8cd1e06417914ff670c7a5cd64b205158dd6c580 into f41699df1dada16725e8d0d1016e40987446aaf0\n"
-        },
-        {
-          "sha": "8cd1e06417914ff670c7a5cd64b205158dd6c580",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T03:59:34-06:00",
-          "message": "ci: install the agent code review action\n\nPRs here carry no automated review, so `address-pr-reviews` halts at preflight\nrather than reporting a clean pass on a reviewer that was never there. This is\nthe reviewer.\n\nPinned to the moving `@v1` tag so non-breaking releases arrive without a commit\nhere. `CLAUDE_CODE_OAUTH_TOKEN` is provisioned into both the Actions and the\nDependabot secret stores — GitHub feeds Dependabot-triggered runs from the\nseparate store, and an Actions-only secret would leave every Dependabot PR\nreview silently unauthenticated.\n\nTakes effect once it lands on master.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
-        }
-      ]
-    },
-    {
       "version": "pr-61",
       "ref": "refs/pull/61/merge",
-      "sha": "b961c1fb24d70625c4815f01533714f561d76236",
-      "timestamp": "2026-09-01T09:50:40.896Z",
+      "sha": "84bdbcc0709cff26ecb048987ef5bb1b22613325",
+      "timestamp": "2026-09-01T10:00:55.607Z",
       "commits": [
         {
-          "sha": "b961c1fb24d70625c4815f01533714f561d76236",
+          "sha": "84bdbcc0709cff26ecb048987ef5bb1b22613325",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T03:50:15-06:00",
-          "message": "Merge e4be4e071fa9831ad331d10b753e171b5ee0cadd into f41699df1dada16725e8d0d1016e40987446aaf0\n"
+          "timestamp": "2026-09-01T10:00:17Z",
+          "message": "Merge b79c98554271227c870bed362dfb1d1d9b0604d6 into 7e76dc174baee329f4dae77210dd636606c3a361\n"
         },
         {
-          "sha": "e4be4e071fa9831ad331d10b753e171b5ee0cadd",
+          "sha": "b79c98554271227c870bed362dfb1d1d9b0604d6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-01T03:48:05-06:00",
           "message": "test(console,misc): clear the last 64 type errors; the gate is green\n\n`makeConsole` typed its overrides as\n`Parameters<typeof Console.prototype.constructor>[0]`, but\n`Object.prototype.constructor` is plain `Function` in lib.es5 and carries no\nconstruct signature — so the type collapsed to `undefined` and rejected every\noptions object. `ConsoleOptions` is the type it meant. Retyping it surfaced no\nfield drift underneath, so nothing in that file was passing vacuously.\n\nTwo findings the compiler could not have handed over on its own:\n\n`Span.style` is `string | Style`, and `String.prototype` still carries the\nlegacy HTML wrappers — so `span.style.bold === true` type-checks against the\nstring arm and compares a function to `true`, an assertion that can never fire.\nSatisfying the compiler would have preserved it; a `styleOf` parser narrows the\nunion once instead, and fails loudly with the span's range.\n\n`OverlayStub` never declared the abstract `focusable`, so its instances carried\n`undefined` where a boolean was required. It is declared `false`, which states\nwhat was already true at runtime rather than changing behavior.\n\n`npm run lint` now passes with `test/` included. Vitest unchanged: 1766 passed,\n1 skipped.\n\nrich-testing-5hp.4\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
-          "sha": "456b3568ef650899d7782dccea8bfc65540960c1",
+          "sha": "dccb0202c5ba209f223cdfea0894f38898570512",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-01T03:43:52-06:00",
           "message": "test(text-input): brand the remaining offsets and settle the private-reach policy\n\nNine `cursorPosition` assignments with a computed right-hand side stayed raw\nwhen the rest of this file was migrated; `value.length` and a row's\n`valueStart` are both known code-point boundaries, so they route through\n`asCodePoint`. The local `tinyHeadWrap` fixture now emits `WrapRow`.\n\nThe seven reaches into `_visualRows` / `_cursorVisualRow` are settled by\nannotation, not by widening: they belong to white-box regression pins for a\ncursor-motion boundary bug, and exposing permanent public API — plus the\ndeliberately-internal `VisualRow` — to make a disposable test compile is the\ntail wagging the dog. Bracket access marks each reach, and one comment at the\nhead of the file states the rule for the next widget test.\n\nrich-testing-5hp.3\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
-          "sha": "2223c2449e79e4761c68b7981519b9dd9c8bb0d8",
+          "sha": "78942e3c6e2575cd835b572e61c56cd27d1f743e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-01T03:41:39-06:00",
           "message": "test(cells,segment): brand the CellCol arguments in the cells and segment tests\n\nEvery raw number these two files passed as a width or position is a `CellCol` —\na terminal cell offset, the space `setCellSize`, `splitText`, `chopCells`, and\n`Segment.splitCells` measure in. Route the literals through `asCellCol`, the\nsanctioned constructor, at the point each one enters the test.\n\nThe two invariant tables convert at the fixture literal rather than inside the\nloop, because the fixture is where the literal actually enters.\n\nBrands erase at compile time, so this cannot move behavior: 1766 passed /\n1 skipped, unchanged.\n\nrich-testing-5hp.2\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
-          "sha": "5faa542c13ad2cbeb511772e26fb705a7b3b3b48",
+          "sha": "0ddfb269025ee7448064bb85c98fea58a08dfa56",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-01T03:40:14-06:00",
