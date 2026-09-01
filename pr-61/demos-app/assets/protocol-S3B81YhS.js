@@ -1,1 +1,0 @@
-function n(e){return typeof e=="object"&&e!==null&&"render"in e&&typeof e.render=="function"}function r(e){return typeof e=="object"&&e!==null&&"measure"in e&&typeof e.measure=="function"}export{n as a,r as i};
