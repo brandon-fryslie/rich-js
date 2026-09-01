@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Console } from "../../src/core/console.js";
+import { Console, type ConsoleOptions } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
@@ -23,7 +23,7 @@ function captured(chunks: string[]): string {
   return chunks.join("");
 }
 
-function makeConsole(overrides: Parameters<typeof Console.prototype.constructor>[0] = {}): {
+function makeConsole(overrides: ConsoleOptions = {}): {
   console: Console;
   chunks: string[];
 } {
@@ -312,7 +312,7 @@ describe("Console.print() justify modes", () => {
     const output = captured(chunks);
     expect(output).toContain("Hi");
     // Centered text should have leading spaces
-    const line = output.split("\n")[0];
+    const line = output.split("\n")[0]!;   // split always yields at least one element
     expect(line.length).toBeGreaterThan(2);
   });
 
@@ -321,7 +321,7 @@ describe("Console.print() justify modes", () => {
     c.print("Hi", { justify: "right" });
     const output = captured(chunks);
     expect(output).toContain("Hi");
-    const line = output.split("\n")[0];
+    const line = output.split("\n")[0]!;   // split always yields at least one element
     // Right-aligned text should have leading spaces
     expect(line.startsWith(" ")).toBe(true);
   });
@@ -486,7 +486,7 @@ describe("Console base style", () => {
 
 describe("Console record and export", () => {
   it("records output when record:true and exports as text", () => {
-    const { console: c, chunks } = makeConsole({ record: true });
+    const { console: c } = makeConsole({ record: true });
     c.print("Hello World");
     const exported = c.exportText();
     expect(exported).toContain("Hello World");
@@ -635,7 +635,7 @@ describe("Console capture", () => {
     // [LAW:behavior-not-structure] Asserts the contract: capture round-trip
     // returns what was printed. Replaces the dead-code state where the buffer
     // was never appended to (rich-demo-site-pek.6).
-    const { console: c, chunks } = makeConsole();
+    const { console: c } = makeConsole();
     c.beginCapture();
     c.print("captured");
     const captured = c.endCapture();

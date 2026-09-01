@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
-import { ASCII, DOUBLE, ROUNDED } from "../../src/core/box.js";
+import { ASCII, DOUBLE } from "../../src/core/box.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details

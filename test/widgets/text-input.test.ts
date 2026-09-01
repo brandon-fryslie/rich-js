@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TextInput, charGreedyWrap, type WrapStrategy } from "../../src/widgets/text-input.js";
+import { TextInput, charGreedyWrap, type WrapStrategy, type WrapRow } from "../../src/widgets/text-input.js";
 import { asCodePoint, asCellCol, type CodePoint } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
@@ -28,6 +28,16 @@ const alt = (key: string): KeyEvent => new KeyEvent({
   ctrl: false,
   meta: true,
 });
+
+// [LAW:behavior-not-structure] The wrap/cursor-motion suites below are white-box
+// regression pins for a specific boundary bug, not contract tests: they read
+// `TextInput["_visualRows"]` and `TextInput["_cursorVisualRow"]()` to construct
+// an exact row layout and assert which row the cursor resolved to. Bracket
+// access is the one sanctioned mechanism for such a reach in this repo — it
+// keeps every deliberate reach greppable and refuses to spread, where widening
+// `TextInput`'s public surface (and exporting the internal `VisualRow`) would
+// have shipped permanent API to satisfy a disposable test. Contract-level
+// assertions in this file go through `render()`, `value`, and `cursorPosition`.
 
 const upEvent = () => makeKey("up");
 const downEvent = () => makeKey("down");
@@ -733,7 +743,7 @@ describe("TextInput", () => {
       const t = new TextInput({ value, multiline: true, maxRows: 3 });
 
       // Park cursor at last row, render once → viewport scrolls to show 7,8,9.
-      t.cursorPosition = value.length;
+      t.cursorPosition = asCodePoint(value.length);
       let text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       expect(text).toContain("7");
       expect(text).toContain("8");
@@ -775,11 +785,11 @@ describe("TextInput", () => {
         multiline: true,
         maxRows: 3,
       });
-      t.cursorPosition = t.value.length;
+      t.cursorPosition = asCodePoint(t.value.length);
       [...t.render({ maxWidth: 20 })];  // viewport scrolls to rows 7..9
       // Delete back to a 4-row value.
       t.value = "0\n1\n2\n3";
-      t.cursorPosition = t.value.length;
+      t.cursorPosition = asCodePoint(t.value.length);
       const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       // Total rows = 4, maxRows = 3, cursor at row 3 → viewport should show
       // rows 1..3 (clamped from the stale deeper value). Must not error and
@@ -806,7 +816,7 @@ describe("TextInput", () => {
         multiline: true,
         maxRows: 3,
       });
-      t.cursorPosition = t.value.length;
+      t.cursorPosition = asCodePoint(t.value.length);
       const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
       expect(text).toContain("▲");
       expect(text).not.toContain("▼");
@@ -820,7 +830,7 @@ describe("TextInput", () => {
       });
       // Scroll to bottom, then move cursor up by one so we're mid-buffer
       // with content both above and below the viewport.
-      t.cursorPosition = t.value.length;
+      t.cursorPosition = asCodePoint(t.value.length);
       [...t.render({ maxWidth: 20 })];      // scrollStart = 7
       t.handleKey(upEvent());                  // cursor row 8 → still in viewport
       t.handleKey(upEvent());                  // cursor row 7 → still in viewport
@@ -858,7 +868,7 @@ describe("TextInput", () => {
       // Cursor defaults to 0 in multiline → row 1 of 10.
       expect(t.scrollIndicatorText).toBe("[1/10]");
       // Move cursor to end → row 10 of 10.
-      t.cursorPosition = t.value.length;
+      t.cursorPosition = asCodePoint(t.value.length);
       [...t.render({ maxWidth: 20 })];
       expect(t.scrollIndicatorText).toBe("[10/10]");
     });
@@ -910,7 +920,7 @@ describe("TextInput", () => {
         maxRows: 5,
       });
       [...t.render({ maxWidth: 20 })];
-      expect(t._visualRows!.length).toBe(1);
+      expect(t["_visualRows"]!.length).toBe(1);
     });
 
 
@@ -961,13 +971,13 @@ describe("TextInput", () => {
     // alone can't produce. `templateAtomWrap` in the demo does produce it
     // (leading whitespace becomes a 2-char head row).
     const tinyHeadWrap: WrapStrategy = (line, { continuationWidth }) => {
-      if (line.length === 0) return [{ content: "", start: 0 }];
-      if (line.length === 1) return [{ content: line, start: 0 }];
-      const out: { content: string; start: number }[] = [{ content: line[0]!, start: 0 }];
+      if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
+      if (line.length === 1) return [{ content: line, start: asCodePoint(0) }];
+      const out: WrapRow[] = [{ content: line[0]!, start: asCodePoint(0) }];
       let p = 1;
       while (p < line.length) {
         const take = Math.min(continuationWidth, line.length - p);
-        out.push({ content: line.slice(p, p + take), start: p });
+        out.push({ content: line.slice(p, p + take), start: asCodePoint(p) });
         p += take;
       }
       return out;
@@ -980,7 +990,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t._visualRows!;
+      const rows = t["_visualRows"]!;
       // Expected shape: row 0 "a" (vs=0, len=1, cont=false),
       //                 row 1 long continuation (vs=1, ...).
       expect(rows[0]!.content).toBe("a");
@@ -988,8 +998,8 @@ describe("TextInput", () => {
       expect(rows.length).toBeGreaterThanOrEqual(2);
 
       // Park cursor on the continuation row at col 5 (well past head.length=1).
-      t.cursorPosition = rows[1]!.valueStart + 5;
-      expect(t._cursorVisualRow()).toBe(1);
+      t.cursorPosition = asCodePoint(rows[1]!.valueStart + 5);
+      expect(t["_cursorVisualRow"]()).toBe(1);
 
       t.handleKey(new KeyEvent({ key: "up", character: "", shift: false, ctrl: false, meta: false }));
 
@@ -998,7 +1008,7 @@ describe("TextInput", () => {
       // would still report row 1. Post-fix: clamp to `length - 1 = 0`,
       // cursor lands at `rows[0].valueStart = 0`, unambiguously row 0.
       expect(t.cursorPosition).toBe(0);
-      expect(t._cursorVisualRow()).toBe(0);
+      expect(t["_cursorVisualRow"]()).toBe(0);
     });
 
     it("repeated Up across the trap row makes progress every press (no stuck position)", () => {
@@ -1008,10 +1018,10 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t._visualRows!;
+      const rows = t["_visualRows"]!;
       // rows: [row 0 "x"], [row 1 "a" head of line 1], [row 2 long cont], ...
       // Park cursor on row 2 (continuation) at col 5.
-      t.cursorPosition = rows[2]!.valueStart + 5;
+      t.cursorPosition = asCodePoint(rows[2]!.valueStart + 5);
 
       const positions: number[] = [t.cursorPosition];
       for (let i = 0; i < 3; i++) {
@@ -1032,7 +1042,7 @@ describe("TextInput", () => {
         wrap: tinyHeadWrap,
       });
       [...t.render({ maxWidth: 20 })];
-      const rows = t._visualRows!;
+      const rows = t["_visualRows"]!;
       // From a row above the tinyHeadWrap line, Down at col 5 should land
       // unambiguously inside the head row (length 1), which means cursor
       // must clamp to col 0, not col 1 (the boundary).
@@ -1041,12 +1051,12 @@ describe("TextInput", () => {
       expect(head).toBeGreaterThan(0);
 
       // Park cursor on the row right above `head` at col 5.
-      t.cursorPosition = rows[head - 1]!.valueStart + 5;
+      t.cursorPosition = asCodePoint(rows[head - 1]!.valueStart + 5);
       t.handleKey(new KeyEvent({ key: "down", character: "", shift: false, ctrl: false, meta: false }));
 
       // Cursor should be on row `head` (valueStart), NOT at row `head+1`'s boundary.
       expect(t.cursorPosition).toBe(rows[head]!.valueStart);
-      expect(t._cursorVisualRow()).toBe(head);
+      expect(t["_cursorVisualRow"]()).toBe(head);
     });
 
     it("preferred column survives motion through a short wrap row", () => {

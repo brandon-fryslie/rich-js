@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Segment, ControlType } from "../../src/core/segment.js";
+import { asCellCol } from "../../src/core/cells.js";
 import { Style } from "../../src/core/style.js";
 import type { ControlCode } from "../../src/core/segment.js";
 
@@ -134,7 +135,7 @@ describe("Segment properties", () => {
 describe("Segment.splitCells()", () => {
   it("splits within ASCII text", () => {
     const seg = new Segment("hello", new Style({ bold: true }));
-    const [left, right] = seg.splitCells(3);
+    const [left, right] = seg.splitCells(asCellCol(3));
     expect(left.text).toBe("hel");
     expect(right.text).toBe("lo");
     // Style is preserved on both halves
@@ -144,35 +145,35 @@ describe("Segment.splitCells()", () => {
 
   it("returns [self, empty] when position equals cellLength", () => {
     const seg = new Segment("hello");
-    const [left, right] = seg.splitCells(5);
+    const [left, right] = seg.splitCells(asCellCol(5));
     expect(left).toBe(seg);
     expect(right.text).toBe("");
   });
 
   it("returns [self, empty] when position exceeds cellLength", () => {
     const seg = new Segment("hi");
-    const [left, right] = seg.splitCells(99);
+    const [left, right] = seg.splitCells(asCellCol(99));
     expect(left).toBe(seg);
     expect(right.text).toBe("");
   });
 
   it("returns [empty, self] when position is 0", () => {
     const seg = new Segment("hello");
-    const [left, right] = seg.splitCells(0);
+    const [left, right] = seg.splitCells(asCellCol(0));
     expect(left.text).toBe("");
     expect(right).toBe(seg);
   });
 
   it("returns [empty, self] when position is negative", () => {
     const seg = new Segment("hello");
-    const [left, right] = seg.splitCells(-1);
+    const [left, right] = seg.splitCells(asCellCol(-1));
     expect(left.text).toBe("");
     expect(right).toBe(seg);
   });
 
   it("splits CJK text at a double-width boundary", () => {
     const seg = new Segment("中文");
-    const [left, right] = seg.splitCells(2);
+    const [left, right] = seg.splitCells(asCellCol(2));
     expect(left.cellLength).toBe(2);
     expect(right.cellLength).toBe(2);
   });

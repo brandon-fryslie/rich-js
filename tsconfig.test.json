@@ -1,0 +1,20 @@
+/*
+ * [LAW:verifiable-goals] Vitest transpiles through esbuild and never
+ * type-checks, so without this config the test suite — the one region that
+ * models real caller usage — is inspected by no compiler at all, and a green
+ * run stops being evidence that the tested API still exists in that shape.
+ *
+ * [LAW:single-enforcer] The root config owns every compiler option; this file
+ * only widens the inspected region to `test/` and turns emit off. The two
+ * overrides below are forced: the root pins `rootDir` to `src`, which would
+ * reject `test/` before type-checking it, and emitting test declarations into
+ * `dist/` is not a thing anyone wants.
+ */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "."
+  },
+  "include": ["test"]
+}

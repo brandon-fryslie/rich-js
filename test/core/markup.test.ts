@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { Tag, MarkupError, escape, render } from "../../src/core/markup.js";
-import { Style } from "../../src/core/style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
