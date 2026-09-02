@@ -113,11 +113,42 @@ describe("installTraceback", () => {
     process.emit("unhandledRejection", { code: 42 }, Promise.resolve());
 
     const output = reported();
-    expect(output).toContain("UnhandledRejection");
+    expect(output).toContain("NonError");
     expect(output).toContain("code: 42");
     // A rejected plain object has no call site; rich-js's own frames would be
     // a lie about where the fault is.
     expect(output).not.toContain("src/node/traceback");
+  });
+
+  // `throw "boom"` is legal JS and node delivers the raw value, even though
+  // `@types/node` annotates the payload as `Error`. Without a conversion the
+  // renderable reads `.name`/`.message` off a string and reports an empty
+  // "Error: ", discarding the one detail a crash report exists to carry.
+  it("renders a non-Error uncaught payload rather than discarding it", () => {
+    installTraceback();
+
+    process.emit(
+      "uncaughtException",
+      "raw string boom" as unknown as Error,
+      "uncaughtException",
+    );
+
+    const output = reported();
+    expect(output).toContain("NonError");
+    expect(output).toContain("raw string boom");
+  });
+
+  it("replaces the previous handler instead of accumulating listeners", () => {
+    installTraceback();
+    installTraceback();
+    installTraceback({ maxFrames: 2 });
+
+    expect(process.listenerCount("uncaughtException")).toBe(1);
+    expect(process.listenerCount("unhandledRejection")).toBe(1);
+
+    // Last call wins, options included — a re-install is not silently ignored.
+    process.emit("uncaughtException", deepError(6), "uncaughtException");
+    expect(reported()).toContain("frames omitted");
   });
 
   it("passes TracebackOptions through to the renderable", () => {

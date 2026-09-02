@@ -261,7 +261,7 @@ To format every crash — uncaught exceptions and unhandled promise rejections a
 ```typescript
 import { installTraceback } from "@promptctl/rich-js/node/traceback";
 
-installTraceback({ showLocals: true });
+installTraceback();
 ```
 
 `installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself stays in the main barrel, which remains browser-safe.
