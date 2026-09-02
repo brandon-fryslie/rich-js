@@ -65,10 +65,10 @@ const MUTATION_CYCLE: string[][] = [
 
 /**
  * A widget the library does not ship, to show what the widget set is built on.
- * `WidgetBase` supplies the whole InteractiveWidget contract except four
- * members — `id`, `focusable`, `handleKey`, and the two render/measure methods
- * — so a custom widget is those, and nothing else: no focus bookkeeping, no
- * hover state, no hit-testing, no change/submit plumbing.
+ * `WidgetBase` supplies the whole InteractiveWidget contract except its
+ * abstracts — `id`, `focusable`, `handleKey`, `render`, `measure` — so a custom
+ * widget is those, and nothing else: no focus bookkeeping, no hover state, no
+ * hit-testing, no change/submit plumbing.
  *
  * This one shows the last key it was handed, which makes the KeyEvent contract
  * visible: the router hands the *focused* widget its key, and `event.stop()`

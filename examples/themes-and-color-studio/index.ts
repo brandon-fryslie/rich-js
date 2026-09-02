@@ -29,7 +29,9 @@ const requestedExports = [
 try {
   const demo = runDemo(host, { record: requestedExports.length > 0 });
   for (const { label, path, save } of requestedExports) {
-    save(demo.out, path);
+    // Both exporters read the same recording buffer and clear it by default,
+    // so the second of two would write an empty file.
+    save(demo.out, path, { clear: false });
     process.stderr.write(`\n${label} export written to ${path}\n`);
   }
   demo.stop();
