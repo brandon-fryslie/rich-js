@@ -4,15 +4,22 @@
     {
       "version": "pr-73",
       "ref": "refs/pull/73/merge",
-      "sha": "5346b8534846b515f61cddf5e93d1ba321b40692",
-      "timestamp": "2026-09-02T12:22:31.567Z",
+      "sha": "49b48e0e628fdbf02af1bf14a908c903b098cff3",
+      "timestamp": "2026-09-02T12:43:14.443Z",
       "commits": [
         {
-          "sha": "5346b8534846b515f61cddf5e93d1ba321b40692",
+          "sha": "49b48e0e628fdbf02af1bf14a908c903b098cff3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T12:21:57Z",
-          "message": "Merge 696cb66b8278cd51eb2bd3c771e83ccd5dc6b019 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+          "timestamp": "2026-09-02T12:42:37Z",
+          "message": "Merge e80bed50a6d63617a1718e644ae7e2e6a0c21646 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+        },
+        {
+          "sha": "e80bed50a6d63617a1718e644ae7e2e6a0c21646",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T06:42:27-06:00",
+          "message": "test(seam): one deferral rule, three triggers\n\nThree findings, and the useful one is that the deferral rule was right in\nsubstance and applied to only one of the three places it belongs.\n\nA function's body waits for a call. So does a constructor's — via its class.\nAn instance field waits for construction, and an accessor body waits for a\nproperty read. All four are the same question, and the scan was answering it\nfor two of them: an instance field initializer was flagged even though\nimporting the module never runs it, which contradicted the constructor body\ndirectly above it that the same file already deferred.\n\nSo `isDeferred` asks it once, and `isImmediatelyRun` picks the trigger.\n`isImmediatelyRead` is `isImmediatelyInvoked` with the other syntax, sharing\nthe parenthesis walk. An accessor consults the read trigger because it has no\ncallable form — asking it the call question would always answer no, which is\nwhat hid `{ get w() { return process.env } }.w`.\n\nStatic fields and `static {}` blocks wait for nothing; they run with the\ndeclaration and are not pruned. The static block already worked, because\n`ts.isFunctionLike` excludes it — now by fixture rather than by luck.\n\nThe header said the ambient rule fires on `process` or `Buffer` while\n`AMBIENT_GLOBALS` held three names, stale from the commit that added the\nthird. It now names the constant, so the list has one home and the sentence\ncannot disagree with it.\n\nTwo findings were declined on evidence rather than argument. `import {} from\n\"node:fs\"` is not preserved by the emitter: compiled under this repo's\nsettings in an ESM package, it and `export {} from \"node:os\"` and\n`import { type Stats }` all vanish, leaving only the unrelated export — so\ntreating an empty named clause as erased is what the emitter does. And\n`export * as process from \"./m.js\"` binds nothing locally; tsc answers a\nlater `process.env` with \"Cannot find name 'process'\", having gone looking\nfor the global, so flagging it is correct and collecting the name would buy\nback the false negative the interface finding just removed.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "696cb66b8278cd51eb2bd3c771e83ccd5dc6b019",
