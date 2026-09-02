@@ -4,15 +4,22 @@
     {
       "version": "pr-73",
       "ref": "refs/pull/73/merge",
-      "sha": "49b48e0e628fdbf02af1bf14a908c903b098cff3",
-      "timestamp": "2026-09-02T12:43:14.443Z",
+      "sha": "c5edd37df58e72b42d46fa121034b6d352991441",
+      "timestamp": "2026-09-02T13:06:22.357Z",
       "commits": [
         {
-          "sha": "49b48e0e628fdbf02af1bf14a908c903b098cff3",
+          "sha": "c5edd37df58e72b42d46fa121034b6d352991441",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T12:42:37Z",
-          "message": "Merge e80bed50a6d63617a1718e644ae7e2e6a0c21646 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+          "timestamp": "2026-09-02T13:05:51Z",
+          "message": "Merge ecf7619163f938028109368d91185f4c7ce4d48b into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+        },
+        {
+          "sha": "ecf7619163f938028109368d91185f4c7ce4d48b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T07:05:40-06:00",
+          "message": "test(seam): the trigger is one notion, not a branch per shape\n\nTwo findings asked for a branch each — a getter reached through\n`new (…)().w`, a method through `(…).m()`. Taking them that way is an\nenumeration with no cap, because consumption chains compose and the next\nreport would be `new (…)().m()`.\n\nThe closed version underneath is one notion: the container's value — the\nobject or class as written, or what `new` makes of it — is consumed right\nhere. Asked of the four function-like member kinds, which is an enumeration\nthat ends. A plain function is its own container and is consumed by a call;\na constructor's class by `new`; an accessor by a property read; a method by\nthat read being called. Neither an accessor nor a method has a callable form\nof its own, so asking either the plain-call question could only ever answer\nno — the same reason the getter case failed before.\n\nPruning a whole `PropertyDeclaration` hid its computed name, which runs when\nthe class body does whether or not the member is static. Only the initializer\nis deferred now, which is both narrower and correct, and brings decorators\nalong for free. The parameter branch legitimately differs: a parameter name\ncan never be an expression, so pruning the whole parameter is safe there.\n\n`export { type process }` referenced nothing at runtime and was read as a\nlive local reference — the import side of that question was already asked in\ngraph.ts.\n\n`resolveEdge`'s throw is the walk's guard against silently narrowing the\ngraph, and nothing in a healthy `src/` had ever made it fire: the one line\nwhose regression would look exactly like success. It is exported and pinned,\nwith the null arm pinned beside it, rather than tested through a broken\nfixture on disk that `tsc -p tsconfig.test.json` would reject.\n\nEach new rule was falsified against its own fixture: neutering the method\ntrigger and the `new` unwrapping fails exactly the consumed-on-the-spot\ntest, restoring the coarse property prune fails exactly the class test, and\nnarrowing the throw fails exactly the resolve test.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "e80bed50a6d63617a1718e644ae7e2e6a0c21646",
