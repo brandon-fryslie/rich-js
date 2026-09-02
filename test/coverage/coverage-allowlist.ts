@@ -32,4 +32,18 @@ export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
       "readline-backed PromptInput implementation. Demonstrable only by a demo " +
       "that accepts interactive line input; every TUI demo here reads raw-mode stdin.",
   },
+  PrintOptions: {
+    reason:
+      "Console.print takes `...args: unknown[]` and sniffs the options object " +
+      "off the last argument, so the type is named only inside print's body — " +
+      "no public signature carries it. Reaching it would mean giving print a " +
+      "typed signature, which is an API decision, not a coverage chore.",
+  },
+  ThemePaletteData: {
+    reason:
+      "`THEMES` is declared without an annotation so `ThemeName = keyof typeof " +
+      "THEMES` stays a literal union, and the per-theme annotations sit on " +
+      "module-private consts in themes/data/*.ts. Public as a shape to write " +
+      "a custom theme against; named by no public signature.",
+  },
 };

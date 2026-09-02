@@ -385,10 +385,15 @@ export function collectTypeClosure(
 /**
  * Call `onName` for the leftmost identifier of every type-position name in
  * the subtree: `T` in `x: T<U>`, `B` in `class A extends B`, `X` in
- * `typeof X`. Qualified names (`ns.T`) yield their leftmost identifier,
- * which is the one that resolves to an import binding.
+ * `typeof X`, `T` in `import("m").T`. Qualified names (`ns.T`) yield their
+ * leftmost identifier, which is the one that resolves to an import binding.
+ *
+ * Exported for `extract.test.ts`. This walk is where every gap in the type
+ * closure has actually been found, and it is pure over an AST — no checker,
+ * no `Program` — so it can be pinned by fixtures instead of by an aggregate
+ * pass over the whole tree that reports only pass or fail.
  */
-function visitTypePositions(root: ts.Node, onName: (id: ts.Identifier) => void): void {
+export function visitTypePositions(root: ts.Node, onName: (id: ts.Identifier) => void): void {
   const leftmost = (n: ts.EntityName | ts.Expression): void => {
     let cur: ts.Node = n;
     while (ts.isQualifiedName(cur) || ts.isPropertyAccessExpression(cur)) {
@@ -397,16 +402,36 @@ function visitTypePositions(root: ts.Node, onName: (id: ts.Identifier) => void):
     if (ts.isIdentifier(cur)) onName(cur);
   };
   const visit = (node: ts.Node): void => {
-    if (isPrivateMember(node)) return;
+    if (isOffSurface(node)) return;
     if (ts.isTypeReferenceNode(node)) leftmost(node.typeName);
     if (ts.isExpressionWithTypeArguments(node)) leftmost(node.expression);
     if (ts.isTypeQueryNode(node)) leftmost(node.exprName);
+    if (ts.isImportTypeNode(node) && node.qualifier) leftmost(node.qualifier);
     ts.forEachChild(node, visit);
   };
   visit(root);
 }
 
-/** A class member no consumer can reach: `private x` or `#x`. */
+/**
+ * Whether a subtree is outside its enclosing declaration's type surface, and
+ * so must not be walked.
+ *
+ * A declaration's surface is its signature — type parameters, heritage
+ * clauses, parameter/property/return types. Two things are not:
+ *
+ *   - a `private` or `#private` member, which no consumer can reach at all;
+ *   - a body or an initializer, which is implementation. `forEachChild`
+ *     descends into both, so a type named in a local annotation or a cast
+ *     inside a called method would otherwise count as surface.
+ *
+ * Pruning states that rule once. Enumerating the positions that *do* count
+ * would mean listing every declaration kind, and a missed kind fails silently
+ * in the direction that marks a type reachable when it is not.
+ */
+function isOffSurface(node: ts.Node): boolean {
+  return isPrivateMember(node) || isBodyOrInitializer(node);
+}
+
 function isPrivateMember(node: ts.Node): boolean {
   if (!ts.isClassElement(node)) return false;
   if (node.name && ts.isPrivateIdentifier(node.name)) return true;
@@ -415,6 +440,23 @@ function isPrivateMember(node: ts.Node): boolean {
   if (!ts.canHaveModifiers(node)) return false;
   return (ts.getModifiers(node) ?? []).some(
     (m) => m.kind === ts.SyntaxKind.PrivateKeyword,
+  );
+}
+
+function isBodyOrInitializer(node: ts.Node): boolean {
+  const parent: ts.Node | undefined = node.parent;
+  if (!parent) return false;
+  // `isFunctionLike` admits ConstructorTypeNode and friends, which have no
+  // body — narrow to the ones that do rather than cast.
+  if (ts.isFunctionLike(parent) && "body" in parent && parent.body === node) {
+    return true;
+  }
+  return (
+    (ts.isPropertyDeclaration(parent) ||
+      ts.isVariableDeclaration(parent) ||
+      ts.isPropertyAssignment(parent) ||
+      ts.isParameter(parent)) &&
+    parent.initializer === node
   );
 }
 
