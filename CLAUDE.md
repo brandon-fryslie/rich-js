@@ -110,7 +110,7 @@ You will be deep in `console.ts` or a renderable, you will need to write a file 
 
 The counter-argument is real and worth naming: this *is* a terminal library, and browsers are not its main target. Granted. But the widget layer ships a `BrowserTerminalHost` and the demo site runs `examples/` in a browser under `npm run demos:build` — that bundle is a real consumer, and it breaks at bundle time with an unresolvable `fs`, in CI, far from the import that caused it.
 
-`test/seam/browser-safe.test.ts` is what stops that failure from landing on someone other than the person who wrote the import: it walks the runtime import graph from every `package.json#exports` entry outside `src/node/` and fails in the unit suite, naming the file, the line, and the chain that reached it. A Node builtin on a runtime edge breaks it, and so does an ambient `process`/`Buffer`/`global` read at module scope. `test/seam/browser-safe.ts`'s header owns the rest — what module scope means here, and why there is no `typeof` exemption.
+`test/seam/browser-safe.test.ts` is what stops that failure from landing on someone other than the person who wrote the import: it walks the runtime import graph from every `package.json#exports` entry outside `src/node/` and fails in the unit suite, naming the file, the line, and the chain that reached it. A Node builtin on a runtime edge breaks it, and so does a module-scope read of any name in `AMBIENT_GLOBALS`. `test/seam/browser-safe.ts`'s header owns the rest — what module scope means here, and why there is no `typeof` exemption.
 
 ### test/coverage/ gates every new public export
 
