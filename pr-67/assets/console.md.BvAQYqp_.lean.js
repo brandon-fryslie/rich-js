@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.B-603Itb.js";const g=JSON.parse('{"title":"Console","description":"","frontmatter":{},"headers":[],"relativePath":"console.md","filePath":"console.md"}'),e={name:"console.md"};function h(l,s,p,k,r,d){return a(),t("div",null,[...s[0]||(s[0]=[n("",92)])])}const c=i(e,[["render",h]]);export{g as __pageData,c as default};
