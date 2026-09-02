@@ -4,15 +4,22 @@
     {
       "version": "pr-69",
       "ref": "refs/pull/69/merge",
-      "sha": "1c3b3fd5dde2c2c813a8e6ac9efc5a2688835399",
-      "timestamp": "2026-09-02T06:13:33.233Z",
+      "sha": "00784d5d278f421416c3f798653068c53e34be54",
+      "timestamp": "2026-09-02T06:41:29.715Z",
       "commits": [
         {
-          "sha": "1c3b3fd5dde2c2c813a8e6ac9efc5a2688835399",
+          "sha": "00784d5d278f421416c3f798653068c53e34be54",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T00:12:58-06:00",
-          "message": "Merge 5e341e6a83c942401df95866d94338efd513651e into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+          "timestamp": "2026-09-02T06:40:56Z",
+          "message": "Merge 9e7f95334c147063306eec62471f714e009fafab into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+        },
+        {
+          "sha": "9e7f95334c147063306eec62471f714e009fafab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T00:40:43-06:00",
+          "message": "fix(demo): both exporters drain one recording buffer; label the API break\n\n`exportText` and `exportHtml` both default `clear: true` and both read\n`Console._recorded`, so the dual-export path added in the previous commit\nwrote the second file from an already-emptied buffer — silently, exit 0.\nVerified by reverting the fix: EXPORT_TEXT landed at 0 bytes.\n\nPassing `{ clear: false }` on every save rather than on all-but-the-last\nkeeps the loop position-independent; nothing needs the buffer cleared\nbecause the process exits immediately after.\n\n`@promptctl/rich-js` is published at 0.7.0, so removing barrel exports\nwithout a version signal would ship a break under a patch. Bumped to\n0.8.0 — pre-1.0 semver's breaking-change slot — via the\n`npm version minor --no-git-tag-version` step publish.yml documents.\n\nThree comment counts dropped rather than corrected: \"(all 17)\" box\nvariants, \"four members\" on WidgetBase's abstracts, and EXPORT_HTML named\nas the recording trigger. A count beside the list it counts is a second\nrepresentation of one fact and rots on the next addition; naming the\nmembers and deferring the env-var list to the bootstrap cannot.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "5e341e6a83c942401df95866d94338efd513651e",
