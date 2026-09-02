@@ -302,14 +302,12 @@ saveHtml(console, "output.html");
 
 ## Demos
 
-A handful of demos under `examples/` exercise the library against realistic use cases. Two are explained in detail below (`rich-explore` and `claude-sessions`); the rest are listed here with one-line summaries. The full set of available npm scripts is the authoritative list — `cat package.json | jq .scripts` to see them all.
+Every demo below also runs in your browser on the [live demo gallery](https://brandon-fryslie.github.io/rich-js/master/demos/) — the same code mounted against an xterm.js terminal, nothing to install. To drive one against your own terminal instead, run its npm script:
 
 ```sh
-# Detailed below
-npm run demo                       # rich-explore — TUI file browser + markdown/code reader (interactive)
-npm run sessions                   # claude-sessions — Claude Code session browser (interactive)
-
-# Other interactive demos
+# Interactive
+npm run demo                       # rich-explore — TUI file browser + markdown/code reader
+npm run sessions                   # claude-sessions — Claude Code session browser
 npm run demo-inputs                # rich-config — TextInput / palette search
 npm run demo:dropdown              # dropdown-demo — Dropdown widget showcase
 npm run dash                       # rich-dash — Live dashboard
@@ -320,6 +318,8 @@ npm run themes-and-color-studio    # color / palette / theme / contrast tour (ei
 npm run strip                      # rich-strip — side-by-side joiner showcase
 npm run markup-plugins             # rich-markup-plugins — plugin-tag examples
 ```
+
+`rich-explore`, `claude-sessions`, and `themes-and-color-studio` are covered in detail below. `package.json` holds the authoritative script list — `jq .scripts package.json` to see it.
 
 ### rich-explore — TUI file browser + markdown/code reader
 
@@ -373,7 +373,7 @@ npm run sessions
 
 ### themes-and-color-studio — color, palette, theme, and contrast tour
 
-A one-shot non-interactive demo that walks every public surface of the color subsystem in eight sections: ColorRgba values and parsing, ColorSpec and downgrade tables, color-system detection, the theme registry, PaletteResolver spec forms, every bundled `TerminalTheme` constant, OKLCH transposition (hue circle / chroma sweep / lightness invert / themeKeyForRoot), and the WCAG contrast toolkit.
+A one-shot non-interactive demo that walks every public surface of the color subsystem in eight sections: ColorRgba values and parsing, ColorSpec and downgrade tables, color-system detection, the theme registry, colour references through `resolveColorRef`, every bundled `TerminalTheme` constant, OKLCH transposition (hue circle / chroma sweep / lightness invert / themeKeyForRoot), and the WCAG contrast toolkit.
 
 ```sh
 npm run themes-and-color-studio                       # terminal output
@@ -387,7 +387,7 @@ EXPORT_HTML=out.html npm run themes-and-color-studio  # also write a styled HTML
 | `ColorRgba` / `parseRgbHex` / `parseRgbaHex` / `blendRgb` | Pixel-level values, two hex parsers, linear blend, alpha compositing |
 | `ColorSpec` / `ColorDepth` | Every factory; downgrade across `STANDARD_TABLE` / `EIGHT_BIT_TABLE` / `WINDOWS_TABLE`; `ANSI_COLOR_NAMES` lookups; `ColorParseError` |
 | `detectColorSystem` / `resolveColorSystem` | Env-driven color-system detection with `DetectColorOptions` fixtures; spec-string resolution |
-| `Palette` / `PaletteResolver` / `buildPalette` | Bare / modifier / alpha / auto spec forms against gruvbox; `BaseColors` → derived `text-*` / `on-*` / `*-muted` vars |
+| `Palette` / `resolveColorRef` / `parseHexColor` / `buildPalette` | Palette names and `#RRGGBB` literals through one checkpoint against gruvbox, including the hex round-trip that shows it is idempotent and the `ColorRefError` miss; `BaseColors` → derived `text-*` / `on-*` / `*-muted` vars |
 | Theme registry | `getThemePalette` / `listThemePalettes` / `getThemeBaseColors` walking every bundled theme; raw `THEMES` / `ThemePaletteData` via subpath |
 | `TerminalTheme` constants | All bundled constants (`DEFAULT`, `SVG_EXPORT`, `MONOKAI`, `NORD`, `GRUVBOX`, `DRACULA`, `TOKYO_NIGHT`, `FLEXOKI`, `CYBERPUNK`, `CATPPUCCIN_*`, `SOLARIZED_*`, `ROSE_PINE*`, `ATOM_ONE_*`, `TEXTUAL_*`) |
 | `Oklch` / `transposePalette` / `themeKeyForRoot` | Round-trip + `IDENTITY` / `INVERT_LIGHTNESS`; hue circle; chroma sweep; light↔dark invert; `ANCHORED_ROOTS` / `isAnchored` |
@@ -396,35 +396,26 @@ EXPORT_HTML=out.html npm run themes-and-color-studio  # also write a styled HTML
 
 ---
 
-### Coverage summary
+### Demo coverage is checked, not claimed
 
-**Exercised across demos:**
+`test/coverage/coverage.test.ts` asserts that every public export is referenced by at least one file under `examples/`. Add a public export without demoing it and CI fails.
 
-Core: `Console`, `Style`/`StyleStack`, `RichText`/`Span`, `Segment`, `Box` (multiple variants), `Color`/`blendRgb`/palettes, `Renderable`/`Measurable` protocol, `Measurement`, `cells` (transitively), `ReprHighlighter`, `JSONHighlighter`, `Spinner` data, `TerminalTheme`
+The check builds its universe from `package.json#exports` when the test loads, so there is no hand-written list of covered symbols to maintain — and none to drift out of date. Coverage is counted per *symbol origin*, meaning the declaring file plus the declared name, so one declaration re-exported under two names is still one thing to demonstrate. Renaming a symbol on import inside a demo still counts; `import * as rich` does not, because a namespace import never names what it pulls in.
 
-Renderables: `Layout`, `Panel`, `Tree`, `Table`/`Column`, `Markdown`, `Syntax`, `JSONRenderable`, `Rule`, `Group`, `Spinner`, `Pretty`, `Traceback`
+An export that genuinely cannot be demonstrated at runtime belongs in `test/coverage/coverage-allowlist.ts` with a written reason. The allowlist is validated in both directions: an entry pointing at no real export fails the suite, and so does an entry for something a demo now covers. You can neither widen the exemption quietly nor leave a stale one lying around.
 
-**Bugs found and fixed via demo integration:**
+Two things to know before adding a demo. `examples/shared/` is a helper module rather than a demo, and references from it count — the verifier walks every file under `examples/`, not just the entry points. And a demo reaches the browser gallery only if it has an `examples/<name>/wire.ts`; `npm run demos:build` fails loudly when a `wire.ts` has no compiled output rather than dropping the demo from the site.
+
+That check is a floor, not a goal. A script that imports thirty exports and prints them in sequence passes it; a small interactive TUI that lets you drive eight of them in a real composition is the better demo, and no test can tell you which one you wrote.
+
+**Bugs found and fixed via demo integration** — the argument for exercising the library this way rather than only in unit tests:
 
 | Bug | Location | Impact | Fix |
 |---|---|---|---|
-| `Live.refresh()` strips all ANSI styles | `src/renderables/live.ts:106` | Every renderable flowing through `Live` (including `Status`, `Progress`, `Spinner`) appeared unstyled | Apply `style.render(text, colorSystem)` instead of bare `s.text` |
-| `Progress.render()` drops column styles | `src/renderables/progress.ts:273` | Progress percentage, timing, and spinner styles were stripped when building table cells | Use `RichText.append(text, style)` to preserve segment styles |
-| `Tree` emits double blank lines | `src/renderables/tree.ts:98,122` | Label rendering and the explicit `Segment.line()` both contributed a newline, producing blank lines between tree entries | Make `RichText` stop emitting a trailing newline so `Tree`'s explicit `yield Segment.line()` remains the only line break |
-| `Spinner` constructor rejects `undefined` name | `src/renderables/spinner.ts:36` | `SpinnerColumn` (used by `Progress`) passed optional `string \| undefined` to required `string` parameter | Make `name` optional, default to `DEFAULT_SPINNER` |
-
-**Not yet exercised — candidates for new demos or demo additions:**
-
-| Module | Notes | Suggested coverage |
-|---|---|---|
-| `Status` | Spinner + message display | Loading indicator for large sessions in claude-sessions |
-| `Prompt` / `IntPrompt` / `FloatPrompt` / `Confirm` | Interactive input via readline | Add a go-to-path prompt in rich-explore; incompatible with raw-mode loops so needs a modal switch |
-| `emoji` | Shortcode substitution (`:smiley:` → 😃) | Enable in markup-rendered block text in claude-sessions |
-| `NullHighlighter` / `RegexHighlighter` | Specialized highlighters not yet exercised | `RegexHighlighter` for search-term highlighting in claude-sessions |
-| `StyleStack` / `Theme` / `DEFAULT_STYLES` | Theme customization | Add a Console style-theme switcher demo |
-| `Console` recording | `record`, `exportText`, `exportHtml`, `saveHtml` | Add an export-to-HTML feature to claude-sessions |
-| Most `Box` variants | `ASCII`, `SQUARE`, `MINIMAL`, `HEAVY`, `DOUBLE`, `MARKDOWN`, etc. | Add a box-style picker to rich-explore's Panel borders |
-| `Measurement.get()` / `measureRenderables` | Explicit width measurement | Used internally; could add a measurement debug overlay |
+| `Live.refresh()` strips all ANSI styles | `Live.refresh` in `src/renderables/live.ts` | Every renderable flowing through `Live` (including `Status`, `Progress`, `Spinner`) appeared unstyled | Apply `style.render(text, colorSystem)` instead of bare `s.text` |
+| `Progress.render()` drops column styles | `Progress.render` in `src/renderables/progress.ts` | Progress percentage, timing, and spinner styles were stripped when building table cells | Use `RichText.append(text, style)` to preserve segment styles |
+| `Tree` emits double blank lines | `Tree.render` in `src/renderables/tree.ts` | Label rendering and the explicit `Segment.line()` both contributed a newline, producing blank lines between tree entries | Make `RichText` stop emitting a trailing newline so `Tree`'s explicit `yield Segment.line()` remains the only line break |
+| `Spinner` constructor rejects `undefined` name | `Spinner` constructor in `src/renderables/spinner.ts` | `SpinnerColumn` (used by `Progress`) passed optional `string \| undefined` to required `string` parameter | Make `name` optional, default to `DEFAULT_SPINNER` |
 
 ## Environment Variables
 
