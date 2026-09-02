@@ -7,13 +7,16 @@
  */
 
 import {
-  // Box variants (all 17)
+  // Box variants
   ASCII, ASCII2, ASCII_DOUBLE_HEAD, SQUARE, SQUARE_DOUBLE_HEAD,
   MINIMAL, MINIMAL_HEAVY_HEAD, MINIMAL_DOUBLE_HEAD,
   SIMPLE, SIMPLE_HEAD, SIMPLE_HEAVY, HORIZONTALS,
-  HEAVY, HEAVY_EDGE, DOUBLE, DOUBLE_EDGE, MARKDOWN,
+  HEAVY, HEAVY_EDGE, HEAVY_HEAD, DOUBLE, DOUBLE_EDGE, MARKDOWN,
+  // Box itself, for a box style the library does not ship
+  Box,
   // Renderables
   Columns, ProgressBar, Progress, Status, Group, Panel, Rule, RichText, Align, Padding,
+  Table, Column, Spinner,
   // Progress columns
   TextColumn, BarColumn, TaskProgressColumn, MofNCompleteColumn,
   SpinnerColumn, TimeElapsedColumn, TimeRemainingColumn,
@@ -22,7 +25,7 @@ import {
   // track
   track,
   // Highlighters
-  NullHighlighter,
+  NullHighlighter, Highlighter, ReprHighlighter, JSONHighlighter,
   // Emoji
   Emoji, NoEmoji, EMOJI, emojiReplace,
   // Style system
@@ -36,7 +39,11 @@ import {
   // Measurement
   Measurement, measureRenderables,
   // Segment / protocol
-  Segment, isRenderable, isMeasurable,
+  Segment, ControlType, isRenderable, isMeasurable,
+  // Segment → ANSI, without a Console
+  renderToString, segmentsToString, segmentToString,
+  // Text spans
+  Span,
   // Spinner data
   SPINNERS, DEFAULT_SPINNER,
   // Markup
@@ -48,8 +55,8 @@ export class CoverageRenderable implements Renderable {
   *render(options: RenderOptions): Iterable<Segment> {
     const items: Renderable[] = [];
 
-    // ── 1. All 17 Box variants ───────────────────────────────────────
-    items.push(new Rule("Box Variants (17)", { style: "bold cyan" }));
+    // ── 1. All 18 Box variants, plus one built here ──────────────────
+    items.push(new Rule("Box Variants (18) + a custom Box", { style: "bold cyan" }));
     const boxStyles = [
       { name: "ASCII", box: ASCII }, { name: "ASCII2", box: ASCII2 },
       { name: "ASCII_DBL", box: ASCII_DOUBLE_HEAD },
@@ -59,8 +66,20 @@ export class CoverageRenderable implements Renderable {
       { name: "SIMPLE", box: SIMPLE }, { name: "SIM_HD", box: SIMPLE_HEAD },
       { name: "SIM_HVY", box: SIMPLE_HEAVY }, { name: "HORIZ", box: HORIZONTALS },
       { name: "HEAVY", box: HEAVY }, { name: "HVY_EDGE", box: HEAVY_EDGE },
+      { name: "HVY_HEAD", box: HEAVY_HEAD },
       { name: "DOUBLE", box: DOUBLE }, { name: "DBL_EDGE", box: DOUBLE_EDGE },
       { name: "MARKDOWN", box: MARKDOWN },
+      // A box style rich-js does not ship: Box takes the 18 characters and
+      // nothing else, so a custom border is data, not a new renderable.
+      {
+        name: "CUSTOM", box: new Box({
+          topLeft: "▛", top: "▀", topDivider: "▀", topRight: "▜",
+          headLeft: "▌", headVertical: "│", headRight: "▐",
+          midLeft: "▌", mid: "─", midVertical: "│", midRight: "▐",
+          bottomLeft: "▙", bottom: "▄", bottomDivider: "▄", bottomRight: "▟",
+          left: "▌", right: "▐", vertical: "│",
+        }),
+      },
     ];
     const boxPanels: Renderable[] = boxStyles.map(({ name, box }) =>
       new Panel(new RichText(name, { end: "" }), { box, title: name, expand: false }),
@@ -81,8 +100,8 @@ export class CoverageRenderable implements Renderable {
       "fig", "grape", "honeydew", "kiwi", "lemon", "mango", "nectarine"];
     items.push(new Columns(fruits.map((f) => new RichText(f, { end: "" })), { expand: true }));
 
-    // ── 4. NullHighlighter ───────────────────────────────────────────
-    items.push(new Rule("NullHighlighter", { style: "bold cyan" }));
+    // ── 4. The Highlighter family ────────────────────────────────────
+    items.push(new Rule("Highlighters", { style: "bold cyan" }));
     const nh = new NullHighlighter();
     const nhText = new RichText("NullHighlighter applied: no styles changed", { end: "" });
     nh.highlight(nhText);
@@ -90,6 +109,23 @@ export class CoverageRenderable implements Renderable {
     // Also exercise Highlighter.call (the convenience method)
     const called = nh.call("NullHighlighter.call() works");
     items.push(called);
+    // The two built-ins that actually add spans.
+    items.push(new ReprHighlighter().call(
+      `ReprHighlighter: {"n": 42, "path": "/tmp/x.log", "at": None, "ok": True}`,
+    ));
+    items.push(new JSONHighlighter().call(
+      `JSONHighlighter: {"id": 7, "tags": ["a", "b"], "live": false, "note": null}`,
+    ));
+    // Highlighter is a base class, not a closed set: subclassing it is how a
+    // consumer adds their own rule. `call` comes from the base for free.
+    class ShoutHighlighter extends Highlighter {
+      highlight(text: RichText): void {
+        for (const match of text.plain.matchAll(/\b[A-Z]{2,}\b/g)) {
+          text.stylize(Style.parse("bold magenta"), match.index, match.index + match[0].length);
+        }
+      }
+    }
+    items.push(new ShoutHighlighter().call("A custom Highlighter SHOUTS the LOUD words."));
 
     // ── 5. Emoji + NoEmoji ───────────────────────────────────────────
     items.push(new Rule("Emoji + NoEmoji", { style: "bold cyan" }));
@@ -246,6 +282,65 @@ export class CoverageRenderable implements Renderable {
     // but we can't display it in our TUI — just prove it doesn't crash.
     // (Would write to stdout briefly, but that's ok for coverage.)
     items.push(new RichText(`track: generator function exists = ${typeof track === "function"}`, { end: "" }));
+
+    // ── 19. Span (what a highlighter actually leaves behind) ─────────
+    items.push(new Rule("Span", { style: "bold cyan" }));
+    // Styling annotates ranges; it never rewrites the text. Reading the
+    // spans back is how you see that — the plain string is untouched.
+    const spanned = new RichText("Spans annotate a range, not the whole string.", { end: "" });
+    new ShoutHighlighter().highlight(spanned);
+    spanned.stylize(Style.parse("bold yellow"), 0, 5);
+    items.push(spanned);
+    items.push(new RichText(
+      `plain text unchanged; ${spanned.spans.length} spans, all Span instances = ` +
+      `${spanned.spans.every((s) => s instanceof Span)}: ` +
+      spanned.spans.map((s) => `[${s.start},${s.end})`).join(" "),
+      { end: "" },
+    ));
+
+    // ── 20. Segment → ANSI without a Console ─────────────────────────
+    items.push(new Rule("renderToString / segmentsToString", { style: "bold cyan" }));
+    const sample = new Panel(new RichText("rendered off-console", { end: "" }), { box: SQUARE });
+    const plain = renderToString(sample, { width: 40, colorSystem: null });
+    items.push(new RichText(
+      `renderToString(width 40, no color): ${plain.split("\n").length} lines, ` +
+      `${plain.length} chars, no ESC = ${!plain.includes("\u001b")}`,
+      { end: "" },
+    ));
+    const colored = renderToString(sample, { width: 40, colorSystem: ColorDepth.TRUECOLOR });
+    items.push(new RichText(`same panel at truecolor: ${colored.length} chars`, { end: "" }));
+    // The two lower-level entry points the above delegates to.
+    const styled = new Segment("segment", Style.parse("bold green"));
+    items.push(new RichText(
+      `segmentToString: ${JSON.stringify(segmentToString(styled, ColorDepth.STANDARD))}`,
+      { end: "" },
+    ));
+    items.push(new RichText(
+      `segmentsToString(2 segs, no color): ` +
+      JSON.stringify(segmentsToString([styled, new Segment("!")], null)),
+      { end: "" },
+    ));
+    // A control segment carries no text — ControlType names what it does.
+    const bell = new Segment("", undefined, [[ControlType.BELL]]);
+    items.push(new RichText(
+      `control segment: type=${ControlType.BELL} text=${JSON.stringify(bell.text)} ` +
+      `isControl=${bell.isControl}`,
+      { end: "" },
+    ));
+
+    // ── 21. Spinner (a single frame, no Live) ────────────────────────
+    items.push(new Rule("Spinner", { style: "bold cyan" }));
+    items.push(new Spinner("dots", "spinning without a Live"));
+
+    // ── 22. Table built from explicit Columns ────────────────────────
+    items.push(new Rule("Table + Column", { style: "bold cyan" }));
+    const table = new Table({ box: HEAVY_HEAD, title: "Columns configured directly" });
+    table.columns.push(new Column({ header: "left", justify: "left", minWidth: 10 }));
+    table.columns.push(new Column({ header: "centered", justify: "center", minWidth: 12 }));
+    table.columns.push(new Column({ header: "right", justify: "right", minWidth: 10 }));
+    table.addRow("alpha", "beta", "gamma");
+    table.addRow("delta", "epsilon", "zeta");
+    items.push(table);
 
     // ── Render ───────────────────────────────────────────────────────
     yield* new Group(...items).render(options);

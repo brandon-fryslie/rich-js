@@ -295,15 +295,13 @@ function isReservedTagName(name: string): boolean {
   }
 }
 
+// [LAW:no-shared-mutable-globals] The process-wide default tag set, which
+// `renderMarkup` falls back to when a caller passes no registry. It has one
+// owner and one explicit API — `MarkupRegistry`'s own methods. There is
+// deliberately no free-function façade over it: `registerMarkupTag(name, fn)`
+// forwarding to `.register(name, fn)` would be a second way to say one thing,
+// and the two would document the same invariants in two places.
 export const globalMarkupRegistry = new MarkupRegistry();
-
-export function registerMarkupTag(name: string, handler: MarkupTagHandler): void {
-  globalMarkupRegistry.register(name, handler);
-}
-
-export function unregisterMarkupTag(name: string): void {
-  globalMarkupRegistry.unregister(name);
-}
 
 // --- Plugin-aware tag parsing ---
 

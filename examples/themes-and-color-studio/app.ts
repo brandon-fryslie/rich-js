@@ -111,10 +111,11 @@ import {
 
 // ---------------------------------------------------------------------------
 // Demo entry — runDemo(host) wires the same section tour against any
-// TerminalHost. Recording is opt-in via the `record` option (node bootstrap
-// sets it from EXPORT_HTML; the browser bootstrap doesn't pass it).
+// TerminalHost. Recording is opt-in via the `record` option (the node
+// bootstrap sets it when an export is requested; the browser bootstrap
+// doesn't pass it — which env vars request one is the bootstrap's business).
 // [LAW:dataflow-not-control-flow] Same render pipeline runs either way;
-// recording only diverts the byte stream into a buffer for `saveHtml`.
+// recording only diverts the byte stream into a buffer to export from.
 // ---------------------------------------------------------------------------
 
 export interface DemoHandle {

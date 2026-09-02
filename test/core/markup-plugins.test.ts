@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   MarkupRegistry,
   renderMarkup,
-  registerMarkupTag,
-  unregisterMarkupTag,
   globalMarkupRegistry,
   MarkupError,
 } from "../../src/core/markup.js";
@@ -93,13 +91,13 @@ describe("MarkupRegistry", () => {
     expect(globalMarkupRegistry.has("scoped")).toBe(false);
   });
 
-  it("global registerMarkupTag / unregisterMarkupTag round-trip", () => {
-    registerMarkupTag("greet", () => new RichText("HI", { end: "" }));
+  it("renderMarkup falls back to the global registry when given none", () => {
+    globalMarkupRegistry.register("greet", () => new RichText("HI", { end: "" }));
     try {
       const out = renderMarkup("[greet]ignored[/greet]");
       expect(renderToString(out, { colorSystem: null })).toBe("HI");
     } finally {
-      unregisterMarkupTag("greet");
+      globalMarkupRegistry.unregister("greet");
     }
     expect(globalMarkupRegistry.has("greet")).toBe(false);
   });

@@ -61,6 +61,7 @@ import {
 import type { TerminalTheme } from "../../src/core/color.js";
 import {
   richTextFuncs,
+  createRichTextEngine,
   paletteFuncs,
   colorFuncs,
   renderTemplate,
@@ -114,6 +115,13 @@ function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
 const gruvboxEngine    = makeEngine(GRUVBOX);
 const tokyoEngine      = makeEngine(TOKYO_NIGHT);
 const gruvboxCalcEngine = makeCalculatorEngine(GRUVBOX);
+
+// The third shape, and the one you reach for first: `createRichTextEngine()`
+// is `makeEngine` minus the palette — `richTextFuncs()` wired to RichText in a
+// single call, no `createEngine` boilerplate and no theme to thread. It paints
+// and it does colour math; what it cannot do is resolve a palette variable,
+// because `color` lives in `paletteFuncs`. Colours arrive as literals instead.
+const themelessEngine = createRichTextEngine();
 
 const GALLERY_THEMES: [string, Engine<RichText>][] = [
   ["GRUVBOX",          makeEngine(GRUVBOX)],
@@ -521,10 +529,19 @@ const READABLE_TMPL =
 {{- $raw := "#4b6a8a" -}}
 {{ "  raw #4b6a8a on surface  " | bg $bg | fg $raw }}  {{ "  readableOn → clears AA  " | bg $bg | fg (readableOn $raw $bg) }}`;
 
+// Same colour math, same sinks, no palette: every colour is a literal, and
+// `contrastOn` still picks the ink. This is what `createRichTextEngine()` gets
+// you in one call.
+const NO_PALETTE_TMPL =
+`{{- $base := "#8f5fd0" -}}
+{{ "  base  " | bg $base | fg (contrastOn $base) }}{{ "  darken 3  " | bg (darken $base 3) | fg (contrastOn (darken $base 3)) }}{{ "  hue +120  " | bg (shiftHue $base 120) | fg (contrastOn (shiftHue $base 120)) }}`;
+
 const secColorValues = makeSection("Colour values — compute · name · paint", [
   makeDemoRow("no sinks registered → colours print as hex", CALC_TMPL, gruvboxCalcEngine),
   makeDemoRow("same expressions, painted (contrastOn ink)", SWATCH_TMPL, gruvboxEngine),
   makeDemoRow("contrastOn vs readableOn",                   READABLE_TMPL, gruvboxEngine),
+  makeDemoRow("createRichTextEngine() — no palette, literals only",
+                                                            NO_PALETTE_TMPL, themelessEngine),
 ]);
 
 // ─── Section list ──────────────────────────────────────────────────────────
