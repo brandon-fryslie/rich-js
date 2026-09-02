@@ -20,7 +20,7 @@
  *
  * Width invariant: measure() always returns maxLabelLen(options) + 4
  * regardless of filter state — the query is right-clipped, never wider
- * than the header. See spec/widgets.md → Dropdown → Filtering.
+ * than the header. See docs/widgets.md → Dropdown.
  */
 
 import { observable, action } from "mobx";
