@@ -4,15 +4,22 @@
     {
       "version": "pr-71",
       "ref": "refs/pull/71/merge",
-      "sha": "50c8e38c61ffba1797da07d79a8d86f0857ad1bb",
-      "timestamp": "2026-09-02T09:12:05.642Z",
+      "sha": "ee137ee303482d74a4b37943318b991b2dc82c5f",
+      "timestamp": "2026-09-02T09:21:03.275Z",
       "commits": [
         {
-          "sha": "50c8e38c61ffba1797da07d79a8d86f0857ad1bb",
+          "sha": "ee137ee303482d74a4b37943318b991b2dc82c5f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T03:11:33-06:00",
-          "message": "Merge cb14939a462da02be1425fe62958d384dde139c7 into 16479a809ff04909ffac8c5778de52e41dd6ee15\n"
+          "timestamp": "2026-09-02T09:20:32Z",
+          "message": "Merge 97f401000045240e300e48946807ea5b354cd823 into 16479a809ff04909ffac8c5778de52e41dd6ee15\n"
+        },
+        {
+          "sha": "97f401000045240e300e48946807ea5b354cd823",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T03:20:22-06:00",
+          "message": "docs(widgets): delete the cross-reference this move invalidated\n\n`XtermTerminal`'s JSDoc pointed at `NodeReadable`/`NodeWritable` \"above\" as\na second example of declaring a dependency by shape. This PR moved both\ninterfaces to `src/node/terminal-host.ts`, so \"above\" points at nothing.\n\nDeleted rather than re-pointed. Re-pointing would swap a stale intra-file\nreference for a cross-file one across the package seam, where the next\nagent editing the node adapter has no reason to grep this file — the same\nrot with a longer fuse. The surrounding paragraph already states the whole\nrationale in full; \"same idea as X\" only pointed at a second instance of a\nrule the sentence had just given, so deleting it costs a reader nothing and\nremoves one more claim that has to stay true.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "cb14939a462da02be1425fe62958d384dde139c7",
