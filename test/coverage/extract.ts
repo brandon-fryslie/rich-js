@@ -338,14 +338,21 @@ export function collectReferencedOrigins(
  *
  * This is the type-world analogue of demo coverage, and it answers the
  * question demo coverage cannot ask of a type-only export. Seed with the
- * value exports a demo actually names: a type reachable from one of them
- * is a type the demo's own compilation depends on, so changing it breaks
- * `examples/` and `assertProgramClean` reports it. A public type reachable
- * from no demonstrated value is inert — nothing runnable can observe a
- * change to it.
+ * value exports a demo actually names: a type reached from one of them is
+ * part of the public type surface of something the demo runs, so a
+ * consumer who has that value in hand can reach the type. A public type
+ * reachable from no demonstrated value is inert — nothing runnable holds
+ * anything that names it.
+ *
+ * That is a floor, and deliberately weaker than "the demo would break if
+ * this type changed". Establishing *that* would need the members a demo
+ * actually calls, which is call-graph analysis from `examples/` into
+ * `src/`; reachability answers "can a user get here", not "did they".
  *
  * The walk collects identifiers in type positions only, so a method body
- * contributes its annotations and nothing else.
+ * contributes its annotations and nothing else, and it skips `private`
+ * members — a type reachable only through one is on no surface a consumer
+ * can touch, so counting it would be the floor lying.
  */
 export function collectTypeClosure(
   rows: readonly PublicExport[],
@@ -390,12 +397,25 @@ function visitTypePositions(root: ts.Node, onName: (id: ts.Identifier) => void):
     if (ts.isIdentifier(cur)) onName(cur);
   };
   const visit = (node: ts.Node): void => {
+    if (isPrivateMember(node)) return;
     if (ts.isTypeReferenceNode(node)) leftmost(node.typeName);
     if (ts.isExpressionWithTypeArguments(node)) leftmost(node.expression);
     if (ts.isTypeQueryNode(node)) leftmost(node.exprName);
     ts.forEachChild(node, visit);
   };
   visit(root);
+}
+
+/** A class member no consumer can reach: `private x` or `#x`. */
+function isPrivateMember(node: ts.Node): boolean {
+  if (!ts.isClassElement(node)) return false;
+  if (node.name && ts.isPrivateIdentifier(node.name)) return true;
+  // `ClassElement` covers members that cannot carry modifiers at all
+  // (a stray `;`), so narrow rather than cast.
+  if (!ts.canHaveModifiers(node)) return false;
+  return (ts.getModifiers(node) ?? []).some(
+    (m) => m.kind === ts.SyntaxKind.PrivateKeyword,
+  );
 }
 
 /**
@@ -441,9 +461,16 @@ function visitImports(sf: ts.SourceFile, onName: (id: ts.Identifier) => void): v
   for (const stmt of sf.statements) {
     if (!ts.isImportDeclaration(stmt) || !stmt.importClause) continue;
     const ic = stmt.importClause;
+    // A type-only import is erased before the demo runs, so it binds
+    // nothing at runtime and demonstrates nothing. The checker resolves
+    // `import type { SomeClass }` to the same `SymbolFlags.Value` symbol
+    // as a value import, so without this the erased form would satisfy a
+    // floor that asks whether a demo can name the thing it runs.
+    if (ic.isTypeOnly) continue;
     if (ic.name) onName(ic.name);
     if (ic.namedBindings && ts.isNamedImports(ic.namedBindings)) {
       for (const el of ic.namedBindings.elements) {
+        if (el.isTypeOnly) continue;
         // `el.name` is the *local* binding (e.g. `y` in `{ x as y }`);
         // the local binding's symbol still alias-resolves to `x`'s origin.
         onName(el.name);
