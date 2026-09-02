@@ -133,6 +133,20 @@ describe("browserSafetyViolations", () => {
     expect(scan(`export type { Stats } from "node:fs";`)).toEqual([]);
   });
 
+  it("ignores per-specifier type-only bindings, which erase the statement too", () => {
+    // The form `isolatedModules` encourages: the declaration-level flag stays
+    // false, so only the elements say the statement is erased.
+    expect(scan(`import { type Stats } from "node:fs";`)).toEqual([]);
+    expect(scan(`export { type Stats } from "node:fs";`)).toEqual([]);
+    // One surviving binding keeps the whole statement, braces notwithstanding.
+    expect(scan(`import { type Stats, readFileSync } from "node:fs";`)[0]).toMatchObject({
+      specifier: "node:fs",
+    });
+    expect(scan(`import fs, { type Stats } from "node:fs";`)[0]).toMatchObject({
+      specifier: "node:fs",
+    });
+  });
+
   it("catches a module-scope read of an ambient node global", () => {
     expect(scan(`export const width = process.stdout.columns;`)).toEqual([
       { rule: "ambient-global", file: "src/fixture.ts", line: 1, global: "process" },
@@ -152,6 +166,18 @@ describe("browserSafetyViolations", () => {
     });
   });
 
+  it("catches a class extends clause, which evaluates to the superclass on load", () => {
+    // `ts.isTypeNode` calls the extends expression a type node; it is not.
+    expect(scan(`export class Host extends Buffer {}`)[0]).toMatchObject({ global: "Buffer" });
+    expect(scan(`interface I extends Buffer { x: 1 }`)).toEqual([]);
+    expect(scan(`export class Host implements Buffer {}`)).toEqual([]);
+  });
+
+  it("catches a read of the node-only `global`", () => {
+    expect(scan(`export const g = global.setTimeout;`)[0]).toMatchObject({ global: "global" });
+    expect(scan(`export const g = globalThis.setTimeout;`)).toEqual([]);
+  });
+
   it("catches an immediately-invoked function, which defers nothing", () => {
     expect(scan(`export const w = (() => process.stdout.columns)();`)[0]).toMatchObject({
       global: "process",
@@ -162,6 +188,11 @@ describe("browserSafetyViolations", () => {
     expect(scan(`export const w = (function (o = process.stdout) { return o; })();`)[0]).toMatchObject(
       { global: "process" },
     );
+    // A constructor is never the callee — its class is.
+    expect(
+      scan(`export const h = new (class { constructor(o = process.stdout) { void o; } })();`)[0],
+    ).toMatchObject({ global: "process" });
+    expect(scan(`class C { constructor(o = process.stdout) { void o; } }`)).toEqual([]);
   });
 
   it("allows a parameter default, which evaluates only on a call that omits it", () => {
@@ -173,6 +204,15 @@ describe("browserSafetyViolations", () => {
     expect(scan(`export const o = { process };`)[0]).toMatchObject({ global: "process" });
   });
 
+  it("reads a local export specifier and does not read a re-exported one", () => {
+    // Without `from`, both spellings reference the local binding; with it,
+    // the same two names index the other module's export table.
+    expect(scan(`export { process };`)[0]).toMatchObject({ global: "process" });
+    expect(scan(`export { process as p };`)[0]).toMatchObject({ global: "process" });
+    expect(scan(`export { process } from "./m.js";`)).toEqual([]);
+    expect(scan(`export { process as p } from "./m.js";`)).toEqual([]);
+  });
+
   it("does not mistake a name for a read", () => {
     expect(scan(`export const o = { process: 1, Buffer: 2 };`)).toEqual([]);
     expect(scan(`export const p = self.process;`)).toEqual([]);
@@ -180,6 +220,7 @@ describe("browserSafetyViolations", () => {
     expect(scan(`export let out: Buffer;`)).toEqual([]);
     expect(scan(`export type T = typeof process;`)).toEqual([]);
     expect(scan(`const { process: local } = config; export const e = local;`)).toEqual([]);
+    expect(scan(`import { process as p } from "./pipeline.js"; export const y = p;`)).toEqual([]);
   });
 
   it("does not mistake a module's own binding for the ambient global", () => {
@@ -191,6 +232,23 @@ describe("browserSafetyViolations", () => {
     );
     expect(scan(`class Buffer {}\nexport const b = new Buffer();`)).toEqual([]);
     expect(scan(`const { process } = deps;\nexport const y = process;`)).toEqual([]);
+  });
+
+  it("does not let a type-space binding shadow a runtime global", () => {
+    // The false negative a shadowing rule buys by accident: an interface
+    // shadows the type and leaves the value exactly where it was.
+    expect(scan(`interface Buffer { magic: true }\nexport const b = Buffer.alloc(0);`)[0]).toMatchObject(
+      { global: "Buffer" },
+    );
+    expect(scan(`type Buffer = 1;\nexport const b = Buffer.alloc(0);`)[0]).toMatchObject({
+      global: "Buffer",
+    });
+    expect(
+      scan(`import type { process } from "./x.js";\nexport const y = process.env;`)[0],
+    ).toMatchObject({ global: "process" });
+    expect(
+      scan(`import { type process } from "./x.js";\nexport const y = process.env;`)[0],
+    ).toMatchObject({ global: "process" });
   });
 
   it("does not exempt a module-scope typeof guard", () => {

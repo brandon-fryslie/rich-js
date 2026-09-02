@@ -43,8 +43,12 @@ function isNodeBuiltin(specifier: string): boolean {
   return specifier.startsWith("node:") || NODE_BUILTINS.has(specifier);
 }
 
-/** Globals a browser does not provide. */
-const AMBIENT_GLOBALS = ["process", "Buffer"] as const;
+/**
+ * Globals a browser does not provide. `globalThis` is standard and stays
+ * off; the CommonJS names (`require`, `__dirname`, …) stay off because this
+ * package is ESM, where they already throw under ordinary Node testing.
+ */
+const AMBIENT_GLOBALS = ["process", "Buffer", "global"] as const;
 export type AmbientGlobal = (typeof AMBIENT_GLOBALS)[number];
 
 /**
@@ -104,7 +108,7 @@ export function describeViolation(violation: SeamViolation, via: readonly string
   const offence =
     violation.rule === "node-import"
       ? `imports ${JSON.stringify(violation.specifier)}`
-      : `reads the ambient \`${violation.global}\` global at module scope`;
+      : `reads the ambient \`${violation.global}\` at module scope`;
   return (
     `  ${violation.file}:${violation.line} — ${offence}\n` +
     `      reached by: ${via.join(" → ")}`
@@ -126,7 +130,10 @@ function isAmbientGlobal(name: string): name is AmbientGlobal {
  *     parameter defaults, which are one rule and not two, so an
  *     immediately-invoked function correctly defers neither;
  *   - a type node, which is erased before the module ever runs, so
- *     `let out: Buffer` names nothing at runtime.
+ *     `let out: Buffer` names nothing at runtime. A class `extends` clause
+ *     is the exception TypeScript's own classification hides: `isTypeNode`
+ *     calls it a type node, and it evaluates to the superclass the instant
+ *     the declaration runs.
  *
  * Class field initializers are pruned by neither: a field initializer runs
  * on construction, which a browser bundle reaches as soon as anything
@@ -139,7 +146,10 @@ function isAmbientGlobal(name: string): name is AmbientGlobal {
  */
 export function visitModuleScopeReads(root: ts.Node, onRead: (id: ts.Identifier) => void): void {
   const visit = (node: ts.Node): void => {
-    if (ts.isTypeNode(node)) return;
+    if (ts.isTypeNode(node)) {
+      if (ts.isExpressionWithTypeArguments(node) && isClassExtends(node)) visit(node.expression);
+      return;
+    }
     if (ts.isIdentifier(node) && !isNameSlot(node)) onRead(node);
     ts.forEachChild(node, (child) => {
       if (isDeferredUntilCall(node, child)) return;
@@ -162,9 +172,23 @@ function isDeferredUntilCall(parent: ts.Node, child: ts.Node): boolean {
   return ("body" in parent && parent.body === child) || ts.isParameter(child);
 }
 
+/**
+ * Whether a class `extends` clause — as opposed to `implements`, or an
+ * interface's `extends`, which really are erased.
+ */
+function isClassExtends(node: ts.ExpressionWithTypeArguments): boolean {
+  const clause = node.parent;
+  return (
+    ts.isHeritageClause(clause) &&
+    clause.token === ts.SyntaxKind.ExtendsKeyword &&
+    ts.isClassLike(clause.parent)
+  );
+}
+
 /** Whether `fn` is the callee of the call it sits in, parentheses aside. */
 function isImmediatelyInvoked(fn: ts.Node): boolean {
-  let callee: ts.Node = fn;
+  // A constructor is never called; its class is.
+  let callee: ts.Node = ts.isConstructorDeclaration(fn) ? fn.parent : fn;
   while (ts.isParenthesizedExpression(callee.parent)) callee = callee.parent;
   const call = callee.parent;
   return (
@@ -184,9 +208,23 @@ function isNameSlot(id: ts.Identifier): boolean {
   // `{ process }` is the one `.name` slot that is a read, not a binding.
   if (ts.isShorthandPropertyAssignment(parent)) return false;
   if (ts.isPropertyAccessExpression(parent)) return parent.name === id;
-  // `const { process: local } = config` names a property of `config`.
-  if (ts.isBindingElement(parent) && parent.propertyName === id) return true;
+  // An export specifier's local reference is `propertyName ?? name` — and it
+  // is local only without a `from` clause. `export { process }` and
+  // `export { process as p }` read the binding; add `from "./m.js"` and the
+  // same two names index the other module's exports instead.
+  if (ts.isExportSpecifier(parent)) {
+    return isReExport(parent) || (parent.propertyName ?? parent.name) !== id;
+  }
+  // Everywhere else a `propertyName` names a slot in someone else's table —
+  // an object's property in `const { process: local } = config`, another
+  // module's export in `import { process as p } from …` — never a binding
+  // this file makes.
+  if ((parent as Partial<ts.BindingElement>).propertyName === id) return true;
   return (parent as Partial<ts.NamedDeclaration>).name === id;
+}
+
+function isReExport(specifier: ts.ExportSpecifier): boolean {
+  return specifier.parent.parent.moduleSpecifier !== undefined;
 }
 
 /**
@@ -197,10 +235,16 @@ function isNameSlot(id: ts.Identifier): boolean {
  * alone, which is exactly the scope the reads being checked live in — so a
  * binding inside a module-scope *block* still reports. That is the safe
  * direction, and the failure names the file and the line.
+ *
+ * Only bindings that exist at runtime count. `interface Buffer {}` shadows
+ * the type and leaves the value where it was, so counting it would suppress
+ * a real violation — the direction this file calls worse than a false
+ * positive, and the one a shadowing rule is most likely to buy by accident.
  */
 function moduleScopeBindings(sf: ts.SourceFile): Set<string> {
   const names = new Set<string>();
   for (const statement of sf.statements) {
+    if (ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement)) continue;
     if (ts.isVariableStatement(statement)) {
       for (const declaration of statement.declarationList.declarations) {
         collectBindingNames(declaration.name, names);
@@ -209,9 +253,9 @@ function moduleScopeBindings(sf: ts.SourceFile): Set<string> {
     if (ts.isImportDeclaration(statement)) {
       for (const binding of importBindings(statement.importClause)) names.add(binding.text);
     }
-    // Functions, classes, enums, namespaces and type aliases all carry
-    // their own identifier in `.name` — the same slot question `isNameSlot`
-    // asks, for the same reason.
+    // Functions, classes, enums and namespaces all carry their own
+    // identifier in `.name` — the same slot question `isNameSlot` asks, for
+    // the same reason.
     const declared = (statement as Partial<ts.NamedDeclaration>).name;
     if (declared !== undefined && ts.isIdentifier(declared)) names.add(declared.text);
   }
@@ -229,14 +273,15 @@ function collectBindingNames(name: ts.BindingName, into: Set<string>): void {
   }
 }
 
+/** The identifiers an import binds at runtime; an erased one binds none. */
 function importBindings(clause: ts.ImportClause | undefined): ts.Identifier[] {
-  if (clause === undefined) return [];
+  if (clause === undefined || clause.isTypeOnly) return [];
   const named = clause.namedBindings;
   const fromNamed =
     named === undefined
       ? []
       : ts.isNamespaceImport(named)
         ? [named.name]
-        : named.elements.map((element) => element.name);
+        : named.elements.filter((element) => !element.isTypeOnly).map((element) => element.name);
   return clause.name === undefined ? fromNamed : [clause.name, ...fromNamed];
 }

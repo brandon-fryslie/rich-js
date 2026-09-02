@@ -48,10 +48,10 @@ export interface ReachedModule {
 export function runtimeModuleSpecifiers(sf: ts.SourceFile): ts.StringLiteral[] {
   const out: ts.StringLiteral[] = [];
   const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node) && !node.importClause?.isTypeOnly) {
-      pushLiteral(out, node.moduleSpecifier);
-    }
-    if (ts.isExportDeclaration(node) && !node.isTypeOnly) {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      survivesErasure(node)
+    ) {
       pushLiteral(out, node.moduleSpecifier);
     }
     if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
@@ -61,6 +61,38 @@ export function runtimeModuleSpecifiers(sf: ts.SourceFile): ts.StringLiteral[] {
   };
   visit(sf);
   return out;
+}
+
+/**
+ * Whether the statement still names a module once the types are stripped.
+ *
+ * Two spellings erase it, and the declaration-level flag only reports the
+ * first: `import type { … }`, and the per-specifier form `import { type X }`
+ * that `isolatedModules` encourages. A default or namespace binding survives
+ * whatever the braces say, and a side-effect import has no bindings to erase.
+ */
+function survivesErasure(node: ts.ImportDeclaration | ts.ExportDeclaration): boolean {
+  const typeOnly = ts.isExportDeclaration(node)
+    ? node.isTypeOnly
+    : (node.importClause?.isTypeOnly ?? false);
+  if (typeOnly) return false;
+  const elements = erasableElements(node);
+  return elements === undefined || elements.some((element) => !element.isTypeOnly);
+}
+
+/** The named bindings whose own `type` modifiers decide the statement's fate. */
+function erasableElements(
+  node: ts.ImportDeclaration | ts.ExportDeclaration,
+): readonly (ts.ImportSpecifier | ts.ExportSpecifier)[] | undefined {
+  if (ts.isExportDeclaration(node)) {
+    const clause = node.exportClause;
+    return clause !== undefined && ts.isNamedExports(clause) ? clause.elements : undefined;
+  }
+  const clause = node.importClause;
+  // A default binding survives regardless of what the braces say.
+  if (clause === undefined || clause.name !== undefined) return undefined;
+  const named = clause.namedBindings;
+  return named !== undefined && ts.isNamedImports(named) ? named.elements : undefined;
 }
 
 function pushLiteral(out: ts.StringLiteral[], node: ts.Node | undefined): void {
