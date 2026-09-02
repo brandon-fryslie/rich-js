@@ -4,15 +4,22 @@
     {
       "version": "pr-73",
       "ref": "refs/pull/73/merge",
-      "sha": "c5edd37df58e72b42d46fa121034b6d352991441",
-      "timestamp": "2026-09-02T13:06:22.357Z",
+      "sha": "8f0dfab2339b9cfdf2d9495fc8a727250849a585",
+      "timestamp": "2026-09-02T13:19:47.959Z",
       "commits": [
         {
-          "sha": "c5edd37df58e72b42d46fa121034b6d352991441",
+          "sha": "8f0dfab2339b9cfdf2d9495fc8a727250849a585",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T13:05:51Z",
-          "message": "Merge ecf7619163f938028109368d91185f4c7ce4d48b into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+          "timestamp": "2026-09-02T13:19:16Z",
+          "message": "Merge 6b3ccb64cb22d4fef78d2297b38047bf006b43ed into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+        },
+        {
+          "sha": "6b3ccb64cb22d4fef78d2297b38047bf006b43ed",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T07:19:06-06:00",
+          "message": "docs: leave the ambient-globals list one home\n\nLast round I stopped `browser-safe.ts`'s header from enumerating\nAMBIENT_GLOBALS, on the grounds that a list written twice is a list that\nwill disagree with itself — and in the same commit edited a sentence in\nCLAUDE.md that was enumerating it, without noticing it was the same shape.\nThat sentence now names the constant too.\n\nFourth instance of one defect in this PR: prose beside code, made stale by\nthe commit that changed the code. The general form, which is what the next\nsweep should look for: when prose enumerates something the code also\nenumerates, point at the code's copy instead. Grepping for the changed\nsymbol never finds these — none of the four named one.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "ecf7619163f938028109368d91185f4c7ce4d48b",
