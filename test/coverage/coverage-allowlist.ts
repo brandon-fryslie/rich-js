@@ -1,188 +1,176 @@
-// [LAW:no-silent-fallbacks] The allowlist is the only place a public
-// export may be absent from `examples/` without breaking the build. Every
-// entry is explicit and justified: either *burndown* (a flagship demo
-// will cover it; tagged with the flagship that owns the coverage) or
-// *permanent* (genuinely undemonstrable in a runtime demo; justified).
+// [LAW:no-silent-failure] The allowlist is the only place a public export
+// may be absent from `examples/` without breaking the build. Every entry is
+// explicit and carries a written reason for the absence.
 //
 // [LAW:one-source-of-truth] Keys are canonical exposed names — see
-// `canonicalNameFor()` in `extract.ts`. The verifier additionally
-// rejects (a) entries pointing at no real export (dead), and (b)
-// entries already covered by a demo (redundant) — both shapes of
-// drift the allowlist itself would otherwise hide.
+// `canonicalNameFor()` in `extract.ts`. The verifier additionally rejects
+// (a) entries pointing at no real export (dead), and (b) entries already
+// covered by a demo (redundant) — both shapes of drift the allowlist
+// itself would otherwise hide.
 //
-// Until the flagship demos land (epic rich-demos-l2x.3 through .7), this
-// file is mostly burndown debt. Each flagship-build ticket removes its
-// own entries as it lands real coverage. Final state: only `permanent`
-// entries remain, and they are rare.
+// This file is burndown debt with a justification field, not a mute button.
+// The intended direction is emptier: reach for an entry only when the export
+// genuinely cannot appear in a runtime demo, and otherwise reference it from
+// a demo under `examples/`.
+
+/** Why one public export is absent from `examples/` without failing the build. */
+export interface AllowlistEntry {
+  readonly reason: string;
+}
 
 /**
- * The five flagship demos described in the epic. Adding a new value
- * here is a deliberate scope change and requires updating the epic.
+ * Shared by every entry whose absence has not been investigated
+ * individually. These predate any per-export triage: each one is a public
+ * export that no file under `examples/` happens to name, and nobody has yet
+ * decided whether the fix is a demo reference or a permanent exemption.
  */
-export type Flagship =
-  | "themes-and-color-studio"
-  | "renderables-gallery"
-  | "widgets-playground"
-  | "markup-and-text-lab"
-  | "live-progress-console";
-
-export type AllowlistEntry =
-  | { readonly kind: "burndown"; readonly flagship: Flagship; readonly note?: string }
-  | { readonly kind: "permanent"; readonly reason: string };
-
-const burndown = (flagship: Flagship, note?: string): AllowlistEntry =>
-  note === undefined ? { kind: "burndown", flagship } : { kind: "burndown", flagship, note };
+const untriaged: AllowlistEntry = {
+  reason: "No demo references this export; the absence has not been triaged.",
+};
 
 /**
  * Keyed by canonical exposed name (see `extract.ts: canonicalNameFor`).
  *
- * Order: grouped by flagship (themes-and-color-studio,
- * renderables-gallery, widgets-playground, markup-and-text-lab,
- * live-progress-console), alphabetical within each group. The
- * flagship grouping makes the burn-down ergonomic — when ticket
- * rich-demos-l2x.N lands its flagship's demos, the diff to this file
- * is a single contiguous block deletion, not entries scattered across
- * the file.
+ * Grouped by the subsystem the export is *declared* in, alphabetical within
+ * each group. Declaration site is what the verifier keys coverage on, so
+ * grouping by it is the one ordering that matches how entries actually clear:
+ * a demo that exercises a subsystem burns down a contiguous block here.
  */
 export const ALLOWLIST: Readonly<Record<string, AllowlistEntry>> = {
-  // -- Themes & Color Studio ----------------------------------------------
-  // All entries burned down by examples/themes-and-color-studio
-  // (rich-demos-l2x.3). [LAW:no-silent-fallbacks] — removing an entry
-  // without a real demo reference fails the verifier loudly.
+  // -- from src/core/ (core primitives) -----------------------------
+  asCodeUnit: untriaged,
+  Box: untriaged,
+  BoxChars: untriaged,
+  CapsuleJoinerOptions: untriaged,
+  CellCol: untriaged,
+  cellColToCodeUnitOffset: untriaged,
+  cellFitFrom: untriaged,
+  CodePoint: untriaged,
+  CodeUnit: untriaged,
+  ConsoleOptions: untriaged,
+  ConsoleSink: {
+    reason:
+      "Structural type for Console's `file:` option. Demos depend on the contract " +
+      "structurally via `new Console({ file: hostStream(host) })`, which names no type.",
+  },
+  ControlCode: untriaged,
+  ControlType: untriaged,
+  globalMarkupRegistry: untriaged,
+  GradientJoinerOptions: untriaged,
+  HEAVY_HEAD: untriaged,
+  Highlighter: untriaged,
+  Joiner: untriaged,
+  JSONHighlighter: untriaged,
+  MarkupTagContext: untriaged,
+  MarkupTagHandler: untriaged,
+  Measurable: untriaged,
+  nextCodePoint: untriaged,
+  PlainJoinerOptions: untriaged,
+  PowerlineJoinerOptions: untriaged,
+  prevCodePoint: untriaged,
+  PrintOptions: untriaged,
+  registerMarkupTag: untriaged,
+  RenderMarkupOptions: untriaged,
+  renderToString: untriaged,
+  RenderToStringOptions: untriaged,
+  ReprHighlighter: untriaged,
+  RichTextOptions: untriaged,
+  RowLevel: untriaged,
+  segmentsToString: untriaged,
+  segmentToString: untriaged,
+  Span: untriaged,
+  SpinnerData: untriaged,
+  StyledRenderable: untriaged,
+  StyleOptions: untriaged,
+  SubstituteOptions: untriaged,
+  Tag: untriaged,
+  unregisterMarkupTag: untriaged,
 
-  // -- Renderables Gallery ------------------------------------------------
-  Alignment: burndown("renderables-gallery"),
-  Box: burndown("renderables-gallery"),
-  BoxChars: burndown("renderables-gallery"),
-  Column: burndown("renderables-gallery"),
-  ColumnOptions: burndown("renderables-gallery"),
-  ColumnsOptions: burndown("renderables-gallery"),
-  HEAVY_HEAD: burndown("renderables-gallery"),
-  JSONOptions: burndown("renderables-gallery"),
-  LayoutOptions: burndown("renderables-gallery"),
-  MarkdownOptions: burndown("renderables-gallery"),
-  Measurable: burndown("renderables-gallery"),
-  PaddingDimensions: burndown("renderables-gallery"),
-  PanelOptions: burndown("renderables-gallery"),
-  PrettyOptions: burndown("renderables-gallery"),
-  // Prompt input capability + options type — exposed by rich-demo-site-pek.3.4
-  // when readline left the main barrel. The Prompt classes themselves are
-  // exercised by examples/rich-explore/renderers/coverage.ts (typeof check);
-  // the companion types are advanced API for callers wiring custom input
-  // sources and will be exercised in a renderables-gallery prompt scenario.
-  PromptInput: burndown("renderables-gallery"),
-  PromptOptions: burndown("renderables-gallery"),
-  RowLevel: burndown("renderables-gallery"),
-  RuleAlign: burndown("renderables-gallery"),
-  RuleOptions: burndown("renderables-gallery"),
-  SubstituteOptions: burndown("renderables-gallery"),
-  SyntaxOptions: burndown("renderables-gallery"),
-  TableOptions: burndown("renderables-gallery"),
-  TreeOptions: burndown("renderables-gallery"),
-  // node:readline-backed PromptInput implementation. Demonstrable only by a
-  // demo that actually accepts interactive input via readline, which the
-  // current TUI demos (raw-mode stdin) do not — a gallery scenario is the
-  // natural home. Sorts at end of the block per ASCII (lowercase > upper).
-  nodeAsk: burndown("renderables-gallery"),
+  // -- from src/node/ (the Node capability seam) --------------------
+  nodeAsk: {
+    reason:
+      "readline-backed PromptInput implementation. Demonstrable only by a demo " +
+      "that accepts interactive line input; every TUI demo here reads raw-mode stdin.",
+  },
+  saveText: {
+    reason:
+      "Node-only plain-text exporter. Its HTML sibling saveHtml is covered by " +
+      "examples/themes-and-color-studio/index.ts, which wants HTML, not text.",
+  },
 
-  // -- Widgets Playground -------------------------------------------------
-  ButtonOptions: burndown("widgets-playground"),
-  ButtonVariant: burndown("widgets-playground"),
-  CheckboxOptions: burndown("widgets-playground"),
-  ColorSystemSpec: burndown("widgets-playground"),
-  DropdownOptions: burndown("widgets-playground"),
-  EventRouterOptions: burndown("widgets-playground"),
-  FLOW: burndown("widgets-playground"),
-  FocusManager: burndown("widgets-playground"),
-  KeyEvent: burndown("widgets-playground"),
-  KeyEventInit: burndown("widgets-playground"),
-  KeyHandlerOptions: burndown("widgets-playground"),
-  KeyHandlerPriority: burndown("widgets-playground"),
-  OverlayRenderable: burndown("widgets-playground"),
-  Placement: burndown("widgets-playground"),
-  Screen: burndown("widgets-playground"),
-  ScreenOptions: burndown("widgets-playground"),
-  SliderOptions: burndown("widgets-playground"),
-  StaticItemOptions: burndown("widgets-playground"),
-  // TerminalHost contract types — burned down by
-  // examples/browser-terminal-host-harness (rich-demo-site-pek.2):
-  // `TerminalHost`, `TerminalSize`, `DataHandler`, `ResizeHandler` are
-  // exercised as explicit type annotations on the harness's host /
-  // size / dataHandler / resizeHandler values. `NodeTerminalHostOptions`
-  // remains burndown until an interactive demo constructs a node host
-  // with explicit options (rich-demos-l2x widget playground).
-  NodeTerminalHostOptions: burndown("widgets-playground"),
-  TextInputOptions: burndown("widgets-playground"),
-  ToggleOptions: burndown("widgets-playground"),
-  ToggleVariant: burndown("widgets-playground"),
-  Unsubscribe: burndown("widgets-playground"),
-  WidgetBase: burndown("widgets-playground"),
-  WidgetBounds: burndown("widgets-playground"),
-  WidgetFocusEvent: burndown("widgets-playground"),
-  WidgetMouseEvent: burndown("widgets-playground"),
-  hasOverlay: burndown("widgets-playground"),
+  // -- from src/renderables/ (renderables) --------------------------
+  Alignment: untriaged,
+  Column: untriaged,
+  ColumnOptions: untriaged,
+  ColumnsOptions: untriaged,
+  FlexAlign: untriaged,
+  FlexStripOptions: untriaged,
+  JSONOptions: untriaged,
+  LayoutOptions: untriaged,
+  LiveOptions: untriaged,
+  MarkdownOptions: untriaged,
+  PaddingDimensions: untriaged,
+  PanelOptions: untriaged,
+  PrettyOptions: untriaged,
+  ProgressBarOptions: untriaged,
+  ProgressOptions: untriaged,
+  PromptInput: {
+    reason:
+      "Prompt's input-capability type. The Prompt classes are exercised by " +
+      "examples/rich-explore/renderers/coverage.ts, but no demo wires a custom " +
+      "input source and so no demo names this type.",
+  },
+  PromptOptions: {
+    reason:
+      "Prompt's companion options type; same cause as PromptInput — the demo " +
+      "that constructs a Prompt does not pass options.",
+  },
+  RuleAlign: untriaged,
+  RuleOptions: untriaged,
+  Spinner: untriaged,
+  SpinnerOptions: untriaged,
+  StatusOptions: untriaged,
+  SyntaxOptions: untriaged,
+  TableOptions: untriaged,
+  TaskOptions: untriaged,
+  TaskUpdateOptions: untriaged,
+  TracebackOptions: untriaged,
+  TreeOptions: untriaged,
 
-  // -- Markup & Text Lab --------------------------------------------------
-  CapsuleJoinerOptions: burndown("markup-and-text-lab"),
-  CellCol: burndown("markup-and-text-lab"),
-  CodePoint: burndown("markup-and-text-lab"),
-  CodeUnit: burndown("markup-and-text-lab"),
-  ControlCode: burndown("markup-and-text-lab"),
-  ControlType: burndown("markup-and-text-lab"),
-  FlexAlign: burndown("markup-and-text-lab"),
-  FlexStripOptions: burndown("markup-and-text-lab"),
-  GradientJoinerOptions: burndown("markup-and-text-lab"),
-  Highlighter: burndown("markup-and-text-lab"),
-  JSONHighlighter: burndown("markup-and-text-lab"),
-  Joiner: burndown("markup-and-text-lab"),
-  MarkupTagContext: burndown("markup-and-text-lab"),
-  MarkupTagHandler: burndown("markup-and-text-lab"),
-  PlainJoinerOptions: burndown("markup-and-text-lab"),
-  PowerlineJoinerOptions: burndown("markup-and-text-lab"),
-  RenderMarkupOptions: burndown("markup-and-text-lab"),
-  RenderToStringOptions: burndown("markup-and-text-lab"),
-  ReprHighlighter: burndown("markup-and-text-lab"),
-  RichTextOptions: burndown("markup-and-text-lab"),
-  Span: burndown("markup-and-text-lab"),
-  StyleOptions: burndown("markup-and-text-lab"),
-  StyledRenderable: burndown("markup-and-text-lab"),
-  Tag: burndown("markup-and-text-lab"),
-  asCodeUnit: burndown("markup-and-text-lab"),
-  cellColToCodeUnitOffset: burndown("markup-and-text-lab"),
-  cellFitFrom: burndown("markup-and-text-lab"),
-  createRichTextEngine: burndown("markup-and-text-lab"),
-  globalMarkupRegistry: burndown("markup-and-text-lab"),
-  nextCodePoint: burndown("markup-and-text-lab"),
-  prevCodePoint: burndown("markup-and-text-lab"),
-  registerMarkupTag: burndown("markup-and-text-lab"),
-  renderToString: burndown("markup-and-text-lab"),
-  segmentToString: burndown("markup-and-text-lab"),
-  segmentsToString: burndown("markup-and-text-lab"),
-  unregisterMarkupTag: burndown("markup-and-text-lab"),
+  // -- from src/template-bindings/ (template bindings) --------------
+  createRichTextEngine: untriaged,
 
-  // -- Live, Progress & Console -------------------------------------------
-  ConsoleOptions: burndown("live-progress-console"),
-  // Structural type for Console's `file:` option — exposed by
-  // rich-demo-site-pek.3.4 when NodeJS.WritableStream came out of the
-  // public surface. Every demo that calls `new Console({ file: hostStream(host) })`
-  // depends on this contract structurally; an explicit type annotation in a
-  // future live-progress-console scenario lands the natural coverage.
-  ConsoleSink: burndown("live-progress-console"),
-  LiveOptions: burndown("live-progress-console"),
-  PrintOptions: burndown("live-progress-console"),
-  ProgressBarOptions: burndown("live-progress-console"),
-  ProgressOptions: burndown("live-progress-console"),
-  Spinner: burndown("live-progress-console"),
-  SpinnerData: burndown("live-progress-console"),
-  SpinnerOptions: burndown("live-progress-console"),
-  StatusOptions: burndown("live-progress-console"),
-  TaskOptions: burndown("live-progress-console"),
-  TaskUpdateOptions: burndown("live-progress-console"),
-  TracebackOptions: burndown("live-progress-console"),
-  // Node-only plain-text exporter; the HTML sibling (`saveHtml`) is already
-  // covered by examples/themes-and-color-studio/index.ts. saveText has no
-  // organic touchpoint yet because the existing demo wants HTML; a future
-  // live-progress-console scenario will exercise the plain-text path.
-  // Sorts at end of block per ASCII (lowercase 's' > uppercase 'T').
-  saveText: burndown("live-progress-console"),
+  // -- from src/widgets/ (widgets) ----------------------------------
+  ButtonOptions: untriaged,
+  ButtonVariant: untriaged,
+  CheckboxOptions: untriaged,
+  ColorSystemSpec: untriaged,
+  DropdownOptions: untriaged,
+  EventRouterOptions: untriaged,
+  FLOW: untriaged,
+  FocusManager: untriaged,
+  hasOverlay: untriaged,
+  KeyEvent: untriaged,
+  KeyEventInit: untriaged,
+  KeyHandlerOptions: untriaged,
+  KeyHandlerPriority: untriaged,
+  NodeTerminalHostOptions: {
+    reason:
+      "No demo constructs a NodeTerminalHost with explicit options. The rest of " +
+      "the TerminalHost contract is covered by examples/browser-terminal-host-harness.",
+  },
+  OverlayRenderable: untriaged,
+  Placement: untriaged,
+  Screen: untriaged,
+  ScreenOptions: untriaged,
+  SliderOptions: untriaged,
+  StaticItemOptions: untriaged,
+  TextInputOptions: untriaged,
+  ToggleOptions: untriaged,
+  ToggleVariant: untriaged,
+  Unsubscribe: untriaged,
+  WidgetBase: untriaged,
+  WidgetBounds: untriaged,
+  WidgetFocusEvent: untriaged,
+  WidgetMouseEvent: untriaged,
 };
