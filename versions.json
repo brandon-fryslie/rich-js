@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-64",
-      "ref": "refs/pull/64/merge",
-      "sha": "524ae2d4190c9535e22dc7203abf3e36085682ef",
-      "timestamp": "2026-09-02T04:22:21.706Z",
-      "commits": [
-        {
-          "sha": "524ae2d4190c9535e22dc7203abf3e36085682ef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T22:21:52-06:00",
-          "message": "Merge 8f3928cf5451aed4539e0b04588724a75e75e6c4 into ed0e69269451bc39c9853f0cdab277a6ae8cb268\n"
-        },
-        {
-          "sha": "8f3928cf5451aed4539e0b04588724a75e75e6c4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T22:21:29-06:00",
-          "message": "docs: write the template-bindings documentation page (rich-docs-vk9.2)\n\n`src/template-bindings/` had no page on the docs site. The authoring brief at\n`spec/template-bindings.md` predates the v0.7.0 \"colors are values\" change and\nteaches a surface that no longer exists — per-color functions (`red`, `hex`,\n`rgb`, `on`), a `PaletteResolver` type, and the `palette \"spec\" child` grammar.\nNone of that is ported. The page is written from the source instead.\n\nDocuments what ships: the two registrations and the split between them\n(`richTextFuncs` needs no theme, `paletteFuncs` is the one that does), why\n`paletteFuncs` takes a thunk rather than a palette, the `fg`/`bg` sinks and the\nwidth of the color-spec slot, colors as values with the full transform table,\nand `renderTemplate` including its error degradation.\n\nTeaching examples follow house style: pipes lead, colors and style specs are\nheld in reusable `$vars`, no nested call form.\n\nEvery TypeScript sample was verified by extracting the blocks into one module,\ntype-checking it under tsconfig.test.json, and running it under vitest.\nExecuting them caught a defect type-checking could not: the `renderTemplate`\nsample originally routed the finished ANSI from `segmentsToString` back through\n`console.print`, which treats its argument as content — it strips the escape\nbytes and highlights the remainder, so the sequences arrive as visible text.\nThe sample now writes to the stream directly, and a warning callout records the\ntrap.\n\nSidebar entry under Integrations plus `template-bindings` added to the Guide\nnav activeMatch. Inline `{{ }}` spans outside code fences are wrapped in\n`<code v-pre>` — Vue interpolates them otherwise and the docs build fails.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ed0e69269451bc39c9853f0cdab277a6ae8cb268",
-      "timestamp": "2026-09-01T10:31:24.471Z",
+      "sha": "f2e66189ce3138ef6c28fbc308d63db54cb4ebaf",
+      "timestamp": "2026-09-02T04:25:20.555Z",
       "commits": [
         {
-          "sha": "ed0e69269451bc39c9853f0cdab277a6ae8cb268",
+          "sha": "f2e66189ce3138ef6c28fbc308d63db54cb4ebaf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T04:30:53-06:00",
-          "message": "docs: write the widgets documentation page (rich-docs-vk9.1) (#63)\n\n* docs: write the widgets documentation page (rich-docs-vk9.1)\n\n`src/widgets/` is fifteen modules — focus manager, event router, screen,\nsix widgets and the terminal-host adapters — with no page on the published\nsite. Its only description was the authoring brief at `spec/widgets.md`,\nwhich predates the code: it documents `Screen` without the `host` seam,\nomits Dropdown's built-in filter and the overlay protocol, and lists\n\"keyboard shortcuts beyond tab/shift-tab\" as out of scope when TextInput\nnow ships a full readline key map.\n\n`docs/widgets.md` is written from `src/widgets/` rather than from the\nbrief. Every code sample was extracted into a scratch module, type-checked\nagainst `src/index.ts` under the repo's strict tsconfig, and executed —\nthe headless `Checkbox` + `KeyEvent` example is a real passing assertion,\nnot an illustration.\n\nTwo things the brief would have gotten wrong and the source did not: the\n`wrap` option is described by its signature rather than by the\n`WrapStrategy`/`charGreedyWrap` names, because neither is re-exported from\nthe package root and a reader cannot import them; and the quick-start\ncarries a Ctrl+C handler, since `router.start()` puts the terminal in raw\nmode and a sample without one strands the reader.\n\nSidebar gains an \"Interactive\" section and the Guide nav `activeMatch`\ngains `widgets`, so the page is reachable. `npm run lint` and\n`npm run docs:build` are green.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n\n* docs: correct four widget claims the source contradicts\n\nReview found four places where the page described intent rather than what\n`src/widgets/` does, and a fifth where a sample was wrong on its own.\n\n`onMouse` handlers run BEFORE hit-testing, not after: `dispatchMouse`\nopens with `for (const handler of this.mouseHandlers) handler(event)`,\nahead of `getWidgets()`, hover tracking, and `target.handleMouse`. That\nmakes `onMouse` an interception point, which is what click-to-focus\ndepends on — the page now says so and shows the pattern.\n\nDropdown's Tab does not move between options. While expanded it clears\nthe filter, collapses, keeps focus, and stops the chain; traversal\nhappens on the next Tab, once the widget no longer claims the key.\n\n`StaticItem` takes neither `disabled` nor `theme`, and its `id` is\nrequired — the blanket sentence covering \"all widgets\" now covers the six\ninteractive ones and names StaticItem as the exception. Generated ids are\nsplit the same way: Button/Checkbox/Toggle slugify their label and are\nstable, while Dropdown/Slider/TextInput have no label and get a random\nsuffix, which is the difference that bites anyone writing a test selector.\n\nThe custom-widget sample used a plain `count` field. `makeObservable`\nwires only decorated members, so the widget fired `onChange` and never\nrepainted. It now carries `@observable accessor` — and `@action`, because\nrunning the corrected sample surfaced a MobX strict-mode warning on every\nkeypress that the field fix alone left in place.\n\nRe-verified through the same harness: samples type-check under the strict\ntsconfig, and four assertions now execute — the Counter's autorun refires\non keypress, Button ids repeat while Slider ids do not, and Tab on an\nexpanded Dropdown collapses it with the event stopped.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea"
+          "timestamp": "2026-09-01T22:24:47-06:00",
+          "message": "docs: write the template-bindings documentation page (rich-docs-vk9.2) (#64)\n\n`src/template-bindings/` had no page on the docs site. The authoring brief at\n`spec/template-bindings.md` predates the v0.7.0 \"colors are values\" change and\nteaches a surface that no longer exists — per-color functions (`red`, `hex`,\n`rgb`, `on`), a `PaletteResolver` type, and the `palette \"spec\" child` grammar.\nNone of that is ported. The page is written from the source instead.\n\nDocuments what ships: the two registrations and the split between them\n(`richTextFuncs` needs no theme, `paletteFuncs` is the one that does), why\n`paletteFuncs` takes a thunk rather than a palette, the `fg`/`bg` sinks and the\nwidth of the color-spec slot, colors as values with the full transform table,\nand `renderTemplate` including its error degradation.\n\nTeaching examples follow house style: pipes lead, colors and style specs are\nheld in reusable `$vars`, no nested call form.\n\nEvery TypeScript sample was verified by extracting the blocks into one module,\ntype-checking it under tsconfig.test.json, and running it under vitest.\nExecuting them caught a defect type-checking could not: the `renderTemplate`\nsample originally routed the finished ANSI from `segmentsToString` back through\n`console.print`, which treats its argument as content — it strips the escape\nbytes and highlights the remainder, so the sequences arrive as visible text.\nThe sample now writes to the stream directly, and a warning callout records the\ntrap.\n\nSidebar entry under Integrations plus `template-bindings` added to the Guide\nnav activeMatch. Inline `{{ }}` spans outside code fences are wrapped in\n`<code v-pre>` — Vue interpolates them otherwise and the docs build fails.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea"
         }
       ]
     },
