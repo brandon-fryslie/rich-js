@@ -63,7 +63,23 @@ A crash payload that is not an `Error` — `Promise.reject("nope")`, or `throw 4
 `installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself is pure rendering and stays in the main barrel, which remains browser-safe.
 
 ::: tip Placement
-Call `installTraceback()` as early as possible in your application entry point — before any other imports that might throw.
+Statement position does not buy you as much as it looks like it does. ES modules evaluate all of a module's imports before any of its own top-level code, so an `installTraceback()` call at the top of your entry file still runs *after* everything that file imports has finished evaluating — a crash during module evaluation escapes it.
+
+To cover that window too, put the call in its own module and import it first:
+
+```typescript
+// crash-reporting.ts
+import { installTraceback } from "@promptctl/rich-js/node/traceback";
+installTraceback();
+```
+
+```typescript
+// index.ts
+import "./crash-reporting.js";   // evaluated before the imports below
+import { startServer } from "./server.js";
+```
+
+Node's `--import ./crash-reporting.js` flag does the same thing from outside the module graph.
 :::
 
 ## Suppressing frames

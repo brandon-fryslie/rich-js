@@ -12,10 +12,14 @@ import { installTraceback } from "../../src/node/traceback.js";
 import { NodeFileSystem } from "../_capabilities/node-file-system.js";
 import { run } from "./app.js";
 
-// [LAW:single-enforcer] One crash renderer for this demo, registered before
-// anything can throw. Because it covers `unhandledRejection` as well as
-// `uncaughtException`, `run`'s promise needs no `.catch` — a rejection is a
-// crash, and crashes are this handler's job.
+// [LAW:single-enforcer] One crash renderer for this demo. ESM evaluates the
+// imports above before this line, so the guarantee is "before `run`", not
+// "before anything" — covering module-evaluation crashes too would mean
+// installing from a module imported ahead of them.
+//
+// Because it covers `unhandledRejection` as well as `uncaughtException`,
+// `run`'s promise needs no `.catch` — a rejection is a crash, and crashes are
+// this handler's job.
 installTraceback();
 
 void run(new NodeTerminalHost(), new NodeFileSystem());

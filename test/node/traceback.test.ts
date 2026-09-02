@@ -159,6 +159,60 @@ describe("installTraceback", () => {
     expect(reported()).toContain("frames omitted");
   });
 
+  // An error from a `node:vm` context is a real error with real frames, but
+  // its prototype comes from that realm, so `instanceof Error` says no. A
+  // crash reporter that discarded its stack would drop the frames in the one
+  // place they matter.
+  it("keeps the frames of an error from another realm", async () => {
+    const vm = await import("node:vm");
+    let realmError: unknown;
+    try {
+      vm.runInNewContext("throw new Error('from another realm')");
+    } catch (caught) {
+      realmError = caught;
+    }
+    expect(realmError instanceof Error).toBe(false);
+
+    installTraceback();
+    process.emit("uncaughtException", realmError as Error, "uncaughtException");
+
+    const output = reported();
+    expect(output).toContain("Error: from another realm");
+    expect(output).toContain("evalmachine");
+    expect(output).not.toContain("NonError");
+  });
+
+  it("salvages the stack of a duck-typed thrower", () => {
+    installTraceback();
+
+    process.emit(
+      "unhandledRejection",
+      { stack: "  at doWork (handmade.ts:99:1)" },
+      Promise.resolve(),
+    );
+
+    const output = reported();
+    expect(output).toContain("NonError");
+    // `inspect` puts the raw stack string in the message, so asserting on the
+    // file name alone would pass with the stack discarded. Only a *parsed*
+    // frame renders as "doWork handmade.ts:99" — no `at`, no parens, no column.
+    expect(output).toContain("doWork handmade.ts:99");
+  });
+
+  // A cascade — cleanup rejecting a promise while the first report drains —
+  // would otherwise start a second write and a second exit, and whichever
+  // drained first would cut the other off mid-frame.
+  it("reports only the first crash when a second lands mid-report", () => {
+    installTraceback();
+
+    process.emit("uncaughtException", new Error("the fault"), "uncaughtException");
+    process.emit("unhandledRejection", new Error("the wake"), Promise.resolve());
+
+    expect(writes).toHaveLength(1);
+    expect(stripAnsi(writes[0]!.text)).toContain("the fault");
+    expect(stripAnsi(writes[0]!.text)).not.toContain("the wake");
+  });
+
   it("exits 1 only once stderr has drained", () => {
     installTraceback();
 

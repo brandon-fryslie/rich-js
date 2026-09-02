@@ -17,11 +17,18 @@
  * literally one code path.
  */
 
-import { inspect } from "node:util";
+import { inspect, types } from "node:util";
 
 import { Console } from "../core/console.js";
 import { Traceback } from "../renderables/traceback.js";
 import type { TracebackOptions } from "../renderables/traceback.js";
+
+/** A payload's own stack, when it carries one, or `""` when it does not. */
+function stackOf(reason: unknown): string {
+  if (typeof reason !== "object" || reason === null) return "";
+  if (!("stack" in reason)) return "";
+  return typeof reason.stack === "string" ? reason.stack : "";
+}
 
 /**
  * [LAW:parse-dont-validate] The checkpoint between a crash payload, which node
@@ -30,17 +37,24 @@ import type { TracebackOptions } from "../renderables/traceback.js";
  * was throwable, and no raw value can reach the renderable to have `.name` and
  * `.message` read off it as `undefined`.
  *
- * A non-`Error` payload has no call site to report, so the synthesized error
- * carries an empty stack rather than the frames of this function — those point
- * into rich-js and describe nothing about the fault. `inspect` renders every
- * payload shape, including circular objects, where `String(reason)` would
- * collapse them to `[object Object]`.
+ * The gate is `isNativeError`, not `instanceof Error`. An error thrown inside a
+ * `node:vm` context is a real error with real frames, but its prototype comes
+ * from that realm, so `instanceof` answers false and the frames would be
+ * discarded by the one component that exists to show them. `isNativeError`
+ * reads V8's internal error slot and is realm-independent.
+ *
+ * Whatever survives that gate is not an error, so it has no call site of its
+ * own; `stackOf` salvages a stack from a duck-typed thrower and otherwise
+ * leaves it empty rather than reporting the frames of this function, which
+ * point into rich-js and describe nothing about the fault. `inspect` renders
+ * every payload shape, including circular objects, where `String(reason)`
+ * would collapse them to `[object Object]`.
  */
 function toError(reason: unknown): Error {
-  if (reason instanceof Error) return reason;
+  if (types.isNativeError(reason)) return reason;
   const error = new Error(inspect(reason));
   error.name = "NonError";
-  error.stack = "";
+  error.stack = stackOf(reason);
   return error;
 }
 
@@ -66,11 +80,24 @@ let installed: (reason: unknown) => void = () => {};
  * renderer no matter how many entry points reach for it.
  */
 export function installTraceback(options?: TracebackOptions): void {
+  // [LAW:no-ambient-temporal-coupling] "This process is already crashing" is
+  // lifecycle state with one owner, not a fact left to the interleaving of two
+  // writes. A cascade — cleanup code rejecting a promise while the first
+  // report is still draining — would otherwise start a second write and a
+  // second `process.exit(1)`, and whichever drained first would cut the other
+  // off mid-frame. The first crash is the fault and the rest is its wake, so
+  // one complete report of the fault beats two corrupt ones.
+  let crashing = false;
+
   const report = (reason: unknown): void => {
+    if (crashing) return;
+    crashing = true;
+
     // [LAW:effects-at-boundaries] Render to a string first, then perform one
     // write. `beginCapture` redirects the console's sink without setting
-    // `file:`, so stderr's TTY status still drives colour depth and width —
-    // a `file:` sink would report `isTTY === false` and silently strip colour.
+    // `file:`, so stderr's TTY status still drives colour depth — a `file:`
+    // sink would report `isTTY === false` and silently strip colour. Width
+    // comes from stdout regardless of `stderr: true`; see rich-console-ujo.
     const out = new Console({ stderr: true });
     out.beginCapture();
     out.print(new Traceback(toError(reason), options));
