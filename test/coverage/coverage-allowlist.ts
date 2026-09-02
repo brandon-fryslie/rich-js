@@ -20,12 +20,13 @@ export interface AllowlistEntry {
 
 /**
  * Shared by every entry whose absence has not been investigated
- * individually. These predate any per-export triage: each one is a public
- * export that no file under `examples/` happens to name, and nobody has yet
- * decided whether the fix is a demo reference or a permanent exemption.
+ * individually. `rich-coverage-0as.1` is the ticket that replaces these with
+ * a per-export outcome — demo it, fold it into a demo, exempt it with a real
+ * reason, or delete the export. Writing 96 distinct reasons before that
+ * investigation would read as justification while being invented.
  */
 const untriaged: AllowlistEntry = {
-  reason: "No demo references this export; the absence has not been triaged.",
+  reason: "No demo references this export; untriaged — see rich-coverage-0as.1.",
 };
 
 /**
