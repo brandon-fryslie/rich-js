@@ -1,10 +1,15 @@
 /**
  * Traceback — renders error tracebacks with formatting.
+ *
+ * [LAW:effects-at-boundaries] Pure rendering: an `Error` in, `Segment`s out.
+ * Installing this as the process-wide crash handler touches `process.on` and
+ * `process.exit`, so that lives behind the node seam as `installTraceback` in
+ * `src/node/traceback.ts` — which is what keeps this module, and therefore the
+ * main barrel, importable in a browser.
  */
 
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { Console } from "../core/console.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
 
 export interface TracebackOptions {
@@ -125,15 +130,5 @@ export class Traceback implements Renderable {
       yield new Segment(String(frame.line), lineNoStyle);
     }
     yield Segment.line();
-  }
-
-  /** Install as global uncaught exception handler */
-  static install(options?: TracebackOptions): void {
-    process.on("uncaughtException", (error) => {
-      const tb = new Traceback(error, options);
-      const cons = new Console({ stderr: true });
-      cons.print(tb);
-      process.exit(1);
-    });
   }
 }

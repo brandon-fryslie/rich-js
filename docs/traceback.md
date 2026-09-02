@@ -47,17 +47,39 @@ try {
 
 ## Installing as the global handler
 
-Register rich tracebacks for all unhandled exceptions. Put this at the entry point of your application:
+Register rich tracebacks for every crash — both uncaught exceptions and unhandled promise rejections. Put this at the entry point of your application:
 
 ```typescript
-import { Traceback } from "@promptctl/rich-js";
+import { installTraceback } from "@promptctl/rich-js/node/traceback";
 
-// All uncaught exceptions now use rich formatting
-Traceback.install({ showLocals: true });
+// All crashes now use rich formatting
+installTraceback();
 ```
 
+Calling it again replaces the handler rather than adding a second one, so a process always has exactly one rich crash renderer and the last call's options are the ones in force.
+
+A crash payload that is not an `Error` — `Promise.reject("nope")`, or `throw 42`, both of which JavaScript permits — renders under the name `NonError`, with the value inspected.
+
+`installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself is pure rendering and stays in the main barrel, which remains browser-safe.
+
 ::: tip Placement
-Call `Traceback.install()` as early as possible in your application entry point — before any other imports that might throw.
+Statement position does not buy you as much as it looks like it does. ES modules evaluate all of a module's imports before any of its own top-level code, so an `installTraceback()` call at the top of your entry file still runs *after* everything that file imports has finished evaluating — a crash during module evaluation escapes it.
+
+To cover that window too, put the call in its own module and import it first:
+
+```typescript
+// crash-reporting.ts
+import { installTraceback } from "@promptctl/rich-js/node/traceback";
+installTraceback();
+```
+
+```typescript
+// index.ts
+import "./crash-reporting.js";   // evaluated before the imports below
+import { startServer } from "./server.js";
+```
+
+Node's `--import ./crash-reporting.js` flag does the same thing from outside the module graph.
 :::
 
 ## Suppressing frames
@@ -67,7 +89,7 @@ Framework and library frames are noise when debugging your own code. The `suppre
 ```typescript
 import express from "express";
 
-Traceback.install({
+installTraceback({
   suppress: [express, "node_modules/express"],
 });
 ```

@@ -29,6 +29,10 @@
     "./node/prompt": {
       "types": "./dist/node/prompt.d.ts",
       "import": "./dist/node/prompt.js"
+    },
+    "./node/traceback": {
+      "types": "./dist/node/traceback.d.ts",
+      "import": "./dist/node/traceback.js"
     }
   },
   "files": [
