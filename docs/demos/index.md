@@ -17,6 +17,8 @@ const demoHref = (name) => withBase(`/demos/${name}`)
 
 Each demo runs the rich-js library directly in your browser via [xterm.js](https://xtermjs.org/) — the same code that runs as a node CLI, mounted against a browser `TerminalHost`. No screenshots, no recordings: every page below is a real, interactive terminal.
 
+To run these from a clone of the repository instead, see the [Demos section of the README](https://github.com/brandon-fryslie/rich-js#demos) — it lists the npm script for each demo and what each one exercises.
+
 <div class="rich-demo-grid">
   <a
     v-for="demo in demos"
