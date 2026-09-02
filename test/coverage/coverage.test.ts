@@ -8,8 +8,18 @@
 // that references it is any good is judgment, and no assertion here can
 // stand in for it.
 //
+// [LAW:verifiable-goals] The floor must be a bar a demo can actually
+// clear. Demo coverage means "named in an import statement under
+// examples/", which only a value declaration can satisfy: idiomatic
+// TypeScript consumes an options interface as an object literal and an
+// alias as a bare value, so requiring a demo to *name* them would be
+// satisfied only by annotations written for this check and read by
+// nobody. Types are therefore held to the question they can answer —
+// reachability from a demonstrated value — and the origin's `kind`
+// decides which evidence applies. See `ExportKind` in extract.ts.
+//
 // [LAW:behavior-not-structure] The test asserts three invariants over
-// the (universe, references, allowlist) tuple — not a specific list of
+// the (universe, evidence, allowlist) tuple — not a specific list of
 // names, not a count. The allowlist itself is data and changes over
 // time; the *invariants* are stable.
 
@@ -20,6 +30,7 @@ import {
   assertProgramClean,
   collectPublicExports,
   collectReferencedOrigins,
+  collectTypeClosure,
   groupByOrigin,
   canonicalNameFor,
   originKey,
@@ -45,12 +56,26 @@ describe("API → demo coverage", () => {
   const universe = groupByOrigin(publicRows);
   const referenced = collectReferencedOrigins(exampleFiles, program, checker);
 
-  // Partition the universe into covered vs uncovered by origin.
-  const covered = new Map<string, OriginInfo>();
-  const uncovered = new Map<string, OriginInfo>();
+  // [LAW:types-are-the-program] Two kinds of export, two kinds of
+  // evidence — and the origin's `kind` says which one counts, so the
+  // decision is made once here rather than branched in each invariant
+  // below. A value is demonstrated when a demo's import statement names
+  // it. A type is demonstrated when it is reachable through type
+  // positions from a demonstrated value, because that is what makes a
+  // change to it break `examples/` — no demo can name a type without
+  // writing an annotation that exists only to be seen by this check.
+  const demonstratedValues = new Set(
+    [...universe]
+      .filter(([key, info]) => info.origin.kind === "value" && referenced.has(key))
+      .map(([key]) => key),
+  );
+  const typeClosure = collectTypeClosure(publicRows, demonstratedValues, checker);
+
+  const demonstrated = new Map<string, OriginInfo>();
+  const undemonstrated = new Map<string, OriginInfo>();
   for (const [key, info] of universe) {
-    if (referenced.has(key)) covered.set(key, info);
-    else uncovered.set(key, info);
+    const evidence = info.origin.kind === "value" ? demonstratedValues : typeClosure;
+    (evidence.has(key) ? demonstrated : undemonstrated).set(key, info);
   }
 
   // Allowlist lookup: canonical exposed name → origin info.
@@ -66,9 +91,9 @@ describe("API → demo coverage", () => {
     expect(universe.size).toBeGreaterThan(0);
   });
 
-  it("every uncovered public export is allowlisted with a justification", () => {
+  it("every undemonstrated public export is allowlisted with a justification", () => {
     const gaps: string[] = [];
-    for (const [, info] of uncovered) {
+    for (const [, info] of undemonstrated) {
       const name = canonicalNameFor(info);
       if (!Object.hasOwn(ALLOWLIST, name)) {
         gaps.push(formatGap(name, info));
@@ -77,8 +102,11 @@ describe("API → demo coverage", () => {
     if (gaps.length > 0) {
       throw new Error(
         `Public exports without demo coverage or allowlist entry:\n${gaps.join("\n")}\n\n` +
-          `Either reference the symbol from a file under examples/, ` +
-          `or add an entry to test/coverage/coverage-allowlist.ts ` +
+          `A value is demonstrated by naming it in an import statement in a ` +
+          `file under examples/. A type is demonstrated by being reachable ` +
+          `through type positions from such a value — so demonstrate the ` +
+          `function or class that uses it, and the type follows. Failing ` +
+          `either, add an entry to test/coverage/coverage-allowlist.ts ` +
           `explaining why no demo can exercise it.`,
       );
     }
@@ -97,18 +125,18 @@ describe("API → demo coverage", () => {
     }
   });
 
-  it("no allowlist entry is already covered by a demo", () => {
+  it("no allowlist entry is already demonstrated", () => {
     const redundant: string[] = [];
     for (const [name, entry] of Object.entries(ALLOWLIST)) {
       const info = universeByCanonicalName.get(name);
       if (!info) continue; // dead-entry case is handled by the previous test
-      if (referenced.has(originKey(info.origin))) {
+      if (demonstrated.has(originKey(info.origin))) {
         redundant.push(`${name} (${entry.reason})`);
       }
     }
     if (redundant.length > 0) {
       throw new Error(
-        `Allowlist entries that are already covered by a demo:\n  ${redundant.join("\n  ")}\n\n` +
+        `Allowlist entries that are already demonstrated:\n  ${redundant.join("\n  ")}\n\n` +
           `Remove these entries from test/coverage/coverage-allowlist.ts — ` +
           `they are now redundant.`,
       );
@@ -123,5 +151,5 @@ function formatGap(canonicalName: string, info: OriginInfo): string {
   // Render relative to REPO_ROOT so error output is portable across
   // checkout locations and machines (CI vs local agent worktrees etc.).
   const relFile = path.relative(REPO_ROOT, info.origin.file);
-  return `  - ${canonicalName}: exposed as ${exposures}; declared in ${relFile}`;
+  return `  - ${canonicalName} (${info.origin.kind}): exposed as ${exposures}; declared in ${relFile}`;
 }
