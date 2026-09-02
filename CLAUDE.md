@@ -60,10 +60,10 @@ core → renderables → widgets
 
 ### Core primitives (src/core/)
 
-Build order, no back-edges. Each tier imports only from tiers above it:
+Build order within `src/core/`. Each tier imports only from tiers above it:
 
 ```
-0   cells · color · sanitize          (import nothing)
+0   cells · color · sanitize
 1   oklch · style
 2   segment
 3   box · protocol
@@ -72,7 +72,18 @@ Build order, no back-edges. Each tier imports only from tiers above it:
 6   console                           (orchestrator)
 ```
 
-An import that would point upward is the signal to stop and reconsider the seam, not to add the edge. `grep -hoE 'from "\./[a-z]+\.js"' src/core/<mod>.ts` is how you check a module's actual edges rather than trusting this list.
+Two edges leave `src/core/` and point *up* into higher subsystems. Both are deliberate, both are annotated where they sit, and they are the whole list:
+
+- `color.ts` → `themes/palette.js`, for the internal default theme. Safe because `themes/palette.ts` only `import type`s back, so there is no runtime cycle.
+- `console.ts` → `renderables/rule.js`, the orchestrator reaching down for `Rule`.
+
+Check a module's real edges rather than trusting the tiers above — and check both shapes, because a same-directory-only pattern will report a clean graph while an upward import sits three lines away:
+
+```bash
+grep -hoE 'from "\.\.?/[a-z/]+\.js"' src/core/<mod>.ts   # same-dir AND ../
+```
+
+A third upward edge is not a fact to append here. It is the signal to stop and reconsider the seam.
 
 - **cells** — terminal cell-width (wraps `string-width`). Provides `cellLen`, `setCellSize`, `splitText`, `chopCells`.
 - **color** — colour as immutable *values*. `ColorRgba` (RGBA), `ColorSpec` (a parsed style colour; `ColorSpec.parse` is cached), `ColorTable` (quantization LUT), `ColorDepth`, `TerminalTheme`, and the downgrade/detection pipeline (`detectColorSystem`, `resolveColorSystem`). There is no `Color` class.

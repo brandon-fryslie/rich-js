@@ -86,7 +86,7 @@ import {
   ensureContrast,
   lighten,
   darken,
-  // Infrastructure (owned by other flagships; we only consume)
+  // Infrastructure (consumed, not the focus of this demo)
   Console,
   RichText,
   Style,
@@ -1072,7 +1072,7 @@ export function runDemo(
   function main(): void {
     out.print(
       new RichText("themes-and-color-studio", { style: "bold" }).append(
-        "  ·  the flagship Themes & Color demo",
+        "  ·  printed reference for the Themes & Color surface",
         "dim",
       ),
     );
