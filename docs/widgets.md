@@ -188,11 +188,21 @@ Multiline mode has a set of options for behaving like a textarea:
 
 | Option | Effect |
 | --- | --- |
-| `wrap` | A soft-wrap function. It receives a logical line and a `{ firstWidth, continuationWidth }` budget and returns the rows to draw, so a caller who knows the value's syntax can break at token boundaries instead of mid-token. Unset, long lines overflow rather than wrap. |
+| `wrap` | A `WrapStrategy` — a function receiving a logical line and a `{ firstWidth, continuationWidth }` budget, returning the `WrapRow`s to draw. Pass the built-in `charGreedyWrap` for a conventional textarea wrap, or write your own to break at token boundaries instead of mid-token. Unset, long lines overflow rather than wrap. |
 | `continuationMarker` | Prefix drawn on wrapped continuation rows. Defaults to `"↳ "`, whose width is subtracted from the wrap budget. |
 | `minRows` / `maxRows` | Pad to at least, and scroll within at most, this many visual rows. |
 | `scrollIndicator` | `"arrows"` (default) draws ▲/▼ in the content area; `"indices"` suppresses them and publishes `scrollIndicatorText` (`"[14/102]"`) for a [`Panel`](/panel) accessory to display; `"none"` draws nothing. |
 | `indicatorStyle`, `cursorStyle`, `contentStyle` | [`Style`](/style) overrides for the arrows, the cursor cell, and the text. |
+
+`charGreedyWrap` breaks wherever the line stops fitting, treating wide characters as atomic:
+
+```ts
+import { TextInput, charGreedyWrap } from "@promptctl/rich-js";
+
+const notes = new TextInput({ multiline: true, wrap: charGreedyWrap, maxRows: 6 });
+```
+
+A custom strategy is worth writing when the value has a syntax worth respecting. The `rich-template-bindings` demo wraps templates at template-tag boundaries, and falls back to `charGreedyWrap` inside a tag that is itself too wide to fit — where no break point is better than any other.
 
 ### Dropdown
 
