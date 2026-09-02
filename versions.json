@@ -4,15 +4,22 @@
     {
       "version": "pr-70",
       "ref": "refs/pull/70/merge",
-      "sha": "3077b3c83bd5413b14b7fdfd1bcc22b57387bf4c",
-      "timestamp": "2026-09-02T08:50:32.326Z",
+      "sha": "d34133e696654404e1220e7d0f9db9f204753a21",
+      "timestamp": "2026-09-02T08:58:43.815Z",
       "commits": [
         {
-          "sha": "3077b3c83bd5413b14b7fdfd1bcc22b57387bf4c",
+          "sha": "d34133e696654404e1220e7d0f9db9f204753a21",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T08:50:01Z",
-          "message": "Merge 3bcc8a4914d4bbc6bed548dabcfa7e0ce2bcf3ff into eae385f12ea164703654cdac7b0fea0556d3f3ab\n"
+          "timestamp": "2026-09-02T08:58:09Z",
+          "message": "Merge 5567e1e113e0394da8a3988eb069778ddb434211 into eae385f12ea164703654cdac7b0fea0556d3f3ab\n"
+        },
+        {
+          "sha": "5567e1e113e0394da8a3988eb069778ddb434211",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T02:57:59-06:00",
+          "message": "docs(traceback): drop the frames claim that stack salvage made false\n\nThe sentence promised a NonError payload renders with no frames. Adding\n`stackOf` in 3bcc8a4 made that false for a duck-typed thrower carrying its own\nstack. Deleting the clause rather than qualifying it: a qualifier is one more\nclaim to keep true the next time `toError` changes, and what frames appear is\nsomething the output already answers.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "3bcc8a4914d4bbc6bed548dabcfa7e0ce2bcf3ff",
