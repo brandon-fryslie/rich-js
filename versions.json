@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-72",
+      "ref": "refs/pull/72/merge",
+      "sha": "c6932b26b8772d38dd0b382b345a161512558641",
+      "timestamp": "2026-09-02T11:11:20.444Z",
+      "commits": [
+        {
+          "sha": "c6932b26b8772d38dd0b382b345a161512558641",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T05:10:50-06:00",
+          "message": "Merge 9c174291a587c61d231bb21b25fc3bddee191b54 into 4572982fa3d73b9694900812c8610b866f6a1ed1\n"
+        },
+        {
+          "sha": "9c174291a587c61d231bb21b25fc3bddee191b54",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T05:10:30-06:00",
+          "message": "feat(console): take the host environment by injection (rich-seam-981.3)\n\n`src/core/console.ts` asked the host four questions — is this a terminal,\nhow wide, how tall, where do bytes go — and each one re-derived its own\nanswer from ambient `process` behind its own `typeof` guard. Safe by\nrepeated care rather than by construction, and the care had already\nlapsed: three sites selected the stream with `stderr ? stderr : stdout`\nand the fourth, size detection, did not.\n\n`ConsoleOptions` now takes an `environment` carrying `env` plus both\nstreams, resolved once at construction into the single stream the console\nis bound to. Node's `process` satisfies `ConsoleEnvironment` structurally,\nso it remains the default with no adapter at either end, and there is\nexactly one read of the ambient global in the module.\n\nSelecting the stream once is also what fixes rich-console-ujo /\nrich-width-3cf.4: colour, dimensions, and the output sink now come from\nthe same stream, so `Console({ stderr: true })` reports stderr's width.\n\n`isTerminal` collapses to a field — every input to it is fixed at\nconstruction — which removes the getter that mirrored `effectiveIsTTY`,\nalong with the `_stderr` and `_forceTerminal` fields that existed only to\nfeed it.\n\nVerified with `process` genuinely absent: `delete globalThis.process`,\nthen a Console driven entirely from an injected environment reports\n100x30, truecolor, isTerminal true, and writes into a captured array;\na console whose environment has no streams throws the documented error.\nBoth new stream-binding tests were falsified by reverting the selection\nto stdout-only, and the env-precedence test by ignoring the injected env.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4572982fa3d73b9694900812c8610b866f6a1ed1",
