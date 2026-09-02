@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-67",
+      "ref": "refs/pull/67/merge",
+      "sha": "ffd6dadc34413dc3e78614dcc83c10de545c83c2",
+      "timestamp": "2026-09-02T05:18:07.846Z",
+      "commits": [
+        {
+          "sha": "ffd6dadc34413dc3e78614dcc83c10de545c83c2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T23:17:40-06:00",
+          "message": "Merge b5cbd99093110df2b6b9b8e24c9ee6f62bc3233f into 16e3f12e7e6923f434916cba023da86f4a69f9a7\n"
+        },
+        {
+          "sha": "b5cbd99093110df2b6b9b8e24c9ee6f62bc3233f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T23:16:36-06:00",
+          "message": "feat(widgets): re-export the TextInput wrap strategies from the package root (rich-docs-vk9.6)\n\n`WrapStrategy`, `WrapRow`, and `charGreedyWrap` were declared in\n`src/widgets/text-input.ts` and exported from neither barrel, so a consumer\nof the published package could reach `TextInput`'s `wrap` option only by\nwriting a strategy from scratch — the one the library already ships was\nunreachable, and a caller could not annotate their own strategy with the\ntype it has to satisfy.\n\nThe symptom was visible in-repo: `examples/rich-template-bindings/app.ts`\nimported the two types through `../../src/widgets/text-input.js`, a lone\ndeep path sitting under a 22-symbol barrel import. That line now folds into\nthe barrel import and is gone.\n\n`charGreedyWrap` is covered by use rather than by an allowlist entry. The\ndemo's `templateAtomWrap` hand-rolled char-greedy wrapping for the\ntoo-wide-tag case — `cellFit` plus a force-take-one-code-point guard, which\nis `charGreedyWrap`'s exact contract — so that branch now delegates to the\nbuilt-in. A differential run over 8064 (tag, firstWidth, continuationWidth,\nisFirst) combinations for budgets 1..24 shows zero divergence from the\nprevious implementation.\n\nVerified: `npm run lint`, `npx vitest run` (1766 passed — the coverage suite\nis the gate here), `npm run docs:build`, `npm run demos:build`. The coverage\ngate was also run against the known violation — barrel exports added, demo\nreference removed — and fails on exactly `charGreedyWrap`, confirming the\ndemo reference is what covers it and that the two types were already covered\nvia the demo's pre-existing import.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "16e3f12e7e6923f434916cba023da86f4a69f9a7",
