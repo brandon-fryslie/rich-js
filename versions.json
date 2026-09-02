@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-69",
+      "ref": "refs/pull/69/merge",
+      "sha": "1c3b3fd5dde2c2c813a8e6ac9efc5a2688835399",
+      "timestamp": "2026-09-02T06:13:33.233Z",
+      "commits": [
+        {
+          "sha": "1c3b3fd5dde2c2c813a8e6ac9efc5a2688835399",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T00:12:58-06:00",
+          "message": "Merge 5e341e6a83c942401df95866d94338efd513651e into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+        },
+        {
+          "sha": "5e341e6a83c942401df95866d94338efd513651e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T00:12:02-06:00",
+          "message": "docs(coverage): describe the value/type evidence split in CLAUDE.md\n\nThe gate section still described one question asked of every export and an\nallowlist that was burndown debt. Both are now wrong. Rewritten to teach the\ndecision a future agent actually faces: adding a value export is two changes,\nadding a type export is usually one, and the allowlist is a permanent\nexemption list whose second entry should feel like a big deal.\n\nAlso adds a smoke test for the rich-explore coverage renderer. It demonstrates\na dozen exports with no narrative demo of their own and is reachable only by\npressing 'c' inside the TUI, so the Playwright first-frame check never reaches\nit — a renderer that throws would have stayed silent until a user pressed the\nkey.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "daeda2e29e1260d48b43623f42ea9dfa4dff5d23",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T00:10:39-06:00",
+          "message": "feat(coverage): hold types to reachability, values to demos (rich-coverage-0as.1)\n\nThe demo-coverage gate asked every public export one question — \"is this\nname in an import statement under examples/?\" — and 74 of the 102 exports\nin the allowlist could not answer it. `visitImports` only walks import\ndeclarations, and idiomatic TypeScript never names a type-only export:\noptions arrive as object literals, aliases as bare values, structural\ninterfaces inline. Clearing those entries could only ever mean writing\n`import type { PanelOptions }` plus an annotation read by nobody.\n\nSo each origin now carries an `ExportKind` discriminator, and the kind\ndecides which evidence counts — once, where the universe is partitioned,\nnot branched through the invariants. A value is demonstrated by a demo\nnaming it. A type is demonstrated by `collectTypeClosure`: reachable\nthrough type positions from a demonstrated value, which is exactly the\ncondition under which changing it breaks `examples/`. The type check is\nderived from the value check rather than parallel to it — demonstrate the\nclass and its options type follows.\n\nDeleted from the public API: the five TextInput cursor helpers in\ncore/cells (`asCodeUnit`, `cellFitFrom`, `cellColToCodeUnitOffset`,\n`nextCodePoint`, `prevCodePoint` — one consumer, no docs, siblings all\ncovered); `Tag`, the markup tokenizer's token class, which no public\nsignature takes or returns; and `registerMarkupTag`/`unregisterMarkupTag`,\nthree-line forwarders to `globalMarkupRegistry`, which is itself exported.\n\nDemonstrated the remaining 19 undemonstrated values in demos that already\nexisted — no new demo was needed. The kitchen-sink renderer takes 12\n(a custom `Box`, the Highlighter family including a subclass, Segment→ANSI,\n`Span`, `Spinner`, `Table`+`Column`); dropdown-demo gains a `WidgetBase`\nsubclass that echoes its `KeyEvent`s and reports `hasOverlay` per widget;\nmarkup-plugins registers on the global registry; template-bindings shows\n`createRichTextEngine()`; themes-and-color-studio exports text as well as\nHTML, the two writers now being two rows of data rather than two branches.\n\nThe allowlist goes from 102 entries to one (`nodeAsk`, which needs\ninteractive line input every TUI demo cannot give it).\n\nVerified by falsifying all four invariants, not by watching them pass:\ndropping the last entry names `nodeAsk (value)`; a public interface\nreachable from nothing names `OrphanProbe (type)`; an entry for no real\nexport is dead; entries for `Panel` and `PanelOptions` are both reported\nredundant, proving the check works on either kind. Full suite 1766 green,\nlint clean across all three tsc passes, all 10 demo bundles boot in\nPlaywright.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "647e3410cf9c8c7e4355f4b2d1110a02e70df038",
