@@ -4,15 +4,22 @@
     {
       "version": "pr-70",
       "ref": "refs/pull/70/merge",
-      "sha": "2ab070dc0090fe91817777fa942dd2bd7e8f80ad",
-      "timestamp": "2026-09-02T08:34:16.217Z",
+      "sha": "3077b3c83bd5413b14b7fdfd1bcc22b57387bf4c",
+      "timestamp": "2026-09-02T08:50:32.326Z",
       "commits": [
         {
-          "sha": "2ab070dc0090fe91817777fa942dd2bd7e8f80ad",
+          "sha": "3077b3c83bd5413b14b7fdfd1bcc22b57387bf4c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T08:33:43Z",
-          "message": "Merge 4712cec3ab7ab3b8ad48745c0a178b185079bdeb into eae385f12ea164703654cdac7b0fea0556d3f3ab\n"
+          "timestamp": "2026-09-02T08:50:01Z",
+          "message": "Merge 3bcc8a4914d4bbc6bed548dabcfa7e0ce2bcf3ff into eae385f12ea164703654cdac7b0fea0556d3f3ab\n"
+        },
+        {
+          "sha": "3bcc8a4914d4bbc6bed548dabcfa7e0ce2bcf3ff",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T02:49:51-06:00",
+          "message": "fix(traceback): latch the first crash, and keep frames from other realms\n\nA cascade — cleanup rejecting a promise while the first report is still\ndraining — started a second write and a second `process.exit(1)`, and whichever\ndrained first cut the other off mid-frame. Reproduced with two ~1500-frame\ntracebacks through a pipe: both headers present, output ending \"  deep\nfile:///\", a frame severed mid-path. That is the same silent truncation this\nbranch already argued against on the drain-timeout thread, reached by a\ndifferent route. `report` now latches: the first crash is the fault, the rest\nis its wake, and one complete report of the fault beats two corrupt ones — the\nsame thing node does, where a default handler dies on the first fatal error and\nnever reports the cascade. The latch is a closure per install, not a module\nglobal, so it cannot leak across installs.\n\n`toError` gated on `instanceof Error`, which is realm-dependent. An error\nthrown inside a `node:vm` context is a real error with real frames but a\nforeign prototype, so its frames were discarded by the one component that\nexists to show them — a regression against the old installer, which passed the\npayload straight through. The gate is now `util.types.isNativeError`, which\nreads V8's internal error slot and is realm-independent; it is a real predicate\nrather than a heuristic, and needs no cast. Values it correctly rejects keep\nany `stack` string they carry, so a duck-typed thrower still renders its\nframes while being named honestly.\n\nTwo comments claimed more than the code delivers. The console comment said\nstderr drove colour depth and width; `getTerminalSize` reads only\n`process.stdout.columns`, so a stderr crash report wraps at stdout's width.\nComment corrected and narrowed, exception filed as rich-console-ujo. The demo\ncomment claimed the handler was installed \"before anything can throw\"; ESM\nevaluates a module's imports before its body, so the guarantee is \"before\n`run`\". The docs tip carried the same false premise while advising a placement\nthat cannot deliver it, and now explains the constraint and the two placements\nthat do work.\n\nOne of this round's tests was wrong before it was right: the duck-typed-stack\nfixture asserted a filename that `inspect` already places in the message, so it\npassed with the stack discarded. It now asserts a parsed frame's rendering,\nwhich nothing but a preserved stack can produce.\n\nVerified: every fix falsified by source mutation with known-good baseline and\nrestored runs; real processes confirm the race repro now reports one crash\nending on a complete frame, and a vm-context error rendering as\n\"Error: from another realm\" at evalmachine.<anonymous>:1; lint, 1787 tests,\ndocs:build green.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "4712cec3ab7ab3b8ad48745c0a178b185079bdeb",
