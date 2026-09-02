@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-65",
+      "ref": "refs/pull/65/merge",
+      "sha": "18a3ca5a0c04664593f12314c5a51d511117054a",
+      "timestamp": "2026-09-02T04:34:55.000Z",
+      "commits": [
+        {
+          "sha": "18a3ca5a0c04664593f12314c5a51d511117054a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T22:34:24-06:00",
+          "message": "Merge 74790ac09af5deb6f3577aac27037f2428c1a0e7 into f2e66189ce3138ef6c28fbc308d63db54cb4ebaf\n"
+        },
+        {
+          "sha": "74790ac09af5deb6f3577aac27037f2428c1a0e7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T22:33:53-06:00",
+          "message": "docs: fold the demos brief into the README demo section (rich-docs-vk9.3)\n\n`spec/demos.md` was the last unconsumed authoring brief. Most of it is not\nstale but repealed: the parent epic `rich-demos-l2x` now lists the\nfive-flagship model with source-module ownership under \"Non-goals (explicit\nrejections, learned the hard way)\" and closed children .4-.7 as obsolete.\nPublishing the ownership rule, the per-flagship export lists, or the\ndeletions table would re-issue a retired design, so they are discarded\nrather than moved.\n\nWhat survives is the coverage contract, which is true, load-bearing, and\ndocumented in no prose anywhere: the verifier derives its universe from\n`package.json#exports` at test-load time, counts coverage per symbol origin,\nignores namespace imports, and validates the allowlist for both dead and\nredundant entries. That folds into the README as \"Demo coverage is checked,\nnot claimed\", along with the two facts a demo author needs first —\n`examples/shared/` counts because the verifier walks every file, and a demo\nreaches the browser gallery only via `examples/<name>/wire.ts`.\n\nFolding it in also settles a contradiction. The README's hand-maintained\n\"Not yet exercised\" table was a second source for what the verifier already\ncomputes, and every one of the 16 symbols checked (`Status`, `Prompt`,\n`Measurement`, `emojiReplace`, `StyleStack`, the `Box` variants, ...) is\nabsent from `coverage-allowlist.ts`, meaning a demo already covers it. Both\nhand-maintained coverage lists are deleted; the check that cannot drift\nreplaces them.\n\nAlso corrected in the same section:\n- `PaletteResolver` no longer exists. Section 5 of themes-and-color-studio\n  is now \"Colour references\" over `resolveColorRef` / `parseHexColor` /\n  `ColorRefError`; the intro line and the features-table row say so.\n- \"Two are explained in detail below\" listed three headings. The demo list\n  is regrouped by interactive vs transcript, and the three detailed demos\n  are named.\n- The bugs-found table cited line numbers that had drifted; it now cites\n  path plus symbol, each verified present.\n- Added the live demo gallery link (verified 200) and a pointer back from\n  the gallery page.\n\nVerification: `npm run docs:build` clean (it is also the dead-link and Vue\ninterpolation check), `npm run lint` clean, `coverage.test.ts` green with\nall four invariants matching the prose that now describes them.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f2e66189ce3138ef6c28fbc308d63db54cb4ebaf",
