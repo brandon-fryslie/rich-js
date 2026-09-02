@@ -4,9 +4,9 @@
  * would fail to load in a browser.
  *
  * Two rules. A module names a Node builtin on an edge that survives to
- * runtime, which a browser bundler cannot resolve; or it reads the ambient
- * `process` or `Buffer` at module scope, which throws the moment the module
- * is evaluated. Both are decided syntactically, and where a syntactic answer
+ * runtime, which a browser bundler cannot resolve; or it reads one of
+ * `AMBIENT_GLOBALS` at module scope, which throws the moment the module is
+ * evaluated. Both are decided syntactically, and where a syntactic answer
  * cannot be exact the scan errs toward reporting — a guard that misses is
  * worse than a guard that is occasionally strict about a name.
  *
@@ -126,18 +126,20 @@ function isAmbientGlobal(name: string): name is AmbientGlobal {
  * around, because a missed node kind fails silently in the direction that
  * calls an unsafe module safe:
  *
- *   - what a function defers until it is called — its body and its
- *     parameter defaults, which are one rule and not two, so an
- *     immediately-invoked function correctly defers neither;
+ *   - everything that waits for something else to happen first: a function's
+ *     body and parameter defaults wait for a call, an instance field waits
+ *     for construction, an accessor body waits for a property read. One
+ *     rule, three triggers — which is what makes an immediately-invoked
+ *     function, `new (class { f = process.stdout })()`, and
+ *     `{ get w() { return process } }.w` all report;
  *   - a type node, which is erased before the module ever runs, so
  *     `let out: Buffer` names nothing at runtime. A class `extends` clause
  *     is the exception TypeScript's own classification hides: `isTypeNode`
  *     calls it a type node, and it evaluates to the superclass the instant
  *     the declaration runs.
  *
- * Class field initializers are pruned by neither: a field initializer runs
- * on construction, which a browser bundle reaches as soon as anything
- * builds the class.
+ * A `static` field and a `static {}` block wait for nothing — they run when
+ * the class declaration does — so neither is pruned.
  *
  * The deferral rule is syntactic and therefore not exact — a callback
  * argument to a call that itself runs on import (`[1].map(() => process)`)
@@ -152,7 +154,7 @@ export function visitModuleScopeReads(root: ts.Node, onRead: (id: ts.Identifier)
     }
     if (ts.isIdentifier(node) && !isNameSlot(node)) onRead(node);
     ts.forEachChild(node, (child) => {
-      if (isDeferredUntilCall(node, child)) return;
+      if (isDeferred(node, child)) return;
       visit(child);
     });
   };
@@ -160,16 +162,41 @@ export function visitModuleScopeReads(root: ts.Node, onRead: (id: ts.Identifier)
 }
 
 /**
- * Whether `child` waits for someone to call `parent` before it evaluates.
- * A body and a parameter default defer for the same reason, so they are one
- * question — which is what makes `(function (out = process.stdout) {})()`
- * come out right where two independent carve-outs would not.
+ * Whether `child` waits for something before it evaluates — and that
+ * something has not already happened right here.
+ *
+ * Asking one question of every deferred position is what makes the awkward
+ * combinations come out right: a constructor parameter default inside a
+ * class that is immediately instantiated defers nothing, and neither does a
+ * getter on an object literal that is read on the spot.
  */
-function isDeferredUntilCall(parent: ts.Node, child: ts.Node): boolean {
+function isDeferred(parent: ts.Node, child: ts.Node): boolean {
+  // An instance field waits for construction, exactly as a constructor body
+  // does. A `static` one runs with the declaration.
+  if (ts.isClassLike(parent) && ts.isPropertyDeclaration(child)) {
+    return !isStatic(child) && !isImmediatelyInvoked(parent);
+  }
   // `isFunctionLike` admits signature types (`ConstructorTypeNode` and
   // friends) that have no body at all — narrow rather than cast.
-  if (!ts.isFunctionLike(parent) || isImmediatelyInvoked(parent)) return false;
+  if (!ts.isFunctionLike(parent) || isImmediatelyRun(parent)) return false;
   return ("body" in parent && parent.body === child) || ts.isParameter(child);
+}
+
+function isStatic(node: ts.PropertyDeclaration): boolean {
+  return (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.StaticKeyword);
+}
+
+/**
+ * Whether whatever `fn` is waiting for happens where `fn` is written.
+ *
+ * A function waits to be called; a constructor waits for its class to be;
+ * an accessor waits for its container's property to be read. Same shape,
+ * different trigger — and an accessor has no callable form at all, so
+ * asking it the call question would always answer no.
+ */
+function isImmediatelyRun(fn: ts.SignatureDeclaration): boolean {
+  if (ts.isGetAccessor(fn) || ts.isSetAccessor(fn)) return isImmediatelyRead(fn.parent);
+  return isImmediatelyInvoked(ts.isConstructorDeclaration(fn) ? fn.parent : fn);
 }
 
 /**
@@ -185,15 +212,27 @@ function isClassExtends(node: ts.ExpressionWithTypeArguments): boolean {
   );
 }
 
-/** Whether `fn` is the callee of the call it sits in, parentheses aside. */
-function isImmediatelyInvoked(fn: ts.Node): boolean {
-  // A constructor is never called; its class is.
-  let callee: ts.Node = ts.isConstructorDeclaration(fn) ? fn.parent : fn;
-  while (ts.isParenthesizedExpression(callee.parent)) callee = callee.parent;
+/** Whether `node` is the callee of the call it sits in, parentheses aside. */
+function isImmediatelyInvoked(node: ts.Node): boolean {
+  const callee = outsideParens(node);
   const call = callee.parent;
+  return (ts.isCallExpression(call) || ts.isNewExpression(call)) && call.expression === callee;
+}
+
+/** Whether a property of `node` is read where it sits, parentheses aside. */
+function isImmediatelyRead(node: ts.Node): boolean {
+  const target = outsideParens(node);
+  const access = target.parent;
   return (
-    (ts.isCallExpression(call) || ts.isNewExpression(call)) && call.expression === callee
+    (ts.isPropertyAccessExpression(access) || ts.isElementAccessExpression(access)) &&
+    access.expression === target
   );
+}
+
+function outsideParens(node: ts.Node): ts.Node {
+  let current = node;
+  while (ts.isParenthesizedExpression(current.parent)) current = current.parent;
+  return current;
 }
 
 /**

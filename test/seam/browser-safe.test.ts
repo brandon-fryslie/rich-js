@@ -160,10 +160,30 @@ describe("browserSafetyViolations", () => {
     expect(scan(`class C { m() { return process.env; } }`)).toEqual([]);
   });
 
-  it("catches a class field initializer, which runs the moment anything is built", () => {
-    expect(scan(`export class Host { out = process.stdout; }`)[0]).toMatchObject({
+  it("catches what a class runs when it is declared, not what it runs per instance", () => {
+    // An instance field waits for construction, exactly as a constructor
+    // body does; a static field and a static block run with the declaration.
+    expect(scan(`export class Host { static out = process.stdout; }`)[0]).toMatchObject({
       global: "process",
     });
+    expect(scan(`export class Host { static { void process.stdout; } }`)[0]).toMatchObject({
+      global: "process",
+    });
+    expect(scan(`export class Host { out = process.stdout; }`)).toEqual([]);
+    expect(scan(`export const h = new (class { out = process.stdout; })();`)[0]).toMatchObject({
+      global: "process",
+    });
+  });
+
+  it("catches an accessor whose container is read on the spot", () => {
+    // A getter has no callable form: it waits for a property read, not a call.
+    expect(scan(`export const w = { get w() { return process.env; } }.w;`)[0]).toMatchObject({
+      global: "process",
+    });
+    expect(
+      scan(`export const w = (class { static get w() { return process.env; } }).w;`)[0],
+    ).toMatchObject({ global: "process" });
+    expect(scan(`export class C { get w() { return process.env; } }`)).toEqual([]);
   });
 
   it("catches a class extends clause, which evaluates to the superclass on load", () => {
@@ -270,15 +290,16 @@ describe("browserSafetyViolations", () => {
 });
 
 describe("visitModuleScopeReads", () => {
-  it("yields reads at module scope and nothing from inside a function body", () => {
+  it("yields only what evaluates when the module does", () => {
     const sf = ts.createSourceFile(
       "f.ts",
-      `const a = outer;\nfunction f() { return inner; }\nclass C { field = built; m() { return hidden; } }`,
+      `const a = outer;\nfunction f() { return inner; }\n` +
+        `class C { static eager = declared; lazy = constructed; m() { return called; } }`,
       ts.ScriptTarget.ES2022,
       true,
     );
     const seen: string[] = [];
     visitModuleScopeReads(sf, (id) => seen.push(id.text));
-    expect(seen.sort()).toEqual(["built", "outer"]);
+    expect(seen.sort()).toEqual(["declared", "outer"]);
   });
 });
