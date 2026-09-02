@@ -149,8 +149,12 @@ export function reachableSourceModules(roots: readonly string[]): ReachedModule[
  * `src/` — a `node:*` builtin, a package, a type-only `@types` declaration.
  * Callers that care about those specifiers inspect the specifier itself;
  * this resolver only decides what the walk continues into.
+ *
+ * Exported so its throwing arm can be pinned. Nothing in a healthy `src/`
+ * reaches it, which makes it the one line here whose regression would look
+ * exactly like success — the failure mode this file exists to prevent.
  */
-function resolveEdge(
+export function resolveEdge(
   specifier: string,
   from: string,
   options: ts.CompilerOptions,

@@ -171,10 +171,13 @@ export function visitModuleScopeReads(root: ts.Node, onRead: (id: ts.Identifier)
  * getter on an object literal that is read on the spot.
  */
 function isDeferred(parent: ts.Node, child: ts.Node): boolean {
-  // An instance field waits for construction, exactly as a constructor body
-  // does. A `static` one runs with the declaration.
-  if (ts.isClassLike(parent) && ts.isPropertyDeclaration(child)) {
-    return !isStatic(child) && !isImmediatelyInvoked(parent);
+  // Only the *initializer* of an instance field waits for construction. The
+  // field's computed name and its decorators run when the class body does,
+  // so pruning the whole declaration would hide them — the asymmetry with
+  // the parameter branch below, where a name can never be an expression and
+  // pruning the whole parameter is therefore safe.
+  if (ts.isPropertyDeclaration(parent) && parent.initializer === child) {
+    return !isStatic(parent) && !isImmediatelyInvoked(parent.parent);
   }
   // `isFunctionLike` admits signature types (`ConstructorTypeNode` and
   // friends) that have no body at all — narrow rather than cast.
@@ -189,14 +192,46 @@ function isStatic(node: ts.PropertyDeclaration): boolean {
 /**
  * Whether whatever `fn` is waiting for happens where `fn` is written.
  *
- * A function waits to be called; a constructor waits for its class to be;
- * an accessor waits for its container's property to be read. Same shape,
- * different trigger — and an accessor has no callable form at all, so
- * asking it the call question would always answer no.
+ * One notion, asked of the four kinds of function a module can hold: the
+ * container's value — the object or class as written, or what `new` makes
+ * of it — is consumed right here. A plain function is its own container and
+ * is consumed by a call. A constructor's class is consumed by `new`. An
+ * accessor is consumed by a property read, and a method by that read being
+ * called; neither has a callable form of its own, so asking either the
+ * plain-call question could only ever answer no.
+ *
+ * The kinds are an enumeration, but a closed one — those are all of them.
+ * The chain is not walked further than this: `new C()` where `C` is named
+ * elsewhere needs symbol resolution, which is the line this file does not
+ * cross.
  */
 function isImmediatelyRun(fn: ts.SignatureDeclaration): boolean {
-  if (ts.isGetAccessor(fn) || ts.isSetAccessor(fn)) return isImmediatelyRead(fn.parent);
-  return isImmediatelyInvoked(ts.isConstructorDeclaration(fn) ? fn.parent : fn);
+  if (ts.isConstructorDeclaration(fn)) return isImmediatelyInvoked(fn.parent);
+  if (ts.isGetAccessor(fn) || ts.isSetAccessor(fn)) return propertyReadOf(fn.parent) !== null;
+  if (ts.isMethodDeclaration(fn)) {
+    const read = propertyReadOf(fn.parent);
+    return read !== null && isImmediatelyInvoked(read);
+  }
+  return isImmediatelyInvoked(fn);
+}
+
+/**
+ * The property access applied on the spot to `container`'s value, where that
+ * value is the container itself or the result of `new`-ing it. `null` when
+ * nothing reads it here.
+ */
+function propertyReadOf(container: ts.Node): ts.Node | null {
+  const constructed = outsideParens(container);
+  const built =
+    ts.isNewExpression(constructed.parent) && constructed.parent.expression === constructed
+      ? constructed.parent
+      : constructed;
+  const target = outsideParens(built);
+  const access = target.parent;
+  return (ts.isPropertyAccessExpression(access) || ts.isElementAccessExpression(access)) &&
+    access.expression === target
+    ? access
+    : null;
 }
 
 /**
@@ -217,16 +252,6 @@ function isImmediatelyInvoked(node: ts.Node): boolean {
   const callee = outsideParens(node);
   const call = callee.parent;
   return (ts.isCallExpression(call) || ts.isNewExpression(call)) && call.expression === callee;
-}
-
-/** Whether a property of `node` is read where it sits, parentheses aside. */
-function isImmediatelyRead(node: ts.Node): boolean {
-  const target = outsideParens(node);
-  const access = target.parent;
-  return (
-    (ts.isPropertyAccessExpression(access) || ts.isElementAccessExpression(access)) &&
-    access.expression === target
-  );
 }
 
 function outsideParens(node: ts.Node): ts.Node {
@@ -252,6 +277,9 @@ function isNameSlot(id: ts.Identifier): boolean {
   // `export { process as p }` read the binding; add `from "./m.js"` and the
   // same two names index the other module's exports instead.
   if (ts.isExportSpecifier(parent)) {
+    // An erased specifier — `export { type process }` — references nothing
+    // at runtime, the same question the import side asks in `graph.ts`.
+    if (parent.isTypeOnly || parent.parent.parent.isTypeOnly) return true;
     return isReExport(parent) || (parent.propertyName ?? parent.name) !== id;
   }
   // Everywhere else a `propertyName` names a slot in someone else's table —

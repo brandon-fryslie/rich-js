@@ -18,7 +18,8 @@ import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
 import { REPO_ROOT, ENTRY_MODULES } from "../coverage/extract.js";
-import { reachableSourceModules, parseSourceFile } from "./graph.js";
+import { reachableSourceModules, parseSourceFile, resolveEdge } from "./graph.js";
+import { loadCompilerOptions } from "../coverage/extract.js";
 import {
   browserSafetyViolations,
   describeViolation,
@@ -61,6 +62,21 @@ describe("reachableSourceModules", () => {
 
   it("stops at the node airlock", () => {
     expect(files.filter((f) => f.startsWith("src/node/"))).toEqual([]);
+  });
+
+  it("refuses to walk past a relative import it cannot resolve", () => {
+    // The one branch in the walk whose regression looks like success: a
+    // silently dropped edge shrinks the graph, and a smaller graph reports
+    // "safe" for the very reason it should report "broken".
+    const from = path.join(REPO_ROOT, "src", "index.ts");
+    const options = loadCompilerOptions();
+    expect(() => resolveEdge("./does-not-exist.js", from, options)).toThrow(
+      /does not resolve to any file/,
+    );
+    // A specifier this repo does not own is not an error — it is the edge of
+    // the walk, which is what keeps `node:*` and dependencies from crashing it.
+    expect(resolveEdge("node:fs", from, options)).toBeNull();
+    expect(resolveEdge("string-width", from, options)).toBeNull();
   });
 
   it("records the import chain that reached each module", () => {
@@ -173,17 +189,33 @@ describe("browserSafetyViolations", () => {
     expect(scan(`export const h = new (class { out = process.stdout; })();`)[0]).toMatchObject({
       global: "process",
     });
+    // A computed member name runs with the class body whether or not the
+    // member is static, so only the initializer is deferred.
+    expect(scan(`export class Host { [process.platform] = 1; }`)[0]).toMatchObject({
+      global: "process",
+    });
   });
 
-  it("catches an accessor whose container is read on the spot", () => {
-    // A getter has no callable form: it waits for a property read, not a call.
+  it("catches a member whose container is consumed on the spot", () => {
+    // Neither an accessor nor a method has a callable form of its own: one
+    // waits for a property read, the other for that read to be called.
     expect(scan(`export const w = { get w() { return process.env; } }.w;`)[0]).toMatchObject({
       global: "process",
     });
     expect(
       scan(`export const w = (class { static get w() { return process.env; } }).w;`)[0],
     ).toMatchObject({ global: "process" });
+    expect(
+      scan(`export const w = new (class { get w() { return process.env; } })().w;`)[0],
+    ).toMatchObject({ global: "process" });
+    expect(scan(`export const w = ({ m(o = process.stdout) { return o; } }).m();`)[0],
+    ).toMatchObject({ global: "process" });
+    expect(
+      scan(`export const w = (class { static m(o = process.stdout) { return o; } }).m();`)[0],
+    ).toMatchObject({ global: "process" });
+    // Read but not called, or neither: still waiting for something.
     expect(scan(`export class C { get w() { return process.env; } }`)).toEqual([]);
+    expect(scan(`export const o = { m(o = process.stdout) { return o; } };`)).toEqual([]);
   });
 
   it("catches a class extends clause, which evaluates to the superclass on load", () => {
@@ -231,6 +263,9 @@ describe("browserSafetyViolations", () => {
     expect(scan(`export { process as p };`)[0]).toMatchObject({ global: "process" });
     expect(scan(`export { process } from "./m.js";`)).toEqual([]);
     expect(scan(`export { process as p } from "./m.js";`)).toEqual([]);
+    // An erased specifier references nothing at runtime.
+    expect(scan(`type process = string;\nexport { type process };`)).toEqual([]);
+    expect(scan(`type process = string;\nexport type { process };`)).toEqual([]);
   });
 
   it("does not mistake a name for a read", () => {
