@@ -218,7 +218,13 @@ export type { SpinnerData } from "./core/spinnerData.js";
 
 // Console
 export { Console } from "./core/console.js";
-export type { ConsoleOptions, ConsoleSink, PrintOptions } from "./core/console.js";
+export type {
+  ConsoleOptions,
+  ConsoleSink,
+  ConsoleStream,
+  ConsoleEnvironment,
+  PrintOptions,
+} from "./core/console.js";
 
 // Renderables
 export { Constrain } from "./renderables/constrain.js";

@@ -5,6 +5,7 @@
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme } from "./style.js";
 import { ColorDepth, resolveColorSystem } from "./color.js";
+import type { DetectColorOptions } from "./color.js";
 import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
 import { ReprHighlighter } from "./highlighter.js";
@@ -30,6 +31,28 @@ export interface ConsoleSink {
   write(chunk: string | Uint8Array): unknown;
 }
 
+// [LAW:types-are-the-program] A sink you can also interrogate: the console asks
+// its output target three questions beyond "take these bytes" — are you a
+// terminal, how wide are you, how tall. All three are optional because a plain
+// `ConsoleSink` answers none of them, and "unknown" is a legal answer that the
+// size and TTY defaults already handle.
+export interface ConsoleStream extends ConsoleSink {
+  readonly isTTY?: boolean;
+  readonly columns?: number;
+  readonly rows?: number;
+}
+
+/**
+ * The host facilities a `Console` consults: an environment map and the two
+ * standard streams. Node's `process` satisfies this shape as-is, which is the
+ * point — injecting a fake terminal needs no adapter at either end.
+ */
+export interface ConsoleEnvironment {
+  readonly env: NodeJS.ProcessEnv;
+  readonly stdout?: ConsoleStream;
+  readonly stderr?: ConsoleStream;
+}
+
 export interface ConsoleOptions {
   /**
    * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
@@ -39,18 +62,18 @@ export interface ConsoleOptions {
   colorSystem?: string | ColorDepth | null;
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
-   * `process.stdout.columns` / `COLUMNS` env / 80.
+   * the `COLUMNS` env var / the bound stream's `columns` / 80.
    */
   width?: number;
   /**
    * Static height (lines). Ignored when `getSize` is provided. Falls back to
-   * `process.stdout.rows` / `LINES` env / 24.
+   * the `LINES` env var / the bound stream's `rows` / 24.
    */
   height?: number;
   /**
    * Live size source. When provided, the console reads its width/height from
    * this function on every access, overriding any static `width`/`height` and
-   * the `process.stdout` fallback. Pass this when the output target's
+   * the bound stream's dimensions. Pass this when the output target's
    * dimensions can change at runtime (e.g. xterm.js in a browser).
    *
    * [LAW:dataflow-not-control-flow] Live size is a function value the
@@ -63,6 +86,13 @@ export interface ConsoleOptions {
   forceInteractive?: boolean;
   stderr?: boolean;
   file?: ConsoleSink;
+  /**
+   * Host facilities to consult for colour detection, size detection, and the
+   * default output sink. Defaults to the ambient `process`, or — where there
+   * is no `process` — an empty environment with no streams. Pass this to drive
+   * a `Console` deterministically, or to run one against a simulated terminal.
+   */
+  environment?: ConsoleEnvironment;
   record?: boolean;
   markup?: boolean;
   highlight?: boolean;
@@ -99,59 +129,90 @@ function resolveStyle(style: string | Style | undefined): Style {
 // enum | null) into the cached `_colorSystem` field. WINDOWS has no string
 // spec; callers reach it via the enum directly.
 //
-// [LAW:dataflow-not-control-flow] `isTTY` is forwarded unconditionally;
-// `resolveColorSystem` ignores it for non-`"auto"` specs. Caller must compute
-// the effective TTY status of the actual output target (stdout/stderr/file)
-// so `"auto"` detection doesn't accidentally consult `process.stdout.isTTY`
-// when the console is bound to a different stream.
+// [LAW:dataflow-not-control-flow] `isTTY` and `env` are forwarded
+// unconditionally; `resolveColorSystem` ignores them for non-`"auto"` specs.
+// Passing both is what keeps detection inside the console's injected
+// environment — left to its own defaults, `detectColorSystem` would consult
+// the ambient `process.env` and `process.stdout.isTTY` even for a console
+// bound to a different stream.
 function resolveOptionColorSystem(
   spec: string | ColorDepth | null | undefined,
-  isTTY: boolean,
+  detect: DetectColorOptions,
 ): ColorDepth | null {
   if (spec === null) return null;
-  if (spec === undefined) return resolveColorSystem("auto", { isTTY });
-  if (typeof spec === "string") return resolveColorSystem(spec, { isTTY });
+  if (spec === undefined) return resolveColorSystem("auto", detect);
+  if (typeof spec === "string") return resolveColorSystem(spec, detect);
   return spec;
 }
 
-// [LAW:single-enforcer] Effective TTY status of the console's output target
-// is computed once, here, from the options that determine the target. Mirrors
-// the `isTerminal` getter so the cached `_colorSystem` and runtime
-// `isTerminal` agree on what counts as a TTY.
-function effectiveIsTTY(options?: ConsoleOptions): boolean {
-  if (options?.forceTerminal) return true;
-  if (options?.file) return false;
-  if (typeof process === "undefined") return false;
-  return (options?.stderr ? process.stderr : process.stdout)?.isTTY ?? false;
+// A host with an environment but no streams — what a browser looks like from
+// here. Frozen so the shared instance cannot be mutated into a fake terminal.
+const DETACHED_ENVIRONMENT: ConsoleEnvironment = Object.freeze({
+  env: Object.freeze({}),
+});
+
+// [LAW:single-enforcer] The only read of the ambient `process` global in this
+// module, and the reason every other function below takes its environment as
+// an argument. `process` satisfies `ConsoleEnvironment` structurally, so the
+// node path needs no adapter; the browser path degrades to a host that answers
+// "no streams" rather than throwing at the reference.
+function ambientEnvironment(): ConsoleEnvironment {
+  return typeof process === "undefined" ? DETACHED_ENVIRONMENT : process;
 }
 
-function getTerminalSize(): { width: number; height: number } {
-  if (typeof process !== "undefined") {
-    const cols = process.env?.["COLUMNS"];
-    const lines = process.env?.["LINES"];
-    const w = cols ? parseInt(cols, 10) : (process.stdout?.columns ?? 80);
-    const h = lines ? parseInt(lines, 10) : (process.stdout?.rows ?? 24);
-    return { width: w || 80, height: h || 24 };
-  }
-  return { width: 80, height: 24 };
+// [LAW:one-source-of-truth] A console talks to exactly one stream, and every
+// question it asks the host — are you a terminal, how wide are you, where do
+// bytes go — is a question about *that* stream. Selecting it once, here, is
+// what makes the three answers agree. When each site re-selected for itself,
+// one of them (size) silently didn't, and a `Console({ stderr: true })` keyed
+// its colour to stderr and its width to stdout.
+function boundStream(
+  environment: ConsoleEnvironment,
+  useStderr: boolean,
+): ConsoleStream | undefined {
+  return useStderr ? environment.stderr : environment.stdout;
+}
+
+// [LAW:single-enforcer] Effective TTY status of the console's output target is
+// computed once, at construction, and cached — an explicit `file` is not a
+// terminal, `forceTerminal` says it is regardless, and otherwise the bound
+// stream answers. Every input is fixed at construction, so recomputing per
+// read could only ever return the same answer twice.
+function effectiveIsTTY(
+  options: ConsoleOptions | undefined,
+  stream: ConsoleStream | undefined,
+): boolean {
+  if (options?.forceTerminal) return true;
+  if (options?.file) return false;
+  return stream?.isTTY ?? false;
+}
+
+function terminalSize(
+  environment: ConsoleEnvironment,
+  stream: ConsoleStream | undefined,
+): { width: number; height: number } {
+  const cols = environment.env["COLUMNS"];
+  const lines = environment.env["LINES"];
+  const w = cols ? parseInt(cols, 10) : (stream?.columns ?? 80);
+  const h = lines ? parseInt(lines, 10) : (stream?.rows ?? 24);
+  return { width: w || 80, height: h || 24 };
 }
 
 // [LAW:single-enforcer] One trust-boundary check: when no `file:` was
-// provided, the console falls back to `process.stderr`/`process.stdout`,
-// which only exist in node-like environments. Browser bundles without an
-// explicit `file:` would otherwise hit a `ReferenceError: process is not
-// defined` deep inside `_write`. Centralizing the fallback here makes the
-// failure diagnostic and keeps both consumers (`file` getter, `_write`)
-// behaving identically — no second copy of the check to drift.
-function defaultSink(useStderr: boolean): ConsoleSink {
-  if (typeof process === "undefined") {
+// provided, the console writes to the stream it is bound to — which a browser
+// host does not have. Without this, the absence would surface as a `TypeError`
+// deep inside `_write`. Centralizing it here keeps both consumers (`file`
+// getter, `_write`) behaving identically — no second copy of the check to
+// drift.
+function defaultSink(stream: ConsoleStream | undefined): ConsoleSink {
+  if (stream === undefined) {
     throw new Error(
-      "Console: no `file` provided and `process` is not defined (e.g. " +
-        "running in a browser). Pass `file: hostStream(host)` or any other " +
-        "ConsoleSink so output has somewhere to go.",
+      "Console: no `file` provided and the environment has no stream to " +
+        "write to (e.g. running in a browser). Pass `file: hostStream(host)` " +
+        "or any other ConsoleSink so output has somewhere to go.",
     );
   }
-  return useStderr ? process.stderr : process.stdout;
+  return stream;
 }
 
 // [LAW:dataflow-not-control-flow] Build one size-reading function at
@@ -162,11 +223,13 @@ function defaultSink(useStderr: boolean): ConsoleSink {
 //
 // The all-static and mixed cases get *different* closures: when both
 // dimensions are fixed, the returned function is a constant — no
-// `getTerminalSize` call on every read, since neither value can change.
+// `terminalSize` call on every read, since neither value can change.
 // When at least one dimension is dynamic, the closure consults
-// `getTerminalSize` to fill in the missing side.
+// `terminalSize` to fill in the missing side.
 function resolveGetSize(
-  options?: ConsoleOptions,
+  options: ConsoleOptions | undefined,
+  environment: ConsoleEnvironment,
+  stream: ConsoleStream | undefined,
 ): () => { width: number; height: number } {
   if (options?.getSize) return options.getSize;
   const staticWidth = options?.width;
@@ -180,7 +243,7 @@ function resolveGetSize(
     return () => fixed;
   }
   return () => {
-    const term = getTerminalSize();
+    const term = terminalSize(environment, stream);
     return {
       width: staticWidth ?? term.width,
       height: staticHeight ?? term.height,
@@ -198,10 +261,13 @@ export class Console {
   // through `_getSize()` — no second path, no second source to drift.
   private _getSize: () => { width: number; height: number };
   private _style: Style;
-  private _forceTerminal: boolean;
+  private _isTerminal: boolean;
   private _forceInteractive: boolean | undefined;
   private _file: ConsoleSink | undefined;
-  private _stderr: boolean;
+  // [LAW:one-source-of-truth] The resolved output stream, not the `stderr`
+  // flag that selected it. Storing the answer instead of the question is what
+  // stops `isTerminal`, `size`, and `file` from re-deriving it three ways.
+  private _stream: ConsoleStream | undefined;
   private _record: boolean;
   private _markup: boolean;
   private _highlight: boolean;
@@ -216,16 +282,18 @@ export class Console {
   private _capture: string | null;
 
   constructor(options?: ConsoleOptions) {
-    this._colorSystem = resolveOptionColorSystem(
-      options?.colorSystem,
-      effectiveIsTTY(options),
-    );
-    this._getSize = resolveGetSize(options);
+    const environment = options?.environment ?? ambientEnvironment();
+    const stream = boundStream(environment, options?.stderr ?? false);
+    this._stream = stream;
+    this._isTerminal = effectiveIsTTY(options, stream);
+    this._colorSystem = resolveOptionColorSystem(options?.colorSystem, {
+      isTTY: this._isTerminal,
+      env: environment.env,
+    });
+    this._getSize = resolveGetSize(options, environment, stream);
     this._style = resolveStyle(options?.style);
-    this._forceTerminal = options?.forceTerminal ?? false;
     this._forceInteractive = options?.forceInteractive;
     this._file = options?.file;
-    this._stderr = options?.stderr ?? false;
     this._record = options?.record ?? false;
     this._markup = options?.markup !== false;
     this._highlight = options?.highlight !== false;
@@ -254,12 +322,7 @@ export class Console {
   }
 
   get isTerminal(): boolean {
-    if (this._forceTerminal) return true;
-    if (this._file) return false;
-    if (typeof process !== "undefined") {
-      return (this._stderr ? process.stderr : process.stdout)?.isTTY ?? false;
-    }
-    return false;
+    return this._isTerminal;
   }
 
   get isInteractive(): boolean {
@@ -272,14 +335,14 @@ export class Console {
   }
 
   // [LAW:one-source-of-truth] Output target lookup matches `_write`'s:
-  // explicit `file` wins, otherwise `defaultSink` resolves to stderr/stdout
-  // (or throws clearly in environments where `process` is absent). Exposed
+  // explicit `file` wins, otherwise `defaultSink` returns the bound stream
+  // (or throws clearly when the environment has none). Exposed
   // so renderables that bypass the segment pipeline (e.g. Live's raw control
   // sequences) still write to the caller's configured stream. Return type is
   // the narrow `ConsoleSink` — Live (and any external consumer) only needs
   // `.write()`, so the type tells the truth about what the surface guarantees.
   get file(): ConsoleSink {
-    return this._file ?? defaultSink(this._stderr);
+    return this._file ?? defaultSink(this._stream);
   }
 
   get theme(): Theme {
@@ -512,7 +575,7 @@ export class Console {
       this._capture += text;
       return;
     }
-    const target = this._file ?? defaultSink(this._stderr);
+    const target = this._file ?? defaultSink(this._stream);
     target.write(text);
   }
 }
