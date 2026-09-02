@@ -4,15 +4,22 @@
     {
       "version": "pr-69",
       "ref": "refs/pull/69/merge",
-      "sha": "bc347cc9235e81f77c6a00753d8601e7d83ce2b1",
-      "timestamp": "2026-09-02T07:06:28.940Z",
+      "sha": "7ffd74e9dc23c936b0c15068afdfef37bce5d676",
+      "timestamp": "2026-09-02T07:31:14.055Z",
       "commits": [
         {
-          "sha": "bc347cc9235e81f77c6a00753d8601e7d83ce2b1",
+          "sha": "7ffd74e9dc23c936b0c15068afdfef37bce5d676",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T07:05:58Z",
-          "message": "Merge 06df559ceb25e667557e8905c69b9e26bef5bfbd into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+          "timestamp": "2026-09-02T07:30:41Z",
+          "message": "Merge 042cddb6e84841ce884fb7b6ef861320ee27c6ec into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+        },
+        {
+          "sha": "042cddb6e84841ce884fb7b6ef861320ee27c6ec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T01:30:28-06:00",
+          "message": "fix(coverage): a declaration's surface is its signature, not its body\n\nTwo findings, one rule. `visitTypePositions` had no case for\n`import(\"m\").T`, so `TerminalTheme`'s public `palette:\nimport(\"../themes/palette.js\").Palette` parameter was surface the walk\nstepped over. And `forEachChild` descended into member bodies and\ninitializers, so a type named in a local annotation or a cast inside a\ncalled method counted as surface — contradicting the docstring rewritten\nlast round to stop overclaiming.\n\nBoth ask the same question: which positions in a declaration are its type\nsurface? Answering it twice would give the walk two rules to drift\nbetween, so `isOffSurface` states it once — prune private members, bodies\nand initializers; everything else is signature. Pruning rather than\nenumerating the positions that count, because a missed declaration kind\nfails silently in the direction that marks a type reachable when it is not.\n\nThe body pruning has two live instances, which the review could not name:\n`PrintOptions` and `ThemePaletteData` were reachable only through\nimplementation. Both are now allowlisted with the real cause. `print`\ntakes `...args: unknown[]` and sniffs its options off the last argument,\nso no signature carries the type; `THEMES` is unannotated so\n`ThemeName = keyof typeof THEMES` stays a literal union. Neither is\nworth reshaping src/ to satisfy a gate.\n\nAdds test/coverage/extract.test.ts. Every gap in this walk so far was\nfound by review, not by a test, because its only exercise was one\naggregate pass over the real tree that reports pass or fail and cannot\nsay which position was mishandled. The walk is pure over an AST, so nine\nfixtures pin it with no Program and no checker. Each fix was falsified\nagainst them: dropping the import-type case fails one, dropping the\nbody pruning fails two, dropping the private-member exclusion from last\nround fails one.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "06df559ceb25e667557e8905c69b9e26bef5bfbd",
