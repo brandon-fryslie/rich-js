@@ -4,15 +4,22 @@
     {
       "version": "pr-69",
       "ref": "refs/pull/69/merge",
-      "sha": "00784d5d278f421416c3f798653068c53e34be54",
-      "timestamp": "2026-09-02T06:41:29.715Z",
+      "sha": "bc347cc9235e81f77c6a00753d8601e7d83ce2b1",
+      "timestamp": "2026-09-02T07:06:28.940Z",
       "commits": [
         {
-          "sha": "00784d5d278f421416c3f798653068c53e34be54",
+          "sha": "bc347cc9235e81f77c6a00753d8601e7d83ce2b1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T06:40:56Z",
-          "message": "Merge 9e7f95334c147063306eec62471f714e009fafab into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+          "timestamp": "2026-09-02T07:05:58Z",
+          "message": "Merge 06df559ceb25e667557e8905c69b9e26bef5bfbd into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+        },
+        {
+          "sha": "06df559ceb25e667557e8905c69b9e26bef5bfbd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T01:05:49-06:00",
+          "message": "fix(coverage): private members and erased imports must not launder evidence\n\nTwo ways the floor could be satisfied by something no consumer can reach.\n\n`collectTypeClosure` walked the whole declaration subtree of a demonstrated\nvalue, so a type named only in a `private` member counted as reachable —\na surface nothing outside the class can touch. The walk now skips class\nelements marked `private` or named with `#`.\n\n`visitImports` did not read `isTypeOnly`. The checker resolves\n`import type { SomeClass }` to the same SymbolFlags.Value symbol as a value\nimport, so an import erased before the demo runs satisfied a check that\nasks whether a demo can name what it runs. Both the clause form and the\nper-specifier form are now skipped.\n\nNeither gap was hiding a live false pass — the suite is green without any\nallowlist change — so both were confirmed by falsification instead:\n`KeyEvent` rebound as `import type` is reported an undemonstrated value,\nand a probe type reachable only through a private method is reported an\nundemonstrated type.\n\nAlso corrects the claim in collectTypeClosure's doc comment. It said a type\nreached this way is one \"the demo's own compilation depends on, so changing\nit breaks examples/\", which is false — for a type on an uncalled public\nmethod, changing it breaks only its own module, which assertProgramClean\nalready covers. What the walk establishes is weaker and worth stating\nplainly: the type is on the public surface of a value a demo runs.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "9e7f95334c147063306eec62471f714e009fafab",
