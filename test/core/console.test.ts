@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { Console, type ConsoleOptions } from "../../src/core/console.js";
+import {
+  Console,
+  type ConsoleOptions,
+  type ConsoleEnvironment,
+  type ConsoleStream,
+} from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
@@ -696,9 +701,125 @@ describe("Console file/error output", () => {
   });
 
   it("stderr option selects stderr output target", () => {
-    // We can only verify construction doesn't throw; actual stderr writing
-    // requires process.stderr which is real
-    const c = new Console({ stderr: true, width: 80, colorSystem: null });
-    expect(c).toBeDefined();
+    const host = makeEnvironment();
+    const c = new Console({
+      stderr: true,
+      environment: host.environment,
+      width: 80,
+      colorSystem: null,
+    });
+    c.print("Diagnostic");
+    expect(captured(host.stderr.chunks)).toContain("Diagnostic");
+    expect(captured(host.stdout.chunks)).toBe("");
+  });
+});
+
+// --- Environment Injection ---
+
+// A `ConsoleEnvironment` standing in for the ambient `process`: two writable
+// streams whose TTY-ness and dimensions the test chooses, plus an env map.
+function makeStreamOf(props: {
+  isTTY?: boolean;
+  columns?: number;
+  rows?: number;
+}): ConsoleStream & { chunks: string[] } {
+  const chunks: string[] = [];
+  return {
+    ...props,
+    chunks,
+    write(data: string | Uint8Array) {
+      chunks.push(String(data));
+      return true;
+    },
+  };
+}
+
+function makeEnvironment(
+  overrides: {
+    env?: NodeJS.ProcessEnv;
+    stdout?: { isTTY?: boolean; columns?: number; rows?: number };
+    stderr?: { isTTY?: boolean; columns?: number; rows?: number };
+  } = {},
+): {
+  environment: ConsoleEnvironment;
+  stdout: ConsoleStream & { chunks: string[] };
+  stderr: ConsoleStream & { chunks: string[] };
+} {
+  const stdout = makeStreamOf(overrides.stdout ?? {});
+  const stderr = makeStreamOf(overrides.stderr ?? {});
+  return {
+    environment: { env: overrides.env ?? {}, stdout, stderr },
+    stdout,
+    stderr,
+  };
+}
+
+describe("Console environment injection", () => {
+  it("drives size, TTY status, and output from the injected environment", () => {
+    const host = makeEnvironment({
+      stdout: { isTTY: true, columns: 120, rows: 40 },
+    });
+    const c = new Console({ environment: host.environment, colorSystem: null });
+
+    expect(c.size).toEqual({ width: 120, height: 40 });
+    expect(c.isTerminal).toBe(true);
+    c.print("Hello");
+    expect(captured(host.stdout.chunks)).toContain("Hello");
+  });
+
+  it("takes size from the stream the console is bound to", () => {
+    const host = makeEnvironment({
+      stdout: { columns: 80, rows: 24 },
+      stderr: { columns: 200, rows: 50 },
+    });
+    const options = { environment: host.environment, colorSystem: null };
+
+    expect(new Console(options).size).toEqual({ width: 80, height: 24 });
+    expect(new Console({ ...options, stderr: true }).size).toEqual({
+      width: 200,
+      height: 50,
+    });
+  });
+
+  it("takes TTY status from the stream the console is bound to", () => {
+    const host = makeEnvironment({
+      stdout: { isTTY: false },
+      stderr: { isTTY: true },
+    });
+    const options = { environment: host.environment, colorSystem: null };
+
+    expect(new Console(options).isTerminal).toBe(false);
+    expect(new Console({ ...options, stderr: true }).isTerminal).toBe(true);
+  });
+
+  it("lets COLUMNS and LINES from the injected env override stream size", () => {
+    const host = makeEnvironment({
+      env: { COLUMNS: "100", LINES: "30" },
+      stdout: { columns: 120, rows: 40 },
+    });
+    const c = new Console({ environment: host.environment, colorSystem: null });
+    expect(c.size).toEqual({ width: 100, height: 30 });
+  });
+
+  it("resolves auto color detection against the injected env", () => {
+    const host = makeEnvironment({
+      env: { FORCE_COLOR: "3" },
+      stdout: { isTTY: false },
+    });
+    const c = new Console({ environment: host.environment });
+    expect(c.colorSystem).toBe(ColorDepth.TRUECOLOR);
+  });
+
+  it("falls back to 80x24 when the bound stream reports no dimensions", () => {
+    const host = makeEnvironment();
+    const c = new Console({ environment: host.environment, colorSystem: null });
+    expect(c.size).toEqual({ width: 80, height: 24 });
+  });
+
+  it("reports a usable error when the environment has no streams", () => {
+    // The browser shape: an env map and nowhere to write.
+    const c = new Console({ environment: { env: {} }, colorSystem: null });
+    expect(c.isTerminal).toBe(false);
+    expect(() => c.print("nowhere")).toThrow(/no `file` provided/);
   });
 });

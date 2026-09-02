@@ -316,3 +316,30 @@ const console = new Console({ forceInteractive: true }); // always show animatio
 | `COLUMNS` / `LINES` | Override terminal dimensions |
 
 `NO_COLOR` takes precedence over `FORCE_COLOR`.
+
+## Injecting the environment
+
+By default a `Console` reads those variables, its TTY status, and its dimensions
+from the ambient `process`. Pass `environment` to take that from somewhere else —
+a fixed map and a pair of streams you control:
+
+```typescript
+const output: string[] = [];
+const console = new Console({
+  environment: {
+    env: { FORCE_COLOR: "3" },
+    stdout: { isTTY: true, columns: 100, rows: 30, write: (s) => output.push(String(s)) },
+  },
+});
+```
+
+That console reports truecolor at 100×30 and writes into `output`, on any host,
+with no ambient `process` involved. Node's own `process` satisfies the same
+`ConsoleEnvironment` shape, which is why it is the default and why no adapter is
+needed at either end.
+
+The environment supplies both streams, and `stderr: true` binds the console to
+`stderr` for all three questions at once — colour, dimensions, and where bytes
+go. A console bound to `stderr` therefore wraps at the width of `stderr`, which
+matters in the ordinary CLI shape where stdout is piped to a file and stderr is
+still an interactive terminal.
