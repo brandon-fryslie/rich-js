@@ -117,6 +117,17 @@ describe("browserSafetyViolations", () => {
     expect(scan(`const f = () => import("node:os");`)[0]).toMatchObject({ specifier: "node:os" });
   });
 
+  it("catches a builtin imported without the node: prefix", () => {
+    // An IDE auto-import defaults to the bare form, which type-checks here
+    // and is exactly as unresolvable in a browser as the prefixed one.
+    expect(scan(`import { readFileSync } from "fs";`)[0]).toMatchObject({ specifier: "fs" });
+    expect(scan(`import { readFile } from "fs/promises";`)[0]).toMatchObject({
+      specifier: "fs/promises",
+    });
+    expect(scan(`import { x } from "string-width";`)).toEqual([]);
+    expect(scan(`import { x } from "./sibling.js";`)).toEqual([]);
+  });
+
   it("ignores a type-only node import, which is erased before the module runs", () => {
     expect(scan(`import type { Buffer } from "node:buffer";`)).toEqual([]);
     expect(scan(`export type { Stats } from "node:fs";`)).toEqual([]);
@@ -141,12 +152,45 @@ describe("browserSafetyViolations", () => {
     });
   });
 
+  it("catches an immediately-invoked function, which defers nothing", () => {
+    expect(scan(`export const w = (() => process.stdout.columns)();`)[0]).toMatchObject({
+      global: "process",
+    });
+    expect(scan(`export const w = (function () { return process.env; })();`)[0]).toMatchObject({
+      global: "process",
+    });
+    expect(scan(`export const w = (function (o = process.stdout) { return o; })();`)[0]).toMatchObject(
+      { global: "process" },
+    );
+  });
+
+  it("allows a parameter default, which evaluates only on a call that omits it", () => {
+    expect(scan(`export function ask(out = process.stdout) { return out; }`)).toEqual([]);
+    expect(scan(`export const ask = (out = process.stdout) => out;`)).toEqual([]);
+  });
+
+  it("catches a shorthand property, which reads the binding it names", () => {
+    expect(scan(`export const o = { process };`)[0]).toMatchObject({ global: "process" });
+  });
+
   it("does not mistake a name for a read", () => {
     expect(scan(`export const o = { process: 1, Buffer: 2 };`)).toEqual([]);
     expect(scan(`export const p = self.process;`)).toEqual([]);
     expect(scan(`export function f(process: number) { return process; }`)).toEqual([]);
     expect(scan(`export let out: Buffer;`)).toEqual([]);
     expect(scan(`export type T = typeof process;`)).toEqual([]);
+    expect(scan(`const { process: local } = config; export const e = local;`)).toEqual([]);
+  });
+
+  it("does not mistake a module's own binding for the ambient global", () => {
+    // `ambient` means unbound here, not merely spelled `process` — a module
+    // that names its own is reading its own.
+    expect(scan(`const process = { step() {} };\nexport const y = process.step();`)).toEqual([]);
+    expect(scan(`import { process } from "./pipeline.js";\nexport const y = process();`)).toEqual(
+      [],
+    );
+    expect(scan(`class Buffer {}\nexport const b = new Buffer();`)).toEqual([]);
+    expect(scan(`const { process } = deps;\nexport const y = process;`)).toEqual([]);
   });
 
   it("does not exempt a module-scope typeof guard", () => {

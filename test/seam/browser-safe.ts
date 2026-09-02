@@ -3,33 +3,45 @@
  * browser-safe": one pure scan of one parsed file, answering what about it
  * would fail to load in a browser.
  *
- * Two ways a module breaks that guarantee, and they are the whole list:
- *
- *   - it names a `node:*` specifier on an edge that survives to runtime,
- *     which a browser bundler cannot resolve;
- *   - it reads the ambient `process` or `Buffer` global at module scope,
- *     which throws the moment the module is evaluated.
+ * Two rules. A module names a Node builtin on an edge that survives to
+ * runtime, which a browser bundler cannot resolve; or it reads the ambient
+ * `process` or `Buffer` at module scope, which throws the moment the module
+ * is evaluated. Both are decided syntactically, and where a syntactic answer
+ * cannot be exact the scan errs toward reporting — a guard that misses is
+ * worse than a guard that is occasionally strict about a name.
  *
  * Module scope is the line, not the file. `src/core/color.ts` and
  * `src/core/console.ts` both read `process` today, both from inside a
  * function body, and both are correct: the read happens only if a caller
  * asks for the ambient default, and `Console`'s `ambientEnvironment()` is
- * the shape to copy. A module-scope read has no such caller — importing
- * the barrel is enough to trigger it.
+ * the shape to copy. A module-scope read has no such caller — importing the
+ * barrel is enough to trigger it.
  *
  * [LAW:no-mode-explosion] There is no exemption for a `typeof process`
  * guard at module scope, and deliberately so: nothing in `src/` needs one,
- * the fix is always to move the read into a function, and an allowance
- * with no owner is a mode we would carry forever to permit a shape nobody
- * has yet asked to write.
+ * the fix is always to move the read into a function, and an allowance with
+ * no owner is a mode we would carry forever to permit a shape nobody has
+ * yet asked to write.
  */
 
 import ts from "typescript";
 import path from "node:path";
+import { builtinModules } from "node:module";
 import { REPO_ROOT } from "../coverage/extract.js";
 import { runtimeModuleSpecifiers } from "./graph.js";
 
-const NODE_BUILTIN_PREFIX = "node:";
+/**
+ * [LAW:one-source-of-truth] The builtin list comes from the running Node,
+ * not from a list kept here. It already carries the slashed forms
+ * (`fs/promises`, `readline/promises`), so membership is one lookup; the
+ * `node:` prefix stays a separate arm because specifiers exist under that
+ * scheme which the array does not list.
+ */
+const NODE_BUILTINS = new Set<string>(builtinModules);
+
+function isNodeBuiltin(specifier: string): boolean {
+  return specifier.startsWith("node:") || NODE_BUILTINS.has(specifier);
+}
 
 /** Globals a browser does not provide. */
 const AMBIENT_GLOBALS = ["process", "Buffer"] as const;
@@ -65,7 +77,7 @@ export function browserSafetyViolations(sf: ts.SourceFile): SeamViolation[] {
     sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
 
   const imports = runtimeModuleSpecifiers(sf)
-    .filter((specifier) => specifier.text.startsWith(NODE_BUILTIN_PREFIX))
+    .filter((specifier) => isNodeBuiltin(specifier.text))
     .map(
       (specifier): SeamViolation => ({
         rule: "node-import",
@@ -75,9 +87,12 @@ export function browserSafetyViolations(sf: ts.SourceFile): SeamViolation[] {
       }),
     );
 
+  // A name this module binds itself is this module's name, whatever it is
+  // spelled: `ambient` means unbound here, not merely spelled `process`.
+  const bound = moduleScopeBindings(sf);
   const globals: SeamViolation[] = [];
   visitModuleScopeReads(sf, (id) => {
-    if (!isAmbientGlobal(id.text)) return;
+    if (!isAmbientGlobal(id.text) || bound.has(id.text)) return;
     globals.push({ rule: "ambient-global", file, line: lineOf(id), global: id.text });
   });
 
@@ -107,29 +122,54 @@ function isAmbientGlobal(name: string): name is AmbientGlobal {
  * around, because a missed node kind fails silently in the direction that
  * calls an unsafe module safe:
  *
- *   - a function body, which runs when someone calls it, not on import.
- *     Class field initializers are *not* pruned — a field initializer runs
- *     on construction, which a browser bundle reaches as soon as anything
- *     builds the class;
+ *   - what a function defers until it is called — its body and its
+ *     parameter defaults, which are one rule and not two, so an
+ *     immediately-invoked function correctly defers neither;
  *   - a type node, which is erased before the module ever runs, so
  *     `let out: Buffer` names nothing at runtime.
+ *
+ * Class field initializers are pruned by neither: a field initializer runs
+ * on construction, which a browser bundle reaches as soon as anything
+ * builds the class.
+ *
+ * The deferral rule is syntactic and therefore not exact — a callback
+ * argument to a call that itself runs on import (`[1].map(() => process)`)
+ * is deferred by this walk and evaluated by the runtime. Deciding that in
+ * general is not a question an AST can answer.
  */
 export function visitModuleScopeReads(root: ts.Node, onRead: (id: ts.Identifier) => void): void {
   const visit = (node: ts.Node): void => {
     if (ts.isTypeNode(node)) return;
     if (ts.isIdentifier(node) && !isNameSlot(node)) onRead(node);
     ts.forEachChild(node, (child) => {
-      if (isFunctionBody(node, child)) return;
+      if (isDeferredUntilCall(node, child)) return;
       visit(child);
     });
   };
   visit(root);
 }
 
-function isFunctionBody(parent: ts.Node, child: ts.Node): boolean {
+/**
+ * Whether `child` waits for someone to call `parent` before it evaluates.
+ * A body and a parameter default defer for the same reason, so they are one
+ * question — which is what makes `(function (out = process.stdout) {})()`
+ * come out right where two independent carve-outs would not.
+ */
+function isDeferredUntilCall(parent: ts.Node, child: ts.Node): boolean {
   // `isFunctionLike` admits signature types (`ConstructorTypeNode` and
   // friends) that have no body at all — narrow rather than cast.
-  return ts.isFunctionLike(parent) && "body" in parent && parent.body === child;
+  if (!ts.isFunctionLike(parent) || isImmediatelyInvoked(parent)) return false;
+  return ("body" in parent && parent.body === child) || ts.isParameter(child);
+}
+
+/** Whether `fn` is the callee of the call it sits in, parentheses aside. */
+function isImmediatelyInvoked(fn: ts.Node): boolean {
+  let callee: ts.Node = fn;
+  while (ts.isParenthesizedExpression(callee.parent)) callee = callee.parent;
+  const call = callee.parent;
+  return (
+    (ts.isCallExpression(call) || ts.isNewExpression(call)) && call.expression === callee
+  );
 }
 
 /**
@@ -144,5 +184,59 @@ function isNameSlot(id: ts.Identifier): boolean {
   // `{ process }` is the one `.name` slot that is a read, not a binding.
   if (ts.isShorthandPropertyAssignment(parent)) return false;
   if (ts.isPropertyAccessExpression(parent)) return parent.name === id;
+  // `const { process: local } = config` names a property of `config`.
+  if (ts.isBindingElement(parent) && parent.propertyName === id) return true;
   return (parent as Partial<ts.NamedDeclaration>).name === id;
+}
+
+/**
+ * Every name this module binds at its own top level.
+ *
+ * A module that declares or imports its own `process` shadows the global,
+ * and reads of it are reads of that binding. The walk is over `sf.statements`
+ * alone, which is exactly the scope the reads being checked live in — so a
+ * binding inside a module-scope *block* still reports. That is the safe
+ * direction, and the failure names the file and the line.
+ */
+function moduleScopeBindings(sf: ts.SourceFile): Set<string> {
+  const names = new Set<string>();
+  for (const statement of sf.statements) {
+    if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        collectBindingNames(declaration.name, names);
+      }
+    }
+    if (ts.isImportDeclaration(statement)) {
+      for (const binding of importBindings(statement.importClause)) names.add(binding.text);
+    }
+    // Functions, classes, enums, namespaces and type aliases all carry
+    // their own identifier in `.name` — the same slot question `isNameSlot`
+    // asks, for the same reason.
+    const declared = (statement as Partial<ts.NamedDeclaration>).name;
+    if (declared !== undefined && ts.isIdentifier(declared)) names.add(declared.text);
+  }
+  return names;
+}
+
+function collectBindingNames(name: ts.BindingName, into: Set<string>): void {
+  if (ts.isIdentifier(name)) {
+    into.add(name.text);
+    return;
+  }
+  for (const element of name.elements) {
+    // An array pattern's holes (`const [, x] = …`) bind nothing.
+    if (ts.isBindingElement(element)) collectBindingNames(element.name, into);
+  }
+}
+
+function importBindings(clause: ts.ImportClause | undefined): ts.Identifier[] {
+  if (clause === undefined) return [];
+  const named = clause.namedBindings;
+  const fromNamed =
+    named === undefined
+      ? []
+      : ts.isNamespaceImport(named)
+        ? [named.name]
+        : named.elements.map((element) => element.name);
+  return clause.name === undefined ? fromNamed : [clause.name, ...fromNamed];
 }
