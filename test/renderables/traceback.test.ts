@@ -109,11 +109,9 @@ describe("Traceback", () => {
     expect(text).toContain("Error");
   });
 
-  // --- Install ---
-
-  it("install is a static method", () => {
-    expect(typeof Traceback.install).toBe("function");
-  });
+  // Installing Traceback as the process-wide crash handler is a node
+  // capability and lives behind `node/traceback`; its contract is asserted in
+  // test/node/traceback.test.ts.
 
   // --- Options ---
 
