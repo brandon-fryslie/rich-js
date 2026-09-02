@@ -58,7 +58,7 @@ installTraceback();
 
 Calling it again replaces the handler rather than adding a second one, so a process always has exactly one rich crash renderer and the last call's options are the ones in force.
 
-A crash payload that is not an `Error` — `Promise.reject("nope")`, or `throw 42`, both of which JavaScript permits — renders under the name `NonError` with the value inspected and no stack frames, because there are none to report.
+A crash payload that is not an `Error` — `Promise.reject("nope")`, or `throw 42`, both of which JavaScript permits — renders under the name `NonError`, with the value inspected.
 
 `installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself is pure rendering and stays in the main barrel, which remains browser-safe.
 
