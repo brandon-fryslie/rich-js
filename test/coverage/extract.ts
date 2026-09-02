@@ -168,8 +168,13 @@ export function makeProgram(): {
  * patterns and aren't relevant to symbol resolution), and `types`
  * extended with `node` if absent (both src/ and examples/ touch Node
  * builtins).
+ *
+ * Exported because `test/seam/` resolves module specifiers with
+ * `ts.resolveModuleName` and needs the build's own `moduleResolution`
+ * to do it. A second hand-written option set there would be a second
+ * clock.
  */
-function loadCompilerOptions(): ts.CompilerOptions {
+export function loadCompilerOptions(): ts.CompilerOptions {
   const configPath = path.join(REPO_ROOT, "tsconfig.json");
   const read = ts.readConfigFile(configPath, ts.sys.readFile);
   if (read.error) {
@@ -527,7 +532,7 @@ function visitImports(sf: ts.SourceFile, onName: (id: ts.Identifier) => void): v
   }
 }
 
-function isUnderSrc(absPath: string): boolean {
+export function isUnderSrc(absPath: string): boolean {
   // Use `path.relative` rather than `startsWith` on raw strings: this
   // is robust to OS path-separator differences and to symlink/realpath
   // variation. A path is "under src/" iff its relative form is non-empty,
