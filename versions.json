@@ -4,15 +4,22 @@
     {
       "version": "pr-69",
       "ref": "refs/pull/69/merge",
-      "sha": "7ffd74e9dc23c936b0c15068afdfef37bce5d676",
-      "timestamp": "2026-09-02T07:31:14.055Z",
+      "sha": "6ec3688ec8805846d8a89506a430518244542a0c",
+      "timestamp": "2026-09-02T07:48:01.749Z",
       "commits": [
         {
-          "sha": "7ffd74e9dc23c936b0c15068afdfef37bce5d676",
+          "sha": "6ec3688ec8805846d8a89506a430518244542a0c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T07:30:41Z",
-          "message": "Merge 042cddb6e84841ce884fb7b6ef861320ee27c6ec into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+          "timestamp": "2026-09-02T07:47:25Z",
+          "message": "Merge 0a307ae6b9bb4c0aa0114b99d3fed99446822e6c into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+        },
+        {
+          "sha": "0a307ae6b9bb4c0aa0114b99d3fed99446822e6c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T01:47:15-06:00",
+          "message": "docs: state the allowlist invariant instead of counting its entries\n\n\"went from 102 entries to one\" was true when written and false three\ncommits later, once the body-pruning fix surfaced PrintOptions and\nThemePaletteData and this PR added them. Rotting after shipping is the\nworse failure — nobody touched the sentence.\n\nFourth count-in-prose to rot here: \"(all 17)\" box variants, \"except four\nmembers\" over a list of five, \"102 exports\" where 74 were the relevant\nones, and this. Each was a number beside the thing it counts with nothing\nkeeping them in step, so writing \"three\" would buy one entry of accuracy\nand re-arm the trap. The 102 stays — fixed history, and the evidence for\nwhy the split exists. The live count is replaced by what it stood for:\nan entry claims no demo can reach the export, and making that claim is\nthe big deal, whatever the cardinality. `grep` answers the rest, and the\nnext paragraph already points at it.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "042cddb6e84841ce884fb7b6ef861320ee27c6ec",
