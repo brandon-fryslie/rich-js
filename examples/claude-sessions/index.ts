@@ -8,12 +8,14 @@
  */
 
 import { NodeTerminalHost } from "../../src/index.js";
+import { installTraceback } from "../../src/node/traceback.js";
 import { NodeFileSystem } from "../_capabilities/node-file-system.js";
 import { run } from "./app.js";
 
-run(new NodeTerminalHost(), new NodeFileSystem()).catch((err) => {
-  process.stderr.write(
-    `claude-sessions error: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`,
-  );
-  process.exit(1);
-});
+// [LAW:single-enforcer] One crash renderer for this demo, registered before
+// anything can throw. Because it covers `unhandledRejection` as well as
+// `uncaughtException`, `run`'s promise needs no `.catch` — a rejection is a
+// crash, and crashes are this handler's job.
+installTraceback();
+
+void run(new NodeTerminalHost(), new NodeFileSystem());

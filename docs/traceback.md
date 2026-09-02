@@ -47,17 +47,21 @@ try {
 
 ## Installing as the global handler
 
-Register rich tracebacks for all unhandled exceptions. Put this at the entry point of your application:
+Register rich tracebacks for every crash — both uncaught exceptions and unhandled promise rejections. Put this at the entry point of your application:
 
 ```typescript
-import { Traceback } from "@promptctl/rich-js";
+import { installTraceback } from "@promptctl/rich-js/node/traceback";
 
-// All uncaught exceptions now use rich formatting
-Traceback.install({ showLocals: true });
+// All crashes now use rich formatting
+installTraceback({ showLocals: true });
 ```
 
+A rejection whose reason is not an `Error` — `Promise.reject("nope")` — renders under the name `UnhandledRejection` with the reason inspected and no stack frames, because there are none to report.
+
+`installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself is pure rendering and stays in the main barrel, which remains browser-safe.
+
 ::: tip Placement
-Call `Traceback.install()` as early as possible in your application entry point — before any other imports that might throw.
+Call `installTraceback()` as early as possible in your application entry point — before any other imports that might throw.
 :::
 
 ## Suppressing frames
@@ -67,7 +71,7 @@ Framework and library frames are noise when debugging your own code. The `suppre
 ```typescript
 import express from "express";
 
-Traceback.install({
+installTraceback({
   suppress: [express, "node_modules/express"],
 });
 ```

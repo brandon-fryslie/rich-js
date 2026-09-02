@@ -256,6 +256,16 @@ try {
 }
 ```
 
+To format every crash — uncaught exceptions and unhandled promise rejections alike — install the handler at your entry point:
+
+```typescript
+import { installTraceback } from "@promptctl/rich-js/node/traceback";
+
+installTraceback({ showLocals: true });
+```
+
+`installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself stays in the main barrel, which remains browser-safe.
+
 </details>
 
 ## Custom Renderables
