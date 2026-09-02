@@ -5,13 +5,8 @@ export {
   splitText,
   chopCells,
   cellFit,
-  cellFitFrom,
-  cellColToCodeUnitOffset,
   asCellCol,
-  asCodeUnit,
   asCodePoint,
-  nextCodePoint,
-  prevCodePoint,
 } from "./core/cells.js";
 export type { CellCol, CodeUnit, CodePoint } from "./core/cells.js";
 
@@ -193,8 +188,6 @@ export type { RenderToStringOptions } from "./core/render.js";
 export {
   MarkupRegistry,
   globalMarkupRegistry,
-  registerMarkupTag,
-  unregisterMarkupTag,
   renderMarkup,
 } from "./core/markup.js";
 export type {
@@ -207,11 +200,7 @@ export type {
 export { EMOJI, emojiReplace, Emoji, NoEmoji } from "./core/emoji.js";
 
 // Markup
-export {
-  Tag,
-  MarkupError,
-  escape as escapeMarkup,
-} from "./core/markup.js";
+export { MarkupError, escape as escapeMarkup } from "./core/markup.js";
 
 // Highlighter
 export {

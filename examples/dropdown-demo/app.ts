@@ -10,13 +10,17 @@
  *           Backspace undoes a filter char · Esc cancels.
  */
 
-import { runInAction } from "mobx";
+import { runInAction, observable, action } from "mobx";
 import {
   Dropdown,
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
   StaticItem,
+  WidgetBase,
+  FLOW,
+  hasOverlay,
+  KeyEvent,
   Segment,
   Style,
   ColorSpec,
@@ -59,6 +63,49 @@ const MUTATION_CYCLE: string[][] = [
   ["Pending", "In-Progress", "Done"],
 ];
 
+/**
+ * A widget the library does not ship, to show what the widget set is built on.
+ * `WidgetBase` supplies the whole InteractiveWidget contract except four
+ * members — `id`, `focusable`, `handleKey`, and the two render/measure methods
+ * — so a custom widget is those, and nothing else: no focus bookkeeping, no
+ * hover state, no hit-testing, no change/submit plumbing.
+ *
+ * This one shows the last key it was handed, which makes the KeyEvent contract
+ * visible: the router hands the *focused* widget its key, and `event.stop()`
+ * is how a widget claims one. Space is claimed here; Tab is not, so Tab still
+ * reaches the router's focus traversal.
+ */
+class KeyEchoWidget extends WidgetBase {
+  readonly id = "key-echo";
+  readonly focusable = true;
+  @observable accessor lastKey = "(none yet)";
+  @observable accessor claimed = 0;
+
+  @action
+  handleKey(event: KeyEvent): void {
+    this.lastKey =
+      `key=${event.key} char=${JSON.stringify(event.character)} ` +
+      `shift=${event.shift} ctrl=${event.ctrl} meta=${event.meta}`;
+    // Claim only the space bar, so Tab still reaches focus traversal.
+    if (event.key !== "space") return;
+    this.claimed += 1;
+    event.stop();
+  }
+
+  render(_options: RenderOptions): Iterable<Segment> {
+    const label = this.focused ? "custom widget (focused)" : "custom widget";
+    return [
+      new Segment(`${label}: `, new Style({ dim: !this.focused })),
+      new Segment(this.lastKey),
+      new Segment(`  spaces claimed: ${this.claimed}`, new Style({ dim: true })),
+    ];
+  }
+
+  measure(_options: RenderOptions): { minimum: number; maximum: number } {
+    return { minimum: 20, maximum: 100 };
+  }
+}
+
 export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandle {
   const ddShort = new Dropdown({
     options: SHORT_OPTIONS,
@@ -76,7 +123,13 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     id: "dd-mutating",
   });
 
-  const allWidgets: InteractiveWidget[] = [ddShort, ddLong, ddMutating];
+  const keyEcho = new KeyEchoWidget();
+
+  // [LAW:types-are-the-program] `dropdowns` keeps the status line's element
+  // type honest: it reads `selectedIndex`/`expanded`, which only a Dropdown
+  // has. `allWidgets` is the wider focus/hit-test list and needs no cast.
+  const dropdowns: Dropdown[] = [ddShort, ddLong, ddMutating];
+  const allWidgets: InteractiveWidget[] = [...dropdowns, keyEcho];
 
   const fm = new DefaultFocusManager();
   const screen = new DefaultScreen({ focusManager: fm, host });
@@ -132,10 +185,9 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     id: "static-status",
     render: (_options) => {
       const out: Segment[] = [new Segment("▸ ", sectionStyle)];
-      for (let i = 0; i < allWidgets.length; i++) {
-        const w = allWidgets[i] as Dropdown;
+      for (const [i, dd] of dropdowns.entries()) {
         if (i > 0) out.push(new Segment("  |  ", dimStyle));
-        out.push(...statusFragment(w));
+        out.push(...statusFragment(dd));
       }
       return out;
     },
@@ -145,6 +197,24 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     id: "static-cheatsheet",
     render: styledLine(
       "filter keys → printable=narrow · backspace=undo · enter=commit · esc=cancel",
+      dimStyle,
+    ),
+  });
+
+  const customLabel = new StaticItem({
+    id: "static-custom-label",
+    render: styledLine("Custom widget — WidgetBase subclass, echoes its keys", sectionStyle),
+  });
+
+  // `hasOverlay` is the host's own test for the overlay protocol: a widget
+  // opts in by having `renderOverlay`, and the Screen runs the overlay pass
+  // for exactly those. The Dropdowns paint their expanded list that way; the
+  // custom widget below does not, and the line reports the difference.
+  const overlayItem = new StaticItem({
+    id: "static-overlay",
+    render: styledLine(
+      "overlay protocol → " +
+        allWidgets.map((w) => `${w.id}=${hasOverlay(w)}`).join(" · "),
       dimStyle,
     ),
   });
@@ -168,6 +238,14 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
 
     mutatingLabel,
     ddMutating,
+    spacer("sp-4"),
+
+    customLabel,
+    // A bare widget in the mount list gets flow placement by default; `FLOW`
+    // is that default written out, and the only other placement kind is the
+    // explicit `{ kind: "fixed", x, y }` used for the two footer rows below.
+    { widget: keyEcho, placement: FLOW },
+    overlayItem,
 
     { widget: statusItem, placement: { kind: "fixed", x: 0, y: STATUS_Y } },
     { widget: cheatSheetItem, placement: { kind: "fixed", x: 0, y: CHEAT_Y } },

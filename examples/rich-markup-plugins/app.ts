@@ -6,10 +6,13 @@
 import {
   Console,
   MarkupRegistry,
+  globalMarkupRegistry,
   renderMarkup,
   RichText,
   Style,
   hostStream,
+  type MarkupTagContext,
+  type MarkupTagHandler,
   type TerminalHost,
 } from "../../src/index.js";
 
@@ -73,6 +76,28 @@ export function runDemo(host: TerminalHost): DemoHandle {
     "Nested plugin tags",
     `[click href="https://example.com"]read [badge kind=warning]beta[/badge] docs[/click]`,
   );
+
+  // Every `show` above passes `{ registry }` explicitly, which keeps these
+  // tags scoped to this demo. Register on `globalMarkupRegistry` instead and
+  // the tag is available to every `renderMarkup` call in the process that
+  // does not pass a registry of its own — the same object that call falls
+  // back to. That is the whole difference between the two, so it is worth
+  // seeing once: the call below passes no options at all.
+  const shoutTag: MarkupTagHandler = (ctx: MarkupTagContext) => {
+    const out = new RichText(ctx.children.plain.toUpperCase(), { end: "" });
+    out.stylize(Style.parse("bold yellow"));
+    return out;
+  };
+  globalMarkupRegistry.register("shout", shoutTag);
+  try {
+    consoleOut.print(new RichText("Registered on the global registry", { style: Style.parse("bold") }));
+    consoleOut.print(renderMarkup(`No registry passed: [shout]it still resolves[/shout].`));
+    consoleOut.print(new RichText(""));
+  } finally {
+    // [LAW:no-shared-mutable-globals] The registry outlives this demo, so the
+    // demo unregisters what it registered rather than leaving process-wide state behind.
+    globalMarkupRegistry.unregister("shout");
+  }
 
   return { stop(): void { /* one-shot */ } };
 }

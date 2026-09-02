@@ -75,12 +75,28 @@ function deriveEntryModules(): readonly string[] {
 export const EXAMPLES_ROOT = "examples";
 
 /**
+ * Which question the verifier can ask about an export.
+ *
+ * [LAW:types-are-the-program] A demo covers an export by *naming it in an
+ * import statement* (see `visitImports`). That is a question only a value
+ * declaration can answer: idiomatic TypeScript consumes a type-only export
+ * structurally — options arrive as object literals, aliases as bare values,
+ * interfaces as inline implementations — so no honest demo ever names one.
+ * Asking demo-coverage of a `"type"` export is unanswerable by construction,
+ * and the discriminator is what stops the check from asking.
+ */
+export type ExportKind = "value" | "type";
+
+/**
  * Identity of a declaration: the source file and the name under which it
  * is declared there. Two `SymbolOrigin`s are equal iff their `key` matches.
+ * `kind` is derived from the same resolved symbol, so it cannot disagree
+ * with the identity it travels with.
  */
 export interface SymbolOrigin {
   readonly file: string;
   readonly name: string;
+  readonly kind: ExportKind;
 }
 
 export function originKey(o: SymbolOrigin): string {
@@ -96,7 +112,14 @@ export function originKey(o: SymbolOrigin): string {
 export interface PublicExport {
   readonly entry: string;          // e.g. "src/index.ts"
   readonly exposedAs: string;      // the name in the entry module
-  readonly origin: SymbolOrigin;   // (declaration file, declaration name)
+  readonly origin: SymbolOrigin;   // (declaration file, declaration name, kind)
+  /**
+   * The alias-resolved symbol `origin` is a projection of. Carried so the
+   * type-reachability walk reads declarations from the same resolution the
+   * universe was built from, rather than re-resolving them from a second
+   * walk that could disagree.
+   */
+  readonly symbol: ts.Symbol;
 }
 
 /**
@@ -262,7 +285,12 @@ export function collectPublicExports(
     for (const sym of checker.getExportsOfModule(moduleSymbol)) {
       const origin = resolveOrigin(sym, checker);
       if (!origin) continue;
-      out.push({ entry, exposedAs: sym.name, origin });
+      out.push({
+        entry,
+        exposedAs: sym.name,
+        origin,
+        symbol: resolveAlias(sym, checker),
+      });
     }
   }
   return out;
@@ -304,13 +332,96 @@ export function collectReferencedOrigins(
 }
 
 /**
+ * Origins reachable from `seedKeys` by following type positions —
+ * annotations, heritage clauses, type arguments, `typeof` queries —
+ * transitively through each declaration reached.
+ *
+ * This is the type-world analogue of demo coverage, and it answers the
+ * question demo coverage cannot ask of a type-only export. Seed with the
+ * value exports a demo actually names: a type reachable from one of them
+ * is a type the demo's own compilation depends on, so changing it breaks
+ * `examples/` and `assertProgramClean` reports it. A public type reachable
+ * from no demonstrated value is inert — nothing runnable can observe a
+ * change to it.
+ *
+ * The walk collects identifiers in type positions only, so a method body
+ * contributes its annotations and nothing else.
+ */
+export function collectTypeClosure(
+  rows: readonly PublicExport[],
+  seedKeys: ReadonlySet<string>,
+  checker: ts.TypeChecker,
+): Set<string> {
+  const reached = new Set<string>();
+  const queue: ts.Declaration[] = [];
+  for (const row of rows) {
+    if (!seedKeys.has(originKey(row.origin))) continue;
+    queue.push(...(row.symbol.declarations ?? []));
+  }
+  while (queue.length > 0) {
+    const decl = queue.pop()!;
+    visitTypePositions(decl, (id) => {
+      const sym = checker.getSymbolAtLocation(id);
+      if (!sym) return;
+      const origin = resolveOrigin(sym, checker);
+      if (!origin) return;
+      if (!isUnderSrc(origin.file)) return;
+      const key = originKey(origin);
+      if (reached.has(key)) return;
+      reached.add(key);
+      queue.push(...(resolveAlias(sym, checker).declarations ?? []));
+    });
+  }
+  return reached;
+}
+
+/**
+ * Call `onName` for the leftmost identifier of every type-position name in
+ * the subtree: `T` in `x: T<U>`, `B` in `class A extends B`, `X` in
+ * `typeof X`. Qualified names (`ns.T`) yield their leftmost identifier,
+ * which is the one that resolves to an import binding.
+ */
+function visitTypePositions(root: ts.Node, onName: (id: ts.Identifier) => void): void {
+  const leftmost = (n: ts.EntityName | ts.Expression): void => {
+    let cur: ts.Node = n;
+    while (ts.isQualifiedName(cur) || ts.isPropertyAccessExpression(cur)) {
+      cur = ts.isQualifiedName(cur) ? cur.left : cur.expression;
+    }
+    if (ts.isIdentifier(cur)) onName(cur);
+  };
+  const visit = (node: ts.Node): void => {
+    if (ts.isTypeReferenceNode(node)) leftmost(node.typeName);
+    if (ts.isExpressionWithTypeArguments(node)) leftmost(node.expression);
+    if (ts.isTypeQueryNode(node)) leftmost(node.exprName);
+    ts.forEachChild(node, visit);
+  };
+  visit(root);
+}
+
+/**
  * Follow `SymbolFlags.Alias` chains to the original declaration symbol.
- * Returns `(file, name)` of the first declaration on the resolved
+ * Returns `(file, name, kind)` of the first declaration on the resolved
  * symbol. Symbols with no declarations (rare; some built-ins) return
  * `null` — the caller treats unresolvable symbols as not-an-origin
  * rather than guessing.
+ *
+ * `SymbolFlags.Value` is the exact question `kind` needs to answer:
+ * "could a demo's import statement bind this to something that exists at
+ * runtime?" Classes and enums carry it alongside their type side and are
+ * therefore values; interfaces and type aliases do not.
  */
 function resolveOrigin(sym: ts.Symbol, checker: ts.TypeChecker): SymbolOrigin | null {
+  const s = resolveAlias(sym, checker);
+  const decl = s.declarations?.[0];
+  if (!decl) return null;
+  return {
+    file: decl.getSourceFile().fileName,
+    name: s.name,
+    kind: (s.flags & ts.SymbolFlags.Value) !== 0 ? "value" : "type",
+  };
+}
+
+function resolveAlias(sym: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
   let s = sym;
   // Some aliases re-alias; loop until we hit a non-alias symbol or a
   // symbol the checker refuses to dereference further.
@@ -323,9 +434,7 @@ function resolveOrigin(sym: ts.Symbol, checker: ts.TypeChecker): SymbolOrigin | 
       break;
     }
   }
-  const decl = s.declarations?.[0];
-  if (!decl) return null;
-  return { file: decl.getSourceFile().fileName, name: s.name };
+  return s;
 }
 
 function visitImports(sf: ts.SourceFile, onName: (id: ts.Identifier) => void): void {
