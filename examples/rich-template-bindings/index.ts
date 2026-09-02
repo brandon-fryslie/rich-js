@@ -5,7 +5,7 @@
  * demo has already torn down its own state before invoking it.
  */
 
-import { NodeTerminalHost } from "../../src/index.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { runDemo } from "./app.js";
 
 const host = new NodeTerminalHost();

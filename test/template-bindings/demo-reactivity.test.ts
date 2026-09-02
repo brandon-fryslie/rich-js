@@ -26,7 +26,7 @@ import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { DefaultScreen } from "../../src/widgets/screen.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import { NodeTerminalHost } from "../../src/widgets/terminal-host.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { StaticItem } from "../../src/widgets/static-item.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { RichText } from "../../src/core/text.js";

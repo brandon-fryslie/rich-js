@@ -1,5 +1,5 @@
 // [LAW:one-source-of-truth] The set of public exports is derived directly
-// from the four entry modules listed in `package.json`'s `exports` field —
+// from the entry modules listed in `package.json`'s `exports` field —
 // no hand-maintained list. The set of referenced exports is derived from
 // the actual import bindings in `examples/`. Both sets are computed by
 // asking the TypeScript compiler to resolve symbols, then chasing alias
