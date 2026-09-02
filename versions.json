@@ -4,15 +4,22 @@
     {
       "version": "pr-72",
       "ref": "refs/pull/72/merge",
-      "sha": "c6932b26b8772d38dd0b382b345a161512558641",
-      "timestamp": "2026-09-02T11:11:20.444Z",
+      "sha": "043032e85869a3caf5fa53e825a34795a4cc9cf8",
+      "timestamp": "2026-09-02T11:20:00.633Z",
       "commits": [
         {
-          "sha": "c6932b26b8772d38dd0b382b345a161512558641",
+          "sha": "043032e85869a3caf5fa53e825a34795a4cc9cf8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T05:10:50-06:00",
-          "message": "Merge 9c174291a587c61d231bb21b25fc3bddee191b54 into 4572982fa3d73b9694900812c8610b866f6a1ed1\n"
+          "timestamp": "2026-09-02T11:19:27Z",
+          "message": "Merge f15fccca2a174b7218aa8651617e0567bd3799f5 into 4572982fa3d73b9694900812c8610b866f6a1ed1\n"
+        },
+        {
+          "sha": "f15fccca2a174b7218aa8651617e0567bd3799f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T05:19:16-06:00",
+          "message": "fix(traceback): drop the bug note that this change resolves\n\nThe comment in `src/node/traceback.ts` recorded that width came from\nstdout regardless of `stderr: true` and pointed at rich-console-ujo, the\nopen ticket tracking that defect. Selecting the bound stream once closes\nthat ticket, so the note now describes behaviour that no longer exists.\n\nDeleted rather than re-pointed. The colour-depth sentence above it stays\nbecause it explains something the code cannot — why `beginCapture` is\nused instead of a `file:` sink. Width following the stream the console is\nbound to needs no comment; it is only worth remarking on when it isn't\ntrue.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "9c174291a587c61d231bb21b25fc3bddee191b54",
