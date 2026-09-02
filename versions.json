@@ -4,15 +4,22 @@
     {
       "version": "pr-69",
       "ref": "refs/pull/69/merge",
-      "sha": "6ec3688ec8805846d8a89506a430518244542a0c",
-      "timestamp": "2026-09-02T07:48:01.749Z",
+      "sha": "31ca31513e2595f169eb9f07c967c5eed4e1f7ee",
+      "timestamp": "2026-09-02T08:06:32.356Z",
       "commits": [
         {
-          "sha": "6ec3688ec8805846d8a89506a430518244542a0c",
+          "sha": "31ca31513e2595f169eb9f07c967c5eed4e1f7ee",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T07:47:25Z",
-          "message": "Merge 0a307ae6b9bb4c0aa0114b99d3fed99446822e6c into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+          "timestamp": "2026-09-02T08:06:01Z",
+          "message": "Merge 45b4d3d49f2d9579dbb4c2cae0ea7af276e09ac9 into 647e3410cf9c8c7e4355f4b2d1110a02e70df038\n"
+        },
+        {
+          "sha": "45b4d3d49f2d9579dbb4c2cae0ea7af276e09ac9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T02:05:50-06:00",
+          "message": "fix(coverage): a function-like initializer is signature, not implementation\n\n`export const f = (x: A): B => {...}` declares A and B on the arrow, and\nthe arrow is the variable's initializer — so pruning initializers wholesale\nthrew the whole signature away. Both fixtures returned [] before the fix.\n`isBodyOrInitializer` now descends into a function-like node; the\nbody rule above it prunes the body one level down, so nested arrows that\nare genuinely an enclosing function's body stay pruned.\n\nThe fixtures went in first and were confirmed failing before the fix. That\norder is the point: extract.test.ts was added last round so the next gap in\nthis walk would be caught by a test, and it was not — every fixture\ndeclared its types on class members, so the tests pinned the rule I had in\nmind rather than the surface the walk has to handle. Two of the eleven now\ncover arrow-const and class-field-arrow.\n\nAlso removes two enumerations rather than correcting them. The dropdown\ndemo described `Placement` as a two-member union when it has three\n(`inline` is live, switched on in screen.ts), and coverage-allowlist.ts's\nown header said \"It carries one\" directly above three entries — the same\ncount-in-prose fixed in CLAUDE.md one commit earlier and not here, across\nthe shortest possible distance for a fact to drift. Both now say what the\nthing is instead of how many there are.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "0a307ae6b9bb4c0aa0114b99d3fed99446822e6c",
