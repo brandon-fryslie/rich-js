@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-66",
+      "ref": "refs/pull/66/merge",
+      "sha": "d1aebe57d9f2e031157ef511352d6648a82a143b",
+      "timestamp": "2026-09-02T04:52:45.809Z",
+      "commits": [
+        {
+          "sha": "d1aebe57d9f2e031157ef511352d6648a82a143b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T22:52:14-06:00",
+          "message": "Merge 4cfdb98221fca3736cf29f5524a08d4417055fa0 into 684c8e20ce4c3249b15e16b6e01a0309e06d035f\n"
+        },
+        {
+          "sha": "4cfdb98221fca3736cf29f5524a08d4417055fa0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T22:51:24-06:00",
+          "message": "docs: rewrite the CLAUDE.md architecture and commands sections (rich-docs-vk9.5)\n\nEvery factual claim in these sections is now checked against the tree.\n\nCommands: lint is three passes over four tsconfigs, not `tsc --noEmit`, and\ntest/ is among them — a broken type in a test fails lint while vitest is\ngreen. Adds the docs, demo, and playwright scripts.\n\nArchitecture:\n\n- Drop the spec-driven-development section; docs/ is the single description.\n  Keeps the concrete failure as a negative example: the briefs documented a\n  named-colour function family (red, on, hex) that src/template-bindings/\n  had replaced with fg/bg, so a template written from them fails with\n  FuncNotFound.\n- Replace \"two-layer structure\" with the six real subsystems, including\n  widgets, themes, template-bindings, and the node/ capability seam.\n- Add oklch, render, sanitize, and strip to the primitives list.\n- Rebuild the dependency diagram from the actual imports. The old one was\n  wrong in its arrows — it drew `cells → color` when both import nothing —\n  so it is now build-order tiers, extracted per module and reproducible with\n  the grep the section names.\n- Fix color: there is no Color class and no Color.parse. The exports are\n  ColorRgba, ColorSpec (ColorSpec.parse is cached), ColorTable, ColorDepth.\n- Document the browser-safe barrel rule next to the dependency order, since\n  it constrains every change that adds an import, and test/coverage/ as the\n  gate on every change that adds an export.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "eef19544dd79bc05e91c0a57cd90b523909a8263",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T22:51:02-06:00",
+          "message": "docs: delete the spec directory (rich-docs-vk9.4)\n\nRemove spec/ — 25 files, 2035 lines of doc-authoring briefs that described\nthe same surface as docs/ and had drifted into contradicting src/. The last\nthree unconsumed briefs landed in docs/ across #63, #64, and #65; nothing of\nvalue lived only here.\n\nRepoint the four source references the briefs left behind:\n\n- src/template-bindings/style-funcs.ts → docs/style.md\n- src/widgets/dropdown.ts → docs/widgets.md\n- test/template-bindings/style-funcs.test.ts → describes the fragment\n  contract inline; spec/template-bindings.md's \"Cell-splitting algorithm\n  (consumer side)\" section has no counterpart in docs/\n- examples/themes-and-color-studio/app.ts → the \"consolidated ownership map\n  is spec/demos.md\" paragraph is deleted rather than repointed. That model\n  (five flagships with source-module ownership) was repealed, not moved:\n  rich-demos-l2x now lists it under \"Non-goals (explicit rejections, learned\n  the hard way)\" and closed children .4-.7 as obsolete.\n\nSupersedes PR #35, which deleted spec/demos.md and this same framing. That\nbranch is 15 months old and CONFLICTING; its app.ts hunks patch text that\nhas since moved out of index.ts. Its coverage-allowlist typing work (the\nFlagship union, burndown(), the discriminated AllowlistEntry) is still worth\nhaving and is refiled against current master.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "684c8e20ce4c3249b15e16b6e01a0309e06d035f",
