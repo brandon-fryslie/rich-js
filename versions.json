@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-68",
+      "ref": "refs/pull/68/merge",
+      "sha": "89d37749ae7aa39906d3596a495d9b1f24b50a20",
+      "timestamp": "2026-09-02T05:30:11.347Z",
+      "commits": [
+        {
+          "sha": "89d37749ae7aa39906d3596a495d9b1f24b50a20",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T23:29:40-06:00",
+          "message": "Merge fd4fb5e74cd538768a8d7d5ebbebd20e29ba2b6e into 3ffb4d0e9f21f8576fae80f8d0fb86e708300bc1\n"
+        },
+        {
+          "sha": "fd4fb5e74cd538768a8d7d5ebbebd20e29ba2b6e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T23:29:12-06:00",
+          "message": "chore(coverage): retire the Flagship typing from test/coverage/ (rich-demos-l2x.8)\n\nThe five-flagship / source-module-ownership model was repealed by its own\nepic and its spec deleted in #66, but it was still encoded in types here:\na `Flagship` string-literal union naming five demos that will not be built,\na `burndown(flagship)` helper, and a discriminated `AllowlistEntry` whose\n`permanent` case was never once realized.\n\nCollapse `AllowlistEntry` to `{ reason: string }`. Every entry now carries a\nwritten reason rather than a tag pointing at a repealed plan; the six entries\nthat already had real notes keep them, reworded to state the cause without\nthe flagship vocabulary. Regroup by the subsystem each export is *declared*\nin — declaration site is what the verifier actually keys coverage on, so it\nis the ordering that matches how entries clear.\n\n`coverage.test.ts` loses its branch on the never-varying discriminator and\nits \"keystone of the epic\" framing; what it verifies is a coverage floor,\nand whether a demo is any good is judgment no assertion here can carry.\n\nBehavior of the three invariants is unchanged, and verified by falsifying\neach one against the new type rather than only watching them pass: dropping\nan uncovered entry reports the gap, an entry naming no real export reports\ndead, and an entry for an already-demoed export reports redundant.\n\n`grep -rni flagship` now returns nothing outside git history; lint (all\nthree passes) and the full vitest suite are clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3ffb4d0e9f21f8576fae80f8d0fb86e708300bc1",
