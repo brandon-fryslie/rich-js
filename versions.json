@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-68",
-      "ref": "refs/pull/68/merge",
-      "sha": "dddfcdefa7774c4413ca659476361041831c79aa",
-      "timestamp": "2026-09-02T05:35:34.548Z",
-      "commits": [
-        {
-          "sha": "dddfcdefa7774c4413ca659476361041831c79aa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T05:35:05Z",
-          "message": "Merge 435c07bc179875db7bda71e23e819b9047330873 into 3ffb4d0e9f21f8576fae80f8d0fb86e708300bc1\n"
-        },
-        {
-          "sha": "435c07bc179875db7bda71e23e819b9047330873",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T23:34:56-06:00",
-          "message": "chore(coverage): point the shared untriaged reason at its removal plan\n\nThe one reason shared by 96 entries said the absence was untriaged but\nnamed nothing that would ever change that — a justification field with no\naddressee. Name rich-coverage-0as.1, the ticket whose end state is a\nper-export outcome for each of them.\n\nNot per-export reasons here: that investigation has not happened, and 96\ndistinct sentences asserting it had would make the file read more\nauthoritative while being less true.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
-        },
-        {
-          "sha": "fd4fb5e74cd538768a8d7d5ebbebd20e29ba2b6e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T23:29:12-06:00",
-          "message": "chore(coverage): retire the Flagship typing from test/coverage/ (rich-demos-l2x.8)\n\nThe five-flagship / source-module-ownership model was repealed by its own\nepic and its spec deleted in #66, but it was still encoded in types here:\na `Flagship` string-literal union naming five demos that will not be built,\na `burndown(flagship)` helper, and a discriminated `AllowlistEntry` whose\n`permanent` case was never once realized.\n\nCollapse `AllowlistEntry` to `{ reason: string }`. Every entry now carries a\nwritten reason rather than a tag pointing at a repealed plan; the six entries\nthat already had real notes keep them, reworded to state the cause without\nthe flagship vocabulary. Regroup by the subsystem each export is *declared*\nin — declaration site is what the verifier actually keys coverage on, so it\nis the ordering that matches how entries clear.\n\n`coverage.test.ts` loses its branch on the never-varying discriminator and\nits \"keystone of the epic\" framing; what it verifies is a coverage floor,\nand whether a demo is any good is judgment no assertion here can carry.\n\nBehavior of the three invariants is unchanged, and verified by falsifying\neach one against the new type rather than only watching them pass: dropping\nan uncovered entry reports the gap, an entry naming no real export reports\ndead, and an entry for an already-demoed export reports redundant.\n\n`grep -rni flagship` now returns nothing outside git history; lint (all\nthree passes) and the full vitest suite are clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "3ffb4d0e9f21f8576fae80f8d0fb86e708300bc1",
-      "timestamp": "2026-09-02T05:22:16.781Z",
+      "sha": "647e3410cf9c8c7e4355f4b2d1110a02e70df038",
+      "timestamp": "2026-09-02T05:38:48.134Z",
       "commits": [
         {
-          "sha": "3ffb4d0e9f21f8576fae80f8d0fb86e708300bc1",
+          "sha": "647e3410cf9c8c7e4355f4b2d1110a02e70df038",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T23:21:43-06:00",
-          "message": "feat(widgets): re-export the TextInput wrap strategies from the package root (rich-docs-vk9.6) (#67)\n\n`WrapStrategy`, `WrapRow`, and `charGreedyWrap` were declared in\n`src/widgets/text-input.ts` and exported from neither barrel, so a consumer\nof the published package could reach `TextInput`'s `wrap` option only by\nwriting a strategy from scratch — the one the library already ships was\nunreachable, and a caller could not annotate their own strategy with the\ntype it has to satisfy.\n\nThe symptom was visible in-repo: `examples/rich-template-bindings/app.ts`\nimported the two types through `../../src/widgets/text-input.js`, a lone\ndeep path sitting under a 22-symbol barrel import. That line now folds into\nthe barrel import and is gone.\n\n`charGreedyWrap` is covered by use rather than by an allowlist entry. The\ndemo's `templateAtomWrap` hand-rolled char-greedy wrapping for the\ntoo-wide-tag case — `cellFit` plus a force-take-one-code-point guard, which\nis `charGreedyWrap`'s exact contract — so that branch now delegates to the\nbuilt-in. A differential run over 8064 (tag, firstWidth, continuationWidth,\nisFirst) combinations for budgets 1..24 shows zero divergence from the\nprevious implementation.\n\nVerified: `npm run lint`, `npx vitest run` (1766 passed — the coverage suite\nis the gate here), `npm run docs:build`, `npm run demos:build`. The coverage\ngate was also run against the known violation — barrel exports added, demo\nreference removed — and fails on exactly `charGreedyWrap`, confirming the\ndemo reference is what covers it and that the two types were already covered\nvia the demo's pre-existing import.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea"
+          "timestamp": "2026-09-01T23:38:13-06:00",
+          "message": "chore(coverage): retire the Flagship typing from test/coverage/ (rich-demos-l2x.8) (#68)\n\n* chore(coverage): retire the Flagship typing from test/coverage/ (rich-demos-l2x.8)\n\nThe five-flagship / source-module-ownership model was repealed by its own\nepic and its spec deleted in #66, but it was still encoded in types here:\na `Flagship` string-literal union naming five demos that will not be built,\na `burndown(flagship)` helper, and a discriminated `AllowlistEntry` whose\n`permanent` case was never once realized.\n\nCollapse `AllowlistEntry` to `{ reason: string }`. Every entry now carries a\nwritten reason rather than a tag pointing at a repealed plan; the six entries\nthat already had real notes keep them, reworded to state the cause without\nthe flagship vocabulary. Regroup by the subsystem each export is *declared*\nin — declaration site is what the verifier actually keys coverage on, so it\nis the ordering that matches how entries clear.\n\n`coverage.test.ts` loses its branch on the never-varying discriminator and\nits \"keystone of the epic\" framing; what it verifies is a coverage floor,\nand whether a demo is any good is judgment no assertion here can carry.\n\nBehavior of the three invariants is unchanged, and verified by falsifying\neach one against the new type rather than only watching them pass: dropping\nan uncovered entry reports the gap, an entry naming no real export reports\ndead, and an entry for an already-demoed export reports redundant.\n\n`grep -rni flagship` now returns nothing outside git history; lint (all\nthree passes) and the full vitest suite are clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n\n* chore(coverage): point the shared untriaged reason at its removal plan\n\nThe one reason shared by 96 entries said the absence was untriaged but\nnamed nothing that would ever change that — a justification field with no\naddressee. Name rich-coverage-0as.1, the ticket whose end state is a\nper-export outcome for each of them.\n\nNot per-export reasons here: that investigation has not happened, and 96\ndistinct sentences asserting it had would make the file read more\nauthoritative while being less true.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea"
         }
       ]
     }
