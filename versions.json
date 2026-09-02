@@ -4,15 +4,22 @@
     {
       "version": "pr-73",
       "ref": "refs/pull/73/merge",
-      "sha": "3de855ea377f499c8e3aabd5ad684759b34a263b",
-      "timestamp": "2026-09-02T11:56:26.901Z",
+      "sha": "5346b8534846b515f61cddf5e93d1ba321b40692",
+      "timestamp": "2026-09-02T12:22:31.567Z",
       "commits": [
         {
-          "sha": "3de855ea377f499c8e3aabd5ad684759b34a263b",
+          "sha": "5346b8534846b515f61cddf5e93d1ba321b40692",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T11:55:56Z",
-          "message": "Merge b4326e256f05b082b163c55e63f2ed1fa51c69c1 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+          "timestamp": "2026-09-02T12:21:57Z",
+          "message": "Merge 696cb66b8278cd51eb2bd3c771e83ccd5dc6b019 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+        },
+        {
+          "sha": "696cb66b8278cd51eb2bd3c771e83ccd5dc6b019",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T06:21:46-06:00",
+          "message": "test(seam): erasure, shadowing and heritage were each half a rule\n\nTen findings, and three of them were the round-1 fixes having bought their\nown defects.\n\nErasure was read at the declaration only. `import { type Stats } from\n\"node:fs\"` leaves `importClause.isTypeOnly` false — verified, not assumed —\nso the per-specifier form `isolatedModules` encourages reported a specifier\nthat never survives. The question is now whether anything in the statement\nsurvives: a default or namespace binding survives whatever the braces say,\na side-effect import has nothing to erase, and a named list erases only\nwhen every element carries its own modifier.\n\nShadowing counted type-space declarations. `interface Buffer {}` shadows\nthe type and leaves the value where it was, so it suppressed a genuine\nread — a false negative, bought by the fix for a false positive, in the\ndirection this file calls the worse one. Interfaces and type aliases are\nout; so are type-only imports and specifiers, which bind nothing to shadow\nwith.\n\n`ts.isTypeNode` calls a class `extends` clause a type node. It is an\nexpression that evaluates to the superclass the instant the declaration\nruns, so the blanket prune hid `class Host extends Buffer {}` entirely. An\ninterface's `extends` produces the same node under the same token and *is*\nerased, so the carve-out asks the heritage clause's parent as well.\n\nAn export specifier's local reference is `propertyName ?? name`, and it is\nlocal only without a `from` clause — one rule, because the two spellings\npull opposite ways: `export { process }` reads the binding, `export\n{ process } from \"./m.js\"` does not. Elsewhere a `propertyName` names a\nslot in another table — an object's property, another module's export —\nwhich covers the renamed import the same way.\n\nA constructor is never the callee; its class is. `new (class {\nconstructor(o = process.stdout) {} })()` deferred a parameter default that\nruns on load.\n\n`global` joins the ambient list: Node-only, no browser counterpart, and\nunlike the CommonJS names it has no backstop in an ESM package.\n\nCLAUDE.md said \"its header comment\" of a paragraph naming only the test\nfile, while the rationale lives in the implementation file. Named it.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "b4326e256f05b082b163c55e63f2ed1fa51c69c1",
