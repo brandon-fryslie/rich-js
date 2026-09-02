@@ -6,7 +6,7 @@ import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { DefaultScreen } from "../../src/widgets/screen.js";
-import { NodeTerminalHost } from "../../src/widgets/terminal-host.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import type { KeyEvent } from "../../src/widgets/types.js";
 
 class StubWidget extends WidgetBase {

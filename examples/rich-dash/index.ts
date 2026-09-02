@@ -14,7 +14,7 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { NodeTerminalHost } from "../../src/index.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { NodeFileSystem } from "../_capabilities/node-file-system.js";
 import { NodeSystemInfo } from "../_capabilities/node-system-info.js";
 import { runDemo } from "./app.js";

@@ -56,7 +56,7 @@ core → renderables → widgets
 - **`src/widgets/`** — interactive layer: focus, key/mouse routing, a `Screen` that mounts widgets against a `TerminalHost`, and the widget set (Button, Checkbox, Toggle, TextInput, Dropdown, Slider). See `docs/widgets.md`.
 - **`src/themes/`** — semantic palettes (`Palette`, `buildPalette`, colour refs), the bundled theme registry, OKLCH colour math, and light↔dark transposition. Distinct from `core/color`: a `ColorTable` is a quantization LUT, a `Palette` carries aesthetic intent.
 - **`src/template-bindings/`** — the styling vocabulary exposed as `@promptctl/go-template-js` template functions. See `docs/template-bindings.md`.
-- **`src/node/`** — the Node-only capability seam. Two files, two package subpaths: `node/save` (fs-backed export of recorded output) and `node/prompt` (`nodeAsk`, readline-backed input for `Prompt`).
+- **`src/node/`** — the Node-only capability seam. One file per package subpath, and `package.json#exports` is the list: `node/save` (fs-backed export of recorded output), `node/prompt` (`nodeAsk`, readline-backed input for `Prompt`), `node/traceback` (`installTraceback`, the `process.on` crash handler), and `node/terminal-host` (`NodeTerminalHost`, the `TerminalHost` over `process.stdin`/`process.stdout`).
 
 ### Core primitives (src/core/)
 

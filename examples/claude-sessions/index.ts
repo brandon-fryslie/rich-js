@@ -7,7 +7,7 @@
  * capabilities and hands them to the shared demo body.
  */
 
-import { NodeTerminalHost } from "../../src/index.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { installTraceback } from "../../src/node/traceback.js";
 import { NodeFileSystem } from "../_capabilities/node-file-system.js";
 import { run } from "./app.js";
