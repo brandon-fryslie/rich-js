@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.BKrz1iMc.js";const y=JSON.parse('{"title":"Layout","description":"","frontmatter":{},"headers":[],"relativePath":"layout.md","filePath":"layout.md"}'),h={name:"layout.md"};function l(p,s,k,e,r,d){return a(),t("div",null,[...s[0]||(s[0]=[n("",36)])])}const g=i(h,[["render",l]]);export{y as __pageData,g as default};
