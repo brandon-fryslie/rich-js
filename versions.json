@@ -4,15 +4,22 @@
     {
       "version": "pr-73",
       "ref": "refs/pull/73/merge",
-      "sha": "59e87ee27f2db91469565ce6c295f1e0fb0aa4d4",
-      "timestamp": "2026-09-02T11:36:41.563Z",
+      "sha": "3de855ea377f499c8e3aabd5ad684759b34a263b",
+      "timestamp": "2026-09-02T11:56:26.901Z",
       "commits": [
         {
-          "sha": "59e87ee27f2db91469565ce6c295f1e0fb0aa4d4",
+          "sha": "3de855ea377f499c8e3aabd5ad684759b34a263b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-02T05:36:11-06:00",
-          "message": "Merge 3b8e527be2956c1f0629b2d7b202af4fec46b854 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+          "timestamp": "2026-09-02T11:55:56Z",
+          "message": "Merge b4326e256f05b082b163c55e63f2ed1fa51c69c1 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+        },
+        {
+          "sha": "b4326e256f05b082b163c55e63f2ed1fa51c69c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T05:55:46-06:00",
+          "message": "test(seam): close the scanner's blind spots and false positives\n\nSix holes, all found by review, four of them shapes the module's own\ncomment claimed it did not have.\n\nA Node builtin imported without the `node:` prefix — `from \"fs\"` — type\nchecks here, resolves outside src/ so the walk skips it, and matched no\nrule. `builtinModules` from the running Node now backs the check; it\nalready carries the slashed forms, so membership is one lookup.\n\nDeferred execution was two half-truths. A function body was pruned even\nwhen the function is immediately invoked, so `(() => process.env)()` at\nmodule scope read nothing; parameter defaults were not pruned at all, so\n`function ask(out = process.stdout) {}` reported a read that only happens\non a call. Both are the same question — does this wait for someone to call\nthe function — so they are now one predicate, which is what makes\n`(function (o = process.stdout) {})()` come out right where two carve-outs\nwould each have missed the other's exception.\n\n`ambient` meant *spelled* `process`, so a module declaring or importing its\nown binding of that name failed a gate about Node globals. It now means\nspelled `process` and bound nowhere in this module, collected from\n`sf.statements` — no checker, no scope walk. A binding inside a\nmodule-scope block still reports; that is the safe direction.\n\n`const { process: local } = config` named a property of `config` and was\nread as the global. `BindingElement.propertyName` is a name slot.\n\nThe `ShorthandPropertyAssignment` carve-out was the one branch in\n`isNameSlot` written to make something fire and the one with no test that\nit fires. It has one now.\n\nCLAUDE.md's new paragraph restated this module's header nearly verbatim —\nthe two-descriptions-of-one-surface trap the file warns about thirty lines\nearlier, added by the commit whose purpose was fixing an instance of it. It\nis now the pointer it should have been, and shorter than what it replaced.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "3b8e527be2956c1f0629b2d7b202af4fec46b854",
