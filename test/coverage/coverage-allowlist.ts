@@ -15,10 +15,10 @@
 // here — demonstrate the function or class that uses it and the type
 // follows. An entry is for the export nothing runnable can reach at all.
 //
-// This file used to carry 102 entries against a plan that never landed. It
-// carries one. Keep it that way: reach for an entry only when the export
-// genuinely cannot appear in a runtime demo, and say why in a sentence that
-// names the obstacle.
+// This file used to carry 102 entries against a plan that never landed. What
+// replaced them is a permanent exemption list, and an entry on it claims no
+// demo can reach the export at all. Keep it that way: reach for an entry only
+// when that claim is true, and say why in a sentence that names the obstacle.
 
 /** Why one public export is absent from `examples/` without failing the build. */
 export interface AllowlistEntry {

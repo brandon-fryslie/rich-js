@@ -242,8 +242,8 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
 
     customLabel,
     // A bare widget in the mount list gets flow placement by default; `FLOW`
-    // is that default written out, and the only other placement kind is the
-    // explicit `{ kind: "fixed", x, y }` used for the two footer rows below.
+    // is that default written out, so this entry and `customLabel` above it
+    // mount identically. The footer rows below pass a placement that differs.
     { widget: keyEcho, placement: FLOW },
     overlayItem,
 

@@ -451,6 +451,10 @@ function isBodyOrInitializer(node: ts.Node): boolean {
   if (ts.isFunctionLike(parent) && "body" in parent && parent.body === node) {
     return true;
   }
+  // A function-like initializer is a signature, not implementation:
+  // `export const f = (x: A): B => …` declares A and B on the arrow itself.
+  // Descend into it — the rule above prunes its body one level down.
+  if (ts.isFunctionLike(node)) return false;
   return (
     (ts.isPropertyDeclaration(parent) ||
       ts.isVariableDeclaration(parent) ||

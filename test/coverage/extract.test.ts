@@ -101,6 +101,34 @@ describe("visitTypePositions", () => {
     ).toEqual(["ParamType", "PropType"]);
   });
 
+  it("reaches the signature of a function-like initializer", () => {
+    // `export const f = (x: A): B => ...` is a common way to declare a
+    // public function, and the arrow is the variable's *initializer* — so a
+    // rule that prunes initializers wholesale throws away the signature it
+    // was meant to keep.
+    expect(
+      surfaceOf(`
+        export const fn = (x: ParamType): ReturnedType => {
+          const local: BodyOnly = x as unknown as BodyOnly;
+          return local as unknown as ReturnedType;
+        };
+      `),
+    ).toEqual(["ParamType", "ReturnedType"]);
+  });
+
+  it("reaches the signature of a class field holding an arrow function", () => {
+    expect(
+      surfaceOf(`
+        class C {
+          handler = (x: FieldParam): FieldReturn => {
+            const local: FieldBodyOnly = 0 as never;
+            return local as never;
+          };
+        }
+      `),
+    ).toEqual(["FieldParam", "FieldReturn"]);
+  });
+
   it("reaches an interface's members, which are all surface", () => {
     expect(
       surfaceOf(`
