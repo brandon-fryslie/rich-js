@@ -7,7 +7,7 @@
  * lives in `wire.ts` and constructs `BrowserTerminalHost` + `MemoryFileSystem`.
  */
 
-import { NodeTerminalHost } from "../../src/index.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { NodeFileSystem } from "../_capabilities/node-file-system.js";
 import { run } from "./app.js";
 

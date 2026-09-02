@@ -8,7 +8,7 @@
  * recording, no file save — but the demo body is the same.
  */
 
-import { NodeTerminalHost } from "../../src/index.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { saveText, saveHtml } from "../../src/node/save.js";
 import { runDemo } from "./app.js";
 

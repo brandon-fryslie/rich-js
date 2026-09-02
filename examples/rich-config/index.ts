@@ -7,7 +7,7 @@
  * which time the `const demo` binding is in scope.
  */
 
-import { NodeTerminalHost } from "../../src/index.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { runDemo } from "./app.js";
 
 const host = new NodeTerminalHost();

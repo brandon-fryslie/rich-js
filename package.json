@@ -33,6 +33,10 @@
     "./node/traceback": {
       "types": "./dist/node/traceback.d.ts",
       "import": "./dist/node/traceback.js"
+    },
+    "./node/terminal-host": {
+      "types": "./dist/node/terminal-host.d.ts",
+      "import": "./dist/node/terminal-host.js"
     }
   },
   "files": [

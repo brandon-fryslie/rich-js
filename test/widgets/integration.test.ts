@@ -16,7 +16,7 @@ import { PassThrough, Writable } from "stream";
 import { DefaultScreen } from "../../src/widgets/screen.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
-import { NodeTerminalHost } from "../../src/widgets/terminal-host.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { Button } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Toggle } from "../../src/widgets/toggle.js";

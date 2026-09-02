@@ -16,8 +16,8 @@ import {
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
-  NodeTerminalHost,
 } from "@promptctl/rich-js";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 
 const host = new NodeTerminalHost();
 const focusManager = new DefaultFocusManager();
@@ -65,7 +65,7 @@ router.start();
 
 The example constructs four objects before a single widget appears, and each one owns a different question.
 
-**`NodeTerminalHost`** is the only thing that touches `process.stdin` and `process.stdout`. It is the seam: swap it for `BrowserTerminalHost` (which wraps an xterm.js terminal) and the rest of the program is unchanged. In tests, construct it over `PassThrough` streams — `new NodeTerminalHost({ stdin, stdout })` — and nothing else needs to know.
+**`NodeTerminalHost`** is the only thing that touches `process.stdin` and `process.stdout`, which is why it lives on the `node/terminal-host` subpath rather than in the main barrel — the barrel stays browser-safe. It is the seam: swap it for `BrowserTerminalHost` (which wraps an xterm.js terminal and *is* in the barrel) and the rest of the program is unchanged. In tests, construct it over `PassThrough` streams — `new NodeTerminalHost({ stdin, stdout })` — and nothing else needs to know.
 
 **`EventRouter`** reads bytes from the host and turns them into `KeyEvent` and `WidgetMouseEvent` values. It parses escape sequences, holds drag capture during a slider drag, and hit-tests mouse coordinates against widget bounds. On `start()` it enables raw mode and mouse tracking; on `stop()` it puts both back.
 

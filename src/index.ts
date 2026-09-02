@@ -311,13 +311,12 @@ export { Slider } from "./widgets/slider.js";
 export type { SliderOptions } from "./widgets/slider.js";
 export { EventRouter } from "./widgets/event-router.js";
 export type { EventRouterOptions } from "./widgets/event-router.js";
-export { NodeTerminalHost, BrowserTerminalHost } from "./widgets/terminal-host.js";
+export { BrowserTerminalHost } from "./widgets/terminal-host.js";
 export type {
   TerminalHost,
   TerminalSize,
   DataHandler,
   ResizeHandler,
-  NodeTerminalHostOptions,
   BrowserTerminalHostOptions,
   XtermTerminal,
   XtermDisposable,

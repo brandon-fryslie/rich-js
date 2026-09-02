@@ -35,13 +35,12 @@ export { Slider } from "./slider.js";
 export type { SliderOptions } from "./slider.js";
 export { EventRouter } from "./event-router.js";
 export type { EventRouterOptions } from "./event-router.js";
-export { NodeTerminalHost, BrowserTerminalHost } from "./terminal-host.js";
+export { BrowserTerminalHost } from "./terminal-host.js";
 export type {
   TerminalHost,
   TerminalSize,
   DataHandler,
   ResizeHandler,
-  NodeTerminalHostOptions,
   BrowserTerminalHostOptions,
   XtermTerminal,
   XtermDisposable,
