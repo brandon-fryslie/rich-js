@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-64",
+      "ref": "refs/pull/64/merge",
+      "sha": "524ae2d4190c9535e22dc7203abf3e36085682ef",
+      "timestamp": "2026-09-02T04:22:21.706Z",
+      "commits": [
+        {
+          "sha": "524ae2d4190c9535e22dc7203abf3e36085682ef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T22:21:52-06:00",
+          "message": "Merge 8f3928cf5451aed4539e0b04588724a75e75e6c4 into ed0e69269451bc39c9853f0cdab277a6ae8cb268\n"
+        },
+        {
+          "sha": "8f3928cf5451aed4539e0b04588724a75e75e6c4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T22:21:29-06:00",
+          "message": "docs: write the template-bindings documentation page (rich-docs-vk9.2)\n\n`src/template-bindings/` had no page on the docs site. The authoring brief at\n`spec/template-bindings.md` predates the v0.7.0 \"colors are values\" change and\nteaches a surface that no longer exists — per-color functions (`red`, `hex`,\n`rgb`, `on`), a `PaletteResolver` type, and the `palette \"spec\" child` grammar.\nNone of that is ported. The page is written from the source instead.\n\nDocuments what ships: the two registrations and the split between them\n(`richTextFuncs` needs no theme, `paletteFuncs` is the one that does), why\n`paletteFuncs` takes a thunk rather than a palette, the `fg`/`bg` sinks and the\nwidth of the color-spec slot, colors as values with the full transform table,\nand `renderTemplate` including its error degradation.\n\nTeaching examples follow house style: pipes lead, colors and style specs are\nheld in reusable `$vars`, no nested call form.\n\nEvery TypeScript sample was verified by extracting the blocks into one module,\ntype-checking it under tsconfig.test.json, and running it under vitest.\nExecuting them caught a defect type-checking could not: the `renderTemplate`\nsample originally routed the finished ANSI from `segmentsToString` back through\n`console.print`, which treats its argument as content — it strips the escape\nbytes and highlights the remainder, so the sequences arrive as visible text.\nThe sample now writes to the stream directly, and a warning callout records the\ntrap.\n\nSidebar entry under Integrations plus `template-bindings` added to the Guide\nnav activeMatch. Inline `{{ }}` spans outside code fences are wrapped in\n`<code v-pre>` — Vue interpolates them otherwise and the docs build fails.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ed0e69269451bc39c9853f0cdab277a6ae8cb268",
