@@ -114,8 +114,8 @@ export interface TerminalHost {
  * importing xterm.js's types — keeps this package free of an xterm.js
  * dev-dep at the type level, lets the browser-bundle pipeline (downstream
  * ticket) pin whichever xterm.js version it wants, and lets unit tests
- * pass a hand-built fake. Same idea as `NodeReadable`/`NodeWritable`
- * above: ask for exactly the capabilities the host uses, no more.
+ * pass a hand-built fake: ask for exactly the capabilities the host uses,
+ * no more.
  */
 export interface XtermDisposable {
   dispose(): void;
