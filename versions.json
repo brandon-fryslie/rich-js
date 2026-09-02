@@ -4,15 +4,22 @@
     {
       "version": "pr-66",
       "ref": "refs/pull/66/merge",
-      "sha": "d1aebe57d9f2e031157ef511352d6648a82a143b",
-      "timestamp": "2026-09-02T04:52:45.809Z",
+      "sha": "e78884f576cf72e2d4ced4673bf3fe95cb1034ae",
+      "timestamp": "2026-09-02T05:04:20.827Z",
       "commits": [
         {
-          "sha": "d1aebe57d9f2e031157ef511352d6648a82a143b",
+          "sha": "e78884f576cf72e2d4ced4673bf3fe95cb1034ae",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-01T22:52:14-06:00",
-          "message": "Merge 4cfdb98221fca3736cf29f5524a08d4417055fa0 into 684c8e20ce4c3249b15e16b6e01a0309e06d035f\n"
+          "timestamp": "2026-09-02T05:03:52Z",
+          "message": "Merge 5e398ec507fc8145836ef2a6bb2bb85ad0b182f7 into 684c8e20ce4c3249b15e16b6e01a0309e06d035f\n"
+        },
+        {
+          "sha": "5e398ec507fc8145836ef2a6bb2bb85ad0b182f7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-01T23:03:40-06:00",
+          "message": "docs: name the two upward edges out of core, and widen the check that finds them\n\nThe dependency section claimed no back-edges and shipped a grep that could\nnot have found one. `from \"\\./[a-z]+\\.js\"` matches same-directory imports\nonly, so a reader verifying the claim the way the section told them to would\nget a clean result while an upward import sat three lines away — a hand-\nwritten claim standing next to a check that cannot falsify it, which is the\nfailure this epic exists to remove.\n\nThere are two such edges, and they are now named rather than implied absent:\ncolor.ts imports Palette from themes/ (safe: themes/palette.ts only\nimport-types back, so no runtime cycle) and console.ts imports Rule from\nrenderables/. Both are deliberate and annotated at their call sites. An\nundocumented exception is what becomes an accidental cycle; a named one is a\nseam. The pattern now matches `../` too.\n\nAlso drops the last \"flagship\" framing from themes-and-color-studio: the\nprinted banner still called it \"the flagship Themes & Color demo\" while the\nheader rewritten in eef1954 says it is not the template for future demos.\nThe file contradicted itself in the output users actually see.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "4cfdb98221fca3736cf29f5524a08d4417055fa0",
@@ -42,35 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-01T22:38:13-06:00",
           "message": "docs: fold the demos brief into the README demo section (rich-docs-vk9.3) (#65)\n\n`spec/demos.md` was the last unconsumed authoring brief. Most of it is not\nstale but repealed: the parent epic `rich-demos-l2x` now lists the\nfive-flagship model with source-module ownership under \"Non-goals (explicit\nrejections, learned the hard way)\" and closed children .4-.7 as obsolete.\nPublishing the ownership rule, the per-flagship export lists, or the\ndeletions table would re-issue a retired design, so they are discarded\nrather than moved.\n\nWhat survives is the coverage contract, which is true, load-bearing, and\ndocumented in no prose anywhere: the verifier derives its universe from\n`package.json#exports` at test-load time, counts coverage per symbol origin,\nignores namespace imports, and validates the allowlist for both dead and\nredundant entries. That folds into the README as \"Demo coverage is checked,\nnot claimed\", along with the two facts a demo author needs first —\n`examples/shared/` counts because the verifier walks every file, and a demo\nreaches the browser gallery only via `examples/<name>/wire.ts`.\n\nFolding it in also settles a contradiction. The README's hand-maintained\n\"Not yet exercised\" table was a second source for what the verifier already\ncomputes, and every one of the 16 symbols checked (`Status`, `Prompt`,\n`Measurement`, `emojiReplace`, `StyleStack`, the `Box` variants, ...) is\nabsent from `coverage-allowlist.ts`, meaning a demo already covers it. Both\nhand-maintained coverage lists are deleted; the check that cannot drift\nreplaces them.\n\nAlso corrected in the same section:\n- `PaletteResolver` no longer exists. Section 5 of themes-and-color-studio\n  is now \"Colour references\" over `resolveColorRef` / `parseHexColor` /\n  `ColorRefError`; the intro line and the features-table row say so.\n- \"Two are explained in detail below\" listed three headings. The demo list\n  is regrouped by interactive vs transcript, and the three detailed demos\n  are named.\n- The bugs-found table cited line numbers that had drifted; it now cites\n  path plus symbol, each verified present.\n- Added the live demo gallery link (verified 200) and a pointer back from\n  the gallery page.\n\nVerification: `npm run docs:build` clean (it is also the dead-link and Vue\ninterpolation check), `npm run lint` clean, `coverage.test.ts` green with\nall four invariants matching the prose that now describes them.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea"
-        }
-      ]
-    },
-    {
-      "version": "pr-35",
-      "ref": "refs/pull/35/merge",
-      "sha": "9a9dce6d689f7318de0984ca478156b6c80eed88",
-      "timestamp": "2026-05-24T13:06:29.189Z",
-      "commits": [
-        {
-          "sha": "9a9dce6d689f7318de0984ca478156b6c80eed88",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T13:06:07Z",
-          "message": "Merge 9c2593b199f21be3fe3f1c33baec659fad6e64a7 into 0722e9611cb0aa2b14561b03ff634a1c5c879502\n"
-        },
-        {
-          "sha": "9c2593b199f21be3fe3f1c33baec659fad6e64a7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T07:05:56-06:00",
-          "message": "fix(coverage): label every allowlist entry by its actual export kind\n\nCopilot review on PR #35 flagged that the reason string for KeyEvent\ncalled it a \"type\" when src/widgets/types.ts declares it as a class.\nA reader debugging a coverage failure consumes that reason string\nverbatim — a wrong label is misleading guidance, not just imprecision.\n\nThe same pattern was repeated across many entries (I had labeled most\ninterfaces as \"type\" and several classes as \"type\"). Rather than\nfix only the entry Copilot named, a derivation pass over src/ rewrote\nevery reason string from the actual export declaration:\n\n  - class      → \"<scope>: <Name> class\"\n  - interface  → \"<scope>: <Name> interface\"\n  - type       → \"<scope>: <Name> type alias\"\n  - const      → \"<scope>: <Name> constant\"\n  - function   → \"<scope>: <Name> function\"\n  - enum       → \"<scope>: <Name> enum\"\n\n83 lines of labels updated. Existing parenthetical context (e.g.\n\"used transitively via Pretty\") is preserved.\n\n[LAW:one-source-of-truth] The src/ declaration is the canonical\ndescription of an export's kind. A reason string that disagrees with\nit is a divergent copy — fix the divergence by deriving from the\nsource, not by patching the copy point-by-point.\n\nVerification: npm run lint clean; coverage verifier still green\n(4/4).\n"
-        },
-        {
-          "sha": "7fcaf3e4e2bcd9426b9339ffa153598b81941362",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-05-24T07:00:34-06:00",
-          "message": "chore(demos): retire flagship-per-domain spec and typing\n\nRemoves the artifacts that encoded the over-fit \"exactly five flagships\nwith strict source-module ownership\" model the previous demo-tune-up\ndesign produced. The lit epic (rich-demos-l2x) has already been\nrewritten back to the user's original ask (dedupe / expand / consolidate\n/ reorganize / tweak — fewer + more interesting demos, with existing\nworking demos preserved until something better replaces them).\n\n# Changes\n\n- **Deleted `spec/demos.md`** — the 392-line spec that defined five\n  flagships with rigid source-module ownership and mandated deleting the\n  interactive TUIs (rich-explore, claude-sessions) to satisfy the count.\n  Retired in favor of judgment-driven concrete improvements.\n\n- **`test/coverage/coverage-allowlist.ts`** — dropped the `Flagship`\n  string-literal union, the `burndown(flagship)` helper, and the\n  discriminated-union `AllowlistEntry` (`{ kind: \"burndown\" }`\n  vs `{ kind: \"permanent\" }`). Collapsed to one flat shape:\n  `AllowlistEntry { reason: string }`. Per-flagship comment headers\n  replaced with factual \"-- from src/X --\" sectioning. [LAW:absorbed-variance]\n  — the discriminated union only had one realized case (burndown);\n  collapse to one shape.\n\n- **`test/coverage/coverage.test.ts`** — softened the file header\n  comment (no longer claims to be \"the keystone\" of an epic; explicitly\n  notes the verifier is a *floor*, not a quality measure). Updated the\n  error messages and the redundant-entry detail to match the new\n  AllowlistEntry shape.\n\n- **`examples/themes-and-color-studio/index.ts`** — header comment no\n  longer calls the demo \"the flagship\"; describes what it actually is\n  (a printed-tour reference kept for the color subsystem, not a template\n  for future demos). One-liner inside main() and one in-line infra\n  comment updated to match.\n\n# Verification\n\n- npm run lint: clean\n- npx vitest run: 8838 passed | 7 skipped (328 files)\n- npm run themes-and-color-studio: runs to completion\n\n# What is NOT changed\n\nNo demos under `examples/` are deleted. All existing demos\n(`rich-explore`, `claude-sessions`, `rich-themes`, `rich-themes-transposed`,\n`rich-theme-designer`, `rich-colors`, `rich-config`, `dropdown-demo`,\n`rich-dash`, `rich-markup-plugins`, `rich-strip`, `rich-template-bindings`,\n`themes-and-color-studio`, `shared`) remain on disk; their npm scripts\nremain wired. Per parent epic non-goal: working demos are not deleted\nbefore something concrete has replaced them and been judged a\nreplacement.\n"
         }
       ]
     }
