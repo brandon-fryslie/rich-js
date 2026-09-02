@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-71",
+      "ref": "refs/pull/71/merge",
+      "sha": "50c8e38c61ffba1797da07d79a8d86f0857ad1bb",
+      "timestamp": "2026-09-02T09:12:05.642Z",
+      "commits": [
+        {
+          "sha": "50c8e38c61ffba1797da07d79a8d86f0857ad1bb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T03:11:33-06:00",
+          "message": "Merge cb14939a462da02be1425fe62958d384dde139c7 into 16479a809ff04909ffac8c5778de52e41dd6ee15\n"
+        },
+        {
+          "sha": "cb14939a462da02be1425fe62958d384dde139c7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T03:11:10-06:00",
+          "message": "feat(seam): move NodeTerminalHost behind the node subpath (rich-seam-981.2)\n\n`NodeTerminalHost` read `process.stdin` / `process.stdout` from\n`src/widgets/terminal-host.ts`, which is reachable from the main barrel.\nThe read is inside the constructor, so importing the barrel in a browser\nnever threw — the browser-safe guarantee held by care rather than by\nconstruction, the same shape rich-seam-981.1 fixed for the traceback\ninstaller.\n\nThe class, its options type, and its private `NodeReadable` /\n`NodeWritable` stream shapes now live in `src/node/terminal-host.ts`\nbehind a `./node/terminal-host` export entry. `TerminalHost`,\n`TerminalSize`, and `BrowserTerminalHost` stay in the barrel: the\ninterface is the seam and belongs everywhere; only the implementation\nthat touches the ambient global is node-only. The dependency runs one\nway — the node adapter imports the seam, nothing in the barrel imports\nthe adapter.\n\nMeasured rather than assumed: walking the built module graph from\n`dist/index.js` (90 modules) leaves no unguarded `process` reference\nreachable from the barrel. What remains is comments plus the\n`typeof process === \"undefined\"`-guarded sites in `core/color.ts` and\n`core/console.ts`, which rich-seam-981.3 owns. That closes the last\nunguarded site the epic names.\n\nRepaired two maps this change would otherwise have left lying:\n\n- `src/widgets/terminal-host.ts`'s header claimed to be \"the single owner\n  of node TTY access in the codebase\" and named itself as the node host's\n  home. Both became false. The replacement states the dependency\n  direction instead — a claim the compiler keeps. (The separate\n  contradiction with `core/console.ts`'s TTY fallback is rich-seam-981.6.)\n- `CLAUDE.md` said `src/node/` was \"two files, two package subpaths\"; it\n  was already four after #70. It now points at `package.json#exports` as\n  the list rather than restating it.\n\nVerification, each check falsified before being trusted:\n\n- Adding a throwaway export to the new subpath made the coverage gate\n  fail naming it and its file, so the gate genuinely sees the new entry\n  module; removing it restored green.\n- Node package self-reference resolves the real `exports` map:\n  `@promptctl/rich-js/node/terminal-host` yields the class, and the\n  barrel yields `undefined`. `tsc` alone would not have caught a typo in\n  the `exports` target.\n- `npm run lint`, `npm run test` (1787 passing), `npm run docs:build`,\n  `npm run test:demos` (10/10 browser demos boot), and a live run of the\n  `rich-strip` node demo from `dist-demo/`.\n\nNote for the next reader: `npm run lint` does not type-check `examples/`.\nA missed demo import survived lint and was caught only by the coverage\nverifier's `assertProgramClean`.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "16479a809ff04909ffac8c5778de52e41dd6ee15",
