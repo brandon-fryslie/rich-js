@@ -585,8 +585,10 @@ describe("link function (cell-splitter contract)", () => {
 // ─── Consumer-side cell splitting ───────────────────────────────────────────
 
 describe("multi-cell contract (consumer-side cell splitting)", () => {
-  // Test renderer implementing the contract described in
-  // spec/template-bindings.md → "Cell-splitting algorithm (consumer side)".
+  // Test renderer implementing the consumer side of the fragment contract
+  // described in docs/template-bindings.md: evaluation yields one RichText
+  // per top-level expression, and a consumer that wants cells splits that
+  // list itself rather than hunting for boundaries in a merged string.
   function splitCells(fragments: readonly RichText[]): {
     cells: { fragment: RichText; before: RichText[] }[];
     trailing: RichText[];

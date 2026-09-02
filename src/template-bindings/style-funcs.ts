@@ -2,7 +2,7 @@
  * Style-function registrations for the rich-js template binding.
  *
  * [LAW:one-source-of-truth] The function inventory below mirrors the
- * string-syntax style vocabulary documented in `spec/style.md` — the two
+ * string-syntax style vocabulary documented in `docs/style.md` — the two
  * colour slots (`fg`/`bg`), text attributes (positive + negated), short
  * aliases, and the hyperlink. Each registration is a templating-time analogue
  * of a piece of `Style.parse`, so a template fragment composed by these
