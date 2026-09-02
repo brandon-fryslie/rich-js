@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-73",
+      "ref": "refs/pull/73/merge",
+      "sha": "59e87ee27f2db91469565ce6c295f1e0fb0aa4d4",
+      "timestamp": "2026-09-02T11:36:41.563Z",
+      "commits": [
+        {
+          "sha": "59e87ee27f2db91469565ce6c295f1e0fb0aa4d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T05:36:11-06:00",
+          "message": "Merge 3b8e527be2956c1f0629b2d7b202af4fec46b854 into 085ebc47356d1a9be7bdee0805339d22cc0b14d2\n"
+        },
+        {
+          "sha": "3b8e527be2956c1f0629b2d7b202af4fec46b854",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-02T05:35:43-06:00",
+          "message": "test(seam): fail the unit suite when the barrel stops being browser-safe (rich-seam-981.4)\n\nThe browser-safe barrel was a claim in README.md and CLAUDE.md plus a grep\nsomeone ran by hand and pasted into a ticket. The only automated guard was\nindirect — vite bundles examples/, Playwright boots them in Chromium — which\ncatches a leak after a full docs build and a browser install, and reports it\nas \"a demo failed to boot\" rather than naming the import.\n\ntest/seam/graph.ts walks the runtime import graph from a set of roots,\nbounded to src/, carrying the chain that reached each module. It needs no\nts.Program: reachability is syntactic, and an `import type` edge is erased\nbefore the module runs, so it is not an edge. A relative specifier that\nfails to resolve throws rather than silently shrinking the graph.\n\ntest/seam/browser-safe.ts is the rule, pure over one parsed file: a `node:*`\nspecifier on an edge that survives to runtime, or a read of ambient\n`process`/`Buffer` at module scope. Module scope is the line — color.ts and\nconsole.ts both read `process` from inside a function body, where the read\nhappens only if a caller asks for it. There is no exemption for a module-scope\n`typeof process` guard: nothing needs one, and the fix is always a function.\n\nRoots come from package.json#exports minus src/node/, so a new subpath is\ncovered the moment it lands. loadCompilerOptions and isUnderSrc are now\nexported from the coverage verifier rather than restated here.\n\nFalsified both halves rather than trusting a green check. Adding\n`import { readFileSync } from \"node:fs\"` to src/core/segment.ts fails with\n`src/core/segment.ts:1 — imports \"node:fs\" / reached by: src/index.ts →\nsrc/core/segment.ts`; adding `import \"../node/save.js\"` instead fails with\nthe three-hop chain through the airlock. The scanner's own shapes — type-only\nimports, function bodies, class field initializers, name slots vs reads — are\npinned by fixtures.\n\nCLAUDE.md's browser-safe section said the failure \"does not land on the person\nwho wrote the import\". That is no longer true, so it now says what does.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "085ebc47356d1a9be7bdee0805339d22cc0b14d2",
