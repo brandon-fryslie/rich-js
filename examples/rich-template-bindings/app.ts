@@ -38,8 +38,10 @@ import {
   asCellCol,
   cellLen,
   cellFit,
+  charGreedyWrap,
+  type WrapStrategy,
+  type WrapRow,
 } from "../../src/index.js";
-import type { WrapStrategy, WrapRow } from "../../src/widgets/text-input.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   MONOKAI,
@@ -204,22 +206,31 @@ const templateAtomWrap: WrapStrategy = (line, { firstWidth, continuationWidth })
   };
 
   const placeOverflow = (text: string, textStart: number): void => {
-    const isTag = text.startsWith("{{") && text.endsWith("}}");
+    // A tag has no break points of its own — every position inside `{{ ... }}`
+    // is equally bad — so "break wherever it stops fitting" is not a fallback
+    // here, it is the right answer. That is exactly the library's built-in
+    // strategy, so use it rather than restating it.
+    if (text.startsWith("{{") && text.endsWith("}}")) {
+      for (const row of charGreedyWrap(text, {
+        firstWidth: asCellCol(isFirst ? firstWidth : continuationWidth),
+        continuationWidth,
+      })) {
+        rows.push({ content: row.content, start: asCodePoint(textStart + row.start) });
+        isFirst = false;
+      }
+      return;
+    }
+    // Text runs do have break points, so retreat to the last space in the
+    // chunk char-greedy would have taken.
     let p = 0;
     while (p < text.length) {
       const cap = asCellCol(isFirst ? firstWidth : continuationWidth);
       const slice = text.slice(p);
       if (cellLen(slice) === 0) break;
-      let chunk: string;
-      if (isTag) {
-        chunk = cellFit(slice, cap);
-        if (chunk.length === 0) chunk = [...slice][0]!; // force-take first code point
-      } else {
-        chunk = cellFit(slice, cap);
-        if (chunk.length === 0) chunk = [...slice][0]!;
-        const lastSpace = chunk.lastIndexOf(" ");
-        if (lastSpace > 0) chunk = chunk.slice(0, lastSpace + 1);
-      }
+      let chunk = cellFit(slice, cap);
+      if (chunk.length === 0) chunk = [...slice][0]!; // force-take first code point
+      const lastSpace = chunk.lastIndexOf(" ");
+      if (lastSpace > 0) chunk = chunk.slice(0, lastSpace + 1);
       rows.push({ content: chunk, start: asCodePoint(textStart + p) });
       isFirst = false;
       p += chunk.length;
