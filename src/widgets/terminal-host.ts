@@ -16,11 +16,13 @@
  *
  * [LAW:one-way-deps] The interface and the browser host live here, in the
  * barrel; the node host lives in `src/node/terminal-host.ts`, behind an
- * explicit subpath, because it is the only implementation that reads
- * `process.stdin` / `process.stdout`. The dependency runs one way — the node
- * adapter imports this seam; nothing here imports the adapter — so importing
- * the main barrel in a browser cannot reach the ambient `process` global by
- * any path, rather than merely not reaching it in practice.
+ * explicit subpath, because it reads `process.stdin` / `process.stdout`. The
+ * dependency runs one way — the node adapter imports this seam; nothing here
+ * imports the adapter — so importing the main barrel in a browser cannot
+ * reach the ambient `process` global by any path, rather than merely not
+ * reaching it in practice. `test/seam/browser-safe.test.ts` is what holds
+ * that direction; who reads the host at all is `HOST_ACCESS` in
+ * `test/seam/ambient-process.ts`, and neither list is repeated here.
  *
  * [boundaries: capabilities over context] A `TerminalHost` grants exactly
  * the I/O capabilities the runtime needs: write bytes, read input, query
