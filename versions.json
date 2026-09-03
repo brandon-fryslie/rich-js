@@ -4,15 +4,22 @@
     {
       "version": "pr-74",
       "ref": "refs/pull/74/merge",
-      "sha": "3ef5a10eec3c5f4e82550a940631bcda18dfae1f",
-      "timestamp": "2026-09-03T07:17:11.977Z",
+      "sha": "dbec048087a2a2a7428197d94dd1d103fabee571",
+      "timestamp": "2026-09-03T07:37:16.255Z",
       "commits": [
         {
-          "sha": "3ef5a10eec3c5f4e82550a940631bcda18dfae1f",
+          "sha": "dbec048087a2a2a7428197d94dd1d103fabee571",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T07:16:38Z",
-          "message": "Merge 6e945cac68ce8d6b5ba5494f92147c1ff090b144 into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+          "timestamp": "2026-09-03T07:36:43Z",
+          "message": "Merge 0a4e0555f76e3b8b6f8678469c58df22f7519bc0 into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+        },
+        {
+          "sha": "0a4e0555f76e3b8b6f8678469c58df22f7519bc0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T01:36:34-06:00",
+          "message": "test(seam): compare paths in one canonical spelling\n\nThree review findings, all valid.\n\nThe layering rules compared `path.relative` output against forward-slash\nliterals with `===`. That holds on POSIX and fails on every Windows host,\nwhere `src\\core\\console.ts` never equals `src/core/console.ts` — so the gate\nwould report both sanctioned edges as simultaneously unsanctioned and stale,\naccusing untouched code of exactly what it exists to catch. Four sites had\nthe exposure; `browser-safe.ts` next door computes the same paths but only\never renders them, which is why this arrived with this branch.\n\nFixed at the representation rather than at the comparisons: `repoRelative`\nin `test/coverage/extract.ts` is now the single crossing where an OS path\nbecomes the spelling the suite compares on. Normalizing at each comparison\nwould have left the fifth site to be forgotten.\n\nIts test is pinned but honest — on a POSIX host the assertion holds with or\nwithout the canonicalization, so it gates only on Windows and the comment\nsays so. Green on this CI is not evidence the normalization survived, and\nrecording that is better than implying a check stronger than the one there.\n\nThe transitive-cycle fixture carried a comment left over from an earlier\ndraft, naming rule.ts and console.ts while the fixture used color.ts and\npanel.ts. Replaced with the chain it actually walks — panel.ts reaches\ncolor.ts through core/style.ts — and shorter than the wrong version, since\nthe repair is to say the true thing once.\n\nCLAUDE.md described the gate as failing two ways when it now fails three,\nomitting the cycle check — which is the one that makes the safety claims in\nthe bullets directly above it verified rather than asserted. A reader\nchecking whether anything backs those claims would have concluded nothing\ndid.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "6e945cac68ce8d6b5ba5494f92147c1ff090b144",
