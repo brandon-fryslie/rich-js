@@ -249,7 +249,18 @@ export function assertProgramClean(program: ts.Program): void {
  * count toward coverage.
  */
 export function listExampleFiles(): string[] {
-  const root = path.join(REPO_ROOT, EXAMPLES_ROOT);
+  return listTypeScriptFiles(EXAMPLES_ROOT);
+}
+
+/**
+ * Every `.ts` file under a repo-relative directory, recursively, sorted.
+ *
+ * The recursion is the point rather than an incidental convenience: a rule
+ * that enumerates a directory to check each file passes by seeing nothing,
+ * so a subdirectory added later must not silently fall outside the sweep.
+ */
+export function listTypeScriptFiles(relativeRoot: string): string[] {
+  const root = path.join(REPO_ROOT, relativeRoot);
   const out: string[] = [];
   const walk = (dir: string): void => {
     for (const entry of readdirSync(dir)) {
@@ -533,13 +544,47 @@ function visitImports(sf: ts.SourceFile, onName: (id: ts.Identifier) => void): v
 }
 
 export function isUnderSrc(absPath: string): boolean {
-  // Use `path.relative` rather than `startsWith` on raw strings: this
-  // is robust to OS path-separator differences and to symlink/realpath
-  // variation. A path is "under src/" iff its relative form is non-empty,
-  // not absolute, and doesn't start with `..` (i.e. lives strictly
-  // inside the src tree).
-  const srcRoot = path.join(REPO_ROOT, "src");
-  const rel = path.relative(srcRoot, absPath);
+  return isPathInside(path.join(REPO_ROOT, "src"), absPath);
+}
+
+/**
+ * An absolute path in the one repo-relative spelling the suite compares on.
+ *
+ * [LAW:single-enforcer] The single crossing where an OS path becomes a
+ * canonical one, because the alternative is normalizing at each comparison
+ * and forgetting the next one. `path.relative` returns native separators, so
+ * on Windows `src\core\console.ts` never equals the `"src/core/console.ts"`
+ * a rule was written against — and equality failing silently is the worst
+ * available failure: the layering gate would report its two sanctioned edges
+ * as both unsanctioned and stale, accusing untouched code of precisely what
+ * the gate exists to catch.
+ */
+export function repoRelative(absPath: string): string {
+  return path.relative(REPO_ROOT, absPath).split(path.sep).join("/");
+}
+
+/**
+ * Whether `target` lives strictly inside `root`.
+ *
+ * [LAW:one-source-of-truth] The one home for this comparison, because it is
+ * short enough to retype and wrong in a way that fails silently. Compare with
+ * `path.relative` rather than `startsWith` on raw strings: `src/core-utils`
+ * begins with `src/core`, so a prefix test reads a sibling directory as
+ * inside and reports nothing about it ever again. `path.relative` also
+ * normalizes separator format, which a raw comparison does not.
+ *
+ * The comparison is lexical: it never reads the filesystem, so a symlink and
+ * its target read as unrelated paths. Every caller here derives both
+ * arguments from `REPO_ROOT`, which is what makes that safe — a future caller
+ * holding paths from two sources has to resolve them before asking.
+ *
+ * Both arguments must also be the same kind of path — both absolute, or both
+ * relative to the same base. Callers work in different spaces (`isUnderSrc`
+ * in absolute paths, the layering rule in repo-relative ones) and each is
+ * internally consistent.
+ */
+export function isPathInside(root: string, target: string): boolean {
+  const rel = path.relative(root, target);
   return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 
