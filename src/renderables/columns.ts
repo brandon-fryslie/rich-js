@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable } from "../core/protocol.js";
+import { isMeasurable, withCellWidth } from "../core/protocol.js";
 
 export interface ColumnsOptions {
   expand?: boolean;
@@ -45,10 +45,15 @@ export class Columns implements Renderable, Measurable {
     this.gutterWidth = 2; // default gutter between columns
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
     const items = this.renderables;
     if (items.length === 0) return;
 
+    // The parsed options, not just a parsed local: `Measurement.get` below is
+    // handed these, and a raw NaN reaching it comes back as a NaN item width,
+    // then a NaN column count, then `Invalid array length` out of
+    // `new Array(numCols)` before a single column is laid out.
+    const options = withCellWidth(rawOptions);
     const maxWidth = options.maxWidth;
 
     // Determine column widths
@@ -101,7 +106,12 @@ export class Columns implements Renderable, Measurable {
     }
   }
 
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return { minimum: 1, maximum: options.maxWidth };
+  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+    // A floor of one cell is what Columns asks for; the ceiling is what it was
+    // offered, and the ceiling wins. Stated as a bare `minimum: 1`, a Columns
+    // measured into no width at all reported the range 1..0 — a floor above
+    // its own ceiling, which the parent that asked cannot divide.
+    const ceiling = withCellWidth(rawOptions).maxWidth;
+    return { minimum: Math.min(1, ceiling), maximum: ceiling };
   }
 }

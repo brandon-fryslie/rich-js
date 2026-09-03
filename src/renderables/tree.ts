@@ -3,6 +3,7 @@
  */
 
 import { Segment } from "../core/segment.js";
+import { cellFit, cellLen, asCellCol } from "../core/cells.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import type {
@@ -10,6 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { withCellWidth } from "../core/protocol.js";
 
 // Guide characters
 const GUIDE_BRANCH = "├── ";
@@ -89,14 +91,7 @@ export class Tree implements Renderable, Measurable {
     const guideStyle = this.guideStyle.isNull ? undefined : this.guideStyle;
 
     if (showLabel) {
-      // Render prefix
-      for (const prefix of prefixes) {
-        yield new Segment(prefix, guideStyle);
-      }
-      // [LAW:single-enforcer] Tree owns its row boundaries explicitly instead
-      // of depending on label renderables to invent trailing newlines.
-      yield* this.label.render(options);
-      yield Segment.line();
+      yield* this._renderRow(options, prefixes.map((p) => [p, guideStyle]), this.label);
     }
 
     if (!this.expanded) return;
@@ -114,13 +109,11 @@ export class Tree implements Renderable, Measurable {
       // Child label with branch guide
       const childGuideStyle = child.guideStyle.isNull ? guideStyle : (child.guideStyle.isNull ? undefined : child.guideStyle);
 
-      // Render child label
-      for (const prefix of prefixes) {
-        yield new Segment(prefix, childGuideStyle);
-      }
-      yield new Segment(branch, childGuideStyle);
-      yield* child.label.render(options);
-      yield Segment.line();
+      yield* this._renderRow(
+        options,
+        [...prefixes, branch].map((p) => [p, childGuideStyle]),
+        child.label,
+      );
 
       // Render grandchildren with continuation prefix
       if (child.expanded && child.children.length > 0) {
@@ -136,7 +129,42 @@ export class Tree implements Renderable, Measurable {
     }
   }
 
+  /**
+   * One row of the tree: its guides, then its label in whatever width the
+   * guides left.
+   *
+   * [LAW:single-enforcer] Both callers route through here, so the requested
+   * width is divided in exactly one place. Before this, each call site emitted
+   * its guides and then handed the label `options` unchanged — the label was
+   * told it had the whole outer width while the guides had already spent four
+   * cells of it, so a tree at maxWidth 5 emitted rows of 9. That is the same
+   * defect Panel and Table were fixed for, and the same fix: divide the
+   * requested width once and let every part read its share off the division.
+   *
+   * [LAW:single-enforcer] Tree also owns its row boundaries here rather than
+   * depending on label renderables to invent trailing newlines.
+   */
+  private *_renderRow(
+    options: RenderOptions,
+    guides: Array<[string, Style | undefined]>,
+    label: Renderable,
+  ): Iterable<Segment> {
+    const parsed = withCellWidth(options);
+    let left: number = parsed.maxWidth;
+    for (const [text, style] of guides) {
+      const piece = cellFit(text, asCellCol(left));
+      if (piece.length > 0) yield new Segment(piece, style);
+      left -= cellLen(piece);
+    }
+    yield* label.render({ ...parsed, maxWidth: left });
+    yield Segment.line();
+  }
+
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return { minimum: 4, maximum: options.maxWidth };
+    // A row is its guides plus at least one cell of label, and the ceiling is
+    // parsed for the same reason the rows are: an unparsed NaN ceiling yields
+    // a range no parent layout can divide.
+    const ceiling: number = withCellWidth(options).maxWidth;
+    return { minimum: Math.min(4, ceiling), maximum: ceiling };
   }
 }

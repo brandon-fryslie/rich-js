@@ -3,6 +3,7 @@
  */
 
 import { Segment } from "../core/segment.js";
+import { cellCount } from "../core/cells.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Measurement } from "../core/measure.js";
 import type {
@@ -32,13 +33,12 @@ export type PaddingDimensions =
 export function normalizePadding(
   padding: PaddingDimensions,
 ): [number, number, number, number] {
-  // `Math.max(0, n)` returns NaN for a NaN side; the comparison floors it, and
-  // the truncation floors a fractional one, which is what makes the guarantee
-  // above hold for every number a caller can write rather than only for
-  // negative ones. A fractional side reaches `" ".repeat`, which truncates,
-  // while the rows around it are measured arithmetically — so the padding and
-  // the border disagree and the frame breaks.
-  const side = (n: number): number => (n > 0 ? Math.floor(n) : 0);
+  // A padding side is a count of cells like any other, so it is parsed by the
+  // same rule rather than by a second copy of it: a fractional side reaches
+  // `" ".repeat`, which truncates, while the rows around it are measured
+  // arithmetically — so the padding and the border disagree and the frame
+  // breaks. `cellCount`'s header carries why the comparison, not `Math.max`.
+  const side = cellCount;
   const sides: readonly [number, number, number, number] =
     typeof padding === "number"
       ? [padding, padding, padding, padding]
