@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-76",
+      "ref": "refs/pull/76/merge",
+      "sha": "b189e6354d5442e0c39ef26262c2a9542b302dab",
+      "timestamp": "2026-09-03T08:51:02.231Z",
+      "commits": [
+        {
+          "sha": "b189e6354d5442e0c39ef26262c2a9542b302dab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T02:50:33-06:00",
+          "message": "Merge f5ff142a066a6b674d33a1c2cf4baddff0ab5ad6 into e8401c782fc99934e8f7daa4f79fad3144dca7f3\n"
+        },
+        {
+          "sha": "f5ff142a066a6b674d33a1c2cf4baddff0ab5ad6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T02:50:09-06:00",
+          "message": "fix(panel): divide the requested width once, so no row can overflow it (rich-width-3cf.1)\n\n`Panel` derived its geometry three times — `panelWidth - 2 - padLeft -\npadRight` in `render`, `panelWidth - 2` in each border renderer — and\nclamped each derivation differently. At width 1 the unclamped border\nsubtraction went negative and `String.repeat(-1)` threw `RangeError`.\nBetween widths 2 and 6 the `Math.max(1, …)` in `render` clamped the\ncontent canvas *up*, so a 2-cell frame enclosed 5-cell content rows,\nwhich the terminal then soft-wrapped, destroying the frame of everything\nprinted below.\n\n`layoutPanel` now divides the requested width once into fields that sum\nto exactly that width, and every row measures from it. Cells go to the\ntwo frame columns, then one cell of content, then the padding, then the\nremainder back to content — so content stays visible down to width 3\ninstead of the panel spending its last cells on padding. Frame columns\nare emitted as `box.left.repeat(n)` with n in {0,1}, which needs no\nbranch because the wire boundary drops zero-length segments.\n\nContent rows now route through `Segment.adjustLineLength`, which crops a\nchild that rendered wider than its canvas (a `Table` at natural width)\ninstead of letting it burst the frame, and fills the span in one stroke\n— replacing the hand-rolled `rightPad` arithmetic and `_renderBlankLine`,\nwhich is now a content row whose content is nothing.\n\nThe test sweeps thirteen panel configurations across widths 1–40 and\nasserts every line fits inside the width and no line is ragged.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e8401c782fc99934e8f7daa4f79fad3144dca7f3",
