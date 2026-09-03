@@ -571,9 +571,14 @@ export function repoRelative(absPath: string): string {
  * `path.relative` rather than `startsWith` on raw strings: `src/core-utils`
  * begins with `src/core`, so a prefix test reads a sibling directory as
  * inside and reports nothing about it ever again. `path.relative` also
- * absorbs OS separator differences and symlink/realpath variation.
+ * normalizes separator format, which a raw comparison does not.
  *
- * Both arguments must be the same kind of path — both absolute, or both
+ * The comparison is lexical: it never reads the filesystem, so a symlink and
+ * its target read as unrelated paths. Every caller here derives both
+ * arguments from `REPO_ROOT`, which is what makes that safe — a future caller
+ * holding paths from two sources has to resolve them before asking.
+ *
+ * Both arguments must also be the same kind of path — both absolute, or both
  * relative to the same base. Callers work in different spaces (`isUnderSrc`
  * in absolute paths, the layering rule in repo-relative ones) and each is
  * internally consistent.
