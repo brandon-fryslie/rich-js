@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Table, Column } from "../../src/renderables/table.js";
 import { Segment } from "../../src/core/segment.js";
-import { ASCII, MARKDOWN } from "../../src/core/box.js";
+import { ASCII, MARKDOWN, HEAVY_HEAD } from "../../src/core/box.js";
+import { cellLen } from "../../src/core/cells.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -218,5 +219,301 @@ describe("Column", () => {
     const copy = col.copy();
     expect(copy.header.plain).toBe("Test");
     expect(copy.justify).toBe("right");
+  });
+});
+
+describe("Table stays inside the width it is given", () => {
+  // A table wide enough to be squeezed hard, in the three frame shapes that
+  // divide a width differently: a full box, a box without its outer edge, and
+  // no box at all.
+  const shapes: Array<[string, () => Table]> = [
+    ["boxed", () => new Table({ box: HEAVY_HEAD })],
+    ["edgeless", () => new Table({ box: ASCII, showEdge: false })],
+    ["grid", () => Table.grid()],
+  ];
+
+  function populate(t: Table): Table {
+    t.addColumn("Name");
+    t.addColumn("Qty");
+    t.addColumn("Price");
+    t.addRow("Widget", "12", "$3.50");
+    t.addRow("Gadget", "7", "$11.00");
+    return t;
+  }
+
+  const widths = Array.from({ length: 32 }, (_, i) => i);
+
+  for (const [name, make] of shapes) {
+    it(`emits no line wider than the requested width (${name})`, () => {
+      for (const width of widths) {
+        const lines = collectLines(populate(make()), { maxWidth: width });
+        const widest = Math.max(0, ...lines.map(cellLen));
+        expect({ width, widest }).toEqual({ width, widest: Math.min(widest, width) });
+      }
+    });
+
+    it(`reports a measurement range that contains itself (${name})`, () => {
+      for (const width of widths) {
+        const m = populate(make()).measure({ maxWidth: width });
+        expect({ width, ...m }).toEqual({
+          width,
+          minimum: Math.min(m.minimum, m.maximum, width),
+          maximum: Math.min(m.maximum, width),
+        });
+      }
+    });
+  }
+
+  it("stays inside the width with a title and caption longer than the table", () => {
+    const t = new Table({
+      box: ASCII,
+      title: "A title far longer than this table will ever be",
+      caption: "and a caption to match",
+    });
+    populate(t);
+    for (const width of widths) {
+      const widest = Math.max(0, ...collectLines(t, { maxWidth: width }).map(cellLen));
+      expect({ width, widest }).toEqual({ width, widest: Math.min(widest, width) });
+    }
+  });
+
+  it("crops a wide-character title by cells, not by code units", () => {
+    // Each ideograph is two cells: a 10-code-unit slice would be 20 cells wide.
+    const t = new Table({ box: ASCII, title: "\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45" });
+    t.addColumn("A");
+    t.addRow("x");
+    // The table's own natural width is 5, so the title crops to 5 cells — a
+    // code-unit slice would have left it 10 characters and 20 cells wide.
+    expect([...new Set(collectLines(t, { maxWidth: 6 }).map(cellLen))]).toEqual([5]);
+  });
+
+  it("keeps a fixed-width column at its width and squeezes the rest", () => {
+    const t = new Table({ box: ASCII, padding: 0 });
+    t.addColumn("Fixed", { width: 4 });
+    t.addColumn("Elastic");
+    t.addRow("abcd", "a much longer cell than the other one");
+    // 2 edges + 1 divider + the reserved 4 leaves 5 for the elastic column,
+    // which is far wider naturally and would win every cell if a declared
+    // width competed on weight instead of being reserved ahead of the bidding.
+    expect(collectLines(t, { maxWidth: 12 })).toContain("|abcd|a mu…|");
+  });
+
+  it("spends its last cells on content rather than on padding", () => {
+    // 2 edges + 1 divider + 2 content cells = 5; a sixth cell cannot buy the
+    // padding both columns would need, so it goes to a column instead.
+    const t = new Table({ box: ASCII, showHeader: false, padding: [0, 1] });
+    t.addColumn(undefined, { overflow: "crop" });
+    t.addColumn(undefined, { overflow: "crop" });
+    t.addRow("ab", "cd");
+    // The ladder: content first, then one side of the padding, then the other.
+    expect(collectLines(t, { maxWidth: 6 })).toContain("|ab|c|");
+    expect(collectLines(t, { maxWidth: 7 })).toContain("| a| c|");
+    expect(collectLines(t, { maxWidth: 9 })).toContain("| a | c |");
+  });
+
+  it("drops the columns a width cannot seat rather than overflowing", () => {
+    const t = new Table({ box: ASCII, showHeader: false, padding: 0 });
+    t.addColumn();
+    t.addColumn();
+    t.addColumn();
+    t.addRow("a", "b", "c");
+    // 2 edges + 3 cells + 2 dividers needs 7; at 6 the last column is dropped
+    // rather than drawn past the frame, and the freed cell stays unspent
+    // because both survivors are already at their natural width.
+    expect(collectLines(t, { maxWidth: 6 })).toContain("|a|b|");
+    expect(collectLines(t, { maxWidth: 7 })).toContain("|a|b|c|");
+  });
+
+  it("gives a width-0 column no content cell, only its padding and divider", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { width: 0 });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    // A spacer asks for nothing, so the seating pass seats it at nothing — the
+    // two cells are its padding.
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
+  it("gives a column with no header and no content no content cell either", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn();
+    t.addColumn();
+    t.addRow("", "x");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | x |");
+  });
+
+  it("floors a negative declared width at zero instead of throwing", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { width: -3 });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
+  // A ratio column never reaches a cap of its own, so it is the shape that
+  // decides whether the width apportionment terminates on its own or only
+  // because the width happened to be small.
+  function ratioTable(): Table {
+    const t = new Table({ box: ASCII });
+    t.addColumn("A", { ratio: 1 });
+    t.addColumn("B", { ratio: 3 });
+    t.addRow("x", "y");
+    return t;
+  }
+
+  it("apportions a very large width exactly", () => {
+    // A regression guard, not a demonstration: the cell-at-a-time version this
+    // replaced also passed, in 11ms — a million rounds of a two-element loop is
+    // not slow enough to catch that way.
+    expect(Math.max(...collectLines(ratioTable(), { maxWidth: 1_000_000 }).map(cellLen)))
+      .toBe(1_000_000);
+  }, 2000);
+
+  it("returns control on an unbounded width instead of looping forever", () => {
+    // `Infinity - 1 === Infinity`, so a loop that drains a budget one cell at a
+    // time never leaves it. An infinite cell count cannot be rendered, so this
+    // fails — but it fails, which is the contract under test.
+    //
+    // Read the timeout below as documentation, not as a net: the regression is
+    // a synchronous loop, so it blocks the event loop and vitest cannot
+    // interrupt it. This test caught the bug by wedging the run until the CI
+    // job was killed, which is how it will report a reintroduction too.
+    expect(() => [...ratioTable().render({ maxWidth: Infinity })]).toThrow(RangeError);
+  }, 2000);
+
+  it("leaves an ordinary table renderable at an unbounded width", () => {
+    // Every bounded column caps at its natural width, so there is nothing left
+    // to apportion and no reason to fail. Rejecting non-finite widths outright
+    // would have cost this.
+    const t = new Table({ box: ASCII });
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("x", "y");
+    expect(collectLines(t, { maxWidth: Infinity })).toContain("| A | B |");
+  }, 2000);
+
+  it("renders at its natural width when the width offered exceeds it", () => {
+    const wide = collectLines(populate(new Table({ box: HEAVY_HEAD })), { maxWidth: 200 });
+    const exact = collectLines(populate(new Table({ box: HEAVY_HEAD })), { maxWidth: 25 });
+    expect(wide).toEqual(exact);
+    expect(Math.max(...wide.map(cellLen))).toBe(25);
+  });
+
+  it("treats a NaN declared width as zero rather than poisoning the budget", () => {
+    // NaN fails every comparison, so `budget -= NaN` does not merely mis-size
+    // this column — it disables the seating loop's `budget < cost` check for
+    // every column after it.
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { width: NaN });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
+  it("treats NaN column bounds as no bounds", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { minWidth: NaN });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
+  it("renders a NaN width as a zero width rather than an unbounded frame", () => {
+    const build = (): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addColumn();
+      t.addRow("a", "b");
+      return t;
+    };
+    // Comparing against width 0 rather than asserting no line is too wide:
+    // every line is narrower than NaN, so a width check alone passes on any
+    // output at all.
+    expect(collectLines(build(), { maxWidth: NaN })).toEqual(
+      collectLines(build(), { maxWidth: 0 }),
+    );
+  });
+
+  it("keeps the measurement range upright when the declared width exceeds the offer", () => {
+    // `Measurement.get` clamps only the maximum, so a floor laid out against
+    // the declared width lands above its own ceiling.
+    const t = new Table({ width: 1000, box: ASCII, showHeader: false });
+    t.addColumn();
+    t.addColumn();
+    t.addColumn();
+    t.addRow("a", "b", "c");
+    const m = t.measure({ maxWidth: 5 });
+    expect(m.minimum).toBeLessThanOrEqual(m.maximum);
+    expect(m.maximum).toBeLessThanOrEqual(5);
+  });
+
+  it("keeps a NaN padding side from poisoning the budget", () => {
+    // `normalizePadding` floors it, so `layoutTable` trusts its argument: a
+    // NaN `per` would subtract NaN from the shared budget and switch off every
+    // bounds check after it.
+    const build = (padding: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false, padding });
+      t.addColumn();
+      t.addColumn();
+      t.addRow("aa", "shown");
+      return t;
+    };
+    expect(collectLines(build(NaN), { maxWidth: 20 })).toEqual(
+      collectLines(build(0), { maxWidth: 20 }),
+    );
+  });
+
+  it("keeps an infinite column bound from skewing the columns beside it", () => {
+    // `Infinity` is a legal outer width and not a legal demand: it reaches
+    // `distribute` as `Infinity / Infinity`, which is NaN, and the NaN spreads
+    // to every other elastic column.
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { minWidth: Infinity });
+    t.addColumn();
+    t.addRow("aa", "shown");
+    const lines = collectLines(t, { maxWidth: 20 });
+    expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
+  });
+
+  it("keeps an infinite ratio from skewing the columns beside it", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { ratio: Infinity });
+    t.addColumn(undefined, { ratio: 1 });
+    t.addRow("a", "b");
+    const lines = collectLines(t, { maxWidth: 20 });
+    expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
+  });
+
+  it("pads a fractional side as its floor, so the frame still closes", () => {
+    // A fractional pad reaches `" ".repeat`, which truncates, while the box
+    // rows are measured arithmetically: the content row came out 11 cells
+    // under a 13-cell border.
+    const build = (padding: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false, padding });
+      t.addColumn();
+      t.addColumn();
+      t.addRow("ab", "cd");
+      return t;
+    };
+    expect(collectLines(build(1.5), { maxWidth: 20 })).toEqual(
+      collectLines(build(1), { maxWidth: 20 }),
+    );
+  });
+
+  it("buys no more cells for a fractional width than for its floor", () => {
+    // A fractional budget survives into `distribute`'s largest-remainder pass,
+    // which grants a whole cell against a fractional residue — so a request of
+    // 10.5 bought 11.
+    const build = (): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addRow("abcdefgh");
+      return t;
+    };
+    for (const width of [3.5, 7.25, 9.5, 10.5, 20.5]) {
+      expect(collectLines(build(), { maxWidth: width }), `width ${width}`).toEqual(
+        collectLines(build(), { maxWidth: Math.floor(width) }),
+      );
+    }
   });
 });
