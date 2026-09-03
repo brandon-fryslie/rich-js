@@ -57,33 +57,65 @@ const UNBOUNDED = Number.MAX_SAFE_INTEGER;
  * Hand out `total` cells across `demands`, weighted, and never past a demand's
  * `want`.
  *
- * Cells go out one at a time to whichever column currently sits furthest behind
- * the share its weight entitles it to — the highest-averages rule elections use
- * to apportion seats. Doing it a cell at a time is what makes the result exact:
- * the granted widths sum to `total`, or to the point where every column has hit
- * its cap, with no rounding residue for a second pass to sweep up and disagree
- * about. Capped columns simply stop winning rounds, so the cells they cannot
- * use flow to the columns that can, without a redistribution step.
+ * A column whose proportional share would overshoot its cap is granted its
+ * whole want and dropped, and the cells it could not use are reopened to the
+ * columns still under their caps. That repeats until everyone still open fits
+ * within their share; one largest-remainder pass then places the cells the
+ * shares left as fractions, so the granted widths sum to `total` exactly — or
+ * to the point where every column is capped, which is how a table stays
+ * narrower than a width it was offered.
+ *
+ * Each round caps at least one column or is the last, so the work is bounded by
+ * the number of columns and never by the width. That bound is the point rather
+ * than an optimization: handing cells out one at a time made the iteration
+ * count the width itself, which stalled on a very wide table and — since
+ * `Infinity - 1 === Infinity` — never terminated at all for a `maxWidth` of
+ * `Infinity` held open by a ratio column. Capping by want reaches that case in
+ * one round.
  */
 function distribute(total: number, demands: readonly ColumnDemand[]): number[] {
   const granted: number[] = demands.map(() => 0);
-  let budget = Math.max(0, total);
+  let open = demands
+    .map((_, index) => index)
+    .filter((index) => demands[index]!.weight > 0 && demands[index]!.want > 0);
+  let remaining = Math.max(0, total);
 
-  while (budget > 0) {
-    let winner = -1;
-    let bestScore = 0;
-    for (let i = 0; i < demands.length; i++) {
-      const demand = demands[i]!;
-      if (granted[i]! >= demand.want) continue;
-      const score = demand.weight / (granted[i]! + 1);
-      if (score > bestScore) {
-        bestScore = score;
-        winner = i;
-      }
+  const weightOf = (indices: readonly number[]): number =>
+    indices.reduce((sum, index) => sum + demands[index]!.weight, 0);
+
+  while (open.length > 0 && remaining > 0) {
+    const weightSum = weightOf(open);
+    const capped = open.filter(
+      (index) => (remaining * demands[index]!.weight) / weightSum >= demands[index]!.want,
+    );
+    if (capped.length === 0) break;
+    for (const index of capped) {
+      granted[index] = demands[index]!.want;
+      remaining -= demands[index]!.want;
     }
-    if (winner < 0) break;
-    granted[winner]!++;
-    budget--;
+    open = open.filter((index) => !capped.includes(index));
+  }
+
+  if (open.length > 0 && remaining > 0) {
+    const weightSum = weightOf(open);
+    const shares = open.map((index) => (remaining * demands[index]!.weight) / weightSum);
+    const whole = shares.map(Math.floor);
+    let residue = remaining - whole.reduce((sum, cells) => sum + cells, 0);
+
+    // The cells the shares left as fractions go to the largest fraction first,
+    // ties to the leftmost column, so the total lands exactly on `remaining`.
+    const byFraction = open
+      .map((_, slot) => slot)
+      .sort((a, b) => shares[b]! - whole[b]! - (shares[a]! - whole[a]!) || a - b);
+    for (const slot of byFraction) {
+      if (residue <= 0) break;
+      whole[slot]!++;
+      residue--;
+    }
+
+    open.forEach((index, slot) => {
+      granted[index] = whole[slot]!;
+    });
   }
 
   return granted;

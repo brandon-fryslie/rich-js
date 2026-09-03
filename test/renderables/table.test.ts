@@ -324,6 +324,48 @@ describe("Table stays inside the width it is given", () => {
     expect(collectLines(t, { maxWidth: 7 })).toContain("|a|b|c|");
   });
 
+  // A ratio column never reaches a cap of its own, so it is the shape that
+  // decides whether the width apportionment terminates on its own or only
+  // because the width happened to be small.
+  function ratioTable(): Table {
+    const t = new Table({ box: ASCII });
+    t.addColumn("A", { ratio: 1 });
+    t.addColumn("B", { ratio: 3 });
+    t.addRow("x", "y");
+    return t;
+  }
+
+  it("apportions a very large width exactly", () => {
+    // A regression guard, not a demonstration: the cell-at-a-time version this
+    // replaced also passed, in 11ms — a million rounds of a two-element loop is
+    // not slow enough to catch that way.
+    expect(Math.max(...collectLines(ratioTable(), { maxWidth: 1_000_000 }).map(cellLen)))
+      .toBe(1_000_000);
+  }, 2000);
+
+  it("returns control on an unbounded width instead of looping forever", () => {
+    // `Infinity - 1 === Infinity`, so a loop that drains a budget one cell at a
+    // time never leaves it. An infinite cell count cannot be rendered, so this
+    // fails — but it fails, which is the contract under test.
+    //
+    // Read the timeout below as documentation, not as a net: the regression is
+    // a synchronous loop, so it blocks the event loop and vitest cannot
+    // interrupt it. This test caught the bug by wedging the run until the CI
+    // job was killed, which is how it will report a reintroduction too.
+    expect(() => [...ratioTable().render({ maxWidth: Infinity })]).toThrow(RangeError);
+  }, 2000);
+
+  it("leaves an ordinary table renderable at an unbounded width", () => {
+    // Every bounded column caps at its natural width, so there is nothing left
+    // to apportion and no reason to fail. Rejecting non-finite widths outright
+    // would have cost this.
+    const t = new Table({ box: ASCII });
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("x", "y");
+    expect(collectLines(t, { maxWidth: Infinity })).toContain("| A | B |");
+  }, 2000);
+
   it("renders at its natural width when the width offered exceeds it", () => {
     const wide = collectLines(populate(new Table({ box: HEAVY_HEAD })), { maxWidth: 200 });
     const exact = collectLines(populate(new Table({ box: HEAVY_HEAD })), { maxWidth: 25 });

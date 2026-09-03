@@ -103,13 +103,18 @@ the left, and a column the width cannot seat is dropped rather than drawn outsid
 the frame:
 
 ```
-width 2   width 3   width 5   width 7   width 11     width 13
+width 2   width 3   width 5   width 7   width 10     width 13
 ┌┐        ┌─┐       ┌─┬─┐     ┌─┬─┬─┐   ┌──┬──┬──┐   ┌───┬───┬───┐
 ││        │A│       │A│B│     │A│B│C│   │ A│ B│ C│   │ A │ B │ C │
 ││        │─│       │─│─│     │─│─│─│   │──│──│──│   │───│───│───│
 ││        │1│       │1│2│     │1│2│3│   │ 1│ 2│ 3│   │ 1 │ 2 │ 3 │
 └┘        └─┘       └─┴─┘     └─┴─┴─┘   └──┴──┴──┘   └───┴───┴───┘
 ```
+
+Those are the widths at which this table's render lands exactly on the width
+requested. In between it sits on the previous rung — a padding level is bought
+for every column at once or not at all, so asking for 11 or 12 renders the same
+10 cells as asking for 10.
 
 Width 2 is the narrowest table that keeps its frame; below it the border columns
 are dropped too, and the table renders as bare content. In the other direction a
