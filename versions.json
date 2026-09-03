@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-74",
+      "ref": "refs/pull/74/merge",
+      "sha": "01f17981de6fad9a0f1bab38f61e6c867b277d4f",
+      "timestamp": "2026-09-03T07:02:26.129Z",
+      "commits": [
+        {
+          "sha": "01f17981de6fad9a0f1bab38f61e6c867b277d4f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T01:01:52-06:00",
+          "message": "Merge bcf503a9f10d57a98be5bb91a0ab499f26a5800e into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+        },
+        {
+          "sha": "bcf503a9f10d57a98be5bb91a0ab499f26a5800e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T01:01:25-06:00",
+          "message": "test(seam): forbid upward imports out of core (rich-seam-981.5)\n\nCLAUDE.md claimed `src/core/` has no upward calls and told the reader to\nverify it with a grep. The grep in that section — `from \"\\./[a-z]+\\.js\"` —\nmatched same-directory imports only, so it could not have found either of\nthe two edges that actually leave core. A reader following the instruction\ngot a clean result from a check incapable of returning anything else.\n\n`test/seam/layering.test.ts` replaces it: walk every file under `src/core/`,\nresolve every import, fail naming file, line and specifier when an edge\nleaves the layer without a sanction — and fail the other way too, when a\nsanction outlives the import it permitted, so the exemption list cannot\naccumulate permissions nobody needs.\n\nThe rule counts type-only imports, deliberately. `browser-safe.ts` skips\nerased edges because a browser cannot trip over one; a layer can, because\n`import type { Panel } from \"../renderables/\"` is core knowing the shape of\nrenderables. Rather than a flag selecting between two collectors, or a\nsecond traversal making one fact into two maps, `moduleSpecifiers` now tags\neach edge with `erased` and `runtimeModuleSpecifiers` derives by filtering.\n\nThe two sanctioned edges (`color.ts -> themes/palette.ts`,\n`console.ts -> renderables/rule.ts`) are kept, as CLAUDE.md already records\nthem. `Console.rule()` stays — it is documented and tested — but the\nduplicate `RuleOptions` that `console.ts` declared beside `rule.ts`'s is\ngone, along with the field-by-field forwarding that existed only to bridge\nthe two copies.\n\nEvery rule was falsified against real source: a runtime upward import, a\ntype-only upward import, a removed sanctioned edge, and a blinded collector\neach turn exactly the intended gate red.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ead69311cf77dc608ebe9d62df54403dcc81209f",
