@@ -4,15 +4,36 @@
     {
       "version": "pr-77",
       "ref": "refs/pull/77/merge",
-      "sha": "4854bc5f0222a8cc54c442cabe01e925d067433f",
-      "timestamp": "2026-09-03T11:10:37.964Z",
+      "sha": "0762f3ad4b079b773edbd615fdd9a094d9064b29",
+      "timestamp": "2026-09-03T11:46:28.313Z",
       "commits": [
         {
-          "sha": "4854bc5f0222a8cc54c442cabe01e925d067433f",
+          "sha": "0762f3ad4b079b773edbd615fdd9a094d9064b29",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T11:10:05Z",
-          "message": "Merge 08cf14292128550d17c5db88913c2e56f1eef425 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+          "timestamp": "2026-09-03T11:45:53Z",
+          "message": "Merge 0d11208ff89c0a7341093a5e26f68c79fc63aaf0 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+        },
+        {
+          "sha": "0d11208ff89c0a7341093a5e26f68c79fc63aaf0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T05:45:31-06:00",
+          "message": "docs(tables): correct three claims the renderer does not honour\n\nThe ladder omitted width 4, and the sentence under it generalizes from the\nlisted rungs — so \"in between it sits on the previous rung\" read as a claim\nabout width 4 that is false: at width 4 only one column is seated, a padding\nlevel therefore costs one cell, and the single leftover cell can afford it.\nWidth 4 lands exactly on the request and is a rung by the paragraph's own\ndefinition. Listing it makes the existing sentence true for every width from 2\nto 16, checked by rendering each one, rather than needing an exception written\nbeside it. The figure is regenerated from the renderer, which is how the\n\"width 11\" mislabel on this branch was caught.\n\nA declared-`width` column did not \"keep its size and its neighbours absorb the\nshortfall\". Reservations are paid after the frame, the seats and the padding, so\na width too small to cover them shrinks reserved columns too: `width: 5` beside\na natural column renders at one content cell when the table is asked for 8. The\nordering is deliberate — cell priority is `Panel`'s and Python Rich's — so the\nclaim is corrected to what the renderer does.\n\nCorrecting the `expand` row to say it is not wired into sizing left the Grids\nsection still presenting `Table.grid({ expand: true })` as the way to fill the\nterminal. One file said both; the example silently no-ops. It now points at the\nsizing note. Wiring `expand` remains rich-table-rrz.\n\nThe opening claim is narrowed to a table with no declared `width`, which is the\nonly shape it holds for: an explicit width overrides a narrower container, and\nthat is now stated on the option itself.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "1a2bdf418c3ef906e44bf96d779f163a65087bcb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T05:45:14-06:00",
+          "message": "fix(table): measure against the width the container offered\n\n`measure()` laid both ends of its range out against `this.tableWidth ?? maxWidth`,\nbut `Measurement.get` clamps only the maximum it gets back and passes the\nminimum through untouched. A table with a declared width wider than the space it\nwas being measured in therefore reported a floor computed against the declared\nwidth and a ceiling clamped to the offered one — `{minimum: 13, maximum: 5}` for\nthree columns measured at `maxWidth: 5`.\n\nThat is the same inverted range this method's docblock says is no longer\npossible. The claim was true of `outerWidth` and false of the width the caller\nactually offered, which is the one the range is read against. Bounding\n`outerWidth` by `options.maxWidth` makes it true as written.\n\nThe double `_columnDemands()` call goes with it. Both layouts derive from one\narray now; the second call only ever recomputed it, and it re-walks every row of\nevery natural column through `_naturalWidth` to do so — on the entry point\n`Layout` and `Columns` hit repeatedly while probing candidate widths.\n\nScoped to `measure()`. `render()` also lays out at the declared width and does\noverflow a narrower container, but a6c38ef does that too, so it is long-standing\nbehaviour of a documented option rather than anything this branch introduced.\nFiled as rich-table-width-y1a.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "eef1a2f7f6a3c6d4e252ed9c295ed8f73df06a88",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T05:44:57-06:00",
+          "message": "fix(table): floor a non-finite width where it enters the layout\n\n`Math.max(0, n)` returns NaN for a NaN input, so a caller's `width: NaN` — a\nplausible `total / count` with a zero count — did not merely mis-size its own\ncolumn. It reached `budget -= NaN` in the seating pass, and from there every\n`budget < cost` comparison was false, because comparisons against NaN always\nare. The bounds check was not wrong, it was switched off: every remaining\ncolumn got seated regardless of the space, padding and reservations came back\nNaN for the whole table, and `\" \".repeat(NaN)` renders as `\"\"` rather than\nthrowing. A two-column table collapsed to `+++` silently.\n\nThe same value arrives through three doors — the requested `outerWidth`, a\ncolumn's declared `width`, and the `minWidth`/`maxWidth` bounding a natural\nwidth — so it is normalized once at each, rather than guarded at the dozen\ncomparisons downstream that would otherwise have to survive it.\n\n`n > 0 ? n : 0` rather than `Number.isFinite(n) ? ... : ...`: the comparison\nalready rejects NaN, since NaN fails every comparison, and it floors negatives\nwith the same expression it replaces. `Infinity` passes through, which an\nunbounded width needs. That is also why a NaN `ratio` needs nothing here —\n`distribute` admits a column to its working set on `weight > 0`, which has\nexcluded NaN all along.\n\nFlooring rather than throwing is the rule already set for out-of-domain numbers\nhere: #76 floors negative padding as it is parsed, and this branch floors a\nnegative declared width for the same reason.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "08cf14292128550d17c5db88913c2e56f1eef425",
