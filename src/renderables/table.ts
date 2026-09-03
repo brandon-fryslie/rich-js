@@ -187,14 +187,20 @@ function layoutTable(
   const edge = budget >= frame.edge * 2 ? frame.edge : 0;
   take(edge * 2);
 
-  // One content cell per column, in column order, each paying for the divider
-  // that precedes it. The first column the budget cannot seat is where the
-  // table ends; the rest are dropped.
-  let seated = 0;
-  while (seated < demands.length && budget >= (seated > 0 ? frame.divider : 0) + 1) {
-    take((seated > 0 ? frame.divider : 0) + 1);
-    seated++;
+  // A first content cell per column, in column order, each paying for the
+  // divider that precedes it. The first column the budget cannot seat is where
+  // the table ends; the rest are dropped. A column that wants no cells is
+  // seated at zero — the queue exists to stop one column taking a second cell
+  // before another has its first, and a spacer never joins it.
+  const seats: number[] = [];
+  while (seats.length < demands.length) {
+    const seat = Math.min(1, demands[seats.length]!.want);
+    const cost = (seats.length > 0 ? frame.divider : 0) + seat;
+    if (budget < cost) break;
+    take(cost);
+    seats.push(seat);
   }
+  const seated = seats.length;
 
   // Padding is uniform across columns or it is not padding, so it is bought
   // for every seated column at once and skipped entirely when only some could
@@ -214,7 +220,7 @@ function layoutTable(
   // partway, which costs the trailing columns their width but never costs the
   // table its frame.
   const seatedDemands = demands.slice(0, seated);
-  const reserved = seatedDemands.map((demand) => take(demand.reserved - 1));
+  const reserved = seatedDemands.map((demand, index) => take(demand.reserved - seats[index]!));
 
   // What is left to apportion is the rest of what each column wanted. A table
   // whose columns all fit leaves this budget partly unspent, which is how it
@@ -223,11 +229,11 @@ function layoutTable(
     budget,
     seatedDemands.map((demand, index) => ({
       reserved: 0,
-      want: Math.max(0, demand.want - 1 - reserved[index]!),
+      want: Math.max(0, demand.want - seats[index]! - reserved[index]!),
       weight: demand.weight,
     })),
   );
-  const columns = extra.map((cells, index) => 1 + reserved[index]! + cells);
+  const columns = extra.map((cells, index) => seats[index]! + reserved[index]! + cells);
   const cellWidths = columns.map((width) => padLeft + width + padRight);
 
   return {
@@ -546,7 +552,11 @@ export class Table implements Renderable, Measurable {
     const maximum = layoutTable(outerWidth, this._columnDemands(), this.padding, frame).totalWidth;
     const tightest = layoutTable(
       outerWidth,
-      this._columns.map(() => ({ reserved: 0, want: 1, weight: 1 })),
+      this._columnDemands().map((demand) => ({
+        reserved: 0,
+        want: Math.min(1, demand.want),
+        weight: 1,
+      })),
       this.padding,
       frame,
     ).totalWidth;
@@ -596,7 +606,9 @@ export class Table implements Renderable, Measurable {
 
     return this._columns.map((col, index) => {
       if (col.width !== undefined) {
-        const declared = Math.max(1, col.width);
+        // [LAW:single-enforcer] floored where it is parsed, the same rule
+        // `normalizePadding` applies to a negative padding side.
+        const declared = Math.max(0, col.width);
         return { reserved: declared, want: declared, weight: 0 };
       }
       if (elastic) return { reserved: 0, want: UNBOUNDED, weight: col.ratio ?? 1 };
@@ -605,7 +617,11 @@ export class Table implements Renderable, Measurable {
     });
   }
 
-  /** The widest cell in a column, bounded by its own `minWidth`/`maxWidth`. */
+  /**
+   * The widest cell in a column, bounded by its own `minWidth`/`maxWidth`.
+   * Zero for a column with no header and no content — a gutter asks for its
+   * padding and nothing else.
+   */
   private _naturalWidth(col: Column, index: number): number {
     let natural = cellLen(col.header.plain);
     for (const row of this._rows) {
@@ -613,7 +629,7 @@ export class Table implements Renderable, Measurable {
     }
     if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);
     if (col.maxWidth !== undefined) natural = Math.min(natural, col.maxWidth);
-    return Math.max(1, natural);
+    return Math.max(0, natural);
   }
 
   private *_renderRow(

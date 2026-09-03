@@ -324,6 +324,32 @@ describe("Table stays inside the width it is given", () => {
     expect(collectLines(t, { maxWidth: 7 })).toContain("|a|b|c|");
   });
 
+  it("gives a width-0 column no content cell, only its padding and divider", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { width: 0 });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    // A spacer asks for nothing, so the seating pass seats it at nothing — the
+    // two cells are its padding.
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
+  it("gives a column with no header and no content no content cell either", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn();
+    t.addColumn();
+    t.addRow("", "x");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | x |");
+  });
+
+  it("floors a negative declared width at zero instead of throwing", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { width: -3 });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
   // A ratio column never reaches a cap of its own, so it is the shape that
   // decides whether the width apportionment terminates on its own or only
   // because the width happened to be small.
