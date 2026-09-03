@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { cellLen } from "../../src/core/cells.js";
+import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -359,6 +360,18 @@ describe("Panel", () => {
 
       const lines = collectLines(panel, { maxWidth: 30 });
       expect(lines[lines.length - 1]).toContain(`#${frames}`);
+    });
+
+    // Negative padding used to reach the renderer, where it produced content
+    // rows wider than the panel's own border.
+    it("treats negative padding as none", () => {
+      const cases: PaddingDimensions[] = [-1, [0, -1], [-2, -3, -4, -5]];
+      for (const padding of cases) {
+        const lines = collectLines(new Panel("hi", { padding }), { maxWidth: 20 });
+        expect(new Set(lines.map(cellLen)), `padding ${JSON.stringify(padding)}`).toEqual(
+          new Set([20]),
+        );
+      }
     });
 
     it("crops content that renders wider than the frame", () => {

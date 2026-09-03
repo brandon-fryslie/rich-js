@@ -9,6 +9,7 @@ import { Box, ROUNDED } from "../core/box.js";
 import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
 import type { PaddingDimensions } from "./padding.js";
+import { normalizePadding } from "./padding.js";
 import type {
   Renderable,
   Measurable,
@@ -59,15 +60,6 @@ export interface PanelOptions {
   subtitleStyle?: string | Style;
   width?: number;
   padding?: PaddingDimensions;
-}
-
-function normalizePadding(
-  padding: PaddingDimensions | undefined,
-): [number, number, number, number] {
-  if (padding === undefined) return [0, 1, 0, 1];
-  if (typeof padding === "number") return [padding, padding, padding, padding];
-  if (padding.length === 2) return [padding[0], padding[1], padding[0], padding[1]];
-  return padding;
 }
 
 /**
@@ -170,7 +162,7 @@ export class Panel implements Renderable, Measurable {
     this.titleStyle = options?.titleStyle === undefined ? undefined : resolveStyle(options.titleStyle);
     this.subtitleStyle = options?.subtitleStyle === undefined ? undefined : resolveStyle(options.subtitleStyle);
     this.width = options?.width;
-    this.padding = normalizePadding(options?.padding);
+    this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
   }
 
   *render(options: RenderOptions): Iterable<Segment> {

@@ -172,6 +172,24 @@ describe("Table", () => {
     // At least one separator line between them
     expect(bobIdx - aliceIdx).toBeGreaterThan(1);
   });
+
+  // Negative padding used to reach the renderer, which either threw
+  // `RangeError: Invalid count value` or drew rows wider than its own
+  // border, depending on how wide the column was.
+  it("treats negative padding as none", () => {
+    const wide = new Table({ box: ASCII, padding: -1 });
+    wide.addColumn("Name");
+    wide.addRow("Alice");
+
+    const narrow = new Table({ box: ASCII, padding: -1 });
+    narrow.addColumn("a");
+    narrow.addRow("x");
+
+    for (const t of [wide, narrow]) {
+      const lines = collectLines(t, { maxWidth: 40 });
+      expect(new Set(lines.map((l) => l.length)).size).toBe(1);
+    }
+  });
 });
 
 describe("Column", () => {
