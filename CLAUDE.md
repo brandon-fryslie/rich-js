@@ -77,11 +77,11 @@ Two edges leave `src/core/` and point *up* into higher subsystems. Both are deli
 - `color.ts` → `themes/palette.js`, for the internal default theme. Safe because `themes/palette.ts` only `import type`s back, so there is no runtime cycle.
 - `console.ts` → `renderables/rule.js`, the orchestrator reaching down for `Rule`.
 
-Check a module's real edges rather than trusting the tiers above — and check both shapes, because a same-directory-only pattern will report a clean graph while an upward import sits three lines away:
+Do not check this list by hand. `test/seam/layering.test.ts` walks every file under `src/core/`, resolves every import, and fails — naming the file, the line, and the specifier — when an edge leaves the layer without a sanction. It fails in the other direction too, when a sanction outlives the import it was granted for, so the exemption list cannot quietly accumulate permissions nobody needs. The two bullets above and `CORE_LAYER.sanctioned` in `test/seam/layering.ts` are two renderings of one fact; change them together.
 
-```bash
-grep -hoE 'from "\.\.?/[a-z/]+\.js"' src/core/<mod>.ts   # same-dir AND ../
-```
+That check counts type-only imports, and the choice is deliberate: `import type { Panel } from "../renderables/panel.js"` is `core/` knowing the shape of `renderables/` whether or not it emits a byte. This is where it diverges from `test/seam/browser-safe.ts` next door, which skips erased edges because a browser cannot trip over one. Same graph, two questions, two answers.
+
+The reason it is a test and not a grep: this section used to carry the pattern `from "\./[a-z]+\.js"`, which matches same-directory imports only. It could not have found either edge above, so a reader following the instruction got a clean result from a check that was incapable of returning anything else — worse than no check, because it launders an unverified claim into an apparently-verified one.
 
 A third upward edge is not a fact to append here. It is the signal to stop and reconsider the seam.
 

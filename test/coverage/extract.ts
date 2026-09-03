@@ -249,7 +249,18 @@ export function assertProgramClean(program: ts.Program): void {
  * count toward coverage.
  */
 export function listExampleFiles(): string[] {
-  const root = path.join(REPO_ROOT, EXAMPLES_ROOT);
+  return listTypeScriptFiles(EXAMPLES_ROOT);
+}
+
+/**
+ * Every `.ts` file under a repo-relative directory, recursively, sorted.
+ *
+ * The recursion is the point rather than an incidental convenience: a rule
+ * that enumerates a directory to check each file passes by seeing nothing,
+ * so a subdirectory added later must not silently fall outside the sweep.
+ */
+export function listTypeScriptFiles(relativeRoot: string): string[] {
+  const root = path.join(REPO_ROOT, relativeRoot);
   const out: string[] = [];
   const walk = (dir: string): void => {
     for (const entry of readdirSync(dir)) {
