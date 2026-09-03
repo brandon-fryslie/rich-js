@@ -118,16 +118,27 @@ class ChessBoard implements Measurable {
 Without `measure()`, a custom renderable inside a `Table` column or `Layout` region cannot be sized correctly. The table won't know how much space to allocate to it.
 :::
 
-Implement both interfaces together for a fully composable renderable:
+Implement both interfaces together for a fully composable renderable. Clamp both ends of the range to `options.maxWidth` — a fixed range ignores the space the parent actually has, and once the offer drops below the minimum you report, you are claiming to need more than you can use:
 
 ```typescript
 class MyWidget implements Renderable, Measurable {
   measure(options: RenderOptions): Measurement {
-    return new Measurement(10, 40);
+    return new Measurement(
+      Math.min(10, options.maxWidth),
+      Math.min(40, options.maxWidth),
+    );
   }
 
   *render(options: RenderOptions): Iterable<Renderable> {
-    // render using options.maxWidth
+    // render within the same cell count
   }
 }
 ```
+
+## The width contract
+
+`options.maxWidth` is a count of terminal cells — the widest line the renderable may occupy. Every line you emit must fit inside it. A renderable that overruns its width corrupts the layout of whatever contains it, and the parent has no chance to correct it afterwards.
+
+`maxWidth` is typed `number`, and a custom renderable receives whatever the caller wrote, so read it as a count rather than assuming a clean integer. A negative width and `NaN` both mean zero cells; a fractional width is floored, so 10.5 is ten cells and the half is never drawn. Zero is a real request — render an empty line, not your natural width. `Infinity` is not a supported width; pass a concrete cell count instead.
+
+`measure` answers the same question in advance, so its answer carries the same ceiling: `minimum <= maximum <= options.maxWidth`. Parent layouts divide space from the range you return, so a minimum above your own maximum leaves them nothing they can honour.
