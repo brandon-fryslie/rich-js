@@ -70,6 +70,65 @@ function normalizePadding(
   return padding;
 }
 
+/**
+ * How one requested outer width divides into frame columns, padding and
+ * content canvas.
+ *
+ * [LAW:one-source-of-truth] Every row a panel emits — both borders, the
+ * padding rows, the content rows — is measured from this one division, so
+ * they cannot disagree about where the frame sits. The fields are cell counts
+ * that sum to exactly the requested width, which is what makes "no emitted
+ * line exceeds the width we were given" true by construction rather than by
+ * a clamp at each site. It is also why the width-1 crash cannot come back:
+ * there is no subtraction left that can go negative.
+ *
+ * Cells are handed out in priority order — the two frame columns, then a
+ * first cell of content, then the configured padding, then the remainder
+ * back to content. Content outranking padding is the reason a squeezed panel
+ * keeps showing something down to width 3, instead of spending its last
+ * cells on blank padding with nothing left to pad.
+ */
+interface PanelGeometry {
+  /** Width of the left frame column: 1, or 0 below the width to afford it. */
+  readonly left: number;
+  /** Width of the right frame column: 1, or 0 below the width to afford it. */
+  readonly right: number;
+  readonly padLeft: number;
+  readonly contentWidth: number;
+  readonly padRight: number;
+  /** padLeft + contentWidth + padRight — the span between the frame columns. */
+  readonly spanWidth: number;
+}
+
+function layoutPanel(
+  outerWidth: number,
+  padding: readonly [number, number, number, number],
+): PanelGeometry {
+  const [, padRightWanted, , padLeftWanted] = padding;
+  let budget = Math.max(0, outerWidth);
+  const take = (want: number): number => {
+    const got = Math.min(want, budget);
+    budget -= got;
+    return got;
+  };
+
+  const left = take(1);
+  const right = take(1);
+  const firstContentCell = take(1);
+  const padLeft = take(padLeftWanted);
+  const padRight = take(padRightWanted);
+  const contentWidth = firstContentCell + budget;
+
+  return {
+    left,
+    right,
+    padLeft,
+    contentWidth,
+    padRight,
+    spanWidth: padLeft + contentWidth + padRight,
+  };
+}
+
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
   if (typeof style === "string") return Style.parse(style);
@@ -119,50 +178,70 @@ export class Panel implements Renderable, Measurable {
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
     const contentStyle = this.style.isNull ? undefined : this.style;
 
-    // Determine panel width
-    const panelWidth = this._getPanelWidth(options);
-    const [padTop, padRight, padBottom, padLeft] = this.padding;
-    const innerWidth = Math.max(1, panelWidth - 2 - padLeft - padRight); // 2 for border chars
+    const geometry = layoutPanel(this._getPanelWidth(options), this.padding);
+    const [padTop, , padBottom] = this.padding;
 
-    // Render content
-    const innerOptions: RenderOptions = {
-      ...options,
-      maxWidth: innerWidth,
-    };
-    const contentSegments = [...this.renderable.render(innerOptions)];
-    const contentLines = Segment.splitLines(contentSegments);
+    const contentLines = this._renderContent(options, geometry.contentWidth);
 
     // Top border (with optional title)
-    yield* this._renderTopBorder(box, panelWidth, border);
+    yield* this._renderTopBorder(box, geometry, border);
 
-    // Top padding
+    // Top padding — a padding row is a content row whose content is nothing.
     for (let i = 0; i < padTop; i++) {
-      yield* this._renderBlankLine(box, panelWidth, padLeft, padRight, innerWidth, border, contentStyle);
+      yield* this._renderRow(box, geometry, [], border, contentStyle);
     }
 
-    // Content lines
     for (const line of contentLines) {
-      yield new Segment(box.left, border);
-      if (padLeft > 0) yield new Segment(" ".repeat(padLeft), contentStyle);
-
-      yield* line;
-
-      // Pad to fill inner width
-      const lineWidth = Segment.getLineLength(line);
-      const rightPad = innerWidth - lineWidth + padRight;
-      if (rightPad > 0) yield new Segment(" ".repeat(rightPad), contentStyle);
-
-      yield new Segment(box.right, border);
-      yield Segment.line();
+      yield* this._renderRow(box, geometry, line, border, contentStyle);
     }
 
-    // Bottom padding
     for (let i = 0; i < padBottom; i++) {
-      yield* this._renderBlankLine(box, panelWidth, padLeft, padRight, innerWidth, border, contentStyle);
+      yield* this._renderRow(box, geometry, [], border, contentStyle);
     }
 
     // Bottom border (with optional subtitle)
-    yield* this._renderBottomBorder(box, panelWidth, border);
+    yield* this._renderBottomBorder(box, geometry, border);
+  }
+
+  /**
+   * The wrapped renderable's lines, laid out on a canvas `contentWidth` cells
+   * wide. A zero-cell canvas holds no lines — below width 3 a panel is all
+   * frame — and asking for them would mean asking a renderable to divide its
+   * text into zero-wide columns, which `RichText` answers by throwing.
+   */
+  private _renderContent(
+    options: RenderOptions,
+    contentWidth: number,
+  ): Segment[][] {
+    if (contentWidth === 0) return [];
+    const innerOptions: RenderOptions = { ...options, maxWidth: contentWidth };
+    return Segment.splitLines([...this.renderable.render(innerOptions)]);
+  }
+
+  /**
+   * One row of the panel body: frame column, span, frame column.
+   *
+   * [LAW:single-enforcer] `adjustLineLength` is the one place a width is
+   * decided here, and it runs twice against two different widths. The first
+   * pass crops content that rendered wider than the canvas it was handed (a
+   * `Table` at its natural width, say) back to the canvas, so an oversized
+   * child is trimmed rather than allowed to eat the right-hand padding. The
+   * second fills the rest of the span, which is the trailing padding and any
+   * shortfall in one stroke.
+   */
+  private *_renderRow(
+    box: Box,
+    geometry: PanelGeometry,
+    line: Segment[],
+    border: Style | undefined,
+    contentStyle: Style | undefined,
+  ): Iterable<Segment> {
+    yield new Segment(box.left.repeat(geometry.left), border);
+    const content = Segment.adjustLineLength(line, geometry.contentWidth, contentStyle, false);
+    const span = [new Segment(" ".repeat(geometry.padLeft), contentStyle), ...content];
+    yield* Segment.adjustLineLength(span, geometry.spanWidth, contentStyle);
+    yield new Segment(box.right.repeat(geometry.right), border);
+    yield Segment.line();
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -216,15 +295,15 @@ export class Panel implements Renderable, Measurable {
 
   private *_renderTopBorder(
     box: Box,
-    panelWidth: number,
+    geometry: PanelGeometry,
     border: Style | undefined,
   ): Iterable<Segment> {
-    const innerBorderWidth = panelWidth - 2; // minus left/right corner
+    const innerBorderWidth = geometry.spanWidth;
 
     if (!this.title) {
-      yield new Segment(box.topLeft, border);
+      yield new Segment(box.topLeft.repeat(geometry.left), border);
       yield new Segment(box.top.repeat(innerBorderWidth), border);
-      yield new Segment(box.topRight, border);
+      yield new Segment(box.topRight.repeat(geometry.right), border);
       yield Segment.line();
       return;
     }
@@ -236,7 +315,7 @@ export class Panel implements Renderable, Measurable {
     // single source of truth for "what color is the title text in".
     const titleSeg = this.titleStyle ?? border;
 
-    yield new Segment(box.topLeft, border);
+    yield new Segment(box.topLeft.repeat(geometry.left), border);
 
     if (titleWidth >= innerBorderWidth) {
       // Title fills the border. [LAW:one-source-of-truth] cellLen / setCellSize
@@ -253,16 +332,16 @@ export class Panel implements Renderable, Measurable {
       if (rightRuleWidth > 0) yield new Segment(box.top.repeat(rightRuleWidth), border);
     }
 
-    yield new Segment(box.topRight, border);
+    yield new Segment(box.topRight.repeat(geometry.right), border);
     yield Segment.line();
   }
 
   private *_renderBottomBorder(
     box: Box,
-    panelWidth: number,
+    geometry: PanelGeometry,
     border: Style | undefined,
   ): Iterable<Segment> {
-    const innerBorderWidth = panelWidth - 2;
+    const innerBorderWidth = geometry.spanWidth;
 
     // Resolve the right accessory *now*. Function form evaluates after
     // content has been rendered (Panel.render collects content segments
@@ -279,7 +358,7 @@ export class Panel implements Renderable, Measurable {
         ? accessory.style
         : border;
 
-    yield new Segment(box.bottomLeft, border);
+    yield new Segment(box.bottomLeft.repeat(geometry.left), border);
 
     // Space available for the centered subtitle / rule fill — the accessory
     // (if any) hugs the right edge and the subtitle treats the remainder
@@ -315,7 +394,7 @@ export class Panel implements Renderable, Measurable {
       yield new Segment(fit, accessoryStyle);
     }
 
-    yield new Segment(box.bottomRight, border);
+    yield new Segment(box.bottomRight.repeat(geometry.right), border);
     yield Segment.line();
   }
 
@@ -325,21 +404,6 @@ export class Panel implements Renderable, Measurable {
     if (a === undefined) return undefined;
     if (typeof a === "function") return a();
     return a;
-  }
-
-  private *_renderBlankLine(
-    box: Box,
-    _panelWidth: number,
-    padLeft: number,
-    padRight: number,
-    innerWidth: number,
-    border: Style | undefined,
-    contentStyle: Style | undefined,
-  ): Iterable<Segment> {
-    yield new Segment(box.left, border);
-    yield new Segment(" ".repeat(padLeft + innerWidth + padRight), contentStyle);
-    yield new Segment(box.right, border);
-    yield Segment.line();
   }
 
   // --- Static factory ---

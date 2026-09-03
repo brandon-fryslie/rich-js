@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { cellLen } from "../../src/core/cells.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -264,5 +265,79 @@ describe("Panel", () => {
     expect(m.minimum).toBeGreaterThan(0);
     expect(m.maximum).toBeGreaterThanOrEqual(m.minimum);
     expect(m.maximum).toBeLessThanOrEqual(40);
+  });
+
+  // --- Narrow widths ---
+  // Spec: a panel never emits a line wider than the width it was given, and
+  // never throws, at any width down to 1. A panel is a rectangle, so every
+  // line it emits is the same width as every other.
+
+  describe("at narrow widths", () => {
+    // Every configuration that changes how a row is built: the two borders
+    // (title, subtitle, accessory), the padding, and a content renderable
+    // that ignores the width it is handed.
+    const oversizedContent: Renderable = {
+      *render(_options: RenderOptions) {
+        yield new Segment("x".repeat(40));
+        yield Segment.line();
+      },
+    };
+    const configurations: Array<[string, Panel]> = [
+      ["bare", new Panel("hello world")],
+      ["titled", new Panel("hello world", { title: "Title" })],
+      ["subtitled", new Panel("hello world", { subtitle: "Subtitle" })],
+      [
+        "titled + subtitled + accessory",
+        new Panel("hello world", {
+          title: "Title",
+          subtitle: "Subtitle",
+          bottomRightAccessory: "[14/102]",
+        }),
+      ],
+      ["ascii box", new Panel("hello world", { box: ASCII })],
+      ["double box", new Panel("hello world", { box: DOUBLE })],
+      ["no padding", new Panel("hello world", { padding: 0 })],
+      ["fat padding", new Panel("hello world", { padding: [1, 4] })],
+      ["fit mode", Panel.fit("hello world")],
+      ["explicit width", new Panel("hello world", { width: 30 })],
+      ["wide characters", new Panel("日本語テキスト")],
+      ["content that ignores its width", new Panel(oversizedContent)],
+      ["empty content", new Panel("")],
+    ];
+
+    for (const [name, panel] of configurations) {
+      it(`fits inside every width from 1 up: ${name}`, () => {
+        for (let width = 1; width <= 40; width++) {
+          const lines = collectLines(panel, { maxWidth: width });
+          const widths = lines.map(cellLen);
+          expect(
+            Math.max(0, ...widths),
+            `${name} overflowed at maxWidth ${width}: ${JSON.stringify(lines)}`,
+          ).toBeLessThanOrEqual(width);
+          expect(
+            new Set(widths).size,
+            `${name} emitted ragged lines at maxWidth ${width}: ${JSON.stringify(lines)}`,
+          ).toBeLessThanOrEqual(1);
+        }
+      });
+    }
+
+    // The reported crash: with no title, the top border repeated its box
+    // character by an inner width that had gone negative.
+    it("does not throw at width 1", () => {
+      expect(() => collectLines(new Panel("hello"), { maxWidth: 1 })).not.toThrow();
+    });
+
+    // Width 3 is the narrowest panel with a content cell between its frame
+    // columns — the panel spends its cells on content before padding.
+    it("keeps showing content down to width 3", () => {
+      const lines = collectLines(new Panel("hello"), { maxWidth: 3 });
+      expect(lines.join("")).toContain("h");
+    });
+
+    it("crops content that renders wider than the frame", () => {
+      const lines = collectLines(new Panel(oversizedContent), { maxWidth: 10 });
+      expect(lines[1]).toBe("│ xxxxxx │");
+    });
   });
 });
