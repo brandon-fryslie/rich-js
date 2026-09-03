@@ -114,6 +114,14 @@ The counter-argument is real and worth naming: this *is* a terminal library, and
 
 `test/seam/browser-safe.test.ts` is what stops that failure from landing on someone other than the person who wrote the import: it walks the runtime import graph from every `package.json#exports` entry outside `src/node/` and fails in the unit suite, naming the file, the line, and the chain that reached it. A Node builtin on a runtime edge breaks it, and so does a module-scope read of any name in `AMBIENT_GLOBALS`. `test/seam/browser-safe.ts`'s header owns the rest — what module scope means here, and why there is no `typeof` exemption.
 
+### One list says who reaches the host
+
+`HOST_ACCESS` in `test/seam/ambient-process.ts` names every file in `src/` that reads node's ambient `process`, the property names it takes, and a required `why`. `test/seam/ambient-process.test.ts` fails when a file joins the list without an entry and when an entry outlives the read it was granted for.
+
+Do not restate that list anywhere. It replaced four hand-written claims about who owns node TTY access — two in `src/node/terminal-host.ts`, one in `src/widgets/terminal-host.ts`, one in `docs/widgets.md` — which had narrowed themselves into mutual disagreement, and the docs one was outright false: it named `NodeTerminalHost` as the only thing touching `process.stdin`/`process.stdout` while `src/node/prompt.ts` reads both. Two `stdin` readers is the honest count, and the checked claim is where they live rather than how many there are.
+
+The `AMBIENT_GLOBALS` scan next door looks for the same identifier and is not this rule. That one asks whether a module-scope read would throw when a browser evaluates the barrel; this one asks what the package takes off the host, in any scope, reachable or not. A read inside a function body passes there and fails here — pinned from both sides, by a fixture in each suite. Same identifier, two questions — do not unify them.
+
 ### test/coverage/ gates every new public export
 
 `test/coverage/coverage.test.ts` derives the public-export universe from `package.json#exports` by type-checking the barrels, then asserts three invariants: every undemonstrated export is allowlisted with a justification, every allowlist entry points at a real export, and no allowlist entry is already demonstrated. "All functionality is demonstrated" is a build, not a claim — and what it builds is a floor: the symbol is reachable from something a user can run. Whether the demo does anything interesting with it is judgment, and the gate does not claim to have exercised anything.

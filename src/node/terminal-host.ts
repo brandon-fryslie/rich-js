@@ -4,8 +4,8 @@
  *
  * [LAW:locality-or-seam] The `TerminalHost` interface is the seam and lives
  * in `widgets/terminal-host.ts`, importable anywhere. *This* file is one
- * value satisfying that interface, and the only one that reads
- * `process.stdin` / `process.stdout`, so it is a node subpath:
+ * value satisfying that interface, and it reads `process.stdin` /
+ * `process.stdout`, so it is a node subpath:
  *
  *     import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
  *     const screen = new Screen(new NodeTerminalHost());
@@ -17,12 +17,15 @@
  * browser bundle that never reaches for this subpath cannot reach the global
  * either.
  *
- * [LAW:no-shared-mutable-globals] This file is the single owner of node TTY
- * *stream* access in the widget runtime. Every other module in
- * `src/widgets/` receives a `TerminalHost` from outside. If you find
- * yourself reaching for `process.stdin`, `process.stdout`, or `setRawMode`
- * in the runtime or in a demo, fix the call site to take a `TerminalHost`
- * parameter instead — the seam is already here; use it.
+ * [LAW:no-shared-mutable-globals] Which files may read the host, and what
+ * each takes off it, is `HOST_ACCESS` in `test/seam/ambient-process.ts` —
+ * this file's entry carries its `why`, and a test fails when anything joins
+ * the list. Deliberately not restated here: the sole-ownership sentence that
+ * used to stand in this spot is what that list replaced.
+ *
+ * So if you find yourself reaching for `process.stdin`, `process.stdout`, or
+ * `setRawMode` in the runtime or in a demo, take a `TerminalHost` parameter
+ * instead. The seam is already here.
  */
 
 import type {
