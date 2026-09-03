@@ -4,15 +4,22 @@
     {
       "version": "pr-74",
       "ref": "refs/pull/74/merge",
-      "sha": "01f17981de6fad9a0f1bab38f61e6c867b277d4f",
-      "timestamp": "2026-09-03T07:02:26.129Z",
+      "sha": "3ef5a10eec3c5f4e82550a940631bcda18dfae1f",
+      "timestamp": "2026-09-03T07:17:11.977Z",
       "commits": [
         {
-          "sha": "01f17981de6fad9a0f1bab38f61e6c867b277d4f",
+          "sha": "3ef5a10eec3c5f4e82550a940631bcda18dfae1f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T01:01:52-06:00",
-          "message": "Merge bcf503a9f10d57a98be5bb91a0ab499f26a5800e into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+          "timestamp": "2026-09-03T07:16:38Z",
+          "message": "Merge 6e945cac68ce8d6b5ba5494f92147c1ff090b144 into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+        },
+        {
+          "sha": "6e945cac68ce8d6b5ba5494f92147c1ff090b144",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T01:16:28-06:00",
+          "message": "test(seam): verify the sanctioned edges close no cycle\n\nThree review findings, all valid.\n\nEvery `why` on a sanctioned edge argued the same safety property in its own\nwords — the edge points up, but it closes no module-level cycle — and\nnothing re-read those words. A gate whose exemptions rest on unverified\nclaims is the exact shape this file was written to retire, so the fix is to\ncheck the property rather than to stop advertising it.\n\n`cyclicSanctionedEdges` asks it generically: for each sanctioned edge, the\nruntime walk from the target must not reach the source. Deliberately a\n*module* cycle rather than a layer one, because the two edges are safe for\ndifferent reasons and only this question covers both — `themes/palette.ts`\nnever returns to core at runtime, while `renderables/rule.ts` imports four\ncore primitives and is safe because none reaches `core/console.ts`. A\nreciprocal \"the import back must stay type-only\" rule would have been wrong\nabout the second edge and right about the first by coincidence.\n\n`isInside` was a second implementation of the four-part path-containment\nidiom `isUnderSrc` already had, comment and all. Both now call one\n`isPathInside`, so hardening it cannot leave one caller behind in the\nstring-prefix bug the layering test pins.\n\nThe CLAUDE.md sentence claiming the removed grep matched same-directory\nimports only was false: the pattern actually removed was\n`from \"\\.\\.?/[a-z/]+\\.js\"`, which matches `../` and would have found both\nedges. That was PR #66's pattern, corrected in this file long before this\nbranch, and the sentence is rewritten to attribute it and to give the real\nargument for a gate over a working grep — a grep judges no sanction and\ncannot see an exemption that outlived its import.\n\nBoth new rules falsified against real source: a runtime import added from\npalette.ts back to color.ts turns the cycle gate red alone, and reinstating\nthe string-prefix bug in the shared helper turns the sibling-directory test\nred.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "bcf503a9f10d57a98be5bb91a0ab499f26a5800e",
