@@ -544,13 +544,26 @@ function visitImports(sf: ts.SourceFile, onName: (id: ts.Identifier) => void): v
 }
 
 export function isUnderSrc(absPath: string): boolean {
-  // Use `path.relative` rather than `startsWith` on raw strings: this
-  // is robust to OS path-separator differences and to symlink/realpath
-  // variation. A path is "under src/" iff its relative form is non-empty,
-  // not absolute, and doesn't start with `..` (i.e. lives strictly
-  // inside the src tree).
-  const srcRoot = path.join(REPO_ROOT, "src");
-  const rel = path.relative(srcRoot, absPath);
+  return isPathInside(path.join(REPO_ROOT, "src"), absPath);
+}
+
+/**
+ * Whether `target` lives strictly inside `root`.
+ *
+ * [LAW:one-source-of-truth] The one home for this comparison, because it is
+ * short enough to retype and wrong in a way that fails silently. Compare with
+ * `path.relative` rather than `startsWith` on raw strings: `src/core-utils`
+ * begins with `src/core`, so a prefix test reads a sibling directory as
+ * inside and reports nothing about it ever again. `path.relative` also
+ * absorbs OS separator differences and symlink/realpath variation.
+ *
+ * Both arguments must be the same kind of path — both absolute, or both
+ * relative to the same base. Callers work in different spaces (`isUnderSrc`
+ * in absolute paths, the layering rule in repo-relative ones) and each is
+ * internally consistent.
+ */
+export function isPathInside(root: string, target: string): boolean {
+  const rel = path.relative(root, target);
   return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
 }
 

@@ -2,12 +2,13 @@
  * [LAW:verifiable-goals] CLAUDE.md says `src/core/` has "no upward calls",
  * names the two edges that leave it anyway, and — until this file — told the
  * reader to verify all of it by hand with a grep. That instruction has
- * already misfired once: PR #66 shipped the no-back-edges claim beside the
+ * already been wrong once: PR #66 paired the no-back-edges claim with the
  * pattern `from "\./[a-z]+\.js"`, which matches same-directory imports only
- * and so could not have found either real violation. A reader following it
- * got a clean result from a check that was incapable of returning anything
- * else, which is worse than having no check at all — an unverified claim
- * wearing the costume of a verified one.
+ * and so could not have found either real edge. A reader following it would
+ * have got a clean result from a check incapable of returning anything else —
+ * worse than no check at all, an unverified claim wearing the costume of a
+ * verified one. Review caught it; nothing else would have, which is the
+ * argument for a gate that runs on every commit rather than a better grep.
  *
  * [LAW:behavior-not-structure] The gate asserts the dependency direction, not
  * an inventory. Any arrangement of files under `src/core/` passes as long as
@@ -24,6 +25,7 @@ import {
   outboundEdges,
   unsanctioned,
   unexercised,
+  cyclicSanctionedEdges,
   describeOutboundEdge,
   type Layer,
 } from "./layering.js";
@@ -75,6 +77,17 @@ describe("src/core does not depend on anything above it", () => {
         `edge was removed and its exemption outlived it — delete the entry, and ` +
         `delete its bullet from CLAUDE.md's "edges leave src/core/" list.` +
         `\n\n${stale.join("\n")}\n`,
+    ).toEqual([]);
+  });
+
+  it("sanctions no edge that closes a runtime cycle", () => {
+    const cycles = cyclicSanctionedEdges(CORE_LAYER).map((s) => `  ${s.from} -> ${s.to}`);
+    expect(
+      cycles,
+      `A sanctioned upward edge now loads its way back to the module it left ` +
+        `from. Every entry in CORE_LAYER.sanctioned argues it closes no cycle; ` +
+        `this one no longer does, so the module-initialisation order it relies ` +
+        `on is whatever the bundler happens to pick.\n\n${cycles.join("\n")}\n`,
     ).toEqual([]);
   });
 
@@ -205,6 +218,40 @@ describe("unsanctioned", () => {
 
   it("reports every edge when the layer sanctions nothing", () => {
     expect(unsanctioned(edges, { dir: "src/core", sanctioned: [] })).toHaveLength(1);
+  });
+});
+
+describe("cyclicSanctionedEdges", () => {
+  it("clears the sanctioned edges, whose targets do not load back to them", () => {
+    expect(cyclicSanctionedEdges(CORE_LAYER)).toEqual([]);
+  });
+
+  it("reports an edge whose target loads its way back at runtime", () => {
+    // `renderables/rule.ts` imports `core/cells.ts` directly, so sanctioning
+    // the reverse edge would close a real two-module cycle. This is the fixture
+    // that says the gate above can fail — the sanctioned pair is safe today,
+    // and a check that has only ever been green proves nothing about itself.
+    const cyclic: Layer = {
+      dir: "src/core",
+      sanctioned: [
+        { from: "src/core/cells.ts", to: "src/renderables/rule.ts", why: "invented for this test" },
+      ],
+    };
+    expect(cyclicSanctionedEdges(cyclic).map((s) => s.from)).toEqual(["src/core/cells.ts"]);
+  });
+
+  it("reports a cycle that closes through an intermediate module", () => {
+    // `rule.ts` does not import `console.ts`; it reaches `core/style.ts`, which
+    // is what `console.ts` would be found through were the graph shaped that
+    // way. Pinning the transitive arm separately keeps a future rewrite from
+    // silently reducing the walk to a one-hop check.
+    const transitive: Layer = {
+      dir: "src/core",
+      sanctioned: [
+        { from: "src/core/color.ts", to: "src/renderables/panel.ts", why: "invented for this test" },
+      ],
+    };
+    expect(cyclicSanctionedEdges(transitive)).toHaveLength(1);
   });
 });
 

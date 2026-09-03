@@ -21,8 +21,8 @@
 
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT } from "../coverage/extract.js";
-import { moduleSpecifiers, resolveEdge } from "./graph.js";
+import { REPO_ROOT, isPathInside } from "../coverage/extract.js";
+import { moduleSpecifiers, reachableSourceModules, resolveEdge } from "./graph.js";
 
 /**
  * An upward edge the architecture accepts, and the reason it does.
@@ -69,16 +69,17 @@ export const CORE_LAYER: Layer = {
       from: "src/core/color.ts",
       to: "src/themes/palette.ts",
       why:
-        "The internal default theme needs a Palette instance. Safe because " +
-        "themes/palette.ts only `import type`s back into core/color.ts, so " +
-        "the runtime graph has no cycle. Annotated at the import site.",
+        "The internal default theme needs a Palette instance. themes/palette.ts " +
+        "only `import type`s back, so nothing it loads at runtime returns to " +
+        "core/color.ts. Annotated at the import site.",
     },
     {
       from: "src/core/console.ts",
       to: "src/renderables/rule.ts",
       why:
         "The orchestrator reaching down for Rule, which backs Console.rule() " +
-        "and types its options. Annotated at the import site.",
+        "and types its options. renderables/rule.ts imports core primitives at " +
+        "runtime but never reaches core/console.ts. Annotated at the import site.",
     },
   ],
 };
@@ -101,7 +102,7 @@ export function outboundEdges(
     const resolved = resolveEdge(literal.text, sf.fileName, options);
     if (resolved === null) continue;
     const target = path.relative(REPO_ROOT, resolved);
-    if (isInside(target, layerDir)) continue;
+    if (isPathInside(layerDir, target)) continue;
     out.push({
       file,
       line: sf.getLineAndCharacterOfPosition(literal.getStart(sf)).line + 1,
@@ -135,6 +136,34 @@ export function unexercised(edges: readonly OutboundEdge[], layer: Layer): Sanct
   );
 }
 
+/**
+ * Sanctioned edges whose target loads its way back to the source at runtime.
+ *
+ * Every `why` above argues the same safety property in its own words — the
+ * edge points up, but it closes no module-level cycle — and this is the arm
+ * that holds those words to it. Without it a sanction is a claim about the
+ * graph that nothing re-reads, which is the shape of unverified-assertion
+ * this whole file exists to retire.
+ *
+ * The property is deliberately about *module* cycles, not layer ones. The two
+ * sanctioned edges are safe for different reasons and only this question
+ * covers both: `themes/palette.ts` never returns to `core/` at runtime at
+ * all, while `renderables/rule.ts` imports four core primitives and is safe
+ * because none of them reaches `core/console.ts`. A reciprocal "the import
+ * back must stay type-only" rule would be wrong about the second edge and
+ * right about the first only by coincidence.
+ *
+ * Erased edges are excluded because `reachableSourceModules` walks runtime
+ * edges: a type-only import back cannot deadlock module initialisation, which
+ * is the harm a cycle actually does.
+ */
+export function cyclicSanctionedEdges(layer: Layer): SanctionedEdge[] {
+  return layer.sanctioned.filter((edge) => {
+    const reached = reachableSourceModules([path.join(REPO_ROOT, edge.to)]);
+    return reached.some((module) => path.relative(REPO_ROOT, module.file) === edge.from);
+  });
+}
+
 /** A failure line naming the import, where it lands, and how it is spelled. */
 export function describeOutboundEdge(edge: OutboundEdge): string {
   const kind = edge.erased ? "type-only import of" : "imports";
@@ -144,14 +173,3 @@ export function describeOutboundEdge(edge: OutboundEdge): string {
   );
 }
 
-/**
- * Whether a repo-relative path lies inside a repo-relative directory.
- *
- * Compared segment-wise rather than by prefix, so `src/core-utils/x.ts` is
- * not read as living in `src/core` — the string-prefix bug that would make
- * this rule quietly stop reporting a whole sibling directory.
- */
-function isInside(target: string, dir: string): boolean {
-  const relative = path.relative(dir, target);
-  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
-}

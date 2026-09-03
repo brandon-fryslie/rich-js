@@ -81,7 +81,7 @@ Do not check this list by hand. `test/seam/layering.test.ts` walks every file un
 
 That check counts type-only imports, and the choice is deliberate: `import type { Panel } from "../renderables/panel.js"` is `core/` knowing the shape of `renderables/` whether or not it emits a byte. This is where it diverges from `test/seam/browser-safe.ts` next door, which skips erased edges because a browser cannot trip over one. Same graph, two questions, two answers.
 
-The reason it is a test and not a grep: this section used to carry the pattern `from "\./[a-z]+\.js"`, which matches same-directory imports only. It could not have found either edge above, so a reader following the instruction got a clean result from a check that was incapable of returning anything else — worse than no check, because it launders an unverified claim into an apparently-verified one.
+The reason it is a test and not a grep: a grep here is per-module and hand-run, it reports specifiers without judging which of them are sanctioned, and it can say nothing at all about an exemption that outlived the import it was granted for. It is a map only a human redraws. That this section's own grep was wrong once is the evidence the distinction matters — PR #66 paired the no-back-edges claim with `from "\./[a-z]+\.js"`, which matches same-directory imports only and so could not have found either edge above. Review caught that pattern before it landed; nothing else would have.
 
 A third upward edge is not a fact to append here. It is the signal to stop and reconsider the seam.
 
