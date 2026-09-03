@@ -121,6 +121,17 @@ function layoutPanel(
   };
 }
 
+/**
+ * Every cell of a panel that is not content canvas. Read off the geometry
+ * rather than recomputed as `2 + padLeft + padRight`, because the two differ
+ * exactly where this panel is squeezed: a width that cannot afford its right
+ * frame column or its padding does not spend cells on them, and a measurement
+ * that assumed it did would report a minimum larger than its own maximum.
+ */
+function frameOverhead(geometry: PanelGeometry): number {
+  return geometry.left + geometry.right + geometry.padLeft + geometry.padRight;
+}
+
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
   if (typeof style === "string") return Style.parse(style);
@@ -244,49 +255,39 @@ export class Panel implements Renderable, Measurable {
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const [_padTop, padRight, _padBottom, padLeft] = this.padding;
-    const borderWidth = 2; // left + right border chars
-    const horizontalPad = padLeft + padRight;
+    const geometry = layoutPanel(options.maxWidth, this.padding);
+    const overhead = frameOverhead(geometry);
 
     if (isMeasurable(this.renderable)) {
       const innerOptions: RenderOptions = {
         ...options,
-        maxWidth: Math.max(1, options.maxWidth - borderWidth - horizontalPad),
+        maxWidth: geometry.contentWidth,
       };
       const measurement = Measurement.get(innerOptions, this.renderable);
       return {
-        minimum: Math.max(
-          borderWidth + horizontalPad,
-          measurement.minimum + borderWidth + horizontalPad,
-        ),
-        maximum: Math.min(
-          options.maxWidth,
-          measurement.maximum + borderWidth + horizontalPad,
-        ),
+        minimum: Math.max(overhead, measurement.minimum + overhead),
+        maximum: Math.min(options.maxWidth, measurement.maximum + overhead),
       };
     }
-    return { minimum: borderWidth + horizontalPad, maximum: options.maxWidth };
+    return { minimum: overhead, maximum: options.maxWidth };
   }
 
   private _getPanelWidth(options: RenderOptions): number {
     if (this.width !== undefined) return Math.min(this.width, options.maxWidth);
     if (this.expand) return options.maxWidth;
 
-    // Fit mode: measure content
-    const [_padTop, padRight, _padBottom, padLeft] = this.padding;
-    const borderWidth = 2;
-    const horizontalPad = padLeft + padRight;
+    // Fit mode: the panel is as wide as its content wants plus its own frame,
+    // both read off the division it will render against.
+    const geometry = layoutPanel(options.maxWidth, this.padding);
+    const overhead = frameOverhead(geometry);
 
     if (isMeasurable(this.renderable)) {
       const innerOptions: RenderOptions = {
         ...options,
-        maxWidth: Math.max(1, options.maxWidth - borderWidth - horizontalPad),
+        maxWidth: geometry.contentWidth,
       };
       const measurement = Measurement.get(innerOptions, this.renderable);
-      return Math.min(
-        options.maxWidth,
-        measurement.maximum + borderWidth + horizontalPad,
-      );
+      return Math.min(options.maxWidth, measurement.maximum + overhead);
     }
 
     return options.maxWidth;

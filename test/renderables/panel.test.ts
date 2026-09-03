@@ -365,12 +365,27 @@ describe("Panel", () => {
     // Negative padding used to reach the renderer, where it produced content
     // rows wider than the panel's own border.
     it("treats negative padding as none", () => {
+      const unpadded = collectLines(new Panel("hi", { padding: 0 }), { maxWidth: 20 });
       const cases: PaddingDimensions[] = [-1, [0, -1], [-2, -3, -4, -5]];
       for (const padding of cases) {
-        const lines = collectLines(new Panel("hi", { padding }), { maxWidth: 20 });
-        expect(new Set(lines.map(cellLen)), `padding ${JSON.stringify(padding)}`).toEqual(
-          new Set([20]),
-        );
+        expect(
+          collectLines(new Panel("hi", { padding }), { maxWidth: 20 }),
+          `padding ${JSON.stringify(padding)}`,
+        ).toEqual(unpadded);
+      }
+    });
+
+    // A measurement is a range, so its minimum cannot exceed its maximum —
+    // which it did while the frame overhead was counted as a constant the
+    // panel does not actually spend at these widths.
+    it("measures a coherent range at every width", () => {
+      for (const panel of [new Panel("hello world"), Panel.fit("hello world")]) {
+        for (let width = 1; width <= 40; width++) {
+          const m = panel.measure({ maxWidth: width });
+          expect(m.minimum, `minimum exceeded maximum at maxWidth ${width}`)
+            .toBeLessThanOrEqual(m.maximum);
+          expect(m.maximum, `maximum exceeded maxWidth ${width}`).toBeLessThanOrEqual(width);
+        }
       }
     });
 
