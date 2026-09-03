@@ -2,7 +2,7 @@
  * Table — tabular data with headers, borders, auto-sizing, and alignment.
  */
 
-import { cellLen } from "../core/cells.js";
+import { cellLen, setCellSize, asCellCol } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
@@ -29,6 +29,188 @@ function toRenderable(content: unknown): Renderable {
   return new RichText(String(content ?? ""), { end: "" });
 }
 
+
+// --- Width division ---
+
+/**
+ * What one column asks of the width division: cells it takes off the top,
+ * cells it would use if the table were not squeezed, and how hard it pulls
+ * when the cells run short.
+ *
+ * A declared `width` is a reservation rather than a bid — it is paid before
+ * anyone competes, because a column told to be four cells wide is not asking
+ * for a proportional share of four. A plain column reserves nothing and both
+ * wants and weighs its natural content width. A ratio column wants more than
+ * any budget can offer and weighs its ratio, so it absorbs whatever the
+ * bounded columns leave behind.
+ */
+interface ColumnDemand {
+  readonly reserved: number;
+  readonly want: number;
+  readonly weight: number;
+}
+
+/** A `want` no budget can satisfy: the column takes every cell its weight earns. */
+const UNBOUNDED = Number.MAX_SAFE_INTEGER;
+
+/**
+ * Hand out `total` cells across `demands`, weighted, and never past a demand's
+ * `want`.
+ *
+ * Cells go out one at a time to whichever column currently sits furthest behind
+ * the share its weight entitles it to — the highest-averages rule elections use
+ * to apportion seats. Doing it a cell at a time is what makes the result exact:
+ * the granted widths sum to `total`, or to the point where every column has hit
+ * its cap, with no rounding residue for a second pass to sweep up and disagree
+ * about. Capped columns simply stop winning rounds, so the cells they cannot
+ * use flow to the columns that can, without a redistribution step.
+ */
+function distribute(total: number, demands: readonly ColumnDemand[]): number[] {
+  const granted: number[] = demands.map(() => 0);
+  let budget = Math.max(0, total);
+
+  while (budget > 0) {
+    let winner = -1;
+    let bestScore = 0;
+    for (let i = 0; i < demands.length; i++) {
+      const demand = demands[i]!;
+      if (granted[i]! >= demand.want) continue;
+      const score = demand.weight / (granted[i]! + 1);
+      if (score > bestScore) {
+        bestScore = score;
+        winner = i;
+      }
+    }
+    if (winner < 0) break;
+    granted[winner]!++;
+    budget--;
+  }
+
+  return granted;
+}
+
+/** The cells a box costs a table, independent of how wide the table is. */
+interface TableFrame {
+  /** Width of one inter-column divider: 1 with a box, 0 without. */
+  readonly divider: number;
+  /** Width of one outer edge column: 1 with a box drawn to its edge, 0 without. */
+  readonly edge: number;
+}
+
+/**
+ * How one requested outer width divides into edge columns, dividers, padding
+ * and column canvases.
+ *
+ * [LAW:one-source-of-truth] Every row a table emits — the four kinds of box
+ * row, the header, the data rows, the footer, and the title/caption spans —
+ * is measured from this one division, so they cannot disagree about where the
+ * frame sits. The fields sum to `totalWidth`, and `totalWidth` never exceeds
+ * the requested width, which is what makes "no emitted line is wider than the
+ * width we were given" true by construction rather than by a clamp repeated at
+ * each site.
+ *
+ * Cells are handed out in priority order — the pair of edge columns, then one
+ * content cell per column with the divider that precedes it, then the
+ * configured padding, then the remainder back to content. Content outranking
+ * padding is why a squeezed table shows characters rather than spending its
+ * last cells framing empty canvases.
+ */
+interface TableGeometry {
+  readonly edge: number;
+  readonly divider: number;
+  readonly padLeft: number;
+  readonly padRight: number;
+  /**
+   * Content canvas per rendered column. Shorter than the table's column list
+   * when the requested width could not seat them all — the columns that did
+   * not fit are dropped, never drawn outside the frame.
+   */
+  readonly columns: readonly number[];
+  /**
+   * `padLeft + column + padRight` per rendered column: the spans a `Box` fills
+   * between its dividers. Read off the geometry rather than recomputed at each
+   * of the four box-row callsites, which is where the widths used to drift.
+   */
+  readonly cellWidths: readonly number[];
+  /** The exact width of every line this geometry produces. */
+  readonly totalWidth: number;
+}
+
+function layoutTable(
+  outerWidth: number,
+  demands: readonly ColumnDemand[],
+  padding: readonly [number, number, number, number],
+  frame: TableFrame,
+): TableGeometry {
+  const [, padRightWanted, , padLeftWanted] = padding;
+  let budget = Math.max(0, outerWidth);
+  const take = (want: number): number => {
+    const got = Math.min(Math.max(0, want), budget);
+    budget -= got;
+    return got;
+  };
+
+  // Both edge columns or neither: `Box.getTop` and its siblings take a single
+  // flag for the pair, so half a frame is not a shape this renderer can emit.
+  const edge = budget >= frame.edge * 2 ? frame.edge : 0;
+  take(edge * 2);
+
+  // One content cell per column, in column order, each paying for the divider
+  // that precedes it. The first column the budget cannot seat is where the
+  // table ends; the rest are dropped.
+  let seated = 0;
+  while (seated < demands.length && budget >= (seated > 0 ? frame.divider : 0) + 1) {
+    take((seated > 0 ? frame.divider : 0) + 1);
+    seated++;
+  }
+
+  // Padding is uniform across columns or it is not padding, so it is bought
+  // for every seated column at once and skipped entirely when only some could
+  // afford it.
+  const takePerColumn = (want: number): number => {
+    const per = seated === 0
+      ? 0
+      : Math.min(Math.max(0, want), Math.floor(budget / seated));
+    budget -= per * seated;
+    return per;
+  };
+  const padLeft = takePerColumn(padLeftWanted);
+  const padRight = takePerColumn(padRightWanted);
+
+  // Reservations are paid in column order, each already holding the cell the
+  // seating pass gave it. A budget too small to cover them all runs out
+  // partway, which costs the trailing columns their width but never costs the
+  // table its frame.
+  const seatedDemands = demands.slice(0, seated);
+  const reserved = seatedDemands.map((demand) => take(demand.reserved - 1));
+
+  // What is left to apportion is the rest of what each column wanted. A table
+  // whose columns all fit leaves this budget partly unspent, which is how it
+  // stays narrower than the width it was offered.
+  const extra = distribute(
+    budget,
+    seatedDemands.map((demand, index) => ({
+      reserved: 0,
+      want: Math.max(0, demand.want - 1 - reserved[index]!),
+      weight: demand.weight,
+    })),
+  );
+  const columns = extra.map((cells, index) => 1 + reserved[index]! + cells);
+  const cellWidths = columns.map((width) => padLeft + width + padRight);
+
+  return {
+    edge,
+    divider: frame.divider,
+    padLeft,
+    padRight,
+    columns,
+    cellWidths,
+    totalWidth:
+      edge * 2 +
+      Math.max(0, seated - 1) * frame.divider +
+      cellWidths.reduce((sum, width) => sum + width, 0),
+  };
+}
 
 // --- Column ---
 
@@ -254,81 +436,91 @@ export class Table implements Renderable, Measurable {
       : null;
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
 
-    // Calculate column widths
-    const totalWidth = this.tableWidth ?? (this.expand ? options.maxWidth : undefined);
-    const colWidths = this._calculateWidths(options, totalWidth);
-    const tableActualWidth = this._totalTableWidth(colWidths, box);
-    const [_padTop, padRight, _padBottom, padLeft] = this.padding;
+    // The one division of the width every row below is measured against.
+    const geometry = this._geometry(this.tableWidth ?? options.maxWidth);
+    const edge = geometry.edge === 1;
 
     // Title
     if (this.title) {
-      yield* this._renderTitle(this.title, tableActualWidth, this.titleStyle, this.titleJustify);
+      yield* this._renderTitle(this.title, geometry.totalWidth, this.titleStyle, this.titleJustify);
     }
 
     // Top border
     if (box && this.showEdge) {
-      yield* box.getTop(colWidths.map((w) => w + padLeft + padRight), border, true);
+      yield* box.getTop(geometry.cellWidths, border, edge);
     }
 
     // Header row
     if (this.showHeader && this._columns.some((c) => c.header.hasContent)) {
       const headerCells = this._columns.map((c) => c.header as Renderable);
-      yield* this._renderRow(headerCells, colWidths, box, border, this.headerStyle);
+      yield* this._renderRow(headerCells, geometry, box, border, this.headerStyle);
 
       // Header separator
       if (box) {
-        yield* box.getRow(colWidths.map((w) => w + padLeft + padRight), "head", border, this.showEdge);
+        yield* box.getRow(geometry.cellWidths, "head", border, edge);
       }
     }
 
     // Data rows
     for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
       const row = this._rows[rowIdx]!;
-      const rowCells: Renderable[] = [];
-      for (let colIdx = 0; colIdx < this._columns.length; colIdx++) {
-        const cell = row.cells[colIdx];
-        rowCells.push(toRenderable(cell));
-      }
+      const rowCells = this._columns.map((_, colIdx) => toRenderable(row.cells[colIdx]));
 
       const rowStyle = this.rowStyles.length > 0
         ? resolveStyle(this.rowStyles[rowIdx % this.rowStyles.length])
         : NULL_STYLE;
 
-      yield* this._renderRow(rowCells, colWidths, box, border, rowStyle);
+      yield* this._renderRow(rowCells, geometry, box, border, rowStyle);
 
       // Row separator
       const showSep = this.showLines || row.endSection;
       if (showSep && box && rowIdx < this._rows.length - 1) {
-        yield* box.getRow(colWidths.map((w) => w + padLeft + padRight), "row", border, this.showEdge);
+        yield* box.getRow(geometry.cellWidths, "row", border, edge);
       }
     }
 
     // Footer
     if (this.showFooter && this._columns.some((c) => c.footer)) {
       if (box) {
-        yield* box.getRow(colWidths.map((w) => w + padLeft + padRight), "foot", border, this.showEdge);
+        yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
       const footerCells = this._columns.map((c) => (c.footer ?? new RichText("", { end: "" })) as Renderable);
-      yield* this._renderRow(footerCells, colWidths, box, border, this.footerStyle);
+      yield* this._renderRow(footerCells, geometry, box, border, this.footerStyle);
     }
 
     // Bottom border
     if (box && this.showEdge) {
-      yield* box.getBottom(colWidths.map((w) => w + padLeft + padRight), border, true);
+      yield* box.getBottom(geometry.cellWidths, border, edge);
     }
 
     // Caption
     if (this.caption) {
-      yield* this._renderTitle(this.caption, tableActualWidth, this.captionStyle, this.captionJustify);
+      yield* this._renderTitle(this.caption, geometry.totalWidth, this.captionStyle, this.captionJustify);
     }
   }
 
+  /**
+   * [LAW:one-source-of-truth] Both ends of the range are widths the geometry
+   * actually produced — the maximum from the demands as they stand, the
+   * minimum from the same layout with every column asking for a single cell.
+   * Neither can exceed the width offered and the tighter request cannot exceed
+   * the looser one, so the range cannot invert. Deriving the minimum from raw
+   * column and padding counts instead is what used to return
+   * `{minimum: 6, maximum: 1}` at `maxWidth: 1` — a floor above its own ceiling.
+   */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const colWidths = this._calculateWidths(options);
-    const total = this._totalTableWidth(colWidths, this.box);
+    const outerWidth = this.tableWidth ?? options.maxWidth;
+    const frame = this._frame();
+    const maximum = layoutTable(outerWidth, this._columnDemands(), this.padding, frame).totalWidth;
+    const tightest = layoutTable(
+      outerWidth,
+      this._columns.map(() => ({ reserved: 0, want: 1, weight: 1 })),
+      this.padding,
+      frame,
+    ).totalWidth;
     return {
-      minimum: Math.max(this._columns.length * 2, this.minWidth ?? 0),
-      maximum: Math.min(total, options.maxWidth),
+      minimum: Math.min(maximum, Math.max(tightest, this.minWidth ?? 0)),
+      maximum,
     };
   }
 
@@ -346,161 +538,102 @@ export class Table implements Renderable, Measurable {
 
   // --- Private ---
 
-  private _calculateWidths(options: RenderOptions, totalWidth?: number): number[] {
-    const numCols = this._columns.length;
-    if (numCols === 0) return [];
-
-    const [_padTop, padRight, _padBottom, padLeft] = this.padding;
-    const cellPad = padLeft + padRight;
-    const borders = this.box
-      ? (this.showEdge ? 2 : 0) + (numCols - 1)
-      : 0;
-    const availableWidth = (totalWidth ?? options.maxWidth) - borders - cellPad * numCols;
-
-    const widths: number[] = new Array(numCols);
-
-    // Fixed width columns first
-    let remainingWidth = availableWidth;
-    let flexCols = 0;
-
-    for (let i = 0; i < numCols; i++) {
-      const col = this._columns[i]!;
-      if (col.width !== undefined) {
-        widths[i] = col.width;
-        remainingWidth -= col.width;
-      } else {
-        widths[i] = 0;
-        flexCols++;
-      }
-    }
-
-    // Distribute remaining width among flex columns
-    if (flexCols > 0) {
-      // Measure content to determine natural widths
-      const naturalWidths: number[] = [];
-      for (let i = 0; i < numCols; i++) {
-        const col = this._columns[i]!;
-        if (col.width !== undefined) {
-          naturalWidths.push(col.width);
-          continue;
-        }
-        let maxContent = cellLen(col.header.plain);
-        for (const row of this._rows) {
-          const cell = row.cells[i];
-          const cellText = String(cell ?? "");
-          maxContent = Math.max(maxContent, cellLen(cellText));
-        }
-        if (col.minWidth !== undefined) maxContent = Math.max(maxContent, col.minWidth);
-        if (col.maxWidth !== undefined) maxContent = Math.min(maxContent, col.maxWidth);
-        naturalWidths.push(maxContent);
-      }
-
-      // Check if ratio-based distribution applies
-      const hasRatios = this._columns.some((c) => c.flexible);
-      if (hasRatios) {
-        const totalRatio = this._columns.reduce((s, c) => s + (c.ratio ?? 1), 0);
-        for (let i = 0; i < numCols; i++) {
-          if (this._columns[i]!.width !== undefined) continue;
-          const ratio = this._columns[i]!.ratio ?? 1;
-          widths[i] = Math.max(1, Math.floor(remainingWidth * ratio / totalRatio));
-        }
-      } else {
-        // Distribute equally or by natural width
-        const totalNatural = naturalWidths.reduce((s, w, i) =>
-          this._columns[i]!.width !== undefined ? s : s + w, 0);
-
-        for (let i = 0; i < numCols; i++) {
-          if (this._columns[i]!.width !== undefined) continue;
-          const natural = naturalWidths[i]!;
-          if (totalNatural <= remainingWidth) {
-            widths[i] = natural;
-          } else {
-            widths[i] = Math.max(1, Math.floor(remainingWidth * natural / totalNatural));
-          }
-        }
-      }
-    }
-
-    return widths;
+  private _frame(): TableFrame {
+    return {
+      divider: this.box ? 1 : 0,
+      edge: this.box && this.showEdge ? 1 : 0,
+    };
   }
 
-  private _totalTableWidth(colWidths: number[], box: Box | null): number {
-    const [_padTop, padRight, _padBottom, padLeft] = this.padding;
-    const cellPad = padLeft + padRight;
-    const contentWidth = colWidths.reduce((s, w) => s + w + cellPad, 0);
-    const borders = box
-      ? (this.showEdge ? 2 : 0) + (colWidths.length - 1)
-      : 0;
-    return contentWidth + borders;
+  private _geometry(outerWidth: number): TableGeometry {
+    return layoutTable(outerWidth, this._columnDemands(), this.padding, this._frame());
+  }
+
+  /**
+   * [LAW:dataflow-not-control-flow] The three ways a column can be sized —
+   * declared width, ratio, natural content — differ only in the `want` and
+   * `weight` they produce. They are resolved once, here, into uniform data, so
+   * `layoutTable` runs the same apportionment for every table and no sizing
+   * mode gets its own path through the width division.
+   */
+  private _columnDemands(): ColumnDemand[] {
+    // A ratio on any column makes every non-fixed column elastic: a ratio
+    // expresses a split of the whole width, so a column that declares none
+    // still holds a share of it (1).
+    const elastic = this._columns.some((col) => col.flexible);
+
+    return this._columns.map((col, index) => {
+      if (col.width !== undefined) {
+        const declared = Math.max(1, col.width);
+        return { reserved: declared, want: declared, weight: 0 };
+      }
+      if (elastic) return { reserved: 0, want: UNBOUNDED, weight: col.ratio ?? 1 };
+      const natural = this._naturalWidth(col, index);
+      return { reserved: 0, want: natural, weight: natural };
+    });
+  }
+
+  /** The widest cell in a column, bounded by its own `minWidth`/`maxWidth`. */
+  private _naturalWidth(col: Column, index: number): number {
+    let natural = cellLen(col.header.plain);
+    for (const row of this._rows) {
+      natural = Math.max(natural, cellLen(String(row.cells[index] ?? "")));
+    }
+    if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);
+    if (col.maxWidth !== undefined) natural = Math.min(natural, col.maxWidth);
+    return Math.max(1, natural);
   }
 
   private *_renderRow(
     cells: Renderable[],
-    colWidths: number[],
+    geometry: TableGeometry,
     box: Box | null,
     border: Style | undefined,
     rowStyle: Style,
   ): Iterable<Segment> {
-    const [_padTop, padRight, _padBottom, padLeft] = this.padding;
+    const { padLeft, padRight, columns } = geometry;
 
-    // Render each cell and split into lines
-    const cellLines: Segment[][][] = [];
-    let maxLines = 1;
-
-    for (let i = 0; i < this._columns.length; i++) {
-      const col = this._columns[i]!;
-      const cell = cells[i] ?? toRenderable("");
-      const cellWidth = colWidths[i] ?? 1;
-
-      const cellOpts: RenderOptions = {
-        ...({ maxWidth: cellWidth }),
+    // Render each cell onto the canvas the geometry gave its column. Columns
+    // the width could not seat are absent from `columns` and so are never
+    // rendered at all.
+    const cellLines: Segment[][][] = columns.map((cellWidth, index) => {
+      const col = this._columns[index]!;
+      const cell = cells[index] ?? toRenderable("");
+      const segs = [...cell.render({
+        maxWidth: cellWidth,
         justify: col.justify,
         overflow: col.overflow,
         noWrap: col.noWrap,
-      };
-
-      const segs = [...cell.render(cellOpts)];
-      const lines = Segment.splitLines(segs);
-      const adjusted = lines.map((line) =>
+      })];
+      const lines = Segment.splitLines(segs).map((line) =>
         Segment.adjustLineLength(line, cellWidth),
       );
-      // Ensure at least one line
-      const finalLines = adjusted.length > 0 ? adjusted : [[new Segment(" ".repeat(cellWidth))]];
-      cellLines.push(finalLines);
-      maxLines = Math.max(maxLines, finalLines.length);
-    }
+      return lines.length > 0 ? lines : [[new Segment(" ".repeat(cellWidth))]];
+    });
+    const maxLines = cellLines.reduce((most, lines) => Math.max(most, lines.length), 1);
 
-    // Render line by line
     for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
-      if (box && this.showEdge) {
+      if (box && geometry.edge === 1) {
         yield new Segment(box.left, border);
       }
 
-      for (let colIdx = 0; colIdx < this._columns.length; colIdx++) {
+      for (let colIdx = 0; colIdx < columns.length; colIdx++) {
         if (colIdx > 0 && box) {
           yield new Segment(box.vertical, border);
         }
 
-        const colLines = cellLines[colIdx]!;
-        const cellWidth = colWidths[colIdx] ?? 1;
-
-        // Left padding
+        const cellWidth = columns[colIdx]!;
         if (padLeft > 0) yield new Segment(" ".repeat(padLeft));
 
-        const line = colLines[lineIdx];
-        if (line) {
-          const adjusted = Segment.adjustLineLength(line, cellWidth);
-          const styled = rowStyle.isNull ? adjusted : [...Segment.applyStyle(adjusted, rowStyle)];
-          yield* styled;
-        } else {
-          yield new Segment(" ".repeat(cellWidth));
-        }
+        // A cell that ran out of lines contributes blanks, so every column
+        // spans the same number of rows and the frame stays rectangular.
+        const line = cellLines[colIdx]![lineIdx] ?? [new Segment(" ".repeat(cellWidth))];
+        yield* rowStyle.isNull ? line : Segment.applyStyle(line, rowStyle);
 
-        // Right padding
         if (padRight > 0) yield new Segment(" ".repeat(padRight));
       }
 
-      if (box && this.showEdge) {
+      if (box && geometry.edge === 1) {
         yield new Segment(box.right, border);
       }
       yield Segment.line();
@@ -517,8 +650,11 @@ export class Table implements Renderable, Measurable {
     const plain = text.plain;
     const textWidth = cellLen(plain);
 
+    // Cropped by cells, not by code units: a title of wide characters sliced
+    // at `tableWidth` code units is up to twice `tableWidth` cells on screen,
+    // which is the overflow this crop exists to prevent.
     if (textWidth >= tableWidth) {
-      yield new Segment(plain.slice(0, tableWidth), titleStyle);
+      yield new Segment(setCellSize(plain, asCellCol(tableWidth)), titleStyle);
       yield Segment.line();
       return;
     }

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Table, Column } from "../../src/renderables/table.js";
 import { Segment } from "../../src/core/segment.js";
-import { ASCII, MARKDOWN } from "../../src/core/box.js";
+import { ASCII, MARKDOWN, HEAVY_HEAD } from "../../src/core/box.js";
+import { cellLen } from "../../src/core/cells.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -218,5 +219,115 @@ describe("Column", () => {
     const copy = col.copy();
     expect(copy.header.plain).toBe("Test");
     expect(copy.justify).toBe("right");
+  });
+});
+
+describe("Table stays inside the width it is given", () => {
+  // A table wide enough to be squeezed hard, in the three frame shapes that
+  // divide a width differently: a full box, a box without its outer edge, and
+  // no box at all.
+  const shapes: Array<[string, () => Table]> = [
+    ["boxed", () => new Table({ box: HEAVY_HEAD })],
+    ["edgeless", () => new Table({ box: ASCII, showEdge: false })],
+    ["grid", () => Table.grid()],
+  ];
+
+  function populate(t: Table): Table {
+    t.addColumn("Name");
+    t.addColumn("Qty");
+    t.addColumn("Price");
+    t.addRow("Widget", "12", "$3.50");
+    t.addRow("Gadget", "7", "$11.00");
+    return t;
+  }
+
+  const widths = Array.from({ length: 32 }, (_, i) => i);
+
+  for (const [name, make] of shapes) {
+    it(`emits no line wider than the requested width (${name})`, () => {
+      for (const width of widths) {
+        const lines = collectLines(populate(make()), { maxWidth: width });
+        const widest = Math.max(0, ...lines.map(cellLen));
+        expect({ width, widest }).toEqual({ width, widest: Math.min(widest, width) });
+      }
+    });
+
+    it(`reports a measurement range that contains itself (${name})`, () => {
+      for (const width of widths) {
+        const m = populate(make()).measure({ maxWidth: width });
+        expect({ width, ...m }).toEqual({
+          width,
+          minimum: Math.min(m.minimum, m.maximum, width),
+          maximum: Math.min(m.maximum, width),
+        });
+      }
+    });
+  }
+
+  it("stays inside the width with a title and caption longer than the table", () => {
+    const t = new Table({
+      box: ASCII,
+      title: "A title far longer than this table will ever be",
+      caption: "and a caption to match",
+    });
+    populate(t);
+    for (const width of widths) {
+      const widest = Math.max(0, ...collectLines(t, { maxWidth: width }).map(cellLen));
+      expect({ width, widest }).toEqual({ width, widest: Math.min(widest, width) });
+    }
+  });
+
+  it("crops a wide-character title by cells, not by code units", () => {
+    // Each ideograph is two cells: a 10-code-unit slice would be 20 cells wide.
+    const t = new Table({ box: ASCII, title: "\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45" });
+    t.addColumn("A");
+    t.addRow("x");
+    // The table's own natural width is 5, so the title crops to 5 cells — a
+    // code-unit slice would have left it 10 characters and 20 cells wide.
+    expect([...new Set(collectLines(t, { maxWidth: 6 }).map(cellLen))]).toEqual([5]);
+  });
+
+  it("keeps a fixed-width column at its width and squeezes the rest", () => {
+    const t = new Table({ box: ASCII, padding: 0 });
+    t.addColumn("Fixed", { width: 4 });
+    t.addColumn("Elastic");
+    t.addRow("abcd", "a much longer cell than the other one");
+    // 2 edges + 1 divider + the reserved 4 leaves 5 for the elastic column,
+    // which is far wider naturally and would win every cell if a declared
+    // width competed on weight instead of being reserved ahead of the bidding.
+    expect(collectLines(t, { maxWidth: 12 })).toContain("|abcd|a mu…|");
+  });
+
+  it("spends its last cells on content rather than on padding", () => {
+    // 2 edges + 1 divider + 2 content cells = 5; a sixth cell cannot buy the
+    // padding both columns would need, so it goes to a column instead.
+    const t = new Table({ box: ASCII, showHeader: false, padding: [0, 1] });
+    t.addColumn(undefined, { overflow: "crop" });
+    t.addColumn(undefined, { overflow: "crop" });
+    t.addRow("ab", "cd");
+    // The ladder: content first, then one side of the padding, then the other.
+    expect(collectLines(t, { maxWidth: 6 })).toContain("|ab|c|");
+    expect(collectLines(t, { maxWidth: 7 })).toContain("| a| c|");
+    expect(collectLines(t, { maxWidth: 9 })).toContain("| a | c |");
+  });
+
+  it("drops the columns a width cannot seat rather than overflowing", () => {
+    const t = new Table({ box: ASCII, showHeader: false, padding: 0 });
+    t.addColumn();
+    t.addColumn();
+    t.addColumn();
+    t.addRow("a", "b", "c");
+    // 2 edges + 3 cells + 2 dividers needs 7; at 6 the last column is dropped
+    // rather than drawn past the frame, and the freed cell stays unspent
+    // because both survivors are already at their natural width.
+    expect(collectLines(t, { maxWidth: 6 })).toContain("|a|b|");
+    expect(collectLines(t, { maxWidth: 7 })).toContain("|a|b|c|");
+  });
+
+  it("renders at its natural width when the width offered exceeds it", () => {
+    const wide = collectLines(populate(new Table({ box: HEAVY_HEAD })), { maxWidth: 200 });
+    const exact = collectLines(populate(new Table({ box: HEAVY_HEAD })), { maxWidth: 25 });
+    expect(wide).toEqual(exact);
+    expect(Math.max(...wide.map(cellLen))).toBe(25);
   });
 });

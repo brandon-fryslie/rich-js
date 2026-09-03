@@ -53,7 +53,7 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 |---|---|
 | `width` | Fixed total width (disables auto-sizing) |
 | `minWidth` | Minimum total width |
-| `expand` | Stretch to fill available width |
+| `expand` | Accepted, but not yet wired into sizing — a table renders at its natural width regardless |
 
 ### Borders
 
@@ -87,6 +87,44 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 | `titleStyle`, `captionStyle` | Styles for title/caption text |
 | `titleJustify`, `captionJustify` | Alignment of title/caption |
 | `highlight` | Enable auto-highlighting of cell contents |
+
+## Narrow widths
+
+A table never emits a line wider than the width it is given, however narrow that
+gets — a cramped terminal, or a `Layout` or `Columns` split that squeezes the
+table below its natural size. This matters beyond looks: an oversized row is
+soft-wrapped by the terminal, and the wrap destroys the frame of everything
+printed after it.
+
+Cells go out in a fixed order — the two outer border columns, then one content
+cell for each column together with the divider in front of it, then the padding,
+and only then does content grow back toward its natural width. Columns fill from
+the left, and a column the width cannot seat is dropped rather than drawn outside
+the frame:
+
+```
+width 2   width 3   width 5   width 7   width 11     width 13
+┌┐        ┌─┐       ┌─┬─┐     ┌─┬─┬─┐   ┌──┬──┬──┐   ┌───┬───┬───┐
+││        │A│       │A│B│     │A│B│C│   │ A│ B│ C│   │ A │ B │ C │
+││        │─│       │─│─│     │─│─│─│   │──│──│──│   │───│───│───│
+││        │1│       │1│2│     │1│2│3│   │ 1│ 2│ 3│   │ 1 │ 2 │ 3 │
+└┘        └─┘       └─┴─┘     └─┴─┴─┘   └──┴──┴──┘   └───┴───┴───┘
+```
+
+Width 2 is the narrowest table that keeps its frame; below it the border columns
+are dropped too, and the table renders as bare content. In the other direction a
+table never grows past its natural width — offer it 200 columns and it still
+renders at 13.
+
+Because the padding is bought before content grows back, a table between those
+two ladders spends cells on padding while its columns are still truncated. Wide
+columns are cropped by their own `overflow` mode, so a column squeezed to a
+single cell shows only what that mode can fit in one cell.
+
+A column with an explicit `width` is a reservation rather than a bid: it is paid
+before the remaining cells are shared out, so it keeps its size and its
+neighbours absorb the shortfall. Columns with a `ratio` sit at the other end —
+they take whatever the bounded columns leave.
 
 ## Column options
 
