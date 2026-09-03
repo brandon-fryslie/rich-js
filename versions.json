@@ -4,15 +4,22 @@
     {
       "version": "pr-76",
       "ref": "refs/pull/76/merge",
-      "sha": "83b58a90a0edef6c8f707d82e5c576c8da974545",
-      "timestamp": "2026-09-03T09:43:34.924Z",
+      "sha": "d1364e3cd3aa7d0dfc1029be72cf5d25048e3dac",
+      "timestamp": "2026-09-03T10:02:04.231Z",
       "commits": [
         {
-          "sha": "83b58a90a0edef6c8f707d82e5c576c8da974545",
+          "sha": "d1364e3cd3aa7d0dfc1029be72cf5d25048e3dac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T09:43:07Z",
-          "message": "Merge 68b74456f72379cbc24e4a08a82e59e1c52a1a5a into e8401c782fc99934e8f7daa4f79fad3144dca7f3\n"
+          "timestamp": "2026-09-03T10:01:28Z",
+          "message": "Merge 60e691d512626a3c66f42a0e384ebca143add9f9 into e8401c782fc99934e8f7daa4f79fad3144dca7f3\n"
+        },
+        {
+          "sha": "60e691d512626a3c66f42a0e384ebca143add9f9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T04:01:18-06:00",
+          "message": "fix(panel): measure against the same division the panel renders against\n\n`measure()` and `_getPanelWidth()` still derived the content budget as\n`Math.max(1, maxWidth - 2 - padLeft - padRight)`. Before `layoutPanel`\nexisted that formula was textually identical to the one in `render`, so\nthe two could not disagree; introducing the geometry made them two\nsources for one fact that diverge exactly in the 0-2 band this branch\nwas written for — the geometry gives 0 content cells there, the formula\ninsists on 1. The comment on `PanelGeometry` claiming one authoritative\ndivision was written eight lines above the code contradicting it.\n\nBoth now read the geometry. Taking the frame overhead from it as well,\nrather than the constant `2 + padLeft + padRight`, fixes a second\nincoherence with the same cause — a panel does not spend cells on a\nright frame column or padding it cannot afford, so counting them\nproduced a measurement whose minimum exceeded its own maximum:\n\n  before: @1 {minimum: 5, maximum: 1}   after: @1 {1, 1}\n          @2 {minimum: 5, maximum: 2}           @2 {2, 2}\n          @20 {minimum: 9, maximum: 15}         @20 {9, 15}\n\nThe negative-padding tests asserted the rendered lines were rectangular,\nwhich `layoutPanel` guarantees for any non-negative clamp — they would\nhave passed had the floor been `Math.abs`. They now compare against the\n`padding: 0` render, which is the claim their names make. Verified by\nmutating the clamp to `Math.abs` and watching both fail.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "68b74456f72379cbc24e4a08a82e59e1c52a1a5a",
