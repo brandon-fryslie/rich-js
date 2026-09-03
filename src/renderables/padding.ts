@@ -32,10 +32,13 @@ export type PaddingDimensions =
 export function normalizePadding(
   padding: PaddingDimensions,
 ): [number, number, number, number] {
-  // `Math.max(0, n)` returns NaN for a NaN side; the comparison floors it,
-  // which is what makes the guarantee above hold for every number a caller can
-  // write rather than only for negative ones.
-  const side = (n: number): number => (n > 0 ? n : 0);
+  // `Math.max(0, n)` returns NaN for a NaN side; the comparison floors it, and
+  // the truncation floors a fractional one, which is what makes the guarantee
+  // above hold for every number a caller can write rather than only for
+  // negative ones. A fractional side reaches `" ".repeat`, which truncates,
+  // while the rows around it are measured arithmetically — so the padding and
+  // the border disagree and the frame breaks.
+  const side = (n: number): number => (n > 0 ? Math.floor(n) : 0);
   const sides: readonly [number, number, number, number] =
     typeof padding === "number"
       ? [padding, padding, padding, padding]

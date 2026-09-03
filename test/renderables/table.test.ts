@@ -483,4 +483,20 @@ describe("Table stays inside the width it is given", () => {
     const lines = collectLines(t, { maxWidth: 20 });
     expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
   });
+
+  it("pads a fractional side as its floor, so the frame still closes", () => {
+    // A fractional pad reaches `" ".repeat`, which truncates, while the box
+    // rows are measured arithmetically: the content row came out 11 cells
+    // under a 13-cell border.
+    const build = (padding: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false, padding });
+      t.addColumn();
+      t.addColumn();
+      t.addRow("ab", "cd");
+      return t;
+    };
+    expect(collectLines(build(1.5), { maxWidth: 20 })).toEqual(
+      collectLines(build(1), { maxWidth: 20 }),
+    );
+  });
 });
