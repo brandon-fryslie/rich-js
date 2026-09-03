@@ -4,15 +4,22 @@
     {
       "version": "pr-75",
       "ref": "refs/pull/75/merge",
-      "sha": "8e37260a4875e5c8c8fbbd35646952a6c41ff3bf",
-      "timestamp": "2026-09-03T08:22:35.915Z",
+      "sha": "8f26c57a1d2846116ba70b8c55a5844a5bdaae9f",
+      "timestamp": "2026-09-03T08:36:41.735Z",
       "commits": [
         {
-          "sha": "8e37260a4875e5c8c8fbbd35646952a6c41ff3bf",
+          "sha": "8f26c57a1d2846116ba70b8c55a5844a5bdaae9f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T02:22:07-06:00",
-          "message": "Merge 702921b286a0fae0ad3c7cd58894aa5fd2f15a36 into bf32f68f78b8ddf4f8cc6e3f286381debc87fda0\n"
+          "timestamp": "2026-09-03T08:36:10Z",
+          "message": "Merge 3c5763fac4c91c30120be292d19837f1facc2a13 into bf32f68f78b8ddf4f8cc6e3f286381debc87fda0\n"
+        },
+        {
+          "sha": "3c5763fac4c91c30120be292d19837f1facc2a13",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T02:36:00-06:00",
+          "message": "fix(seam): prune type queries as a subtree, not by parent kind\n\n`type T = typeof process.env` reported a whole-object host read. The\nidentifier's parent there is the `QualifiedName`, not the `TypeQueryNode`,\nso matching on the parent saw nothing — while the function's own doc\ncomment promised a `typeof` takes nothing off the host. Pruning the query's\nsubtree covers every spelling of it at once and retires the parent-kind\nclause; type positions are otherwise still walked, which is the deliberate\ndifference from `browser-safe.ts`.\n\n`docs/widgets.md` stops naming the two stream members. A published page is\nthe wrong place to send a reader into `test/seam/`, but enumerating what\n`HOST_ACCESS` enumerates is the drift this PR exists to remove — so the\nmember list goes and the claims that remain are ones the suite pins.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "702921b286a0fae0ad3c7cd58894aa5fd2f15a36",
