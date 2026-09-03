@@ -398,4 +398,39 @@ describe("Table stays inside the width it is given", () => {
     expect(wide).toEqual(exact);
     expect(Math.max(...wide.map(cellLen))).toBe(25);
   });
+
+  it("treats a NaN width as no declared width rather than poisoning the budget", () => {
+    // NaN fails every comparison, so `budget -= NaN` does not merely mis-size
+    // this column — it disables the seating loop's `budget < cost` check for
+    // every column after it.
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { width: NaN });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
+  it("treats NaN column bounds as no bounds", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { minWidth: NaN });
+    t.addColumn();
+    t.addRow("hidden", "shown");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+  });
+
+  it("renders a NaN width as a zero width rather than an unbounded frame", () => {
+    const build = (): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addColumn();
+      t.addRow("a", "b");
+      return t;
+    };
+    // Comparing against width 0 rather than asserting no line is too wide:
+    // every line is narrower than NaN, so a width check alone passes on any
+    // output at all.
+    expect(collectLines(build(), { maxWidth: NaN })).toEqual(
+      collectLines(build(), { maxWidth: 0 }),
+    );
+  });
 });

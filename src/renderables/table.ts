@@ -54,6 +54,17 @@ interface ColumnDemand {
 const UNBOUNDED = Number.MAX_SAFE_INTEGER;
 
 /**
+ * [LAW:parse-dont-validate] A caller's number as a count of cells, normalized
+ * where it enters the demand model so nothing downstream re-asks.
+ *
+ * The comparison is the point, not `Math.max(0, n)`: NaN fails every
+ * comparison and so floors here, where `Math.max` would return it and
+ * `budget -= NaN` would switch off every bounds check that follows. `Infinity`
+ * survives, which an unbounded width needs.
+ */
+const cells = (n: number): number => (n > 0 ? n : 0);
+
+/**
  * Hand out `total` cells across `demands`, weighted, and never past a demand's
  * `want`.
  *
@@ -175,7 +186,7 @@ function layoutTable(
   frame: TableFrame,
 ): TableGeometry {
   const [, padRightWanted, , padLeftWanted] = padding;
-  let budget = Math.max(0, outerWidth);
+  let budget = cells(outerWidth);
   const take = (want: number): number => {
     const got = Math.min(Math.max(0, want), budget);
     budget -= got;
@@ -608,7 +619,7 @@ export class Table implements Renderable, Measurable {
       if (col.width !== undefined) {
         // [LAW:single-enforcer] floored where it is parsed, the same rule
         // `normalizePadding` applies to a negative padding side.
-        const declared = Math.max(0, col.width);
+        const declared = cells(col.width);
         return { reserved: declared, want: declared, weight: 0 };
       }
       if (elastic) return { reserved: 0, want: UNBOUNDED, weight: col.ratio ?? 1 };
@@ -629,7 +640,7 @@ export class Table implements Renderable, Measurable {
     }
     if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);
     if (col.maxWidth !== undefined) natural = Math.min(natural, col.maxWidth);
-    return Math.max(0, natural);
+    return cells(natural);
   }
 
   private *_renderRow(
