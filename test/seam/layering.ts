@@ -9,10 +9,10 @@
  * browser cannot be broken by an import that emits no bytes; a layer
  * absolutely can be, because `import type { Panel } from "../renderables/"`
  * is `core/` knowing the shape of `renderables/`, and that knowledge is what
- * the dependency direction is about. CLAUDE.md reasons the same way when it
- * calls the `color.ts` -> `themes/palette.js` edge safe *because*
- * `palette.ts` only `import type`s back: a type edge is an edge you have to
- * account for, not one you get for free.
+ * the dependency direction is about. The `why` on the `color.ts` ->
+ * `themes/palette.ts` sanction below reasons the same way: that edge is safe
+ * *because* `palette.ts` only `import type`s back, which makes a type edge
+ * something you account for, not something you get for free.
  *
  * [LAW:decomposition] Nothing here reads a directory or knows which layer is
  * being checked. It takes parsed files and a `Layer` value and returns
@@ -30,8 +30,9 @@ import { moduleSpecifiers, reachableSourceModules, resolveEdge } from "./graph.j
  * [LAW:one-source-of-truth] `why` is a required field rather than a comment
  * beside the entry, so the justification cannot be dropped while the
  * exemption survives — the failure mode of every allowlist that outlives the
- * argument for it. CLAUDE.md's dependency section is the prose rendering of
- * this list; this is the copy a machine re-verifies.
+ * argument for it. CLAUDE.md names the same two edges and deliberately does
+ * not restate their reasons — `why` is the only home for those, so there is
+ * no second copy to drift out from under the gate that checks them.
  */
 export interface SanctionedEdge {
   readonly from: string;
