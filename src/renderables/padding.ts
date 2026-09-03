@@ -32,18 +32,17 @@ export type PaddingDimensions =
 export function normalizePadding(
   padding: PaddingDimensions,
 ): [number, number, number, number] {
+  // `Math.max(0, n)` returns NaN for a NaN side; the comparison floors it,
+  // which is what makes the guarantee above hold for every number a caller can
+  // write rather than only for negative ones.
+  const side = (n: number): number => (n > 0 ? n : 0);
   const sides: readonly [number, number, number, number] =
     typeof padding === "number"
       ? [padding, padding, padding, padding]
       : padding.length === 2
         ? [padding[0], padding[1], padding[0], padding[1]]
         : padding;
-  return [
-    Math.max(0, sides[0]),
-    Math.max(0, sides[1]),
-    Math.max(0, sides[2]),
-    Math.max(0, sides[3]),
-  ];
+  return [side(sides[0]), side(sides[1]), side(sides[2]), side(sides[3])];
 }
 
 export class Padding implements Renderable, Measurable {

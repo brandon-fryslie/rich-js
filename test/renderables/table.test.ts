@@ -446,4 +446,20 @@ describe("Table stays inside the width it is given", () => {
     expect(m.minimum).toBeLessThanOrEqual(m.maximum);
     expect(m.maximum).toBeLessThanOrEqual(5);
   });
+
+  it("keeps a NaN padding side from poisoning the budget", () => {
+    // `normalizePadding` floors it, so `layoutTable` trusts its argument: a
+    // NaN `per` would subtract NaN from the shared budget and switch off every
+    // bounds check after it.
+    const build = (padding: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false, padding });
+      t.addColumn();
+      t.addColumn();
+      t.addRow("aa", "shown");
+      return t;
+    };
+    expect(collectLines(build(NaN), { maxWidth: 20 })).toEqual(
+      collectLines(build(0), { maxWidth: 20 }),
+    );
+  });
 });
