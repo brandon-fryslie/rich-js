@@ -4,15 +4,22 @@
     {
       "version": "pr-76",
       "ref": "refs/pull/76/merge",
-      "sha": "b189e6354d5442e0c39ef26262c2a9542b302dab",
-      "timestamp": "2026-09-03T08:51:02.231Z",
+      "sha": "1530b80486d750b74523ebb03dd55e1b9ab42c09",
+      "timestamp": "2026-09-03T09:07:03.171Z",
       "commits": [
         {
-          "sha": "b189e6354d5442e0c39ef26262c2a9542b302dab",
+          "sha": "1530b80486d750b74523ebb03dd55e1b9ab42c09",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T02:50:33-06:00",
-          "message": "Merge f5ff142a066a6b674d33a1c2cf4baddff0ab5ad6 into e8401c782fc99934e8f7daa4f79fad3144dca7f3\n"
+          "timestamp": "2026-09-03T09:06:28Z",
+          "message": "Merge 8770412ff18c3cae31968029f047fb21e0b193a4 into e8401c782fc99934e8f7daa4f79fad3144dca7f3\n"
+        },
+        {
+          "sha": "8770412ff18c3cae31968029f047fb21e0b193a4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T03:06:18-06:00",
+          "message": "fix(panel): keep rendering content at widths that cannot show it\n\n`_renderContent` skipped the wrapped renderable entirely when the canvas\nwas zero cells, which silently broke the contract the `BorderAccessory`\ndoc states two dozen lines above it: the thunk form is evaluated after\ncontent has rendered for the current frame, because it reads state that\nrender populates. At panel width 2 and below the thunk still fired and\nread the previous frame.\n\nContent now renders at every width and the geometry decides how many of\nits rows survive, so only the row count varies. The nominal width of 1\nis a floor `RichText` needs rather than a clamp: its fold walks a cursor\nforward by `maxWidth`, so a zero-width canvas spins ~134M iterations and\nabout a gigabyte before `push` hits the array-length limit — measured,\nnot inferred. Fixing that loop would delete this floor, but what fold\nshould emit into a zero-column canvas is a decision for every RichText\ncaller and belongs with the width sweep in rich-width-3cf.3.\n\nThe test asserts the contract where it is observable: an accessory thunk\nreading a counter its content renderable increments, at every width from\n1 up. It fails against the previous commit at width 1.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "f5ff142a066a6b674d33a1c2cf4baddff0ab5ad6",
