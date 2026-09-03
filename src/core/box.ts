@@ -78,7 +78,7 @@ export class Box {
   /**
    * Renders the top border row for given column widths.
    */
-  getTop(widths: number[], style?: Style, edge = true): Segment[] {
+  getTop(widths: readonly number[], style?: Style, edge = true): Segment[] {
     const segments: Segment[] = [];
     if (edge) segments.push(new Segment(this.topLeft, style));
     for (let i = 0; i < widths.length; i++) {
@@ -94,7 +94,7 @@ export class Box {
    * Renders a separator row.
    */
   getRow(
-    widths: number[],
+    widths: readonly number[],
     level: RowLevel,
     style?: Style,
     edge = true,
@@ -114,7 +114,7 @@ export class Box {
   /**
    * Renders the bottom border row.
    */
-  getBottom(widths: number[], style?: Style, edge = true): Segment[] {
+  getBottom(widths: readonly number[], style?: Style, edge = true): Segment[] {
     const segments: Segment[] = [];
     if (edge) segments.push(new Segment(this.bottomLeft, style));
     for (let i = 0; i < widths.length; i++) {
