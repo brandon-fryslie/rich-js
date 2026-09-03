@@ -32,35 +32,58 @@ export interface ReachedModule {
 }
 
 /**
- * Every module specifier on an edge that survives to runtime.
+ * One module this file names, and whether the naming survives to runtime.
  *
- * [LAW:types-are-the-program] "Survives to runtime" is the whole rule, and
- * it is why `import type` / `export type` are skipped: an erased edge loads
- * no module and can break no browser. The set is deliberately a superset of
- * the true runtime graph — an untyped `import { T }` used only as a type is
- * elided by the emitter but counted here — because a rule that guards an
- * invariant must err toward reporting, never toward missing.
+ * [LAW:dataflow-not-control-flow] Erasure is a property *of the edge*, not a
+ * mode of the collector, because the two rules built on this walk disagree
+ * about it and both are right. "The barrel loads in a browser" is a runtime
+ * property, so an erased edge cannot break it. "`core/` does not know about
+ * `renderables/`" is an architectural one, and `import type { Rule } from
+ * "../renderables/rule.js"` is that knowledge whether or not it emits a byte.
+ * Tagging each edge lets each rule filter for what it means; a boolean
+ * parameter here would have made one collector into two behaviours selected
+ * by a flag, and a second traversal would have made one fact into two maps.
  *
- * Dynamic `import("…")` with a literal specifier counts: it is the one
- * shape that would otherwise slip past every module-scope rule while still
- * failing a browser bundler at build time.
+ * Dynamic `import("…")` with a literal specifier is never erased: it is the
+ * one shape that would otherwise slip past every module-scope rule while
+ * still failing a browser bundler at build time.
  */
-export function runtimeModuleSpecifiers(sf: ts.SourceFile): ts.StringLiteral[] {
-  const out: ts.StringLiteral[] = [];
+export interface ModuleSpecifier {
+  readonly literal: ts.StringLiteral;
+  readonly erased: boolean;
+}
+
+/** Every module `sf` names, in source order, erased edges included. */
+export function moduleSpecifiers(sf: ts.SourceFile): ModuleSpecifier[] {
+  const out: ModuleSpecifier[] = [];
+  const push = (node: ts.Node | undefined, erased: boolean): void => {
+    if (node !== undefined && ts.isStringLiteral(node)) out.push({ literal: node, erased });
+  };
   const visit = (node: ts.Node): void => {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      survivesErasure(node)
-    ) {
-      pushLiteral(out, node.moduleSpecifier);
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+      push(node.moduleSpecifier, !survivesErasure(node));
     }
     if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-      pushLiteral(out, node.arguments[0]);
+      push(node.arguments[0], false);
     }
     ts.forEachChild(node, visit);
   };
   visit(sf);
   return out;
+}
+
+/**
+ * Every module specifier on an edge that survives to runtime.
+ *
+ * The set is deliberately a superset of the true runtime graph — an untyped
+ * `import { T }` used only as a type is elided by the emitter but counted
+ * here — because a rule that guards an invariant must err toward reporting,
+ * never toward missing.
+ */
+export function runtimeModuleSpecifiers(sf: ts.SourceFile): ts.StringLiteral[] {
+  return moduleSpecifiers(sf)
+    .filter((specifier) => !specifier.erased)
+    .map((specifier) => specifier.literal);
 }
 
 /**
@@ -93,10 +116,6 @@ function erasableElements(
   if (clause === undefined || clause.name !== undefined) return undefined;
   const named = clause.namedBindings;
   return named !== undefined && ts.isNamedImports(named) ? named.elements : undefined;
-}
-
-function pushLiteral(out: ts.StringLiteral[], node: ts.Node | undefined): void {
-  if (node !== undefined && ts.isStringLiteral(node)) out.push(node);
 }
 
 /** Parse one file with parent pointers, which every scan over it relies on. */

@@ -74,14 +74,16 @@ Build order within `src/core/`. Each tier imports only from tiers above it:
 
 Two edges leave `src/core/` and point *up* into higher subsystems. Both are deliberate, both are annotated where they sit, and they are the whole list:
 
-- `color.ts` → `themes/palette.js`, for the internal default theme. Safe because `themes/palette.ts` only `import type`s back, so there is no runtime cycle.
+- `color.ts` → `themes/palette.js`, for the internal default theme.
 - `console.ts` → `renderables/rule.js`, the orchestrator reaching down for `Rule`.
 
-Check a module's real edges rather than trusting the tiers above — and check both shapes, because a same-directory-only pattern will report a clean graph while an upward import sits three lines away:
+Both are safe for the same reason — each points up without closing a runtime cycle back to the module it left. *Why* that holds differs per edge, and it is written in exactly one place: the required `why` field on each entry of `CORE_LAYER.sanctioned` in `test/seam/layering.ts`. Read it there rather than restating it here; a per-edge argument kept in two files is one argument and one thing that will quietly disagree with it.
 
-```bash
-grep -hoE 'from "\.\.?/[a-z/]+\.js"' src/core/<mod>.ts   # same-dir AND ../
-```
+Do not check this list by hand either. `test/seam/layering.test.ts` walks every file under `src/core/`, resolves every import, and fails three ways: when an edge leaves the layer without a sanction (naming the file, the line and the specifier); when a sanction outlives the import it was granted for, so the exemption list cannot accumulate permissions nobody needs; and when a sanctioned edge starts closing a runtime cycle — which is what keeps the shared safety property above a checked fact rather than prose. The two bullets and `CORE_LAYER.sanctioned` name the same two edges; change them together.
+
+That check counts type-only imports, and the choice is deliberate: `import type { Panel } from "../renderables/panel.js"` is `core/` knowing the shape of `renderables/` whether or not it emits a byte. This is where it diverges from `test/seam/browser-safe.ts` next door, which skips erased edges because a browser cannot trip over one. Same graph, two questions, two answers.
+
+The reason it is a test and not a grep: a grep here is per-module and hand-run, it reports specifiers without judging which of them are sanctioned, and it can say nothing at all about an exemption that outlived the import it was granted for. It is a map only a human redraws. That this section's own grep was wrong once is the evidence the distinction matters — PR #66 paired the no-back-edges claim with `from "\./[a-z]+\.js"`, which matches same-directory imports only and so could not have found either edge above. Review caught that pattern before it landed; nothing else would have.
 
 A third upward edge is not a fact to append here. It is the signal to stop and reconsider the seam.
 

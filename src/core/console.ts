@@ -10,7 +10,11 @@ import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
-import { Rule } from "../renderables/rule.js";
+// [LAW:one-way-deps] exception: one of the two sanctioned upward edges out of
+// `core/`, named in CLAUDE.md and pinned by `test/seam/layering.test.ts` — the
+// orchestrator reaching down for `Rule`. `RuleOptions` rides the same edge
+// rather than being restated here; see `rule()`.
+import { Rule, type RuleOptions } from "../renderables/rule.js";
 import { segmentsToString } from "./render.js";
 import type {
   Renderable,
@@ -110,12 +114,6 @@ export interface PrintOptions {
   crop?: boolean;
   end?: string;
   sep?: string;
-}
-
-export interface RuleOptions {
-  style?: string | Style;
-  align?: "left" | "center" | "right";
-  characters?: string;
 }
 
 function resolveStyle(style: string | Style | undefined): Style {
@@ -461,13 +459,12 @@ export class Console {
     this.print(timeText, ...args);
   }
 
+  // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of
+  // it. `console.ts` used to declare its own copy and field-by-field forward
+  // into this constructor, which made a second map of one shape — identical
+  // then, free to drift the moment `Rule` grew an option.
   rule(title?: string, options?: RuleOptions): void {
-    const rule = new Rule(title, {
-      characters: options?.characters,
-      align: options?.align,
-      style: options?.style,
-    });
-    const segments = [...rule.render(this.options)];
+    const segments = [...new Rule(title, options).render(this.options)];
     this._writeSegments(segments);
   }
 
