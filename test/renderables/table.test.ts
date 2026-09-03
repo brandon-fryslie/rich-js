@@ -399,7 +399,7 @@ describe("Table stays inside the width it is given", () => {
     expect(Math.max(...wide.map(cellLen))).toBe(25);
   });
 
-  it("treats a NaN width as no declared width rather than poisoning the budget", () => {
+  it("treats a NaN declared width as zero rather than poisoning the budget", () => {
     // NaN fails every comparison, so `budget -= NaN` does not merely mis-size
     // this column — it disables the seating loop's `budget < cost` check for
     // every column after it.
