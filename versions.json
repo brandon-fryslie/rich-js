@@ -4,15 +4,22 @@
     {
       "version": "pr-74",
       "ref": "refs/pull/74/merge",
-      "sha": "16ac2e4748c826f30239cc8a8d1366d321d387e4",
-      "timestamp": "2026-09-03T07:46:40.173Z",
+      "sha": "cfe18b35b58ea5927dbba8df06c332206ec6c37f",
+      "timestamp": "2026-09-03T07:58:40.726Z",
       "commits": [
         {
-          "sha": "16ac2e4748c826f30239cc8a8d1366d321d387e4",
+          "sha": "cfe18b35b58ea5927dbba8df06c332206ec6c37f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T07:46:08Z",
-          "message": "Merge b64eb941534d61106e8b4edee8db5b74c1ec1c95 into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+          "timestamp": "2026-09-03T07:58:06Z",
+          "message": "Merge aee82a362d3862bc2164f4740723f3b268d62235 into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+        },
+        {
+          "sha": "aee82a362d3862bc2164f4740723f3b268d62235",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T01:57:56-06:00",
+          "message": "test(seam): ask erasure in both directions of a sanctioned cycle\n\n`cyclicSanctionedEdges` was named for cycles and computed reachability. It\nasked only whether the target loads its way back to the source, never\nwhether the sanctioned edge itself is a runtime edge — so a sanction spelled\n`import type` would have been reported as closing a runtime cycle even\nthough it loads no module and cannot participate in one. Both current\nentries are runtime edges forward, which is a fact about today's list rather\nthan a property of the type, so the gap was latent rather than absent.\n\nA cycle needs a runtime edge at every step. Backwards that is\n`reachableSourceModules`, which already walks runtime edges only; forwards\nit is now an explicit condition on the observed import. The information\nneeded no new plumbing — `OutboundEdge.erased` already carried it, and the\nfunction takes `(edges, layer)` like `unsanctioned` and `unexercised`, where\nit was previously the odd one out.\n\nA sanction matching no import falls out as not-cyclic, leaving the staleness\narm to report it once instead of two gates reporting one fault.\n\nPinned with a paired fixture: the same `color.ts -> panel.ts` edge, runtime\nand type-only, differing in nothing but `erased`, asserted to opposite\noutcomes. Dropping the new condition turns the type-only arm and the\nno-matching-import arm red while both original cycle arms stay green, so the\nnarrowing is additive rather than a weakening of what the gate detected.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "b64eb941534d61106e8b4edee8db5b74c1ec1c95",
