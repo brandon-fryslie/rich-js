@@ -8,6 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
 import { RichText } from "../core/text.js";
 import type { PaddingDimensions } from "./padding.js";
+import { normalizePadding } from "./padding.js";
 import type {
   Renderable,
   Measurable,
@@ -28,14 +29,6 @@ function toRenderable(content: unknown): Renderable {
   return new RichText(String(content ?? ""), { end: "" });
 }
 
-function normalizePadding(
-  padding: PaddingDimensions | undefined,
-): [number, number, number, number] {
-  if (padding === undefined) return [0, 1, 0, 1];
-  if (typeof padding === "number") return [padding, padding, padding, padding];
-  if (padding.length === 2) return [padding[0], padding[1], padding[0], padding[1]];
-  return padding;
-}
 
 // --- Column ---
 
@@ -191,7 +184,7 @@ export class Table implements Renderable, Measurable {
     this.showFooter = options?.showFooter ?? false;
     this.showLines = options?.showLines ?? false;
     this.showEdge = options?.showEdge !== false;
-    this.padding = normalizePadding(options?.padding);
+    this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
     this.style = resolveStyle(options?.style);
     this.headerStyle = resolveStyle(options?.headerStyle ?? "table.header");
     this.footerStyle = resolveStyle(options?.footerStyle ?? "table.footer");

@@ -17,16 +17,33 @@ export type PaddingDimensions =
   | [number, number]
   | [number, number, number, number];
 
-function normalizePadding(
+/**
+ * Parses the shapes a caller may write padding in — one number, a vertical/
+ * horizontal pair, or all four sides — into the four-sided form every
+ * renderable indexes by, flooring each side at zero.
+ *
+ * [LAW:parse-dont-validate] This is the one crossing between the public
+ * padding vocabulary and the internal tuple, which is why the floor lives
+ * here and nowhere downstream: past this point `" ".repeat(left)` is safe in
+ * any renderable without asking what the caller passed. A negative side used
+ * to reach the renderers, where `Panel` drew content rows wider than its own
+ * border and `Table` threw outright.
+ */
+export function normalizePadding(
   padding: PaddingDimensions,
 ): [number, number, number, number] {
-  if (typeof padding === "number") {
-    return [padding, padding, padding, padding];
-  }
-  if (padding.length === 2) {
-    return [padding[0], padding[1], padding[0], padding[1]];
-  }
-  return padding;
+  const sides: readonly [number, number, number, number] =
+    typeof padding === "number"
+      ? [padding, padding, padding, padding]
+      : padding.length === 2
+        ? [padding[0], padding[1], padding[0], padding[1]]
+        : padding;
+  return [
+    Math.max(0, sides[0]),
+    Math.max(0, sides[1]),
+    Math.max(0, sides[2]),
+    Math.max(0, sides[3]),
+  ];
 }
 
 export class Padding implements Renderable, Measurable {

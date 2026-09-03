@@ -42,6 +42,35 @@ The `Panel.fit()` alternative constructor is equivalent:
 console.print(Panel.fit("Short content"));
 ```
 
+### Narrow widths
+
+A Panel never emits a line wider than the width it is given, however narrow that
+gets — a one-column terminal, or a `Layout` split that squeezes the panel below
+its natural size. It gives up its cells in a fixed order: the two frame columns
+first, then a cell of content, then the padding, and only then does content grow
+again. So content stays visible down to width 3, and the padding is what
+disappears on the way there:
+
+```
+width 3   width 4    width 5     width 6
+╭─╮       ╭──╮       ╭───╮       ╭────╮
+│h│       │ h│       │ h │       │ he │
+│e│       │ e│       │ e │       │ ll │
+│l│       │ l│       │ l │       │ o  │
+│l│       │ l│       │ l │       ╰────╯
+│o│       │ o│       │ o │
+╰─╯       ╰──╯       ╰───╯
+```
+
+Width 3 is the narrowest panel that can show anything: at width 2 the two frame
+columns are the whole panel, and at width 1 only the left one fits, so the panel
+renders as a bare frame with no content rows.
+
+Content that renders wider than the space it was given is cropped to the frame
+rather than allowed to burst it — a `Table` at its natural width inside a
+too-narrow panel loses its right-hand columns instead of soft-wrapping and
+destroying the frame.
+
 ## Title and subtitle
 
 Add text to the top or bottom border:
