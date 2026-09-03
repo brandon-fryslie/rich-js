@@ -154,15 +154,29 @@ export function unexercised(edges: readonly OutboundEdge[], layer: Layer): Sanct
  * back must stay type-only" rule would be wrong about the second edge and
  * right about the first only by coincidence.
  *
- * Erased edges are excluded because `reachableSourceModules` walks runtime
- * edges: a type-only import back cannot deadlock module initialisation, which
- * is the harm a cycle actually does.
+ * Erasure is asked in both directions, because a cycle needs a runtime edge
+ * at every step. Backwards it is `reachableSourceModules`, which walks
+ * runtime edges only. Forwards it is the `some` below: a sanction spelled
+ * `import type` loads nothing, so the source never pulls the target in and
+ * what the target reaches cannot matter. Checking only the return path would
+ * report such an edge as cyclic and block a legitimate seam — a false red
+ * from the one gate whose whole claim is that its exemptions are verified.
+ *
+ * A sanction matching no import at all falls out here as not-cyclic, which is
+ * right: `unexercised` is the arm that reports it, and reporting it twice
+ * would say two things are wrong when one is.
  */
-export function cyclicSanctionedEdges(layer: Layer): SanctionedEdge[] {
-  return layer.sanctioned.filter((edge) => {
-    const reached = reachableSourceModules([path.join(REPO_ROOT, edge.to)]);
-    return reached.some((module) => repoRelative(module.file) === edge.from);
-  });
+export function cyclicSanctionedEdges(
+  edges: readonly OutboundEdge[],
+  layer: Layer,
+): SanctionedEdge[] {
+  return layer.sanctioned.filter(
+    (edge) =>
+      edges.some((e) => e.file === edge.from && e.target === edge.to && !e.erased) &&
+      reachableSourceModules([path.join(REPO_ROOT, edge.to)]).some(
+        (module) => repoRelative(module.file) === edge.from,
+      ),
+  );
 }
 
 /** A failure line naming the import, where it lands, and how it is spelled. */

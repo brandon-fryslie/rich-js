@@ -86,7 +86,9 @@ describe("src/core does not depend on anything above it", () => {
   });
 
   it("sanctions no edge that closes a runtime cycle", () => {
-    const cycles = cyclicSanctionedEdges(CORE_LAYER).map((s) => `  ${s.from} -> ${s.to}`);
+    const cycles = cyclicSanctionedEdges(CORE_EDGES, CORE_LAYER).map(
+      (s) => `  ${s.from} -> ${s.to}`,
+    );
     expect(
       cycles,
       `A sanctioned upward edge now loads its way back to the module it left ` +
@@ -243,8 +245,18 @@ describe("unsanctioned", () => {
 });
 
 describe("cyclicSanctionedEdges", () => {
+  /** The `color.ts -> panel.ts` sanction, and an observed import to match it. */
+  const COLOR_TO_PANEL: Layer = {
+    dir: "src/core",
+    sanctioned: [
+      { from: "src/core/color.ts", to: "src/renderables/panel.ts", why: "invented for this test" },
+    ],
+  };
+  const asColorImport = (source: string) =>
+    scan(source).map((edge) => ({ ...edge, file: "src/core/color.ts" }));
+
   it("clears the sanctioned edges, whose targets do not load back to them", () => {
-    expect(cyclicSanctionedEdges(CORE_LAYER)).toEqual([]);
+    expect(cyclicSanctionedEdges(CORE_EDGES, CORE_LAYER)).toEqual([]);
   });
 
   it("reports an edge whose target loads its way back at runtime", () => {
@@ -258,19 +270,35 @@ describe("cyclicSanctionedEdges", () => {
         { from: "src/core/cells.ts", to: "src/renderables/rule.ts", why: "invented for this test" },
       ],
     };
-    expect(cyclicSanctionedEdges(cyclic).map((s) => s.from)).toEqual(["src/core/cells.ts"]);
+    const edges = scan(`import { Rule } from "../renderables/rule.js";`).map((edge) => ({
+      ...edge,
+      file: "src/core/cells.ts",
+    }));
+    expect(cyclicSanctionedEdges(edges, cyclic).map((s) => s.from)).toEqual(["src/core/cells.ts"]);
   });
 
   it("reports a cycle that closes through an intermediate module", () => {
     // `panel.ts` never names `color.ts`; it reaches it through `core/style.ts`.
     // A walk reduced to one hop would call this edge clean.
-    const transitive: Layer = {
-      dir: "src/core",
-      sanctioned: [
-        { from: "src/core/color.ts", to: "src/renderables/panel.ts", why: "invented for this test" },
-      ],
-    };
-    expect(cyclicSanctionedEdges(transitive)).toHaveLength(1);
+    const edges = asColorImport(`import { Panel } from "../renderables/panel.js";`);
+    expect(cyclicSanctionedEdges(edges, COLOR_TO_PANEL)).toHaveLength(1);
+  });
+
+  it("clears that same edge when the sanction is type-only", () => {
+    // The paired arm. Identical modules, identical return path, differing in
+    // nothing but `erased` — and the answer inverts, because an edge that
+    // emits no import never loads the target, so what the target reaches
+    // cannot close a cycle through it. Checking only the return path would
+    // fail a legitimate type-only seam.
+    const edges = asColorImport(`import type { Panel } from "../renderables/panel.js";`);
+    expect(edges.map((e) => e.erased)).toEqual([true]);
+    expect(cyclicSanctionedEdges(edges, COLOR_TO_PANEL)).toEqual([]);
+  });
+
+  it("leaves a sanction with no matching import to the staleness arm", () => {
+    // Reporting it here as well would say two things are wrong when one is.
+    expect(cyclicSanctionedEdges([], COLOR_TO_PANEL)).toEqual([]);
+    expect(unexercised([], COLOR_TO_PANEL)).toHaveLength(1);
   });
 });
 
