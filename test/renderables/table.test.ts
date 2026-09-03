@@ -499,4 +499,21 @@ describe("Table stays inside the width it is given", () => {
       collectLines(build(1), { maxWidth: 20 }),
     );
   });
+
+  it("buys no more cells for a fractional width than for its floor", () => {
+    // A fractional budget survives into `distribute`'s largest-remainder pass,
+    // which grants a whole cell against a fractional residue — so a request of
+    // 10.5 bought 11.
+    const build = (): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addRow("abcdefgh");
+      return t;
+    };
+    for (const width of [3.5, 7.25, 9.5, 10.5, 20.5]) {
+      expect(collectLines(build(), { maxWidth: width }), `width ${width}`).toEqual(
+        collectLines(build(), { maxWidth: Math.floor(width) }),
+      );
+    }
+  });
 });

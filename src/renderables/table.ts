@@ -60,9 +60,13 @@ const UNBOUNDED = Number.MAX_SAFE_INTEGER;
  * The comparison is the point, not `Math.max(0, n)`: NaN fails every
  * comparison and so floors here, where `Math.max` would return it and
  * `budget -= NaN` would switch off every bounds check that follows. `Infinity`
- * survives, which an unbounded width needs.
+ * survives both halves, which an unbounded width needs.
+ *
+ * Integral because a cell is not divisible: a fractional budget reaches
+ * `distribute`'s largest-remainder pass, which grants a whole cell against a
+ * fractional residue and so hands out more width than it was given.
  */
-const cells = (n: number): number => (n > 0 ? n : 0);
+const cells = (n: number): number => (n > 0 ? Math.floor(n) : 0);
 
 /**
  * A column's `want` or `weight`. Finite, because `UNBOUNDED` is this model's
