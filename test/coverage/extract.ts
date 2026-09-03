@@ -548,6 +548,22 @@ export function isUnderSrc(absPath: string): boolean {
 }
 
 /**
+ * An absolute path in the one repo-relative spelling the suite compares on.
+ *
+ * [LAW:single-enforcer] The single crossing where an OS path becomes a
+ * canonical one, because the alternative is normalizing at each comparison
+ * and forgetting the next one. `path.relative` returns native separators, so
+ * on Windows `src\core\console.ts` never equals the `"src/core/console.ts"`
+ * a rule was written against — and equality failing silently is the worst
+ * available failure: the layering gate would report its two sanctioned edges
+ * as both unsanctioned and stale, accusing untouched code of precisely what
+ * the gate exists to catch.
+ */
+export function repoRelative(absPath: string): string {
+  return path.relative(REPO_ROOT, absPath).split(path.sep).join("/");
+}
+
+/**
  * Whether `target` lives strictly inside `root`.
  *
  * [LAW:one-source-of-truth] The one home for this comparison, because it is

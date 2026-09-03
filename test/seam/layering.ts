@@ -21,7 +21,7 @@
 
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT, isPathInside } from "../coverage/extract.js";
+import { REPO_ROOT, isPathInside, repoRelative } from "../coverage/extract.js";
 import { moduleSpecifiers, reachableSourceModules, resolveEdge } from "./graph.js";
 
 /**
@@ -96,12 +96,12 @@ export function outboundEdges(
   layerDir: string,
   options: ts.CompilerOptions,
 ): OutboundEdge[] {
-  const file = path.relative(REPO_ROOT, sf.fileName);
+  const file = repoRelative(sf.fileName);
   const out: OutboundEdge[] = [];
   for (const { literal, erased } of moduleSpecifiers(sf)) {
     const resolved = resolveEdge(literal.text, sf.fileName, options);
     if (resolved === null) continue;
-    const target = path.relative(REPO_ROOT, resolved);
+    const target = repoRelative(resolved);
     if (isPathInside(layerDir, target)) continue;
     out.push({
       file,
@@ -160,7 +160,7 @@ export function unexercised(edges: readonly OutboundEdge[], layer: Layer): Sanct
 export function cyclicSanctionedEdges(layer: Layer): SanctionedEdge[] {
   return layer.sanctioned.filter((edge) => {
     const reached = reachableSourceModules([path.join(REPO_ROOT, edge.to)]);
-    return reached.some((module) => path.relative(REPO_ROOT, module.file) === edge.from);
+    return reached.some((module) => repoRelative(module.file) === edge.from);
   });
 }
 

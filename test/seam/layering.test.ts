@@ -18,7 +18,12 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../coverage/extract.js";
+import {
+  REPO_ROOT,
+  listTypeScriptFiles,
+  loadCompilerOptions,
+  repoRelative,
+} from "../coverage/extract.js";
 import { parseSourceFile } from "./graph.js";
 import {
   CORE_LAYER,
@@ -46,7 +51,7 @@ describe("the core layer sweep", () => {
   it("reaches every file under src/core", () => {
     // A directory scan that finds nothing passes every rule built on it. This
     // is the assertion that says the gates below looked at something.
-    const relative = CORE_FILES.map((f) => path.relative(REPO_ROOT, f));
+    const relative = CORE_FILES.map(repoRelative);
     expect(relative).toContain("src/core/console.ts");
     expect(relative).toContain("src/core/color.ts");
     expect(relative).toContain("src/core/segment.ts");
@@ -116,6 +121,22 @@ function scan(source: string, layer: Layer = CORE_LAYER) {
   );
   return outboundEdges(sf, layer.dir, OPTIONS);
 }
+
+describe("repoRelative", () => {
+  it("spells a path the way the sanctioned-edge literals are written", () => {
+    // Every rule below compares a computed path against a forward-slash
+    // literal, so the two must agree on separators or the gate reports both
+    // real edges as unsanctioned and stale while nothing has changed.
+    //
+    // Be honest about what this pins: on a POSIX host `path.sep` is already
+    // `/` and the assertion holds with or without the canonicalization, so it
+    // is a live gate only on Windows — the platform whose failure it exists to
+    // catch. Green here is not evidence the canonicalization survived.
+    expect(repoRelative(path.join(REPO_ROOT, "src", "core", "console.ts"))).toBe(
+      "src/core/console.ts",
+    );
+  });
+});
 
 describe("outboundEdges", () => {
   it("reports an import that leaves the layer, with where it lands", () => {
@@ -241,10 +262,8 @@ describe("cyclicSanctionedEdges", () => {
   });
 
   it("reports a cycle that closes through an intermediate module", () => {
-    // `rule.ts` does not import `console.ts`; it reaches `core/style.ts`, which
-    // is what `console.ts` would be found through were the graph shaped that
-    // way. Pinning the transitive arm separately keeps a future rewrite from
-    // silently reducing the walk to a one-hop check.
+    // `panel.ts` never names `color.ts`; it reaches it through `core/style.ts`.
+    // A walk reduced to one hop would call this edge clean.
     const transitive: Layer = {
       dir: "src/core",
       sanctioned: [
