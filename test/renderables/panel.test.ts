@@ -335,6 +335,32 @@ describe("Panel", () => {
       expect(lines.join("")).toContain("h");
     });
 
+    // A `bottomRightAccessory` thunk reads state that the wrapped renderable
+    // populates during its own render, so the content has to render every
+    // frame — including the widths where the frame leaves nowhere to show it.
+    it("renders content every frame, so a stateful accessory sees this one", () => {
+      let frames = 0;
+      const counting: Renderable = {
+        *render(_options: RenderOptions) {
+          frames += 1;
+          yield new Segment("content");
+          yield Segment.line();
+        },
+      };
+      const panel = new Panel(counting, {
+        bottomRightAccessory: () => `#${frames}`,
+      });
+
+      for (let width = 1; width <= 6; width++) {
+        const before = frames;
+        collectLines(panel, { maxWidth: width });
+        expect(frames, `content did not render at maxWidth ${width}`).toBe(before + 1);
+      }
+
+      const lines = collectLines(panel, { maxWidth: 30 });
+      expect(lines[lines.length - 1]).toContain(`#${frames}`);
+    });
+
     it("crops content that renders wider than the frame", () => {
       const lines = collectLines(new Panel(oversizedContent), { maxWidth: 10 });
       expect(lines[1]).toBe("│ xxxxxx │");

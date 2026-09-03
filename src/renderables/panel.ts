@@ -205,17 +205,24 @@ export class Panel implements Renderable, Measurable {
 
   /**
    * The wrapped renderable's lines, laid out on a canvas `contentWidth` cells
-   * wide. A zero-cell canvas holds no lines — below width 3 a panel is all
-   * frame — and asking for them would mean asking a renderable to divide its
-   * text into zero-wide columns, which `RichText` answers by throwing.
+   * wide. Below width 3 a panel is all frame and the canvas holds no lines —
+   * but the render still happens, because a `bottomRightAccessory` thunk
+   * fires at every width and reads state this render populates.
+   *
+   * The nominal width of 1 is the floor `RichText` needs: its fold walks a
+   * cursor forward by `maxWidth`, so at 0 the cursor never advances and the
+   * fold spins until it exhausts the array-length limit.
    */
   private _renderContent(
     options: RenderOptions,
     contentWidth: number,
   ): Segment[][] {
-    if (contentWidth === 0) return [];
-    const innerOptions: RenderOptions = { ...options, maxWidth: contentWidth };
-    return Segment.splitLines([...this.renderable.render(innerOptions)]);
+    const innerOptions: RenderOptions = {
+      ...options,
+      maxWidth: Math.max(1, contentWidth),
+    };
+    const lines = Segment.splitLines([...this.renderable.render(innerOptions)]);
+    return contentWidth === 0 ? [] : lines;
   }
 
   /**
