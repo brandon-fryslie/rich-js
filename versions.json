@@ -4,15 +4,36 @@
     {
       "version": "pr-77",
       "ref": "refs/pull/77/merge",
-      "sha": "0762f3ad4b079b773edbd615fdd9a094d9064b29",
-      "timestamp": "2026-09-03T11:46:28.313Z",
+      "sha": "791100bb433f190f628d3863ce4c31f846bdf2f3",
+      "timestamp": "2026-09-03T12:14:24.363Z",
       "commits": [
         {
-          "sha": "0762f3ad4b079b773edbd615fdd9a094d9064b29",
+          "sha": "791100bb433f190f628d3863ce4c31f846bdf2f3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T11:45:53Z",
-          "message": "Merge 0d11208ff89c0a7341093a5e26f68c79fc63aaf0 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+          "timestamp": "2026-09-03T12:13:58Z",
+          "message": "Merge 1f8ae46e004f9c8b9498a8961ecb450ce383cc47 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+        },
+        {
+          "sha": "1f8ae46e004f9c8b9498a8961ecb450ce383cc47",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:13:39-06:00",
+          "message": "test(table): name the NaN-width test after the path it takes\n\n`NaN !== undefined`, so a NaN column `width` takes the declared-width branch and\nbecomes a declared width of zero — the same demand an explicit `width: 0`\nproduces. The title claimed it was treated as no declared width, which would\nmean falling through to natural sizing and rendering the cell's own content; the\nassertion it sits above says otherwise.\n\nThe code and `eef1a2f`'s message were already accurate. Only the name\noverclaimed, and a name is read as a description of the behaviour whether or not\nit is true of it.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "df52ba944ac2cc9b39063cd52ac5319e3386f548",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:13:33-06:00",
+          "message": "fix(table): keep an infinite bound out of the demand model\n\n`cells()` lets `Infinity` through, which is right where it normalizes the\nrequested outer width — an unbounded width is deliberate and tested. Reusing it\nto build column demands let that value into a model with no room for it:\n`UNBOUNDED` is this model's own infinity, and a literal `Infinity` reaching\n`distribute` makes a column's weighted share `Infinity / Infinity`, which is\nNaN. The NaN then skews every other elastic column, so `minWidth: Infinity`\nrendered a 7-cell border above a 9-cell row — the frame broken, not merely one\ncolumn mis-sized. `ratio: Infinity` did the same, since both `flexible` and the\nelastic branch ask only for `ratio > 0`.\n\n`demandCells` caps at `UNBOUNDED` so a `ColumnDemand` is finite by\nconstruction, and it is applied in all three branches that build one. Mapping\n`Infinity` onto `UNBOUNDED` says the intended thing in the vocabulary the model\nalready has rather than adding a second one.\n\n`distribute`'s `open` filter is deliberately untouched. `weight > 0` is what\nhas always made a NaN weight harmless, and adding `Number.isFinite` beside it\nwould guard against a state the constructor no longer produces.\n\n`_naturalWidth` now returns its bounded value unfloored: the floor moved to the\ndemand it feeds, and keeping both would be two enforcers for one rule.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "dd37e00afa2a8401193dc33e44e9125560939b02",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:13:22-06:00",
+          "message": "fix(padding): floor a non-finite side where padding is parsed\n\n`normalizePadding` floored each side with `Math.max(0, n)`, which returns NaN\nunchanged, so its docblock's guarantee — that past this crossing\n`\" \".repeat(left)` is safe in any renderable without asking what the caller\npassed — held for negative sides and not for NaN. `new Table({ padding: NaN })`\ncollapsed a two-column table to `+++`: `takePerColumn` returned NaN, and\n`budget -= per * seated` then made every later bounds check false, since\ncomparisons against NaN always are.\n\nThe floor belongs here rather than at the callsite that found it. Running\n`layoutTable`'s destructured sides through the table's own normalizer would\nhave left `Padding` and `Panel` taking the same NaN through the same door, and\nput a second floor for one invariant a layer below the one that already owns it.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "0d11208ff89c0a7341093a5e26f68c79fc63aaf0",
