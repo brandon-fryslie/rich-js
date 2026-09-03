@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-78",
+      "ref": "refs/pull/78/merge",
+      "sha": "f6f11edaf8bc41fca2dce2b02897ea3f98933020",
+      "timestamp": "2026-09-03T12:59:09.001Z",
+      "commits": [
+        {
+          "sha": "f6f11edaf8bc41fca2dce2b02897ea3f98933020",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:58:38-06:00",
+          "message": "Merge 71972a0a43cba0deed5d913890246977e722fe8f into b7cce63896fcaf7a7349499223c524fbff22b103\n"
+        },
+        {
+          "sha": "71972a0a43cba0deed5d913890246977e722fe8f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:57:59-06:00",
+          "message": "docs(protocol): state what a width means, once (rich-width-3cf.3)\n\n`docs/protocol.md` described `RenderOptions.maxWidth` only as \"width and other\ncontext\", so an author of a custom renderable had nowhere to learn what the\nnumber means at the bottom of its range — which is the regime the whole\n`rich-width-3cf` epic lives in.\n\nIt now says: a count of cells, every emitted line fits inside it, a negative\nwidth and NaN both mean zero, a fractional width is floored, zero is a real\nrequest, and `measure` carries the same ceiling.\n\nThe `MyWidget` example is fixed in the same pass because it taught the defect:\n`return new Measurement(10, 40)` ignores `options.maxWidth` entirely and\nreports a minimum above its own maximum as soon as the offer drops below 10.\nThat is exactly the bug `Columns` and `Layout` had, and a reader copying the\nexample inherited it.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "6ff3027a4f1ba3f5f9494573fe38f1014d0c2949",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:54:43-06:00",
+          "message": "test(width): sweep every renderable across the widths nobody tests (rich-width-3cf.3)\n\nThe standing guard for the epic: one sweep, applied to a table of fifteen\nconfigurations across Panel, Table, Tree, Columns and Layout, asserting that\nnone of them emits a line wider than the width it was given at any width from\n0 to 20 — and that a fractional or non-numeric width renders exactly as its\nfloor.\n\nThe sweep found that three of the five renderables did not hold, so this\ncommit also makes them hold.\n\nWHAT THE ASSERTIONS ARE FOR. Each is here because a bound alone was measured\nto miss a real bug. A renderable that emits nothing satisfies \"no line exceeds\nthe width\" — `RichText` with the default `ellipsis` overflow emitted zero\nlines at maxWidth 1, which is why a hard-squeezed table looked blank rather\nthan truncated. A broken frame's content rows are narrower than its border,\nnot wider — padding 1.5 on a Panel gave [13, 11, 13]. And a width that is not\nan integer corrupts output without exceeding anything. So: at least one line,\nrows that agree for renderables that draw a frame, a measured range a parent\ncan divide, and equality against a reference render.\n\nTHE ONE SENTENCE THE CODE NEVER SAID. Every failure was the same fact stated\nnowhere: maxWidth is a count of cells, so a non-negative integer. `table.ts`\nsaid it in `cells()`, `padding.ts` said it again in `side()`, `panel.ts`\napproximated it with `Math.max(1, ...)`, and `text.ts`, `tree.ts`,\n`columns.ts` and `layout.ts` never said it at all — so they disagreed. At NaN,\nTable collapsed to one cell of garbage, Columns and Layout threw `Invalid\narray length`, and RichText ignored the request and emitted its full natural\nwidth.\n\nNow `cellCount` in `core/cells.ts` is the only place that rule lives, and\n`withCellWidth` in `core/protocol.ts` is the checkpoint every renderable\ncrosses. It returns options rather than a number on purpose: parsing into a\nlocal leaves the caller's raw value in `options` for whatever the renderable\nforwards it to. Columns was fixed that way first and still threw, because it\nhanded the unparsed original to `Measurement.get`.\n\nThe two RichText questions the ticket asked to be decided once:\n\n- fold into a zero-cell canvas emits the bare line terminator, the same as\n  crop and ellipsis, instead of stepping by zero forever (~2^27 pushes and a\n  gigabyte before a RangeError).\n- ellipsis at maxWidth 1 emits the marker. The `maxWidth > 1` guard that stood\n  there was a guard with no else over arithmetic that was already correct at\n  1; deleting it is the whole fix.\n\nTree had the epic's defect verbatim: it emitted its guides and then handed the\nlabel `options` unchanged, so the label was told it had the whole outer width\nwhile the guides had already spent four cells of it. Both call sites now route\nthrough one `_renderRow` that divides the width once. Layout applied each\nchild's `minimumSize` independently of the budget, so two children asked to\nfit one cell merged into a two-cell row.\n\n`maxWidth: Infinity` is deliberately outside the sweep and still throws in\nPanel, Columns and Layout. The epic's invariant is trivially true there, and\nthe crash is an expansion defect rather than a squeeze; deciding what every\nrenderable renders at an unbounded width is worth doing on purpose, so it is\nfiled rather than smuggled in behind a clamp.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b7cce63896fcaf7a7349499223c524fbff22b103",
