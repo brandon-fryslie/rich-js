@@ -4,15 +4,22 @@
     {
       "version": "pr-77",
       "ref": "refs/pull/77/merge",
-      "sha": "a9573bdc76d80a2b979c37c67d2666b73c4f4a55",
-      "timestamp": "2026-09-03T10:26:59.729Z",
+      "sha": "df595135702b1251a072f47caa7e275ea83da9cb",
+      "timestamp": "2026-09-03T10:51:10.025Z",
       "commits": [
         {
-          "sha": "a9573bdc76d80a2b979c37c67d2666b73c4f4a55",
+          "sha": "df595135702b1251a072f47caa7e275ea83da9cb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T04:26:25-06:00",
-          "message": "Merge 77498e7445e4ce503c72bd48bc1d374121822ce4 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+          "timestamp": "2026-09-03T10:50:38Z",
+          "message": "Merge eb9293d07ee20c8a280d3396981bdcd8a6c8e5b9 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+        },
+        {
+          "sha": "eb9293d07ee20c8a280d3396981bdcd8a6c8e5b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T04:50:28-06:00",
+          "message": "fix(table): bound the width apportionment by column count, not by the width\n\n`distribute` handed out cells one at a time, so its iteration count was the\nrequested width. A `ratio` column never reaches a cap, which left the loop\ndraining the budget alone — and `Infinity - 1 === Infinity`, so a table with a\nratio column and a `maxWidth` of `Infinity` looped forever. Both\n`TableOptions.width` and `RenderOptions.maxWidth` are plain numbers with nothing\nstopping that value, and a silent hang is worse than the `RangeError` the\narithmetic this replaced would have produced.\n\nThe apportionment is now closed-form: a column whose proportional share would\novershoot its cap is granted its want and dropped, its unused cells are reopened\nto the rest, and that repeats until everyone still open fits within their share.\nOne largest-remainder pass then places the cells the shares left as fractions,\nso the widths still sum exactly. Each round caps at least one column or is the\nlast, so the work is bounded by the number of columns.\n\nRejecting non-finite widths at the boundary would have been the smaller change\nand the wrong one: an ordinary table already renders correctly at\n`maxWidth: Infinity` — every bounded column caps at its natural width and there\nis nothing left to apportion — so a guard would have traded a hang for a\nregression. There is a test pinning that case now.\n\nThe docblock's claim that one-at-a-time allocation left \"no rounding residue for\na second pass to sweep up\" stopped being true with this change, so it is gone\nrather than left standing next to the second pass.\n\ndocs: the narrow-widths ladder labelled a column \"width 11\" while showing the\nwidth-10 render. A padding level is bought for every column at once or not at\nall, so 10, 11 and 12 are one plateau and no width-11 rendering of that example\nexists. The ladder now uses widths whose render lands exactly on the request, so\ncounting characters confirms each label, and says what happens in between.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "77498e7445e4ce503c72bd48bc1d374121822ce4",
