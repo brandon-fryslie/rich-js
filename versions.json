@@ -4,15 +4,22 @@
     {
       "version": "pr-76",
       "ref": "refs/pull/76/merge",
-      "sha": "1530b80486d750b74523ebb03dd55e1b9ab42c09",
-      "timestamp": "2026-09-03T09:07:03.171Z",
+      "sha": "83b58a90a0edef6c8f707d82e5c576c8da974545",
+      "timestamp": "2026-09-03T09:43:34.924Z",
       "commits": [
         {
-          "sha": "1530b80486d750b74523ebb03dd55e1b9ab42c09",
+          "sha": "83b58a90a0edef6c8f707d82e5c576c8da974545",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T09:06:28Z",
-          "message": "Merge 8770412ff18c3cae31968029f047fb21e0b193a4 into e8401c782fc99934e8f7daa4f79fad3144dca7f3\n"
+          "timestamp": "2026-09-03T09:43:07Z",
+          "message": "Merge 68b74456f72379cbc24e4a08a82e59e1c52a1a5a into e8401c782fc99934e8f7daa4f79fad3144dca7f3\n"
+        },
+        {
+          "sha": "68b74456f72379cbc24e4a08a82e59e1c52a1a5a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T03:42:58-06:00",
+          "message": "fix(padding): floor padding at zero where it is parsed, once\n\nNegative padding reached the renderers, which handled it three ways:\n`Panel` on master drew a 21-cell content row inside a 20-cell border,\n`Table` drew a 6-cell row inside a 5-cell border or threw `RangeError:\nInvalid count value` depending on how wide the column was, and the\n`layoutPanel` geometry introduced by this branch turned the panel case\nfrom silent corruption into a throw. All three are the same defect: the\npublic `PaddingDimensions` vocabulary admits a value no renderer can\ndraw.\n\n`normalizePadding` is the crossing between that vocabulary and the\nfour-sided tuple every renderable indexes by, so the floor goes there\nand `\" \".repeat(left)` downstream needs no guard in any renderable.\n\nIt also existed three times — `padding.ts`, `panel.ts` and `table.ts`,\nthe latter two byte-identical — so clamping one copy would have left the\nbug in the others. There is now one exported parser beside the type it\nparses, and the per-renderable defaults stay at their callsites, since\nthose genuinely differ.\n\nBoth tests were checked against the unfixed code. The Table one earns\nits keep twice: written first as `not.toThrow`, it passed on master's\ncorrupt output, because that input draws a ragged table rather than\nthrowing. Asserting the table is a rectangle catches both shapes.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "8770412ff18c3cae31968029f047fb21e0b193a4",
