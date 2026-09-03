@@ -33,7 +33,8 @@
  * *expansion* defect (`" ".repeat(Infinity)`), a different question from the
  * squeeze this epic fixed. Answering it means deciding what every renderable
  * renders at an unbounded width, which is a decision worth making once and on
- * purpose. Filed as its own ticket rather than smuggled in behind a clamp.
+ * purpose. Filed as `rich-width-3cf.5` rather than smuggled in behind a clamp;
+ * adding `Infinity` to the domain below is that ticket's acceptance criterion.
  */
 import { describe, it, expect } from "vitest";
 import { Panel } from "../../src/renderables/panel.js";

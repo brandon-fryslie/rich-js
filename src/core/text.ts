@@ -976,7 +976,7 @@ export class RichText implements Renderable, Measurable {
         // the honest rendering of "all of this was cut"; the `maxWidth > 1`
         // guard that used to stand here emitted no line at all, so every table
         // column squeezed to a single cell rendered blank rather than
-        // truncated \u2014 `ellipsis` being the default column overflow, a
+        // truncated — `ellipsis` being the default column overflow, a
         // hard-squeezed table looked like an empty frame.
         yield* Segment.adjustLineLength(line, Math.max(0, maxWidth - 1), undefined, false);
         // No cell to put it in at maxWidth 0, where every mode emits the bare
