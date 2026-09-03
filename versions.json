@@ -4,15 +4,29 @@
     {
       "version": "pr-77",
       "ref": "refs/pull/77/merge",
-      "sha": "791100bb433f190f628d3863ce4c31f846bdf2f3",
-      "timestamp": "2026-09-03T12:14:24.363Z",
+      "sha": "3bfa44849734150f5ccc6c60ea9258503074f38b",
+      "timestamp": "2026-09-03T12:36:08.670Z",
       "commits": [
         {
-          "sha": "791100bb433f190f628d3863ce4c31f846bdf2f3",
+          "sha": "3bfa44849734150f5ccc6c60ea9258503074f38b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T12:13:58Z",
-          "message": "Merge 1f8ae46e004f9c8b9498a8961ecb450ce383cc47 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+          "timestamp": "2026-09-03T12:35:26Z",
+          "message": "Merge f7b0425c44a21d6fb52252312bb298639f100a3f into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+        },
+        {
+          "sha": "f7b0425c44a21d6fb52252312bb298639f100a3f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:35:03-06:00",
+          "message": "fix(table): buy whole cells only, whatever width was requested\n\n`cells()` enforced the non-negative half of a cell count's domain and not the\nintegral half, so a fractional `outerWidth` — `new Table({ width: 10.5 })`, or a\n`maxWidth` computed by a caller — left `budget` fractional for the whole layout.\nIt reached `distribute`'s largest-remainder pass, which tops columns up a whole\ncell at a time against a `residue` that was itself fractional, so a residue of\n0.5 still bought a full cell. A table asked for 10.5 emitted 11, and 9.5, 7.25\nand 3.5 all overshot the same way — the one invariant this branch exists to\nhold.\n\nFlooring at the parse point rather than at the top of `distribute` makes that\nfunction's integer assumption true instead of defended, and it is the only place\nthat catches the same value on its way to the padding and the box rows;\n`distribute` is where the overshoot surfaced, not where it entered.\n\n`Infinity` survives `Math.floor`, so the unbounded-width path is unchanged.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "07acb103fee0c09644ef1273a1149b5992b99324",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T06:34:46-06:00",
+          "message": "fix(padding): truncate a fractional side where padding is parsed\n\nA cell is not divisible, and `normalizePadding` enforced only the non-negative\nhalf of that domain. A fractional side reached `\" \".repeat`, which truncates,\nwhile the box rows around it are measured arithmetically — so `padding: 1.5`\ndrew 13-cell borders around an 11-cell content row and the frame did not close.\n\nFlooring here rather than at either callsite keeps the guarantee the docblock\nalready makes: past this crossing a side is a count of cells, so no renderer\ndownstream has to ask what the caller wrote. `Padding` and `Panel` take the\nsame crossing and had the same break.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "1f8ae46e004f9c8b9498a8961ecb450ce383cc47",
