@@ -4,15 +4,22 @@
     {
       "version": "pr-74",
       "ref": "refs/pull/74/merge",
-      "sha": "dbec048087a2a2a7428197d94dd1d103fabee571",
-      "timestamp": "2026-09-03T07:37:16.255Z",
+      "sha": "16ac2e4748c826f30239cc8a8d1366d321d387e4",
+      "timestamp": "2026-09-03T07:46:40.173Z",
       "commits": [
         {
-          "sha": "dbec048087a2a2a7428197d94dd1d103fabee571",
+          "sha": "16ac2e4748c826f30239cc8a8d1366d321d387e4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T07:36:43Z",
-          "message": "Merge 0a4e0555f76e3b8b6f8678469c58df22f7519bc0 into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+          "timestamp": "2026-09-03T07:46:08Z",
+          "message": "Merge b64eb941534d61106e8b4edee8db5b74c1ec1c95 into ead69311cf77dc608ebe9d62df54403dcc81209f\n"
+        },
+        {
+          "sha": "b64eb941534d61106e8b4edee8db5b74c1ec1c95",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T01:45:58-06:00",
+          "message": "docs(seam): give each sanctioned edge's reason one home\n\nCLAUDE.md claimed the cycle gate holds \"each bullet above to its safety\nargument\", but only the first bullet carried one — the second named the\nedge and stopped. The two renderings of the sanctioned pair diverged in\ncontent, not just in form, so a reader of CLAUDE.md alone had nothing to\nhold the second edge to.\n\nFixed by subtracting rather than by mirroring. Writing the reason into both\nfiles would satisfy one-source-of-truth in form and violate it in substance:\ntwo copies that agree today and are free to drift. That is not hypothetical\nfor this particular sentence — this ticket's own description asserted the\ntype-only direction backwards, claiming core→themes was the erased edge when\nit is the runtime one, which is the same reasoning going wrong in a third\nlocation.\n\nSo CLAUDE.md now names the two edges, states the property they share (each\npoints up without closing a runtime cycle) once, and points at the required\n`why` field as the single home for the per-edge argument. Nothing was lost:\nthe palette type-only reasoning still exists, in the one place that sits\nbeside the gate keeping it true.\n\nTwo cross-references in layering.ts cited CLAUDE.md for text that just\nmoved; both now point at `why`.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "0a4e0555f76e3b8b6f8678469c58df22f7519bc0",
