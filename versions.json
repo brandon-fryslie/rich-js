@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-77",
+      "ref": "refs/pull/77/merge",
+      "sha": "a9573bdc76d80a2b979c37c67d2666b73c4f4a55",
+      "timestamp": "2026-09-03T10:26:59.729Z",
+      "commits": [
+        {
+          "sha": "a9573bdc76d80a2b979c37c67d2666b73c4f4a55",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T04:26:25-06:00",
+          "message": "Merge 77498e7445e4ce503c72bd48bc1d374121822ce4 into a6c38ef48ef123aa691ef15f6080d10362f74271\n"
+        },
+        {
+          "sha": "77498e7445e4ce503c72bd48bc1d374121822ce4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T04:25:43-06:00",
+          "message": "fix(table): divide the requested width once, so no row can overflow it (rich-width-3cf.2)\n\n`Table` emitted rows at a width it picked without reference to the width it was\ngiven. At every requested width from 1 to 13 the sample three-column table\nrendered the same 13 cells, because the width was divided in three independent\nplaces that could not agree: `_calculateWidths` subtracted borders and padding,\n`_totalTableWidth` added them back, and five box-row callsites re-derived\n`w + padLeft + padRight`. The `Math.max(1, ...)` floor in the first pinned every\ncolumn at one cell while the other two kept billing for padding that was no\nlonger affordable. The terminal soft-wraps such a row, and the wrap destroys the\nframe of every renderable printed after it.\n\nOne `layoutTable(outerWidth, demands, padding, frame)` now returns fields that\nsum to exactly the width it produced, and that width is never more than the one\nrequested. Every row reads from it: both borders, the header separator, the\nsection and footer rules, the data rows, and the title/caption spans.\n\nCells go out in the same priority order `Panel` uses — the pair of edge columns,\nthen one content cell per column with the divider in front of it, then the\npadding, then the remainder back to content. A column the width cannot seat is\ndropped rather than drawn outside the frame.\n\nThe remainder is apportioned a cell at a time by the highest-averages rule\nrather than by proportional flooring, so the granted widths are exact with no\nrounding residue for a second pass to sweep up, and per-column caps fall out for\nfree: a capped column stops winning rounds and its cells flow to the columns\nthat can use them. A declared `width` is a reservation paid before the bidding\nrather than a weight competing in it — without that distinction a wide neighbour\nwins every cell and a `width: 4` column renders one cell wide.\n\nAlso fixed, both found by following the geometry through:\n\n- `measure({ maxWidth: 1 })` returned `{minimum: 6, maximum: 1}` — a floor above\n  its own ceiling. Both ends are now widths the geometry produced, so the range\n  cannot invert.\n- `_renderTitle` cropped by code units, so a title of wide characters was up to\n  twice the table's width on screen. It crops by cells now.\n\n`Box.getTop`/`getRow`/`getBottom` take `readonly number[]`; they never mutated\nthe array, and dropping the constraint beats copying at four callsites.\n\nNot changed here: `expand` is still accepted and unimplemented — wiring it up\nneeds `Progress` to put a ratio on its bar column first, or every progress row\ngets three equal columns. Filed separately.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a6c38ef48ef123aa691ef15f6080d10362f74271",
