@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-75",
+      "ref": "refs/pull/75/merge",
+      "sha": "8e37260a4875e5c8c8fbbd35646952a6c41ff3bf",
+      "timestamp": "2026-09-03T08:22:35.915Z",
+      "commits": [
+        {
+          "sha": "8e37260a4875e5c8c8fbbd35646952a6c41ff3bf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T02:22:07-06:00",
+          "message": "Merge 702921b286a0fae0ad3c7cd58894aa5fd2f15a36 into bf32f68f78b8ddf4f8cc6e3f286381debc87fda0\n"
+        },
+        {
+          "sha": "702921b286a0fae0ad3c7cd58894aa5fd2f15a36",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T02:21:44-06:00",
+          "message": "test(seam): make host access a checked list, not four claims (rich-seam-981.6)\n\nFour comments claimed who owns node TTY access and no two agreed on the\nscope. `docs/widgets.md` said `NodeTerminalHost` \"is the only thing that\ntouches `process.stdin` and `process.stdout`\" — false; `src/node/prompt.ts`\nreads both. The three in `src/` survived only by narrowing until they no\nlonger overlapped their counterexamples, and none of the four mentioned\n`prompt.ts` at all, because none of them was checked.\n\n`HOST_ACCESS` in `test/seam/ambient-process.ts` is now the one home: every\nfile in `src/` that reads the ambient `process`, the property names it takes,\nand a required `why`. The gate fails when a file joins the list without an\nentry and when an entry outlives the read it was granted for. Granularity is\nper-property on purpose — it is what let the scan answer the question the\nnarrowed sentences were circling, and answer it against them: there is no\nsole reader of `process.stdin`, there are two, and what is true is that both\nsit behind `package.json#exports` subpaths.\n\nNot the browser-safety rule next door, though both scan for the same\nidentifier. That one asks whether a module-scope read throws when a browser\nevaluates the barrel; this one asks what the package takes off the host in\nany scope. A function-body leak passes there and fails here — pinned from\nboth sides by a fixture in each suite. `isNameSlot` moves to\n`test/seam/identifiers.ts` so the two rules share it rather than drift.\n\nThe prose now points at the list instead of restating it.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "bf32f68f78b8ddf4f8cc6e3f286381debc87fda0",
