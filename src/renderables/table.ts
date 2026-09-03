@@ -2,7 +2,7 @@
  * Table — tabular data with headers, borders, auto-sizing, and alignment.
  */
 
-import { cellLen, setCellSize, asCellCol } from "../core/cells.js";
+import { cellLen, setCellSize, asCellCol, cellCount as cells } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
@@ -52,21 +52,6 @@ interface ColumnDemand {
 
 /** A `want` no budget can satisfy: the column takes every cell its weight earns. */
 const UNBOUNDED = Number.MAX_SAFE_INTEGER;
-
-/**
- * [LAW:parse-dont-validate] A caller's number as a count of cells, normalized
- * where it enters the demand model so nothing downstream re-asks.
- *
- * The comparison is the point, not `Math.max(0, n)`: NaN fails every
- * comparison and so floors here, where `Math.max` would return it and
- * `budget -= NaN` would switch off every bounds check that follows. `Infinity`
- * survives both halves, which an unbounded width needs.
- *
- * Integral because a cell is not divisible: a fractional budget reaches
- * `distribute`'s largest-remainder pass, which grants a whole cell against a
- * fractional residue and so hands out more width than it was given.
- */
-const cells = (n: number): number => (n > 0 ? Math.floor(n) : 0);
 
 /**
  * A column's `want` or `weight`. Finite, because `UNBOUNDED` is this model's
@@ -198,7 +183,9 @@ function layoutTable(
   frame: TableFrame,
 ): TableGeometry {
   const [, padRightWanted, , padLeftWanted] = padding;
-  let budget = cells(outerWidth);
+  // Plain `number`, not the `CellCol` `cells` hands back: this budget is spent
+  // down by arithmetic, and arithmetic on a branded type produces a number.
+  let budget: number = cells(outerWidth);
   const take = (want: number): number => {
     const got = Math.min(Math.max(0, want), budget);
     budget -= got;

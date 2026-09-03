@@ -2,7 +2,7 @@
  * Panel — a bordered box that wraps content, with optional title and subtitle.
  */
 
-import { cellLen, setCellSize, asCellCol } from "../core/cells.js";
+import { cellLen, setCellSize, asCellCol, cellCount } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, ROUNDED } from "../core/box.js";
@@ -15,7 +15,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable } from "../core/protocol.js";
+import { isMeasurable, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -97,7 +97,11 @@ function layoutPanel(
   padding: readonly [number, number, number, number],
 ): PanelGeometry {
   const [, padRightWanted, , padLeftWanted] = padding;
-  let budget = Math.max(0, outerWidth);
+  // Panel's one division point, so the parse lands here: `Panel.width` is a
+  // caller's plain `number` and reaches this without passing through
+  // `withCellWidth`, and a fractional declared width would otherwise hand the
+  // borders and the content rows two different answers.
+  let budget: number = cellCount(outerWidth);
   const take = (want: number): number => {
     const got = Math.min(want, budget);
     budget -= got;
@@ -176,7 +180,8 @@ export class Panel implements Renderable, Measurable {
     this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
+    const options = withCellWidth(rawOptions);
     const box = options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box;
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
     const contentStyle = this.style.isNull ? undefined : this.style;
@@ -254,7 +259,8 @@ export class Panel implements Renderable, Measurable {
     yield Segment.line();
   }
 
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
+  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+    const options = withCellWidth(rawOptions);
     const geometry = layoutPanel(options.maxWidth, this.padding);
     const overhead = frameOverhead(geometry);
 
