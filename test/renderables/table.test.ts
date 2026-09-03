@@ -462,4 +462,25 @@ describe("Table stays inside the width it is given", () => {
       collectLines(build(0), { maxWidth: 20 }),
     );
   });
+
+  it("keeps an infinite column bound from skewing the columns beside it", () => {
+    // `Infinity` is a legal outer width and not a legal demand: it reaches
+    // `distribute` as `Infinity / Infinity`, which is NaN, and the NaN spreads
+    // to every other elastic column.
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { minWidth: Infinity });
+    t.addColumn();
+    t.addRow("aa", "shown");
+    const lines = collectLines(t, { maxWidth: 20 });
+    expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
+  });
+
+  it("keeps an infinite ratio from skewing the columns beside it", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn(undefined, { ratio: Infinity });
+    t.addColumn(undefined, { ratio: 1 });
+    t.addRow("a", "b");
+    const lines = collectLines(t, { maxWidth: 20 });
+    expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
+  });
 });

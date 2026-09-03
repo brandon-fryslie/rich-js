@@ -65,6 +65,14 @@ const UNBOUNDED = Number.MAX_SAFE_INTEGER;
 const cells = (n: number): number => (n > 0 ? n : 0);
 
 /**
+ * A column's `want` or `weight`. Finite, because `UNBOUNDED` is this model's
+ * own infinity: a literal `Infinity` reaching `distribute` makes a column's
+ * weighted share `Infinity / Infinity`, which is NaN, and the NaN then skews
+ * every other elastic column in the table.
+ */
+const demandCells = (n: number): number => Math.min(cells(n), UNBOUNDED);
+
+/**
  * Hand out `total` cells across `demands`, weighted, and never past a demand's
  * `want`.
  *
@@ -623,11 +631,11 @@ export class Table implements Renderable, Measurable {
       if (col.width !== undefined) {
         // [LAW:single-enforcer] floored where it is parsed, the same rule
         // `normalizePadding` applies to a negative padding side.
-        const declared = cells(col.width);
+        const declared = demandCells(col.width);
         return { reserved: declared, want: declared, weight: 0 };
       }
-      if (elastic) return { reserved: 0, want: UNBOUNDED, weight: col.ratio ?? 1 };
-      const natural = this._naturalWidth(col, index);
+      if (elastic) return { reserved: 0, want: UNBOUNDED, weight: demandCells(col.ratio ?? 1) };
+      const natural = demandCells(this._naturalWidth(col, index));
       return { reserved: 0, want: natural, weight: natural };
     });
   }
@@ -644,7 +652,7 @@ export class Table implements Renderable, Measurable {
     }
     if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);
     if (col.maxWidth !== undefined) natural = Math.min(natural, col.maxWidth);
-    return cells(natural);
+    return natural;
   }
 
   private *_renderRow(
