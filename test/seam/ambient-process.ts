@@ -146,6 +146,13 @@ export const HOST_ACCESS: readonly HostAccess[] = [
  * skip: whatever the guard protects is itself a read, so
  * `typeof process === "undefined" ? {} : process.env` still reports `env`.
  *
+ * Its type-query twin — `typeof process.env` in a type position — is pruned as
+ * a whole subtree rather than matched on the identifier's parent, which is
+ * what makes the dotted spelling come out right: there the parent is the
+ * `QualifiedName`. That is the only exemption for a type position. Type nodes
+ * are otherwise walked, unlike in `browser-safe.ts`, which prunes them all and
+ * pays for it by re-entering class `extends` clauses — a type node that runs.
+ *
  * Shadowing is deliberately unanswered. A file that binds its own `process`
  * reports anyway and has to say so in an entry. Answering it properly needs
  * scope resolution, and the strict direction costs nothing while nothing in
@@ -156,6 +163,7 @@ export function ambientProcessReads(sf: ts.SourceFile): AmbientRead[] {
   const file = repoRelative(sf.fileName);
   const out: AmbientRead[] = [];
   const visit = (node: ts.Node): void => {
+    if (ts.isTypeQueryNode(node)) return;
     if (ts.isIdentifier(node) && node.text === AMBIENT_HOST && isHostRead(node)) {
       out.push({
         file,
@@ -229,9 +237,7 @@ function sameSurface(a: HostSurface, b: HostSurface): boolean {
 
 /** Whether this occurrence of the name reads the global rather than naming a slot. */
 function isHostRead(id: ts.Identifier): boolean {
-  const parent = id.parent;
-  if (ts.isTypeOfExpression(parent) || ts.isTypeQueryNode(parent)) return false;
-  return !isNameSlot(id);
+  return !ts.isTypeOfExpression(id.parent) && !isNameSlot(id);
 }
 
 /**

@@ -180,6 +180,13 @@ describe("ambientProcessReads", () => {
     expect(scan("export type P = typeof process;")).toEqual([]);
   });
 
+  it("does not count a dotted type query", () => {
+    // The spelling that gets the identifier's parent wrong: `exprName` is a
+    // `QualifiedName`, so nothing about `process` itself says "type query".
+    expect(scan("export type E = typeof process.env;")).toEqual([]);
+    expect(scan("export type W = typeof process.stdout.columns;")).toEqual([]);
+  });
+
   it("counts the read a typeof probe guards", () => {
     expect(
       scan("export const e = () => (typeof process === 'undefined' ? {} : process.env);"),
