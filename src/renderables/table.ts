@@ -558,12 +558,16 @@ export class Table implements Renderable, Measurable {
    * `{minimum: 6, maximum: 1}` at `maxWidth: 1` — a floor above its own ceiling.
    */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const outerWidth = this.tableWidth ?? options.maxWidth;
+    // Bounded by what the container offered: `Measurement.get` clamps only the
+    // maximum, so laying the floor out against a larger declared width is what
+    // returns a minimum above it.
+    const outerWidth = Math.min(this.tableWidth ?? options.maxWidth, options.maxWidth);
     const frame = this._frame();
-    const maximum = layoutTable(outerWidth, this._columnDemands(), this.padding, frame).totalWidth;
+    const demands = this._columnDemands();
+    const maximum = layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
     const tightest = layoutTable(
       outerWidth,
-      this._columnDemands().map((demand) => ({
+      demands.map((demand) => ({
         reserved: 0,
         want: Math.min(1, demand.want),
         weight: 1,

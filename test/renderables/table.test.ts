@@ -433,4 +433,17 @@ describe("Table stays inside the width it is given", () => {
       collectLines(build(), { maxWidth: 0 }),
     );
   });
+
+  it("keeps the measurement range upright when the declared width exceeds the offer", () => {
+    // `Measurement.get` clamps only the maximum, so a floor laid out against
+    // the declared width lands above its own ceiling.
+    const t = new Table({ width: 1000, box: ASCII, showHeader: false });
+    t.addColumn();
+    t.addColumn();
+    t.addColumn();
+    t.addRow("a", "b", "c");
+    const m = t.measure({ maxWidth: 5 });
+    expect(m.minimum).toBeLessThanOrEqual(m.maximum);
+    expect(m.maximum).toBeLessThanOrEqual(5);
+  });
 });
