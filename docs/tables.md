@@ -51,7 +51,7 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 
 | Option | Description |
 |---|---|
-| `width` | Fixed total width (disables auto-sizing) |
+| `width` | Fixed total width — disables auto-sizing, and overrides a container narrower than it |
 | `minWidth` | Minimum total width |
 | `expand` | Accepted, but not yet wired into sizing — a table renders at its natural width regardless |
 
@@ -90,9 +90,9 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 
 ## Narrow widths
 
-A table never emits a line wider than the width it is given, however narrow that
-gets — a cramped terminal, or a `Layout` or `Columns` split that squeezes the
-table below its natural size. This matters beyond looks: an oversized row is
+A table with no declared `width` never emits a line wider than the width it is
+given, however narrow that gets — a cramped terminal, or a `Layout` or `Columns`
+split that squeezes the table below its natural size. This matters beyond looks: an oversized row is
 soft-wrapped by the terminal, and the wrap destroys the frame of everything
 printed after it.
 
@@ -103,12 +103,12 @@ the left, and a column the width cannot seat is dropped rather than drawn outsid
 the frame:
 
 ```
-width 2   width 3   width 5   width 7   width 10     width 13
-┌┐        ┌─┐       ┌─┬─┐     ┌─┬─┬─┐   ┌──┬──┬──┐   ┌───┬───┬───┐
-││        │A│       │A│B│     │A│B│C│   │ A│ B│ C│   │ A │ B │ C │
-││        │─│       │─│─│     │─│─│─│   │──│──│──│   │───│───│───│
-││        │1│       │1│2│     │1│2│3│   │ 1│ 2│ 3│   │ 1 │ 2 │ 3 │
-└┘        └─┘       └─┴─┘     └─┴─┴─┘   └──┴──┴──┘   └───┴───┴───┘
+width 2   width 3   width 4   width 5   width 7   width 10     width 13
+┌┐        ┌─┐       ┌──┐      ┌─┬─┐     ┌─┬─┬─┐   ┌──┬──┬──┐   ┌───┬───┬───┐
+││        │A│       │ A│      │A│B│     │A│B│C│   │ A│ B│ C│   │ A │ B │ C │
+││        │─│       │──│      │─│─│     │─│─│─│   │──│──│──│   │───│───│───│
+││        │1│       │ 1│      │1│2│     │1│2│3│   │ 1│ 2│ 3│   │ 1 │ 2 │ 3 │
+└┘        └─┘       └──┘      └─┴─┘     └─┴─┴─┘   └──┴──┴──┘   └───┴───┴───┘
 ```
 
 Those are the widths at which this table's render lands exactly on the width
@@ -127,9 +127,11 @@ columns are cropped by their own `overflow` mode, so a column squeezed to a
 single cell shows only what that mode can fit in one cell.
 
 A column with an explicit `width` is a reservation rather than a bid: it is paid
-before the remaining cells are shared out, so it keeps its size and its
-neighbours absorb the shortfall. Columns with a `ratio` sit at the other end —
-they take whatever the bounded columns leave.
+ahead of the elastic share, so its neighbours give up their width first. It comes
+out of what the frame, the seats and the padding leave, so a width too small to
+cover every reservation shrinks reserved columns too, in column order. Columns
+with a `ratio` sit at the other end — they take whatever the bounded columns
+leave.
 
 ## Column options
 
@@ -237,7 +239,7 @@ grid.addRow("[bold]Left content[/bold]", "[dim]Right content[/dim]");
 console.print(grid);
 ```
 
-A common pattern: use a grid to position content at both edges of the terminal on a single line:
+A common pattern: use a grid to position content at both edges of the terminal on a single line. `expand` is the option for that, and it is [not yet wired into sizing](#sizing) — today the grid renders at its natural width rather than filling the terminal:
 
 ```typescript
 const grid = Table.grid({ expand: true });
