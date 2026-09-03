@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Table, Column } from "../../src/renderables/table.js";
 import { Segment } from "../../src/core/segment.js";
 import { ASCII, MARKDOWN } from "../../src/core/box.js";
+import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -171,6 +172,23 @@ describe("Table", () => {
     const bobIdx = lines.findIndex((l) => l.includes("Bob"));
     // At least one separator line between them
     expect(bobIdx - aliceIdx).toBeGreaterThan(1);
+  });
+
+  // Negative padding used to reach the renderer, which either threw
+  // `RangeError: Invalid count value` or drew rows wider than its own
+  // border, depending on how wide the column was.
+  it("treats negative padding as none", () => {
+    const render = (padding: PaddingDimensions, cell: string): string[] => {
+      const t = new Table({ box: ASCII, padding });
+      t.addColumn(cell);
+      t.addRow(cell);
+      return collectLines(t, { maxWidth: 40 });
+    };
+    // "Alice" is the shape that used to render a row wider than its own
+    // border; "x" is the shape that used to throw.
+    for (const cell of ["Alice", "x"]) {
+      expect(render(-1, cell), `cell ${cell}`).toEqual(render(0, cell));
+    }
   });
 });
 

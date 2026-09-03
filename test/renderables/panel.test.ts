@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { cellLen } from "../../src/core/cells.js";
+import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -264,5 +266,132 @@ describe("Panel", () => {
     expect(m.minimum).toBeGreaterThan(0);
     expect(m.maximum).toBeGreaterThanOrEqual(m.minimum);
     expect(m.maximum).toBeLessThanOrEqual(40);
+  });
+
+  // --- Narrow widths ---
+  // Spec: a panel never emits a line wider than the width it was given, and
+  // never throws, at any width down to 1. A panel is a rectangle, so every
+  // line it emits is the same width as every other.
+
+  describe("at narrow widths", () => {
+    // Every configuration that changes how a row is built: the two borders
+    // (title, subtitle, accessory), the padding, and a content renderable
+    // that ignores the width it is handed.
+    const oversizedContent: Renderable = {
+      *render(_options: RenderOptions) {
+        yield new Segment("x".repeat(40));
+        yield Segment.line();
+      },
+    };
+    const configurations: Array<[string, Panel]> = [
+      ["bare", new Panel("hello world")],
+      ["titled", new Panel("hello world", { title: "Title" })],
+      ["subtitled", new Panel("hello world", { subtitle: "Subtitle" })],
+      [
+        "titled + subtitled + accessory",
+        new Panel("hello world", {
+          title: "Title",
+          subtitle: "Subtitle",
+          bottomRightAccessory: "[14/102]",
+        }),
+      ],
+      ["ascii box", new Panel("hello world", { box: ASCII })],
+      ["double box", new Panel("hello world", { box: DOUBLE })],
+      ["no padding", new Panel("hello world", { padding: 0 })],
+      ["fat padding", new Panel("hello world", { padding: [1, 4] })],
+      ["fit mode", Panel.fit("hello world")],
+      ["explicit width", new Panel("hello world", { width: 30 })],
+      ["wide characters", new Panel("日本語テキスト")],
+      ["content that ignores its width", new Panel(oversizedContent)],
+      ["empty content", new Panel("")],
+    ];
+
+    for (const [name, panel] of configurations) {
+      it(`fits inside every width from 1 up: ${name}`, () => {
+        for (let width = 1; width <= 40; width++) {
+          const lines = collectLines(panel, { maxWidth: width });
+          const widths = lines.map(cellLen);
+          expect(
+            Math.max(0, ...widths),
+            `${name} overflowed at maxWidth ${width}: ${JSON.stringify(lines)}`,
+          ).toBeLessThanOrEqual(width);
+          expect(
+            new Set(widths).size,
+            `${name} emitted ragged lines at maxWidth ${width}: ${JSON.stringify(lines)}`,
+          ).toBeLessThanOrEqual(1);
+        }
+      });
+    }
+
+    // The reported crash: with no title, the top border repeated its box
+    // character by an inner width that had gone negative.
+    it("does not throw at width 1", () => {
+      expect(() => collectLines(new Panel("hello"), { maxWidth: 1 })).not.toThrow();
+    });
+
+    // Width 3 is the narrowest panel with a content cell between its frame
+    // columns — the panel spends its cells on content before padding.
+    it("keeps showing content down to width 3", () => {
+      const lines = collectLines(new Panel("hello"), { maxWidth: 3 });
+      expect(lines.join("")).toContain("h");
+    });
+
+    // A `bottomRightAccessory` thunk reads state that the wrapped renderable
+    // populates during its own render, so the content has to render every
+    // frame — including the widths where the frame leaves nowhere to show it.
+    it("renders content every frame, so a stateful accessory sees this one", () => {
+      let frames = 0;
+      const counting: Renderable = {
+        *render(_options: RenderOptions) {
+          frames += 1;
+          yield new Segment("content");
+          yield Segment.line();
+        },
+      };
+      const panel = new Panel(counting, {
+        bottomRightAccessory: () => `#${frames}`,
+      });
+
+      for (let width = 1; width <= 6; width++) {
+        const before = frames;
+        collectLines(panel, { maxWidth: width });
+        expect(frames, `content did not render at maxWidth ${width}`).toBe(before + 1);
+      }
+
+      const lines = collectLines(panel, { maxWidth: 30 });
+      expect(lines[lines.length - 1]).toContain(`#${frames}`);
+    });
+
+    // Negative padding used to reach the renderer, where it produced content
+    // rows wider than the panel's own border.
+    it("treats negative padding as none", () => {
+      const unpadded = collectLines(new Panel("hi", { padding: 0 }), { maxWidth: 20 });
+      const cases: PaddingDimensions[] = [-1, [0, -1], [-2, -3, -4, -5]];
+      for (const padding of cases) {
+        expect(
+          collectLines(new Panel("hi", { padding }), { maxWidth: 20 }),
+          `padding ${JSON.stringify(padding)}`,
+        ).toEqual(unpadded);
+      }
+    });
+
+    // A measurement is a range, so its minimum cannot exceed its maximum —
+    // which it did while the frame overhead was counted as a constant the
+    // panel does not actually spend at these widths.
+    it("measures a coherent range at every width", () => {
+      for (const panel of [new Panel("hello world"), Panel.fit("hello world")]) {
+        for (let width = 1; width <= 40; width++) {
+          const m = panel.measure({ maxWidth: width });
+          expect(m.minimum, `minimum exceeded maximum at maxWidth ${width}`)
+            .toBeLessThanOrEqual(m.maximum);
+          expect(m.maximum, `maximum exceeded maxWidth ${width}`).toBeLessThanOrEqual(width);
+        }
+      }
+    });
+
+    it("crops content that renders wider than the frame", () => {
+      const lines = collectLines(new Panel(oversizedContent), { maxWidth: 10 });
+      expect(lines[1]).toBe("│ xxxxxx │");
+    });
   });
 });
