@@ -73,6 +73,33 @@ export function asCodeUnit(n: number): CodeUnit { return n as CodeUnit; }
  *  on a Unicode code-point boundary. */
 export function asCodePoint(n: number): CodePoint { return n as CodePoint; }
 
+/**
+ * [LAW:parse-dont-validate] A caller's number as a count of cells — the checked
+ * counterpart to `asCellCol`'s unchecked brand, and the one place the rule "a
+ * cell count is a non-negative integer" is written.
+ *
+ * [LAW:one-source-of-truth] Every renderable is handed `RenderOptions.maxWidth`
+ * as a plain `number`, so every renderable used to answer this for itself and
+ * they disagreed: at NaN, `Table` collapsed to one cell of garbage, `Columns`
+ * and `Layout` threw `Invalid array length`, and `RichText` ignored the request
+ * and emitted its full natural width. Parse at the entry to `render`/`measure`
+ * and nothing downstream re-asks.
+ *
+ * The comparison is the point, not `Math.max(0, n)`: NaN fails every comparison
+ * and so floors here, where `Math.max` would return it and let it poison every
+ * bounds check downstream. Integral because a cell is not divisible — a
+ * fractional budget reaches a largest-remainder division, which grants a whole
+ * cell against a fractional residue and hands out more width than it was given.
+ *
+ * `Infinity` is outside what the comparison floors, so it passes through
+ * unchanged. That is a gap, not a guarantee: what a renderable emits into an
+ * unbounded canvas is a decision for every renderable at once, filed as
+ * `rich-width-3cf.5` rather than answered by a clamp hidden in here.
+ */
+export function cellCount(n: number): CellCol {
+  return (n > 0 ? Math.floor(n) : 0) as CellCol;
+}
+
 // ── Cell-aware string utilities ──────────────────────────────────────────────
 
 /**

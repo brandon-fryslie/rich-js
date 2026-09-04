@@ -9,6 +9,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { withCellWidth } from "../core/protocol.js";
 
 export interface LayoutOptions {
   name?: string;
@@ -116,12 +117,15 @@ export class Layout implements Renderable, Measurable {
     children: Layout[],
     options: RenderOptions,
   ): Iterable<Segment> {
-    // Horizontal side-by-side: distribute width, then merge child lines.
-    const widths = this._distributeSpace(children, options.maxWidth);
+    // Horizontal side-by-side: divide the requested width once, then merge
+    // child lines. The budget is parsed before it is divided — unparsed, a NaN
+    // width made every share NaN and the merge threw `Invalid array length`.
+    const parsed = withCellWidth(options);
+    const widths = this._distributeSpace(children, parsed.maxWidth);
     const cells = children.map((child, i) => ({
       width: widths[i]!,
       lines: Segment.splitLines([
-        ...child.render({ ...options, maxWidth: widths[i]! }),
+        ...child.render({ ...parsed, maxWidth: widths[i]! }),
       ]),
     }));
     yield* Segment.mergeHorizontal(cells);
@@ -143,8 +147,15 @@ export class Layout implements Renderable, Measurable {
       }
     }
 
-    // Distribute remaining by ratio
+    // Distribute what is left by ratio. Each child's share comes off one
+    // budget and is bounded by what that budget still holds: `minimumSize` is
+    // what a child asks for, `remaining` is what there is to give, and the
+    // second beats the first. Applied without that bound — as
+    // `Math.max(minimumSize, share)` alone — every child claimed its whole
+    // minimum out of a budget that could not cover one of them, so two
+    // children of a Layout asked to fit one cell merged into a two-cell row.
     if (flexChildren.length > 0 && remaining > 0) {
+      const budget = remaining;
       const totalRatio = flexChildren.reduce(
         (s, idx) => s + children[idx]!.ratio,
         0,
@@ -152,18 +163,22 @@ export class Layout implements Renderable, Measurable {
 
       for (const idx of flexChildren) {
         const child = children[idx]!;
-        const allocated = Math.max(
-          child.minimumSize,
-          Math.floor(remaining * child.ratio / totalRatio),
-        );
+        const share = Math.floor(budget * child.ratio / totalRatio);
+        const allocated = Math.min(remaining, Math.max(child.minimumSize, share));
         sizes[idx] = allocated;
+        remaining -= allocated;
       }
     }
 
     return sizes;
   }
 
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return { minimum: this.minimumSize, maximum: options.maxWidth };
+  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+    // `minimumSize` is what this layout asks for and the ceiling is what it was
+    // offered; the ceiling wins. Unclamped, a layout measured into no width
+    // reported the range 1..0 — a floor above its own ceiling, which the parent
+    // that asked cannot divide.
+    const ceiling = withCellWidth(rawOptions).maxWidth;
+    return { minimum: Math.min(this.minimumSize, ceiling), maximum: ceiling };
   }
 }

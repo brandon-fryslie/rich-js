@@ -2,7 +2,7 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen } from "./cells.js";
+import { cellLen, cellCount } from "./cells.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./sanitize.js";
@@ -14,6 +14,18 @@ const CONTROL_CHARS_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
 
 function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
+}
+
+/**
+ * The offsets a line of `lineWidth` cells is cut at to fold it into pieces of
+ * at most `maxWidth`. Requires `maxWidth >= 1`: the caller answers the
+ * zero-cell canvas, because "no cut fits" and "no cell fits" are different
+ * facts and only one of them is a list of offsets.
+ */
+function foldCuts(lineWidth: number, maxWidth: number): number[] {
+  const cuts: number[] = [];
+  for (let w = maxWidth; w < lineWidth; w += maxWidth) cuts.push(w);
+  return cuts;
 }
 
 // [LAW:single-enforcer] RichText is the *data-model* trust boundary for
@@ -776,7 +788,11 @@ export class RichText implements Renderable, Measurable {
 
     const allSegments = this._buildSegments(text);
     const logicalLines = Segment.splitLines(allSegments);
-    const maxWidth = options.maxWidth;
+    // [LAW:parse-dont-validate] The one crossing for this renderable's width.
+    // Unparsed, a NaN width made `lineWidth <= maxWidth` false and every
+    // overflow arm a no-op, so the text emitted its full natural width and
+    // silently overflowed whatever asked for it.
+    const maxWidth = cellCount(options.maxWidth);
     const overflow = this._overflow ?? options.overflow ?? "fold";
     const justify = this._justify ?? options.justify;
     const noWrap = this._noWrap || (options.noWrap ?? false);
@@ -826,9 +842,13 @@ export class RichText implements Renderable, Measurable {
       }
     }
 
+    // Parsed for the same reason `render` parses it: an unparsed NaN ceiling
+    // makes both `Math.min` calls NaN, and a range of NaN..NaN is one no parent
+    // layout can divide.
+    const ceiling = cellCount(options.maxWidth);
     return {
-      minimum: Math.min(maxWordWidth, options.maxWidth),
-      maximum: Math.min(maxLineWidth, options.maxWidth),
+      minimum: Math.min(maxWordWidth, ceiling),
+      maximum: Math.min(maxLineWidth, ceiling),
     };
   }
 
@@ -922,10 +942,17 @@ export class RichText implements Renderable, Measurable {
   ): Iterable<Segment> {
     switch (overflow) {
       case "fold": {
-        // Split at maxWidth boundaries
-        const cuts: number[] = [];
-        for (let w = maxWidth; w < lineWidth; w += maxWidth) cuts.push(w);
-        const foldedLines = Segment.divide(line, cuts);
+        // Split at maxWidth boundaries. A cell cannot be split, so a zero-cell
+        // canvas holds no piece of the line and the fold is one empty piece —
+        // the same thing `crop` and `ellipsis` yield there, which is what makes
+        // the three overflow modes agree at the bottom of the range instead of
+        // this loop stepping by zero forever. It did exactly that before:
+        // ~2^27 pushes and about a gigabyte before a `RangeError`, reachable
+        // from any `Columns` or `Layout` squeezed to no width at all.
+        const foldedLines =
+          maxWidth === 0
+            ? [Segment.adjustLineLength(line, 0, undefined, false)]
+            : Segment.divide(line, foldCuts(lineWidth, maxWidth));
         for (let index = 0; index < foldedLines.length; index += 1) {
           const fLine = foldedLines[index]!;
           yield* fLine;
@@ -944,16 +971,17 @@ export class RichText implements Renderable, Measurable {
         break;
       }
       case "ellipsis": {
-        if (maxWidth > 1) {
-          const cropped = Segment.adjustLineLength(
-            line,
-            maxWidth - 1,
-            undefined,
-            false,
-          );
-          yield* cropped;
-          yield new Segment("\u2026");
-        }
+        // The marker takes the last cell and the text keeps the rest. At
+        // maxWidth 1 that is zero cells of text and the marker alone, which is
+        // the honest rendering of "all of this was cut"; the `maxWidth > 1`
+        // guard that used to stand here emitted no line at all, so every table
+        // column squeezed to a single cell rendered blank rather than
+        // truncated — `ellipsis` being the default column overflow, a
+        // hard-squeezed table looked like an empty frame.
+        yield* Segment.adjustLineLength(line, Math.max(0, maxWidth - 1), undefined, false);
+        // No cell to put it in at maxWidth 0, where every mode emits the bare
+        // line terminator.
+        if (maxWidth > 0) yield new Segment("\u2026");
         if (terminateLine) {
           yield Segment.line();
         }
