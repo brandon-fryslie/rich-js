@@ -11,7 +11,6 @@ export type {
   Screen,
   MountEntry,
   Placement,
-  Unsubscribe,
 } from "./types.js";
 export { FLOW, hasOverlay, KeyEvent } from "./types.js";
 export { StaticItem } from "./static-item.js";
@@ -35,15 +34,7 @@ export { Slider } from "./slider.js";
 export type { SliderOptions } from "./slider.js";
 export { EventRouter } from "./event-router.js";
 export type { EventRouterOptions } from "./event-router.js";
-export { BrowserTerminalHost } from "./terminal-host.js";
-export type {
-  TerminalHost,
-  TerminalSize,
-  DataHandler,
-  ResizeHandler,
-  BrowserTerminalHostOptions,
-  XtermTerminal,
-  XtermDisposable,
-  XtermResizeEvent,
-} from "./terminal-host.js";
-export { hostStream } from "./host-stream.js";
+
+// The terminal seam is not re-exported here. It lives on the `host` subpath,
+// and a second path to `TerminalHost` would be the two-clocks problem the
+// subpath split exists to remove.

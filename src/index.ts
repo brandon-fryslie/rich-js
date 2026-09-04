@@ -152,6 +152,7 @@ export type {
   Renderable,
   Measurable,
 } from "./core/protocol.js";
+export type { Unsubscribe } from "./core/subscription.js";
 
 // Measurement
 export { Measurement, measureRenderables } from "./core/measure.js";
@@ -281,55 +282,25 @@ export type { MarkdownOptions } from "./renderables/markdown.js";
 export { Layout } from "./renderables/layout.js";
 export type { LayoutOptions } from "./renderables/layout.js";
 
-// Interactive widgets
-export type {
-  KeyEventInit,
-  KeyHandlerPriority,
-  KeyHandlerOptions,
-  WidgetMouseEvent,
-  WidgetFocusEvent,
-  WidgetBounds,
-  InteractiveWidget,
-  FocusManager,
-  Screen,
-  MountEntry,
-  Placement,
-  Unsubscribe,
-  OverlayRenderable,
-} from "./widgets/types.js";
-export { FLOW, KeyEvent, hasOverlay } from "./widgets/types.js";
-export { StaticItem } from "./widgets/static-item.js";
-export type { StaticItemOptions } from "./widgets/static-item.js";
-export { WidgetBase } from "./widgets/widget-base.js";
-export { DefaultFocusManager } from "./widgets/focus-manager.js";
-export { DefaultScreen } from "./widgets/screen.js";
-export type { ScreenOptions, ColorSystemSpec } from "./widgets/screen.js";
-export { Button } from "./widgets/button.js";
-export type { ButtonVariant, ButtonOptions } from "./widgets/button.js";
-export { Checkbox } from "./widgets/checkbox.js";
-export type { CheckboxOptions } from "./widgets/checkbox.js";
-export { Toggle } from "./widgets/toggle.js";
-export type { ToggleVariant, ToggleOptions } from "./widgets/toggle.js";
-export { TextInput, charGreedyWrap } from "./widgets/text-input.js";
-export type { TextInputOptions, WrapStrategy, WrapRow } from "./widgets/text-input.js";
-export { Dropdown } from "./widgets/dropdown.js";
-export type { DropdownOptions } from "./widgets/dropdown.js";
-export { Slider } from "./widgets/slider.js";
-export type { SliderOptions } from "./widgets/slider.js";
-export { EventRouter } from "./widgets/event-router.js";
-export type { EventRouterOptions } from "./widgets/event-router.js";
-export { BrowserTerminalHost } from "./widgets/terminal-host.js";
-export type {
-  TerminalHost,
-  TerminalSize,
-  DataHandler,
-  ResizeHandler,
-  BrowserTerminalHostOptions,
-  XtermTerminal,
-  XtermDisposable,
-  XtermResizeEvent,
-} from "./widgets/terminal-host.js";
-export { hostStream } from "./widgets/host-stream.js";
-
-// Template bindings — register rich-js styling as @promptctl/go-template-js functions
-export { createRichTextEngine, richTextFuncs } from "./template-bindings/index.js";
+// The barrel stops at `renderables/`, and the two subsystems above it are reached
+// through their own `package.json#exports` subpaths instead:
+//
+//   `@promptctl/rich-js/widgets`            — the interactive layer  (pulls in `mobx`)
+//   `@promptctl/rich-js/template-bindings`  — the styling vocabulary (pulls in
+//                                             `@promptctl/go-template-js`)
+//
+// `@promptctl/rich-js/host` is a third subpath but a different kind of thing: the
+// terminal seam has no third-party dependency at all, and sits on its own subpath
+// because it is what a *non*-interactive program reaches for. Folding it into either
+// neighbour is what the split was undoing — inside `widgets/` it charged mobx to
+// consumers who only wanted to write bytes; in this barrel it would put an I/O
+// capability in front of consumers who never touch a terminal directly.
+//
+// `export … from` is a static edge, so anything named here is *evaluated* by every
+// consumer, including one that only wanted a Table. Re-exporting the two subsystems
+// therefore charged their dependencies to the whole package — mobx and, transitively,
+// @noble/hashes. The subpaths make that cost something a consumer opts into, the same
+// bargain `src/node/` strikes for Node built-ins.
+//
+// This is also why there is no widget list here to keep in sync: `src/widgets/index.ts`
+// is that list, and a copy of it in this file would be a second one to drift from.

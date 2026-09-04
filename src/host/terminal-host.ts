@@ -14,15 +14,21 @@
  * the same. Variability lives in which host is constructed at the program
  * entry, not in any `if` inside the runtime.
  *
- * [LAW:one-way-deps] The interface and the browser host live here, in the
- * barrel; the node host lives in `src/node/terminal-host.ts`, behind an
- * explicit subpath, because it reads `process.stdin` / `process.stdout`. The
+ * [LAW:one-way-deps] The interface and the browser host live here, on the
+ * `host` subpath; the node host lives in `src/node/terminal-host.ts`, behind
+ * its own subpath, because it reads `process.stdin` / `process.stdout`. The
  * dependency runs one way — the node adapter imports this seam; nothing here
- * imports the adapter — so importing the main barrel in a browser cannot
+ * imports the adapter — so importing a browser-facing entry point cannot
  * reach the ambient `process` global by any path, rather than merely not
  * reaching it in practice. `test/seam/browser-safe.test.ts` is what holds
  * that direction; who reads the host at all is `HOST_ACCESS` in
  * `test/seam/ambient-process.ts`, and neither list is repeated here.
+ *
+ * [LAW:decomposition] This seam is not part of the interactive layer, which is
+ * why it is not in it. It sits below `src/widgets/` and imports nothing from
+ * it, so a program that wants to write bytes through a host — every non-
+ * interactive consumer — reaches one without loading the widget set or its
+ * `mobx` dependency.
  *
  * [boundaries: capabilities over context] A `TerminalHost` grants exactly
  * the I/O capabilities the runtime needs: write bytes, read input, query
@@ -30,7 +36,7 @@
  * omniscient handle to "the process."
  */
 
-import type { Unsubscribe } from "./types.js";
+import type { Unsubscribe } from "../core/subscription.js";
 
 // [LAW:types-are-the-program] `TerminalSize` is a *snapshot* — a value
 // captured at a point in time, never mutated after construction. The

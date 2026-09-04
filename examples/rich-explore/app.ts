@@ -9,9 +9,9 @@
  */
 
 import { Console, Live } from "../../src/index.js";
-import { hostStream } from "../../src/widgets/host-stream.js";
+import { hostStream } from "../../src/host/host-stream.js";
 import type { FileSystem } from "../_capabilities/index.js";
-import type { TerminalHost } from "../../src/widgets/terminal-host.js";
+import type { TerminalHost } from "../../src/host/terminal-host.js";
 import {
   initialState,
   toggleExpand,

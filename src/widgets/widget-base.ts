@@ -16,8 +16,8 @@ import type {
   WidgetMouseEvent,
   WidgetFocusEvent,
   WidgetBounds,
-  Unsubscribe,
 } from "./types.js";
+import type { Unsubscribe } from "../core/subscription.js";
 
 export abstract class WidgetBase implements InteractiveWidget {
   abstract readonly id: string;
