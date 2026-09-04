@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-80",
+      "ref": "refs/pull/80/merge",
+      "sha": "d9f4e00d06d2debdf01ff5f59d48e6f2c1f11207",
+      "timestamp": "2026-09-04T21:29:53.487Z",
+      "commits": [
+        {
+          "sha": "d9f4e00d06d2debdf01ff5f59d48e6f2c1f11207",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T15:29:21-06:00",
+          "message": "Merge aee9ea526b018c1743d1477fcb295cf44907d433 into 500db1a2f10b3814d61ff464ed54d43e02812721\n"
+        },
+        {
+          "sha": "aee9ea526b018c1743d1477fcb295cf44907d433",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T15:27:46-06:00",
+          "message": "chore(deps): strip-ansi is a test dependency, not a runtime one\n\nNothing under src/ imports it — `test/node/traceback.test.ts` is its only\nconsumer in the repo. It sat in `dependencies`, declaring a runtime\nrequirement the published code does not have.\n\nThe error was invisible because string-width depends on strip-ansi, so npm\ndedupes it either way and nothing breaks in either position. Install size is\nunchanged; the declaration is now true.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "20bd5d994e42670aa8115be1967e6fbad7583873",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T15:27:34-06:00",
+          "message": "feat(exports)!: the barrel stops at renderables, so its deps do too\n\n`src/index.ts` re-exported `src/widgets/` and `src/template-bindings/`.\n`export … from` is a static edge, so every consumer evaluated both — a\nprogram that only wanted a Table pulled in mobx and, through the template\nengine, @noble/hashes.\n\nReach them through their own subpaths instead:\n\n  @promptctl/rich-js/widgets\n  @promptctl/rich-js/template-bindings   (already existed; the barrel\n                                          re-export was a second path to\n                                          the same two symbols)\n\nThe widget block was also a hand-copied duplicate of `src/widgets/index.ts`\n— already drifting in ordering — so deleting it removes the copy rather\nthan relocating it. That barrel is now the one list.\n\nVerified by resolving the real module graph per entry point:\n\n  dist/index.js             → string-width\n  dist/widgets/index.js     → mobx, string-width, …\n  dist/template-bindings/   → @promptctl/go-template-js\n\nBREAKING CHANGE: widget exports (Button, Checkbox, Toggle, TextInput,\nDropdown, Slider, DefaultScreen, DefaultFocusManager, EventRouter,\nStaticItem, WidgetBase, BrowserTerminalHost, hostStream, FLOW, KeyEvent,\nhasOverlay, charGreedyWrap and their types) and `createRichTextEngine` /\n`richTextFuncs` are no longer exported from the package root.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "pr-79",
       "ref": "refs/pull/79/merge",
       "sha": "fcec997ca82ac5f9d4bfddf3cf68e5e64d4c83cf",

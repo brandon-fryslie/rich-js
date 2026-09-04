@@ -1,0 +1,1 @@
+import{s as n}from"./syntax-C3YbiQN8.js";function r(e){return{...e,maxWidth:n(e.maxWidth)}}function i(e){return typeof e=="object"&&e!==null&&"render"in e&&typeof e.render=="function"}function u(e){return typeof e=="object"&&e!==null&&"measure"in e&&typeof e.measure=="function"}export{i as a,u as i,r as w};
