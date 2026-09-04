@@ -24,24 +24,26 @@ import {
   Panel,
   Layout,
   Padding,
+  Segment,
+  type Renderable,
+  type RenderOptions,
+  asCodePoint,
+  asCellCol,
+  cellLen,
+  cellFit,
+} from "../../src/index.js";
+import {
   EventRouter,
   DefaultScreen,
   DefaultFocusManager,
   StaticItem,
   TextInput,
-  Segment,
-  type MountEntry,
-  type Renderable,
-  type RenderOptions,
-  type TerminalHost,
-  asCodePoint,
-  asCellCol,
-  cellLen,
-  cellFit,
   charGreedyWrap,
+  type MountEntry,
   type WrapStrategy,
   type WrapRow,
-} from "../../src/index.js";
+} from "../../src/widgets/index.js";
+import type { TerminalHost } from "../../src/host/index.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   MONOKAI,

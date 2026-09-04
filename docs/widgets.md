@@ -4,6 +4,10 @@ Everything else in rich-js draws once and returns. Widgets stay on screen and re
 
 A widget knows nothing about stdin, escape sequences, or the terminal it lives in. It holds state, accepts typed events (`handleKey`, `handleMouse`, `handleFocus`), and renders `Segment[]`. Everything about the outside world is supplied by a host, which is why the same `Button` runs against a real TTY, an xterm.js canvas in a browser, or a mock stream in a test.
 
+Widgets are imported from `@promptctl/rich-js/widgets`, not from the main entry point. They are one of two parts of the library that carry a third-party runtime dependency of their own — MobX here, for the observable state above; `@promptctl/go-template-js` for [template bindings](/template-bindings) — and each gets its own subpath so that dependency stays off the back of a program that only wanted to print a table.
+
+Two other paths show up in the examples below. `@promptctl/rich-js/host` is the terminal seam — `TerminalHost`, `BrowserTerminalHost`, `hostStream` — which is separate because plenty of non-interactive programs want to write through a host and should not pay for the widget set to do it. Core types (`Segment`, `Style`, `RenderOptions`) still come from `@promptctl/rich-js`.
+
 ## A running app
 
 This is a complete program. Save it, run it, Tab between the fields, Enter on the button:
@@ -16,7 +20,7 @@ import {
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
-} from "@promptctl/rich-js";
+} from "@promptctl/rich-js/widgets";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 
 const host = new NodeTerminalHost();
@@ -65,7 +69,7 @@ router.start();
 
 The example constructs four objects before a single widget appears, and each one owns a different question.
 
-**`NodeTerminalHost`** is how the runtime reaches a node terminal — nothing in the widget layer itself touches `process`, so the same widget code runs anywhere a host can be built. Reading node's process streams is why it lives on the `node/terminal-host` subpath rather than in the main barrel — the barrel stays browser-safe. It is the seam: swap it for `BrowserTerminalHost` (which wraps an xterm.js terminal and *is* in the barrel) and the rest of the program is unchanged. In tests, construct it over `PassThrough` streams — `new NodeTerminalHost({ stdin, stdout })` — and nothing else needs to know.
+**`NodeTerminalHost`** is how the runtime reaches a node terminal — nothing in the widget layer itself touches `process`, so the same widget code runs anywhere a host can be built. Reading node's process streams is why it lives on the `node/terminal-host` subpath rather than in the main barrel — the barrel stays browser-safe. It is the seam: swap it for `BrowserTerminalHost` (which wraps an xterm.js terminal and sits on the `host` subpath beside the `TerminalHost` interface itself) and the rest of the program is unchanged. In tests, construct it over `PassThrough` streams — `new NodeTerminalHost({ stdin, stdout })` — and nothing else needs to know.
 
 **`EventRouter`** reads bytes from the host and turns them into `KeyEvent` and `WidgetMouseEvent` values. It parses escape sequences, holds drag capture during a slider drag, and hit-tests mouse coordinates against widget bounds. On `start()` it enables raw mode and mouse tracking; on `stop()` it puts both back.
 
@@ -142,7 +146,7 @@ Mouse events do not use the chain. Subscribe with `router.onMouse(handler)` and 
 Pass a placement by mounting `{ widget, placement }` instead of a bare widget:
 
 ```typescript
-import { FLOW } from "@promptctl/rich-js";
+import { FLOW } from "@promptctl/rich-js/widgets";
 
 screen.mount(
   header,                                                        // flow (default)
@@ -197,7 +201,7 @@ Multiline mode has a set of options for behaving like a textarea:
 `charGreedyWrap` breaks wherever the line stops fitting, treating wide characters as atomic:
 
 ```ts
-import { TextInput, charGreedyWrap } from "@promptctl/rich-js";
+import { TextInput, charGreedyWrap } from "@promptctl/rich-js/widgets";
 
 const notes = new TextInput({ multiline: true, wrap: charGreedyWrap, maxRows: 6 });
 ```
@@ -227,7 +231,8 @@ Left and Right move by `step`, Home and End jump to the ends; all values are cla
 Not interactive — it takes no focus and ignores keys — but it participates in mount order and layout like anything else. Use it for headers, labels, and status lines. `render` is either a `Renderable` or a function returning segments; the function form is what you want for a status line that reads observables and repaints when they change.
 
 ```typescript
-import { StaticItem, Segment, Style } from "@promptctl/rich-js";
+import { Segment, Style } from "@promptctl/rich-js";
+import { StaticItem } from "@promptctl/rich-js/widgets";
 
 const status = new StaticItem({
   id: "status",
@@ -243,8 +248,10 @@ Extend `WidgetBase`. It provides the observable state, focus and hover plumbing,
 
 ```typescript
 import { observable, action } from "mobx";
-import { WidgetBase, Segment, Style } from "@promptctl/rich-js";
-import type { KeyEvent, RenderOptions } from "@promptctl/rich-js";
+import { Segment, Style } from "@promptctl/rich-js";
+import type { RenderOptions } from "@promptctl/rich-js";
+import { WidgetBase } from "@promptctl/rich-js/widgets";
+import type { KeyEvent } from "@promptctl/rich-js/widgets";
 
 class Counter extends WidgetBase {
   readonly id = "counter";

@@ -20,7 +20,7 @@ import {
   type XtermDisposable,
   type XtermResizeEvent,
   type TerminalSize,
-} from "../../src/widgets/terminal-host.js";
+} from "../../src/host/terminal-host.js";
 
 // ---------------------------------------------------------------------------
 // FakeXtermTerminal — a hand-built `XtermTerminal` for contract testing.
@@ -296,7 +296,7 @@ describe("BrowserTerminalHost", () => {
       // [LAW:types-are-the-program] Compile-time check via assignment. If
       // BrowserTerminalHost ever drifts from the TerminalHost contract,
       // this line stops type-checking — no runtime assertion needed.
-      const asHost: import("../../src/widgets/terminal-host.js").TerminalHost = host;
+      const asHost: import("../../src/host/terminal-host.js").TerminalHost = host;
       expect(asHost.isTTY).toBe(true);
     });
   });

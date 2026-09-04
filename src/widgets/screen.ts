@@ -66,7 +66,7 @@ import type {
   Placement,
   WidgetBounds,
 } from "./types.js";
-import type { TerminalHost } from "./terminal-host.js";
+import type { TerminalHost } from "../host/terminal-host.js";
 
 export type ColorSystemSpec =
   | ColorDepth

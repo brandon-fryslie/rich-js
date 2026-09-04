@@ -8,6 +8,7 @@
 
 import type { Renderable, Measurable, RenderOptions } from "../core/protocol.js";
 import type { Segment } from "../core/segment.js";
+import type { Unsubscribe } from "../core/subscription.js";
 
 // --- Event types ---
 
@@ -177,10 +178,6 @@ export function hasOverlay(value: object): value is OverlayRenderable {
     typeof (value as OverlayRenderable).renderOverlay === "function"
   );
 }
-
-// --- Unsubscribe helper ---
-
-export type Unsubscribe = () => void;
 
 // --- FocusManager ---
 

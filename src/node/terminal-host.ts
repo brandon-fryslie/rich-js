@@ -33,8 +33,8 @@ import type {
   ResizeHandler,
   TerminalHost,
   TerminalSize,
-} from "../widgets/terminal-host.js";
-import type { Unsubscribe } from "../widgets/types.js";
+} from "../host/terminal-host.js";
+import type { Unsubscribe } from "../core/subscription.js";
 
 /**
  * Subset of NodeJS stream API the node host actually depends on. Tests

@@ -11,7 +11,8 @@
  * has no environment-aware branches.
  */
 
-import { Console, hostStream, type TerminalHost } from "../../src/index.js";
+import { Console } from "../../src/index.js";
+import { hostStream, type TerminalHost } from "../../src/host/index.js";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
 import { DashboardRuntime } from "./runtime/runtime.js";

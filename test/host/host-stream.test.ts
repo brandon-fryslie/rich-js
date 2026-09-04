@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { hostStream } from "../../src/widgets/host-stream.js";
-import type { TerminalHost, TerminalSize } from "../../src/widgets/terminal-host.js";
+import { hostStream } from "../../src/host/host-stream.js";
+import type { TerminalHost, TerminalSize } from "../../src/host/terminal-host.js";
 
 /**
  * `hostStream` is the seam between Console's existing `file:` option and any
