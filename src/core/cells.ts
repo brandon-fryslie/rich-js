@@ -91,10 +91,10 @@ export function asCodePoint(n: number): CodePoint { return n as CodePoint; }
  * fractional budget reaches a largest-remainder division, which grants a whole
  * cell against a fractional residue and hands out more width than it was given.
  *
- * `Infinity` survives, because an unbounded width is a legitimate request and
- * this function's job is the count, not the bound. What a renderable *emits*
- * when told its canvas is unbounded is a separate question, filed as its own
- * ticket rather than answered by a clamp hidden in here.
+ * `Infinity` is outside what the comparison floors, so it passes through
+ * unchanged. That is a gap, not a guarantee: what a renderable emits into an
+ * unbounded canvas is a decision for every renderable at once, filed as
+ * `rich-width-3cf.5` rather than answered by a clamp hidden in here.
  */
 export function cellCount(n: number): CellCol {
   return (n > 0 ? Math.floor(n) : 0) as CellCol;

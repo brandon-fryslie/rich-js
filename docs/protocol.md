@@ -118,19 +118,21 @@ class ChessBoard implements Measurable {
 Without `measure()`, a custom renderable inside a `Table` column or `Layout` region cannot be sized correctly. The table won't know how much space to allocate to it.
 :::
 
-Implement both interfaces together for a fully composable renderable. Clamp both ends of the range to `options.maxWidth` — a fixed range ignores the space the parent actually has, and once the offer drops below the minimum you report, you are claiming to need more than you can use:
+Implement both interfaces together for a fully composable renderable. Start each method by parsing the width with `withCellWidth`, then clamp both ends of the range to it — a fixed range ignores the space the parent actually has, and once the offer drops below the minimum you report, you are claiming to need more than you can use:
 
 ```typescript
+import { withCellWidth } from "@promptctl/rich-js";
+
 class MyWidget implements Renderable, Measurable {
-  measure(options: RenderOptions): Measurement {
-    return new Measurement(
-      Math.min(10, options.maxWidth),
-      Math.min(40, options.maxWidth),
-    );
+  measure(rawOptions: RenderOptions): Measurement {
+    const { maxWidth } = withCellWidth(rawOptions);
+    return new Measurement(Math.min(10, maxWidth), Math.min(40, maxWidth));
   }
 
-  *render(options: RenderOptions): Iterable<Renderable> {
-    // render within the same cell count
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
+    const options = withCellWidth(rawOptions);
+    // render within options.maxWidth cells, and pass `options` — not
+    // `rawOptions` — to anything you render inside yourself
   }
 }
 ```
@@ -139,6 +141,12 @@ class MyWidget implements Renderable, Measurable {
 
 `options.maxWidth` is a count of terminal cells — the widest line the renderable may occupy. Every line you emit must fit inside it. A renderable that overruns its width corrupts the layout of whatever contains it, and the parent has no chance to correct it afterwards.
 
-`maxWidth` is typed `number`, and a custom renderable receives whatever the caller wrote, so read it as a count rather than assuming a clean integer. A negative width and `NaN` both mean zero cells; a fractional width is floored, so 10.5 is ten cells and the half is never drawn. Zero is a real request — render an empty line, not your natural width. `Infinity` is not a supported width; pass a concrete cell count instead.
+`maxWidth` is typed `number`, and a custom renderable receives whatever the caller wrote, so read it as a count rather than assuming a clean integer. A negative width and `NaN` both mean zero cells; a fractional width is floored, so 10.5 is ten cells and the half is never drawn. Zero is a real request — render an empty line, not your natural width.
+
+`withCellWidth` is that rule, and calling it is how you get the answer rather than reimplementing it. It returns the options with `maxWidth` replaced, which is the reason it hands back options rather than a number: the raw value would otherwise stay in the object you forward to a child renderable or to `Measurement.get`, and be re-read there. Every built-in renderable begins this way.
+
+Nothing calls it for you. `render()` is public, so your renderable is reachable directly — `renderToString(widget, { width: userValue })` passes `userValue` through untouched — and a renderable one layer up cannot parse on your behalf.
+
+One value is not covered: `Infinity` passes `withCellWidth` unchanged, since flooring has nothing to say about it. Several built-in renderables throw on it today; that gap is tracked as `rich-width-3cf.5`. Until it closes, treat an unbounded width as something you may receive and decide for yourself, not as something the contract keeps away from you.
 
 `measure` answers the same question in advance, so its answer carries the same ceiling: `minimum <= maximum <= options.maxWidth`. Parent layouts divide space from the range you return, so a minimum above your own maximum leaves them nothing they can honour.
