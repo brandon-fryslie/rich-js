@@ -118,25 +118,36 @@ class ChessBoard implements Measurable {
 Without `measure()`, a custom renderable inside a `Table` column or `Layout` region cannot be sized correctly. The table won't know how much space to allocate to it.
 :::
 
-Implement both interfaces together for a fully composable renderable. Start each method by parsing the width with `withCellWidth`, then clamp both ends of the range to it — a fixed range ignores the space the parent actually has, and once the offer drops below the minimum you report, you are claiming to need more than you can use:
+Implement both interfaces together for a fully composable renderable. Each method parses the width first, and they parse it differently: `measure` is asked what your content wants, so it uses `withCellWidth` and clamps its own answer to the offer; `render` is asked to draw, so it uses `withBoundedWidth`, which calls your `measure` when the offer has no upper bound. Report a range derived from your content — a fixed range ignores the space the parent actually has, and once the offer drops below the minimum you report, you are claiming to need more than you can use:
 
 ```typescript
 import type { Renderable, Measurable, RenderOptions } from "@promptctl/rich-js";
-import { Measurement, Segment, withCellWidth } from "@promptctl/rich-js";
+import {
+  Measurement,
+  Segment,
+  cellLen,
+  withBoundedWidth,
+  withCellWidth,
+} from "@promptctl/rich-js";
 
 class MyWidget implements Renderable, Measurable {
+  constructor(private readonly lines: string[]) {}
+
   measure(rawOptions: RenderOptions): Measurement {
     const { maxWidth } = withCellWidth(rawOptions);
-    return new Measurement(Math.min(10, maxWidth), Math.min(40, maxWidth));
+    const natural = Math.max(0, ...this.lines.map(cellLen));
+    return new Measurement(Math.min(1, maxWidth), Math.min(natural, maxWidth));
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
-    const options = withCellWidth(rawOptions);
+    const options = withBoundedWidth(rawOptions, this);
     // render within options.maxWidth cells, and pass `options` — not
     // `rawOptions` — to anything you render inside yourself
   }
 }
 ```
+
+`withBoundedWidth` belongs at the top of `render` and never at the top of `measure`: it asks `measure` for the natural width, so calling it from there would ask the question with itself.
 
 ## The width contract
 
@@ -148,6 +159,10 @@ class MyWidget implements Renderable, Measurable {
 
 Nothing calls it for you. `render()` is public, so your renderable is reachable directly — `renderToString(widget, { width: userValue })` passes `userValue` through untouched — and a renderable one layer up cannot parse on your behalf.
 
-One value is not covered: `Infinity` passes `withCellWidth` unchanged, since flooring has nothing to say about it. Several built-in renderables throw on it today; that gap is tracked as `rich-width-3cf.5`. Until it closes, treat an unbounded width as something you may receive and decide for yourself, not as something the contract keeps away from you.
+`Infinity` is the one value `withCellWidth` leaves alone, because flooring has nothing to say about it. **An unbounded width means "render at your natural width"** — the width your content wants when nothing constrains it, which is exactly the `maximum` your own `measure` reports. `withBoundedWidth` is that rule: it parses like `withCellWidth`, then resolves an unbounded offer by asking the renderable you hand it.
 
-`measure` answers the same question in advance, so its answer carries the same ceiling: `minimum <= maximum <= options.maxWidth`. Parent layouts divide space from the range you return, so a minimum above your own maximum leaves them nothing they can honour.
+That answer has to come from the renderable, which is why it is a second function rather than a clamp inside the first. There is no number `withCellWidth` could substitute from the offer alone: a magic finite default silently draws the wrong width, and `MAX_SAFE_INTEGER` is not a width you can draw at all.
+
+A renderable whose content cannot measure itself has no natural width to fall back on, and `withBoundedWidth` throws a `RangeError` saying so. That is the honest outcome — an unbounded offer around unmeasurable content has no right answer, and the alternatives are to lose the content silently or to guess. Render at a finite width, or give the content a `measure()`.
+
+`measure` answers the same question in advance, so its answer carries the same ceiling: `minimum <= maximum <= options.maxWidth`. Parent layouts divide space from the range you return, so a minimum above your own maximum leaves them nothing they can honour — and a `maximum` of "whatever I was offered" is the other failure, less obvious and just as costly. It tells every parent you want all the space there is, so a `Panel` in fit mode draws its frame at the full console width around your four cells of content, and an unbounded offer comes back unbounded.

@@ -14,6 +14,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { withBoundedWidth } from "../core/protocol.js";
 
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
@@ -473,11 +474,13 @@ export class Table implements Renderable, Measurable {
     return this;
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
     if (this._columns.length === 0) {
       yield Segment.line();
       return;
     }
+
+    const options = withBoundedWidth(rawOptions, this);
 
     const box = this.box
       ? (options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box)
@@ -563,7 +566,13 @@ export class Table implements Renderable, Measurable {
     const outerWidth = Math.min(this.tableWidth ?? options.maxWidth, options.maxWidth);
     const frame = this._frame();
     const demands = this._columnDemands();
-    const maximum = layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
+    const laidOut = layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
+    // `UNBOUNDED` is this table's own infinity, so a layout that reached it has
+    // no natural width to report — a column asked for every cell there is. Said
+    // as the number, it escapes as a width a caller would try to draw:
+    // `minWidth: Infinity` measured 18014398509481988 and rendered
+    // `RangeError: Invalid string length` out of the top border.
+    const maximum = laidOut >= UNBOUNDED ? Infinity : laidOut;
     const tightest = layoutTable(
       outerWidth,
       demands.map((demand) => ({

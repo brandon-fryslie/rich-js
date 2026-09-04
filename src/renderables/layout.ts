@@ -9,7 +9,8 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { withCellWidth } from "../core/protocol.js";
+import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { Measurement } from "../core/measure.js";
 
 export interface LayoutOptions {
   name?: string;
@@ -73,8 +74,13 @@ export class Layout implements Renderable, Measurable {
     return undefined;
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
     if (!this.visible) return;
+
+    // Parsed once at the top of the layout rather than at the row split below,
+    // because a column split forwards the width to its children untouched and
+    // would otherwise hand each of them the caller's raw number.
+    const options = withBoundedWidth(rawOptions, this);
 
     if (this._children.length === 0) {
       // Leaf node — render content
@@ -118,14 +124,13 @@ export class Layout implements Renderable, Measurable {
     options: RenderOptions,
   ): Iterable<Segment> {
     // Horizontal side-by-side: divide the requested width once, then merge
-    // child lines. The budget is parsed before it is divided — unparsed, a NaN
+    // child lines. The budget arrives parsed from `render` — unparsed, a NaN
     // width made every share NaN and the merge threw `Invalid array length`.
-    const parsed = withCellWidth(options);
-    const widths = this._distributeSpace(children, parsed.maxWidth);
+    const widths = this._distributeSpace(children, options.maxWidth);
     const cells = children.map((child, i) => ({
       width: widths[i]!,
       lines: Segment.splitLines([
-        ...child.render({ ...parsed, maxWidth: widths[i]! }),
+        ...child.render({ ...options, maxWidth: widths[i]! }),
       ]),
     }));
     yield* Segment.mergeHorizontal(cells);
@@ -173,12 +178,46 @@ export class Layout implements Renderable, Measurable {
     return sizes;
   }
 
+  /**
+   * The width this layout would take if nothing constrained it: its content's
+   * for a leaf, its children's laid out the way the split lays them out.
+   *
+   * A `size` counts only across a row, which is the one direction in which it
+   * is a width — down a column the same field is a height, and reading it as a
+   * width there would report a two-line pane as two cells wide.
+   */
+  private _naturalWidth(options: RenderOptions): number {
+    if (!this.visible) return 0;
+
+    const visible = this._children.filter((c) => c.visible);
+    if (visible.length === 0) {
+      if (this._renderable === undefined) return 0;
+      // A leaf whose content cannot measure itself has no width of its own to
+      // report, so it reports the offer — unbounded included, which is where
+      // `withBoundedWidth` says so rather than inventing a number.
+      return isMeasurable(this._renderable)
+        ? Measurement.get(options, this._renderable).maximum
+        : options.maxWidth;
+    }
+
+    const widths = visible.map((c) => c._naturalWidth(options));
+    return this._splitDirection === "row"
+      ? visible.reduce((sum, c, i) => sum + (c.size ?? widths[i]!), 0)
+      : Math.max(...widths);
+  }
+
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
     // `minimumSize` is what this layout asks for and the ceiling is what it was
     // offered; the ceiling wins. Unclamped, a layout measured into no width
     // reported the range 1..0 — a floor above its own ceiling, which the parent
     // that asked cannot divide.
-    const ceiling = withCellWidth(rawOptions).maxWidth;
-    return { minimum: Math.min(this.minimumSize, ceiling), maximum: ceiling };
+    //
+    // The ceiling alone was not the answer either: a layout that reported the
+    // whole offer as its maximum told every parent it wanted all of it, so
+    // `Panel` in fit mode drew its frame at the full console width around a
+    // layout of two short panes, and an unbounded offer came back unbounded.
+    const parsed = withCellWidth(rawOptions);
+    const maximum = Math.min(this._naturalWidth(parsed), parsed.maxWidth);
+    return { minimum: Math.min(this.minimumSize, maximum), maximum };
   }
 }

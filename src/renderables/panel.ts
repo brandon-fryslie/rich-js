@@ -15,7 +15,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withCellWidth } from "../core/protocol.js";
+import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -181,7 +181,7 @@ export class Panel implements Renderable, Measurable {
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
-    const options = withCellWidth(rawOptions);
+    const options = withBoundedWidth(rawOptions, this);
     const box = options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box;
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
     const contentStyle = this.style.isNull ? undefined : this.style;
@@ -260,22 +260,47 @@ export class Panel implements Renderable, Measurable {
     const geometry = layoutPanel(options.maxWidth, this.padding);
     const overhead = frameOverhead(geometry);
 
+    const declared = this._declaredWidth;
+
     if (isMeasurable(this.renderable)) {
       const innerOptions: RenderOptions = {
         ...options,
         maxWidth: geometry.contentWidth,
       };
       const measurement = Measurement.get(innerOptions, this.renderable);
+      const maximum = Math.min(
+        options.maxWidth,
+        declared ?? measurement.maximum + overhead,
+      );
       return {
-        minimum: Math.max(overhead, measurement.minimum + overhead),
-        maximum: Math.min(options.maxWidth, measurement.maximum + overhead),
+        minimum: Math.min(measurement.minimum + overhead, maximum),
+        maximum,
       };
     }
-    return { minimum: overhead, maximum: options.maxWidth };
+
+    // Content that cannot measure itself leaves the panel with nothing to want,
+    // so it wants the offer — unbounded included, which `withBoundedWidth`
+    // reports rather than turning into a number nobody can defend.
+    const maximum = Math.min(options.maxWidth, declared ?? options.maxWidth);
+    return { minimum: Math.min(overhead, maximum), maximum };
+  }
+
+  /**
+   * The width this panel was told to be, as a count of cells.
+   *
+   * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` answer the same
+   * question about the same field, so they read it from here. Answered
+   * separately, `measure` reported nine cells of content while `render` drew the
+   * declared twelve, and the parent that divided space from the range got a
+   * panel three cells wider than the share it granted.
+   */
+  private get _declaredWidth(): number | undefined {
+    return this.width === undefined ? undefined : cellCount(this.width);
   }
 
   private _getPanelWidth(options: RenderOptions): number {
-    if (this.width !== undefined) return Math.min(this.width, options.maxWidth);
+    const declared = this._declaredWidth;
+    if (declared !== undefined) return Math.min(declared, options.maxWidth);
     if (this.expand) return options.maxWidth;
 
     // Fit mode: the panel is as wide as its content wants plus its own frame,

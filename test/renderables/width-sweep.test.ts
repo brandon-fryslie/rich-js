@@ -27,14 +27,13 @@
  *     output rather than a bound on it, and they are what "a cell count is a
  *     non-negative integer" means from the outside.
  *
- * `maxWidth: Infinity` is deliberately absent, and it is not an oversight: it
- * still throws in Panel, Columns and Layout. The epic's invariant is trivially
- * true there — nothing can exceed an unbounded width — and the crash is an
- * *expansion* defect (`" ".repeat(Infinity)`), a different question from the
- * squeeze this epic fixed. Answering it means deciding what every renderable
- * renders at an unbounded width, which is a decision worth making once and on
- * purpose. Filed as `rich-width-3cf.5` rather than smuggled in behind a clamp;
- * adding `Infinity` to the domain below is that ticket's acceptance criterion.
+ * `maxWidth: Infinity` gets its own assertion rather than a place in the width
+ * loop, because the epic's bound is trivially true there — nothing can exceed an
+ * unbounded width — and the defect was the opposite one: a renderable expanding
+ * into a budget with no top, reaching `" ".repeat(Infinity)`. What replaced it
+ * is an equality, not a bound: an unbounded offer renders exactly as the natural
+ * width the renderable reports, so the two renders are compared against each
+ * other. A bound alone would pass on a renderable that emitted nothing at all.
  */
 import { describe, it, expect } from "vitest";
 import { Panel } from "../../src/renderables/panel.js";
@@ -231,6 +230,23 @@ const equivalentWidths: ReadonlyArray<readonly [number, number]> = [
   [-5, 0],
 ];
 
+/**
+ * The configurations with no natural width to fall back on, and the two ways to
+ * end up there. Three wrap `oversized`, a `Renderable` with no `measure`, so
+ * nothing in the tree knows how wide the content wants to be. The fourth asks
+ * for an unbounded width itself, in a column declared `{ ratio: Infinity }`.
+ *
+ * Named here rather than discovered from the measurement, so that a renderable
+ * which quietly stops reporting a natural width fails this file instead of
+ * joining this list.
+ */
+const noNaturalWidth: ReadonlySet<string> = new Set([
+  "Panel wrapping content that ignores its width",
+  "Padding wrapping content that ignores its width",
+  "Padding unexpanded",
+  "Table with an unbounded column demand",
+]);
+
 describe("width sweep", () => {
   for (const config of configurations) {
     describe(config.name, () => {
@@ -285,6 +301,26 @@ describe("width sweep", () => {
           expect(m.maximum, `measured past maxWidth ${width}: ${JSON.stringify(m)}`)
             .toBeLessThanOrEqual(width);
         }
+      });
+
+      it("renders an unbounded width exactly as its own natural width", () => {
+        const unbounded: RenderOptions = { maxWidth: Infinity, height: 6, maxHeight: 6 };
+        const natural = config.make().measure(unbounded).maximum;
+
+        if (noNaturalWidth.has(config.name)) {
+          expect(natural, "reported a natural width it cannot have").toBe(Infinity);
+          expect(
+            () => renderAt(config, Infinity),
+            "an unbounded offer around unmeasurable content has no answer, and silence is not one",
+          ).toThrow(RangeError);
+          return;
+        }
+
+        expect(natural, `measured an unbounded natural width: ${natural}`).toBeLessThan(Infinity);
+        expect(
+          renderAt(config, Infinity),
+          `an unbounded width did not render as its natural width ${natural}`,
+        ).toEqual(renderAt(config, natural));
       });
     });
   }
