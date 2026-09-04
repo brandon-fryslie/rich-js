@@ -141,6 +141,26 @@ describe("Columns", () => {
     expect(contentRow).toContain("BBB");
   });
 
+  // --- A declared column width is a cell count ---
+
+  // These live here rather than in the width sweep because a Columns with a
+  // declared `width` legitimately overruns a narrower `options.maxWidth`, the
+  // way a Table with a declared `width` does — so the sweep's upper bound is
+  // the wrong assertion for them. What holds instead is the equivalence the
+  // sweep pins for `options.maxWidth`: a cell count is a non-negative integer,
+  // and a width that is not one renders as the one it floors to.
+  it.each([
+    ["NaN", NaN, 0],
+    ["-5", -5, 0],
+    ["4.5", 4.5, 4],
+  ])("lays out a declared width of %s as its floor", (_name, given, floor) => {
+    const at = (width: number): string[] =>
+      collectLines(new Columns(["alpha", "beta", "gamma"], { width }), {
+        maxWidth: 80,
+      });
+    expect(at(given)).toEqual(at(floor));
+  });
+
   // --- Measurement (columns-behavior.md) ---
 
   it("measurement minimum is greater than 0", () => {
