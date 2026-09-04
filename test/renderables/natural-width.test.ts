@@ -35,6 +35,14 @@ const options: RenderOptions = { maxWidth: OFFER, height: 8, maxHeight: 8 };
 const contents: ReadonlyArray<{
   readonly name: string;
   readonly make: () => Renderable & Measurable;
+  /**
+   * The text that must survive, grouped by the row it belongs on. A width is a
+   * claim about layout, and this is the half of that claim a cell count cannot
+   * carry: `left` and `right` sharing one row is the whole content of "9 cells
+   * wide", and a renderable that reports 9 and then wraps has told the truth
+   * about its width and a lie about its content.
+   */
+  readonly rows: ReadonlyArray<readonly string[]>;
 }> = [
   {
     name: "Tree",
@@ -43,10 +51,20 @@ const contents: ReadonlyArray<{
       root.add("child one");
       return root;
     },
+    rows: [["root"], ["child one"]],
   },
   {
     name: "Columns",
     make: () => new Columns([new RichText("alpha"), new RichText("beta")]),
+    rows: [["alpha", "beta"]],
+  },
+  {
+    name: "Columns of items narrower than a column",
+    // Auto mode sized its columns at a flat four cells while reporting a
+    // natural width built from the items, so six two-cell items claimed 22 and
+    // then wrapped into two rows at 22. Four-cell items never showed it.
+    make: () => new Columns(["aa", "bb", "cc", "dd", "ee", "ff"]),
+    rows: [["aa", "bb", "cc", "dd", "ee", "ff"]],
   },
   {
     name: "Layout row split",
@@ -55,6 +73,22 @@ const contents: ReadonlyArray<{
       layout.splitRow(new Layout("left"), new Layout("right"));
       return layout;
     },
+    rows: [["left", "right"]],
+  },
+  {
+    name: "Layout row split at unequal ratios",
+    // One budget feeds every pane, so the wider pane sets the width for all of
+    // them: summing what each child wants under-reports whatever ratio is
+    // hungriest, and that child renders cropped at the width sized to fit it.
+    make: () => {
+      const layout = new Layout();
+      layout.splitRow(
+        new Layout("narrow", { ratio: 2 }),
+        new Layout("a wide pane", { ratio: 1 }),
+      );
+      return layout;
+    },
+    rows: [["narrow", "a wide pane"]],
   },
   {
     name: "Layout column split",
@@ -63,13 +97,29 @@ const contents: ReadonlyArray<{
       layout.splitColumn(new Layout("top"), new Layout("a longer bottom"));
       return layout;
     },
+    rows: [["top"], ["a longer bottom"]],
   },
 ];
 
-function lineWidths(renderable: Renderable, maxWidth: number): number[] {
+/** Whether one rendered row holds every fragment, in order and unbroken. */
+function holdsInOrder(line: string, fragments: readonly string[]): boolean {
+  let from = 0;
+  for (const fragment of fragments) {
+    const at = line.indexOf(fragment, from);
+    if (at === -1) return false;
+    from = at + fragment.length;
+  }
+  return true;
+}
+
+function renderedLines(renderable: Renderable, maxWidth: number): string[][] {
   const segments = [...renderable.render({ ...options, maxWidth })];
-  return Segment.splitLines(segments).map((line) =>
-    line.reduce((total, segment) => total + cellLen(segment.text), 0),
+  return Segment.splitLines(segments).map((line) => line.map((s) => s.text));
+}
+
+function lineWidths(renderable: Renderable, maxWidth: number): number[] {
+  return renderedLines(renderable, maxWidth).map((line) =>
+    line.reduce((total, text) => total + cellLen(text), 0),
   );
 }
 
@@ -96,6 +146,26 @@ describe("natural width", () => {
         ).toEqual([natural + PANEL_OVERHEAD]);
       });
 
+      it("renders its content intact at the width it reports", () => {
+        // The three assertions around this one all read a cell count, and a
+        // cell count is exactly what a renderable that crops its own content
+        // still gets right: `Panel`'s padding absorbed the shortfall, so the
+        // totals agreed while the pane inside them wrapped. This one reads the
+        // text.
+        const natural = content.make().measure(options).maximum;
+        const lines = renderedLines(content.make(), natural).map((line) =>
+          line.join(""),
+        );
+
+        for (const row of content.rows) {
+          expect(
+            lines.some((line) => holdsInOrder(line, row)),
+            `no row held ${row.join(" + ")} at the reported natural width of `
+              + `${natural}; rendered ${JSON.stringify(lines)}`,
+          ).toBe(true);
+        }
+      });
+
       it("still fills the offer inside an expanding Panel", () => {
         // Fit mode is a choice, not the only mode: the same content inside an
         // expanding panel takes the whole offer, so this is a narrower measure
@@ -105,4 +175,17 @@ describe("natural width", () => {
       });
     });
   }
+
+  it("reports nothing for a split whose every child is hidden", () => {
+    // `render` reads leafness off `_children`, so a layout that holds content
+    // *and* children draws the children — none here, so nothing. `measure`
+    // read it off the *visible* children, found none, and answered as a leaf
+    // with the content's width, sizing a fit-mode Panel for twelve cells that
+    // never reach the screen.
+    const layout = new Layout("CONTENT-HERE");
+    layout.splitRow(new Layout("hidden", { visible: false }));
+
+    expect(layout.measure(options).maximum).toBe(0);
+    expect(renderedLines(layout, OFFER)).toEqual([]);
+  });
 });

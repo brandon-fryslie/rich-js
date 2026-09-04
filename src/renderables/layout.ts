@@ -49,6 +49,19 @@ export class Layout implements Renderable, Measurable {
     return this._children;
   }
 
+  /**
+   * Whether this layout draws `_renderable` or its children.
+   *
+   * [LAW:one-source-of-truth] `render` and `_naturalWidth` must answer this the
+   * same way. Asked separately they did not: `_naturalWidth` read it off the
+   * *visible* children, so a layout holding content and a single hidden child
+   * reported that content's width while `render` emitted nothing at all, and a
+   * fit-mode `Panel` framed twelve cells of air.
+   */
+  private get _isLeaf(): boolean {
+    return this._children.length === 0;
+  }
+
   splitColumn(...layouts: Layout[]): void {
     this._children = layouts;
     this._splitDirection = "column";
@@ -82,7 +95,7 @@ export class Layout implements Renderable, Measurable {
     // would otherwise hand each of them the caller's raw number.
     const options = withBoundedWidth(rawOptions, this);
 
-    if (this._children.length === 0) {
+    if (this._isLeaf) {
       // Leaf node — render content
       if (this._renderable) {
         yield* this._renderable.render(options);
@@ -189,8 +202,7 @@ export class Layout implements Renderable, Measurable {
   private _naturalWidth(options: RenderOptions): number {
     if (!this.visible) return 0;
 
-    const visible = this._children.filter((c) => c.visible);
-    if (visible.length === 0) {
+    if (this._isLeaf) {
       if (this._renderable === undefined) return 0;
       // A leaf whose content cannot measure itself has no width of its own to
       // report, so it reports the offer — unbounded included, which is where
@@ -200,10 +212,45 @@ export class Layout implements Renderable, Measurable {
         : options.maxWidth;
     }
 
+    const visible = this._children.filter((c) => c.visible);
+    if (visible.length === 0) return 0;
+
     const widths = visible.map((c) => c._naturalWidth(options));
     return this._splitDirection === "row"
-      ? visible.reduce((sum, c, i) => sum + (c.size ?? widths[i]!), 0)
+      ? this._rowBudgetFor(visible, widths)
       : Math.max(...widths);
+  }
+
+  /**
+   * The budget at which `_distributeSpace` gives every child of a row at least
+   * the width it wants — the inverse of the ratio rule above, and the reason
+   * this is not the sum of those widths.
+   *
+   * [LAW:one-source-of-truth] A flex child receives `floor(budget * ratio /
+   * totalRatio)`, so to receive `want` cells it needs the flex budget to reach
+   * `want * totalRatio / ratio`, and one budget serves them all: the row needs
+   * the largest demand, never their total. Summed instead, a 1:1 split of
+   * "left" and "right" reported 9 and then rendered "right" into the 4 cells
+   * that `floor(9/2)` actually hands it.
+   */
+  private _rowBudgetFor(children: Layout[], widths: number[]): number {
+    let fixed = 0;
+    let flexBudget = 0;
+    const totalRatio = children.reduce(
+      (sum, c) => sum + (c.size === undefined ? c.ratio : 0),
+      0,
+    );
+
+    for (const [i, child] of children.entries()) {
+      if (child.size !== undefined) {
+        fixed += child.size;
+        continue;
+      }
+      const want = Math.max(child.minimumSize, widths[i]!);
+      flexBudget = Math.max(flexBudget, Math.ceil(want * totalRatio / child.ratio));
+    }
+
+    return fixed + flexBudget;
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

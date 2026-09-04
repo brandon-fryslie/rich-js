@@ -136,7 +136,10 @@ class MyWidget implements Renderable, Measurable {
   measure(rawOptions: RenderOptions): Measurement {
     const { maxWidth } = withCellWidth(rawOptions);
     const natural = Math.max(0, ...this.lines.map(cellLen));
-    return new Measurement(Math.min(1, maxWidth), Math.min(natural, maxWidth));
+    const maximum = Math.min(natural, maxWidth);
+    // The floor comes off the ceiling, not off the offer: with no lines yet,
+    // `Math.min(1, maxWidth)` would be a minimum of 1 above a maximum of 0.
+    return new Measurement(Math.min(1, maximum), maximum);
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {

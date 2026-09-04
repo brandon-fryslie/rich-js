@@ -114,8 +114,17 @@ export class Columns implements Renderable, Measurable {
       return { numCols, colWidths: new Array(numCols).fill(equalWidth) as number[] };
     }
 
-    // Auto: fit as many columns as possible
-    const numCols = Math.min(this.renderables.length, Math.max(1, Math.floor(maxWidth / 4)));
+    // Auto: as many columns as the widest item fits into, capped at the item
+    // count. Sized from the content rather than from a flat four cells per
+    // column, because `_naturalWidth` below is the inverse of *this* expression
+    // and a constant has no inverse: six two-cell items reported a natural
+    // width of 22 and then wrapped into two rows at 22, since `floor(22 / 4)`
+    // is five columns no matter how narrow the items are.
+    const itemWidth = this._itemWidth(options);
+    const numCols = Math.min(
+      this.renderables.length,
+      Math.max(1, Math.floor((maxWidth + gutter) / (itemWidth + gutter))),
+    );
     const colW = Math.floor((maxWidth - gutter * (numCols - 1)) / numCols);
     return { numCols, colWidths: new Array(numCols).fill(colW) as number[] };
   }
