@@ -10,8 +10,8 @@ import type {
   InteractiveWidget,
   FocusManager,
   KeyEvent,
-  Unsubscribe,
 } from "./types.js";
+import type { Unsubscribe } from "../core/subscription.js";
 
 export class DefaultFocusManager implements FocusManager {
   @observable.shallow

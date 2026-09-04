@@ -46,14 +46,26 @@ The move to avoid: writing a second description of a subsystem — a design note
 ### Subsystems (src/)
 
 ```
-core → renderables → widgets
-  ↘ themes ↘ template-bindings
-  ↘ node/   (capability seam — not in the main barrel)
+core → renderables                        (the main barrel — `.`)
+  ↘ themes
+  ↘ host/              → widgets          (subpaths: ./host, ./widgets)
+  ↘ template-bindings                     (subpath: ./template-bindings)
+  ↘ node/                                 (subpaths: ./node/*)
 ```
+
+Only `core` and `renderables` are reachable from `.`. Everything below the first
+line is reached through its own `package.json#exports` subpath, and that file is
+the list — this diagram groups the subsystems, it does not enumerate the entry
+points. Two of them exist because they carry a third-party runtime dependency
+(`widgets` → `mobx`, `template-bindings` → `@promptctl/go-template-js`), one
+because it reads node built-ins (`node/`), and one because it is what a
+non-interactive program needs from the terminal without any of the above
+(`host/`).
 
 - **`src/core/`** — primitives. No upward calls, no renderable-specific logic.
 - **`src/renderables/`** — composed renderables (Table, Panel, Tree, Layout, Progress, Live, …) built on core. Each implements the `Renderable` interface.
-- **`src/widgets/`** — interactive layer: focus, key/mouse routing, a `Screen` that mounts widgets against a `TerminalHost`, and the widget set (Button, Checkbox, Toggle, TextInput, Dropdown, Slider). Reached through the `./widgets` subpath, never the main barrel — this and `./template-bindings` are the two subsystems that carry a runtime dependency of their own (`mobx`, `@promptctl/go-template-js`), and the subpath is what keeps it off a consumer who only wanted a Table. The header comment at the end of `src/index.ts` owns that argument. See `docs/widgets.md`.
+- **`src/host/`** — the terminal seam: the `TerminalHost` interface, `BrowserTerminalHost`, and `hostStream`. Depends on `core/` and on nothing else in `src/`; `widgets/` and `node/` both depend on it. It was carved out of `src/widgets/` because it is what a *non*-interactive program wants — writing bytes through a host should not cost the widget set or `mobx`.
+- **`src/widgets/`** — interactive layer: focus, key/mouse routing, a `Screen` that mounts widgets against a `TerminalHost`, and the widget set (Button, Checkbox, Toggle, TextInput, Dropdown, Slider). Reached through the `./widgets` subpath, never the main barrel — this and `./template-bindings` are the two subsystems that carry a third-party runtime dependency of their own (`mobx`, `@promptctl/go-template-js`), and the subpath is what keeps it off a consumer who only wanted a Table. The header comment at the end of `src/index.ts` owns that argument. See `docs/widgets.md`.
 - **`src/themes/`** — semantic palettes (`Palette`, `buildPalette`, colour refs), the bundled theme registry, OKLCH colour math, and light↔dark transposition. Distinct from `core/color`: a `ColorTable` is a quantization LUT, a `Palette` carries aesthetic intent.
 - **`src/template-bindings/`** — the styling vocabulary exposed as `@promptctl/go-template-js` template functions. See `docs/template-bindings.md`.
 - **`src/node/`** — the Node-only capability seam. One file per package subpath, and `package.json#exports` is the list: `node/save` (fs-backed export of recorded output), `node/prompt` (`nodeAsk`, readline-backed input for `Prompt`), `node/traceback` (`installTraceback`, the `process.on` crash handler), and `node/terminal-host` (`NodeTerminalHost`, the `TerminalHost` over `process.stdin`/`process.stdout`).
@@ -63,7 +75,7 @@ core → renderables → widgets
 Build order within `src/core/`. Each tier imports only from tiers above it:
 
 ```
-0   cells · color · sanitize
+0   cells · color · sanitize · subscription
 1   oklch · style
 2   segment
 3   box · protocol
@@ -93,6 +105,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.
 - **sanitize** — `stripOscTerminators`. One rule, one home: the bytes that would break out of an OSC 8 hyperlink wrap. Imported by both the data-model boundary and the wire-byte boundaries.
+- **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.
 - **box** — box-drawing character sets. One `Box` type, many pre-built instances (ASCII, SQUARE, ROUNDED, HEAVY, DOUBLE, …).
 - **protocol** — `Renderable` and `Measurable` interfaces. `Renderable.render(options) → Iterable<Segment>`. `Measurable.measure(options) → {minimum, maximum}`. Single authority for the rendering contract.
 - **measure** — `Measurement` value type (min/max cell width). `Measurement.get()` is the single enforcer for measuring a `Measurable`.

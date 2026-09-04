@@ -152,6 +152,7 @@ export type {
   Renderable,
   Measurable,
 } from "./core/protocol.js";
+export type { Unsubscribe } from "./core/subscription.js";
 
 // Measurement
 export { Measurement, measureRenderables } from "./core/measure.js";
@@ -287,6 +288,13 @@ export type { LayoutOptions } from "./renderables/layout.js";
 //   `@promptctl/rich-js/widgets`            — the interactive layer  (pulls in `mobx`)
 //   `@promptctl/rich-js/template-bindings`  — the styling vocabulary (pulls in
 //                                             `@promptctl/go-template-js`)
+//
+// `@promptctl/rich-js/host` is a third subpath but a different kind of thing: the
+// terminal seam has no third-party dependency at all, and sits on its own subpath
+// because it is what a *non*-interactive program reaches for. Folding it into either
+// neighbour is what the split was undoing — inside `widgets/` it charged mobx to
+// consumers who only wanted to write bytes; in this barrel it would put an I/O
+// capability in front of consumers who never touch a terminal directly.
 //
 // `export … from` is a static edge, so anything named here is *evaluated* by every
 // consumer, including one that only wanted a Table. Re-exporting the two subsystems

@@ -13,7 +13,7 @@ import {
   type MarkupTagContext,
   type MarkupTagHandler,
 } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/widgets/index.js";
+import { hostStream, type TerminalHost } from "../../src/host/index.js";
 
 export interface DemoHandle {
   stop(): void;

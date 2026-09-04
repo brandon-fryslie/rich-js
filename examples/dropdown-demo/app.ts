@@ -22,8 +22,8 @@ import {
   FLOW,
   hasOverlay,
   KeyEvent,
-  type TerminalHost,
 } from "../../src/widgets/index.js";
+import type { TerminalHost } from "../../src/host/index.js";
 import type {
   InteractiveWidget,
   MountEntry,

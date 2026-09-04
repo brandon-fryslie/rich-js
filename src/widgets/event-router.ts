@@ -25,9 +25,9 @@ import type {
   WidgetMouseEvent,
   KeyHandlerOptions,
   KeyHandlerPriority,
-  Unsubscribe,
 } from "./types.js";
-import type { TerminalHost } from "./terminal-host.js";
+import type { Unsubscribe } from "../core/subscription.js";
+import type { TerminalHost } from "../host/terminal-host.js";
 
 type KeyHandler = (event: KeyEvent) => void;
 interface RegisteredKeyHandler {

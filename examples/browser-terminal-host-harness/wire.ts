@@ -27,7 +27,7 @@ import {
   type TerminalSize,
   type DataHandler,
   type ResizeHandler,
-} from "../../src/widgets/terminal-host.js";
+} from "../../src/host/terminal-host.js";
 
 export interface HarnessHandle {
   /** Underlying TerminalHost — exposes the full TerminalHost contract. */

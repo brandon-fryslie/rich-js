@@ -17,7 +17,7 @@ import {
   BrowserTerminalHost,
   type TerminalHost,
   type XtermTerminal,
-} from "../../src/widgets/terminal-host.js";
+} from "../../src/host/terminal-host.js";
 import {
   MemoryFileSystem,
   type MemoryTree,

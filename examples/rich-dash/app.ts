@@ -12,7 +12,7 @@
  */
 
 import { Console } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/widgets/index.js";
+import { hostStream, type TerminalHost } from "../../src/host/index.js";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
 import { DashboardRuntime } from "./runtime/runtime.js";

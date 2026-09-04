@@ -19,8 +19,8 @@ import {
   DefaultFocusManager,
   EventRouter,
   StaticItem,
-  type TerminalHost,
 } from "../../src/widgets/index.js";
+import type { TerminalHost } from "../../src/host/index.js";
 import {
   Segment,
   Style,

@@ -91,7 +91,7 @@ import {
   RichText,
   Style,
 } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/widgets/index.js";
+import { hostStream, type TerminalHost } from "../../src/host/index.js";
 
 import type {
   DetectColorOptions,

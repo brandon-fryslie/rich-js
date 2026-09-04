@@ -40,10 +40,10 @@ import {
   TextInput,
   charGreedyWrap,
   type MountEntry,
-  type TerminalHost,
   type WrapStrategy,
   type WrapRow,
 } from "../../src/widgets/index.js";
+import type { TerminalHost } from "../../src/host/index.js";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import {
   MONOKAI,
