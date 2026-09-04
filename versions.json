@@ -4,15 +4,22 @@
     {
       "version": "pr-80",
       "ref": "refs/pull/80/merge",
-      "sha": "d9f4e00d06d2debdf01ff5f59d48e6f2c1f11207",
-      "timestamp": "2026-09-04T21:29:53.487Z",
+      "sha": "30901adc0af71d9acc5edfbdcd7507a4b9eda87a",
+      "timestamp": "2026-09-04T21:54:19.146Z",
       "commits": [
         {
-          "sha": "d9f4e00d06d2debdf01ff5f59d48e6f2c1f11207",
+          "sha": "30901adc0af71d9acc5edfbdcd7507a4b9eda87a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T15:29:21-06:00",
-          "message": "Merge aee9ea526b018c1743d1477fcb295cf44907d433 into 500db1a2f10b3814d61ff464ed54d43e02812721\n"
+          "timestamp": "2026-09-04T21:53:51Z",
+          "message": "Merge 9c895639c5c75afba471158564f4b443c6d9fd8f into 500db1a2f10b3814d61ff464ed54d43e02812721\n"
+        },
+        {
+          "sha": "9c895639c5c75afba471158564f4b443c6d9fd8f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T15:53:41-06:00",
+          "message": "refactor(host): the terminal seam is not part of the interactive layer\n\n`TerminalHost`, `BrowserTerminalHost` and `hostStream` lived in\n`src/widgets/`, but between them they had three imports — all type-only,\nnone touching mobx or any widget. They were mobx-free code inside a\nmobx-carrying barrel, so a consumer who wanted to write bytes through a\nhost had to load the whole widget set to get one.\n\nThat made the previous commit's rationale only half true: four of the\nseven demos it touched (rich-strip, rich-dash, rich-markup-plugins,\nthemes-and-color-studio) use no widget at all and still paid for mobx.\n\nExtracted to `src/host/` behind a `./host` subpath. Say the old module's\npurpose in one sentence and it needs an \"and\" — \"the interactive layer and\nthe terminal seam\"; the cut goes at the \"and\".\n\n`Unsubscribe` moves to `src/core/subscription.ts`. It is the return type of\nevery `on…()` in the library, and host/ and widgets/ both need it while\nneither may depend on the other, so it belongs below both.\n\nThis also straightens an arrow that pointed the wrong way: the node\ncapability seam imported up into the interactive layer\n(`src/node/terminal-host.ts` → `src/widgets/terminal-host.ts`). Both now\ndepend on `host/`, downhill.\n\nVerified by resolving each entry point's module graph:\n\n  dist/index.js                    string-width\n  dist/host/index.js               (none)\n  dist/widgets/index.js            mobx, string-width, …\n  dist/template-bindings/index.js  @promptctl/go-template-js, @noble/hashes, …\n\nAlso corrects three now-false descriptions this PR created or exposed:\ndocs/widgets.md claimed widgets were the only subsystem with a runtime\ndependency of its own and that BrowserTerminalHost was in the barrel, and\nCLAUDE.md's subsystem diagram annotated only `node/` as barrel-excluded.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "aee9ea526b018c1743d1477fcb295cf44907d433",
