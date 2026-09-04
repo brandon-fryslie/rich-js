@@ -145,6 +145,7 @@ export {
 export {
   isRenderable,
   isMeasurable,
+  withCellWidth,
 } from "./core/protocol.js";
 export type {
   RenderOptions,
