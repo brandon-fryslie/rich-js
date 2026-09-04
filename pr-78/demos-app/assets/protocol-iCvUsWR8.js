@@ -1,1 +1,0 @@
-import{au as n}from"./index-fBSLxOFZ.js";function r(e){return{...e,maxWidth:n(e.maxWidth)}}function u(e){return typeof e=="object"&&e!==null&&"render"in e&&typeof e.render=="function"}function i(e){return typeof e=="object"&&e!==null&&"measure"in e&&typeof e.measure=="function"}export{u as a,i,r as w};

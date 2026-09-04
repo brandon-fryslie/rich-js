@@ -4,15 +4,36 @@
     {
       "version": "pr-78",
       "ref": "refs/pull/78/merge",
-      "sha": "f6f11edaf8bc41fca2dce2b02897ea3f98933020",
-      "timestamp": "2026-09-03T12:59:09.001Z",
+      "sha": "6418d113b5ab02dd525423aced34ab4ab15db3ba",
+      "timestamp": "2026-09-04T02:26:35.181Z",
       "commits": [
         {
-          "sha": "f6f11edaf8bc41fca2dce2b02897ea3f98933020",
+          "sha": "6418d113b5ab02dd525423aced34ab4ab15db3ba",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-03T06:58:38-06:00",
-          "message": "Merge 71972a0a43cba0deed5d913890246977e722fe8f into b7cce63896fcaf7a7349499223c524fbff22b103\n"
+          "timestamp": "2026-09-04T02:19:06Z",
+          "message": "Merge 40c201b8834393f8be273097a74f132ebb963fe3 into b7cce63896fcaf7a7349499223c524fbff22b103\n"
+        },
+        {
+          "sha": "40c201b8834393f8be273097a74f132ebb963fe3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T20:18:54-06:00",
+          "message": "docs(protocol): hand implementors the parser the width contract requires\n\nThe page asserted a contract and withheld the only tool that satisfies\nit. `withCellWidth` was not exported, so its `MyWidget` example clamped\nwith `Math.min(10, options.maxWidth)` — which is `NaN` for a NaN width,\nthe exact bug the epic fixed internally, demonstrated as the pattern to\ncopy two paragraphs above the rule forbidding it.\n\n`withCellWidth` joins the barrel and the example calls it. The\nalternative — printing an inline `Number.isFinite(...) ? ... : 0` in the\nprose — was refused: it mints a second copy of the parse rule where\nnothing checks it against `cellCount`, which is this finding's own\nfailure mode one layer down. It already disagreed, mapping `Infinity` to\nzero. `cellCount` itself stays internal; `withCellWidth(options).maxWidth`\nis the ceiling a `measure` needs, and two doors onto one rule is how the\nrule starts having two answers.\n\nExporting it is not merely convenient. The width checkpoint sits at each\nrender/measure entry because `render()` is public and every entry is a\nreal crossing — and a third-party `Renderable` is one of those entries.\nThe page also now says that nothing calls it on the implementor's\nbehalf, since `renderToString` forwards `options?.width` untouched.\n\n`Infinity` was claimed as \"not a supported width\" beside a `cellCount`\ncomment calling an unbounded width \"a legitimate request\", which passes\nit through unchanged. Two maps, one fact, opposite readings — and\nneither was the territory: nothing in `src/` passes `Infinity` as a\nmaxWidth, `Table` modelling its own unboundedness as a deliberately\nfinite `MAX_SAFE_INTEGER`. Both texts now say what happens — it passes\nthe checkpoint unclamped, and the renderables that throw on it are the\nopen `rich-width-3cf.5` gap, not something the contract prevents. No\nclamp was added, because there is no cell count that means unbounded and\npicking one here would answer that ticket behind a checkpoint change.\n\nPer test/coverage, the new value export needs a demo rather than an\nallowlist entry, and `examples/shared/window.ts` is a custom renderable\nthat was breaking this very contract: its `measure` returned\n`MAX_SAFE_INTEGER` regardless of the offer, a ceiling no parent could\ndivide against. It now parses and reports the offer, so the page's\nworked example and the shipped one agree. Verified the gate by removing\nthe demo and watching it name the export.\n"
+        },
+        {
+          "sha": "a900ea032eafe5360e153a00911c8cce7b81e166",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T20:18:39-06:00",
+          "message": "fix(columns): parse a declared column width as the cell count it is\n\n`Columns.render` parses `options.maxWidth` through `withCellWidth`, but\n`this.colWidth` arrives by a different door — the constructor — and was\nused raw. `new Columns(items, { width: NaN })` made `Math.max(1, NaN)` a\nNaN column count and `new Array(NaN)` threw `RangeError: Invalid array\nlength` before a single column was laid out. `width: 4.5` laid out\nfractional columns.\n\nSame rule, same parser, applied where that door is: `cellCount` in the\nconstructor, as `Table` does for `col.width` via `demandCells`. Absence\nis preserved rather than parsed — `undefined` selects auto-fit, and\n`cellCount(undefined)` would read it as a declared zero and silently\nreroute an auto Columns into the declared-width branch.\n\nThe tests live in columns.test.ts rather than the width sweep because a\nColumns with a declared `width` legitimately overruns a narrower\n`options.maxWidth`, the way a declared-width Table does\n(`rich-table-width-y1a`), so the sweep's upper bound is the wrong\nassertion for it. What does hold is the equivalence the sweep pins\nelsewhere, asserted against a reference render: a declared NaN, -5 and\n4.5 lay out as 0, 0 and 4. All three fail against the previous commit.\n"
+        },
+        {
+          "sha": "226b2b4feca7380cf032d219cf2fb6506590231d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T20:18:31-06:00",
+          "message": "fix(padding): divide the requested width once, so no row can overflow it\n\n`Padding` had the defect the rest of this epic fixed, and the sweep this\nbranch adds did not cover it — so it shipped a guard with a hole where\none of the renderables it guards used to be.\n\nIt derived its geometry three times and clamped each derivation\ndifferently. `render` took the canvas as `Math.max(1, maxWidth - left -\nright)`, which clamps *up*: a padding of 1 inside a 2-cell request drew\n3-cell content rows beside 2-cell blank rows, an open frame the terminal\nthen soft-wraps. `blankLine` came off the raw `maxWidth`, so a negative\nwidth reached `\" \".repeat` and threw `RangeError: Invalid count value:\n-5` — publicly reachable as `renderToString(new Padding(x, 1), { width:\n-5 })`. `measure` derived it a third time and reported a range past the\noffer in both directions:\n\n    Padding.measure({maxWidth: -5})           {minimum: 2, maximum: -5}\n    new Padding(x, 3).measure({maxWidth: 2})  {minimum: 8, maximum: 8}\n\n`layoutPadding` now divides the requested width once into left, content\nand right, summing to exactly it, with `cellCount` at that single\ndivision point. Content takes its first cell before padding takes any,\nmatching `layoutPanel`: a squeeze should cost the decoration, not the\nthing being decorated. `render` and `measure` both read that division,\nso they cannot disagree again.\n\nContent rows route through `Segment.adjustLineLength`, whose `pad` flag\nis exactly what `expand` means — while its crop half runs unconditionally,\nso a child that ignored the canvas it was handed cannot burst the padding\naround it. That replaces the hand-rolled `remaining` arithmetic, and the\nzero-length spans it leaves behind need no branch to suppress, since the\nwire boundary drops empty segments.\n\nThree `Padding` configurations join the sweep. Eleven of their twelve\nassertions fail against the previous commit; the twelfth is the ragged\nshape's deliberate no-op.\n"
         },
         {
           "sha": "71972a0a43cba0deed5d913890246977e722fe8f",
