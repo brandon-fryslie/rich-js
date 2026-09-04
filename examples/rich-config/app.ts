@@ -19,6 +19,9 @@ import {
   DefaultFocusManager,
   EventRouter,
   StaticItem,
+  type TerminalHost,
+} from "../../src/widgets/index.js";
+import {
   Segment,
   Style,
   ColorSpec,
@@ -46,7 +49,6 @@ import {
   ROSE_PINE_DAWN,
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
-  type TerminalHost,
 } from "../../src/index.js";
 import type { InteractiveWidget, MountEntry } from "../../src/widgets/types.js";
 import type { ColorRgba } from "../../src/core/color.js";

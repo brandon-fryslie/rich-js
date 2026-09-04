@@ -10,11 +10,10 @@ import {
   renderMarkup,
   RichText,
   Style,
-  hostStream,
   type MarkupTagContext,
   type MarkupTagHandler,
-  type TerminalHost,
 } from "../../src/index.js";
+import { hostStream, type TerminalHost } from "../../src/widgets/index.js";
 
 export interface DemoHandle {
   stop(): void;

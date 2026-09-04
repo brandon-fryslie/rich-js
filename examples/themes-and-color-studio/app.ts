@@ -90,9 +90,8 @@ import {
   Console,
   RichText,
   Style,
-  hostStream,
-  type TerminalHost,
 } from "../../src/index.js";
+import { hostStream, type TerminalHost } from "../../src/widgets/index.js";
 
 import type {
   DetectColorOptions,

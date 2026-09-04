@@ -20,9 +20,8 @@ import {
   Style,
   RichText,
   FlexStrip,
-  hostStream,
-  type TerminalHost,
 } from "../../src/index.js";
+import { hostStream, type TerminalHost } from "../../src/widgets/index.js";
 
 export interface DemoHandle {
   /** Detach any resources the demo holds. One-shot demos have nothing to do. */

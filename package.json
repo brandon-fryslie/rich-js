@@ -18,6 +18,10 @@
       "types": "./dist/themes/registry.d.ts",
       "import": "./dist/themes/registry.js"
     },
+    "./widgets": {
+      "types": "./dist/widgets/index.d.ts",
+      "import": "./dist/widgets/index.js"
+    },
     "./template-bindings": {
       "types": "./dist/template-bindings/index.d.ts",
       "import": "./dist/template-bindings/index.js"

@@ -11,6 +11,7 @@
  */
 
 import { runInAction, observable, action } from "mobx";
+import { Segment, Style, ColorSpec } from "../../src/index.js";
 import {
   Dropdown,
   DefaultScreen,
@@ -21,11 +22,8 @@ import {
   FLOW,
   hasOverlay,
   KeyEvent,
-  Segment,
-  Style,
-  ColorSpec,
   type TerminalHost,
-} from "../../src/index.js";
+} from "../../src/widgets/index.js";
 import type {
   InteractiveWidget,
   MountEntry,

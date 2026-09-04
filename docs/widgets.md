@@ -4,6 +4,8 @@ Everything else in rich-js draws once and returns. Widgets stay on screen and re
 
 A widget knows nothing about stdin, escape sequences, or the terminal it lives in. It holds state, accepts typed events (`handleKey`, `handleMouse`, `handleFocus`), and renders `Segment[]`. Everything about the outside world is supplied by a host, which is why the same `Button` runs against a real TTY, an xterm.js canvas in a browser, or a mock stream in a test.
 
+Widgets are imported from `@promptctl/rich-js/widgets`, not from the main entry point. They are the one part of the library that carries a runtime dependency of its own — MobX, for the observable state above — and the separate subpath is what keeps that dependency off the back of a program that only wanted to print a table. Core types those examples also use (`Segment`, `Style`, `RenderOptions`) still come from `@promptctl/rich-js`.
+
 ## A running app
 
 This is a complete program. Save it, run it, Tab between the fields, Enter on the button:
@@ -16,7 +18,7 @@ import {
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
-} from "@promptctl/rich-js";
+} from "@promptctl/rich-js/widgets";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
 
 const host = new NodeTerminalHost();
@@ -142,7 +144,7 @@ Mouse events do not use the chain. Subscribe with `router.onMouse(handler)` and 
 Pass a placement by mounting `{ widget, placement }` instead of a bare widget:
 
 ```typescript
-import { FLOW } from "@promptctl/rich-js";
+import { FLOW } from "@promptctl/rich-js/widgets";
 
 screen.mount(
   header,                                                        // flow (default)
@@ -197,7 +199,7 @@ Multiline mode has a set of options for behaving like a textarea:
 `charGreedyWrap` breaks wherever the line stops fitting, treating wide characters as atomic:
 
 ```ts
-import { TextInput, charGreedyWrap } from "@promptctl/rich-js";
+import { TextInput, charGreedyWrap } from "@promptctl/rich-js/widgets";
 
 const notes = new TextInput({ multiline: true, wrap: charGreedyWrap, maxRows: 6 });
 ```
@@ -227,7 +229,8 @@ Left and Right move by `step`, Home and End jump to the ends; all values are cla
 Not interactive — it takes no focus and ignores keys — but it participates in mount order and layout like anything else. Use it for headers, labels, and status lines. `render` is either a `Renderable` or a function returning segments; the function form is what you want for a status line that reads observables and repaints when they change.
 
 ```typescript
-import { StaticItem, Segment, Style } from "@promptctl/rich-js";
+import { Segment, Style } from "@promptctl/rich-js";
+import { StaticItem } from "@promptctl/rich-js/widgets";
 
 const status = new StaticItem({
   id: "status",
@@ -243,8 +246,10 @@ Extend `WidgetBase`. It provides the observable state, focus and hover plumbing,
 
 ```typescript
 import { observable, action } from "mobx";
-import { WidgetBase, Segment, Style } from "@promptctl/rich-js";
-import type { KeyEvent, RenderOptions } from "@promptctl/rich-js";
+import { Segment, Style } from "@promptctl/rich-js";
+import type { RenderOptions } from "@promptctl/rich-js";
+import { WidgetBase } from "@promptctl/rich-js/widgets";
+import type { KeyEvent } from "@promptctl/rich-js/widgets";
 
 class Counter extends WidgetBase {
   readonly id = "counter";
