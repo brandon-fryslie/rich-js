@@ -12,6 +12,7 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { isMeasurable, withCellWidth } from "../core/protocol.js";
+import { cellCount } from "../core/cells.js";
 
 export interface ColumnsOptions {
   expand?: boolean;
@@ -40,7 +41,14 @@ export class Columns implements Renderable, Measurable {
     this.renderables = items ? [...items].map(toRenderable) : [];
     this.expand = options?.expand ?? false;
     this.equal = options?.equal ?? false;
-    this.colWidth = options?.width;
+    // A declared column width is a cell count like any other, and it reaches
+    // the layout without passing through `withCellWidth`, which parses only
+    // what the *caller of render* supplied. Left raw, `width: NaN` made
+    // `Math.max(1, NaN)` a NaN column count and `new Array` threw `Invalid
+    // array length` before a single column was laid out. Absence is preserved
+    // rather than parsed: `undefined` selects auto-fit, and `cellCount` would
+    // read it as a declared zero.
+    this.colWidth = options?.width === undefined ? undefined : cellCount(options.width);
     this.columnFirst = options?.columnFirst ?? false;
     this.gutterWidth = 2; // default gutter between columns
   }
