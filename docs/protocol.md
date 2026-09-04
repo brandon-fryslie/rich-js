@@ -158,7 +158,7 @@ class MyWidget implements Renderable, Measurable {
 
 `maxWidth` is typed `number`, and a custom renderable receives whatever the caller wrote, so read it as a count rather than assuming a clean integer. A negative width and `NaN` both mean zero cells; a fractional width is floored, so 10.5 is ten cells and the half is never drawn. Zero is a real request — render an empty line, not your natural width.
 
-`withCellWidth` is that rule, and calling it is how you get the answer rather than reimplementing it. It returns the options with `maxWidth` replaced, which is the reason it hands back options rather than a number: the raw value would otherwise stay in the object you forward to a child renderable or to `Measurement.get`, and be re-read there. Every built-in renderable begins this way.
+`withCellWidth` is that rule, and calling it is how you get the answer rather than reimplementing it. It returns the options with `maxWidth` replaced, which is the reason it hands back options rather than a number: the raw value would otherwise stay in the object you forward to a child renderable or to `Measurement.get`, and be re-read there. Every built-in `measure()` begins this way, and every built-in `render()` begins with `withBoundedWidth`, which is the same parse plus the answer to an unbounded offer.
 
 Nothing calls it for you. `render()` is public, so your renderable is reachable directly — `renderToString(widget, { width: userValue })` passes `userValue` through untouched — and a renderable one layer up cannot parse on your behalf.
 

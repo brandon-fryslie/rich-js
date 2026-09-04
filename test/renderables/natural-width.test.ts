@@ -91,6 +91,47 @@ const contents: ReadonlyArray<{
     rows: [["narrow", "a wide pane"]],
   },
   {
+    name: "Layout row split with a pane that does not grow",
+    // `ratio: 0` says this pane stays at its `minimumSize`, so it is paid like
+    // a fixed pane and never reaches the ratio division. Inverted through that
+    // division instead, it divided by its own zero: `Infinity` here, which
+    // `measure` clamped back into "I want the whole offer".
+    make: () => {
+      const layout = new Layout();
+      layout.splitRow(new Layout("a", { ratio: 0 }), new Layout("bcd"));
+      return layout;
+    },
+    rows: [["a", "bcd"]],
+  },
+  {
+    name: "Layout row split of nothing but a non-growing pane",
+    // The same division with no growing sibling to give it a non-zero
+    // `totalRatio`, which made it `0/0` — `measure` returned {NaN, NaN}.
+    make: () => {
+      const layout = new Layout();
+      layout.splitRow(new Layout("x", { ratio: 0 }));
+      return layout;
+    },
+    rows: [["x"]],
+  },
+  {
+    name: "Layout row split with a non-growing pane among growing ones",
+    // The pane drew its minimum from a budget the ratio shares had already
+    // spent, so the row consumed `3 + 2*floor(T/2)` cells out of `T` and no
+    // budget satisfied everyone; it came out right at 16 only because the
+    // trailing clamp happened to land there.
+    make: () => {
+      const layout = new Layout();
+      layout.splitRow(
+        new Layout("zzz", { ratio: 0, minimumSize: 3 }),
+        new Layout("aaaaa"),
+        new Layout("bbbbb"),
+      );
+      return layout;
+    },
+    rows: [["zzz", "aaaaa", "bbbbb"]],
+  },
+  {
     name: "Layout column split",
     make: () => {
       const layout = new Layout();
@@ -175,6 +216,18 @@ describe("natural width", () => {
       });
     });
   }
+
+  it("reports a declared Panel width as both ends of its range", () => {
+    // `_getPanelWidth` returns a declared width before it measures anything, so
+    // the panel draws at exactly that width and the range has nothing to vary.
+    // Reported with a content-derived floor, `{width: 20}` around "hi" answered
+    // 6..20 and drew 20, and a parent dividing from the floor granted it six.
+    const panel = new Panel(new RichText("hi"), { width: 20 });
+    const offered: RenderOptions = { ...options, maxWidth: 100 };
+
+    expect(panel.measure(offered)).toEqual({ minimum: 20, maximum: 20 });
+    expect(new Set(lineWidths(panel, 100))).toEqual(new Set([20]));
+  });
 
   it("reports nothing for a split whose every child is hidden", () => {
     // `render` reads leafness off `_children`, so a layout that holds content

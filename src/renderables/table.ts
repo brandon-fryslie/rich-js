@@ -488,7 +488,7 @@ export class Table implements Renderable, Measurable {
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
 
     // The one division of the width every row below is measured against.
-    const geometry = this._geometry(this.tableWidth ?? options.maxWidth);
+    const geometry = this._geometry(this._outerWidth(options));
     const edge = geometry.edge === 1;
 
     // Title
@@ -560,10 +560,7 @@ export class Table implements Renderable, Measurable {
    * `{minimum: 6, maximum: 1}` at `maxWidth: 1` — a floor above its own ceiling.
    */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    // Bounded by what the container offered: `Measurement.get` clamps only the
-    // maximum, so laying the floor out against a larger declared width is what
-    // returns a minimum above it.
-    const outerWidth = Math.min(this.tableWidth ?? options.maxWidth, options.maxWidth);
+    const outerWidth = this._outerWidth(options);
     const frame = this._frame();
     const demands = this._columnDemands();
     const laidOut = layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
@@ -608,6 +605,25 @@ export class Table implements Renderable, Measurable {
       divider: this.box ? 1 : 0,
       edge: this.box && this.showEdge ? 1 : 0,
     };
+  }
+
+  /**
+   * The width this table lays itself out against: what it was told to be, as a
+   * count of cells, never wider than what it was offered.
+   *
+   * [LAW:one-source-of-truth] `render` and `measure` divide the same two fields
+   * and once did it in two places. `measure` bounded the declared width by the
+   * offer and `render` preferred it outright, walking past the value
+   * `withBoundedWidth` had just resolved — so `new Table({width: Infinity})`
+   * with a `{ratio: 1}` column granted that column `UNBOUNDED` cells and threw
+   * `RangeError: Invalid string length` out of the top border, at a perfectly
+   * ordinary 80-cell offer.
+   */
+  private _outerWidth(options: RenderOptions): number {
+    return Math.min(
+      this.tableWidth === undefined ? options.maxWidth : cells(this.tableWidth),
+      options.maxWidth,
+    );
   }
 
   private _geometry(outerWidth: number): TableGeometry {

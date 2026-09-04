@@ -97,11 +97,7 @@ function layoutPanel(
   padding: readonly [number, number, number, number],
 ): PanelGeometry {
   const [, padRightWanted, , padLeftWanted] = padding;
-  // Panel's one division point, so the parse lands here: `Panel.width` is a
-  // caller's plain `number` and reaches this without passing through
-  // `withCellWidth`, and a fractional declared width would otherwise hand the
-  // borders and the content rows two different answers.
-  let budget: number = cellCount(outerWidth);
+  let budget: number = outerWidth;
   const take = (want: number): number => {
     const got = Math.min(want, budget);
     budget -= got;
@@ -261,6 +257,16 @@ export class Panel implements Renderable, Measurable {
     const overhead = frameOverhead(geometry);
 
     const declared = this._declaredWidth;
+    if (declared !== undefined) {
+      // A declared width is not a ceiling on the content, it is the answer:
+      // `_getPanelWidth` returns it before measuring anything, so the panel
+      // draws at this width whatever the content wants. Reported with a
+      // content-derived floor instead, `{width: 20}` around "hi" offered 100
+      // cells answered 6..20 and then drew 20 every time, and a parent
+      // dividing space from the floor under-provisioned it.
+      const width = Math.min(options.maxWidth, declared);
+      return { minimum: width, maximum: width };
+    }
 
     if (isMeasurable(this.renderable)) {
       const innerOptions: RenderOptions = {
@@ -268,10 +274,7 @@ export class Panel implements Renderable, Measurable {
         maxWidth: geometry.contentWidth,
       };
       const measurement = Measurement.get(innerOptions, this.renderable);
-      const maximum = Math.min(
-        options.maxWidth,
-        declared ?? measurement.maximum + overhead,
-      );
+      const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
       return {
         minimum: Math.min(measurement.minimum + overhead, maximum),
         maximum,
@@ -281,8 +284,7 @@ export class Panel implements Renderable, Measurable {
     // Content that cannot measure itself leaves the panel with nothing to want,
     // so it wants the offer — unbounded included, which `withBoundedWidth`
     // reports rather than turning into a number nobody can defend.
-    const maximum = Math.min(options.maxWidth, declared ?? options.maxWidth);
-    return { minimum: Math.min(overhead, maximum), maximum };
+    return { minimum: Math.min(overhead, options.maxWidth), maximum: options.maxWidth };
   }
 
   /**

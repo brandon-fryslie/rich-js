@@ -78,9 +78,11 @@ const oversized: Renderable = {
   },
 };
 
-// No explicit `width` in any of these: `Table.render` lays out at a declared
-// width and ignores a narrower `options.maxWidth`, so a swept table given one
-// overflows for a reason this sweep is not about (`rich-table-width-y1a`).
+// A declared `width` is swept like any other configuration now that
+// `Table._outerWidth` bounds it by the offer. It was excluded while `render`
+// laid out at the declared width and ignored a narrower `options.maxWidth`,
+// which made the sweep's own bound the wrong assertion for it
+// (`rich-table-width-y1a`). `Columns` still has that defect and is still out.
 function table(options: TableOptions, build: (t: Table) => void): () => Table {
   return () => {
     const t = new Table(options);
@@ -129,6 +131,28 @@ const configurations: readonly Configuration[] = [
       t.addColumn("Name", { minWidth: Infinity });
       t.addColumn("Qty", { ratio: Infinity });
       t.addRow("alpha", "12");
+    }),
+  },
+  {
+    name: "Table at a declared width",
+    shape: "rectangular",
+    make: table({ width: 40 }, (t) => {
+      t.addColumn("Name");
+      t.addColumn("Qty");
+      t.addRow("alpha", "12");
+    }),
+  },
+  {
+    name: "Table at a declared unbounded width",
+    shape: "rectangular",
+    // The offer is not the only door an unbounded width comes through.
+    // `render` preferred `tableWidth` outright, so this walked past the value
+    // `withBoundedWidth` had just resolved, granted the ratio column
+    // `UNBOUNDED` cells and threw `RangeError: Invalid string length` out of
+    // the top border at an ordinary offer.
+    make: table({ width: Infinity }, (t) => {
+      t.addColumn("Name");
+      t.addRow("alpha");
     }),
   },
   {
