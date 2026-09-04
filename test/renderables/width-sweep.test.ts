@@ -6,8 +6,8 @@
  * [LAW:dataflow-not-control-flow] One sweep, applied to a table of
  * configurations. What differs between a Panel and a Layout here is a factory
  * and a shape — values crossing one boundary — never which assertions run.
- * Five per-renderable copies of this file is how the same defect reached Panel,
- * Table, Tree, Columns and Layout independently in the first place.
+ * Per-renderable copies of this file is how the same defect reached Panel,
+ * Table, Tree, Columns, Layout and Padding independently in the first place.
  *
  * WHY THE ASSERTIONS ARE SHAPED AS THEY ARE. Each one is here because a bound
  * alone was measured to miss a real bug:
@@ -43,6 +43,8 @@ import type { TableOptions } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Layout } from "../../src/renderables/layout.js";
+import { Padding } from "../../src/renderables/padding.js";
+import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
 import { HEAVY, ASCII } from "../../src/core/box.js";
@@ -173,6 +175,24 @@ const configurations: readonly Configuration[] = [
     name: "Columns of panels",
     shape: "rectangular",
     make: () => new Columns([new Panel("one"), new Panel("two")]),
+  },
+  {
+    name: "Padding fat",
+    shape: "rectangular",
+    make: () => new Padding(new RichText("hello world"), [1, 4]),
+  },
+  {
+    name: "Padding wrapping content that ignores its width",
+    shape: "rectangular",
+    make: () => new Padding(oversized, 2),
+  },
+  {
+    name: "Padding unexpanded",
+    // `expand: false` is the promise not to fill a short row out to the
+    // canvas, so its rows are ragged by construction — but still cropped,
+    // which is the half of the contract this configuration is here to hold.
+    shape: "ragged",
+    make: () => new Padding(oversized, 2, { expand: false }),
   },
   {
     name: "Layout row split",
