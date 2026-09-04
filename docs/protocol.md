@@ -121,7 +121,8 @@ Without `measure()`, a custom renderable inside a `Table` column or `Layout` reg
 Implement both interfaces together for a fully composable renderable. Start each method by parsing the width with `withCellWidth`, then clamp both ends of the range to it — a fixed range ignores the space the parent actually has, and once the offer drops below the minimum you report, you are claiming to need more than you can use:
 
 ```typescript
-import { withCellWidth } from "@promptctl/rich-js";
+import type { Renderable, Measurable, RenderOptions } from "@promptctl/rich-js";
+import { Measurement, Segment, withCellWidth } from "@promptctl/rich-js";
 
 class MyWidget implements Renderable, Measurable {
   measure(rawOptions: RenderOptions): Measurement {
