@@ -5,7 +5,7 @@
  * inside a Layout so adjacent panes (footer, sidebar) stay in place.
  */
 
-import { Segment } from "../../src/index.js";
+import { Segment, withCellWidth } from "../../src/index.js";
 import type { Renderable, RenderOptions } from "../../src/index.js";
 
 export class Window implements Renderable {
@@ -15,7 +15,11 @@ export class Window implements Renderable {
     private readonly offset: number = 0,
   ) {}
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
+    // A custom renderable is a width checkpoint like any built-in one — see
+    // the width contract in docs/protocol.md. The parsed options are what
+    // reaches `inner`, so the caller's raw number stops here.
+    const options = withCellWidth(rawOptions);
     const segs = [...this.inner.render(options)];
     const lines = Segment.splitLines(segs);
     const start = Math.max(0, this.offset);
@@ -29,7 +33,11 @@ export class Window implements Renderable {
     }
   }
 
-  measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    return { minimum: 1, maximum: Number.MAX_SAFE_INTEGER };
+  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+    // Window clips vertically and takes whatever width it is offered, so its
+    // range is the whole offer. Stated as `MAX_SAFE_INTEGER` it was a ceiling
+    // no parent could divide against.
+    const { maxWidth } = withCellWidth(rawOptions);
+    return { minimum: Math.min(1, maxWidth), maximum: maxWidth };
   }
 }
