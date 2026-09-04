@@ -216,10 +216,6 @@ export class Panel implements Renderable, Measurable {
    * wide. Below width 3 a panel is all frame and the canvas holds no lines —
    * but the render still happens, because a `bottomRightAccessory` thunk
    * fires at every width and reads state this render populates.
-   *
-   * The nominal width of 1 is the floor `RichText` needs: its fold walks a
-   * cursor forward by `maxWidth`, so at 0 the cursor never advances and the
-   * fold spins until it exhausts the array-length limit.
    */
   private _renderContent(
     options: RenderOptions,
@@ -227,7 +223,7 @@ export class Panel implements Renderable, Measurable {
   ): Segment[][] {
     const innerOptions: RenderOptions = {
       ...options,
-      maxWidth: Math.max(1, contentWidth),
+      maxWidth: contentWidth,
     };
     const lines = Segment.splitLines([...this.renderable.render(innerOptions)]);
     return contentWidth === 0 ? [] : lines;
