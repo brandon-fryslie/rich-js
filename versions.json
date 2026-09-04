@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-79",
+      "ref": "refs/pull/79/merge",
+      "sha": "fcec997ca82ac5f9d4bfddf3cf68e5e64d4c83cf",
+      "timestamp": "2026-09-04T03:39:33.011Z",
+      "commits": [
+        {
+          "sha": "fcec997ca82ac5f9d4bfddf3cf68e5e64d4c83cf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T21:32:55-06:00",
+          "message": "Merge 177166e1060a4be96f6f01bf5c8d35cc735b0fef into 500db1a2f10b3814d61ff464ed54d43e02812721\n"
+        },
+        {
+          "sha": "177166e1060a4be96f6f01bf5c8d35cc735b0fef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T21:32:32-06:00",
+          "message": "fix(width): an unbounded width means render at your natural width (rich-width-3cf.5)\n\n`Panel`, `Padding`, `Columns` and `Layout` threw at `maxWidth: Infinity` —\neach expands into the width it is offered, so each reached\n`\" \".repeat(Infinity)`, and `Columns` reached `new Array(Infinity)` as well\nbecause its column count comes off the width too. The ticket asked what a\nrenderable should emit into an unbounded canvas, and left it open on purpose:\nthe answer had to be one answer, not four.\n\nIt is: an unbounded offer means \"render at your natural width\", and the\nnatural width is what `measure` already reports. `withBoundedWidth` in\n`protocol.ts` is the single checkpoint — it parses like `withCellWidth`, then\nresolves an unbounded offer by asking the renderable it was handed. It sits at\nthe top of `render` and never at the top of `measure`, which would ask the\nquestion with itself.\n\nTHREE RENDERABLES HAD NO NATURAL WIDTH TO REPORT. `Tree`, `Columns` and\n`Layout` all answered `measure` with `maximum = the offer`. That is why\n\"consult measure rather than filling\" could not work as written, and it was\nnever only an `Infinity` problem: `Panel {expand: false}` around a Tree at\nwidth 40 drew a 40-cell frame around nine cells of tree. Each now reports what\nits content wants — Tree the widest row its own walk emits, Columns one row of\nevery item, Layout its children laid out the way its split lays them out — and\n`test/renderables/natural-width.test.ts` holds that end at ordinary widths.\n\nTwo more found on the way. `Panel.measure` ignored a declared `width`, so it\nreported nine cells while `render` drew twelve; both now read one accessor.\n`Table.measure` let `UNBOUNDED` (its own `MAX_SAFE_INTEGER` infinity) escape as\na number — a column declared `{ratio: Infinity}` measured 18014398509481988 and\nrendered `RangeError: Invalid string length` out of the top border.\n\nContent that cannot measure itself has no natural width, and `withBoundedWidth`\nthrows a `RangeError` naming the cause rather than losing the content silently\nor guessing a number. The width sweep pins which configurations those are, so a\nrenderable that quietly stops reporting a natural width fails the suite instead\nof joining the list.\n\nVerified: reverting any one of the six changed renderables fails between one\nand six of the new assertions; none are inert. `npm test` 2018 green,\n`npm run lint` clean, `npm run docs:build` clean, `npm run test:demos` 10/10.\n\n`withBoundedWidth` is exported from the barrel and documented in\ndocs/protocol.md's width contract, which — with `cellCount`'s header and the\nsweep's header — is the third of the three texts that named this ticket.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "500db1a2f10b3814d61ff464ed54d43e02812721",
