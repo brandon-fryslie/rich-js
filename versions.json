@@ -4,15 +4,22 @@
     {
       "version": "pr-78",
       "ref": "refs/pull/78/merge",
-      "sha": "6418d113b5ab02dd525423aced34ab4ab15db3ba",
-      "timestamp": "2026-09-04T02:26:35.181Z",
+      "sha": "189ddfc397af130b429e3e55b2e676493237ca33",
+      "timestamp": "2026-09-04T02:46:27.549Z",
       "commits": [
         {
-          "sha": "6418d113b5ab02dd525423aced34ab4ab15db3ba",
+          "sha": "189ddfc397af130b429e3e55b2e676493237ca33",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T02:19:06Z",
-          "message": "Merge 40c201b8834393f8be273097a74f132ebb963fe3 into b7cce63896fcaf7a7349499223c524fbff22b103\n"
+          "timestamp": "2026-09-04T02:45:50Z",
+          "message": "Merge 1cfc4908e21ce4874c35ffc7c5d08598127bde61 into b7cce63896fcaf7a7349499223c524fbff22b103\n"
+        },
+        {
+          "sha": "1cfc4908e21ce4874c35ffc7c5d08598127bde61",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-03T20:45:41-06:00",
+          "message": "docs(protocol): make the width-contract example compile as written\n\nThe previous commit gave the `MyWidget` example a single import line for\n`withCellWidth`. That was worse than the no-import fragment it replaced:\none import makes a block look self-contained, so a reader copies it and\nfinds `Renderable`, `Measurable`, `RenderOptions`, `Measurement` and\n`Segment` all undefined.\n\nRestored to the two-line form every other example on the page uses —\n`import type` for the type-only names, `import` for the values — with\n`Segment` and `Measurement` on the value line because both are classes,\nmatching the `Checkerboard` example directly above.\n\nChecked rather than eyeballed: the block extracted verbatim, with the\npackage specifier repointed at the barrel, type-checks clean under\n`--strict`.\n"
         },
         {
           "sha": "40c201b8834393f8be273097a74f132ebb963fe3",
