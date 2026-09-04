@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable } from "../core/protocol.js";
+import { isMeasurable, withCellWidth } from "../core/protocol.js";
 
 export type PaddingDimensions =
   | number
@@ -48,6 +48,49 @@ export function normalizePadding(
   return [side(sides[0]), side(sides[1]), side(sides[2]), side(sides[3])];
 }
 
+/** The three spans of a padded row, summing to exactly the requested width. */
+interface PaddingGeometry {
+  readonly left: number;
+  readonly contentWidth: number;
+  readonly right: number;
+}
+
+/**
+ * Divides the requested width once into the three spans a padded row is made
+ * of, in the order they are worth spending cells on.
+ *
+ * The three used to be derived separately and disagree where it matters:
+ * `render` took the canvas as `Math.max(1, maxWidth - left - right)`, which
+ * clamps *up*, so a padding of 1 inside a 2-cell request drew 3-cell content
+ * rows beside 2-cell blank rows — an open frame the terminal then soft-wraps.
+ * Content takes its first cell before padding takes any, for the reason
+ * `layoutPanel` gives: a squeeze should cost you the decoration, not the thing
+ * being decorated.
+ */
+function layoutPadding(
+  outerWidth: number,
+  leftWanted: number,
+  rightWanted: number,
+): PaddingGeometry {
+  let budget: number = cellCount(outerWidth);
+  const take = (want: number): number => {
+    const got = Math.min(want, budget);
+    budget -= got;
+    return got;
+  };
+
+  const firstContentCell = take(1);
+  const left = take(leftWanted);
+  const right = take(rightWanted);
+
+  return { left, contentWidth: firstContentCell + budget, right };
+}
+
+/** The full width of a padded row — the division, added back up. */
+function rowWidth(geometry: PaddingGeometry): number {
+  return geometry.left + geometry.contentWidth + geometry.right;
+}
+
 export class Padding implements Renderable, Measurable {
   readonly renderable: Renderable;
   readonly top: number;
@@ -72,59 +115,72 @@ export class Padding implements Renderable, Measurable {
     this.expand = options?.expand !== false;
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
-    const maxWidth = options.maxWidth;
-    const horizontalPad = this.left + this.right;
-    const innerWidth = Math.max(1, maxWidth - horizontalPad);
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
+    const options = withCellWidth(rawOptions);
+    const geometry = layoutPadding(options.maxWidth, this.left, this.right);
 
     const innerOptions: RenderOptions = {
       ...options,
-      maxWidth: innerWidth,
+      maxWidth: geometry.contentWidth,
     };
 
     const segments = [...this.renderable.render(innerOptions)];
     const lines = Segment.splitLines(segments);
 
     const style = this.style.isNull ? undefined : this.style;
-    const leftPadStr = " ".repeat(this.left);
-    const blankLine = " ".repeat(maxWidth);
+    // Zero-length spans need no branch to suppress: the wire boundary drops
+    // empty segments, so a padding the width could not afford emits nothing.
+    const leftPad = new Segment(" ".repeat(geometry.left), style);
+    const rightPad = new Segment(" ".repeat(geometry.right), style);
+    const blankLine = new Segment(" ".repeat(rowWidth(geometry)), style);
 
-    // Top padding
     for (let i = 0; i < this.top; i++) {
-      yield new Segment(blankLine, style);
+      yield blankLine;
       yield Segment.line();
     }
 
-    // Content lines with left/right padding
     for (const line of lines) {
-      if (this.left > 0) yield new Segment(leftPadStr, style);
-      yield* line;
-      // Pad to fill remaining width
-      const lineWidth = Segment.getLineLength(line);
-      const remaining = this.expand
-        ? innerWidth - lineWidth + this.right
-        : this.right;
-      if (remaining > 0) yield new Segment(" ".repeat(remaining), style);
+      yield leftPad;
+      // `expand` is the pad half of this call; the crop half is unconditional,
+      // because a child that ignored the canvas it was handed (a Table at its
+      // natural width) would otherwise burst the padding around it.
+      yield* Segment.adjustLineLength(
+        line,
+        geometry.contentWidth,
+        style,
+        this.expand,
+      );
+      yield rightPad;
       yield Segment.line();
     }
 
-    // Bottom padding
     for (let i = 0; i < this.bottom; i++) {
-      yield new Segment(blankLine, style);
+      yield blankLine;
       yield Segment.line();
     }
   }
 
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const horizontalPad = this.left + this.right;
+  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+    const options = withCellWidth(rawOptions);
+    const geometry = layoutPadding(options.maxWidth, this.left, this.right);
+    const overhead = geometry.left + geometry.right;
+
     if (isMeasurable(this.renderable)) {
-      const measurement = Measurement.get(options, this.renderable);
+      const measurement = Measurement.get(
+        { ...options, maxWidth: geometry.contentWidth },
+        this.renderable,
+      );
+      // The ceiling is what was offered, and it wins over what the child asks
+      // for: a range whose floor sits above its own ceiling — this returned
+      // {8, 8} for three cells of padding inside a two-cell offer — is one no
+      // parent layout can divide.
+      const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
       return {
-        minimum: measurement.minimum + horizontalPad,
-        maximum: measurement.maximum + horizontalPad,
+        minimum: Math.min(measurement.minimum + overhead, maximum),
+        maximum,
       };
     }
-    return { minimum: horizontalPad, maximum: options.maxWidth };
+    return { minimum: overhead, maximum: options.maxWidth };
   }
 }
 
