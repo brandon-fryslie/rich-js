@@ -84,6 +84,24 @@ function indexedElements(value: object): ArrayLike<unknown> | null {
 }
 
 /**
+ * The first `limit` items of a sequence, pulled and no more.
+ *
+ * A `Map` or `Set` reaches its size through `.size`, which iterates nothing, so
+ * spreading one only ever served to throw the tail away — `print` of a
+ * half-million-entry cache walked all of it to show a hundred. `Infinity` is
+ * the unbounded case and never breaks.
+ */
+function take<T>(source: Iterable<T>, limit: number): T[] {
+  const taken: T[] = [];
+  if (limit <= 0) return taken;
+  for (const item of source) {
+    taken.push(item);
+    if (taken.length >= limit) break;
+  }
+  return taken;
+}
+
+/**
  * What a value renders as when reading it threw instead of producing it.
  *
  * `Pretty` reflects on data it did not create, and every reflection it performs
@@ -211,7 +229,7 @@ export class Pretty implements Renderable, Measurable {
     } catch (error) {
       // The container's *shape* would not be read — `Object.keys`, an iterator,
       // `toString`. Nothing can be enumerated, so the whole container degrades;
-      // a value that merely would not be read degrades alone, in `_property`.
+      // a value that merely would not be read degrades alone, in `_at`.
       return threw(error);
     } finally {
       at.open.delete(value);
@@ -219,15 +237,17 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /**
-   * One key's value, or the marker for why reading it failed.
+   * One position's value, or the marker for why reading it failed.
    *
-   * Split out because this is the read that costs the least when it fails:
-   * siblings are unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows
-   * everything that could be read.
+   * A key and an index are the same job — read one slot of a container someone
+   * else built — so they share one method rather than two that must agree.
+   * [LAW:one-type-per-behavior] This is also the read that costs the least when
+   * it fails: neighbours are unaffected, so `{ a: 1, b: [Threw: …], c: 3 }`
+   * still shows everything that could be read.
    */
-  private _property(obj: Record<string, unknown>, key: string, at: Frame): string {
+  private _at(container: object, key: string | number, at: Frame): string {
     try {
-      return this._format(obj[key], at);
+      return this._format((container as Record<string | number, unknown>)[key], at);
     } catch (error) {
       return threw(error);
     }
@@ -246,17 +266,20 @@ export class Pretty implements Renderable, Measurable {
       if (elements.length === 0) return "[]";
       if (at.level >= this.maxDepth) return "[...]";
 
-      const items = Array.prototype.slice.call(elements, 0, this.maxLength) as unknown[];
-      const remaining = elements.length - items.length;
+      // Positions rather than values: each index is read through `_at`, so one
+      // throwing accessor costs its own slot instead of the whole sequence.
+      const shown = Math.min(elements.length, this.maxLength ?? elements.length);
+      const positions = Array.from({ length: shown }, (_, i) => i);
+      const remaining = elements.length - shown;
 
       // Try compact first
       if (!this.expandAll) {
-        const compact = "[" + items.map((v) => this._format(v, onOneLine)).join(", ") +
+        const compact = "[" + positions.map((i) => this._at(elements, i, onOneLine)).join(", ") +
           (remaining > 0 ? `, ... +${remaining}` : "") + "]";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
-      const parts = items.map((v) => innerIndent + this._format(v, deeper));
+      const parts = positions.map((i) => innerIndent + this._at(elements, i, deeper));
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "[\n" + parts.join(",\n") + "\n" + indentStr + "]";
     }
@@ -264,12 +287,11 @@ export class Pretty implements Renderable, Measurable {
     if (value instanceof Map) {
       if (value.size === 0) return "Map {}";
       if (at.level >= this.maxDepth) return "Map {...}";
-      const entries = [...value.entries()];
-      const items = this.maxLength !== undefined ? entries.slice(0, this.maxLength) : entries;
+      const items = take(value.entries(), this.maxLength ?? Infinity);
       const parts = items.map(([k, v]) =>
         innerIndent + this._format(k, deeper) + " => " + this._format(v, deeper),
       );
-      const dropped = entries.length - items.length;
+      const dropped = value.size - items.length;
       if (dropped > 0) parts.push(innerIndent + `... +${dropped}`);
       return "Map {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
@@ -277,10 +299,9 @@ export class Pretty implements Renderable, Measurable {
     if (value instanceof Set) {
       if (value.size === 0) return "Set {}";
       if (at.level >= this.maxDepth) return "Set {...}";
-      const items = [...value];
-      const bounded = this.maxLength !== undefined ? items.slice(0, this.maxLength) : items;
-      const parts = bounded.map((v) => innerIndent + this._format(v, deeper));
-      const dropped = items.length - bounded.length;
+      const items = take(value, this.maxLength ?? Infinity);
+      const parts = items.map((v) => innerIndent + this._format(v, deeper));
+      const dropped = value.size - items.length;
       if (dropped > 0) parts.push(innerIndent + `... +${dropped}`);
       return "Set {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
@@ -303,13 +324,13 @@ export class Pretty implements Renderable, Measurable {
       // Try compact
       if (!this.expandAll) {
         const compact = "{ " + items.map((k) =>
-          `${k}: ${this._property(obj, k, onOneLine)}`).join(", ") +
+          `${k}: ${this._at(obj, k, onOneLine)}`).join(", ") +
           (remaining > 0 ? `, ... +${remaining}` : "") + " }";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
       const parts = items.map((k) =>
-        innerIndent + `${k}: ${this._property(obj, k, deeper)}`,
+        innerIndent + `${k}: ${this._at(obj, k, deeper)}`,
       );
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "{\n" + parts.join(",\n") + "\n" + indentStr + "}";

@@ -266,18 +266,31 @@ describe("Pretty", () => {
       expect(collectText(new Pretty(deep), { maxWidth: 200 })).not.toContain("{...}");
     });
 
-    it("materialises only the window it will show of a typed array", () => {
+    it("does not allocate in proportion to a typed array it will not show", () => {
       // The output was always bounded; the conversion behind it was not, so a
-      // multi-megabyte Buffer boxed every element to display a hundred.
-      let reads = 0;
-      const counted = new Proxy(new Uint8Array(10_000), {
-        get(target, prop, receiver) {
-          if (typeof prop === "string" && /^\d+$/.test(prop)) reads++;
-          return Reflect.get(target, prop, receiver) as unknown;
+      // 20MB Buffer copied all 20 million elements (+195MB of heap) to display
+      // ten. Asserted as allocation rather than time because allocation is what
+      // the bound is for, and the margin is four orders of magnitude.
+      const big = new Uint8Array(20_000_000);
+      const before = process.memoryUsage().heapUsed;
+      collectText(new Pretty(big, { maxLength: 10 }), { maxWidth: 40 });
+      const grew = process.memoryUsage().heapUsed - before;
+      expect(grew).toBeLessThan(50_000_000);
+    });
+
+    it("stops pulling a Map or Set at the bound instead of draining it", () => {
+      // `.size` answers the total without iterating, so spreading first only
+      // ever served to throw the tail away.
+      let pulled = 0;
+      const counted = {
+        size: 5_000,
+        *[Symbol.iterator](): Iterator<number> {
+          for (let i = 0; i < 5_000; i++) { pulled++; yield i; }
         },
-      });
-      collectText(new Pretty(counted, { maxLength: 10 }), { maxWidth: 40 });
-      expect(reads).toBeLessThan(100);
+      };
+      Object.setPrototypeOf(counted, Set.prototype);
+      collectText(new Pretty(counted as unknown as Set<number>, { maxLength: 5 }), { maxWidth: 40 });
+      expect(pulled).toBe(5);
     });
   });
 
@@ -309,6 +322,19 @@ describe("Pretty", () => {
       const hostile = { toString(): string { throw new Error("bad repr"); } };
       expect(collectText(new Pretty(hostile), { maxWidth: 80 }))
         .toBe("[Threw: bad repr]");
+    });
+
+    it("renders a throwing element in place, leaving its neighbours readable", () => {
+      // The array arm reads per index for the same reason the object arm reads
+      // per key: one bad slot should not cost the whole sequence.
+      const arr = [1, 2, 3];
+      Object.defineProperty(arr, 1, {
+        get(): number { throw new Error("boom"); },
+        enumerable: true,
+        configurable: true,
+      });
+      expect(collectText(new Pretty(arr), { maxWidth: 80 }))
+        .toBe("[1, [Threw: boom], 3]");
     });
 
     it("keeps a throwing value from hiding the structure around it", () => {

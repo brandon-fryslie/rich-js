@@ -110,6 +110,26 @@ its own string form — a `Date`, an `Error`, a `RegExp`, anything defining
 yourself only when you want its formatting options; see
 [Pretty printing](./pretty) for those.
 
+Data printed this way is truncated by default, because `print` formats whatever
+it is handed and a debug line should not cost megabytes. A container shows its
+first 100 entries, nesting stops at 16 levels deep, and a string inside the data
+is cut at 1000 characters. Every one of those announces itself in the output —
+`... +4900`, `{...}`, `+49000` inside the quotes — so a truncated value never
+passes for a complete one.
+
+These bounds belong to `print` and `log`, not to the formatter. A `Pretty` you
+construct yourself has no limits unless you pass them, on the grounds that you
+have seen your own data:
+
+```typescript
+console.print(bigArray);                      // first 100, then "... +N"
+console.print(new Pretty(bigArray));          // all of it
+```
+
+A *string argument* is never truncated either — `maxString` applies only to
+strings found inside data, since a string you passed to `print` is one you asked
+for by name.
+
 ### Style argument
 
 Apply a style to the entire print call:
