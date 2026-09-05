@@ -69,13 +69,33 @@ const rootFrame = (maxWidth: number): Frame => ({ inset: 0, level: 0, maxWidth, 
  * for the highlighter to colour per element. Both spellings reach the one arm
  * that knows what a sequence looks like. `DataView` is excluded because it is a
  * window onto bytes, not a sequence of values.
+ *
+ * Returned as `ArrayLike` rather than a materialised array because both
+ * spellings already are one. Converting here would box every element of a
+ * multi-megabyte `Buffer` to keep the first `maxLength` of them — bounding the
+ * output while leaving the cost of producing it unbounded.
  */
-function indexedElements(value: object): unknown[] | null {
+function indexedElements(value: object): ArrayLike<unknown> | null {
   if (Array.isArray(value)) return value as unknown[];
   if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
-    return Array.from(value as unknown as ArrayLike<unknown>);
+    return value as unknown as ArrayLike<unknown>;
   }
   return null;
+}
+
+/**
+ * What a value renders as when reading it threw instead of producing it.
+ *
+ * `Pretty` reflects on data it did not create, and every reflection it performs
+ * — a property getter, `Object.keys`, an iterator, `toString` — can throw. The
+ * message travels into the output, so the failure stays visible and attributed
+ * to the position that produced it. [LAW:no-silent-failure] the error is
+ * carried rather than swallowed; a marker naming its cause is not an
+ * answer-shaped void, and a diagnostic that takes the program down over one
+ * lazily-computed field is unusable on the objects it is most wanted for.
+ */
+function threw(error: unknown): string {
+  return `[Threw: ${error instanceof Error ? error.message : String(error)}]`;
 }
 
 /**
@@ -188,8 +208,28 @@ export class Pretty implements Renderable, Measurable {
     at.open.add(value);
     try {
       return this._formatObject(value, at);
+    } catch (error) {
+      // The container's *shape* would not be read — `Object.keys`, an iterator,
+      // `toString`. Nothing can be enumerated, so the whole container degrades;
+      // a value that merely would not be read degrades alone, in `_property`.
+      return threw(error);
     } finally {
       at.open.delete(value);
+    }
+  }
+
+  /**
+   * One key's value, or the marker for why reading it failed.
+   *
+   * Split out because this is the read that costs the least when it fails:
+   * siblings are unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows
+   * everything that could be read.
+   */
+  private _property(obj: Record<string, unknown>, key: string, at: Frame): string {
+    try {
+      return this._format(obj[key], at);
+    } catch (error) {
+      return threw(error);
     }
   }
 
@@ -206,12 +246,8 @@ export class Pretty implements Renderable, Measurable {
       if (elements.length === 0) return "[]";
       if (at.level >= this.maxDepth) return "[...]";
 
-      const items = this.maxLength !== undefined
-        ? elements.slice(0, this.maxLength)
-        : elements;
-      const remaining = this.maxLength !== undefined
-        ? Math.max(0, elements.length - this.maxLength)
-        : 0;
+      const items = Array.prototype.slice.call(elements, 0, this.maxLength) as unknown[];
+      const remaining = elements.length - items.length;
 
       // Try compact first
       if (!this.expandAll) {
@@ -267,13 +303,13 @@ export class Pretty implements Renderable, Measurable {
       // Try compact
       if (!this.expandAll) {
         const compact = "{ " + items.map((k) =>
-          `${k}: ${this._format(obj[k], onOneLine)}`).join(", ") +
+          `${k}: ${this._property(obj, k, onOneLine)}`).join(", ") +
           (remaining > 0 ? `, ... +${remaining}` : "") + " }";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
       const parts = items.map((k) =>
-        innerIndent + `${k}: ${this._format(obj[k], deeper)}`,
+        innerIndent + `${k}: ${this._property(obj, k, deeper)}`,
       );
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "{\n" + parts.join(",\n") + "\n" + indentStr + "}";

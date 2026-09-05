@@ -389,6 +389,40 @@ describe("Console.print()", () => {
       expect(captured(chunks)).toContain("{...}");
     });
 
+    it("bounds a long string buried in data", () => {
+      // The third way a value is large. An object routed through Pretty carries
+      // its string fields verbatim, so one response body reaches the terminal
+      // whole — the same hazard as a long array, by a different road.
+      const { console: c, chunks } = makeConsole();
+      c.print({ body: "x".repeat(50_000) });
+      expect(captured(chunks).length).toBeLessThan(2_000);
+    });
+
+    it("prints a string argument in full, because that caller named it", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print("y".repeat(5_000));
+      // Wrapped across lines at the console width, so count rather than match.
+      expect(captured(chunks).replace(/[^y]/g, "")).toHaveLength(5_000);
+    });
+
+    it("emits no styling for data when highlighting is off", () => {
+      // Indent guides are styling, so `highlight: false` has to reach them too;
+      // otherwise a wrapped object still emits ANSI the caller declined.
+      const wide: Record<string, number> = {};
+      for (let i = 0; i < 12; i++) wide[`key_${i}`] = i;
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor" });
+      c.print(wide, { highlight: false });
+      expect(captured(chunks)).not.toContain("\x1b[");
+    });
+
+    it("does not let a throwing field take down the print", () => {
+      const { console: c, chunks } = makeConsole();
+      expect(() => c.print({ ok: 1, get lazy(): number { throw new Error("not loaded"); } }))
+        .not.toThrow();
+      expect(captured(chunks)).toContain("[Threw: not loaded]");
+      expect(captured(chunks)).toContain("ok: 1");
+    });
+
     it("leaves an explicitly constructed Pretty unbounded", () => {
       // The bounds are the convenience path's, not the formatter's: a caller
       // who built the Pretty has seen their data and said what they wanted.

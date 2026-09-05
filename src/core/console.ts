@@ -259,16 +259,21 @@ const NO_HIGHLIGHT = new NullHighlighter();
  * What `print` bounds a data argument by when the caller said nothing.
  *
  * `print` formats whatever it is handed, so it is the one place that has to
- * assume nothing about the value's size. Unbounded, `print(buffer)` emits a line
- * per byte and `print(deeplyNested)` descends until the stack gives out — a
- * debug line that costs megabytes or hangs the terminal. Both bounds announce
- * themselves in the output (`... +N`, `{...}`), so this truncates visibly and
- * never silently. [LAW:no-silent-failure]
+ * assume nothing about the value's size, in any of the three ways a value can
+ * be large. Unbounded, `print(buffer)` emits a line per byte,
+ * `print(deeplyNested)` descends until the stack gives out, and a single
+ * response body assigned to a field arrives in full — each of them a debug line
+ * that costs megabytes or hangs the terminal. All three bounds announce
+ * themselves in the output (`... +N`, `{...}`, `+N` inside the quotes), so this
+ * truncates visibly and never silently. [LAW:no-silent-failure]
+ *
+ * `maxString` reaches only strings nested inside data; a string argument is
+ * printed by the arm above, where the caller asked for that string by name.
  *
  * A caller constructing a `Pretty` has seen their data and gets no defaults;
  * these belong to the convenience path, not to the formatter.
  */
-const PRINT_DATA_BOUNDS = { maxLength: 100, maxDepth: 16 } as const;
+const PRINT_DATA_BOUNDS = { maxLength: 100, maxDepth: 16, maxString: 1000 } as const;
 
 export class Console {
   private _colorSystem: ColorDepth | null;
@@ -440,9 +445,13 @@ export class Console {
         // formatted object the same way they reach a printed string; a `Pretty`
         // left to its own default would outrank both. [LAW:dataflow-not-control-flow]
         // the disabled case is an identity highlighter, not a skipped call.
+        // Indent guides are styling too, and travel with the same decision —
+        // the console owns what `highlight` means for everything it emits,
+        // rather than `Pretty` inferring it back out of the highlighter.
         renderables.push(new Pretty(item, {
           ...PRINT_DATA_BOUNDS,
           highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
+          indentGuides: doHighlight,
         }));
       }
     }

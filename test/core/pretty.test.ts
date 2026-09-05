@@ -265,6 +265,60 @@ describe("Pretty", () => {
       for (let i = 0; i < 30; i++) deep = { n: deep };
       expect(collectText(new Pretty(deep), { maxWidth: 200 })).not.toContain("{...}");
     });
+
+    it("materialises only the window it will show of a typed array", () => {
+      // The output was always bounded; the conversion behind it was not, so a
+      // multi-megabyte Buffer boxed every element to display a hundred.
+      let reads = 0;
+      const counted = new Proxy(new Uint8Array(10_000), {
+        get(target, prop, receiver) {
+          if (typeof prop === "string" && /^\d+$/.test(prop)) reads++;
+          return Reflect.get(target, prop, receiver) as unknown;
+        },
+      });
+      collectText(new Pretty(counted, { maxLength: 10 }), { maxWidth: 40 });
+      expect(reads).toBeLessThan(100);
+    });
+  });
+
+  // --- Data that refuses to be read ---
+
+  describe("reads that throw", () => {
+    // `Pretty` reflects on data it did not create, and every reflection can
+    // throw. The contract is that the failure is named where it happened and
+    // does not escape, so one lazy field cannot take down a diagnostic call.
+    it("renders a throwing property in place, leaving its siblings readable", () => {
+      const text = collectText(
+        new Pretty({ a: 1, get b(): number { throw new Error("not ready"); }, c: 3 }),
+        { maxWidth: 80 },
+      );
+      expect(text).toContain("[Threw: not ready]");
+      expect(text).toContain("a: 1");
+      expect(text).toContain("c: 3");
+    });
+
+    it("degrades the whole container when its shape cannot be read", () => {
+      const unenumerable = new Proxy({}, {
+        ownKeys(): string[] { throw new Error("no keys"); },
+      });
+      expect(collectText(new Pretty(unenumerable), { maxWidth: 80 }))
+        .toBe("[Threw: no keys]");
+    });
+
+    it("names a throwing toString rather than propagating it", () => {
+      const hostile = { toString(): string { throw new Error("bad repr"); } };
+      expect(collectText(new Pretty(hostile), { maxWidth: 80 }))
+        .toBe("[Threw: bad repr]");
+    });
+
+    it("keeps a throwing value from hiding the structure around it", () => {
+      const text = collectText(
+        new Pretty({ outer: { get inner(): number { throw new Error("deep"); } } }),
+        { maxWidth: 80 },
+      );
+      expect(text).toContain("outer");
+      expect(text).toContain("[Threw: deep]");
+    });
   });
 
   // --- Measurement ---
