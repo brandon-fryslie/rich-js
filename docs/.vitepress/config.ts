@@ -40,7 +40,7 @@ export default defineConfig({
     siteTitle: 'rich-js',
 
     nav: [
-      { text: 'Guide', link: '/introduction', activeMatch: '^/(introduction|console|style|markup|text|highlighting|pretty|panel|tables|tree|columns|group|padding|progress|live|layout|widgets|syntax|markdown|traceback|logging|prompt|transpose|contrast|template-bindings)' },
+      { text: 'Guide', link: '/introduction', activeMatch: '^/(introduction|console|style|markup|text|highlighting|pretty|panel|tables|tree|columns|group|padding|progress|live|layout|widgets|syntax|markdown|traceback|prompt|transpose|contrast|template-bindings)' },
       { text: 'Demos', link: '/demos/', activeMatch: '^/demos' },
       { text: 'Protocol', link: '/protocol' },
     ],
@@ -107,7 +107,6 @@ export default defineConfig({
         text: 'Integrations',
         items: [
           { text: 'Template Bindings', link: '/template-bindings' },
-          { text: 'Logging', link: '/logging' },
           { text: 'Prompts', link: '/prompt' },
         ],
       },
