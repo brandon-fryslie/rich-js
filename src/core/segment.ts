@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, splitText, asCellCol, type CellCol } from "./cells.js";
+import { cellLen, cellFit, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
 
 // --- ControlType ---
@@ -193,7 +193,7 @@ export class Segment {
 
   /**
    * Crops a renderable's output so no line exceeds `width`, leaving short lines
-   * alone.
+   * alone and the line structure exactly as it arrived.
    *
    * [LAW:single-enforcer] `adjustLineLength` is where a width is enforced, but
    * it takes one line and a container holding arbitrary content has a stream of
@@ -201,11 +201,32 @@ export class Segment {
    * offer, and content that ignores it overflows the region — which is how a
    * `Layout` leaf and a `Tree` label came to emit forty cells into a one-cell
    * offer while `Panel` and `Padding`, which split and adjust, did not.
+   *
+   * One segment in, one segment out, shortening text and nothing else — so the
+   * line structure that arrives is the line structure that leaves. Two earlier
+   * shapes of this both decided how many lines there were and both were wrong:
+   * built on `splitLines`, which cannot tell `"abc"` from `"abc\n"`, it invented
+   * a trailing newline and dropped the row of an empty `Tree` label entirely,
+   * running its guides into the next row; rebuilt to accumulate lines, it
+   * dropped the zero-width-but-present line `RichText` emits at an offer of 0,
+   * and a row split rendered nothing at all. A crop shortens; it does not count.
    */
   static *cropLines(segments: Iterable<Segment>, width: number): Iterable<Segment> {
-    for (const line of Segment.splitLines([...segments])) {
-      yield* Segment.adjustLineLength(line, width, undefined, false);
-      yield Segment.line();
+    const cap = Math.max(0, width);
+    let used = 0;
+    for (const segment of segments) {
+      if (segment.isControl) {
+        yield segment;
+        continue;
+      }
+      const parts = segment.text.split("\n");
+      for (let i = 0; i < parts.length; i++) {
+        if (i > 0) used = 0;
+        const piece = cellFit(parts[i]!, asCellCol(cap - used));
+        used += cellLen(piece);
+        parts[i] = piece;
+      }
+      yield new Segment(parts.join("\n"), segment.style);
     }
   }
 

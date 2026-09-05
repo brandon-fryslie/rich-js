@@ -129,13 +129,25 @@ export class Columns implements Renderable, Measurable {
     return { numCols, colWidths: new Array(numCols).fill(colW) as number[] };
   }
 
-  /** The widest any one item wants to be. An item with no `measure` counts as one cell. */
+  /**
+   * The widest any one item wants to be.
+   *
+   * An item that cannot measure itself wants the offer, which is what `Panel`,
+   * `Padding`, `Layout` and `Tree` all answer for the same case — and under an
+   * unbounded offer that is `Infinity`, so `withBoundedWidth` throws and says
+   * the request was unanswerable. Counting it as one cell instead reported a
+   * natural width of 1, which resolved an unbounded offer to a single column and
+   * cropped forty cells of content down to `"x"` with no error at all.
+   */
   private _itemWidth(options: RenderOptions): number {
     let widest = 1;
     for (const item of this.renderables) {
-      if (isMeasurable(item)) {
-        widest = Math.max(widest, Measurement.get(options, item).maximum);
-      }
+      widest = Math.max(
+        widest,
+        isMeasurable(item)
+          ? Measurement.get(options, item).maximum
+          : options.maxWidth,
+      );
     }
     return widest;
   }

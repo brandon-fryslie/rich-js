@@ -17,9 +17,21 @@ export class Measurement {
     return this.maximum - this.minimum;
   }
 
+  /**
+   * A range with no cell meaning becomes one with the nearest meaning there is:
+   * negative floors to zero, an inverted pair collapses to its ceiling, and NaN
+   * reads as zero cells the same way `cellCount` reads it.
+   *
+   * NaN and Infinity are not treated alike here, and the difference is the whole
+   * point. `Infinity` is a maximum a renderable means — `Table` reports it when
+   * a column asks for every cell there is, and `withBoundedWidth` throws on it
+   * so a caller learns their offer was unanswerable. Flooring it to zero would
+   * turn that loud failure into a table measured at no width at all.
+   */
   normalize(): Measurement {
-    const min = Math.max(0, Math.min(this.minimum, this.maximum));
-    const max = Math.max(0, this.maximum);
+    const cells = (n: number): number => (Number.isNaN(n) ? 0 : n);
+    const min = Math.max(0, Math.min(cells(this.minimum), cells(this.maximum)));
+    const max = Math.max(0, cells(this.maximum));
     return new Measurement(min, max);
   }
 

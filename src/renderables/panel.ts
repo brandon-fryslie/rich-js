@@ -258,8 +258,6 @@ export class Panel implements Renderable, Measurable {
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
     const options = withCellWidth(rawOptions);
-    const geometry = layoutPanel(options.maxWidth, this.padding);
-    const overhead = frameOverhead(geometry);
 
     const declared = this._declaredWidth;
     if (declared !== undefined) {
@@ -272,6 +270,25 @@ export class Panel implements Renderable, Measurable {
       const width = Math.min(options.maxWidth, declared);
       return { minimum: width, maximum: width };
     }
+
+    return this._fitRange(options);
+  }
+
+  /**
+   * The width this panel wants when nothing declared one for it: its content
+   * plus its own frame, both read off the division it will render against.
+   *
+   * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` ask this same
+   * question, and each used to work it out itself — the same `layoutPanel`, the
+   * same `frameOverhead`, the same `Math.min(maxWidth, maximum + overhead)`,
+   * written twice. That is the pattern `_declaredWidth` below was extracted to
+   * stop, left standing for the fit case; changing how overhead is derived in
+   * one copy is all it would take to put `measure` and `render` back into the
+   * disagreement this epic spent itself closing.
+   */
+  private _fitRange(options: RenderOptions): { minimum: number; maximum: number } {
+    const geometry = layoutPanel(options.maxWidth, this.padding);
+    const overhead = frameOverhead(geometry);
 
     if (isMeasurable(this.renderable)) {
       const innerOptions: RenderOptions = {
@@ -309,22 +326,7 @@ export class Panel implements Renderable, Measurable {
     const declared = this._declaredWidth;
     if (declared !== undefined) return Math.min(declared, options.maxWidth);
     if (this.expand) return options.maxWidth;
-
-    // Fit mode: the panel is as wide as its content wants plus its own frame,
-    // both read off the division it will render against.
-    const geometry = layoutPanel(options.maxWidth, this.padding);
-    const overhead = frameOverhead(geometry);
-
-    if (isMeasurable(this.renderable)) {
-      const innerOptions: RenderOptions = {
-        ...options,
-        maxWidth: geometry.contentWidth,
-      };
-      const measurement = Measurement.get(innerOptions, this.renderable);
-      return Math.min(options.maxWidth, measurement.maximum + overhead);
-    }
-
-    return options.maxWidth;
+    return this._fitRange(options).maximum;
   }
 
   private *_renderTopBorder(

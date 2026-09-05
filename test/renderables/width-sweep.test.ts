@@ -156,6 +156,26 @@ const configurations: readonly Configuration[] = [
     }),
   },
   {
+    name: "Table at a declared unbounded width with a ratio column",
+    shape: "rectangular",
+    // The configuration above describes this crash and cannot reach it: its one
+    // column has no ratio, so `distribute` never has an open weighted column to
+    // overshoot the budget with, and the catastrophic path — `cellWidths`
+    // reaching `UNBOUNDED` and `String.repeat` throwing `Invalid string length`
+    // — is only armed when a declared unbounded width and a ratio column meet.
+    // Reverting `_outerWidth`'s clamp is caught either way; reverting it *here*
+    // is caught for the reason the clamp exists.
+    make: table({ width: Infinity }, (t) => {
+      t.addColumn("Name", { ratio: 1 });
+      t.addRow("alpha");
+    }),
+  },
+  {
+    name: "Columns wrapping content that ignores its width",
+    shape: "rectangular",
+    make: () => new Columns([oversized]),
+  },
+  {
     name: "Table fractional padding",
     shape: "rectangular",
     // `normalizePadding` is shared with Panel, so a padding that is not a whole
@@ -287,6 +307,7 @@ const noNaturalWidth: ReadonlySet<string> = new Set([
   "Table with an unbounded column demand",
   "Layout wrapping content that ignores its width",
   "Tree with a label that ignores its width",
+  "Columns wrapping content that ignores its width",
 ]);
 
 describe("width sweep", () => {

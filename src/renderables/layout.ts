@@ -34,10 +34,10 @@ function growthRatio(ratio: number): number {
 
 export class Layout implements Renderable, Measurable {
   name: string | undefined;
-  ratio: number;
-  size: number | undefined;
-  minimumSize: number;
   visible: boolean;
+  private _ratio!: number;
+  private _size: number | undefined;
+  private _minimumSize!: number;
   private _renderable: Renderable | undefined;
   private _children: Layout[];
   private _splitDirection: "column" | "row" | undefined;
@@ -49,19 +49,49 @@ export class Layout implements Renderable, Measurable {
         : renderable;
     }
     this.name = options?.name;
-    this.ratio = growthRatio(options?.ratio ?? 1);
-    // Both are cell counts a caller supplies as a plain `number`, and they
-    // reach the width arithmetic without passing through `withCellWidth`, which
-    // parses only what the caller of `render` supplied. Unparsed, `size: 5.5`
-    // measured 6.5 cells and `size: -5` measured -4 — a width with no meaning,
-    // which a fit-mode `Panel` then tried to draw. Absence is preserved rather
-    // than parsed: `undefined` selects a flex pane, and `cellCount` would read
-    // it as a declared zero.
-    this.size = options?.size === undefined ? undefined : cellCount(options.size);
-    this.minimumSize = cellCount(options?.minimumSize ?? 1);
+    this.ratio = options?.ratio ?? 1;
+    this.size = options?.size;
+    this.minimumSize = options?.minimumSize ?? 1;
     this.visible = options?.visible !== false;
     this._children = [];
     this._splitDirection = undefined;
+  }
+
+  /**
+   * The three declared numbers, parsed on assignment rather than at the
+   * constructor. All three are public and a caller reaches them long after
+   * construction — `layout.getByName("pane")!.ratio = -1` walked straight past a
+   * constructor-only parse and put a negative weight back into the division that
+   * `_rowBudgetFor` and `_distributeSpace` are written to trust.
+   *
+   * [LAW:parse-dont-validate] The setter is the border, so the guarantee holds
+   * for the object's whole lifetime and nothing downstream re-checks. `size` and
+   * `minimumSize` are cell counts; `ratio` is a share weight and keeps its
+   * fractions. Absence is preserved rather than parsed: an undefined `size`
+   * selects a flex pane, and `cellCount` would read it as a declared zero.
+   */
+  get ratio(): number {
+    return this._ratio;
+  }
+
+  set ratio(value: number) {
+    this._ratio = growthRatio(value);
+  }
+
+  get size(): number | undefined {
+    return this._size;
+  }
+
+  set size(value: number | undefined) {
+    this._size = value === undefined ? undefined : cellCount(value);
+  }
+
+  get minimumSize(): number {
+    return this._minimumSize;
+  }
+
+  set minimumSize(value: number) {
+    this._minimumSize = cellCount(value);
   }
 
   get children(): Layout[] {
@@ -252,9 +282,15 @@ export class Layout implements Renderable, Measurable {
     if (visible.length === 0) return 0;
 
     const widths = visible.map((c) => c._naturalWidth(options));
-    return this._splitDirection === "row"
-      ? this._rowBudgetFor(visible, widths)
-      : Math.max(...widths);
+    if (this._splitDirection === "row") return this._rowBudgetFor(visible, widths);
+
+    // Accumulated, not spread: a column split holds as many children as a caller
+    // made, and `Math.max(...widths)` passes one argument per child, so a
+    // generated dashboard deep enough overruns the engine's argument limit and
+    // throws out of `measure()`.
+    let widest = 0;
+    for (const width of widths) widest = Math.max(widest, width);
+    return widest;
   }
 
   /**

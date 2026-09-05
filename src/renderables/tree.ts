@@ -181,6 +181,7 @@ export class Tree implements Renderable, Measurable {
     // that ignores the width it is handed pushed the row past the offer the
     // guides had just been fitted into.
     yield* Segment.cropLines(row.label.render({ ...options, maxWidth: left }), left);
+    yield Segment.line();
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

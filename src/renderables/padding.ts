@@ -38,7 +38,14 @@ export function normalizePadding(
   // `" ".repeat`, which truncates, while the rows around it are measured
   // arithmetically — so the padding and the border disagree and the frame
   // breaks. `cellCount`'s header carries why the comparison, not `Math.max`.
-  const side = cellCount;
+  //
+  // `Infinity` is where a side stops being an offer and the rule needs the one
+  // addition. An unbounded *offer* is a question a renderable can answer, so
+  // `cellCount` passes it through; an unbounded *side* is a quantity and there
+  // is nothing to draw. Unparsed it reached `budget -= got` as
+  // `Infinity - Infinity`, and `new Padding(text, Infinity).measure(...)`
+  // handed back `{NaN, NaN}` from a public API.
+  const side = (n: number): number => (Number.isFinite(n) ? cellCount(n) : 0);
   const sides: readonly [number, number, number, number] =
     typeof padding === "number"
       ? [padding, padding, padding, padding]
