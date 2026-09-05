@@ -215,6 +215,10 @@ export {
   ISO8601Highlighter,
 } from "./core/highlighter.js";
 
+// Pretty
+export { Pretty } from "./core/pretty.js";
+export type { PrettyOptions } from "./core/pretty.js";
+
 // Spinner data
 export { SPINNERS, DEFAULT_SPINNER } from "./core/spinnerData.js";
 export type { SpinnerData } from "./core/spinnerData.js";
@@ -250,8 +254,6 @@ export { Tree } from "./renderables/tree.js";
 export type { TreeOptions } from "./renderables/tree.js";
 export { JSONRenderable } from "./renderables/json.js";
 export type { JSONOptions } from "./renderables/json.js";
-export { Pretty } from "./renderables/pretty.js";
-export type { PrettyOptions } from "./renderables/pretty.js";
 export { Columns } from "./renderables/columns.js";
 export type { ColumnsOptions } from "./renderables/columns.js";
 export { FlexStrip } from "./renderables/flexStrip.js";

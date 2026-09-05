@@ -8,6 +8,8 @@ import {
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
+import { Highlighter } from "../../src/core/highlighter.js";
+import { Pretty } from "../../src/core/pretty.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -266,10 +268,176 @@ describe("Console.print()", () => {
     expect(captured(chunks)).toContain("Rich Text");
   });
 
-  it("converts non-string non-renderable objects to string", () => {
+  it("prints a number", () => {
     const { console: c, chunks } = makeConsole({ markup: false });
     c.print(42);
     expect(captured(chunks)).toContain("42");
+  });
+
+  // `print` sorts every argument into exactly three arms: a renderable draws
+  // itself, a string is the only thing that can carry markup, and everything
+  // else is data formatted by `Pretty`. These pin the arms and the boundaries
+  // between them — the bug they descend from is an object reaching the string
+  // arm, stringifying to `[object Object]`, and being consumed whole by the
+  // markup parser, so `print({ a: 1 })` emitted a blank line.
+  describe("print routes arguments by type", () => {
+    it("formats a plain object rather than emitting nothing", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print({ a: 1 });
+      const output = captured(chunks);
+      expect(output).toContain("a");
+      expect(output).toContain("1");
+    });
+
+    it("formats an array structurally, not as comma-joined text", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print([1, 2, 3]);
+      expect(captured(chunks)).toContain("[1, 2, 3]");
+    });
+
+    it("formats Maps and Sets, which stringify to a non-answer", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print(new Map([["k", 1]]));
+      c.print(new Set([7]));
+      const output = captured(chunks);
+      expect(output).toContain("Map {");
+      expect(output).toContain("Set {");
+      expect(output).not.toContain("[object");
+    });
+
+    it("keeps the self-description of a value that has one", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print(new Error("boom"));
+      c.print(/ab+c/g);
+      const output = captured(chunks);
+      expect(output).toContain("Error: boom");
+      expect(output).toContain("/ab+c/g");
+    });
+
+    it("prints a null-prototype object instead of throwing on coercion", () => {
+      // `String(Object.create(null))` is a TypeError, so the old string arm
+      // did not merely print this one badly — it crashed the caller.
+      const { console: c, chunks } = makeConsole();
+      const bare = Object.create(null) as Record<string, unknown>;
+      bare["k"] = 1;
+      expect(() => c.print(bare)).not.toThrow();
+      expect(captured(chunks)).toContain("k");
+    });
+
+    it("still applies markup to strings", () => {
+      const { console: c, chunks } = makeConsole({ markup: true });
+      c.print("[bold]hi[/bold]");
+      const output = captured(chunks);
+      expect(output).toContain("hi");
+      expect(output).not.toContain("[bold]");
+    });
+
+    it("does not read a lone object as print options", () => {
+      // Every key here is an option name. Read as options the call prints
+      // nothing at all, which is the blank line this whole arm exists to
+      // prevent; read as data it is an object like any other.
+      const { console: c, chunks } = makeConsole();
+      c.print({ style: "bold", end: "!" });
+      const output = captured(chunks);
+      expect(output).toContain("style");
+      expect(output).toContain("bold");
+    });
+
+    // `highlight` and a custom `highlighter` are console-wide settings, so they
+    // have to reach a formatted object exactly as they reach a printed string.
+    // Routing data through `Pretty` is where that link is easiest to drop:
+    // `Pretty` owns a default highlighter of its own, and left to itself it
+    // outranks whatever the console was configured with.
+    it("honours highlight: false for data arguments", () => {
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor" });
+      c.print({ a: 1 }, "x", { highlight: false });
+      expect(captured(chunks)).not.toContain("\x1b[");
+    });
+
+    it("honours a custom console highlighter for data arguments", () => {
+      // Asserting "some ANSI appeared" would pass even with the forwarding
+      // reverted, because Pretty's own default `ReprHighlighter` also styles the
+      // number in `{ a: 1 }`. The recorder asks the only question that
+      // distinguishes them: was the console's highlighter the one consulted?
+      const seen: string[] = [];
+      class Recorder extends Highlighter {
+        highlight(text: RichText): void {
+          seen.push(text.plain);
+        }
+      }
+      const { console: c } = makeConsole({ highlighter: new Recorder() });
+      c.print({ a: 1 });
+      expect(seen).toEqual(["{ a: 1 }"]);
+    });
+
+    // `print` formats whatever it is handed, so it is the one caller that can
+    // assume nothing about size. Unbounded, an ordinary debug line costs
+    // megabytes or never returns.
+    it("bounds a large container, and says how much it dropped", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print(new Array(5000).fill(1));
+      const output = captured(chunks);
+      expect(output.split("\n").length).toBeLessThan(200);
+      expect(output).toContain("... +4900");
+    });
+
+    it("bounds deep nesting instead of descending until the stack gives out", () => {
+      const { console: c, chunks } = makeConsole();
+      let deep: unknown = { end: true };
+      for (let i = 0; i < 400; i++) deep = { n: deep };
+      expect(() => c.print(deep)).not.toThrow();
+      expect(captured(chunks)).toContain("{...}");
+    });
+
+    it("bounds a long string buried in data", () => {
+      // The third way a value is large. An object routed through Pretty carries
+      // its string fields verbatim, so one response body reaches the terminal
+      // whole — the same hazard as a long array, by a different road.
+      const { console: c, chunks } = makeConsole();
+      c.print({ body: "x".repeat(50_000) });
+      expect(captured(chunks).length).toBeLessThan(2_000);
+    });
+
+    it("prints a string argument in full, because that caller named it", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print("y".repeat(5_000));
+      // Wrapped across lines at the console width, so count rather than match.
+      expect(captured(chunks).replace(/[^y]/g, "")).toHaveLength(5_000);
+    });
+
+    it("emits no styling for data when highlighting is off", () => {
+      // Indent guides are styling, so `highlight: false` has to reach them too;
+      // otherwise a wrapped object still emits ANSI the caller declined.
+      const wide: Record<string, number> = {};
+      for (let i = 0; i < 12; i++) wide[`key_${i}`] = i;
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor" });
+      c.print(wide, { highlight: false });
+      expect(captured(chunks)).not.toContain("\x1b[");
+    });
+
+    it("does not let a throwing field take down the print", () => {
+      const { console: c, chunks } = makeConsole();
+      expect(() => c.print({ ok: 1, get lazy(): number { throw new Error("not loaded"); } }))
+        .not.toThrow();
+      expect(captured(chunks)).toContain("[Threw: not loaded]");
+      expect(captured(chunks)).toContain("ok: 1");
+    });
+
+    it("leaves an explicitly constructed Pretty unbounded", () => {
+      // The bounds are the convenience path's, not the formatter's: a caller
+      // who built the Pretty has seen their data and said what they wanted.
+      const { console: c, chunks } = makeConsole();
+      c.print(new Pretty(new Array(200).fill(1)));
+      expect(captured(chunks)).not.toContain("... +");
+    });
+
+    it("still reads a trailing object as options when content precedes it", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print("Hello", { end: "!" });
+      const output = captured(chunks);
+      expect(output.endsWith("!")).toBe(true);
+      expect(output).not.toContain("end");
+    });
   });
 
   it("separates multiple items with space by default", () => {
