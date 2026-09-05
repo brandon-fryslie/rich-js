@@ -4,15 +4,22 @@
     {
       "version": "pr-90",
       "ref": "refs/pull/90/merge",
-      "sha": "0a09dfbfd3d7e932e10ce15af93550b970087ec3",
-      "timestamp": "2026-09-05T13:00:02.489Z",
+      "sha": "85af1f61164067cda4b68502793fea42bc38b3c2",
+      "timestamp": "2026-09-05T18:59:38.744Z",
       "commits": [
         {
-          "sha": "0a09dfbfd3d7e932e10ce15af93550b970087ec3",
+          "sha": "85af1f61164067cda4b68502793fea42bc38b3c2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T12:59:31Z",
-          "message": "Merge dfe7217b850e1ae7646af6615c119eee7120882a into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+          "timestamp": "2026-09-05T18:59:08Z",
+          "message": "Merge 8e50ab7d4e1b441771088613eee639ff86ed4d60 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+        },
+        {
+          "sha": "8e50ab7d4e1b441771088613eee639ff86ed4d60",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T12:58:55-06:00",
+          "message": "fix(pretty): bound both containers and read both containers per position\n\nRound-4 review findings. Three of the four are the same mistake: round 3\nhardened one arm of a pair and left its sibling, so the arms disagreed about\nthings they should have agreed on.\n\nMap and Set drained their iterators before `maxLength` applied — the eager\nmaterialisation the array arm had just been reworked to avoid, two arms\nbelow it. A 5,000-entry Map pulled 5,001 entries to show five. `take` stops\nat the bound, and `.size` gives the total without iterating, so the `... +N`\nremainder stays exact while the walk becomes O(maxLength).\n\nThe array arm read every kept index through one `slice`, so a single throwing\naccessor propagated to the container's catch and cost the whole sequence:\n`[1, <throws>, 3]` rendered `[Threw: boom]`. \"array index getter\" was row six\nof the enumeration in the previous commit, and only the object arm was\nhardened for it. `_property` becomes `_at`, taking a key or an index, because\nreading one slot of a container someone else built is one job with two\nspellings. [LAW:one-type-per-behavior] Arrays now read per position, and one\nbad index costs `[1, [Threw: boom], 3]`.\n\nThe test pinning the typed-array fix was worse than absent, and the reviewer\ncaught it. It wrapped `Uint8Array` in a Proxy, but `ArrayBuffer.isView` is a\nbrand check on an internal slot and does not unwrap a Proxy the way\n`Array.isArray` does, so the value never reached the arm under test. It fell\nthrough to `String(value)`, `%TypedArray%.prototype.join` threw on an\nincompatible receiver, and the `[Threw: …]` handling added in that same commit\nturned the error into a pass. Every read count stayed 0 and the assertion held\nfor a reason unrelated to the bound. It now asserts what the fix is for — heap\ngrowth while formatting a real 20MB `Uint8Array` — against the ~195MB the old\nconversion cost. All three new tests were run against the reverted code first\nand confirmed to fail.\n\ndocs/console.md now states the bounds `print` applies, that they are `print`'s\nand not the formatter's, and that a string argument is never truncated. They\nwere surprising, silent, and written down nowhere a user reads.\n"
         },
         {
           "sha": "dfe7217b850e1ae7646af6615c119eee7120882a",

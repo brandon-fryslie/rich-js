@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ag as e}from"./chunks/framework.Dk5CRF_b.js";const c=JSON.parse('{"title":"Console","description":"","frontmatter":{},"headers":[],"relativePath":"console.md","filePath":"console.md"}'),n={name:"console.md"};function h(l,s,p,k,o,r){return a(),t("div",null,[...s[0]||(s[0]=[e("",111)])])}const g=i(n,[["render",h]]);export{c as __pageData,g as default};
