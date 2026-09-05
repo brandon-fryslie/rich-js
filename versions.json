@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-85",
+      "ref": "refs/pull/85/merge",
+      "sha": "e262b9baee081fa9155818ba4e9be544243220aa",
+      "timestamp": "2026-09-05T04:24:37.478Z",
+      "commits": [
+        {
+          "sha": "e262b9baee081fa9155818ba4e9be544243220aa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T22:24:07-06:00",
+          "message": "Merge 6e0ac1caa0aa5433dbec48e1fb9ab7bdde814623 into f7ccd8c550c51bd532379c23f55dd212f350ec54\n"
+        },
+        {
+          "sha": "6e0ac1caa0aa5433dbec48e1fb9ab7bdde814623",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T22:23:33-06:00",
+          "message": "docs(strip): make the page reachable, and true once a reader can reach it (rich-docs-site-13t.5)\n\ndocs/strip.md was in no sidebar group and in no nav activeMatch pattern —\na substantial page reachable only by the site's local search.\n\nconfig.ts held two hand-maintained lists of one fact, the sidebar links and\nthe Guide activeMatch regex, and they had already drifted apart: `strip` was\nin neither, `protocol` in only one, so it silently lost its nav highlight.\nAppending `strip` twice would fix today's symptom and leave the mechanism.\nThe regex is strictly derivable from the sidebar, so it is now derived —\n[LAW:one-source-of-truth] — which deletes one of the two lists and pulls\n`protocol` in with no entry typed for it. Verified the derived pattern is the\nold one plus exactly {strip, protocol}, nothing dropped; and in the built\nHTML both pages now carry `VPNavBarMenuLink active` on Guide.\n\nThe file grew ten lines: the derivation and its rationale cost more lines\nthan the regex they replaced. What shrank is the number of lists a human\nmust keep in agreement, from two to one.\n\nCLAUDE.md told the next agent to hand-edit that regex. It no longer exists.\n\nMaking a page reachable publishes it, so the page was audited the way the\nfour tickets before it were: every block extracted, compiled against src/,\nand executed. No ghosts — every symbol on the page exists, unlike\ndocs/console.md. Six behavioral claims were wrong:\n\n- The PowerlineJoiner bullets promised a glyph for `join(L, R)` and\n  `join(L, null)` unconditionally. The separator is emitted only when the\n  LEFT neighbour has a paintable background; `… on default` counts as none.\n  A colourless cell has no arrow after it. The page's own GradientJoiner\n  section documented its no-background case correctly, so the page\n  contradicted itself.\n- `end: \"\"` was taught as what makes a cell inline. It is inert on non-empty\n  text: RichText.render ends with `if (this._end && this._end !== \"\\n\")`, so\n  the default is never emitted and there is no newline to suppress.\n  `noWrap: true` is the option actually doing the work, confirmed by\n  rendering a long cell with and without it.\n- `gap` was described as cells around an inter-item joiner. It applies with\n  no joiner at all, and inserts on each side — `{ gap: 1 }` alone puts two\n  spaces between items.\n- \"Truecolor terminals only\" was contradicted by its own next clause.\n- The edge-styles section was written as a changelog (\"used to\", \"is gone\",\n  \"now\") for a reader who has never seen the old version.\n\nVerified true and left alone: block 2's exact rendering, both endpoint\nbehaviours, every capsule and plain bullet, gradient's 2 × steps midpoint\nsampling (no sample equals either anchor — checked algebraically and in\noutput), block 8's stylize offsets, justify on non-final lines, and the\nwider-than-maxWidth overflow.\n\nTwo defects belong to the source, not the page, and are filed rather than\ndocumented as intent: rich-text-5ai (RichText honors `end` on the empty-text\npath and not the non-empty one) and rich-flexstrip-5kf (FlexStrip terminates\nits final line, so printing one yields a trailing blank row; Strip does not).\n\nnpm run lint and npm run docs:build both clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f7ccd8c550c51bd532379c23f55dd212f350ec54",
