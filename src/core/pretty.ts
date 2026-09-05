@@ -274,8 +274,9 @@ export class Pretty implements Renderable, Measurable {
 
       // Try compact first
       if (!this.expandAll) {
-        const compact = "[" + positions.map((i) => this._at(elements, i, onOneLine)).join(", ") +
-          (remaining > 0 ? `, ... +${remaining}` : "") + "]";
+        const pieces = positions.map((i) => this._at(elements, i, onOneLine));
+        if (remaining > 0) pieces.push(`... +${remaining}`);
+        const compact = "[" + pieces.join(", ") + "]";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
@@ -323,9 +324,9 @@ export class Pretty implements Renderable, Measurable {
 
       // Try compact
       if (!this.expandAll) {
-        const compact = "{ " + items.map((k) =>
-          `${k}: ${this._at(obj, k, onOneLine)}`).join(", ") +
-          (remaining > 0 ? `, ... +${remaining}` : "") + " }";
+        const pieces = items.map((k) => `${k}: ${this._at(obj, k, onOneLine)}`);
+        if (remaining > 0) pieces.push(`... +${remaining}`);
+        const compact = "{ " + pieces.join(", ") + " }";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 

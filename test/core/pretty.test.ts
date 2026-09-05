@@ -278,6 +278,16 @@ describe("Pretty", () => {
       expect(grew).toBeLessThan(50_000_000);
     });
 
+    it("shows only the remainder when the bound admits nothing", () => {
+      // The marker is one more item in the sequence, not a suffix glued on
+      // after a separator — otherwise a bound of zero leads with the comma it
+      // was supposed to follow.
+      expect(collectText(new Pretty([1, 2, 3], { maxLength: 0 }), { maxWidth: 80 }))
+        .toBe("[... +3]");
+      expect(collectText(new Pretty({ a: 1, b: 2 }, { maxLength: 0 }), { maxWidth: 80 }))
+        .toBe("{ ... +2 }");
+    });
+
     it("stops pulling a Map or Set at the bound instead of draining it", () => {
       // `.size` answers the total without iterating, so spreading first only
       // ever served to throw the tail away.
