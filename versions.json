@@ -4,15 +4,22 @@
     {
       "version": "pr-85",
       "ref": "refs/pull/85/merge",
-      "sha": "e262b9baee081fa9155818ba4e9be544243220aa",
-      "timestamp": "2026-09-05T04:24:37.478Z",
+      "sha": "1e4efa1a39b5acf1672e388c4c8259e460e28ee6",
+      "timestamp": "2026-09-05T04:38:02.028Z",
       "commits": [
         {
-          "sha": "e262b9baee081fa9155818ba4e9be544243220aa",
+          "sha": "1e4efa1a39b5acf1672e388c4c8259e460e28ee6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T22:24:07-06:00",
-          "message": "Merge 6e0ac1caa0aa5433dbec48e1fb9ab7bdde814623 into f7ccd8c550c51bd532379c23f55dd212f350ec54\n"
+          "timestamp": "2026-09-05T04:37:33Z",
+          "message": "Merge 99da7db7cac8d8272bea8c46dec870b11e7e3a9c into f7ccd8c550c51bd532379c23f55dd212f350ec54\n"
+        },
+        {
+          "sha": "99da7db7cac8d8272bea8c46dec870b11e7e3a9c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T22:37:17-06:00",
+          "message": "docs(config): Protocol is its own nav tab, so keep it out of the Guide pattern\n\nDeriving the Guide activeMatch from the whole sidebar folded in `/protocol`,\nwhich lit up both the Guide and Protocol nav tabs at once on that page —\na regression the derivation introduced.\n\nThe previous commit justified including `protocol` by calling its absence\nfrom the old regex drift. That was wrong, and checkable: docs/protocol.md,\nthe standalone `{ text: 'Protocol' }` nav entry, and the original regex\nwithout `protocol` all landed together in f32ccba7. Protocol was given its\nown top-level tab and kept out of the Guide pattern in one authoring act.\nOnly `strip` was drift — added later, registered nowhere.\n\nRather than filter `protocol` out of the derived slugs, the sidebar is now\nsplit into one region per top-level nav tab: guideSidebar, advancedSidebar,\nDemos. Each tab's matching derives from its own region, so which tab lights\nup follows from which region a group sits in — no exclusion predicate to\nexplain or to go stale. [LAW:dataflow-not-control-flow]\n\nVerified in the built HTML: /protocol has Guide inactive and Protocol active;\n/strip, /console and /introduction have Guide active. The derived pattern is\nnow the pre-PR regex plus exactly {strip}, and every docs page is still\nreachable from the sidebar.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "6e0ac1caa0aa5433dbec48e1fb9ab7bdde814623",
