@@ -4,15 +4,22 @@
     {
       "version": "pr-90",
       "ref": "refs/pull/90/merge",
-      "sha": "769e09b04df8b9d5a4ac0c847059ef066b7b7707",
-      "timestamp": "2026-09-05T19:19:37.137Z",
+      "sha": "e763a5257257c02f06ce1bf51df9a742e2377f58",
+      "timestamp": "2026-09-05T19:22:15.163Z",
       "commits": [
         {
-          "sha": "769e09b04df8b9d5a4ac0c847059ef066b7b7707",
+          "sha": "e763a5257257c02f06ce1bf51df9a742e2377f58",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T19:19:03Z",
-          "message": "Merge 0536a068ea93113458679a74d61013f8ff84c1ff into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+          "timestamp": "2026-09-05T19:21:45Z",
+          "message": "Merge 3cf28a6c9223c88d22669dbddfe1ce9f8c453a65 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+        },
+        {
+          "sha": "3cf28a6c9223c88d22669dbddfe1ce9f8c453a65",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T13:21:34-06:00",
+          "message": "fix(pretty): make the remainder marker an item, not a suffix\n\nFound reviewing my own diff. The Map and Set arms push `... +N` onto the parts\nlist, and so does every expanded path; only the two compact paths glued it on\nafter a separator they assumed was already there. With `maxLength: 0` the\nseparator has nothing to follow, so an array rendered `[, ... +3]` and an\nobject `{ , ... +2 }` while a Map correctly rendered `Map {... +1}`.\n\nPre-existing, and it became an inconsistency when the Map arm was rewritten\none commit ago — the same arms-disagree shape as the last two rounds, which\nis why it is worth the round rather than a follow-up ticket.\n\nThe marker is one more piece in the sequence now, so the separator is the\njoin's business in all four places. [LAW:dataflow-not-control-flow]\n"
         },
         {
           "sha": "0536a068ea93113458679a74d61013f8ff84c1ff",
