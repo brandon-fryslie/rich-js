@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-91",
+      "ref": "refs/pull/91/merge",
+      "sha": "c7d8b3f5721bc14b8ab93626e2d0e0914a8fca4d",
+      "timestamp": "2026-09-05T19:31:37.130Z",
+      "commits": [
+        {
+          "sha": "c7d8b3f5721bc14b8ab93626e2d0e0914a8fca4d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T13:31:07-06:00",
+          "message": "Merge 4c3ce26478a31c80c86401be0907424d2a4e39d6 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "4c3ce26478a31c80c86401be0907424d2a4e39d6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T13:30:52-06:00",
+          "message": "fix(box): join the header to the body with the separator glyphs (rich-table-6uy.1)\n\nA `Box` names its header CONTENT row verticals `head*` and its head-to-body\nSEPARATOR glyphs `mid*`. `getRowChars` read \"head\" as \"the head separator\" and\nreached for the verticals, so every table drew `┃━━━┃━━━┃` where the frame\nwanted `┡━━━╇━━━┩` — wrong, but symmetric enough to read as plausible box art.\n\nThe glyph data was already right; only the field selection was wrong.\n\nAll four `RowLevel` arms now return the same tuple, because a `Box` carries one\nseparator set where Rich carries three (head_row, row, foot_row). That gap is\nreal and visible with `showLines`, where row separators draw the head-to-body\nglyphs instead of `├───┼───┤`; it belongs to rich-table-6uy.3, which adds the\ndata. The arms are kept apart for it to fill.\n\nThe old tests pinned the defect and named the fields they expected, so they\ncould only ever pass by preserving it. Replaced with assertions on the rendered\nseparator. Reverting the fix turns all five red — checked, not assumed.\n\ndocs/tables.md's width ladder showed the old separator row; regenerated from\nthe renderer rather than redrawn by hand.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f41701254a8ee73a4dd70df45b3cab8c62761e68",
