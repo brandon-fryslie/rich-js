@@ -22,6 +22,85 @@ const demoSidebarItems = manifest.demos.map((d) => ({
   link: `/demos/${d.name}`,
 }))
 
+// [LAW:one-source-of-truth] The guide sidebar is the single list of guide pages.
+// The Guide nav's activeMatch is derived from it below rather than hand-copied —
+// two lists of one fact diverge on a schedule, and this pair already had: `strip`
+// was in neither and `protocol` in only one, so a substantial page was reachable
+// by search alone and another silently lost its nav highlight.
+const guideSidebar = [
+  {
+    text: 'Getting Started',
+    items: [
+      { text: 'Introduction', link: '/introduction' },
+      { text: 'Console', link: '/console' },
+      { text: 'Styles', link: '/style' },
+      { text: 'Markup', link: '/markup' },
+    ],
+  },
+  {
+    text: 'Text & Data',
+    items: [
+      { text: 'Rich Text', link: '/text' },
+      { text: 'Highlighting', link: '/highlighting' },
+      { text: 'Pretty Printing', link: '/pretty' },
+    ],
+  },
+  {
+    text: 'Renderables',
+    items: [
+      { text: 'Panel', link: '/panel' },
+      { text: 'Tables', link: '/tables' },
+      { text: 'Tree', link: '/tree' },
+      { text: 'Columns', link: '/columns' },
+      { text: 'Strip + Joiner', link: '/strip' },
+      { text: 'Group', link: '/group' },
+      { text: 'Padding', link: '/padding' },
+    ],
+  },
+  {
+    text: 'Live & Animation',
+    items: [
+      { text: 'Progress Bars', link: '/progress' },
+      { text: 'Live Display', link: '/live' },
+      { text: 'Layout', link: '/layout' },
+    ],
+  },
+  {
+    text: 'Interactive',
+    items: [{ text: 'Widgets', link: '/widgets' }],
+  },
+  {
+    text: 'Color & Theming',
+    items: [
+      { text: 'Theme Transposition', link: '/transpose' },
+      { text: 'Contrast & Accessibility', link: '/contrast' },
+    ],
+  },
+  {
+    text: 'Source & Files',
+    items: [
+      { text: 'Syntax Highlighting', link: '/syntax' },
+      { text: 'Markdown', link: '/markdown' },
+      { text: 'Tracebacks', link: '/traceback' },
+    ],
+  },
+  {
+    text: 'Integrations',
+    items: [
+      { text: 'Template Bindings', link: '/template-bindings' },
+      { text: 'Prompts', link: '/prompt' },
+    ],
+  },
+  {
+    text: 'Advanced',
+    items: [{ text: 'Renderable Protocol', link: '/protocol' }],
+  },
+]
+
+const guideActiveMatch = `^/(${guideSidebar
+  .flatMap((group) => group.items.map((item) => item.link.slice(1)))
+  .join('|')})`
+
 export default defineConfig({
   title: 'rich-js',
   description: 'Rich text and beautiful formatting in the terminal — a TypeScript port of Python\'s Rich',
@@ -40,82 +119,13 @@ export default defineConfig({
     siteTitle: 'rich-js',
 
     nav: [
-      { text: 'Guide', link: '/introduction', activeMatch: '^/(introduction|console|style|markup|text|highlighting|pretty|panel|tables|tree|columns|group|padding|progress|live|layout|widgets|syntax|markdown|traceback|prompt|transpose|contrast|template-bindings)' },
+      { text: 'Guide', link: '/introduction', activeMatch: guideActiveMatch },
       { text: 'Demos', link: '/demos/', activeMatch: '^/demos' },
       { text: 'Protocol', link: '/protocol' },
     ],
 
     sidebar: [
-      {
-        text: 'Getting Started',
-        items: [
-          { text: 'Introduction', link: '/introduction' },
-          { text: 'Console', link: '/console' },
-          { text: 'Styles', link: '/style' },
-          { text: 'Markup', link: '/markup' },
-        ],
-      },
-      {
-        text: 'Text & Data',
-        items: [
-          { text: 'Rich Text', link: '/text' },
-          { text: 'Highlighting', link: '/highlighting' },
-          { text: 'Pretty Printing', link: '/pretty' },
-        ],
-      },
-      {
-        text: 'Renderables',
-        items: [
-          { text: 'Panel', link: '/panel' },
-          { text: 'Tables', link: '/tables' },
-          { text: 'Tree', link: '/tree' },
-          { text: 'Columns', link: '/columns' },
-          { text: 'Group', link: '/group' },
-          { text: 'Padding', link: '/padding' },
-        ],
-      },
-      {
-        text: 'Live & Animation',
-        items: [
-          { text: 'Progress Bars', link: '/progress' },
-          { text: 'Live Display', link: '/live' },
-          { text: 'Layout', link: '/layout' },
-        ],
-      },
-      {
-        text: 'Interactive',
-        items: [
-          { text: 'Widgets', link: '/widgets' },
-        ],
-      },
-      {
-        text: 'Color & Theming',
-        items: [
-          { text: 'Theme Transposition', link: '/transpose' },
-          { text: 'Contrast & Accessibility', link: '/contrast' },
-        ],
-      },
-      {
-        text: 'Source & Files',
-        items: [
-          { text: 'Syntax Highlighting', link: '/syntax' },
-          { text: 'Markdown', link: '/markdown' },
-          { text: 'Tracebacks', link: '/traceback' },
-        ],
-      },
-      {
-        text: 'Integrations',
-        items: [
-          { text: 'Template Bindings', link: '/template-bindings' },
-          { text: 'Prompts', link: '/prompt' },
-        ],
-      },
-      {
-        text: 'Advanced',
-        items: [
-          { text: 'Renderable Protocol', link: '/protocol' },
-        ],
-      },
+      ...guideSidebar,
       {
         text: 'Demos',
         items: [

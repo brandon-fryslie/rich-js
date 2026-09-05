@@ -37,7 +37,7 @@ Individual demos each have their own script (`npm run demo`, `sessions`, `dash`,
 
 `docs/` is a published VitePress site and the single place the library's surface is described in prose. There is no separate specification directory; there is no roadmap document. If you need to know what a subsystem does, read its page in `docs/`, then read the source — the source carries the design rationale in module-header comments and is the authority when the two disagree.
 
-When you add a page, add its slug to the Guide `activeMatch` regex in `docs/.vitepress/config.ts`. That regex is a hand-maintained list, so a new page silently loses its nav highlight until you touch it.
+When you add a page, add it to `guideSidebar` in `docs/.vitepress/config.ts`. That is the only list — the Guide nav's `activeMatch` regex is derived from it, so the sidebar entry is also what gives the page its nav highlight. It used to be two hand-copied lists, and they had already drifted: `strip` was in neither, so a substantial page was reachable only by search, and `protocol` was in one, so it silently lost its highlight.
 
 Run `npm run docs:build` before committing any documentation change. It is the dead-link gate and the Vue-interpolation gate; both failures are invisible in the source file and obvious in the build.
 
