@@ -28,6 +28,15 @@ import {
   type MemberUse,
 } from "./code-blocks.js";
 
+/**
+ * The specifiers a fixture may treat as this package's.
+ *
+ * The real caller passes `ENTRY_BY_SPECIFIER`'s keys; a fixture passes the one
+ * entry point it needs, so that an import from anywhere else is a foreign
+ * module by construction rather than by omission.
+ */
+const OUR_SPECIFIERS: ReadonlySet<string> = new Set(["@promptctl/rich-js"]);
+
 function blocksOf(markdown: string): CodeBlock[] {
   return extractCodeBlocks("fixture.md", markdown);
 }
@@ -71,7 +80,7 @@ function signature(use: MemberUse): string {
  * traversal change that altered no behavior. [LAW:behavior-not-structure]
  */
 function signaturesIn(markdown: string): string[] {
-  return extractMemberUses(blocksOf(markdown)).map(signature).sort();
+  return extractMemberUses(blocksOf(markdown), OUR_SPECIFIERS).map(signature).sort();
 }
 
 describe("extractCodeBlocks", () => {
@@ -278,6 +287,49 @@ describe("extractMemberUses", () => {
     ).toEqual([]);
   });
 
+  // Translating an alias imported from a module this package does not own
+  // would turn a safe drop into a confident wrong answer: the third-party
+  // object's members would be checked against our class of the same name.
+  //
+  // The root stays `X`, the name the page wrote. That is the whole mechanism —
+  // the caller drops receivers whose class its surface map does not recognize,
+  // and `X` is not recognized, whereas `Layout` would have been.
+  // [LAW:no-silent-failure]
+  it("does not translate an alias imported from a foreign module", () => {
+    expect(
+      signaturesIn(
+        [
+          "```typescript",
+          'import { Layout as X } from "some-other-lib";',
+          "const x = new X();",
+          "x.whateverThatLibraryHas();",
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual(["X.whateverThatLibraryHas"]);
+  });
+
+  // The same last-one-wins hazard the declarations already avoid. One page may
+  // introduce an alias, use it, then rebind the same local name to a different
+  // class in a later section.
+  it("binds an alias to the nearest preceding import of its name", () => {
+    expect(
+      signaturesIn(
+        [
+          "```typescript",
+          'import { Strip as S } from "@promptctl/rich-js";',
+          "new S().join();",
+          "```",
+          "",
+          "```typescript",
+          'import { FlexStrip as S } from "@promptctl/rich-js";',
+          "new S().join();",
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual(["FlexStrip.join", "Strip.join"]);
+  });
+
   it("reports the page line a use sits on", () => {
     const uses = extractMemberUses(
       blocksOf(
@@ -285,6 +337,7 @@ describe("extractMemberUses", () => {
           "\n",
         ),
       ),
+      OUR_SPECIFIERS,
     );
     expect(uses.map((u) => u.line)).toEqual([5]);
   });

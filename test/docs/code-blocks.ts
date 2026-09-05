@@ -174,12 +174,18 @@ function pageLineOf(block: CodeBlock, source: ts.SourceFile, node: ts.Node): num
  * — and a default import names whatever the module chose to call its default.
  */
 export function extractImportedNames(block: CodeBlock): ImportedName[] {
-  return importedNamesIn(block, parseBlock(block));
+  return importedNamesIn(block, parseBlock(block)).map((found) => found.imported);
 }
 
-/** The same walk, over a source the caller already parsed. */
-function importedNamesIn(block: CodeBlock, source: ts.SourceFile): ImportedName[] {
-  const names: ImportedName[] = [];
+/**
+ * The same walk, over a source the caller already parsed, keeping each import's
+ * node so a caller that needs to order imports against other page positions can.
+ */
+function importedNamesIn(
+  block: CodeBlock,
+  source: ts.SourceFile,
+): { imported: ImportedName; node: ts.Node }[] {
+  const names: { imported: ImportedName; node: ts.Node }[] = [];
   for (const statement of source.statements) {
     if (!ts.isImportDeclaration(statement)) continue;
     if (!ts.isStringLiteral(statement.moduleSpecifier)) continue;
@@ -187,14 +193,17 @@ function importedNamesIn(block: CodeBlock, source: ts.SourceFile): ImportedName[
     if (!bindings || !ts.isNamedImports(bindings)) continue;
     for (const element of bindings.elements) {
       names.push({
-        page: block.page,
-        line: pageLineOf(block, source, element),
-        specifier: statement.moduleSpecifier.text,
-        // `escape as escapeMarkup` is exported as `escape`; the local alias is
-        // the page's business, not the entry module's — but the member check
-        // needs both halves, because the page writes the alias.
-        name: (element.propertyName ?? element.name).text,
-        local: element.name.text,
+        node: element,
+        imported: {
+          page: block.page,
+          line: pageLineOf(block, source, element),
+          specifier: statement.moduleSpecifier.text,
+          // `escape as escapeMarkup` is exported as `escape`; the local alias is
+          // the page's business, not the entry module's — but the member check
+          // needs both halves, because the page writes the alias.
+          name: (element.propertyName ?? element.name).text,
+          local: element.name.text,
+        },
       });
     }
   }
@@ -212,20 +221,22 @@ function importedNamesIn(block: CodeBlock, source: ts.SourceFile): ImportedName[
  * 'Console'` errors when an earlier attempt let the ambient `console` global
  * bind instead of the page's own.
  *
- * Page-wide is not the same as last-one-wins, and the difference is load-bearing.
- * `docs/strip.md` declares `const strip = new Strip(…)` and, 130 lines later,
- * `const strip = new FlexStrip(…)`. Binding every `strip.*` on the page to
- * whichever came last would check the first section's uses against the wrong
- * class. So a use binds to the nearest *preceding* declaration of its name —
- * falling back to the nearest following one, which is what keeps markup.md's
- * forward reference working. Two rules would be a branch; this is one ordering
- * question asked once. [LAW:dataflow-not-control-flow]
+ * Page-wide is not the same as last-one-wins, and the difference is
+ * load-bearing; `nearestBinding` below owns that rule and its evidence.
+ *
+ * `ourSpecifiers` is the set of module specifiers this package owns, passed
+ * rather than imported: the rule that knows which specifiers are ours is the
+ * one that holds `package.json`, and this file stays a parser.
+ * [LAW:effects-at-boundaries]
  */
-export function extractMemberUses(blocks: readonly CodeBlock[]): MemberUse[] {
+export function extractMemberUses(
+  blocks: readonly CodeBlock[],
+  ourSpecifiers: ReadonlySet<string>,
+): MemberUse[] {
   const parsed = blocks.map((block) => ({ block, source: parseBlock(block) }));
 
   // Declarations in page order, so "nearest" below is a distance on this list.
-  const declarations: { ordinal: number; name: string; className: string }[] = [];
+  const declarations: Binding[] = [];
   parsed.forEach(({ source }, blockIndex) => {
     visit(source, (node) => {
       if (!ts.isVariableDeclaration(node)) return;
@@ -247,28 +258,35 @@ export function extractMemberUses(blocks: readonly CodeBlock[]): MemberUse[] {
   // it does not recognize — so the alias would silently take the whole page's
   // member calls out of the check. [LAW:one-source-of-truth] the same import
   // walk answers this that answers the import check.
-  const exportedNameOf = new Map<string, string>();
-  parsed.forEach(({ block, source }) => {
-    for (const imported of importedNamesIn(block, source)) {
-      exportedNameOf.set(imported.local, imported.name);
+  //
+  // Only imports from `ourSpecifiers` bind. Translating an alias from a module
+  // this package does not own turns a safe drop into a confident wrong answer:
+  // `import { Layout as X } from "some-other-lib"` would resolve `new X()` to
+  // *our* `Layout` and check a third-party object's members against a class it
+  // has nothing to do with. Unrecognized is the correct outcome there.
+  // [LAW:no-silent-failure]
+  const aliases: Binding[] = [];
+  parsed.forEach(({ block, source }, blockIndex) => {
+    for (const { imported, node } of importedNamesIn(block, source)) {
+      if (!ourSpecifiers.has(imported.specifier)) continue;
+      aliases.push({
+        ordinal: ordinalOf(blockIndex, source, node),
+        name: imported.local,
+        className: imported.name,
+      });
     }
   });
 
   // A `new X()` root already names its class; a variable has to be looked up
   // against the declarations above. Same question, two kinds of answer.
-  const declaredClassOf = (root: ChainRoot, ordinal: number): string | undefined => {
-    if (root.kind === "class") return root.name;
-    const matches = declarations.filter((d) => d.name === root.name);
-    const preceding = matches.filter((d) => d.ordinal <= ordinal);
-    const nearest = preceding.length > 0 ? preceding[preceding.length - 1] : matches[0];
-    return nearest?.className;
-  };
+  const declaredClassOf = (root: ChainRoot, ordinal: number): string | undefined =>
+    root.kind === "class" ? root.name : nearestBinding(declarations, root.name, ordinal);
 
   // Both kinds answer with the name the page wrote, so both resolve through the
   // aliases before leaving here.
   const classOfRoot = (root: ChainRoot, ordinal: number): string | undefined => {
     const local = declaredClassOf(root, ordinal);
-    return local && (exportedNameOf.get(local) ?? local);
+    return local && (nearestBinding(aliases, local, ordinal) ?? local);
   };
 
   const uses: MemberUse[] = [];
@@ -295,6 +313,45 @@ export function extractMemberUses(blocks: readonly CodeBlock[]): MemberUse[] {
 /** A position that orders every node on the page, across blocks. */
 function ordinalOf(blockIndex: number, source: ts.SourceFile, node: ts.Node): number {
   return blockIndex * 1_000_000 + node.getStart(source);
+}
+
+/**
+ * A local name bound to a class name at one position on the page.
+ *
+ * Two things produce these and they are the same kind of fact: `const strip =
+ * new Strip()` binds a variable to a class, `import { Strip as S }` binds an
+ * alias to an export. Both can be written twice on one page with different
+ * right-hand sides, so both need position, and giving them one type is what
+ * lets them share the resolver below rather than growing two orderings that can
+ * disagree. [LAW:one-type-per-behavior]
+ */
+interface Binding {
+  readonly ordinal: number;
+  readonly name: string;
+  readonly className: string;
+}
+
+/**
+ * The binding of `name` in effect at `ordinal` — nearest preceding, else
+ * nearest following.
+ *
+ * [LAW:single-enforcer] One page-ordering rule, asked by both binding kinds.
+ * `docs/strip.md` declares `const strip = new Strip(…)` and, 130 lines later,
+ * `const strip = new FlexStrip(…)`; last-one-wins would check the first
+ * section's uses against the second section's class. The fallback forward is
+ * what keeps `docs/markup.md` working, where `console.print` appears five
+ * sections before the `Console` is constructed — a page is one running
+ * document, so a use may legitimately precede its binding.
+ */
+function nearestBinding(
+  bindings: readonly Binding[],
+  name: string,
+  ordinal: number,
+): string | undefined {
+  const matches = bindings.filter((binding) => binding.name === name);
+  const preceding = matches.filter((binding) => binding.ordinal <= ordinal);
+  const nearest = preceding.length > 0 ? preceding[preceding.length - 1] : matches[0];
+  return nearest?.className;
 }
 
 /**
