@@ -4,55 +4,60 @@
 
 ## Creating a layout
 
-An empty layout renders as a placeholder box showing its name and dimensions:
+A layout draws the renderable you give it and nothing else — no border, no label, no
+placeholder of its own. The name is for `getByName()` lookup, not display, and a
+layout with no content and no children emits nothing at all:
 
 ```typescript
-import { Console, Layout } from "@promptctl/rich-js";
+import { Console, Layout, Panel } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 70 });
 
-const layout = new Layout(undefined, { name: "root" });
-console.print(layout);
+const leaf = new Layout(new Panel("Hello, Layout", { expand: true }), { name: "root" });
+console.print(leaf);
 ```
 
 ```
-╭──────────────────────────── root ────────────────────────────────────╮
-│                                                                      │
-│                         root (120 x 40)                              │
-│                                                                      │
-╰──────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────╮
+│ Hello, Layout                                                      │
+╰────────────────────────────────────────────────────────────────────╯
 ```
 
 ## Splitting
 
-`splitColumn()` stacks sub-layouts vertically (rows). `splitRow()` places them side by side (columns):
+`splitColumn()` stacks sub-layouts vertically (rows). `splitRow()` places them side by
+side (columns). A layout that gets children stops drawing its own renderable, so a
+root you intend to split starts out empty:
 
 ```typescript
+const layout = new Layout(undefined, { name: "root" });
+
 // Split into an upper row and a lower row
 layout.splitColumn(
-  new Layout(undefined, { name: "upper" }),
+  new Layout(new Panel("header", { expand: true }), { name: "upper" }),
   new Layout(undefined, { name: "lower" }),
 );
 
 // Split the lower row into two panels side by side
 layout.getByName("lower")!.splitRow(
-  new Layout(undefined, { name: "lower-left" }),
-  new Layout(undefined, { name: "lower-right" }),
+  new Layout(new Panel("logs", { expand: true }), { name: "lower-left" }),
+  new Layout(new Panel("stats", { expand: true }), { name: "lower-right" }),
 );
 
 console.print(layout);
 ```
 
 ```
-╭─────────────────────────── upper ────────────────────────────────────╮
-│                        upper (120 x 20)                              │
-╰──────────────────────────────────────────────────────────────────────╯
-╭──────────── lower-left ────────────╮╭───────────── lower-right ──────╮
-│       lower-left (60 x 20)         ││       lower-right (60 x 20)    │
-╰────────────────────────────────────╯╰────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────╮
+│ header                                                             │
+╰────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────╮╭─────────────────────────────────╮
+│ logs                            ││ stats                           │
+╰─────────────────────────────────╯╰─────────────────────────────────╯
 ```
 
-Look sub-layouts up by name with `getByName()`, then split further to build any tree of regions.
+Look sub-layouts up by name with `getByName()`, then split further to build any tree
+of regions.
 
 ## Setting content
 
@@ -60,7 +65,7 @@ Two ways to assign a renderable to a region:
 
 ```typescript
 // 1. Pass it to the Layout constructor
-const layout = new Layout(myRenderable, { name: "main" });
+const pane = new Layout(myRenderable, { name: "main" });
 
 // 2. Call update() on a named sub-layout
 layout.getByName("upper")!.update(headerPanel);

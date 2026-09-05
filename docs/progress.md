@@ -58,9 +58,11 @@ progress.updateTask(task1, { advance: 64 });
 // Set the count directly
 progress.updateTask(task1, { completed: 512 });
 
-// Store arbitrary fields for custom columns
-progress.updateTask(task1, { speed: "64 MB/s" });
+// Change the label
+progress.updateTask(task1, { description: "Downloading (retry)..." });
 ```
+
+`updateTask` accepts `completed`, `advance`, `description`, `visible`, and `refresh` — nothing else. A task's `total` is fixed at `addTask()`, and there is no store for custom per-task data.
 
 ### Hiding tasks
 
@@ -70,18 +72,23 @@ progress.updateTask(task1, { visible: false });
 const task = progress.addTask("Hidden", { total: 100, visible: false });
 ```
 
-### Indeterminate progress
+### Deferred start
 
-When the total is unknown at task start, show a pulsing animation instead:
+A task can be visible before its clock runs. `start: false` adds the task without
+starting its timer; `startTask()` starts it when the work actually begins:
 
 ```typescript
-// total: null → pulsing bar, no percentage
-const task = progress.addTask("Connecting...", { total: null });
-
-// Once the total is known:
-progress.updateTask(task, { total: 500 });
+const task = progress.addTask("Queued...", { total: 500, start: false });
+// ... when the work begins
 progress.startTask(task);
 ```
+
+Until then `TimeElapsedColumn` holds at `0:00:00` and `TimeRemainingColumn` at
+`-:--:--`. Use this for a queue of tasks you want on screen from the beginning but
+timed only while each one runs.
+
+There is no indeterminate mode. Omitting `total` does not produce a pulsing bar; it
+produces a bar stuck at 0%.
 
 ### Transient display
 
@@ -140,6 +147,7 @@ const progress = new Progress(
 |---|---|
 | `BarColumn` | The progress bar |
 | `TextColumn` | A format string (see below) |
+| `TaskProgressColumn` | Percentage complete |
 | `TimeElapsedColumn` | Elapsed time |
 | `TimeRemainingColumn` | Estimated time remaining |
 | `MofNCompleteColumn` | `completed/total` count |
@@ -147,11 +155,16 @@ const progress = new Progress(
 
 ### Format string columns
 
-`TextColumn` accepts a format string with access to task data:
+`TextColumn` substitutes one placeholder — `{task.description}` — and parses the
+result as [markup](./markup), so tags around it style the text:
 
 ```typescript
-new TextColumn("{task.description} [{task.completed}/{task.total}] {task.fields[speed]}")
+new TextColumn("[progress.description]{task.description}")
 ```
+
+That is the default `TextColumn`. No other task field is substituted; `{task.completed}`
+and `{task.total}` would render as literal braces. For the counts use
+`MofNCompleteColumn` or `TaskProgressColumn`.
 
 ## Print and log during progress
 

@@ -37,7 +37,9 @@ Individual demos each have their own script (`npm run demo`, `sessions`, `dash`,
 
 `docs/` is a published VitePress site and the single place the library's surface is described in prose. There is no separate specification directory; there is no roadmap document. If you need to know what a subsystem does, read its page in `docs/`, then read the source — the source carries the design rationale in module-header comments and is the authority when the two disagree.
 
-When you add a page, add it to `guideSidebar` in `docs/.vitepress/config.ts`. That is the only list — the Guide nav's `activeMatch` regex is derived from it, so the sidebar entry is also what gives the page its nav highlight. It used to be two hand-copied lists, and they had already drifted: `strip` was in neither, so a substantial page was reachable only by search.
+When you add a page, add it to `guideSidebar` in `docs/.vitepress/sidebar.ts` — not `config.ts`, which only imports the regions and derives the Guide nav's `activeMatch` from `guideSidebar`, so the sidebar entry is also what gives the page its nav highlight. The split exists because `config.ts` reads the gitignored `demos.json` at module load, which a unit test cannot do on a fresh clone; `sidebar.ts`'s header owns the rest of that argument.
+
+That is the only list, and it is now checked. It used to be two hand-copied lists, and they had already drifted: `strip` was in neither, so a substantial page was reachable only by search. `test/docs/page-reachability.test.ts` fails when the regions and `docs/*.md` stop naming the same set.
 
 The sidebar is split into one region per top-level nav tab (`guideSidebar`, `advancedSidebar`, Demos). A page belongs in the region whose tab should light up for it — `/protocol` is its own tab, so it lives outside `guideSidebar` and both tabs would highlight at once if it were folded in.
 
