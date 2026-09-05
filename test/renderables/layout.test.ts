@@ -134,6 +134,23 @@ describe("Layout", () => {
       );
     });
 
+    // All three declared numbers are public, and `getByName` hands a caller the
+    // pane to assign to long after it was built, so a constructor-only parse is
+    // a border with a door beside it.
+    // Each pair is a raw value and what parsing it means: a ratio that cannot
+    // name a share does not grow, a size is a whole count of cells, a negative
+    // minimum is no minimum. Assigning the raw value must land on the parsed
+    // one, which is what an unparsed setter would fail.
+    it.each([
+      ["ratio", { ratio: -1 }, { ratio: 0 }],
+      ["size", { size: 5.5 }, { size: 5 }],
+      ["minimumSize", { minimumSize: -3 }, { minimumSize: 0 }],
+    ])("parses %s however late the value arrives", (_name, raw, parsed) => {
+      const mutated = row({ name: "pane" });
+      Object.assign(mutated.getByName("pane")!, raw);
+      expect(mutated.measure(options)).toEqual(row(parsed).measure(options));
+    });
+
     it("keeps a fractional ratio, which divides space meaningfully", () => {
       expect(row({ ratio: 2.5 }).measure(options)).not.toEqual(
         row({ ratio: 2 }).measure(options),

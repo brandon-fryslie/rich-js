@@ -49,6 +49,24 @@ describe("Measurement.normalize()", () => {
     expect(m.minimum).toBe(0);
     expect(m.maximum).toBe(10);
   });
+
+  // The two non-finite numbers pull in opposite directions here, and only one of
+  // them is a mistake. NaN is a width nobody meant, so it reads as no cells;
+  // Infinity is a width `Table` means when a column asks for every cell there
+  // is, and `withBoundedWidth` throws on it so an unanswerable offer says so.
+  // Flooring both — the symmetric-looking `Number.isFinite(n) ? n : 0` — would
+  // trade that RangeError for a table silently measured at no width at all.
+  it("reads NaN as no cells at all", () => {
+    const m = new Measurement(NaN, NaN).normalize();
+    expect(m.minimum).toBe(0);
+    expect(m.maximum).toBe(0);
+  });
+
+  it("leaves an unbounded maximum unbounded", () => {
+    const m = new Measurement(4, Infinity).normalize();
+    expect(m.minimum).toBe(4);
+    expect(m.maximum).toBe(Infinity);
+  });
 });
 
 // `Measurement.get` is the single entry point for measuring a `Measurable`, and
@@ -72,6 +90,15 @@ describe("Measurement.get() stamps what it returns", () => {
   it("un-inverts a measurement whose minimum exceeds its maximum", () => {
     const m = Measurement.get(opts(40), { measure: () => ({ minimum: 12, maximum: 4 }) });
     expect(m.minimum).toBeLessThanOrEqual(m.maximum);
+  });
+
+  // A NaN reached `Columns`' `Math.max` accumulator and poisoned the widest
+  // width it had; the fix is here rather than there, so nothing downstream of
+  // the enforcer ever meets one.
+  it("floors a measurement that is not a number at all", () => {
+    const m = Measurement.get(opts(40), { measure: () => ({ minimum: NaN, maximum: NaN }) });
+    expect(m.minimum).toBe(0);
+    expect(m.maximum).toBe(0);
   });
 
   it("leaves a well-behaved measurement alone", () => {
