@@ -50,6 +50,8 @@ Reflecting on properties is the fallback, not the rule. A value that defines its
 
 Typed arrays are formatted as the sequences they are, `[1, 2, 3]`, rather than by either of those routes. Data that refers back to itself prints `[Circular]` at the point of return; an object reached twice through separate paths is not a cycle and is printed in full both times.
 
+Reading data you did not build is allowed to fail. A property whose getter throws — a lazy ORM relation, a reactive wrapper, a field computed on access — renders as `[Threw: <message>]` in that one position while its neighbours print normally, so `{ a: 1, b: [Threw: not ready], c: 3 }` still shows everything that could be read. When it is the container's *shape* that will not be read there is nothing left to enumerate, and the whole value degrades instead: an unenumerable `Proxy`, or an object whose `toString` throws, prints as `[Threw: …]` on its own. Either way the message travels into the output, so a field that cannot be read is visible and named rather than quietly missing — and looking at a value never takes down the program that wanted to look at it.
+
 ## `print()` does this for you
 
 `print()` sorts each argument into one of three kinds: a renderable draws itself, a string is the only kind that can carry markup, and everything else is data formatted by `Pretty`. So a plain object needs no ceremony:
