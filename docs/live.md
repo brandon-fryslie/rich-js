@@ -152,6 +152,27 @@ const live = new Live(renderable, {
 });
 ```
 
-## Nesting Live instances
+## One Live owns the terminal
 
-Creating a `Live` inside an existing `Live` context shows the inner content below the outer. Both can be updated independently.
+Only one `Live` may be running at a time. Starting a second one while the first is still going corrupts both displays.
+
+Each `Live` remembers how many lines it drew last and, on every refresh, clears that many lines upward from wherever the cursor currently sits. It has no idea another `Live` wrote anything. So the second display's lines sit inside the region the first one is about to erase, and the first one redraws its own content on top of them. What you see is one display's content, twice.
+
+To show several renderables in one live region, put them in a `Group` and wrap that in a single `Live`:
+
+```typescript
+import { Group, Panel, Progress } from "@promptctl/rich-js";
+
+const status = new Panel("Starting");
+const progress = new Progress();
+
+const live = new Live(new Group(status, progress), { console });
+live.start();
+try {
+  await doWork(progress);
+} finally {
+  live.stop();
+}
+```
+
+The `Group` renders its members in order, and the one `Live` counts every line they produce — so its clear-and-redraw covers the whole region.

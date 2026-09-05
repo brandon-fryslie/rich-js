@@ -231,12 +231,12 @@ try {
 
   for (const batch of batches) {
     batchProgress.updateTask(batchTask, { description: batch.name, completed: 0 });
-    batch.items.forEach((item, index) => {
-      handleItem(item);
+    for (const [index, item] of batch.items.entries()) {
+      await handleItem(item);
       batchProgress.updateTask(batchTask, {
         completed: Math.round(((index + 1) / batch.items.length) * 100),
       });
-    });
+    }
     overallProgress.updateTask(overallTask, { advance: 1 });
   }
 } finally {
