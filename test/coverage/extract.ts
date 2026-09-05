@@ -31,20 +31,41 @@ export const REPO_ROOT = path.resolve(TEST_DIR, "..", "..");
 // here and assert each derived source file exists; a missing file
 // fails the verifier load loudly rather than silently dropping a
 // public surface from the coverage check.
-export const ENTRY_MODULES: readonly string[] = deriveEntryModules();
+/**
+ * The published import specifier of each entry module, paired with the source
+ * file it resolves to — `@promptctl/rich-js` -> `src/index.ts`,
+ * `@promptctl/rich-js/widgets` -> `src/widgets/index.ts`.
+ *
+ * [LAW:one-source-of-truth] `ENTRY_MODULES` is the values of this map. The
+ * specifier is what a *reader* of the docs types; the source path is what the
+ * verifier resolves symbols in. Both fall out of one walk of `package.json`,
+ * so a new subpath export cannot reach one view and miss the other.
+ */
+export const ENTRY_BY_SPECIFIER: ReadonlyMap<string, string> = deriveEntryModules();
 
-function deriveEntryModules(): readonly string[] {
+export const ENTRY_MODULES: readonly string[] = Object.freeze([
+  ...new Set(ENTRY_BY_SPECIFIER.values()),
+]);
+
+function deriveEntryModules(): ReadonlyMap<string, string> {
   const pkgPath = path.join(REPO_ROOT, "package.json");
   const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
+    name?: string;
     exports?: Record<string, string | { import?: string }>;
   };
+  if (!pkg.name) {
+    throw new Error(
+      `coverage verifier: ${pkgPath} has no \`name\` field; ` +
+        `cannot derive the specifier a reader would import from`,
+    );
+  }
   if (!pkg.exports) {
     throw new Error(
       `coverage verifier: ${pkgPath} has no \`exports\` field; ` +
         `nothing to derive the public entry-module set from`,
     );
   }
-  const entries: string[] = [];
+  const entries = new Map<string, string>();
   for (const [exposed, target] of Object.entries(pkg.exports)) {
     const importPath = typeof target === "string" ? target : target.import;
     if (!importPath) {
@@ -67,9 +88,11 @@ function deriveEntryModules(): readonly string[] {
           `Check the dist→src convention in deriveEntryModules().`,
       );
     }
-    entries.push(srcPath);
+    // `exports` keys are `.` and `./sub`; the specifier a reader writes is the
+    // package name with the same suffix.
+    entries.set(pkg.name + exposed.slice(1), srcPath);
   }
-  return Object.freeze([...new Set(entries)]);
+  return entries;
 }
 
 export const EXAMPLES_ROOT = "examples";

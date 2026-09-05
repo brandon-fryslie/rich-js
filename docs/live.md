@@ -11,15 +11,21 @@ import { Console, Live, Table } from "@promptctl/rich-js";
 
 const console = new Console();
 
-const table = new Table("Job", "Status");
+const table = new Table();
+table.addColumn("Job");
+table.addColumn("Status");
 
-await new Live(table, { console }).run(async () => {
+const live = new Live(table, { console });
+live.start();
+try {
   for (const job of jobs) {
     await runJob(job);
-    table.addRow(job.name, "[green]done[/green]");
+    table.addRow(job.name, "done");
     // table mutation triggers a refresh automatically
   }
-});
+} finally {
+  live.stop();
+}
 ```
 
 The live region re-renders whenever the renderable is mutated (or on the auto-refresh timer).
@@ -29,13 +35,17 @@ The live region re-renders whenever the renderable is mutated (or on the auto-re
 When content is too dynamic to express as mutations to a single object, swap in a completely new renderable with `update()`:
 
 ```typescript
-await new Live(buildTable(data), { console }).run(async (live) => {
+const live = new Live(buildTable(data), { console });
+live.start();
+try {
   while (running) {
     const freshData = await fetchData();
     live.update(buildTable(freshData));
     await sleep(500);
   }
-});
+} finally {
+  live.stop();
+}
 ```
 
 `update()` can also force an immediate refresh:
@@ -46,15 +56,17 @@ live.update(newRenderable, { refresh: true });
 
 ## Alternate screen (fullscreen)
 
-Enter fullscreen mode with `screen: true`. The terminal is restored when the context exits:
+Enter fullscreen mode with `altScreen: true`. `start()` switches to the alternate screen buffer and `stop()` restores the original:
 
 ```typescript
-const live = new Live(layout, { screen: true });
+const live = new Live(layout, { altScreen: true });
 
-await live.run(async () => {
+live.start();
+try {
   // terminal is in fullscreen
-});
-// terminal restored
+} finally {
+  live.stop(); // terminal restored
+}
 ```
 
 See [Layout](./layout) for structuring complex fullscreen content.
@@ -107,10 +119,13 @@ When the live display stops, the last frame is always shown as `visible`.
 Output printed to the live display's internal console appears above the live area without disrupting it:
 
 ```typescript
-await live.run(async () => {
+live.start();
+try {
   live.console.print("[green]Step 1 complete[/green]");
   // output appears above the live region, scrolling normally
-});
+} finally {
+  live.stop();
+}
 ```
 
 ::: warning Don't use the outer console

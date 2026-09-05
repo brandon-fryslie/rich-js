@@ -22,25 +22,17 @@ Use `Progress` directly when you need multiple tasks, custom columns, or manual 
 
 ### Lifecycle
 
-`Progress` is designed as a context manager via its `run()` method:
+`start()` begins the display and `stop()` ends it. Pair them in a `try`/`finally` so the terminal is restored even when the work throws:
 
 ```typescript
 import { Progress } from "@promptctl/rich-js";
 
-await progress.run(async () => {
-  const task = progress.addTask("Downloading...", { total: 100 });
-  // ... update task
-});
-```
-
-For situations where a context manager cannot be used, start and stop explicitly:
-
-```typescript
 const progress = new Progress();
 progress.start();
 
 try {
-  // ... work
+  const task = progress.addTask("Downloading...", { total: 100 });
+  // ... update task
 } finally {
   progress.stop();
 }
@@ -61,19 +53,19 @@ The `total` is application-defined — it could be bytes, files, frames, items, 
 
 ```typescript
 // Add to the current count
-progress.update(task1, { advance: 64 });
+progress.updateTask(task1, { advance: 64 });
 
 // Set the count directly
-progress.update(task1, { completed: 512 });
+progress.updateTask(task1, { completed: 512 });
 
 // Store arbitrary fields for custom columns
-progress.update(task1, { speed: "64 MB/s" });
+progress.updateTask(task1, { speed: "64 MB/s" });
 ```
 
 ### Hiding tasks
 
 ```typescript
-progress.update(task1, { visible: false });
+progress.updateTask(task1, { visible: false });
 // Or set on creation:
 const task = progress.addTask("Hidden", { total: 100, visible: false });
 ```
@@ -87,7 +79,7 @@ When the total is unknown at task start, show a pulsing animation instead:
 const task = progress.addTask("Connecting...", { total: null });
 
 // Once the total is known:
-progress.update(task, { total: 500 });
+progress.updateTask(task, { total: 500 });
 progress.startTask(task);
 ```
 
@@ -152,11 +144,6 @@ const progress = new Progress(
 | `TimeRemainingColumn` | Estimated time remaining |
 | `MofNCompleteColumn` | `completed/total` count |
 | `SpinnerColumn` | Animated spinner |
-| `FileSizeColumn` | Completed count as file size (e.g. `42 MB`) |
-| `TotalFileSizeColumn` | Total as file size |
-| `DownloadColumn` | `completed/total` as file sizes |
-| `TransferSpeedColumn` | Transfer speed (e.g. `64 MB/s`) |
-| `RenderableColumn` | A custom renderable per task |
 
 ### Format string columns
 
@@ -171,14 +158,17 @@ new TextColumn("{task.description} [{task.completed}/{task.total}] {task.fields[
 Output printed to the progress's internal console appears above the progress bars without disrupting them:
 
 ```typescript
-await progress.run(async () => {
+progress.start();
+try {
   const task = progress.addTask("Work", { total: 10 });
   for (let i = 0; i < 10; i++) {
     progress.console.print(`Step ${i} done`);
-    progress.update(task, { advance: 1 });
+    progress.updateTask(task, { advance: 1 });
     await sleep(100);
   }
-});
+} finally {
+  progress.stop();
+}
 ```
 
 Pass a custom `Console` to control where output goes:
@@ -188,38 +178,27 @@ const myConsole = new Console({ stderr: true });
 const progress = new Progress({ console: myConsole });
 ```
 
-## Reading from a file
-
-Track progress while reading a file:
-
-```typescript
-// From a file path
-for await (const chunk of progress.open("large-file.bin", { description: "Reading..." })) {
-  processChunk(chunk);
-}
-
-// From an existing file handle
-const file = openFileHandle("data.bin");
-for await (const chunk of progress.wrapFile(file, { total: fileSize, description: "Reading..." })) {
-  processChunk(chunk);
-}
-```
-
 ## Nesting progress bars
 
 Create a progress display inside an existing one — the inner bar appears below the outer:
 
 ```typescript
-await outerProgress.run(async () => {
+outerProgress.start();
+try {
   const outerTask = outerProgress.addTask("Overall", { total: 3 });
   for (let i = 0; i < 3; i++) {
-    await innerProgress.run(async () => {
+    innerProgress.start();
+    try {
       const innerTask = innerProgress.addTask("Batch", { total: 100 });
       // ...
-    });
-    outerProgress.update(outerTask, { advance: 1 });
+    } finally {
+      innerProgress.stop();
+    }
+    outerProgress.updateTask(outerTask, { advance: 1 });
   }
-});
+} finally {
+  outerProgress.stop();
+}
 ```
 
 Inner bars refresh at the outer bar's refresh rate.
@@ -231,24 +210,16 @@ A single `Progress` instance cannot have different column layouts per task. For 
 ```typescript
 import { Live, Group } from "@promptctl/rich-js";
 
-const downloadProgress = new Progress(new BarColumn(), new DownloadColumn());
+const downloadProgress = new Progress(new BarColumn(), new MofNCompleteColumn());
 const processProgress  = new Progress(new BarColumn(), new TimeRemainingColumn());
 
-await new Live(new Group(downloadProgress, processProgress)).run(async () => {
+const live = new Live(new Group(downloadProgress, processProgress));
+live.start();
+try {
   // add tasks to each progress independently
-});
+} finally {
+  live.stop();
+}
 ```
 
 See [Live Display](./live) for details.
-
-## Customizing the display
-
-Override the method that builds the renderable for the whole display — for example, to wrap it in a `Panel`:
-
-```typescript
-class PanelProgress extends Progress {
-  getRenderable() {
-    return new Panel(super.getRenderable(), { title: "[bold]Progress[/bold]", expand: true });
-  }
-}
-```

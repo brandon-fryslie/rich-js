@@ -11,7 +11,7 @@ import { Console, Layout } from "@promptctl/rich-js";
 
 const console = new Console();
 
-const layout = new Layout("root");
+const layout = new Layout(undefined, { name: "root" });
 console.print(layout);
 ```
 
@@ -30,14 +30,14 @@ console.print(layout);
 ```typescript
 // Split into an upper row and a lower row
 layout.splitColumn(
-  new Layout("upper"),
-  new Layout("lower"),
+  new Layout(undefined, { name: "upper" }),
+  new Layout(undefined, { name: "lower" }),
 );
 
 // Split the lower row into two panels side by side
-layout["lower"].splitRow(
-  new Layout("lower-left"),
-  new Layout("lower-right"),
+layout.getByName("lower")!.splitRow(
+  new Layout(undefined, { name: "lower-left" }),
+  new Layout(undefined, { name: "lower-right" }),
 );
 
 console.print(layout);
@@ -52,7 +52,7 @@ console.print(layout);
 ╰────────────────────────────────────╯╰────────────────────────────────╯
 ```
 
-Access sub-layouts by name with bracket syntax, then split further to build any tree of regions.
+Look sub-layouts up by name with `getByName()`, then split further to build any tree of regions.
 
 ## Setting content
 
@@ -63,9 +63,9 @@ Two ways to assign a renderable to a region:
 const layout = new Layout(myRenderable, { name: "main" });
 
 // 2. Call update() on a named sub-layout
-layout["upper"].update(headerPanel);
-layout["lower-left"].update(logTable);
-layout["lower-right"].update(statsPanel);
+layout.getByName("upper")!.update(headerPanel);
+layout.getByName("lower-left")!.update(logTable);
+layout.getByName("lower-right")!.update(statsPanel);
 ```
 
 ## Fixed size
@@ -74,9 +74,9 @@ Fix a sub-layout to an exact number of rows (or columns, in a row split):
 
 ```typescript
 layout.splitColumn(
-  new Layout("header", { size: 3 }),  // always 3 rows
-  new Layout("body"),                 // takes remaining space
-  new Layout("footer", { size: 1 }),  // always 1 row
+  new Layout(undefined, { name: "header", size: 3 }),  // always 3 rows
+  new Layout(undefined, { name: "body" }),                 // takes remaining space
+  new Layout(undefined, { name: "footer", size: 1 }),  // always 1 row
 );
 ```
 
@@ -87,9 +87,9 @@ Fixed layouts take their space first; remaining space is distributed among flexi
 Control proportional space allocation:
 
 ```typescript
-layout["lower"].splitRow(
-  new Layout("sidebar", { ratio: 1 }), // one-third
-  new Layout("main",    { ratio: 2 }), // two-thirds
+layout.getByName("lower")!.splitRow(
+  new Layout(undefined, { name: "sidebar", ratio: 1 }), // one-third
+  new Layout(undefined, { name: "main", ratio: 2 }), // two-thirds
 );
 ```
 
@@ -100,7 +100,7 @@ A layout with `ratio: 2` alongside one with `ratio: 1` takes two-thirds of the a
 Prevent a flexible layout from shrinking below a threshold:
 
 ```typescript
-new Layout("sidebar", { minimumSize: 20 })
+new Layout(undefined, { name: "sidebar", minimumSize: 20 })
 ```
 
 ## Visibility
@@ -108,21 +108,13 @@ new Layout("sidebar", { minimumSize: 20 })
 Hide a region — neighboring regions expand to fill the vacated space:
 
 ```typescript
-layout["sidebar"].visible = false;
+layout.getByName("sidebar")!.visible = false;
 
 // Re-enable it
-layout["sidebar"].visible = true;
+layout.getByName("sidebar")!.visible = true;
 ```
 
 Use this to toggle panels based on application state.
-
-## Debug tree
-
-Visualize the full layout hierarchy:
-
-```typescript
-console.print(layout.tree);
-```
 
 ## Layout + Live
 
@@ -133,18 +125,22 @@ import { Live, Layout, Panel } from "@promptctl/rich-js";
 
 const layout = new Layout();
 layout.splitColumn(
-  new Layout("header", { size: 3 }),
-  new Layout("body"),
+  new Layout(undefined, { name: "header", size: 3 }),
+  new Layout(undefined, { name: "body" }),
 );
 
-await new Live(layout, { screen: true }).run(async (live) => {
-  layout["header"].update(new Panel("[bold]My App[/bold]", { expand: true }));
+const live = new Live(layout, { altScreen: true });
+live.start();
+try {
+  layout.getByName("header")!.update(new Panel("[bold]My App[/bold]", { expand: true }));
 
   while (running) {
-    layout["body"].update(buildBodyContent());
+    layout.getByName("body")!.update(buildBodyContent());
     await sleep(250);
   }
-});
+} finally {
+  live.stop();
+}
 ```
 
 See [Live Display](./live) for the complete Live API.
