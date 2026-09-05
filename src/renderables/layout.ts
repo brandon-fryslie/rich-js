@@ -11,6 +11,7 @@ import type {
 } from "../core/protocol.js";
 import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
+import { cellCount } from "../core/cells.js";
 
 export interface LayoutOptions {
   name?: string;
@@ -38,8 +39,15 @@ export class Layout implements Renderable, Measurable {
     }
     this.name = options?.name;
     this.ratio = options?.ratio ?? 1;
-    this.size = options?.size;
-    this.minimumSize = options?.minimumSize ?? 1;
+    // Both are cell counts a caller supplies as a plain `number`, and they
+    // reach the width arithmetic without passing through `withCellWidth`, which
+    // parses only what the caller of `render` supplied. Unparsed, `size: 5.5`
+    // measured 6.5 cells and `size: -5` measured -4 — a width with no meaning,
+    // which a fit-mode `Panel` then tried to draw. Absence is preserved rather
+    // than parsed: `undefined` selects a flex pane, and `cellCount` would read
+    // it as a declared zero.
+    this.size = options?.size === undefined ? undefined : cellCount(options.size);
+    this.minimumSize = cellCount(options?.minimumSize ?? 1);
     this.visible = options?.visible !== false;
     this._children = [];
     this._splitDirection = undefined;

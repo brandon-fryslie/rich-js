@@ -5,7 +5,7 @@ import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
 import { ASCII, DOUBLE } from "../../src/core/box.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -392,6 +392,25 @@ describe("Panel", () => {
     it("crops content that renders wider than the frame", () => {
       const lines = collectLines(new Panel(oversizedContent), { maxWidth: 10 });
       expect(lines[1]).toBe("│ xxxxxx │");
+    });
+
+    it("draws a frame around content that measures a negative width", () => {
+      // Fit mode takes its width from `Measurement.get` on whatever it wraps,
+      // and what it wraps is arbitrary — so the number reaching the panel's
+      // division point is not one this file produced. A negative one used to
+      // arrive unparsed and reach `String.repeat` as a negative count:
+      // `RangeError: Invalid count value: -15`, out of the border.
+      const negative: Renderable & Measurable = {
+        *render(_options: RenderOptions) {
+          yield new Segment("x");
+          yield Segment.line();
+        },
+        measure: () => ({ minimum: -20, maximum: -20 }),
+      };
+
+      expect(() =>
+        collectLines(new Panel(negative, { expand: false }), { maxWidth: 40 }),
+      ).not.toThrow();
     });
   });
 });

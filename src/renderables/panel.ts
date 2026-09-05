@@ -97,7 +97,12 @@ function layoutPanel(
   padding: readonly [number, number, number, number],
 ): PanelGeometry {
   const [, padRightWanted, , padLeftWanted] = padding;
-  let budget: number = outerWidth;
+  // Panel's one division point, and the width reaching it is not always one
+  // this file produced: `_getPanelWidth` derives the fit-mode width from
+  // `Measurement.get` on an arbitrary `Measurable`, so a renderable reporting a
+  // negative maximum arrives here unparsed and reaches `repeat` as a negative
+  // count.
+  let budget: number = cellCount(outerWidth);
   const take = (want: number): number => {
     const got = Math.min(want, budget);
     budget -= got;
