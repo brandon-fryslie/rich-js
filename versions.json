@@ -4,15 +4,22 @@
     {
       "version": "pr-82",
       "ref": "refs/pull/82/merge",
-      "sha": "fdc551828b4c39b0b8349348dc0d3a215967f15d",
-      "timestamp": "2026-09-05T02:07:49.984Z",
+      "sha": "c2cd3d766647869f267cd2a88cf9b0693a176598",
+      "timestamp": "2026-09-05T02:21:43.901Z",
       "commits": [
         {
-          "sha": "fdc551828b4c39b0b8349348dc0d3a215967f15d",
+          "sha": "c2cd3d766647869f267cd2a88cf9b0693a176598",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T02:07:20Z",
-          "message": "Merge 080b57690552f90953e577f086296db7ecaeade3 into f017fd650b6ed98cdd70ac2c781c5ddd2f27f6df\n"
+          "timestamp": "2026-09-05T02:21:12Z",
+          "message": "Merge c5180c160e18099ff40cf5863a5fce718b84c7da into f017fd650b6ed98cdd70ac2c781c5ddd2f27f6df\n"
+        },
+        {
+          "sha": "c5180c160e18099ff40cf5863a5fce718b84c7da",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T20:21:02-06:00",
+          "message": "docs(group): show the blank line print leaves, and name the error the compiler actually gives\n\nTwo claims on the page were still not what the code does.\n\nThe two-panel output block showed them flush against each other. They are not:\n`Panel` ends with its own `Segment.line()` and `Console.print` then appends\n`end` unconditionally (console.ts:449, where the comment explains it must go\nthrough `_writeSegments` or `exportText` would join consecutive prints onto one\nline). Two separate prints therefore always leave a blank line between them.\nCaptured the raw bytes by swapping `process.stdout.write` — the joined output\nis `╯\\n\\n╭` — and the picture now shows that. Merging the two calls into one\nprint would have made the illustration match, but the section exists to show a\nwrong call beside a right one, and printing them separately is the point.\n\nThe closing warning said the unspread generator \"throws at render time.\" It\ndoes not; it never reaches runtime. `Generator<RichText, void, unknown>` has no\n`render`, so the argument is not assignable to `Renderable` and tsc rejects the\ncall. I had tested that sentence in a test file where `as never` forced the\nargument past the compiler — the cast is what made the claim true there and\nfalse on the page. The page now quotes TS2345 verbatim, which is what the\nreader sees in their editor.\n\nVerified as before: every ```typescript block extracted from the page verbatim,\neach written to its own file, `tsc -p tsconfig.test.json --noEmit` plus vitest\nacross all three, and both output blocks diffed against real stdout at width 43.\nGates: `npm run lint` and `npm run docs:build` clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "080b57690552f90953e577f086296db7ecaeade3",
