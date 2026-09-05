@@ -287,8 +287,8 @@ const equivalentWidths: ReadonlyArray<readonly [number, number]> = [
 /**
  * The configurations with no natural width to fall back on, and the two ways to
  * end up there. Most wrap `oversized`, a `Renderable` with no `measure`, so
- * nothing in the tree knows how wide the content wants to be. The other asks for
- * an unbounded width itself, in a column declared `{ ratio: Infinity }`.
+ * nothing in the tree knows how wide the content wants to be. The rest ask for
+ * an unbounded width themselves, in a column declared `{ ratio: Infinity }`.
  *
  * Named here rather than discovered from the measurement, so that a renderable
  * which quietly stops reporting a natural width fails this file instead of
@@ -305,6 +305,7 @@ const noNaturalWidth: ReadonlySet<string> = new Set([
   "Padding wrapping content that ignores its width",
   "Padding unexpanded",
   "Table with an unbounded column demand",
+  "Table at a declared unbounded width with a ratio column",
   "Layout wrapping content that ignores its width",
   "Tree with a label that ignores its width",
   "Columns wrapping content that ignores its width",
