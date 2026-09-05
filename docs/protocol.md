@@ -135,7 +135,12 @@ class MyWidget implements Renderable, Measurable {
 
   measure(rawOptions: RenderOptions): Measurement {
     const { maxWidth } = withCellWidth(rawOptions);
-    const natural = Math.max(0, ...this.lines.map(cellLen));
+    // Accumulated, not spread: `Math.max(0, ...lines.map(cellLen))` passes one
+    // argument per line, and a widget backed by a large enough array — a log
+    // viewer, a file preview — overruns the engine's argument limit and throws
+    // out of `measure()`. Every built-in that maxes over a collection loops.
+    let natural = 0;
+    for (const line of this.lines) natural = Math.max(natural, cellLen(line));
     const maximum = Math.min(natural, maxWidth);
     // The floor comes off the ceiling, not off the offer: with no lines yet,
     // `Math.min(1, maxWidth)` would be a minimum of 1 above a maximum of 0.
