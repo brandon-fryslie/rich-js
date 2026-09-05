@@ -23,6 +23,7 @@ console.print(new Panel(new Group(first, second)));
 ╭─────────────────────────────────────────╮
 │ First line                              │
 ╰─────────────────────────────────────────╯
+
 ╭─────────────────────────────────────────╮
 │ First line                              │
 │ Second line                             │
@@ -99,4 +100,11 @@ console.print(
 ╰─────────────────────────────────────────╯
 ```
 
-The spread is the part to get right. `new Group(buildContent(items))` puts the generator object itself into the group, and it throws at render time because a generator is not a `Renderable`.
+The spread is the part to get right. `new Group(buildContent(items))` passes the generator object itself, and the compiler rejects it:
+
+```
+error TS2345: Argument of type 'Generator<RichText, void, unknown>' is not
+assignable to parameter of type 'Renderable'.
+  Property 'render' is missing in type 'Generator<RichText, void, unknown>'
+  but required in type 'Renderable'.
+```
