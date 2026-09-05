@@ -63,7 +63,7 @@ import {
   type MemberUse,
 } from "./code-blocks.js";
 import { docsPages } from "./pages.js";
-import { resolveChain, type SurfaceType } from "./resolve-chain.js";
+import { resolveChain, type MemberSet, type SurfaceType } from "./resolve-chain.js";
 
 interface Page {
   readonly slug: string;
@@ -108,6 +108,46 @@ function resolveSurface(): {
   const exportedNames = new Map<string, Set<string>>();
   const surfaceByName = new Map<string, SurfaceType>();
 
+  /**
+   * The public members of one type, and what each of them yields.
+   *
+   * Called twice per class — once for the instance type, once for the type of
+   * the class object — because the two sides answer the same question about
+   * different member sets. [LAW:one-source-of-truth] Copying this walk for the
+   * static side would leave two private/protected filters and two
+   * call-signature rules to keep in step, and the static side is the one nobody
+   * would remember to update.
+   */
+  const memberSetOf = (type: ts.Type): MemberSet => {
+    const properties = checker.getPropertiesOfType(type).filter((member) => {
+      const modifiers = member.valueDeclaration
+        ? ts.getCombinedModifierFlags(member.valueDeclaration)
+        : ts.ModifierFlags.None;
+      return (modifiers & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) === 0;
+    });
+
+    const yields = new Map<string, string>();
+    for (const member of properties) {
+      const memberType = member.valueDeclaration
+        ? checker.getTypeOfSymbolAtLocation(member, member.valueDeclaration)
+        : undefined;
+      // What a hop yields: a method yields what it returns, and anything else
+      // — a getter, a readonly field — yields its own type. One kind of hop,
+      // so `progress.console.print` walks the same path as
+      // `layout.getByName("x")!.update`. [LAW:one-type-per-behavior] A getter
+      // has no call signatures, and reading only those is what made the
+      // `.console` hop unresolvable while looking like a resolved chain.
+      const yielded = memberType?.getCallSignatures()[0]?.getReturnType() ?? memberType;
+      // `Layout.getByName` returns `Layout | undefined`, so a union is walked
+      // rather than read whole.
+      for (const part of yielded?.isUnion() ? yielded.types : yielded ? [yielded] : []) {
+        const name = part.getSymbol()?.name;
+        if (name && name !== "undefined") yields.set(member.name, name);
+      }
+    }
+    return { members: new Set(properties.map((m) => m.name)), yields };
+  };
+
   for (const [specifier, srcPath] of ENTRY_BY_SPECIFIER) {
     const sourceFile = program.getSourceFile(path.join(REPO_ROOT, srcPath));
     if (!sourceFile) {
@@ -141,42 +181,18 @@ function resolveSurface(): {
         (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration));
       if (!declaresMembers) continue;
 
-      const instanceType = checker.getDeclaredTypeOfSymbol(target);
-      const properties = checker.getPropertiesOfType(instanceType).filter((member) => {
-        const modifiers = member.valueDeclaration
-          ? ts.getCombinedModifierFlags(member.valueDeclaration)
-          : ts.ModifierFlags.None;
-        return (modifiers & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) === 0;
-      });
-
-      const yields = new Map<string, string>();
-      for (const member of properties) {
-        const memberType = member.valueDeclaration
-          ? checker.getTypeOfSymbolAtLocation(member, member.valueDeclaration)
-          : undefined;
-        // What a hop yields: a method yields what it returns, and anything else
-        // — a getter, a readonly field — yields its own type. One kind of hop,
-        // so `progress.console.print` walks the same path as
-        // `layout.getByName("x")!.update`. [LAW:one-type-per-behavior] A getter
-        // has no call signatures, and reading only those is what made the
-        // `.console` hop unresolvable while looking like a resolved chain.
-        const yielded = memberType?.getCallSignatures()[0]?.getReturnType() ?? memberType;
-        // `Layout.getByName` returns `Layout | undefined`, so a union is walked
-        // rather than read whole.
-        for (const part of yielded?.isUnion() ? yielded.types : yielded ? [yielded] : []) {
-          const name = part.getSymbol()?.name;
-          if (name && name !== "undefined") yields.set(member.name, name);
-        }
-      }
-
       // File and position, so one class re-exported from two entry points is one
       // origin and two different classes sharing a name are two.
       const identity = `${declaration.getSourceFile().fileName}:${declaration.pos}`;
       const origins = surfaceByName.get(symbol.name)?.origins ?? new Map<string, string>();
       surfaceByName.set(symbol.name, {
-        members: new Set(properties.map((m) => m.name)),
+        instance: memberSetOf(checker.getDeclaredTypeOfSymbol(target)),
+        // The type of the symbol *as a value* is the class object — `Table.grid`
+        // and nothing an instance has. An interface has no value side, so this
+        // is the error type there and yields an empty set, which is the honest
+        // answer: `TerminalSize.anything` is not a thing a page can write.
+        statics: memberSetOf(checker.getTypeOfSymbolAtLocation(target, declaration)),
         origins: new Map(origins).set(identity, srcPath),
-        yields,
       });
     }
   }
@@ -257,11 +273,26 @@ describe("documented symbols exist", () => {
     expect(classesWhere((u) => u.path.includes("console"))).toContain("Console");
     // `host.size().rows` — a hop landing on an interface rather than a class.
     expect(classesWhere((u) => u.path.includes("size"))).toContain("TerminalSize");
+    // `Style.parse("bold")` — the member read *is* the static, with no hop
+    // before it, so the terminus is looked up on the class object's side.
+    expect(
+      landed.filter((u) => u.rootIsClassObject && u.path.length === 0).map((u) => u.member),
+    ).toContain("parse");
+    // `const grid = Table.grid(); grid.addColumn()` — a hop through a static
+    // factory, landing back on an instance, through a variable bound to it.
+    // Every member on such a receiver was dropped unreported until the binding
+    // stopped requiring `new X()`.
+    expect(classesWhere((u) => u.rootIsClassObject && u.path.includes("grid"))).toContain("Table");
   });
 
   it("resolved the entry points it checks against", () => {
     expect(exportedNames.get("@promptctl/rich-js")?.has("Console")).toBe(true);
-    expect(surfaceByName.get("Console")?.members.has("print")).toBe(true);
+    expect(surfaceByName.get("Console")?.instance.members.has("print")).toBe(true);
+    // The two sides are two member sets, not one read twice: `Table.grid` is a
+    // static and `Table.addRow` is not, and a surface that collapsed them would
+    // pass every assertion above while checking nothing about either.
+    expect(surfaceByName.get("Table")?.statics.members.has("grid")).toBe(true);
+    expect(surfaceByName.get("Table")?.statics.members.has("addRow")).toBe(false);
   });
 
   // A receiver rooted in this package's surface that cannot be followed is
@@ -286,7 +317,7 @@ describe("documented symbols exist", () => {
   it("calls only members the receiver's class has", () => {
     const ghosts = resolvedMembers.flatMap(({ use, resolution }) => {
       if (!("className" in resolution)) return [];
-      if (resolution.info.members.has(use.member)) return [];
+      if (resolution.side.members.has(use.member)) return [];
       return [describeMember(use, resolution.className)];
     });
     expect(ghosts).toEqual([]);

@@ -22,10 +22,26 @@
 
 import type { MemberUse } from "./code-blocks.js";
 
+/**
+ * What can be read off one side of a class, and what each read yields.
+ *
+ * [LAW:one-type-per-behavior] `Table.grid` and `table.addRow` are the same
+ * question asked of two different member sets — the static side and the instance
+ * side — so there is one type here and two instances of it, not a
+ * `staticMembers`/`staticYields` pair growing beside the originals.
+ */
+export interface MemberSet {
+  readonly members: Set<string>;
+  /** What each member yields, for resolving a receiver chain. */
+  readonly yields: Map<string, string>;
+}
+
 /** One class or interface on this package's public surface. */
 export interface SurfaceType {
-  /** Public instance members. */
-  readonly members: Set<string>;
+  /** Members of an instance — `new Table().addRow`. */
+  readonly instance: MemberSet;
+  /** Members of the class object — `Table.grid`. Empty for an interface. */
+  readonly statics: MemberSet;
   /**
    * Entry module path of each *distinct* class exported under this name, keyed
    * by declaration identity.
@@ -37,8 +53,6 @@ export interface SurfaceType {
    * on correct usage and the obvious fix looks like "stop re-exporting".
    */
   readonly origins: Map<string, string>;
-  /** What each member yields, for resolving a receiver chain. */
-  readonly yields: Map<string, string>;
 }
 
 /** The public surface, keyed by the name a page would write. */
@@ -72,27 +86,41 @@ export function lookupType(surface: Surface, className: string): Resolved<{ info
 }
 
 /**
- * The class a receiver chain ends at, or why it could not be resolved.
+ * The class a receiver chain ends at and the side of it the member is read off,
+ * or why it could not be resolved.
  *
- * [LAW:parse-dont-validate] A resolution carries the `SurfaceType`, so holding one
- * *is* the proof that class exists. Returning the name alone left every caller
- * to look it up again, and the one caller that did treated a failed lookup as
- * nothing to check rather than as a failure.
+ * [LAW:parse-dont-validate] A resolution carries the `MemberSet`, so holding one
+ * *is* the proof that class exists and that the caller is asking the right half
+ * of it. Returning the name alone left every caller to look it up again, and the
+ * one caller that did treated a failed lookup as nothing to check rather than as
+ * a failure.
+ *
+ * [LAW:single-enforcer] Only step zero of a chain can read a static — everything
+ * after `Table.grid()` is an instance again — so which side a step reads is one
+ * rule, `sideOf`, asked by every hop and by the terminal member alike. Written
+ * twice, the terminus is where it would rot: a page's most common static use is
+ * `Style.parse` with no hops at all, so a terminus that always read the instance
+ * side would report the whole feature missing.
  */
 export function resolveChain(
   surface: Surface,
   use: MemberUse,
-): Resolved<{ className: string; info: SurfaceType }> {
+): Resolved<{ className: string; side: MemberSet }> {
+  const sideOf = (info: SurfaceType, step: number): MemberSet =>
+    step === 0 && use.rootIsClassObject ? info.statics : info.instance;
+
   let className = use.rootClass;
-  for (const member of use.path) {
+  for (const [step, member] of use.path.entries()) {
     const found = lookupType(surface, className);
     if ("unresolved" in found) return found;
-    const next = found.info.yields.get(member);
+    const next = sideOf(found.info, step).yields.get(member);
     if (!next) {
       return { unresolved: `${className}.${member} yields no class to follow` };
     }
     className = next;
   }
   const found = lookupType(surface, className);
-  return "unresolved" in found ? found : { className, info: found.info };
+  return "unresolved" in found
+    ? found
+    : { className, side: sideOf(found.info, use.path.length) };
 }

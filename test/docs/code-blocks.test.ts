@@ -164,6 +164,127 @@ describe("extractMemberUses", () => {
     ).toEqual(["Table.addColumn", "Table.addColumn.addRow"].sort());
   });
 
+  // `docs/tables.md` writes exactly this, and every member on `grid` was
+  // dropped with no report until a binding stopped requiring `new X()`: the
+  // declaration recorded nothing, the root resolved to nothing, and a
+  // corpus-wide assertion cannot see a shape that was never counted.
+  it("binds a variable to the result of a static factory", () => {
+    expect(
+      signaturesIn(
+        [
+          "```typescript",
+          'import { Table } from "@promptctl/rich-js";',
+          "const grid = Table.grid();",
+          "grid.addColumn();",
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual(["Table.grid", "Table.grid.addColumn"].sort());
+  });
+
+  it("roots a chain in a static factory bound to no variable", () => {
+    expect(
+      signaturesIn(
+        [
+          "```typescript",
+          'import { Table } from "@promptctl/rich-js";',
+          'Table.grid().addRow("a");',
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual(["Table.grid", "Table.grid.addRow"].sort());
+  });
+
+  // The static-ness is one fact about where the chain starts, and the caller
+  // needs it to pick which half of the class to look the first step up on.
+  it("marks a chain rooted in a class object, and one rooted in an instance", () => {
+    const uses = extractMemberUses(
+      blocksOf(
+        [
+          "```typescript",
+          'import { Table } from "@promptctl/rich-js";',
+          "const grid = Table.grid();",
+          "grid.addColumn();",
+          "const table = new Table();",
+          "table.addRow();",
+          "```",
+        ].join("\n"),
+      ),
+      OUR_SPECIFIERS,
+    );
+    expect(
+      Object.fromEntries(uses.map((u) => [signature(u), u.rootIsClassObject])),
+    ).toEqual({
+      "Table.grid": true,
+      "Table.grid.addColumn": true,
+      "Table.addRow": false,
+    });
+  });
+
+  // `docs/console.md` binds `output` to `console.endCapture()` in one section
+  // and to an array in another. An array describes no receiver, and a
+  // declaration that recorded nothing would leave the name looking unbound — so
+  // the fallback-forward rule would reach past the array to the earlier
+  // section's string and report the array's members against it. A name a page
+  // binds is bound. [LAW:parse-dont-validate]
+  it("lets a declaration it cannot follow still take the name", () => {
+    expect(
+      signaturesIn(
+        [
+          "```typescript",
+          "const out = new Console();",
+          "```",
+          "",
+          "```typescript",
+          "const out: string[] = [];",
+          "out.push('x');",
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  // The same rule against the imports: a page may name a local after a class it
+  // also imported, and the local wins.
+  it("lets a local declaration shadow an imported class of the same name", () => {
+    expect(
+      signaturesIn(
+        [
+          "```typescript",
+          'import { Table } from "@promptctl/rich-js";',
+          "const Table = [1, 2];",
+          "Table.map((n) => n);",
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
+  // A bare name that is neither declared nor imported from this package is
+  // someone else's; only the import makes `Table` mean our class object.
+  it("does not treat an undeclared bare name as a class object", () => {
+    expect(
+      signaturesIn(["```typescript", "SomeOtherLib.build().run();", "```"].join("\n")),
+    ).toEqual([]);
+  });
+
+  // Following declarations back to their origin is recursive, so a page whose
+  // declarations reference each other in a cycle must terminate rather than
+  // taking the whole suite down with a stack overflow.
+  it("gives up on a cycle between declarations rather than recursing forever", () => {
+    expect(
+      signaturesIn(
+        [
+          "```typescript",
+          "const a = b.x;",
+          "const b = a.y;",
+          "a.print();",
+          "```",
+        ].join("\n"),
+      ),
+    ).toEqual([]);
+  });
+
   it("treats a property hop as a hop like any other", () => {
     expect(
       signaturesIn(
