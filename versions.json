@@ -4,15 +4,22 @@
     {
       "version": "pr-91",
       "ref": "refs/pull/91/merge",
-      "sha": "c7d8b3f5721bc14b8ab93626e2d0e0914a8fca4d",
-      "timestamp": "2026-09-05T19:31:37.130Z",
+      "sha": "0a7a406766bbbf25d5bbe53f635c00181e00c5ab",
+      "timestamp": "2026-09-05T19:41:00.773Z",
       "commits": [
         {
-          "sha": "c7d8b3f5721bc14b8ab93626e2d0e0914a8fca4d",
+          "sha": "0a7a406766bbbf25d5bbe53f635c00181e00c5ab",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T13:31:07-06:00",
-          "message": "Merge 4c3ce26478a31c80c86401be0907424d2a4e39d6 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+          "timestamp": "2026-09-05T19:40:30Z",
+          "message": "Merge 1b76e4fd575359496759d333631a5562faf711c4 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "1b76e4fd575359496759d333631a5562faf711c4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T13:40:21-06:00",
+          "message": "docs(box): stop the getRowChars comment describing a reader that does not exist\n\nThe comment said `head*` holds the header content row's verticals \"drawn by\nthe row renderer.\" No such wiring exists: _renderRow emits box.left and\nbox.vertical unconditionally, and after the separator fix nothing in src/\nreads headLeft, headVertical, or headRight at all.\n\nA caption naming a mechanism the code does not have is worse than no caption,\nso the false clause is dropped rather than expanded. Wiring headVertical into\nthe header content row is rich-table-6uy.2, not this change.\n"
         },
         {
           "sha": "4c3ce26478a31c80c86401be0907424d2a4e39d6",
