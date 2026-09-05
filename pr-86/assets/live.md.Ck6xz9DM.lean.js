@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.ChQxbMbQ.js";const B=JSON.parse('{"title":"Live Display","description":"","frontmatter":{},"headers":[],"relativePath":"live.md","filePath":"live.md"}'),e={name:"live.md"};function h(l,s,p,k,r,d){return a(),t("div",null,[...s[0]||(s[0]=[n("",40)])])}const g=i(e,[["render",h]]);export{B as __pageData,g as default};

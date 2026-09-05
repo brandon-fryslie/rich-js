@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as n,ag as t}from"./chunks/framework.ChQxbMbQ.js";const y=JSON.parse('{"title":"Layout","description":"","frontmatter":{},"headers":[],"relativePath":"layout.md","filePath":"layout.md"}'),h={name:"layout.md"};function l(k,s,p,e,r,d){return a(),n("div",null,[...s[0]||(s[0]=[t("",33)])])}const g=i(h,[["render",l]]);export{y as __pageData,g as default};

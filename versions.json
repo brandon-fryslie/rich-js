@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-86",
+      "ref": "refs/pull/86/merge",
+      "sha": "4417c75cef2f9a3d4d0ea8ffe8b69b9428a40dc0",
+      "timestamp": "2026-09-05T05:04:12.540Z",
+      "commits": [
+        {
+          "sha": "4417c75cef2f9a3d4d0ea8ffe8b69b9428a40dc0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T23:03:42-06:00",
+          "message": "Merge d6e0ac8e0b95cc78f1c6f7077d0f8267cd0554fe into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+        },
+        {
+          "sha": "d6e0ac8e0b95cc78f1c6f7077d0f8267cd0554fe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T23:03:14-06:00",
+          "message": "test(docs): gate the two lies a machine can catch, and name the one it cannot\n\nAdds the last child of the docs-site epic: a check that every symbol the\ndocumentation names exists, and every page the site ships is reachable.\n\nREACHABILITY is a set equality with no exclusions. `docs/strip.md` was\nunreachable for four commits because the sidebar was a hand-copied list and\nnobody could see the drift by reading either file. The page-backed regions move\nto `docs/.vitepress/sidebar.ts` so the test can import the site's own list\nrather than a copy of it — `config.ts` reads the gitignored `demos.json` at\nmodule load, so importing that file from the unit suite would throw on a fresh\nclone. The Demos region stays behind: its links are dynamic routes, not\n`docs/*.md`, and comparing them against pages on disk would need an exclusion\npredicate nobody rechecks.\n\nSYMBOL EXISTENCE is checked two ways — a name imported from an entry point, and\na member called on a class the page itself constructed. The second is what\ncatches the transliteration defects, since six of this epic's confirmed ghosts\nwere methods rather than imports. Both derive from `package.json#exports`\nthrough the coverage gate's own `deriveEntryModules`, now returning specifier →\nsource rather than discarding the specifier, so \"exists\" means the same thing in\nboth directions.\n\nWHAT IT DELIBERATELY DOES NOT DO. It does not compile the blocks. That was\nmeasured, not assumed: extracting all 211 and type-checking them one file apiece\nyields 145 failures, and reading the first failure on each of the 25 pages shows\nthe overwhelming majority are genre artifacts — a page is a running document\n(`markup.md` calls `console.print` five sections before constructing its\n`Console`) and a page elides (`doStep`, `riskyOperation`, `items`). Going green\non those would tax every future page for its elisions.\n\nThe blocks are parsed, never pattern-matched. The regex version reported four\ndefects that were not defects — `docs/tree.md` builds a file tree containing the\nstring \"console.test.ts\", `docs/console.md` opens with `// shared/console.ts` —\nand a check that invents findings is worse than no check.\n\nTHE GATE FOUND 13 REAL GHOSTS ON THREE PAGES NOBODY HAD AUDITED, all verified\nagainst source and by execution before being touched:\n\n- progress.md: `run()` documented as the primary lifecycle idiom (does not\n  exist; `start`/`stop` do), `update` (it is `updateTask`), `open`/`wrapFile`\n  (an entire file-reading section for an absent capability), five of eleven\n  listed columns, and `getRenderable`.\n- live.md: `run()`, `screen: true` (the option is `altScreen`), and\n  `new Table(\"Job\", \"Status\")` (the constructor takes an options object).\n- layout.md: `tree`, plus `new Layout(\"name\")` — which sets the pane's CONTENT,\n  not its name — and `layout[\"name\"]`, which no index signature supports.\n\nEvery replacement was run before it was written down. `Table.addColumn` takes\nits header positionally, not as an options object; I assumed otherwise and the\nruntime said no, which is the whole argument for executing rather than reading.\n\nCloses rich-docs-site-dl4, whose three named live.md defects are these.\nFiled rich-docs-site-9dz (layout.md's fabricated output blocks and its false\nempty-layout premise) and rich-table-5m9 (`addRow` does not parse markup, while\n`addColumn` does).\n\nTHE CEILING IS NAMED IN THE TEST'S OWN HEADER, because a green bar here will be\nread as \"these pages are true\" otherwise. Symbol existence is the weakest of the\nthree ways a page lies. On console.md it would have caught six ghosts; on\nstrip.md it would have caught nothing, and all six defects there were real —\nprovenance decides which, since a page transliterated from Python inherits\nPython's API surface while a page written alongside its subsystem lies about\nbehavior instead. Classes 2 (the symbol exists and does something else) and 3\n(a true claim about one path, generalized over the surface) stay a reviewer's job.\n\nEvery failure arm is verified by injection, not by assertion: fictional import,\nghost member, unlinked page, dangling link, duplicate link.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c06428d9908d95fcd3923723f55b28e2d72caf95",
