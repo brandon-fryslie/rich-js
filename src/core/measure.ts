@@ -47,7 +47,7 @@ export class Measurement {
   static get(options: RenderOptions, measurable: Measurable): Measurement {
     if (options.maxWidth < 1) return new Measurement(0, 0);
     const { minimum, maximum } = measurable.measure(options);
-    return new Measurement(minimum, Math.min(maximum, options.maxWidth));
+    return new Measurement(minimum, Math.min(maximum, options.maxWidth)).normalize();
   }
 }
 

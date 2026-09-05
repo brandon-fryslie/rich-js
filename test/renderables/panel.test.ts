@@ -412,5 +412,26 @@ describe("Panel", () => {
         collectLines(new Panel(negative, { expand: false }), { maxWidth: 40 }),
       ).not.toThrow();
     });
+
+    // The case above pins `render`, and the same content reached `measure` by a
+    // different road: `Measurement.get` capped the maximum against the offer and
+    // floored nothing, so `{-20, -20}` became a public `{-16, -16}` — a parent
+    // sizing itself against this panel divided space from a negative range.
+    // Fixed at `Measurement.get`, which is the declared single enforcer for
+    // measuring a `Measurable` and now normalizes what it hands back, so a
+    // second floor here would be a second enforcer for one rule.
+    it("never measures a negative width around content that does", () => {
+      const negative: Renderable & Measurable = {
+        *render(_options: RenderOptions) {
+          yield new Segment("x");
+          yield Segment.line();
+        },
+        measure: () => ({ minimum: -20, maximum: -20 }),
+      };
+
+      const measured = new Panel(negative, { expand: false }).measure({ maxWidth: 40 });
+      expect(measured.minimum).toBeGreaterThanOrEqual(0);
+      expect(measured.maximum).toBeGreaterThanOrEqual(measured.minimum);
+    });
   });
 });
