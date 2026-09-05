@@ -1,9 +1,13 @@
 # Console
 
-`Console` is the central output object: it detects what the terminal supports,
-renders whatever you hand it, and writes the bytes. Anything that draws goes
-through a `Console` — though not everything in rich-js draws, and `Prompt` reads
-input without one.
+`Console` is the output object: it detects what the terminal supports, owns the
+render loop, and writes the bytes. Most of this library is reached through one.
+
+It is not the only way out, though. [`renderToString`](./protocol) renders any
+`Renderable` to a string of ANSI in one shot with no `Console` involved, and
+`Prompt` reads input without one. Reach for `Console` when you want terminal
+detection, wrapping, recording and a stream to write to — which is nearly
+always.
 
 ## Construction and sharing
 
