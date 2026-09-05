@@ -11,7 +11,8 @@ const console = new Console();
 const first = new RichText("First line\n");
 const second = new RichText("Second line\n");
 
-// ✗ Panel takes one renderable — its second argument is the options object
+// ✗ Panel's second parameter is its options object, not more content.
+//   This compiles and runs — it just silently drops `second`.
 console.print(new Panel(first, second));
 
 // ✓ Wrap them in a Group
@@ -19,6 +20,9 @@ console.print(new Panel(new Group(first, second)));
 ```
 
 ```
+╭─────────────────────────────────────────╮
+│ First line                              │
+╰─────────────────────────────────────────╯
 ╭─────────────────────────────────────────╮
 │ First line                              │
 │ Second line                             │
@@ -63,6 +67,10 @@ Every item above ends in `\n`, and dropping it changes the output. A group emits
 For a dynamic or large set of items, yield them from a generator and spread the result into the constructor:
 
 ```typescript
+import { Console, Group, Panel, renderMarkup } from "@promptctl/rich-js";
+
+const console = new Console();
+
 function* buildContent(items: string[]) {
   yield renderMarkup("[bold cyan]Results[/bold cyan]\n");
   yield renderMarkup("[dim]─────────[/dim]\n");
