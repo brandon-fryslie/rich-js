@@ -217,10 +217,11 @@ export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): Cod
 }
 
 /**
- * Like `cellFitFrom`, but never returns `startCU`: a glyph too wide for `cap`
- * is force-taken whole, overflowing `cap` by its own width. So a loop walking
- * to `text.length` terminates by construction, and the re-brand is honest —
- * both operands land on code-point boundaries, so their max does too.
+ * Like `cellFitFrom`, but for any `startCU` inside `text` the result is
+ * strictly past it: a glyph too wide for `cap` is force-taken whole and
+ * overflows `cap` by its own width. So a `while (i < text.length)` loop driven
+ * by this terminates by construction, and the re-brand is honest — both
+ * operands land on code-point boundaries, so their max does too.
  *
  * [LAW:single-enforcer] `cellFit` documents that its caller must choose between
  * force-taking and skipping; this is that choice, made once. It was made twice
