@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-82",
+      "ref": "refs/pull/82/merge",
+      "sha": "98faf5bf84796846dfd9f04a45165706469e411a",
+      "timestamp": "2026-09-05T01:57:40.791Z",
+      "commits": [
+        {
+          "sha": "98faf5bf84796846dfd9f04a45165706469e411a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T19:57:06-06:00",
+          "message": "Merge b3d27686427370b4962163d60bdb38d2dfb75f1b into f017fd650b6ed98cdd70ac2c781c5ddd2f27f6df\n"
+        },
+        {
+          "sha": "b3d27686427370b4962163d60bdb38d2dfb75f1b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T19:56:39-06:00",
+          "message": "docs(group): make every snippet on the page one that actually runs (rich-docs-site-13t.2)\n\nThe ticket named one defect — `RenderGroup`, which does not exist; the real\nexport is `Group` (src/renderables/group.ts). Renaming it was not enough. Every\nexample on the page failed at runtime, and the fix is the same fact in three\nplaces: `Group`'s constructor is `(...renderables: Renderable[])`, strict, with\nnone of the string coercion `Panel` does via its own `toRenderable`.\n\n- The \"correct\" constructor example passed bare markup strings to `Group`.\n  `Group.render` calls `renderable.render(options)` straight through, so a\n  string threw `TypeError: yield* (intermediate value) is not iterable`. Markup\n  now goes through `renderMarkup`, which parses it into a `RichText`.\n- The generator example passed the generator as a single positional argument,\n  which throws the same way for the same reason. It is now spread —\n  `new Group(...buildContent(...))` — matching the idiom already pinned by\n  test/renderables/group.test.ts (\"accepts spread from a generator\").\n- The output blocks showed each item on its own line. A group inserts nothing\n  between its children, and `RichText.render` emits a line break only when its\n  text ends in `\\n` (the default `end` is appended by `console.print`, not by\n  rendering — src/core/text.ts, the `_end !== \"\\n\"` guard). Every item now\n  carries its `\\n`, which is what makes the printed blocks true, and the rule\n  is stated in prose so the next reader does not rediscover it as a bug.\n- \"Generator / decorator form\" was a fourth ghost. `@group` is a Python Rich\n  decorator with no counterpart here; the heading is now\n  \"Building a group from a generator\".\n\nEvery block was executed against src/ and the output blocks are its captured\nstdout at width 43, not hand-drawn. Gates: `npm run docs:build` clean (dead-link\nand Vue-interpolation gate), `npm run lint` clean. `RenderGroup` no longer\nappears in the built site.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f017fd650b6ed98cdd70ac2c781c5ddd2f27f6df",
