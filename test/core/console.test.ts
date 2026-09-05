@@ -8,7 +8,8 @@ import {
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
-import { RegexHighlighter } from "../../src/core/highlighter.js";
+import { Highlighter } from "../../src/core/highlighter.js";
+import { Pretty } from "../../src/core/pretty.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -354,18 +355,46 @@ describe("Console.print()", () => {
     });
 
     it("honours a custom console highlighter for data arguments", () => {
-      class BracketHighlighter extends RegexHighlighter {
-        static override highlights = [/(?<number>\d+)/g];
-        static override baseStyle = "repr.";
+      // Asserting "some ANSI appeared" would pass even with the forwarding
+      // reverted, because Pretty's own default `ReprHighlighter` also styles the
+      // number in `{ a: 1 }`. The recorder asks the only question that
+      // distinguishes them: was the console's highlighter the one consulted?
+      const seen: string[] = [];
+      class Recorder extends Highlighter {
+        highlight(text: RichText): void {
+          seen.push(text.plain);
+        }
       }
-      const { console: c, chunks } = makeConsole({
-        colorSystem: "truecolor",
-        highlighter: new BracketHighlighter(),
-      });
+      const { console: c } = makeConsole({ highlighter: new Recorder() });
       c.print({ a: 1 });
-      // The custom highlighter styles the number; the point is that some
-      // console-configured highlighter ran at all, rather than Pretty's own.
-      expect(captured(chunks)).toContain("\x1b[");
+      expect(seen).toEqual(["{ a: 1 }"]);
+    });
+
+    // `print` formats whatever it is handed, so it is the one caller that can
+    // assume nothing about size. Unbounded, an ordinary debug line costs
+    // megabytes or never returns.
+    it("bounds a large container, and says how much it dropped", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print(new Array(5000).fill(1));
+      const output = captured(chunks);
+      expect(output.split("\n").length).toBeLessThan(200);
+      expect(output).toContain("... +4900");
+    });
+
+    it("bounds deep nesting instead of descending until the stack gives out", () => {
+      const { console: c, chunks } = makeConsole();
+      let deep: unknown = { end: true };
+      for (let i = 0; i < 400; i++) deep = { n: deep };
+      expect(() => c.print(deep)).not.toThrow();
+      expect(captured(chunks)).toContain("{...}");
+    });
+
+    it("leaves an explicitly constructed Pretty unbounded", () => {
+      // The bounds are the convenience path's, not the formatter's: a caller
+      // who built the Pretty has seen their data and said what they wanted.
+      const { console: c, chunks } = makeConsole();
+      c.print(new Pretty(new Array(200).fill(1)));
+      expect(captured(chunks)).not.toContain("... +");
     });
 
     it("still reads a trailing object as options when content precedes it", () => {

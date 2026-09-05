@@ -255,6 +255,21 @@ function resolveGetSize(
 /** Shared because it is stateless: highlighting nothing has nothing to own. */
 const NO_HIGHLIGHT = new NullHighlighter();
 
+/**
+ * What `print` bounds a data argument by when the caller said nothing.
+ *
+ * `print` formats whatever it is handed, so it is the one place that has to
+ * assume nothing about the value's size. Unbounded, `print(buffer)` emits a line
+ * per byte and `print(deeplyNested)` descends until the stack gives out — a
+ * debug line that costs megabytes or hangs the terminal. Both bounds announce
+ * themselves in the output (`... +N`, `{...}`), so this truncates visibly and
+ * never silently. [LAW:no-silent-failure]
+ *
+ * A caller constructing a `Pretty` has seen their data and gets no defaults;
+ * these belong to the convenience path, not to the formatter.
+ */
+const PRINT_DATA_BOUNDS = { maxLength: 100, maxDepth: 16 } as const;
+
 export class Console {
   private _colorSystem: ColorDepth | null;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
@@ -426,6 +441,7 @@ export class Console {
         // left to its own default would outrank both. [LAW:dataflow-not-control-flow]
         // the disabled case is an identity highlighter, not a skipped call.
         renderables.push(new Pretty(item, {
+          ...PRINT_DATA_BOUNDS,
           highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
         }));
       }

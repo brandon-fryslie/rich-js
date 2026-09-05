@@ -242,6 +242,31 @@ describe("Pretty", () => {
     expect(seen).toEqual(["{ a: 1 }"]);
   });
 
+  describe("bounds", () => {
+    it("elides past maxDepth, naming the container it stopped in", () => {
+      expect(collectText(new Pretty({ a: { b: { c: 1 } } }, { maxDepth: 2 }), { maxWidth: 80 }))
+        .toBe("{ a: { b: {...} } }");
+      expect(collectText(new Pretty([[[1]]], { maxDepth: 2 }), { maxWidth: 80 }))
+        .toBe("[[[...]]]");
+    });
+
+    it("says how many entries maxLength dropped from a Map or Set", () => {
+      // Arrays and objects already marked their remainder; Map and Set dropped
+      // theirs with no sign at all, which is only tolerable while nothing
+      // truncates by default. `print` now does.
+      expect(collectText(new Pretty(new Map([["a", 1], ["b", 2], ["c", 3]]), { maxLength: 1 }), { maxWidth: 80 }))
+        .toContain("... +2");
+      expect(collectText(new Pretty(new Set([1, 2, 3]), { maxLength: 1 }), { maxWidth: 80 }))
+        .toContain("... +2");
+    });
+
+    it("is unbounded by default", () => {
+      let deep: unknown = 1;
+      for (let i = 0; i < 30; i++) deep = { n: deep };
+      expect(collectText(new Pretty(deep), { maxWidth: 200 })).not.toContain("{...}");
+    });
+  });
+
   // --- Measurement ---
 
   it("measurement returns valid values", () => {

@@ -26,6 +26,15 @@ export interface PrettyOptions {
   expandAll?: boolean;
   maxLength?: number;
   maxString?: number;
+  /**
+   * How many levels of nesting to descend before eliding. Unbounded by default.
+   *
+   * `Console.print` supplies a bound because it formats whatever it is handed;
+   * a caller constructing a `Pretty` has seen their data and can say what they
+   * want. Past the cap a container renders as `[...]`, `{...}`, `Map {...}` or
+   * `Set {...}` — visible, so the reader knows the value continues.
+   */
+  maxDepth?: number;
   indentGuides?: boolean;
   /**
    * Who colours the formatted text. Defaults to a `ReprHighlighter`.
@@ -40,6 +49,16 @@ export interface PrettyOptions {
 }
 
 const reprHighlighter = new ReprHighlighter();
+
+/** One position in a traversal. See `_format` for why `inset` and `level` are two numbers. */
+interface Frame {
+  readonly inset: number;
+  readonly level: number;
+  readonly maxWidth: number;
+  readonly open: WeakSet<object>;
+}
+
+const rootFrame = (maxWidth: number): Frame => ({ inset: 0, level: 0, maxWidth, open: new WeakSet() });
 
 /**
  * The elements of an indexed sequence, or `null` for anything that isn't one.
@@ -88,6 +107,7 @@ export class Pretty implements Renderable, Measurable {
   readonly expandAll: boolean;
   readonly maxLength: number | undefined;
   readonly maxString: number | undefined;
+  readonly maxDepth: number;
   readonly indentGuides: boolean;
   readonly highlighter: Highlighter;
 
@@ -97,12 +117,13 @@ export class Pretty implements Renderable, Measurable {
     this.expandAll = options?.expandAll ?? false;
     this.maxLength = options?.maxLength;
     this.maxString = options?.maxString;
+    this.maxDepth = options?.maxDepth ?? Infinity;
     this.indentGuides = options?.indentGuides !== false;
     this.highlighter = options?.highlighter ?? reprHighlighter;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const formatted = this._format(this.data, 0, options.maxWidth, new WeakSet());
+    const formatted = this._format(this.data, rootFrame(options.maxWidth));
     const text = new RichText(formatted, { end: "" });
     this.highlighter.highlight(text);
 
@@ -114,7 +135,7 @@ export class Pretty implements Renderable, Measurable {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const formatted = this._format(this.data, 0, _options.maxWidth, new WeakSet());
+    const formatted = this._format(this.data, rootFrame(_options.maxWidth));
     const lines = formatted.split("\n");
     let max = 0;
     for (const line of lines) {
@@ -124,14 +145,23 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /**
+   * Where the traversal is, in the two senses that differ.
+   *
+   * `inset` is how far the output is indented; it resets to 0 whenever a value
+   * is measured for a single line, because a compact form carries no
+   * indentation. `level` is how deep in the data we are, and only ever
+   * increases. Collapsing the two into one number is the mistake this pair
+   * exists to make unrepresentable: the depth cap read the layout number, so
+   * every compact probe reset it and the cap never fired at all.
+   *
    * `open` holds the objects between the root and here, not every object seen.
    * A value joins on the way down and leaves on the way back up, so a cycle is
    * caught while a DAG — one object reached twice through sibling positions —
    * still renders both times. A never-emptied set would call the second sibling
-   * circular. [LAW:no-ambient-temporal-coupling] the traversal owns this state
+   * circular. [LAW:no-ambient-temporal-coupling] the traversal owns its state
    * explicitly; a field on the instance would leak between renders.
    */
-  private _format(value: unknown, depth: number, maxWidth: number, open: WeakSet<object>): string {
+  private _format(value: unknown, at: Frame): string {
     if (value === null) return "null";
     if (value === undefined) return "undefined";
 
@@ -154,23 +184,27 @@ export class Pretty implements Renderable, Measurable {
         return `[Function: ${value.name || "anonymous"}]`;
     }
 
-    if (open.has(value)) return "[Circular]";
-    open.add(value);
+    if (at.open.has(value)) return "[Circular]";
+    at.open.add(value);
     try {
-      return this._formatObject(value, depth, maxWidth, open);
+      return this._formatObject(value, at);
     } finally {
-      open.delete(value);
+      at.open.delete(value);
     }
   }
 
   /** The arms for a non-null object, with `value` already on the open path. */
-  private _formatObject(value: object, depth: number, maxWidth: number, open: WeakSet<object>): string {
-    const indentStr = " ".repeat(this.indent * depth);
-    const innerIndent = " ".repeat(this.indent * (depth + 1));
+  private _formatObject(value: object, at: Frame): string {
+    const { maxWidth, open } = at;
+    const indentStr = " ".repeat(this.indent * at.inset);
+    const innerIndent = " ".repeat(this.indent * (at.inset + 1));
+    const deeper: Frame = { inset: at.inset + 1, level: at.level + 1, maxWidth, open };
+    const onOneLine: Frame = { inset: 0, level: at.level + 1, maxWidth, open };
 
     const elements = indexedElements(value);
     if (elements !== null) {
       if (elements.length === 0) return "[]";
+      if (at.level >= this.maxDepth) return "[...]";
 
       const items = this.maxLength !== undefined
         ? elements.slice(0, this.maxLength)
@@ -181,31 +215,37 @@ export class Pretty implements Renderable, Measurable {
 
       // Try compact first
       if (!this.expandAll) {
-        const compact = "[" + items.map((v) => this._format(v, 0, maxWidth, open)).join(", ") +
+        const compact = "[" + items.map((v) => this._format(v, onOneLine)).join(", ") +
           (remaining > 0 ? `, ... +${remaining}` : "") + "]";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
-      const parts = items.map((v) => innerIndent + this._format(v, depth + 1, maxWidth, open));
+      const parts = items.map((v) => innerIndent + this._format(v, deeper));
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "[\n" + parts.join(",\n") + "\n" + indentStr + "]";
     }
 
     if (value instanceof Map) {
       if (value.size === 0) return "Map {}";
+      if (at.level >= this.maxDepth) return "Map {...}";
       const entries = [...value.entries()];
       const items = this.maxLength !== undefined ? entries.slice(0, this.maxLength) : entries;
       const parts = items.map(([k, v]) =>
-        innerIndent + this._format(k, depth + 1, maxWidth, open) + " => " + this._format(v, depth + 1, maxWidth, open),
+        innerIndent + this._format(k, deeper) + " => " + this._format(v, deeper),
       );
+      const dropped = entries.length - items.length;
+      if (dropped > 0) parts.push(innerIndent + `... +${dropped}`);
       return "Map {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
 
     if (value instanceof Set) {
       if (value.size === 0) return "Set {}";
+      if (at.level >= this.maxDepth) return "Set {...}";
       const items = [...value];
       const bounded = this.maxLength !== undefined ? items.slice(0, this.maxLength) : items;
-      const parts = bounded.map((v) => innerIndent + this._format(v, depth + 1, maxWidth, open));
+      const parts = bounded.map((v) => innerIndent + this._format(v, deeper));
+      const dropped = items.length - bounded.length;
+      if (dropped > 0) parts.push(innerIndent + `... +${dropped}`);
       return "Set {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
 
@@ -219,6 +259,7 @@ export class Pretty implements Renderable, Measurable {
       const obj = value as Record<string, unknown>;
       const keys = Object.keys(obj);
       if (keys.length === 0) return "{}";
+      if (at.level >= this.maxDepth) return "{...}";
 
       const items = this.maxLength !== undefined ? keys.slice(0, this.maxLength) : keys;
       const remaining = this.maxLength !== undefined ? Math.max(0, keys.length - this.maxLength) : 0;
@@ -226,13 +267,13 @@ export class Pretty implements Renderable, Measurable {
       // Try compact
       if (!this.expandAll) {
         const compact = "{ " + items.map((k) =>
-          `${k}: ${this._format(obj[k], 0, maxWidth, open)}`).join(", ") +
+          `${k}: ${this._format(obj[k], onOneLine)}`).join(", ") +
           (remaining > 0 ? `, ... +${remaining}` : "") + " }";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
       const parts = items.map((k) =>
-        innerIndent + `${k}: ${this._format(obj[k], depth + 1, maxWidth, open)}`,
+        innerIndent + `${k}: ${this._format(obj[k], deeper)}`,
       );
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "{\n" + parts.join(",\n") + "\n" + indentStr + "}";
