@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.DTr9e-9G.js";const o=JSON.parse('{"title":"Rich Text","description":"","frontmatter":{},"headers":[],"relativePath":"text.md","filePath":"text.md"}'),h={name:"text.md"};function p(l,s,e,k,r,d){return a(),t("div",null,[...s[0]||(s[0]=[n("",22)])])}const y=i(h,[["render",p]]);export{o as __pageData,y as default};

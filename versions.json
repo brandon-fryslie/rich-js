@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-87",
+      "ref": "refs/pull/87/merge",
+      "sha": "e94d074baf4e3e3fcbb11b16a6eaec8f1189985a",
+      "timestamp": "2026-09-05T07:58:22.552Z",
+      "commits": [
+        {
+          "sha": "e94d074baf4e3e3fcbb11b16a6eaec8f1189985a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T01:57:52-06:00",
+          "message": "Merge 62f7e21c9c17937e2e41dda6ad6ba64272fa2de8 into 6cc04a66d6830fef90e1b49aba45fbb981bb6bdd\n"
+        },
+        {
+          "sha": "62f7e21c9c17937e2e41dda6ad6ba64272fa2de8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T01:57:13-06:00",
+          "message": "test(docs): follow the receivers a static factory produces (rich-docs-site-13t.6.5)\n\nA variable was recorded only when its initializer was `new X()`, so a name\nbound from a static factory entered no declaration list, resolved to no root,\nand every member called on it was dropped without a report. `docs/tables.md`'s\nwhole grid section and `docs/style.md`'s `Style.parse` section were outside the\ngate, and a ghost method on either would have passed.\n\nA binding now carries the receiver chain its initializer describes rather than\na class name, which is the same thing `describeReceiver` already computed for\na use — the guard was discarding an answer the parser had in hand. Resolution\nfollows those chains back recursively, and a bare imported name the page\ndeclared nothing for resolves to the class object itself. A class has two\nmember sets, instance and statics, and only step zero of a chain may read the\nstatic one; everything after a factory is an instance again.\n\nWidening the gate found two things the old one could not see. `RichText.fromAnsi`\ndoes not exist and never has, so `docs/text.md`'s \"Building from ANSI codes\"\nsection is deleted rather than implemented. `docs/console.md` binds `output` to\nan array in one section and to `console.endCapture()` in another, which surfaced\na hole the widening opened: a declaration that binds nothing followable still\ntakes the name, or the fallback-forward rule hands it an unrelated declaration\nelsewhere on the page.\n\nBoth static-factory forms are pinned by fixtures rather than by the corpus.\nReverting the guard alone leaves all 37 corpus tests green and turns four\nfixtures red, which is the whole argument for having them.\n\nAlso: `docs/live.md` claimed a file-based console emits only when \"the context\"\nexits. There is no context on that page any more, and the claim was false in\nboth halves — `Live` never checks whether its console is a terminal and writes\nevery frame it draws. And `docs/.vitepress/sidebar.ts` claimed the reachability\ncheck has no exclusion predicate; `test/docs/pages.ts` has one on the disk\nside, so the claim is now scoped to the sidebar side it is true of.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6cc04a66d6830fef90e1b49aba45fbb981bb6bdd",
