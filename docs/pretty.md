@@ -2,14 +2,14 @@
 
 `Pretty` formats a JavaScript value — an array, object, `Map`, or `Set` — across multiple lines with indentation, syntax highlighting, and indent guides. It is a renderable you construct around your data: print it on its own, or nest it inside a `Panel`, a table cell, or anything else that takes a renderable.
 
-Output on this page was captured at a console width of 43. Width is not incidental here — it decides whether a container prints on one line or expands over several.
+Every snippet below pins its console to a width of 43, and the output under it is that snippet's stdout. Width is not incidental here — it decides whether a container prints on one line or expands over several, so a `new Console()` left at the default 80 gives you different output than the page shows.
 
 ## Formatting a value
 
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 const data = { name: "Alice", scores: [98, 87, 95], active: true };
 
 console.print(new Pretty(data));
@@ -30,7 +30,7 @@ A class instance is formatted as a plain object, from its own enumerable propert
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 
 class Bird {
   constructor(public name: string, public eats: string[] = []) {}
@@ -53,7 +53,7 @@ console.print(new Pretty(new Bird("penguin", ["fish", "squid"])));
 ```typescript
 import { Console } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 
 console.print({ name: "Alice" }); // a blank line, not an object
 console.print("after");
@@ -69,7 +69,7 @@ Options behave the same way. They belong to `Pretty`'s constructor; `print()` ha
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 
 // `{ expandAll: true }` is a second argument to print, not a setting.
 // It compiles, prints nothing, and leaves the Pretty unchanged.
@@ -87,7 +87,7 @@ console.print(new Pretty([1, 2, 3]), { expandAll: true });
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 const data = { name: "Alice", metadata: { active: true } };
 
 console.print(new Pretty(data, { indent: 2, indentGuides: false, expandAll: true }));
@@ -109,7 +109,7 @@ An array or object prints on one line when that form fits the width, and expands
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 
 console.print(new Pretty([1, 2, 3]));
 console.print(new Pretty([1, 2, 3], { expandAll: true }));
@@ -131,7 +131,7 @@ The fit test measures the container by itself, not the key it sits under, so a n
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 
 console.print(new Pretty(new Map([["a", 1], ["b", 2]])));
 ```
@@ -145,12 +145,12 @@ Map {
 
 ## Truncating large values
 
-`maxLength` caps how many elements of a container are shown and appends a count of the rest. `maxString` cuts strings to that many characters and appends the number dropped — inside the quotes, as part of the string:
+`maxLength` caps how many entries are shown. For an array or object the ones it drops are counted in a trailing `... +N`; for a `Map` or `Set` they are dropped with no marker at all, so the output gives you no sign that anything is missing. `maxString` cuts strings to that many characters and appends the number dropped — inside the quotes, as part of the string:
 
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 const bigArray = Array.from({ length: 1000 }, (_, i) => i + 1);
 
 console.print(new Pretty(bigArray, { maxLength: 10 }));
@@ -169,7 +169,7 @@ console.print(new Pretty({ bio: "Field biologist. ".repeat(20) }, { maxString: 2
 ```typescript
 import { Console, Panel, Pretty } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 43 });
 const data = { name: "Alice", scores: [98, 87, 95] };
 
 console.print(new Panel(new Pretty(data, { expandAll: true }), { title: "User" }));
