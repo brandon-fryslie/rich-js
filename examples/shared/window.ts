@@ -5,10 +5,16 @@
  * inside a Layout so adjacent panes (footer, sidebar) stay in place.
  */
 
-import { Segment, withCellWidth } from "../../src/index.js";
-import type { Renderable, RenderOptions } from "../../src/index.js";
+import {
+  Measurement,
+  Segment,
+  isMeasurable,
+  withBoundedWidth,
+  withCellWidth,
+} from "../../src/index.js";
+import type { Measurable, Renderable, RenderOptions } from "../../src/index.js";
 
-export class Window implements Renderable {
+export class Window implements Renderable, Measurable {
   constructor(
     private readonly inner: Renderable,
     private readonly maxLines: number,
@@ -19,7 +25,7 @@ export class Window implements Renderable {
     // A custom renderable is a width checkpoint like any built-in one — see
     // the width contract in docs/protocol.md. The parsed options are what
     // reaches `inner`, so the caller's raw number stops here.
-    const options = withCellWidth(rawOptions);
+    const options = withBoundedWidth(rawOptions, this);
     const segs = [...this.inner.render(options)];
     const lines = Segment.splitLines(segs);
     const start = Math.max(0, this.offset);
@@ -34,10 +40,18 @@ export class Window implements Renderable {
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
-    // Window clips vertically and takes whatever width it is offered, so its
-    // range is the whole offer. Stated as `MAX_SAFE_INTEGER` it was a ceiling
-    // no parent could divide against.
-    const { maxWidth } = withCellWidth(rawOptions);
-    return { minimum: Math.min(1, maxWidth), maximum: maxWidth };
+    // Window clips vertically and changes nothing horizontally, so its width is
+    // whatever `inner` wants — not the whole offer, which is what it used to
+    // claim and which made every parent in fit mode draw itself full-width
+    // around it. `Measurement.get` caps the answer at the offer already.
+    //
+    // `withCellWidth` and not `withBoundedWidth`: the bounded parse asks this
+    // very method what the natural width is, so calling it from here would ask
+    // the question with itself.
+    const options = withCellWidth(rawOptions);
+    if (!isMeasurable(this.inner)) {
+      return { minimum: Math.min(1, options.maxWidth), maximum: options.maxWidth };
+    }
+    return Measurement.get(options, this.inner);
   }
 }

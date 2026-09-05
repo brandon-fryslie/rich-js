@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withCellWidth } from "../core/protocol.js";
+import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { cellCount } from "../core/cells.js";
 
 export interface ColumnsOptions {
@@ -57,38 +57,14 @@ export class Columns implements Renderable, Measurable {
     const items = this.renderables;
     if (items.length === 0) return;
 
-    // The parsed options, not just a parsed local: `Measurement.get` below is
-    // handed these, and a raw NaN reaching it comes back as a NaN item width,
-    // then a NaN column count, then `Invalid array length` out of
-    // `new Array(numCols)` before a single column is laid out.
-    const options = withCellWidth(rawOptions);
-    const maxWidth = options.maxWidth;
-
-    // Determine column widths
-    let numCols: number;
-    let colWidths: number[];
-
-    if (this.colWidth !== undefined) {
-      numCols = Math.max(1, Math.floor((maxWidth + this.gutterWidth) / (this.colWidth + this.gutterWidth)));
-      colWidths = new Array(numCols).fill(this.colWidth) as number[];
-    } else if (this.equal) {
-      // Measure all items to find the widest
-      let maxItemWidth = 1;
-      for (const item of items) {
-        if (isMeasurable(item)) {
-          const m = Measurement.get(options, item);
-          maxItemWidth = Math.max(maxItemWidth, m.maximum);
-        }
-      }
-      numCols = Math.max(1, Math.floor((maxWidth + this.gutterWidth) / (maxItemWidth + this.gutterWidth)));
-      const equalWidth = Math.floor((maxWidth - this.gutterWidth * (numCols - 1)) / numCols);
-      colWidths = new Array(numCols).fill(equalWidth) as number[];
-    } else {
-      // Auto: fit as many columns as possible
-      numCols = Math.min(items.length, Math.max(1, Math.floor(maxWidth / 4)));
-      const colW = Math.floor((maxWidth - this.gutterWidth * (numCols - 1)) / numCols);
-      colWidths = new Array(numCols).fill(colW) as number[];
-    }
+    // The parsed options, not just a parsed local: `_divide` hands them to
+    // `Measurement.get`, and a raw NaN reaching it comes back as a NaN item
+    // width, then a NaN column count, then `Invalid array length` out of
+    // `new Array(numCols)` before a single column is laid out. An unbounded
+    // width reaches the same `new Array` by the same route, which is why the
+    // parse here is the bounded one.
+    const options = withBoundedWidth(rawOptions, this);
+    const { numCols, colWidths } = this._divide(options);
 
     // Layout items into rows
     const numRows = Math.ceil(items.length / numCols);
@@ -114,12 +90,88 @@ export class Columns implements Renderable, Measurable {
     }
   }
 
+  /**
+   * The requested width divided into columns, once.
+   *
+   * [LAW:single-enforcer] The three modes disagree only about how many columns
+   * there are and how wide each one is, so they disagree in one place. `render`
+   * lays out against this division and `_naturalWidth` is the width at which it
+   * comes out as one row of every item.
+   */
+  private _divide(options: RenderOptions): { numCols: number; colWidths: number[] } {
+    const maxWidth = options.maxWidth;
+    const gutter = this.gutterWidth;
+
+    if (this.colWidth !== undefined) {
+      const numCols = Math.max(1, Math.floor((maxWidth + gutter) / (this.colWidth + gutter)));
+      return { numCols, colWidths: new Array(numCols).fill(this.colWidth) as number[] };
+    }
+
+    if (this.equal) {
+      const itemWidth = this._itemWidth(options);
+      const numCols = Math.max(1, Math.floor((maxWidth + gutter) / (itemWidth + gutter)));
+      const equalWidth = Math.floor((maxWidth - gutter * (numCols - 1)) / numCols);
+      return { numCols, colWidths: new Array(numCols).fill(equalWidth) as number[] };
+    }
+
+    // Auto: as many columns as the widest item fits into, capped at the item
+    // count. Sized from the content rather than from a flat four cells per
+    // column, because `_naturalWidth` below is the inverse of *this* expression
+    // and a constant has no inverse: six two-cell items reported a natural
+    // width of 22 and then wrapped into two rows at 22, since `floor(22 / 4)`
+    // is five columns no matter how narrow the items are.
+    const itemWidth = this._itemWidth(options);
+    const numCols = Math.min(
+      this.renderables.length,
+      Math.max(1, Math.floor((maxWidth + gutter) / (itemWidth + gutter))),
+    );
+    const colW = Math.floor((maxWidth - gutter * (numCols - 1)) / numCols);
+    return { numCols, colWidths: new Array(numCols).fill(colW) as number[] };
+  }
+
+  /**
+   * The widest any one item wants to be.
+   *
+   * An item that cannot measure itself wants the offer, which is what `Panel`,
+   * `Padding`, `Layout` and `Tree` all answer for the same case — and under an
+   * unbounded offer that is `Infinity`, so `withBoundedWidth` throws and says
+   * the request was unanswerable. Counting it as one cell instead reported a
+   * natural width of 1, which resolved an unbounded offer to a single column and
+   * cropped forty cells of content down to `"x"` with no error at all.
+   */
+  private _itemWidth(options: RenderOptions): number {
+    let widest = 1;
+    for (const item of this.renderables) {
+      widest = Math.max(
+        widest,
+        isMeasurable(item)
+          ? Measurement.get(options, item).maximum
+          : options.maxWidth,
+      );
+    }
+    return widest;
+  }
+
+  /** The width at which every item sits on one row: n columns and the gutters between them. */
+  private _naturalWidth(options: RenderOptions): number {
+    const count = this.renderables.length;
+    if (count === 0) return 0;
+    const width = this.colWidth ?? this._itemWidth(options);
+    return count * width + this.gutterWidth * (count - 1);
+  }
+
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
     // A floor of one cell is what Columns asks for; the ceiling is what it was
     // offered, and the ceiling wins. Stated as a bare `minimum: 1`, a Columns
     // measured into no width at all reported the range 1..0 — a floor above
     // its own ceiling, which the parent that asked cannot divide.
-    const ceiling = withCellWidth(rawOptions).maxWidth;
-    return { minimum: Math.min(1, ceiling), maximum: ceiling };
+    //
+    // The ceiling is not the whole answer, though: reported as the offer alone,
+    // a Columns claimed every cell it was shown, so `Panel` in fit mode drew a
+    // 40-cell frame around five cells of content and an unbounded offer came
+    // back unbounded.
+    const parsed = withCellWidth(rawOptions);
+    const maximum = Math.min(this._naturalWidth(parsed), parsed.maxWidth);
+    return { minimum: Math.min(1, maximum), maximum };
   }
 }

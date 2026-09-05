@@ -753,3 +753,57 @@ describe("Segment.splitAndCropLines()", () => {
   });
 
 });
+
+// --- cropLines ---
+
+// `cropLines` shortens; it does not count. The line structure that arrives is
+// the line structure that leaves, and these assert that from both sides — a
+// stream with no trailing terminator must not gain one, and a line that is
+// empty but terminated must not lose one. Two earlier shapes each failed one
+// side: built on `splitLines`, which cannot tell "abc" from "abc\n", it invented
+// a terminator and an empty `Tree` label lost its row, so the guides of the next
+// row ran onto it; rebuilt to accumulate lines and flush at the end, it dropped
+// the zero-width-but-present line `RichText` emits at an offer of 0, and a
+// `Layout` row split rendered nothing at all.
+
+describe("Segment.cropLines()", () => {
+  const crop = (segments: Segment[], width: number): Segment[] =>
+    collect(Segment.cropLines(segments, width));
+  const text = (segments: Segment[]): string => segments.map((s) => s.text).join("");
+
+  it("shortens a line that overflows the width", () => {
+    expect(text(crop([new Segment("hello world")], 5))).toBe("hello");
+  });
+
+  it("leaves a line narrower than the width alone, without padding it", () => {
+    expect(text(crop([new Segment("hi")], 10))).toBe("hi");
+  });
+
+  it("spends the width across the segments sharing a line", () => {
+    expect(text(crop([new Segment("abc"), new Segment("def")], 4))).toBe("abcd");
+  });
+
+  it("gives each line the full width again", () => {
+    expect(text(crop([new Segment("hello\nworld")], 3))).toBe("hel\nwor");
+  });
+
+  it("does not invent a terminator the content did not emit", () => {
+    expect(text(crop([new Segment("abc")], 10))).toBe("abc");
+  });
+
+  it("keeps an empty line that its terminator makes real", () => {
+    const segments = [new Segment(""), Segment.line(), new Segment("after")];
+    expect(text(crop(segments, 10))).toBe("\nafter");
+  });
+
+  it("yields a line that is empty rather than absent at a width of zero", () => {
+    const cropped = crop([new Segment("abc")], 0);
+    expect(cropped).toHaveLength(1);
+    expect(cropped[0]!.text).toBe("");
+  });
+
+  it("carries the style of the segment it shortened", () => {
+    const style = Style.parse("bold red");
+    expect(crop([new Segment("hello world", style)], 5)[0]!.style).toBe(style);
+  });
+});

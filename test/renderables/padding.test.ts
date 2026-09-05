@@ -140,6 +140,19 @@ describe("Padding", () => {
     expect(m.minimum).toBeGreaterThanOrEqual(6);
   });
 
+  // A declared side is a quantity, not an offer, so the one width `cellCount`
+  // passes through has no meaning here — there is no unbounded amount of blank
+  // to draw. Unparsed it subtracted `Infinity` from a budget of `Infinity` and
+  // a public `measure` handed back a pair of NaNs.
+  it.each([
+    ["an unbounded side", Infinity],
+    ["a side that is not a number", NaN],
+  ])("reports cells for %s", (_name, given) => {
+    const padded = new Padding(simpleRenderable("Hi"), [0, given, 0, given]);
+    const m = padded.measure({ maxWidth: Infinity });
+    expect(m).toEqual({ minimum: 2, maximum: 2 });
+  });
+
   it("measurement maximum includes horizontal padding", () => {
     const inner = simpleRenderable("Hi");
     const padded = new Padding(inner, [0, 2, 0, 2]);

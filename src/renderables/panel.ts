@@ -15,7 +15,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withCellWidth } from "../core/protocol.js";
+import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -97,10 +97,11 @@ function layoutPanel(
   padding: readonly [number, number, number, number],
 ): PanelGeometry {
   const [, padRightWanted, , padLeftWanted] = padding;
-  // Panel's one division point, so the parse lands here: `Panel.width` is a
-  // caller's plain `number` and reaches this without passing through
-  // `withCellWidth`, and a fractional declared width would otherwise hand the
-  // borders and the content rows two different answers.
+  // Panel's one division point, and the width reaching it is not always one
+  // this file produced: `_getPanelWidth` derives the fit-mode width from
+  // `Measurement.get` on an arbitrary `Measurable`, so a renderable reporting a
+  // negative maximum arrives here unparsed and reaches `repeat` as a negative
+  // count.
   let budget: number = cellCount(outerWidth);
   const take = (want: number): number => {
     const got = Math.min(want, budget);
@@ -181,7 +182,7 @@ export class Panel implements Renderable, Measurable {
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
-    const options = withCellWidth(rawOptions);
+    const options = withBoundedWidth(rawOptions, this);
     const box = options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box;
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
     const contentStyle = this.style.isNull ? undefined : this.style;
@@ -257,6 +258,35 @@ export class Panel implements Renderable, Measurable {
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
     const options = withCellWidth(rawOptions);
+
+    const declared = this._declaredWidth;
+    if (declared !== undefined) {
+      // A declared width is not a ceiling on the content, it is the answer:
+      // `_getPanelWidth` returns it before measuring anything, so the panel
+      // draws at this width whatever the content wants. Reported with a
+      // content-derived floor instead, `{width: 20}` around "hi" offered 100
+      // cells answered 6..20 and then drew 20 every time, and a parent
+      // dividing space from the floor under-provisioned it.
+      const width = Math.min(options.maxWidth, declared);
+      return { minimum: width, maximum: width };
+    }
+
+    return this._fitRange(options);
+  }
+
+  /**
+   * The width this panel wants when nothing declared one for it: its content
+   * plus its own frame, both read off the division it will render against.
+   *
+   * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` ask this same
+   * question, and each used to work it out itself — the same `layoutPanel`, the
+   * same `frameOverhead`, the same `Math.min(maxWidth, maximum + overhead)`,
+   * written twice. That is the pattern `_declaredWidth` below was extracted to
+   * stop, left standing for the fit case; changing how overhead is derived in
+   * one copy is all it would take to put `measure` and `render` back into the
+   * disagreement this epic spent itself closing.
+   */
+  private _fitRange(options: RenderOptions): { minimum: number; maximum: number } {
     const geometry = layoutPanel(options.maxWidth, this.padding);
     const overhead = frameOverhead(geometry);
 
@@ -266,33 +296,37 @@ export class Panel implements Renderable, Measurable {
         maxWidth: geometry.contentWidth,
       };
       const measurement = Measurement.get(innerOptions, this.renderable);
+      const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
       return {
-        minimum: Math.max(overhead, measurement.minimum + overhead),
-        maximum: Math.min(options.maxWidth, measurement.maximum + overhead),
+        minimum: Math.min(measurement.minimum + overhead, maximum),
+        maximum,
       };
     }
-    return { minimum: overhead, maximum: options.maxWidth };
+
+    // Content that cannot measure itself leaves the panel with nothing to want,
+    // so it wants the offer — unbounded included, which `withBoundedWidth`
+    // reports rather than turning into a number nobody can defend.
+    return { minimum: Math.min(overhead, options.maxWidth), maximum: options.maxWidth };
+  }
+
+  /**
+   * The width this panel was told to be, as a count of cells.
+   *
+   * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` answer the same
+   * question about the same field, so they read it from here. Answered
+   * separately, `measure` reported nine cells of content while `render` drew the
+   * declared twelve, and the parent that divided space from the range got a
+   * panel three cells wider than the share it granted.
+   */
+  private get _declaredWidth(): number | undefined {
+    return this.width === undefined ? undefined : cellCount(this.width);
   }
 
   private _getPanelWidth(options: RenderOptions): number {
-    if (this.width !== undefined) return Math.min(this.width, options.maxWidth);
+    const declared = this._declaredWidth;
+    if (declared !== undefined) return Math.min(declared, options.maxWidth);
     if (this.expand) return options.maxWidth;
-
-    // Fit mode: the panel is as wide as its content wants plus its own frame,
-    // both read off the division it will render against.
-    const geometry = layoutPanel(options.maxWidth, this.padding);
-    const overhead = frameOverhead(geometry);
-
-    if (isMeasurable(this.renderable)) {
-      const innerOptions: RenderOptions = {
-        ...options,
-        maxWidth: geometry.contentWidth,
-      };
-      const measurement = Measurement.get(innerOptions, this.renderable);
-      return Math.min(options.maxWidth, measurement.maximum + overhead);
-    }
-
-    return options.maxWidth;
+    return this._fitRange(options).maximum;
   }
 
   private *_renderTopBorder(

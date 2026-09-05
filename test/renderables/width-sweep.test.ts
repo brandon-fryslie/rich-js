@@ -27,14 +27,13 @@
  *     output rather than a bound on it, and they are what "a cell count is a
  *     non-negative integer" means from the outside.
  *
- * `maxWidth: Infinity` is deliberately absent, and it is not an oversight: it
- * still throws in Panel, Columns and Layout. The epic's invariant is trivially
- * true there — nothing can exceed an unbounded width — and the crash is an
- * *expansion* defect (`" ".repeat(Infinity)`), a different question from the
- * squeeze this epic fixed. Answering it means deciding what every renderable
- * renders at an unbounded width, which is a decision worth making once and on
- * purpose. Filed as `rich-width-3cf.5` rather than smuggled in behind a clamp;
- * adding `Infinity` to the domain below is that ticket's acceptance criterion.
+ * `maxWidth: Infinity` gets its own assertion rather than a place in the width
+ * loop, because the epic's bound is trivially true there — nothing can exceed an
+ * unbounded width — and the defect was the opposite one: a renderable expanding
+ * into a budget with no top, reaching `" ".repeat(Infinity)`. What replaced it
+ * is an equality, not a bound: an unbounded offer renders exactly as the natural
+ * width the renderable reports, so the two renders are compared against each
+ * other. A bound alone would pass on a renderable that emitted nothing at all.
  */
 import { describe, it, expect } from "vitest";
 import { Panel } from "../../src/renderables/panel.js";
@@ -79,9 +78,11 @@ const oversized: Renderable = {
   },
 };
 
-// No explicit `width` in any of these: `Table.render` lays out at a declared
-// width and ignores a narrower `options.maxWidth`, so a swept table given one
-// overflows for a reason this sweep is not about (`rich-table-width-y1a`).
+// A declared `width` is swept like any other configuration now that
+// `Table._outerWidth` bounds it by the offer. It was excluded while `render`
+// laid out at the declared width and ignored a narrower `options.maxWidth`,
+// which made the sweep's own bound the wrong assertion for it
+// (`rich-table-width-y1a`). `Columns` still has that defect and is still out.
 function table(options: TableOptions, build: (t: Table) => void): () => Table {
   return () => {
     const t = new Table(options);
@@ -131,6 +132,48 @@ const configurations: readonly Configuration[] = [
       t.addColumn("Qty", { ratio: Infinity });
       t.addRow("alpha", "12");
     }),
+  },
+  {
+    name: "Table at a declared width",
+    shape: "rectangular",
+    make: table({ width: 40 }, (t) => {
+      t.addColumn("Name");
+      t.addColumn("Qty");
+      t.addRow("alpha", "12");
+    }),
+  },
+  {
+    name: "Table at a declared unbounded width",
+    shape: "rectangular",
+    // The offer is not the only door an unbounded width comes through.
+    // `render` preferred `tableWidth` outright, so this walked past the value
+    // `withBoundedWidth` had just resolved, granted the ratio column
+    // `UNBOUNDED` cells and threw `RangeError: Invalid string length` out of
+    // the top border at an ordinary offer.
+    make: table({ width: Infinity }, (t) => {
+      t.addColumn("Name");
+      t.addRow("alpha");
+    }),
+  },
+  {
+    name: "Table at a declared unbounded width with a ratio column",
+    shape: "rectangular",
+    // The configuration above describes this crash and cannot reach it: its one
+    // column has no ratio, so `distribute` never has an open weighted column to
+    // overshoot the budget with, and the catastrophic path — `cellWidths`
+    // reaching `UNBOUNDED` and `String.repeat` throwing `Invalid string length`
+    // — is only armed when a declared unbounded width and a ratio column meet.
+    // Reverting `_outerWidth`'s clamp is caught either way; reverting it *here*
+    // is caught for the reason the clamp exists.
+    make: table({ width: Infinity }, (t) => {
+      t.addColumn("Name", { ratio: 1 });
+      t.addRow("alpha");
+    }),
+  },
+  {
+    name: "Columns wrapping content that ignores its width",
+    shape: "rectangular",
+    make: () => new Columns([oversized]),
   },
   {
     name: "Table fractional padding",
@@ -204,6 +247,16 @@ const configurations: readonly Configuration[] = [
     },
   },
   {
+    name: "Layout wrapping content that ignores its width",
+    shape: "rectangular",
+    make: () => new Layout(oversized),
+  },
+  {
+    name: "Tree with a label that ignores its width",
+    shape: "ragged",
+    make: () => new Tree(oversized),
+  },
+  {
     name: "Layout row split with minimum sizes",
     shape: "rectangular",
     make: () => {
@@ -230,6 +283,33 @@ const equivalentWidths: ReadonlyArray<readonly [number, number]> = [
   [NaN, 0],
   [-5, 0],
 ];
+
+/**
+ * The configurations with no natural width to fall back on, and the two ways to
+ * end up there. Most wrap `oversized`, a `Renderable` with no `measure`, so
+ * nothing in the tree knows how wide the content wants to be. The rest ask for
+ * an unbounded width themselves, in a column declared `{ ratio: Infinity }`.
+ *
+ * Named here rather than discovered from the measurement, so that a renderable
+ * which quietly stops reporting a natural width fails this file instead of
+ * joining this list.
+ *
+ * Every renderable that grew the unmeasurable-content fallback in this epic is
+ * here, and that is the point of the list rather than a property of it: the
+ * fallback reached `Panel`, `Padding` and `Table` first and was pinned, then
+ * reached `Layout`'s leaf branch and `Tree`'s label and was not, so those two
+ * could have regressed with the suite green.
+ */
+const noNaturalWidth: ReadonlySet<string> = new Set([
+  "Panel wrapping content that ignores its width",
+  "Padding wrapping content that ignores its width",
+  "Padding unexpanded",
+  "Table with an unbounded column demand",
+  "Table at a declared unbounded width with a ratio column",
+  "Layout wrapping content that ignores its width",
+  "Tree with a label that ignores its width",
+  "Columns wrapping content that ignores its width",
+]);
 
 describe("width sweep", () => {
   for (const config of configurations) {
@@ -285,6 +365,26 @@ describe("width sweep", () => {
           expect(m.maximum, `measured past maxWidth ${width}: ${JSON.stringify(m)}`)
             .toBeLessThanOrEqual(width);
         }
+      });
+
+      it("renders an unbounded width exactly as its own natural width", () => {
+        const unbounded: RenderOptions = { maxWidth: Infinity, height: 6, maxHeight: 6 };
+        const natural = config.make().measure(unbounded).maximum;
+
+        if (noNaturalWidth.has(config.name)) {
+          expect(natural, "reported a natural width it cannot have").toBe(Infinity);
+          expect(
+            () => renderAt(config, Infinity),
+            "an unbounded offer around unmeasurable content has no answer, and silence is not one",
+          ).toThrow(RangeError);
+          return;
+        }
+
+        expect(natural, `measured an unbounded natural width: ${natural}`).toBeLessThan(Infinity);
+        expect(
+          renderAt(config, Infinity),
+          `an unbounded width did not render as its natural width ${natural}`,
+        ).toEqual(renderAt(config, natural));
       });
     });
   }

@@ -92,9 +92,10 @@ export function asCodePoint(n: number): CodePoint { return n as CodePoint; }
  * cell against a fractional residue and hands out more width than it was given.
  *
  * `Infinity` is outside what the comparison floors, so it passes through
- * unchanged. That is a gap, not a guarantee: what a renderable emits into an
- * unbounded canvas is a decision for every renderable at once, filed as
- * `rich-width-3cf.5` rather than answered by a clamp hidden in here.
+ * unchanged, and no clamp belongs here: the finite answer to an unbounded offer
+ * is the renderable's own natural width, which this function cannot see from
+ * the number alone. `withBoundedWidth` in `protocol.ts` is the second half of
+ * the parse and the only place that value is resolved.
  */
 export function cellCount(n: number): CellCol {
   return (n > 0 ? Math.floor(n) : 0) as CellCol;
