@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { guideSidebar, pageSidebarRegions } from './sidebar.js'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -27,85 +28,12 @@ const demoSidebarItems = manifest.demos.map((d) => ({
 // lights up follows from which region a group sits in.
 //
 // [LAW:one-source-of-truth] The Guide nav's activeMatch is derived from
-// `guideSidebar` below rather than hand-copied beside it. The two used to be
-// separate lists of one fact and had already drifted: `strip` was in neither,
-// so a substantial page was reachable only by search.
-const guideSidebar = [
-  {
-    text: 'Getting Started',
-    items: [
-      { text: 'Introduction', link: '/introduction' },
-      { text: 'Console', link: '/console' },
-      { text: 'Styles', link: '/style' },
-      { text: 'Markup', link: '/markup' },
-    ],
-  },
-  {
-    text: 'Text & Data',
-    items: [
-      { text: 'Rich Text', link: '/text' },
-      { text: 'Highlighting', link: '/highlighting' },
-      { text: 'Pretty Printing', link: '/pretty' },
-    ],
-  },
-  {
-    text: 'Renderables',
-    items: [
-      { text: 'Panel', link: '/panel' },
-      { text: 'Tables', link: '/tables' },
-      { text: 'Tree', link: '/tree' },
-      { text: 'Columns', link: '/columns' },
-      { text: 'Strip + Joiner', link: '/strip' },
-      { text: 'Group', link: '/group' },
-      { text: 'Padding', link: '/padding' },
-    ],
-  },
-  {
-    text: 'Live & Animation',
-    items: [
-      { text: 'Progress Bars', link: '/progress' },
-      { text: 'Live Display', link: '/live' },
-      { text: 'Layout', link: '/layout' },
-    ],
-  },
-  {
-    text: 'Interactive',
-    items: [{ text: 'Widgets', link: '/widgets' }],
-  },
-  {
-    text: 'Color & Theming',
-    items: [
-      { text: 'Theme Transposition', link: '/transpose' },
-      { text: 'Contrast & Accessibility', link: '/contrast' },
-    ],
-  },
-  {
-    text: 'Source & Files',
-    items: [
-      { text: 'Syntax Highlighting', link: '/syntax' },
-      { text: 'Markdown', link: '/markdown' },
-      { text: 'Tracebacks', link: '/traceback' },
-    ],
-  },
-  {
-    text: 'Integrations',
-    items: [
-      { text: 'Template Bindings', link: '/template-bindings' },
-      { text: 'Prompts', link: '/prompt' },
-    ],
-  },
-]
-
-// Protocol is its own nav tab, not a Guide page, so it sits outside
-// `guideSidebar` and stays out of the derived pattern below. Folding it in would
-// light up both tabs at once on `/protocol`.
-const advancedSidebar = [
-  {
-    text: 'Advanced',
-    items: [{ text: 'Renderable Protocol', link: '/protocol' }],
-  },
-]
-
+// `guideSidebar` rather than hand-copied beside it. The two used to be separate
+// lists of one fact and had already drifted: `strip` was in neither, so a
+// substantial page was reachable only by search.
+//
+// The page-backed regions live in `./sidebar.js` so `test/docs/` can read them
+// without executing the `demos.json` read above; see that file's header.
 const guideActiveMatch = `^/(${guideSidebar
   .flatMap((group) => group.items.map((item) => item.link.slice(1)))
   .join('|')})`
@@ -133,9 +61,12 @@ export default defineConfig({
       { text: 'Protocol', link: '/protocol' },
     ],
 
+    // [LAW:one-source-of-truth] The page-backed regions arrive composed, from
+    // the same export the reachability gate reads. Re-spreading them here would
+    // be a second composition, and a third region added to one of them would
+    // silently leave the site and the gate checking different sidebars.
     sidebar: [
-      ...guideSidebar,
-      ...advancedSidebar,
+      ...pageSidebarRegions,
       {
         text: 'Demos',
         items: [
