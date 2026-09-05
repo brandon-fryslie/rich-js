@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as n,ag as p}from"./chunks/framework.CAY-DSRD.js";const g=JSON.parse('{"title":"Render Groups","description":"","frontmatter":{},"headers":[],"relativePath":"group.md","filePath":"group.md"}'),t={name:"group.md"};function h(e,s,l,k,r,d){return a(),n("div",null,[...s[0]||(s[0]=[p("",16)])])}const B=i(t,[["render",h]]);export{g as __pageData,B as default};
