@@ -4,15 +4,22 @@
     {
       "version": "pr-84",
       "ref": "refs/pull/84/merge",
-      "sha": "3d6a2573975d8597d07a88e104cb9f042f61cd6d",
-      "timestamp": "2026-09-05T03:52:24.203Z",
+      "sha": "7595bbda02db6960d511183ef5783df7aab8c9b5",
+      "timestamp": "2026-09-05T04:05:08.070Z",
       "commits": [
         {
-          "sha": "3d6a2573975d8597d07a88e104cb9f042f61cd6d",
+          "sha": "7595bbda02db6960d511183ef5783df7aab8c9b5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T03:51:51Z",
-          "message": "Merge d0ee7515e9da70eb026206810a4f9f2e2873d202 into 865e18f1bed303ffc8f9d2eb08f837f24a5a90f8\n"
+          "timestamp": "2026-09-05T04:04:33Z",
+          "message": "Merge dfbbd2d836c49931250da3b8655d4df44dcfc552 into 865e18f1bed303ffc8f9d2eb08f837f24a5a90f8\n"
+        },
+        {
+          "sha": "dfbbd2d836c49931250da3b8655d4df44dcfc552",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T22:04:23-06:00",
+          "message": "docs(console): nothing detects the Windows palette, so don't imply it does\n\ndetectColorSystem has no branch returning ColorDepth.WINDOWS, and src/ contains\nno win32 or process.platform check at all. The page called it \"a detection\nresult rather than something you ask for\", which promised a reader that legacy\nWindows terminals get this palette automatically. They never do — the enum value\nis the only path to it.\n\nThe phrase came from color.ts's \"WINDOWS is a detection result (max enum value),\nnot a downgrade target\", which is fair in its own context: it explains why the\nWINDOWS case in the downgrade switch is unreachable. Read as a claim about\ndetection it is not, and that is the reading the page shipped.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "d0ee7515e9da70eb026206810a4f9f2e2873d202",
