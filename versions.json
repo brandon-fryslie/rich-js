@@ -4,15 +4,22 @@
     {
       "version": "pr-82",
       "ref": "refs/pull/82/merge",
-      "sha": "98faf5bf84796846dfd9f04a45165706469e411a",
-      "timestamp": "2026-09-05T01:57:40.791Z",
+      "sha": "fdc551828b4c39b0b8349348dc0d3a215967f15d",
+      "timestamp": "2026-09-05T02:07:49.984Z",
       "commits": [
         {
-          "sha": "98faf5bf84796846dfd9f04a45165706469e411a",
+          "sha": "fdc551828b4c39b0b8349348dc0d3a215967f15d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T19:57:06-06:00",
-          "message": "Merge b3d27686427370b4962163d60bdb38d2dfb75f1b into f017fd650b6ed98cdd70ac2c781c5ddd2f27f6df\n"
+          "timestamp": "2026-09-05T02:07:20Z",
+          "message": "Merge 080b57690552f90953e577f086296db7ecaeade3 into f017fd650b6ed98cdd70ac2c781c5ddd2f27f6df\n"
+        },
+        {
+          "sha": "080b57690552f90953e577f086296db7ecaeade3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T20:07:08-06:00",
+          "message": "docs(group): make each section stand alone, and stop calling a silent drop an error\n\nReview caught that the generator block declared none of the four names it\nused. It inherited them from the block above, so a reader copying that one\nsection got the global `console` — which has no `.print` — and three undefined\nbindings. My verification had missed it because I ran all three blocks in one\ntest file, where the imports were already in scope; the check confirmed the\ncode was right and could not see that the block was incomplete. Each block now\ncarries its own imports and `new Console()`, matching the two above it.\n\nRe-running the blocks one file each also falsified the `✗` comment. It claimed\nPanel's two-argument form is an error, and the page said `// error` before this\nbranch. It is not: every field of `PanelOptions` is optional, so a `RichText`\nis structurally assignable to it and the call compiles, runs, and drops the\nsecond argument without a word. That silence is the thing worth warning about,\nso the comment now says it and the output block shows both panels — the\none-line result of the wrong form above the two-line result of the right one.\n\nVerified by extracting every ```typescript block from the page verbatim,\nwriting each to its own file, and running `tsc -p tsconfig.test.json --noEmit`\nplus vitest over all three. Gates: `npm run lint` and `npm run docs:build` clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "b3d27686427370b4962163d60bdb38d2dfb75f1b",
