@@ -193,37 +193,17 @@ const myConsole = new Console({ stderr: true });
 const progress = new Progress({ console: myConsole });
 ```
 
-## Nesting progress bars
+## Multiple progress displays at once
 
-Create a progress display inside an existing one — the inner bar appears below the outer:
+One `Progress` gives every task the same columns, and only one display may own the terminal at a time. Both limits have the same answer: build the layout yourself. Put each `Progress` in a `Group`, wrap the group in a single `Live`, and start only the `Live`.
 
-```typescript
-outerProgress.start();
-try {
-  const outerTask = outerProgress.addTask("Overall", { total: 3 });
-  for (let i = 0; i < 3; i++) {
-    innerProgress.start();
-    try {
-      const innerTask = innerProgress.addTask("Batch", { total: 100 });
-      // ...
-    } finally {
-      innerProgress.stop();
-    }
-    outerProgress.updateTask(outerTask, { advance: 1 });
-  }
-} finally {
-  outerProgress.stop();
-}
-```
-
-Inner bars refresh at the outer bar's refresh rate.
-
-## Multiple Progress instances with different columns
-
-A single `Progress` instance cannot have different column layouts per task. For that, use multiple `Progress` instances inside a `Live` display:
+Different columns per group of tasks is the usual reason. A download counts files, a conversion counts seconds — one column layout cannot serve both:
 
 ```typescript
-import { Live, Group } from "@promptctl/rich-js";
+import {
+  Live, Group, Progress,
+  BarColumn, MofNCompleteColumn, TimeRemainingColumn,
+} from "@promptctl/rich-js";
 
 const downloadProgress = new Progress(new BarColumn(), new MofNCompleteColumn());
 const processProgress  = new Progress(new BarColumn(), new TimeRemainingColumn());
@@ -236,5 +216,34 @@ try {
   live.stop();
 }
 ```
+
+The same shape gives you an overall bar above a per-batch bar. Create the batch task once, outside the loop, and re-label it each iteration — a fresh `addTask()` per batch would leave a finished row on screen for every batch you have run. A task's `total` is fixed when the task is created, so a bar that outlives batches of differing size counts percent rather than items:
+
+```typescript
+const overallProgress = new Progress(new TextColumn("{task.description}"), new BarColumn());
+const batchProgress   = new Progress(new TextColumn("{task.description}"), new BarColumn());
+
+const live = new Live(new Group(overallProgress, batchProgress));
+live.start();
+try {
+  const overallTask = overallProgress.addTask("Overall", { total: batches.length });
+  const batchTask = batchProgress.addTask("Starting", { total: 100 });
+
+  for (const batch of batches) {
+    batchProgress.updateTask(batchTask, { description: batch.name, completed: 0 });
+    batch.items.forEach((item, index) => {
+      handleItem(item);
+      batchProgress.updateTask(batchTask, {
+        completed: Math.round(((index + 1) / batch.items.length) * 100),
+      });
+    });
+    overallProgress.updateTask(overallTask, { advance: 1 });
+  }
+} finally {
+  live.stop();
+}
+```
+
+Do not call `start()` on any of them. A started `Progress` builds its own `Live` with its own refresh timer, and that timer knows nothing about the other display's output. To redraw, a `Live` moves the cursor up one line at a time and erases, counting from wherever the cursor happens to sit — so the first display's next tick clears upward through the lines the second one just wrote and redraws itself in their place. Two started instances do not stack; the second one's bars are erased before you ever see them.
 
 See [Live Display](./live) for details.
