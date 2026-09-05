@@ -4,15 +4,22 @@
     {
       "version": "pr-84",
       "ref": "refs/pull/84/merge",
-      "sha": "ca56d06d80bf755ad741b25c3ebf1842e9809943",
-      "timestamp": "2026-09-05T03:41:57.670Z",
+      "sha": "3d6a2573975d8597d07a88e104cb9f042f61cd6d",
+      "timestamp": "2026-09-05T03:52:24.203Z",
       "commits": [
         {
-          "sha": "ca56d06d80bf755ad741b25c3ebf1842e9809943",
+          "sha": "3d6a2573975d8597d07a88e104cb9f042f61cd6d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T03:41:28Z",
-          "message": "Merge 8af25553f33091a1ad3d1b225ace6b664c40e3b9 into 865e18f1bed303ffc8f9d2eb08f837f24a5a90f8\n"
+          "timestamp": "2026-09-05T03:51:51Z",
+          "message": "Merge d0ee7515e9da70eb026206810a4f9f2e2873d202 into 865e18f1bed303ffc8f9d2eb08f837f24a5a90f8\n"
+        },
+        {
+          "sha": "d0ee7515e9da70eb026206810a4f9f2e2873d202",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T21:51:40-06:00",
+          "message": "docs(console): Console is the usual way out, not the only one\n\nrenderToString is exported from the main barrel and renders any Renderable to\nANSI with no Console constructed — a designed seam, per src/core/render.ts's\n\"no `Console` and no writes to stdout\". Saying anything that draws goes through\na Console contradicted docs/protocol.md, which documents that path.\n\nThis replaces an overstatement introduced earlier in this branch while fixing a\nwider one: narrowing \"every feature passes through Console\" to drawing was\nstill wrong, because drawing is exactly what renderToString does.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "8af25553f33091a1ad3d1b225ace6b664c40e3b9",
