@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-84",
+      "ref": "refs/pull/84/merge",
+      "sha": "ad7096c511da772a29ceb18905ab887a64e30f6b",
+      "timestamp": "2026-09-05T03:25:11.907Z",
+      "commits": [
+        {
+          "sha": "ad7096c511da772a29ceb18905ab887a64e30f6b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T21:24:39-06:00",
+          "message": "Merge a1d09a4589d6e35516e0e2462b567fb89f08f7e0 into 865e18f1bed303ffc8f9d2eb08f837f24a5a90f8\n"
+        },
+        {
+          "sha": "a1d09a4589d6e35516e0e2462b567fb89f08f7e0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T21:24:11-06:00",
+          "message": "docs(console): describe the eight methods Console has, not the fourteen it doesn't (rich-docs-site-13t.4)\n\nThe ticket named `logLocals`. The page carried twenty-two false claims.\n\n`Console`'s real surface is eight methods: print, log, rule, printJson,\nbeginCapture, endCapture, exportText, exportHtml. The page documented six\nmembers that do not exist — `out`, `status`, `input`, `screen`, `pager`, and a\nstatic `Console.capture()` — across five sections and two blocks that declared\n`const console` twice, which would be a SyntaxError if run.\n\nThree of those six are real capabilities documented on the wrong object. This\nport moved several of Python Rich's Console methods to standalone classes, and\nthe docs were never told, so `status`, `input` and `screen` redirect to\n`Status`, `Prompt` and `Live` rather than being deleted. `out` and `pager` have\nno implementation anywhere and are gone.\n\nThe rest could not have been caught by any type checker, because every one of\nthem type-checks clean:\n\n- `logLocals` is not configuration. `print()` sniffs its last argument for known\n  option keys, so an unrecognized options object is demoted to a value to print,\n  stringified to `[object Object]`, and eaten by the markup parser. It prints\n  nothing — not, as the ticket assumed, a literal object.\n- Printing or logging a plain object hits that same swallow and yields a blank\n  line. The page claimed both were pretty-printed.\n- `log()` adds a timestamp and nothing else; there is no location column.\n- `rule()` does not parse markup in its title.\n- `printJson` re-indents but does not colorize, while `print()` of the same\n  string does.\n- `crop`, `justify: \"left\"`, `justify: \"full\"` and `overflow: \"ignore\"` are\n  accepted and inert.\n- `NO_COLOR` strips bold along with colour, contradicting the page.\n- The colour-system table listed two specs that throw, omitted the two that\n  work, and gave the Windows palette as 8 colours where it has 16.\n\nEvery claim above was verified by executing it against a width-pinned console\nand capturing stdout, and every code block on the page now type-checks against\n`src/`.\n\nFiled rather than fixed here: rich-console-nac (four inert PrintOptions),\nrich-console-8lg (printJson's sortKeys silently no-ops via a cast to the\nreplacer parameter, and its missing highlighting), rich-docs-site-dl4\n(docs/live.md documents `screen:`/`live.run()`/`new Table(\"a\",\"b\")`, none of\nwhich exist — and console.md now links there).\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "865e18f1bed303ffc8f9d2eb08f837f24a5a90f8",
