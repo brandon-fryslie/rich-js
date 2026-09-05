@@ -4,15 +4,22 @@
     {
       "version": "pr-79",
       "ref": "refs/pull/79/merge",
-      "sha": "816c606b8734b124a8ceecbdbcf8923366d079a9",
-      "timestamp": "2026-09-04T23:19:58.512Z",
+      "sha": "b7d3800746bbf87ba2aad0cfb5be22420113f0ab",
+      "timestamp": "2026-09-05T00:02:54.348Z",
       "commits": [
         {
-          "sha": "816c606b8734b124a8ceecbdbcf8923366d079a9",
+          "sha": "b7d3800746bbf87ba2aad0cfb5be22420113f0ab",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T23:19:30Z",
-          "message": "Merge 8cf549c69dec18fb219692dedc1f9e10ba5de6e8 into af9c581fd66a8fe6d65d36597e8417563ee3871f\n"
+          "timestamp": "2026-09-05T00:02:21Z",
+          "message": "Merge 0f69115e90f7ea3c2f65aa8409cec347f390d7d5 into af9c581fd66a8fe6d65d36597e8417563ee3871f\n"
+        },
+        {
+          "sha": "0f69115e90f7ea3c2f65aa8409cec347f390d7d5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T18:02:06-06:00",
+          "message": "fix(width): a declared size is a cell count, parsed where it arrives\n\nLayout.size/minimumSize are cell counts supplied as plain numbers that\nnever meet withCellWidth. Harmless while Layout.measure was always an\ninteger; _rowBudgetFor made them load-bearing, so size:5.5 measured 6.5\nand size:-5 measured -4. Parsed in the constructor now, absence\npreserved, matching Columns' colWidth checkpoint.\n\nThe sink is a regression I introduced in 8cf549c6 by deleting\nlayoutPanel's cellCount(outerWidth) as dead. It was not: _getPanelWidth\nderives the fit width from Measurement.get on an arbitrary Measurable,\nso a negative maximum reached String.repeat and threw RangeError:\nInvalid count value: -15. Restored with the live reason. cellCount\nreturns a branded CellCol, which makes that a border checkpoint, not an\ninland guard [LAW:parse-dont-validate]; the stale comment named the\nwrong border, it did not remove the border.\n\nLeft for its own ticket: Measurement.get is the documented single\nenforcer yet lets negative/fractional measurements through, with\nnormalize() unused on that path.\n\nVerified: reverting layout.ts fails 6 new assertions, panel.ts 1.\nnpm test 2060 green, lint clean, docs:build clean, test:demos 10/10.\nbrowser-safe.test.ts times out at 5s under this machine's load,\nidentically on an unmodified tree; passes in isolation in 4.1s.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "8cf549c69dec18fb219692dedc1f9e10ba5de6e8",
