@@ -257,10 +257,28 @@ export interface MarkupTagContext {
 // site, which silently circumvents the type system.
 export type MarkupTagHandler = (ctx: MarkupTagContext) => RichText;
 
+// [LAW:one-source-of-truth] The one answer to "what is a legal plugin tag
+// name?". Both sites that need it are derived from this fragment rather than
+// each carrying its own scanner: `register` anchors it to reject a name markup
+// could never address, and the match site anchors it at the head with a
+// boundary lookahead. When those two disagreed, registering `table` silently
+// destroyed every `table.*` built-in style and a name containing a dot could
+// never fire.
+const PLUGIN_TAG_NAME_SRC = "[A-Za-z][A-Za-z0-9_-]*";
+const LEGAL_PLUGIN_TAG_NAME = new RegExp(`^${PLUGIN_TAG_NAME_SRC}$`);
+
 export class MarkupRegistry {
   private readonly _handlers = new Map<string, MarkupTagHandler>();
 
   register(name: string, handler: MarkupTagHandler): void {
+    // [LAW:no-silent-failure] Registration used to accept any string, including
+    // names markup can never address (`a.b` stops the tag scan at the dot), and
+    // install a handler that could never fire.
+    if (!LEGAL_PLUGIN_TAG_NAME.test(name)) {
+      throw new MarkupError(
+        `Cannot register markup tag "${name}": a tag name must be a letter followed by letters, digits, "_" or "-", so markup could never address this name.`,
+      );
+    }
     if (isReservedTagName(name)) {
       throw new MarkupError(
         `Cannot register markup tag "${name}": name is reserved by a built-in style.`,
@@ -320,12 +338,11 @@ function isSpace(c: string): boolean {
   return c === " " || c === "\t";
 }
 
-function pluginNameOf(inner: string): string | null {
-  if (inner.length === 0 || !isAlpha(inner[0]!)) return null;
-  let i = 1;
-  while (i < inner.length && isIdentChar(inner[i]!)) i++;
-  return inner.slice(0, i);
-}
+// A registered name addresses a plugin only when the tag text ends there or
+// continues with the whitespace that introduces attributes. Anything else —
+// `[table.header]`, `[table=x]` — is the built-in dialect's, and falls through
+// exactly as an unregistered name would.
+const PLUGIN_TAG_HEAD = new RegExp(`^(${PLUGIN_TAG_NAME_SRC})(?=$|[ \\t])`);
 
 function parsePluginAttrs(after: string): Record<string, string> {
   // Hand-written tokenizer. Walks `key=value` pairs separated by whitespace;
@@ -482,10 +499,12 @@ function pairPluginTags(
 
 function annotatePluginTag(tag: ParsedTag, registry: MarkupRegistry): PluginTag {
   // The legacy parser splits at the first `=`, so tag.styleName for
-  // `[click verb=foo]` is "click verb". Re-extract the leading identifier.
+  // `[click verb=foo]` is "click verb". Re-read the tag text for a name that
+  // actually addresses a plugin.
   const inner = tag.fullMatch.slice(1, -1).replace(/^\//, "");
-  const name = pluginNameOf(inner);
-  if (!name || !registry.has(name)) return tag;
+  const head = PLUGIN_TAG_HEAD.exec(inner);
+  const name = head?.[1];
+  if (name === undefined || !registry.has(name)) return tag;
   const after = inner.slice(name.length);
   const attrs = tag.isClosing ? {} : parsePluginAttrs(after);
   return { ...tag, pluginName: name, attrs };

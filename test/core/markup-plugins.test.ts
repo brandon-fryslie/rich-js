@@ -85,6 +85,67 @@ describe("MarkupRegistry", () => {
     expect(() => registry.register("red", () => new RichText(""))).toThrow(MarkupError);
   });
 
+  it("a registered short name leaves longer dotted built-in styles alone", () => {
+    // `table` registered must not swallow `table.header`: the tag text does not
+    // end at the registered name, so it belongs to the built-in dialect.
+    const markup = "[table.header]x[/table.header]";
+    const bare = renderToString(renderMarkup(markup, { registry: new MarkupRegistry() }), {
+      colorSystem: ColorDepth.STANDARD,
+    });
+
+    const registry = new MarkupRegistry();
+    registry.register("table", () => new RichText("HANDLED", { end: "" }));
+    const withPlugin = renderToString(renderMarkup(markup, { registry }), {
+      colorSystem: ColorDepth.STANDARD,
+    });
+
+    expect(withPlugin).toBe(bare);
+    expect(withPlugin).toContain("x");
+    expect(withPlugin).not.toContain("HANDLED");
+  });
+
+  it("a registered name still fires when the tag text ends there or continues with attributes", () => {
+    const registry = new MarkupRegistry();
+    let attrs: Record<string, string> | null = null;
+    registry.register("table", (ctx) => {
+      attrs = ctx.attrs;
+      return new RichText("HANDLED", { end: "" });
+    });
+
+    expect(renderToString(renderMarkup("[table]x[/table]", { registry }), { colorSystem: null }))
+      .toBe("HANDLED");
+    expect(attrs).toEqual({});
+
+    expect(
+      renderToString(renderMarkup("[table rows=2]x[/table]", { registry }), { colorSystem: null }),
+    ).toBe("HANDLED");
+    expect(attrs).toEqual({ rows: "2" });
+  });
+
+  it("does not fire a registered handler for a `name=value` tag", () => {
+    // `[table=x]` is the built-in dialect's parameter form, not a plugin tag —
+    // firing the handler here would silently discard the `=x`.
+    const registry = new MarkupRegistry();
+    let fired = false;
+    registry.register("table", () => {
+      fired = true;
+      return new RichText("HANDLED", { end: "" });
+    });
+    renderMarkup("[table=x]y[/table=x]", { registry });
+    expect(fired).toBe(false);
+  });
+
+  it("rejects registering a name markup could never address", () => {
+    const registry = new MarkupRegistry();
+    const handler = () => new RichText("");
+    // A dot: the tag scan stops before it, so `[a.b]` could never reach here.
+    expect(() => registry.register("a.b", handler)).toThrow(MarkupError);
+    expect(() => registry.register("a b", handler)).toThrow(MarkupError);
+    expect(() => registry.register("1abc", handler)).toThrow(MarkupError);
+    expect(() => registry.register("", handler)).toThrow(MarkupError);
+    expect(registry.has("a.b")).toBe(false);
+  });
+
   it("instance-scoped registry does not leak into the global registry", () => {
     const registry = new MarkupRegistry();
     registry.register("scoped", () => new RichText("SCOPED", { end: "" }));
