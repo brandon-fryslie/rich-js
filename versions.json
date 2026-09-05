@@ -4,15 +4,22 @@
     {
       "version": "pr-83",
       "ref": "refs/pull/83/merge",
-      "sha": "8be57515591e8c7e52fd73914ce260d06858c663",
-      "timestamp": "2026-09-05T02:52:22.874Z",
+      "sha": "f7f35238919b66704531ec776d7000a5776c5050",
+      "timestamp": "2026-09-05T03:04:21.281Z",
       "commits": [
         {
-          "sha": "8be57515591e8c7e52fd73914ce260d06858c663",
+          "sha": "f7f35238919b66704531ec776d7000a5776c5050",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T02:51:54Z",
-          "message": "Merge 8ce536c5fbe4ed20aa9baebc75f6816f979834f5 into 64eb48e8d001f4495a3e0aee739cdcf6a11754f5\n"
+          "timestamp": "2026-09-05T03:03:51Z",
+          "message": "Merge f6d826841b5472e6fe5e72936d7a01389b8f168d into 64eb48e8d001f4495a3e0aee739cdcf6a11754f5\n"
+        },
+        {
+          "sha": "f6d826841b5472e6fe5e72936d7a01389b8f168d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T21:03:41-06:00",
+          "message": "docs(pretty): make every output block byte-exact, including the whitespace nobody can see\n\nReview caught that the stray-options example omitted a real trailing space. The\nitem loop in `Console.print` pushes `new RichText(sep, { end: \"\" })` before every\nitem after the first, unconditionally and before it knows what that item renders\nto — so the separator is written even though the options object renders to\nnothing. Real stdout is `\"[1, 2, 3] \\n\"`.\n\nThat was imprecise under the old lead and false under the new one: the previous\ncommit tightened the promise to \"the output under it is that snippet's stdout,\"\nwhich retroactively turned a rounding-off into a lie. The space is now in the\nblock, and a sentence names it — an invisible character communicates nothing on\nits own, and the separator is the fact the section is about.\n\nChecking that claim properly then found the same class of error in the panel\nexample, which dropped the blank line a printed `Panel` always leaves: `Panel`\nrenders its own closing line break and `print` appends `end` regardless\n(console.ts, where the comment explains the append must go through\n`_writeSegments` or `exportText` would join consecutive prints onto one line).\nShown, and named.\n\nThe verification is now the thing that found these rather than the thing that\nmissed them. The harness pairs each ```typescript block with the fenced block\nbelow it and asserts `stdout === block + \"\\n\"` — byte for byte, whitespace\nincluded — and the extractor asserts structurally that every code block pins\n`width: 43` and has an output block, so a future block that forgets either fails\nextraction instead of passing quietly. Eyeballing a diff is what let a trailing\nspace through twice.\n\nAll nine blocks pass. Gates: `npm run lint` and `npm run docs:build` clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "8ce536c5fbe4ed20aa9baebc75f6816f979834f5",
