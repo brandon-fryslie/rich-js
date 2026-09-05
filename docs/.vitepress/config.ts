@@ -22,11 +22,14 @@ const demoSidebarItems = manifest.demos.map((d) => ({
   link: `/demos/${d.name}`,
 }))
 
-// [LAW:one-source-of-truth] The guide sidebar is the single list of guide pages.
-// The Guide nav's activeMatch is derived from it below rather than hand-copied —
-// two lists of one fact diverge on a schedule, and this pair already had: `strip`
-// was in neither and `protocol` in only one, so a substantial page was reachable
-// by search alone and another silently lost its nav highlight.
+// The sidebar is split into one region per top-level nav tab: Guide, Protocol,
+// Demos. Each tab's active-matching derives from its own region, so which tab
+// lights up follows from which region a group sits in.
+//
+// [LAW:one-source-of-truth] The Guide nav's activeMatch is derived from
+// `guideSidebar` below rather than hand-copied beside it. The two used to be
+// separate lists of one fact and had already drifted: `strip` was in neither,
+// so a substantial page was reachable only by search.
 const guideSidebar = [
   {
     text: 'Getting Started',
@@ -91,6 +94,12 @@ const guideSidebar = [
       { text: 'Prompts', link: '/prompt' },
     ],
   },
+]
+
+// Protocol is its own nav tab, not a Guide page, so it sits outside
+// `guideSidebar` and stays out of the derived pattern below. Folding it in would
+// light up both tabs at once on `/protocol`.
+const advancedSidebar = [
   {
     text: 'Advanced',
     items: [{ text: 'Renderable Protocol', link: '/protocol' }],
@@ -126,6 +135,7 @@ export default defineConfig({
 
     sidebar: [
       ...guideSidebar,
+      ...advancedSidebar,
       {
         text: 'Demos',
         items: [
