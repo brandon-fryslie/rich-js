@@ -4,15 +4,22 @@
     {
       "version": "pr-86",
       "ref": "refs/pull/86/merge",
-      "sha": "4417c75cef2f9a3d4d0ea8ffe8b69b9428a40dc0",
-      "timestamp": "2026-09-05T05:04:12.540Z",
+      "sha": "82ccd816dca3826511cbedaf5addef9bedda88de",
+      "timestamp": "2026-09-05T05:25:02.556Z",
       "commits": [
         {
-          "sha": "4417c75cef2f9a3d4d0ea8ffe8b69b9428a40dc0",
+          "sha": "82ccd816dca3826511cbedaf5addef9bedda88de",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T23:03:42-06:00",
-          "message": "Merge d6e0ac8e0b95cc78f1c6f7077d0f8267cd0554fe into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+          "timestamp": "2026-09-05T05:24:35Z",
+          "message": "Merge d6674403b48d91983e0e1ef2631d2aac63b71a4a into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+        },
+        {
+          "sha": "d6674403b48d91983e0e1ef2631d2aac63b71a4a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T23:24:19-06:00",
+          "message": "test(docs): resolve the receiver instead of recognizing one shape of it\n\nAddresses 5 of 10 review findings on PR #86. The one that mattered: extractMemberUses recorded a use only when the receiver was a bare identifier, so layout.getByName(name)! was dropped entirely — a blind spot I introduced in this same PR by rewriting docs/layout.md to that pattern. The receiver now travels as data (root class + method path) and the test layer resolves each hop through the method's declared return type; a ghost on the chained form now fails and names Layout. Also: position-aware binding (strip.md redeclares strip as Strip then FlexStrip; nearest-preceding, else nearest-following, which keeps markup.md's forward reference working), resolveAlias reused from coverage/extract.ts instead of a one-hop copy, ambiguous class names reported rather than silently overwritten, unclosed fences throw, and one ts.createProgram instead of two.\n\nStill open, planned on their threads: CLAUDE.md points at config.ts for guideSidebar; progress.md's updateTask({total}), {speed} field, and TextColumn format string; layout.md's placeholder premise and fabricated output blocks.\n"
         },
         {
           "sha": "d6e0ac8e0b95cc78f1c6f7077d0f8267cd0554fe",
