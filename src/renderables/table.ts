@@ -14,7 +14,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { withBoundedWidth } from "../core/protocol.js";
+import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
@@ -559,7 +559,8 @@ export class Table implements Renderable, Measurable {
    * column and padding counts instead is what used to return
    * `{minimum: 6, maximum: 1}` at `maxWidth: 1` — a floor above its own ceiling.
    */
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
+  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+    const options = withCellWidth(rawOptions);
     const outerWidth = this._outerWidth(options);
     const frame = this._frame();
     const demands = this._columnDemands();
