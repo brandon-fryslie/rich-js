@@ -4,15 +4,29 @@
     {
       "version": "pr-79",
       "ref": "refs/pull/79/merge",
-      "sha": "cf529c490fd7813305d8d911630276ebe52b643d",
-      "timestamp": "2026-09-05T01:27:23.885Z",
+      "sha": "df8853eb0ed1cc5b700953036867d3fee3114fc9",
+      "timestamp": "2026-09-05T01:35:00.450Z",
       "commits": [
         {
-          "sha": "cf529c490fd7813305d8d911630276ebe52b643d",
+          "sha": "df8853eb0ed1cc5b700953036867d3fee3114fc9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T01:26:45Z",
-          "message": "Merge 06fe45250ea8ec5e6ff8608baab41a6cf37477dd into af9c581fd66a8fe6d65d36597e8417563ee3871f\n"
+          "timestamp": "2026-09-05T01:34:27Z",
+          "message": "Merge 9419c4edd065955bd59fde167dbb2d1f179bf460 into af9c581fd66a8fe6d65d36597e8417563ee3871f\n"
+        },
+        {
+          "sha": "9419c4edd065955bd59fde167dbb2d1f179bf460",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T19:34:11-06:00",
+          "message": "test(width): pin the five fixes round 5 made at the border\n\nEach fix in 06fe4525 moved a parse to the boundary that owns it, and each\nwas reachable from a public API. These reach them the same way a caller\nwould, so the fix cannot be reverted quietly:\n\n- `cropLines` shortens and does not count — asserted from both sides, a\n  stream gaining no terminator it did not emit and an empty line keeping\n  the one it did, plus the zero-width line that is present rather than\n  absent. Both wrong shapes of it failed exactly one of those.\n- A `Tree` label with nothing in it still gets a row, so the next row's\n  guides do not land on it.\n- `normalize` reads NaN as no cells and leaves an unbounded maximum\n  unbounded — the asymmetry is the point, since flooring both is what\n  would trade `withBoundedWidth`'s RangeError for a silent zero.\n- A declared `Padding` side is a quantity, so the unbounded width an\n  offer may carry means nothing there.\n- The three declared `Layout` numbers parse on assignment, which is the\n  only way the guarantee survives a caller reaching a pane by name.\n\nReverting each source file in turn fails these and nothing else: measure\n2, segment 7, tree 1, padding 1, layout 2.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "21f829704c72fc3981ffaec9d6f71bf8764d6ca3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T19:29:24-06:00",
+          "message": "test(width): the new ratio config has no natural width either\n\n\"Table at a declared unbounded width with a ratio column\" was added in\n06fe4525 to give the crash-path comment above it a config that can\nactually reach the crash. Like \"Table with an unbounded column demand\"\nit asks for an unbounded width itself, so it has no natural width to\nfall back on and the unbounded-offer assertion cannot hold for it.\n\nBeing in the set only exempts that one assertion; the finite widths\nstill sweep it, which is where the clamp this epic added matters.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "06fe45250ea8ec5e6ff8608baab41a6cf37477dd",
