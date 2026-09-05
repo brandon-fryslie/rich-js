@@ -11,7 +11,7 @@
  *
  * [LAW:one-source-of-truth] This is the site's only list of guide pages.
  * `config.ts` composes these regions into the sidebar and derives the Guide
- * nav's `activeMatch` from `guideSidebar`; `test/docs/page-reachability.ts`
+ * nav's `activeMatch` from `guideSidebar`; `test/docs/page-reachability.test.ts`
  * asserts they name exactly the pages on disk. Nothing re-states the list.
  *
  * The Demos region is deliberately not here. It is derived from the build

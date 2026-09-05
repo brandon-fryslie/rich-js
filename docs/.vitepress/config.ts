@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitepress'
-import { guideSidebar, advancedSidebar } from './sidebar.js'
+import { guideSidebar, pageSidebarRegions } from './sidebar.js'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -61,9 +61,12 @@ export default defineConfig({
       { text: 'Protocol', link: '/protocol' },
     ],
 
+    // [LAW:one-source-of-truth] The page-backed regions arrive composed, from
+    // the same export the reachability gate reads. Re-spreading them here would
+    // be a second composition, and a third region added to one of them would
+    // silently leave the site and the gate checking different sidebars.
     sidebar: [
-      ...guideSidebar,
-      ...advancedSidebar,
+      ...pageSidebarRegions,
       {
         text: 'Demos',
         items: [
