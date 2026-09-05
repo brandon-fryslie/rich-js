@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-89",
-      "ref": "refs/pull/89/merge",
-      "sha": "108dfd3f61f1434b7f10c422861a982c0e5b3a9a",
-      "timestamp": "2026-09-05T11:33:31.415Z",
-      "commits": [
-        {
-          "sha": "108dfd3f61f1434b7f10c422861a982c0e5b3a9a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T05:32:55-06:00",
-          "message": "Merge cf52eba5e5131f94eeaffcdea9c516179695e20f into ec25a354813cbd40e61ef075e3b521fae4501c53\n"
-        },
-        {
-          "sha": "cf52eba5e5131f94eeaffcdea9c516179695e20f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T05:32:32-06:00",
-          "message": "fix(markup): settle what a legal plugin tag name is, once (rich-markup-pwr)\n\nA registered plugin name matched as a bare PREFIX of the tag text, and the\nfailure was silent in both directions.\n\nRegistering `table` destroyed every `table.*` built-in: `[table.header]x[/table.header]`\nfired the plugin and dropped the `.header` as attributes. The mirror case:\n`register(\"a.b\")` succeeded but `[a.b]` could never reach the handler, because\nthe tag scan stops at the dot.\n\nBoth ends wanted the same answer to \"what is a legal plugin tag name?\" and\nneither asked it. There is now one source fragment, anchored two ways:\n\n- MATCH: `^(name)(?=$|[ \\t])` — a registered name addresses a plugin only when\n  the tag text ends there or continues with the whitespace that introduces\n  attributes. `[table.header]` and `[table=x]` fall through to the built-in\n  dialect exactly as an unregistered name would.\n- REGISTER: `^name$` — a name markup could never address is rejected loudly\n  instead of installing an unreachable handler.\n\nThe two anchorings are mirrors: every name `register` accepts is one the match\nsite can reach, and every name it rejects is unreachable.\n\nThe six-line hand scanner it replaces is gone; `register` keeps its existing\nreserved-name guard, which asked a different question (is this itself a valid\nstyle?) and could not have caught either case.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ec25a354813cbd40e61ef075e3b521fae4501c53",
-      "timestamp": "2026-09-05T11:28:13.005Z",
+      "sha": "38f52c1786b8e18606a4e71191cec4590fc30657",
+      "timestamp": "2026-09-05T11:37:43.743Z",
       "commits": [
         {
-          "sha": "ec25a354813cbd40e61ef075e3b521fae4501c53",
+          "sha": "38f52c1786b8e18606a4e71191cec4590fc30657",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T05:27:37-06:00",
-          "message": "fix(cells): make chopCells advance on a glyph it cannot split (rich-cells-pfs) (#88)\n\n* fix(cells): make chopCells advance on a glyph it cannot split\n\nchopCells looped forever when a single glyph was wider than the whole\nbudget, then died with `RangeError: Invalid array length`. It drove the\nloop with splitText, which pads to land exactly on the requested column\nand hands the unsplittable glyph back untouched — so at a 1-cell budget\n`chopCells(\"日本語\", 1)` pushed a padded blank line and a remainder that\nnever shrank, forever. A terminal reporting a 1-cell width is enough to\nreach it, and cc-candybar already floors its fold budget at 2 cells to\nroute around it.\n\nDrive the loop with cellFitFrom over code-unit offsets instead, taking\n`max(fit, nextCodePoint)`: nextCodePoint is always strictly past the\nstart, so the loop advances by construction rather than by a guard, and\nthe case where nothing fits force-takes the glyph and lets it overflow\nby its own width — the only answer that both terminates and keeps the\ntext intact. cellFit already documents that its caller must choose\nbetween force-taking and skipping; chopCells now chooses.\n\nSide effect worth naming: chopCells no longer pads. It is a chopping\nfunction, `join(\"\") === input` now holds for every input, and a line\nthat stops short of a wide glyph is narrower than maxWidth rather than\npadded out to it. splitText keeps its padding — that is its job.\n\n* refactor(cells): give the force-take rule one home in cellStepFrom\n\nThe \"fit what you can, and take one glyph anyway when nothing fits\" rule\nlived in two places with two spellings: charGreedyWrap in the textarea,\nand the loop chopCells just grew. That is not a hypothetical drift risk\n— the copies had already drifted, and the drift is the bug the previous\ncommit fixed: the textarea force-took, chopCells did neither and hung.\n\nExtract cellStepFrom beside cellFitFrom and route both callers through\nit. Not exported from the barrel: it is an internal seam between core/\nand widgets/, and a new public export is carrying cost plus a\ncoverage-gate obligation with no consumer asking for it.\n\ncharGreedyWrap sheds a dead guard on the way — `if (end === pos) break;`\nafter nextCodePoint was unreachable, since the loop condition already\nguarantees pos < line.length. Its `cap <= 0` guard stays put: a\nzero-width row budget is the textarea's concern, not the step\nprimitive's.\n\nAlso scope chopCells' overflow bound to what it can actually promise.\nThe docstring claimed the only line exceeding maxWidth is one overwide\nglyph, which the `maxWidth <= 0` return breaks by handing back the whole\nstring. Both cases are one rule — a line overflows exactly where the\nbudget cannot be met — and saying it that way is shorter than the\nversion that was wrong.\n\n* docs(cells): scope cellStepFrom's advance guarantee to inside the text\n\nThe docstring claimed cellStepFrom never returns startCU. At\ntext.length it does, and correctly so — nothing is left to take, and\nthat total behavior is what lets both callers drive their loop with no\nspecial case at the end.\n\nThe first draft said \"for any startCU inside text,\" which was true; the\npass that shortened it to \"never returns startCU\" is what dropped the\nprecondition. Restoring the qualifier and naming the loop shape the\ntermination argument actually covers."
+          "timestamp": "2026-09-05T05:37:09-06:00",
+          "message": "fix(markup): settle what a legal plugin tag name is, once (rich-markup-pwr) (#89)\n\nA registered plugin name matched as a bare PREFIX of the tag text, and the\nfailure was silent in both directions.\n\nRegistering `table` destroyed every `table.*` built-in: `[table.header]x[/table.header]`\nfired the plugin and dropped the `.header` as attributes. The mirror case:\n`register(\"a.b\")` succeeded but `[a.b]` could never reach the handler, because\nthe tag scan stops at the dot.\n\nBoth ends wanted the same answer to \"what is a legal plugin tag name?\" and\nneither asked it. There is now one source fragment, anchored two ways:\n\n- MATCH: `^(name)(?=$|[ \\t])` — a registered name addresses a plugin only when\n  the tag text ends there or continues with the whitespace that introduces\n  attributes. `[table.header]` and `[table=x]` fall through to the built-in\n  dialect exactly as an unregistered name would.\n- REGISTER: `^name$` — a name markup could never address is rejected loudly\n  instead of installing an unreachable handler.\n\nThe two anchorings are mirrors: every name `register` accepts is one the match\nsite can reach, and every name it rejects is unreachable.\n\nThe six-line hand scanner it replaces is gone; `register` keeps its existing\nreserved-name guard, which asked a different question (is this itself a valid\nstyle?) and could not have caught either case."
         }
       ]
     }
