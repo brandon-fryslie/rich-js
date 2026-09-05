@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-83",
+      "ref": "refs/pull/83/merge",
+      "sha": "0f6954d35b92a9711346ed8d5000ca9e1ed5470a",
+      "timestamp": "2026-09-05T02:39:42.802Z",
+      "commits": [
+        {
+          "sha": "0f6954d35b92a9711346ed8d5000ca9e1ed5470a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T20:39:11-06:00",
+          "message": "Merge a96cf8a5c06c819c231b9962002b481c69ef2b40 into 64eb48e8d001f4495a3e0aee739cdcf6a11754f5\n"
+        },
+        {
+          "sha": "a96cf8a5c06c819c231b9962002b481c69ef2b40",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T20:36:25-06:00",
+          "message": "docs(pretty): describe the Pretty renderable that exists, not the repr protocol that doesn't (rich-docs-site-13t.3)\n\nThe ticket named the `richReprAuto` decorator. Grepping `richRepr` across `src/`\nreturns nothing — and neither do `rich.angular` or any other repr hook, so the\nwhole \"Custom object representation\" section was fiction, not just its last\nsubsection. It is deleted. Per the epic's direction, no repr protocol was\nimplemented to make the page true; the code is the truth and the page moves.\n\nDeleting it left a page whose remaining claims were also false, and the premise\nwas the worst of them. The page opened with \"`print()` and `log()` automatically\nformat containers.\" They do not. `Console.print` renders any non-renderable\nthrough `String()` (src/core/console.ts, the `else` branch of the item loop), so\na plain object becomes the literal text `[object Object]` — which `renderMarkup`\nthen parses as a style tag and consumes. Printing an object prints a blank line.\n`Pretty` is never reached unless you construct it. Every section is rewritten\naround that.\n\nFour sections then documented options that do not exist where they were shown.\n`console.print(data, { indentGuides: false })` does not configure anything:\n`PrintOptions` recognises only `style|justify|markup|highlight|overflow|end|\nsoftWrap|crop|sep`, so the options object falls through as a second *value* to\nprint and disappears the same way. The options belong to `Pretty`'s constructor,\nand the page now says so with the failing form shown beside the working one.\n\nBoth output blocks were fabricated, in four ways each: `│` indent-guide glyphs\n(the guide is a `dim green` *space* — `Style.parse(\"repr.indent\")`, applied by\n`_addIndentGuides` to one space per level), two-space indents (the default is 4),\nPython `'single'`-quoted keys and strings (keys print unquoted, strings via\n`JSON.stringify`), and Python `True`. The `maxString` block claimed\n`'…' +240 chars`; the real suffix is `+240` inside the quotes, as part of the\nstring. Every output block on the page is now captured stdout at width 43, and\nthe width is stated in the lead because it decides compact-vs-expanded.\n\nNew, and true: a class instance formats as a plain object from its own enumerable\nproperties, with no class name — which is the honest replacement for the section\nthat promised a repr hook. `Map` and `Set` have no one-line form. The compact-fit\ntest measures a container without the key it sits under, so a nested container\ncan overrun by the length of its key (filed separately).\n\nVerified by extracting all nine ```typescript blocks verbatim, writing each to\nits own file, rewriting the `@promptctl/rich-js` specifier to `src/index.js`, and\nrunning `tsc -p tsconfig.test.json --noEmit` plus vitest over all nine. Per-file\nisolation is what proves each block carries its own imports and `Console`. Gates:\n`npm run lint` and `npm run docs:build` clean, `npm run test` 2113 passing.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "64eb48e8d001f4495a3e0aee739cdcf6a11754f5",
