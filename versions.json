@@ -4,15 +4,50 @@
     {
       "version": "pr-79",
       "ref": "refs/pull/79/merge",
-      "sha": "b7d3800746bbf87ba2aad0cfb5be22420113f0ab",
-      "timestamp": "2026-09-05T00:02:54.348Z",
+      "sha": "b01534a2828cd5c675f06bbec1ba93d64c76239e",
+      "timestamp": "2026-09-05T00:52:17.264Z",
       "commits": [
         {
-          "sha": "b7d3800746bbf87ba2aad0cfb5be22420113f0ab",
+          "sha": "b01534a2828cd5c675f06bbec1ba93d64c76239e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T00:02:21Z",
-          "message": "Merge 0f69115e90f7ea3c2f65aa8409cec347f390d7d5 into af9c581fd66a8fe6d65d36597e8417563ee3871f\n"
+          "timestamp": "2026-09-05T00:51:52Z",
+          "message": "Merge fa6e5a164c58d3b2a80844a8375416f108980cfc into af9c581fd66a8fe6d65d36597e8417563ee3871f\n"
+        },
+        {
+          "sha": "fa6e5a164c58d3b2a80844a8375416f108980cfc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T18:51:11-06:00",
+          "message": "docs(protocol): a max over a collection accumulates, never spreads\n\nThe canonical `measure()` example computed its natural width with\n`Math.max(0, ...this.lines.map(cellLen))`, passing one argument per line. A\nwidget backed by a large enough array — a log viewer, a file preview, exactly\nwhat the example models — overruns the engine's argument limit and throws\n`RangeError: Maximum call stack size exceeded` out of `measure()`, on ordinary\noversized input rather than any malformed width.\n\n`Tree` and `Columns` both loop for this reason, so the reference implementation\nwas teaching the one pattern the library itself declined to use — and the doc is\nthe half a reader copies.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "8f431fabd2272ad2bc6fdf54df10701f20093a5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T18:51:05-06:00",
+          "message": "fix(width): a container crops what its content will not\n\nThe sweep gained a `Layout` wrapping content that ignores its width, and a\n`Tree` whose label does — the two places this epic grew the unmeasurable-content\nfallback without pinning it. Both configurations failed the sweep's oldest\nassertion immediately, at every width, not only the unbounded one they were\nadded for: forty cells emitted into a one-cell offer.\n\nNeither cropped. A `Layout` leaf forwarded the offer to its content and yielded\nwhatever came back; `Tree` fitted its guides with `cellFit` and then trusted the\nlabel. `Panel`, `Padding` and `Table` split and adjust, which is why the same\ncontent stays inside its offer there and why the defect never surfaced — no\nconfiguration had ever handed the other two a renderable that lies.\n\n`Segment.cropLines` is that step, next to `adjustLineLength`, which already\nholds the rule for a single line. A container holding arbitrary content has a\nstream of lines and no way to make one call do it, which is how both of these\ncame to trust content instead. For a layout it is not cosmetic: a pane wider\nthan its region overwrites the pane beside it.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "3f30f84b1245b87b0b7069dfe6a62a4bd6c5dcfe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T18:50:55-06:00",
+          "message": "fix(width): a ratio is a share weight, parsed where it arrives\n\n`size` and `minimumSize` were parsed at the constructor last round; `ratio` is\nthe third `LayoutOptions` number doing width arithmetic and was still taken raw.\nIt became load-bearing in what `measure` reports when a row learned to answer\nwith the budget its panes need, so an unparsed one stopped being a layout\nmistake and escaped as a measurement.\n\nTwo ways out. `ratio: NaN` made `totalRatio` NaN and the whole measurement NaN.\nA negative ratio summed with its siblings to a `totalRatio` of 0, so a row\nholding twelve cells of text reported a natural width of 0 — while\n`_distributeSpace`, dividing by the same ratios at render time, handed both\npanes real space. Measure and render disagreeing is the pair this epic exists to\nmake inverses of each other.\n\nNot `cellCount`: a ratio of 2.5 divides space perfectly well and flooring it\nwould be wrong. A weight that cannot name a share — negative, NaN, infinite —\nreads as 0 instead, which already means \"this pane does not grow\" and is\nfiltered out before any division. That is what makes the claim above\n`_distributeSpace` that every ratio reaching it is positive true by\nconstruction; it was simply false before, and named as such in review.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "f57d21fb5d9a08d216abdea5d52fe10f9be945c0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T18:50:15-06:00",
+          "message": "fix(width): the one measure() that walked around the checkpoint\n\n`Table.measure` took `rawOptions.maxWidth` straight into `_outerWidth` and\n`layoutTable`, the only `measure` in the library not beginning at\n`withCellWidth` — while `Table.render`, ten lines up, parses through\n`withBoundedWidth` before calling the same `_outerWidth`. One helper, two input\ncontracts, decided by which caller you arrived from.\n\nIt reported sane numbers regardless, because `layoutTable` floors the width\nagain internally. That is the reason to fix it rather than to leave it: the\nprotection belongs to a different function's contract, sits one call deep, and\ndocs/protocol.md tells readers that every built-in `measure` begins at the\ncheckpoint. A pattern that holds five times out of six cannot be relied on, and\nthe sixth is the one nobody checks.\n\nBehaviour is unchanged today, which is why the tests assert the contract rather\nthan which call enforces it — they survive either point moving and fail if both\ngo.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        },
+        {
+          "sha": "2a8d7289af88971f7b7aa4840be1d2c9ce28a731",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T18:50:07-06:00",
+          "message": "fix(width): a measurement that crossed the enforcer is stamped\n\n`Measurement.get` carried a comment naming it the single entry point for\nmeasuring a `Measurable`, capped the maximum against the offer, and enforced\nnothing else — while `Measurement.normalize`, which floors a negative range and\nun-inverts a minimum above its own maximum, sat two methods above it with no\ncaller anywhere in src/.\n\nSo each consumer met an arbitrary `Measurable`'s bad numbers itself. `Panel`\nreturned a public `{-16, -16}` for content reporting `{-20, -20}`; a `Layout`\nleaf returned `{-20, -20}`. `Columns`, `Tree` and the `Layout` row path escaped\nonly because each happens to seed its `Math.max` from a non-negative number —\none missing guarantee wearing four coincidences.\n\nStamping it at the checkpoint makes it a guarantee, and is why no consumer\ncarries a floor of its own. Fractions are untouched: `normalize` clamps and\nun-inverts, and what a fractional maximum should mean stays an open question.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "0f69115e90f7ea3c2f65aa8409cec347f390d7d5",
