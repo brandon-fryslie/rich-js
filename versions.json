@@ -4,15 +4,22 @@
     {
       "version": "pr-83",
       "ref": "refs/pull/83/merge",
-      "sha": "0f6954d35b92a9711346ed8d5000ca9e1ed5470a",
-      "timestamp": "2026-09-05T02:39:42.802Z",
+      "sha": "8be57515591e8c7e52fd73914ce260d06858c663",
+      "timestamp": "2026-09-05T02:52:22.874Z",
       "commits": [
         {
-          "sha": "0f6954d35b92a9711346ed8d5000ca9e1ed5470a",
+          "sha": "8be57515591e8c7e52fd73914ce260d06858c663",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T20:39:11-06:00",
-          "message": "Merge a96cf8a5c06c819c231b9962002b481c69ef2b40 into 64eb48e8d001f4495a3e0aee739cdcf6a11754f5\n"
+          "timestamp": "2026-09-05T02:51:54Z",
+          "message": "Merge 8ce536c5fbe4ed20aa9baebc75f6816f979834f5 into 64eb48e8d001f4495a3e0aee739cdcf6a11754f5\n"
+        },
+        {
+          "sha": "8ce536c5fbe4ed20aa9baebc75f6816f979834f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T20:51:29-06:00",
+          "message": "docs(pretty): pin the width the examples were captured at, and stop overclaiming maxLength\n\nReview caught that the page named a console width of 43 while every snippet\nconstructed a bare `new Console()`. The default is 80 (console.ts:196, `w || 80`),\nso a reader copying the first example got the compact one-line form where the page\nshowed the expanded one. Every snippet now passes `{ width: 43 }`.\n\nThe cause is worth naming because it is the same one review caught twice on #82:\nI verified in a configuration that did not share the assumption under test. My\nharness rewrote `new Console()` into `new Console({ width: 43, record: true })` so\nit could capture output — and that rewrite is exactly what made the outputs true\nin the harness and false on the page, the way `as never` did for the generator\nclaim last time. The blocks are now re-extracted with the `@promptctl/rich-js`\nspecifier as the only edit, and stdout is captured by swapping\n`process.stdout.write` rather than by constructing a different Console.\n\n`maxLength` was also described as if it annotated every container. It does not:\nthe array and plain-object branches compute `remaining` and append `... +N`, and\nthe `Map` and `Set` branches slice and stop. `new Pretty(map, { maxLength: 2 })`\ndrops entries with no marker at all, which is the opposite of what the sentence\npromised. The claim is now split by what the code does, and the silent case is\nstated as its own fact — a reader capping a large Map has no other way to learn\nit. Filed onto rich-pretty-efq, which already carries the sibling `maxString`\nannotation defect, so both land in one fix.\n\nVerified: all nine blocks extracted verbatim, each to its own file,\n`tsc -p tsconfig.test.json --noEmit` plus vitest, every output block diffed\nagainst real stdout — including `\"\\nafter\\n\"` for the blank-line example.\nGates: `npm run lint` and `npm run docs:build` clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "a96cf8a5c06c819c231b9962002b481c69ef2b40",
