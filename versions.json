@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-81",
+      "ref": "refs/pull/81/merge",
+      "sha": "c98cfc1059fed20d48062a2ec52a541c7d86e557",
+      "timestamp": "2026-09-05T01:45:38.746Z",
+      "commits": [
+        {
+          "sha": "c98cfc1059fed20d48062a2ec52a541c7d86e557",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T19:45:10-06:00",
+          "message": "Merge e4812decbb0eb1ab28d3636f7a56d401737630d8 into 153b9b07ce4b8bf9d15a9f26ee81e9a6f36234c1\n"
+        },
+        {
+          "sha": "e4812decbb0eb1ab28d3636f7a56d401737630d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T19:44:47-06:00",
+          "message": "docs: delete the logging page, which documented a class that does not exist (rich-docs-site-13t.1)\n\n`docs/logging.md` taught `RichHandler` across five runnable snippets and shipped\nin the sidebar under \"Integrations\". `RichHandler` appears nowhere in `src/`,\n`test/`, or `examples/` — a reader copying any snippet on the page got a\nmodule-resolution error, with nothing on the page warning them.\n\nDeleted rather than implemented, deliberately. A doc page and its code are not\npeers to be reconciled: the code is the source of truth and the page is a claim\nabout it. Building `RichHandler` to make the page true would let an unvalidated\ndocument set the roadmap and commit the project to a logging subsystem on the\nauthority of prose. If a logging integration is wanted, it gets filed on its own\nmerits.\n\nRemoves the page, its sidebar entry, and the `logging` term from the Guide nav\n`activeMatch` regex — the hand-maintained list that would otherwise keep matching\na route that no longer resolves. No other file in the repo referenced the page or\nthe class.\n\ndocs:build clean (the dead-link gate), lint clean.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "153b9b07ce4b8bf9d15a9f26ee81e9a6f36234c1",
