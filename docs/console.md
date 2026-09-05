@@ -44,8 +44,16 @@ The `colorSystem` option takes one of five spec strings, and `"auto"` is the def
 | `"ansi"` | 16 | 8 colors + bright variants |
 | `"none"` | 0 | No color output |
 
-Any other string throws — the message names the five it accepts. `null` is also
-accepted and means the same as `"none"`.
+`null` is accepted too and means the same as `"none"`. An unrecognized string
+throws, and the message names those five.
+
+A handful of strings outside the table are nonetheless accepted, because
+detection and configuration share one lookup: the `FORCE_COLOR` values
+(`"0"`–`"3"`, `"true"`, `"false"`) and the terminal identifiers detection knows
+(`"vscode"`, `"iTerm.app"`, `"xterm-kitty"`, `"alacritty"`, and others) all
+resolve to a depth rather than throwing. `{ colorSystem: "vscode" }` quietly
+means truecolor. Treat those as an artifact of the shared table rather than
+supported spellings — use the five above.
 
 One depth has no spec string. The legacy 16-color Windows console palette is a
 detection result rather than something you ask for, so you reach it through the
@@ -168,19 +176,35 @@ console.log("user", 42, "signed in");
 // [9:14:41 PM]  user 42 signed in
 ```
 
-That is the whole method. It adds no location column, and it has no options
-parameter — a trailing object is another value to print, not configuration. So
-passing an object to `log()` runs into exactly the `[object Object]` case above
-and logs a bare timestamp:
+That is the whole method: no location column, and no options parameter of its
+own. What happens to a trailing object depends on its keys, because `log()`
+forwards to `print()` and `print()` decides by sniffing for the nine
+`PrintOptions` names — `style`, `justify`, `markup`, `highlight`, `overflow`,
+`end`, `softWrap`, `crop`, `sep`.
+
+An object carrying none of them is a value to print, so it hits the
+`[object Object]` case above and leaves a bare timestamp:
 
 ```typescript
 console.log({ userId: 42, action: "login" });
 // [9:14:41 PM]
 ```
 
-The line ends in two spaces you cannot see above: one closes the timestamp
-prefix, and `print` writes its argument separator before the object whatever
-that object turns out to render to.
+The line ends in two spaces you cannot see: one closes the timestamp prefix, and
+`print` writes its argument separator before the object whatever that object
+turns out to render to.
+
+An object carrying any of them is taken as options instead — and since one of
+the nine is `end`, a field name as ordinary as that will mangle the line rather
+than print:
+
+```typescript
+console.log("range", { end: "2024" });
+// [9:14:41 PM]  range2024   ← no newline; "2024" became the line terminator
+```
+
+Neither outcome is what a caller passing structured data intends. Format the
+value yourself and log the result.
 
 ## JSON output
 
