@@ -41,7 +41,7 @@ console.print(strip);
 
 The arrow between two cells inherits `fg = left.edgeStyle("right").bgcolor` and `bg = right.edgeStyle("left").bgcolor`. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's right-edge bg with no bg of its own, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
 
-The `end: ""` option suppresses RichText's default trailing newline (so cells concatenate on one line); `noWrap: true` keeps a cell from being broken across lines. Together they make a `RichText` behave as a single inline cell.
+`noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — for non-empty text `RichText.render` emits none either way, so it records the intent rather than changing the output.
 
 ## Built-in joiners
 
@@ -53,9 +53,13 @@ Classic powerline arrows.
 new PowerlineJoiner({ glyph: "\ue0b0" });
 ```
 
-- `join(null, R)`: empty. A right-pointing arrow with no source segment to its left has nothing to bleed out *from*, so the strip just begins cleanly. Matches vim-airline / tmux-powerline / claude-powerline.
-- `join(L, null)`: glyph with `fg = L.bg`, no bg — last segment bleeds out into the terminal.
+The arrow is painted *in the left neighbour's background colour*, so it is drawn only when there is one. That single rule covers all three positions:
+
 - `join(L, R)`: glyph with `fg = L.bg`, `bg = R.bg`.
+- `join(L, null)`: glyph with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
+- `join(null, R)`: empty. There is no left neighbour, so there is no colour to bleed and no arrow to draw. The strip begins cleanly, matching vim-airline / tmux-powerline / claude-powerline.
+
+An item *without* a background is the same case as a missing one. If `L` has no `bgcolor`, the join to its right is empty too — so a colourless cell has no arrow after it, wherever it sits in the strip. `… on default` counts as no background: the terminal default is transparent, so there is still nothing to paint.
 
 ### `CapsuleJoiner`
 
@@ -92,7 +96,7 @@ new GradientJoiner({ steps: 4 });
 - Middle: `steps` cells, each painted with the half-block glyph `▌` (U+258C) so one cell carries **two** colour samples — `fg` for the left half, `bg` for the right half. `steps` cells therefore produce `2 × steps` colour samples between the two anchors, doubling the perceived smoothness compared to one-colour-per-cell at the same width.
 - All samples use midpoint sampling — no sample ever equals either anchor.
 - Endpoints (or items lacking a `bgcolor`) render empty — a gradient needs two anchors.
-- Truecolor terminals only: on 256-colour terminals the half-block dithering quantizes adjacent samples to the same palette index and visibly stripes. The existing colour-system downgrade still works, it just looks rougher.
+- Best on truecolor. On 256-colour terminals the colour-system downgrade still works, but adjacent samples quantize to the same palette index — neighbouring half-cells collapse into one colour and the gradient visibly stripes.
 
 ## Custom joiners
 
@@ -138,7 +142,7 @@ The cell's left and right edges both report `white on blue` (the base style), so
 
 ### When the two edges differ
 
-If the leftmost and rightmost columns of a cell carry different backgrounds (e.g. a gradient cell, or a cell whose first or last character has a span that overrides `bgcolor`), the joiner on each side picks up that edge's actual bg. This is by design — the join meets the column it visually abuts. The constraint that used to require uniform bg across the whole cell is gone; the protocol now asks each item to be honest about what its edges look like, and the joiner adapts.
+If the leftmost and rightmost columns of a cell carry different backgrounds (e.g. a gradient cell, or a cell whose first or last character has a span that overrides `bgcolor`), the joiner on each side picks up that edge's actual bg. This is by design — the join meets the column it visually abuts. Nothing requires a cell's background to be uniform: each item reports what its edges actually look like, and the joiner adapts.
 
 ## Why this is a primitive
 
@@ -168,8 +172,8 @@ console.print(strip);
 ```
 
 Options:
-- `joiner` — same `Joiner<T>` protocol; endpoint joins fire at every line boundary.
-- `gap` — cells inserted on each side of an inter-item joiner (default 0).
+- `joiner` — same `Joiner<T>` protocol; endpoint joins fire at every line boundary. Optional: with no joiner, nothing is drawn between items but the gap.
+- `gap` — cells inserted on *each* side of the slot between two items, so neighbours sit `2 × gap` cells apart plus whatever the joiner draws (default 0). The gap applies whether or not there is a joiner — `{ gap: 1 }` alone puts two spaces between items.
 - `align` — `"left"` (default), `"center"`, `"right"`, or `"justify"` (distributes spare width across inter-item slots on non-final lines).
 
 If an item is wider than `maxWidth`, it gets its own line and renders at full width — graceful overflow rather than a hard crash. Truncation is the caller's job.

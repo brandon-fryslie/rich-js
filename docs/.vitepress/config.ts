@@ -22,6 +22,94 @@ const demoSidebarItems = manifest.demos.map((d) => ({
   link: `/demos/${d.name}`,
 }))
 
+// The sidebar is split into one region per top-level nav tab: Guide, Protocol,
+// Demos. Each tab's active-matching derives from its own region, so which tab
+// lights up follows from which region a group sits in.
+//
+// [LAW:one-source-of-truth] The Guide nav's activeMatch is derived from
+// `guideSidebar` below rather than hand-copied beside it. The two used to be
+// separate lists of one fact and had already drifted: `strip` was in neither,
+// so a substantial page was reachable only by search.
+const guideSidebar = [
+  {
+    text: 'Getting Started',
+    items: [
+      { text: 'Introduction', link: '/introduction' },
+      { text: 'Console', link: '/console' },
+      { text: 'Styles', link: '/style' },
+      { text: 'Markup', link: '/markup' },
+    ],
+  },
+  {
+    text: 'Text & Data',
+    items: [
+      { text: 'Rich Text', link: '/text' },
+      { text: 'Highlighting', link: '/highlighting' },
+      { text: 'Pretty Printing', link: '/pretty' },
+    ],
+  },
+  {
+    text: 'Renderables',
+    items: [
+      { text: 'Panel', link: '/panel' },
+      { text: 'Tables', link: '/tables' },
+      { text: 'Tree', link: '/tree' },
+      { text: 'Columns', link: '/columns' },
+      { text: 'Strip + Joiner', link: '/strip' },
+      { text: 'Group', link: '/group' },
+      { text: 'Padding', link: '/padding' },
+    ],
+  },
+  {
+    text: 'Live & Animation',
+    items: [
+      { text: 'Progress Bars', link: '/progress' },
+      { text: 'Live Display', link: '/live' },
+      { text: 'Layout', link: '/layout' },
+    ],
+  },
+  {
+    text: 'Interactive',
+    items: [{ text: 'Widgets', link: '/widgets' }],
+  },
+  {
+    text: 'Color & Theming',
+    items: [
+      { text: 'Theme Transposition', link: '/transpose' },
+      { text: 'Contrast & Accessibility', link: '/contrast' },
+    ],
+  },
+  {
+    text: 'Source & Files',
+    items: [
+      { text: 'Syntax Highlighting', link: '/syntax' },
+      { text: 'Markdown', link: '/markdown' },
+      { text: 'Tracebacks', link: '/traceback' },
+    ],
+  },
+  {
+    text: 'Integrations',
+    items: [
+      { text: 'Template Bindings', link: '/template-bindings' },
+      { text: 'Prompts', link: '/prompt' },
+    ],
+  },
+]
+
+// Protocol is its own nav tab, not a Guide page, so it sits outside
+// `guideSidebar` and stays out of the derived pattern below. Folding it in would
+// light up both tabs at once on `/protocol`.
+const advancedSidebar = [
+  {
+    text: 'Advanced',
+    items: [{ text: 'Renderable Protocol', link: '/protocol' }],
+  },
+]
+
+const guideActiveMatch = `^/(${guideSidebar
+  .flatMap((group) => group.items.map((item) => item.link.slice(1)))
+  .join('|')})`
+
 export default defineConfig({
   title: 'rich-js',
   description: 'Rich text and beautiful formatting in the terminal — a TypeScript port of Python\'s Rich',
@@ -40,82 +128,14 @@ export default defineConfig({
     siteTitle: 'rich-js',
 
     nav: [
-      { text: 'Guide', link: '/introduction', activeMatch: '^/(introduction|console|style|markup|text|highlighting|pretty|panel|tables|tree|columns|group|padding|progress|live|layout|widgets|syntax|markdown|traceback|prompt|transpose|contrast|template-bindings)' },
+      { text: 'Guide', link: '/introduction', activeMatch: guideActiveMatch },
       { text: 'Demos', link: '/demos/', activeMatch: '^/demos' },
       { text: 'Protocol', link: '/protocol' },
     ],
 
     sidebar: [
-      {
-        text: 'Getting Started',
-        items: [
-          { text: 'Introduction', link: '/introduction' },
-          { text: 'Console', link: '/console' },
-          { text: 'Styles', link: '/style' },
-          { text: 'Markup', link: '/markup' },
-        ],
-      },
-      {
-        text: 'Text & Data',
-        items: [
-          { text: 'Rich Text', link: '/text' },
-          { text: 'Highlighting', link: '/highlighting' },
-          { text: 'Pretty Printing', link: '/pretty' },
-        ],
-      },
-      {
-        text: 'Renderables',
-        items: [
-          { text: 'Panel', link: '/panel' },
-          { text: 'Tables', link: '/tables' },
-          { text: 'Tree', link: '/tree' },
-          { text: 'Columns', link: '/columns' },
-          { text: 'Group', link: '/group' },
-          { text: 'Padding', link: '/padding' },
-        ],
-      },
-      {
-        text: 'Live & Animation',
-        items: [
-          { text: 'Progress Bars', link: '/progress' },
-          { text: 'Live Display', link: '/live' },
-          { text: 'Layout', link: '/layout' },
-        ],
-      },
-      {
-        text: 'Interactive',
-        items: [
-          { text: 'Widgets', link: '/widgets' },
-        ],
-      },
-      {
-        text: 'Color & Theming',
-        items: [
-          { text: 'Theme Transposition', link: '/transpose' },
-          { text: 'Contrast & Accessibility', link: '/contrast' },
-        ],
-      },
-      {
-        text: 'Source & Files',
-        items: [
-          { text: 'Syntax Highlighting', link: '/syntax' },
-          { text: 'Markdown', link: '/markdown' },
-          { text: 'Tracebacks', link: '/traceback' },
-        ],
-      },
-      {
-        text: 'Integrations',
-        items: [
-          { text: 'Template Bindings', link: '/template-bindings' },
-          { text: 'Prompts', link: '/prompt' },
-        ],
-      },
-      {
-        text: 'Advanced',
-        items: [
-          { text: 'Renderable Protocol', link: '/protocol' },
-        ],
-      },
+      ...guideSidebar,
+      ...advancedSidebar,
       {
         text: 'Demos',
         items: [
