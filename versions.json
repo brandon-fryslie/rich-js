@@ -4,15 +4,22 @@
     {
       "version": "pr-90",
       "ref": "refs/pull/90/merge",
-      "sha": "8cb9150719d2995c1e134d85a7d512c9585112ad",
-      "timestamp": "2026-09-05T12:36:44.280Z",
+      "sha": "0a09dfbfd3d7e932e10ce15af93550b970087ec3",
+      "timestamp": "2026-09-05T13:00:02.489Z",
       "commits": [
         {
-          "sha": "8cb9150719d2995c1e134d85a7d512c9585112ad",
+          "sha": "0a09dfbfd3d7e932e10ce15af93550b970087ec3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T12:36:15Z",
-          "message": "Merge b5174287a54093acfb68c37912769823d0db3c83 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+          "timestamp": "2026-09-05T12:59:31Z",
+          "message": "Merge dfe7217b850e1ae7646af6615c119eee7120882a into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+        },
+        {
+          "sha": "dfe7217b850e1ae7646af6615c119eee7120882a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T06:59:20-06:00",
+          "message": "fix(pretty): let foreign data fail in place, and bound the third way it is large\n\nRound-3 review findings, all on the same seam: `print` now hands arbitrary\ndata to `Pretty`, and `Pretty` reflects on values it did not create.\n\nReading foreign data can throw, and enumerating where showed the reviewer's\ngetter was one row of six. Compared against what `String(item)` did before\nthis PR: a property getter, `Object.keys`/Proxy `ownKeys`, a Proxy `get`, and\na Map/Set iterator were all unreachable and now throw; only `toString` and an\narray index getter threw before. `String()` was simply the only reflection\nthe old code performed, which is why five of the six are new.\n\nSo the marker is one function and the catches are two, split by what a failed\nread costs. A value that will not be read degrades alone, in `_property`, so\n`{ a: 1, b: [Threw: not ready], c: 3 }` still shows what could be read. A\nshape that will not be read leaves nothing to enumerate, so the container\ndegrades whole. The message travels into the output either way:\n[LAW:no-silent-failure] is satisfied by the failure being visible and\nattributed, not by it being fatal, and a marker naming its cause is not an\nanswer-shaped void. This supersedes the round-1 pushback that refused a\nfallback for a throwing `toString` — that argument was right that the row was\nnot a regression and blind to the five rows beside it. Said so on the thread.\n\n`PRINT_DATA_BOUNDS` gains `maxString: 1000`. A value is large in three ways\nand the bound covered two: `print({ body: responseText })` embedded 50 KB\nverbatim. Only strings nested in data are capped; a string argument is the\ncaller naming that string, and is printed in full.\n\n`indexedElements` returns `ArrayLike` rather than a materialised array,\nbecause an array and a typed array both already are one. Converting boxed\nevery element of a `Buffer` to keep the first hundred — bounding the output\nwhile leaving the cost of producing it unbounded. A 20 MB `Uint8Array` now\nprints in 4ms instead of allocating a 20-million-element array.\n\n`Console.print` passes `indentGuides: doHighlight`. Guides are styling, so\n`highlight: false` emitted ANSI the caller had declined, contradicting\ndocs/pretty.md. The console owns what `highlight` means for everything it\nemits; the alternative was `Pretty` type-sniffing its own highlighter to\nrecover a decision the caller had already made.\n\nCLAUDE.md's pretty bullet points at the module header instead of restating\nthree of its clauses verbatim, matching how the sanctioned-edge bullets point\nat `why` in test/seam/layering.ts. [LAW:one-source-of-truth]\n"
         },
         {
           "sha": "b5174287a54093acfb68c37912769823d0db3c83",
