@@ -156,11 +156,9 @@ export function splitText(
  * so a line ending before a wide glyph is narrower than `maxWidth` rather than
  * padded out to it.
  *
- * The one line that may exceed `maxWidth` is a single glyph wider than the
- * whole budget — a 2-cell CJK character against a 1-cell width. A glyph cannot
- * be split, so overflowing by its own width is the only answer that both
- * terminates and keeps the text intact; dropping it would lose content and
- * emitting a padded blank would make no progress at all.
+ * A line overflows exactly where the budget cannot be met: a glyph wider than
+ * `maxWidth` is force-taken whole rather than dropped, and a `maxWidth` of zero
+ * or less is no budget at all, so the text comes back as one line.
  */
 export function chopCells(text: string, maxWidth: CellCol): string[] {
   if (maxWidth <= 0 || text.length === 0) return [text];
@@ -168,15 +166,7 @@ export function chopCells(text: string, maxWidth: CellCol): string[] {
   const lines: string[] = [];
   let start = asCodePoint(0);
   while (start < text.length) {
-    // [LAW:types-are-the-program] The max is what makes non-termination
-    // unrepresentable rather than merely unlikely: `nextCodePoint` is always
-    // strictly past `start`, so `end > start` holds by construction on every
-    // iteration — including the case `cellFitFrom` answers with `start` itself
-    // because the very next glyph alone overflows the budget.
-    const end = asCodePoint(Math.max(
-      cellFitFrom(text, start, maxWidth),
-      nextCodePoint(text, start),
-    ));
+    const end = cellStepFrom(text, start, maxWidth);
     lines.push(text.slice(start, end));
     start = end;
   }
@@ -224,6 +214,21 @@ export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): Cod
     i = asCodePoint(i + ch.length);
   }
   return i;
+}
+
+/**
+ * Like `cellFitFrom`, but never returns `startCU`: a glyph too wide for `cap`
+ * is force-taken whole, overflowing `cap` by its own width. So a loop walking
+ * to `text.length` terminates by construction, and the re-brand is honest —
+ * both operands land on code-point boundaries, so their max does too.
+ *
+ * [LAW:single-enforcer] `cellFit` documents that its caller must choose between
+ * force-taking and skipping; this is that choice, made once. It was made twice
+ * before and the copies drifted — the textarea's soft wrap force-took,
+ * `chopCells` did neither and hung.
+ */
+export function cellStepFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
+  return asCodePoint(Math.max(cellFitFrom(text, startCU, cap), nextCodePoint(text, startCU)));
 }
 
 /**
