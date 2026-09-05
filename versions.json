@@ -4,15 +4,22 @@
     {
       "version": "pr-90",
       "ref": "refs/pull/90/merge",
-      "sha": "87a3d288a6e6dd850091306b951d2286ce31b4f7",
-      "timestamp": "2026-09-05T12:09:32.822Z",
+      "sha": "8cb9150719d2995c1e134d85a7d512c9585112ad",
+      "timestamp": "2026-09-05T12:36:44.280Z",
       "commits": [
         {
-          "sha": "87a3d288a6e6dd850091306b951d2286ce31b4f7",
+          "sha": "8cb9150719d2995c1e134d85a7d512c9585112ad",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T12:08:59Z",
-          "message": "Merge 0756963af1a98b60c00c5b9232c8a8b081dd91d1 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+          "timestamp": "2026-09-05T12:36:15Z",
+          "message": "Merge b5174287a54093acfb68c37912769823d0db3c83 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+        },
+        {
+          "sha": "b5174287a54093acfb68c37912769823d0db3c83",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T06:35:57-06:00",
+          "message": "fix(pretty): bound what print formats, and stop one number meaning two things\n\nUNVERIFIED: tsc --noEmit passes; the vitest run was cut off by a context limit before completing. Run 'npm run lint && npm test' first.\n\nRound-2 review findings. print now formats arbitrary data, reaching two Pretty behaviours previously only reachable deliberately: a large container expands one line per element (print(buffer) costs a line per byte), and nesting recurses uncapped. print now passes PRINT_DATA_BOUNDS (maxLength 100, maxDepth 16). Bounds belong to the convenience path, which formats whatever it is handed; a caller who built a Pretty has seen their data and still gets no defaults. Both bounds announce themselves ('... +N', '{...}'), so truncation is visible. maxDepth is new on PrettyOptions, unbounded by default. Map and Set gained the '... +N' marker arrays and objects already had.\n\nThe cap did not work when first written, and that is the substantive change. _format's 'depth' carried two meanings: output indentation, and depth in the data. The compact probe passes depth 0 (correct for layout, since a single-line form has no indentation), so 'depth >= maxDepth' never fired down the probe path and a 400-deep object still hung. They are now separate fields on a Frame: 'inset' resets, 'level' only increases. [LAW:types-are-the-program]\n\nAlso replaces the console-highlighter test, which the reviewer correctly showed proved nothing: ReprHighlighter styles the number in { a: 1 } too, so it passed whether or not forwarding worked. It now records what the console's highlighter was handed.\n\nKNOWN, NOT FIXED, NOT FILED: Pretty._formatObject formats every child twice (compact probe, then expanded), so cost is exponential in nesting depth. Measured on pre-existing code: depth 10=1ms, 20=17ms, 24=166ms, ~30=seconds. Pre-existing and still reachable via new Pretty(deep); print is now bounded by maxDepth 16 so the hazard is closed on the path this PR opened. Real fix: compute each child's single-line form once. Wants its own ticket and review.\n"
         },
         {
           "sha": "0756963af1a98b60c00c5b9232c8a8b081dd91d1",
