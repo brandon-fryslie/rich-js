@@ -8,6 +8,7 @@ import {
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
+import { RegexHighlighter } from "../../src/core/highlighter.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -339,6 +340,32 @@ describe("Console.print()", () => {
       const output = captured(chunks);
       expect(output).toContain("style");
       expect(output).toContain("bold");
+    });
+
+    // `highlight` and a custom `highlighter` are console-wide settings, so they
+    // have to reach a formatted object exactly as they reach a printed string.
+    // Routing data through `Pretty` is where that link is easiest to drop:
+    // `Pretty` owns a default highlighter of its own, and left to itself it
+    // outranks whatever the console was configured with.
+    it("honours highlight: false for data arguments", () => {
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor" });
+      c.print({ a: 1 }, "x", { highlight: false });
+      expect(captured(chunks)).not.toContain("\x1b[");
+    });
+
+    it("honours a custom console highlighter for data arguments", () => {
+      class BracketHighlighter extends RegexHighlighter {
+        static override highlights = [/(?<number>\d+)/g];
+        static override baseStyle = "repr.";
+      }
+      const { console: c, chunks } = makeConsole({
+        colorSystem: "truecolor",
+        highlighter: new BracketHighlighter(),
+      });
+      c.print({ a: 1 });
+      // The custom highlighter styles the number; the point is that some
+      // console-configured highlighter ran at all, rather than Pretty's own.
+      expect(captured(chunks)).toContain("\x1b[");
     });
 
     it("still reads a trailing object as options when content precedes it", () => {

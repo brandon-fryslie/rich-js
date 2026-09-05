@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Pretty } from "../../src/core/pretty.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { Highlighter } from "../../src/core/highlighter.js";
+import type { RichText } from "../../src/core/text.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -200,6 +202,44 @@ describe("Pretty", () => {
       // only consulted after the arms that know a richer form.
       expect(collectText(new Pretty([1, 2, 3]), { maxWidth: 80 })).toContain("[1, 2, 3]");
     });
+  });
+
+  // A cycle and a DAG look identical to a set that only ever grows: both revisit
+  // an object already seen. Only the pair pins that `open` empties on the way
+  // back up, so both cases are here and neither is meaningful alone.
+  describe("self-referential data", () => {
+    it("renders a cycle instead of exhausting the stack", () => {
+      const a: Record<string, unknown> = {};
+      a["self"] = a;
+      expect(collectText(new Pretty(a), { maxWidth: 80 })).toContain("[Circular]");
+    });
+
+    it("renders a shared child twice, since sharing is not a cycle", () => {
+      const shared = { v: 1 };
+      const text = collectText(new Pretty({ a: shared, b: shared }), { maxWidth: 80 });
+      expect(text).not.toContain("[Circular]");
+      expect(text).toBe("{ a: { v: 1 }, b: { v: 1 } }");
+    });
+  });
+
+  it("formats a typed array as the sequence it is", () => {
+    // Its own `toString` would answer a bare "1,2,3" — no brackets, and nothing
+    // for the highlighter to colour per element.
+    expect(collectText(new Pretty(new Int8Array([1, 2, 3])), { maxWidth: 80 }))
+      .toBe("[1, 2, 3]");
+  });
+
+  it("takes its highlighter from the caller", () => {
+    // `Console.print` depends on this to carry its `highlight` flag and any
+    // custom highlighter through to a formatted value.
+    const seen: string[] = [];
+    class Recorder extends Highlighter {
+      highlight(text: RichText): void {
+        seen.push(text.plain);
+      }
+    }
+    collectText(new Pretty({ a: 1 }, { highlighter: new Recorder() }), { maxWidth: 80 });
+    expect(seen).toEqual(["{ a: 1 }"]);
   });
 
   // --- Measurement ---

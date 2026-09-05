@@ -14,6 +14,7 @@ import { Segment } from "./segment.js";
 import { Style } from "./style.js";
 import { RichText } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
+import type { Highlighter } from "./highlighter.js";
 import type {
   Renderable,
   Measurable,
@@ -26,9 +27,37 @@ export interface PrettyOptions {
   maxLength?: number;
   maxString?: number;
   indentGuides?: boolean;
+  /**
+   * Who colours the formatted text. Defaults to a `ReprHighlighter`.
+   *
+   * Passed rather than imported so a caller's choice survives. `Console.print`
+   * routes data arguments through here, and its `highlight` flag and custom
+   * `highlighter` have to reach the output the same way they reach a printed
+   * string — a `Pretty` reaching for its own singleton would silently outrank
+   * both. `NullHighlighter` is the "none" case.
+   */
+  highlighter?: Highlighter;
 }
 
 const reprHighlighter = new ReprHighlighter();
+
+/**
+ * The elements of an indexed sequence, or `null` for anything that isn't one.
+ *
+ * A typed array is an array with a fixed element type, and neither of the two
+ * questions asked elsewhere in this file recognises it: `Array.isArray` says
+ * false, and its own `toString` answers the bare `1,2,3` — no brackets, nothing
+ * for the highlighter to colour per element. Both spellings reach the one arm
+ * that knows what a sequence looks like. `DataView` is excluded because it is a
+ * window onto bytes, not a sequence of values.
+ */
+function indexedElements(value: object): unknown[] | null {
+  if (Array.isArray(value)) return value as unknown[];
+  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+    return Array.from(value as unknown as ArrayLike<unknown>);
+  }
+  return null;
+}
 
 /**
  * Does this value carry its own string form, or must we reflect on its keys?
@@ -43,8 +72,6 @@ const reprHighlighter = new ReprHighlighter();
  * Both clauses are load-bearing. The identity check separates the two
  * populations; the `typeof` check is what makes `Object.create(null)` — which
  * has no `toString` at all — reflect rather than throw.
- * [LAW:parse-dont-validate] The question is asked once, here, and the branch it
- * selects is the whole answer; nothing downstream re-asks it.
  */
 function describesItself(value: object): boolean {
   const asRecord = value as { toString?: unknown; [Symbol.toPrimitive]?: unknown };
@@ -62,6 +89,7 @@ export class Pretty implements Renderable, Measurable {
   readonly maxLength: number | undefined;
   readonly maxString: number | undefined;
   readonly indentGuides: boolean;
+  readonly highlighter: Highlighter;
 
   constructor(data: unknown, options?: PrettyOptions) {
     this.data = data;
@@ -70,12 +98,13 @@ export class Pretty implements Renderable, Measurable {
     this.maxLength = options?.maxLength;
     this.maxString = options?.maxString;
     this.indentGuides = options?.indentGuides !== false;
+    this.highlighter = options?.highlighter ?? reprHighlighter;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const formatted = this._format(this.data, 0, options.maxWidth);
+    const formatted = this._format(this.data, 0, options.maxWidth, new WeakSet());
     const text = new RichText(formatted, { end: "" });
-    reprHighlighter.highlight(text);
+    this.highlighter.highlight(text);
 
     if (this.indentGuides) {
       this._addIndentGuides(text);
@@ -85,7 +114,7 @@ export class Pretty implements Renderable, Measurable {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const formatted = this._format(this.data, 0, _options.maxWidth);
+    const formatted = this._format(this.data, 0, _options.maxWidth, new WeakSet());
     const lines = formatted.split("\n");
     let max = 0;
     for (const line of lines) {
@@ -94,10 +123,15 @@ export class Pretty implements Renderable, Measurable {
     return { minimum: 1, maximum: Math.min(max, _options.maxWidth) };
   }
 
-  private _format(value: unknown, depth: number, maxWidth: number): string {
-    const indentStr = " ".repeat(this.indent * depth);
-    const innerIndent = " ".repeat(this.indent * (depth + 1));
-
+  /**
+   * `open` holds the objects between the root and here, not every object seen.
+   * A value joins on the way down and leaves on the way back up, so a cycle is
+   * caught while a DAG — one object reached twice through sibling positions —
+   * still renders both times. A never-emptied set would call the second sibling
+   * circular. [LAW:no-ambient-temporal-coupling] the traversal owns this state
+   * explicitly; a field on the instance would leak between renders.
+   */
+  private _format(value: unknown, depth: number, maxWidth: number, open: WeakSet<object>): string {
     if (value === null) return "null";
     if (value === undefined) return "undefined";
 
@@ -120,24 +154,39 @@ export class Pretty implements Renderable, Measurable {
         return `[Function: ${value.name || "anonymous"}]`;
     }
 
-    if (Array.isArray(value)) {
-      if (value.length === 0) return "[]";
+    if (open.has(value)) return "[Circular]";
+    open.add(value);
+    try {
+      return this._formatObject(value, depth, maxWidth, open);
+    } finally {
+      open.delete(value);
+    }
+  }
+
+  /** The arms for a non-null object, with `value` already on the open path. */
+  private _formatObject(value: object, depth: number, maxWidth: number, open: WeakSet<object>): string {
+    const indentStr = " ".repeat(this.indent * depth);
+    const innerIndent = " ".repeat(this.indent * (depth + 1));
+
+    const elements = indexedElements(value);
+    if (elements !== null) {
+      if (elements.length === 0) return "[]";
 
       const items = this.maxLength !== undefined
-        ? value.slice(0, this.maxLength)
-        : value;
+        ? elements.slice(0, this.maxLength)
+        : elements;
       const remaining = this.maxLength !== undefined
-        ? Math.max(0, value.length - this.maxLength)
+        ? Math.max(0, elements.length - this.maxLength)
         : 0;
 
       // Try compact first
       if (!this.expandAll) {
-        const compact = "[" + items.map((v) => this._format(v, 0, maxWidth)).join(", ") +
+        const compact = "[" + items.map((v) => this._format(v, 0, maxWidth, open)).join(", ") +
           (remaining > 0 ? `, ... +${remaining}` : "") + "]";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
-      const parts = items.map((v) => innerIndent + this._format(v, depth + 1, maxWidth));
+      const parts = items.map((v) => innerIndent + this._format(v, depth + 1, maxWidth, open));
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "[\n" + parts.join(",\n") + "\n" + indentStr + "]";
     }
@@ -147,7 +196,7 @@ export class Pretty implements Renderable, Measurable {
       const entries = [...value.entries()];
       const items = this.maxLength !== undefined ? entries.slice(0, this.maxLength) : entries;
       const parts = items.map(([k, v]) =>
-        innerIndent + this._format(k, depth + 1, maxWidth) + " => " + this._format(v, depth + 1, maxWidth),
+        innerIndent + this._format(k, depth + 1, maxWidth, open) + " => " + this._format(v, depth + 1, maxWidth, open),
       );
       return "Map {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
@@ -156,7 +205,7 @@ export class Pretty implements Renderable, Measurable {
       if (value.size === 0) return "Set {}";
       const items = [...value];
       const bounded = this.maxLength !== undefined ? items.slice(0, this.maxLength) : items;
-      const parts = bounded.map((v) => innerIndent + this._format(v, depth + 1, maxWidth));
+      const parts = bounded.map((v) => innerIndent + this._format(v, depth + 1, maxWidth, open));
       return "Set {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
 
@@ -177,13 +226,13 @@ export class Pretty implements Renderable, Measurable {
       // Try compact
       if (!this.expandAll) {
         const compact = "{ " + items.map((k) =>
-          `${k}: ${this._format(obj[k], 0, maxWidth)}`).join(", ") +
+          `${k}: ${this._format(obj[k], 0, maxWidth, open)}`).join(", ") +
           (remaining > 0 ? `, ... +${remaining}` : "") + " }";
         if (cellLen(indentStr + compact) <= maxWidth) return compact;
       }
 
       const parts = items.map((k) =>
-        innerIndent + `${k}: ${this._format(obj[k], depth + 1, maxWidth)}`,
+        innerIndent + `${k}: ${this._format(obj[k], depth + 1, maxWidth, open)}`,
       );
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "{\n" + parts.join(",\n") + "\n" + indentStr + "}";

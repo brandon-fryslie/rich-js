@@ -23,7 +23,7 @@ console.print(new Pretty(data));
 }
 ```
 
-Keys are printed unquoted and strings in double quotes. Each value is coloured by type — `Pretty` runs `ReprHighlighter` over its output, so numbers, strings, booleans and `null` are visually distinct.
+Keys are printed unquoted and strings in double quotes. Each value is coloured by type — `Pretty` runs `ReprHighlighter` over its output by default, so numbers, strings, booleans and `null` are visually distinct. Pass `highlighter` to substitute your own, or a `NullHighlighter` for none. `print()` passes the console's, so a console-wide `highlight: false` or a custom `highlighter` reaches formatted values exactly as it reaches printed strings.
 
 A class instance is formatted as a plain object, from its own enumerable properties. The class name does not appear:
 
@@ -47,6 +47,8 @@ console.print(new Pretty(new Bird("penguin", ["fish", "squid"])));
 ```
 
 Reflecting on properties is the fallback, not the rule. A value that defines its own `toString` — a `Date`, an `Error`, a `RegExp`, or a class of yours that declares one — keeps that string form instead, because reflection would throw the answer away: `Object.keys(new Date())` is empty, so a date reflected on renders `{}`. Give `Bird` a `toString` and the block above becomes whatever that method returns. Inheriting the default is the opposite signal — it yields `[object Object]`, which says nothing, leaving the properties as the only information there is.
+
+Typed arrays are formatted as the sequences they are, `[1, 2, 3]`, rather than by either of those routes. Data that refers back to itself prints `[Circular]` at the point of return; an object reached twice through separate paths is not a cycle and is printed in full both times.
 
 ## `print()` does this for you
 

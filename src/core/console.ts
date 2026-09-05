@@ -9,7 +9,7 @@ import type { DetectColorOptions } from "./color.js";
 import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
 import { Pretty } from "./pretty.js";
-import { ReprHighlighter } from "./highlighter.js";
+import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 // [LAW:one-way-deps] exception: one of the two sanctioned upward edges out of
 // `core/`, named in CLAUDE.md and pinned by `test/seam/layering.test.ts` — the
@@ -252,6 +252,9 @@ function resolveGetSize(
 
 // --- Console ---
 
+/** Shared because it is stateless: highlighting nothing has nothing to own. */
+const NO_HIGHLIGHT = new NullHighlighter();
+
 export class Console {
   private _colorSystem: ColorDepth | null;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
@@ -417,7 +420,14 @@ export class Console {
         }
         renderables.push(richText);
       } else {
-        renderables.push(new Pretty(item));
+        // The highlighter travels with the value. `highlight` and a custom
+        // `highlighter` are console-wide settings, so they have to reach a
+        // formatted object the same way they reach a printed string; a `Pretty`
+        // left to its own default would outrank both. [LAW:dataflow-not-control-flow]
+        // the disabled case is an identity highlighter, not a skipped call.
+        renderables.push(new Pretty(item, {
+          highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
+        }));
       }
     }
 
