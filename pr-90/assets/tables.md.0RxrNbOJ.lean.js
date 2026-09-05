@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as e}from"./chunks/framework.Dk5CRF_b.js";const c=JSON.parse('{"title":"Tables","description":"","frontmatter":{},"headers":[],"relativePath":"tables.md","filePath":"tables.md"}'),n={name:"tables.md"};function h(l,s,p,d,k,r){return a(),t("div",null,[...s[0]||(s[0]=[e("",56)])])}const B=i(n,[["render",h]]);export{c as __pageData,B as default};
