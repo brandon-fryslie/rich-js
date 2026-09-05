@@ -526,7 +526,15 @@ function resolveOrigin(sym: ts.Symbol, checker: ts.TypeChecker): SymbolOrigin | 
   };
 }
 
-function resolveAlias(sym: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
+/**
+ * Follow an alias chain to the symbol that actually declares the thing.
+ *
+ * Exported because `test/docs/` resolves the same chains when it asks which
+ * class a documented receiver was constructed from. A second, shallower copy
+ * there dropped any class re-exported through two hops — and dropped it
+ * silently, which is worse than the miss. [LAW:one-source-of-truth]
+ */
+export function resolveAlias(sym: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
   let s = sym;
   // Some aliases re-alias; loop until we hit a non-alias symbol or a
   // symbol the checker refuses to dereference further.

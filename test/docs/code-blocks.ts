@@ -66,23 +66,30 @@ export interface ImportedName {
 }
 
 /**
- * A member read off a variable the page constructed with `new`, e.g. the
- * `print` of `console.print(…)` where the page wrote `const console = new
- * Console()`.
+ * A member read off a receiver the page built, e.g. the `print` of
+ * `console.print(…)` where the page wrote `const console = new Console()`.
  *
- * [LAW:types-are-the-program] The class name travels with the member, so a
- * check on this pair never has to guess which type a receiver had. Resolving
- * the receiver is the whole reason this is a distinct type from a bare member
- * name: `Console` is one instance of the rule, not a special case in it, which
- * is what lets the same scan catch `Live.run` with no new code.
+ * [LAW:types-are-the-program] The receiver travels as a class name plus the
+ * method path taken from it, never as the source text. `console.print` gives
+ * `("Console", [], "print")`; `layout.getByName("body")!.update` gives
+ * `("Layout", ["getByName"], "update")`. The caller resolves each hop through
+ * the method's declared return type, which is why unwrapping the `!` is not
+ * what this needed — a chain is data, and one resolver walks any depth of it.
+ *
+ * That distinction has already cost coverage once: the first version of this
+ * file recorded a use only when the receiver was a bare identifier, and the
+ * `getByName(name)!` pattern that `docs/layout.md` uses throughout was
+ * invisible to the check that shipped in the same commit as the page.
  */
 export interface MemberUse {
   readonly page: string;
   readonly line: number;
-  /** The class the receiver was constructed from, e.g. `Console`. */
-  readonly className: string;
+  /** The class the root identifier was constructed from, e.g. `Layout`. */
+  readonly rootClass: string;
+  /** Methods called between the root and this member, outermost last. */
+  readonly path: readonly string[];
   readonly member: string;
-  /** How the source reads, for the failure message: `console.print`. */
+  /** How the source reads, for the failure message. */
   readonly text: string;
 }
 
@@ -116,6 +123,16 @@ export function extractCodeBlocks(page: string, markdown: string): CodeBlock[] {
       openedAt = null;
     }
   });
+  // An unterminated fence would otherwise swallow the rest of the page into a
+  // block nobody checks, shrinking the sweep silently — the failure the
+  // sweep-sanity assertions next door exist to make impossible.
+  // [LAW:no-silent-failure]
+  if (openedAt !== null) {
+    throw new Error(
+      `docs/${page}:${(openedAt as number) + 1} opens a TypeScript fence that is ` +
+        `never closed; everything after it would go unchecked`,
+    );
+  }
   return blocks;
 }
 
@@ -176,48 +193,100 @@ export function extractImportedNames(block: CodeBlock): ImportedName[] {
 }
 
 /**
- * Every member read off a receiver the page constructed, across the whole page.
+ * Every member read off a receiver the page built, across the whole page.
  *
- * Page-scoped rather than block-scoped, and that is measured too: `markup.md`
- * writes `console.print` in its first block and constructs its `Console` five
- * sections later. A block-scoped binding would report every one of those calls
- * as unresolved, and a check that manufactures its own findings is worse than
- * no check — the same trap that produced 66 fictional `Property 'print' does
- * not exist on type 'Console'` errors when an earlier attempt let the ambient
- * `console` global bind instead of the page's own.
+ * A page is one running document, so the scan is page-wide: `markup.md` writes
+ * `console.print` in its first block and constructs its `Console` five sections
+ * later, and a block-scoped binding would report every one of those calls as
+ * unresolved — a check that manufactures its own findings, which is the trap
+ * that produced 66 fictional `Property 'print' does not exist on type
+ * 'Console'` errors when an earlier attempt let the ambient `console` global
+ * bind instead of the page's own.
+ *
+ * Page-wide is not the same as last-one-wins, and the difference is load-bearing.
+ * `docs/strip.md` declares `const strip = new Strip(…)` and, 130 lines later,
+ * `const strip = new FlexStrip(…)`. Binding every `strip.*` on the page to
+ * whichever came last would check the first section's uses against the wrong
+ * class. So a use binds to the nearest *preceding* declaration of its name —
+ * falling back to the nearest following one, which is what keeps markup.md's
+ * forward reference working. Two rules would be a branch; this is one ordering
+ * question asked once. [LAW:dataflow-not-control-flow]
  */
 export function extractMemberUses(blocks: readonly CodeBlock[]): MemberUse[] {
   const parsed = blocks.map((block) => ({ block, source: parseBlock(block) }));
 
-  const classOf = new Map<string, string>();
-  for (const { source } of parsed) {
+  // Declarations in page order, so "nearest" below is a distance on this list.
+  const declarations: { ordinal: number; name: string; className: string }[] = [];
+  parsed.forEach(({ source }, blockIndex) => {
     visit(source, (node) => {
       if (!ts.isVariableDeclaration(node)) return;
       if (!ts.isIdentifier(node.name)) return;
       const initializer = unwrapAwait(node.initializer);
       if (!initializer || !ts.isNewExpression(initializer)) return;
       if (!ts.isIdentifier(initializer.expression)) return;
-      classOf.set(node.name.text, initializer.expression.text);
+      declarations.push({
+        ordinal: ordinalOf(blockIndex, source, node),
+        name: node.name.text,
+        className: initializer.expression.text,
+      });
     });
-  }
+  });
+
+  const classAt = (name: string, ordinal: number): string | undefined => {
+    const matches = declarations.filter((d) => d.name === name);
+    const preceding = matches.filter((d) => d.ordinal <= ordinal);
+    const nearest = preceding.length > 0 ? preceding[preceding.length - 1] : matches[0];
+    return nearest?.className;
+  };
 
   const uses: MemberUse[] = [];
-  for (const { block, source } of parsed) {
+  parsed.forEach(({ block, source }, blockIndex) => {
     visit(source, (node) => {
       if (!ts.isPropertyAccessExpression(node)) return;
-      if (!ts.isIdentifier(node.expression)) return;
-      const className = classOf.get(node.expression.text);
-      if (!className) return;
+      const receiver = describeReceiver(node.expression);
+      if (!receiver) return;
+      const rootClass = classAt(receiver.root, ordinalOf(blockIndex, source, node));
+      if (!rootClass) return;
       uses.push({
         page: block.page,
         line: pageLineOf(block, source, node),
-        className,
+        rootClass,
+        path: receiver.path,
         member: node.name.text,
-        text: `${node.expression.text}.${node.name.text}`,
+        text: `${node.expression.getText(source)}.${node.name.text}`,
       });
     });
-  }
+  });
   return uses;
+}
+
+/** A position that orders every node on the page, across blocks. */
+function ordinalOf(blockIndex: number, source: ts.SourceFile, node: ts.Node): number {
+  return blockIndex * 1_000_000 + node.getStart(source);
+}
+
+/**
+ * The root identifier a receiver expression starts from, and the methods called
+ * between it and here.
+ *
+ * `console` -> root `console`, no path. `layout.getByName("body")!` -> root
+ * `layout`, path `["getByName"]`. Anything else — an array index, a function
+ * call with no receiver, a literal — returns undefined, and the caller reports
+ * it rather than dropping it.
+ */
+function describeReceiver(
+  expression: ts.Expression,
+): { root: string; path: string[] } | undefined {
+  if (ts.isNonNullExpression(expression) || ts.isParenthesizedExpression(expression)) {
+    return describeReceiver(expression.expression);
+  }
+  if (ts.isIdentifier(expression)) return { root: expression.text, path: [] };
+  if (ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression)) {
+    const inner = describeReceiver(expression.expression.expression);
+    if (!inner) return undefined;
+    return { root: inner.root, path: [...inner.path, expression.expression.name.text] };
+  }
+  return undefined;
 }
 
 function unwrapAwait(node: ts.Expression | undefined): ts.Expression | undefined {

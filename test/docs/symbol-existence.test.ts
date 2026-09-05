@@ -51,6 +51,7 @@ import {
   ENTRY_BY_SPECIFIER,
   REPO_ROOT,
   loadCompilerOptions,
+  resolveAlias,
 } from "../coverage/extract.js";
 import {
   extractCodeBlocks,
@@ -82,17 +83,35 @@ const pages = readPages();
 const allBlocks = pages.flatMap((page) => page.blocks);
 
 /**
- * The exports of every entry point, keyed by the specifier a reader writes.
+ * One program over the entry modules, and the two questions asked of it.
  *
- * One program over the same entry modules the coverage gate uses, so "exists"
- * means the same thing in both directions — a name is exported here exactly
- * when that gate would require a demo for it.
+ * `exportsBySpecifier` answers "does this entry point export this name";
+ * `classesByName` answers "what public members does this class have, and is
+ * the name unambiguous". Both come from one `ts.createProgram` and one pass
+ * over each module's exports — building the program is the expensive step, and
+ * `test/coverage/coverage.test.ts` next door already takes care to build it
+ * once and reuse it across three checks.
  */
-function exportsBySpecifier(): Map<string, Set<string>> {
+interface ClassInfo {
+  /** Public instance members, or undefined when the name is ambiguous. */
+  readonly members: Set<string>;
+  /** Every entry module exporting a class under this name. */
+  readonly origins: string[];
+  /** Return type name of each method, for resolving a receiver chain. */
+  readonly returns: Map<string, string>;
+}
+
+function resolveSurface(): {
+  exportedNames: Map<string, Set<string>>;
+  classesByName: Map<string, ClassInfo>;
+} {
   const rootNames = [...ENTRY_BY_SPECIFIER.values()].map((p) => path.join(REPO_ROOT, p));
   const program = ts.createProgram({ rootNames, options: loadCompilerOptions() });
   const checker = program.getTypeChecker();
-  const out = new Map<string, Set<string>>();
+
+  const exportedNames = new Map<string, Set<string>>();
+  const classesByName = new Map<string, ClassInfo>();
+
   for (const [specifier, srcPath] of ENTRY_BY_SPECIFIER) {
     const sourceFile = program.getSourceFile(path.join(REPO_ROOT, srcPath));
     if (!sourceFile) {
@@ -105,74 +124,108 @@ function exportsBySpecifier(): Map<string, Set<string>> {
     if (!moduleSymbol) {
       throw new Error(`docs symbol check: no module symbol for ${srcPath}`);
     }
-    out.set(
-      specifier,
-      new Set(checker.getExportsOfModule(moduleSymbol).map((s) => s.name)),
-    );
-  }
-  return out;
-}
+    const symbols = checker.getExportsOfModule(moduleSymbol);
+    exportedNames.set(specifier, new Set(symbols.map((s) => s.name)));
 
-/**
- * Public member names of a class exported from any entry point.
- *
- * Keyed by class name because that is what a page gives us — it writes
- * `new Console()`, and the receiver's type is that name. Private and protected
- * members are excluded: a page calling one is documenting something a reader
- * cannot call, which is the same failure as a member that does not exist.
- */
-function membersByClass(): Map<string, Set<string>> {
-  const rootNames = [...ENTRY_BY_SPECIFIER.values()].map((p) => path.join(REPO_ROOT, p));
-  const program = ts.createProgram({ rootNames, options: loadCompilerOptions() });
-  const checker = program.getTypeChecker();
-  const out = new Map<string, Set<string>>();
-  for (const srcPath of ENTRY_BY_SPECIFIER.values()) {
-    const sourceFile = program.getSourceFile(path.join(REPO_ROOT, srcPath));
-    if (!sourceFile) continue;
-    const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
-    if (!moduleSymbol) continue;
-    for (const symbol of checker.getExportsOfModule(moduleSymbol)) {
-      const target =
-        symbol.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(symbol) : symbol;
+    for (const symbol of symbols) {
+      // The full alias chain, not one hop: a class re-exported through two
+      // modules resolves to a re-export specifier under a single
+      // `getAliasedSymbol`, fails `isClassDeclaration`, and drops out of the
+      // check silently. [LAW:one-source-of-truth] one resolver, in extract.ts.
+      const target = resolveAlias(symbol, checker);
       const declaration = target.declarations?.[0];
       if (!declaration || !ts.isClassDeclaration(declaration)) continue;
+
       const instanceType = checker.getDeclaredTypeOfSymbol(target);
-      const names = checker
-        .getPropertiesOfType(instanceType)
-        .filter((member) => {
-          const modifiers = member.valueDeclaration
-            ? ts.getCombinedModifierFlags(member.valueDeclaration)
-            : ts.ModifierFlags.None;
-          const hidden = ts.ModifierFlags.Private | ts.ModifierFlags.Protected;
-          return (modifiers & hidden) === 0;
-        })
-        .map((member) => member.name);
-      out.set(symbol.name, new Set(names));
+      const properties = checker.getPropertiesOfType(instanceType).filter((member) => {
+        const modifiers = member.valueDeclaration
+          ? ts.getCombinedModifierFlags(member.valueDeclaration)
+          : ts.ModifierFlags.None;
+        return (modifiers & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) === 0;
+      });
+
+      const returns = new Map<string, string>();
+      for (const member of properties) {
+        const signatures = member.valueDeclaration
+          ? checker.getTypeOfSymbolAtLocation(member, member.valueDeclaration).getCallSignatures()
+          : [];
+        const returned = signatures[0]?.getReturnType();
+        // A method's return type names the next class in a receiver chain.
+        // `Layout.getByName` returns `Layout | undefined`, so the union is
+        // walked rather than read whole.
+        for (const part of returned?.isUnion() ? returned.types : returned ? [returned] : []) {
+          const name = part.getSymbol()?.name;
+          if (name && name !== "undefined") returns.set(member.name, name);
+        }
+      }
+
+      const existing = classesByName.get(symbol.name);
+      classesByName.set(symbol.name, {
+        members: new Set(properties.map((m) => m.name)),
+        origins: [...(existing?.origins ?? []), srcPath],
+        returns,
+      });
     }
   }
-  return out;
+  return { exportedNames, classesByName };
 }
 
-const exportedNames = exportsBySpecifier();
-const classMembers = membersByClass();
+const { exportedNames, classesByName } = resolveSurface();
+
+/**
+ * The class a receiver chain ends at, or why it could not be resolved.
+ *
+ * A docs page supplies a bare class name and nothing else, so an ambiguous
+ * name — two entry points exporting different classes as `Console` — cannot be
+ * disambiguated from the input. It is reported rather than silently resolved
+ * to whichever module was walked last. [LAW:no-silent-failure]
+ */
+function resolveChain(use: MemberUse): { className: string } | { unresolved: string } {
+  let className = use.rootClass;
+  for (const method of use.path) {
+    const info = classesByName.get(className);
+    if (!info) return { unresolved: `${className} is not a class this package exports` };
+    if (info.origins.length > 1) {
+      return { unresolved: `'${className}' is exported by ${info.origins.join(" and ")}` };
+    }
+    const next = info.returns.get(method);
+    if (!next) {
+      return { unresolved: `${className}.${method} has no class return type to follow` };
+    }
+    className = next;
+  }
+  const info = classesByName.get(className);
+  if (info && info.origins.length > 1) {
+    return { unresolved: `'${className}' is exported by ${info.origins.join(" and ")}` };
+  }
+  return { className };
+}
 
 const documentedImports: ImportedName[] = allBlocks
   .flatMap(extractImportedNames)
   .filter((imported) => ENTRY_BY_SPECIFIER.has(imported.specifier));
 
-// Only receivers whose class this package actually exports can be checked; a
-// page constructing an `express()` app or a `Map` is documenting someone
-// else's surface, and this gate has nothing true to say about it.
-const documentedMembers: MemberUse[] = pages
+/**
+ * Every documented member use, paired with the class the chain lands on.
+ *
+ * A receiver rooted in a class this package does not export is dropped, not
+ * reported: a page constructing an `express()` app or a `Map` documents
+ * someone else's surface and this gate has nothing true to say about it. A
+ * chain that starts in our surface and then fails to resolve is a different
+ * thing entirely, and it is reported — silently not checking is the failure
+ * mode that let `docs/layout.md`'s whole access pattern go unexamined.
+ */
+const resolvedMembers = pages
   .flatMap((page) => extractMemberUses(page.blocks))
-  .filter((use) => classMembers.has(use.className));
+  .filter((use) => classesByName.has(use.rootClass))
+  .map((use) => ({ use, resolution: resolveChain(use) }));
 
 function describeImport(imported: ImportedName): string {
   return `docs/${imported.page}:${imported.line} imports '${imported.name}' from '${imported.specifier}', which does not export it`;
 }
 
-function describeMember(use: MemberUse): string {
-  return `docs/${use.page}:${use.line} calls '${use.text}', but ${use.className} has no public '${use.member}'`;
+function describeMember(use: MemberUse, className: string): string {
+  return `docs/${use.page}:${use.line} calls '${use.text}', but ${className} has no public '${use.member}'`;
 }
 
 describe("documented symbols exist", () => {
@@ -192,13 +245,35 @@ describe("documented symbols exist", () => {
   });
 
   it("finds members called on classes this package exports", () => {
-    expect(documentedMembers.length).toBeGreaterThanOrEqual(50);
-    expect(documentedMembers.map((u) => u.className)).toContain("Console");
+    expect(resolvedMembers.length).toBeGreaterThanOrEqual(50);
+    expect(resolvedMembers.map((r) => r.use.rootClass)).toContain("Console");
+  });
+
+  // The chained pattern specifically, because it was invisible once and the
+  // page that uses it throughout would not have failed either way.
+  it("follows a receiver chain through a method's return type", () => {
+    const chained = resolvedMembers.filter((r) => r.use.path.length > 0);
+    expect(chained.length).toBeGreaterThan(0);
+    expect(
+      chained.map((r) => ("className" in r.resolution ? r.resolution.className : "")),
+    ).toContain("Layout");
   });
 
   it("resolved the entry points it checks against", () => {
     expect(exportedNames.get("@promptctl/rich-js")?.has("Console")).toBe(true);
-    expect(classMembers.get("Console")?.has("print")).toBe(true);
+    expect(classesByName.get("Console")?.members.has("print")).toBe(true);
+  });
+
+  // A receiver rooted in this package's surface that cannot be followed is
+  // named, never dropped. [LAW:no-silent-failure]
+  it("resolves every receiver chain it starts", () => {
+    const stuck = resolvedMembers
+      .filter((r) => "unresolved" in r.resolution)
+      .map((r) =>
+        `docs/${r.use.page}:${r.use.line} calls '${r.use.text}' but the receiver ` +
+        `could not be resolved: ${"unresolved" in r.resolution ? r.resolution.unresolved : ""}`,
+      );
+    expect(stuck).toEqual([]);
   });
 
   it("imports only names their entry point exports", () => {
@@ -208,10 +283,13 @@ describe("documented symbols exist", () => {
     expect(ghosts.map(describeImport)).toEqual([]);
   });
 
-  it("calls only members the constructed class has", () => {
-    const ghosts = documentedMembers.filter(
-      (use) => !classMembers.get(use.className)?.has(use.member),
-    );
-    expect(ghosts.map(describeMember)).toEqual([]);
+  it("calls only members the receiver's class has", () => {
+    const ghosts = resolvedMembers.flatMap(({ use, resolution }) => {
+      if (!("className" in resolution)) return [];
+      const info = classesByName.get(resolution.className);
+      if (!info || info.members.has(use.member)) return [];
+      return [describeMember(use, resolution.className)];
+    });
+    expect(ghosts).toEqual([]);
   });
 });
