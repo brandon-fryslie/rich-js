@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { Layout } from "../../src/renderables/layout.js";
 import type { LayoutOptions } from "../../src/renderables/layout.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { Segment } from "../../src/core/segment.js";
+import { cellLen } from "../../src/core/cells.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -150,4 +152,22 @@ describe("Layout", () => {
     });
   });
 
+  // A leaf hands its content the offer and content is free to ignore it. The
+  // row path crops each pane to its share, so only the leaf could emit a line
+  // wider than the region it was given — which in a row split overwrites the
+  // pane beside it.
+  it("crops content that ignores the width it was given", () => {
+    const wide: Renderable = {
+      *render() {
+        yield new Segment("x".repeat(40));
+        yield Segment.line();
+      },
+    };
+    for (const maxWidth of [0, 1, 5, 12]) {
+      const text = collectText(new Layout(wide), { maxWidth, height: 5, maxHeight: 5 });
+      for (const line of text.split("\n")) {
+        expect(cellLen(line)).toBeLessThanOrEqual(maxWidth);
+      }
+    }
+  });
 });

@@ -227,6 +227,16 @@ const configurations: readonly Configuration[] = [
     },
   },
   {
+    name: "Layout wrapping content that ignores its width",
+    shape: "rectangular",
+    make: () => new Layout(oversized),
+  },
+  {
+    name: "Tree with a label that ignores its width",
+    shape: "ragged",
+    make: () => new Tree(oversized),
+  },
+  {
     name: "Layout row split with minimum sizes",
     shape: "rectangular",
     make: () => {
@@ -256,19 +266,27 @@ const equivalentWidths: ReadonlyArray<readonly [number, number]> = [
 
 /**
  * The configurations with no natural width to fall back on, and the two ways to
- * end up there. Three wrap `oversized`, a `Renderable` with no `measure`, so
- * nothing in the tree knows how wide the content wants to be. The fourth asks
- * for an unbounded width itself, in a column declared `{ ratio: Infinity }`.
+ * end up there. Most wrap `oversized`, a `Renderable` with no `measure`, so
+ * nothing in the tree knows how wide the content wants to be. The other asks for
+ * an unbounded width itself, in a column declared `{ ratio: Infinity }`.
  *
  * Named here rather than discovered from the measurement, so that a renderable
  * which quietly stops reporting a natural width fails this file instead of
  * joining this list.
+ *
+ * Every renderable that grew the unmeasurable-content fallback in this epic is
+ * here, and that is the point of the list rather than a property of it: the
+ * fallback reached `Panel`, `Padding` and `Table` first and was pinned, then
+ * reached `Layout`'s leaf branch and `Tree`'s label and was not, so those two
+ * could have regressed with the suite green.
  */
 const noNaturalWidth: ReadonlySet<string> = new Set([
   "Panel wrapping content that ignores its width",
   "Padding wrapping content that ignores its width",
   "Padding unexpanded",
   "Table with an unbounded column demand",
+  "Layout wrapping content that ignores its width",
+  "Tree with a label that ignores its width",
 ]);
 
 describe("width sweep", () => {

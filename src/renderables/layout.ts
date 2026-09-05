@@ -115,9 +115,13 @@ export class Layout implements Renderable, Measurable {
     const options = withBoundedWidth(rawOptions, this);
 
     if (this._isLeaf) {
-      // Leaf node — render content
+      // Cropped rather than forwarded: a leaf hands its content the offer and
+      // content is free to ignore it, and a pane wider than the region it was
+      // given is the one thing a layout may never emit — in a row split it
+      // overwrites the pane beside it. The row path already crops each share,
+      // so this is the same rule at the one place that skipped it.
       if (this._renderable) {
-        yield* this._renderable.render(options);
+        yield* Segment.cropLines(this._renderable.render(options), options.maxWidth);
       }
       return;
     }

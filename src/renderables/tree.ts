@@ -177,8 +177,10 @@ export class Tree implements Renderable, Measurable {
       if (piece.length > 0) yield new Segment(piece, style);
       left -= cellLen(piece);
     }
-    yield* row.label.render({ ...options, maxWidth: left });
-    yield Segment.line();
+    // The guides above are cropped by `cellFit`; the label was not, so a label
+    // that ignores the width it is handed pushed the row past the offer the
+    // guides had just been fitted into.
+    yield* Segment.cropLines(row.label.render({ ...options, maxWidth: left }), left);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

@@ -192,6 +192,24 @@ export class Segment {
   }
 
   /**
+   * Crops a renderable's output so no line exceeds `width`, leaving short lines
+   * alone.
+   *
+   * [LAW:single-enforcer] `adjustLineLength` is where a width is enforced, but
+   * it takes one line and a container holding arbitrary content has a stream of
+   * them. Without this step the container has to trust content to honour the
+   * offer, and content that ignores it overflows the region — which is how a
+   * `Layout` leaf and a `Tree` label came to emit forty cells into a one-cell
+   * offer while `Panel` and `Padding`, which split and adjust, did not.
+   */
+  static *cropLines(segments: Iterable<Segment>, width: number): Iterable<Segment> {
+    for (const line of Segment.splitLines([...segments])) {
+      yield* Segment.adjustLineLength(line, width, undefined, false);
+      yield Segment.line();
+    }
+  }
+
+  /**
    * Returns total cell width of a line. Ignores control segments.
    */
   static getLineLength(line: Segment[]): number {
