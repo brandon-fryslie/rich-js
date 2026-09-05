@@ -72,13 +72,15 @@ import { Console, Pretty } from "@promptctl/rich-js";
 const console = new Console({ width: 43 });
 
 // `{ expandAll: true }` is a second argument to print, not a setting.
-// It compiles, prints nothing, and leaves the Pretty unchanged.
+// It compiles, renders to nothing, and leaves the Pretty unchanged.
 console.print(new Pretty([1, 2, 3]), { expandAll: true });
 ```
 
 ```
-[1, 2, 3]
+[1, 2, 3] 
 ```
+
+The line ends in a space you cannot see above. `print` writes its argument separator before each item after the first, whatever that item turns out to render to — so the separator is emitted and the options object is not.
 
 ## Indentation and guides
 
@@ -186,4 +188,7 @@ console.print(new Panel(new Pretty(data, { expandAll: true }), { title: "User" }
 │     ]                                   │
 │ }                                       │
 ╰─────────────────────────────────────────╯
+
 ```
+
+The blank line after the panel is real. `Panel` ends its own render with a line break and `print` then appends its line end regardless, so a printed panel always leaves one behind it.
