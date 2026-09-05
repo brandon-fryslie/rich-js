@@ -71,3 +71,43 @@ describe("docs pages are reachable from the sidebar", () => {
     expect(UNLINKED_PAGES.filter((slug) => linked.has(slug))).toEqual([]);
   });
 });
+
+/*
+ * The detectors, against a sidebar built to be wrong.
+ *
+ * Every assertion above reads `[]` off the real, currently-correct data, so all
+ * three would keep passing if a detector were inverted, broken, or stubbed to
+ * return `[]` — the sweep is checked, but nothing checks the things that read
+ * it. That is the same trap one level up from where this file already guards
+ * against it. [LAW:verifiable-goals]
+ *
+ * The fixture is deliberately not the real sidebar: a detector must report a
+ * fault that exists, and the only way to know it does is to hand it one.
+ */
+describe("the reachability rules report what they are meant to catch", () => {
+  const regions = [
+    { text: "Guide", items: [{ text: "Console", link: "/console" }, { text: "Strip", link: "/strip" }] },
+    { text: "Advanced", items: [{ text: "Ghost", link: "/ghost" }, { text: "Strip again", link: "/strip" }] },
+  ];
+  const pageSlugs = ["console", "strip", "orphan"];
+
+  it("names a link with no page behind it", () => {
+    expect(danglingLinks(regions, pageSlugs)).toEqual([
+      { group: "Advanced", text: "Ghost", link: "/ghost" },
+    ]);
+  });
+
+  it("names a page linked from two regions", () => {
+    expect(duplicateLinks(regions)).toEqual([{ link: "strip", groups: ["Guide", "Advanced"] }]);
+  });
+
+  it("names a page no region links", () => {
+    expect(unreachablePages(regions, pageSlugs)).toEqual(["orphan"]);
+  });
+
+  // The exemption is data, so it has to be shown working rather than assumed:
+  // `index` is unlinked on purpose and must not surface as a fault.
+  it("does not name a page the exemption covers", () => {
+    expect(unreachablePages(regions, [...pageSlugs, "index"])).toEqual(["orphan"]);
+  });
+});

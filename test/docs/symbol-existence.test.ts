@@ -50,6 +50,7 @@ import ts from "typescript";
 import {
   ENTRY_BY_SPECIFIER,
   REPO_ROOT,
+  assertProgramClean,
   loadCompilerOptions,
   resolveAlias,
 } from "../coverage/extract.js";
@@ -86,31 +87,47 @@ const allBlocks = pages.flatMap((page) => page.blocks);
  * One program over the entry modules, and the two questions asked of it.
  *
  * `exportsBySpecifier` answers "does this entry point export this name";
- * `classesByName` answers "what public members does this class have, and is
+ * `surfaceByName` answers "what public members does this class have, and is
  * the name unambiguous". Both come from one `ts.createProgram` and one pass
  * over each module's exports — building the program is the expensive step, and
  * `test/coverage/coverage.test.ts` next door already takes care to build it
  * once and reuse it across three checks.
  */
-interface ClassInfo {
-  /** Public instance members, or undefined when the name is ambiguous. */
+interface SurfaceType {
+  /** Public instance members. */
   readonly members: Set<string>;
-  /** Every entry module exporting a class under this name. */
-  readonly origins: string[];
-  /** Return type name of each method, for resolving a receiver chain. */
-  readonly returns: Map<string, string>;
+  /**
+   * Entry module path of each *distinct* class exported under this name, keyed
+   * by declaration identity.
+   *
+   * Counting modules instead would call a re-export ambiguous. This repo
+   * re-exports symbols from several entry points on purpose — `extract.ts`
+   * cites `ThemeName` from both `./` and `./themes/registry` — so one class
+   * reachable two ways must collapse to one origin, or the check fails loudly
+   * on correct usage and the obvious fix looks like "stop re-exporting".
+   */
+  readonly origins: Map<string, string>;
+  /** What each member yields, for resolving a receiver chain. */
+  readonly yields: Map<string, string>;
 }
 
 function resolveSurface(): {
   exportedNames: Map<string, Set<string>>;
-  classesByName: Map<string, ClassInfo>;
+  surfaceByName: Map<string, SurfaceType>;
 } {
   const rootNames = [...ENTRY_BY_SPECIFIER.values()].map((p) => path.join(REPO_ROOT, p));
   const program = ts.createProgram({ rootNames, options: loadCompilerOptions() });
+  // [LAW:no-silent-failure] A program with unresolved errors answers short
+  // rather than throwing: `getExportsOfModule` and `getPropertiesOfType` return
+  // incomplete sets, so a real ghost reads as "the class does not have it" and a
+  // real member reads as missing. Both verdicts would be manufactured by the
+  // broken build, not found in `docs/`. `coverage.test.ts` gates its program the
+  // same way, for the same reason.
+  assertProgramClean(program);
   const checker = program.getTypeChecker();
 
   const exportedNames = new Map<string, Set<string>>();
-  const classesByName = new Map<string, ClassInfo>();
+  const surfaceByName = new Map<string, SurfaceType>();
 
   for (const [specifier, srcPath] of ENTRY_BY_SPECIFIER) {
     const sourceFile = program.getSourceFile(path.join(REPO_ROOT, srcPath));
@@ -134,7 +151,16 @@ function resolveSurface(): {
       // check silently. [LAW:one-source-of-truth] one resolver, in extract.ts.
       const target = resolveAlias(symbol, checker);
       const declaration = target.declarations?.[0];
-      if (!declaration || !ts.isClassDeclaration(declaration)) continue;
+      // Classes and interfaces both, because a chain does not stay in classes:
+      // `host.size()` yields the `TerminalSize` interface and `.rows` is a real
+      // member of it. With classes alone the hop is unfollowable, and the honest
+      // report — "not a class this package exports" — reads as a defect on a
+      // page that is correct. Type aliases stay out: they have no declared
+      // members to check against.
+      const declaresMembers =
+        declaration &&
+        (ts.isClassDeclaration(declaration) || ts.isInterfaceDeclaration(declaration));
+      if (!declaresMembers) continue;
 
       const instanceType = checker.getDeclaredTypeOfSymbol(target);
       const properties = checker.getPropertiesOfType(instanceType).filter((member) => {
@@ -144,61 +170,89 @@ function resolveSurface(): {
         return (modifiers & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) === 0;
       });
 
-      const returns = new Map<string, string>();
+      const yields = new Map<string, string>();
       for (const member of properties) {
-        const signatures = member.valueDeclaration
-          ? checker.getTypeOfSymbolAtLocation(member, member.valueDeclaration).getCallSignatures()
-          : [];
-        const returned = signatures[0]?.getReturnType();
-        // A method's return type names the next class in a receiver chain.
-        // `Layout.getByName` returns `Layout | undefined`, so the union is
-        // walked rather than read whole.
-        for (const part of returned?.isUnion() ? returned.types : returned ? [returned] : []) {
+        const memberType = member.valueDeclaration
+          ? checker.getTypeOfSymbolAtLocation(member, member.valueDeclaration)
+          : undefined;
+        // What a hop yields: a method yields what it returns, and anything else
+        // — a getter, a readonly field — yields its own type. One kind of hop,
+        // so `progress.console.print` walks the same path as
+        // `layout.getByName("x")!.update`. [LAW:one-type-per-behavior] A getter
+        // has no call signatures, and reading only those is what made the
+        // `.console` hop unresolvable while looking like a resolved chain.
+        const yielded = memberType?.getCallSignatures()[0]?.getReturnType() ?? memberType;
+        // `Layout.getByName` returns `Layout | undefined`, so a union is walked
+        // rather than read whole.
+        for (const part of yielded?.isUnion() ? yielded.types : yielded ? [yielded] : []) {
           const name = part.getSymbol()?.name;
-          if (name && name !== "undefined") returns.set(member.name, name);
+          if (name && name !== "undefined") yields.set(member.name, name);
         }
       }
 
-      const existing = classesByName.get(symbol.name);
-      classesByName.set(symbol.name, {
+      // File and position, so one class re-exported from two entry points is one
+      // origin and two different classes sharing a name are two.
+      const identity = `${declaration.getSourceFile().fileName}:${declaration.pos}`;
+      const origins = surfaceByName.get(symbol.name)?.origins ?? new Map<string, string>();
+      surfaceByName.set(symbol.name, {
         members: new Set(properties.map((m) => m.name)),
-        origins: [...(existing?.origins ?? []), srcPath],
-        returns,
+        origins: new Map(origins).set(identity, srcPath),
+        yields,
       });
     }
   }
-  return { exportedNames, classesByName };
+  return { exportedNames, surfaceByName };
 }
 
-const { exportedNames, classesByName } = resolveSurface();
+const { exportedNames, surfaceByName } = resolveSurface();
 
 /**
- * The class a receiver chain ends at, or why it could not be resolved.
+ * What one class name means here, or why it means nothing usable.
+ *
+ * [LAW:single-enforcer] Every step of a chain asks this, including the last.
+ * They used to ask differently — the hops checked existence and ambiguity, the
+ * terminus checked only ambiguity — so a chain ending in a name this package
+ * does not export returned as if resolved, and the ghost check downstream
+ * treated the missing class as a pass.
  *
  * A docs page supplies a bare class name and nothing else, so an ambiguous
  * name — two entry points exporting different classes as `Console` — cannot be
  * disambiguated from the input. It is reported rather than silently resolved
  * to whichever module was walked last. [LAW:no-silent-failure]
  */
-function resolveChain(use: MemberUse): { className: string } | { unresolved: string } {
+function lookupType(className: string): { info: SurfaceType } | { unresolved: string } {
+  const info = surfaceByName.get(className);
+  if (!info) return { unresolved: `${className} is not a class this package exports` };
+  if (info.origins.size > 1) {
+    const paths = [...info.origins.values()].join(" and ");
+    return { unresolved: `'${className}' is exported by ${paths}` };
+  }
+  return { info };
+}
+
+/**
+ * The class a receiver chain ends at, or why it could not be resolved.
+ *
+ * [LAW:parse-dont-validate] A resolution carries the `SurfaceType`, so holding one
+ * *is* the proof that class exists. Returning the name alone left every caller
+ * to look it up again, and the one caller that did treated a failed lookup as
+ * nothing to check rather than as a failure.
+ */
+function resolveChain(
+  use: MemberUse,
+): { className: string; info: SurfaceType } | { unresolved: string } {
   let className = use.rootClass;
-  for (const method of use.path) {
-    const info = classesByName.get(className);
-    if (!info) return { unresolved: `${className} is not a class this package exports` };
-    if (info.origins.length > 1) {
-      return { unresolved: `'${className}' is exported by ${info.origins.join(" and ")}` };
-    }
-    const next = info.returns.get(method);
+  for (const member of use.path) {
+    const found = lookupType(className);
+    if ("unresolved" in found) return found;
+    const next = found.info.yields.get(member);
     if (!next) {
-      return { unresolved: `${className}.${method} has no class return type to follow` };
+      return { unresolved: `${className}.${member} yields no class to follow` };
     }
     className = next;
   }
-  const info = classesByName.get(className);
-  if (info && info.origins.length > 1) {
-    return { unresolved: `'${className}' is exported by ${info.origins.join(" and ")}` };
-  }
-  return { className };
+  const found = lookupType(className);
+  return "unresolved" in found ? found : { className, info: found.info };
 }
 
 const documentedImports: ImportedName[] = allBlocks
@@ -217,7 +271,7 @@ const documentedImports: ImportedName[] = allBlocks
  */
 const resolvedMembers = pages
   .flatMap((page) => extractMemberUses(page.blocks))
-  .filter((use) => classesByName.has(use.rootClass))
+  .filter((use) => surfaceByName.has(use.rootClass))
   .map((use) => ({ use, resolution: resolveChain(use) }));
 
 function describeImport(imported: ImportedName): string {
@@ -249,19 +303,35 @@ describe("documented symbols exist", () => {
     expect(resolvedMembers.map((r) => r.use.rootClass)).toContain("Console");
   });
 
-  // The chained pattern specifically, because it was invisible once and the
-  // page that uses it throughout would not have failed either way.
-  it("follows a receiver chain through a method's return type", () => {
-    const chained = resolvedMembers.filter((r) => r.use.path.length > 0);
-    expect(chained.length).toBeGreaterThan(0);
-    expect(
-      chained.map((r) => ("className" in r.resolution ? r.resolution.className : "")),
-    ).toContain("Layout");
+  // Every receiver shape this knows how to follow, named one by one.
+  //
+  // Each was invisible once, and none of the failures announced itself: the
+  // sweep stayed green while checking less, and the page using the dropped
+  // shape would not have failed either way. A count cannot catch that — losing
+  // one shape leaves the total looking healthy — so each is asserted by the
+  // class it must land on. [LAW:verifiable-goals]
+  it("follows every receiver shape it recognizes", () => {
+    const landed = resolvedMembers.map(({ use, resolution }) => ({
+      ...use,
+      className: "className" in resolution ? resolution.className : "",
+    }));
+    const classesWhere = (predicate: (u: (typeof landed)[number]) => boolean): string[] =>
+      landed.filter(predicate).map((u) => u.className);
+
+    // `layout.getByName("body")!.update` — a hop through a method's return type.
+    expect(classesWhere((u) => u.path.length > 0)).toContain("Layout");
+    // `new Table().addColumn(…)` — rooted in a constructor, bound to no variable.
+    expect(landed.filter((u) => u.text.startsWith("new ")).map((u) => u.rootClass))
+      .toContain("Table");
+    // `progress.console.print` — a hop through a getter, which has no call signature.
+    expect(classesWhere((u) => u.path.includes("console"))).toContain("Console");
+    // `host.size().rows` — a hop landing on an interface rather than a class.
+    expect(classesWhere((u) => u.path.includes("size"))).toContain("TerminalSize");
   });
 
   it("resolved the entry points it checks against", () => {
     expect(exportedNames.get("@promptctl/rich-js")?.has("Console")).toBe(true);
-    expect(classesByName.get("Console")?.members.has("print")).toBe(true);
+    expect(surfaceByName.get("Console")?.members.has("print")).toBe(true);
   });
 
   // A receiver rooted in this package's surface that cannot be followed is
@@ -286,8 +356,7 @@ describe("documented symbols exist", () => {
   it("calls only members the receiver's class has", () => {
     const ghosts = resolvedMembers.flatMap(({ use, resolution }) => {
       if (!("className" in resolution)) return [];
-      const info = classesByName.get(resolution.className);
-      if (!info || info.members.has(use.member)) return [];
+      if (resolution.info.members.has(use.member)) return [];
       return [describeMember(use, resolution.className)];
     });
     expect(ghosts).toEqual([]);

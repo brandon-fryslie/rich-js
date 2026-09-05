@@ -70,11 +70,12 @@ export interface ImportedName {
  * `console.print(…)` where the page wrote `const console = new Console()`.
  *
  * [LAW:types-are-the-program] The receiver travels as a class name plus the
- * method path taken from it, never as the source text. `console.print` gives
+ * member path taken from it, never as the source text. `console.print` gives
  * `("Console", [], "print")`; `layout.getByName("body")!.update` gives
- * `("Layout", ["getByName"], "update")`. The caller resolves each hop through
- * the method's declared return type, which is why unwrapping the `!` is not
- * what this needed — a chain is data, and one resolver walks any depth of it.
+ * `("Layout", ["getByName"], "update")`; `progress.console.print` gives
+ * `("Progress", ["console"], "print")`. The caller resolves each hop through
+ * what that member yields, which is why unwrapping the `!` is not what this
+ * needed — a chain is data, and one resolver walks any depth of it.
  *
  * That distinction has already cost coverage once: the first version of this
  * file recorded a use only when the receiver was a bare identifier, and the
@@ -86,7 +87,7 @@ export interface MemberUse {
   readonly line: number;
   /** The class the root identifier was constructed from, e.g. `Layout`. */
   readonly rootClass: string;
-  /** Methods called between the root and this member, outermost last. */
+  /** Members read between the root and this one, outermost last. */
   readonly path: readonly string[];
   readonly member: string;
   /** How the source reads, for the failure message. */
@@ -232,8 +233,11 @@ export function extractMemberUses(blocks: readonly CodeBlock[]): MemberUse[] {
     });
   });
 
-  const classAt = (name: string, ordinal: number): string | undefined => {
-    const matches = declarations.filter((d) => d.name === name);
+  // A `new X()` root already names its class; a variable has to be looked up
+  // against the declarations above. Same question, two kinds of answer.
+  const classOfRoot = (root: ChainRoot, ordinal: number): string | undefined => {
+    if (root.kind === "class") return root.name;
+    const matches = declarations.filter((d) => d.name === root.name);
     const preceding = matches.filter((d) => d.ordinal <= ordinal);
     const nearest = preceding.length > 0 ? preceding[preceding.length - 1] : matches[0];
     return nearest?.className;
@@ -245,7 +249,7 @@ export function extractMemberUses(blocks: readonly CodeBlock[]): MemberUse[] {
       if (!ts.isPropertyAccessExpression(node)) return;
       const receiver = describeReceiver(node.expression);
       if (!receiver) return;
-      const rootClass = classAt(receiver.root, ordinalOf(blockIndex, source, node));
+      const rootClass = classOfRoot(receiver.root, ordinalOf(blockIndex, source, node));
       if (!rootClass) return;
       uses.push({
         page: block.page,
@@ -266,25 +270,52 @@ function ordinalOf(blockIndex: number, source: ts.SourceFile, node: ts.Node): nu
 }
 
 /**
- * The root identifier a receiver expression starts from, and the methods called
- * between it and here.
+ * Where a receiver chain begins.
  *
- * `console` -> root `console`, no path. `layout.getByName("body")!` -> root
- * `layout`, path `["getByName"]`. Anything else — an array index, a function
- * call with no receiver, a literal — returns undefined, and the caller reports
- * it rather than dropping it.
+ * [LAW:types-are-the-program] A chain starts at one of exactly two things, and
+ * they resolve differently: `console.print` begins at a variable whose class the
+ * page declared somewhere, while `new Table().addRow(…)` names its class on the
+ * spot. Returning a bare string made the caller guess, and it guessed
+ * "variable" — so the fluent form on `docs/console.md` resolved to no
+ * declaration and every member on it was dropped.
+ */
+type ChainRoot =
+  | { readonly kind: "variable"; readonly name: string }
+  | { readonly kind: "class"; readonly name: string };
+
+/**
+ * Where a receiver expression starts, and the members read between there and here.
+ *
+ * `console` -> variable `console`, no path. `layout.getByName("body")!` ->
+ * variable `layout`, path `["getByName"]`. `progress.console.print` -> variable
+ * `progress`, path `["console"]` — a getter is a hop like any other, which is
+ * why the call case below delegates here rather than duplicating the walk.
+ *
+ * Anything else — an array index, a literal, a bare call — returns undefined and
+ * the use is dropped. That is not a silent hole: a receiver of that shape names
+ * nothing the page constructed, so there is no class to check the member
+ * against. The drops that would matter are the ones rooted in this package's
+ * surface, and those are reported by `resolveChain` rather than dropped.
  */
 function describeReceiver(
   expression: ts.Expression,
-): { root: string; path: string[] } | undefined {
+): { root: ChainRoot; path: string[] } | undefined {
   if (ts.isNonNullExpression(expression) || ts.isParenthesizedExpression(expression)) {
     return describeReceiver(expression.expression);
   }
-  if (ts.isIdentifier(expression)) return { root: expression.text, path: [] };
-  if (ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression)) {
-    const inner = describeReceiver(expression.expression.expression);
+  if (ts.isIdentifier(expression)) {
+    return { root: { kind: "variable", name: expression.text }, path: [] };
+  }
+  if (ts.isNewExpression(expression) && ts.isIdentifier(expression.expression)) {
+    return { root: { kind: "class", name: expression.expression.text }, path: [] };
+  }
+  if (ts.isPropertyAccessExpression(expression)) {
+    const inner = describeReceiver(expression.expression);
     if (!inner) return undefined;
-    return { root: inner.root, path: [...inner.path, expression.expression.name.text] };
+    return { root: inner.root, path: [...inner.path, expression.name.text] };
+  }
+  if (ts.isCallExpression(expression) && ts.isPropertyAccessExpression(expression.expression)) {
+    return describeReceiver(expression.expression);
   }
   return undefined;
 }

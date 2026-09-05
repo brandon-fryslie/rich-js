@@ -87,8 +87,10 @@ Until then `TimeElapsedColumn` holds at `0:00:00` and `TimeRemainingColumn` at
 `-:--:--`. Use this for a queue of tasks you want on screen from the beginning but
 timed only while each one runs.
 
-There is no indeterminate mode. Omitting `total` does not produce a pulsing bar; it
-produces a bar stuck at 0%.
+There is no indeterminate mode, and omitting `total` is not a substitute for one. The
+two columns then disagree: `TaskProgressColumn` freezes at 0%, while `BarColumn` falls
+back to an assumed total of 100, so the bar fills as `completed` advances and turns
+"finished" at 100 — against a number you never set. Give every task a real `total`.
 
 ### Transient display
 

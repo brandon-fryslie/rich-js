@@ -75,12 +75,16 @@ layout.getByName("lower-right")!.update(statsPanel);
 
 ## Fixed size
 
-Fix a sub-layout to an exact number of rows (or columns, in a row split):
+Fix a sub-layout to an exact number of rows (or columns, in a row split). Splitting
+replaces a layout's children rather than adding to them, so this starts from its own
+root instead of re-splitting the one above:
 
 ```typescript
-layout.splitColumn(
+const page = new Layout(undefined, { name: "page" });
+
+page.splitColumn(
   new Layout(undefined, { name: "header", size: 3 }),  // always 3 rows
-  new Layout(undefined, { name: "body" }),                 // takes remaining space
+  new Layout(undefined, { name: "body" }),             // takes remaining space
   new Layout(undefined, { name: "footer", size: 1 }),  // always 1 row
 );
 ```
@@ -92,7 +96,7 @@ Fixed layouts take their space first; remaining space is distributed among flexi
 Control proportional space allocation:
 
 ```typescript
-layout.getByName("lower")!.splitRow(
+page.getByName("body")!.splitRow(
   new Layout(undefined, { name: "sidebar", ratio: 1 }), // one-third
   new Layout(undefined, { name: "main", ratio: 2 }), // two-thirds
 );
@@ -113,10 +117,10 @@ new Layout(undefined, { name: "sidebar", minimumSize: 20 })
 Hide a region — neighboring regions expand to fill the vacated space:
 
 ```typescript
-layout.getByName("sidebar")!.visible = false;
+page.getByName("sidebar")!.visible = false;
 
 // Re-enable it
-layout.getByName("sidebar")!.visible = true;
+page.getByName("sidebar")!.visible = true;
 ```
 
 Use this to toggle panels based on application state.

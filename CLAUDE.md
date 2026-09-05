@@ -45,6 +45,8 @@ The sidebar is split into one region per top-level nav tab (`guideSidebar`, `adv
 
 Run `npm run docs:build` before committing any documentation change. It is the dead-link gate and the Vue-interpolation gate; both failures are invisible in the source file and obvious in the build.
 
+`test/docs/symbol-existence.test.ts` is the other gate, and it reads the pages rather than the site: every name a page imports from an entry point, and every member it calls on a class it constructed, has to exist. **When it goes red, the page is wrong, not the library.** Implementing a documented symbol to clear the bar lets an unreviewed sentence set the roadmap — `docs/logging.md` documented a `RichHandler` end to end across five snippets, and the resolution was to delete the page. If the symbol is genuinely wanted, file it on its own merits. That test's header owns the rest of the argument, including the three ways a page lies and which two of them this cannot catch.
+
 The move to avoid: writing a second description of a subsystem — a design note, an interface sketch, a "spec" — somewhere outside `docs/`. This repository already paid for that once. A `spec/` directory of authoring briefs sat beside `docs/` describing the same surface, drifted, and then actively lied: it documented a named-colour function family (`red`, `on`, `hex`) that `src/template-bindings/` had deliberately replaced with `fg`/`bg`, and a `Screen` with no `TerminalHost` seam. An agent implementing from it would have written templates that fail with `FuncNotFound`. Two descriptions of one surface is one description and one trap, and you cannot tell by looking which is which.
 
 ### Subsystems (src/)
