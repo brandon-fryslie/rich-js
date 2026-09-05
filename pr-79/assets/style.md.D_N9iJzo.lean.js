@@ -1,1 +1,0 @@
-import{_ as i,o as t,c as a,ag as e}from"./chunks/framework.DPSp47JV.js";const c=JSON.parse('{"title":"Styles","description":"","frontmatter":{},"headers":[],"relativePath":"style.md","filePath":"style.md"}'),n={name:"style.md"};function l(h,s,p,d,k,r){return t(),a("div",null,[...s[0]||(s[0]=[e("",41)])])}const g=i(n,[["render",l]]);export{c as __pageData,g as default};

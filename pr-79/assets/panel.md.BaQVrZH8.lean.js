@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as t}from"./chunks/framework.DPSp47JV.js";const g=JSON.parse('{"title":"Panel","description":"","frontmatter":{},"headers":[],"relativePath":"panel.md","filePath":"panel.md"}'),e={name:"panel.md"};function h(l,s,p,k,r,d){return a(),n("div",null,[...s[0]||(s[0]=[t("",33)])])}const B=i(e,[["render",h]]);export{g as __pageData,B as default};
