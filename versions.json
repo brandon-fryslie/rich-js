@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-89",
+      "ref": "refs/pull/89/merge",
+      "sha": "108dfd3f61f1434b7f10c422861a982c0e5b3a9a",
+      "timestamp": "2026-09-05T11:33:31.415Z",
+      "commits": [
+        {
+          "sha": "108dfd3f61f1434b7f10c422861a982c0e5b3a9a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T05:32:55-06:00",
+          "message": "Merge cf52eba5e5131f94eeaffcdea9c516179695e20f into ec25a354813cbd40e61ef075e3b521fae4501c53\n"
+        },
+        {
+          "sha": "cf52eba5e5131f94eeaffcdea9c516179695e20f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T05:32:32-06:00",
+          "message": "fix(markup): settle what a legal plugin tag name is, once (rich-markup-pwr)\n\nA registered plugin name matched as a bare PREFIX of the tag text, and the\nfailure was silent in both directions.\n\nRegistering `table` destroyed every `table.*` built-in: `[table.header]x[/table.header]`\nfired the plugin and dropped the `.header` as attributes. The mirror case:\n`register(\"a.b\")` succeeded but `[a.b]` could never reach the handler, because\nthe tag scan stops at the dot.\n\nBoth ends wanted the same answer to \"what is a legal plugin tag name?\" and\nneither asked it. There is now one source fragment, anchored two ways:\n\n- MATCH: `^(name)(?=$|[ \\t])` — a registered name addresses a plugin only when\n  the tag text ends there or continues with the whitespace that introduces\n  attributes. `[table.header]` and `[table=x]` fall through to the built-in\n  dialect exactly as an unregistered name would.\n- REGISTER: `^name$` — a name markup could never address is rejected loudly\n  instead of installing an unreachable handler.\n\nThe two anchorings are mirrors: every name `register` accepts is one the match\nsite can reach, and every name it rejects is unreachable.\n\nThe six-line hand scanner it replaces is gone; `register` keeps its existing\nreserved-name guard, which asked a different question (is this itself a valid\nstyle?) and could not have caught either case.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ec25a354813cbd40e61ef075e3b521fae4501c53",
