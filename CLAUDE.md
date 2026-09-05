@@ -87,7 +87,8 @@ Build order within `src/core/`. Each tier imports only from tiers above it:
 3   box · protocol
 4   measure · emoji · text · strip · render
 5   markup · highlighter
-6   console                           (orchestrator)
+6   pretty
+7   console                           (orchestrator)
 ```
 
 Two edges leave `src/core/` and point *up* into higher subsystems. Both are deliberate, both are annotated where they sit, and they are the whole list:
@@ -117,6 +118,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **measure** — `Measurement` value type (min/max cell width). `Measurement.get()` is the single enforcer for measuring a `Measurable`.
 - **markup** — parses Rich markup strings (`[bold red]text[/]`) into `RichText`.
 - **text** — `RichText`: styled text with `Span[]` annotations. Primary text type for the library; implements `Renderable` and `Measurable`.
+- **pretty** — `Pretty`: a JavaScript value formatted as `RichText`. Lives in `core/` rather than `renderables/` for the reason its module header gives: it composes no other renderable, its imports are core primitives only, and `console.print` accepts `unknown` and must reach it without an upward edge. Sharing the "implements `Renderable`" trait with `Table` is not what decides the directory — `RichText` implements it too.
 - **highlighter** — `Highlighter` base + built-ins (`RegexHighlighter`, `ReprHighlighter`, `JSONHighlighter`, `ISO8601Highlighter`). Mutates a `RichText` by adding style spans.
 - **strip** — `Strip` + `Joiner`: edge-aware horizontal layout, where each transition between adjacent items (including the two endpoints) is an explicit position the joiner names.
 - **render** — `renderToString` and `segmentsToString`. Pure, one-shot Segment→ANSI emission with no `Console` and no writes to stdout. Every path to wire bytes delegates here.

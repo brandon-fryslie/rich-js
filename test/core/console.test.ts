@@ -266,10 +266,88 @@ describe("Console.print()", () => {
     expect(captured(chunks)).toContain("Rich Text");
   });
 
-  it("converts non-string non-renderable objects to string", () => {
+  it("prints a number", () => {
     const { console: c, chunks } = makeConsole({ markup: false });
     c.print(42);
     expect(captured(chunks)).toContain("42");
+  });
+
+  // `print` sorts every argument into exactly three arms: a renderable draws
+  // itself, a string is the only thing that can carry markup, and everything
+  // else is data formatted by `Pretty`. These pin the arms and the boundaries
+  // between them — the bug they descend from is an object reaching the string
+  // arm, stringifying to `[object Object]`, and being consumed whole by the
+  // markup parser, so `print({ a: 1 })` emitted a blank line.
+  describe("print routes arguments by type", () => {
+    it("formats a plain object rather than emitting nothing", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print({ a: 1 });
+      const output = captured(chunks);
+      expect(output).toContain("a");
+      expect(output).toContain("1");
+    });
+
+    it("formats an array structurally, not as comma-joined text", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print([1, 2, 3]);
+      expect(captured(chunks)).toContain("[1, 2, 3]");
+    });
+
+    it("formats Maps and Sets, which stringify to a non-answer", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print(new Map([["k", 1]]));
+      c.print(new Set([7]));
+      const output = captured(chunks);
+      expect(output).toContain("Map {");
+      expect(output).toContain("Set {");
+      expect(output).not.toContain("[object");
+    });
+
+    it("keeps the self-description of a value that has one", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print(new Error("boom"));
+      c.print(/ab+c/g);
+      const output = captured(chunks);
+      expect(output).toContain("Error: boom");
+      expect(output).toContain("/ab+c/g");
+    });
+
+    it("prints a null-prototype object instead of throwing on coercion", () => {
+      // `String(Object.create(null))` is a TypeError, so the old string arm
+      // did not merely print this one badly — it crashed the caller.
+      const { console: c, chunks } = makeConsole();
+      const bare = Object.create(null) as Record<string, unknown>;
+      bare["k"] = 1;
+      expect(() => c.print(bare)).not.toThrow();
+      expect(captured(chunks)).toContain("k");
+    });
+
+    it("still applies markup to strings", () => {
+      const { console: c, chunks } = makeConsole({ markup: true });
+      c.print("[bold]hi[/bold]");
+      const output = captured(chunks);
+      expect(output).toContain("hi");
+      expect(output).not.toContain("[bold]");
+    });
+
+    it("does not read a lone object as print options", () => {
+      // Every key here is an option name. Read as options the call prints
+      // nothing at all, which is the blank line this whole arm exists to
+      // prevent; read as data it is an object like any other.
+      const { console: c, chunks } = makeConsole();
+      c.print({ style: "bold", end: "!" });
+      const output = captured(chunks);
+      expect(output).toContain("style");
+      expect(output).toContain("bold");
+    });
+
+    it("still reads a trailing object as options when content precedes it", () => {
+      const { console: c, chunks } = makeConsole();
+      c.print("Hello", { end: "!" });
+      const output = captured(chunks);
+      expect(output.endsWith("!")).toBe(true);
+      expect(output).not.toContain("end");
+    });
   });
 
   it("separates multiple items with space by default", () => {

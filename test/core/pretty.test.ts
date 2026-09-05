@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Pretty } from "../../src/renderables/pretty.js";
+import { Pretty } from "../../src/core/pretty.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -148,6 +148,58 @@ describe("Pretty", () => {
     const p = new Pretty({ a: [1, 2] }, { expandAll: true, indentGuides: false });
     const text = collectText(p, { maxWidth: 40 });
     expect(text).toContain("a");
+  });
+
+  // An object either carries its own string form or it does not, and the two
+  // populations want opposite treatment: reflecting on a Date throws its answer
+  // away (`Object.keys(new Date())` is empty, so it renders `{}`), while a plain
+  // object's own `toString` is the non-answer `[object Object]`, leaving the
+  // keys as the only information present. These pin both sides and the two
+  // edges — a plain object that defines `toString`, and one with no prototype
+  // and so no `toString` at all.
+  describe("self-describing values keep their own string form", () => {
+    it("renders a Date as its date, not as an empty object", () => {
+      // Compared against the Date's own string form rather than a literal:
+      // that form is the contract, and a literal would only pin the machine's
+      // time zone.
+      const date = new Date(0);
+      expect(collectText(new Pretty(date), { maxWidth: 120 }))
+        .toContain(date.toString());
+    });
+
+    it("renders an Error and a RegExp as themselves", () => {
+      expect(collectText(new Pretty(new Error("boom")), { maxWidth: 80 }))
+        .toContain("Error: boom");
+      expect(collectText(new Pretty(/ab+c/g), { maxWidth: 80 }))
+        .toContain("/ab+c/g");
+    });
+
+    it("uses an own toString on an otherwise plain object", () => {
+      const value = { hidden: 1, toString: () => "CUSTOM" };
+      expect(collectText(new Pretty(value), { maxWidth: 80 })).toContain("CUSTOM");
+    });
+
+    it("reflects on a class instance, which inherits the non-answer", () => {
+      class Point {
+        x = 1;
+        y = 2;
+      }
+      const text = collectText(new Pretty(new Point()), { maxWidth: 80 });
+      expect(text).toContain("x");
+      expect(text).not.toContain("[object");
+    });
+
+    it("reflects on a null-prototype object rather than calling a missing toString", () => {
+      const bare = Object.create(null) as Record<string, unknown>;
+      bare["k"] = 1;
+      expect(collectText(new Pretty(bare), { maxWidth: 80 })).toContain("k");
+    });
+
+    it("keeps the structural form for arrays, which also override toString", () => {
+      // Array.prototype.toString would answer "1,2,3" — self-description is
+      // only consulted after the arms that know a richer form.
+      expect(collectText(new Pretty([1, 2, 3]), { maxWidth: 80 })).toContain("[1, 2, 3]");
+    });
   });
 
   // --- Measurement ---

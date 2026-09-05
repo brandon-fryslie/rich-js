@@ -8,6 +8,7 @@ import { ColorDepth, resolveColorSystem } from "./color.js";
 import type { DetectColorOptions } from "./color.js";
 import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
+import { Pretty } from "./pretty.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 // [LAW:one-way-deps] exception: one of the two sanctioned upward edges out of
@@ -363,13 +364,18 @@ export class Console {
     let opts: PrintOptions = {};
     let items: unknown[];
 
+    // The trailing options object is only recognised when something precedes
+    // it. A lone object is data — `print({ style: "..." })` reads as a value to
+    // format, and treating it as options would emit an empty line, which is the
+    // one outcome this method must never produce. Nothing is given up: options
+    // configure the rendering of content, so a call carrying options and no
+    // content had nothing to render either way. [LAW:no-silent-failure]
     const lastArg = args[args.length - 1];
     if (
-      args.length > 0 &&
+      args.length > 1 &&
       typeof lastArg === "object" &&
       lastArg !== null &&
       !isRenderable(lastArg) &&
-      !(lastArg instanceof RichText) &&
       ("style" in lastArg || "justify" in lastArg || "markup" in lastArg ||
        "highlight" in lastArg || "overflow" in lastArg || "end" in lastArg ||
        "softWrap" in lastArg || "crop" in lastArg || "sep" in lastArg)
@@ -393,24 +399,25 @@ export class Console {
         renderables.push(new RichText(sep, { end: "" }));
       }
 
+      // Three arms, and they are the whole domain. A renderable draws itself.
+      // A string is the only kind of argument that can *contain* markup, so it
+      // is the only kind the markup dialect is applied to. Everything else is
+      // data, and `Pretty` is the single authority on how a JavaScript value
+      // displays — `String(value)` was a second, weaker one that answered
+      // `[object Object]` for every object and let the markup parser eat it.
+      // [LAW:one-source-of-truth]
       const item = items[i];
       if (isRenderable(item)) {
         renderables.push(item);
-      } else if (item instanceof RichText) {
-        renderables.push(item);
-      } else {
-        const text = String(item);
-        let richText: RichText;
-        if (doMarkup) {
-          richText = renderMarkup(text);
-        } else {
-          richText = new RichText(text);
-        }
+      } else if (typeof item === "string") {
+        const richText = doMarkup ? renderMarkup(item) : new RichText(item);
         richText.end = "";
         if (doHighlight) {
           this._highlighter.highlight(richText);
         }
         renderables.push(richText);
+      } else {
+        renderables.push(new Pretty(item));
       }
     }
 

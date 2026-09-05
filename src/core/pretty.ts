@@ -1,17 +1,24 @@
 /**
  * Pretty — formats JavaScript data structures with highlighting.
+ *
+ * Lives in `core/` beside `markup` and `emoji` because it does their job: turn
+ * foreign input into `RichText`. It composes no other renderable — the trait
+ * every file in `renderables/` shares and this one does not — and its imports
+ * are core primitives only. `Console.print` accepts `unknown` and must turn any
+ * of it into something renderable, so the formatter has to sit where `console`
+ * can reach it without an upward edge. [LAW:one-way-deps]
  */
 
-import { cellLen } from "../core/cells.js";
-import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
-import { RichText } from "../core/text.js";
-import { ReprHighlighter } from "../core/highlighter.js";
+import { cellLen } from "./cells.js";
+import { Segment } from "./segment.js";
+import { Style } from "./style.js";
+import { RichText } from "./text.js";
+import { ReprHighlighter } from "./highlighter.js";
 import type {
   Renderable,
   Measurable,
   RenderOptions,
-} from "../core/protocol.js";
+} from "./protocol.js";
 
 export interface PrettyOptions {
   indent?: number;
@@ -22,6 +29,31 @@ export interface PrettyOptions {
 }
 
 const reprHighlighter = new ReprHighlighter();
+
+/**
+ * Does this value carry its own string form, or must we reflect on its keys?
+ *
+ * A `Date`, an `Error`, a `RegExp`, or any object that defines `toString`
+ * answers the display question itself, and reflecting on such a value throws
+ * that answer away — `Object.keys(new Date())` is empty, so key-reflection
+ * renders it `{}`. Inheriting `Object.prototype.toString` is the opposite
+ * signal: it yields `[object Object]`, a non-answer, so the keys are all the
+ * information there is.
+ *
+ * Both clauses are load-bearing. The identity check separates the two
+ * populations; the `typeof` check is what makes `Object.create(null)` — which
+ * has no `toString` at all — reflect rather than throw.
+ * [LAW:parse-dont-validate] The question is asked once, here, and the branch it
+ * selects is the whole answer; nothing downstream re-asks it.
+ */
+function describesItself(value: object): boolean {
+  const asRecord = value as { toString?: unknown; [Symbol.toPrimitive]?: unknown };
+  return (
+    typeof asRecord[Symbol.toPrimitive] === "function" ||
+    (typeof asRecord.toString === "function" &&
+      asRecord.toString !== Object.prototype.toString)
+  );
+}
 
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;
@@ -128,8 +160,13 @@ export class Pretty implements Renderable, Measurable {
       return "Set {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
 
-    // Plain objects
-    if (typeof value === "object") {
+    // Objects that answer the display question themselves. Sits below the
+    // Array/Map/Set arms deliberately: an array also overrides `toString`, but
+    // "1,2,3" is a poorer answer than the structural form above.
+    if (describesItself(value)) return String(value);
+
+    // Plain objects — no self-description, so the keys are the whole story.
+    {
       const obj = value as Record<string, unknown>;
       const keys = Object.keys(obj);
       if (keys.length === 0) return "{}";
@@ -151,8 +188,6 @@ export class Pretty implements Renderable, Measurable {
       if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
       return "{\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
-
-    return String(value);
   }
 
   private _addIndentGuides(text: RichText): void {

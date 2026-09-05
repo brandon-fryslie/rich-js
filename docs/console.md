@@ -91,18 +91,24 @@ console.print(new Table().addColumn("Name").addRow("Alice"));
 
 Output is word-wrapped to the terminal width by default.
 
-Anything that is not already a renderable goes through `String()`. That is the
-right answer for a number or a `Date` and the wrong-looking one for a plain
-object, which stringifies to `[object Object]` — text the markup parser then
-reads as a style tag and consumes, leaving a blank line:
+`print` sorts each argument into one of three kinds. A renderable draws itself.
+A string is the only kind of argument that can contain markup, so it is the only
+kind the markup dialect is applied to. Anything else is data, and is formatted by
+[`Pretty`](./pretty):
 
 ```typescript
-console.print({ status: 200, ok: true }); // a blank line, not an object
+console.print({ status: 200, ok: true });
 ```
 
-To print a value structurally, construct a `Pretty` around it. See
-[Pretty printing](./pretty), which covers the formatting options and this
-behavior in full.
+```
+{ status: 200, ok: true }
+```
+
+That covers arrays, `Map`s, `Set`s, and nested structures. A value that carries
+its own string form — a `Date`, an `Error`, a `RegExp`, anything defining
+`toString` — keeps it rather than being reflected on. Construct a `Pretty`
+yourself only when you want its formatting options; see
+[Pretty printing](./pretty) for those.
 
 ### Style argument
 
@@ -187,17 +193,12 @@ forwards to `print()` and `print()` decides by sniffing for the nine
 `PrintOptions` names — `style`, `justify`, `markup`, `highlight`, `overflow`,
 `end`, `softWrap`, `crop`, `sep`.
 
-An object carrying none of them is a value to print, so it hits the
-`[object Object]` case above and leaves a bare timestamp:
+An object carrying none of them is a value to print, and is formatted:
 
 ```typescript
 console.log({ userId: 42, action: "login" });
-// [9:14:41 PM]
+// [9:14:41 PM]  { userId: 42, action: "login" }
 ```
-
-The line ends in two spaces you cannot see: one closes the timestamp prefix, and
-`print` writes its argument separator before the object whatever that object
-turns out to render to.
 
 An object carrying any of them is taken as options instead — and since one of
 the nine is `end`, a field name as ordinary as that will mangle the line rather
@@ -208,8 +209,10 @@ console.log("range", { end: "2024" });
 // [9:14:41 PM]  range2024   ← no newline; "2024" became the line terminator
 ```
 
-Neither outcome is what a caller passing structured data intends. Format the
-value yourself and log the result.
+That trap is worth knowing before you log structured data whose field names you
+do not control. `print` sniffs only a trailing object with something before it,
+so `print(value)` on its own is always data — the ambiguity exists for `log()`
+because `log()` puts the timestamp in front of your value.
 
 ## JSON output
 
