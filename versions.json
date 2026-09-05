@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-88",
+      "ref": "refs/pull/88/merge",
+      "sha": "d2f8ccb88920138185e6544366a9693de0f9d128",
+      "timestamp": "2026-09-05T11:06:06.651Z",
+      "commits": [
+        {
+          "sha": "d2f8ccb88920138185e6544366a9693de0f9d128",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T05:05:36-06:00",
+          "message": "Merge 6722470ba430c7ec08c314f5e591bbc2c13b2327 into 23d6db15bb7a6482c51aa1ecb4101d819a158b6e\n"
+        },
+        {
+          "sha": "6722470ba430c7ec08c314f5e591bbc2c13b2327",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T05:05:09-06:00",
+          "message": "fix(cells): make chopCells advance on a glyph it cannot split\n\nchopCells looped forever when a single glyph was wider than the whole\nbudget, then died with `RangeError: Invalid array length`. It drove the\nloop with splitText, which pads to land exactly on the requested column\nand hands the unsplittable glyph back untouched — so at a 1-cell budget\n`chopCells(\"日本語\", 1)` pushed a padded blank line and a remainder that\nnever shrank, forever. A terminal reporting a 1-cell width is enough to\nreach it, and cc-candybar already floors its fold budget at 2 cells to\nroute around it.\n\nDrive the loop with cellFitFrom over code-unit offsets instead, taking\n`max(fit, nextCodePoint)`: nextCodePoint is always strictly past the\nstart, so the loop advances by construction rather than by a guard, and\nthe case where nothing fits force-takes the glyph and lets it overflow\nby its own width — the only answer that both terminates and keeps the\ntext intact. cellFit already documents that its caller must choose\nbetween force-taking and skipping; chopCells now chooses.\n\nSide effect worth naming: chopCells no longer pads. It is a chopping\nfunction, `join(\"\") === input` now holds for every input, and a line\nthat stops short of a wide glyph is narrower than maxWidth rather than\npadded out to it. splitText keeps its padding — that is its job.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "23d6db15bb7a6482c51aa1ecb4101d819a158b6e",
