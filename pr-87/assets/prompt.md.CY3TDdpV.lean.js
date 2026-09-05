@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.DTr9e-9G.js";const B=JSON.parse('{"title":"Prompts","description":"","frontmatter":{},"headers":[],"relativePath":"prompt.md","filePath":"prompt.md"}'),h={name:"prompt.md"};function p(k,s,l,e,r,d){return a(),t("div",null,[...s[0]||(s[0]=[n("",26)])])}const y=i(h,[["render",p]]);export{B as __pageData,y as default};

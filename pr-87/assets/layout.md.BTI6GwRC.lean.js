@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as h}from"./chunks/framework.DTr9e-9G.js";const y=JSON.parse('{"title":"Layout","description":"","frontmatter":{},"headers":[],"relativePath":"layout.md","filePath":"layout.md"}'),t={name:"layout.md"};function k(l,s,p,e,r,d){return a(),n("div",null,[...s[0]||(s[0]=[h("",33)])])}const g=i(t,[["render",k]]);export{y as __pageData,g as default};
