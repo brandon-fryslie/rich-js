@@ -4,15 +4,50 @@
     {
       "version": "pr-86",
       "ref": "refs/pull/86/merge",
-      "sha": "4748402709d98168ede09a4d104c420ed2cb77d9",
-      "timestamp": "2026-09-05T06:35:59.550Z",
+      "sha": "cf3640464b4f300b167b68cf00c97e4dc07dca86",
+      "timestamp": "2026-09-05T07:11:52.635Z",
       "commits": [
         {
-          "sha": "4748402709d98168ede09a4d104c420ed2cb77d9",
+          "sha": "cf3640464b4f300b167b68cf00c97e4dc07dca86",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T06:35:23Z",
-          "message": "Merge 53661ba6f67a2aaed2a0bae97137d495d73b69db into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+          "timestamp": "2026-09-05T07:11:18Z",
+          "message": "Merge 69ad7c7edfce067f011c7086c91814c31e521aca into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+        },
+        {
+          "sha": "69ad7c7edfce067f011c7086c91814c31e521aca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T01:11:05-06:00",
+          "message": "docs: live.md claimed the nesting this PR just disproved for Progress\n\nProgress is a thin wrapper over one Live, so deleting progress.md's nesting\nsection while live.md still said \"Creating a Live inside an existing Live context\nshows the inner content below the outer. Both can be updated independently\" left\none mechanism described twice, in contradiction, with the false copy unmarked.\n\nVerified by execution rather than inferred from the Progress case. Byte stream of\ntwo Live instances started on one Console, escapes spelled out:\n\n  [?25l [?25l OUTER-B\\n INNER-B\\n [1A [2K INNER-B\\n [?25h [1A [2K OUTER-B\\n [?25h\n\nThe inner Live clears and redraws its own line correctly. The outer then clears\none line up from where the cursor now sits - below the inner's line, not its own\n- and writes its content there. The display ends showing the outer's content\ntwice and the inner's never. Both sentences were false.\n\nThe section is now \"One Live owns the terminal\": the constraint, the mechanism\n(each Live clears its own last line count upward from the current cursor and\nknows nothing of a second Live's output), and Group under a single Live as the\nthing that does work. Its example imports the names it introduces, since the\npage's own import block does not carry them.\n\nprogress.md's batch loop also went to for...of with await. Live refreshes on a\nsetInterval, so a synchronous forEach runs the whole batch in one turn of the\nevent loop and the bar snaps from 0 to 100 with nothing between - the example\nwould have demonstrated the opposite of its prose. An async handleItem was worse:\nforEach drops the promise, so every item starts at once and completed runs ahead\nof real work. await doStep(step) elsewhere on the page is the same shape.\n"
+        },
+        {
+          "sha": "a25d589ebf2831432a47e955a752cd8555fe69b3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T01:10:54-06:00",
+          "message": "docs: build the sidebar from the composition the reachability gate reads\n\nsidebar.ts exports pageSidebarRegions so there is one composed list of the\npage-backed regions in order, and its header says so. config.ts imported nobody\nand re-spread [...guideSidebar, ...advancedSidebar] beside the Demos entry - a\nsecond composition of the same thing, one line below a header arguing against\nexactly that.\n\nThe consequence is the failure the sidebar split was made to prevent, one level\nup: a third page-backed region added to pageSidebarRegions but not to config's\nspread (or the reverse) leaves the reachability gate checking a sidebar the site\ndoes not render, and neither list can tell you which is lying.\n\nAlso corrects that header's attribution. It credited the assertion to\npage-reachability.ts, which exports only detectors - linkedSlugs, danglingLinks,\nunreachablePages, duplicateLinks - and contains no expect at all. The assertions\nare in page-reachability.test.ts. The pure-module / sweep-module split is the\npoint of the pair, so misfiling the assertions undercuts the arrangement the\nsentence is describing.\n"
+        },
+        {
+          "sha": "d085d5bf93468eb503d2bf7218f159904633ae41",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T01:10:46-06:00",
+          "message": "test(docs): make chain resolution testable, then test the arms docs cannot reach\n\nlookupType's ambiguity arm and resolveChain's dead-end and terminus-unresolved\narms had no test. They could not have one: both closed over the module-level\nsurfaceByName, so every branch was only ever reached with whatever the real\ndocs/ corpus contained - and it contains no ambiguous class name and no chain\nthat dead-ends. The conditions were evaluated, never taken.\n\nMeasured rather than argued. Inverting the ambiguity comparison to '< 1' leaves\nall 37 existing docs tests green. Stubbing lookupType to always succeed leaves\nsymbol-existence's 8 green. Both are caught only by the new fixtures. That this\nlogic has already needed three separate fixes across one review is why the gap\nmattered.\n\nThe failure it protects against is not a wrong message. The ghost check treats\nan unresolved receiver as nothing to check, so a resolver that quietly stopped\nrejecting reads exactly like a clean corpus.\n\nBoth functions move to test/docs/resolve-chain.ts taking the surface as a\nparameter - the pure-module / sweep-module split page-reachability.ts and\ncode-blocks.ts already use here - so a synthetic surface can be handed to them.\nThe sweep passes the real one and reads the same.\n"
+        },
+        {
+          "sha": "615f46fef672f78eda81bce859626a199a0ace99",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T01:10:37-06:00",
+          "message": "test(docs): scope alias resolution to our entry points, and order it\n\nResolving a receiver's class through the page's import aliases fixed a silent\ndrop and opened two ways to be confidently wrong instead.\n\nAn alias was translated no matter which module it came from. 'import { Layout as\nX } from \"some-other-lib\"' followed by 'new X()' resolved X to *our* Layout, so a\nthird-party object's member calls were checked against a class they have nothing\nto do with. Before the alias fix that receiver was dropped as someone else's\nsurface, which was the right answer; the fix turned a safe drop into a wrong\nverdict. Only imports from the caller's entry-point set now bind.\n\nThe specifier set is a parameter rather than an import. code-blocks.ts is a\nparser and does not know which specifiers are ours - the rule that knows holds\npackage.json - so putting ENTRY_BY_SPECIFIER in here would write that knowledge\nin two places.\n\nThe alias map was also a flat last-one-wins Map, the same hazard already fixed\nfor variable declarations and left open for imports: a local name rebound to a\nsecond class mid-page mis-checked the earlier section. Both are now Bindings -\none local name, one class name, one page position - resolved through a single\nnearestBinding, so there is one page-ordering rule rather than two that can\ndisagree.\n\nFixtures cover both arms, since the corpus reaches neither: no page aliases an\nimport at all.\n"
+        },
+        {
+          "sha": "407be003417a3114643efeb88050a78426bbed20",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T01:10:27-06:00",
+          "message": "test(docs): enumerate pages recursively, from one list both suites read\n\nBoth docs suites called readdirSync(DOCS_ROOT) without recursion, so a page in a\nsubdirectory of docs/ was absent from both sets - not excluded, invisible. The\nscan that would have reported it was the scan that skipped it, so the bar stayed\ngreen and nothing said the set was short.\n\ndocs/demos/index.md and docs/demos/[demo].md pass today by being unseen rather\nthan by being considered, and that distinction is the whole finding: a future\ndocs/advanced/foo.md linked from no sidebar region is exactly the silent orphan\ndocs/strip.md was for four commits, and a non-recursive scan cannot report it\nbecause the page never enters the set being compared. Verified by adding such a\npage: unreachablePages now names 'advanced/orphan', and did not before.\n\nThe enumeration moves into test/docs/pages.ts so the rule is stated once with\nits reason, rather than a recursive scan and a demos/ filter copied into each\nsuite. demos/ is turned away by name with its argument attached - dynamic routes\nfrom a gitignored manifest, no slug of their own - the same way sidebar.ts turns\naway the Demos region instead of omitting it and hoping the omission reads as\ndeliberate.\n"
         },
         {
           "sha": "53661ba6f67a2aaed2a0bae97137d495d73b69db",
