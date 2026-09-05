@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-90",
+      "ref": "refs/pull/90/merge",
+      "sha": "5c8af82ce7e9a91dddb414d4c0d7feb5b16edf9d",
+      "timestamp": "2026-09-05T11:49:52.091Z",
+      "commits": [
+        {
+          "sha": "5c8af82ce7e9a91dddb414d4c0d7feb5b16edf9d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T05:49:26-06:00",
+          "message": "Merge 0c8d6f318872ab44b3fb8b1a5e061aaad25c4824 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+        },
+        {
+          "sha": "0c8d6f318872ab44b3fb8b1a5e061aaad25c4824",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T05:49:11-06:00",
+          "message": "fix(console): let print say what a value is, instead of nothing (rich-console-93r)\n\n`console.print({ a: 1 })` emitted a blank line. Every argument that was not\nalready a renderable went through `String()`, which for an object yields\n`[object Object]` — text the markup parser then read as a style tag and\nconsumed whole, leaving nothing at all.\n\n`print` now sorts each argument into three arms, and they are the whole domain:\na renderable draws itself; a string is the only kind of argument that can\ncontain markup, so it is the only kind the markup dialect is applied to;\neverything else is data, formatted by `Pretty`. Running a markup parser over\n`String(42)` only ever worked by accident, and that accident is gone.\n\n`Pretty` had to become correct first. It rendered a `Date`, an `Error`, and a\n`RegExp` as `{}`, because `Object.keys` on any of them is empty — so routing\nobjects to it would have traded one silent information loss for another. It now\nasks whether a value carries its own string form: a `toString` other than\n`Object.prototype`'s means the value answers the display question itself, and\ninheriting the default means the keys are all the information there is. Both\nclauses of that predicate are load-bearing — the second makes\n`Object.create(null)`, which has no `toString` at all, reflect rather than throw.\n`print` used to throw a TypeError on such a value.\n\n`Pretty` moves from `renderables/` to `core/`. Reaching it from `console.ts`\nwould have been a third sanctioned upward edge out of `core/`, and CLAUDE.md\nsays in the imperative that a third edge is the signal to reconsider the seam\nrather than append to the list. Reconsidered: `Pretty` composes no other\nrenderable — the trait every other file in `renderables/` shares — its imports\nare core primitives only, and its job is `markup.ts`'s and `emoji.ts`'s job of\nturning foreign input into `RichText`. Implementing `Renderable` was never the\ncriterion for that directory; `RichText` implements it too. The mis-cut was\n`Pretty` living above core, so the edge is deleted rather than sanctioned.\n\nOne deliberate behavior change beyond the bug: a trailing options object is\nrecognised only when something precedes it. `print({ style: \"...\" })` now prints\nthe object instead of nothing, and no content is lost — options configure the\nrendering of content, so a call with options and no content had nothing to\nrender either way.\n\nThe dead `item instanceof RichText` arm is deleted; `isRenderable` caught it\nfirst, so it was unreachable.\n\nDocs: `introduction.md` and `console.md` asserted this behavior and were false;\n`pretty.md` had been corrected to the broken behavior and is now false in the\nother direction. All three now match, against captured output. `console.md`'s\n`log()` section loses the bare-timestamp case and keeps the `{ end: ... }` trap,\nwhich is real.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "38f52c1786b8e18606a4e71191cec4590fc30657",
