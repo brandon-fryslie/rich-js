@@ -8,7 +8,8 @@ import { ColorDepth, resolveColorSystem } from "./color.js";
 import type { DetectColorOptions } from "./color.js";
 import { RichText } from "./text.js";
 import { render as renderMarkup } from "./markup.js";
-import { ReprHighlighter } from "./highlighter.js";
+import { Pretty } from "./pretty.js";
+import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 // [LAW:one-way-deps] exception: one of the two sanctioned upward edges out of
 // `core/`, named in CLAUDE.md and pinned by `test/seam/layering.test.ts` — the
@@ -251,6 +252,29 @@ function resolveGetSize(
 
 // --- Console ---
 
+/** Shared because it is stateless: highlighting nothing has nothing to own. */
+const NO_HIGHLIGHT = new NullHighlighter();
+
+/**
+ * What `print` bounds a data argument by when the caller said nothing.
+ *
+ * `print` formats whatever it is handed, so it is the one place that has to
+ * assume nothing about the value's size, in any of the three ways a value can
+ * be large. Unbounded, `print(buffer)` emits a line per byte,
+ * `print(deeplyNested)` descends until the stack gives out, and a single
+ * response body assigned to a field arrives in full — each of them a debug line
+ * that costs megabytes or hangs the terminal. All three bounds announce
+ * themselves in the output (`... +N`, `{...}`, `+N` inside the quotes), so this
+ * truncates visibly and never silently. [LAW:no-silent-failure]
+ *
+ * `maxString` reaches only strings nested inside data; a string argument is
+ * printed by the arm above, where the caller asked for that string by name.
+ *
+ * A caller constructing a `Pretty` has seen their data and gets no defaults;
+ * these belong to the convenience path, not to the formatter.
+ */
+const PRINT_DATA_BOUNDS = { maxLength: 100, maxDepth: 16, maxString: 1000 } as const;
+
 export class Console {
   private _colorSystem: ColorDepth | null;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
@@ -363,13 +387,18 @@ export class Console {
     let opts: PrintOptions = {};
     let items: unknown[];
 
+    // The trailing options object is only recognised when something precedes
+    // it. A lone object is data — `print({ style: "..." })` reads as a value to
+    // format, and treating it as options would emit an empty line, which is the
+    // one outcome this method must never produce. Nothing is given up: options
+    // configure the rendering of content, so a call carrying options and no
+    // content had nothing to render either way. [LAW:no-silent-failure]
     const lastArg = args[args.length - 1];
     if (
-      args.length > 0 &&
+      args.length > 1 &&
       typeof lastArg === "object" &&
       lastArg !== null &&
       !isRenderable(lastArg) &&
-      !(lastArg instanceof RichText) &&
       ("style" in lastArg || "justify" in lastArg || "markup" in lastArg ||
        "highlight" in lastArg || "overflow" in lastArg || "end" in lastArg ||
        "softWrap" in lastArg || "crop" in lastArg || "sep" in lastArg)
@@ -393,24 +422,37 @@ export class Console {
         renderables.push(new RichText(sep, { end: "" }));
       }
 
+      // Three arms, and they are the whole domain. A renderable draws itself.
+      // A string is the only kind of argument that can *contain* markup, so it
+      // is the only kind the markup dialect is applied to. Everything else is
+      // data, and `Pretty` is the single authority on how a JavaScript value
+      // displays — `String(value)` was a second, weaker one that answered
+      // `[object Object]` for every object and let the markup parser eat it.
+      // [LAW:one-source-of-truth]
       const item = items[i];
       if (isRenderable(item)) {
         renderables.push(item);
-      } else if (item instanceof RichText) {
-        renderables.push(item);
-      } else {
-        const text = String(item);
-        let richText: RichText;
-        if (doMarkup) {
-          richText = renderMarkup(text);
-        } else {
-          richText = new RichText(text);
-        }
+      } else if (typeof item === "string") {
+        const richText = doMarkup ? renderMarkup(item) : new RichText(item);
         richText.end = "";
         if (doHighlight) {
           this._highlighter.highlight(richText);
         }
         renderables.push(richText);
+      } else {
+        // The highlighter travels with the value. `highlight` and a custom
+        // `highlighter` are console-wide settings, so they have to reach a
+        // formatted object the same way they reach a printed string; a `Pretty`
+        // left to its own default would outrank both. [LAW:dataflow-not-control-flow]
+        // the disabled case is an identity highlighter, not a skipped call.
+        // Indent guides are styling too, and travel with the same decision —
+        // the console owns what `highlight` means for everything it emits,
+        // rather than `Pretty` inferring it back out of the highlighter.
+        renderables.push(new Pretty(item, {
+          ...PRINT_DATA_BOUNDS,
+          highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
+          indentGuides: doHighlight,
+        }));
       }
     }
 

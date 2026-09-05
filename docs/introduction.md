@@ -41,10 +41,7 @@ Output:
 
 ```
 Hello, World! 👋
-{
-  'name': 'Alice',
-  'scores': [98, 87, 95]
-}
+{ name: "Alice", scores: [98, 87, 95] }
 ```
 
 ## Using the Console

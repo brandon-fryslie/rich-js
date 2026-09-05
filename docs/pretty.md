@@ -23,9 +23,9 @@ console.print(new Pretty(data));
 }
 ```
 
-Keys are printed unquoted and strings in double quotes. Each value is coloured by type — `Pretty` runs `ReprHighlighter` over its output, so numbers, strings, booleans and `null` are visually distinct.
+Keys are printed unquoted and strings in double quotes. Each value is coloured by type — `Pretty` runs `ReprHighlighter` over its output by default, so numbers, strings, booleans and `null` are visually distinct. Pass `highlighter` to substitute your own, or a `NullHighlighter` for none. `print()` passes the console's, so a console-wide `highlight: false` or a custom `highlighter` reaches formatted values exactly as it reaches printed strings.
 
-A class instance is formatted as a plain object, from its own enumerable properties. The class name does not appear, and there is no per-class formatting hook:
+A class instance is formatted as a plain object, from its own enumerable properties. The class name does not appear:
 
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
@@ -46,25 +46,29 @@ console.print(new Pretty(new Bird("penguin", ["fish", "squid"])));
 }
 ```
 
-## `print()` will not do this for you
+Reflecting on properties is the fallback, not the rule. A value that defines its own `toString` — a `Date`, an `Error`, a `RegExp`, or a class of yours that declares one — keeps that string form instead, because reflection would throw the answer away: `Object.keys(new Date())` is empty, so a date reflected on renders `{}`. Give `Bird` a `toString` and the block above becomes whatever that method returns. Inheriting the default is the opposite signal — it yields `[object Object]`, which says nothing, leaving the properties as the only information there is.
 
-`Pretty` is never applied automatically. `print()` renders anything that is not already a renderable by calling `String()` on it, and for a plain object that yields the literal text `[object Object]` — which the markup parser reads as a style tag and consumes. The line comes out blank:
+Typed arrays are formatted as the sequences they are, `[1, 2, 3]`, rather than by either of those routes. Data that refers back to itself prints `[Circular]` at the point of return; an object reached twice through separate paths is not a cycle and is printed in full both times.
+
+## `print()` does this for you
+
+`print()` sorts each argument into one of three kinds: a renderable draws itself, a string is the only kind that can carry markup, and everything else is data formatted by `Pretty`. So a plain object needs no ceremony:
 
 ```typescript
 import { Console } from "@promptctl/rich-js";
 
 const console = new Console({ width: 43 });
 
-console.print({ name: "Alice" }); // a blank line, not an object
+console.print({ name: "Alice" });
 console.print("after");
 ```
 
 ```
-
+{ name: "Alice" }
 after
 ```
 
-Options behave the same way. They belong to `Pretty`'s constructor; `print()` has no pretty-printing options at all. Passing one is not configuration — it is a second value to print, and it vanishes for the same reason:
+What that leaves `Pretty` for is its options. They belong to its constructor, and `print()` has none of its own — so passing one is not configuration. It is a second value to print, and now that `print` formats data, you can watch it land:
 
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
@@ -72,15 +76,15 @@ import { Console, Pretty } from "@promptctl/rich-js";
 const console = new Console({ width: 43 });
 
 // `{ expandAll: true }` is a second argument to print, not a setting.
-// It compiles, renders to nothing, and leaves the Pretty unchanged.
+// It compiles, and prints beside the array it was meant to configure.
 console.print(new Pretty([1, 2, 3]), { expandAll: true });
 ```
 
 ```
-[1, 2, 3] 
+[1, 2, 3] { expandAll: true }
 ```
 
-The line ends in a space you cannot see above. `print` writes its argument separator before each item after the first, whatever that item turns out to render to — so the separator is emitted and the options object is not.
+Put the options where they belong — `new Pretty([1, 2, 3], { expandAll: true })` — and the second argument goes away along with the mistake.
 
 ## Indentation and guides
 
