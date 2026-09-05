@@ -22,25 +22,17 @@ Use `Progress` directly when you need multiple tasks, custom columns, or manual 
 
 ### Lifecycle
 
-`Progress` is designed as a context manager via its `run()` method:
+`start()` begins the display and `stop()` ends it. Pair them in a `try`/`finally` so the terminal is restored even when the work throws:
 
 ```typescript
 import { Progress } from "@promptctl/rich-js";
 
-await progress.run(async () => {
-  const task = progress.addTask("Downloading...", { total: 100 });
-  // ... update task
-});
-```
-
-For situations where a context manager cannot be used, start and stop explicitly:
-
-```typescript
 const progress = new Progress();
 progress.start();
 
 try {
-  // ... work
+  const task = progress.addTask("Downloading...", { total: 100 });
+  // ... update task
 } finally {
   progress.stop();
 }
@@ -61,35 +53,44 @@ The `total` is application-defined — it could be bytes, files, frames, items, 
 
 ```typescript
 // Add to the current count
-progress.update(task1, { advance: 64 });
+progress.updateTask(task1, { advance: 64 });
 
 // Set the count directly
-progress.update(task1, { completed: 512 });
+progress.updateTask(task1, { completed: 512 });
 
-// Store arbitrary fields for custom columns
-progress.update(task1, { speed: "64 MB/s" });
+// Change the label
+progress.updateTask(task1, { description: "Downloading (retry)..." });
 ```
+
+`updateTask` accepts `completed`, `advance`, `description`, `visible`, and `refresh` — nothing else. A task's `total` is fixed at `addTask()`, and there is no store for custom per-task data.
 
 ### Hiding tasks
 
 ```typescript
-progress.update(task1, { visible: false });
+progress.updateTask(task1, { visible: false });
 // Or set on creation:
 const task = progress.addTask("Hidden", { total: 100, visible: false });
 ```
 
-### Indeterminate progress
+### Deferred start
 
-When the total is unknown at task start, show a pulsing animation instead:
+A task can be visible before its clock runs. `start: false` adds the task without
+starting its timer; `startTask()` starts it when the work actually begins:
 
 ```typescript
-// total: null → pulsing bar, no percentage
-const task = progress.addTask("Connecting...", { total: null });
-
-// Once the total is known:
-progress.update(task, { total: 500 });
+const task = progress.addTask("Queued...", { total: 500, start: false });
+// ... when the work begins
 progress.startTask(task);
 ```
+
+Until then `TimeElapsedColumn` holds at `0:00:00` and `TimeRemainingColumn` at
+`-:--:--`. Use this for a queue of tasks you want on screen from the beginning but
+timed only while each one runs.
+
+There is no indeterminate mode, and omitting `total` is not a substitute for one. The
+two columns then disagree: `TaskProgressColumn` freezes at 0%, while `BarColumn` falls
+back to an assumed total of 100, so the bar fills as `completed` advances and turns
+"finished" at 100 — against a number you never set. Give every task a real `total`.
 
 ### Transient display
 
@@ -148,37 +149,41 @@ const progress = new Progress(
 |---|---|
 | `BarColumn` | The progress bar |
 | `TextColumn` | A format string (see below) |
+| `TaskProgressColumn` | Percentage complete |
 | `TimeElapsedColumn` | Elapsed time |
 | `TimeRemainingColumn` | Estimated time remaining |
 | `MofNCompleteColumn` | `completed/total` count |
 | `SpinnerColumn` | Animated spinner |
-| `FileSizeColumn` | Completed count as file size (e.g. `42 MB`) |
-| `TotalFileSizeColumn` | Total as file size |
-| `DownloadColumn` | `completed/total` as file sizes |
-| `TransferSpeedColumn` | Transfer speed (e.g. `64 MB/s`) |
-| `RenderableColumn` | A custom renderable per task |
 
 ### Format string columns
 
-`TextColumn` accepts a format string with access to task data:
+`TextColumn` substitutes one placeholder — `{task.description}` — and parses the
+result as [markup](./markup), so tags around it style the text:
 
 ```typescript
-new TextColumn("{task.description} [{task.completed}/{task.total}] {task.fields[speed]}")
+new TextColumn("[progress.description]{task.description}")
 ```
+
+That is the default `TextColumn`. No other task field is substituted; `{task.completed}`
+and `{task.total}` would render as literal braces. For the counts use
+`MofNCompleteColumn` or `TaskProgressColumn`.
 
 ## Print and log during progress
 
 Output printed to the progress's internal console appears above the progress bars without disrupting them:
 
 ```typescript
-await progress.run(async () => {
+progress.start();
+try {
   const task = progress.addTask("Work", { total: 10 });
   for (let i = 0; i < 10; i++) {
     progress.console.print(`Step ${i} done`);
-    progress.update(task, { advance: 1 });
+    progress.updateTask(task, { advance: 1 });
     await sleep(100);
   }
-});
+} finally {
+  progress.stop();
+}
 ```
 
 Pass a custom `Console` to control where output goes:
@@ -188,67 +193,57 @@ const myConsole = new Console({ stderr: true });
 const progress = new Progress({ console: myConsole });
 ```
 
-## Reading from a file
+## Multiple progress displays at once
 
-Track progress while reading a file:
+One `Progress` gives every task the same columns, and only one display may own the terminal at a time. Both limits have the same answer: build the layout yourself. Put each `Progress` in a `Group`, wrap the group in a single `Live`, and start only the `Live`.
 
-```typescript
-// From a file path
-for await (const chunk of progress.open("large-file.bin", { description: "Reading..." })) {
-  processChunk(chunk);
-}
-
-// From an existing file handle
-const file = openFileHandle("data.bin");
-for await (const chunk of progress.wrapFile(file, { total: fileSize, description: "Reading..." })) {
-  processChunk(chunk);
-}
-```
-
-## Nesting progress bars
-
-Create a progress display inside an existing one — the inner bar appears below the outer:
+Different columns per group of tasks is the usual reason. A download counts files, a conversion counts seconds — one column layout cannot serve both:
 
 ```typescript
-await outerProgress.run(async () => {
-  const outerTask = outerProgress.addTask("Overall", { total: 3 });
-  for (let i = 0; i < 3; i++) {
-    await innerProgress.run(async () => {
-      const innerTask = innerProgress.addTask("Batch", { total: 100 });
-      // ...
-    });
-    outerProgress.update(outerTask, { advance: 1 });
-  }
-});
-```
+import {
+  Live, Group, Progress,
+  BarColumn, MofNCompleteColumn, TimeRemainingColumn,
+} from "@promptctl/rich-js";
 
-Inner bars refresh at the outer bar's refresh rate.
-
-## Multiple Progress instances with different columns
-
-A single `Progress` instance cannot have different column layouts per task. For that, use multiple `Progress` instances inside a `Live` display:
-
-```typescript
-import { Live, Group } from "@promptctl/rich-js";
-
-const downloadProgress = new Progress(new BarColumn(), new DownloadColumn());
+const downloadProgress = new Progress(new BarColumn(), new MofNCompleteColumn());
 const processProgress  = new Progress(new BarColumn(), new TimeRemainingColumn());
 
-await new Live(new Group(downloadProgress, processProgress)).run(async () => {
+const live = new Live(new Group(downloadProgress, processProgress));
+live.start();
+try {
   // add tasks to each progress independently
-});
-```
-
-See [Live Display](./live) for details.
-
-## Customizing the display
-
-Override the method that builds the renderable for the whole display — for example, to wrap it in a `Panel`:
-
-```typescript
-class PanelProgress extends Progress {
-  getRenderable() {
-    return new Panel(super.getRenderable(), { title: "[bold]Progress[/bold]", expand: true });
-  }
+} finally {
+  live.stop();
 }
 ```
+
+The same shape gives you an overall bar above a per-batch bar. Create the batch task once, outside the loop, and re-label it each iteration — a fresh `addTask()` per batch would leave a finished row on screen for every batch you have run. A task's `total` is fixed when the task is created, so a bar that outlives batches of differing size counts percent rather than items:
+
+```typescript
+const overallProgress = new Progress(new TextColumn("{task.description}"), new BarColumn());
+const batchProgress   = new Progress(new TextColumn("{task.description}"), new BarColumn());
+
+const live = new Live(new Group(overallProgress, batchProgress));
+live.start();
+try {
+  const overallTask = overallProgress.addTask("Overall", { total: batches.length });
+  const batchTask = batchProgress.addTask("Starting", { total: 100 });
+
+  for (const batch of batches) {
+    batchProgress.updateTask(batchTask, { description: batch.name, completed: 0 });
+    for (const [index, item] of batch.items.entries()) {
+      await handleItem(item);
+      batchProgress.updateTask(batchTask, {
+        completed: Math.round(((index + 1) / batch.items.length) * 100),
+      });
+    }
+    overallProgress.updateTask(overallTask, { advance: 1 });
+  }
+} finally {
+  live.stop();
+}
+```
+
+Do not call `start()` on any of them. A started `Progress` builds its own `Live` with its own refresh timer, and that timer knows nothing about the other display's output. To redraw, a `Live` moves the cursor up one line at a time and erases, counting from wherever the cursor happens to sit — so the first display's next tick clears upward through the lines the second one just wrote and redraws itself in their place. Two started instances do not stack; the second one's bars are erased before you ever see them.
+
+See [Live Display](./live) for details.

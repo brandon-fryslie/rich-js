@@ -4,55 +4,60 @@
 
 ## Creating a layout
 
-An empty layout renders as a placeholder box showing its name and dimensions:
+A layout draws the renderable you give it and nothing else — no border, no label, no
+placeholder of its own. The name is for `getByName()` lookup, not display, and a
+layout with no content and no children emits nothing at all:
 
 ```typescript
-import { Console, Layout } from "@promptctl/rich-js";
+import { Console, Layout, Panel } from "@promptctl/rich-js";
 
-const console = new Console();
+const console = new Console({ width: 70 });
 
-const layout = new Layout("root");
-console.print(layout);
+const leaf = new Layout(new Panel("Hello, Layout", { expand: true }), { name: "root" });
+console.print(leaf);
 ```
 
 ```
-╭──────────────────────────── root ────────────────────────────────────╮
-│                                                                      │
-│                         root (120 x 40)                              │
-│                                                                      │
-╰──────────────────────────────────────────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────╮
+│ Hello, Layout                                                      │
+╰────────────────────────────────────────────────────────────────────╯
 ```
 
 ## Splitting
 
-`splitColumn()` stacks sub-layouts vertically (rows). `splitRow()` places them side by side (columns):
+`splitColumn()` stacks sub-layouts vertically (rows). `splitRow()` places them side by
+side (columns). A layout that gets children stops drawing its own renderable, so a
+root you intend to split starts out empty:
 
 ```typescript
+const layout = new Layout(undefined, { name: "root" });
+
 // Split into an upper row and a lower row
 layout.splitColumn(
-  new Layout("upper"),
-  new Layout("lower"),
+  new Layout(new Panel("header", { expand: true }), { name: "upper" }),
+  new Layout(undefined, { name: "lower" }),
 );
 
 // Split the lower row into two panels side by side
-layout["lower"].splitRow(
-  new Layout("lower-left"),
-  new Layout("lower-right"),
+layout.getByName("lower")!.splitRow(
+  new Layout(new Panel("logs", { expand: true }), { name: "lower-left" }),
+  new Layout(new Panel("stats", { expand: true }), { name: "lower-right" }),
 );
 
 console.print(layout);
 ```
 
 ```
-╭─────────────────────────── upper ────────────────────────────────────╮
-│                        upper (120 x 20)                              │
-╰──────────────────────────────────────────────────────────────────────╯
-╭──────────── lower-left ────────────╮╭───────────── lower-right ──────╮
-│       lower-left (60 x 20)         ││       lower-right (60 x 20)    │
-╰────────────────────────────────────╯╰────────────────────────────────╯
+╭────────────────────────────────────────────────────────────────────╮
+│ header                                                             │
+╰────────────────────────────────────────────────────────────────────╯
+╭─────────────────────────────────╮╭─────────────────────────────────╮
+│ logs                            ││ stats                           │
+╰─────────────────────────────────╯╰─────────────────────────────────╯
 ```
 
-Access sub-layouts by name with bracket syntax, then split further to build any tree of regions.
+Look sub-layouts up by name with `getByName()`, then split further to build any tree
+of regions.
 
 ## Setting content
 
@@ -60,23 +65,27 @@ Two ways to assign a renderable to a region:
 
 ```typescript
 // 1. Pass it to the Layout constructor
-const layout = new Layout(myRenderable, { name: "main" });
+const pane = new Layout(myRenderable, { name: "main" });
 
 // 2. Call update() on a named sub-layout
-layout["upper"].update(headerPanel);
-layout["lower-left"].update(logTable);
-layout["lower-right"].update(statsPanel);
+layout.getByName("upper")!.update(headerPanel);
+layout.getByName("lower-left")!.update(logTable);
+layout.getByName("lower-right")!.update(statsPanel);
 ```
 
 ## Fixed size
 
-Fix a sub-layout to an exact number of rows (or columns, in a row split):
+Fix a sub-layout to an exact number of rows (or columns, in a row split). Splitting
+replaces a layout's children rather than adding to them, so this starts from its own
+root instead of re-splitting the one above:
 
 ```typescript
-layout.splitColumn(
-  new Layout("header", { size: 3 }),  // always 3 rows
-  new Layout("body"),                 // takes remaining space
-  new Layout("footer", { size: 1 }),  // always 1 row
+const page = new Layout(undefined, { name: "page" });
+
+page.splitColumn(
+  new Layout(undefined, { name: "header", size: 3 }),  // always 3 rows
+  new Layout(undefined, { name: "body" }),             // takes remaining space
+  new Layout(undefined, { name: "footer", size: 1 }),  // always 1 row
 );
 ```
 
@@ -87,9 +96,9 @@ Fixed layouts take their space first; remaining space is distributed among flexi
 Control proportional space allocation:
 
 ```typescript
-layout["lower"].splitRow(
-  new Layout("sidebar", { ratio: 1 }), // one-third
-  new Layout("main",    { ratio: 2 }), // two-thirds
+page.getByName("body")!.splitRow(
+  new Layout(undefined, { name: "sidebar", ratio: 1 }), // one-third
+  new Layout(undefined, { name: "main", ratio: 2 }), // two-thirds
 );
 ```
 
@@ -100,7 +109,7 @@ A layout with `ratio: 2` alongside one with `ratio: 1` takes two-thirds of the a
 Prevent a flexible layout from shrinking below a threshold:
 
 ```typescript
-new Layout("sidebar", { minimumSize: 20 })
+new Layout(undefined, { name: "sidebar", minimumSize: 20 })
 ```
 
 ## Visibility
@@ -108,21 +117,13 @@ new Layout("sidebar", { minimumSize: 20 })
 Hide a region — neighboring regions expand to fill the vacated space:
 
 ```typescript
-layout["sidebar"].visible = false;
+page.getByName("sidebar")!.visible = false;
 
 // Re-enable it
-layout["sidebar"].visible = true;
+page.getByName("sidebar")!.visible = true;
 ```
 
 Use this to toggle panels based on application state.
-
-## Debug tree
-
-Visualize the full layout hierarchy:
-
-```typescript
-console.print(layout.tree);
-```
 
 ## Layout + Live
 
@@ -133,18 +134,22 @@ import { Live, Layout, Panel } from "@promptctl/rich-js";
 
 const layout = new Layout();
 layout.splitColumn(
-  new Layout("header", { size: 3 }),
-  new Layout("body"),
+  new Layout(undefined, { name: "header", size: 3 }),
+  new Layout(undefined, { name: "body" }),
 );
 
-await new Live(layout, { screen: true }).run(async (live) => {
-  layout["header"].update(new Panel("[bold]My App[/bold]", { expand: true }));
+const live = new Live(layout, { altScreen: true });
+live.start();
+try {
+  layout.getByName("header")!.update(new Panel("[bold]My App[/bold]", { expand: true }));
 
   while (running) {
-    layout["body"].update(buildBodyContent());
+    layout.getByName("body")!.update(buildBodyContent());
     await sleep(250);
   }
-});
+} finally {
+  live.stop();
+}
 ```
 
 See [Live Display](./live) for the complete Live API.
