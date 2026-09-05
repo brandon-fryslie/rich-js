@@ -5,6 +5,8 @@ import {
   setCellSize,
   splitText,
   chopCells,
+  cellStepFrom,
+  asCodePoint,
 } from "../../src/core/cells.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (widths, invariants), not implementation details (caching, slicing)
@@ -191,6 +193,36 @@ describe("splitText", () => {
   });
 });
 
+describe("cellStepFrom", () => {
+  it("advances past every offset inside the text, at any budget", () => {
+    // The guarantee both callers rely on to terminate. A budget narrower than
+    // the widest glyph is the case that used to stall.
+    for (const text of ["日本語", "a日b", "🎉x", "abc"]) {
+      for (const cap of [0, 1, 2, 3]) {
+        for (let i = 0; i < text.length; i++) {
+          expect(cellStepFrom(text, asCodePoint(i), asCellCol(cap))).toBeGreaterThan(i);
+        }
+      }
+    }
+  });
+
+  it("takes as much as fits when the budget allows", () => {
+    expect(cellStepFrom("abcd", asCodePoint(0), asCellCol(3))).toBe(3);
+    expect(cellStepFrom("中文", asCodePoint(0), asCellCol(3))).toBe(1);
+  });
+
+  it("force-takes a whole glyph too wide for the budget", () => {
+    // Overflows cap by the glyph's own width rather than returning startCU.
+    expect(cellStepFrom("中文", asCodePoint(0), asCellCol(1))).toBe(1);
+    // Surrogate pair: the step covers both code units, never half of one.
+    expect(cellStepFrom("🎉x", asCodePoint(0), asCellCol(1))).toBe(2);
+  });
+
+  it("does not advance past the end of the text", () => {
+    expect(cellStepFrom("abc", asCodePoint(3), asCellCol(5))).toBe(3);
+  });
+});
+
 describe("chopCells", () => {
   it("returns single-element array when text fits within width", () => {
     const result = chopCells("hello", asCellCol(10));
@@ -248,5 +280,37 @@ describe("chopCells", () => {
     const result = chopCells(text, asCellCol(3));
     const joined = result.join("");
     expect(joined).toBe(text);
+  });
+
+  it("force-takes a glyph wider than the whole budget", () => {
+    // A 2-cell glyph cannot be split to fit 1 cell; each line overflows by its
+    // own width rather than the loop stalling on an unsplittable remainder.
+    expect(chopCells("日本語", asCellCol(1))).toEqual(["日", "本", "語"]);
+  });
+
+  it("never emits a line for zero consumed input", () => {
+    // The regression this pins: a budget narrower than the widest glyph used to
+    // emit a padded blank line forever, so the line count grew without bound
+    // while the input never shrank.
+    for (const text of ["日本語", "a日b", "🎉🎉", "中a中"]) {
+      for (const width of [1, 2, 3]) {
+        const lines = chopCells(text, asCellCol(width));
+        expect(lines.join("")).toBe(text);
+        expect(lines.every((line) => line.length > 0)).toBe(true);
+      }
+    }
+  });
+
+  it("returns [text] for a maxWidth of zero or less, overflowing by the whole string", () => {
+    // The docstring's overflow bound covers this: no budget at all, so nothing
+    // can be met and the text comes back whole.
+    expect(chopCells("hello", asCellCol(0))).toEqual(["hello"]);
+    expect(chopCells("hello", asCellCol(-3))).toEqual(["hello"]);
+  });
+
+  it("does not pad short lines out to the budget", () => {
+    // splitText pads to land exactly on the requested column; chopping must not
+    // — a padded line is content the caller never wrote.
+    expect(chopCells("中文测试", asCellCol(3))).toEqual(["中", "文", "测", "试"]);
   });
 });
