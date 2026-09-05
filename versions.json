@@ -4,15 +4,22 @@
     {
       "version": "pr-90",
       "ref": "refs/pull/90/merge",
-      "sha": "5c8af82ce7e9a91dddb414d4c0d7feb5b16edf9d",
-      "timestamp": "2026-09-05T11:49:52.091Z",
+      "sha": "87a3d288a6e6dd850091306b951d2286ce31b4f7",
+      "timestamp": "2026-09-05T12:09:32.822Z",
       "commits": [
         {
-          "sha": "5c8af82ce7e9a91dddb414d4c0d7feb5b16edf9d",
+          "sha": "87a3d288a6e6dd850091306b951d2286ce31b4f7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T05:49:26-06:00",
-          "message": "Merge 0c8d6f318872ab44b3fb8b1a5e061aaad25c4824 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+          "timestamp": "2026-09-05T12:08:59Z",
+          "message": "Merge 0756963af1a98b60c00c5b9232c8a8b081dd91d1 into 38f52c1786b8e18606a4e71191cec4590fc30657\n"
+        },
+        {
+          "sha": "0756963af1a98b60c00c5b9232c8a8b081dd91d1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T06:08:48-06:00",
+          "message": "fix(pretty): carry the caller's highlighter, and survive the data it is handed\n\nRouting `print`'s data arguments through `Pretty` handed three things to a\nformatter that was only ever reached deliberately before, and it was not ready\nfor any of them.\n\n`highlight` and a custom `highlighter` are console-wide settings and stopped\nreaching data arguments: `Pretty` held a module-level `ReprHighlighter` and used\nit unconditionally, so `print(42, { highlight: false })` stayed coloured and a\n`Console` built with a custom highlighter silently lost it for every non-string\nvalue. `PrettyOptions` now takes `highlighter`, defaulting to the same\n`ReprHighlighter` so a standalone `new Pretty(x)` is unchanged, and `print`\npasses the console's — or `NullHighlighter`, so the disabled case is an identity\noperation rather than a skipped call.\n\nSelf-referential data crashed the caller. `_format` recursed forever and threw\n`RangeError`, where the `String()` it replaced merely returned an unhelpful\nline. The traversal now carries the objects open between the root and the\ncurrent node, joined on the way down and left on the way back up, and prints\n`[Circular]` on re-entry. The leave-on-exit is the whole design: a set that only\ngrew would call a shared child — one object reached twice through sibling\npaths — circular the second time, and both cases are tested because neither\npins that alone.\n\nTyped arrays lost their structure. `Int8Array` carries a `toString` distinct\nfrom `Object.prototype`'s, so the self-description arm claimed it and answered a\nbare `1,2,3` — no brackets, nothing for the highlighter to colour per element,\nand indistinguishable from the string. They now reach the arm that formats\nsequences, above self-description for the same reason `Array` sits there.\n\nAlso drops the `[LAW:parse-dont-validate]` citation on `describesItself`. The\ntoken is canonical, but the citation was inapt: that law is about a check\nreturning a type that could not have existed before it ran, and `describesItself`\nreturns a boolean — the validator shape the law contrasts against.\n"
         },
         {
           "sha": "0c8d6f318872ab44b3fb8b1a5e061aaad25c4824",
