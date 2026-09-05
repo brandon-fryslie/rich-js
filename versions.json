@@ -4,15 +4,36 @@
     {
       "version": "pr-86",
       "ref": "refs/pull/86/merge",
-      "sha": "25293862a812e99c38e6742c92fb8d75c6d65ed1",
-      "timestamp": "2026-09-05T06:04:32.322Z",
+      "sha": "4748402709d98168ede09a4d104c420ed2cb77d9",
+      "timestamp": "2026-09-05T06:35:59.550Z",
       "commits": [
         {
-          "sha": "25293862a812e99c38e6742c92fb8d75c6d65ed1",
+          "sha": "4748402709d98168ede09a4d104c420ed2cb77d9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T06:04:03Z",
-          "message": "Merge f55f9795f0d1ebf0eeaf85da388b8c0f7bd81006 into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+          "timestamp": "2026-09-05T06:35:23Z",
+          "message": "Merge 53661ba6f67a2aaed2a0bae97137d495d73b69db into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+        },
+        {
+          "sha": "53661ba6f67a2aaed2a0bae97137d495d73b69db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T00:35:07-06:00",
+          "message": "docs: a nesting section describing an outcome the library does not produce\n\n\"Nesting progress bars\" showed two Progress instances both started, and closed\nwith \"Inner bars refresh at the outer bar's refresh rate\". Neither half is true.\n\nEach Progress builds its own Live in its constructor with its own setInterval\n(refreshPerSecond ?? 10) and, absent a console option, its own Console. Nothing\ncouples the timers, so there is no outer rate for the inner bar to adopt.\n\nWorse, Live._clearLast emits ESC[1A ESC[2K exactly _lastLineCount times counting\nup from wherever the cursor sits, knowing nothing of a second Live's output.\nCaptured from the byte stream of two started instances sharing a sink: the outer\nwrites Overall, the inner writes Batch below it, then the outer's next tick\nclears upward from below Batch, erasing the inner bar and redrawing Overall in\nits place. The display shows the outer bar twice and the inner never. The page\nwas not describing degraded nesting; the pictured outcome does not occur.\n\nThe motivation folds into the section two headings later, which already carried\nthe mechanism that works - one Live over a Group, none of the Progress instances\nstarted, confirmed by rendering it. Retitled \"Multiple progress displays at once\"\nand led with the constraint that explains both cases: one Progress gives every\ntask the same columns, and only one display may own the terminal at a time. The\ncorruption is documented at the close rather than deleted with the section.\n\nThe batch task is created once outside the loop and re-labelled through\nupdateTask, since a fresh addTask per batch leaves a finished row behind. It\ncounts percent, not items: a task's total is fixed at creation and\nTaskUpdateOptions has no total field - the same constraint 5455a1f0 corrected\nelsewhere on this page.\n"
+        },
+        {
+          "sha": "a9c1bfa1c7661fcfe2682bdfb0e418533c184f82",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T00:34:57-06:00",
+          "message": "test(docs): fixtures for the block parser, including shapes no page uses\n\nThe sweep in symbol-existence.test.ts asserts over the real pages, so it can\nonly pin receiver shapes some page happens to use today. A shape no page uses\ncosts it nothing: the bar stays green whether the parser handles that shape or\nsilently drops it.\n\nThat gap is measured, not argued. Reverting the import-alias resolution added in\nthe previous commit leaves all 19 existing docs tests green - including \"follows\nevery receiver shape it recognizes\" - and is caught only by the two alias arms\nadded here. It is the same shape as the earlier danglingLinks stub, which all\nseven reachability tests survived.\n\ncode-blocks.ts reads no file and builds no compiler precisely so its rules can be\nstated as markdown in, shape out. This is the file that spends that.\n\nCovered: both fence spellings, the unterminated-fence throw, fence and use line\nnumbers, exported-vs-local import names, the namespace/default exclusion,\nvariable-to-constructor binding, a chain rooted in a constructor call, a getter\nhop, a non-null assertion, nearest-preceding binding (Strip then FlexStrip), the\nfollowing-declaration fallback, both alias arms, and the string-literal and\ncomment cases the regex version once reported as defects.\n\nSignatures are compared as a sorted set: the parser emits outermost-first, which\nis a pre-order traversal artifact rather than anything a caller relies on.\n"
+        },
+        {
+          "sha": "28016f49bd6d4ad3f827dbf3ea4912abeed87d55",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T00:26:19-06:00",
+          "message": "test(docs): resolve a receiver's class through the page's import aliases\n\nAddresses 2 of 3 findings in review round 3 on PR #86. A chain's root class was\ntaken verbatim from the identifier after 'new', so 'import { Console as\nRichConsole }' + 'new RichConsole()' gave rootClass RichConsole, a name\nsurfaceByName never heard of. Unrecognized receivers are dropped as someone\nelse's surface, so one alias would silently remove every member call on that\npage from the check. ImportedName now carries 'local' beside 'name', and\nextractMemberUses builds the alias map from importedNamesIn - the same walk that\nanswers the import check. Both root kinds resolve through it.\n\nAlso fixes a docstring naming exportsBySpecifier, gone since the programs merged;\nit is exportedNames.\n"
         },
         {
           "sha": "f55f9795f0d1ebf0eeaf85da388b8c0f7bd81006",
