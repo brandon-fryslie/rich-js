@@ -4,15 +4,22 @@
     {
       "version": "pr-86",
       "ref": "refs/pull/86/merge",
-      "sha": "82ccd816dca3826511cbedaf5addef9bedda88de",
-      "timestamp": "2026-09-05T05:25:02.556Z",
+      "sha": "bd95a01df1083885678685830e2650996765b0c5",
+      "timestamp": "2026-09-05T05:34:37.057Z",
       "commits": [
         {
-          "sha": "82ccd816dca3826511cbedaf5addef9bedda88de",
+          "sha": "bd95a01df1083885678685830e2650996765b0c5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T05:24:35Z",
-          "message": "Merge d6674403b48d91983e0e1ef2631d2aac63b71a4a into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+          "timestamp": "2026-09-05T05:34:04Z",
+          "message": "Merge 5455a1f0d2d4db10093ea94ea43e4ad7ee45719c into c06428d9908d95fcd3923723f55b28e2d72caf95\n"
+        },
+        {
+          "sha": "5455a1f0d2d4db10093ea94ea43e4ad7ee45719c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T23:33:50-06:00",
+          "message": "docs: three pages that described a library this port does not have\n\nAddresses the last 4 of 10 review findings on PR #86, all of them the same\ndefect in different places: prose asserting a capability the source does not\nimplement.\n\nCLAUDE.md sent contributors to `docs/.vitepress/config.ts` for `guideSidebar`,\nwhich this PR moved to `sidebar.ts`. That instruction is exactly how the second,\ncompeting definition gets written — the failure the paragraph itself is about.\nIt now names the right file, says why the split exists (config.ts reads the\ngitignored demos.json at module load, so the unit suite cannot import it), and\npoints at the check that fails on drift.\n\nprogress.md documented three things that do not exist. `updateTask(task, {total})`\nand `updateTask(task, {speed})` are both excess-property errors — TaskUpdateOptions\nis completed/advance/description/visible/refresh, and no `fields` map or index\nsignature stores custom data. The format-string example reached further than the\nfinding said: TextColumn.render does one `.replace(/\\{task\\.description\\}/g, …)`,\nso the documented \"{task.description} [{task.completed}/{task.total}]\n{task.fields[speed]}\" renders three of its four placeholders as literal braces.\nThe whole \"Indeterminate progress\" section was fabricated — `total: null` does not\ntype-check against `total?: number`, and a task with no total renders a bar stuck\nat 0%, verified by running it, not a pulse. Per the epic's direction the page\nyields to the code, so the section is replaced by the real adjacent capability it\nwas half-using: `start: false` plus `startTask()`, deferring the clock rather than\nthe total.\n\nlayout.md claimed an empty layout renders a placeholder box with its name and\ndimensions, and drew two output blocks showing them. `render()` yields only\n`if (this._renderable)`, so a content-less leaf emits zero bytes; both pictures\nwere Python Rich's placeholder rendering, which this port does not implement.\nBoth examples now assign content, and both output blocks are bytes captured from\na run rather than redrawn. `console.print(root, { height: 6 })` nearly went in\nwith them — it ran and produced the right output, and PrintOptions has no\n`height`. Executing an example proves the output; only the type proves the call.\n\nCloses rich-docs-site-9dz, which was filed for layout.md's fabricated blocks and\nfalse empty-layout premise; nothing it named survives.\n\nAlso verified the position-aware receiver binding added in d6674403 from both\nsides: a ghost injected after `const strip = new Strip(` fails naming Strip, the\nsame ghost after `const strip = new FlexStrip(` fails naming FlexStrip. Only the\nsecond arm had been checked.\n"
         },
         {
           "sha": "d6674403b48d91983e0e1ef2631d2aac63b71a4a",
