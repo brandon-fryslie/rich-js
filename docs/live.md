@@ -139,7 +139,7 @@ const myConsole = new Console();
 const live = new Live(renderable, { console: myConsole });
 ```
 
-When a file-based console is passed, live content is only emitted once the context exits.
+`Live` never checks whether that console is a terminal, so pointing one at a file writes every frame it draws — four a second by default — with the cursor and erase-line escape sequences in between as literal bytes.
 
 ## Redirecting stdout/stderr
 

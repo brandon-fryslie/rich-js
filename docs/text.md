@@ -30,15 +30,6 @@ text.append("active",  "green");
 console.print(text);
 ```
 
-## Building from ANSI codes
-
-Construct a `RichText` from a string that already contains ANSI escape sequences — useful for bridging with other libraries that produce ANSI output:
-
-```typescript
-const text = RichText.fromAnsi("\x1b[1;31mBold red text\x1b[0m");
-console.print(text);
-```
-
 ## Assembling from parts
 
 A more concise alternative to repeated `append()` calls — pass a mix of plain strings and `[string, style]` pairs:
