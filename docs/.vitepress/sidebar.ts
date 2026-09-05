@@ -15,9 +15,12 @@
  * asserts they name exactly the pages on disk. Nothing re-states the list.
  *
  * The Demos region is deliberately not here. It is derived from the build
- * manifest, its links are dynamic routes rather than `docs/*.md` files, and
- * keeping it in `config.ts` is what lets the reachability check compare two
- * sets of pages with no exclusion predicate to explain or to go stale.
+ * manifest and its links are dynamic routes rather than `docs/*.md` files, so
+ * keeping it in `config.ts` leaves this side of the reachability comparison
+ * with nothing to exclude: every region below names pages that exist on disk.
+ * The disk side turns the same tab away by name — `NOT_PAGES` in
+ * `test/docs/pages.ts`, with its reason attached — because a recursive scan
+ * finds `docs/demos/` whether or not this file mentions it.
  */
 
 export interface SidebarItem {

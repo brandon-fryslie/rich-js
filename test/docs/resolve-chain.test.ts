@@ -17,35 +17,60 @@
 import { describe, expect, it } from "vitest";
 
 import type { MemberUse } from "./code-blocks.js";
-import { lookupType, resolveChain, type Surface, type SurfaceType } from "./resolve-chain.js";
+import {
+  lookupType,
+  resolveChain,
+  type MemberSet,
+  type Surface,
+  type SurfaceType,
+} from "./resolve-chain.js";
+
+function memberSet(members: string[], yields: Record<string, string>): MemberSet {
+  return { members: new Set(members), yields: new Map(Object.entries(yields)) };
+}
 
 function surfaceType(options: {
   members?: string[];
+  statics?: string[];
   origins?: Record<string, string>;
   yields?: Record<string, string>;
+  staticYields?: Record<string, string>;
 }): SurfaceType {
   return {
-    members: new Set(options.members ?? []),
+    instance: memberSet(options.members ?? [], options.yields ?? {}),
+    statics: memberSet(options.statics ?? [], options.staticYields ?? {}),
     origins: new Map(Object.entries(options.origins ?? { self: "src/index.ts" })),
-    yields: new Map(Object.entries(options.yields ?? {})),
   };
 }
 
-function use(rootClass: string, path: string[], member: string): MemberUse {
+function use(
+  rootClass: string,
+  path: string[],
+  member: string,
+  rootIsClassObject = false,
+): MemberUse {
   return {
     page: "fixture.md",
     line: 1,
     rootClass,
     path,
     member,
+    rootIsClassObject,
     text: [rootClass, ...path, member].join("."),
   };
 }
 
-/** `Layout.getByName()` yields a `Layout`; `Console` is a plain leaf. */
+/**
+ * `Layout.getByName()` yields a `Layout`; `Console` is a plain leaf; `Style` has
+ * a static `parse` yielding a `Style` and an instance `add` that is not static.
+ */
 const SURFACE: Surface = new Map<string, SurfaceType>([
   ["Layout", surfaceType({ members: ["update", "getByName"], yields: { getByName: "Layout" } })],
   ["Console", surfaceType({ members: ["print"] })],
+  [
+    "Style",
+    surfaceType({ members: ["add"], statics: ["parse"], staticYields: { parse: "Style" } }),
+  ],
 ]);
 
 describe("lookupType", () => {
@@ -111,6 +136,39 @@ describe("resolveChain", () => {
     expect(resolveChain(SURFACE, use("RichHandler", ["setLevel"], "emit"))).toEqual({
       unresolved: "RichHandler is not a class this package exports",
     });
+  });
+
+  // `Style.parse("bold")`. The member is read off the class object, so the
+  // terminus has to be looked up on the static side — the instance side would
+  // report the page's most common static call as a ghost.
+  it("reads a terminal member off the class object when the root is one", () => {
+    const resolution = resolveChain(SURFACE, use("Style", [], "parse", true));
+    expect("side" in resolution && resolution.side.members.has("parse")).toBe(true);
+  });
+
+  // `Style.parse("bold").add(…)`. The static side yields the class, and what it
+  // yielded is an instance.
+  it("follows a static hop and lands back on the instance side", () => {
+    const resolution = resolveChain(SURFACE, use("Style", ["parse"], "add", true));
+    expect("className" in resolution && resolution.className).toBe("Style");
+    expect("side" in resolution && resolution.side.members.has("add")).toBe(true);
+  });
+
+  // Only step zero can be static; staticness does not travel down the chain.
+  // A rule applied per-hop instead of to the origin would resolve this, and
+  // every instance member reachable from a factory would be checked against the
+  // wrong half of its class.
+  it("stops treating a chain as static after its first step", () => {
+    expect(resolveChain(SURFACE, use("Style", ["parse", "parse"], "add", true))).toEqual({
+      unresolved: "Style.parse yields no class to follow",
+    });
+  });
+
+  // The mirror: an instance-rooted chain never reads the static side, so a page
+  // writing `style.parse(…)` on an instance is the ghost it looks like.
+  it("does not offer statics to a chain rooted in an instance", () => {
+    const resolution = resolveChain(SURFACE, use("Style", [], "parse"));
+    expect("side" in resolution && resolution.side.members.has("parse")).toBe(false);
   });
 
   // The terminus is asked the same question as every hop. It used to be asked a
