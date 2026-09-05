@@ -4,15 +4,22 @@
     {
       "version": "pr-84",
       "ref": "refs/pull/84/merge",
-      "sha": "ad7096c511da772a29ceb18905ab887a64e30f6b",
-      "timestamp": "2026-09-05T03:25:11.907Z",
+      "sha": "ca56d06d80bf755ad741b25c3ebf1842e9809943",
+      "timestamp": "2026-09-05T03:41:57.670Z",
       "commits": [
         {
-          "sha": "ad7096c511da772a29ceb18905ab887a64e30f6b",
+          "sha": "ca56d06d80bf755ad741b25c3ebf1842e9809943",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-04T21:24:39-06:00",
-          "message": "Merge a1d09a4589d6e35516e0e2462b567fb89f08f7e0 into 865e18f1bed303ffc8f9d2eb08f837f24a5a90f8\n"
+          "timestamp": "2026-09-05T03:41:28Z",
+          "message": "Merge 8af25553f33091a1ad3d1b225ace6b664c40e3b9 into 865e18f1bed303ffc8f9d2eb08f837f24a5a90f8\n"
+        },
+        {
+          "sha": "8af25553f33091a1ad3d1b225ace6b664c40e3b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-04T21:41:19-06:00",
+          "message": "docs(console): an object's keys decide whether print takes it as data or options\n\nTwo corrections from review, both verified by execution.\n\nThe colour-spec claim was generalized from two samples. `STRING_TO_DEPTH` in\n`src/core/color.ts` is one table serving configuration and detection both, so\n`resolveColorSystem` accepts every FORCE_COLOR value and every terminal\nidentifier detection knows: `{ colorSystem: \"vscode\" }` silently means\ntruecolor, `\"true\"` means ansi, `\"0\"` means none. Only strings outside the whole\ntable throw. The page said any string but the five throws.\n\n`log()`'s trailing argument is not simply a value. It forwards to `print()`,\nwhich sniffs the last argument for the nine `PrintOptions` names, so whether an\nobject is data or configuration depends on its keys. `end` is one of the nine\nand it sets the line terminator, which makes the worst case visible rather than\nsilent: `console.log(\"range\", { end: \"2024\" })` emits `range2024` with no\nnewline. The page asserted a trailing object is always printed as a value.\n\nBoth are cases where the type checker sees nothing wrong, which is why neither\nturned up in the per-block tsc pass.\n\nClaude-Session: https://claude.ai/code/session_012UgGnaLFsGbmjXrjHGkhea\n"
         },
         {
           "sha": "a1d09a4589d6e35516e0e2462b567fb89f08f7e0",
