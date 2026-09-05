@@ -59,9 +59,10 @@ resolve to a depth rather than throwing. `{ colorSystem: "vscode" }` quietly
 means truecolor. Treat those as an artifact of the shared table rather than
 supported spellings — use the five above.
 
-One depth has no spec string. The legacy 16-color Windows console palette is a
-detection result rather than something you ask for, so you reach it through the
-enum:
+A sixth depth exists with no spec string: the legacy 16-color Windows console
+palette. Nothing detects it — `"auto"` never returns it, and there is no
+platform check anywhere in the library — so the only way to get it is to name
+the enum value:
 
 ```typescript
 import { Console, ColorDepth } from "@promptctl/rich-js";
