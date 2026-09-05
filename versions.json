@@ -4,15 +4,22 @@
     {
       "version": "pr-88",
       "ref": "refs/pull/88/merge",
-      "sha": "f1ea65edcb03caa855b56c0d3893ed8fe80397f4",
-      "timestamp": "2026-09-05T11:17:05.023Z",
+      "sha": "00129c047f82421b914aa94cae8f8112d7c35c53",
+      "timestamp": "2026-09-05T11:23:36.925Z",
       "commits": [
         {
-          "sha": "f1ea65edcb03caa855b56c0d3893ed8fe80397f4",
+          "sha": "00129c047f82421b914aa94cae8f8112d7c35c53",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T11:16:33Z",
-          "message": "Merge e482b24df1f6a72efff662c1b7df3958250e5077 into 23d6db15bb7a6482c51aa1ecb4101d819a158b6e\n"
+          "timestamp": "2026-09-05T11:23:04Z",
+          "message": "Merge 4041799b5a13bfd32c8afbc0e5dea5becddd053a into 23d6db15bb7a6482c51aa1ecb4101d819a158b6e\n"
+        },
+        {
+          "sha": "4041799b5a13bfd32c8afbc0e5dea5becddd053a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T05:22:55-06:00",
+          "message": "docs(cells): scope cellStepFrom's advance guarantee to inside the text\n\nThe docstring claimed cellStepFrom never returns startCU. At\ntext.length it does, and correctly so — nothing is left to take, and\nthat total behavior is what lets both callers drive their loop with no\nspecial case at the end.\n\nThe first draft said \"for any startCU inside text,\" which was true; the\npass that shortened it to \"never returns startCU\" is what dropped the\nprecondition. Restoring the qualifier and naming the loop shape the\ntermination argument actually covers.\n"
         },
         {
           "sha": "e482b24df1f6a72efff662c1b7df3958250e5077",
