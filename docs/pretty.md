@@ -1,160 +1,189 @@
 # Pretty Printing
 
-`print()` and `log()` automatically format containers — arrays, objects, maps, sets — across multiple lines with indentation and syntax highlighting. The output adapts to fit the terminal width.
+`Pretty` formats a JavaScript value — an array, object, `Map`, or `Set` — across multiple lines with indentation, syntax highlighting, and indent guides. It is a renderable you construct around your data: print it on its own, or nest it inside a `Panel`, a table cell, or anything else that takes a renderable.
 
-## What pretty printing does
+Output on this page was captured at a console width of 43. Width is not incidental here — it decides whether a container prints on one line or expands over several.
 
-Pass any JavaScript value to `print()` and it is rendered in a human-readable form:
+## Formatting a value
 
 ```typescript
-console.print({
-  name: "Alice",
-  scores: [98, 87, 95],
-  metadata: { active: true, role: "admin" },
-});
+import { Console, Pretty } from "@promptctl/rich-js";
+
+const console = new Console();
+const data = { name: "Alice", scores: [98, 87, 95], active: true };
+
+console.print(new Pretty(data));
 ```
 
 ```
 {
-│  'name': 'Alice',
-│  'scores': [98, 87, 95],
-│  'metadata': {
-│  │  'active': True,
-│  │  'role': 'admin'
-│  }
+    name: "Alice",
+    scores: [98, 87, 95],
+    active: true
 }
 ```
 
-Nested structures are indented with vertical guide lines showing depth.
+Keys are printed unquoted and strings in double quotes. Each value is coloured by type — `Pretty` runs `ReprHighlighter` over its output, so numbers, strings, booleans and `null` are visually distinct.
 
-## Indent guides
-
-Indent guides are shown by default. Disable them:
+A class instance is formatted as a plain object, from its own enumerable properties. The class name does not appear, and there is no per-class formatting hook:
 
 ```typescript
-console.print(data, { indentGuides: false });
+import { Console, Pretty } from "@promptctl/rich-js";
+
+const console = new Console();
+
+class Bird {
+  constructor(public name: string, public eats: string[] = []) {}
+}
+
+console.print(new Pretty(new Bird("penguin", ["fish", "squid"])));
 ```
 
-## Expand all
-
-By default, the formatter tries to fit items on one line when they're short enough. Force everything to expand:
-
-```typescript
-console.print([1, 2, 3], { expandAll: true });
-// Always:
-// [
-//   1,
-//   2,
-//   3,
-// ]
+```
+{
+    name: "penguin",
+    eats: ["fish", "squid"]
+}
 ```
 
-## Truncating long output
+## `print()` will not do this for you
 
-Two options control truncation for deeply nested or large data:
+`Pretty` is never applied automatically. `print()` renders anything that is not already a renderable by calling `String()` on it, and for a plain object that yields the literal text `[object Object]` — which the markup parser reads as a style tag and consumes. The line comes out blank:
 
 ```typescript
-// Truncate containers with more than N elements
-console.print(bigArray, { maxLength: 10 });
-// [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ... +990]
+import { Console } from "@promptctl/rich-js";
 
-// Truncate strings longer than N characters
-console.print(longStringObject, { maxString: 80 });
-// 'This is a very long string...' +240 chars
+const console = new Console();
+
+console.print({ name: "Alice" }); // a blank line, not an object
+console.print("after");
 ```
 
-## Pretty as a renderable
+```
 
-Use the `Pretty` class to embed pretty-printed data inside another renderable:
+after
+```
+
+Options behave the same way. They belong to `Pretty`'s constructor; `print()` has no pretty-printing options at all. Passing one is not configuration — it is a second value to print, and it vanishes for the same reason:
 
 ```typescript
-import { Pretty, Panel } from "@promptctl/rich-js";
+import { Console, Pretty } from "@promptctl/rich-js";
 
+const console = new Console();
+
+// `{ expandAll: true }` is a second argument to print, not a setting.
+// It compiles, prints nothing, and leaves the Pretty unchanged.
+console.print(new Pretty([1, 2, 3]), { expandAll: true });
+```
+
+```
+[1, 2, 3]
+```
+
+## Indentation and guides
+
+`indent` is the number of spaces per level and defaults to 4. `indentGuides` defaults to `true` and styles the first space of each level `dim green`. The guide is a coloured space, not a line-drawing character — it reads as a faint column in a terminal and leaves no mark in plain text.
+
+```typescript
+import { Console, Pretty } from "@promptctl/rich-js";
+
+const console = new Console();
+const data = { name: "Alice", metadata: { active: true } };
+
+console.print(new Pretty(data, { indent: 2, indentGuides: false, expandAll: true }));
+```
+
+```
+{
+  name: "Alice",
+  metadata: {
+    active: true
+  }
+}
+```
+
+## One line or many
+
+An array or object prints on one line when that form fits the width, and expands over several lines when it does not. `expandAll` skips the test and expands everything, at every depth:
+
+```typescript
+import { Console, Pretty } from "@promptctl/rich-js";
+
+const console = new Console();
+
+console.print(new Pretty([1, 2, 3]));
+console.print(new Pretty([1, 2, 3], { expandAll: true }));
+```
+
+```
+[1, 2, 3]
+[
+    1,
+    2,
+    3
+]
+```
+
+The fit test measures the container by itself, not the key it sits under, so a nested container can still overrun the width by the length of its key. Reach for `expandAll` when a nested structure wraps in a way you did not expect.
+
+`Map` and `Set` have no one-line form and are always expanded:
+
+```typescript
+import { Console, Pretty } from "@promptctl/rich-js";
+
+const console = new Console();
+
+console.print(new Pretty(new Map([["a", 1], ["b", 2]])));
+```
+
+```
+Map {
+    "a" => 1,
+    "b" => 2
+}
+```
+
+## Truncating large values
+
+`maxLength` caps how many elements of a container are shown and appends a count of the rest. `maxString` cuts strings to that many characters and appends the number dropped — inside the quotes, as part of the string:
+
+```typescript
+import { Console, Pretty } from "@promptctl/rich-js";
+
+const console = new Console();
+const bigArray = Array.from({ length: 1000 }, (_, i) => i + 1);
+
+console.print(new Pretty(bigArray, { maxLength: 10 }));
+console.print(new Pretty({ bio: "Field biologist. ".repeat(20) }, { maxString: 24 }));
+```
+
+```
+[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ... +990]
+{ bio: "Field biologist. Field b+316" }
+```
+
+## Nesting inside another renderable
+
+`Pretty` implements both `Renderable` and `Measurable`, so it goes anywhere a renderable goes — a `Panel`, a table cell, a `Group`:
+
+```typescript
+import { Console, Panel, Pretty } from "@promptctl/rich-js";
+
+const console = new Console();
 const data = { name: "Alice", scores: [98, 87, 95] };
 
-console.print(new Panel(new Pretty(data), { title: "User" }));
+console.print(new Panel(new Pretty(data, { expandAll: true }), { title: "User" }));
 ```
 
 ```
-╭─ User ──────────────────────╮
-│ {                           │
-│ │  'name': 'Alice',         │
-│ │  'scores': [98, 87, 95]   │
-│ }                           │
-╰─────────────────────────────╯
-```
-
-## Custom object representation
-
-Built-in containers and common types are handled automatically. For your own classes, implement a `richRepr` method.
-
-### The rich repr protocol
-
-Without a custom repr, a class shows its default string form:
-
-```typescript
-class Bird {
-  constructor(public name: string, public eats: string[] = [], public fly = true) {}
-}
-
-console.print(new Bird("penguin", ["fish", "squid"], false));
-// Bird { name: 'penguin', eats: [ 'fish', 'squid' ], fly: false }
-```
-
-With `richRepr`, you control exactly what's shown. Yield each field as a positional value, a `[name, value]` keyword, or a `[name, value, default]` to omit when unchanged:
-
-```typescript
-class Bird {
-  constructor(public name: string, public eats: string[] = [], public fly = true) {}
-
-  *richRepr() {
-    yield this.name;                    // positional
-    yield ["eats", this.eats, []];      // keyword — omitted when empty
-    yield ["fly", this.fly, true];      // keyword — omitted when true
-  }
-}
-
-console.print(new Bird("penguin", ["fish"], false));
-// Bird('penguin', eats=['fish'], fly=False)
-
-console.print(new Bird("parrot"));
-// Bird('parrot')         ← eats and fly omitted (they're at defaults)
-```
-
-Omitting default-valued arguments is the key readability improvement — the before/after difference is dramatic for objects with many fields.
-
-### Angular bracket style
-
-Produce `<ClassName field=value>` output instead of constructor-call style:
-
-```typescript
-class Point {
-  constructor(public x: number, public y: number) {}
-
-  *richRepr() {
-    yield ["x", this.x];
-    yield ["y", this.y];
-  }
-
-  get [Symbol.for("rich.angular")]() { return true; }
-}
-
-console.print(new Point(10, 20));
-// <Point x=10 y=20>
-```
-
-### Automatic repr generation
-
-A decorator that generates the rich repr automatically when constructor parameter names match attribute names:
-
-```typescript
-import { richReprAuto } from "@promptctl/rich-js";
-
-@richReprAuto
-class Color {
-  constructor(public red: number, public green: number, public blue: number) {}
-}
-
-console.print(new Color(100, 200, 50));
-// Color(red=100, green=200, blue=50)
+╭───────────────── User ──────────────────╮
+│ {                                       │
+│     name: "Alice",                      │
+│     scores: [                           │
+│         98,                             │
+│         87,                             │
+│         95                              │
+│     ]                                   │
+│ }                                       │
+╰─────────────────────────────────────────╯
 ```
