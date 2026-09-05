@@ -101,4 +101,53 @@ describe("Layout", () => {
       agrees({ ratio: 0, minimumSize: given }, { ratio: 0, minimumSize: floor });
     });
   });
+
+  // `ratio` is the third `LayoutOptions` number doing width arithmetic, and it
+  // was the one left unparsed after `size` and `minimumSize` were fixed above.
+  // It is not a cell count — a ratio of 2.5 divides space perfectly well — so it
+  // is parsed to a share weight instead: anything that cannot name a share
+  // becomes 0, the ratio that already means "this pane does not grow".
+  //
+  // Unparsed, it escaped through `measure` two ways. A NaN ratio made
+  // `totalRatio` NaN and the whole measurement NaN. A negative one summed with
+  // its siblings to a `totalRatio` of 0, so a row holding twelve cells of text
+  // reported a natural width of 0, and `_distributeSpace` — dividing by the same
+  // ratios at render time — disagreed by handing both panes real space.
+  describe("a ratio is a share weight", () => {
+    const options: RenderOptions = { maxWidth: 40, height: 5, maxHeight: 5 };
+
+    const row = (paneOptions: LayoutOptions, other = "y"): Layout => {
+      const layout = new Layout();
+      layout.splitRow(new Layout("x", paneOptions), new Layout(other));
+      return layout;
+    };
+
+    it.each([
+      ["NaN", NaN],
+      ["-1", -1],
+      ["Infinity", Infinity],
+    ])("takes a ratio of %s as a pane that does not grow", (_name, given) => {
+      expect(row({ ratio: given }).measure(options)).toEqual(
+        row({ ratio: 0 }).measure(options),
+      );
+    });
+
+    it("keeps a fractional ratio, which divides space meaningfully", () => {
+      expect(row({ ratio: 2.5 }).measure(options)).not.toEqual(
+        row({ ratio: 2 }).measure(options),
+      );
+    });
+
+    it("reports the width its content needs when a sibling ratio is negative", () => {
+      const measured = row({ ratio: -1 }, "wide content").measure(options);
+      expect(measured).toEqual({ minimum: 1, maximum: 13 });
+    });
+
+    it("never reports a measurement that is not a number", () => {
+      const measured = row({ ratio: NaN }).measure(options);
+      expect(Number.isFinite(measured.minimum)).toBe(true);
+      expect(Number.isFinite(measured.maximum)).toBe(true);
+    });
+  });
+
 });

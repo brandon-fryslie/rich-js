@@ -21,6 +21,17 @@ export interface LayoutOptions {
   visible?: boolean;
 }
 
+/**
+ * A share weight, not a cell count: fractions divide space meaningfully, so
+ * this parses where `cellCount` would floor. A weight that cannot name a share
+ * — negative, NaN, infinite — reads as zero, which already means "this pane
+ * does not grow" and is filtered out before any division. That is what makes
+ * every ratio reaching `_distributeSpace` and `_rowBudgetFor` positive.
+ */
+function growthRatio(ratio: number): number {
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : 0;
+}
+
 export class Layout implements Renderable, Measurable {
   name: string | undefined;
   ratio: number;
@@ -38,7 +49,7 @@ export class Layout implements Renderable, Measurable {
         : renderable;
     }
     this.name = options?.name;
-    this.ratio = options?.ratio ?? 1;
+    this.ratio = growthRatio(options?.ratio ?? 1);
     // Both are cell counts a caller supplies as a plain `number`, and they
     // reach the width arithmetic without passing through `withCellWidth`, which
     // parses only what the caller of `render` supplied. Unparsed, `size: 5.5`
@@ -192,8 +203,9 @@ export class Layout implements Renderable, Measurable {
     // children of a Layout asked to fit one cell merged into a two-cell row.
     if (growing.length > 0 && remaining > 0) {
       const budget = remaining;
-      // Every ratio in here is positive, which is what makes the division safe
-      // and `_rowBudgetFor`'s inverse of it finite.
+      // Every ratio in here is positive — `growthRatio` parses the rest to zero
+      // at the constructor and zero is filtered out above — which is what makes
+      // the division safe and `_rowBudgetFor`'s inverse of it finite.
       const totalRatio = growing.reduce(
         (s, idx) => s + children[idx]!.ratio,
         0,
