@@ -63,6 +63,8 @@ export interface ImportedName {
   readonly specifier: string;
   /** The name in the entry module — the `escape` of `escape as escapeMarkup`. */
   readonly name: string;
+  /** The name the page then writes — the `escapeMarkup` of the same import. */
+  readonly local: string;
 }
 
 /**
@@ -172,7 +174,11 @@ function pageLineOf(block: CodeBlock, source: ts.SourceFile, node: ts.Node): num
  * — and a default import names whatever the module chose to call its default.
  */
 export function extractImportedNames(block: CodeBlock): ImportedName[] {
-  const source = parseBlock(block);
+  return importedNamesIn(block, parseBlock(block));
+}
+
+/** The same walk, over a source the caller already parsed. */
+function importedNamesIn(block: CodeBlock, source: ts.SourceFile): ImportedName[] {
   const names: ImportedName[] = [];
   for (const statement of source.statements) {
     if (!ts.isImportDeclaration(statement)) continue;
@@ -185,8 +191,10 @@ export function extractImportedNames(block: CodeBlock): ImportedName[] {
         line: pageLineOf(block, source, element),
         specifier: statement.moduleSpecifier.text,
         // `escape as escapeMarkup` is exported as `escape`; the local alias is
-        // the page's business, not the entry module's.
+        // the page's business, not the entry module's — but the member check
+        // needs both halves, because the page writes the alias.
         name: (element.propertyName ?? element.name).text,
+        local: element.name.text,
       });
     }
   }
@@ -233,14 +241,34 @@ export function extractMemberUses(blocks: readonly CodeBlock[]): MemberUse[] {
     });
   });
 
+  // What each imported name is called in its entry module. A page writing
+  // `import { Console as RichConsole }` then `new RichConsole()` names a class
+  // the caller's surface map has never heard of, and the caller drops receivers
+  // it does not recognize — so the alias would silently take the whole page's
+  // member calls out of the check. [LAW:one-source-of-truth] the same import
+  // walk answers this that answers the import check.
+  const exportedNameOf = new Map<string, string>();
+  parsed.forEach(({ block, source }) => {
+    for (const imported of importedNamesIn(block, source)) {
+      exportedNameOf.set(imported.local, imported.name);
+    }
+  });
+
   // A `new X()` root already names its class; a variable has to be looked up
   // against the declarations above. Same question, two kinds of answer.
-  const classOfRoot = (root: ChainRoot, ordinal: number): string | undefined => {
+  const declaredClassOf = (root: ChainRoot, ordinal: number): string | undefined => {
     if (root.kind === "class") return root.name;
     const matches = declarations.filter((d) => d.name === root.name);
     const preceding = matches.filter((d) => d.ordinal <= ordinal);
     const nearest = preceding.length > 0 ? preceding[preceding.length - 1] : matches[0];
     return nearest?.className;
+  };
+
+  // Both kinds answer with the name the page wrote, so both resolve through the
+  // aliases before leaving here.
+  const classOfRoot = (root: ChainRoot, ordinal: number): string | undefined => {
+    const local = declaredClassOf(root, ordinal);
+    return local && (exportedNameOf.get(local) ?? local);
   };
 
   const uses: MemberUse[] = [];

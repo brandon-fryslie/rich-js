@@ -86,9 +86,9 @@ const allBlocks = pages.flatMap((page) => page.blocks);
 /**
  * One program over the entry modules, and the two questions asked of it.
  *
- * `exportsBySpecifier` answers "does this entry point export this name";
- * `surfaceByName` answers "what public members does this class have, and is
- * the name unambiguous". Both come from one `ts.createProgram` and one pass
+ * `exportedNames` answers "does this entry point export this name";
+ * `surfaceByName` answers "what public members does this type have, and is the
+ * name unambiguous". Both come from one `ts.createProgram` and one pass
  * over each module's exports — building the program is the expensive step, and
  * `test/coverage/coverage.test.ts` next door already takes care to build it
  * once and reuse it across three checks.
