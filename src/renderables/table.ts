@@ -14,6 +14,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 function resolveStyle(style: string | Style | undefined): Style {
   if (style === undefined) return NULL_STYLE;
@@ -473,11 +474,13 @@ export class Table implements Renderable, Measurable {
     return this;
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
     if (this._columns.length === 0) {
       yield Segment.line();
       return;
     }
+
+    const options = withBoundedWidth(rawOptions, this);
 
     const box = this.box
       ? (options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box)
@@ -485,7 +488,7 @@ export class Table implements Renderable, Measurable {
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
 
     // The one division of the width every row below is measured against.
-    const geometry = this._geometry(this.tableWidth ?? options.maxWidth);
+    const geometry = this._geometry(this._outerWidth(options));
     const edge = geometry.edge === 1;
 
     // Title
@@ -556,14 +559,18 @@ export class Table implements Renderable, Measurable {
    * column and padding counts instead is what used to return
    * `{minimum: 6, maximum: 1}` at `maxWidth: 1` — a floor above its own ceiling.
    */
-  measure(options: RenderOptions): { minimum: number; maximum: number } {
-    // Bounded by what the container offered: `Measurement.get` clamps only the
-    // maximum, so laying the floor out against a larger declared width is what
-    // returns a minimum above it.
-    const outerWidth = Math.min(this.tableWidth ?? options.maxWidth, options.maxWidth);
+  measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
+    const options = withCellWidth(rawOptions);
+    const outerWidth = this._outerWidth(options);
     const frame = this._frame();
     const demands = this._columnDemands();
-    const maximum = layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
+    const laidOut = layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
+    // `UNBOUNDED` is this table's own infinity, so a layout that reached it has
+    // no natural width to report — a column asked for every cell there is. Said
+    // as the number, it escapes as a width a caller would try to draw:
+    // `minWidth: Infinity` measured 18014398509481988 and rendered
+    // `RangeError: Invalid string length` out of the top border.
+    const maximum = laidOut >= UNBOUNDED ? Infinity : laidOut;
     const tightest = layoutTable(
       outerWidth,
       demands.map((demand) => ({
@@ -599,6 +606,25 @@ export class Table implements Renderable, Measurable {
       divider: this.box ? 1 : 0,
       edge: this.box && this.showEdge ? 1 : 0,
     };
+  }
+
+  /**
+   * The width this table lays itself out against: what it was told to be, as a
+   * count of cells, never wider than what it was offered.
+   *
+   * [LAW:one-source-of-truth] `render` and `measure` divide the same two fields
+   * and once did it in two places. `measure` bounded the declared width by the
+   * offer and `render` preferred it outright, walking past the value
+   * `withBoundedWidth` had just resolved — so `new Table({width: Infinity})`
+   * with a `{ratio: 1}` column granted that column `UNBOUNDED` cells and threw
+   * `RangeError: Invalid string length` out of the top border, at a perfectly
+   * ordinary 80-cell offer.
+   */
+  private _outerWidth(options: RenderOptions): number {
+    return Math.min(
+      this.tableWidth === undefined ? options.maxWidth : cells(this.tableWidth),
+      options.maxWidth,
+    );
   }
 
   private _geometry(outerWidth: number): TableGeometry {

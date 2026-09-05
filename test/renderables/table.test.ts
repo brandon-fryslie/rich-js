@@ -517,3 +517,42 @@ describe("Table stays inside the width it is given", () => {
     }
   });
 });
+
+// `Table.measure` was the one `measure` in the library that did not begin at
+// `withCellWidth`, taking `rawOptions.maxWidth` straight into `_outerWidth` and
+// `layoutTable`. It reported sane numbers anyway, because `layoutTable` floors
+// the width again internally — a protection belonging to a different function's
+// contract, one call deep, and invisible to a reader auditing this one.
+//
+// [LAW:behavior-not-structure] So this asserts the contract rather than which
+// call enforces it: whatever a caller hands `measure`, the range that comes back
+// is a pair of cell counts, and it equals the range for the width that number
+// floors to. It survives either enforcement point moving, and fails if both go.
+describe("Table measures against a parsed width", () => {
+  function populated(): Table {
+    const t = new Table({ box: ASCII });
+    t.addColumn("Name");
+    t.addRow("Widget");
+    return t;
+  }
+
+  it.each([
+    ["NaN", NaN, 0],
+    ["-5", -5, 0],
+    ["7.5", 7.5, 7],
+  ])("measures a maxWidth of %s as the width it floors to", (_n, given, floored) => {
+    expect(populated().measure({ maxWidth: given })).toEqual(
+      populated().measure({ maxWidth: floored }),
+    );
+  });
+
+  it("never reports a fractional or negative range", () => {
+    for (const maxWidth of [NaN, -5, 7.5, 0.5, 20]) {
+      const m = populated().measure({ maxWidth });
+      expect(Number.isInteger(m.minimum)).toBe(true);
+      expect(Number.isInteger(m.maximum)).toBe(true);
+      expect(m.minimum).toBeGreaterThanOrEqual(0);
+      expect(m.maximum).toBeGreaterThanOrEqual(m.minimum);
+    }
+  });
+});

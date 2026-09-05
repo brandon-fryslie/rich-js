@@ -134,6 +134,19 @@ describe("Tree", () => {
     });
   });
 
+  // A row's terminator is the tree's, not its label's: an empty label emits no
+  // text and so no newline either, and the row that follows then renders its
+  // guides onto the same line — `Root`, then `├── ├── after`.
+  it("gives a label with nothing in it a row of its own", () => {
+    const tree = new Tree("Root");
+    tree.add("");
+    tree.add("after");
+    const lines = collectLines(tree, { maxWidth: 40 });
+    expect(lines).toHaveLength(3);
+    expect(lines[2]).toContain("after");
+    expect(lines[2]!.match(/├|└/g)).toHaveLength(1);
+  });
+
   describe("measurement", () => {
     it("minimum is greater than 0", () => {
       // [SPEC] Implements Measurable. minimum > 0
