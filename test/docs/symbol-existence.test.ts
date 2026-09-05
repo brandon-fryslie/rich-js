@@ -44,7 +44,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import {
@@ -62,8 +62,8 @@ import {
   type ImportedName,
   type MemberUse,
 } from "./code-blocks.js";
-
-const DOCS_ROOT = path.join(REPO_ROOT, "docs");
+import { docsPages } from "./pages.js";
+import { resolveChain, type SurfaceType } from "./resolve-chain.js";
 
 interface Page {
   readonly slug: string;
@@ -71,13 +71,10 @@ interface Page {
 }
 
 function readPages(): Page[] {
-  return readdirSync(DOCS_ROOT)
-    .filter((name) => name.endsWith(".md"))
-    .sort()
-    .map((name) => ({
-      slug: name.slice(0, -".md".length),
-      blocks: extractCodeBlocks(name, readFileSync(path.join(DOCS_ROOT, name), "utf-8")),
-    }));
+  return docsPages().map((page) => ({
+    slug: page.slug,
+    blocks: extractCodeBlocks(page.file, readFileSync(page.absolutePath, "utf-8")),
+  }));
 }
 
 const pages = readPages();
@@ -93,24 +90,6 @@ const allBlocks = pages.flatMap((page) => page.blocks);
  * `test/coverage/coverage.test.ts` next door already takes care to build it
  * once and reuse it across three checks.
  */
-interface SurfaceType {
-  /** Public instance members. */
-  readonly members: Set<string>;
-  /**
-   * Entry module path of each *distinct* class exported under this name, keyed
-   * by declaration identity.
-   *
-   * Counting modules instead would call a re-export ambiguous. This repo
-   * re-exports symbols from several entry points on purpose — `extract.ts`
-   * cites `ThemeName` from both `./` and `./themes/registry` — so one class
-   * reachable two ways must collapse to one origin, or the check fails loudly
-   * on correct usage and the obvious fix looks like "stop re-exporting".
-   */
-  readonly origins: Map<string, string>;
-  /** What each member yields, for resolving a receiver chain. */
-  readonly yields: Map<string, string>;
-}
-
 function resolveSurface(): {
   exportedNames: Map<string, Set<string>>;
   surfaceByName: Map<string, SurfaceType>;
@@ -206,55 +185,6 @@ function resolveSurface(): {
 
 const { exportedNames, surfaceByName } = resolveSurface();
 
-/**
- * What one class name means here, or why it means nothing usable.
- *
- * [LAW:single-enforcer] Every step of a chain asks this, including the last.
- * They used to ask differently — the hops checked existence and ambiguity, the
- * terminus checked only ambiguity — so a chain ending in a name this package
- * does not export returned as if resolved, and the ghost check downstream
- * treated the missing class as a pass.
- *
- * A docs page supplies a bare class name and nothing else, so an ambiguous
- * name — two entry points exporting different classes as `Console` — cannot be
- * disambiguated from the input. It is reported rather than silently resolved
- * to whichever module was walked last. [LAW:no-silent-failure]
- */
-function lookupType(className: string): { info: SurfaceType } | { unresolved: string } {
-  const info = surfaceByName.get(className);
-  if (!info) return { unresolved: `${className} is not a class this package exports` };
-  if (info.origins.size > 1) {
-    const paths = [...info.origins.values()].join(" and ");
-    return { unresolved: `'${className}' is exported by ${paths}` };
-  }
-  return { info };
-}
-
-/**
- * The class a receiver chain ends at, or why it could not be resolved.
- *
- * [LAW:parse-dont-validate] A resolution carries the `SurfaceType`, so holding one
- * *is* the proof that class exists. Returning the name alone left every caller
- * to look it up again, and the one caller that did treated a failed lookup as
- * nothing to check rather than as a failure.
- */
-function resolveChain(
-  use: MemberUse,
-): { className: string; info: SurfaceType } | { unresolved: string } {
-  let className = use.rootClass;
-  for (const member of use.path) {
-    const found = lookupType(className);
-    if ("unresolved" in found) return found;
-    const next = found.info.yields.get(member);
-    if (!next) {
-      return { unresolved: `${className}.${member} yields no class to follow` };
-    }
-    className = next;
-  }
-  const found = lookupType(className);
-  return "unresolved" in found ? found : { className, info: found.info };
-}
-
 const documentedImports: ImportedName[] = allBlocks
   .flatMap(extractImportedNames)
   .filter((imported) => ENTRY_BY_SPECIFIER.has(imported.specifier));
@@ -270,9 +200,9 @@ const documentedImports: ImportedName[] = allBlocks
  * mode that let `docs/layout.md`'s whole access pattern go unexamined.
  */
 const resolvedMembers = pages
-  .flatMap((page) => extractMemberUses(page.blocks))
+  .flatMap((page) => extractMemberUses(page.blocks, new Set(ENTRY_BY_SPECIFIER.keys())))
   .filter((use) => surfaceByName.has(use.rootClass))
-  .map((use) => ({ use, resolution: resolveChain(use) }));
+  .map((use) => ({ use, resolution: resolveChain(surfaceByName, use) }));
 
 function describeImport(imported: ImportedName): string {
   return `docs/${imported.page}:${imported.line} imports '${imported.name}' from '${imported.specifier}', which does not export it`;
