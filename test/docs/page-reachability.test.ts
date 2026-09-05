@@ -7,10 +7,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { readdirSync } from "node:fs";
-import path from "node:path";
-import { REPO_ROOT } from "../coverage/extract.js";
 import { pageSidebarRegions } from "../../docs/.vitepress/sidebar.js";
+import { docsPages } from "./pages.js";
 import {
   UNLINKED_PAGES,
   danglingLinks,
@@ -19,17 +17,8 @@ import {
   unreachablePages,
 } from "./page-reachability.js";
 
-const DOCS_ROOT = path.join(REPO_ROOT, "docs");
-
-function listPageSlugs(): string[] {
-  return readdirSync(DOCS_ROOT)
-    .filter((name) => name.endsWith(".md"))
-    .map((name) => name.slice(0, -".md".length))
-    .sort();
-}
-
 describe("docs pages are reachable from the sidebar", () => {
-  const pageSlugs = listPageSlugs();
+  const pageSlugs = docsPages().map((page) => page.slug);
 
   // [LAW:verifiable-goals] Every rule below is a statement about a set this
   // sweep built. A sweep that silently found nothing satisfies all of them and
