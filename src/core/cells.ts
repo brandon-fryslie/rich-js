@@ -151,24 +151,24 @@ export function splitText(
 }
 
 /**
- * Wraps text into lines of at most `maxWidth` cells.
+ * Wraps text into lines of at most `maxWidth` cells, preserving every code
+ * point: `chopCells(t, w).join("") === t`. Unlike `splitText` this never pads,
+ * so a line ending before a wide glyph is narrower than `maxWidth` rather than
+ * padded out to it.
+ *
+ * A line overflows exactly where the budget cannot be met: a glyph wider than
+ * `maxWidth` is force-taken whole rather than dropped, and a `maxWidth` of zero
+ * or less is no budget at all, so the text comes back as one line.
  */
 export function chopCells(text: string, maxWidth: CellCol): string[] {
   if (maxWidth <= 0 || text.length === 0) return [text];
-  const totalWidth = cellLen(text);
-  if (totalWidth <= maxWidth) return [text];
 
   const lines: string[] = [];
-  let remaining = text;
-  while (remaining.length > 0) {
-    const remainingWidth = cellLen(remaining);
-    if (remainingWidth <= maxWidth) {
-      lines.push(remaining);
-      break;
-    }
-    const [line, rest] = splitText(remaining, maxWidth);
-    lines.push(line);
-    remaining = rest;
+  let start = asCodePoint(0);
+  while (start < text.length) {
+    const end = cellStepFrom(text, start, maxWidth);
+    lines.push(text.slice(start, end));
+    start = end;
   }
   return lines;
 }
@@ -214,6 +214,22 @@ export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): Cod
     i = asCodePoint(i + ch.length);
   }
   return i;
+}
+
+/**
+ * Like `cellFitFrom`, but for any `startCU` inside `text` the result is
+ * strictly past it: a glyph too wide for `cap` is force-taken whole and
+ * overflows `cap` by its own width. So a `while (i < text.length)` loop driven
+ * by this terminates by construction, and the re-brand is honest — both
+ * operands land on code-point boundaries, so their max does too.
+ *
+ * [LAW:single-enforcer] `cellFit` documents that its caller must choose between
+ * force-taking and skipping; this is that choice, made once. It was made twice
+ * before and the copies drifted — the textarea's soft wrap force-took,
+ * `chopCells` did neither and hung.
+ */
+export function cellStepFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
+  return asCodePoint(Math.max(cellFitFrom(text, startCU, cap), nextCodePoint(text, startCU)));
 }
 
 /**

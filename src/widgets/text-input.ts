@@ -64,7 +64,7 @@ import {
   cellLen,
   setCellSize,
   splitText,
-  cellFitFrom,
+  cellStepFrom,
   cellColToCodeUnitOffset,
   asCellCol,
   asCodePoint,
@@ -133,9 +133,8 @@ interface VisualRow {
  * awareness, just fits the line to the width.
  *
  * Wide characters (CJK, emoji) are treated as atomic: a char that would
- * straddle the budget is moved to the next row rather than split. When the
- * budget is too narrow to fit even one character, that character is
- * force-taken to guarantee progress (avoids an infinite loop).
+ * straddle the budget is moved to the next row rather than split, and one too
+ * wide for the whole budget is force-taken — see `cellStepFrom`.
  */
 export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWidth }) => {
   if (line.length === 0) return [{ content: "", start: asCodePoint(0) }];
@@ -145,13 +144,7 @@ export const charGreedyWrap: WrapStrategy = (line, { firstWidth, continuationWid
   while (pos < line.length) {
     const cap = isFirst ? firstWidth : continuationWidth;
     if (cap <= 0) break;
-    let end = cellFitFrom(line, pos, cap);
-    if (end === pos) {
-      // Leading character exceeds cap — force-take one code point to guarantee
-      // progress when the terminal is extremely narrow.
-      end = nextCodePoint(line, pos);
-      if (end === pos) break;
-    }
+    const end = cellStepFrom(line, pos, cap);
     rows.push({ content: line.slice(pos, end), start: pos });
     pos = end;
     isFirst = false;
