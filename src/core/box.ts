@@ -169,10 +169,9 @@ export class Box {
     });
   }
 
-  // Every level draws the same glyphs because a Box carries one separator set.
-  // Rich carries three (head_row, row, foot_row), so the arms are kept apart
-  // against the day this data grows to match; `head*` is not one of them —
-  // those are the header CONTENT row's verticals, drawn by the row renderer.
+  // All four arms match because a Box carries one separator set; Rich carries
+  // three (head_row, row, foot_row). `head*` is not among them and has no
+  // reader yet — those glyphs belong to the header content row.
   private getRowChars(
     level: RowLevel,
   ): [string, string, string, string] {
