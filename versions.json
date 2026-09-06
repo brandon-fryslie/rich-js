@@ -4,15 +4,22 @@
     {
       "version": "pr-92",
       "ref": "refs/pull/92/merge",
-      "sha": "149f97a78b253c460fb227de4689d795a2e37919",
-      "timestamp": "2026-09-06T03:06:56.532Z",
+      "sha": "9133974842b6332d27bea8fdab002d4b1990f19a",
+      "timestamp": "2026-09-06T03:35:34.378Z",
       "commits": [
         {
-          "sha": "149f97a78b253c460fb227de4689d795a2e37919",
+          "sha": "9133974842b6332d27bea8fdab002d4b1990f19a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T21:06:21-06:00",
-          "message": "Merge c1bbe7a5a956f0c1eddfe0926cbb1a9af14995b7 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+          "timestamp": "2026-09-06T03:35:05Z",
+          "message": "Merge b4e2c8a395b19832c646d8ef7547404b991d9993 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "b4e2c8a395b19832c646d8ef7547404b991d9993",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T21:34:54-06:00",
+          "message": "docs(ramp): the ramp example builds an engine that has ramp; stale reader lists stop naming readers\n\nThe template-bindings doc's ramp example used createRichTextEngine(), which\nwires richTextFuncs() alone — ramp is a palette function (its stops may be\npalette names) and lives in paletteFuncs, so the pasted snippet threw at\nevaluation. It now builds the engine the way the doc's own palette section\ndoes, with both maps.\n\nThe ACHROMATIC_EPS comment enumerated its readers and went stale the moment\nmix() became a third; it now states the invariant without a list, so no\nreader can stale it again. The studio's ramp import label pointed at\nsection 6; the demo lives in section 5.\n"
         },
         {
           "sha": "c1bbe7a5a956f0c1eddfe0926cbb1a9af14995b7",
