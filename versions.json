@@ -4,15 +4,22 @@
     {
       "version": "pr-92",
       "ref": "refs/pull/92/merge",
-      "sha": "23f8a6153ee92c420dc3ce5a48bec2753303648e",
-      "timestamp": "2026-09-06T04:27:45.933Z",
+      "sha": "a13b223a3b06916b33cfa86c2536a4225e212893",
+      "timestamp": "2026-09-06T04:44:14.567Z",
       "commits": [
         {
-          "sha": "23f8a6153ee92c420dc3ce5a48bec2753303648e",
+          "sha": "a13b223a3b06916b33cfa86c2536a4225e212893",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T04:27:11Z",
-          "message": "Merge d6d7beb99a639121a140091a4d16e4b968c6e42b into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+          "timestamp": "2026-09-06T04:43:39Z",
+          "message": "Merge 0cc4f43cd7ebbbd5f2c14e380c69f9a2d3f44e28 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "0cc4f43cd7ebbbd5f2c14e380c69f9a2d3f44e28",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T22:43:30-06:00",
+          "message": "fix(oklch): mix lands on each endpoint's hue bit-for-bit — unwrap the shorter arc by subtraction, then the same endpoint-exact lerp every axis uses\n\nHue took `(fromH + dh * t) % 360`, which at t = 1 is an addition of two\nindependently rounded values and reconstructs `toward.h` only by luck.\nNow the larger endpoint of an arc wider than half a turn is taken a turn\ndown — `x - 360` for x ≥ 180 is exact by Sterbenz — and hue goes through\nthe same `lerp` as l/c/alpha; the final wrap adds 360 back to an exact\n`x - 360`, whose real sum is representable, so it too is exact. Pinned\nover a 6×6 grid of hue pairs at t = 0 and t = 1.\n\n`wrapHue` is the one spelling of hue-into-[0, 360) and replaces the three\ninline wraps in fromRgba, applyKey and mix.\n"
         },
         {
           "sha": "d6d7beb99a639121a140091a4d16e4b968c6e42b",
