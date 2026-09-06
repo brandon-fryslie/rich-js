@@ -217,8 +217,8 @@ export class Box {
         return this.rowSeparator;
       case "foot":
         return this.footSeparator;
-      // A blank section divider rather than a rule: `leading` puts empty lines
-      // between rows, and they carry the body row's verticals and nothing else.
+      // The reference's spacer row, not a rule: blank fill between the body
+      // row's verticals. Nothing draws it yet — rich-table-jx1 has the details.
       case "mid":
         return {
           left: this.bodyContent.left,
