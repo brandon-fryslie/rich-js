@@ -54,12 +54,25 @@ describe("Box", () => {
     });
 
     it("refuses a grid that is not eight lines of four characters", () => {
-      expect(() => new Box("+-+\n| |\n+-+")).toThrow(/8 lines of 4 characters/);
-      expect(() => new Box(Array(8).fill("+--").join("\n"))).toThrow(/8 lines of 4 characters/);
+      expect(() => new Box("+-+\n| |\n+-+")).toThrow(/8 lines of 4 single-cell/);
+      expect(() => new Box(Array(8).fill("+--").join("\n"))).toThrow(/8 lines of 4 single-cell/);
     });
 
-    it("counts a grid in characters, not UTF-16 units", () => {
+    // A grid column is one drawn glyph position, so four characters is only
+    // half the requirement — four *cells* is the other half. A wide glyph
+    // satisfies the count and silently widens every frame the box draws.
+    it("refuses a row of four characters that draws more than four cells", () => {
+      expect(() => new Box(Array(8).fill("🌟─┬┐").join("\n")))
+        .toThrow(/8 lines of 4 single-cell/);
       expect(() => new Box(Array(8).fill("┌─┬┐").join("\n"))).not.toThrow();
+    });
+
+    // The mirror of the case above: four cells drawn by five characters. The
+    // frame would look right and every position after the combining mark would
+    // be read from the wrong index.
+    it("refuses a row of four cells that spends more than four characters", () => {
+      expect(() => new Box(Array(8).fill("┌─┬┐\u0301").join("\n")))
+        .toThrow(/8 lines of 4 single-cell/);
     });
   });
 

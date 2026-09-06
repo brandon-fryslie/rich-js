@@ -25,6 +25,7 @@
  * mismatched to a line.
  */
 
+import { cellLen } from "./cells.js";
 import { Segment } from "./segment.js";
 import type { Style } from "./style.js";
 
@@ -96,15 +97,23 @@ export class Box {
    * consumer below ever re-checks the shape of the data it reads.
    */
   constructor(grid: string) {
-    const rows = grid.split("\n").map((row) => Array.from(row));
-    const malformed = rows.length !== GRID_ROWS
-      || rows.some((row) => row.length !== GRID_COLUMNS);
+    const lines = grid.split("\n");
+    // A row is four characters because `getEdge` indexes the four positions,
+    // and four cells because that is what the terminal draws — a single astral
+    // glyph satisfies the first and breaks every frame the box appears in.
+    // [LAW:single-enforcer] `cellLen` is the cell-width authority.
+    const malformed = lines.length !== GRID_ROWS
+      || lines.some((line) => Array.from(line).length !== GRID_COLUMNS)
+      || lines.some((line) => cellLen(line) !== GRID_COLUMNS);
     if (malformed) {
       throw new Error(
-        `A box grid is ${GRID_ROWS} lines of ${GRID_COLUMNS} characters; got `
-        + `${rows.length} line(s) of width ${rows.map((row) => row.length).join(", ")}`,
+        `A box grid is ${GRID_ROWS} lines of ${GRID_COLUMNS} single-cell `
+        + `characters; got ${lines.length} line(s) measuring `
+        + lines.map((line) => `${Array.from(line).length}/${cellLen(line)}`).join(", ")
+        + " characters/cells",
       );
     }
+    const rows = lines.map((line) => Array.from(line));
 
     this.grid = grid;
     this.top = edgeOf(rows[0]!);
