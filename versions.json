@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-93",
+      "ref": "refs/pull/93/merge",
+      "sha": "08754016a4293319a71b3821c417e951d73a48df",
+      "timestamp": "2026-09-06T22:52:50.201Z",
+      "commits": [
+        {
+          "sha": "08754016a4293319a71b3821c417e951d73a48df",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T16:52:13-06:00",
+          "message": "Merge 89b77e28cd4a74b38a6ea4f6b644612e79365228 into b1545ab9c1ff6c0c82ab849558c33b7e04022068\n"
+        },
+        {
+          "sha": "89b77e28cd4a74b38a6ea4f6b644612e79365228",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T16:50:35-06:00",
+          "message": "fix(table): draw the header row with the head characters (rich-table-6uy.2)\n\nA heavy-framed table drew its header cells with the body verticals —\n`│ A │ B │` where Rich renders `┃ A ┃ B ┃` — because _renderRow emitted\nbox.left/vertical/right unconditionally and headLeft/headVertical/headRight\nhad no reader anywhere in src/.\n\nThe header row and every body row come out of that one code path, so the\nhead glyphs have to be selected per row or the body goes heavy too. The\nlevel crosses as a value: _renderRow takes a RowLevel and Box answers with\nthe glyphs, mirroring the getRow(widths, level) call beside it. Box keeps\nboth halves of the level -> glyph mapping, so rich-table-6uy.3 edits one\nswitch rather than hunting a second copy in Table.\n\nHEAVY_HEAD is the only prebuilt box whose head verticals differ from its\nbody's, so it is the only frame that changes; verified by walking every\nexported Box. docs/tables.md's flagship example already showed this output\nand was a lie about the library until now.\n\nTests pin the default frame end to end and the footer row's verticals; the\nfooter test asserts content rows only, since the separators around it are\nthe Box's one separator set that .3 replaces. All five went red on revert.\n"
+        },
+        {
+          "sha": "8b7bf2209b747940430f4f8736cba393fbebb38d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T16:50:04-06:00",
+          "message": "chore(lit): refresh the embedded lit integration block and /next skill\n\n`lit init` rewrites the block it owns in AGENTS.md and CLAUDE.md — the\nmarker rename (LINKS -> LIT) and the reworded quickstart pointer — and\nwrites the /next skill it now ships into .claude/skills/. Tool output,\ncommitted as its own change so it does not ride along in a fix.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b1545ab9c1ff6c0c82ab849558c33b7e04022068",
