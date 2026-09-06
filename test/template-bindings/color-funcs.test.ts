@@ -219,10 +219,10 @@ describe("the palette is read at evaluate time, not at registration", () => {
   });
 
   it("the function inventory does not depend on which palette is current", () => {
-    // Why exactly one palette-dependent function matters: a per-variable
-    // function family would have had a *different set of names* per theme,
-    // and a template parsed under one theme could hit FuncNotFound under
-    // another. `color` is one name regardless of palette contents.
+    // Why a fixed inventory matters: a per-variable function family would
+    // have had a *different set of names* per theme, and a template parsed
+    // under one theme could hit FuncNotFound under another. `color` and
+    // `ramp` are the same two names regardless of palette contents.
     const names = Object.keys(paletteFuncs(() => GRUVBOX.palette));
     expect(names).toEqual(Object.keys(paletteFuncs(() => DRACULA.palette)));
     expect(names).toEqual(["color", "ramp"]);
