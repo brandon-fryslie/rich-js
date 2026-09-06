@@ -104,11 +104,29 @@ function clamp01(v: number): number {
 // chroma reduction on colors that are already representable.
 const GAMUT_EPS = 1e-4;
 
-// [LAW:one-source-of-truth] Below this chroma a color is treated as
-// achromatic, and hue is pinned to 0 so round-trips stay stable. Used
-// by `fromRgba` (after polar conversion) and `applyKey` (after chroma
-// scaling collapses C toward 0). Same threshold both places.
+// [LAW:one-source-of-truth] Below this chroma a color is achromatic and its
+// hue is pinned to 0 so round-trips stay stable — the one threshold every
+// chroma reader here shares.
 const ACHROMATIC_EPS = 1e-7;
+
+// The one spelling of that pin: every producer of an `Oklch` (`fromRgba`,
+// `applyKey`, `mix`) passes its result's chroma and hue through here, so a
+// gray from any of them carries the same hue. The constructor does not —
+// it passes intermediates through by contract. [LAW:single-enforcer]
+const hueOf = (c: number, h: number): number => (c < ACHROMATIC_EPS ? 0 : h);
+
+// Endpoint-exact: `t = 0` returns `a` and `t = 1` returns `b` bit-for-bit,
+// which `a + (b - a) * t` does not (the subtraction rounds). One shape for
+// every axis `mix` interpolates. [LAW:one-source-of-truth]
+const lerp = (a: number, b: number, t: number): number => a * (1 - t) + b * t;
+
+// Hue into [0, 360). Exact on a hue already there (fmod is exact), and exact
+// on `x - 360` for a representable x (the sum is x itself), which is what
+// `mix` relies on. One spelling for every producer. [LAW:one-source-of-truth]
+const wrapHue = (h: number): number => {
+  const w = h % 360;
+  return w < 0 ? w + 360 : w;
+};
 
 function inGamut(r: number, g: number, b: number): boolean {
   return (
@@ -169,11 +187,9 @@ export class Oklch {
     const bLab = 0.0259040371 * lCube + 0.7827717662 * mCube - 0.8086757660 * sCube;
 
     const C = Math.sqrt(aLab * aLab + bLab * bLab);
-    let H = Math.atan2(bLab, aLab) * (180 / Math.PI);
-    if (H < 0) H += 360;
-    if (C < ACHROMATIC_EPS) H = 0;
+    const H = wrapHue(Math.atan2(bLab, aLab) * (180 / Math.PI));
 
-    return new Oklch(L, C, H, a);
+    return new Oklch(L, C, hueOf(C, H), a);
   }
 
   /**
@@ -210,12 +226,53 @@ export class Oklch {
     if (isIdentityKey(k)) return this;
     const newL = clamp01(this.l * k.lightnessScale + k.lightnessShift);
     const newC = Math.max(0, this.c * k.chromaScale);
-    let newH = (this.h + k.hueShift) % 360;
-    if (newH < 0) newH += 360;
-    // Same achromatic convention as fromRgba: collapsed chroma → pinned hue,
-    // so applyKey({chromaScale:0}).toRgba() → fromRgba round-trips stably.
-    if (newC < ACHROMATIC_EPS) newH = 0;
-    return new Oklch(newL, newC, newH, this.alpha);
+    const newH = wrapHue(this.h + k.hueShift);
+    return new Oklch(newL, newC, hueOf(newC, newH), this.alpha);
+  }
+
+  /**
+   * The color `t` of the way from this one toward `toward`, in OKLCH.
+   * `t = 0` is this color, `t = 1` is `toward`; pure.
+   *
+   * Lightness, chroma and alpha interpolate linearly. Hue takes the shorter
+   * arc around the wheel, so blue → red passes through magenta rather than
+   * sweeping across green. An achromatic endpoint has no hue of its own —
+   * `fromRgba` pins it to 0, which is red — so it adopts the other
+   * endpoint's hue (CSS Color 4's "powerless" rule): gray → red stays a red
+   * that gains chroma, instead of rotating through the wheel from 0°.
+   *
+   * `t` must lie in [0, 1]: this is interpolation, not extrapolation, and a
+   * `t` outside it (NaN included) is a RangeError, never a colour off the
+   * far end of the segment. [LAW:no-silent-failure]
+   *
+   * [LAW:one-source-of-truth] Achromatic means the same `ACHROMATIC_EPS`
+   * that `fromRgba` and `applyKey` pin hue by, so a gray produced by either
+   * is a gray here — and the result's hue goes through the same `hueOf`, so
+   * a gray produced HERE (t = 0 from a gray, t = 1 toward one) is a gray
+   * there too.
+   */
+  mix(toward: Oklch, t: number): Oklch {
+    if (!(t >= 0 && t <= 1)) {
+      throw new RangeError(`Oklch.mix: t must be in [0, 1]; got ${t}`);
+    }
+    const thisHasHue = this.c >= ACHROMATIC_EPS;
+    const towardHasHue = toward.c >= ACHROMATIC_EPS;
+    const fromH = wrapHue(thisHasHue ? this.h : towardHasHue ? toward.h : 0);
+    const toH = wrapHue(towardHasHue ? toward.h : fromH);
+    // Shorter arc: endpoints more than half a turn apart lerp across 0°, the
+    // larger one taken a turn down. `x - 360` for x ≥ 180 is exact
+    // (Sterbenz), so the endpoints survive the shift and the wrap bit-for-bit
+    // — an addition of 360 would not.
+    const arc = toH - fromH;
+    const fromU = arc < -180 ? fromH - 360 : fromH;
+    const toU = arc > 180 ? toH - 360 : toH;
+    const c = lerp(this.c, toward.c, t);
+    return new Oklch(
+      lerp(this.l, toward.l, t),
+      c,
+      hueOf(c, wrapHue(lerp(fromU, toU, t))),
+      lerp(this.alpha, toward.alpha, t),
+    );
   }
 
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes

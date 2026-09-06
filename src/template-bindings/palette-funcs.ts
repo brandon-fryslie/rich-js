@@ -1,7 +1,8 @@
 /**
- * The one palette-dependent template function: `color`.
+ * The palette-dependent template functions: `color`, and `ramp` whose stops
+ * are color references.
  *
- * ### Why exactly one
+ * ### Why `color` is the one name resolver
  *
  * This module used to register four kinds of thing: one function per
  * identifier-safe palette variable (`{{ primary child }}`, `{{ accent child }}`,
@@ -31,6 +32,17 @@
  * `style-funcs.ts` paint them. One shape, total over the palette, open to
  * arbitrary composition. [LAW:one-type-per-behavior]
  *
+ * ### Why `ramp` lives here and not with the color math
+ *
+ * `ramp` is the one function whose input is a *number*, and its stops are
+ * spelled as color references — `ramp .pct "step" 0 "panel" 50 "warning" 80
+ * "error"` — resolved through the same `resolveColorRef` that `color` crosses.
+ * Requiring `(color "panel")` around every stop would put the boilerplate
+ * back that this binding exists to remove, and an author who writes a hex
+ * literal loses nothing: the resolver is idempotent on hex. The arithmetic
+ * itself is `ColorRamp` in `themes/ramp.ts`, palette-free; only the
+ * reference resolution is here. [LAW:one-way-deps]
+ *
  * ### Why a getter, not a palette
  *
  * `paletteFuncs` takes `() => Palette` rather than a `Palette`. A consumer
@@ -46,14 +58,49 @@
  * engine and their bodies run at *evaluate* time, so reading the palette
  * through a getter leaves parse-once/evaluate-many completely intact. What the
  * getter must not change is *which functions exist* — and it cannot, because
- * there is now exactly one, whose name does not depend on the palette's
- * contents. That was not true of the generated per-variable functions, which
- * is the second reason they are gone.
+ * the two names here do not depend on the palette's contents. That was not
+ * true of the generated per-variable functions, which is the second reason
+ * they are gone.
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
 import type { Palette } from "../themes/palette.js";
 import { resolveColorRef } from "../themes/colorRef.js";
+import { ColorRamp, parseRampEasing, type ColorStop } from "../themes/ramp.js";
+
+/**
+ * The `(position, color-ref)` pairs a `ramp` call's tail spells, as stops.
+ *
+ * The engine's `alternating` gate has already typed every even slot as a
+ * float and every odd slot as a string; what it cannot see is the *pairing*
+ * — a trailing position with no color — nor that the string is a color
+ * reference. Both are settled here, once, and `ColorRamp` receives resolved
+ * stops it never re-checks. [LAW:parse-dont-validate]
+ *
+ * Each reference resolves against the palette of *this* evaluation, so a
+ * ramp over palette names follows the theme exactly as `color` does.
+ */
+function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
+  if (tail.length === 0) {
+    throw new RangeError(
+      `ramp needs at least one stop after the easing: ramp <value> <easing> <position> <color> …`,
+    );
+  }
+  if (tail.length % 2 !== 0) {
+    throw new RangeError(
+      `ramp's last stop (position ${String(tail[tail.length - 1])}) has no color — ` +
+        `stops are <position> <color> pairs`,
+    );
+  }
+  const stops: ColorStop[] = [];
+  for (let i = 0; i < tail.length; i += 2) {
+    stops.push({
+      at: tail[i] as number,
+      color: resolveColorRef(palette, tail[i + 1] as string),
+    });
+  }
+  return stops;
+}
 
 /**
  * Register `color "name-or-hex"` against a live palette.
@@ -88,5 +135,28 @@ export function paletteFuncs(getPalette: () => Palette): FuncMap {
     argTypes: ["string"],
     returnType: "string",
   };
-  return { color: colorFunc };
+  // `ramp <value> <easing> <position> <color> …` — the argument list is one
+  // float/string cycle end to end (value, easing, then each stop's position
+  // and color), so the engine's `alternating` gate types every slot; the
+  // pairing and the references are parsed in `colorStops`.
+  // [LAW:types-are-the-program]
+  const rampFunc: TemplateFunc = {
+    fn: ((...args: unknown[]) => {
+      // The engine's `alternating` gate types each slot but sets no minimum
+      // count, so `{{ ramp }}` and `{{ ramp 65 }}` both reach here: one
+      // check over the whole list, naming what is missing. [LAW:no-silent-failure]
+      if (args.length < 2) {
+        throw new RangeError(
+          `ramp needs a value and an easing before its stops (got ${args.length}): ` +
+            `ramp <value> "linear"|"step" <position> <color> …`,
+        );
+      }
+      const [value, easing, ...tail] = args as [number, string, ...unknown[]];
+      return new ColorRamp(parseRampEasing(easing), colorStops(tail, getPalette())).at(value).hex;
+    }) as TemplateFunc["fn"],
+    argTypes: ["float", "string"],
+    argTypePattern: "alternating",
+    returnType: "string",
+  };
+  return { color: colorFunc, ramp: rampFunc };
 }

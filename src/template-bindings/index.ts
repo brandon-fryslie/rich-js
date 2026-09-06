@@ -11,10 +11,10 @@
  *   and `link`. Needs no configuration; safe to register unconditionally. A
  *   consumer with no theme system still gets the complete colour vocabulary by
  *   feeding it hex literals.
- * - `paletteFuncs(getPalette)` — the single function `color`, which turns a
- *   palette variable name into a colour. This is the *only* registration that
- *   knows a palette exists, which is why it is the only one that takes an
- *   argument. [LAW:one-way-deps]
+ * - `paletteFuncs(getPalette)` — `color` and `ramp`, the two functions that
+ *   resolve a palette name. This is the *only* registration that knows a
+ *   palette exists, which is why it is the only one that takes an argument.
+ *   [LAW:one-way-deps]
  *
  * `createRichTextEngine()` wires up `richTextFuncs()` only — it cannot supply a
  * palette. Consumers that name theme colours call `paletteFuncs(getPalette)`
@@ -47,9 +47,8 @@ export { colorFuncs } from "./color-funcs.js";
 /**
  * Funcs registered by the rich-js binding — the colour sinks, the palette-free
  * colour math, text attributes, and the `link` cell-splitter. Everything here
- * is configuration-free by construction; the one function that needs a theme
- * (`color`) ships separately via `paletteFuncs(getPalette)` and is merged
- * consumer-side.
+ * is configuration-free by construction; the two that need a theme (`color`,
+ * `ramp`) ship separately via `paletteFuncs(getPalette)`, merged consumer-side.
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output
