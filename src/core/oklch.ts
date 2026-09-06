@@ -109,6 +109,17 @@ const GAMUT_EPS = 1e-4;
 // chroma reader here shares.
 const ACHROMATIC_EPS = 1e-7;
 
+// The one spelling of that pin: every producer of an `Oklch` (`fromRgba`,
+// `applyKey`, `mix`) passes its result's chroma and hue through here, so a
+// gray from any of them carries the same hue. The constructor does not —
+// it passes intermediates through by contract. [LAW:single-enforcer]
+const hueOf = (c: number, h: number): number => (c < ACHROMATIC_EPS ? 0 : h);
+
+// Endpoint-exact: `t = 0` returns `a` and `t = 1` returns `b` bit-for-bit,
+// which `a + (b - a) * t` does not (the subtraction rounds). One shape for
+// every axis `mix` interpolates. [LAW:one-source-of-truth]
+const lerp = (a: number, b: number, t: number): number => a * (1 - t) + b * t;
+
 function inGamut(r: number, g: number, b: number): boolean {
   return (
     r >= -GAMUT_EPS && r <= 1 + GAMUT_EPS &&
@@ -170,9 +181,8 @@ export class Oklch {
     const C = Math.sqrt(aLab * aLab + bLab * bLab);
     let H = Math.atan2(bLab, aLab) * (180 / Math.PI);
     if (H < 0) H += 360;
-    if (C < ACHROMATIC_EPS) H = 0;
 
-    return new Oklch(L, C, H, a);
+    return new Oklch(L, C, hueOf(C, H), a);
   }
 
   /**
@@ -211,10 +221,7 @@ export class Oklch {
     const newC = Math.max(0, this.c * k.chromaScale);
     let newH = (this.h + k.hueShift) % 360;
     if (newH < 0) newH += 360;
-    // Same achromatic convention as fromRgba: collapsed chroma → pinned hue,
-    // so applyKey({chromaScale:0}).toRgba() → fromRgba round-trips stably.
-    if (newC < ACHROMATIC_EPS) newH = 0;
-    return new Oklch(newL, newC, newH, this.alpha);
+    return new Oklch(newL, newC, hueOf(newC, newH), this.alpha);
   }
 
   /**
@@ -228,11 +235,20 @@ export class Oklch {
    * endpoint's hue (CSS Color 4's "powerless" rule): gray → red stays a red
    * that gains chroma, instead of rotating through the wheel from 0°.
    *
+   * `t` must lie in [0, 1]: this is interpolation, not extrapolation, and a
+   * `t` outside it (NaN included) is a RangeError, never a colour off the
+   * far end of the segment. [LAW:no-silent-failure]
+   *
    * [LAW:one-source-of-truth] Achromatic means the same `ACHROMATIC_EPS`
    * that `fromRgba` and `applyKey` pin hue by, so a gray produced by either
-   * is a gray here.
+   * is a gray here — and the result's hue goes through the same `hueOf`, so
+   * a gray produced HERE (t = 0 from a gray, t = 1 toward one) is a gray
+   * there too.
    */
   mix(toward: Oklch, t: number): Oklch {
+    if (!(t >= 0 && t <= 1)) {
+      throw new RangeError(`Oklch.mix: t must be in [0, 1]; got ${t}`);
+    }
     const thisHasHue = this.c >= ACHROMATIC_EPS;
     const towardHasHue = toward.c >= ACHROMATIC_EPS;
     const fromH = thisHasHue ? this.h : towardHasHue ? toward.h : 0;
@@ -240,12 +256,8 @@ export class Oklch {
     const dh = ((((toH - fromH) % 360) + 540) % 360) - 180; // shorter arc, in [-180, 180)
     let h = (fromH + dh * t) % 360;
     if (h < 0) h += 360;
-    return new Oklch(
-      this.l + (toward.l - this.l) * t,
-      this.c + (toward.c - this.c) * t,
-      h,
-      this.alpha + (toward.alpha - this.alpha) * t,
-    );
+    const c = lerp(this.c, toward.c, t);
+    return new Oklch(lerp(this.l, toward.l, t), c, hueOf(c, h), lerp(this.alpha, toward.alpha, t));
   }
 
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes

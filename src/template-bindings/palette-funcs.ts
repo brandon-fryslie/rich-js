@@ -141,14 +141,18 @@ export function paletteFuncs(getPalette: () => Palette): FuncMap {
   // pairing and the references are parsed in `colorStops`.
   // [LAW:types-are-the-program]
   const rampFunc: TemplateFunc = {
-    fn: ((value: number, easing: string, ...tail: unknown[]) => {
-      const palette = getPalette();
-      if (easing === undefined) {
+    fn: ((...args: unknown[]) => {
+      // The engine's `alternating` gate types each slot but sets no minimum
+      // count, so `{{ ramp }}` and `{{ ramp 65 }}` both reach here: one
+      // check over the whole list, naming what is missing. [LAW:no-silent-failure]
+      if (args.length < 2) {
         throw new RangeError(
-          `ramp needs an easing after the value: ramp <value> "linear"|"step" <position> <color> …`,
+          `ramp needs a value and an easing before its stops (got ${args.length}): ` +
+            `ramp <value> "linear"|"step" <position> <color> …`,
         );
       }
-      return new ColorRamp(parseRampEasing(easing), colorStops(tail, palette)).at(value).hex;
+      const [value, easing, ...tail] = args as [number, string, ...unknown[]];
+      return new ColorRamp(parseRampEasing(easing), colorStops(tail, getPalette())).at(value).hex;
     }) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     argTypePattern: "alternating",

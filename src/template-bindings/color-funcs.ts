@@ -50,9 +50,9 @@
  *
  * ### Palette-free on purpose
  *
- * Nothing here knows what a palette is. `color` (the one palette-dependent
- * function, in `palette-funcs.ts`) turns a name into a hex string; from that
- * point on the math is pure. A consumer with no theme system at all still gets
+ * Nothing here knows what a palette is. `color` and `ramp` (the two
+ * palette-dependent functions, in `palette-funcs.ts`) turn names into hex;
+ * from that point on the math is pure. A consumer with no theme system at all still gets
  * the full color vocabulary by feeding it hex literals. [LAW:one-way-deps]
  */
 

@@ -280,7 +280,8 @@ describe("ramp — a number becomes a color inside the theme", () => {
 
   it("every malformed call names its own fix", () => {
     // [LAW:no-silent-failure]
-    expect(() => colorText(`{{ ramp 65 }}`)).toThrow(/needs an easing after the value/);
+    expect(() => colorText(`{{ ramp }}`)).toThrow(/needs a value and an easing .*\(got 0\)/);
+    expect(() => colorText(`{{ ramp 65 }}`)).toThrow(/needs a value and an easing .*\(got 1\)/);
     expect(() => colorText(`{{ ramp 65 "linear" }}`)).toThrow(/at least one stop/);
     expect(() => colorText(`{{ ramp 65 "linear" 0 "surface" 50 }}`)).toThrow(
       /last stop \(position 50\) has no color/,

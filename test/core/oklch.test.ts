@@ -293,6 +293,24 @@ describe("Oklch.mix", () => {
     expect(blue.mix(gray, 0.75).h).toBeCloseTo(blue.h, 10);
   });
 
+  it("an achromatic result is a gray on the same terms as fromRgba's", () => {
+    // t = 0 from a gray, or t = 1 toward one, must be THAT gray — hue 0
+    // included — not a zero-chroma colour wearing the other endpoint's hue.
+    const gray = from(128, 128, 128);
+    const blue = from(40, 80, 220);
+    expect(gray.mix(blue, 0)).toEqual(gray);
+    expect(blue.mix(gray, 1)).toEqual(gray);
+  });
+
+  it("refuses t outside [0, 1], NaN included", () => {
+    // [LAW:no-silent-failure] interpolation, not extrapolation
+    const a = from(200, 100, 50);
+    const b = from(20, 60, 200);
+    for (const t of [-0.5, 1.5, Number.NaN]) {
+      expect(() => a.mix(b, t)).toThrow(/Oklch\.mix: t must be in \[0, 1\]/);
+    }
+  });
+
   it("two achromatic endpoints stay achromatic", () => {
     const mid = from(30, 30, 30).mix(from(220, 220, 220), 0.5);
     expect(mid.c).toBeLessThan(1e-6);
