@@ -1,29 +1,49 @@
 /**
  * Box-drawing character sets for borders and table grids.
+ *
+ * A style is declared as an 8x4 character grid — one line per row a table can
+ * draw, one column per position within that row:
+ *
+ *     ┌─┬┐   top border
+ *     │ ││   header content
+ *     ├─┼┤   header separator
+ *     │ ││   body content
+ *     ├─┼┤   row separator
+ *     ├─┼┤   footer separator
+ *     │ ││   footer content
+ *     └─┴┘   bottom border
+ *
+ * [LAW:one-source-of-truth] The grid is the shape the reference implementation
+ * (Python Rich's `box.py`) publishes these glyphs in, so a constant below can
+ * be diffed against it character for character. The eighteen named fields this
+ * replaced were a second, differently-shaped map of the same territory, and it
+ * had drifted: seven of the nineteen constants carried wrong glyphs, and the
+ * field named `mid` held the reference's line 3 while the reference's `mid_*`
+ * is line 4 — so reading the reference name-for-name swapped a separator for a
+ * content row. Named row fields are gone for that reason; a row is reached by
+ * what it is (`getRow`, `getContentChars`), never by a name that can be
+ * mismatched to a line.
  */
 
 import { Segment } from "./segment.js";
 import type { Style } from "./style.js";
 
-export interface BoxChars {
-  topLeft: string;
-  top: string;
-  topDivider: string;
-  topRight: string;
-  headLeft: string;
-  headVertical: string;
-  headRight: string;
-  midLeft: string;
-  mid: string;
-  midVertical: string;
-  midRight: string;
-  bottomLeft: string;
-  bottom: string;
-  bottomDivider: string;
-  bottomRight: string;
+/** A rule spanning the table: the top and bottom borders, and every separator. */
+export interface EdgeChars {
   left: string;
+  horizontal: string;
+  cross: string;
   right: string;
+}
+
+/**
+ * The verticals framing a row of cells. A content line of the grid has no
+ * horizontal of its own — its fill column is a placeholder the cells occupy.
+ */
+export interface ContentChars {
+  left: string;
   vertical: string;
+  right: string;
 }
 
 export type RowLevel = "head" | "row" | "foot" | "mid";
@@ -33,65 +53,81 @@ export interface SubstituteOptions {
   safe?: boolean;
 }
 
+const GRID_ROWS = 8;
+const GRID_COLUMNS = 4;
+
+/** Corners that a legacy Windows terminal cannot draw, and their square kin. */
+const SAFE_SUBSTITUTIONS: Record<string, string> = {
+  "╭": "┌",
+  "╮": "┐",
+  "╰": "└",
+  "╯": "┘",
+};
+
+const edgeOf = (row: readonly string[]): EdgeChars => ({
+  left: row[0]!,
+  horizontal: row[1]!,
+  cross: row[2]!,
+  right: row[3]!,
+});
+
+const contentOf = (row: readonly string[]): ContentChars => ({
+  left: row[0]!,
+  vertical: row[2]!,
+  right: row[3]!,
+});
+
 // [LAW:one-type-per-behavior] Box is a single type for all border styles — instances differ by data
 export class Box {
-  readonly topLeft: string;
-  readonly top: string;
-  readonly topDivider: string;
-  readonly topRight: string;
-  readonly headLeft: string;
-  readonly headVertical: string;
-  readonly headRight: string;
-  readonly midLeft: string;
-  readonly mid: string;
-  readonly midVertical: string;
-  readonly midRight: string;
-  readonly bottomLeft: string;
-  readonly bottom: string;
-  readonly bottomDivider: string;
-  readonly bottomRight: string;
-  readonly left: string;
-  readonly right: string;
-  readonly vertical: string;
+  readonly top: EdgeChars;
+  readonly bottom: EdgeChars;
 
-  constructor(chars: BoxChars) {
-    this.topLeft = chars.topLeft;
-    this.top = chars.top;
-    this.topDivider = chars.topDivider;
-    this.topRight = chars.topRight;
-    this.headLeft = chars.headLeft;
-    this.headVertical = chars.headVertical;
-    this.headRight = chars.headRight;
-    this.midLeft = chars.midLeft;
-    this.mid = chars.mid;
-    this.midVertical = chars.midVertical;
-    this.midRight = chars.midRight;
-    this.bottomLeft = chars.bottomLeft;
-    this.bottom = chars.bottom;
-    this.bottomDivider = chars.bottomDivider;
-    this.bottomRight = chars.bottomRight;
-    this.left = chars.left;
-    this.right = chars.right;
-    this.vertical = chars.vertical;
+  private readonly grid: string;
+  private readonly headContent: ContentChars;
+  private readonly headSeparator: EdgeChars;
+  private readonly bodyContent: ContentChars;
+  private readonly rowSeparator: EdgeChars;
+  private readonly footSeparator: EdgeChars;
+  private readonly footContent: ContentChars;
+
+  /**
+   * [LAW:parse-dont-validate] The one crossing between a grid string and box
+   * glyphs. A `Box` cannot exist without eight rows of four characters, so no
+   * consumer below ever re-checks the shape of the data it reads.
+   */
+  constructor(grid: string) {
+    const rows = grid.split("\n").map((row) => Array.from(row));
+    const malformed = rows.length !== GRID_ROWS
+      || rows.some((row) => row.length !== GRID_COLUMNS);
+    if (malformed) {
+      throw new Error(
+        `A box grid is ${GRID_ROWS} lines of ${GRID_COLUMNS} characters; got `
+        + `${rows.length} line(s) of width ${rows.map((row) => row.length).join(", ")}`,
+      );
+    }
+
+    this.grid = grid;
+    this.top = edgeOf(rows[0]!);
+    this.headContent = contentOf(rows[1]!);
+    this.headSeparator = edgeOf(rows[2]!);
+    this.bodyContent = contentOf(rows[3]!);
+    this.rowSeparator = edgeOf(rows[4]!);
+    this.footSeparator = edgeOf(rows[5]!);
+    this.footContent = contentOf(rows[6]!);
+    this.bottom = edgeOf(rows[7]!);
   }
 
   /**
    * Renders the top border row for given column widths.
    */
   getTop(widths: readonly number[], style?: Style, edge = true): Segment[] {
-    const segments: Segment[] = [];
-    if (edge) segments.push(new Segment(this.topLeft, style));
-    for (let i = 0; i < widths.length; i++) {
-      if (i > 0) segments.push(new Segment(this.topDivider, style));
-      segments.push(new Segment(this.top.repeat(widths[i]!), style));
-    }
-    if (edge) segments.push(new Segment(this.topRight, style));
-    segments.push(Segment.line());
-    return segments;
+    return this.getEdge(widths, this.top, style, edge);
   }
 
   /**
-   * Renders a separator row.
+   * Renders the separator drawn *above* a row at `level` — the head separator
+   * under the header, the row separator between body rows, the foot separator
+   * above the footer.
    */
   getRow(
     widths: readonly number[],
@@ -99,37 +135,23 @@ export class Box {
     style?: Style,
     edge = true,
   ): Segment[] {
-    const [left, horizontal, cross, right] = this.getRowChars(level);
-    const segments: Segment[] = [];
-    if (edge) segments.push(new Segment(left, style));
-    for (let i = 0; i < widths.length; i++) {
-      if (i > 0) segments.push(new Segment(cross, style));
-      segments.push(new Segment(horizontal.repeat(widths[i]!), style));
-    }
-    if (edge) segments.push(new Segment(right, style));
-    segments.push(Segment.line());
-    return segments;
+    return this.getEdge(widths, this.getRowChars(level), style, edge);
   }
 
   /**
    * The verticals that frame a content row at `level` — the counterpart to
    * `getRow`, which draws the separator between two such rows.
-   *
-   * `head` is the only level carrying glyphs of its own: `BoxChars` has no
-   * foot content set, so every other level draws the body verticals.
    */
-  getContentChars(
-    level: RowLevel,
-  ): { left: string; vertical: string; right: string } {
+  getContentChars(level: RowLevel): ContentChars {
     switch (level) {
       case "head":
-        return { left: this.headLeft, vertical: this.headVertical, right: this.headRight };
+        return this.headContent;
+      // `mid` is a spacer between body rows, so it is framed as one.
       case "row":
-        return { left: this.left, vertical: this.vertical, right: this.right };
       case "mid":
-        return { left: this.left, vertical: this.vertical, right: this.right };
+        return this.bodyContent;
       case "foot":
-        return { left: this.left, vertical: this.vertical, right: this.right };
+        return this.footContent;
     }
   }
 
@@ -137,15 +159,7 @@ export class Box {
    * Renders the bottom border row.
    */
   getBottom(widths: readonly number[], style?: Style, edge = true): Segment[] {
-    const segments: Segment[] = [];
-    if (edge) segments.push(new Segment(this.bottomLeft, style));
-    for (let i = 0; i < widths.length; i++) {
-      if (i > 0) segments.push(new Segment(this.bottomDivider, style));
-      segments.push(new Segment(this.bottom.repeat(widths[i]!), style));
-    }
-    if (edge) segments.push(new Segment(this.bottomRight, style));
-    segments.push(Segment.line());
-    return segments;
+    return this.getEdge(widths, this.bottom, style, edge);
   }
 
   /**
@@ -160,452 +174,262 @@ export class Box {
   }
 
   private safeSubstitute(): Box {
-    // Replace rounded corners and other characters that may not render
-    // on Windows legacy terminal with safe square equivalents
-    const replacements: Record<string, string> = {
-      "╭": "┌",
-      "╮": "┐",
-      "╰": "└",
-      "╯": "┘",
-    };
-    const replace = (ch: string): string => replacements[ch] ?? ch;
-    return new Box({
-      topLeft: replace(this.topLeft),
-      top: replace(this.top),
-      topDivider: replace(this.topDivider),
-      topRight: replace(this.topRight),
-      headLeft: replace(this.headLeft),
-      headVertical: replace(this.headVertical),
-      headRight: replace(this.headRight),
-      midLeft: replace(this.midLeft),
-      mid: replace(this.mid),
-      midVertical: replace(this.midVertical),
-      midRight: replace(this.midRight),
-      bottomLeft: replace(this.bottomLeft),
-      bottom: replace(this.bottom),
-      bottomDivider: replace(this.bottomDivider),
-      bottomRight: replace(this.bottomRight),
-      left: replace(this.left),
-      right: replace(this.right),
-      vertical: replace(this.vertical),
-    });
+    return new Box(
+      Array.from(this.grid, (char) => SAFE_SUBSTITUTIONS[char] ?? char).join(""),
+    );
   }
 
-  // All four arms match because a Box carries one separator set; Rich carries
-  // three (head_row, row, foot_row). `head*` frames content rows, not separators.
-  private getRowChars(
-    level: RowLevel,
-  ): [string, string, string, string] {
+  /**
+   * [LAW:dataflow-not-control-flow] Every full-width rule the box can draw is
+   * this one loop; which rule it is arrives as four characters, not a branch.
+   */
+  private getEdge(
+    widths: readonly number[],
+    chars: EdgeChars,
+    style: Style | undefined,
+    edge: boolean,
+  ): Segment[] {
+    const segments: Segment[] = [];
+    if (edge) segments.push(new Segment(chars.left, style));
+    for (let i = 0; i < widths.length; i++) {
+      if (i > 0) segments.push(new Segment(chars.cross, style));
+      segments.push(new Segment(chars.horizontal.repeat(widths[i]!), style));
+    }
+    if (edge) segments.push(new Segment(chars.right, style));
+    segments.push(Segment.line());
+    return segments;
+  }
+
+  private getRowChars(level: RowLevel): EdgeChars {
     switch (level) {
       case "head":
-        return [this.midLeft, this.mid, this.midVertical, this.midRight];
+        return this.headSeparator;
       case "row":
-        return [this.midLeft, this.mid, this.midVertical, this.midRight];
-      case "mid":
-        return [this.midLeft, this.mid, this.midVertical, this.midRight];
+        return this.rowSeparator;
       case "foot":
-        return [this.midLeft, this.mid, this.midVertical, this.midRight];
+        return this.footSeparator;
+      // A blank section divider rather than a rule: `leading` puts empty lines
+      // between rows, and they carry the body row's verticals and nothing else.
+      case "mid":
+        return {
+          left: this.bodyContent.left,
+          horizontal: " ",
+          cross: this.bodyContent.vertical,
+          right: this.bodyContent.right,
+        };
     }
   }
 }
 
 // --- Pre-built box styles ---
+// Transcribed from Python Rich's `rich/box.py` and verified grid-for-grid
+// against it; see this module's header for the shape and why it is this shape.
 
-export const ASCII = new Box({
-  topLeft: "+",
-  top: "-",
-  topDivider: "+",
-  topRight: "+",
-  headLeft: "|",
-  headVertical: "|",
-  headRight: "|",
-  midLeft: "|",
-  mid: "-",
-  midVertical: "+",
-  midRight: "|",
-  bottomLeft: "+",
-  bottom: "-",
-  bottomDivider: "+",
-  bottomRight: "+",
-  left: "|",
-  right: "|",
-  vertical: "|",
-});
+export const ASCII = new Box(
+  "+--+\n" +
+  "| ||\n" +
+  "|-+|\n" +
+  "| ||\n" +
+  "|-+|\n" +
+  "|-+|\n" +
+  "| ||\n" +
+  "+--+",
+);
 
-export const ASCII2 = new Box({
-  topLeft: "+",
-  top: "-",
-  topDivider: "+",
-  topRight: "+",
-  headLeft: "|",
-  headVertical: "|",
-  headRight: "|",
-  midLeft: "+",
-  mid: "-",
-  midVertical: "+",
-  midRight: "+",
-  bottomLeft: "+",
-  bottom: "-",
-  bottomDivider: "+",
-  bottomRight: "+",
-  left: "|",
-  right: "|",
-  vertical: "|",
-});
+export const ASCII2 = new Box(
+  "+-++\n" +
+  "| ||\n" +
+  "+-++\n" +
+  "| ||\n" +
+  "+-++\n" +
+  "+-++\n" +
+  "| ||\n" +
+  "+-++",
+);
 
-export const ASCII_DOUBLE_HEAD = new Box({
-  topLeft: "+",
-  top: "-",
-  topDivider: "+",
-  topRight: "+",
-  headLeft: "|",
-  headVertical: "|",
-  headRight: "|",
-  midLeft: "+",
-  mid: "=",
-  midVertical: "+",
-  midRight: "+",
-  bottomLeft: "+",
-  bottom: "-",
-  bottomDivider: "+",
-  bottomRight: "+",
-  left: "|",
-  right: "|",
-  vertical: "|",
-});
+export const ASCII_DOUBLE_HEAD = new Box(
+  "+-++\n" +
+  "| ||\n" +
+  "+=++\n" +
+  "| ||\n" +
+  "+-++\n" +
+  "+-++\n" +
+  "| ||\n" +
+  "+-++",
+);
 
-export const SQUARE = new Box({
-  topLeft: "┌",
-  top: "─",
-  topDivider: "┬",
-  topRight: "┐",
-  headLeft: "│",
-  headVertical: "│",
-  headRight: "│",
-  midLeft: "├",
-  mid: "─",
-  midVertical: "┼",
-  midRight: "┤",
-  bottomLeft: "└",
-  bottom: "─",
-  bottomDivider: "┴",
-  bottomRight: "┘",
-  left: "│",
-  right: "│",
-  vertical: "│",
-});
+export const SQUARE = new Box(
+  "┌─┬┐\n" +
+  "│ ││\n" +
+  "├─┼┤\n" +
+  "│ ││\n" +
+  "├─┼┤\n" +
+  "├─┼┤\n" +
+  "│ ││\n" +
+  "└─┴┘",
+);
 
-export const SQUARE_DOUBLE_HEAD = new Box({
-  topLeft: "┌",
-  top: "─",
-  topDivider: "┬",
-  topRight: "┐",
-  headLeft: "│",
-  headVertical: "│",
-  headRight: "│",
-  midLeft: "╞",
-  mid: "═",
-  midVertical: "╪",
-  midRight: "╡",
-  bottomLeft: "└",
-  bottom: "─",
-  bottomDivider: "┴",
-  bottomRight: "┘",
-  left: "│",
-  right: "│",
-  vertical: "│",
-});
+export const SQUARE_DOUBLE_HEAD = new Box(
+  "┌─┬┐\n" +
+  "│ ││\n" +
+  "╞═╪╡\n" +
+  "│ ││\n" +
+  "├─┼┤\n" +
+  "├─┼┤\n" +
+  "│ ││\n" +
+  "└─┴┘",
+);
 
-export const MINIMAL = new Box({
-  topLeft: " ",
-  top: " ",
-  topDivider: " ",
-  topRight: " ",
-  headLeft: " ",
-  headVertical: " ",
-  headRight: " ",
-  midLeft: " ",
-  mid: "─",
-  midVertical: "─",
-  midRight: " ",
-  bottomLeft: " ",
-  bottom: " ",
-  bottomDivider: " ",
-  bottomRight: " ",
-  left: " ",
-  right: " ",
-  vertical: " ",
-});
+export const MINIMAL = new Box(
+  "  ╷ \n" +
+  "  │ \n" +
+  "╶─┼╴\n" +
+  "  │ \n" +
+  "╶─┼╴\n" +
+  "╶─┼╴\n" +
+  "  │ \n" +
+  "  ╵ ",
+);
 
-export const MINIMAL_HEAVY_HEAD = new Box({
-  topLeft: " ",
-  top: " ",
-  topDivider: " ",
-  topRight: " ",
-  headLeft: " ",
-  headVertical: " ",
-  headRight: " ",
-  midLeft: " ",
-  mid: "━",
-  midVertical: "━",
-  midRight: " ",
-  bottomLeft: " ",
-  bottom: " ",
-  bottomDivider: " ",
-  bottomRight: " ",
-  left: " ",
-  right: " ",
-  vertical: " ",
-});
+export const MINIMAL_HEAVY_HEAD = new Box(
+  "  ╷ \n" +
+  "  │ \n" +
+  "╺━┿╸\n" +
+  "  │ \n" +
+  "╶─┼╴\n" +
+  "╶─┼╴\n" +
+  "  │ \n" +
+  "  ╵ ",
+);
 
-export const MINIMAL_DOUBLE_HEAD = new Box({
-  topLeft: " ",
-  top: " ",
-  topDivider: " ",
-  topRight: " ",
-  headLeft: " ",
-  headVertical: " ",
-  headRight: " ",
-  midLeft: " ",
-  mid: "═",
-  midVertical: "═",
-  midRight: " ",
-  bottomLeft: " ",
-  bottom: " ",
-  bottomDivider: " ",
-  bottomRight: " ",
-  left: " ",
-  right: " ",
-  vertical: " ",
-});
+export const MINIMAL_DOUBLE_HEAD = new Box(
+  "  ╷ \n" +
+  "  │ \n" +
+  " ═╪ \n" +
+  "  │ \n" +
+  " ─┼ \n" +
+  " ─┼ \n" +
+  "  │ \n" +
+  "  ╵ ",
+);
 
-export const SIMPLE = new Box({
-  topLeft: " ",
-  top: " ",
-  topDivider: " ",
-  topRight: " ",
-  headLeft: " ",
-  headVertical: " ",
-  headRight: " ",
-  midLeft: " ",
-  mid: "─",
-  midVertical: " ",
-  midRight: " ",
-  bottomLeft: " ",
-  bottom: "─",
-  bottomDivider: " ",
-  bottomRight: " ",
-  left: " ",
-  right: " ",
-  vertical: " ",
-});
+export const SIMPLE = new Box(
+  "    \n" +
+  "    \n" +
+  " ── \n" +
+  "    \n" +
+  "    \n" +
+  " ── \n" +
+  "    \n" +
+  "    ",
+);
 
-export const SIMPLE_HEAD = new Box({
-  topLeft: " ",
-  top: " ",
-  topDivider: " ",
-  topRight: " ",
-  headLeft: " ",
-  headVertical: " ",
-  headRight: " ",
-  midLeft: " ",
-  mid: "─",
-  midVertical: " ",
-  midRight: " ",
-  bottomLeft: " ",
-  bottom: " ",
-  bottomDivider: " ",
-  bottomRight: " ",
-  left: " ",
-  right: " ",
-  vertical: " ",
-});
+export const SIMPLE_HEAD = new Box(
+  "    \n" +
+  "    \n" +
+  " ── \n" +
+  "    \n" +
+  "    \n" +
+  "    \n" +
+  "    \n" +
+  "    ",
+);
 
-export const SIMPLE_HEAVY = new Box({
-  topLeft: " ",
-  top: " ",
-  topDivider: " ",
-  topRight: " ",
-  headLeft: " ",
-  headVertical: " ",
-  headRight: " ",
-  midLeft: " ",
-  mid: "━",
-  midVertical: " ",
-  midRight: " ",
-  bottomLeft: " ",
-  bottom: "━",
-  bottomDivider: " ",
-  bottomRight: " ",
-  left: " ",
-  right: " ",
-  vertical: " ",
-});
+export const SIMPLE_HEAVY = new Box(
+  "    \n" +
+  "    \n" +
+  " ━━ \n" +
+  "    \n" +
+  "    \n" +
+  " ━━ \n" +
+  "    \n" +
+  "    ",
+);
 
-export const HORIZONTALS = new Box({
-  topLeft: " ",
-  top: "─",
-  topDivider: "─",
-  topRight: " ",
-  headLeft: " ",
-  headVertical: " ",
-  headRight: " ",
-  midLeft: " ",
-  mid: "─",
-  midVertical: "─",
-  midRight: " ",
-  bottomLeft: " ",
-  bottom: "─",
-  bottomDivider: "─",
-  bottomRight: " ",
-  left: " ",
-  right: " ",
-  vertical: " ",
-});
+export const HORIZONTALS = new Box(
+  " ── \n" +
+  "    \n" +
+  " ── \n" +
+  "    \n" +
+  " ── \n" +
+  " ── \n" +
+  "    \n" +
+  " ── ",
+);
 
-export const ROUNDED = new Box({
-  topLeft: "╭",
-  top: "─",
-  topDivider: "┬",
-  topRight: "╮",
-  headLeft: "│",
-  headVertical: "│",
-  headRight: "│",
-  midLeft: "├",
-  mid: "─",
-  midVertical: "┼",
-  midRight: "┤",
-  bottomLeft: "╰",
-  bottom: "─",
-  bottomDivider: "┴",
-  bottomRight: "╯",
-  left: "│",
-  right: "│",
-  vertical: "│",
-});
+export const ROUNDED = new Box(
+  "╭─┬╮\n" +
+  "│ ││\n" +
+  "├─┼┤\n" +
+  "│ ││\n" +
+  "├─┼┤\n" +
+  "├─┼┤\n" +
+  "│ ││\n" +
+  "╰─┴╯",
+);
 
-export const HEAVY = new Box({
-  topLeft: "┏",
-  top: "━",
-  topDivider: "┳",
-  topRight: "┓",
-  headLeft: "┃",
-  headVertical: "┃",
-  headRight: "┃",
-  midLeft: "┣",
-  mid: "━",
-  midVertical: "╋",
-  midRight: "┫",
-  bottomLeft: "┗",
-  bottom: "━",
-  bottomDivider: "┻",
-  bottomRight: "┛",
-  left: "┃",
-  right: "┃",
-  vertical: "┃",
-});
+export const HEAVY = new Box(
+  "┏━┳┓\n" +
+  "┃ ┃┃\n" +
+  "┣━╋┫\n" +
+  "┃ ┃┃\n" +
+  "┣━╋┫\n" +
+  "┣━╋┫\n" +
+  "┃ ┃┃\n" +
+  "┗━┻┛",
+);
 
-export const HEAVY_EDGE = new Box({
-  topLeft: "┏",
-  top: "━",
-  topDivider: "┯",
-  topRight: "┓",
-  headLeft: "┃",
-  headVertical: "│",
-  headRight: "┃",
-  midLeft: "┠",
-  mid: "─",
-  midVertical: "┼",
-  midRight: "┨",
-  bottomLeft: "┗",
-  bottom: "━",
-  bottomDivider: "┷",
-  bottomRight: "┛",
-  left: "┃",
-  right: "┃",
-  vertical: "│",
-});
+export const HEAVY_EDGE = new Box(
+  "┏━┯┓\n" +
+  "┃ │┃\n" +
+  "┠─┼┨\n" +
+  "┃ │┃\n" +
+  "┠─┼┨\n" +
+  "┠─┼┨\n" +
+  "┃ │┃\n" +
+  "┗━┷┛",
+);
 
-export const HEAVY_HEAD = new Box({
-  topLeft: "┏",
-  top: "━",
-  topDivider: "┳",
-  topRight: "┓",
-  headLeft: "┃",
-  headVertical: "┃",
-  headRight: "┃",
-  midLeft: "┡",
-  mid: "━",
-  midVertical: "╇",
-  midRight: "┩",
-  bottomLeft: "└",
-  bottom: "─",
-  bottomDivider: "┴",
-  bottomRight: "┘",
-  left: "│",
-  right: "│",
-  vertical: "│",
-});
+export const HEAVY_HEAD = new Box(
+  "┏━┳┓\n" +
+  "┃ ┃┃\n" +
+  "┡━╇┩\n" +
+  "│ ││\n" +
+  "├─┼┤\n" +
+  "├─┼┤\n" +
+  "│ ││\n" +
+  "└─┴┘",
+);
 
-export const DOUBLE = new Box({
-  topLeft: "╔",
-  top: "═",
-  topDivider: "╦",
-  topRight: "╗",
-  headLeft: "║",
-  headVertical: "║",
-  headRight: "║",
-  midLeft: "╠",
-  mid: "═",
-  midVertical: "╬",
-  midRight: "╣",
-  bottomLeft: "╚",
-  bottom: "═",
-  bottomDivider: "╩",
-  bottomRight: "╝",
-  left: "║",
-  right: "║",
-  vertical: "║",
-});
+export const DOUBLE = new Box(
+  "╔═╦╗\n" +
+  "║ ║║\n" +
+  "╠═╬╣\n" +
+  "║ ║║\n" +
+  "╠═╬╣\n" +
+  "╠═╬╣\n" +
+  "║ ║║\n" +
+  "╚═╩╝",
+);
 
-export const DOUBLE_EDGE = new Box({
-  topLeft: "╔",
-  top: "═",
-  topDivider: "╤",
-  topRight: "╗",
-  headLeft: "║",
-  headVertical: "│",
-  headRight: "║",
-  midLeft: "╟",
-  mid: "─",
-  midVertical: "┼",
-  midRight: "╢",
-  bottomLeft: "╚",
-  bottom: "═",
-  bottomDivider: "╧",
-  bottomRight: "╝",
-  left: "║",
-  right: "║",
-  vertical: "│",
-});
+export const DOUBLE_EDGE = new Box(
+  "╔═╤╗\n" +
+  "║ │║\n" +
+  "╟─┼╢\n" +
+  "║ │║\n" +
+  "╟─┼╢\n" +
+  "╟─┼╢\n" +
+  "║ │║\n" +
+  "╚═╧╝",
+);
 
-export const MARKDOWN = new Box({
-  topLeft: " ",
-  top: " ",
-  topDivider: " ",
-  topRight: " ",
-  headLeft: "|",
-  headVertical: "|",
-  headRight: "|",
-  midLeft: "|",
-  mid: "-",
-  midVertical: "|",
-  midRight: "|",
-  bottomLeft: " ",
-  bottom: " ",
-  bottomDivider: " ",
-  bottomRight: " ",
-  left: "|",
-  right: "|",
-  vertical: "|",
-});
+export const MARKDOWN = new Box(
+  "    \n" +
+  "| ||\n" +
+  "|-||\n" +
+  "| ||\n" +
+  "|-||\n" +
+  "|-||\n" +
+  "| ||\n" +
+  "    ",
+);
