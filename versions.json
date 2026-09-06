@@ -4,15 +4,22 @@
     {
       "version": "pr-92",
       "ref": "refs/pull/92/merge",
-      "sha": "58bd8e5ec63ba57e5c0b4829c9a576df841e82ae",
-      "timestamp": "2026-09-06T03:57:15.201Z",
+      "sha": "0b82d6ffaaf4f0e163c4e06458f6334b7c14d35d",
+      "timestamp": "2026-09-06T04:15:55.877Z",
       "commits": [
         {
-          "sha": "58bd8e5ec63ba57e5c0b4829c9a576df841e82ae",
+          "sha": "0b82d6ffaaf4f0e163c4e06458f6334b7c14d35d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T03:56:46Z",
-          "message": "Merge 2ed6a8e03550f42c54689b038154bc93977a0105 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+          "timestamp": "2026-09-06T04:15:20Z",
+          "message": "Merge adcb1785202330f7a2bcfe233060fb12f2d7bb69 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "adcb1785202330f7a2bcfe233060fb12f2d7bb69",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T22:15:10-06:00",
+          "message": "docs(template-bindings): richTextFuncs' docstring names both theme-bound functions, color and ramp\n"
         },
         {
           "sha": "2ed6a8e03550f42c54689b038154bc93977a0105",
