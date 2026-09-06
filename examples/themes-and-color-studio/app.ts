@@ -86,7 +86,7 @@ import {
   ensureContrast,
   lighten,
   darken,
-  // Section 6 — a number → a colour over ordered stops
+  // Section 5 — a number → a colour over ordered stops
   ColorRamp,
   RAMP_EASING_NAMES,
   parseRampEasing,

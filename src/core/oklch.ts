@@ -104,10 +104,9 @@ function clamp01(v: number): number {
 // chroma reduction on colors that are already representable.
 const GAMUT_EPS = 1e-4;
 
-// [LAW:one-source-of-truth] Below this chroma a color is treated as
-// achromatic, and hue is pinned to 0 so round-trips stay stable. Used
-// by `fromRgba` (after polar conversion) and `applyKey` (after chroma
-// scaling collapses C toward 0). Same threshold both places.
+// [LAW:one-source-of-truth] Below this chroma a color is achromatic and its
+// hue is pinned to 0 so round-trips stay stable — the one threshold every
+// chroma reader here shares.
 const ACHROMATIC_EPS = 1e-7;
 
 function inGamut(r: number, g: number, b: number): boolean {

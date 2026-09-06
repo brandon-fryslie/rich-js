@@ -157,11 +157,18 @@ console.print(RichText.fromFragments(engine.compile(scale)({})));
 `ramp` is the one function whose input is a *number* rather than a color. Every other function here adjusts a color you already have; a ramp answers "what does 73 % look like" — a measurement mapped onto ordered stops, each a color at a position. Between stops the color is interpolated in OKLCH, so the midpoint of two theme colors is perceptually halfway rather than the gray mud an sRGB average produces. Below the first stop it is the first color; at or above the last it is the last.
 
 ```typescript
-import { Console, RichText } from "@promptctl/rich-js";
-import { createRichTextEngine } from "@promptctl/rich-js/template-bindings";
+import { createEngine } from "@promptctl/go-template-js";
+import { Console, RichText, GRUVBOX } from "@promptctl/rich-js";
+import { richTextFuncs, paletteFuncs } from "@promptctl/rich-js/template-bindings";
 
 const console = new Console();
-const engine = createRichTextEngine();
+// `ramp` is a palette function — its stops may be palette names — so it is
+// registered by `paletteFuncs`, never by `createRichTextEngine()`.
+const engine = createEngine<RichText>({
+  fromString: (s) => new RichText(s),
+  toString: (rt) => rt.plain,
+  funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette) },
+});
 
 const meter = `{{- define "cell" }}{{ printf " %3d%% " . | bg (ramp . "linear" 0 "#2e7d32" 50 "#f9a825" 100 "#c62828") }}{{ end -}}
 {{ template "cell" 0 }}{{ template "cell" 25 }}{{ template "cell" 50 }}{{ template "cell" 75 }}{{ template "cell" 100 }}`;
