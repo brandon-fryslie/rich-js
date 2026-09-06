@@ -56,11 +56,11 @@ describe("Table", () => {
     expect(lines).toContain("│ Foot │");
   });
 
-  // Every row a table can draw comes from its own line of the box grid. A box
-  // whose thirty-two characters are all distinct is what makes a line that was
-  // sourced from the wrong grid row visible: swap any two and this goes red on
-  // the row that borrowed. The frames the shipped constants draw are pinned in
-  // test/core/box.test.ts; this asserts only that Table reads the right line.
+  // Every row a table can draw comes from its own line of the box grid, and a
+  // grid of distinct glyphs is what makes a row sourced from the wrong line
+  // visible. The exception is a content row's fill column — the reference
+  // writes a space there and nothing ever draws it. The frames the shipped
+  // constants draw are pinned in test/core/box.test.ts.
   it("draws each row from its own line of the box grid", () => {
     const sentinel = new Box(
       "1234\n" +
