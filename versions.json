@@ -4,15 +4,22 @@
     {
       "version": "pr-92",
       "ref": "refs/pull/92/merge",
-      "sha": "9133974842b6332d27bea8fdab002d4b1990f19a",
-      "timestamp": "2026-09-06T03:35:34.378Z",
+      "sha": "58bd8e5ec63ba57e5c0b4829c9a576df841e82ae",
+      "timestamp": "2026-09-06T03:57:15.201Z",
       "commits": [
         {
-          "sha": "9133974842b6332d27bea8fdab002d4b1990f19a",
+          "sha": "58bd8e5ec63ba57e5c0b4829c9a576df841e82ae",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T03:35:05Z",
-          "message": "Merge b4e2c8a395b19832c646d8ef7547404b991d9993 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+          "timestamp": "2026-09-06T03:56:46Z",
+          "message": "Merge 2ed6a8e03550f42c54689b038154bc93977a0105 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "2ed6a8e03550f42c54689b038154bc93977a0105",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T21:56:34-06:00",
+          "message": "fix(oklch): one achromatic rule for every Oklch producer; mix refuses t outside [0, 1]; ramp names a missing value\n\n`mix` pinned no hue on its result, so `gray.mix(blue, 0)` was a zero-chroma\ncolour wearing blue's hue — a gray `fromRgba` would never produce, breaking\n\"achromatic means h = 0\". The pin is now ONE function, `hueOf(c, h)` beside\n`ACHROMATIC_EPS`, applied by `fromRgba`, `applyKey` and `mix` to their\nresults (the two inline pins are gone); the constructor still passes\nintermediates through by contract. The lerp moves to the endpoint-exact\n`a*(1-t) + b*t` form, so t = 1 lands on `toward` bit-for-bit on every axis.\n\n`mix` is interpolation, not extrapolation: t outside [0, 1] (NaN included)\nis a RangeError. `ColorRamp.at` already returns stop colours before mix\nsees an out-of-range t.\n\n`{{ ramp }}` with no arguments reached the body and threw the misleading\n\"needs an easing after the value\"; one arity check over the whole argument\nlist now names what is missing and how many arrived.\n\nThe two module comments name `color` AND `ramp` as the palette-dependent\nfunctions.\n"
         },
         {
           "sha": "b4e2c8a395b19832c646d8ef7547404b991d9993",
