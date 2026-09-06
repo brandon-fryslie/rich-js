@@ -87,9 +87,9 @@ describe("template-bindings — bootstrap smoke", () => {
   });
 
   it("naming a theme colour needs paletteFuncs, which the bare engine does not register", () => {
-    // `color` is the one palette-dependent function and ships separately, so a
-    // template that names a theme colour fails loudly here rather than
-    // silently rendering an unthemed colour. [LAW:no-silent-failure]
+    // `color` and `ramp` are the palette-dependent functions and ship
+    // separately, so a template that names a theme colour fails loudly here
+    // rather than silently rendering an unthemed colour. [LAW:no-silent-failure]
     const engine = createRichTextEngine();
     const segs = renderTemplate(engine, `{{ fg (color "primary") "x" }}`);
     expect(segs).toHaveLength(1);
@@ -111,7 +111,8 @@ describe("template-bindings — bootstrap smoke", () => {
 
   it("does not register a palette-dependent function", () => {
     // [LAW:one-way-deps] Nothing in `richTextFuncs()` knows a palette exists;
-    // `color` arrives only via `paletteFuncs(getPalette)`.
+    // `color` and `ramp` arrive only via `paletteFuncs(getPalette)`.
     expect(richTextFuncs()["color"]).toBeUndefined();
+    expect(richTextFuncs()["ramp"]).toBeUndefined();
   });
 });

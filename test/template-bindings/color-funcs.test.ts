@@ -12,6 +12,7 @@ import {
 } from "../../src/themes/colorMath.js";
 import { parseHexColor } from "../../src/themes/colorRef.js";
 import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
+import { ColorRamp } from "../../src/themes/ramp.js";
 
 // [LAW:behavior-not-structure] Every assertion below compares what a template
 // produces against what the underlying rich-js function produces for the same
@@ -218,12 +219,81 @@ describe("the palette is read at evaluate time, not at registration", () => {
   });
 
   it("the function inventory does not depend on which palette is current", () => {
-    // Why exactly one palette-dependent function matters: a per-variable
-    // function family would have had a *different set of names* per theme,
-    // and a template parsed under one theme could hit FuncNotFound under
-    // another. `color` is one name regardless of palette contents.
+    // Why a fixed inventory matters: a per-variable function family would
+    // have had a *different set of names* per theme, and a template parsed
+    // under one theme could hit FuncNotFound under another. `color` and
+    // `ramp` are the same two names regardless of palette contents.
     const names = Object.keys(paletteFuncs(() => GRUVBOX.palette));
     expect(names).toEqual(Object.keys(paletteFuncs(() => DRACULA.palette)));
-    expect(names).toEqual(["color"]);
+    expect(names).toEqual(["color", "ramp"]);
+  });
+});
+
+describe("ramp — a number becomes a color inside the theme", () => {
+  const stops = (p: typeof palette) => [
+    { at: 0, color: p.get("surface")! },
+    { at: 50, color: p.get("warning")! },
+    { at: 80, color: p.get("error")! },
+  ];
+
+  it("palette names and hex literals are both stops, through the same resolver", () => {
+    // [LAW:behavior-not-structure] The template surface agrees with ColorRamp
+    // over the same resolved stops, whichever spelling the author used.
+    const byName = `{{ ramp 65 "linear" 0 "surface" 50 "warning" 80 "error" }}`;
+    const byHex =
+      `{{ ramp 65 "linear" 0 "${palette.get("surface")!.hex}" ` +
+      `50 "${palette.get("warning")!.hex}" 80 "${palette.get("error")!.hex}" }}`;
+    const expected = new ColorRamp("linear", stops(palette)).at(65).hex;
+    expect(colorText(byName)).toBe(expected);
+    expect(colorText(byHex)).toBe(expected);
+  });
+
+  it("step spells a threshold cascade, exact at the thresholds", () => {
+    const at = (v: number) =>
+      colorText(`{{ ramp ${v} "step" 0 "surface" 50 "warning" 80 "error" }}`);
+    expect(at(0)).toBe(palette.get("surface")!.hex);
+    expect(at(49)).toBe(palette.get("surface")!.hex);
+    expect(at(50)).toBe(palette.get("warning")!.hex);
+    expect(at(80)).toBe(palette.get("error")!.hex);
+    expect(at(100)).toBe(palette.get("error")!.hex);
+  });
+
+  it("re-resolves its stops against the live palette on every evaluation", () => {
+    // The whole reason the ramp lives in the theme: swap the palette and the
+    // same template recolors, with no change to the template.
+    let live = GRUVBOX.palette;
+    const swapping = engineFor(() => live);
+    const tpl = swapping.parse(`{{ ramp 65 "linear" 0 "surface" 50 "warning" 80 "error" }}`);
+    const text = () => tpl.evaluate({}).map((f) => f.plain).join("");
+    expect(text()).toBe(new ColorRamp("linear", stops(GRUVBOX.palette)).at(65).hex);
+    live = DRACULA.palette;
+    expect(text()).toBe(new ColorRamp("linear", stops(DRACULA.palette)).at(65).hex);
+  });
+
+  it("composes: the result is a color `bg`/`fg` paint and `mix` transforms", () => {
+    const rampHex = colorText(`{{ ramp 65 "linear" 0 "surface" 80 "error" }}`);
+    expect(paintedFg(`{{ fg (ramp 65 "linear" 0 "surface" 80 "error") "x" }}`)).toBe(rampHex);
+    expect(colorText(`{{ mix (ramp 65 "linear" 0 "surface" 80 "error") "#000000" 0 }}`)).toBe(
+      rampHex,
+    );
+  });
+
+  it("every malformed call names its own fix", () => {
+    // [LAW:no-silent-failure]
+    expect(() => colorText(`{{ ramp }}`)).toThrow(/needs a value and an easing .*\(got 0\)/);
+    expect(() => colorText(`{{ ramp 65 }}`)).toThrow(/needs a value and an easing .*\(got 1\)/);
+    expect(() => colorText(`{{ ramp 65 "linear" }}`)).toThrow(/at least one stop/);
+    expect(() => colorText(`{{ ramp 65 "linear" 0 "surface" 50 }}`)).toThrow(
+      /last stop \(position 50\) has no color/,
+    );
+    expect(() => colorText(`{{ ramp 65 "smooth" 0 "surface" }}`)).toThrow(
+      /unknown ramp easing "smooth"/,
+    );
+    expect(() => colorText(`{{ ramp 65 "step" 0 "nope" }}`)).toThrow(/no such variable/);
+    expect(() => colorText(`{{ ramp 65 "step" 80 "error" 50 "warning" }}`)).toThrow(
+      /ascending position order/,
+    );
+    // The engine's gate, not the body: a color where a position belongs.
+    expect(() => colorText(`{{ ramp 65 "step" "surface" 0 }}`)).toThrow(/ramp/);
   });
 });
