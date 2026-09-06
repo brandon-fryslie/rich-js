@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-94",
+      "ref": "refs/pull/94/merge",
+      "sha": "d3eb85259493cb4f8ab2896a1c25eeecba544252",
+      "timestamp": "2026-09-06T23:25:16.389Z",
+      "commits": [
+        {
+          "sha": "d3eb85259493cb4f8ab2896a1c25eeecba544252",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T17:24:40-06:00",
+          "message": "Merge 3474985ed277340bd1ab51911b5fd9d267d80a41 into 89f42ecbec0d9da555e22153de0cd1da9fac6f4f\n"
+        },
+        {
+          "sha": "3474985ed277340bd1ab51911b5fd9d267d80a41",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T17:23:02-06:00",
+          "message": "fix(box): declare each box style as the reference's own 8x4 grid (rich-table-6uy.3)\n\nA `BoxChars` carried five of the reference's eight grid lines. The three it\ndropped are the row separator, the footer separator and the footer content row,\nso a table with `showLines` or a footer drew the head-to-body glyphs where Rich\ndraws `├───┼───┤`, and no data edit could have fixed it — the type had nowhere\nto put them.\n\nSeven of the nineteen constants were also wrong on fields that did exist:\nASCII's top and bottom dividers, and the whole MINIMAL and SIMPLE families.\n\nBoth defects have one cause. The eighteen named fields were a second,\ndifferently-shaped map of a territory the reference publishes as an 8x4\ncharacter grid, and every constant was a hand transcription into that shape —\nincluding a name collision that inverts a box if read literally, since the\nfield named `mid` held the reference's line 3 while the reference's own `mid_*`\nis line 4. So the fix is to stop transcribing: a `Box` is now built from the\ngrid itself, which can be diffed against `rich/box.py` character for character,\nand the row glyphs are reachable only by what a row *is* (`getRow`,\n`getContentChars`) rather than by a name that can be matched to the wrong line.\n\nThe nineteen constants were generated from the reference, not retyped. Frames\nverified by rendering every one of them as a table with a header, two body rows,\nrow separators and a footer, and diffing all nine lines against expectations\ncomputed from `rich/box.py`: 19/19 match, and corrupting one grid line makes the\ndiff red on exactly that row.\n\n`Table` needed no edit — the level already crossed as a value, which is the seam\n.1 and .2 left open for this. `Panel` reads `box.top`/`box.bottom` as records now\nand takes its body verticals from `getContentChars(\"row\")`.\n\nThe grid also carries `mid` as the reference means it: a blank spacer holding the\nbody verticals, not a rule.\n\n611 lines to 435, while tripling the data each constant carries.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "89f42ecbec0d9da555e22153de0cd1da9fac6f4f",
