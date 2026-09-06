@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-92",
+      "ref": "refs/pull/92/merge",
+      "sha": "149f97a78b253c460fb227de4689d795a2e37919",
+      "timestamp": "2026-09-06T03:06:56.532Z",
+      "commits": [
+        {
+          "sha": "149f97a78b253c460fb227de4689d795a2e37919",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T21:06:21-06:00",
+          "message": "Merge c1bbe7a5a956f0c1eddfe0926cbb1a9af14995b7 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "c1bbe7a5a956f0c1eddfe0926cbb1a9af14995b7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T21:06:03-06:00",
+          "message": "feat(color): ramp — a number becomes a colour over ordered stops, in OKLCH\n\n`ColorRamp` (src/themes/ramp.ts) maps a measurement onto ordered colour\nstops: `linear` interpolates between adjacent stops in OKLCH, `step` holds\neach stop until the next — a threshold cascade (`≥ 50 warning, ≥ 80 error`)\nwritten as data. One class, the easing a value. Values clamp at both ends\nand a value on a stop returns that stop's colour byte for byte, so a step\nramp never paints a colour the author did not write.\n\n`Oklch.mix` is the interpolation: shorter hue arc, and an achromatic\nendpoint adopts the other's hue (CSS Color 4's powerless rule), using the\nsame ACHROMATIC_EPS `fromRgba` pins hue by.\n\nThe template binding `ramp <value> <easing> <position> <color> …` sits\nbeside `color` in `paletteFuncs`: stops are colour references resolved\nthrough `resolveColorRef` against the live palette on every evaluation, so\na ramp over palette names recolours with the theme. The argument list is\none float/string cycle end to end, typed by the engine's `alternating`\ngate; the pairing and the references are parsed once in `colorStops`.\n\nDocs, both colour demos, and tests cover the module, the OKLCH mix, and\nthe binding.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-91",
       "ref": "refs/pull/91/merge",
       "sha": "0a7a406766bbbf25d5bbe53f635c00181e00c5ab",
