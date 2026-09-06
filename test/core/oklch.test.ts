@@ -265,6 +265,21 @@ describe("Oklch.mix", () => {
     expect(a.mix(b, 1)).toEqual(b);
   });
 
+  it("lands on each endpoint's hue bit-for-bit, whatever the arc between them", () => {
+    // Every axis, including hue, is endpoint-exact: a ramp's stops must be
+    // repainted as authored, and hue is the one axis a naive
+    // `from + delta * t` would round at t = 1.
+    const hues = [0, 37.3, 179.9, 180.1, 265.7, 359.99];
+    for (const fromH of hues) {
+      for (const toH of hues) {
+        const a = new Oklch(0.5, 0.1, fromH);
+        const b = new Oklch(0.4, 0.2, toH);
+        expect(a.mix(b, 0)).toEqual(a);
+        expect(a.mix(b, 1)).toEqual(b);
+      }
+    }
+  });
+
   it("interpolates lightness and chroma linearly", () => {
     const a = new Oklch(0.2, 0.1, 30);
     const b = new Oklch(0.8, 0.3, 30);

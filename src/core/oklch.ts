@@ -120,6 +120,14 @@ const hueOf = (c: number, h: number): number => (c < ACHROMATIC_EPS ? 0 : h);
 // every axis `mix` interpolates. [LAW:one-source-of-truth]
 const lerp = (a: number, b: number, t: number): number => a * (1 - t) + b * t;
 
+// Hue into [0, 360). Exact on a hue already there (fmod is exact), and exact
+// on `x - 360` for a representable x (the sum is x itself), which is what
+// `mix` relies on. One spelling for every producer. [LAW:one-source-of-truth]
+const wrapHue = (h: number): number => {
+  const w = h % 360;
+  return w < 0 ? w + 360 : w;
+};
+
 function inGamut(r: number, g: number, b: number): boolean {
   return (
     r >= -GAMUT_EPS && r <= 1 + GAMUT_EPS &&
@@ -179,8 +187,7 @@ export class Oklch {
     const bLab = 0.0259040371 * lCube + 0.7827717662 * mCube - 0.8086757660 * sCube;
 
     const C = Math.sqrt(aLab * aLab + bLab * bLab);
-    let H = Math.atan2(bLab, aLab) * (180 / Math.PI);
-    if (H < 0) H += 360;
+    const H = wrapHue(Math.atan2(bLab, aLab) * (180 / Math.PI));
 
     return new Oklch(L, C, hueOf(C, H), a);
   }
@@ -219,8 +226,7 @@ export class Oklch {
     if (isIdentityKey(k)) return this;
     const newL = clamp01(this.l * k.lightnessScale + k.lightnessShift);
     const newC = Math.max(0, this.c * k.chromaScale);
-    let newH = (this.h + k.hueShift) % 360;
-    if (newH < 0) newH += 360;
+    const newH = wrapHue(this.h + k.hueShift);
     return new Oklch(newL, newC, hueOf(newC, newH), this.alpha);
   }
 
@@ -251,13 +257,22 @@ export class Oklch {
     }
     const thisHasHue = this.c >= ACHROMATIC_EPS;
     const towardHasHue = toward.c >= ACHROMATIC_EPS;
-    const fromH = thisHasHue ? this.h : towardHasHue ? toward.h : 0;
-    const toH = towardHasHue ? toward.h : fromH;
-    const dh = ((((toH - fromH) % 360) + 540) % 360) - 180; // shorter arc, in [-180, 180)
-    let h = (fromH + dh * t) % 360;
-    if (h < 0) h += 360;
+    const fromH = wrapHue(thisHasHue ? this.h : towardHasHue ? toward.h : 0);
+    const toH = wrapHue(towardHasHue ? toward.h : fromH);
+    // Shorter arc: endpoints more than half a turn apart lerp across 0°, the
+    // larger one taken a turn down. `x - 360` for x ≥ 180 is exact
+    // (Sterbenz), so the endpoints survive the shift and the wrap bit-for-bit
+    // — an addition of 360 would not.
+    const arc = toH - fromH;
+    const fromU = arc < -180 ? fromH - 360 : fromH;
+    const toU = arc > 180 ? toH - 360 : toH;
     const c = lerp(this.c, toward.c, t);
-    return new Oklch(lerp(this.l, toward.l, t), c, hueOf(c, h), lerp(this.alpha, toward.alpha, t));
+    return new Oklch(
+      lerp(this.l, toward.l, t),
+      c,
+      hueOf(c, wrapHue(lerp(fromU, toU, t))),
+      lerp(this.alpha, toward.alpha, t),
+    );
   }
 
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
