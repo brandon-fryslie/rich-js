@@ -6,6 +6,7 @@ import { cellLen, setCellSize, asCellCol, cellCount as cells } from "../core/cel
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
+import type { RowLevel } from "../core/box.js";
 import { RichText } from "../core/text.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
@@ -504,7 +505,7 @@ export class Table implements Renderable, Measurable {
     // Header row
     if (this.showHeader && this._columns.some((c) => c.header.hasContent)) {
       const headerCells = this._columns.map((c) => c.header as Renderable);
-      yield* this._renderRow(headerCells, geometry, box, border, this.headerStyle);
+      yield* this._renderRow(headerCells, geometry, box, "head", border, this.headerStyle);
 
       // Header separator
       if (box) {
@@ -521,7 +522,7 @@ export class Table implements Renderable, Measurable {
         ? resolveStyle(this.rowStyles[rowIdx % this.rowStyles.length])
         : NULL_STYLE;
 
-      yield* this._renderRow(rowCells, geometry, box, border, rowStyle);
+      yield* this._renderRow(rowCells, geometry, box, "row", border, rowStyle);
 
       // Row separator
       const showSep = this.showLines || row.endSection;
@@ -536,7 +537,7 @@ export class Table implements Renderable, Measurable {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
       const footerCells = this._columns.map((c) => (c.footer ?? new RichText("", { end: "" })) as Renderable);
-      yield* this._renderRow(footerCells, geometry, box, border, this.footerStyle);
+      yield* this._renderRow(footerCells, geometry, box, "foot", border, this.footerStyle);
     }
 
     // Bottom border
@@ -676,10 +677,15 @@ export class Table implements Renderable, Measurable {
     cells: Renderable[],
     geometry: TableGeometry,
     box: Box | null,
+    level: RowLevel,
     border: Style | undefined,
     rowStyle: Style,
   ): Iterable<Segment> {
     const { padLeft, padRight, columns } = geometry;
+
+    // [LAW:dataflow-not-control-flow] Header, body and footer share this path;
+    // the level crosses as a value the box answers with glyphs, not a branch.
+    const frame = box?.getContentChars(level);
 
     // Render each cell onto the canvas the geometry gave its column. Columns
     // the width could not seat are absent from `columns` and so are never
@@ -701,13 +707,13 @@ export class Table implements Renderable, Measurable {
     const maxLines = cellLines.reduce((most, lines) => Math.max(most, lines.length), 1);
 
     for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
-      if (box && geometry.edge === 1) {
-        yield new Segment(box.left, border);
+      if (frame && geometry.edge === 1) {
+        yield new Segment(frame.left, border);
       }
 
       for (let colIdx = 0; colIdx < columns.length; colIdx++) {
-        if (colIdx > 0 && box) {
-          yield new Segment(box.vertical, border);
+        if (colIdx > 0 && frame) {
+          yield new Segment(frame.vertical, border);
         }
 
         const cellWidth = columns[colIdx]!;
@@ -721,8 +727,8 @@ export class Table implements Renderable, Measurable {
         if (padRight > 0) yield new Segment(" ".repeat(padRight));
       }
 
-      if (box && geometry.edge === 1) {
-        yield new Segment(box.right, border);
+      if (frame && geometry.edge === 1) {
+        yield new Segment(frame.right, border);
       }
       yield Segment.line();
     }
