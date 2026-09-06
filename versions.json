@@ -4,44 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "bcf6f192deb824bd2406fb5d5cc7f98c67dfca10",
-      "timestamp": "2026-09-06T04:45:29.064Z",
+      "sha": "b1545ab9c1ff6c0c82ab849558c33b7e04022068",
+      "timestamp": "2026-09-06T22:33:32.847Z",
       "commits": [
         {
-          "sha": "bcf6f192deb824bd2406fb5d5cc7f98c67dfca10",
+          "sha": "b1545ab9c1ff6c0c82ab849558c33b7e04022068",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T22:44:53-06:00",
-          "message": "feat(color): ramp — a number becomes a colour over ordered stops, in OKLCH (#92)\n\n* feat(color): ramp — a number becomes a colour over ordered stops, in OKLCH\n\n`ColorRamp` (src/themes/ramp.ts) maps a measurement onto ordered colour\nstops: `linear` interpolates between adjacent stops in OKLCH, `step` holds\neach stop until the next — a threshold cascade (`≥ 50 warning, ≥ 80 error`)\nwritten as data. One class, the easing a value. Values clamp at both ends\nand a value on a stop returns that stop's colour byte for byte, so a step\nramp never paints a colour the author did not write.\n\n`Oklch.mix` is the interpolation: shorter hue arc, and an achromatic\nendpoint adopts the other's hue (CSS Color 4's powerless rule), using the\nsame ACHROMATIC_EPS `fromRgba` pins hue by.\n\nThe template binding `ramp <value> <easing> <position> <color> …` sits\nbeside `color` in `paletteFuncs`: stops are colour references resolved\nthrough `resolveColorRef` against the live palette on every evaluation, so\na ramp over palette names recolours with the theme. The argument list is\none float/string cycle end to end, typed by the engine's `alternating`\ngate; the pairing and the references are parsed once in `colorStops`.\n\nDocs, both colour demos, and tests cover the module, the OKLCH mix, and\nthe binding.\n\n* docs(ramp): the ramp example builds an engine that has ramp; stale reader lists stop naming readers\n\nThe template-bindings doc's ramp example used createRichTextEngine(), which\nwires richTextFuncs() alone — ramp is a palette function (its stops may be\npalette names) and lives in paletteFuncs, so the pasted snippet threw at\nevaluation. It now builds the engine the way the doc's own palette section\ndoes, with both maps.\n\nThe ACHROMATIC_EPS comment enumerated its readers and went stale the moment\nmix() became a third; it now states the invariant without a list, so no\nreader can stale it again. The studio's ramp import label pointed at\nsection 6; the demo lives in section 5.\n\n* fix(oklch): one achromatic rule for every Oklch producer; mix refuses t outside [0, 1]; ramp names a missing value\n\n`mix` pinned no hue on its result, so `gray.mix(blue, 0)` was a zero-chroma\ncolour wearing blue's hue — a gray `fromRgba` would never produce, breaking\n\"achromatic means h = 0\". The pin is now ONE function, `hueOf(c, h)` beside\n`ACHROMATIC_EPS`, applied by `fromRgba`, `applyKey` and `mix` to their\nresults (the two inline pins are gone); the constructor still passes\nintermediates through by contract. The lerp moves to the endpoint-exact\n`a*(1-t) + b*t` form, so t = 1 lands on `toward` bit-for-bit on every axis.\n\n`mix` is interpolation, not extrapolation: t outside [0, 1] (NaN included)\nis a RangeError. `ColorRamp.at` already returns stop colours before mix\nsees an out-of-range t.\n\n`{{ ramp }}` with no arguments reached the body and threw the misleading\n\"needs an easing after the value\"; one arity check over the whole argument\nlist now names what is missing and how many arrived.\n\nThe two module comments name `color` AND `ramp` as the palette-dependent\nfunctions.\n\n* docs(template-bindings): richTextFuncs' docstring names both theme-bound functions, color and ramp\n\n* test(template-bindings): the palette-bound inventory is color AND ramp — comments and the bare-engine assertion say so\n\n* fix(oklch): mix lands on each endpoint's hue bit-for-bit — unwrap the shorter arc by subtraction, then the same endpoint-exact lerp every axis uses\n\nHue took `(fromH + dh * t) % 360`, which at t = 1 is an addition of two\nindependently rounded values and reconstructs `toward.h` only by luck.\nNow the larger endpoint of an arc wider than half a turn is taken a turn\ndown — `x - 360` for x ≥ 180 is exact by Sterbenz — and hue goes through\nthe same `lerp` as l/c/alpha; the final wrap adds 360 back to an exact\n`x - 360`, whose real sum is representable, so it too is exact. Pinned\nover a 6×6 grid of hue pairs at t = 0 and t = 1.\n\n`wrapHue` is the one spelling of hue-into-[0, 360) and replaces the three\ninline wraps in fromRgba, applyKey and mix."
-        }
-      ]
-    },
-    {
-      "version": "pr-91",
-      "ref": "refs/pull/91/merge",
-      "sha": "0a7a406766bbbf25d5bbe53f635c00181e00c5ab",
-      "timestamp": "2026-09-05T19:41:00.773Z",
-      "commits": [
-        {
-          "sha": "0a7a406766bbbf25d5bbe53f635c00181e00c5ab",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T19:40:30Z",
-          "message": "Merge 1b76e4fd575359496759d333631a5562faf711c4 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
-        },
-        {
-          "sha": "1b76e4fd575359496759d333631a5562faf711c4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T13:40:21-06:00",
-          "message": "docs(box): stop the getRowChars comment describing a reader that does not exist\n\nThe comment said `head*` holds the header content row's verticals \"drawn by\nthe row renderer.\" No such wiring exists: _renderRow emits box.left and\nbox.vertical unconditionally, and after the separator fix nothing in src/\nreads headLeft, headVertical, or headRight at all.\n\nA caption naming a mechanism the code does not have is worse than no caption,\nso the false clause is dropped rather than expanded. Wiring headVertical into\nthe header content row is rich-table-6uy.2, not this change.\n"
-        },
-        {
-          "sha": "4c3ce26478a31c80c86401be0907424d2a4e39d6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-05T13:30:52-06:00",
-          "message": "fix(box): join the header to the body with the separator glyphs (rich-table-6uy.1)\n\nA `Box` names its header CONTENT row verticals `head*` and its head-to-body\nSEPARATOR glyphs `mid*`. `getRowChars` read \"head\" as \"the head separator\" and\nreached for the verticals, so every table drew `┃━━━┃━━━┃` where the frame\nwanted `┡━━━╇━━━┩` — wrong, but symmetric enough to read as plausible box art.\n\nThe glyph data was already right; only the field selection was wrong.\n\nAll four `RowLevel` arms now return the same tuple, because a `Box` carries one\nseparator set where Rich carries three (head_row, row, foot_row). That gap is\nreal and visible with `showLines`, where row separators draw the head-to-body\nglyphs instead of `├───┼───┤`; it belongs to rich-table-6uy.3, which adds the\ndata. The arms are kept apart for it to fill.\n\nThe old tests pinned the defect and named the fields they expected, so they\ncould only ever pass by preserving it. Replaced with assertions on the rendered\nseparator. Reverting the fix turns all five red — checked, not assumed.\n\ndocs/tables.md's width ladder showed the old separator row; regenerated from\nthe renderer rather than redrawn by hand.\n"
+          "timestamp": "2026-09-06T16:33:01-06:00",
+          "message": "fix(box): join the header to the body with the separator glyphs (rich-table-6uy.1) (#91)\n\n* fix(box): join the header to the body with the separator glyphs (rich-table-6uy.1)\n\nA `Box` names its header CONTENT row verticals `head*` and its head-to-body\nSEPARATOR glyphs `mid*`. `getRowChars` read \"head\" as \"the head separator\" and\nreached for the verticals, so every table drew `┃━━━┃━━━┃` where the frame\nwanted `┡━━━╇━━━┩` — wrong, but symmetric enough to read as plausible box art.\n\nThe glyph data was already right; only the field selection was wrong.\n\nAll four `RowLevel` arms now return the same tuple, because a `Box` carries one\nseparator set where Rich carries three (head_row, row, foot_row). That gap is\nreal and visible with `showLines`, where row separators draw the head-to-body\nglyphs instead of `├───┼───┤`; it belongs to rich-table-6uy.3, which adds the\ndata. The arms are kept apart for it to fill.\n\nThe old tests pinned the defect and named the fields they expected, so they\ncould only ever pass by preserving it. Replaced with assertions on the rendered\nseparator. Reverting the fix turns all five red — checked, not assumed.\n\ndocs/tables.md's width ladder showed the old separator row; regenerated from\nthe renderer rather than redrawn by hand.\n\n* docs(box): stop the getRowChars comment describing a reader that does not exist\n\nThe comment said `head*` holds the header content row's verticals \"drawn by\nthe row renderer.\" No such wiring exists: _renderRow emits box.left and\nbox.vertical unconditionally, and after the separator fix nothing in src/\nreads headLeft, headVertical, or headRight at all.\n\nA caption naming a mechanism the code does not have is worse than no caption,\nso the false clause is dropped rather than expanded. Wiring headVertical into\nthe header content row is rich-table-6uy.2, not this change."
         }
       ]
     }
