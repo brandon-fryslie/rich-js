@@ -169,12 +169,15 @@ export class Box {
     });
   }
 
+  // All four arms match because a Box carries one separator set; Rich carries
+  // three (head_row, row, foot_row). `head*` is not among them and has no
+  // reader yet — those glyphs belong to the header content row.
   private getRowChars(
     level: RowLevel,
   ): [string, string, string, string] {
     switch (level) {
       case "head":
-        return [this.headLeft, this.mid, this.headVertical, this.headRight];
+        return [this.midLeft, this.mid, this.midVertical, this.midRight];
       case "row":
         return [this.midLeft, this.mid, this.midVertical, this.midRight];
       case "mid":
