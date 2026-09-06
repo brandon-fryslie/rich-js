@@ -254,3 +254,48 @@ describe("Oklch constructor", () => {
     expect(() => new Oklch(0.5, 0.1, 30, 1.1)).toThrow(RangeError);
   });
 });
+
+describe("Oklch.mix", () => {
+  const from = (r: number, g: number, b: number) => Oklch.fromRgba(new ColorRgba(r, g, b));
+
+  it("t = 0 is this color and t = 1 is the other, on every axis", () => {
+    const a = from(200, 100, 50);
+    const b = from(20, 60, 200);
+    expect(a.mix(b, 0)).toEqual(a);
+    expect(a.mix(b, 1)).toEqual(b);
+  });
+
+  it("interpolates lightness and chroma linearly", () => {
+    const a = new Oklch(0.2, 0.1, 30);
+    const b = new Oklch(0.8, 0.3, 30);
+    const mid = a.mix(b, 0.5);
+    expect(mid.l).toBeCloseTo(0.5, 10);
+    expect(mid.c).toBeCloseTo(0.2, 10);
+    expect(mid.h).toBeCloseTo(30, 10);
+  });
+
+  it("takes the shorter arc around the hue wheel, crossing 0°", () => {
+    // 350° → 10° is 20° through 0°, not 340° through green.
+    const a = new Oklch(0.5, 0.1, 350);
+    const b = new Oklch(0.5, 0.1, 10);
+    expect(a.mix(b, 0.5).h).toBeCloseTo(0, 10);
+    expect(a.mix(b, 0.25).h).toBeCloseTo(355, 10);
+    expect(b.mix(a, 0.25).h).toBeCloseTo(5, 10);
+  });
+
+  it("an achromatic endpoint adopts the other endpoint's hue", () => {
+    // Gray's pinned hue is 0° (red). Mixing gray toward a blue must stay a
+    // desaturated blue, never sweep from red through magenta.
+    const gray = from(128, 128, 128);
+    const blue = from(40, 80, 220);
+    const quarter = gray.mix(blue, 0.25);
+    expect(quarter.h).toBeCloseTo(blue.h, 10);
+    expect(blue.mix(gray, 0.75).h).toBeCloseTo(blue.h, 10);
+  });
+
+  it("two achromatic endpoints stay achromatic", () => {
+    const mid = from(30, 30, 30).mix(from(220, 220, 220), 0.5);
+    expect(mid.c).toBeLessThan(1e-6);
+    expect(mid.h).toBe(0);
+  });
+});

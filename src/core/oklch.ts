@@ -218,6 +218,37 @@ export class Oklch {
     return new Oklch(newL, newC, newH, this.alpha);
   }
 
+  /**
+   * The color `t` of the way from this one toward `toward`, in OKLCH.
+   * `t = 0` is this color, `t = 1` is `toward`; pure.
+   *
+   * Lightness, chroma and alpha interpolate linearly. Hue takes the shorter
+   * arc around the wheel, so blue → red passes through magenta rather than
+   * sweeping across green. An achromatic endpoint has no hue of its own —
+   * `fromRgba` pins it to 0, which is red — so it adopts the other
+   * endpoint's hue (CSS Color 4's "powerless" rule): gray → red stays a red
+   * that gains chroma, instead of rotating through the wheel from 0°.
+   *
+   * [LAW:one-source-of-truth] Achromatic means the same `ACHROMATIC_EPS`
+   * that `fromRgba` and `applyKey` pin hue by, so a gray produced by either
+   * is a gray here.
+   */
+  mix(toward: Oklch, t: number): Oklch {
+    const thisHasHue = this.c >= ACHROMATIC_EPS;
+    const towardHasHue = toward.c >= ACHROMATIC_EPS;
+    const fromH = thisHasHue ? this.h : towardHasHue ? toward.h : 0;
+    const toH = towardHasHue ? toward.h : fromH;
+    const dh = ((((toH - fromH) % 360) + 540) % 360) - 180; // shorter arc, in [-180, 180)
+    let h = (fromH + dh * t) % 360;
+    if (h < 0) h += 360;
+    return new Oklch(
+      this.l + (toward.l - this.l) * t,
+      this.c + (toward.c - this.c) * t,
+      h,
+      this.alpha + (toward.alpha - this.alpha) * t,
+    );
+  }
+
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
    * already-normalized values so this never sees out-of-range inputs. */
   private toLinearRgb(l: number, C: number, h: number): { r: number; g: number; b: number } {

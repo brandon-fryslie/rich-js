@@ -86,6 +86,10 @@ import {
   ensureContrast,
   lighten,
   darken,
+  // Section 6 — a number → a colour over ordered stops
+  ColorRamp,
+  RAMP_EASING_NAMES,
+  parseRampEasing,
   // Infrastructure (consumed, not the focus of this demo)
   Console,
   RichText,
@@ -678,6 +682,28 @@ export function runDemo(
       namedRamp.append(`  ${c.hex}  `, bgFgStyle(c, fg, bg));
     }
     out.print(namedRamp.append(dim("   resolveColorRef(p, \"primary-darken-3\") …")));
+    out.print(blank());
+
+    // ColorRamp — the one colour operation whose input is a *number*. A
+    // measurement lands on ordered stops; `linear` interpolates between them
+    // in OKLCH, `step` holds each stop until the next, which is a threshold
+    // cascade (`≥ 50 warning, ≥ 80 error`) spelled as data. Both easings are
+    // one class with one value changed. [LAW:one-type-per-behavior]
+    const stops = [
+      { at: 0, color: surface },
+      { at: 50, color: resolveColorRef(palette, "warning") },
+      { at: 80, color: resolveColorRef(palette, "error") },
+    ];
+    out.print(bold("    ColorRamp — a number → a colour, over the same stops, per easing:"));
+    out.print(blurb(`easings: ${RAMP_EASING_NAMES.join(", ")}; stops at 0 (surface), 50 (warning), 80 (error)`));
+    for (const easingName of RAMP_EASING_NAMES) {
+      const ramp = new ColorRamp(parseRampEasing(easingName), stops);
+      const row = new RichText(`      ${easingName.padEnd(8)}`);
+      for (const value of [0, 25, 50, 65, 80, 100]) {
+        row.append(` ${String(value).padStart(3)} `, bgFgStyle(ramp.at(value), fg, bg));
+      }
+      out.print(row);
+    }
     out.print(blank());
 
     // buildPalette directly — construct a BaseColors bundle and watch the

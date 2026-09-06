@@ -36,7 +36,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `richTextFuncs()` is everything that does not: the color sinks `fg` and `bg`, the palette-free color math, every text attribute, `link`, and `style`. It takes no arguments and is safe to register unconditionally. A project with no theme system at all still gets the complete vocabulary by feeding it hex literals.
 
-`paletteFuncs(getPalette)` is the one function that does: `color`, which turns a palette variable name into a color. It is the only registration that knows a palette exists, which is why it is the only one that takes an argument.
+`paletteFuncs(getPalette)` is the two that do: `color`, which turns a palette variable name into a color, and `ramp`, whose stops are palette names. It is the only registration that knows a palette exists, which is why it is the only one that takes an argument.
 
 `createRichTextEngine()` wires up `richTextFuncs()` alone — it cannot supply a palette. Once you want theme colors, build the engine yourself and merge both maps:
 
@@ -67,7 +67,7 @@ The two bridge functions are what bind the engine's generic output type to `Rich
 
 `paletteFuncs` asks for `() => Palette` rather than a `Palette`, because templates are parsed once and evaluated many times. An engine that captured a palette at construction would be frozen to whichever theme happened to be current then — and that freeze outlives every later theme change while the rest of the application's colors move on. A live preview or a theme picker would render half its colors from the new theme and half from the old.
 
-The getter costs nothing structurally. Function bodies run at evaluate time, so reading the palette through a getter leaves parse-once/evaluate-many intact. What a getter must never change is *which functions exist* — and it cannot, because there is exactly one, whose name does not depend on the palette's contents.
+The getter costs nothing structurally. Function bodies run at evaluate time, so reading the palette through a getter leaves parse-once/evaluate-many intact. What a getter must never change is *which functions exist* — and it cannot, because the two names do not depend on the palette's contents.
 
 ## Writing templates
 
@@ -135,10 +135,11 @@ A color that can be held is a color that can be composed. `color` names one, the
 | `scaleChroma c f` | multiply chroma (0 → gray, 1 → identity) |
 | `scaleLightness c f` | multiply lightness (1 → identity, -1 → invert) |
 | `shiftLightness c d` | add to lightness, after any scale |
+| `ramp v easing p₀ c₀ p₁ c₁ …` | the color at `v` along stops `cᵢ` at positions `pᵢ`, interpolated in OKLCH (`"linear"`) or held until the next stop (`"step"`) |
 
 A color crosses the template seam as a `#RRGGBB` string, not an opaque object, and that carrier earns its keep three ways. The engine's `string` slot is its strictest — it refuses fragments outright, so a color slot can never quietly swallow styled text. The value flows through the language for free: `$muted := mix $fg $bg 60` holds it, `printf` prints it, `eq` compares it. And misuse is visible, because a color that lands in text position renders as the literal `#7aa2f7` rather than vanishing as a dropped style.
 
-Because a color is a value, a ramp is one function applied with different numbers:
+Because a color is a value, a scale is one function applied with different numbers:
 
 ```typescript
 import { Console, RichText } from "@promptctl/rich-js";
@@ -147,11 +148,30 @@ import { createRichTextEngine } from "@promptctl/rich-js/template-bindings";
 const console = new Console();
 const engine = createRichTextEngine();
 
-const ramp = `{{- $p := "#7aa2f7" -}}
+const scale = `{{- $p := "#7aa2f7" -}}
 {{ "███" | fg (darken $p 2) }}{{ "███" | fg (darken $p 1) }}{{ "███" | fg $p }}{{ "███" | fg (lighten $p 1) }}{{ "███" | fg (lighten $p 2) }}`;
 
-console.print(RichText.fromFragments(engine.compile(ramp)({})));
+console.print(RichText.fromFragments(engine.compile(scale)({})));
 ```
+
+`ramp` is the one function whose input is a *number* rather than a color. Every other function here adjusts a color you already have; a ramp answers "what does 73 % look like" — a measurement mapped onto ordered stops, each a color at a position. Between stops the color is interpolated in OKLCH, so the midpoint of two theme colors is perceptually halfway rather than the gray mud an sRGB average produces. Below the first stop it is the first color; at or above the last it is the last.
+
+```typescript
+import { Console, RichText } from "@promptctl/rich-js";
+import { createRichTextEngine } from "@promptctl/rich-js/template-bindings";
+
+const console = new Console();
+const engine = createRichTextEngine();
+
+const meter = `{{- define "cell" }}{{ printf " %3d%% " . | bg (ramp . "linear" 0 "#2e7d32" 50 "#f9a825" 100 "#c62828") }}{{ end -}}
+{{ template "cell" 0 }}{{ template "cell" 25 }}{{ template "cell" 50 }}{{ template "cell" 75 }}{{ template "cell" 100 }}`;
+
+console.print(RichText.fromFragments(engine.compile(meter)({})));
+```
+
+The `"step"` easing holds each stop's color until the next position, which is a threshold cascade — `≥ 50 warning, ≥ 80 error, else calm` — written as data instead of a chain of `if`s. It is the same function: a gradient and a cascade differ by one word. Positions are required, never spread evenly by default, because the positions *are* the decision — where warning begins is the whole content of a threshold, and a ramp that guessed them would be deciding it silently.
+
+Stops are color references, resolved through the same path as `color` (see below), so a ramp over palette names — `ramp .pct "step" 0 "surface" 50 "warning" 80 "error"` — recolors with the theme like every other color in the template, and a hex literal in a stop works because that resolver passes literals through.
 
 Holding the result of `contrastOn` in a variable is what makes a swatch that cannot be unreadable — the same color feeds both the background and the choice of ink over it:
 

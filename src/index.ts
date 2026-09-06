@@ -100,6 +100,12 @@ export {
   contrastFor,
   ensureContrast,
 } from "./themes/colorMath.js";
+// A number → a color through ordered stops, interpolated in OKLCH — the one
+// color operation whose input is a measurement rather than a color, so a
+// gradient (or, with the `step` easing, a threshold cascade) stays inside the
+// theme system instead of being computed beside it.
+export { ColorRamp, RAMP_EASING_NAMES, parseRampEasing } from "./themes/ramp.js";
+export type { ColorStop, RampEasing } from "./themes/ramp.js";
 
 export {
   Style,

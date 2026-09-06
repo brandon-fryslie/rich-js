@@ -77,8 +77,9 @@ import { makeAutoObservable, autorun, runInAction } from "mobx";
 //   richTextFuncs()          — the colour sinks `fg`/`bg`, the palette-free
 //                              colour math (`darken`, `mix`, `contrastOn`, the
 //                              OKLCH axes…), text attributes, `link`.
-//   paletteFuncs(getPalette) — the single function `color`, which turns a
-//                              palette variable name into a `#RRGGBB` value.
+//   paletteFuncs(getPalette) — `color`, which turns a palette variable name
+//                              into a `#RRGGBB` value, and `ramp`, whose
+//                              stops are palette names.
 //
 // `paletteFuncs` takes a *getter*, not a palette: templates are parsed once and
 // evaluated many times, so a captured palette would freeze a live theme picker
@@ -474,6 +475,19 @@ const RAMP_MIX =
 {{- $a  := color "accent" -}}
 {{ "█████" | fg (mix $bg $a 25) }}{{ "█████" | fg (mix $bg $a 50) }}{{ "█████" | fg (mix $bg $a 75) }}{{ "█████" | fg (mix $bg $a 100) }}  mix $bg → accent @ 25 · 50 · 75 · 100`;
 
+// `ramp` is the one function whose input is a *number*: a measurement mapped
+// onto ordered stops, interpolated in OKLCH (`linear`) or held until the next
+// stop (`step`, a threshold cascade as data). Stops are palette names, resolved
+// against the live palette on every evaluation, so the ramp recolours with the
+// theme like every other colour here.
+const RAMP_STOPS =
+`{{- define "cell" }}{{ $c := ramp . "linear" 0 "surface" 50 "warning" 80 "error" }}{{ printf " %3d%% " . | bg $c | fg (contrastOn $c) }}{{ end -}}
+{{ template "cell" 0 }}{{ template "cell" 25 }}{{ template "cell" 50 }}{{ template "cell" 65 }}{{ template "cell" 80 }}{{ template "cell" 100 }}  ramp · "linear" 0 surface · 50 warning · 80 error`;
+
+const RAMP_STEPS =
+`{{- define "cell" }}{{ printf " %3d%% " . | bg (ramp . "step" 0 "surface" 50 "warning" 80 "error") }}{{ end -}}
+{{ template "cell" 0 }}{{ template "cell" 25 }}{{ template "cell" 50 }}{{ template "cell" 65 }}{{ template "cell" 80 }}{{ template "cell" 100 }}  ramp · "step" — the same stops as a threshold cascade`;
+
 // `fg`/`bg` accept the whole `ColorSpec.parse` vocabulary, not just the hex the
 // colour math produces: `"red"` and `"color(203)"` are *symbolic* colours the
 // terminal resolves against its own theme, so they can be painted but not
@@ -484,6 +498,8 @@ const RAMP_FORMS =
 const secRamps = makeSection("Ramps — lightness · mixing · the fg colour vocabulary", [
   makeDemoRow("primary luminance (7-step)",  RAMP_LUM,   gruvboxEngine),
   makeDemoRow("mix toward accent (× $bg)",   RAMP_MIX,   gruvboxEngine),
+  makeDemoRow("ramp, linear (OKLCH stops)",  RAMP_STOPS, gruvboxEngine),
+  makeDemoRow("ramp, step (threshold cascade)", RAMP_STEPS, gruvboxEngine),
   makeDemoRow("hex / rgb() / color(N) / named", RAMP_FORMS, gruvboxEngine),
 ]);
 
