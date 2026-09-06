@@ -21,6 +21,7 @@ import {
   DOUBLE_EDGE,
   MARKDOWN,
 } from "../../src/core/box.js";
+import type { RowLevel } from "../../src/core/box.js";
 import { Style } from "../../src/core/style.js";
 
 // Helper: extracts the concatenated text from a Segment array
@@ -158,48 +159,30 @@ describe("Box", () => {
   });
 
   describe("getRow()", () => {
-    it("renders head-level separator with edge", () => {
-      // For ASCII, head level: left=headLeft="|", horizontal=mid="-", cross=headVertical="|", right=headRight="|"
+    it("joins the header to the body with the separator glyphs, not the header verticals", () => {
+      const result = segmentText(HEAVY_HEAD.getRow([3, 3], "head"));
+      expect(result).toBe("┡━━━╇━━━┩\n");
+    });
+
+    it("draws every level from the one separator set a Box carries", () => {
+      const levels: RowLevel[] = ["head", "row", "mid", "foot"];
+      const rendered = levels.map((level) => segmentText(SQUARE.getRow([3, 2], level)));
+      expect(rendered).toEqual(["├───┼──┤\n", "├───┼──┤\n", "├───┼──┤\n", "├───┼──┤\n"]);
+    });
+
+    it("renders ASCII separators with edge", () => {
       const result = segmentText(ASCII.getRow([3, 4], "head"));
-      expect(result).toBe("|---|----|\n");
-    });
-
-    it("renders row-level separator with edge", () => {
-      const result = segmentText(ASCII.getRow([3, 4], "row"));
-      expect(result).toBe("|---+----|\n");
-    });
-
-    it("renders mid-level separator with edge", () => {
-      const result = segmentText(ASCII.getRow([3, 4], "mid"));
-      expect(result).toBe("|---+----|\n");
-    });
-
-    it("renders foot-level separator with edge", () => {
-      const result = segmentText(ASCII.getRow([3, 4], "foot"));
       expect(result).toBe("|---+----|\n");
     });
 
     it("renders separator without edge", () => {
       const result = segmentText(ASCII.getRow([3, 4], "head", undefined, false));
-      expect(result).toBe("---|----\n");
+      expect(result).toBe("---+----\n");
     });
 
-    it("renders SQUARE head separator correctly", () => {
-      // SQUARE head: left="│", horizontal="─", cross="│", right="│"
-      const result = segmentText(SQUARE.getRow([3, 2], "head"));
-      expect(result).toBe("│───│──│\n");
-    });
-
-    it("renders SQUARE row separator correctly", () => {
-      // SQUARE row: left="├", horizontal="─", cross="┼", right="┤"
-      const result = segmentText(SQUARE.getRow([3, 2], "row"));
-      expect(result).toBe("├───┼──┤\n");
-    });
-
-    it("renders HEAVY head separator correctly", () => {
-      // HEAVY head: left="┃", horizontal="━", cross="┃", right="┃"
+    it("renders HEAVY separators correctly", () => {
       const result = segmentText(HEAVY.getRow([2, 3], "head"));
-      expect(result).toBe("┃━━┃━━━┃\n");
+      expect(result).toBe("┣━━╋━━━┫\n");
     });
   });
 
