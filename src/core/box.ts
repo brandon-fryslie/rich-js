@@ -112,6 +112,28 @@ export class Box {
   }
 
   /**
+   * The verticals that frame a content row at `level` — the counterpart to
+   * `getRow`, which draws the separator between two such rows.
+   *
+   * `head` is the only level carrying glyphs of its own: `BoxChars` has no
+   * foot content set, so every other level draws the body verticals.
+   */
+  getContentChars(
+    level: RowLevel,
+  ): { left: string; vertical: string; right: string } {
+    switch (level) {
+      case "head":
+        return { left: this.headLeft, vertical: this.headVertical, right: this.headRight };
+      case "row":
+        return { left: this.left, vertical: this.vertical, right: this.right };
+      case "mid":
+        return { left: this.left, vertical: this.vertical, right: this.right };
+      case "foot":
+        return { left: this.left, vertical: this.vertical, right: this.right };
+    }
+  }
+
+  /**
    * Renders the bottom border row.
    */
   getBottom(widths: readonly number[], style?: Style, edge = true): Segment[] {
@@ -170,8 +192,7 @@ export class Box {
   }
 
   // All four arms match because a Box carries one separator set; Rich carries
-  // three (head_row, row, foot_row). `head*` is not among them and has no
-  // reader yet — those glyphs belong to the header content row.
+  // three (head_row, row, foot_row). `head*` frames content rows, not separators.
   private getRowChars(
     level: RowLevel,
   ): [string, string, string, string] {

@@ -27,6 +27,34 @@ describe("Table", () => {
     expect(lines.some((l) => l.includes("Name"))).toBe(true);
   });
 
+  it("draws the header row with the head characters", () => {
+    const t = new Table();
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("1", "2");
+    expect(collectLines(t, { maxWidth: 40 })).toEqual([
+      "┏━━━┳━━━┓",
+      "┃ A ┃ B ┃",
+      "┡━━━╇━━━┩",
+      "│ 1 │ 2 │",
+      "└───┴───┘",
+    ]);
+  });
+
+  // Header, body and footer rows all come out of one code path, so selecting the
+  // head glyphs per-row is the whole difficulty — hardcode them and every row
+  // goes heavy. Only the content rows are asserted: the separators between them
+  // are the Box's one separator set, which rich-table-6uy.3 replaces.
+  it("leaves the footer row on the body characters", () => {
+    const t = new Table({ showFooter: true });
+    t.addColumn("Head", { footer: "Foot" });
+    t.addRow("1");
+    const lines = collectLines(t, { maxWidth: 40 });
+    expect(lines).toContain("┃ Head ┃");
+    expect(lines).toContain("│ 1    │");
+    expect(lines).toContain("│ Foot │");
+  });
+
   it("renders empty table without error", () => {
     const t = new Table({ box: ASCII });
     t.addColumn("Col");

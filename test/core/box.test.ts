@@ -186,6 +186,32 @@ describe("Box", () => {
     });
   });
 
+  describe("getContentChars()", () => {
+    it("frames the head row with the head verticals, not the body's", () => {
+      expect(HEAVY_HEAD.getContentChars("head")).toEqual({
+        left: "┃",
+        vertical: "┃",
+        right: "┃",
+      });
+    });
+
+    it("frames every other level with the body verticals", () => {
+      const levels: RowLevel[] = ["row", "mid", "foot"];
+      const framed = levels.map((level) => HEAVY_HEAD.getContentChars(level));
+      expect(framed).toEqual([
+        { left: "│", vertical: "│", right: "│" },
+        { left: "│", vertical: "│", right: "│" },
+        { left: "│", vertical: "│", right: "│" },
+      ]);
+    });
+
+    it("gives every level one set on a box whose head matches its body", () => {
+      const levels: RowLevel[] = ["head", "row", "mid", "foot"];
+      const framed = levels.map((level) => SQUARE.getContentChars(level));
+      expect(framed).toEqual(Array(4).fill({ left: "│", vertical: "│", right: "│" }));
+    });
+  });
+
   describe("getBottom()", () => {
     it("renders bottom border with edge for single column", () => {
       const result = segmentText(ASCII.getBottom([5]));
