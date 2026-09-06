@@ -4,15 +4,22 @@
     {
       "version": "pr-94",
       "ref": "refs/pull/94/merge",
-      "sha": "39735d562eab0c7b78348ccc2f5dc94dc2014569",
-      "timestamp": "2026-09-06T23:37:04.969Z",
+      "sha": "36266476f86ed403404e125d7643624ccd65a7a4",
+      "timestamp": "2026-09-06T23:46:10.502Z",
       "commits": [
         {
-          "sha": "39735d562eab0c7b78348ccc2f5dc94dc2014569",
+          "sha": "36266476f86ed403404e125d7643624ccd65a7a4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T23:36:34Z",
-          "message": "Merge 5497b73de61485d76fff58abbd0b4d6bcd2d87b7 into 89f42ecbec0d9da555e22153de0cd1da9fac6f4f\n"
+          "timestamp": "2026-09-06T23:45:36Z",
+          "message": "Merge ea9eee359379daffc0ec002f4a3443c31c4edc35 into 89f42ecbec0d9da555e22153de0cd1da9fac6f4f\n"
+        },
+        {
+          "sha": "ea9eee359379daffc0ec002f4a3443c31c4edc35",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T17:45:27-06:00",
+          "message": "docs(test): stop the sentinel-grid comment overclaiming\n\nIt said all thirty-two characters were distinct and that swapping any two\nwould turn the test red. Thirty are distinct; a content row's fill column is a\nspace in three of them, and swapping two never-drawn characters cannot fail\nanything. The claim that survives is about drawn positions.\n"
         },
         {
           "sha": "5497b73de61485d76fff58abbd0b4d6bcd2d87b7",
