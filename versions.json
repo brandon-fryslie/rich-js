@@ -4,15 +4,22 @@
     {
       "version": "pr-92",
       "ref": "refs/pull/92/merge",
-      "sha": "0b82d6ffaaf4f0e163c4e06458f6334b7c14d35d",
-      "timestamp": "2026-09-06T04:15:55.877Z",
+      "sha": "23f8a6153ee92c420dc3ce5a48bec2753303648e",
+      "timestamp": "2026-09-06T04:27:45.933Z",
       "commits": [
         {
-          "sha": "0b82d6ffaaf4f0e163c4e06458f6334b7c14d35d",
+          "sha": "23f8a6153ee92c420dc3ce5a48bec2753303648e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T04:15:20Z",
-          "message": "Merge adcb1785202330f7a2bcfe233060fb12f2d7bb69 into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+          "timestamp": "2026-09-06T04:27:11Z",
+          "message": "Merge d6d7beb99a639121a140091a4d16e4b968c6e42b into f41701254a8ee73a4dd70df45b3cab8c62761e68\n"
+        },
+        {
+          "sha": "d6d7beb99a639121a140091a4d16e4b968c6e42b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-05T22:27:03-06:00",
+          "message": "test(template-bindings): the palette-bound inventory is color AND ramp — comments and the bare-engine assertion say so\n"
         },
         {
           "sha": "adcb1785202330f7a2bcfe233060fb12f2d7bb69",
