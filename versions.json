@@ -4,15 +4,22 @@
     {
       "version": "pr-94",
       "ref": "refs/pull/94/merge",
-      "sha": "36266476f86ed403404e125d7643624ccd65a7a4",
-      "timestamp": "2026-09-06T23:46:10.502Z",
+      "sha": "506b9c824145acabe2941d4f3fd61b6a7f1ce698",
+      "timestamp": "2026-09-06T23:57:26.619Z",
       "commits": [
         {
-          "sha": "36266476f86ed403404e125d7643624ccd65a7a4",
+          "sha": "506b9c824145acabe2941d4f3fd61b6a7f1ce698",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T23:45:36Z",
-          "message": "Merge ea9eee359379daffc0ec002f4a3443c31c4edc35 into 89f42ecbec0d9da555e22153de0cd1da9fac6f4f\n"
+          "timestamp": "2026-09-06T23:56:53Z",
+          "message": "Merge 453f824f795256b1fe4dfd3bc8d61f09f1b80c16 into 89f42ecbec0d9da555e22153de0cd1da9fac6f4f\n"
+        },
+        {
+          "sha": "453f824f795256b1fe4dfd3bc8d61f09f1b80c16",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T17:56:44-06:00",
+          "message": "docs(box): stop the mid arm citing an option this port lacks\n\nThe comment justified the spacer row by Table's `leading`, which exists in the\nreference and in docs/tables.md but not in src/ (rich-table-jx1). The reference\nis the reason the row has this shape; say that instead.\n"
         },
         {
           "sha": "ea9eee359379daffc0ec002f4a3443c31c4edc35",
