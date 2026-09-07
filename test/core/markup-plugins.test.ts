@@ -143,6 +143,11 @@ describe("MarkupRegistry", () => {
     expect(() => registry.register("a b", handler)).toThrow(MarkupError);
     expect(() => registry.register("1abc", handler)).toThrow(MarkupError);
     expect(() => registry.register("", handler)).toThrow(MarkupError);
+    // An initial capital: the tag grammar opens on `a-z`, so `[Abc]` is literal
+    // text and a handler registered under it could never fire. Nothing
+    // lowercases the tag on the way in, which is what makes this unreachable
+    // rather than merely unconventional.
+    expect(() => registry.register("Abc", handler)).toThrow(MarkupError);
     expect(registry.has("a.b")).toBe(false);
   });
 

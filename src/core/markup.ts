@@ -62,10 +62,19 @@ export function escape(text: string): string {
 // Fast path: if no `[` in text, skip parsing entirely
 const HAS_TAG_RE = /\[/;
 
-// Match tags: [style], [/style], [/], [name=params]
-// Also handles escaped brackets: \[
-const TAG_RE =
-  /(?:\\\[)|(\[(?:\/?)(?:[a-zA-Z#][a-zA-Z0-9_.# -]*(?:=[^\]]*)?|\/)\])/g;
+// [LAW:one-source-of-truth] The authority for this grammar is `RE_TAGS` in
+// `rich/markup.py`, and this is deliberately its expression rather than a
+// re-derivation, so the two can be read side by side; `[^[]*?` is lazy against
+// the following `]`, which is what stops the body at the first one.
+//
+// The enumeration it replaced — `[a-zA-Z#][a-zA-Z0-9_.# -]*` — was a second
+// drawing of the same territory and had drifted both ways at once: it invented
+// uppercase, so `[INFO]` was taken as an opening tag and its text vanished from
+// every `Console.print` with no error, and it omitted `@` and the punctuation
+// the reference admits, so `[a+b]` stayed literal (rich-markup-sec).
+// `markup-grammar.golden.txt` pins both directions.
+// The leading alternative handles an escaped bracket: \[
+const TAG_RE = /(?:\\\[)|(\[[a-z#/@][^[]*?\])/g;
 
 interface ParsedTag {
   fullMatch: string;
@@ -90,14 +99,22 @@ function parseTags(markup: string): ParsedTag[] {
     if (!captured) continue;
 
     const inner = captured.slice(1, -1); // Remove [ ]
-    const isImplicitClose = inner === "/";
-    const isClosing = inner.startsWith("/") && !isImplicitClose;
-    const stylePart = isClosing ? inner.slice(1) : inner;
+    const isClose = inner.startsWith("/");
+    const stylePart = isClose ? inner.slice(1) : inner;
 
     // Check for parameters (name=value)
     const eqIdx = stylePart.indexOf("=");
     const styleName = eqIdx >= 0 ? stylePart.slice(0, eqIdx).trim() : stylePart.trim();
     const parameters = eqIdx >= 0 ? stylePart.slice(eqIdx + 1) : undefined;
+
+    // [LAW:types-are-the-program] What separates `[/]` from `[/red]` is whether
+    // a name survives the slash, which is how the reference asks it too
+    // (`style_name = tag.name[1:].strip()`). Testing the raw tag text against
+    // the literal `"/"` answered a narrower question, and the widened grammar
+    // is what exposed the gap: `[/ ]` reaches here now, and under the old test
+    // it was an explicit close of the empty style rather than an implicit one.
+    const isImplicitClose = isClose && styleName === "";
+    const isClosing = isClose && !isImplicitClose;
 
     tags.push({
       fullMatch: captured,
@@ -264,7 +281,13 @@ export type MarkupTagHandler = (ctx: MarkupTagContext) => RichText;
 // boundary lookahead. When those two disagreed, registering `table` silently
 // destroyed every `table.*` built-in style and a name containing a dot could
 // never fire.
-const PLUGIN_TAG_NAME_SRC = "[A-Za-z][A-Za-z0-9_-]*";
+//
+// It opens on `a-z` because a plugin name has to be a name `TAG_RE` can reach,
+// and that is strictly narrower than "a letter": nothing lowercases the tag
+// text on the way in, so `[Foo]` is literal and a handler registered as `Foo`
+// could never fire. This tracked `[A-Za-z]` while `TAG_RE` wrongly admitted
+// uppercase, which is the same drift, one subset down (rich-markup-sec).
+const PLUGIN_TAG_NAME_SRC = "[a-z][A-Za-z0-9_-]*";
 const LEGAL_PLUGIN_TAG_NAME = new RegExp(`^${PLUGIN_TAG_NAME_SRC}$`);
 
 export class MarkupRegistry {
@@ -276,7 +299,7 @@ export class MarkupRegistry {
     // install a handler that could never fire.
     if (!LEGAL_PLUGIN_TAG_NAME.test(name)) {
       throw new MarkupError(
-        `Cannot register markup tag "${name}": a tag name must be a letter followed by letters, digits, "_" or "-", so markup could never address this name.`,
+        `Cannot register markup tag "${name}": a tag name must be a lowercase letter followed by letters, digits, "_" or "-", so markup could never address this name.`,
       );
     }
     if (isReservedTagName(name)) {
