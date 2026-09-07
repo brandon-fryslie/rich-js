@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-106",
+      "ref": "refs/pull/106/merge",
+      "sha": "b516a6528c9f3d2579cc62a5b218d1ee1b5a6583",
+      "timestamp": "2026-09-07T16:30:03.268Z",
+      "commits": [
+        {
+          "sha": "b516a6528c9f3d2579cc62a5b218d1ee1b5a6583",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:29:32-06:00",
+          "message": "Merge df22c042ee92facb6acdf2f816e42a64988920fb into 49607b274ed7f2ab3677e631e116fd608820f3d3\n"
+        },
+        {
+          "sha": "df22c042ee92facb6acdf2f816e42a64988920fb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:29:07-06:00",
+          "message": "fix(box): leave an already-ASCII box alone under asciiOnly (rich-table-0gv)\n\n`substitute({ asciiOnly: true })` answered `ASCII` for every box, including\nthe four that are already pure ASCII. A MARKDOWN table on a terminal without\nunicode silently became a plus-and-pipe frame instead of the pipe-delimited\nmarkdown it was chosen for; ASCII2 and ASCII_DOUBLE_HEAD were erased the same\nway. The reference guards with \"if options.ascii_only and not box.ascii\".\n\nWhether a box is drawable without unicode is derived from its grid at\nconstruction, not declared per constant as the reference's `ascii=True` is.\nA `Box` is wholly its grid, so the grid already answers this and a second\nhand-written answer could disagree with it — and derivation reaches boxes no\nconstant speaks for: `safeSubstitute` builds a fresh `Box` from an edited\ngrid, and a flag on the shipped constants would say nothing about that one.\nThe predicate names exactly the four the reference constructs with\n`ascii=True`, pinned by naming all nineteen in the test rather than asserting\nthe count.\n\nThis also fixes, with no change to table.ts, an asciiOnly + headerless\nASCII_DOUBLE_HEAD table. `Table.render` runs the two box swaps in the\nreference's order, so `substitute` handing the box through unchanged leaves\n`plainHeaded` a box it recognises: the frame is now ASCII2's crossed edge\n(\"+---+---+\") as Rich draws it, where replacing the box first left\n`plainHeaded` holding ASCII and an uncrossed \"+-------+\".\n\nVerified: six of the seven new assertions are red against the previous\nbox.ts. 2335 pass, three-pass lint and demo typecheck clean, golden files\nunmoved.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "49607b274ed7f2ab3677e631e116fd608820f3d3",
