@@ -134,7 +134,7 @@ describe("RichText justification", () => {
    * `Lines.justify` holds every line of the render at once, which is what lets
    * it both widen the gaps between words and recognise the last line.
    * `_justifyLine` is handed one line and cannot know either. Closing it means
-   * restructuring the render loop, which is its own change (rich-table-6uy.8).
+   * restructuring the render loop, which is its own change (rich-justify-0cr.1).
    *
    * Pinned here rather than left uncovered so the divergence is a measured
    * fact with the reference's own answer beside it, and so the day someone
