@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-108",
+      "ref": "refs/pull/108/merge",
+      "sha": "11476e721967c78196ab7c2c7452fe94ea20f3d2",
+      "timestamp": "2026-09-07T16:58:50.947Z",
+      "commits": [
+        {
+          "sha": "11476e721967c78196ab7c2c7452fe94ea20f3d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:58:16-06:00",
+          "message": "Merge 416dd49fb82918f5a828262132808f8ee2777fe3 into eea4081a22ca97800819a97f1c449a4acd91899c\n"
+        },
+        {
+          "sha": "416dd49fb82918f5a828262132808f8ee2777fe3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:57:42-06:00",
+          "message": "docs(tables): remove the option rows the code does not back (rich-docs-c2w)\n\nThe page listed `safeBox`, `leading`, `collapsePadding` and `padEdge` as Table\noptions and `highlight` at both the table and column level. None is a member of\n`TableOptions` or `ColumnOptions`, and nothing reads them. All six rows are gone.\nNone of the features was implemented to clear the row: each is filed on its own\nmerits in rich-table-60t, which carries the evidence that makes them look cheap\n(`Box.getRow` already takes the `\"mid\"` level `leading` needs, `Segment.alignMiddle`\nalready does what a column `vertical` needs) together with the reason that is not a\nreason to build them.\n\nAuditing the rest of the page found more than the four the ticket named.\n\n`ColumnOptions.vertical` was the worst of them, because it type-checked. It was\ndeclared, stored on no field, carried by no copy, and read by nothing — the only one\nof the set a caller could pass without a compiler error and get silence. The member\nis deleted along with its row.\n\n`style` is dead at both levels: `Table`'s constructor resolves and stores it and the\nclass never reads it again, and `Column`'s three style options survive `copy()`\nwithout a single reader. `Table._renderRow` applies exactly one style to a finished\nline — the table's `headerStyle`, `footerStyle` or a `rowStyles` entry — and never\nthe column's. Unlike `vertical` these are held rather than dropped, so they keep\ntheir surface and get the treatment `expand` already had on this page: a row that\nsays it is accepted and not yet applied, plus a sentence naming what does style a\ncell today. Wiring them is rich-table-jph.\n\nThe \"Vertical alignment\" section is deleted. It was fabricated end to end:\n`src/renderables/align.ts` says in its own header that it aligns horizontally, and\n`Alignment` is `\"left\" | \"center\" | \"right\"`.\n\nThree snippets were repaired. The Table and Column constructor forms under \"Adding\ncolumns\" never existed — both classes take a single options object. Both grid\nsnippets called `grid.addColumn({ justify: \"right\" })`, which lands that object in\n`addColumn`'s header slot and discards the alignment the example depends on;\nrunning it returns `justify: \"left\"`. The flagship snippet no longer teaches\n`style: \"dim\"`, which does nothing.\n\n`overflow` and `footer` were the inverse problem — real column options the page\nnever listed while its own prose leaned on `overflow`. Both now have rows.\n\n`justify: \"full\"` is knowingly left alone; rich-justify-0cr.4 owns that row.\n\nTwo gaps this exposed are filed rather than fixed here: rich-render-nmy, because\n`asciiOnly` is hardcoded false or omitted at all four `RenderOptions` construction\nsites and so cannot be turned on by any consumer, which is where the `safeBox`\nquestion really lives; and rich-docs-jqc, because no gate compiles a docs snippet,\nwhich is why all four broken snippets above sat on a green suite.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "eea4081a22ca97800819a97f1c449a4acd91899c",
