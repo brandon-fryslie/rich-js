@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Pretty } from "../../src/core/pretty.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import { Highlighter } from "../../src/core/highlighter.js";
+import { Highlighter, NullHighlighter } from "../../src/core/highlighter.js";
 import type { RichText } from "../../src/core/text.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -333,6 +333,38 @@ describe("Pretty", () => {
       );
       expect(text).toContain("Set {...}");
       expect(pulled).toBe(0);
+    });
+
+    it("keeps a probe's pull off the size of the collection it is probing", () => {
+      // Laying out a Map too wide for one line drains it, because it prints
+      // every entry. It used to be drained again by each ancestor's probe on the
+      // way down, every one of them materialising the whole collection to learn
+      // what the width of its own brackets already said. Only the layout's drain
+      // may scale, so a collection N larger must cost N more pulls, not 2N or 4N.
+      // Two sizes rather than one number: whatever the probes still cost is the
+      // same in both runs and cancels, so there is no constant to keep true.
+      const pullsFor = (size: number): number => {
+        let pulled = 0;
+        const counted = {
+          size,
+          *entries(): Iterator<[number, number]> {
+            for (let i = 0; i < size; i++) { pulled++; yield [i, i]; }
+          },
+        };
+        Object.setPrototypeOf(counted, Map.prototype);
+        const deep = { a: { b: { c: counted as unknown as Map<number, number> } } };
+        // Guides and highlighting are per-character work on an expansion this
+        // wide, and neither is what is being counted.
+        collectText(
+          new Pretty(deep, { indentGuides: false, highlighter: new NullHighlighter() }),
+          { maxWidth: 80 },
+        );
+        return pulled;
+      };
+
+      // Any size past the probe's own cap separates the two answers; these are
+      // small because the entries are printed, and printing them is the cost.
+      expect(pullsFor(400) - pullsFor(200)).toBe(200);
     });
   });
 

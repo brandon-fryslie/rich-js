@@ -354,14 +354,29 @@ export class Pretty implements Renderable, Measurable {
     return { kind: "container", open, close, pad, slots: [...slots, ...elided(size - slots.length)] };
   }
 
-  /** The brackets and positions of an object, layout-free. See `Shape`. */
-  private _shape(value: object, level: number): Shape {
+  /**
+   * The brackets and positions of an object, layout-free. See `Shape`.
+   *
+   * `bound` is the most positions the caller could ever use. Laying out passes
+   * `Infinity`, because it prints every position it is handed. A probe passes
+   * what is left of its line, which is already more positions than a fitting
+   * one could hold — `SEPARATOR` charges two cells apiece, so a container with
+   * more positions than `budget` overruns however narrow its contents are.
+   * Reaching past it only ever feeds a join that returns `null`, and reaching a
+   * position is what drains a `Map` or `Set`.
+   */
+  private _shape(value: object, level: number, bound: number): Shape {
+    // Clamped because a probe's budget goes negative once a line is overrun,
+    // and `slice` reads a negative end as counting from the far end — it would
+    // keep all but the last few keys where the other arms take none.
+    const cap = Math.max(0, Math.min(this.maxLength ?? Infinity, bound));
+
     const elements = indexedElements(value);
     if (elements !== null) {
       return this._container("[", "]", "", elements.length, level, () => {
         // Positions rather than values: each index is read in its own slot, so
         // one throwing accessor costs its own slot, not the whole sequence.
-        const shown = Math.min(elements.length, this.maxLength ?? elements.length);
+        const shown = Math.min(elements.length, cap);
         return Array.from({ length: shown }, (_, i): Slot => ({
           head: "",
           holes: [{ read: () => elements[i], tail: "" }],
@@ -371,7 +386,7 @@ export class Pretty implements Renderable, Measurable {
 
     if (value instanceof Map) {
       return this._container("Map {", "}", " ", value.size, level, () =>
-        take(value.entries(), this.maxLength ?? Infinity).map(([k, v]): Slot => ({
+        take(value.entries(), cap).map(([k, v]): Slot => ({
           head: "",
           holes: [{ read: () => k, tail: " => " }, { read: () => v, tail: "" }],
         })),
@@ -380,7 +395,7 @@ export class Pretty implements Renderable, Measurable {
 
     if (value instanceof Set) {
       return this._container("Set {", "}", " ", value.size, level, () =>
-        take(value, this.maxLength ?? Infinity).map((v): Slot => ({
+        take(value, cap).map((v): Slot => ({
           head: "",
           holes: [{ read: () => v, tail: "" }],
         })),
@@ -396,7 +411,7 @@ export class Pretty implements Renderable, Measurable {
     const obj = value as Record<string, unknown>;
     const keys = Object.keys(obj);
     return this._container("{", "}", " ", keys.length, level, () =>
-      (this.maxLength !== undefined ? keys.slice(0, this.maxLength) : keys).map((k): Slot => ({
+      keys.slice(0, cap).map((k): Slot => ({
         head: `${k}: `,
         holes: [{ read: () => obj[k], tail: "" }],
       })),
@@ -425,7 +440,7 @@ export class Pretty implements Renderable, Measurable {
 
   /** The arms for a non-null object, with `value` already on the open path. */
   private _formatObject(value: object, at: Frame): string {
-    const shape = this._shape(value, at.level);
+    const shape = this._shape(value, at.level, Infinity);
     if (shape.kind === "text") return shape.text;
 
     const indentStr = " ".repeat(this.indent * at.inset);
@@ -470,7 +485,7 @@ export class Pretty implements Renderable, Measurable {
     if (at.open.has(object)) return fitOneLine("[Circular]", at.budget);
     at.open.add(object);
     try {
-      const shape = this._shape(object, at.level);
+      const shape = this._shape(object, at.level, at.budget);
       if (shape.kind === "text") return fitOneLine(shape.text, at.budget);
       return this._joinOneLine(shape, { level: at.level + 1, budget: at.budget, open: at.open });
     } catch (error) {
