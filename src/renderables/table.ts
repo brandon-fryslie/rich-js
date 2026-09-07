@@ -699,13 +699,30 @@ export class Table implements Renderable, Measurable {
   }
 
   /**
+   * Every cell column `index` draws, in draw order.
+   *
+   * [LAW:one-source-of-truth] The reference's `_get_cells` is the one answer to
+   * "which cells belong to this column", and both `_measure_column` and
+   * `_render` read it. Enumerating that set a second time inside the width path
+   * is how the two ends drifted: the header was measured whether or not
+   * `showHeader` drew it, and `col.footer` was never measured at all, so a
+   * footer wider than its column — a totals row, exactly — was cut to `…`.
+   * A flag is the whole membership rule; nothing here asks after content.
+   */
+  private *_columnCells(col: Column, index: number): Iterable<Renderable> {
+    if (this.showHeader) yield col.header;
+    for (const row of this._rows) yield row.cells[index] ?? toCellText(undefined);
+    if (this.showFooter) yield col.footer;
+  }
+
+  /**
    * The widest cell in a column, bounded by its own `minWidth`/`maxWidth`.
-   * Zero for a column with no header and no content — a gutter asks for its
-   * padding and nothing else.
+   * Zero for a column that draws nothing — a gutter asks for its padding and
+   * nothing else.
    */
   private _naturalWidth(col: Column, index: number): number {
-    let natural = cellLen(col.header.plain);
-    for (const row of this._rows) {
+    let natural = 0;
+    for (const cell of this._columnCells(col, index)) {
       // The stamped cell, so the width a column asks for is the width its text
       // will occupy — measuring the raw value sized this column to
       // `[red]Solo[/red]`, fifteen cells for four cells of text.
@@ -715,10 +732,9 @@ export class Table implements Renderable, Measurable {
       // a pre-existing gap: `_columnDemands` carries no `RenderOptions`, so
       // `Measurement.get` is not reachable from here. It contributes a wrong
       // non-zero width, and narrowing that is its own change.
-      const cell = row.cells[index];
       natural = Math.max(
         natural,
-        cell instanceof RichText ? cellLen(cell.plain) : cellLen(String(cell ?? "")),
+        cell instanceof RichText ? cellLen(cell.plain) : cellLen(String(cell)),
       );
     }
     if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);

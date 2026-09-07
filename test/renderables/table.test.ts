@@ -258,6 +258,45 @@ describe("Table", () => {
     ]);
   });
 
+  // The same flags decide what a column is measured against, because the
+  // reference measures exactly the cells it draws — `_measure_column` iterates
+  // the `_get_cells` that `_render` iterates. The width path used to enumerate
+  // that set for itself and got both ends wrong at once. Frames from Python
+  // Rich; the widths, not the glyphs, are what these two pin.
+  it("sizes a column to a footer wider than everything above it", () => {
+    // The footer defect that loses data rather than a line: a totals row is
+    // where the footer is the widest cell in its column, and it was the one
+    // cell `_naturalWidth` never looked at, so the column came out 1 cell wide
+    // and the total rendered as `…`.
+    const t = new Table({ showFooter: true });
+    t.addColumn("A", { footer: "TOTALS ARE LONG" });
+    t.addColumn("B", { footer: "F" });
+    t.addRow("1", "2");
+    expect(collectLines(t, { maxWidth: 60 })).toEqual([
+      "┏━━━━━━━━━━━━━━━━━┳━━━┓",
+      "┃ A               ┃ B ┃",
+      "┡━━━━━━━━━━━━━━━━━╇━━━┩",
+      "│ 1               │ 2 │",
+      "├─────────────────┼───┤",
+      "│ TOTALS ARE LONG │ F │",
+      "└─────────────────┴───┘",
+    ]);
+  });
+
+  it("does not size a column to a header showHeader has suppressed", () => {
+    // The header half wastes width instead of losing data, so it needs a header
+    // longer than its content to show at all — the suppressed-header test above
+    // has a one-cell header and passes either way.
+    const t = new Table({ showHeader: false });
+    t.addColumn("LONGHEADER");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 40 })).toEqual([
+      "┌───┐",
+      "│ x │",
+      "└───┘",
+    ]);
+  });
+
   it("shows footer when showFooter is true", () => {
     const t = new Table({ box: ASCII, showFooter: true });
     t.addColumn("Name", { footer: "Total" });
