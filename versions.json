@@ -4,15 +4,29 @@
     {
       "version": "pr-98",
       "ref": "refs/pull/98/merge",
-      "sha": "ef865535de0bdeb63caa3d80a4e84c872eada6a2",
-      "timestamp": "2026-09-07T13:22:40.742Z",
+      "sha": "1e01a4177c79096aa7e4d0ab32a9aba784056faf",
+      "timestamp": "2026-09-07T13:48:10.792Z",
       "commits": [
         {
-          "sha": "ef865535de0bdeb63caa3d80a4e84c872eada6a2",
+          "sha": "1e01a4177c79096aa7e4d0ab32a9aba784056faf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T13:22:09Z",
-          "message": "Merge 4c9af22da2da9614738ad496d62d2636de55794e into fa12f9b5c6423bf7dd45c1f3f7f16631c77aec62\n"
+          "timestamp": "2026-09-07T13:47:35Z",
+          "message": "Merge b06333f9d93d0ca475c577465026b46f17179727 into fa12f9b5c6423bf7dd45c1f3f7f16631c77aec62\n"
+        },
+        {
+          "sha": "b06333f9d93d0ca475c577465026b46f17179727",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T07:47:22-06:00",
+          "message": "docs(console): describe what each overflow mode does, not what this call does\n\nThe three inline comments said this example cropped and ellipsized a word,\nand the paragraph directly beneath said ordinary words wrap identically under\nall three — which is what the code does, and what makes the comments the copy\nthat lies. `long` has no word wider than the line, so none of the four calls\ncuts anything.\n"
+        },
+        {
+          "sha": "6a9843d47db50af95f6689ddff7db984e76e26ec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T07:47:22-06:00",
+          "message": "fix(text): measure a line's hanging whitespace from its text, not its segments\n\nWhere a line ends is a fact about its characters, but `hangingWhitespace`\nasked its segments: it walked backward and stopped at the first segment not\nending in whitespace. An empty segment looks exactly like that to a regex\nanchored at the end, and cropping a line to its budget leaves one behind — so\na styled line that had been cropped reported zero hanging whitespace and was\ncentred as though its content ran to the edge. A span landing anywhere inside\na wrap's trailing spaces silently un-centred the line that wrap closed, which\nis a table cell with markup in it, centred.\n\nAsking the line's text instead makes segmentation-independence hold by\nconstruction rather than by walking carefully, and the walk goes away.\n\nPinned as a property, because segmentation is invisible from the outside and\nwas therefore free to matter: a span carries no cells, so a styled line must\nplace exactly where its plain twin places, and the plain twin is already\npinned to Python Rich by the fixture. Over the corpus, every width, every\nmode, and a span at every offset — the only way to land one inside each run\nof a wrap's whitespace. It failed on 24 of those before this commit.\n"
         },
         {
           "sha": "4c9af22da2da9614738ad496d62d2636de55794e",
