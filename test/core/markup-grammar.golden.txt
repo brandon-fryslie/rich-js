@@ -89,3 +89,15 @@ out text [INFO] more \e[31mx\e[0m
 nested-styles
 in  [bold]a[italic]b[/italic]c[/bold]
 out \e[1ma\e[0m\e[1;3mb\e[0m\e[1mc\e[0m
+
+nested-colour
+in  [red]a[blue]b[/blue]c[/red]
+out \e[31ma\e[0m\e[34mb\e[0m\e[31mc\e[0m
+
+nested-colour-tie
+in  [red][blue]x[/blue][/red]
+out \e[34mx\e[0m
+
+nested-colour-unclosed
+in  [red][blue]x
+out \e[34mx\e[0m

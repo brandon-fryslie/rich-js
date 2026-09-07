@@ -41,6 +41,21 @@ Tags do not need to be strictly nested — overlapping tags work:
 console.print("[bold]Bold [italic]bold-italic[/bold] italic[/italic]");
 ```
 
+A nested tag is applied on top of the one it sits inside, so the two combine
+where they can and the inner one wins where they cannot. Attributes combine —
+the middle of this line is both bold and italic:
+
+```typescript
+console.print("[bold]bold [italic]bold-italic[/italic] bold[/bold]");
+```
+
+A colour cannot combine with another colour, so the inner one replaces it for
+the run it covers, and the outer colour resumes afterwards:
+
+```typescript
+console.print("[red]red [blue]blue[/blue] red again[/red]");
+```
+
 ### Parse errors
 
 Two mistakes raise a parse error:
