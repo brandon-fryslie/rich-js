@@ -183,7 +183,7 @@ function render(
   // Build plain text and track spans
   let plainText = "";
   const spans: Span[] = [];
-  const openStack: Array<{ styleName: string; parameters: string | undefined; textStart: number }> = [];
+  const openStack: OpenTag[] = [];
 
   let lastEnd = 0;
 
@@ -199,10 +199,7 @@ function render(
         throw new MarkupError("Closing tag [/] has nothing to close");
       }
       const opened = openStack.pop()!;
-      const styleStr = opened.parameters !== undefined
-        ? `${opened.styleName} ${opened.parameters}`
-        : opened.styleName;
-      spans.push(new Span(opened.textStart, plainText.length, styleStr));
+      spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
     } else if (tag.isClosing) {
       // [/style] — find and close matching open tag
       const idx = findLastOpen(openStack, tag.styleName);
@@ -212,10 +209,7 @@ function render(
         );
       }
       const opened = openStack[idx]!;
-      const styleStr = opened.parameters !== undefined
-        ? `${opened.styleName} ${opened.parameters}`
-        : opened.styleName;
-      spans.push(new Span(opened.textStart, plainText.length, styleStr));
+      spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
       openStack.splice(idx, 1);
     } else {
       // Opening tag
@@ -234,13 +228,32 @@ function render(
   const processedTrailing = unescapeBrackets(doEmoji ? emojiReplace(trailing) : trailing);
   plainText += processedTrailing;
 
-  // Auto-close any remaining open tags
-  for (const opened of openStack) {
-    const styleStr = opened.parameters !== undefined
-      ? `${opened.styleName} ${opened.parameters}`
-      : opened.styleName;
-    spans.push(new Span(opened.textStart, plainText.length, styleStr));
+  // Auto-close what is still open, innermost first. The reference pops its
+  // stack here (`while style_stack: start, tag = style_stack.pop()`), and
+  // popping is what keeps every span in this list in the order its tag closed
+  // — the one order the sort below is defined against. Walking the stack
+  // forwards instead put the outermost unclosed tag in first, and that lone
+  // disagreement was invisible while nothing sorted: it cancelled the missing
+  // sort, so `[red][blue]x` was the one nesting this port already got right.
+  while (openStack.length > 0) {
+    const opened = openStack.pop()!;
+    spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
   }
+
+  // [LAW:one-source-of-truth] The paint order is the reference's, expressed
+  // rather than re-derived: `sorted(spans[::-1], key=attrgetter("start"))` in
+  // `rich/markup.py`. `RichText` applies spans in list order and each one adds
+  // over the last, so this list's order *is* which style wins where two
+  // overlap; sorting by start lays the outer span down first and lets the
+  // inner one repaint the run it sits in.
+  //
+  // The reversal is the whole of the tie-break, not decoration.
+  // `[red][blue]x[/blue][/red]` yields two spans that both start at 0, and a
+  // stable sort leaves those in the order they arrived — closing order,
+  // innermost first — which is the outer colour winning. Reversed first, the
+  // outer arrives first and the inner repaints it (rich-markup-krk).
+  spans.reverse();
+  spans.sort((a, b) => a.start - b.start);
 
   const result = new RichText(plainText);
   if (baseStyle) result.stylize(baseStyle);
@@ -260,18 +273,34 @@ function render(
   return result;
 }
 
-function findLastOpen(
-  stack: Array<{ styleName: string; parameters: string | undefined }>,
-  name: string,
-): number {
+interface OpenTag {
+  styleName: string;
+  parameters: string | undefined;
+  textStart: number;
+}
+
+/**
+ * The style string an open tag closes into — `name`, or `name parameters` when
+ * the tag carried an `=`.
+ *
+ * [LAW:one-source-of-truth] One answer for the four sites that ask it: the three
+ * ways a tag can close (`[/name]`, `[/]`, and end of input) and the search that
+ * matches `[/red on blue]` back to `[red on blue]`. It was written out at each,
+ * which is how the three closing paths could — and did — drift apart on
+ * something none of the four copies was about.
+ */
+function openTagStyle(opened: OpenTag): string {
+  return opened.parameters !== undefined
+    ? `${opened.styleName} ${opened.parameters}`
+    : opened.styleName;
+}
+
+function findLastOpen(stack: OpenTag[], name: string): number {
   // Handle "on" in style names for closing: [/red on blue] should match [red on blue]
   const normalized = name.trim();
   for (let i = stack.length - 1; i >= 0; i--) {
     const entry = stack[i]!;
-    const entryFull = entry.parameters !== undefined
-      ? `${entry.styleName} ${entry.parameters}`
-      : entry.styleName;
-    if (entryFull === normalized || entry.styleName === normalized) return i;
+    if (openTagStyle(entry) === normalized || entry.styleName === normalized) return i;
   }
   return -1;
 }
