@@ -928,6 +928,23 @@ describe("Table markup", () => {
     expect(segs.find((s) => s.text === "Solo")?.style?.color?.name).toBe("red");
   });
 
+  it("renders docs/live.md's basic-usage row styled, tags consumed", () => {
+    // The other page whose snippet is a behavioural claim about cell markup.
+    // It puts the markup in the second cell of the row, and it was reduced to
+    // a plain "done" while `addRow` shipped tags verbatim — so it pins the
+    // form the page is written in rather than the form the bug forced on it.
+    const t = new Table();
+    t.addColumn("Job");
+    t.addColumn("Status");
+    t.addRow("build", "[green]done[/green]");
+    const segs = [...t.render({ maxWidth: 40 })];
+    const plain = segs.map((s) => s.text).join("");
+
+    expect(plain).toContain("done");
+    expect(plain).not.toContain("[green]");
+    expect(segs.find((s) => s.text === "done")?.style?.color?.name).toBe("green");
+  });
+
   it("sizes a column to the text markup leaves behind, not to the tags", () => {
     // The measure path is the other consumer of a cell's text. Measuring the
     // raw value sized this column to `[red]Solo[/red]` — fifteen cells for
