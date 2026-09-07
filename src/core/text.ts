@@ -982,7 +982,7 @@ export class RichText implements Renderable, Measurable {
       case "full":
         // `full` distributes the gap between words in the reference and packs
         // it on the right here; both fill the canvas, and closing the difference
-        // needs the whole render at once rather than one line (rich-table-6uy.8).
+        // needs the whole render at once rather than one line (rich-justify-0cr.1).
         yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)));
         break;
       default:
