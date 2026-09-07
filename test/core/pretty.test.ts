@@ -405,13 +405,20 @@ describe("Pretty", () => {
     it("renders a thousand levels, the depth being unbounded by default", () => {
       let deep: unknown = 1;
       for (let i = 0; i < 1000; i++) deep = { n: deep };
-      // Indent guides off, and that is the one thing standing between this and
-      // the same assertion at default options: they emit a span per indent
-      // character, and RichText spends O(spans²) turning spans into segments.
-      // rich-text-6po owns that; it is not this traversal.
-      expect(collectText(new Pretty(deep, { indentGuides: false }), { maxWidth: 80 }))
-        .toContain("n: 1");
-    });
+      // At default options, indent guides included. They emit a span per
+      // indent character, so a d-deep value carries d²/2 spans, and this
+      // arrived only once RichText stopped spending the square of the span
+      // count turning them into segments (rich-text-6po) — which is the half
+      // of the cost this traversal never owned.
+      expect(collectText(new Pretty(deep), { maxWidth: 80 })).toContain("n: 1");
+      // A thousand guided levels is half a million spans — genuinely large at
+      // any complexity — so this is the one test here that costs real time:
+      // ~2s alone and ~15s against a saturated suite. The budget is set to
+      // separate complexity *classes* rather than constants, which is the only
+      // thing a wall clock can honestly assert: the quadratic this outran
+      // would not have finished it in an afternoon, so nothing between 3s and
+      // 60s is a number anyone has to keep true.
+    }, 60_000);
   });
 
   // --- Data that refuses to be read ---

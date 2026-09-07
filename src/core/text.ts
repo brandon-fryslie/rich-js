@@ -901,43 +901,65 @@ export class RichText implements Renderable, Measurable {
     return text.replace(/\t/g, " ".repeat(this._tabSize));
   }
 
+  /**
+   * The rendered text cut at every span edge, each piece carrying the base
+   * style plus every span covering it.
+   *
+   * Walked span-first rather than piece-first, and that direction is the whole
+   * performance argument. The pieces are cut at the span edges themselves, so
+   * a span covers a piece exactly when it covers the piece's first character —
+   * which makes each span's run of pieces a contiguous range it can be written
+   * into once, instead of a question every piece asks of every span. The
+   * piece-first form charged `spans x pieces`, and the pieces are themselves
+   * cut by the spans, so anything styling densely paid the square in ordinary
+   * use: 8,000 one-character spans took 211ms where 1,000 took 3.2ms. Every
+   * `Highlighter` over a large value reaches that, and so does `Pretty`, whose
+   * indent guides emit a span per indent character.
+   *
+   * Span-first is also what keeps the composition honest, for free. `Style.add`
+   * is order-dependent and the last writer wins, so the pieces have to fold
+   * their styles in `_spans` order — which iterating `_spans` is, and which a
+   * sweep ordered by position would have had to reconstruct.
+   *
+   * [LAW:dataflow-not-control-flow] A span covering nothing — empty, reversed,
+   * or entirely past the text — still cuts the text where its edges land, as it
+   * always did, and then folds into no piece at all: its range comes out empty
+   * and no case handles it.
+   */
   private _buildSegments(text: string): Segment[] {
-    if (text.length === 0) return [];
+    const clamp = (offset: number): number =>
+      Math.max(0, Math.min(offset, text.length));
 
-    // Collect all unique boundary positions
     const positions = new Set<number>([0, text.length]);
     for (const span of this._spans) {
-      const start = Math.max(0, Math.min(span.start, text.length));
-      const end = Math.max(0, Math.min(span.end, text.length));
-      positions.add(start);
-      positions.add(end);
+      positions.add(clamp(span.start));
+      positions.add(clamp(span.end));
     }
+    const boundaries = [...positions].sort((a, b) => a - b);
 
-    const sorted = [...positions].sort((a, b) => a - b);
-    const segments: Segment[] = [];
+    // Every span edge is a boundary, so where a span's range opens is a lookup
+    // rather than a search.
+    const pieceAt = new Map<number, number>(
+      boundaries.map((position, piece) => [position, piece]),
+    );
 
-    // [LAW:dataflow-not-control-flow] Always iterate all regions; empty ones produce nothing
-    for (let i = 0; i < sorted.length - 1; i++) {
-      const regionStart = sorted[i]!;
-      const regionEnd = sorted[i + 1]!;
-      const regionText = text.slice(regionStart, regionEnd);
-      if (regionText.length === 0) continue;
-
-      // Combine base style with all active span styles
-      let style = this._style;
-      for (const span of this._spans) {
-        if (span.start <= regionStart && span.end >= regionEnd) {
-          const spanStyle = resolveStyle(span.style);
-          style = style.add(spanStyle);
-        }
+    const styles = boundaries.slice(0, -1).map(() => this._style);
+    for (const span of this._spans) {
+      const end = clamp(span.end);
+      const style = resolveStyle(span.style);
+      const opensAt = pieceAt.get(clamp(span.start))!;
+      for (let piece = opensAt; boundaries[piece]! < end; piece++) {
+        styles[piece] = styles[piece]!.add(style);
       }
-
-      segments.push(
-        new Segment(regionText, style.isNull ? undefined : style),
-      );
     }
 
-    return segments;
+    return styles.map(
+      (style, piece) =>
+        new Segment(
+          text.slice(boundaries[piece]!, boundaries[piece + 1]!),
+          style.isNull ? undefined : style,
+        ),
+    );
   }
 
   /**

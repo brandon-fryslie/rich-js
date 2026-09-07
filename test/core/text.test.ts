@@ -918,6 +918,48 @@ describe("RichText.render()", () => {
   });
 });
 
+// The pieces a text is cut into are cut by the spans themselves, so a renderer
+// that answers "which spans cover this piece?" by asking every span at every
+// piece charges the square of the span count. A `ReprHighlighter` over a large
+// value, `highlightRegex` over a common character, and `Pretty`'s indent guides
+// all reach span counts where that is the whole render: 8,000 one-character
+// spans took 211ms where 1,000 took 3.2ms.
+describe("RichText.render() cost tracks the number of spans, not its square", () => {
+  // Counting bound reads counts the traversal, which is why the scaling is
+  // pinned against the data rather than against a stopwatch: the quadratic
+  // version still looks fast at any input small enough to keep a test quick.
+  function countingSpans(count: number): { text: RichText; reads: () => number } {
+    let reads = 0;
+    const text = new RichText("x".repeat(count));
+    for (let i = 0; i < count; i++) text.stylize("bold", i, i + 1);
+    for (const span of text.spans) {
+      for (const edge of ["start", "end"] as const) {
+        const offset = span[edge];
+        Object.defineProperty(span, edge, {
+          get: () => {
+            reads++;
+            return offset;
+          },
+        });
+      }
+    }
+    return { text, reads: () => reads };
+  }
+
+  it("reads a span's bounds a fixed number of times however many spans there are", () => {
+    // Asserted as a ratio between two sizes rather than against a constant:
+    // whatever one span costs cancels out of the division, so there is no
+    // number here to keep true as the renderer changes. Linear doubles, the
+    // rescan this replaced quadrupled, and 3 is the only separator between them.
+    const small = countingSpans(400);
+    const large = countingSpans(800);
+    collect(small.text.render({ maxWidth: 1000 }));
+    collect(large.text.render({ maxWidth: 1000 }));
+
+    expect(large.reads()).toBeLessThan(small.reads() * 3);
+  });
+});
+
 // =========================================================
 // Measurable
 // =========================================================
