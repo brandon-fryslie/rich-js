@@ -27,7 +27,9 @@
  *     CONFIGS = [("header-footer-lines",
  *                 dict(show_header=True, show_footer=True, show_lines=True)),
  *                ("header-only",
- *                 dict(show_header=True, show_footer=False, show_lines=False))]
+ *                 dict(show_header=True, show_footer=False, show_lines=False)),
+ *                ("no-header-no-footer",
+ *                 dict(show_header=False, show_footer=False, show_lines=False))]
  *     blocks = []
  *     for name in NAMES:
  *         for label, opts in CONFIGS:
@@ -59,11 +61,12 @@
  * when it is fixed. The cells are plain digits for the same reason — table
  * cells render markup literally (rich-table-6uy.5).
  *
- * NOT YET PINNED: a table with no header. The reference substitutes the box
- * itself in that case — `Box.get_plain_headed_box`, five constants including
- * the default HEAVY_HEAD — and this port has no such substitution, so there is
- * no reference-true headless frame to commit. rich-table-6uy.6 owns that, and
- * adding the configuration here is part of closing it.
+ * `no-header-no-footer` is the third because the reference swaps the box itself
+ * when a table has no header — five of the nineteen constants map to a plainer
+ * kin, the default HEAVY_HEAD among them (`Box.plainHeaded`). It is the only
+ * configuration whose expected frames belong to a *different* constant than the
+ * one named on the block, so it is the only one that catches the table drawing
+ * with the box it was handed instead of the box it should have swapped to.
  *
  * Trailing spaces are significant: MINIMAL, SIMPLE and HORIZONTALS draw blank
  * corners, so several fixture lines end in whitespace and one is nothing but
@@ -89,6 +92,7 @@ const SHIPPED = Object.entries(box)
 const CONFIGURATIONS: readonly (readonly [string, TableOptions])[] = [
   ["header-footer-lines", { showHeader: true, showFooter: true, showLines: true }],
   ["header-only", { showHeader: true, showFooter: false, showLines: false }],
+  ["no-header-no-footer", { showHeader: false, showFooter: false, showLines: false }],
 ];
 
 function frame(style: box.Box, options: TableOptions): string {
