@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-104",
+      "ref": "refs/pull/104/merge",
+      "sha": "3b9a0b742a33d8dc87e19104605bcb2d3c7ba1b1",
+      "timestamp": "2026-09-07T16:01:00.693Z",
+      "commits": [
+        {
+          "sha": "3b9a0b742a33d8dc87e19104605bcb2d3c7ba1b1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:00:28-06:00",
+          "message": "Merge 6e53ea02b17b14a7e28df71a7c31d7fb346e182b into 531452820685978f9490ee5d50c228b813b04328\n"
+        },
+        {
+          "sha": "6e53ea02b17b14a7e28df71a7c31d7fb346e182b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:00:04-06:00",
+          "message": "fix(table): measure the cells the flags say are drawn (rich-table-8c8)\n\n`_naturalWidth` sized a column against the wrong set of cells at both ends: it\nseeded from the header unconditionally and never looked at `col.footer` at all.\n\nThe footer half lost data. A footer wider than everything above it got no column\nwide enough to hold it, so a totals row — exactly the case where the footer is\nthe widest cell in its column — rendered as `…`. The header half wasted width:\na column was sized to header text `showHeader: false` had told the table not to\ndraw.\n\nOne rule, not two fixes. The reference's `_get_cells` appends the header cell\nunder `show_header` and the footer cell under `show_footer`, and both\n`_measure_column` and `_render` iterate it — the measured cells ARE the drawn\ncells. This port enumerated that set a second time inside the width path, and a\nsecond enumeration is what let the two ends disagree with the draw path and with\neach other.\n\n`_columnCells` is now that enumeration, and the measuring loop lost its special\ncase with it: the header was a seed measured by a different expression than the\nbody cells, which is the same asymmetry that produced rich-table-n27 one\nconstructor line away. All three positions now flow through one `Math.max` over\none sequence, and membership is a flag rather than a guard.\n\nBoth reference frames pinned as tests, both red without this change. 2306 pass,\n`table-frames.golden.txt` unmoved and untouched, three-pass lint and the demo\ntypecheck clean.\n\nFiled while here, verified pre-existing by restoring master's table.ts and\nre-probing: rich-table-3d3, a rowless table sizes to its header instead of\nfilling the offer, because `_naturalWidth`'s single number cannot say \"no cells\nto measure\" distinctly from \"measures zero\" where Rich returns Measurement(1,1).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "531452820685978f9490ee5d50c228b813b04328",
