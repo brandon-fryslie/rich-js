@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Pretty } from "../../src/core/pretty.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import { Highlighter } from "../../src/core/highlighter.js";
+import { Highlighter, NullHighlighter } from "../../src/core/highlighter.js";
 import type { RichText } from "../../src/core/text.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -91,6 +91,18 @@ describe("Pretty", () => {
     const text = collectText(new Pretty(data), { maxWidth: 30 });
     // Should expand to multiple lines when narrow
     expect(text).toContain("\n");
+  });
+
+  it("answers a one-line probe with one line, never with an expansion", () => {
+    // `cellLen` scores a newline as zero cells, so a width check alone counted
+    // multi-line text as fitting. A Map had no single-line form at all, so a Map
+    // nested in an object came back from the probe already expanded and was
+    // accepted: `{ m: Map {`, the entry on its own line, the closing brace back
+    // at column 0 and the object's own `}` after it.
+    expect(collectText(new Pretty({ m: new Map([["k", "v"]]) }), { maxWidth: 80 }))
+      .toBe('{ m: Map { "k" => "v" } }');
+    expect(collectText(new Pretty({ s: new Set([1, 2]) }), { maxWidth: 80 }))
+      .toBe("{ s: Set { 1, 2 } }");
   });
 
   // --- Expand All Mode ---
@@ -301,6 +313,104 @@ describe("Pretty", () => {
       Object.setPrototypeOf(counted, Set.prototype);
       collectText(new Pretty(counted as unknown as Set<number>, { maxLength: 5 }), { maxWidth: 40 });
       expect(pulled).toBe(5);
+    });
+
+    it("pulls nothing at all from a Map or Set it is only going to elide", () => {
+      // `.size` answers both the empty case and the depth cap, and neither needs
+      // a position. Reaching one costs an iterator step, so enumerating a
+      // container in order to print `Set {...}` drains it to say nothing.
+      let pulled = 0;
+      const counted = {
+        size: 5_000,
+        *[Symbol.iterator](): Iterator<number> {
+          for (let i = 0; i < 5_000; i++) { pulled++; yield i; }
+        },
+      };
+      Object.setPrototypeOf(counted, Set.prototype);
+      const text = collectText(
+        new Pretty({ s: counted as unknown as Set<number> }, { maxDepth: 1 }),
+        { maxWidth: 40 },
+      );
+      expect(text).toContain("Set {...}");
+      expect(pulled).toBe(0);
+    });
+
+    it("keeps a probe's pull off the size of the collection it is probing", () => {
+      // Laying out a Map too wide for one line drains it, because it prints
+      // every entry. It used to be drained again by each ancestor's probe on the
+      // way down, every one of them materialising the whole collection to learn
+      // what the width of its own brackets already said. Only the layout's drain
+      // may scale, so a collection N larger must cost N more pulls, not 2N or 4N.
+      // Two sizes rather than one number: whatever the probes still cost is the
+      // same in both runs and cancels, so there is no constant to keep true.
+      const pullsFor = (size: number): number => {
+        let pulled = 0;
+        const counted = {
+          size,
+          *entries(): Iterator<[number, number]> {
+            for (let i = 0; i < size; i++) { pulled++; yield [i, i]; }
+          },
+        };
+        Object.setPrototypeOf(counted, Map.prototype);
+        const deep = { a: { b: { c: counted as unknown as Map<number, number> } } };
+        // Guides and highlighting are per-character work on an expansion this
+        // wide, and neither is what is being counted.
+        collectText(
+          new Pretty(deep, { indentGuides: false, highlighter: new NullHighlighter() }),
+          { maxWidth: 80 },
+        );
+        return pulled;
+      };
+
+      // Any size past the probe's own cap separates the two answers; these are
+      // small because the entries are printed, and printing them is the cost.
+      expect(pullsFor(400) - pullsFor(200)).toBe(200);
+    });
+  });
+
+  // A value's single-line form is the same string wherever the value sits, so it
+  // is asked for once and spent against what is left of the line. It used to be
+  // a full render repeated at every ancestor — each child formatted once to
+  // probe the parent's compact try and again to place it — which visited a node
+  // at depth d 2^d times: 26 levels cost 600ms and 30 did not arrive.
+  describe("cost tracks the size of the data, not two to its depth", () => {
+    // Counting the getter counts the traversal, which is why the scaling is
+    // pinned against the data rather than against a stopwatch.
+    function countingChain(depth: number): { value: unknown; reads: () => number } {
+      let reads = 0;
+      let value: unknown = 0;
+      for (let i = 0; i < depth; i++) {
+        const child = value;
+        value = { get n(): unknown { reads++; return child; } };
+      }
+      return { value, reads: () => reads };
+    }
+
+    it("charges a level one read, not one for every ancestor above it", () => {
+      // Both depths sit below an inset of `maxWidth / indent`, where the line
+      // has no width left to spend and so no probe descends at all. Past that
+      // point a level costs exactly the one read that places it, which is what
+      // makes the marginal cost the thing to assert: it needs no constant, and
+      // the fixed probing near the top cancels out of the subtraction.
+      const shallow = countingChain(20);
+      const deep = countingChain(26);
+      collectText(new Pretty(shallow.value, { indentGuides: false }), { maxWidth: 80 });
+      collectText(new Pretty(deep.value, { indentGuides: false }), { maxWidth: 80 });
+
+      // Six more levels, six more reads. The doubling this replaced spent
+      // 12,247 reads on the 20 and 783,934 on the 26.
+      expect(deep.reads() - shallow.reads()).toBeLessThan((26 - 20) * 2);
+    });
+
+    it("renders a thousand levels, the depth being unbounded by default", () => {
+      let deep: unknown = 1;
+      for (let i = 0; i < 1000; i++) deep = { n: deep };
+      // Indent guides off, and that is the one thing standing between this and
+      // the same assertion at default options: they emit a span per indent
+      // character, and RichText spends O(spans²) turning spans into segments.
+      // rich-text-6po owns that; it is not this traversal.
+      expect(collectText(new Pretty(deep, { indentGuides: false }), { maxWidth: 80 }))
+        .toContain("n: 1");
     });
   });
 
