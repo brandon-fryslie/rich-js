@@ -248,11 +248,12 @@ export class Panel implements Renderable, Measurable {
     border: Style | undefined,
     contentStyle: Style | undefined,
   ): Iterable<Segment> {
-    yield new Segment(box.left.repeat(geometry.left), border);
+    const frame = box.getContentChars("row");
+    yield new Segment(frame.left.repeat(geometry.left), border);
     const content = Segment.adjustLineLength(line, geometry.contentWidth, contentStyle, false);
     const span = [new Segment(" ".repeat(geometry.padLeft), contentStyle), ...content];
     yield* Segment.adjustLineLength(span, geometry.spanWidth, contentStyle);
-    yield new Segment(box.right.repeat(geometry.right), border);
+    yield new Segment(frame.right.repeat(geometry.right), border);
     yield Segment.line();
   }
 
@@ -337,9 +338,9 @@ export class Panel implements Renderable, Measurable {
     const innerBorderWidth = geometry.spanWidth;
 
     if (!this.title) {
-      yield new Segment(box.topLeft.repeat(geometry.left), border);
-      yield new Segment(box.top.repeat(innerBorderWidth), border);
-      yield new Segment(box.topRight.repeat(geometry.right), border);
+      yield new Segment(box.top.left.repeat(geometry.left), border);
+      yield new Segment(box.top.horizontal.repeat(innerBorderWidth), border);
+      yield new Segment(box.top.right.repeat(geometry.right), border);
       yield Segment.line();
       return;
     }
@@ -351,7 +352,7 @@ export class Panel implements Renderable, Measurable {
     // single source of truth for "what color is the title text in".
     const titleSeg = this.titleStyle ?? border;
 
-    yield new Segment(box.topLeft.repeat(geometry.left), border);
+    yield new Segment(box.top.left.repeat(geometry.left), border);
 
     if (titleWidth >= innerBorderWidth) {
       // Title fills the border. [LAW:one-source-of-truth] cellLen / setCellSize
@@ -363,12 +364,12 @@ export class Panel implements Renderable, Measurable {
       const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
       const rightRuleWidth = innerBorderWidth - titleWidth - leftRuleWidth;
 
-      if (leftRuleWidth > 0) yield new Segment(box.top.repeat(leftRuleWidth), border);
+      if (leftRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(leftRuleWidth), border);
       yield new Segment(titleDisplay, titleSeg);
-      if (rightRuleWidth > 0) yield new Segment(box.top.repeat(rightRuleWidth), border);
+      if (rightRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(rightRuleWidth), border);
     }
 
-    yield new Segment(box.topRight.repeat(geometry.right), border);
+    yield new Segment(box.top.right.repeat(geometry.right), border);
     yield Segment.line();
   }
 
@@ -394,7 +395,7 @@ export class Panel implements Renderable, Measurable {
         ? accessory.style
         : border;
 
-    yield new Segment(box.bottomLeft.repeat(geometry.left), border);
+    yield new Segment(box.bottom.left.repeat(geometry.left), border);
 
     // Space available for the centered subtitle / rule fill — the accessory
     // (if any) hugs the right edge and the subtitle treats the remainder
@@ -402,7 +403,7 @@ export class Panel implements Renderable, Measurable {
     const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
 
     if (!this.subtitle) {
-      if (centerWidth > 0) yield new Segment(box.bottom.repeat(centerWidth), border);
+      if (centerWidth > 0) yield new Segment(box.bottom.horizontal.repeat(centerWidth), border);
     } else {
       const subtitleText =
         typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
@@ -416,9 +417,9 @@ export class Panel implements Renderable, Measurable {
       } else {
         const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
         const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
-        if (leftRuleWidth > 0) yield new Segment(box.bottom.repeat(leftRuleWidth), border);
+        if (leftRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(leftRuleWidth), border);
         yield new Segment(subtitleDisplay, subtitleSeg);
-        if (rightRuleWidth > 0) yield new Segment(box.bottom.repeat(rightRuleWidth), border);
+        if (rightRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(rightRuleWidth), border);
       }
     }
 
@@ -430,7 +431,7 @@ export class Panel implements Renderable, Measurable {
       yield new Segment(fit, accessoryStyle);
     }
 
-    yield new Segment(box.bottomRight.repeat(geometry.right), border);
+    yield new Segment(box.bottom.right.repeat(geometry.right), border);
     yield Segment.line();
   }
 

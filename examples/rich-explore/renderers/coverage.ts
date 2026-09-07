@@ -69,16 +69,19 @@ export class CoverageRenderable implements Renderable {
       { name: "HVY_HEAD", box: HEAVY_HEAD },
       { name: "DOUBLE", box: DOUBLE }, { name: "DBL_EDGE", box: DOUBLE_EDGE },
       { name: "MARKDOWN", box: MARKDOWN },
-      // A box style rich-js does not ship: Box takes the 18 characters and
-      // nothing else, so a custom border is data, not a new renderable.
+      // A box style rich-js does not ship: Box takes the 8x4 grid and nothing
+      // else, so a custom border is data, not a new renderable.
       {
-        name: "CUSTOM", box: new Box({
-          topLeft: "▛", top: "▀", topDivider: "▀", topRight: "▜",
-          headLeft: "▌", headVertical: "│", headRight: "▐",
-          midLeft: "▌", mid: "─", midVertical: "│", midRight: "▐",
-          bottomLeft: "▙", bottom: "▄", bottomDivider: "▄", bottomRight: "▟",
-          left: "▌", right: "▐", vertical: "│",
-        }),
+        name: "CUSTOM", box: new Box(
+          "▛▀▀▜\n" +
+          "▌ │▐\n" +
+          "▌─│▐\n" +
+          "▌ │▐\n" +
+          "▌─│▐\n" +
+          "▌─│▐\n" +
+          "▌ │▐\n" +
+          "▙▄▄▟",
+        ),
       },
     ];
     const boxPanels: Renderable[] = boxStyles.map(({ name, box }) =>

@@ -124,7 +124,7 @@ export {
 export type { ControlCode } from "./core/segment.js";
 
 export { Box } from "./core/box.js";
-export type { BoxChars, RowLevel, SubstituteOptions } from "./core/box.js";
+export type { EdgeChars, ContentChars, RowLevel, SubstituteOptions } from "./core/box.js";
 export {
   ASCII,
   ASCII2,
