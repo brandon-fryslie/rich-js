@@ -695,12 +695,28 @@ describe("Table markup", () => {
     ]);
   });
 
-  it("gives an empty title no line at all", () => {
-    // The reference emits no title line for `title=""`; this emitted a blank one.
-    const t = new Table({ title: "" });
+  // The reference emits no line for empty content in either position, and
+  // `title`/`caption` each document two input shapes. The rule is one rule, so
+  // it is one assertion driven by four values \u2014 a `RichText` arriving with its
+  // default `end` of "\n" drew a blank line where a string drew none. The whole
+  // frame is compared rather than its first line: a stray caption line lands at
+  // the bottom, where reading `[0]` alone could never have found it.
+  it.each([
+    ["a string title", { title: "" }],
+    ["a RichText title", { title: new RichText("") }],
+    ["a string caption", { caption: "" }],
+    ["a RichText caption", { caption: new RichText("") }],
+  ])("gives %s with no content no line at all", (_, options) => {
+    const t = new Table(options);
     t.addColumn("H");
     t.addRow("x");
-    expect(collectLines(t, { maxWidth: 30 })[0]).toBe("\u250f\u2501\u2501\u2501\u2513");
+    expect(collectLines(t, { maxWidth: 30 })).toEqual([
+      "\u250f\u2501\u2501\u2501\u2513",
+      "\u2503 H \u2503",
+      "\u2521\u2501\u2501\u2501\u2529",
+      "\u2502 x \u2502",
+      "\u2514\u2500\u2500\u2500\u2518",
+    ]);
   });
 
   it("lets titleJustify outrank a justify carried by the title text", () => {

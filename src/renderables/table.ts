@@ -39,13 +39,14 @@ function resolveStyle(style: string | Style | undefined): Style {
  * own `render_str`. A table-level opt-out would be a mode with no reference
  * behaviour to define. [LAW:no-mode-explosion]
  *
- * `end` is assigned after the parse, not passed in, because a table cell is a
+ * `end` is cleared on both arms, not passed in, because a table cell is a
  * fragment rather than a line — the same two steps Rich takes for a printed
- * string.
+ * string. The `RichText` arm copies first: clearing in place would reach back
+ * into the caller's object.
  */
 function toCellText(content: unknown): RichText {
-  if (content instanceof RichText) return content;
-  const text = renderMarkup(String(content ?? ""));
+  const text =
+    content instanceof RichText ? content.copy() : renderMarkup(String(content ?? ""));
   text.end = "";
   return text;
 }
