@@ -4,7 +4,7 @@ import { Panel } from "../../src/renderables/panel.js";
 import { RichText } from "../../src/core/text.js";
 import { MarkupError } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
-import { ASCII, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
+import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -156,6 +156,39 @@ describe("Table", () => {
     t.addRow("1", "2");
     const lines = collectLines(t, { maxWidth: 40 });
     expect(lines.some((l) => l.includes("|"))).toBe(true);
+  });
+
+  // A MARKDOWN table is already drawable without unicode, so the terminal that
+  // cannot draw unicode is no reason to take it away — the caller picked this
+  // frame and gets to keep it.
+  it("keeps the MARKDOWN frame on a terminal without unicode", () => {
+    const t = new Table({ box: MARKDOWN });
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("1", "2");
+    expect(collectLines(t, { maxWidth: 40, asciiOnly: true })).toEqual([
+      "         ",
+      "| A | B |",
+      "|---|---|",
+      "| 1 | 2 |",
+      "         ",
+    ]);
+  });
+
+  // The two box swaps compose: `asciiOnly` hands ASCII_DOUBLE_HEAD straight
+  // through, so `plainHeaded` still has a box it recognises and answers with
+  // ASCII2's crossed edge. Replacing the box first left `plainHeaded` holding
+  // ASCII, whose edge runs uncrossed — "+-------+" rather than "+---+---+".
+  it("reaches ASCII2 for a headerless ASCII_DOUBLE_HEAD without unicode", () => {
+    const t = new Table({ box: ASCII_DOUBLE_HEAD, showHeader: false });
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("1", "2");
+    expect(collectLines(t, { maxWidth: 40, asciiOnly: true })).toEqual([
+      "+---+---+",
+      "| 1 | 2 |",
+      "+---+---+",
+    ]);
   });
 
   it("renders as grid with no borders", () => {
