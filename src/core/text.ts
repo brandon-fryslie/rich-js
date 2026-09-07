@@ -848,10 +848,14 @@ export class RichText implements Renderable, Measurable {
       const cuts = divideLine(plainOf(line), budget, { fold: overflow === "fold" });
 
       const wrapped = Segment.divide(line, cuts);
-      for (let piece = 0; piece < wrapped.length; piece += 1) {
-        const fitted = [...this._fitLine(wrapped[piece]!, budget, overflow)];
-        yield* this._justifyLine(fitted, maxWidth, justify);
-        if (piece < wrapped.length - 1 || terminateLine) {
+      const placed = this._justifyLines(
+        wrapped.map((piece) => [...this._fitLine(piece, budget, overflow)]),
+        maxWidth,
+        justify,
+      );
+      for (let piece = 0; piece < placed.length; piece += 1) {
+        yield* placed[piece]!;
+        if (piece < placed.length - 1 || terminateLine) {
           yield Segment.line();
         }
       }
@@ -963,9 +967,32 @@ export class RichText implements Renderable, Measurable {
   }
 
   /**
-   * One line placed in a canvas `maxWidth` wide, as Rich's `Lines.justify`
-   * places it — pinned block for block against the reference in
-   * `test/core/text-justify.test.ts`, `full` excepted; see its branch.
+   * The pieces one logical line wrapped into, each placed in a canvas
+   * `maxWidth` wide, as Rich's `Lines.justify` places them — pinned block for
+   * block against the reference in `test/core/text-justify.test.ts`.
+   *
+   * It is handed the whole wrapped line because `full` is the one mode a
+   * piece cannot answer alone: the reference leaves a paragraph's last line
+   * ragged, so where the piece sits decides its answer where the other three
+   * modes need only the piece itself. The set that decides "last" is this one
+   * and not the whole render — `Text.wrap` calls `Lines.justify` once per
+   * *logical* line — and `Segment.divide` already handed it over whole.
+   */
+  private _justifyLines(
+    lines: Segment[][],
+    maxWidth: number,
+    justify?: "left" | "center" | "right" | "full",
+  ): Segment[][] {
+    if (justify !== "full") {
+      return lines.map((line) => [...this._justifyLine(line, maxWidth, justify)]);
+    }
+    return lines.map((line, index) =>
+      index === lines.length - 1 ? line : this._fillLine(line, maxWidth),
+    );
+  }
+
+  /**
+   * One line placed in a canvas `maxWidth` wide.
    *
    * Centre and right align on the line's *content*. The whitespace a wrap
    * leaves on the end of the line it closed is the break's own padding, not
@@ -981,7 +1008,11 @@ export class RichText implements Renderable, Measurable {
   private *_justifyLine(
     line: Segment[],
     maxWidth: number,
-    justify?: "left" | "center" | "right" | "full",
+    // [LAW:types-are-the-program] `full` is absent rather than ignored: it
+    // needs the lines either side of this one, so the type refuses it here
+    // instead of a branch quietly rendering it as `left`, which is the bug
+    // this signature replaces (rich-justify-0cr.1).
+    justify?: "left" | "center" | "right",
   ): Iterable<Segment> {
     switch (justify) {
       case "center":
@@ -1001,16 +1032,82 @@ export class RichText implements Renderable, Measurable {
         break;
       }
       case "left":
-      case "full":
-        // `full` distributes the gap between words in the reference and packs
-        // it on the right here; both fill the canvas, and closing the difference
-        // needs the whole render at once rather than one line (rich-justify-0cr.1).
         yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)));
         break;
       default:
         yield* line;
         break;
     }
+  }
+
+  /**
+   * One line of a wrapped paragraph, its gaps widened until it fills the
+   * canvas — what `justify: "full"` promises, and what the reference's
+   * `Lines.justify` does to every line of a paragraph but the last.
+   *
+   * Slack goes in a cell at a time, starting at the rightmost gap and walking
+   * left, round and round until the line is full. That order is the
+   * reference's own, and what it decides is where an odd cell lands when the
+   * slack will not divide evenly: the right-hand gaps take it.
+   *
+   * The words come from the line's *text* split on a single space, with the
+   * blank a trailing separator leaves behind dropped — `Text.split` and
+   * `String.prototype.split` agree on that list, empty words and all. Two
+   * consequences read as bugs until you know whose they are: a run of n
+   * spaces is n gaps rather than one, so spacing an author widened stretches
+   * instead of collapsing, and the whitespace a wrap left hanging is a gap
+   * like the rest, which is why a filled line does not keep it. Both are
+   * pinned in `text-justify.golden.txt`, by the `uneven` and `sentence`
+   * blocks respectively.
+   */
+  private _fillLine(line: Segment[], maxWidth: number): Segment[] {
+    const plain = plainOf(line);
+    const words = plain.split(" ");
+    if (plain.endsWith(" ")) words.pop();
+
+    const gaps = words.length - 1;
+    const spaces = new Array<number>(gaps).fill(1);
+    let filled = words.reduce((total, word) => total + cellLen(word), 0) + gaps;
+    for (let turn = 0; filled < maxWidth && gaps > 0; turn = (turn + 1) % gaps) {
+      spaces[gaps - 1 - turn]! += 1;
+      filled += 1;
+    }
+
+    // Cut at both edges of every gap, so a word is an even piece and the
+    // separator that followed it is the odd piece after it. Measured in cells
+    // because that is the coordinate system `Segment.divide` reads, which a
+    // line of wide glyphs is the only thing that notices.
+    const cuts: number[] = [];
+    let edge = 0;
+    for (let index = 0; index < words.length; index += 1) {
+      edge += cellLen(words[index]!);
+      cuts.push(edge);
+      edge += 1;
+      if (index < gaps) cuts.push(edge);
+    }
+    const pieces = Segment.divide(line, cuts);
+
+    // A widened gap takes the style the words either side of it agree on, and
+    // the line's own where they disagree — the reference reads that off the
+    // character each side turns towards the gap, which is the offset `at` is
+    // given here. A word with no characters turns none and answers with the
+    // line's style, which is what two adjacent separators leave between them.
+    const edgeStyle = (word: Segment[], at: number): Style =>
+      word.filter((segment) => segment.hasText).at(at)?.style ?? this._style;
+
+    const result: Segment[] = [];
+    for (let index = 0; index < words.length; index += 1) {
+      result.push(...pieces[index * 2]!);
+      if (index < gaps) {
+        const before = edgeStyle(pieces[index * 2]!, -1);
+        const after = edgeStyle(pieces[index * 2 + 2]!, 0);
+        const style = before.equals(after) ? before : this._style;
+        result.push(
+          new Segment(" ".repeat(spaces[index]!), style.isNull ? undefined : style),
+        );
+      }
+    }
+    return result;
   }
 
   /**
