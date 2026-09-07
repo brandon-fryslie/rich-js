@@ -310,8 +310,8 @@ export interface ColumnOptions {
 }
 
 export class Column {
-  header: RichText;
-  footer: RichText;
+  private _header!: RichText;
+  private _footer!: RichText;
   headerStyle: Style;
   footerStyle: Style;
   style: Style;
@@ -325,15 +325,8 @@ export class Column {
   private _cells: Renderable[];
 
   constructor(options?: ColumnOptions) {
-    this.header = toCellText(options?.header);
-    // Absent and empty are the same footer. [LAW:types-are-the-program] Rich
-    // declares `footer: RenderableType = ""`, so a column always has one and
-    // `show_footer` alone decides whether it is drawn. Modelling the absence as
-    // `undefined` instead made "no column has a footer" a state the render path
-    // could ask about — and it did, skipping the row a caller had asked for.
-    // Sharing `header`'s one-liner is what keeps the two fields answerable by
-    // the same question.
-    this.footer = toCellText(options?.footer);
+    this.header = options?.header;
+    this.footer = options?.footer;
     this.headerStyle = resolveStyle(options?.headerStyle);
     this.footerStyle = resolveStyle(options?.footerStyle);
     this.style = resolveStyle(options?.style);
@@ -345,6 +338,40 @@ export class Column {
     this.noWrap = options?.noWrap ?? false;
     this.overflow = options?.overflow ?? "ellipsis";
     this._cells = [];
+  }
+
+  /**
+   * The two stamped cells, parsed on assignment rather than at the constructor.
+   * `Table.columns` hands out the live column and both fields are public, so a
+   * constructor-only stamp held only until the first `columns[0].footer = mine`
+   * — which installed content that had parsed no markup, still carried its
+   * `end`, and was still owned by the caller, into a slot every reader below
+   * assumes `toCellText` has been through. [LAW:parse-dont-validate] The setter
+   * is the border, so the guarantee holds for the object's whole lifetime and
+   * the constructor is one caller of it rather than the one place it is true.
+   *
+   * Absent and empty are the same header, and the same footer.
+   * [LAW:types-are-the-program] Rich declares `footer: RenderableType = ""`, so
+   * a column always has one and `show_footer` alone decides whether it is
+   * drawn. Modelling the absence as `undefined` instead made "no column has a
+   * footer" a state the render path could ask about — and it did, skipping the
+   * row a caller had asked for. `toCellText` already maps nothing onto empty,
+   * which is why the setters take `undefined` rather than defaulting around it.
+   */
+  get header(): RichText {
+    return this._header;
+  }
+
+  set header(content: string | RichText | undefined) {
+    this._header = toCellText(content);
+  }
+
+  get footer(): RichText {
+    return this._footer;
+  }
+
+  set footer(content: string | RichText | undefined) {
+    this._footer = toCellText(content);
   }
 
   get flexible(): boolean {
@@ -363,8 +390,11 @@ export class Column {
 
   copy(): Column {
     const col = new Column({
-      header: this.header.copy(),
-      footer: this.footer.copy(),
+      // No `.copy()` here: the crossing the constructor routes through copies
+      // a `RichText` already, and a second copy is a second home for that rule.
+      // [LAW:single-enforcer]
+      header: this.header,
+      footer: this.footer,
       justify: this.justify,
       width: this.width,
       minWidth: this.minWidth,
