@@ -4,15 +4,29 @@
     {
       "version": "pr-98",
       "ref": "refs/pull/98/merge",
-      "sha": "6fbf962a5b27b72cc6343952e57cb12524d772d5",
-      "timestamp": "2026-09-07T11:58:36.970Z",
+      "sha": "ef865535de0bdeb63caa3d80a4e84c872eada6a2",
+      "timestamp": "2026-09-07T13:22:40.742Z",
       "commits": [
         {
-          "sha": "6fbf962a5b27b72cc6343952e57cb12524d772d5",
+          "sha": "ef865535de0bdeb63caa3d80a4e84c872eada6a2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T05:58:02-06:00",
-          "message": "Merge 368c795973638dad1ba87d7659323bc47a22d87b into fa12f9b5c6423bf7dd45c1f3f7f16631c77aec62\n"
+          "timestamp": "2026-09-07T13:22:09Z",
+          "message": "Merge 4c9af22da2da9614738ad496d62d2636de55794e into fa12f9b5c6423bf7dd45c1f3f7f16631c77aec62\n"
+        },
+        {
+          "sha": "4c9af22da2da9614738ad496d62d2636de55794e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T07:21:56-06:00",
+          "message": "fix(table): let the frame outrank a title's own noWrap\n\nA `RichText`'s own `noWrap` is OR-ed with the render option, so it cannot be\noutranked by the options the table hands it. `_renderTitle` already cleared\n`justify` for that reason, and the crop that used to bound the title is gone\nnow that titles wrap down the frame — so a caller who set `noWrap` on their\ntitle got a line at its natural width, 49 cells out of a 20-cell table.\n\n`overflow` stays the caller's. `noWrap` decides whether the line is bounded\nat all and the frame is that bound; overflow only decides how a line meets an\nedge it cannot move, and every method cuts within the budget. Clearing all\nthree is the cheap fix and it overrules a caller for no invariant's sake, so\nthere is a test standing on that distinction as well as on the frame.\n"
+        },
+        {
+          "sha": "fe43b6c5f5b7023cad4829986ddbaed9de15a958",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T07:21:56-06:00",
+          "message": "fix(text): resolve an unbounded width offer before justifying\n\n`RichText.render` was the one renderable that never ran `withBoundedWidth`.\nIt hand-inlined the first half of it — a bare `cellCount`, which catches a\nNaN width — and let an unbounded offer through, which was harmless while\nnothing padded. This branch made `justify` pad, so `\" \".repeat(Infinity)`\nnow threw `RangeError` from two separate sites: `adjustLineLength` on the\nleft/full arm, and the bare `repeat` on the centre/right arm. Guarding\neither site would have left the other live, because the two crash for the\nsame reason in different code; the crossing at the front door is where the\nreason lives, so that is what this restores.\n\nPins justification against Python Rich, which the branch changed and\nnothing checked. All four of default, left, centre and right match the\nreference block for block across 84 blocks — including the one this branch\nset out to fix, where a wrap's trailing whitespace must not be counted when\ncentring. `full` does not match and is excluded from the fixture rather than\nlaundered into it: Rich distributes the gap between words and skips a\nparagraph's last line, both of which need the whole render at once, and\n`_justifyLine` is handed one line (rich-table-6uy.8).\n\nAlso drops a comment claiming `noWrap` carries Rich's `overflow=\"ignore\"`.\n`Console.print` maps that to `undefined` and `render` defaults it to `fold`,\nwhich is what docs/console.md on this same branch already said.\n"
         },
         {
           "sha": "368c795973638dad1ba87d7659323bc47a22d87b",
