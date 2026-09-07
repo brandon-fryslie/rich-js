@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-96",
+      "ref": "refs/pull/96/merge",
+      "sha": "7dd10530e37a1b8a37714327e56108727c6ec5fb",
+      "timestamp": "2026-09-07T00:42:04.158Z",
+      "commits": [
+        {
+          "sha": "7dd10530e37a1b8a37714327e56108727c6ec5fb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T18:41:35-06:00",
+          "message": "Merge 2019abcf81179dd1be905ddf498800a8356afb33 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+        },
+        {
+          "sha": "2019abcf81179dd1be905ddf498800a8356afb33",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T18:41:08-06:00",
+          "message": "fix(table): parse markup at the one crossing that makes cell text (rich-table-6uy.5)\n\n`addRow(\"[red]Solo[/red]: A Star Wars Story\")` put the tags on the terminal.\nThe cause was not one missing parse but five separate ones: cells, headers,\nfooters, the title and the caption each built their own `RichText` straight\nfrom the constructor, which by design does not parse markup. One rule, five\nhomes, absent from all five.\n\nSo the fix is a consolidation rather than five edits. `toCellText` is now the\nsingle crossing every one of those positions goes through, and markup parsing\nlives there once. Parsing is unconditional because that is what the reference\ndoes — Rich's `Console.__init__` declares `markup: bool = True` and all five\npositions reach the wire through `Console.render_str` — not because it was the\nsmaller branch. `toRenderable` loses its `instanceof RichText` arm: `RichText`\nimplements `Renderable`, so it already leaves through the renderable arm\nuntouched.\n\nTwo further defects surfaced, and both had to be fixed for the parse to mean\nanything:\n\n- `_renderTitle` rendered `text.plain`, reading the characters and dropping\n  every span attached to them. Parsing without this would have been strictly\n  worse than the bug: the tags would vanish and the colour would silently never\n  appear. It now renders the content's own segments over the table's title\n  style as the base, which is what the reference emits — `\\e[3;31m` for a\n  `[red]` title in an italic table title, italic and red rather than either\n  one. The crop/pad fork went with it; `adjustLineLength` handles both by value.\n- `_naturalWidth` measured the raw cell value, so a column sized itself to\n  `[red]Solo[/red]` — fifteen cells for four cells of text. Measurement now\n  asks the same crossing that renders it what the text is.\n\nVerified against Python Rich itself, not against reasoning about it. The\ndocs/tables.md flagship example rendered at width 88 now matches the reference\ncharacter for character on six of seven lines, including both markup-bearing\nrows. The seventh is a wrapping difference with no markup in it, reproduced\nwith none anywhere and filed as rich-table-6uy.7.\n\nEach of the three gates was proven to go red, in isolation: dropping the parse\nfails all six markup tests; flattening the title back to `.plain` fails exactly\nTitle and Caption; measuring the raw value again fails exactly the width test.\n\n.4's golden fixture is untouched, as its own comment predicted — its cells are\nplain digits precisely so this change could not move a frame in it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "160b864591c05433b7c869e0ff0e4789c3e2a800",
