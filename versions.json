@@ -4,15 +4,22 @@
     {
       "version": "pr-101",
       "ref": "refs/pull/101/merge",
-      "sha": "67c8c4cb6b72a2a2acb5d1b16bf79946b356aef6",
-      "timestamp": "2026-09-07T14:42:18.086Z",
+      "sha": "703b878b5b194746f806f25ec3120df6461d1e89",
+      "timestamp": "2026-09-07T14:57:17.892Z",
       "commits": [
         {
-          "sha": "67c8c4cb6b72a2a2acb5d1b16bf79946b356aef6",
+          "sha": "703b878b5b194746f806f25ec3120df6461d1e89",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T08:41:46-06:00",
-          "message": "Merge 06aa3fd864c9337fc0ccadccba4985d3344107cb into 0f270d6e5c1bf24d6ebbe8c3664ca07dca414e97\n"
+          "timestamp": "2026-09-07T14:56:42Z",
+          "message": "Merge 1aa2435fae39841fc5d9108844839eafed1150c3 into 0f270d6e5c1bf24d6ebbe8c3664ca07dca414e97\n"
+        },
+        {
+          "sha": "1aa2435fae39841fc5d9108844839eafed1150c3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T08:56:34-06:00",
+          "message": "fix(markup): reject an overlapping plugin pair where it is detected\n\nThe top-level filter in `pairPluginTags` decided containment from where a pair\n*opened* and nothing else. That one comparison read two different shapes as one:\na contained pair, which the recursion re-discovers when it renders the outer\npair's inner slice, and an overlapping pair, which has no contiguous region at\nall. Both were skipped, so the overlapping pair's closing tag was orphaned into\nthe trailing slice and the built-in parser rejected it there — naming the wrong\ntag, for the wrong reason.\n\nRouting `console.print` through `renderMarkup` put that on the main path: with\ntwo plugin tags registered, `[aa]x[bb]y[/aa]z[/bb]` printed `xyz` before (unknown\nstyle names, non-strict nesting) and raised `MarkupError: Closing tag [/bb]\ndoesn't match any open tag` after.\n\nOverlap stays rejected, because it is unrepresentable rather than unimplemented\n— a handler receives `children` as one contiguous slice, so a region straddling\nanother pair's closing boundary has nothing to hand it. A style span may overlap\nbecause it annotates; a plugin pair may not because it replaces. What changes is\nthat the rejection now happens where the shape is known and says so:\n\n    Plugin tag [bb] overlaps [aa]: plugin tags must nest, because a handler\n    receives one contiguous slice. Close [/bb] before [/aa].\n\nDeliberately untouched: an inner plugin tag that never closes (`[aa]x[bb]y[/aa]`)\ngets no entry in `pairs`, so it never reaches the overlap test and still renders.\nThe obvious alternative — rejecting whenever a closing tag's match is not the top\nof the stack — would have broken it, which is why the test lives in the filter\nrather than the walk. Pinned, along with sequential pairs and the built-in\ndialect's non-strict nesting.\n\nFound by review on PR #101.\n"
         },
         {
           "sha": "06aa3fd864c9337fc0ccadccba4985d3344107cb",
