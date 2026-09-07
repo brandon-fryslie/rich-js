@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-105",
+      "ref": "refs/pull/105/merge",
+      "sha": "b69f2881320ddb4aab29a4578be121c51f8d2dab",
+      "timestamp": "2026-09-07T16:15:09.197Z",
+      "commits": [
+        {
+          "sha": "b69f2881320ddb4aab29a4578be121c51f8d2dab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:14:40-06:00",
+          "message": "Merge bc2496fbdf0e5fd46e61dca5d31c1e60501566c0 into 0a742ebc49b21bf82866f34bf6fd67648237adcc\n"
+        },
+        {
+          "sha": "bc2496fbdf0e5fd46e61dca5d31c1e60501566c0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T10:14:29-06:00",
+          "message": "fix(table): stamp the header and footer on assignment, not at the constructor (rich-table-n8a)\n\n`toCellText` is the one crossing where caller content becomes table content,\nand it makes three promises: markup is parsed, `end` is cleared because a cell\nis a fragment rather than a line, and a `RichText` is copied so the caller no\nlonger owns the table's cell. `Column`'s constructor kept all three.\n\nNothing kept them after it. `Table.columns` hands out the live array and both\nfields were plain and public, so an assignment landed unstamped in a slot every\nreader below assumes the crossing has been through:\n\n    const mine = new RichText(\"Foot\");\n    t.columns[0].footer = mine;   // no copy, no parse, `end` intact\n    mine.append(\"MUTATED\");       // and the table's footer changes with it\n\nThe invariant was established in a constructor and violable for the rest of the\nobject's life, which makes the stamp a convention the constructor happened to\nfollow rather than something the type proves.\n\nBoth fields are now accessor pairs whose setters route through `toCellText`, so\nthere is exactly one writer of the backing field in the program and the\nconstructor is one caller of the border rather than the one place it is true —\nthe same shape `Layout` already uses for `ratio` and `minimumSize`, which had\nthis bug for the same reason. `readonly` was the other candidate and is weaker\ntwice over: it is erased at runtime, and it would delete a capability the\nreference has, where `Column` is a mutable dataclass. Assignment stays legal and\nnow parses markup too, because it crosses the same door construction does.\n\nThe setters take `undefined` rather than defaulting around it: absent and empty\nare already the same header, and `toCellText` is where that mapping lives.\n\n`copy()` stopped copying its own header and footer on the way into the\nconstructor — the crossing there copies a `RichText` already, and a second copy\nis a second home for one rule. The existing \"copy creates independent instance\"\ntest grew the mutation assertion that makes that checkable.\n\nThe two `end` frames in the ticket do not reproduce, and the tests pin what is\nobservable instead: `_renderRow` justifies the cell to `cellWidth` before `end`\nis appended and `adjustLineLength` crops it straight back off, so a header's or\nfooter's `end` never reaches the frame at any width or justification. The stamp\nis asserted on the field; the copy and the markup parse are asserted through the\nrendered output. Eight new tests, all red without this change.\n\n2314 pass, `table-frames.golden.txt` unmoved and untouched, three-pass lint and\nthe demo typecheck clean.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0a742ebc49b21bf82866f34bf6fd67648237adcc",
