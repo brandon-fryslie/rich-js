@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-99",
+      "ref": "refs/pull/99/merge",
+      "sha": "7516ebabb4acef8a8032afaa6f7be8ea9d52de0f",
+      "timestamp": "2026-09-07T14:04:00.086Z",
+      "commits": [
+        {
+          "sha": "7516ebabb4acef8a8032afaa6f7be8ea9d52de0f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T08:03:30-06:00",
+          "message": "Merge fdd952e06440f2b6692e61bdc860e57772561eb6 into 374c412229747de51b2b91fccc95a825495b0553\n"
+        },
+        {
+          "sha": "fdd952e06440f2b6692e61bdc860e57772561eb6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T08:03:00-06:00",
+          "message": "docs(text): point the full-justify note at the ticket that owns it\n\n`rich-justify-0cr.1` already tracked implementing full justification, with\nthree siblings covering the table, the docs, and the skipped expand test.\nThe note added with the justify fixture cited a new ticket filed without\nchecking, which is a second entry for one fact.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "374c412229747de51b2b91fccc95a825495b0553",
