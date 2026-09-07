@@ -4,15 +4,29 @@
     {
       "version": "pr-96",
       "ref": "refs/pull/96/merge",
-      "sha": "7576946801b2deaf0380df2e9a3a638c6b1fa79f",
-      "timestamp": "2026-09-07T01:13:30.754Z",
+      "sha": "3f60e28159f90c628e3e0593dce1be98238a2f72",
+      "timestamp": "2026-09-07T01:45:43.431Z",
       "commits": [
         {
-          "sha": "7576946801b2deaf0380df2e9a3a638c6b1fa79f",
+          "sha": "3f60e28159f90c628e3e0593dce1be98238a2f72",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T01:12:56Z",
-          "message": "Merge 642c8f1f121e8e8cbcbe704aa41500fe475233a2 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+          "timestamp": "2026-09-07T01:45:12Z",
+          "message": "Merge 1f780c8cf635e7e0e831ecddc1c805bd3f97f0fe into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+        },
+        {
+          "sha": "1f780c8cf635e7e0e831ecddc1c805bd3f97f0fe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T19:44:19-06:00",
+          "message": "fix(table): consult the plugin registry at the cell crossing\n\n`core/markup.ts` exports two functions that turn markup into `RichText`, and\nthis file imported the plain `render` under the name `renderMarkup` — as\n`console.ts` and `prompt.ts` still do. A tag registered on\n`globalMarkupRegistry`, which `examples/rich-markup-plugins` does, therefore\ndegraded silently inside every table cell, header, footer, title and caption:\ntag consumed, content unstyled, nothing reported.\n\nThe real `renderMarkup` is a strict superset. Both of its early exits — no `[`\nin the string, and zero paired plugin tags — delegate to `render` with the same\nbase style and the same emoji default. Output was verified identical across\neleven markup shapes, malformed input raises the same `MarkupError`, and a\n500x8 table showed no regression (plain 36.8ms -> 35.2ms, `[red]v[/red]`\n57.4ms -> 53.6ms, median of ten runs). So this costs nothing a caller who\nregisters nothing can observe.\n\nNo registry threaded through `TableOptions`: that would be a mode with no\nreference behaviour to define, and the global registry is the one `progress.ts`\nalready reads.\n\n`toCellText`'s comment said those five positions reach the wire through\n`Console.render_str`, meaning Rich's; it read as this port's `console.ts`. It\nnames Rich now.\n\nThe remaining console.ts/prompt.ts split is filed as rich-markup-pcp.\n"
+        },
+        {
+          "sha": "ad96b17b5d8e66bc509b05a0d9436b4610f6c1f7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T19:44:08-06:00",
+          "message": "fix(table): leave no phantom column when a cell's markup is malformed\n\nParsing at the border gave `addRow` a way to throw that it did not have\nbefore, and the column auto-create loop ran ahead of the parse — so\n`addRow(\"ok\", \"[/bad]\")` on a one-column table raised `MarkupError` with a\nsecond, empty column already committed. A caller that caught the error and\nretried with valid data inherited the phantom.\n\nResolving the cells before the loop makes `addRow` all-or-nothing. The\noperations are unchanged and still all run; only their order moved, so there\nis no rollback path and no try/catch to keep correct.\n\nThe eager throw is a deliberate divergence — Rich stores the raw string and\nraises the same `MarkupError` lazily at print time — so both halves are now\npinned: that `addRow(\"[/bad]\")` throws where this port parses, and that the\nfailed call leaves the column list untouched. Each was proven to fail by an\nisolated revert.\n"
         },
         {
           "sha": "642c8f1f121e8e8cbcbe704aa41500fe475233a2",
