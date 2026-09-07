@@ -4,15 +4,22 @@
     {
       "version": "pr-96",
       "ref": "refs/pull/96/merge",
-      "sha": "3f60e28159f90c628e3e0593dce1be98238a2f72",
-      "timestamp": "2026-09-07T01:45:43.431Z",
+      "sha": "fcbcd69eeb9b4cc9a027600ffb3ff07b5ddfecc0",
+      "timestamp": "2026-09-07T02:03:53.695Z",
       "commits": [
         {
-          "sha": "3f60e28159f90c628e3e0593dce1be98238a2f72",
+          "sha": "fcbcd69eeb9b4cc9a027600ffb3ff07b5ddfecc0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T01:45:12Z",
-          "message": "Merge 1f780c8cf635e7e0e831ecddc1c805bd3f97f0fe into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+          "timestamp": "2026-09-07T02:03:21Z",
+          "message": "Merge 9e6c9f439100d1d265e628267c207392d5e06660 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+        },
+        {
+          "sha": "9e6c9f439100d1d265e628267c207392d5e06660",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T20:03:12-06:00",
+          "message": "test(table): pin the eager markup throw at every position that carries it\n\nParsing at the border moved the `MarkupError` from render time to the call that\nsupplies the string, and only the cell position was held still. The other four\nconvert just as eagerly — `Column`'s constructor for header and footer,\n`Table`'s for title and caption — so a constructor that could not throw before\nthis branch can now throw at four sites with nothing pinning it.\n\nChecked against the reference per position: Rich raises the same error from all\nfive, at print time. The divergence is uniformly when, never whether. The first\nprobe of that claim reported \"no throw\" for a title, because a table with no\ncolumns renders no title and so never parsed it; a table with a row present\nthrows for every position.\n\nOne `it.each` rather than a test per site, matching the positional test a screen\nabove it and its stated reason — one rule with five call sites is one assertion\ndriven by five values. The single-position test it replaces is gone, so five\npositions are now covered by fewer bodies than one had. Reverting any one\nposition to an unparsed `RichText` turns exactly that row red and no other.\n\nNo atomicity test for `addColumn`: `new Column(...)` already throws before the\npush, so there is no defect there to pin.\n"
         },
         {
           "sha": "1f780c8cf635e7e0e831ecddc1c805bd3f97f0fe",
