@@ -300,7 +300,6 @@ export interface ColumnOptions {
   footerStyle?: string | Style;
   style?: string | Style;
   justify?: "left" | "center" | "right" | "full";
-  vertical?: "top" | "middle" | "bottom";
   width?: number;
   minWidth?: number;
   maxWidth?: number;
