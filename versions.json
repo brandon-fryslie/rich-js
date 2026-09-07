@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-94",
-      "ref": "refs/pull/94/merge",
-      "sha": "506b9c824145acabe2941d4f3fd61b6a7f1ce698",
-      "timestamp": "2026-09-06T23:57:26.619Z",
-      "commits": [
-        {
-          "sha": "506b9c824145acabe2941d4f3fd61b6a7f1ce698",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T23:56:53Z",
-          "message": "Merge 453f824f795256b1fe4dfd3bc8d61f09f1b80c16 into 89f42ecbec0d9da555e22153de0cd1da9fac6f4f\n"
-        },
-        {
-          "sha": "453f824f795256b1fe4dfd3bc8d61f09f1b80c16",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T17:56:44-06:00",
-          "message": "docs(box): stop the mid arm citing an option this port lacks\n\nThe comment justified the spacer row by Table's `leading`, which exists in the\nreference and in docs/tables.md but not in src/ (rich-table-jx1). The reference\nis the reason the row has this shape; say that instead.\n"
-        },
-        {
-          "sha": "ea9eee359379daffc0ec002f4a3443c31c4edc35",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T17:45:27-06:00",
-          "message": "docs(test): stop the sentinel-grid comment overclaiming\n\nIt said all thirty-two characters were distinct and that swapping any two\nwould turn the test red. Thirty are distinct; a content row's fill column is a\nspace in three of them, and swapping two never-drawn characters cannot fail\nanything. The claim that survives is about drawn positions.\n"
-        },
-        {
-          "sha": "5497b73de61485d76fff58abbd0b4d6bcd2d87b7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T17:36:25-06:00",
-          "message": "fix(box): require a grid row to draw four cells, not merely count four\n\nThe constructor checked that a row held four characters. That is half the\ninvariant: a grid column is one drawn glyph position and a table's widths are\nmeasured in terminal cells, so \"🌟─┬┐\" passed the count and silently drew a\nfive-cell row, breaking the frame of every table using that box — far from the\nline that caused it.\n\nBoth legs are now required and both are pinned by a test that fails when either\nis removed: four characters, because getEdge indexes the four positions, and\nfour cells, because that is what is drawn. The previous test claimed to prove\nthe character count was not a UTF-16 count and could not — its input was all\nBMP, so both readings agreed and reverting the check left it green.\n"
-        },
-        {
-          "sha": "3474985ed277340bd1ab51911b5fd9d267d80a41",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T17:23:02-06:00",
-          "message": "fix(box): declare each box style as the reference's own 8x4 grid (rich-table-6uy.3)\n\nA `BoxChars` carried five of the reference's eight grid lines. The three it\ndropped are the row separator, the footer separator and the footer content row,\nso a table with `showLines` or a footer drew the head-to-body glyphs where Rich\ndraws `├───┼───┤`, and no data edit could have fixed it — the type had nowhere\nto put them.\n\nSeven of the nineteen constants were also wrong on fields that did exist:\nASCII's top and bottom dividers, and the whole MINIMAL and SIMPLE families.\n\nBoth defects have one cause. The eighteen named fields were a second,\ndifferently-shaped map of a territory the reference publishes as an 8x4\ncharacter grid, and every constant was a hand transcription into that shape —\nincluding a name collision that inverts a box if read literally, since the\nfield named `mid` held the reference's line 3 while the reference's own `mid_*`\nis line 4. So the fix is to stop transcribing: a `Box` is now built from the\ngrid itself, which can be diffed against `rich/box.py` character for character,\nand the row glyphs are reachable only by what a row *is* (`getRow`,\n`getContentChars`) rather than by a name that can be matched to the wrong line.\n\nThe nineteen constants were generated from the reference, not retyped. Frames\nverified by rendering every one of them as a table with a header, two body rows,\nrow separators and a footer, and diffing all nine lines against expectations\ncomputed from `rich/box.py`: 19/19 match, and corrupting one grid line makes the\ndiff red on exactly that row.\n\n`Table` needed no edit — the level already crossed as a value, which is the seam\n.1 and .2 left open for this. `Panel` reads `box.top`/`box.bottom` as records now\nand takes its body verticals from `getContentChars(\"row\")`.\n\nThe grid also carries `mid` as the reference means it: a blank spacer holding the\nbody verticals, not a rule.\n\n611 lines to 435, while tripling the data each constant carries.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "89f42ecbec0d9da555e22153de0cd1da9fac6f4f",
-      "timestamp": "2026-09-06T23:01:55.705Z",
+      "sha": "a0b156a315e44b2a117aa7a8bcbff1ae03465ecb",
+      "timestamp": "2026-09-07T00:02:49.028Z",
       "commits": [
         {
-          "sha": "89f42ecbec0d9da555e22153de0cd1da9fac6f4f",
+          "sha": "a0b156a315e44b2a117aa7a8bcbff1ae03465ecb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T17:01:26-06:00",
-          "message": "fix(table): draw the header row with the head characters (rich-table-6uy.2) (#93)\n\n* chore(lit): refresh the embedded lit integration block and /next skill\n\n`lit init` rewrites the block it owns in AGENTS.md and CLAUDE.md — the\nmarker rename (LINKS -> LIT) and the reworded quickstart pointer — and\nwrites the /next skill it now ships into .claude/skills/. Tool output,\ncommitted as its own change so it does not ride along in a fix.\n\n* fix(table): draw the header row with the head characters (rich-table-6uy.2)\n\nA heavy-framed table drew its header cells with the body verticals —\n`│ A │ B │` where Rich renders `┃ A ┃ B ┃` — because _renderRow emitted\nbox.left/vertical/right unconditionally and headLeft/headVertical/headRight\nhad no reader anywhere in src/.\n\nThe header row and every body row come out of that one code path, so the\nhead glyphs have to be selected per row or the body goes heavy too. The\nlevel crosses as a value: _renderRow takes a RowLevel and Box answers with\nthe glyphs, mirroring the getRow(widths, level) call beside it. Box keeps\nboth halves of the level -> glyph mapping, so rich-table-6uy.3 edits one\nswitch rather than hunting a second copy in Table.\n\nHEAVY_HEAD is the only prebuilt box whose head verticals differ from its\nbody's, so it is the only frame that changes; verified by walking every\nexported Box. docs/tables.md's flagship example already showed this output\nand was a lie about the library until now.\n\nTests pin the default frame end to end and the footer row's verticals; the\nfooter test asserts content rows only, since the separators around it are\nthe Box's one separator set that .3 replaces. All five went red on revert."
+          "timestamp": "2026-09-06T18:02:15-06:00",
+          "message": "fix(box): declare each box style as the reference's own 8x4 grid (rich-table-6uy.3) (#94)\n\n* fix(box): declare each box style as the reference's own 8x4 grid (rich-table-6uy.3)\n\nA `BoxChars` carried five of the reference's eight grid lines. The three it\ndropped are the row separator, the footer separator and the footer content row,\nso a table with `showLines` or a footer drew the head-to-body glyphs where Rich\ndraws `├───┼───┤`, and no data edit could have fixed it — the type had nowhere\nto put them.\n\nSeven of the nineteen constants were also wrong on fields that did exist:\nASCII's top and bottom dividers, and the whole MINIMAL and SIMPLE families.\n\nBoth defects have one cause. The eighteen named fields were a second,\ndifferently-shaped map of a territory the reference publishes as an 8x4\ncharacter grid, and every constant was a hand transcription into that shape —\nincluding a name collision that inverts a box if read literally, since the\nfield named `mid` held the reference's line 3 while the reference's own `mid_*`\nis line 4. So the fix is to stop transcribing: a `Box` is now built from the\ngrid itself, which can be diffed against `rich/box.py` character for character,\nand the row glyphs are reachable only by what a row *is* (`getRow`,\n`getContentChars`) rather than by a name that can be matched to the wrong line.\n\nThe nineteen constants were generated from the reference, not retyped. Frames\nverified by rendering every one of them as a table with a header, two body rows,\nrow separators and a footer, and diffing all nine lines against expectations\ncomputed from `rich/box.py`: 19/19 match, and corrupting one grid line makes the\ndiff red on exactly that row.\n\n`Table` needed no edit — the level already crossed as a value, which is the seam\n.1 and .2 left open for this. `Panel` reads `box.top`/`box.bottom` as records now\nand takes its body verticals from `getContentChars(\"row\")`.\n\nThe grid also carries `mid` as the reference means it: a blank spacer holding the\nbody verticals, not a rule.\n\n611 lines to 435, while tripling the data each constant carries.\n\n* fix(box): require a grid row to draw four cells, not merely count four\n\nThe constructor checked that a row held four characters. That is half the\ninvariant: a grid column is one drawn glyph position and a table's widths are\nmeasured in terminal cells, so \"🌟─┬┐\" passed the count and silently drew a\nfive-cell row, breaking the frame of every table using that box — far from the\nline that caused it.\n\nBoth legs are now required and both are pinned by a test that fails when either\nis removed: four characters, because getEdge indexes the four positions, and\nfour cells, because that is what is drawn. The previous test claimed to prove\nthe character count was not a UTF-16 count and could not — its input was all\nBMP, so both readings agreed and reverting the check left it green.\n\n* docs(test): stop the sentinel-grid comment overclaiming\n\nIt said all thirty-two characters were distinct and that swapping any two\nwould turn the test red. Thirty are distinct; a content row's fill column is a\nspace in three of them, and swapping two never-drawn characters cannot fail\nanything. The claim that survives is about drawn positions.\n\n* docs(box): stop the mid arm citing an option this port lacks\n\nThe comment justified the spacer row by Table's `leading`, which exists in the\nreference and in docs/tables.md but not in src/ (rich-table-jx1). The reference\nis the reason the row has this shape; say that instead."
         }
       ]
     }
