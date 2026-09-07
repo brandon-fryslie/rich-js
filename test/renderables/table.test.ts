@@ -736,13 +736,20 @@ describe("Table markup", () => {
     expect(plain).toContain("array[0] and [1, 2, 3]");
   });
 
-  it("raises malformed markup from addRow, where this port parses", () => {
-    // A stated divergence, so it is pinned rather than described. Rich raises
-    // the same `MarkupError` for this cell but at print time, because it stores
-    // the raw string; parsing at the border moves the throw, not its existence.
-    const t = new Table();
-    t.addColumn("H");
-    expect(() => t.addRow("[/bad]")).toThrow(MarkupError);
+  // The same five positions and the same argument as above: one rule, one
+  // assertion, five values. Rich raises this `MarkupError` from all five too,
+  // but at print time, because it stores the raw string — parsing at the border
+  // moves the throw to the call that supplies it without inventing one. That is
+  // a stated divergence, so each position that carries it is pinned; none of
+  // these render, which is what makes them a claim about *when*.
+  it.each([
+    ["a title", () => new Table({ title: "[/bad]" })],
+    ["a caption", () => new Table({ caption: "[/bad]" })],
+    ["a header", () => new Table().addColumn("[/bad]")],
+    ["a footer", () => new Table().addColumn("H", { footer: "[/bad]" })],
+    ["a cell", () => new Table().addColumn("H").addRow("[/bad]")],
+  ])("raises %s's malformed markup from the call that supplies it", (_, build) => {
+    expect(build).toThrow(MarkupError);
   });
 
   it("adds no column when a later cell in the same row throws", () => {
