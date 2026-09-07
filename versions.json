@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-101",
+      "ref": "refs/pull/101/merge",
+      "sha": "67c8c4cb6b72a2a2acb5d1b16bf79946b356aef6",
+      "timestamp": "2026-09-07T14:42:18.086Z",
+      "commits": [
+        {
+          "sha": "67c8c4cb6b72a2a2acb5d1b16bf79946b356aef6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T08:41:46-06:00",
+          "message": "Merge 06aa3fd864c9337fc0ccadccba4985d3344107cb into 0f270d6e5c1bf24d6ebbe8c3664ca07dca414e97\n"
+        },
+        {
+          "sha": "06aa3fd864c9337fc0ccadccba4985d3344107cb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T08:41:21-06:00",
+          "message": "fix(markup): route every consumer through the one markup crossing (rich-markup-pcp)\n\n`src/core/markup.ts` exported two functions that turn a markup string into a\n`RichText`, and the four call sites in `src/` were split between them under the\nsame import alias:\n\n    plugin-aware:  renderables/progress.ts, renderables/table.ts\n    plain:         renderables/prompt.ts, core/console.ts  (`render as renderMarkup`)\n\nThe import line read identically at all four, so the difference was invisible at\nevery point of use. A tag registered on `globalMarkupRegistry` resolved in a\ntable cell and was silently eaten by `console.print` — the path almost every\nconsumer takes — printing the content unstyled with nothing reported.\n\nBoth plain sites now import `renderMarkup`. Measured, not assumed:\n`console.print(\"say [shout]hello[/shout] now\")` emits `say HELLO now\\n`, and\n`Prompt.ask` shows `pick ONE: `. `test/core/markup-grammar.golden.txt` passes\nunchanged, which is PR #96's measurement — `renderMarkup` is a strict superset\nthat delegates on both early exits — confirmed end to end rather than re-derived.\n\n`render` is now module-private: the ticket's open question, decided. Exporting\nthe inner layer is what made this bug representable, and unexported the drift is\na compile error rather than a rule to remember. Rendering *without* plugins stays\nreachable as a value — `renderMarkup(s, { registry: new MarkupRegistry() })` —\ninstead of as a second function name. That also retires a second exported\n`RenderOptions` that collided by name with the unrelated one in `core/protocol.ts`.\n\n`examples/claude-sessions/.../_common.ts` carried the identical alias beneath a\nJSDoc that already claimed `renderMarkup`; the two now agree. The plugin demo\ngains the bare-string `console.print` path — the usage that was broken, and the\none every markup doc teaches.\n\n`test/core/markup.test.ts` asserts the built-in dialect through the public\ncrossing with an explicit empty registry, so it no longer binds to an internal\nfunction and cannot be perturbed by another suite's global registration.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0f270d6e5c1bf24d6ebbe8c3664ca07dca414e97",
