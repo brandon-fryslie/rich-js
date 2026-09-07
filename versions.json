@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-106",
-      "ref": "refs/pull/106/merge",
-      "sha": "b516a6528c9f3d2579cc62a5b218d1ee1b5a6583",
-      "timestamp": "2026-09-07T16:30:03.268Z",
-      "commits": [
-        {
-          "sha": "b516a6528c9f3d2579cc62a5b218d1ee1b5a6583",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T10:29:32-06:00",
-          "message": "Merge df22c042ee92facb6acdf2f816e42a64988920fb into 49607b274ed7f2ab3677e631e116fd608820f3d3\n"
-        },
-        {
-          "sha": "df22c042ee92facb6acdf2f816e42a64988920fb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T10:29:07-06:00",
-          "message": "fix(box): leave an already-ASCII box alone under asciiOnly (rich-table-0gv)\n\n`substitute({ asciiOnly: true })` answered `ASCII` for every box, including\nthe four that are already pure ASCII. A MARKDOWN table on a terminal without\nunicode silently became a plus-and-pipe frame instead of the pipe-delimited\nmarkdown it was chosen for; ASCII2 and ASCII_DOUBLE_HEAD were erased the same\nway. The reference guards with \"if options.ascii_only and not box.ascii\".\n\nWhether a box is drawable without unicode is derived from its grid at\nconstruction, not declared per constant as the reference's `ascii=True` is.\nA `Box` is wholly its grid, so the grid already answers this and a second\nhand-written answer could disagree with it — and derivation reaches boxes no\nconstant speaks for: `safeSubstitute` builds a fresh `Box` from an edited\ngrid, and a flag on the shipped constants would say nothing about that one.\nThe predicate names exactly the four the reference constructs with\n`ascii=True`, pinned by naming all nineteen in the test rather than asserting\nthe count.\n\nThis also fixes, with no change to table.ts, an asciiOnly + headerless\nASCII_DOUBLE_HEAD table. `Table.render` runs the two box swaps in the\nreference's order, so `substitute` handing the box through unchanged leaves\n`plainHeaded` a box it recognises: the frame is now ASCII2's crossed edge\n(\"+---+---+\") as Rich draws it, where replacing the box first left\n`plainHeaded` holding ASCII and an uncrossed \"+-------+\".\n\nVerified: six of the seven new assertions are red against the previous\nbox.ts. 2335 pass, three-pass lint and demo typecheck clean, golden files\nunmoved.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "49607b274ed7f2ab3677e631e116fd608820f3d3",
-      "timestamp": "2026-09-07T16:21:48.743Z",
+      "sha": "c0cfb2467019d80370bf47286dfe017c2db8ede0",
+      "timestamp": "2026-09-07T16:35:19.369Z",
       "commits": [
         {
-          "sha": "49607b274ed7f2ab3677e631e116fd608820f3d3",
+          "sha": "c0cfb2467019d80370bf47286dfe017c2db8ede0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T10:21:16-06:00",
-          "message": "fix(table): stamp the header and footer on assignment, not at the constructor (rich-table-n8a) (#105)\n\n`toCellText` is the one crossing where caller content becomes table content,\nand it makes three promises: markup is parsed, `end` is cleared because a cell\nis a fragment rather than a line, and a `RichText` is copied so the caller no\nlonger owns the table's cell. `Column`'s constructor kept all three.\n\nNothing kept them after it. `Table.columns` hands out the live array and both\nfields were plain and public, so an assignment landed unstamped in a slot every\nreader below assumes the crossing has been through:\n\n    const mine = new RichText(\"Foot\");\n    t.columns[0].footer = mine;   // no copy, no parse, `end` intact\n    mine.append(\"MUTATED\");       // and the table's footer changes with it\n\nThe invariant was established in a constructor and violable for the rest of the\nobject's life, which makes the stamp a convention the constructor happened to\nfollow rather than something the type proves.\n\nBoth fields are now accessor pairs whose setters route through `toCellText`, so\nthere is exactly one writer of the backing field in the program and the\nconstructor is one caller of the border rather than the one place it is true —\nthe same shape `Layout` already uses for `ratio` and `minimumSize`, which had\nthis bug for the same reason. `readonly` was the other candidate and is weaker\ntwice over: it is erased at runtime, and it would delete a capability the\nreference has, where `Column` is a mutable dataclass. Assignment stays legal and\nnow parses markup too, because it crosses the same door construction does.\n\nThe setters take `undefined` rather than defaulting around it: absent and empty\nare already the same header, and `toCellText` is where that mapping lives.\n\n`copy()` stopped copying its own header and footer on the way into the\nconstructor — the crossing there copies a `RichText` already, and a second copy\nis a second home for one rule. The existing \"copy creates independent instance\"\ntest grew the mutation assertion that makes that checkable.\n\nThe two `end` frames in the ticket do not reproduce, and the tests pin what is\nobservable instead: `_renderRow` justifies the cell to `cellWidth` before `end`\nis appended and `adjustLineLength` crops it straight back off, so a header's or\nfooter's `end` never reaches the frame at any width or justification. The stamp\nis asserted on the field; the copy and the markup parse are asserted through the\nrendered output. Eight new tests, all red without this change.\n\n2314 pass, `table-frames.golden.txt` unmoved and untouched, three-pass lint and\nthe demo typecheck clean."
+          "timestamp": "2026-09-07T10:34:46-06:00",
+          "message": "fix(box): leave an already-ASCII box alone under asciiOnly (rich-table-0gv) (#106)\n\n`substitute({ asciiOnly: true })` answered `ASCII` for every box, including\nthe four that are already pure ASCII. A MARKDOWN table on a terminal without\nunicode silently became a plus-and-pipe frame instead of the pipe-delimited\nmarkdown it was chosen for; ASCII2 and ASCII_DOUBLE_HEAD were erased the same\nway. The reference guards with \"if options.ascii_only and not box.ascii\".\n\nWhether a box is drawable without unicode is derived from its grid at\nconstruction, not declared per constant as the reference's `ascii=True` is.\nA `Box` is wholly its grid, so the grid already answers this and a second\nhand-written answer could disagree with it — and derivation reaches boxes no\nconstant speaks for: `safeSubstitute` builds a fresh `Box` from an edited\ngrid, and a flag on the shipped constants would say nothing about that one.\nThe predicate names exactly the four the reference constructs with\n`ascii=True`, pinned by naming all nineteen in the test rather than asserting\nthe count.\n\nThis also fixes, with no change to table.ts, an asciiOnly + headerless\nASCII_DOUBLE_HEAD table. `Table.render` runs the two box swaps in the\nreference's order, so `substitute` handing the box through unchanged leaves\n`plainHeaded` a box it recognises: the frame is now ASCII2's crossed edge\n(\"+---+---+\") as Rich draws it, where replacing the box first left\n`plainHeaded` holding ASCII and an uncrossed \"+-------+\".\n\nVerified: six of the seven new assertions are red against the previous\nbox.ts. 2335 pass, three-pass lint and demo typecheck clean, golden files\nunmoved."
         }
       ]
     }
