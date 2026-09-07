@@ -91,6 +91,12 @@ export function runDemo(host: TerminalHost): DemoHandle {
   try {
     consoleOut.print(new RichText("Registered on the global registry", { style: Style.parse("bold") }));
     consoleOut.print(renderMarkup(`No registry passed: [shout]it still resolves[/shout].`));
+    // …and the same tag in a bare string handed straight to `print`. Markup
+    // reaches `RichText` through one crossing, so `console.print` falls back to
+    // the global registry exactly as the call above does. Until rich-markup-pcp
+    // it did not: `print` bound to the built-in parser, and a globally
+    // registered tag was consumed and its content printed unstyled.
+    consoleOut.print(`Straight through print: [shout]it resolves here too[/shout].`);
     consoleOut.print(new RichText(""));
   } finally {
     // [LAW:no-shared-mutable-globals] The registry outlives this demo, so the

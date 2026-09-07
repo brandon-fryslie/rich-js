@@ -10,7 +10,7 @@ import {
   emojiReplace,
 } from "../../../../src/index.js";
 import type { Renderable } from "../../../../src/index.js";
-import { render as renderMarkup } from "../../../../src/core/markup.js";
+import { renderMarkup } from "../../../../src/core/markup.js";
 
 // Singleton highlighters
 const iso8601 = new ISO8601Highlighter();

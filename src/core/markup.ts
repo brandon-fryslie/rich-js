@@ -9,6 +9,12 @@
  * handler — splicing the handler's returned Renderable into the output. The
  * built-in style dialect and the plugin dialect are routed by the registry,
  * which is the single trust boundary between them.
+ *
+ * Plugin pairs must nest. The built-in dialect admits non-strict nesting
+ * (`[bold]a[italic]b[/bold]c[/italic]`) because a style is an annotation and
+ * annotations may overlap freely; a plugin tag is a replacement whose handler
+ * takes one contiguous `inner`, so an overlapping pair has no slice to hand it
+ * and is rejected with a `MarkupError`.
  */
 
 import { Style, StyleSyntaxError } from "./style.js";
@@ -130,14 +136,32 @@ function parseTags(markup: string): ParsedTag[] {
   return tags;
 }
 
-export interface RenderOptions {
+interface RenderOptions {
   emoji?: boolean;
 }
 
 /**
- * Parses markup text and returns a RichText with appropriate spans.
+ * Parses the built-in style dialect — `[bold red]text[/bold red]` — into a
+ * `RichText` with styled spans. Module-private on purpose: `renderMarkup` is
+ * this module's one crossing, and it delegates straight here the moment a
+ * string carries no paired plugin tag.
+ *
+ * [LAW:single-enforcer] Exporting this is what let a caller bind to the inner
+ * layer, and two of them did — `console.ts` and `prompt.ts` imported it as
+ * `render as renderMarkup`, so the import line read identically to the
+ * plugin-aware sites and the difference was invisible at every point of use. A
+ * tag registered on `globalMarkupRegistry` resolved in a table cell and was
+ * silently eaten by `console.print`, the path almost every consumer takes
+ * (rich-markup-pcp). Unexported, that drift is a compile error rather than a
+ * rule someone has to keep remembering.
+ *
+ * [LAW:dataflow-not-control-flow] Rendering *without* plugins stays reachable
+ * as a value rather than a second name: `renderMarkup(s, { registry: new
+ * MarkupRegistry() })`. Two exported functions put that variability in the
+ * function names; an empty registry puts it in the data, where the one
+ * boundary admits both.
  */
-export function render(
+function render(
   markup: string,
   baseStyle?: string | Style,
   options?: RenderOptions,
@@ -508,14 +532,38 @@ function pairPluginTags(
       stack.push(i);
     }
   }
-  // Filter pairs to top-level only.
+  // Filter pairs to top-level only. A pair that opens inside the current one is
+  // either contained — re-discovered when the recursion renders the outer
+  // pair's inner slice — or overlapping, and only its *closing* position tells
+  // the two apart. Testing the open position alone conflated them and dropped
+  // the overlapping pair, which orphaned its closing tag into the trailing
+  // slice, where the built-in parser blamed the wrong tag for the wrong reason.
   const topLevel = new Map<number, number>();
   let outerEnd = -1;
+  let outerOpenIdx = -1;
   const sortedOpens = [...pairs.keys()].sort((a, b) => a - b);
   for (const openIdx of sortedOpens) {
-    if (annotated[openIdx]!.start < outerEnd) continue;
-    topLevel.set(openIdx, pairs.get(openIdx)!);
-    outerEnd = annotated[pairs.get(openIdx)!]!.end;
+    const closeIdx = pairs.get(openIdx)!;
+    if (annotated[openIdx]!.start < outerEnd) {
+      // [LAW:no-silent-failure] Overlap is unrepresentable here rather than
+      // unimplemented: a handler receives `children` as one contiguous slice,
+      // so a region straddling another pair's closing boundary has nothing to
+      // hand it. A style span may overlap because it annotates; a plugin pair
+      // may not because it replaces.
+      if (annotated[closeIdx]!.end > outerEnd) {
+        const inner = annotated[openIdx]!.pluginName;
+        const outer = annotated[outerOpenIdx]!.pluginName;
+        throw new MarkupError(
+          `Plugin tag [${inner}] overlaps [${outer}]: plugin tags must nest, ` +
+            `because a handler receives one contiguous slice. ` +
+            `Close [/${inner}] before [/${outer}].`,
+        );
+      }
+      continue;
+    }
+    topLevel.set(openIdx, closeIdx);
+    outerOpenIdx = openIdx;
+    outerEnd = annotated[closeIdx]!.end;
   }
   return { annotated, topLevel };
 }

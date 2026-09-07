@@ -7,7 +7,7 @@ import { Style, NULL_STYLE, Theme } from "./style.js";
 import { ColorDepth, resolveColorSystem } from "./color.js";
 import type { DetectColorOptions } from "./color.js";
 import { RichText } from "./text.js";
-import { render as renderMarkup } from "./markup.js";
+import { renderMarkup } from "./markup.js";
 import { Pretty } from "./pretty.js";
 import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
