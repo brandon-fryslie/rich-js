@@ -1,0 +1,1090 @@
+sentence w1 fold
+a
+a
+a
+a
+ 
+b
+b
+b
+b
+ 
+c
+c
+c
+c
+ 
+d
+d
+d
+d
+
+sentence w1 crop
+a
+b
+c
+d
+
+sentence w1 ellipsis
+…
+…
+…
+…
+
+sentence w3 fold
+aaa
+a 
+bbb
+b 
+ccc
+c 
+ddd
+d
+
+sentence w3 crop
+aaa
+bbb
+ccc
+ddd
+
+sentence w3 ellipsis
+aa…
+bb…
+cc…
+dd…
+
+sentence w5 fold
+aaaa 
+bbbb 
+cccc 
+dddd
+
+sentence w5 crop
+aaaa 
+bbbb 
+cccc 
+dddd
+
+sentence w5 ellipsis
+aaaa 
+bbbb 
+cccc 
+dddd
+
+sentence w8 fold
+aaaa 
+bbbb 
+cccc 
+dddd
+
+sentence w8 crop
+aaaa 
+bbbb 
+cccc 
+dddd
+
+sentence w8 ellipsis
+aaaa 
+bbbb 
+cccc 
+dddd
+
+sentence w20 fold
+aaaa bbbb cccc dddd
+
+sentence w20 crop
+aaaa bbbb cccc dddd
+
+sentence w20 ellipsis
+aaaa bbbb cccc dddd
+
+unbreakable w1 fold
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+
+unbreakable w1 crop
+a
+
+unbreakable w1 ellipsis
+…
+
+unbreakable w3 fold
+aaa
+aaa
+aaa
+aaa
+aaa
+aaa
+aa
+
+unbreakable w3 crop
+aaa
+
+unbreakable w3 ellipsis
+aa…
+
+unbreakable w5 fold
+aaaaa
+aaaaa
+aaaaa
+aaaaa
+
+unbreakable w5 crop
+aaaaa
+
+unbreakable w5 ellipsis
+aaaa…
+
+unbreakable w8 fold
+aaaaaaaa
+aaaaaaaa
+aaaa
+
+unbreakable w8 crop
+aaaaaaaa
+
+unbreakable w8 ellipsis
+aaaaaaa…
+
+unbreakable w20 fold
+aaaaaaaaaaaaaaaaaaaa
+
+unbreakable w20 crop
+aaaaaaaaaaaaaaaaaaaa
+
+unbreakable w20 ellipsis
+aaaaaaaaaaaaaaaaaaaa
+
+pangram w1 fold
+T
+h
+e
+ 
+q
+u
+i
+c
+k
+ 
+b
+r
+o
+w
+n
+ 
+f
+o
+x
+ 
+j
+u
+m
+p
+s
+ 
+o
+v
+e
+r
+ 
+t
+h
+e
+ 
+l
+a
+z
+y
+ 
+d
+o
+g
+
+pangram w1 crop
+T
+q
+b
+f
+j
+o
+t
+l
+d
+
+pangram w1 ellipsis
+…
+…
+…
+…
+…
+…
+…
+…
+…
+
+pangram w3 fold
+The
+qui
+ck 
+bro
+wn 
+fox
+jum
+ps 
+ove
+r 
+the
+laz
+y 
+dog
+
+pangram w3 crop
+The
+qui
+bro
+fox
+jum
+ove
+the
+laz
+dog
+
+pangram w3 ellipsis
+The
+qu…
+br…
+fox
+ju…
+ov…
+the
+la…
+dog
+
+pangram w5 fold
+The 
+quick
+brown
+fox 
+jumps
+over 
+the 
+lazy 
+dog
+
+pangram w5 crop
+The 
+quick
+brown
+fox 
+jumps
+over 
+the 
+lazy 
+dog
+
+pangram w5 ellipsis
+The 
+quick
+brown
+fox 
+jumps
+over 
+the 
+lazy 
+dog
+
+pangram w8 fold
+The 
+quick 
+brown 
+fox 
+jumps 
+over the
+lazy dog
+
+pangram w8 crop
+The 
+quick 
+brown 
+fox 
+jumps 
+over the
+lazy dog
+
+pangram w8 ellipsis
+The 
+quick 
+brown 
+fox 
+jumps 
+over the
+lazy dog
+
+pangram w20 fold
+The quick brown fox 
+jumps over the lazy 
+dog
+
+pangram w20 crop
+The quick brown fox 
+jumps over the lazy 
+dog
+
+pangram w20 ellipsis
+The quick brown fox 
+jumps over the lazy 
+dog
+
+long-word-mid w1 fold
+T
+h
+e
+ 
+q
+u
+i
+c
+k
+ 
+b
+r
+o
+w
+n
+f
+o
+x
+j
+u
+m
+p
+s
+o
+v
+e
+r
+t
+h
+e
+l
+a
+z
+y
+d
+o
+g
+a
+n
+d
+m
+o
+r
+e
+ 
+e
+n
+d
+
+long-word-mid w1 crop
+T
+q
+b
+e
+
+long-word-mid w1 ellipsis
+…
+…
+…
+…
+
+long-word-mid w3 fold
+The
+qui
+ck 
+bro
+wnf
+oxj
+ump
+sov
+ert
+hel
+azy
+dog
+and
+mor
+e 
+end
+
+long-word-mid w3 crop
+The
+qui
+bro
+end
+
+long-word-mid w3 ellipsis
+The
+qu…
+br…
+end
+
+long-word-mid w5 fold
+The 
+quick
+brown
+foxju
+mpsov
+erthe
+lazyd
+ogand
+more 
+end
+
+long-word-mid w5 crop
+The 
+quick
+brown
+end
+
+long-word-mid w5 ellipsis
+The 
+quick
+brow…
+end
+
+long-word-mid w8 fold
+The 
+quick 
+brownfox
+jumpsove
+rthelazy
+dogandmo
+re end
+
+long-word-mid w8 crop
+The 
+quick 
+brownfox
+end
+
+long-word-mid w8 ellipsis
+The 
+quick 
+brownfo…
+end
+
+long-word-mid w20 fold
+The quick 
+brownfoxjumpsoverthe
+lazydogandmore end
+
+long-word-mid w20 crop
+The quick 
+brownfoxjumpsoverthe
+end
+
+long-word-mid w20 ellipsis
+The quick 
+brownfoxjumpsoverth…
+end
+
+hanging-space w1 fold
+a
+a
+a
+a
+ 
+ 
+ 
+ 
+ 
+ 
+b
+b
+b
+b
+
+hanging-space w1 crop
+a
+b
+
+hanging-space w1 ellipsis
+…
+…
+
+hanging-space w3 fold
+aaa
+a  
+   
+ 
+bbb
+b
+
+hanging-space w3 crop
+aaa
+bbb
+
+hanging-space w3 ellipsis
+aa…
+bb…
+
+hanging-space w5 fold
+aaaa 
+bbbb
+
+hanging-space w5 crop
+aaaa 
+bbbb
+
+hanging-space w5 ellipsis
+aaaa 
+bbbb
+
+hanging-space w8 fold
+aaaa    
+bbbb
+
+hanging-space w8 crop
+aaaa    
+bbbb
+
+hanging-space w8 ellipsis
+aaaa    
+bbbb
+
+hanging-space w20 fold
+aaaa      bbbb
+
+hanging-space w20 crop
+aaaa      bbbb
+
+hanging-space w20 ellipsis
+aaaa      bbbb
+
+multiline w1 fold
+o
+n
+e
+t
+w
+o
+ 
+t
+h
+r
+e
+e
+ 
+f
+o
+u
+r
+ 
+f
+i
+v
+e
+
+multiline w1 crop
+o
+t
+t
+f
+f
+
+multiline w1 ellipsis
+…
+…
+…
+…
+…
+
+multiline w3 fold
+one
+two
+thr
+ee 
+fou
+r 
+fiv
+e
+
+multiline w3 crop
+one
+two
+thr
+fou
+fiv
+
+multiline w3 ellipsis
+one
+two
+th…
+fo…
+fi…
+
+multiline w5 fold
+one
+two 
+three
+four 
+five
+
+multiline w5 crop
+one
+two 
+three
+four 
+five
+
+multiline w5 ellipsis
+one
+two 
+three
+four 
+five
+
+multiline w8 fold
+one
+two 
+three 
+four 
+five
+
+multiline w8 crop
+one
+two 
+three 
+four 
+five
+
+multiline w8 ellipsis
+one
+two 
+three 
+four 
+five
+
+multiline w20 fold
+one
+two three four five
+
+multiline w20 crop
+one
+two three four five
+
+multiline w20 ellipsis
+one
+two three four five
+
+leading-space w1 fold
+ 
+ 
+ 
+i
+n
+d
+e
+n
+t
+e
+d
+ 
+w
+o
+r
+d
+s
+ 
+h
+e
+r
+e
+
+leading-space w1 crop
+ 
+w
+h
+
+leading-space w1 ellipsis
+…
+…
+…
+
+leading-space w3 fold
+   
+ind
+ent
+ed 
+wor
+ds 
+her
+e
+
+leading-space w3 crop
+   
+wor
+her
+
+leading-space w3 ellipsis
+  …
+wo…
+he…
+
+leading-space w5 fold
+   in
+dente
+d 
+words
+here
+
+leading-space w5 crop
+   in
+words
+here
+
+leading-space w5 ellipsis
+   i…
+words
+here
+
+leading-space w8 fold
+   inden
+ted 
+words 
+here
+
+leading-space w8 crop
+   inden
+words 
+here
+
+leading-space w8 ellipsis
+   inde…
+words 
+here
+
+leading-space w20 fold
+   indented words 
+here
+
+leading-space w20 crop
+   indented words 
+here
+
+leading-space w20 ellipsis
+   indented words 
+here
+
+trailing-space w1 fold
+w
+o
+r
+d
+s
+ 
+t
+h
+e
+n
+ 
+s
+p
+a
+c
+e
+ 
+ 
+ 
+
+trailing-space w1 crop
+w
+t
+s
+
+trailing-space w1 ellipsis
+…
+…
+…
+
+trailing-space w3 fold
+wor
+ds 
+the
+n 
+spa
+ce 
+  
+
+trailing-space w3 crop
+wor
+the
+spa
+
+trailing-space w3 ellipsis
+wo…
+th…
+sp…
+
+trailing-space w5 fold
+words
+then 
+space
+
+trailing-space w5 crop
+words
+then 
+space
+
+trailing-space w5 ellipsis
+words
+then 
+space
+
+trailing-space w8 fold
+words 
+then 
+space   
+
+trailing-space w8 crop
+words 
+then 
+space   
+
+trailing-space w8 ellipsis
+words 
+then 
+space   
+
+trailing-space w20 fold
+words then space   
+
+trailing-space w20 crop
+words then space   
+
+trailing-space w20 ellipsis
+words then space   
+
+wide w1 fold
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+wide w1 crop
+ 
+
+wide w1 ellipsis
+…
+
+wide w3 fold
+日
+本
+語
+の
+テ
+キ
+ス
+ト
+で
+す
+
+wide w3 crop
+日 
+
+wide w3 ellipsis
+日…
+
+wide w5 fold
+日本
+語の
+テキ
+スト
+です
+
+wide w5 crop
+日本 
+
+wide w5 ellipsis
+日本…
+
+wide w8 fold
+日本語の
+テキスト
+です
+
+wide w8 crop
+日本語の
+
+wide w8 ellipsis
+日本語 …
+
+wide w20 fold
+日本語のテキストです
+
+wide w20 crop
+日本語のテキストです
+
+wide w20 ellipsis
+日本語のテキストです
+
+mixed-wide w1 fold
+a
+b
+c
+ 
+
+ 
+ 
+ 
+ 
+d
+e
+f
+ 
+g
+h
+i
+
+mixed-wide w1 crop
+a
+ 
+d
+g
+
+mixed-wide w1 ellipsis
+…
+…
+…
+…
+
+mixed-wide w3 fold
+abc
+日
+本
+語 
+def
+ghi
+
+mixed-wide w3 crop
+abc
+日 
+def
+ghi
+
+mixed-wide w3 ellipsis
+abc
+日…
+def
+ghi
+
+mixed-wide w5 fold
+abc 
+日本
+語 
+def 
+ghi
+
+mixed-wide w5 crop
+abc 
+日本 
+def 
+ghi
+
+mixed-wide w5 ellipsis
+abc 
+日本…
+def 
+ghi
+
+mixed-wide w8 fold
+abc 
+日本語 
+def ghi
+
+mixed-wide w8 crop
+abc 
+日本語 
+def ghi
+
+mixed-wide w8 ellipsis
+abc 
+日本語 
+def ghi
+
+mixed-wide w20 fold
+abc 日本語 def ghi
+
+mixed-wide w20 crop
+abc 日本語 def ghi
+
+mixed-wide w20 ellipsis
+abc 日本語 def ghi
+
+single w1 fold
+x
+
+single w1 crop
+x
+
+single w1 ellipsis
+x
+
+single w3 fold
+x
+
+single w3 crop
+x
+
+single w3 ellipsis
+x
+
+single w5 fold
+x
+
+single w5 crop
+x
+
+single w5 ellipsis
+x
+
+single w8 fold
+x
+
+single w8 crop
+x
+
+single w8 ellipsis
+x
+
+single w20 fold
+x
+
+single w20 crop
+x
+
+single w20 ellipsis
+x

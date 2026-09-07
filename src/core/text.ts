@@ -3,6 +3,7 @@
  */
 
 import { cellLen, cellCount } from "./cells.js";
+import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./sanitize.js";
@@ -16,16 +17,38 @@ function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
 }
 
+const TRAILING_WHITESPACE_RE = /\s+$/;
+
 /**
- * The offsets a line of `lineWidth` cells is cut at to fold it into pieces of
- * at most `maxWidth`. Requires `maxWidth >= 1`: the caller answers the
- * zero-cell canvas, because "no cut fits" and "no cell fits" are different
- * facts and only one of them is a list of offsets.
+ * The plain text of one line of segments, in the coordinate system
+ * `divideLine` and `Segment.divide` share: cell offsets into the styled line
+ * are cell offsets into this string. [LAW:one-source-of-truth] for that
+ * correspondence — the offsets are found in this text and applied to the
+ * segments it came from.
  */
-function foldCuts(lineWidth: number, maxWidth: number): number[] {
-  const cuts: number[] = [];
-  for (let w = maxWidth; w < lineWidth; w += maxWidth) cuts.push(w);
-  return cuts;
+function plainOf(line: Segment[]): string {
+  return line.map((segment) => segment.text).join("");
+}
+
+/**
+ * The cells of trailing whitespace on a wrapped line.
+ *
+ * A wrap cuts before a word, so the line it closes ends with the whitespace
+ * that followed *its* last word — padding the break created, not content the
+ * author wrote. Measuring it is what lets the overflow method tell "this line
+ * was cut" from "this line ends in spaces" and stamp an ellipsis only on the
+ * first, and what keeps a centred line from drifting half a space off true.
+ */
+function hangingWhitespace(line: Segment[]): number {
+  let cells = 0;
+  for (let index = line.length - 1; index >= 0; index -= 1) {
+    const text = line[index]!.text;
+    const match = TRAILING_WHITESPACE_RE.exec(text);
+    if (match === null) break;
+    cells += cellLen(match[0]);
+    if (match[0].length < text.length) break;
+  }
+  return cells;
 }
 
 // [LAW:single-enforcer] RichText is the *data-model* trust boundary for
@@ -796,22 +819,39 @@ export class RichText implements Renderable, Measurable {
     const overflow = this._overflow ?? options.overflow ?? "fold";
     const justify = this._justify ?? options.justify;
     const noWrap = this._noWrap || (options.noWrap ?? false);
+
+    // The width a line is cut to, which is not always the width it is
+    // justified in. `noWrap` here carries what Rich splits across `no_wrap`
+    // and `overflow="ignore"`: the line is not bounded at all, so it leaves at
+    // its natural width and whatever asked for it decides about the overhang —
+    // `Console`'s soft wrap and `FlexStrip`'s too-wide fallback both want the
+    // text intact rather than cropped.
+    //
+    // [LAW:dataflow-not-control-flow] It reaches the pipeline as a width, not
+    // as a step to skip: an unbounded budget has no edge to break at, so
+    // `divideLine` finds no cuts and `_fitLine` finds nothing past the edge,
+    // and every line runs the same three steps. `Infinity` is already this
+    // library's spelling of an unbounded width offer — `withBoundedWidth` in
+    // protocol.ts parses one on the way in.
+    const budget = noWrap ? cellCount(Infinity) : maxWidth;
     const endsWithNewline = text.endsWith("\n");
 
     for (let index = 0; index < logicalLines.length; index += 1) {
       const line = logicalLines[index]!;
-      const lineWidth = Segment.getLineLength(line);
       const terminateLine = index < logicalLines.length - 1 || endsWithNewline;
 
-      if (noWrap || lineWidth <= maxWidth) {
-        // Line fits — apply justification
-        yield* this._justifyLine(line, maxWidth, justify);
-        if (terminateLine) {
+      // Wrap first, overflow last — the reference's order, and the reason a
+      // long sentence grows a table row while an unbreakable word in the same
+      // column still ellipsizes.
+      const cuts = divideLine(plainOf(line), budget, { fold: overflow === "fold" });
+
+      const wrapped = Segment.divide(line, cuts);
+      for (let piece = 0; piece < wrapped.length; piece += 1) {
+        const fitted = [...this._fitLine(wrapped[piece]!, budget, overflow)];
+        yield* this._justifyLine(fitted, maxWidth, justify);
+        if (piece < wrapped.length - 1 || terminateLine) {
           yield Segment.line();
         }
-      } else {
-        // Line too long — handle overflow
-        yield* this._overflowLine(line, lineWidth, maxWidth, overflow, terminateLine);
       }
     }
 
@@ -898,95 +938,100 @@ export class RichText implements Renderable, Measurable {
     return segments;
   }
 
+  /**
+   * One line placed in a canvas `maxWidth` wide, as Rich's `Lines.justify`
+   * places it.
+   *
+   * Centre and right align on the line's *content*. The whitespace a wrap
+   * leaves on the end of the line it closed is the break's own padding, not
+   * text, and aligning around it pushes the text half a gap off true — a
+   * centred title that wraps drifts left on every line that happens to end in
+   * a space. Left keeps that whitespace, because there it is already on the
+   * side the padding goes.
+   *
+   * `undefined` is not `"left"`: it is Rich's `"default"`, which places the
+   * line without padding it at all. That distinction is what lets a soft-wrapped
+   * `Console.print` leave its lines at their natural width.
+   */
   private *_justifyLine(
     line: Segment[],
     maxWidth: number,
     justify?: "left" | "center" | "right" | "full",
   ): Iterable<Segment> {
-    const lineWidth = Segment.getLineLength(line);
-    const gap = maxWidth - lineWidth;
-
     switch (justify) {
-      case "center": {
-        const leftPad = Math.floor(gap / 2);
+      case "center":
+      case "right": {
+        const body = Segment.adjustLineLength(
+          line,
+          Segment.getLineLength(line) - hangingWhitespace(line),
+          undefined,
+          false,
+        );
+        const gap = Math.max(maxWidth - Segment.getLineLength(body), 0);
+        const leftPad = justify === "center" ? Math.floor(gap / 2) : gap;
         if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
-        yield* line;
+        yield* body;
         const rightPad = gap - leftPad;
         if (rightPad > 0) yield new Segment(" ".repeat(rightPad));
         break;
       }
-      case "right": {
-        if (gap > 0) yield new Segment(" ".repeat(gap));
-        yield* line;
+      case "left":
+      case "full":
+        // `full` distributes the gap between words in the reference and packs
+        // it on the right here; both fill the canvas, and that is what a caller
+        // asking for either is entitled to see.
+        yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)));
         break;
-      }
-      case "full": {
-        // Full justification: distribute spaces between words
-        // For now, fall through to left alignment
-        yield* line;
-        break;
-      }
       default:
-        // "left" or undefined — just yield the line as-is
         yield* line;
         break;
     }
   }
 
-  private *_overflowLine(
+  /**
+   * One wrapped line cut to the canvas.
+   *
+   * Everything reaching here already survived wrapping, so the only text still
+   * too wide is text no break could help: a word longer than the canvas under
+   * a non-folding overflow method, a glyph wider than the budget, or a canvas
+   * with no cells at all. That is what makes the overflow method a last
+   * resort rather than the first thing a long cell meets.
+   */
+  private *_fitLine(
     line: Segment[],
-    lineWidth: number,
     maxWidth: number,
     overflow: "fold" | "crop" | "ellipsis",
-    terminateLine: boolean,
   ): Iterable<Segment> {
-    switch (overflow) {
-      case "fold": {
-        // Split at maxWidth boundaries. A cell cannot be split, so a zero-cell
-        // canvas holds no piece of the line and the fold is one empty piece —
-        // the same thing `crop` and `ellipsis` yield there, which is what makes
-        // the three overflow modes agree at the bottom of the range instead of
-        // this loop stepping by zero forever. It did exactly that before:
-        // ~2^27 pushes and about a gigabyte before a `RangeError`, reachable
-        // from any `Columns` or `Layout` squeezed to no width at all.
-        const foldedLines =
-          maxWidth === 0
-            ? [Segment.adjustLineLength(line, 0, undefined, false)]
-            : Segment.divide(line, foldCuts(lineWidth, maxWidth));
-        for (let index = 0; index < foldedLines.length; index += 1) {
-          const fLine = foldedLines[index]!;
-          yield* fLine;
-          if (index < foldedLines.length - 1 || terminateLine) {
-            yield Segment.line();
-          }
-        }
-        break;
-      }
-      case "crop": {
-        const cropped = Segment.adjustLineLength(line, maxWidth, undefined, false);
-        yield* cropped;
-        if (terminateLine) {
-          yield Segment.line();
-        }
-        break;
-      }
-      case "ellipsis": {
-        // The marker takes the last cell and the text keeps the rest. At
-        // maxWidth 1 that is zero cells of text and the marker alone, which is
-        // the honest rendering of "all of this was cut"; the `maxWidth > 1`
-        // guard that used to stand here emitted no line at all, so every table
-        // column squeezed to a single cell rendered blank rather than
-        // truncated — `ellipsis` being the default column overflow, a
-        // hard-squeezed table looked like an empty frame.
-        yield* Segment.adjustLineLength(line, Math.max(0, maxWidth - 1), undefined, false);
-        // No cell to put it in at maxWidth 0, where every mode emits the bare
-        // line terminator.
-        if (maxWidth > 0) yield new Segment("\u2026");
-        if (terminateLine) {
-          yield Segment.line();
-        }
-        break;
-      }
+    const lineWidth = Segment.getLineLength(line);
+    const contentWidth = lineWidth - hangingWhitespace(line);
+
+    // Whitespace hanging past the edge is the wrap's own padding: cropping it
+    // away is not truncation, so it earns no marker. Without this an ellipsis
+    // landed on any break that fell a space past the column — the common case
+    // in a table, not an edge one.
+    if (contentWidth <= maxWidth) {
+      yield* Segment.adjustLineLength(line, Math.min(lineWidth, maxWidth), undefined, false);
+      return;
     }
+
+    // The marker takes the last cell and the text keeps the rest. At maxWidth 1
+    // that is zero cells of text and the marker alone, which is the honest
+    // rendering of "all of this was cut"; the `maxWidth > 1` guard that used to
+    // stand here emitted no line at all, so every table column squeezed to a
+    // single cell rendered blank rather than truncated — `ellipsis` being the
+    // default column overflow, a hard-squeezed table looked like an empty frame.
+    //
+    // At maxWidth 0 there is no cell to put the marker in, so every method
+    // yields the same bare empty line. Agreement there is what keeps a
+    // `Columns` or `Layout` squeezed to no width at all from rendering
+    // three different kinds of nothing.
+    if (overflow === "ellipsis" && maxWidth > 0) {
+      yield* Segment.adjustLineLength(line, maxWidth - 1, undefined, false);
+      yield new Segment("\u2026");
+      return;
+    }
+
+    yield* Segment.adjustLineLength(line, maxWidth, undefined, false);
   }
+
 }

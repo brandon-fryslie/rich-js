@@ -156,27 +156,37 @@ console.print("Hello!", { justify: "right" });
 
 | Mode | Behavior |
 |---|---|
-| `"default"` | Left-aligned, no trailing spaces |
+| `"default"` | Placed at the left with no padding — the line ends where the text does |
+| `"left"` | Placed at the left and padded out to the full width |
 | `"center"` | Padded on both sides to center the line |
 | `"right"` | Padded on the left to sit against the right edge |
+| `"full"` | Padded out to the full width; the spaces between words are not stretched |
 
-`PrintOptions` also accepts `"left"` and `"full"`, but neither changes anything
-today: `"left"` produces the same bytes as `"default"`, and `"full"` does not
-stretch the spaces between words. Alignment applies per line and only where the
-text already fits — a string long enough to wrap comes out left-aligned
-whichever mode you pass.
+Alignment applies per line and after wrapping, so each line of a wrapped
+paragraph is placed in its own right. `"center"` and `"right"` align on the
+line's content: a wrap leaves the space that preceded it hanging on the line it
+closed, and counting that padding would push every such line half a space off
+true.
 
 ### Overflow
 
-Control what happens when a line of text is too wide:
+Text is word-wrapped first. `overflow` decides what becomes of a line that is
+*still* too wide once wrapping is done, which is only ever a word longer than
+the whole width:
 
 ```typescript
 const long = "This is a very long string that exceeds the available width";
-console.print(long, { overflow: "fold" });     // wrap to next line (default)
-console.print(long, { overflow: "crop" });     // truncate at edge
-console.print(long, { overflow: "ellipsis" }); // truncate with …
+console.print(long, { overflow: "fold" });     // chop the word across lines (default)
+console.print(long, { overflow: "crop" });     // cut the word off at the edge
+console.print(long, { overflow: "ellipsis" }); // cut the word off, marking it with …
 console.print(long, { overflow: "ignore" });   // same as "fold" today
 ```
+
+A string of ordinary words wraps identically under all three — the mode is a
+last resort, not the first thing a long line meets. They part company only on a
+word no break can help: at a width of 20, `"The quick
+brownfoxjumpsoverthelazydogandmore end"` keeps every character under `"fold"`
+and loses the tail of the long word under `"crop"` and `"ellipsis"`.
 
 `"ignore"` is accepted but is not yet distinct from the default — `print()`
 discards it and wraps.

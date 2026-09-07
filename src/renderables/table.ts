@@ -789,11 +789,11 @@ export class Table implements Renderable, Measurable {
   ): Iterable<Segment> {
     const titleStyle = style.isNull ? undefined : style;
 
-    // `titleJustify` is the only owner of this alignment. A `RichText` carrying
-    // its own `justify` pads itself to the full width inside `render`, which
-    // collapses the gap below to nothing and silently outvotes the table's
-    // option. Cleared on a copy rather than in place — the caller's text is
-    // theirs. [LAW:one-source-of-truth]
+    // `titleJustify` is the only owner of this alignment, and it wins by being
+    // the one the renderable is handed. A `RichText` carrying its own `justify`
+    // outranks the option in `render`, so the table's choice would lose to a
+    // property the caller may not know it set. Cleared on a copy rather than in
+    // place — the caller's text is theirs. [LAW:one-source-of-truth]
     const source = text.copy();
     source.justify = undefined;
 
@@ -802,27 +802,26 @@ export class Table implements Renderable, Measurable {
     // title arrives as italic-red, not one or the other. Rendering `text.plain`
     // here read the characters and dropped every span attached to them, so a
     // styled title lost its styling and parsed markup silently did nothing.
-    // `noWrap` keeps each logical line whole for the crop below to measure.
-    const rendered = [...source.render({ maxWidth: tableWidth, noWrap: true, overflow: "crop" })];
+    //
+    // Rendered at the table's own width with nothing suppressed, because that
+    // is what the reference hands its title: an annotation too wide for the
+    // frame wraps down it rather than being cut off at the corner. `noWrap` and
+    // an explicit `crop` stood here and did the cutting (rich-table-6uy.7).
+    //
+    // [LAW:single-enforcer] The alignment is the renderable's to perform, not
+    // just to be told. Padding the lines here as well needed the same
+    // rules — that a wrap's trailing whitespace is not content to centre
+    // around, that `left` fills the canvas and an unset justify does not — and
+    // a second copy of those is a second answer waiting to disagree.
+    const rendered = [...source.render({ maxWidth: tableWidth, justify })];
 
     // Every line the text has, because that is what the reference renders — a
     // title of "one\ntwo" occupies two lines there. Taking only the first
     // dropped the rest with no truncation mark.
     for (const line of Segment.splitLines(rendered)) {
-      const body = [...Segment.applyStyle(line, titleStyle)];
-
-      // Cropped and padded by cells, not by code units: a title of wide
-      // characters sliced at `tableWidth` code units is up to twice `tableWidth`
-      // cells on screen, which is the overflow this crop exists to prevent.
-      const gap = Math.max(tableWidth - Segment.getLineLength(body), 0);
-      const leftPad =
-        justify === "right" ? gap
-          : justify === "center" ? Math.floor(gap / 2)
-            : 0;
-
-      if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
-      yield* Segment.adjustLineLength(body, tableWidth - leftPad);
+      yield* Segment.applyStyle(line, titleStyle);
       yield Segment.line();
     }
   }
+
 }

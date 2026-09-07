@@ -381,7 +381,9 @@ describe("Table stays inside the width it is given", () => {
     // 2 edges + 1 divider + the reserved 4 leaves 5 for the elastic column,
     // which is far wider naturally and would win every cell if a declared
     // width competed on weight instead of being reserved ahead of the bidding.
-    expect(collectLines(t, { maxWidth: 12 })).toContain("|abcd|a mu…|");
+    // The elastic cell wraps down its five cells rather than ellipsizing on
+    // one, so the first body line is what pins the split.
+    expect(collectLines(t, { maxWidth: 12 })).toContain("|abcd|a    |");
   });
 
   it("spends its last cells on content rather than on padding", () => {
@@ -794,5 +796,41 @@ describe("Table markup", () => {
     t.addColumn("H");
     expect(() => t.addRow("ok", "[/bad]")).toThrow(MarkupError);
     expect(t.columns.length).toBe(1);
+  });
+});
+
+describe("Table cells wrap before the overflow method sees them", () => {
+  // Both arms are the same column, the same width and the same overflow
+  // method — `ellipsis`, which is what a column defaults to here and in the
+  // reference. Only the cell text differs, which is the point: the method is
+  // not what decides whether a wide cell is cut, so a default-value fix could
+  // not have produced either of these. Wrapping runs first and the method
+  // answers only what wrapping could not help.
+  function cell(text: string): string[] {
+    const table = new Table();
+    table.addColumn("H", { width: 10 });
+    table.addRow(text);
+    return collectLines(table, { maxWidth: 30 });
+  }
+
+  it("grows the row for a cell that word-wraps", () => {
+    expect(cell("aaaa bbbb cccc dddd")).toEqual([
+      "┏━━━━━━━━━━━━┓",
+      "┃ H          ┃",
+      "┡━━━━━━━━━━━━┩",
+      "│ aaaa bbbb  │",
+      "│ cccc dddd  │",
+      "└────────────┘",
+    ]);
+  });
+
+  it("still ellipsizes a word no break can help", () => {
+    expect(cell("aaaaaaaaaaaaaaaaaaaa")).toEqual([
+      "┏━━━━━━━━━━━━┓",
+      "┃ H          ┃",
+      "┡━━━━━━━━━━━━┩",
+      "│ aaaaaaaaa… │",
+      "└────────────┘",
+    ]);
   });
 });
