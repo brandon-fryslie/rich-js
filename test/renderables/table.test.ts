@@ -405,6 +405,67 @@ describe("Column", () => {
     const copy = col.copy();
     expect(copy.header.plain).toBe("Test");
     expect(copy.justify).toBe("right");
+
+    // `copy` hands its own header straight back to the constructor and lets the
+    // crossing there do the copying, so this is what says the copy still happens.
+    col.header.append("!");
+    expect(copy.header.plain).toBe("Test");
+  });
+});
+
+describe("A column's header and footer are stamped on assignment, not just at construction", () => {
+  // `toCellText` is the one crossing where caller content becomes table
+  // content, and it promises three things: markup is parsed, `end` is cleared
+  // (a cell is a fragment, not a line), and a `RichText` is copied so the
+  // caller no longer holds the table's cell. `Table.columns` hands out the live
+  // column, so those promises have to survive an assignment made long after the
+  // constructor ran. Header and footer are one rule at two positions, so they
+  // are one assertion driven by two values.
+  const positions = ["header", "footer"] as const;
+
+  // Slack is deliberate: the data row is wide enough that a longer header or
+  // footer has somewhere to go, so a leak shows up as text rather than being
+  // cropped back off by the column width.
+  function tableWithSlack(): Table {
+    const t = new Table({ box: ASCII, showFooter: true });
+    t.addColumn("Head", { footer: "Foot" });
+    t.addRow("a wide data row");
+    return t;
+  }
+
+  it.each(positions)(
+    "copies a RichText assigned to %s, so the caller cannot mutate the table afterwards",
+    (position) => {
+      const t = tableWithSlack();
+      const mine = new RichText("Mine");
+      t.columns[0]![position] = mine;
+
+      const before = collectLines(t, { maxWidth: 30 });
+      expect(before.some((l) => l.includes("Mine"))).toBe(true);
+
+      mine.append("MUTATED");
+      expect(collectLines(t, { maxWidth: 30 })).toEqual(before);
+    },
+  );
+
+  it.each(positions)("clears the `end` of a RichText assigned to %s", (position) => {
+    const t = tableWithSlack();
+    t.columns[0]![position] = new RichText("Mine", { end: "!!" });
+    expect(t.columns[0]![position].end).toBe("");
+  });
+
+  it.each(positions)("parses the markup of a string assigned to %s", (position) => {
+    const t = tableWithSlack();
+    t.columns[0]![position] = "[red]Mine[/red]";
+    const segs = [...t.render({ maxWidth: 30 })];
+    expect(segs.map((s) => s.text).join("")).not.toContain("[red]");
+    expect(segs.find((s) => s.text === "Mine")?.style?.color?.name).toBe("red");
+  });
+
+  it.each(positions)("reads an undefined assigned to %s as the empty cell", (position) => {
+    const t = tableWithSlack();
+    t.columns[0]![position] = undefined;
+    expect(t.columns[0]![position].plain).toBe("");
   });
 });
 
