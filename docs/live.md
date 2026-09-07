@@ -20,7 +20,7 @@ live.start();
 try {
   for (const job of jobs) {
     await runJob(job);
-    table.addRow(job.name, "done");
+    table.addRow(job.name, "[green]done[/green]");
     // table mutation triggers a refresh automatically
   }
 } finally {
