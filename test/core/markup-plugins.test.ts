@@ -247,3 +247,43 @@ describe("the global registry reaches every markup consumer", () => {
     expect(asked).toBe("pick ONE: ");
   });
 });
+
+// A style span annotates and may overlap; a plugin pair replaces a region and
+// so must nest. The top-level filter used to test only where a pair *opened*,
+// which read "contained" and "overlapping" as one shape — so the overlapping
+// pair was dropped and its closing tag orphaned into the trailing slice, where
+// the built-in parser rejected it while naming the wrong tag. These pin the
+// three shapes that comparison now has to tell apart.
+describe("plugin pairs must nest", () => {
+  function twoTags(): MarkupRegistry {
+    const registry = new MarkupRegistry();
+    registry.register("aa", (ctx) => new RichText(`<A>${ctx.children.plain}</A>`, { end: "" }));
+    registry.register("bb", (ctx) => new RichText(`<B>${ctx.children.plain}</B>`, { end: "" }));
+    return registry;
+  }
+
+  it("rejects an overlapping pair, naming both tags and the fix", () => {
+    expect(() => renderMarkup("[aa]x[bb]y[/aa]z[/bb]", { registry: twoTags() })).toThrow(
+      /Plugin tag \[bb\] overlaps \[aa\].*Close \[\/bb\] before \[\/aa\]/s,
+    );
+    expect(() => renderMarkup("[aa]x[bb]y[/aa]z[/bb]", { registry: twoTags() })).toThrow(MarkupError);
+  });
+
+  it("renders an inner plugin tag that never closes, rather than rejecting it", () => {
+    // No closer means no entry in `pairs` at all, so this shape never reaches
+    // the overlap test. Pinned because the obvious alternative fix — rejecting
+    // whenever a closing tag's match is not the top of the stack — breaks it.
+    const out = renderMarkup("[aa]x[bb]y[/aa]", { registry: twoTags() });
+    expect(renderToString(out, { colorSystem: null })).toBe("<A>xy</A>");
+  });
+
+  it("resolves two sequential top-level pairs", () => {
+    const out = renderMarkup("[aa]x[/aa] mid [bb]y[/bb]", { registry: twoTags() });
+    expect(renderToString(out, { colorSystem: null })).toBe("<A>x</A> mid <B>y</B>");
+  });
+
+  it("leaves the built-in dialect's non-strict nesting alone", () => {
+    const out = renderMarkup("[bold]a[italic]b[/bold]c[/italic]", { registry: twoTags() });
+    expect(renderToString(out, { colorSystem: null })).toBe("abc");
+  });
+});
