@@ -82,7 +82,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it:
 
 ```
 0   cells · color · sanitize · subscription
-1   oklch · style
+1   oklch · style · wrap
 2   segment
 3   box · protocol
 4   measure · emoji · text · strip · render
@@ -108,6 +108,12 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 
 - **cells** — terminal cell-width (wraps `string-width`). Provides `cellLen`, `setCellSize`, `splitText`, `chopCells`.
 - **color** — colour as immutable *values*. `ColorRgba` (RGBA), `ColorSpec` (a parsed style colour; `ColorSpec.parse` is cached), `ColorTable` (quantization LUT), `ColorDepth`, `TerminalTheme`, and the downgrade/detection pipeline (`detectColorSystem`, `resolveColorSystem`). There is no `Color` class.
+- **wrap** — where a line may break. `divideLine` reports the cell offsets one
+  logical line is cut at to fit a budget, for `Segment.divide` to apply to the
+  styled line. Separate from `cells` because that module answers geometry and
+  this one answers word structure; separate from `text` because the pieces it
+  finds are what every renderable showing a string is cut into, and its output
+  is pinned against the reference in `test/core/text-wrap.golden.txt`.
 - **oklch** — perceptually-uniform polar colour space. sRGB ↔ OKLab ↔ OKLCH, reversible but for the final 0–255 quantization. This is where equal numeric deltas mean equal perceptual deltas, which is what transposition needs.
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.

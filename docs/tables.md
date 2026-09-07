@@ -26,14 +26,15 @@ console.print(table);
 ```
 
 ```
-              Star Wars Box Office
-┏━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
-┃ Date       ┃ Title                             ┃ Production Budget   ┃ Box Office    ┃
-┡━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
-│ Dec 20, …  │ Star Wars: The Rise of Skywalker  │       $275,000,000  │  $375,126,118 │
-│ May 25, …  │ Solo: A Star Wars Story           │       $275,000,000  │  $393,151,347 │
-│ Dec 15, …  │ Star Wars Ep. VIII: The Last Jedi │       $262,000,000  │ $1,332,539,889│
-└────────────┴───────────────────────────────────┴─────────────────────┴───────────────┘
+                                  Star Wars Box Office
+┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃ Date         ┃ Title                            ┃ Production Budget ┃     Box Office ┃
+┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│ Dec 20, 2019 │ Star Wars: The Rise of Skywalker │      $275,000,000 │   $375,126,118 │
+│ May 25, 2018 │ Solo: A Star Wars Story          │      $275,000,000 │   $393,151,347 │
+│ Dec 15, 2017 │ Star Wars Ep. VIII: The Last     │      $262,000,000 │ $1,332,539,889 │
+│              │ Jedi                             │                   │                │
+└──────────────┴──────────────────────────────────┴───────────────────┴────────────────┘
 ```
 
 Columns resize to fit terminal width, wrapping text when needed. Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.

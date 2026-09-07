@@ -1,0 +1,339 @@
+sentence w8 default
+aaaa 
+bbbb 
+cccc 
+dddd
+
+sentence w8 left
+aaaa    
+bbbb    
+cccc    
+dddd    
+
+sentence w8 center
+  aaaa  
+  bbbb  
+  cccc  
+  dddd  
+
+sentence w8 right
+    aaaa
+    bbbb
+    cccc
+    dddd
+
+sentence w12 default
+aaaa bbbb 
+cccc dddd
+
+sentence w12 left
+aaaa bbbb   
+cccc dddd   
+
+sentence w12 center
+ aaaa bbbb  
+ cccc dddd  
+
+sentence w12 right
+   aaaa bbbb
+   cccc dddd
+
+sentence w20 default
+aaaa bbbb cccc dddd
+
+sentence w20 left
+aaaa bbbb cccc dddd 
+
+sentence w20 center
+aaaa bbbb cccc dddd 
+
+sentence w20 right
+ aaaa bbbb cccc dddd
+
+hanging-space w8 default
+aaaa    
+bbbb
+
+hanging-space w8 left
+aaaa    
+bbbb    
+
+hanging-space w8 center
+  aaaa  
+  bbbb  
+
+hanging-space w8 right
+    aaaa
+    bbbb
+
+hanging-space w12 default
+aaaa      
+bbbb
+
+hanging-space w12 left
+aaaa        
+bbbb        
+
+hanging-space w12 center
+    aaaa    
+    bbbb    
+
+hanging-space w12 right
+        aaaa
+        bbbb
+
+hanging-space w20 default
+aaaa      bbbb
+
+hanging-space w20 left
+aaaa      bbbb      
+
+hanging-space w20 center
+   aaaa      bbbb   
+
+hanging-space w20 right
+      aaaa      bbbb
+
+unbreakable w8 default
+aaaaaaaa
+aaaaaaaa
+aaaa
+
+unbreakable w8 left
+aaaaaaaa
+aaaaaaaa
+aaaa    
+
+unbreakable w8 center
+aaaaaaaa
+aaaaaaaa
+  aaaa  
+
+unbreakable w8 right
+aaaaaaaa
+aaaaaaaa
+    aaaa
+
+unbreakable w12 default
+aaaaaaaaaaaa
+aaaaaaaa
+
+unbreakable w12 left
+aaaaaaaaaaaa
+aaaaaaaa    
+
+unbreakable w12 center
+aaaaaaaaaaaa
+  aaaaaaaa  
+
+unbreakable w12 right
+aaaaaaaaaaaa
+    aaaaaaaa
+
+unbreakable w20 default
+aaaaaaaaaaaaaaaaaaaa
+
+unbreakable w20 left
+aaaaaaaaaaaaaaaaaaaa
+
+unbreakable w20 center
+aaaaaaaaaaaaaaaaaaaa
+
+unbreakable w20 right
+aaaaaaaaaaaaaaaaaaaa
+
+multiline w8 default
+one
+two 
+three 
+four 
+five
+
+multiline w8 left
+one     
+two     
+three   
+four    
+five    
+
+multiline w8 center
+  one   
+  two   
+ three  
+  four  
+  five  
+
+multiline w8 right
+     one
+     two
+   three
+    four
+    five
+
+multiline w12 default
+one
+two three 
+four five
+
+multiline w12 left
+one         
+two three   
+four five   
+
+multiline w12 center
+    one     
+ two three  
+ four five  
+
+multiline w12 right
+         one
+   two three
+   four five
+
+multiline w20 default
+one
+two three four five
+
+multiline w20 left
+one                 
+two three four five 
+
+multiline w20 center
+        one         
+two three four five 
+
+multiline w20 right
+                 one
+ two three four five
+
+trailing-space w8 default
+words 
+then 
+space   
+
+trailing-space w8 left
+words   
+then    
+space   
+
+trailing-space w8 center
+ words  
+  then  
+ space  
+
+trailing-space w8 right
+   words
+    then
+   space
+
+trailing-space w12 default
+words then 
+space   
+
+trailing-space w12 left
+words then  
+space       
+
+trailing-space w12 center
+ words then 
+   space    
+
+trailing-space w12 right
+  words then
+       space
+
+trailing-space w20 default
+words then space   
+
+trailing-space w20 left
+words then space    
+
+trailing-space w20 center
+  words then space  
+
+trailing-space w20 right
+    words then space
+
+wide w8 default
+日本語の
+テキスト
+です
+
+wide w8 left
+日本語の
+テキスト
+です    
+
+wide w8 center
+日本語の
+テキスト
+  です  
+
+wide w8 right
+日本語の
+テキスト
+    です
+
+wide w12 default
+日本語のテキ
+ストです
+
+wide w12 left
+日本語のテキ
+ストです    
+
+wide w12 center
+日本語のテキ
+  ストです  
+
+wide w12 right
+日本語のテキ
+    ストです
+
+wide w20 default
+日本語のテキストです
+
+wide w20 left
+日本語のテキストです
+
+wide w20 center
+日本語のテキストです
+
+wide w20 right
+日本語のテキストです
+
+short w8 default
+hi
+
+short w8 left
+hi      
+
+short w8 center
+   hi   
+
+short w8 right
+      hi
+
+short w12 default
+hi
+
+short w12 left
+hi          
+
+short w12 center
+     hi     
+
+short w12 right
+          hi
+
+short w20 default
+hi
+
+short w20 left
+hi                  
+
+short w20 center
+         hi         
+
+short w20 right
+                  hi
