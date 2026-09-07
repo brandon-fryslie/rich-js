@@ -400,7 +400,7 @@ export interface TableOptions {
 
 export class Table implements Renderable, Measurable {
   private _columns: Column[];
-  private _rows: Array<{ cells: unknown[]; endSection?: boolean }>;
+  private _rows: Array<{ cells: Renderable[]; endSection?: boolean }>;
   readonly box: Box | null;
   readonly title: RichText | undefined;
   readonly caption: RichText | undefined;
@@ -483,7 +483,12 @@ export class Table implements Renderable, Measurable {
       this.addColumn();
     }
 
-    this._rows.push({ cells, endSection });
+    // Stamped once, here at the border, so sizing and drawing read one resolved
+    // cell instead of each converting the raw value for itself. Two converters
+    // is two answers to "what is this cell": they disagreed on a `Panel`, which
+    // stringifies to `[object Object]` — a string the tag pattern swallows
+    // whole, sizing the column to nothing. [LAW:parse-dont-validate]
+    this._rows.push({ cells: cells.map(toRenderable), endSection });
     return this;
   }
 
@@ -535,7 +540,7 @@ export class Table implements Renderable, Measurable {
     // Data rows
     for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
       const row = this._rows[rowIdx]!;
-      const rowCells = this._columns.map((_, colIdx) => toRenderable(row.cells[colIdx]));
+      const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? toCellText(undefined));
 
       const rowStyle = this.rowStyles.length > 0
         ? resolveStyle(this.rowStyles[rowIdx % this.rowStyles.length])
@@ -685,11 +690,20 @@ export class Table implements Renderable, Measurable {
   private _naturalWidth(col: Column, index: number): number {
     let natural = cellLen(col.header.plain);
     for (const row of this._rows) {
-      // Measured through the same crossing that renders it, so the width a
-      // column asks for is the width its text will occupy. Measuring the raw
-      // value instead sized this column to `[red]Solo[/red]` — fifteen cells
-      // for four cells of text. [LAW:one-source-of-truth]
-      natural = Math.max(natural, cellLen(toCellText(row.cells[index]).plain));
+      // The stamped cell, so the width a column asks for is the width its text
+      // will occupy — measuring the raw value sized this column to
+      // `[red]Solo[/red]`, fifteen cells for four cells of text.
+      // [LAW:one-source-of-truth]
+      //
+      // A cell that draws itself is stringified rather than measured, which is
+      // a pre-existing gap: `_columnDemands` carries no `RenderOptions`, so
+      // `Measurement.get` is not reachable from here. It contributes a wrong
+      // non-zero width, and narrowing that is its own change.
+      const cell = row.cells[index];
+      natural = Math.max(
+        natural,
+        cell instanceof RichText ? cellLen(cell.plain) : cellLen(String(cell ?? "")),
+      );
     }
     if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);
     if (col.maxWidth !== undefined) natural = Math.min(natural, col.maxWidth);
@@ -765,26 +779,40 @@ export class Table implements Renderable, Measurable {
   ): Iterable<Segment> {
     const titleStyle = style.isNull ? undefined : style;
 
+    // `titleJustify` is the only owner of this alignment. A `RichText` carrying
+    // its own `justify` pads itself to the full width inside `render`, which
+    // collapses the gap below to nothing and silently outvotes the table's
+    // option. Cleared on a copy rather than in place — the caller's text is
+    // theirs. [LAW:one-source-of-truth]
+    const source = text.copy();
+    source.justify = undefined;
+
     // The table's title style is the *base* the content's own spans layer over,
     // which is what the reference emits: a `[red]` title inside an italic table
     // title arrives as italic-red, not one or the other. Rendering `text.plain`
     // here read the characters and dropped every span attached to them, so a
     // styled title lost its styling and parsed markup silently did nothing.
-    // `noWrap` keeps this a single line for the crop below to measure.
-    const rendered = [...text.render({ maxWidth: tableWidth, noWrap: true, overflow: "crop" })];
-    const body = [...Segment.applyStyle(Segment.splitLines(rendered)[0] ?? [], titleStyle)];
+    // `noWrap` keeps each logical line whole for the crop below to measure.
+    const rendered = [...source.render({ maxWidth: tableWidth, noWrap: true, overflow: "crop" })];
 
-    // Cropped and padded by cells, not by code units: a title of wide
-    // characters sliced at `tableWidth` code units is up to twice `tableWidth`
-    // cells on screen, which is the overflow this crop exists to prevent.
-    const gap = Math.max(tableWidth - Segment.getLineLength(body), 0);
-    const leftPad =
-      justify === "right" ? gap
-        : justify === "center" ? Math.floor(gap / 2)
-          : 0;
+    // Every line the text has, because that is what the reference renders — a
+    // title of "one\ntwo" occupies two lines there. Taking only the first
+    // dropped the rest with no truncation mark.
+    for (const line of Segment.splitLines(rendered)) {
+      const body = [...Segment.applyStyle(line, titleStyle)];
 
-    if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
-    yield* Segment.adjustLineLength(body, tableWidth - leftPad);
-    yield Segment.line();
+      // Cropped and padded by cells, not by code units: a title of wide
+      // characters sliced at `tableWidth` code units is up to twice `tableWidth`
+      // cells on screen, which is the overflow this crop exists to prevent.
+      const gap = Math.max(tableWidth - Segment.getLineLength(body), 0);
+      const leftPad =
+        justify === "right" ? gap
+          : justify === "center" ? Math.floor(gap / 2)
+            : 0;
+
+      if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
+      yield* Segment.adjustLineLength(body, tableWidth - leftPad);
+      yield Segment.line();
+    }
   }
 }

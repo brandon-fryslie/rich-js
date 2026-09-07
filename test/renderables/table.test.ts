@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Table, Column } from "../../src/renderables/table.js";
+import { Panel } from "../../src/renderables/panel.js";
+import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import { ASCII, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -678,6 +680,49 @@ describe("Table markup", () => {
       "\u2502 Solo \u2502",
       "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
     ]);
+  });
+
+  it("renders every line of a title, not just the first", () => {
+    // Frame copied from the reference, which renders both lines centered.
+    // Taking `splitLines(...)[0]` dropped the rest with no truncation mark.
+    const t = new Table({ title: "Line one\nLine two" });
+    t.addColumn("HeaderIsWide");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 40 }).slice(0, 2)).toEqual([
+      "    Line one    ",
+      "    Line two    ",
+    ]);
+  });
+
+  it("gives an empty title no line at all", () => {
+    // The reference emits no title line for `title=""`; this emitted a blank one.
+    const t = new Table({ title: "" });
+    t.addColumn("H");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 30 })[0]).toBe("\u250f\u2501\u2501\u2501\u2513");
+  });
+
+  it("lets titleJustify outrank a justify carried by the title text", () => {
+    // Two owners of one alignment: a `RichText` with its own `justify` pads
+    // itself to full width inside `render`, which used to collapse the gap and
+    // silently win over the table's option.
+    const title = new RichText("T");
+    title.justify = "left";
+    const t = new Table({ title, titleJustify: "right" });
+    t.addColumn("HHHHHHHH");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 30 })[0]).toBe("           T");
+  });
+
+  it("sizes a column holding a renderable cell to something it can hold", () => {
+    // `String(panel)` is `[object Object]`, which the tag pattern swallows
+    // whole — markup-parsing a non-string cell measured this column as zero.
+    const t = new Table();
+    t.addColumn("H");
+    t.addRow(new Panel(new RichText("hello")));
+    const lines = collectLines(t, { maxWidth: 40 });
+    expect(lines.some((l) => l.includes("hello"))).toBe(true);
+    expect(lines.every((l) => cellLen(l) > 1)).toBe(true);
   });
 
   it("leaves brackets that are not tags alone", () => {
