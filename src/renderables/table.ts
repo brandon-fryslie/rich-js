@@ -478,17 +478,22 @@ export class Table implements Renderable, Measurable {
       cells = cells.slice(0, -1);
     }
 
-    // Auto-create columns if needed
-    while (this._columns.length < cells.length) {
-      this.addColumn();
-    }
-
     // Stamped once, here at the border, so sizing and drawing read one resolved
     // cell instead of each converting the raw value for itself. Two converters
     // is two answers to "what is this cell": they disagreed on a `Panel`, which
     // stringifies to `[object Object]` — a string the tag pattern swallows
     // whole, sizing the column to nothing. [LAW:parse-dont-validate]
-    this._rows.push({ cells: cells.map(toRenderable), endSection });
+    //
+    // Ahead of the column loop: a cell that throws must leave no phantom column
+    // behind. [LAW:no-ambient-temporal-coupling]
+    const resolved = cells.map(toRenderable);
+
+    // Auto-create columns if needed
+    while (this._columns.length < resolved.length) {
+      this.addColumn();
+    }
+
+    this._rows.push({ cells: resolved, endSection });
     return this;
   }
 

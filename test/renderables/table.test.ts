@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Table, Column } from "../../src/renderables/table.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { RichText } from "../../src/core/text.js";
+import { MarkupError } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
 import { ASCII, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -733,5 +734,23 @@ describe("Table markup", () => {
     t.addRow("array[0] and [1, 2, 3]");
     const plain = [...t.render({ maxWidth: 40 })].map((s) => s.text).join("");
     expect(plain).toContain("array[0] and [1, 2, 3]");
+  });
+
+  it("raises malformed markup from addRow, where this port parses", () => {
+    // A stated divergence, so it is pinned rather than described. Rich raises
+    // the same `MarkupError` for this cell but at print time, because it stores
+    // the raw string; parsing at the border moves the throw, not its existence.
+    const t = new Table();
+    t.addColumn("H");
+    expect(() => t.addRow("[/bad]")).toThrow(MarkupError);
+  });
+
+  it("adds no column when a later cell in the same row throws", () => {
+    // `addRow` is all-or-nothing: a caller that catches the error and retries
+    // with valid data must not find a phantom column from the failed attempt.
+    const t = new Table();
+    t.addColumn("H");
+    expect(() => t.addRow("ok", "[/bad]")).toThrow(MarkupError);
+    expect(t.columns.length).toBe(1);
   });
 });
