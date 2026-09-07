@@ -2,12 +2,13 @@
  * Table — tabular data with headers, borders, auto-sizing, and alignment.
  */
 
-import { cellLen, setCellSize, asCellCol, cellCount as cells } from "../core/cells.js";
+import { cellLen, cellCount as cells } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
 import type { RowLevel } from "../core/box.js";
 import { RichText } from "../core/text.js";
+import { renderMarkup } from "../core/markup.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -23,12 +24,40 @@ function resolveStyle(style: string | Style | undefined): Style {
   return style;
 }
 
+/**
+ * The one crossing where caller text becomes styled table content.
+ *
+ * Cells, headers, footers, the title and the caption each used to build their
+ * own `RichText` straight from the constructor — which does not parse markup —
+ * so the markup rule had five homes and was absent from all five, and
+ * `[red]Solo[/red]` reached the terminal with its tags intact.
+ * [LAW:single-enforcer]
+ *
+ * Parsing is unconditional because that is what the reference does rather than
+ * because it is the simpler branch: Rich's `Console.__init__` declares
+ * `markup: bool = True`, and all five positions reach the wire through Rich's
+ * own `render_str`. A table-level opt-out would be a mode with no reference
+ * behaviour to define. [LAW:no-mode-explosion]
+ *
+ * `end` is cleared on both arms, not passed in, because a table cell is a
+ * fragment rather than a line — the same two steps Rich takes for a printed
+ * string. The `RichText` arm copies first: clearing in place would reach back
+ * into the caller's object.
+ */
+function toCellText(content: unknown): RichText {
+  const text =
+    content instanceof RichText ? content.copy() : renderMarkup(String(content ?? ""));
+  text.end = "";
+  return text;
+}
+
 function toRenderable(content: unknown): Renderable {
-  if (content instanceof RichText) return content;
+  // A `RichText` leaves through this arm too — it implements `Renderable`, so
+  // the prototype carries `render` and the instance is returned untouched.
   if (typeof content === "object" && content !== null && "render" in content) {
     return content as Renderable;
   }
-  return new RichText(String(content ?? ""), { end: "" });
+  return toCellText(content);
 }
 
 
@@ -296,14 +325,9 @@ export class Column {
   private _cells: Renderable[];
 
   constructor(options?: ColumnOptions) {
-    const headerVal = options?.header;
-    this.header = headerVal instanceof RichText
-      ? headerVal
-      : new RichText(headerVal ?? "", { end: "" });
+    this.header = toCellText(options?.header);
     const footerVal = options?.footer;
-    this.footer = footerVal !== undefined
-      ? (footerVal instanceof RichText ? footerVal : new RichText(footerVal, { end: "" }))
-      : undefined;
+    this.footer = footerVal !== undefined ? toCellText(footerVal) : undefined;
     this.headerStyle = resolveStyle(options?.headerStyle);
     this.footerStyle = resolveStyle(options?.footerStyle);
     this.style = resolveStyle(options?.style);
@@ -377,7 +401,7 @@ export interface TableOptions {
 
 export class Table implements Renderable, Measurable {
   private _columns: Column[];
-  private _rows: Array<{ cells: unknown[]; endSection?: boolean }>;
+  private _rows: Array<{ cells: Renderable[]; endSection?: boolean }>;
   readonly box: Box | null;
   readonly title: RichText | undefined;
   readonly caption: RichText | undefined;
@@ -404,13 +428,9 @@ export class Table implements Renderable, Measurable {
     this._rows = [];
     this.box = options?.box !== undefined ? options.box : HEAVY_HEAD;
     const titleVal = options?.title;
-    this.title = titleVal !== undefined
-      ? (titleVal instanceof RichText ? titleVal : new RichText(titleVal, { end: "" }))
-      : undefined;
+    this.title = titleVal !== undefined ? toCellText(titleVal) : undefined;
     const captionVal = options?.caption;
-    this.caption = captionVal !== undefined
-      ? (captionVal instanceof RichText ? captionVal : new RichText(captionVal, { end: "" }))
-      : undefined;
+    this.caption = captionVal !== undefined ? toCellText(captionVal) : undefined;
     this.expand = options?.expand ?? false;
     this.showHeader = options?.showHeader !== false;
     this.showFooter = options?.showFooter ?? false;
@@ -459,12 +479,22 @@ export class Table implements Renderable, Measurable {
       cells = cells.slice(0, -1);
     }
 
+    // Stamped once, here at the border, so sizing and drawing read one resolved
+    // cell instead of each converting the raw value for itself. Two converters
+    // is two answers to "what is this cell": they disagreed on a `Panel`, which
+    // stringifies to `[object Object]` — a string the tag pattern swallows
+    // whole, sizing the column to nothing. [LAW:parse-dont-validate]
+    //
+    // Ahead of the column loop: a cell that throws must leave no phantom column
+    // behind. [LAW:no-ambient-temporal-coupling]
+    const resolved = cells.map(toRenderable);
+
     // Auto-create columns if needed
-    while (this._columns.length < cells.length) {
+    while (this._columns.length < resolved.length) {
       this.addColumn();
     }
 
-    this._rows.push({ cells, endSection });
+    this._rows.push({ cells: resolved, endSection });
     return this;
   }
 
@@ -516,7 +546,7 @@ export class Table implements Renderable, Measurable {
     // Data rows
     for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
       const row = this._rows[rowIdx]!;
-      const rowCells = this._columns.map((_, colIdx) => toRenderable(row.cells[colIdx]));
+      const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? toCellText(undefined));
 
       const rowStyle = this.rowStyles.length > 0
         ? resolveStyle(this.rowStyles[rowIdx % this.rowStyles.length])
@@ -536,7 +566,7 @@ export class Table implements Renderable, Measurable {
       if (box) {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
-      const footerCells = this._columns.map((c) => (c.footer ?? new RichText("", { end: "" })) as Renderable);
+      const footerCells = this._columns.map((c) => c.footer ?? toCellText(undefined));
       yield* this._renderRow(footerCells, geometry, box, "foot", border, this.footerStyle);
     }
 
@@ -666,7 +696,20 @@ export class Table implements Renderable, Measurable {
   private _naturalWidth(col: Column, index: number): number {
     let natural = cellLen(col.header.plain);
     for (const row of this._rows) {
-      natural = Math.max(natural, cellLen(String(row.cells[index] ?? "")));
+      // The stamped cell, so the width a column asks for is the width its text
+      // will occupy — measuring the raw value sized this column to
+      // `[red]Solo[/red]`, fifteen cells for four cells of text.
+      // [LAW:one-source-of-truth]
+      //
+      // A cell that draws itself is stringified rather than measured, which is
+      // a pre-existing gap: `_columnDemands` carries no `RenderOptions`, so
+      // `Measurement.get` is not reachable from here. It contributes a wrong
+      // non-zero width, and narrowing that is its own change.
+      const cell = row.cells[index];
+      natural = Math.max(
+        natural,
+        cell instanceof RichText ? cellLen(cell.plain) : cellLen(String(cell ?? "")),
+      );
     }
     if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);
     if (col.maxWidth !== undefined) natural = Math.min(natural, col.maxWidth);
@@ -741,28 +784,41 @@ export class Table implements Renderable, Measurable {
     justify: "left" | "center" | "right" | "full",
   ): Iterable<Segment> {
     const titleStyle = style.isNull ? undefined : style;
-    const plain = text.plain;
-    const textWidth = cellLen(plain);
 
-    // Cropped by cells, not by code units: a title of wide characters sliced
-    // at `tableWidth` code units is up to twice `tableWidth` cells on screen,
-    // which is the overflow this crop exists to prevent.
-    if (textWidth >= tableWidth) {
-      yield new Segment(setCellSize(plain, asCellCol(tableWidth)), titleStyle);
+    // `titleJustify` is the only owner of this alignment. A `RichText` carrying
+    // its own `justify` pads itself to the full width inside `render`, which
+    // collapses the gap below to nothing and silently outvotes the table's
+    // option. Cleared on a copy rather than in place — the caller's text is
+    // theirs. [LAW:one-source-of-truth]
+    const source = text.copy();
+    source.justify = undefined;
+
+    // The table's title style is the *base* the content's own spans layer over,
+    // which is what the reference emits: a `[red]` title inside an italic table
+    // title arrives as italic-red, not one or the other. Rendering `text.plain`
+    // here read the characters and dropped every span attached to them, so a
+    // styled title lost its styling and parsed markup silently did nothing.
+    // `noWrap` keeps each logical line whole for the crop below to measure.
+    const rendered = [...source.render({ maxWidth: tableWidth, noWrap: true, overflow: "crop" })];
+
+    // Every line the text has, because that is what the reference renders — a
+    // title of "one\ntwo" occupies two lines there. Taking only the first
+    // dropped the rest with no truncation mark.
+    for (const line of Segment.splitLines(rendered)) {
+      const body = [...Segment.applyStyle(line, titleStyle)];
+
+      // Cropped and padded by cells, not by code units: a title of wide
+      // characters sliced at `tableWidth` code units is up to twice `tableWidth`
+      // cells on screen, which is the overflow this crop exists to prevent.
+      const gap = Math.max(tableWidth - Segment.getLineLength(body), 0);
+      const leftPad =
+        justify === "right" ? gap
+          : justify === "center" ? Math.floor(gap / 2)
+            : 0;
+
+      if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
+      yield* Segment.adjustLineLength(body, tableWidth - leftPad);
       yield Segment.line();
-      return;
     }
-
-    const gap = tableWidth - textWidth;
-    const leftPad =
-      justify === "right" ? gap
-        : justify === "center" ? Math.floor(gap / 2)
-          : 0;
-    const rightPad = gap - leftPad;
-
-    if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
-    yield new Segment(plain, titleStyle);
-    if (rightPad > 0) yield new Segment(" ".repeat(rightPad));
-    yield Segment.line();
   }
 }
