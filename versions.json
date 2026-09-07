@@ -4,15 +4,22 @@
     {
       "version": "pr-96",
       "ref": "refs/pull/96/merge",
-      "sha": "fcbcd69eeb9b4cc9a027600ffb3ff07b5ddfecc0",
-      "timestamp": "2026-09-07T02:03:53.695Z",
+      "sha": "9da334bca2e098560ba667aa269e9f2cea24a7da",
+      "timestamp": "2026-09-07T02:20:50.477Z",
       "commits": [
         {
-          "sha": "fcbcd69eeb9b4cc9a027600ffb3ff07b5ddfecc0",
+          "sha": "9da334bca2e098560ba667aa269e9f2cea24a7da",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T02:03:21Z",
-          "message": "Merge 9e6c9f439100d1d265e628267c207392d5e06660 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+          "timestamp": "2026-09-07T02:20:17Z",
+          "message": "Merge f3cf43dfc83755e12556ddaaff5dd9d3a6b1a3a6 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+        },
+        {
+          "sha": "f3cf43dfc83755e12556ddaaff5dd9d3a6b1a3a6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T20:20:09-06:00",
+          "message": "fix(table): clear end on a caller's RichText, not just on parsed markup\n\n`title?: string | RichText` documents two input shapes and `toCellText` stamped\nonly one of them: the `instanceof RichText` early return handed the object back\nuntouched, so a `RichText` carrying its default `end` of \"\\n\" kept it. An empty\none then drew a full-width blank line above the frame — the same stray line this\nbranch already removed for `title: \"\"`, still reachable through the other half\nof the union, and at the bottom of the frame for `caption`.\n\nThe reference emits no line for either shape, so this was a divergence rather\nthan a preference.\n\nThe hole was the early return itself, not a step it forgot. Clearing `end` is an\noperation every path owes; the input shape decides only how the `RichText` is\nobtained. One branch now picks between `copy()` and a parse, and the stamp runs\nafter it unconditionally. The copy is what keeps the clear from reaching back\ninto the caller's object, and it carries style, justify, overflow, tabSize,\nnoWrap and the spans, so a title's own justify still arrives for `titleJustify`\nto outrank.\n\n`text.ts` is left alone deliberately. Its empty-text branch yields `end`\nunguarded where the non-empty branch suppresses a bare \"\\n\", which looks like\nthe deeper cause but is what makes `console.print(new RichText(\"\"))` emit a\nblank line at all. `end = \"\"` is how a caller says \"fragment, not line\", and the\ntable's crossing is where that already gets said.\n\nThe empty-content test now runs over both shapes in both positions, and compares\nthe whole frame: it read only the first line before, which is why the caption\nhalf could not have been caught. Reverting the early return turns exactly the\ntwo RichText rows red.\n"
         },
         {
           "sha": "9e6c9f439100d1d265e628267c207392d5e06660",
