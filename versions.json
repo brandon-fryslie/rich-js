@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-103",
+      "ref": "refs/pull/103/merge",
+      "sha": "af3a001f20cfe7b7d8e791e0294ac5dc1b975852",
+      "timestamp": "2026-09-07T15:25:42.881Z",
+      "commits": [
+        {
+          "sha": "af3a001f20cfe7b7d8e791e0294ac5dc1b975852",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T09:25:13-06:00",
+          "message": "Merge 48a9781b38a1f8863fcee425e74f5e4384b64cbf into 559172bbaa0cef368282836f642ed28b5cb1f353\n"
+        },
+        {
+          "sha": "48a9781b38a1f8863fcee425e74f5e4384b64cbf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T09:24:56-06:00",
+          "message": "fix(table): let the flag alone decide the header and footer rows (rich-table-n27)\n\nRich draws these rows on `show_header` / `show_footer` and nothing else. This\nport additionally required some column to have content, so a table that asked\nfor a row silently did not get one and nothing reported it. `showFooter: true`\nwith no footers anywhere drew no footer row at all; a table whose headers were\nall blank lost two lines rather than one, because the guard sat above the head\nseparator as well as the row it was about.\n\nThe guards were the symptom. `Column.footer` was `RichText | undefined` where\nRich declares `footer: RenderableType = \"\"`, and that optional is what made\n`some((c) => c.footer)` a well-typed, plausible-reading expression in the first\nplace. It also forced a `?? toCellText(undefined)` at the use site — an inland\nguard compensating for the same missing constraint. Absent and empty are the\nsame footer, so `footer` is now built by the same one-liner as `header` one line\nabove it, and the two fields answer to the same question.\n\nThe asymmetry between those two constructor lines is what gave the bug away.\nIt also explains why the two footerless spellings disagreed with each other and\nnot only with the reference: `footer: \"\"` produced a truthy empty `RichText` and\nunlocked the row, while no footer at all left it `undefined` and did not. The\ndrawing code was already correct and already matched the reference frame\ncharacter for character — only the guard deciding whether to reach it was wrong,\nwhich is why the fix removes code rather than adding any.\n\nMeasured against Python Rich at width 20 across five shapes; all five now match\ncharacter for character. Four are pinned: the footer row with no footer, absent\nand empty footers rendering identically, the blank-header row with its\nseparator, and `showHeader: false` still suppressing a header that has content —\nthat last one passes on the old code too and is there to catch over-correction,\nnot to pin the fix. The other three fail without it. `table-frames.golden.txt`\nand the sentinel-grid test are unmoved, as is every other frame in the suite:\n2304 pass, and no existing table has a blank header or asks for a footer row it\nhas no footers for, which is exactly why this survived.\n\nFiled rich-table-76o while adjacent: `_naturalWidth` measures the header\nunconditionally and never measures the footer, where the reference measures each\none exactly when its flag says it will be drawn. A long footer is ellipsized to\na single cell. Not caused or widened by this change — the footer rows it newly\ndraws are blank in every column, so there is nothing in them to truncate.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "559172bbaa0cef368282836f642ed28b5cb1f353",
