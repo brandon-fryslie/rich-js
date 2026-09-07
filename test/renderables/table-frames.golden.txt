@@ -1,0 +1,360 @@
+ASCII header-footer-lines
++-------+
+| A | B |
+|---+---|
+| 1 | 2 |
+|---+---|
+| 3 | 4 |
+|---+---|
+| F | G |
++-------+
+
+ASCII header-only
++-------+
+| A | B |
+|---+---|
+| 1 | 2 |
+| 3 | 4 |
++-------+
+
+ASCII2 header-footer-lines
++---+---+
+| A | B |
++---+---+
+| 1 | 2 |
++---+---+
+| 3 | 4 |
++---+---+
+| F | G |
++---+---+
+
+ASCII2 header-only
++---+---+
+| A | B |
++---+---+
+| 1 | 2 |
+| 3 | 4 |
++---+---+
+
+ASCII_DOUBLE_HEAD header-footer-lines
++---+---+
+| A | B |
++===+===+
+| 1 | 2 |
++---+---+
+| 3 | 4 |
++---+---+
+| F | G |
++---+---+
+
+ASCII_DOUBLE_HEAD header-only
++---+---+
+| A | B |
++===+===+
+| 1 | 2 |
+| 3 | 4 |
++---+---+
+
+DOUBLE header-footer-lines
+╔═══╦═══╗
+║ A ║ B ║
+╠═══╬═══╣
+║ 1 ║ 2 ║
+╠═══╬═══╣
+║ 3 ║ 4 ║
+╠═══╬═══╣
+║ F ║ G ║
+╚═══╩═══╝
+
+DOUBLE header-only
+╔═══╦═══╗
+║ A ║ B ║
+╠═══╬═══╣
+║ 1 ║ 2 ║
+║ 3 ║ 4 ║
+╚═══╩═══╝
+
+DOUBLE_EDGE header-footer-lines
+╔═══╤═══╗
+║ A │ B ║
+╟───┼───╢
+║ 1 │ 2 ║
+╟───┼───╢
+║ 3 │ 4 ║
+╟───┼───╢
+║ F │ G ║
+╚═══╧═══╝
+
+DOUBLE_EDGE header-only
+╔═══╤═══╗
+║ A │ B ║
+╟───┼───╢
+║ 1 │ 2 ║
+║ 3 │ 4 ║
+╚═══╧═══╝
+
+HEAVY header-footer-lines
+┏━━━┳━━━┓
+┃ A ┃ B ┃
+┣━━━╋━━━┫
+┃ 1 ┃ 2 ┃
+┣━━━╋━━━┫
+┃ 3 ┃ 4 ┃
+┣━━━╋━━━┫
+┃ F ┃ G ┃
+┗━━━┻━━━┛
+
+HEAVY header-only
+┏━━━┳━━━┓
+┃ A ┃ B ┃
+┣━━━╋━━━┫
+┃ 1 ┃ 2 ┃
+┃ 3 ┃ 4 ┃
+┗━━━┻━━━┛
+
+HEAVY_EDGE header-footer-lines
+┏━━━┯━━━┓
+┃ A │ B ┃
+┠───┼───┨
+┃ 1 │ 2 ┃
+┠───┼───┨
+┃ 3 │ 4 ┃
+┠───┼───┨
+┃ F │ G ┃
+┗━━━┷━━━┛
+
+HEAVY_EDGE header-only
+┏━━━┯━━━┓
+┃ A │ B ┃
+┠───┼───┨
+┃ 1 │ 2 ┃
+┃ 3 │ 4 ┃
+┗━━━┷━━━┛
+
+HEAVY_HEAD header-footer-lines
+┏━━━┳━━━┓
+┃ A ┃ B ┃
+┡━━━╇━━━┩
+│ 1 │ 2 │
+├───┼───┤
+│ 3 │ 4 │
+├───┼───┤
+│ F │ G │
+└───┴───┘
+
+HEAVY_HEAD header-only
+┏━━━┳━━━┓
+┃ A ┃ B ┃
+┡━━━╇━━━┩
+│ 1 │ 2 │
+│ 3 │ 4 │
+└───┴───┘
+
+HORIZONTALS header-footer-lines
+ ─────── 
+  A   B  
+ ─────── 
+  1   2  
+ ─────── 
+  3   4  
+ ─────── 
+  F   G  
+ ─────── 
+
+HORIZONTALS header-only
+ ─────── 
+  A   B  
+ ─────── 
+  1   2  
+  3   4  
+ ─────── 
+
+MARKDOWN header-footer-lines
+         
+| A | B |
+|---|---|
+| 1 | 2 |
+|---|---|
+| 3 | 4 |
+|---|---|
+| F | G |
+         
+
+MARKDOWN header-only
+         
+| A | B |
+|---|---|
+| 1 | 2 |
+| 3 | 4 |
+         
+
+MINIMAL header-footer-lines
+    ╷    
+  A │ B  
+╶───┼───╴
+  1 │ 2  
+╶───┼───╴
+  3 │ 4  
+╶───┼───╴
+  F │ G  
+    ╵    
+
+MINIMAL header-only
+    ╷    
+  A │ B  
+╶───┼───╴
+  1 │ 2  
+  3 │ 4  
+    ╵    
+
+MINIMAL_DOUBLE_HEAD header-footer-lines
+    ╷    
+  A │ B  
+ ═══╪═══ 
+  1 │ 2  
+ ───┼─── 
+  3 │ 4  
+ ───┼─── 
+  F │ G  
+    ╵    
+
+MINIMAL_DOUBLE_HEAD header-only
+    ╷    
+  A │ B  
+ ═══╪═══ 
+  1 │ 2  
+  3 │ 4  
+    ╵    
+
+MINIMAL_HEAVY_HEAD header-footer-lines
+    ╷    
+  A │ B  
+╺━━━┿━━━╸
+  1 │ 2  
+╶───┼───╴
+  3 │ 4  
+╶───┼───╴
+  F │ G  
+    ╵    
+
+MINIMAL_HEAVY_HEAD header-only
+    ╷    
+  A │ B  
+╺━━━┿━━━╸
+  1 │ 2  
+  3 │ 4  
+    ╵    
+
+ROUNDED header-footer-lines
+╭───┬───╮
+│ A │ B │
+├───┼───┤
+│ 1 │ 2 │
+├───┼───┤
+│ 3 │ 4 │
+├───┼───┤
+│ F │ G │
+╰───┴───╯
+
+ROUNDED header-only
+╭───┬───╮
+│ A │ B │
+├───┼───┤
+│ 1 │ 2 │
+│ 3 │ 4 │
+╰───┴───╯
+
+SIMPLE header-footer-lines
+         
+  A   B  
+ ─────── 
+  1   2  
+         
+  3   4  
+ ─────── 
+  F   G  
+         
+
+SIMPLE header-only
+         
+  A   B  
+ ─────── 
+  1   2  
+  3   4  
+         
+
+SIMPLE_HEAD header-footer-lines
+         
+  A   B  
+ ─────── 
+  1   2  
+         
+  3   4  
+         
+  F   G  
+         
+
+SIMPLE_HEAD header-only
+         
+  A   B  
+ ─────── 
+  1   2  
+  3   4  
+         
+
+SIMPLE_HEAVY header-footer-lines
+         
+  A   B  
+ ━━━━━━━ 
+  1   2  
+         
+  3   4  
+ ━━━━━━━ 
+  F   G  
+         
+
+SIMPLE_HEAVY header-only
+         
+  A   B  
+ ━━━━━━━ 
+  1   2  
+  3   4  
+         
+
+SQUARE header-footer-lines
+┌───┬───┐
+│ A │ B │
+├───┼───┤
+│ 1 │ 2 │
+├───┼───┤
+│ 3 │ 4 │
+├───┼───┤
+│ F │ G │
+└───┴───┘
+
+SQUARE header-only
+┌───┬───┐
+│ A │ B │
+├───┼───┤
+│ 1 │ 2 │
+│ 3 │ 4 │
+└───┴───┘
+
+SQUARE_DOUBLE_HEAD header-footer-lines
+┌───┬───┐
+│ A │ B │
+╞═══╪═══╡
+│ 1 │ 2 │
+├───┼───┤
+│ 3 │ 4 │
+├───┼───┤
+│ F │ G │
+└───┴───┘
+
+SQUARE_DOUBLE_HEAD header-only
+┌───┬───┐
+│ A │ B │
+╞═══╪═══╡
+│ 1 │ 2 │
+│ 3 │ 4 │
+└───┴───┘
