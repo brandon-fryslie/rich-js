@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-107",
-      "ref": "refs/pull/107/merge",
-      "sha": "72db7d1238b18267df4cfac6b74c615098af3911",
-      "timestamp": "2026-09-07T16:40:41.296Z",
-      "commits": [
-        {
-          "sha": "72db7d1238b18267df4cfac6b74c615098af3911",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T10:40:12-06:00",
-          "message": "Merge 3443bd74e9f16e8b3f324a623db0f701ea8c035a into c0cfb2467019d80370bf47286dfe017c2db8ede0\n"
-        },
-        {
-          "sha": "3443bd74e9f16e8b3f324a623db0f701ea8c035a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T10:39:49-06:00",
-          "message": "docs(live): restore the cell markup addRow now parses (rich-table-5m9)\n\nThe basic-usage snippet was written as `addRow(job.name, \"[green]done[/green]\")`\non the assumption that cells parse markup, the way Python Rich does. They did\nnot — `addRow` built its `RichText` straight from the constructor and shipped\n`[green]done[/green]` to the terminal with the tags intact — so rich-docs-site-13t.6\nreduced the snippet to a plain \"done\" rather than describing a bug in prose.\n\nThe behaviour shipped with #96, which routed all five text positions through\n`toCellText` as the single crossing. The snippet can go back to the form it was\nwritten in.\n\nPinned the way `docs/tables.md`'s flagship row already is, with a test named for\nthe page: the crossing is covered, but a page-named test is what makes a\nregression report the page that lies rather than only the function that broke.\nThis one puts the markup in the second cell of a two-column row, the position\nthe snippet actually uses. Confirmed red against a `toCellText` with its\n`renderMarkup` call removed, where it reproduces the original bug exactly —\n`| build | [green]done[/green] |`.\n\n2336 pass, three-pass lint clean, `npm run docs:build` clean.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c0cfb2467019d80370bf47286dfe017c2db8ede0",
-      "timestamp": "2026-09-07T16:35:19.369Z",
+      "sha": "eea4081a22ca97800819a97f1c449a4acd91899c",
+      "timestamp": "2026-09-07T16:42:48.297Z",
       "commits": [
         {
-          "sha": "c0cfb2467019d80370bf47286dfe017c2db8ede0",
+          "sha": "eea4081a22ca97800819a97f1c449a4acd91899c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T10:34:46-06:00",
-          "message": "fix(box): leave an already-ASCII box alone under asciiOnly (rich-table-0gv) (#106)\n\n`substitute({ asciiOnly: true })` answered `ASCII` for every box, including\nthe four that are already pure ASCII. A MARKDOWN table on a terminal without\nunicode silently became a plus-and-pipe frame instead of the pipe-delimited\nmarkdown it was chosen for; ASCII2 and ASCII_DOUBLE_HEAD were erased the same\nway. The reference guards with \"if options.ascii_only and not box.ascii\".\n\nWhether a box is drawable without unicode is derived from its grid at\nconstruction, not declared per constant as the reference's `ascii=True` is.\nA `Box` is wholly its grid, so the grid already answers this and a second\nhand-written answer could disagree with it — and derivation reaches boxes no\nconstant speaks for: `safeSubstitute` builds a fresh `Box` from an edited\ngrid, and a flag on the shipped constants would say nothing about that one.\nThe predicate names exactly the four the reference constructs with\n`ascii=True`, pinned by naming all nineteen in the test rather than asserting\nthe count.\n\nThis also fixes, with no change to table.ts, an asciiOnly + headerless\nASCII_DOUBLE_HEAD table. `Table.render` runs the two box swaps in the\nreference's order, so `substitute` handing the box through unchanged leaves\n`plainHeaded` a box it recognises: the frame is now ASCII2's crossed edge\n(\"+---+---+\") as Rich draws it, where replacing the box first left\n`plainHeaded` holding ASCII and an uncrossed \"+-------+\".\n\nVerified: six of the seven new assertions are red against the previous\nbox.ts. 2335 pass, three-pass lint and demo typecheck clean, golden files\nunmoved."
+          "timestamp": "2026-09-07T10:42:16-06:00",
+          "message": "docs(live): restore the cell markup addRow now parses (rich-table-5m9) (#107)\n\nThe basic-usage snippet was written as `addRow(job.name, \"[green]done[/green]\")`\non the assumption that cells parse markup, the way Python Rich does. They did\nnot — `addRow` built its `RichText` straight from the constructor and shipped\n`[green]done[/green]` to the terminal with the tags intact — so rich-docs-site-13t.6\nreduced the snippet to a plain \"done\" rather than describing a bug in prose.\n\nThe behaviour shipped with #96, which routed all five text positions through\n`toCellText` as the single crossing. The snippet can go back to the form it was\nwritten in.\n\nPinned the way `docs/tables.md`'s flagship row already is, with a test named for\nthe page: the crossing is covered, but a page-named test is what makes a\nregression report the page that lies rather than only the function that broke.\nThis one puts the markup in the second cell of a two-column row, the position\nthe snippet actually uses. Confirmed red against a `toCellText` with its\n`renderMarkup` call removed, where it reproduces the original bug exactly —\n`| build | [green]done[/green] |`.\n\n2336 pass, three-pass lint clean, `npm run docs:build` clean."
         }
       ]
     }
