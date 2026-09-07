@@ -620,3 +620,73 @@ describe("Table measures against a parsed width", () => {
     }
   });
 });
+
+describe("Table markup", () => {
+  // The five positions a caller's string reaches the terminal through. Each
+  // built its own `RichText` straight from the constructor, which does not
+  // parse markup, so each shipped `[red]…[/red]` to the terminal verbatim.
+  // They are one rule with five call sites, so they are one assertion driven
+  // by five values rather than five copies of it.
+  function markupTable(): Table {
+    const t = new Table({
+      title: "[red]Title[/red]",
+      caption: "[red]Caption[/red]",
+      showFooter: true,
+    });
+    t.addColumn("[red]Head[/red]", { footer: "[red]Foot[/red]" });
+    t.addRow("[red]Cell[/red]");
+    return t;
+  }
+
+  it.each(["Title", "Caption", "Head", "Foot", "Cell"])(
+    "renders %s's markup as style rather than literal tag text",
+    (word) => {
+      const segs = [...markupTable().render({ maxWidth: 40 })];
+      const plain = segs.map((s) => s.text).join("");
+
+      // Both halves are load-bearing: consuming the tags without applying the
+      // style would satisfy the first assertion alone.
+      expect(plain).toContain(word);
+      expect(plain).not.toContain("[red]");
+      expect(segs.find((s) => s.text === word)?.style?.color?.name).toBe("red");
+    },
+  );
+
+  it("renders docs/tables.md's flagship row styled, tags consumed", () => {
+    const t = new Table();
+    t.addColumn("Movie");
+    t.addRow("[red]Solo[/red]: A Star Wars Story");
+    const segs = [...t.render({ maxWidth: 40 })];
+    const plain = segs.map((s) => s.text).join("");
+
+    expect(plain).toContain("Solo: A Star Wars Story");
+    expect(plain).not.toContain("[red]");
+    expect(segs.find((s) => s.text === "Solo")?.style?.color?.name).toBe("red");
+  });
+
+  it("sizes a column to the text markup leaves behind, not to the tags", () => {
+    // The measure path is the other consumer of a cell's text. Measuring the
+    // raw value sized this column to `[red]Solo[/red]` — fifteen cells for
+    // four cells of text — and the table still rendered, just far too wide.
+    const t = new Table();
+    t.addColumn("H");
+    t.addRow("[red]Solo[/red]");
+    expect(collectLines(t, { maxWidth: 60 })).toEqual([
+      "\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2513",
+      "\u2503 H    \u2503",
+      "\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2529",
+      "\u2502 Solo \u2502",
+      "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+    ]);
+  });
+
+  it("leaves brackets that are not tags alone", () => {
+    // Matches the reference: `TAG_RE` needs `[a-zA-Z#]` after the bracket, so
+    // indices and array literals in data survive as themselves.
+    const t = new Table();
+    t.addColumn("H");
+    t.addRow("array[0] and [1, 2, 3]");
+    const plain = [...t.render({ maxWidth: 40 })].map((s) => s.text).join("");
+    expect(plain).toContain("array[0] and [1, 2, 3]");
+  });
+});
