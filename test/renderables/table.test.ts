@@ -197,6 +197,67 @@ describe("Table", () => {
     ]);
   });
 
+  // The flag alone decides whether these rows are drawn. Both used to
+  // additionally require some column to have content, so a table that asked for
+  // a row silently did not get one and nothing reported it. The four frames
+  // below came from Python Rich at width 20, not from this port.
+  it("draws the footer row when showFooter is set and no column has a footer", () => {
+    const t = new Table({ showFooter: true });
+    t.addColumn("H");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 20 })).toEqual([
+      "┏━━━┓",
+      "┃ H ┃",
+      "┡━━━┩",
+      "│ x │",
+      "├───┤",
+      "│   │",
+      "└───┘",
+    ]);
+  });
+
+  it("draws the same footer row whether the footer is absent or empty", () => {
+    // `footer: ""` was the one spelling that unlocked the row, so the two
+    // footerless spellings disagreed with each other as well as with Rich.
+    // Absent and empty are the same footer; this is the arm that says so.
+    const absent = new Table({ showFooter: true });
+    absent.addColumn("H");
+    absent.addRow("x");
+    const empty = new Table({ showFooter: true });
+    empty.addColumn("H", { footer: "" });
+    empty.addRow("x");
+    expect(collectLines(absent, { maxWidth: 20 })).toEqual(collectLines(empty, { maxWidth: 20 }));
+  });
+
+  it("draws the header row and its separator when every header is blank", () => {
+    // Blank headers used to cost two lines rather than one: the guard sat above
+    // the separator as well as the row it was about.
+    const t = new Table();
+    t.addColumn("");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 20 })).toEqual([
+      "┏━━━┓",
+      "┃   ┃",
+      "┡━━━┩",
+      "│ x │",
+      "└───┘",
+    ]);
+  });
+
+  it("draws no header row when showHeader is false and the header has content", () => {
+    // The negative arm of the same flag. Reading the flag alone has to keep
+    // suppressing a header that has content, not merely stop suppressing a
+    // blank one — and the box goes plain-headed with it.
+    const t = new Table({ showHeader: false });
+    t.addColumn("H");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 20 })).toEqual([
+      "┌───┐",
+      "│ x │",
+      "└───┘",
+    ]);
+  });
+
   it("shows footer when showFooter is true", () => {
     const t = new Table({ box: ASCII, showFooter: true });
     t.addColumn("Name", { footer: "Total" });
