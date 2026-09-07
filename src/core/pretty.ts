@@ -7,6 +7,14 @@
  * are core primitives only. `Console.print` accepts `unknown` and must turn any
  * of it into something renderable, so the formatter has to sit where `console`
  * can reach it without an upward edge. [LAW:one-way-deps]
+ *
+ * Two traversals share this file, and the split is the whole design. `_format`
+ * lays a value out across lines; `_oneLine` answers only "does this fit on one
+ * line, and if so what is it?". They meet at `_shape`, which describes a
+ * container without committing to either layout. One traversal answering both
+ * questions is what made this formatter exponential: every child was rendered
+ * once to probe it and again to place it, so a node at depth d was visited 2^d
+ * times.
  */
 
 import { cellLen } from "./cells.js";
@@ -50,7 +58,23 @@ export interface PrettyOptions {
 
 const reprHighlighter = new ReprHighlighter();
 
-/** One position in a traversal. See `_format` for why `inset` and `level` are two numbers. */
+/**
+ * Where a laying-out traversal is: how far the output is indented (`inset`),
+ * and how deep in the data we are (`level`).
+ *
+ * The two are separate numbers because they answer to different things —
+ * `level` is what `maxDepth` caps, and only ever increases. Collapsing them
+ * made the cap read the layout number, and every compact probe reset it, so the
+ * cap never fired at all. `Probe` is why that cannot recur: the traversal that
+ * used to do the resetting has no `inset` to reset.
+ *
+ * `open` holds the objects between the root and here, not every object seen. A
+ * value joins on the way down and leaves on the way back up, so a cycle is
+ * caught while a DAG — one object reached twice through sibling positions —
+ * still renders both times. A never-emptied set would call the second sibling
+ * circular. [LAW:no-ambient-temporal-coupling] the traversal owns its state
+ * explicitly; a field on the instance would leak between renders.
+ */
 interface Frame {
   readonly inset: number;
   readonly level: number;
@@ -59,6 +83,40 @@ interface Frame {
 }
 
 const rootFrame = (maxWidth: number): Frame => ({ inset: 0, level: 0, maxWidth, open: new WeakSet() });
+
+/**
+ * Where a fits-on-one-line traversal is.
+ *
+ * [LAW:types-are-the-program] It carries no `inset`, and that absence is the
+ * point: a single-line form is the same string wherever it lands, so an
+ * indented one is not a state worth being able to write down. The old code said
+ * this by setting `inset: 0` on a `Frame` and trusting every arm to leave it
+ * alone.
+ *
+ * `budget` is the cells still available on the line. It replaces the full width
+ * because a one-line form wider than its budget is never used for anything, so
+ * producing it is waste — and refusing to produce it is what stops an ancestor's
+ * probe from walking a subtree it has already outgrown. That short-circuit is
+ * what makes the traversal linear in depth rather than exponential.
+ */
+interface Probe {
+  readonly level: number;
+  readonly budget: number;
+  readonly open: WeakSet<object>;
+}
+
+/**
+ * The text, when it is a single line no wider than `budget` — otherwise `null`.
+ *
+ * The one definition of "fits on one line" in this file, and it has to name
+ * both halves: `cellLen` scores a newline as zero cells, so a width check alone
+ * accepted multi-line text as compact. That is how a `Map` nested in an object
+ * used to render as `{ m: Map {` — a one-line object with an expansion wedged
+ * inside it and the closing brace back at column 0.
+ */
+function fitOneLine(text: string, budget: number): string | null {
+  return text.includes("\n") || cellLen(text) > budget ? null : text;
+}
 
 /**
  * The elements of an indexed sequence, or `null` for anything that isn't one.
@@ -139,6 +197,61 @@ function describesItself(value: object): boolean {
   );
 }
 
+/**
+ * One value inside a slot, and the literal text that follows it.
+ *
+ * `read` is deferred rather than a value already in hand because reading is
+ * itself the reflection that can throw, and each traversal wants to catch that
+ * at its own position. A `Map` entry is the reason a slot holds a list of these
+ * rather than a single value: its key is a formatted value too, so `1 => 2` is
+ * two holes joined by literal text.
+ */
+interface Hole {
+  readonly read: () => unknown;
+  readonly tail: string;
+}
+
+/**
+ * One position in a container: literal text, then values with text between.
+ *
+ * `{ head: "... +3", holes: [] }` is the elision marker — one more position in
+ * the sequence rather than a suffix glued on after a separator, so a bound of
+ * zero does not lead with the comma it was supposed to follow.
+ */
+interface Slot {
+  readonly head: string;
+  readonly holes: readonly Hole[];
+}
+
+/**
+ * What an object renders as, said without committing to a layout.
+ *
+ * This is the seam between the two traversals. `text` is a value that spells
+ * itself and is done; a container names the brackets it wears and the positions
+ * inside it, and each traversal joins those positions its own way. Both
+ * traversals therefore agree on what a `Map` is called, where the elision
+ * marker goes, and what an empty one looks like, because there is one
+ * description and not two. [LAW:one-source-of-truth]
+ */
+interface Container {
+  readonly kind: "container";
+  readonly open: string;
+  readonly close: string;
+  /** What separates the brackets from the items on one line: `{ a: 1 }` vs `[1]`. */
+  readonly pad: string;
+  readonly slots: readonly Slot[];
+}
+
+type Shape = { readonly kind: "text"; readonly text: string } | Container;
+
+/** What joins a container's positions on one line. Its width is charged for, so it is named once. */
+const SEPARATOR = ", ";
+
+/** The marker for positions the bound dropped, or nothing when it dropped none. */
+const elided = (dropped: number): Slot[] =>
+  dropped > 0 ? [{ head: `... +${dropped}`, holes: [] }] : [];
+
+
 export class Pretty implements Renderable, Measurable {
   readonly data: unknown;
   readonly indent: number;
@@ -183,23 +296,14 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /**
-   * Where the traversal is, in the two senses that differ.
+   * The text a value shows without being reflected on, or `null` when it is an
+   * object and the shape arms own it.
    *
-   * `inset` is how far the output is indented; it resets to 0 whenever a value
-   * is measured for a single line, because a compact form carries no
-   * indentation. `level` is how deep in the data we are, and only ever
-   * increases. Collapsing the two into one number is the mistake this pair
-   * exists to make unrepresentable: the depth cap read the layout number, so
-   * every compact probe reset it and the cap never fired at all.
-   *
-   * `open` holds the objects between the root and here, not every object seen.
-   * A value joins on the way down and leaves on the way back up, so a cycle is
-   * caught while a DAG — one object reached twice through sibling positions —
-   * still renders both times. A never-emptied set would call the second sibling
-   * circular. [LAW:no-ambient-temporal-coupling] the traversal owns its state
-   * explicitly; a field on the instance would leak between renders.
+   * Every kind answered here renders the same wherever it sits — no
+   * indentation, no width to fit — which is why one method serves both
+   * traversals.
    */
-  private _format(value: unknown, at: Frame): string {
+  private _scalar(value: unknown): string | null {
     if (value === null) return "null";
     if (value === undefined) return "undefined";
 
@@ -213,7 +317,6 @@ export class Pretty implements Renderable, Measurable {
       }
       case "number":
       case "bigint":
-        return String(value);
       case "boolean":
         return String(value);
       case "symbol":
@@ -222,120 +325,204 @@ export class Pretty implements Renderable, Measurable {
         return `[Function: ${value.name || "anonymous"}]`;
     }
 
-    if (at.open.has(value)) return "[Circular]";
-    at.open.add(value);
-    try {
-      return this._formatObject(value, at);
-    } catch (error) {
-      // The container's *shape* would not be read — `Object.keys`, an iterator,
-      // `toString`. Nothing can be enumerated, so the whole container degrades;
-      // a value that merely would not be read degrades alone, in `_at`.
-      return threw(error);
-    } finally {
-      at.open.delete(value);
-    }
+    return null;
   }
 
   /**
-   * One position's value, or the marker for why reading it failed.
+   * A container, or the text standing in for one that is empty or past the
+   * depth cap.
    *
-   * A key and an index are the same job — read one slot of a container someone
-   * else built — so they share one method rather than two that must agree.
-   * [LAW:one-type-per-behavior] This is also the read that costs the least when
-   * it fails: neighbours are unaffected, so `{ a: 1, b: [Threw: …], c: 3 }`
-   * still shows everything that could be read.
+   * `positions` is a thunk because both of those answers are reachable from
+   * `size` alone, and reaching a position is not free: a `Map` or `Set` reaches
+   * its own through an iterator, so enumerating one only to elide it drains a
+   * container to print `Set {...}`. `size` also says how many positions were
+   * dropped, which is where the elision marker comes from — one derivation, so
+   * the count and the bound cannot disagree.
    */
-  private _at(container: object, key: string | number, at: Frame): string {
-    try {
-      return this._format((container as Record<string | number, unknown>)[key], at);
-    } catch (error) {
-      return threw(error);
-    }
+  private _container(
+    open: string,
+    close: string,
+    pad: string,
+    size: number,
+    level: number,
+    positions: () => Slot[],
+  ): Shape {
+    if (size === 0) return { kind: "text", text: open + close };
+    if (level >= this.maxDepth) return { kind: "text", text: open + "..." + close };
+
+    const slots = positions();
+    return { kind: "container", open, close, pad, slots: [...slots, ...elided(size - slots.length)] };
   }
 
-  /** The arms for a non-null object, with `value` already on the open path. */
-  private _formatObject(value: object, at: Frame): string {
-    const { maxWidth, open } = at;
-    const indentStr = " ".repeat(this.indent * at.inset);
-    const innerIndent = " ".repeat(this.indent * (at.inset + 1));
-    const deeper: Frame = { inset: at.inset + 1, level: at.level + 1, maxWidth, open };
-    const onOneLine: Frame = { inset: 0, level: at.level + 1, maxWidth, open };
-
+  /** The brackets and positions of an object, layout-free. See `Shape`. */
+  private _shape(value: object, level: number): Shape {
     const elements = indexedElements(value);
     if (elements !== null) {
-      if (elements.length === 0) return "[]";
-      if (at.level >= this.maxDepth) return "[...]";
-
-      // Positions rather than values: each index is read through `_at`, so one
-      // throwing accessor costs its own slot instead of the whole sequence.
-      const shown = Math.min(elements.length, this.maxLength ?? elements.length);
-      const positions = Array.from({ length: shown }, (_, i) => i);
-      const remaining = elements.length - shown;
-
-      // Try compact first
-      if (!this.expandAll) {
-        const pieces = positions.map((i) => this._at(elements, i, onOneLine));
-        if (remaining > 0) pieces.push(`... +${remaining}`);
-        const compact = "[" + pieces.join(", ") + "]";
-        if (cellLen(indentStr + compact) <= maxWidth) return compact;
-      }
-
-      const parts = positions.map((i) => innerIndent + this._at(elements, i, deeper));
-      if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
-      return "[\n" + parts.join(",\n") + "\n" + indentStr + "]";
+      return this._container("[", "]", "", elements.length, level, () => {
+        // Positions rather than values: each index is read in its own slot, so
+        // one throwing accessor costs its own slot, not the whole sequence.
+        const shown = Math.min(elements.length, this.maxLength ?? elements.length);
+        return Array.from({ length: shown }, (_, i): Slot => ({
+          head: "",
+          holes: [{ read: () => elements[i], tail: "" }],
+        }));
+      });
     }
 
     if (value instanceof Map) {
-      if (value.size === 0) return "Map {}";
-      if (at.level >= this.maxDepth) return "Map {...}";
-      const items = take(value.entries(), this.maxLength ?? Infinity);
-      const parts = items.map(([k, v]) =>
-        innerIndent + this._format(k, deeper) + " => " + this._format(v, deeper),
+      return this._container("Map {", "}", " ", value.size, level, () =>
+        take(value.entries(), this.maxLength ?? Infinity).map(([k, v]): Slot => ({
+          head: "",
+          holes: [{ read: () => k, tail: " => " }, { read: () => v, tail: "" }],
+        })),
       );
-      const dropped = value.size - items.length;
-      if (dropped > 0) parts.push(innerIndent + `... +${dropped}`);
-      return "Map {\n" + parts.join(",\n") + "\n" + indentStr + "}";
     }
 
     if (value instanceof Set) {
-      if (value.size === 0) return "Set {}";
-      if (at.level >= this.maxDepth) return "Set {...}";
-      const items = take(value, this.maxLength ?? Infinity);
-      const parts = items.map((v) => innerIndent + this._format(v, deeper));
-      const dropped = value.size - items.length;
-      if (dropped > 0) parts.push(innerIndent + `... +${dropped}`);
-      return "Set {\n" + parts.join(",\n") + "\n" + indentStr + "}";
+      return this._container("Set {", "}", " ", value.size, level, () =>
+        take(value, this.maxLength ?? Infinity).map((v): Slot => ({
+          head: "",
+          holes: [{ read: () => v, tail: "" }],
+        })),
+      );
     }
 
     // Objects that answer the display question themselves. Sits below the
     // Array/Map/Set arms deliberately: an array also overrides `toString`, but
     // "1,2,3" is a poorer answer than the structural form above.
-    if (describesItself(value)) return String(value);
+    if (describesItself(value)) return { kind: "text", text: String(value) };
 
     // Plain objects — no self-description, so the keys are the whole story.
-    {
-      const obj = value as Record<string, unknown>;
-      const keys = Object.keys(obj);
-      if (keys.length === 0) return "{}";
-      if (at.level >= this.maxDepth) return "{...}";
+    const obj = value as Record<string, unknown>;
+    const keys = Object.keys(obj);
+    return this._container("{", "}", " ", keys.length, level, () =>
+      (this.maxLength !== undefined ? keys.slice(0, this.maxLength) : keys).map((k): Slot => ({
+        head: `${k}: `,
+        holes: [{ read: () => obj[k], tail: "" }],
+      })),
+    );
+  }
 
-      const items = this.maxLength !== undefined ? keys.slice(0, this.maxLength) : keys;
-      const remaining = this.maxLength !== undefined ? Math.max(0, keys.length - this.maxLength) : 0;
+  /** The laid-out form of a value, expanded across lines wherever one line will not do. */
+  private _format(value: unknown, at: Frame): string {
+    const scalar = this._scalar(value);
+    if (scalar !== null) return scalar;
 
-      // Try compact
-      if (!this.expandAll) {
-        const pieces = items.map((k) => `${k}: ${this._at(obj, k, onOneLine)}`);
-        if (remaining > 0) pieces.push(`... +${remaining}`);
-        const compact = "{ " + pieces.join(", ") + " }";
-        if (cellLen(indentStr + compact) <= maxWidth) return compact;
-      }
-
-      const parts = items.map((k) =>
-        innerIndent + `${k}: ${this._at(obj, k, deeper)}`,
-      );
-      if (remaining > 0) parts.push(innerIndent + `... +${remaining}`);
-      return "{\n" + parts.join(",\n") + "\n" + indentStr + "}";
+    const object = value as object;
+    if (at.open.has(object)) return "[Circular]";
+    at.open.add(object);
+    try {
+      return this._formatObject(object, at);
+    } catch (error) {
+      // The container's *shape* would not be read — `Object.keys`, an iterator,
+      // `toString`. Nothing can be enumerated, so the whole container degrades;
+      // a value that merely would not be read degrades alone, in its own slot.
+      return threw(error);
+    } finally {
+      at.open.delete(object);
     }
+  }
+
+  /** The arms for a non-null object, with `value` already on the open path. */
+  private _formatObject(value: object, at: Frame): string {
+    const shape = this._shape(value, at.level);
+    if (shape.kind === "text") return shape.text;
+
+    const indentStr = " ".repeat(this.indent * at.inset);
+    if (!this.expandAll) {
+      const compact = this._joinOneLine(shape, {
+        level: at.level + 1,
+        budget: at.maxWidth - cellLen(indentStr),
+        open: at.open,
+      });
+      if (compact !== null) return compact;
+    }
+
+    const innerIndent = " ".repeat(this.indent * (at.inset + 1));
+    const deeper: Frame = { inset: at.inset + 1, level: at.level + 1, maxWidth: at.maxWidth, open: at.open };
+    const parts = shape.slots.map((slot) => innerIndent + this._expandSlot(slot, deeper));
+    return shape.open + "\n" + parts.join(",\n") + "\n" + indentStr + shape.close;
+  }
+
+  /** One position, with every value in it laid out. */
+  private _expandSlot(slot: Slot, at: Frame): string {
+    let out = slot.head;
+    for (const hole of slot.holes) {
+      // This is the read that costs the least when it fails: neighbours are
+      // unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows everything
+      // that could be read.
+      try {
+        out += this._format(hole.read(), at);
+      } catch (error) {
+        out += threw(error);
+      }
+      out += hole.tail;
+    }
+    return out;
+  }
+
+  /** The one-line form of a value, or `null` when it will not fit `at.budget`. */
+  private _oneLine(value: unknown, at: Probe): string | null {
+    const scalar = this._scalar(value);
+    if (scalar !== null) return fitOneLine(scalar, at.budget);
+
+    const object = value as object;
+    if (at.open.has(object)) return fitOneLine("[Circular]", at.budget);
+    at.open.add(object);
+    try {
+      const shape = this._shape(object, at.level);
+      if (shape.kind === "text") return fitOneLine(shape.text, at.budget);
+      return this._joinOneLine(shape, { level: at.level + 1, budget: at.budget, open: at.open });
+    } catch (error) {
+      return fitOneLine(threw(error), at.budget);
+    } finally {
+      at.open.delete(object);
+    }
+  }
+
+  /**
+   * A container's positions on one line, or `null` as soon as they overrun.
+   *
+   * The budget is spent as it goes and each position is asked for only what is
+   * left, so a subtree that has already outgrown the line is abandoned where it
+   * outgrew it rather than formatted in full and then measured.
+   *
+   * The brackets are charged before anything is read, and that ordering is what
+   * bounds the traversal: a budget checked only against the finished text still
+   * reads the whole subtree to produce text it then throws away. Charged first,
+   * every level costs at least the two cells of its own brackets, so a probe
+   * descends at most `budget / 2` levels however deep the data goes.
+   */
+  private _joinOneLine(shape: Container, at: Probe): string | null {
+    let used = cellLen(shape.open) + cellLen(shape.close) + 2 * cellLen(shape.pad);
+    if (used > at.budget) return null;
+
+    const pieces: string[] = [];
+    for (const slot of shape.slots) {
+      used += pieces.length > 0 ? cellLen(SEPARATOR) : 0;
+      const piece = this._slotOneLine(slot, { ...at, budget: at.budget - used });
+      if (piece === null) return null;
+      used += cellLen(piece);
+      pieces.push(piece);
+    }
+    return shape.open + shape.pad + pieces.join(SEPARATOR) + shape.pad + shape.close;
+  }
+
+  /** One position on one line, or `null` when any value in it will not fit. */
+  private _slotOneLine(slot: Slot, at: Probe): string | null {
+    let out = slot.head;
+    for (const hole of slot.holes) {
+      const left = at.budget - cellLen(out);
+      let text: string | null;
+      try {
+        text = this._oneLine(hole.read(), { ...at, budget: left });
+      } catch (error) {
+        text = fitOneLine(threw(error), left);
+      }
+      if (text === null) return null;
+      out += text + hole.tail;
+    }
+    return fitOneLine(out, at.budget);
   }
 
   private _addIndentGuides(text: RichText): void {

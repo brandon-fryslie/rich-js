@@ -134,7 +134,7 @@ console.print(new Pretty([1, 2, 3], { expandAll: true }));
 
 The fit test measures the container by itself, not the key it sits under, so a nested container can still overrun the width by the length of its key. Reach for `expandAll` when a nested structure wraps in a way you did not expect.
 
-`Map` and `Set` have no one-line form and are always expanded:
+Every container has a one-line form, `Map` and `Set` included, and takes it when the line has room for it:
 
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
@@ -142,18 +142,21 @@ import { Console, Pretty } from "@promptctl/rich-js";
 const console = new Console({ width: 43 });
 
 console.print(new Pretty(new Map([["a", 1], ["b", 2]])));
+console.print(new Pretty(new Map([["alpha", 1111], ["beta", 2222], ["gamma", 33333]])));
 ```
 
 ```
+Map { "a" => 1, "b" => 2 }
 Map {
-    "a" => 1,
-    "b" => 2
+    "alpha" => 1111,
+    "beta" => 2222,
+    "gamma" => 33333
 }
 ```
 
 ## Truncating large values
 
-`maxLength` caps how many entries are shown. For an array or object the ones it drops are counted in a trailing `... +N`; for a `Map` or `Set` they are dropped with no marker at all, so the output gives you no sign that anything is missing. `maxString` cuts strings to that many characters and appends the number dropped — inside the quotes, as part of the string:
+`maxLength` caps how many entries are shown, and the ones it drops are counted in a trailing `... +N` whatever the container. `maxString` cuts strings to that many characters and appends the number dropped — inside the quotes, as part of the string:
 
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
