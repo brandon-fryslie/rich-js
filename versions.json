@@ -4,15 +4,22 @@
     {
       "version": "pr-96",
       "ref": "refs/pull/96/merge",
-      "sha": "9da334bca2e098560ba667aa269e9f2cea24a7da",
-      "timestamp": "2026-09-07T02:20:50.477Z",
+      "sha": "28fab6efcc44d69d851adb922b111158ebaeb653",
+      "timestamp": "2026-09-07T02:38:56.477Z",
       "commits": [
         {
-          "sha": "9da334bca2e098560ba667aa269e9f2cea24a7da",
+          "sha": "28fab6efcc44d69d851adb922b111158ebaeb653",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T02:20:17Z",
-          "message": "Merge f3cf43dfc83755e12556ddaaff5dd9d3a6b1a3a6 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+          "timestamp": "2026-09-07T02:38:27Z",
+          "message": "Merge 80c3ade30e868ba279e07ffd7d7b613fc83b6bc1 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+        },
+        {
+          "sha": "80c3ade30e868ba279e07ffd7d7b613fc83b6bc1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T20:38:18-06:00",
+          "message": "fix(table): stop re-stamping a footer that was stamped at its column\n\nGiving `toCellText` a `copy()` arm in f3cf43df turned the footer row's\n`toCellText(c.footer)` from a pass-through into an allocation per column per\nrender — `c.footer` is already a resolved `RichText`, stamped once in the\n`Column` constructor, so the copy bought nothing. The header line directly above\nreuses its stored instance, and the two had no reason to differ.\n\nMeasured on a 500x8 table with a footer on every column, built once and\nre-rendered: 4.28ms -> 4.16ms, median of 20 passes after 3 warmups. Modest, and\nbounded by column count rather than row count; the consistency was the larger\nhalf.\n\nThe absent case routes back through `toCellText` rather than spelling\n`new RichText(\"\", { end: \"\" })` at this site, so the rule that table content\ncarries no line ending stays at the crossing that owns it. It is also what the\ndata rows a few lines up already do for a missing cell.\n\nA mixed table — one column with a footer, one without — was reachable through\nno test. It is pinned now against the reference, character for character.\nSabotaging the absent arm's content reddens that test and only that test;\ndropping the cell entirely reddens nothing, because `_renderRow` pads a short\nlist, so the test's comment claims the content and not the padding.\n"
         },
         {
           "sha": "f3cf43dfc83755e12556ddaaff5dd9d3a6b1a3a6",
