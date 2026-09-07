@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-109",
+      "ref": "refs/pull/109/merge",
+      "sha": "ee14196f29a2a7a87179467c5f3c81b1f9f0e7d9",
+      "timestamp": "2026-09-07T17:38:59.434Z",
+      "commits": [
+        {
+          "sha": "ee14196f29a2a7a87179467c5f3c81b1f9f0e7d9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T11:38:26-06:00",
+          "message": "Merge a4daa92c34c7e658c185a39dd0631821ceab5af5 into a83f90b162035c14fb8002a395f260021f7e38e9\n"
+        },
+        {
+          "sha": "a4daa92c34c7e658c185a39dd0631821ceab5af5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T11:37:54-06:00",
+          "message": "perf(pretty): give the one-line probe its own traversal (rich-pretty-51c)\n\n`_formatObject` asked each child what it looked like on one line by calling\nthe same renderer with a different `Frame`, and that renderer was free to\nanswer with a multi-line expansion. So the probe was a full render: every\nchild was formatted once to measure the parent's compact try and again to\nplace it, and a node at depth d was visited 2^d times.\n\n  chain, depth 26         600ms -> 2.6ms\n  wide tree, depth 12    6666ms -> 115ms\n  formatting alone       exponential -> linear in node count\n                         (4x the nodes, 4x the time: 17.5 / 70 / 213ms)\n\nSplit the two questions into two traversals. `_format` lays a value out at an\ninset; `_oneLine` returns the single-line form or null. `Probe` carries no\n`inset`, which is the point: a one-line form is the same string wherever it\nlands, so the old `inset: 0` on a `Frame` is now a state nothing can write\ndown — and the `inset`/`level` collapse the ticket warns about has nothing\nleft to collapse.\n\nWhat makes it linear is charging the budget before reading rather than after.\nA budget checked only against finished text still walks the whole subtree to\nproduce text it throws away; charged first, every level costs at least its own\ntwo brackets, so a probe descends at most budget/2 levels however deep the\ndata. Measured on a counting getter: 6 more levels now cost 6 more reads,\nagainst 12,247 reads at depth 20 and 783,934 at depth 26 before.\n\nBoth traversals read one layout-free description of a container — `_shape` —\nso the brackets, the elision marker, the empty case and the depth cap have one\nhome instead of four copies each. Two things fall out of that:\n\n- `Map` and `Set` gain a one-line form. They had none, so a probe containing\n  one came back already expanded and was accepted, because `cellLen` scores a\n  newline as zero cells: `{ m: Map {` with the entry on its own line and the\n  closing brace back at column 0. `fitOneLine` now names both halves of what\n  fitting means. This is the only output change — a corpus of 22 shapes\n  (long keys, maxDepth, maxLength, cycles, throwers, shared children,\n  expandAll, narrow widths) is otherwise byte-identical to master.\n- The depth cap and the empty case are answered from `.size` alone, before\n  anything is enumerated. Reaching a position costs an iterator step, so a\n  `Set` past the cap is no longer drained to print `Set {...}`.\n\ndocs/pretty.md said Map and Set are always expanded, which this changes, and\nsaid their dropped entries carry no marker, which stopped being true when\nPR #90 added `... +N` and a test for it.\n\nThe file grows 208 -> 292 lines of code: the second traversal was always\nthere, smuggled into the first as a field on a frame, and making it a type is\nwhat costs the lines and buys the bound.\n\nNot fixed here, filed as rich-text-6po: `RichText._buildSegments` rescans\nevery span per boundary region, so it is O(spans²). It reproduces with no\nPretty in the picture and hurts every dense highlighter. It is why the\nthousand-level test passes `indentGuides: false` — guides are one span per\nindent character — and it is the remaining gap to this ticket's done-when at\ndefault options.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a83f90b162035c14fb8002a395f260021f7e38e9",
