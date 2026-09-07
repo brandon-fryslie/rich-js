@@ -39,17 +39,18 @@ function plainOf(line: Segment[]): string {
  * author wrote. Measuring it is what lets the overflow method tell "this line
  * was cut" from "this line ends in spaces" and stamp an ellipsis only on the
  * first, and what keeps a centred line from drifting half a space off true.
+ *
+ * Asked of the line's text rather than walked back through its segments,
+ * because where a line ends is a fact about the characters and not about how
+ * they were split. Walking the segments made it a fact about both: it read a
+ * segment with no trailing whitespace as content and stopped there, which an
+ * empty segment also looks like — and a crop leaves one behind. A styled line
+ * whose last cells were cropped therefore reported no hanging whitespace at
+ * all and was centred as though it were content to the edge, so a span landing
+ * anywhere in a wrap's whitespace un-centred the line it closed.
  */
 function hangingWhitespace(line: Segment[]): number {
-  let cells = 0;
-  for (let index = line.length - 1; index >= 0; index -= 1) {
-    const text = line[index]!.text;
-    const match = TRAILING_WHITESPACE_RE.exec(text);
-    if (match === null) break;
-    cells += cellLen(match[0]);
-    if (match[0].length < text.length) break;
-  }
-  return cells;
+  return cellLen(TRAILING_WHITESPACE_RE.exec(plainOf(line))?.[0] ?? "");
 }
 
 // [LAW:single-enforcer] RichText is the *data-model* trust boundary for

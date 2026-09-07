@@ -149,6 +149,51 @@ describe("RichText justification", () => {
   });
 
   /*
+   * Styling never moves the text. A span carries no cells, so every styled
+   * variant of a line has to place exactly where its plain twin places — and
+   * the plain twin is pinned to the reference by the fixture above, which is
+   * what makes this a check against Rich rather than against ourselves. One
+   * property covers what a hand-written styled case cannot: the corpus, every
+   * width, every mode, and a span at every offset, which is the only way to
+   * land one inside each run of a wrap's whitespace.
+   *
+   * It is here because segmentation is invisible from the outside and was
+   * therefore free to matter. `hangingWhitespace` used to walk back through
+   * the segments and stop at the first one not ending in whitespace, which an
+   * empty segment resembles — and cropping a line to its budget leaves one.
+   * A styled line that had been cropped thus reported no hanging whitespace
+   * and was centred as though its content ran to the edge, so a span anywhere
+   * in a wrap's trailing spaces silently un-centred the line it closed. None
+   * of the plain corpus could see it: one segment per line leaves the crop
+   * nothing to leave behind.
+   */
+  it("places a styled line exactly where it places the same text unstyled", () => {
+    const mismatches: string[] = [];
+    for (const [, value] of TEXTS)
+      for (const width of WIDTHS)
+        for (const justify of [...JUSTIFY, "full"] as const) {
+          const plain = placed(value, width, justify);
+          for (let offset = 0; offset < value.length; offset += 1) {
+            const styled = new RichText(value);
+            styled.stylize("red", offset, offset + 1);
+            const rendered = [...styled.render({ maxWidth: width, justify })]
+              .map((segment) => segment.text)
+              .join("")
+              .replace(/\n+$/, "");
+            if (rendered !== plain) {
+              mismatches.push(
+                `${JSON.stringify(value)} w${width} ${justify ?? "default"} span@${offset}: ` +
+                  `${JSON.stringify(rendered)} != ${JSON.stringify(plain)}`,
+              );
+            }
+          }
+        }
+
+    expect(mismatches.slice(0, 4)).toEqual([]);
+    expect(mismatches).toHaveLength(0);
+  });
+
+  /*
    * An unbounded offer is a width every renderable is expected to be handed —
    * `withBoundedWidth` exists to resolve one — and `justify` is the only thing
    * in `RichText.render` that pads, so it is the only thing an unresolved one
