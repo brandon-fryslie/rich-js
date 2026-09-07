@@ -1,0 +1,91 @@
+upper
+in  [INFO] starting up
+out [INFO] starting up
+
+upper-close
+in  [UPPER]x[/UPPER]
+out <MarkupError>
+
+lower
+in  [red]hi[/red]
+out \e[31mhi\e[0m
+
+hash
+in  [#ff0000]hi[/]
+out \e[38;2;255;0;0mhi\e[0m
+
+at
+in  [@click]hi[/]
+out hi
+
+digit
+in  [1] numbered
+out [1] numbered
+
+space
+in  [ red]leading space
+out [ red]leading space
+
+non-ascii
+in  [красный]cyrillic
+out [красный]cyrillic
+
+empty
+in  []empty
+out []empty
+
+punct-plus
+in  [a+b]plus[/a+b]
+out plus
+
+punct-paren
+in  [a(b)]paren
+out paren
+
+punct-comma
+in  [a,b]comma
+out comma
+
+inner-slash
+in  [a/b]slash
+out slash
+
+tab
+in  [a\tb]tab
+out tab
+
+nested-open
+in  [a[b]nested open
+out [a\e[1mnested open\e[0m
+
+implicit
+in  [red]a[/]b
+out \e[31ma\e[0mb
+
+implicit-space
+in  [red]a[/ ]b
+out \e[31ma\e[0mb
+
+close-trailing-space
+in  [/red ]x
+out <MarkupError>
+
+orphan-close
+in  [/] alone
+out <MarkupError>
+
+kv
+in  [a=1 b=2]kv[/]
+out kv
+
+escaped
+in  \\[red]escaped
+out [red]escaped
+
+mixed
+in  text [INFO] more [red]x[/red]
+out text [INFO] more \e[31mx\e[0m
+
+nested-styles
+in  [bold]a[italic]b[/italic]c[/bold]
+out \e[1ma\e[0m\e[1;3mb\e[0m\e[1mc\e[0m
