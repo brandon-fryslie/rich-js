@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-102",
+      "ref": "refs/pull/102/merge",
+      "sha": "b4f3ebb54f8796125574b8c787b9da6ac1ba8567",
+      "timestamp": "2026-09-07T15:15:11.670Z",
+      "commits": [
+        {
+          "sha": "b4f3ebb54f8796125574b8c787b9da6ac1ba8567",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T09:14:40-06:00",
+          "message": "Merge c431fec31e29c10f5dd04ca797db9355ea92f3f8 into 3a9d1ad7d8bae7ed482a6606eff432a932d910cc\n"
+        },
+        {
+          "sha": "c431fec31e29c10f5dd04ca797db9355ea92f3f8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T09:14:12-06:00",
+          "message": "fix(markup): sort spans by start, so an inner colour survives (rich-markup-krk)\n\n`markup.render` pushed a span when its tag closed, so the list came out\ninnermost-first, and `RichText` applies spans in list order with each one\nadding over the last. The outer span landed last and covered the inner:\n`[red]a[blue]b[/blue]c[/red]` printed all-red where Rich prints red/blue/red.\nThe inner run was not mis-ordered but gone.\n\nTakes the reference's ordering rather than a re-derivation of it —\n`sorted(spans[::-1], key=attrgetter(\"start\"))` in `rich/markup.py`. The\nreversal is the whole of the tie-break: two spans that both start at 0\n(`[red][blue]x[/blue][/red]`) are separated by nothing else, and a stable sort\nalone leaves the outer one winning.\n\nThat sort is defined against \"the list is in closing order\", and this port\nbroke that invariant in exactly one place: the auto-close walked the open\nstack forwards where the reference pops it. The disagreement was invisible\nwhile nothing sorted — it cancelled the missing sort, making `[red][blue]x`\nthe one nesting this port already got right — and would have become a\nregression the moment the sort landed. It pops now, so all three closing\npaths agree.\n\nThe three closing paths each wrote out the same \"style string of an open tag\"\nexpression, which is how they could drift on a property none of them was\nabout; one `openTagStyle` now answers it for all three and for the search\nthat matches `[/red on blue]` back to its opener.\n\nMeasured against Python Rich over 19 nesting shapes: 8 fixed, 0 regressed.\nTwo more moved decisively toward the reference and now differ only by\nrich-color-7kv (SGR parameter order) and rich-link-jkh (OSC 8 `id`) — one of\nthem, `[link=x]a[link=y]b[/link]c[/link]`, previously collapsed the whole\nstring into a single link, silently discarding the nested one.\n\nThe golden gains `nested-colour`, `-tie` and `-unclosed`, regenerated from the\nreference (the existing 23 cases reproduce byte for byte, so the fixture is a\npure addition). `nested-styles` stays as the additive arm — it reads correctly\nunder either order, which is why nothing caught this. The divergence test\nwritten to fail on the day this was fixed is deleted, as it asked to be.\n\ndocs/markup.md said tags nest but never what an inner tag does to the run it\nsits in; it now separates combining from overriding, with both examples\nmeasured.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3a9d1ad7d8bae7ed482a6606eff432a932d910cc",
