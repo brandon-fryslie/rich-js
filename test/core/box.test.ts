@@ -31,98 +31,79 @@ function segmentText(segments: { text: string }[]): string {
 
 describe("Box", () => {
   describe("construction", () => {
-    it("exposes all character properties from BoxChars", () => {
-      const chars = {
-        topLeft: "A",
-        top: "B",
-        topDivider: "C",
-        topRight: "D",
-        headLeft: "E",
-        headVertical: "F",
-        headRight: "G",
-        midLeft: "H",
-        mid: "I",
-        midVertical: "J",
-        midRight: "K",
-        bottomLeft: "L",
-        bottom: "M",
-        bottomDivider: "N",
-        bottomRight: "O",
-        left: "P",
-        right: "Q",
-        vertical: "R",
-      };
-      const box = new Box(chars);
+    it("reads each grid line as the row a table draws it for", () => {
+      const box = new Box(
+        "ABCD\n" +
+        "E FG\n" +
+        "HIJK\n" +
+        "L MN\n" +
+        "OPQR\n" +
+        "STUV\n" +
+        "W XY\n" +
+        "Z123",
+      );
 
-      expect(box.topLeft).toBe("A");
-      expect(box.top).toBe("B");
-      expect(box.topDivider).toBe("C");
-      expect(box.topRight).toBe("D");
-      expect(box.headLeft).toBe("E");
-      expect(box.headVertical).toBe("F");
-      expect(box.headRight).toBe("G");
-      expect(box.midLeft).toBe("H");
-      expect(box.mid).toBe("I");
-      expect(box.midVertical).toBe("J");
-      expect(box.midRight).toBe("K");
-      expect(box.bottomLeft).toBe("L");
-      expect(box.bottom).toBe("M");
-      expect(box.bottomDivider).toBe("N");
-      expect(box.bottomRight).toBe("O");
-      expect(box.left).toBe("P");
-      expect(box.right).toBe("Q");
-      expect(box.vertical).toBe("R");
+      expect(box.top).toEqual({ left: "A", horizontal: "B", cross: "C", right: "D" });
+      expect(box.getContentChars("head")).toEqual({ left: "E", vertical: "F", right: "G" });
+      expect(segmentText(box.getRow([1, 1], "head"))).toBe("HIJIK\n");
+      expect(box.getContentChars("row")).toEqual({ left: "L", vertical: "M", right: "N" });
+      expect(segmentText(box.getRow([1, 1], "row"))).toBe("OPQPR\n");
+      expect(segmentText(box.getRow([1, 1], "foot"))).toBe("STUTV\n");
+      expect(box.getContentChars("foot")).toEqual({ left: "W", vertical: "X", right: "Y" });
+      expect(box.bottom).toEqual({ left: "Z", horizontal: "1", cross: "2", right: "3" });
+    });
+
+    it("refuses a grid that is not eight lines of four characters", () => {
+      expect(() => new Box("+-+\n| |\n+-+")).toThrow(/8 lines of 4 single-cell/);
+      expect(() => new Box(Array(8).fill("+--").join("\n"))).toThrow(/8 lines of 4 single-cell/);
+    });
+
+    // A grid column is one drawn glyph position, so four characters is only
+    // half the requirement — four *cells* is the other half. A wide glyph
+    // satisfies the count and silently widens every frame the box draws.
+    it("refuses a row of four characters that draws more than four cells", () => {
+      expect(() => new Box(Array(8).fill("🌟─┬┐").join("\n")))
+        .toThrow(/8 lines of 4 single-cell/);
+      expect(() => new Box(Array(8).fill("┌─┬┐").join("\n"))).not.toThrow();
+    });
+
+    // The mirror of the case above: four cells drawn by five characters. The
+    // frame would look right and every position after the combining mark would
+    // be read from the wrong index.
+    it("refuses a row of four cells that spends more than four characters", () => {
+      expect(() => new Box(Array(8).fill("┌─┬┐\u0301").join("\n")))
+        .toThrow(/8 lines of 4 single-cell/);
     });
   });
 
-  describe("pre-built styles have correct characters", () => {
+  describe("pre-built styles draw the frames the reference draws", () => {
     it("ASCII uses +, -, |", () => {
-      expect(ASCII.topLeft).toBe("+");
-      expect(ASCII.top).toBe("-");
-      expect(ASCII.topRight).toBe("+");
-      expect(ASCII.left).toBe("|");
-      expect(ASCII.right).toBe("|");
-      expect(ASCII.vertical).toBe("|");
-      expect(ASCII.bottomLeft).toBe("+");
-      expect(ASCII.bottom).toBe("-");
-      expect(ASCII.bottomRight).toBe("+");
+      expect(segmentText(ASCII.getTop([3, 2]))).toBe("+------+\n");
+      expect(segmentText(ASCII.getBottom([3, 2]))).toBe("+------+\n");
+      expect(ASCII.getContentChars("row")).toEqual({ left: "|", vertical: "|", right: "|" });
     });
 
     it("SQUARE uses light box-drawing characters", () => {
-      expect(SQUARE.topLeft).toBe("\u250c"); // ┌
-      expect(SQUARE.top).toBe("\u2500"); // ─
-      expect(SQUARE.topRight).toBe("\u2510"); // ┐
-      expect(SQUARE.left).toBe("\u2502"); // │
-      expect(SQUARE.right).toBe("\u2502"); // │
-      expect(SQUARE.bottomLeft).toBe("\u2514"); // └
-      expect(SQUARE.bottomRight).toBe("\u2518"); // ┘
+      expect(segmentText(SQUARE.getTop([3, 2]))).toBe("┌───┬──┐\n");
+      expect(segmentText(SQUARE.getBottom([3, 2]))).toBe("└───┴──┘\n");
+      expect(SQUARE.getContentChars("row")).toEqual({ left: "│", vertical: "│", right: "│" });
     });
 
     it("ROUNDED uses rounded corner characters", () => {
-      expect(ROUNDED.topLeft).toBe("\u256d"); // ╭
-      expect(ROUNDED.topRight).toBe("\u256e"); // ╮
-      expect(ROUNDED.bottomLeft).toBe("\u2570"); // ╰
-      expect(ROUNDED.bottomRight).toBe("\u256f"); // ╯
+      expect(segmentText(ROUNDED.getTop([3, 2]))).toBe("╭───┬──╮\n");
+      expect(segmentText(ROUNDED.getBottom([3, 2]))).toBe("╰───┴──╯\n");
     });
 
     it("HEAVY uses heavy box-drawing characters", () => {
-      expect(HEAVY.topLeft).toBe("\u250f"); // ┏
-      expect(HEAVY.top).toBe("\u2501"); // ━
-      expect(HEAVY.topRight).toBe("\u2513"); // ┓
-      expect(HEAVY.left).toBe("\u2503"); // ┃
-      expect(HEAVY.right).toBe("\u2503"); // ┃
-      expect(HEAVY.bottomLeft).toBe("\u2517"); // ┗
-      expect(HEAVY.bottomRight).toBe("\u251b"); // ┛
+      expect(segmentText(HEAVY.getTop([3, 2]))).toBe("┏━━━┳━━┓\n");
+      expect(segmentText(HEAVY.getBottom([3, 2]))).toBe("┗━━━┻━━┛\n");
+      expect(HEAVY.getContentChars("row")).toEqual({ left: "┃", vertical: "┃", right: "┃" });
     });
 
     it("DOUBLE uses double-line box-drawing characters", () => {
-      expect(DOUBLE.topLeft).toBe("\u2554"); // ╔
-      expect(DOUBLE.top).toBe("\u2550"); // ═
-      expect(DOUBLE.topRight).toBe("\u2557"); // ╗
-      expect(DOUBLE.left).toBe("\u2551"); // ║
-      expect(DOUBLE.right).toBe("\u2551"); // ║
-      expect(DOUBLE.bottomLeft).toBe("\u255a"); // ╚
-      expect(DOUBLE.bottomRight).toBe("\u255d"); // ╝
+      expect(segmentText(DOUBLE.getTop([3, 2]))).toBe("╔═══╦══╗\n");
+      expect(segmentText(DOUBLE.getBottom([3, 2]))).toBe("╚═══╩══╝\n");
+      expect(DOUBLE.getContentChars("row")).toEqual({ left: "║", vertical: "║", right: "║" });
     });
   });
 
@@ -134,12 +115,12 @@ describe("Box", () => {
 
     it("renders top border with edge for multiple columns", () => {
       const result = segmentText(ASCII.getTop([3, 4]));
-      expect(result).toBe("+---+----+\n");
+      expect(result).toBe("+--------+\n");
     });
 
     it("renders top border without edge", () => {
       const result = segmentText(ASCII.getTop([3, 4], undefined, false));
-      expect(result).toBe("---+----\n");
+      expect(result).toBe("--------\n");
     });
 
     it("renders top border with box-drawing characters", () => {
@@ -154,7 +135,7 @@ describe("Box", () => {
 
     it("handles three columns", () => {
       const result = segmentText(ASCII.getTop([2, 3, 4]));
-      expect(result).toBe("+--+---+----+\n");
+      expect(result).toBe("+-----------+\n");
     });
   });
 
@@ -164,10 +145,14 @@ describe("Box", () => {
       expect(result).toBe("┡━━━╇━━━┩\n");
     });
 
-    it("draws every level from the one separator set a Box carries", () => {
-      const levels: RowLevel[] = ["head", "row", "mid", "foot"];
-      const rendered = levels.map((level) => segmentText(SQUARE.getRow([3, 2], level)));
-      expect(rendered).toEqual(["├───┼──┤\n", "├───┼──┤\n", "├───┼──┤\n", "├───┼──┤\n"]);
+    it("draws each level from its own line of the grid", () => {
+      const levels: RowLevel[] = ["head", "row", "foot"];
+      const rendered = levels.map((level) => segmentText(HEAVY_HEAD.getRow([3, 2], level)));
+      expect(rendered).toEqual(["┡━━━╇━━┩\n", "├───┼──┤\n", "├───┼──┤\n"]);
+    });
+
+    it("draws `mid` as a blank spacer carrying the body verticals, not a rule", () => {
+      expect(segmentText(SQUARE.getRow([3, 2], "mid"))).toBe("│   │  │\n");
     });
 
     it("renders ASCII separators with edge", () => {
@@ -220,12 +205,12 @@ describe("Box", () => {
 
     it("renders bottom border with edge for multiple columns", () => {
       const result = segmentText(ASCII.getBottom([3, 4]));
-      expect(result).toBe("+---+----+\n");
+      expect(result).toBe("+--------+\n");
     });
 
     it("renders bottom border without edge", () => {
       const result = segmentText(ASCII.getBottom([3, 4], undefined, false));
-      expect(result).toBe("---+----\n");
+      expect(result).toBe("--------\n");
     });
 
     it("renders bottom border with box-drawing characters", () => {
@@ -247,26 +232,18 @@ describe("Box", () => {
 
     it("safe replaces rounded corners with square equivalents", () => {
       const result = ROUNDED.substitute({ safe: true });
-      // Rounded corners replaced with square equivalents
-      expect(result.topLeft).toBe("┌");
-      expect(result.topRight).toBe("┐");
-      expect(result.bottomLeft).toBe("└");
-      expect(result.bottomRight).toBe("┘");
-      // Non-rounded characters preserved as-is
-      expect(result.top).toBe("─");
-      expect(result.left).toBe("│");
-      expect(result.right).toBe("│");
-      expect(result.vertical).toBe("│");
-      expect(result.midVertical).toBe("┼");
+      // Corners squared off; every other glyph of the grid is carried through.
+      expect(segmentText(result.getTop([3, 2]))).toBe("┌───┬──┐\n");
+      expect(segmentText(result.getBottom([3, 2]))).toBe("└───┴──┘\n");
+      expect(segmentText(result.getRow([3, 2], "head"))).toBe("├───┼──┤\n");
+      expect(result.getContentChars("row")).toEqual({ left: "│", vertical: "│", right: "│" });
     });
 
     it("safe on a box without problematic characters returns equivalent box", () => {
       const result = SQUARE.substitute({ safe: true });
       // SQUARE has no rounded corners, so all characters stay the same
-      expect(result.topLeft).toBe("┌");
-      expect(result.topRight).toBe("┐");
-      expect(result.bottomLeft).toBe("└");
-      expect(result.bottomRight).toBe("┘");
+      expect(segmentText(result.getTop([3, 2]))).toBe("┌───┬──┐\n");
+      expect(segmentText(result.getBottom([3, 2]))).toBe("└───┴──┘\n");
     });
 
     it("returns self when no options are set", () => {
@@ -318,63 +295,40 @@ describe("Box", () => {
     });
   });
 
-  describe("MARKDOWN character verification", () => {
-    it("uses | for left, right, and vertical", () => {
-      expect(MARKDOWN.left).toBe("|");
-      expect(MARKDOWN.right).toBe("|");
-      expect(MARKDOWN.vertical).toBe("|");
+  describe("pre-built styles carry the reference's own grid", () => {
+    it("MARKDOWN pipes its cells and rules its header with dashes", () => {
+      expect(segmentText(MARKDOWN.getTop([3, 2]))).toBe("        \n");
+      expect(segmentText(MARKDOWN.getBottom([3, 2]))).toBe("        \n");
+      expect(segmentText(MARKDOWN.getRow([3, 2], "head"))).toBe("|---|--|\n");
+      expect(MARKDOWN.getContentChars("head")).toEqual({ left: "|", vertical: "|", right: "|" });
+      expect(MARKDOWN.getContentChars("row")).toEqual({ left: "|", vertical: "|", right: "|" });
     });
 
-    it("uses | for head columns and - for mid", () => {
-      expect(MARKDOWN.headLeft).toBe("|");
-      expect(MARKDOWN.headVertical).toBe("|");
-      expect(MARKDOWN.headRight).toBe("|");
-      expect(MARKDOWN.mid).toBe("-");
-      expect(MARKDOWN.midLeft).toBe("|");
-      expect(MARKDOWN.midVertical).toBe("|");
-      expect(MARKDOWN.midRight).toBe("|");
+    it("ASCII_DOUBLE_HEAD rules its header with = and its rows with -", () => {
+      expect(segmentText(ASCII_DOUBLE_HEAD.getRow([3, 2], "head"))).toBe("+===+==+\n");
+      expect(segmentText(ASCII_DOUBLE_HEAD.getRow([3, 2], "row"))).toBe("+---+--+\n");
+      expect(segmentText(ASCII_DOUBLE_HEAD.getTop([3, 2]))).toBe("+---+--+\n");
     });
 
-    it("uses spaces for top/bottom borders", () => {
-      expect(MARKDOWN.topLeft).toBe(" ");
-      expect(MARKDOWN.top).toBe(" ");
-      expect(MARKDOWN.topRight).toBe(" ");
-      expect(MARKDOWN.bottomLeft).toBe(" ");
-      expect(MARKDOWN.bottom).toBe(" ");
-      expect(MARKDOWN.bottomRight).toBe(" ");
-    });
-  });
-
-  describe("additional pre-built style character assertions", () => {
-    it("ASCII_DOUBLE_HEAD uses = for mid separator", () => {
-      expect(ASCII_DOUBLE_HEAD.mid).toBe("=");
-      expect(ASCII_DOUBLE_HEAD.midVertical).toBe("+");
-      expect(ASCII_DOUBLE_HEAD.top).toBe("-");
-      expect(ASCII_DOUBLE_HEAD.bottom).toBe("-");
-      expect(ASCII_DOUBLE_HEAD.left).toBe("|");
-      expect(ASCII_DOUBLE_HEAD.right).toBe("|");
+    it("MINIMAL draws its rules with no outer edge glyphs", () => {
+      expect(segmentText(MINIMAL.getTop([3, 2]))).toBe("    ╷   \n");
+      expect(segmentText(MINIMAL.getBottom([3, 2]))).toBe("    ╵   \n");
+      expect(segmentText(MINIMAL.getRow([3, 2], "head"))).toBe("╶───┼──╴\n");
+      expect(MINIMAL.getContentChars("row")).toEqual({ left: " ", vertical: "│", right: " " });
     });
 
-    it("MINIMAL uses spaces for corners and edges", () => {
-      expect(MINIMAL.topLeft).toBe(" ");
-      expect(MINIMAL.topRight).toBe(" ");
-      expect(MINIMAL.bottomLeft).toBe(" ");
-      expect(MINIMAL.bottomRight).toBe(" ");
-      expect(MINIMAL.left).toBe(" ");
-      expect(MINIMAL.right).toBe(" ");
-      // But mid uses box-drawing
-      expect(MINIMAL.mid).toBe("─");
-      expect(MINIMAL.midVertical).toBe("─");
+    it("DOUBLE_EDGE doubles the outer edge and keeps the inner rules single", () => {
+      expect(segmentText(DOUBLE_EDGE.getTop([3, 2]))).toBe("╔═══╤══╗\n");
+      expect(segmentText(DOUBLE_EDGE.getBottom([3, 2]))).toBe("╚═══╧══╝\n");
+      expect(segmentText(DOUBLE_EDGE.getRow([3, 2], "head"))).toBe("╟───┼──╢\n");
+      expect(DOUBLE_EDGE.getContentChars("row")).toEqual({ left: "║", vertical: "│", right: "║" });
     });
 
-    it("DOUBLE_EDGE uses double lines for outer edges and single for inner", () => {
-      expect(DOUBLE_EDGE.topLeft).toBe("╔");
-      expect(DOUBLE_EDGE.topRight).toBe("╗");
-      expect(DOUBLE_EDGE.left).toBe("║");
-      expect(DOUBLE_EDGE.right).toBe("║");
-      expect(DOUBLE_EDGE.vertical).toBe("│");
-      expect(DOUBLE_EDGE.headVertical).toBe("│");
-      expect(DOUBLE_EDGE.midVertical).toBe("┼");
+    it("SIMPLE rules only under the header and above the footer", () => {
+      expect(segmentText(SIMPLE.getTop([3, 2]))).toBe("        \n");
+      expect(segmentText(SIMPLE.getBottom([3, 2]))).toBe("        \n");
+      expect(segmentText(SIMPLE.getRow([3, 2], "head"))).toBe(" ────── \n");
+      expect(segmentText(SIMPLE.getRow([3, 2], "row"))).toBe("        \n");
     });
   });
 

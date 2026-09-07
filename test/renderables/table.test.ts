@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Table, Column } from "../../src/renderables/table.js";
 import { Segment } from "../../src/core/segment.js";
-import { ASCII, MARKDOWN, HEAVY_HEAD } from "../../src/core/box.js";
+import { ASCII, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -43,8 +43,9 @@ describe("Table", () => {
 
   // Header, body and footer rows all come out of one code path, so selecting the
   // head glyphs per-row is the whole difficulty — hardcode them and every row
-  // goes heavy. Only the content rows are asserted: the separators between them
-  // are the Box's one separator set, which rich-table-6uy.3 replaces.
+  // goes heavy. The default box draws its footer on the body verticals, which is
+  // what the reference does for it; the sentinel-grid test below is the one that
+  // proves the footer reads its own line rather than borrowing the body's.
   it("leaves the footer row on the body characters", () => {
     const t = new Table({ showFooter: true });
     t.addColumn("Head", { footer: "Foot" });
@@ -53,6 +54,41 @@ describe("Table", () => {
     expect(lines).toContain("┃ Head ┃");
     expect(lines).toContain("│ 1    │");
     expect(lines).toContain("│ Foot │");
+  });
+
+  // Every row a table can draw comes from its own line of the box grid, and a
+  // grid of distinct glyphs is what makes a row sourced from the wrong line
+  // visible. The exception is a content row's fill column — the reference
+  // writes a space there and nothing ever draws it. The frames the shipped
+  // constants draw are pinned in test/core/box.test.ts.
+  it("draws each row from its own line of the box grid", () => {
+    const sentinel = new Box(
+      "1234\n" +
+      "5 67\n" +
+      "89ab\n" +
+      "c de\n" +
+      "fghi\n" +
+      "jklm\n" +
+      "n op\n" +
+      "qrst",
+    );
+    const t = new Table({ box: sentinel, showFooter: true, showLines: true });
+    t.addColumn("A", { footer: "F" });
+    t.addColumn("B", { footer: "G" });
+    t.addRow("1", "2");
+    t.addRow("3", "4");
+
+    expect(collectLines(t, { maxWidth: 40 })).toEqual([
+      "122232224",   // top border
+      "5 A 6 B 7",   // header content
+      "8999a999b",   // header separator
+      "c 1 d 2 e",   // body content
+      "fggghgggi",   // row separator
+      "c 3 d 4 e",   // body content
+      "jkkklkkkm",   // footer separator
+      "n F o G p",   // footer content
+      "qrrrsrrrt",   // bottom border
+    ]);
   });
 
   it("renders empty table without error", () => {
