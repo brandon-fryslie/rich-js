@@ -13,7 +13,7 @@ const console = new Console();
 
 const table = new Table({ title: "Star Wars Box Office" });
 
-table.addColumn("Date",              { style: "dim", width: 12 });
+table.addColumn("Date",              { width: 12 });
 table.addColumn("Title");
 table.addColumn("Production Budget", { justify: "right" });
 table.addColumn("Box Office",        { justify: "right" });
@@ -61,33 +61,32 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 | Option | Description |
 |---|---|
 | `box` | Box-drawing style (`null` removes borders entirely) |
-| `safeBox` | Force ASCII box characters instead of Unicode |
 | `showHeader` | Render the header row (default: `true`); off also swaps five box styles for a plainer kin ([Border styles](#border-styles)) |
 | `showFooter` | Render a footer row |
 | `showEdge` | Render the outer border (default: `true`) |
 | `showLines` | Draw lines between data rows |
-| `leading` | Extra blank lines between rows |
 
 ### Padding
 
 | Option | Description |
 |---|---|
 | `padding` | Padding inside cells — integer, 2-tuple, or 4-tuple (CSS order) |
-| `collapsePadding` | Merge adjacent cell padding |
-| `padEdge` | Pad the outer edges |
 
 ### Styles
 
 | Option | Description |
 |---|---|
-| `style` | Base style for the whole table |
+| `style` | Base style for the whole table — accepted and stored, but not yet applied |
 | `rowStyles` | List of styles applied to alternating rows (zebra stripes) |
 | `headerStyle` | Default style for header cells |
 | `footerStyle` | Default style for footer cells |
 | `borderStyle` | Style for border characters |
 | `titleStyle`, `captionStyle` | Styles for title/caption text |
 | `titleJustify`, `captionJustify` | Alignment of title/caption |
-| `highlight` | Enable auto-highlighting of cell contents |
+
+Every option in that table reaches the render path except `style`, which a table
+stores and never draws with. Until it is wired, put the style on the content —
+markup in the cell text, or `rowStyles` for a whole row.
 
 ## Narrow widths
 
@@ -140,33 +139,35 @@ Configure columns individually:
 
 | Option | Description |
 |---|---|
-| `headerStyle`, `footerStyle` | Header/footer cell style |
-| `style` | Style applied to all cells in the column |
 | `justify` | Cell alignment: `"left"`, `"center"`, `"right"`, `"full"` |
-| `vertical` | Vertical alignment: `"top"`, `"middle"`, `"bottom"` |
 | `width` | Fixed column width |
 | `minWidth`, `maxWidth` | Width constraints |
 | `ratio` | Proportional width allocation |
 | `noWrap` | Prevent text wrapping in this column |
-| `highlight` | Auto-highlight this column's cells |
+| `overflow` | What becomes of a line too long for the column: `"ellipsis"` (default), `"crop"`, `"fold"` |
+| `footer` | Footer cell content — drawn only when the table sets `showFooter` |
+| `headerStyle`, `footerStyle` | Per-column header/footer style — accepted and stored, but not yet applied |
+| `style` | Per-column cell style — accepted and stored, but not yet applied |
+
+The last three are the exception: a column accepts them and holds them, but no cell
+is ever drawn with them. What styles a column's content today is markup in the cell
+text; what styles a whole row is the table's `headerStyle`, `footerStyle` and
+`rowStyles`.
 
 ## Adding columns
 
-Two equivalent approaches:
+`addColumn` is the way in. It builds the column and appends it, taking the header
+first and everything else in an options object:
 
 ```typescript
-// Via addColumn() method
 table.addColumn("Name");
-table.addColumn("Score", { justify: "right", style: "bold cyan" });
-
-// Via constructor — mix plain strings and Column objects
-import { Column } from "@promptctl/rich-js";
-
-const table = new Table(
-  "Name",
-  new Column("Score", { justify: "right", style: "bold cyan" }),
-);
+table.addColumn("Score", { justify: "right" });
 ```
+
+Every column option is reachable that way. The exported `Column` class is the same
+object `addColumn` builds — its constructor takes one options object with the header
+inside it — and `table.columns` hands out the live columns, for adjusting one after
+the rows are in.
 
 ## Border styles
 
@@ -217,16 +218,6 @@ if (table.rowCount === 0) {
 }
 ```
 
-## Vertical alignment
-
-Use the `Align` renderable to vertically align content within a cell when the per-column `vertical` option isn't enough:
-
-```typescript
-import { Align } from "@promptctl/rich-js";
-
-table.addRow(new Align("Top content", { vertical: "top" }), otherCell);
-```
-
 ## Grids
 
 A table with no headers or borders is a general-purpose layout grid. The `Table.grid()` alternative constructor creates one:
@@ -236,7 +227,7 @@ import { Table } from "@promptctl/rich-js";
 
 const grid = Table.grid();
 grid.addColumn();
-grid.addColumn({ justify: "right" });
+grid.addColumn("", { justify: "right" });
 grid.addRow("[bold]Left content[/bold]", "[dim]Right content[/dim]");
 
 console.print(grid);
@@ -247,7 +238,7 @@ A common pattern: use a grid to position content at both edges of the terminal o
 ```typescript
 const grid = Table.grid({ expand: true });
 grid.addColumn();
-grid.addColumn({ justify: "right" });
+grid.addColumn("", { justify: "right" });
 grid.addRow("[bold]Left side[/bold]", "[dim]Right side[/dim]");
 
 console.print(grid);
