@@ -4,15 +4,22 @@
     {
       "version": "pr-96",
       "ref": "refs/pull/96/merge",
-      "sha": "7dd10530e37a1b8a37714327e56108727c6ec5fb",
-      "timestamp": "2026-09-07T00:42:04.158Z",
+      "sha": "7576946801b2deaf0380df2e9a3a638c6b1fa79f",
+      "timestamp": "2026-09-07T01:13:30.754Z",
       "commits": [
         {
-          "sha": "7dd10530e37a1b8a37714327e56108727c6ec5fb",
+          "sha": "7576946801b2deaf0380df2e9a3a638c6b1fa79f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-06T18:41:35-06:00",
-          "message": "Merge 2019abcf81179dd1be905ddf498800a8356afb33 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+          "timestamp": "2026-09-07T01:12:56Z",
+          "message": "Merge 642c8f1f121e8e8cbcbe704aa41500fe475233a2 into 160b864591c05433b7c869e0ff0e4789c3e2a800\n"
+        },
+        {
+          "sha": "642c8f1f121e8e8cbcbe704aa41500fe475233a2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-06T19:12:46-06:00",
+          "message": "fix(table): stamp each cell once, and render titles the reference's way\n\nFour defects the review surfaced, three of which this branch introduced.\n\nCells were converted twice per render — `_naturalWidth` and `_renderRow` each\nresolved the raw value independently, which is two authorities on what a cell\nis. They disagreed: a `Panel` stringifies to `[object Object]`, which the tag\npattern matches whole, so markup-parsing it in the sizing path returned empty\ntext and measured the column as zero. `addRow` now resolves each cell through\n`toRenderable` once and stores `Renderable[]`, so both consumers read one\nstamped value and re-parsing is unrepresentable rather than merely avoided.\nMeasured on a 500x8 table: 15.12 ms/render back to 10.52, against a pre-branch\nbaseline of 10.39. The cost is that `MarkupError` now surfaces at `addRow`\nrather than lazily at render — a stated divergence from the reference, taken\nbecause the error still surfaces with the same message and now points at the\ncall holding the bad string.\n\nSizing a cell that draws itself still stringifies rather than measures it, so a\n`Panel` contributes a wrong non-zero width. That gap is pre-existing and stays:\n`_columnDemands` carries no `RenderOptions`, so `Measurement.get` is not\nreachable from there.\n\n`_renderTitle` took only the first line, so a title carrying a newline lost\neverything after it silently. The reference renders every line, verified by\nrunning it — `\"Line one\\nLine two\"` now emits both, centered, matching the\nreference character for character. It also emitted a blank line for `title: \"\"`\nwhere the reference emits none; the loop disposes of that too.\n\n`titleJustify` was not the owner of its own alignment. A `RichText` carrying its\nown `justify` pads itself to the full width inside `render`, collapsing the gap\nand silently outvoting the table's option. The title now renders from a copy\nwith `justify` cleared.\n\nNot fixed here, filed as rich-markup-sec: this port's tag grammar accepts\n`[A-Z]` where the reference's accepts only `[a-z#/@]`, so `[INFO]` is eaten as\na tag here and printed literally there. That is a `core/markup` defect reaching\nevery `Console.print`, pre-existing and merely made reachable from a table cell\nby this branch. Narrowing the class locally passes all 2259 tests unchanged,\nwhich is the finding rather than the fix — the grammar is unpinned, and it\ndeserves the reference audit rich-table-6uy.3 gave the box data.\n"
         },
         {
           "sha": "2019abcf81179dd1be905ddf498800a8356afb33",
