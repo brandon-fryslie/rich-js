@@ -1,7 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { Tag, MarkupError, escape, render } from "../../src/core/markup.js";
+import { Tag, MarkupError, escape, MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
+import type { Style } from "../../src/core/style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
+
+// The built-in dialect, asserted through the module's one public crossing.
+// `renderMarkup` delegates to the built-in parser the moment a string carries no
+// paired plugin tag, so an empty registry is simply how a caller spells "no
+// plugin tags" — and spelling it here keeps every assertion below independent of
+// whatever another suite left on `globalMarkupRegistry`.
+// [LAW:no-shared-mutable-globals]
+const BUILTINS_ONLY = new MarkupRegistry();
+const renderBuiltin = (markup: string, baseStyle?: string | Style, options?: { emoji?: boolean }) =>
+  renderMarkup(markup, { registry: BUILTINS_ONLY, baseStyle, emoji: options?.emoji });
 
 // --- Tag ---
 
@@ -62,31 +73,31 @@ describe("escape()", () => {
 
 describe("render basic", () => {
   it("renders plain text with no tags", () => {
-    const t = render("hello world");
+    const t = renderBuiltin("hello world");
     expect(t.plain).toBe("hello world");
     expect(t.spans).toHaveLength(0);
   });
 
   it("renders bold tag", () => {
-    const t = render("[bold]hello[/bold]");
+    const t = renderBuiltin("[bold]hello[/bold]");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThan(0);
   });
 
   it("renders nested tags with both spans", () => {
-    const t = render("[bold][italic]hello[/italic][/bold]");
+    const t = renderBuiltin("[bold][italic]hello[/italic][/bold]");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThanOrEqual(2);
   });
 
   it("renders color tag", () => {
-    const t = render("[red]hello[/red]");
+    const t = renderBuiltin("[red]hello[/red]");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThan(0);
   });
 
   it("renders combined style in single tag", () => {
-    const t = render("[bold red]hello[/bold red]");
+    const t = renderBuiltin("[bold red]hello[/bold red]");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThan(0);
   });
@@ -96,27 +107,27 @@ describe("render basic", () => {
 
 describe("render closing tags", () => {
   it("implicit close [/] closes the most recent open tag", () => {
-    const t = render("[bold]hello[/]");
+    const t = renderBuiltin("[bold]hello[/]");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThan(0);
   });
 
   it("unclosed tags auto-close at end of text", () => {
-    const t = render("[bold]hello");
+    const t = renderBuiltin("[bold]hello");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThan(0);
   });
 
   it("mismatched close tag throws MarkupError", () => {
-    expect(() => render("[bold]hello[/italic]")).toThrow(MarkupError);
+    expect(() => renderBuiltin("[bold]hello[/italic]")).toThrow(MarkupError);
   });
 
   it("implicit close with nothing open throws MarkupError", () => {
-    expect(() => render("[/]")).toThrow(MarkupError);
+    expect(() => renderBuiltin("[/]")).toThrow(MarkupError);
   });
 
   it("implicit close with preceding text and nothing open throws MarkupError", () => {
-    expect(() => render("no tags[/]")).toThrow(MarkupError);
+    expect(() => renderBuiltin("no tags[/]")).toThrow(MarkupError);
   });
 });
 
@@ -124,7 +135,7 @@ describe("render closing tags", () => {
 
 describe("render non-strict nesting", () => {
   it("allows overlapping tags", () => {
-    const t = render("[bold]Bold[italic] bold and italic [/bold]italic[/italic]");
+    const t = renderBuiltin("[bold]Bold[italic] bold and italic [/bold]italic[/italic]");
     expect(t.plain).toBe("Bold bold and italic italic");
     // Both bold and italic spans should be present
     expect(t.spans.length).toBeGreaterThanOrEqual(2);
@@ -136,7 +147,7 @@ describe("render non-strict nesting", () => {
     //         0123456789012345678901234567
     // bold covers 0..21 ("Bold bold and italic ")
     // italic covers 4..27 (" bold and italic italic")
-    const t = render("[bold]Bold[italic] bold and italic [/bold]italic[/italic]");
+    const t = renderBuiltin("[bold]Bold[italic] bold and italic [/bold]italic[/italic]");
     const boldSpan = t.spans.find((s) => {
       const style = typeof s.style === "string" ? s.style : s.style.toString();
       return style === "bold";
@@ -160,7 +171,7 @@ describe("render non-strict nesting", () => {
 
 describe("render background colors", () => {
   it("parses 'on' syntax for foreground and background", () => {
-    const t = render("[red on blue]hello[/red on blue]");
+    const t = renderBuiltin("[red on blue]hello[/red on blue]");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThan(0);
   });
@@ -170,7 +181,7 @@ describe("render background colors", () => {
 
 describe("render multiple sections", () => {
   it("produces separate spans for separate styled regions", () => {
-    const t = render("[bold]hello[/bold] [italic]world[/italic]");
+    const t = renderBuiltin("[bold]hello[/bold] [italic]world[/italic]");
     expect(t.plain).toBe("hello world");
     expect(t.spans.length).toBeGreaterThanOrEqual(2);
   });
@@ -180,7 +191,7 @@ describe("render multiple sections", () => {
 
 describe("render escaped brackets", () => {
   it("treats \\[ as literal bracket in output", () => {
-    const t = render("\\[bold]hello");
+    const t = renderBuiltin("\\[bold]hello");
     expect(t.plain).toBe("[bold]hello");
     expect(t.spans).toHaveLength(0);
   });
@@ -190,25 +201,25 @@ describe("render escaped brackets", () => {
 
 describe("render emoji", () => {
   it("replaces emoji shortcodes by default", () => {
-    const t = render(":thumbs_up:");
+    const t = renderBuiltin(":thumbs_up:");
     expect(t.plain).not.toBe(":thumbs_up:");
     expect(t.plain.length).toBeGreaterThan(0);
   });
 
   it("keeps shortcodes literal when emoji:false", () => {
-    const t = render(":thumbs_up:", undefined, { emoji: false });
+    const t = renderBuiltin(":thumbs_up:", undefined, { emoji: false });
     expect(t.plain).toBe(":thumbs_up:");
   });
 
   it("emoji variant -emoji appends emoji variant selector", () => {
     // :thumbs_up-emoji: should add U+FE0F emoji variant selector
-    const t = render(":thumbs_up-emoji:", undefined);
+    const t = renderBuiltin(":thumbs_up-emoji:", undefined);
     expect(t.plain).toContain("\uFE0F");
   });
 
   it("emoji variant -text appends text variant selector", () => {
     // :thumbs_up-text: should add U+FE0E text variant selector
-    const t = render(":thumbs_up-text:", undefined);
+    const t = renderBuiltin(":thumbs_up-text:", undefined);
     expect(t.plain).toContain("\uFE0E");
   });
 });
@@ -217,7 +228,7 @@ describe("render emoji", () => {
 
 describe("render fast path", () => {
   it("text without [ skips parsing and returns plain text", () => {
-    const t = render("no tags here");
+    const t = renderBuiltin("no tags here");
     expect(t.plain).toBe("no tags here");
     expect(t.spans).toHaveLength(0);
   });
@@ -227,13 +238,13 @@ describe("render fast path", () => {
 
 describe("render advanced tags", () => {
   it("handles hex color tags", () => {
-    const t = render("[#ff0000]hello[/#ff0000]");
+    const t = renderBuiltin("[#ff0000]hello[/#ff0000]");
     expect(t.plain).toBe("hello");
     expect(t.spans.length).toBeGreaterThan(0);
   });
 
   it("handles link tags with parameters", () => {
-    const t = render("[link=https://example.com]click[/link]");
+    const t = renderBuiltin("[link=https://example.com]click[/link]");
     expect(t.plain).toBe("click");
     expect(t.spans.length).toBeGreaterThan(0);
   });
@@ -243,7 +254,7 @@ describe("render advanced tags", () => {
 
 describe("render with base style", () => {
   it("applies base style string to entire text", () => {
-    const t = render("hello", "bold");
+    const t = renderBuiltin("hello", "bold");
     expect(t.spans.length).toBeGreaterThan(0);
   });
 });

@@ -6,6 +6,8 @@ import {
   MarkupError,
 } from "../../src/core/markup.js";
 import { RichText } from "../../src/core/text.js";
+import { Console } from "../../src/core/console.js";
+import { Prompt } from "../../src/renderables/prompt.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
 import type { MarkupTagContext } from "../../src/core/markup.js";
@@ -189,5 +191,99 @@ describe("MarkupRegistry", () => {
     renderMarkup("[click verb=foo][bold red]hot[/bold red][/click]", { registry });
     expect(captured).toContain("hot");
     expect(captured).toMatch(/\x1b\[/); // some ANSI present from bold/red
+  });
+});
+
+// Every consumer that turns a markup string into a `RichText` goes through
+// `renderMarkup`, so a tag on the global registry resolves wherever markup is
+// accepted. `console.ts` and `prompt.ts` used to import the built-in parser
+// under the name `renderMarkup`, which made the import line at all four call
+// sites read identically while two of them silently ate the tag and printed
+// the content unstyled (rich-markup-pcp). These pin the two that were wrong;
+// they are the regression, not a demonstration of the feature.
+// [LAW:single-enforcer]
+describe("the global registry reaches every markup consumer", () => {
+  // [LAW:no-ambient-temporal-coupling] `await body()` inside the try, not
+  // `return body()`: the latter hands back a pending promise, so `finally`
+  // unregisters while an async body is still mid-flight and the cleanup races
+  // the work it is meant to follow.
+  async function withGlobalShout<T>(body: () => T | Promise<T>): Promise<T> {
+    globalMarkupRegistry.register("shout", (ctx) =>
+      new RichText(ctx.children.plain.toUpperCase(), { end: "" }),
+    );
+    try {
+      return await body();
+    } finally {
+      globalMarkupRegistry.unregister("shout");
+    }
+  }
+
+  it("resolves a globally registered tag through console.print", async () => {
+    await withGlobalShout(() => {
+      const chunks: string[] = [];
+      const stream = {
+        write(data: string) {
+          chunks.push(data);
+          return true;
+        },
+      } as NodeJS.WritableStream;
+      const c = new Console({ file: stream, width: 80, colorSystem: null });
+      c.print("say [shout]hello[/shout] now");
+      expect(chunks.join("")).toBe("say HELLO now\n");
+    });
+  });
+
+  it("resolves a globally registered tag through Prompt.ask", async () => {
+    // `Prompt` hands the *plain* text to its input capability, so a handler
+    // that rewrites text is visible in the prompt string the user is shown.
+    const asked = await withGlobalShout(async () => {
+      let seen = "";
+      await Prompt.ask("pick [shout]one[/shout]", async (prompt) => {
+        seen = prompt;
+        return "x";
+      });
+      return seen;
+    });
+    expect(asked).toBe("pick ONE: ");
+  });
+});
+
+// A style span annotates and may overlap; a plugin pair replaces a region and
+// so must nest. The top-level filter used to test only where a pair *opened*,
+// which read "contained" and "overlapping" as one shape — so the overlapping
+// pair was dropped and its closing tag orphaned into the trailing slice, where
+// the built-in parser rejected it while naming the wrong tag. These pin the
+// three shapes that comparison now has to tell apart.
+describe("plugin pairs must nest", () => {
+  function twoTags(): MarkupRegistry {
+    const registry = new MarkupRegistry();
+    registry.register("aa", (ctx) => new RichText(`<A>${ctx.children.plain}</A>`, { end: "" }));
+    registry.register("bb", (ctx) => new RichText(`<B>${ctx.children.plain}</B>`, { end: "" }));
+    return registry;
+  }
+
+  it("rejects an overlapping pair, naming both tags and the fix", () => {
+    expect(() => renderMarkup("[aa]x[bb]y[/aa]z[/bb]", { registry: twoTags() })).toThrow(
+      /Plugin tag \[bb\] overlaps \[aa\].*Close \[\/bb\] before \[\/aa\]/s,
+    );
+    expect(() => renderMarkup("[aa]x[bb]y[/aa]z[/bb]", { registry: twoTags() })).toThrow(MarkupError);
+  });
+
+  it("renders an inner plugin tag that never closes, rather than rejecting it", () => {
+    // No closer means no entry in `pairs` at all, so this shape never reaches
+    // the overlap test. Pinned because the obvious alternative fix — rejecting
+    // whenever a closing tag's match is not the top of the stack — breaks it.
+    const out = renderMarkup("[aa]x[bb]y[/aa]", { registry: twoTags() });
+    expect(renderToString(out, { colorSystem: null })).toBe("<A>xy</A>");
+  });
+
+  it("resolves two sequential top-level pairs", () => {
+    const out = renderMarkup("[aa]x[/aa] mid [bb]y[/bb]", { registry: twoTags() });
+    expect(renderToString(out, { colorSystem: null })).toBe("<A>x</A> mid <B>y</B>");
+  });
+
+  it("leaves the built-in dialect's non-strict nesting alone", () => {
+    const out = renderMarkup("[bold]a[italic]b[/bold]c[/italic]", { registry: twoTags() });
+    expect(renderToString(out, { colorSystem: null })).toBe("abc");
   });
 });

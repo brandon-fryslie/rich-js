@@ -6,7 +6,7 @@ import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
 import { Strip, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
-import { render as parseMarkup } from "../../src/core/markup.js";
+import { renderMarkup } from "../../src/core/markup.js";
 
 // [LAW:behavior-not-structure] Tests assert observable bytes — ANSI codes,
 // terminator newlines, color stripping — not internal walk shape.
@@ -252,7 +252,7 @@ describe("segmentsToString coalescing", () => {
 
 describe("OSC 8 wrap is escape-safe", () => {
   it("cannot be terminated early by a hostile URL routed through the markup parser", () => {
-    const t = parseMarkup("[link=https://evil.example/\x1b\\BAD]click[/link]");
+    const t = renderMarkup("[link=https://evil.example/\x1b\\BAD]click[/link]");
     const out = segmentsToString(
       [...t.render({ maxWidth: 80 })],
       ColorDepth.TRUECOLOR,
