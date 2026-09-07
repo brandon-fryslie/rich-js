@@ -789,13 +789,16 @@ export class Table implements Renderable, Measurable {
   ): Iterable<Segment> {
     const titleStyle = style.isNull ? undefined : style;
 
-    // `titleJustify` is the only owner of this alignment, and it wins by being
-    // the one the renderable is handed. A `RichText` carrying its own `justify`
-    // outranks the option in `render`, so the table's choice would lose to a
-    // property the caller may not know it set. Cleared on a copy rather than in
-    // place — the caller's text is theirs. [LAW:one-source-of-truth]
+    // The table owns the canvas; the caller's text still says how it meets the
+    // edge. A `RichText`'s own `justify` and `noWrap` outrank the options
+    // `render` is handed, so `titleJustify` would lose to a property the caller
+    // may not know it set, and a `noWrap` title would leave at its natural width
+    // and run straight through the frame. `overflow` stays theirs: every method
+    // cuts within a bound it cannot lift, so none can escape. Cleared on a copy
+    // rather than in place — the caller's text is theirs. [LAW:one-source-of-truth]
     const source = text.copy();
     source.justify = undefined;
+    source.noWrap = false;
 
     // The table's title style is the *base* the content's own spans layer over,
     // which is what the reference emits: a `[red]` title inside an italic table

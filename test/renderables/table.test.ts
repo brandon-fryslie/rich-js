@@ -363,6 +363,52 @@ describe("Table stays inside the width it is given", () => {
     }
   });
 
+  /*
+   * A `RichText`'s own `noWrap` beats the options `render` is handed, so a
+   * caller could hand the table a title it had unbounded and the frame had no
+   * say: the title left at its natural width and ran straight through the
+   * corner, 49 cells out of a 20-cell table. The invariant above is what makes
+   * this a bug and not a preference — the table owns its canvas.
+   */
+  it("stays inside the width when the title and caption carry their own noWrap", () => {
+    const long = "A title far longer than this table will ever be";
+    const title = new RichText(long);
+    title.noWrap = true;
+    const caption = new RichText(long);
+    caption.noWrap = true;
+    const t = populate(new Table({ box: ASCII, title, caption }));
+
+    for (const width of widths) {
+      const widest = Math.max(0, ...collectLines(t, { maxWidth: width }).map(cellLen));
+      expect({ width, widest }).toEqual({ width, widest: Math.min(widest, width) });
+    }
+  });
+
+  /*
+   * Where that rule stops. `noWrap` decides whether the line is bounded at all
+   * and the frame is the bound, so the table takes it; `overflow` only decides
+   * how a line meets an edge it cannot move, and every method cuts within the
+   * budget. Clearing it too would overrule a caller for no invariant's sake,
+   * so the caller keeps it — and this is the test that says so, because the
+   * cheap way to fix the bug above is to clear all three and never notice.
+   */
+  it("leaves a title's own overflow method to the caller", () => {
+    // Unbreakable, because that is the only text whose overflow method is
+    // observable: anything a wrap can resolve is resolved before the method is
+    // consulted, and `ellipsis` and `fold` render a wrappable title alike.
+    const word = "Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const titleOf = (overflow?: "fold" | "crop" | "ellipsis") => {
+      const title = new RichText(word);
+      title.overflow = overflow;
+      const lines = collectLines(populate(new Table({ box: ASCII, title })), { maxWidth: 20 });
+      return lines.slice(0, lines.findIndex((line) => line.startsWith("+")));
+    };
+
+    expect(titleOf("ellipsis")).toHaveLength(1);
+    expect(titleOf("ellipsis")[0]!.trim().endsWith("\u2026")).toBe(true);
+    expect(titleOf(undefined).length).toBeGreaterThan(1);
+  });
+
   it("crops a wide-character title by cells, not by code units", () => {
     // Each ideograph is two cells: a 10-code-unit slice would be 20 cells wide.
     const t = new Table({ box: ASCII, title: "\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45\u5e45" });
