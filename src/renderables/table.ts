@@ -8,7 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
 import type { RowLevel } from "../core/box.js";
 import { RichText } from "../core/text.js";
-import { render as renderMarkup } from "../core/markup.js";
+import { renderMarkup } from "../core/markup.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -35,13 +35,13 @@ function resolveStyle(style: string | Style | undefined): Style {
  *
  * Parsing is unconditional because that is what the reference does rather than
  * because it is the simpler branch: Rich's `Console.__init__` declares
- * `markup: bool = True`, and every one of those five positions reaches the wire
- * through `Console.render_str`. A table-level opt-out would be a mode with no
- * reference behaviour to define. [LAW:no-mode-explosion]
+ * `markup: bool = True`, and all five positions reach the wire through Rich's
+ * own `render_str`. A table-level opt-out would be a mode with no reference
+ * behaviour to define. [LAW:no-mode-explosion]
  *
  * `end` is assigned after the parse, not passed in, because a table cell is a
- * fragment rather than a line — the same two steps `Console` takes for a
- * printed string.
+ * fragment rather than a line — the same two steps Rich takes for a printed
+ * string.
  */
 function toCellText(content: unknown): RichText {
   if (content instanceof RichText) return content;
