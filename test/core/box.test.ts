@@ -262,6 +262,37 @@ describe("Box", () => {
     });
   });
 
+  describe("plainHeaded()", () => {
+    // The reference's own `PLAIN_HEADED_SUBSTITUTIONS`, and the whole of it.
+    it.each([
+      ["HEAVY_HEAD", HEAVY_HEAD, SQUARE],
+      ["SQUARE_DOUBLE_HEAD", SQUARE_DOUBLE_HEAD, SQUARE],
+      ["MINIMAL_HEAVY_HEAD", MINIMAL_HEAVY_HEAD, MINIMAL],
+      ["MINIMAL_DOUBLE_HEAD", MINIMAL_DOUBLE_HEAD, MINIMAL],
+      ["ASCII_DOUBLE_HEAD", ASCII_DOUBLE_HEAD, ASCII2],
+    ])("%s gives up its header glyphs", (_name, headed, plain) => {
+      expect(headed.plainHeaded()).toBe(plain);
+    });
+
+    it.each([
+      ["SQUARE", SQUARE],
+      ["ROUNDED", ROUNDED],
+      ["MARKDOWN", MARKDOWN],
+    ])("%s already draws a plain head, so it answers with itself", (_name, style) => {
+      expect(style.plainHeaded()).toBe(style);
+    });
+
+    // [LAW:types-are-the-program] A box is its grid, so an equal box answers
+    // alike. `safe` on a box with no rounded corners is the route that produces
+    // one: a fresh instance, an unchanged grid. Keyed on identity rather than
+    // on the grid, this box would keep the heavy header it was asked to drop.
+    it("substitutes a grid-equal box that is not the shipped constant", () => {
+      const copy = HEAVY_HEAD.substitute({ safe: true });
+      expect(copy).not.toBe(HEAVY_HEAD);
+      expect(copy.plainHeaded()).toBe(SQUARE);
+    });
+  });
+
   describe("style parameter forwarding", () => {
     it("getTop() segments carry the provided style", () => {
       const style = new Style({ bold: true });

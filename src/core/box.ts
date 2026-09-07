@@ -189,6 +189,33 @@ export class Box {
   }
 
   /**
+   * The nearest box that spends no special glyphs on a header — what a table
+   * with `showHeader: false` draws with. A box whose head row already matches
+   * its body is its own answer, so this is the identity for fourteen of the
+   * nineteen shipped styles.
+   *
+   * It stands beside `substitute` rather than joining it because the two ask
+   * unrelated questions: `substitute` asks what the *platform* can draw, this
+   * asks what the *table* contains. Nothing correlates them, so a caller that
+   * wants both wants both, and a shared options bag would only multiply the
+   * combinations either one has to reason about. [LAW:no-mode-explosion]
+   *
+   * [LAW:types-are-the-program] The relation is keyed on the grid, not on
+   * object identity as the reference's dict is. A `Box` is wholly determined by
+   * its grid — that is what the constructor takes and all eight rows derive
+   * from — so two boxes with one grid must answer this alike. Identity keying
+   * would say otherwise the moment a box arrived by any route but the shipped
+   * constant, and `safeSubstitute` above builds exactly such a box: a fresh
+   * instance carrying an unchanged grid.
+   */
+  plainHeaded(): Box {
+    // `private` is scoped to the class, so the pairs below can be read by grid
+    // without exposing one.
+    return PLAIN_HEADED_SUBSTITUTIONS.find(([headed]) => headed.grid === this.grid)?.[1]
+      ?? this;
+  }
+
+  /**
    * [LAW:dataflow-not-control-flow] Every full-width rule the box can draw is
    * this one loop; which rule it is arrives as four characters, not a branch.
    */
@@ -442,3 +469,17 @@ export const MARKDOWN = new Box(
   "| ||\n" +
   "    ",
 );
+
+/**
+ * Boxes whose header glyphs differ from their body's, paired with the kin that
+ * draws the same frame without them. Transcribed from the reference's
+ * `PLAIN_HEADED_SUBSTITUTIONS`; the fourteen styles absent here already draw a
+ * plain head, and `plainHeaded` returns them unchanged.
+ */
+const PLAIN_HEADED_SUBSTITUTIONS: readonly (readonly [Box, Box])[] = [
+  [HEAVY_HEAD, SQUARE],
+  [SQUARE_DOUBLE_HEAD, SQUARE],
+  [MINIMAL_HEAVY_HEAD, MINIMAL],
+  [MINIMAL_DOUBLE_HEAD, MINIMAL],
+  [ASCII_DOUBLE_HEAD, ASCII2],
+];

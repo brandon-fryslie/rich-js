@@ -513,9 +513,13 @@ export class Table implements Renderable, Measurable {
 
     const options = withBoundedWidth(rawOptions, this);
 
-    const box = this.box
-      ? (options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box)
-      : null;
+    // The two swaps a box goes through before anything is drawn with it, in the
+    // reference's order: what the platform can render, then what a table
+    // lacking a header should. [LAW:dataflow-not-control-flow] Both run every
+    // render and each returns the receiver when it has nothing to change, so
+    // the flags arrive as values rather than as branches around a step.
+    const drawable = this.box?.substitute({ asciiOnly: options.asciiOnly });
+    const box = (this.showHeader ? drawable : drawable?.plainHeaded()) ?? null;
     const border = this.borderStyle.isNull ? undefined : this.borderStyle;
 
     // The one division of the width every row below is measured against.
