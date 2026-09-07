@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-110",
+      "ref": "refs/pull/110/merge",
+      "sha": "b840d412c62b2fbdf835b08fb34f2d1dd8f2d936",
+      "timestamp": "2026-09-07T19:09:48.117Z",
+      "commits": [
+        {
+          "sha": "b840d412c62b2fbdf835b08fb34f2d1dd8f2d936",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T13:09:19-06:00",
+          "message": "Merge 78fa266f971c8e8e5ae7735af0d2e48a504f0c93 into eb9a18e75e40eb9603777bfd50936bfb7c3f6f91\n"
+        },
+        {
+          "sha": "78fa266f971c8e8e5ae7735af0d2e48a504f0c93",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T13:09:05-06:00",
+          "message": "perf(text): fold spans into pieces instead of rescanning them (rich-text-6po)\n\n`RichText._buildSegments` cut the text at every span edge and then asked, of\nevery piece, which of *all* the spans covered it. The pieces are cut by the\nspans, so that charged `spans x pieces` — the square of the span count — and\nanything styling densely reached it in ordinary use: a `ReprHighlighter` over a\nlarge value, `highlightRegex` over a common character, `Pretty`'s indent guides.\n\nWalk it span-first instead. A span covers a piece exactly when it covers the\npiece's first character, because the pieces are cut at the span edges, so each\nspan owns one contiguous run of pieces and can be written into it once. Every\nspan edge is already a boundary, which makes the run's opening a map lookup\nrather than a search.\n\nSpan-first also keeps the composition honest for free: `Style.add` is\norder-dependent and the last writer wins, so the styles have to fold in\n`_spans` order — which iterating `_spans` is, and which a position-ordered\nsweep would have had to reconstruct.\n\nTwo dead guards went with it. Neither the empty-text early return nor the\nempty-piece `continue` could fire: the boundaries come from a Set, so\nconsecutive ones always differ, and zero-length text produces no pieces at all.\nA span covering nothing — empty, reversed, or past the text — still cuts the\ntext where its edges land, as before, and now folds into an empty run rather\nthan into a case.\n\nMeasured against eb9a18e7, same machine:\n\n                                        before      after\n  8,000 one-character spans             833.5ms      7.6ms\n  4,000                                  62.7ms      4.8ms\n  1,000                                  15.1ms      3.7ms\n  Pretty nest(200), guides on          7081.0ms     82.8ms\n  Pretty nest(100), guides on           758.1ms     25.5ms\n  ReprHighlighter, 1,600 spans           61.2ms      4.0ms\n  Pretty nest(1000), guides off         355.9ms    345.8ms\n\nThe last row is the control: guides off was never span-dense, so it is the row\nthat should not move, and it doesn't.\n\nOutput is unchanged. 2,798 renders — base styles, overlapping and identically\nranged spans in both orders, empty/reversed/out-of-range spans, all four\njustifications with and without wrap, three highlighters, `Pretty` with guides\non and off, and the slice/divide/truncate paths — are byte-identical to\neb9a18e7.\n\nThe regression test counts span-bound reads rather than milliseconds, the way\n`pretty.test.ts` counts getter reads: a wrong version still looks fast at any\ninput small enough to keep a test quick. It asserts the ratio between two sizes\nso no constant has to stay true — 400 to 800 spans doubles the reads now and\nquadrupled them before (241k -> 962k).\n\n`pretty.test.ts`'s thousand-level render now runs at default options, with the\nindent guides it had to disable to arrive. That is rich-pretty-51c's done-when,\nwhich this unblocks.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "eb9a18e75e40eb9603777bfd50936bfb7c3f6f91",
