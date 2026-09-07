@@ -7,6 +7,7 @@ import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./sanitize.js";
+import { withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
 // Strip control characters except \t and \n
@@ -811,18 +812,18 @@ export class RichText implements Renderable, Measurable {
 
     const allSegments = this._buildSegments(text);
     const logicalLines = Segment.splitLines(allSegments);
-    // [LAW:parse-dont-validate] The one crossing for this renderable's width.
-    // Unparsed, a NaN width made `lineWidth <= maxWidth` false and every
-    // overflow arm a no-op, so the text emitted its full natural width and
-    // silently overflowed whatever asked for it.
-    const maxWidth = cellCount(options.maxWidth);
+    // [LAW:single-enforcer] The one crossing for this renderable's width, and
+    // the call every other renderable already makes. A bare `cellCount` stood
+    // here doing half of it: it caught a NaN width, which had made every
+    // overflow arm a no-op, but passed an unbounded one through to `justify`,
+    // which pads — and `" ".repeat(Infinity)` throws.
+    const maxWidth = cellCount(withBoundedWidth(options, this).maxWidth);
     const overflow = this._overflow ?? options.overflow ?? "fold";
     const justify = this._justify ?? options.justify;
     const noWrap = this._noWrap || (options.noWrap ?? false);
 
     // The width a line is cut to, which is not always the width it is
-    // justified in. `noWrap` here carries what Rich splits across `no_wrap`
-    // and `overflow="ignore"`: the line is not bounded at all, so it leaves at
+    // justified in. `noWrap` means the line is not bounded at all: it leaves at
     // its natural width and whatever asked for it decides about the overhang —
     // `Console`'s soft wrap and `FlexStrip`'s too-wide fallback both want the
     // text intact rather than cropped.
@@ -940,7 +941,8 @@ export class RichText implements Renderable, Measurable {
 
   /**
    * One line placed in a canvas `maxWidth` wide, as Rich's `Lines.justify`
-   * places it.
+   * places it — pinned block for block against the reference in
+   * `test/core/text-justify.test.ts`, `full` excepted; see its branch.
    *
    * Centre and right align on the line's *content*. The whitespace a wrap
    * leaves on the end of the line it closed is the break's own padding, not
@@ -978,8 +980,8 @@ export class RichText implements Renderable, Measurable {
       case "left":
       case "full":
         // `full` distributes the gap between words in the reference and packs
-        // it on the right here; both fill the canvas, and that is what a caller
-        // asking for either is entitled to see.
+        // it on the right here; both fill the canvas, and closing the difference
+        // needs the whole render at once rather than one line (rich-table-6uy.8).
         yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)));
         break;
       default:
