@@ -176,9 +176,9 @@ the whole width:
 
 ```typescript
 const long = "This is a very long string that exceeds the available width";
-console.print(long, { overflow: "fold" });     // chop the word across lines (default)
-console.print(long, { overflow: "crop" });     // cut the word off at the edge
-console.print(long, { overflow: "ellipsis" }); // cut the word off, marking it with …
+console.print(long, { overflow: "fold" });     // chop a word wider than the line across lines (default)
+console.print(long, { overflow: "crop" });     // cut such a word off at the edge
+console.print(long, { overflow: "ellipsis" }); // cut it off, marking it with …
 console.print(long, { overflow: "ignore" });   // same as "fold" today
 ```
 
