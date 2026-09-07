@@ -21,7 +21,7 @@
  * never see it because the type already forbids the bad state.
  */
 
-import { render as renderMarkup } from "../core/markup.js";
+import { renderMarkup } from "../core/markup.js";
 
 // --- Types ---
 

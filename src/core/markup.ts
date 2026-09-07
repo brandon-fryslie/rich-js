@@ -130,14 +130,32 @@ function parseTags(markup: string): ParsedTag[] {
   return tags;
 }
 
-export interface RenderOptions {
+interface RenderOptions {
   emoji?: boolean;
 }
 
 /**
- * Parses markup text and returns a RichText with appropriate spans.
+ * Parses the built-in style dialect — `[bold red]text[/bold red]` — into a
+ * `RichText` with styled spans. Module-private on purpose: `renderMarkup` is
+ * this module's one crossing, and it delegates straight here the moment a
+ * string carries no paired plugin tag.
+ *
+ * [LAW:single-enforcer] Exporting this is what let a caller bind to the inner
+ * layer, and two of them did — `console.ts` and `prompt.ts` imported it as
+ * `render as renderMarkup`, so the import line read identically to the
+ * plugin-aware sites and the difference was invisible at every point of use. A
+ * tag registered on `globalMarkupRegistry` resolved in a table cell and was
+ * silently eaten by `console.print`, the path almost every consumer takes
+ * (rich-markup-pcp). Unexported, that drift is a compile error rather than a
+ * rule someone has to keep remembering.
+ *
+ * [LAW:dataflow-not-control-flow] Rendering *without* plugins stays reachable
+ * as a value rather than a second name: `renderMarkup(s, { registry: new
+ * MarkupRegistry() })`. Two exported functions put that variability in the
+ * function names; an empty registry puts it in the data, where the one
+ * boundary admits both.
  */
-export function render(
+function render(
   markup: string,
   baseStyle?: string | Style,
   options?: RenderOptions,
