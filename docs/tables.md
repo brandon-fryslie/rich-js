@@ -61,7 +61,7 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 |---|---|
 | `box` | Box-drawing style (`null` removes borders entirely) |
 | `safeBox` | Force ASCII box characters instead of Unicode |
-| `showHeader` | Render the header row (default: `true`) |
+| `showHeader` | Render the header row (default: `true`); off also swaps five box styles for a plainer kin ([Border styles](#border-styles)) |
 | `showFooter` | Render a footer row |
 | `showEdge` | Render the outer border (default: `true`) |
 | `showLines` | Draw lines between data rows |
@@ -180,6 +180,8 @@ const table = new Table({ box: ROUNDED });
 Available styles: `ASCII`, `ASCII2`, `ASCII_DOUBLE_HEAD`, `SQUARE`, `SQUARE_DOUBLE_HEAD`, `MINIMAL`, `MINIMAL_HEAVY_HEAD`, `MINIMAL_DOUBLE_HEAD`, `SIMPLE`, `SIMPLE_HEAD`, `SIMPLE_HEAVY`, `HORIZONTALS`, `ROUNDED`, `HEAVY`, `HEAVY_EDGE`, `HEAVY_HEAD`, `DOUBLE`, `DOUBLE_EDGE`, `MARKDOWN`.
 
 Pass `box: null` to remove all borders.
+
+Five of those styles spend heavier glyphs on the header than on the rest of the frame. A table with `showHeader: false` has no header to spend them on, so it draws the plainer equivalent instead: `HEAVY_HEAD` and `SQUARE_DOUBLE_HEAD` give way to `SQUARE`, `MINIMAL_HEAVY_HEAD` and `MINIMAL_DOUBLE_HEAD` to `MINIMAL`, and `ASCII_DOUBLE_HEAD` to `ASCII2`. `HEAVY_HEAD` is the default, so a headerless table that sets no `box` draws in `SQUARE`. The other fourteen styles already draw a plain head and are unaffected.
 
 ## Lines and sections
 

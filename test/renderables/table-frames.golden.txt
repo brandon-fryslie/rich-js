@@ -17,6 +17,12 @@ ASCII header-only
 | 3 | 4 |
 +-------+
 
+ASCII no-header-no-footer
++-------+
+| 1 | 2 |
+| 3 | 4 |
++-------+
+
 ASCII2 header-footer-lines
 +---+---+
 | A | B |
@@ -31,6 +37,12 @@ ASCII2 header-footer-lines
 ASCII2 header-only
 +---+---+
 | A | B |
++---+---+
+| 1 | 2 |
+| 3 | 4 |
++---+---+
+
+ASCII2 no-header-no-footer
 +---+---+
 | 1 | 2 |
 | 3 | 4 |
@@ -55,6 +67,12 @@ ASCII_DOUBLE_HEAD header-only
 | 3 | 4 |
 +---+---+
 
+ASCII_DOUBLE_HEAD no-header-no-footer
++---+---+
+| 1 | 2 |
+| 3 | 4 |
++---+---+
+
 DOUBLE header-footer-lines
 ╔═══╦═══╗
 ║ A ║ B ║
@@ -70,6 +88,12 @@ DOUBLE header-only
 ╔═══╦═══╗
 ║ A ║ B ║
 ╠═══╬═══╣
+║ 1 ║ 2 ║
+║ 3 ║ 4 ║
+╚═══╩═══╝
+
+DOUBLE no-header-no-footer
+╔═══╦═══╗
 ║ 1 ║ 2 ║
 ║ 3 ║ 4 ║
 ╚═══╩═══╝
@@ -93,6 +117,12 @@ DOUBLE_EDGE header-only
 ║ 3 │ 4 ║
 ╚═══╧═══╝
 
+DOUBLE_EDGE no-header-no-footer
+╔═══╤═══╗
+║ 1 │ 2 ║
+║ 3 │ 4 ║
+╚═══╧═══╝
+
 HEAVY header-footer-lines
 ┏━━━┳━━━┓
 ┃ A ┃ B ┃
@@ -108,6 +138,12 @@ HEAVY header-only
 ┏━━━┳━━━┓
 ┃ A ┃ B ┃
 ┣━━━╋━━━┫
+┃ 1 ┃ 2 ┃
+┃ 3 ┃ 4 ┃
+┗━━━┻━━━┛
+
+HEAVY no-header-no-footer
+┏━━━┳━━━┓
 ┃ 1 ┃ 2 ┃
 ┃ 3 ┃ 4 ┃
 ┗━━━┻━━━┛
@@ -131,6 +167,12 @@ HEAVY_EDGE header-only
 ┃ 3 │ 4 ┃
 ┗━━━┷━━━┛
 
+HEAVY_EDGE no-header-no-footer
+┏━━━┯━━━┓
+┃ 1 │ 2 ┃
+┃ 3 │ 4 ┃
+┗━━━┷━━━┛
+
 HEAVY_HEAD header-footer-lines
 ┏━━━┳━━━┓
 ┃ A ┃ B ┃
@@ -150,6 +192,12 @@ HEAVY_HEAD header-only
 │ 3 │ 4 │
 └───┴───┘
 
+HEAVY_HEAD no-header-no-footer
+┌───┬───┐
+│ 1 │ 2 │
+│ 3 │ 4 │
+└───┴───┘
+
 HORIZONTALS header-footer-lines
  ─────── 
   A   B  
@@ -164,6 +212,12 @@ HORIZONTALS header-footer-lines
 HORIZONTALS header-only
  ─────── 
   A   B  
+ ─────── 
+  1   2  
+  3   4  
+ ─────── 
+
+HORIZONTALS no-header-no-footer
  ─────── 
   1   2  
   3   4  
@@ -188,6 +242,12 @@ MARKDOWN header-only
 | 3 | 4 |
          
 
+MARKDOWN no-header-no-footer
+         
+| 1 | 2 |
+| 3 | 4 |
+         
+
 MINIMAL header-footer-lines
     ╷    
   A │ B  
@@ -203,6 +263,12 @@ MINIMAL header-only
     ╷    
   A │ B  
 ╶───┼───╴
+  1 │ 2  
+  3 │ 4  
+    ╵    
+
+MINIMAL no-header-no-footer
+    ╷    
   1 │ 2  
   3 │ 4  
     ╵    
@@ -226,6 +292,12 @@ MINIMAL_DOUBLE_HEAD header-only
   3 │ 4  
     ╵    
 
+MINIMAL_DOUBLE_HEAD no-header-no-footer
+    ╷    
+  1 │ 2  
+  3 │ 4  
+    ╵    
+
 MINIMAL_HEAVY_HEAD header-footer-lines
     ╷    
   A │ B  
@@ -241,6 +313,12 @@ MINIMAL_HEAVY_HEAD header-only
     ╷    
   A │ B  
 ╺━━━┿━━━╸
+  1 │ 2  
+  3 │ 4  
+    ╵    
+
+MINIMAL_HEAVY_HEAD no-header-no-footer
+    ╷    
   1 │ 2  
   3 │ 4  
     ╵    
@@ -264,6 +342,12 @@ ROUNDED header-only
 │ 3 │ 4 │
 ╰───┴───╯
 
+ROUNDED no-header-no-footer
+╭───┬───╮
+│ 1 │ 2 │
+│ 3 │ 4 │
+╰───┴───╯
+
 SIMPLE header-footer-lines
          
   A   B  
@@ -279,6 +363,12 @@ SIMPLE header-only
          
   A   B  
  ─────── 
+  1   2  
+  3   4  
+         
+
+SIMPLE no-header-no-footer
+         
   1   2  
   3   4  
          
@@ -302,6 +392,12 @@ SIMPLE_HEAD header-only
   3   4  
          
 
+SIMPLE_HEAD no-header-no-footer
+         
+  1   2  
+  3   4  
+         
+
 SIMPLE_HEAVY header-footer-lines
          
   A   B  
@@ -317,6 +413,12 @@ SIMPLE_HEAVY header-only
          
   A   B  
  ━━━━━━━ 
+  1   2  
+  3   4  
+         
+
+SIMPLE_HEAVY no-header-no-footer
+         
   1   2  
   3   4  
          
@@ -340,6 +442,12 @@ SQUARE header-only
 │ 3 │ 4 │
 └───┴───┘
 
+SQUARE no-header-no-footer
+┌───┬───┐
+│ 1 │ 2 │
+│ 3 │ 4 │
+└───┴───┘
+
 SQUARE_DOUBLE_HEAD header-footer-lines
 ┌───┬───┐
 │ A │ B │
@@ -355,6 +463,12 @@ SQUARE_DOUBLE_HEAD header-only
 ┌───┬───┐
 │ A │ B │
 ╞═══╪═══╡
+│ 1 │ 2 │
+│ 3 │ 4 │
+└───┴───┘
+
+SQUARE_DOUBLE_HEAD no-header-no-footer
+┌───┬───┐
 │ 1 │ 2 │
 │ 3 │ 4 │
 └───┴───┘
