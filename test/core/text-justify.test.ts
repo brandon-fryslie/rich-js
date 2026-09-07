@@ -24,6 +24,7 @@
  *     from rich.text import Text
  *     import sys
  *     TEXTS = [("sentence", "aaaa bbbb cccc dddd"),
+ *              ("uneven", "a  bb cccc dddd"),
  *              ("hanging-space", "aaaa      bbbb"),
  *              ("unbreakable", "aaaaaaaaaaaaaaaaaaaa"),
  *              ("multiline", "one\ntwo three four five"),
@@ -31,7 +32,7 @@
  *              ("wide", "日本語のテキストです"),
  *              ("short", "hi")]
  *     WIDTHS = [8, 12, 20]
- *     JUSTIFY = [None, "left", "center", "right"]
+ *     JUSTIFY = [None, "left", "center", "right", "full"]
  *     console = Console(no_color=True, force_terminal=False, legacy_windows=False)
  *     blocks = []
  *     for name, value in TEXTS:
@@ -62,10 +63,15 @@
  * WHY THIS CORPUS. Each text buys one arm of the placement that no other buys.
  * `sentence` wraps into lines that each end in the whitespace the break left
  * hanging — the case the two justifiers disagreed about, and the reason
- * `hangingWhitespace` exists. `hanging-space` makes that run long enough that
- * measuring it wrong is visible rather than a single cell. `unbreakable` never
- * wraps, so it pins placement of a line that fills or overruns the canvas with
- * no hanging whitespace at all. `multiline` gives one render lines of
+ * `hangingWhitespace` exists. `uneven` fills a line whose slack will not
+ * divide evenly across its three gaps, two of which are one run of spaces the
+ * author wrote — buying the two arms `full` has and no other mode does: which
+ * gap takes the odd cell, and that a run of n spaces is n gaps rather than
+ * one. Every other text fills a line holding at most a single gap, where
+ * every way of spreading a remainder agrees. `hanging-space` makes that run
+ * long enough that measuring it wrong is visible rather than a single cell.
+ * `unbreakable` never wraps, so it pins placement of a line that fills or
+ * overruns the canvas with no hanging whitespace at all. `multiline` gives one render lines of
  * differing widths, which is the only way to catch a gap computed once and
  * reused. `trailing-space` is the control for `hanging-space`: whitespace the
  * *author* wrote, not the wrap, and Rich treats the two the same on the line
@@ -78,7 +84,16 @@
  * holds most of them whole — so each text is pinned wrapped, mixed, and
  * unwrapped without a width that only re-asks a neighbour's question.
  *
- * `full` IS DELIBERATELY ABSENT, and its own test below says why.
+ * `full` IS THE ONE MODE THAT READS MORE THAN THE LINE IN HAND. The
+ * reference widens the gaps of every line of a paragraph but the last, and
+ * leaves that last one ragged — so its blocks pin two facts together: where
+ * the slack goes, and which line gets none. `hanging-space` and
+ * `trailing-space` are what hold them apart, both ending in whitespace and
+ * only the second of them doing so on a line that ends a paragraph.
+ *
+ * What the fixture cannot pin is the style on the spaces `full` inserts,
+ * because it is generated with `no_color` and every gap in it comes out
+ * unstyled. The last test in this file covers that separately.
  */
 
 import { describe, it, expect } from "vitest";
@@ -91,6 +106,7 @@ const GOLDEN = new URL("./text-justify.golden.txt", import.meta.url);
 
 const TEXTS: readonly (readonly [string, string])[] = [
   ["sentence", "aaaa bbbb cccc dddd"],
+  ["uneven", "a  bb cccc dddd"],
   ["hanging-space", "aaaa      bbbb"],
   ["unbreakable", "aaaaaaaaaaaaaaaaaaaa"],
   ["multiline", "one\ntwo three four five"],
@@ -99,7 +115,13 @@ const TEXTS: readonly (readonly [string, string])[] = [
   ["short", "hi"],
 ];
 const WIDTHS: readonly number[] = [8, 12, 20];
-const JUSTIFY: readonly RenderOptions["justify"][] = [undefined, "left", "center", "right"];
+const JUSTIFY: readonly RenderOptions["justify"][] = [
+  undefined,
+  "left",
+  "center",
+  "right",
+  "full",
+];
 
 function placed(value: string, maxWidth: number, justify: RenderOptions["justify"]): string {
   return [...new RichText(value).render({ maxWidth, justify })]
@@ -121,31 +143,6 @@ describe("RichText justification", () => {
       ).join("\n\n") + "\n";
 
     expect(rendered).toBe(readFileSync(GOLDEN, "utf8"));
-  });
-
-  /*
-   * `full` is the one mode the fixture above cannot hold, because this port
-   * does not yet agree with the reference on it and a golden that mixes the
-   * two provenances is worth nothing.
-   *
-   * Rich distributes the gap *between* the words and leaves the paragraph's
-   * final line alone; this port packs the gap on the right and pads every
-   * line. The difference is structural rather than arithmetic: Rich's
-   * `Lines.justify` holds every line of the render at once, which is what lets
-   * it both widen the gaps between words and recognise the last line.
-   * `_justifyLine` is handed one line and cannot know either. Closing it means
-   * restructuring the render loop, which is its own change (rich-justify-0cr.1).
-   *
-   * Pinned here rather than left uncovered so the divergence is a measured
-   * fact with the reference's own answer beside it, and so the day someone
-   * closes it this test fails and says what to do about it: move `full` into
-   * the fixture and regenerate.
-   */
-  it("fills the canvas for full, where Rich distributes the gap between words", () => {
-    // Generated by the header's command with JUSTIFY = ["full"].
-    expect(placed("aaaa bbbb cccc dddd", 12, "full")).toBe("aaaa bbbb   \ncccc dddd   ");
-    const reference = "aaaa    bbbb\ncccc dddd";
-    expect(placed("aaaa bbbb cccc dddd", 12, "full")).not.toBe(reference);
   });
 
   /*
@@ -171,7 +168,7 @@ describe("RichText justification", () => {
     const mismatches: string[] = [];
     for (const [, value] of TEXTS)
       for (const width of WIDTHS)
-        for (const justify of [...JUSTIFY, "full"] as const) {
+        for (const justify of JUSTIFY) {
           const plain = placed(value, width, justify);
           for (let offset = 0; offset < value.length; offset += 1) {
             const styled = new RichText(value);
@@ -191,6 +188,50 @@ describe("RichText justification", () => {
 
     expect(mismatches.slice(0, 4)).toEqual([]);
     expect(mismatches).toHaveLength(0);
+  });
+
+  /*
+   * The style on the spaces `full` inserts, which the fixture cannot reach:
+   * it is generated with `no_color`, so every gap in it is unstyled.
+   *
+   * Rich builds each widened gap fresh rather than stretching the separator
+   * it replaces, and gives it the style the characters either side turn
+   * towards it — theirs where the two agree, the line's own where they do
+   * not. Dropping the separator's own style is the part that surprises: a
+   * span covering nothing but the space it sat on survives in every other
+   * mode and vanishes in this one. Generated from the reference:
+   *
+   *     PYTHONPATH=/tmp/rich-src python3 - <<'PY'
+   *     from rich.console import Console
+   *     from rich.text import Text
+   *     console = Console(no_color=True, force_terminal=False, legacy_windows=False)
+   *     for spans in ([(0, 9, "red")], [(0, 4, "red"), (5, 9, "red")],
+   *                   [(0, 4, "red")], [(0, 4, "red"), (5, 9, "blue")],
+   *                   [(4, 5, "red")]):
+   *         text = Text("aaaa bbbb cccc dddd")
+   *         for start, end, style in spans: text.stylize(style, start, end)
+   *         options = console.options.update(max_width=12, justify="full")
+   *         print(spans, [(s.text, str(s.style)) for s in console.render(text, options)][:3])
+   *     PY
+   */
+  it("styles an inserted gap from the words it separates", () => {
+    const gapStyle = (...spans: (readonly [number, number, string])[]): string => {
+      const text = new RichText("aaaa bbbb cccc dddd");
+      for (const [start, end, style] of spans) text.stylize(style, start, end);
+      // The run of spaces `full` inserted is the only all-whitespace segment:
+      // every other one carries a word, and the gap is built as its own.
+      return (
+        [...text.render({ maxWidth: 12, justify: "full" })]
+          .find((segment) => /^ +$/.test(segment.text))
+          ?.style?.toString() ?? "none"
+      );
+    };
+
+    expect(gapStyle([0, 9, "red"])).toBe("red");
+    expect(gapStyle([0, 4, "red"], [5, 9, "red"])).toBe("red");
+    expect(gapStyle([0, 4, "red"])).toBe("none");
+    expect(gapStyle([0, 4, "red"], [5, 9, "blue"])).toBe("none");
+    expect(gapStyle([4, 5, "red"])).toBe("none");
   });
 
   /*

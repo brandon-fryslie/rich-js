@@ -22,6 +22,12 @@ sentence w8 right
     cccc
     dddd
 
+sentence w8 full
+aaaa
+bbbb
+cccc
+dddd
+
 sentence w12 default
 aaaa bbbb 
 cccc dddd
@@ -38,6 +44,10 @@ sentence w12 right
    aaaa bbbb
    cccc dddd
 
+sentence w12 full
+aaaa    bbbb
+cccc dddd
+
 sentence w20 default
 aaaa bbbb cccc dddd
 
@@ -49,6 +59,69 @@ aaaa bbbb cccc dddd
 
 sentence w20 right
  aaaa bbbb cccc dddd
+
+sentence w20 full
+aaaa bbbb cccc dddd
+
+uneven w8 default
+a  bb 
+cccc 
+dddd
+
+uneven w8 left
+a  bb   
+cccc    
+dddd    
+
+uneven w8 center
+ a  bb  
+  cccc  
+  dddd  
+
+uneven w8 right
+   a  bb
+    cccc
+    dddd
+
+uneven w8 full
+a     bb
+cccc
+dddd
+
+uneven w12 default
+a  bb cccc 
+dddd
+
+uneven w12 left
+a  bb cccc  
+dddd        
+
+uneven w12 center
+ a  bb cccc 
+    dddd    
+
+uneven w12 right
+  a  bb cccc
+        dddd
+
+uneven w12 full
+a   bb  cccc
+dddd
+
+uneven w20 default
+a  bb cccc dddd
+
+uneven w20 left
+a  bb cccc dddd     
+
+uneven w20 center
+  a  bb cccc dddd   
+
+uneven w20 right
+     a  bb cccc dddd
+
+uneven w20 full
+a  bb cccc dddd
 
 hanging-space w8 default
 aaaa    
@@ -66,6 +139,10 @@ hanging-space w8 right
     aaaa
     bbbb
 
+hanging-space w8 full
+aaaa    
+bbbb
+
 hanging-space w12 default
 aaaa      
 bbbb
@@ -82,6 +159,10 @@ hanging-space w12 right
         aaaa
         bbbb
 
+hanging-space w12 full
+aaaa        
+bbbb
+
 hanging-space w20 default
 aaaa      bbbb
 
@@ -93,6 +174,9 @@ hanging-space w20 center
 
 hanging-space w20 right
       aaaa      bbbb
+
+hanging-space w20 full
+aaaa      bbbb
 
 unbreakable w8 default
 aaaaaaaa
@@ -114,6 +198,11 @@ aaaaaaaa
 aaaaaaaa
     aaaa
 
+unbreakable w8 full
+aaaaaaaa
+aaaaaaaa
+aaaa
+
 unbreakable w12 default
 aaaaaaaaaaaa
 aaaaaaaa
@@ -130,6 +219,10 @@ unbreakable w12 right
 aaaaaaaaaaaa
     aaaaaaaa
 
+unbreakable w12 full
+aaaaaaaaaaaa
+aaaaaaaa
+
 unbreakable w20 default
 aaaaaaaaaaaaaaaaaaaa
 
@@ -140,6 +233,9 @@ unbreakable w20 center
 aaaaaaaaaaaaaaaaaaaa
 
 unbreakable w20 right
+aaaaaaaaaaaaaaaaaaaa
+
+unbreakable w20 full
 aaaaaaaaaaaaaaaaaaaa
 
 multiline w8 default
@@ -170,6 +266,13 @@ multiline w8 right
     four
     five
 
+multiline w8 full
+one
+two
+three
+four
+five
+
 multiline w12 default
 one
 two three 
@@ -190,6 +293,11 @@ multiline w12 right
    two three
    four five
 
+multiline w12 full
+one
+two    three
+four five
+
 multiline w20 default
 one
 two three four five
@@ -205,6 +313,10 @@ two three four five
 multiline w20 right
                  one
  two three four five
+
+multiline w20 full
+one
+two three four five
 
 trailing-space w8 default
 words 
@@ -226,6 +338,11 @@ trailing-space w8 right
     then
    space
 
+trailing-space w8 full
+words
+then
+space   
+
 trailing-space w12 default
 words then 
 space   
@@ -242,6 +359,10 @@ trailing-space w12 right
   words then
        space
 
+trailing-space w12 full
+words   then
+space   
+
 trailing-space w20 default
 words then space   
 
@@ -253,6 +374,9 @@ trailing-space w20 center
 
 trailing-space w20 right
     words then space
+
+trailing-space w20 full
+words then space   
 
 wide w8 default
 日本語の
@@ -274,6 +398,11 @@ wide w8 right
 テキスト
     です
 
+wide w8 full
+日本語の
+テキスト
+です
+
 wide w12 default
 日本語のテキ
 ストです
@@ -290,6 +419,10 @@ wide w12 right
 日本語のテキ
     ストです
 
+wide w12 full
+日本語のテキ
+ストです
+
 wide w20 default
 日本語のテキストです
 
@@ -300,6 +433,9 @@ wide w20 center
 日本語のテキストです
 
 wide w20 right
+日本語のテキストです
+
+wide w20 full
 日本語のテキストです
 
 short w8 default
@@ -314,6 +450,9 @@ short w8 center
 short w8 right
       hi
 
+short w8 full
+hi
+
 short w12 default
 hi
 
@@ -326,6 +465,9 @@ short w12 center
 short w12 right
           hi
 
+short w12 full
+hi
+
 short w20 default
 hi
 
@@ -337,3 +479,6 @@ short w20 center
 
 short w20 right
                   hi
+
+short w20 full
+hi
