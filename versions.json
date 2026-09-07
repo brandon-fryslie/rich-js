@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-97",
+      "ref": "refs/pull/97/merge",
+      "sha": "c3c95bffa75bd96c850bb2856da8a33cd73d09fc",
+      "timestamp": "2026-09-07T11:27:55.029Z",
+      "commits": [
+        {
+          "sha": "c3c95bffa75bd96c850bb2856da8a33cd73d09fc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T05:27:25-06:00",
+          "message": "Merge cee981ba1044ded0efdad5f7d4fd3551aadd833d into 14e38ee4848758a5f6711f432c8498eb49c7b908\n"
+        },
+        {
+          "sha": "cee981ba1044ded0efdad5f7d4fd3551aadd833d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T05:27:02-06:00",
+          "message": "fix(table): swap the box a headerless table draws with (rich-table-6uy.6)\n\nPython Rich substitutes the box itself when a table has no header — five of\nthe nineteen constants map to a plainer kin, the default HEAVY_HEAD among\nthem — and this port did not, so `showHeader: false` drew heavy header glyphs\non the top border of an otherwise light frame.\n\n`Box.plainHeaded()` stands beside `substitute()` rather than joining its\noptions bag: one asks what the platform can draw, the other what the table\ncontains, and nothing correlates them.\n\nThe relation is keyed on the grid rather than on object identity as the\nreference's dict is. A Box is wholly determined by its grid, so two boxes\ncarrying one grid must answer alike — and `safeSubstitute` already builds such\na box, a fresh instance with an unchanged grid, which identity keying would\nhave silently failed to substitute.\n\nAlso collapses the asciiOnly ternary at the callsite: `substitute` already\nreturns the receiver when the flag is off, so the outer branch was a second\nplace deciding one thing.\n\nPinned by the `no-header-no-footer` configuration added to the golden frame\nsweep, regenerated from Python Rich — all 38 pre-existing blocks reproduce\nbyte-for-byte, 19 are new. Both gates proven to fail by isolated revert:\ndropping the swap reddens the golden, and identity keying reddens only the\naliasing unit test, which is what it is there for.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "14e38ee4848758a5f6711f432c8498eb49c7b908",
