@@ -4,15 +4,22 @@
     {
       "version": "pr-109",
       "ref": "refs/pull/109/merge",
-      "sha": "ee14196f29a2a7a87179467c5f3c81b1f9f0e7d9",
-      "timestamp": "2026-09-07T17:38:59.434Z",
+      "sha": "5accbf186f76992412396c792da105292e1fc9e3",
+      "timestamp": "2026-09-07T18:09:10.266Z",
       "commits": [
         {
-          "sha": "ee14196f29a2a7a87179467c5f3c81b1f9f0e7d9",
+          "sha": "5accbf186f76992412396c792da105292e1fc9e3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T11:38:26-06:00",
-          "message": "Merge a4daa92c34c7e658c185a39dd0631821ceab5af5 into a83f90b162035c14fb8002a395f260021f7e38e9\n"
+          "timestamp": "2026-09-07T18:08:37Z",
+          "message": "Merge 7bdc8eed86a74635aeaa4b997af5d2730672f0c8 into a83f90b162035c14fb8002a395f260021f7e38e9\n"
+        },
+        {
+          "sha": "7bdc8eed86a74635aeaa4b997af5d2730672f0c8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-07T12:07:04-06:00",
+          "message": "perf(pretty): bound what a probe pulls by the line it is filling\n\nA probe asked `_shape` for a container's positions before consulting its\nbudget, and the Map and Set arms reach a position through an iterator. So\nprobing `{ cache: hugeMap }` drained the whole map to discover the object\nwas too wide, then the layout drained it again to print it — and every\nancestor whose probe still had width to reach it drained it once more. A\n5,000-entry map cost 10,000 pulls one level down and 20,000 at three.\n\nThis is the defect this branch already fixed one storey up. Charging the\nbrackets before reading bounds how many levels a probe descends; nothing\nbounded how many positions each level pulls, so the per-level cost stayed\nproportional to the collection.\n\n`_shape` now takes the most positions its caller could ever use. Laying\nout passes Infinity and still prints every entry. A probe passes what is\nleft of its line, which is already more positions than a fitting line can\nhold: SEPARATOR charges two cells apiece, so a container with more\npositions than its budget overruns whatever is inside it. Truncating past\nthat only ever feeds a join that returns null, which is why 216\nshape/option combinations render byte-identical either way.\n\nThe bound is clamped at zero because a probe's budget goes negative once a\nline is overrun, and `slice` reads a negative end as counting from the far\nend — it would have kept all but the last few keys where `take` and\n`Array.from` take none. One clamped derivation also replaces the three\nseparate `maxLength ?? …` spellings the arms carried.\n"
         },
         {
           "sha": "a4daa92c34c7e658c185a39dd0631821ceab5af5",
