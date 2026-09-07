@@ -225,9 +225,48 @@ describe("Box", () => {
   });
 
   describe("substitute()", () => {
-    it("returns ASCII box when asciiOnly is true", () => {
-      const result = ROUNDED.substitute({ asciiOnly: true });
-      expect(result).toBe(ASCII);
+    // Both arms across the whole shipped set, because the claim is about which
+    // boxes need replacing and that is only checkable by naming all of them.
+    // These four are exactly the four the reference constructs with
+    // `ascii=True`; nothing here declares that — the grids do.
+    it.each([
+      ["ASCII", ASCII],
+      ["ASCII2", ASCII2],
+      ["ASCII_DOUBLE_HEAD", ASCII_DOUBLE_HEAD],
+      ["MARKDOWN", MARKDOWN],
+    ])("%s is already drawable, so asciiOnly leaves it alone", (_name, box) => {
+      expect(box.substitute({ asciiOnly: true })).toBe(box);
+    });
+
+    it.each([
+      ["SQUARE", SQUARE],
+      ["SQUARE_DOUBLE_HEAD", SQUARE_DOUBLE_HEAD],
+      ["MINIMAL", MINIMAL],
+      ["MINIMAL_HEAVY_HEAD", MINIMAL_HEAVY_HEAD],
+      ["MINIMAL_DOUBLE_HEAD", MINIMAL_DOUBLE_HEAD],
+      ["SIMPLE", SIMPLE],
+      ["SIMPLE_HEAD", SIMPLE_HEAD],
+      ["SIMPLE_HEAVY", SIMPLE_HEAVY],
+      ["HORIZONTALS", HORIZONTALS],
+      ["ROUNDED", ROUNDED],
+      ["HEAVY", HEAVY],
+      ["HEAVY_EDGE", HEAVY_EDGE],
+      ["HEAVY_HEAD", HEAVY_HEAD],
+      ["DOUBLE", DOUBLE],
+      ["DOUBLE_EDGE", DOUBLE_EDGE],
+    ])("%s spends unicode glyphs, so asciiOnly gives it up for ASCII", (_name, box) => {
+      expect(box.substitute({ asciiOnly: true })).toBe(ASCII);
+    });
+
+    // [LAW:one-source-of-truth] A box is its grid, so a grid-equal box answers
+    // alike. `safe` on a box with no rounded corners is the route that builds
+    // one — a fresh instance, an unchanged grid — and it is a box no per-
+    // constant `ascii` flag could have spoken for. Declared rather than
+    // derived, this box would lose the markdown frame it still draws fine.
+    it("keeps an already-ASCII box that is not the shipped constant", () => {
+      const copy = MARKDOWN.substitute({ safe: true });
+      expect(copy).not.toBe(MARKDOWN);
+      expect(copy.substitute({ asciiOnly: true })).toBe(copy);
     });
 
     it("safe replaces rounded corners with square equivalents", () => {

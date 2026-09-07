@@ -57,6 +57,18 @@ export interface SubstituteOptions {
 const GRID_ROWS = 8;
 const GRID_COLUMNS = 4;
 
+/**
+ * A grid a terminal without unicode support can already draw as written.
+ *
+ * [LAW:one-source-of-truth] Derived from the grid rather than declared per
+ * constant the way the reference's `ascii=True` is. A `Box` is wholly its grid,
+ * so the grid already answers this; a second, hand-written answer could
+ * disagree with it. It also reaches boxes no constant can speak for —
+ * `safeSubstitute` builds a fresh `Box` from an edited grid, and a flag carried
+ * on the shipped constants would say nothing about that one.
+ */
+const ASCII_GRID = /^[\x00-\x7F]*$/;
+
 /** Corners that a legacy Windows terminal cannot draw, and their square kin. */
 const SAFE_SUBSTITUTIONS: Record<string, string> = {
   "╭": "┌",
@@ -84,6 +96,7 @@ export class Box {
   readonly bottom: EdgeChars;
 
   private readonly grid: string;
+  private readonly ascii: boolean;
   private readonly headContent: ContentChars;
   private readonly headSeparator: EdgeChars;
   private readonly bodyContent: ContentChars;
@@ -116,6 +129,7 @@ export class Box {
     const rows = lines.map((line) => Array.from(line));
 
     this.grid = grid;
+    this.ascii = ASCII_GRID.test(grid);
     this.top = edgeOf(rows[0]!);
     this.headContent = contentOf(rows[1]!);
     this.headSeparator = edgeOf(rows[2]!);
@@ -172,12 +186,17 @@ export class Box {
   }
 
   /**
-   * Returns a new Box with characters substituted for ASCII or safe alternatives.
-   * asciiOnly: all characters become ASCII (+, -, |)
-   * safe: problematic characters (e.g. rounded corners) replaced with square equivalents
+   * The box to draw with when the platform cannot render this one as written.
+   *
+   * `asciiOnly` gives up a box that spends non-ASCII glyphs for `ASCII`, and
+   * leaves the four already-ASCII styles as they are — a caller that chose
+   * MARKDOWN or ASCII_DOUBLE_HEAD asked for that frame and it is already
+   * drawable, so answering with `ASCII` would trade a frame the terminal
+   * supports for a different one it equally supports. `safe` squares off the
+   * rounded corners a legacy Windows terminal draws as blanks.
    */
   substitute(options: SubstituteOptions = {}): Box {
-    if (options.asciiOnly) return ASCII;
+    if (options.asciiOnly && !this.ascii) return ASCII;
     if (options.safe) return this.safeSubstitute();
     return this;
   }
