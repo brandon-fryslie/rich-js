@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Table, Column } from "../../src/renderables/table.js";
+import { Panel } from "../../src/renderables/panel.js";
+import { RichText } from "../../src/core/text.js";
+import { MarkupError } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
 import { ASCII, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -173,6 +176,25 @@ describe("Table", () => {
     t.addRow("a");
     t.addRow("b");
     expect(t.rowCount).toBe(2);
+  });
+
+  it("leaves a column with no footer blank beside one that has a footer", () => {
+    // The only test that reads the absent-footer arm's content: a footerless
+    // column renders blank rather than borrowing anything. Matches the
+    // reference character for character.
+    const t = new Table({ showFooter: true });
+    t.addColumn("A", { footer: "F" });
+    t.addColumn("B");
+    t.addRow("1", "2");
+    expect(collectLines(t, { maxWidth: 20 })).toEqual([
+      "┏━━━┳━━━┓",
+      "┃ A ┃ B ┃",
+      "┡━━━╇━━━┩",
+      "│ 1 │ 2 │",
+      "├───┼───┤",
+      "│ F │   │",
+      "└───┴───┘",
+    ]);
   });
 
   it("shows footer when showFooter is true", () => {
@@ -618,5 +640,159 @@ describe("Table measures against a parsed width", () => {
       expect(m.minimum).toBeGreaterThanOrEqual(0);
       expect(m.maximum).toBeGreaterThanOrEqual(m.minimum);
     }
+  });
+});
+
+describe("Table markup", () => {
+  // The five positions a caller's string reaches the terminal through. Each
+  // built its own `RichText` straight from the constructor, which does not
+  // parse markup, so each shipped `[red]…[/red]` to the terminal verbatim.
+  // They are one rule with five call sites, so they are one assertion driven
+  // by five values rather than five copies of it.
+  function markupTable(): Table {
+    const t = new Table({
+      title: "[red]Title[/red]",
+      caption: "[red]Caption[/red]",
+      showFooter: true,
+    });
+    t.addColumn("[red]Head[/red]", { footer: "[red]Foot[/red]" });
+    t.addRow("[red]Cell[/red]");
+    return t;
+  }
+
+  it.each(["Title", "Caption", "Head", "Foot", "Cell"])(
+    "renders %s's markup as style rather than literal tag text",
+    (word) => {
+      const segs = [...markupTable().render({ maxWidth: 40 })];
+      const plain = segs.map((s) => s.text).join("");
+
+      // Both halves are load-bearing: consuming the tags without applying the
+      // style would satisfy the first assertion alone.
+      expect(plain).toContain(word);
+      expect(plain).not.toContain("[red]");
+      expect(segs.find((s) => s.text === word)?.style?.color?.name).toBe("red");
+    },
+  );
+
+  it("renders docs/tables.md's flagship row styled, tags consumed", () => {
+    const t = new Table();
+    t.addColumn("Movie");
+    t.addRow("[red]Solo[/red]: A Star Wars Story");
+    const segs = [...t.render({ maxWidth: 40 })];
+    const plain = segs.map((s) => s.text).join("");
+
+    expect(plain).toContain("Solo: A Star Wars Story");
+    expect(plain).not.toContain("[red]");
+    expect(segs.find((s) => s.text === "Solo")?.style?.color?.name).toBe("red");
+  });
+
+  it("sizes a column to the text markup leaves behind, not to the tags", () => {
+    // The measure path is the other consumer of a cell's text. Measuring the
+    // raw value sized this column to `[red]Solo[/red]` — fifteen cells for
+    // four cells of text — and the table still rendered, just far too wide.
+    const t = new Table();
+    t.addColumn("H");
+    t.addRow("[red]Solo[/red]");
+    expect(collectLines(t, { maxWidth: 60 })).toEqual([
+      "\u250f\u2501\u2501\u2501\u2501\u2501\u2501\u2513",
+      "\u2503 H    \u2503",
+      "\u2521\u2501\u2501\u2501\u2501\u2501\u2501\u2529",
+      "\u2502 Solo \u2502",
+      "\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+    ]);
+  });
+
+  it("renders every line of a title, not just the first", () => {
+    // Frame copied from the reference, which renders both lines centered.
+    // Taking `splitLines(...)[0]` dropped the rest with no truncation mark.
+    const t = new Table({ title: "Line one\nLine two" });
+    t.addColumn("HeaderIsWide");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 40 }).slice(0, 2)).toEqual([
+      "    Line one    ",
+      "    Line two    ",
+    ]);
+  });
+
+  // The reference emits no line for empty content in either position, and
+  // `title`/`caption` each document two input shapes. The rule is one rule, so
+  // it is one assertion driven by four values \u2014 a `RichText` arriving with its
+  // default `end` of "\n" drew a blank line where a string drew none. The whole
+  // frame is compared rather than its first line: a stray caption line lands at
+  // the bottom, where reading `[0]` alone could never have found it.
+  it.each([
+    ["a string title", { title: "" }],
+    ["a RichText title", { title: new RichText("") }],
+    ["a string caption", { caption: "" }],
+    ["a RichText caption", { caption: new RichText("") }],
+  ])("gives %s with no content no line at all", (_, options) => {
+    const t = new Table(options);
+    t.addColumn("H");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 30 })).toEqual([
+      "\u250f\u2501\u2501\u2501\u2513",
+      "\u2503 H \u2503",
+      "\u2521\u2501\u2501\u2501\u2529",
+      "\u2502 x \u2502",
+      "\u2514\u2500\u2500\u2500\u2518",
+    ]);
+  });
+
+  it("lets titleJustify outrank a justify carried by the title text", () => {
+    // Two owners of one alignment: a `RichText` with its own `justify` pads
+    // itself to full width inside `render`, which used to collapse the gap and
+    // silently win over the table's option.
+    const title = new RichText("T");
+    title.justify = "left";
+    const t = new Table({ title, titleJustify: "right" });
+    t.addColumn("HHHHHHHH");
+    t.addRow("x");
+    expect(collectLines(t, { maxWidth: 30 })[0]).toBe("           T");
+  });
+
+  it("sizes a column holding a renderable cell to something it can hold", () => {
+    // `String(panel)` is `[object Object]`, which the tag pattern swallows
+    // whole — markup-parsing a non-string cell measured this column as zero.
+    const t = new Table();
+    t.addColumn("H");
+    t.addRow(new Panel(new RichText("hello")));
+    const lines = collectLines(t, { maxWidth: 40 });
+    expect(lines.some((l) => l.includes("hello"))).toBe(true);
+    expect(lines.every((l) => cellLen(l) > 1)).toBe(true);
+  });
+
+  it("leaves brackets that are not tags alone", () => {
+    // Matches the reference: `TAG_RE` needs `[a-zA-Z#]` after the bracket, so
+    // indices and array literals in data survive as themselves.
+    const t = new Table();
+    t.addColumn("H");
+    t.addRow("array[0] and [1, 2, 3]");
+    const plain = [...t.render({ maxWidth: 40 })].map((s) => s.text).join("");
+    expect(plain).toContain("array[0] and [1, 2, 3]");
+  });
+
+  // The same five positions and the same argument as above: one rule, one
+  // assertion, five values. Rich raises this `MarkupError` from all five too,
+  // but at print time, because it stores the raw string — parsing at the border
+  // moves the throw to the call that supplies it without inventing one. That is
+  // a stated divergence, so each position that carries it is pinned; none of
+  // these render, which is what makes them a claim about *when*.
+  it.each([
+    ["a title", () => new Table({ title: "[/bad]" })],
+    ["a caption", () => new Table({ caption: "[/bad]" })],
+    ["a header", () => new Table().addColumn("[/bad]")],
+    ["a footer", () => new Table().addColumn("H", { footer: "[/bad]" })],
+    ["a cell", () => new Table().addColumn("H").addRow("[/bad]")],
+  ])("raises %s's malformed markup from the call that supplies it", (_, build) => {
+    expect(build).toThrow(MarkupError);
+  });
+
+  it("adds no column when a later cell in the same row throws", () => {
+    // `addRow` is all-or-nothing: a caller that catches the error and retries
+    // with valid data must not find a phantom column from the failed attempt.
+    const t = new Table();
+    t.addColumn("H");
+    expect(() => t.addRow("ok", "[/bad]")).toThrow(MarkupError);
+    expect(t.columns.length).toBe(1);
   });
 });
