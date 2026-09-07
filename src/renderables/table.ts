@@ -566,7 +566,7 @@ export class Table implements Renderable, Measurable {
       if (box) {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
-      const footerCells = this._columns.map((c) => toCellText(c.footer));
+      const footerCells = this._columns.map((c) => c.footer ?? toCellText(undefined));
       yield* this._renderRow(footerCells, geometry, box, "foot", border, this.footerStyle);
     }
 

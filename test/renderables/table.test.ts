@@ -178,6 +178,25 @@ describe("Table", () => {
     expect(t.rowCount).toBe(2);
   });
 
+  it("leaves a column with no footer blank beside one that has a footer", () => {
+    // The only test that reads the absent-footer arm's content: a footerless
+    // column renders blank rather than borrowing anything. Matches the
+    // reference character for character.
+    const t = new Table({ showFooter: true });
+    t.addColumn("A", { footer: "F" });
+    t.addColumn("B");
+    t.addRow("1", "2");
+    expect(collectLines(t, { maxWidth: 20 })).toEqual([
+      "┏━━━┳━━━┓",
+      "┃ A ┃ B ┃",
+      "┡━━━╇━━━┩",
+      "│ 1 │ 2 │",
+      "├───┼───┤",
+      "│ F │   │",
+      "└───┴───┘",
+    ]);
+  });
+
   it("shows footer when showFooter is true", () => {
     const t = new Table({ box: ASCII, showFooter: true });
     t.addColumn("Name", { footer: "Total" });
