@@ -311,7 +311,7 @@ export interface ColumnOptions {
 
 export class Column {
   header: RichText;
-  footer: RichText | undefined;
+  footer: RichText;
   headerStyle: Style;
   footerStyle: Style;
   style: Style;
@@ -326,8 +326,14 @@ export class Column {
 
   constructor(options?: ColumnOptions) {
     this.header = toCellText(options?.header);
-    const footerVal = options?.footer;
-    this.footer = footerVal !== undefined ? toCellText(footerVal) : undefined;
+    // Absent and empty are the same footer. [LAW:types-are-the-program] Rich
+    // declares `footer: RenderableType = ""`, so a column always has one and
+    // `show_footer` alone decides whether it is drawn. Modelling the absence as
+    // `undefined` instead made "no column has a footer" a state the render path
+    // could ask about — and it did, skipping the row a caller had asked for.
+    // Sharing `header`'s one-liner is what keeps the two fields answerable by
+    // the same question.
+    this.footer = toCellText(options?.footer);
     this.headerStyle = resolveStyle(options?.headerStyle);
     this.footerStyle = resolveStyle(options?.footerStyle);
     this.style = resolveStyle(options?.style);
@@ -358,7 +364,7 @@ export class Column {
   copy(): Column {
     const col = new Column({
       header: this.header.copy(),
-      footer: this.footer?.copy(),
+      footer: this.footer.copy(),
       justify: this.justify,
       width: this.width,
       minWidth: this.minWidth,
@@ -537,7 +543,7 @@ export class Table implements Renderable, Measurable {
     }
 
     // Header row
-    if (this.showHeader && this._columns.some((c) => c.header.hasContent)) {
+    if (this.showHeader) {
       const headerCells = this._columns.map((c) => c.header as Renderable);
       yield* this._renderRow(headerCells, geometry, box, "head", border, this.headerStyle);
 
@@ -566,11 +572,11 @@ export class Table implements Renderable, Measurable {
     }
 
     // Footer
-    if (this.showFooter && this._columns.some((c) => c.footer)) {
+    if (this.showFooter) {
       if (box) {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
-      const footerCells = this._columns.map((c) => c.footer ?? toCellText(undefined));
+      const footerCells = this._columns.map((c) => c.footer as Renderable);
       yield* this._renderRow(footerCells, geometry, box, "foot", border, this.footerStyle);
     }
 
