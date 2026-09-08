@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-112",
-      "ref": "refs/pull/112/merge",
-      "sha": "80a19bccdf2d9c018915aae41b0e146c61f493f6",
-      "timestamp": "2026-09-08T15:58:09.794Z",
-      "commits": [
-        {
-          "sha": "80a19bccdf2d9c018915aae41b0e146c61f493f6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-08T09:57:34-06:00",
-          "message": "Merge a9bfc14a8846c972ca74921cc1f0d048f286753d into 5d4cf8daa82d63637c9135d8fbf21583de415237\n"
-        },
-        {
-          "sha": "a9bfc14a8846c972ca74921cc1f0d048f286753d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-08T09:55:47-06:00",
-          "message": "chore: drop the orphaned .claude/skills/next copy\n\nlit no longer writes this file. The mechanism that wrote\n.claude/skills/next/SKILL.md into every repo lit was set up in was removed in\nlinks-issue-tracker#493; the skill now ships from the links Claude Code plugin\n(install once, available everywhere) rather than being copied into each\nproject tree. This is the leftover output of that removed generator: nothing\nwrites it, refreshes it, or references it, and while it stayed tracked here it\nshadowed the plugin copy for any agent working in this repo.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5d4cf8daa82d63637c9135d8fbf21583de415237",
-      "timestamp": "2026-09-07T19:54:17.327Z",
+      "sha": "d14ba77aeddc9d5ad4d57eaaf9602c2aae522649",
+      "timestamp": "2026-09-08T16:00:28.113Z",
       "commits": [
         {
-          "sha": "5d4cf8daa82d63637c9135d8fbf21583de415237",
+          "sha": "d14ba77aeddc9d5ad4d57eaaf9602c2aae522649",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-07T13:53:46-06:00",
-          "message": "feat(text): distribute the gap between words for justify \"full\" (rich-justify-0cr.1) (#111)\n\n`justify: \"full\"` was accepted everywhere and rendered as `left`: its branch\nshared a body with left's, padding the line out to the canvas so it filled\nwithout ever moving the words. It diverged from Python Rich on every block of\nthe pinned corpus.\n\nThe seam was the problem, not the arithmetic. `_justifyLine` is handed one\nline, and `full` is the one mode that cannot be decided from one: the\nreference leaves a paragraph's last line ragged and widens the gaps of every\nline above it. Justification therefore moves up to the wrapped line —\n`_justifyLines` — which is the unit Rich justifies too (`Text.wrap` calls\n`Lines.justify` once per *logical* line, not once per render), and which\n`Segment.divide` was already handing over whole. `_justifyLine` keeps the\nthree modes a line can answer alone, and its parameter drops `full` so the\ntype refuses what the function cannot do.\n\n`_fillLine` reproduces the reference exactly: words split on a single space\nwith the blank a trailing separator leaves behind dropped, slack spread a cell\nat a time from the rightmost gap leftwards, and each widened gap restyled from\nthe characters either side of it.\n\nVerified by regenerating `text-justify.golden.txt` from Python Rich with\n`full` in JUSTIFY — byte for byte, so the fixture stays the reference's own\noutput rather than a laundered copy of ours. Beyond it, a differential of\n3,240 renders (27 texts x 24 widths x 5 modes) against Rich: `full` agrees\neverywhere except two divergences that predate this change and belong to\nother code — tab expansion is not tab-stop aligned, and a wide glyph at width\n1 renders empty where Rich renders a space. Against HEAD the same harness\nshows 574 changed renders, all of them `full` and none outside it.\n\nCorpus gains one text. `uneven` (\"a  bb cccc dddd\") fills a line whose slack\nwill not divide evenly across three gaps, two of which are one space run the\nauthor wrote; without it neither the remainder direction nor \"a run of n\nspaces is n gaps\" was pinned, and mutating either passed the suite. Six\nmutations — spread direction, even split, collapsing a space run, filling the\nlast line, keeping the trailing blank, and the gap style — now each fail.\n\nThe gap style is the one rule the fixture cannot see, being generated with\n`no_color`, so it gets its own test with the reference command that produced\nits expectations.\n\nTable.expand and its skipped test stay open on rich-justify-0cr.3."
+          "timestamp": "2026-09-08T09:59:50-06:00",
+          "message": "chore: drop the orphaned .claude/skills/next copy (#112)\n\nlit no longer writes this file. The mechanism that wrote\n.claude/skills/next/SKILL.md into every repo lit was set up in was removed in\nlinks-issue-tracker#493; the skill now ships from the links Claude Code plugin\n(install once, available everywhere) rather than being copied into each\nproject tree. This is the leftover output of that removed generator: nothing\nwrites it, refreshes it, or references it, and while it stayed tracked here it\nshadowed the plugin copy for any agent working in this repo."
         }
       ]
     }
