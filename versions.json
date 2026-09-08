@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-112",
+      "ref": "refs/pull/112/merge",
+      "sha": "80a19bccdf2d9c018915aae41b0e146c61f493f6",
+      "timestamp": "2026-09-08T15:58:09.794Z",
+      "commits": [
+        {
+          "sha": "80a19bccdf2d9c018915aae41b0e146c61f493f6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-08T09:57:34-06:00",
+          "message": "Merge a9bfc14a8846c972ca74921cc1f0d048f286753d into 5d4cf8daa82d63637c9135d8fbf21583de415237\n"
+        },
+        {
+          "sha": "a9bfc14a8846c972ca74921cc1f0d048f286753d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-08T09:55:47-06:00",
+          "message": "chore: drop the orphaned .claude/skills/next copy\n\nlit no longer writes this file. The mechanism that wrote\n.claude/skills/next/SKILL.md into every repo lit was set up in was removed in\nlinks-issue-tracker#493; the skill now ships from the links Claude Code plugin\n(install once, available everywhere) rather than being copied into each\nproject tree. This is the leftover output of that removed generator: nothing\nwrites it, refreshes it, or references it, and while it stayed tracked here it\nshadowed the plugin copy for any agent working in this repo.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5d4cf8daa82d63637c9135d8fbf21583de415237",
