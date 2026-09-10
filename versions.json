@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-114",
+      "ref": "refs/pull/114/merge",
+      "sha": "1f924105583da374c79e28622c8f6fa1791af993",
+      "timestamp": "2026-09-10T16:05:02.224Z",
+      "commits": [
+        {
+          "sha": "1f924105583da374c79e28622c8f6fa1791af993",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T10:04:30-06:00",
+          "message": "Merge 14d61a4b01a42292895292bdab7eb53adafdf185 into 939d6adc1dad377830daf7dfaf204caee0fbf05a\n"
+        },
+        {
+          "sha": "14d61a4b01a42292895292bdab7eb53adafdf185",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T10:04:26-06:00",
+          "message": "docs(console): show full justification with a worked example (rich-justify-0cr.4)\n\nThe Justify table still described \"full\" as padding without stretching,\nwhich stopped being true when .1 implemented it. The row now says what it\ndoes, and a worked example follows it.\n\nThe example renders one paragraph at width 42 and shows the three things\nthat surprise a reader: the last line of a paragraph stays ragged, a line\nholding one word (a URL) keeps its width even when more text follows, and\nan authored double space is two gaps, so it comes out twice as wide as its\nneighbours. The snippet was run as written through this library and\nthrough Python Rich (9d8f9a3); the output block is byte-identical to both.\n\nThe ticket's suggested example, \"a  bb cccc dddd\" at width 12, was not\nused: with two cells of slack it renders the same whether a run of spaces\nis one gap or several, so it cannot show the third point, and its only\none-word line is also the last line.\n\nThe sentence \"each line of a wrapped paragraph is placed in its own right\"\nis also rewritten, because \"full\" has to know which line is last.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "939d6adc1dad377830daf7dfaf204caee0fbf05a",
