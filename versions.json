@@ -4,15 +4,22 @@
     {
       "version": "pr-119",
       "ref": "refs/pull/119/merge",
-      "sha": "ff31ad41cbfb050a649d5dfdaabfc4d3533d66dd",
-      "timestamp": "2026-09-10T19:08:37.051Z",
+      "sha": "cd68bed258b5168c2a0692b977d28e59d9bf6670",
+      "timestamp": "2026-09-10T19:22:07.982Z",
       "commits": [
         {
-          "sha": "ff31ad41cbfb050a649d5dfdaabfc4d3533d66dd",
+          "sha": "cd68bed258b5168c2a0692b977d28e59d9bf6670",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T19:08:01Z",
-          "message": "Merge 703a429391407d5695e7082ba09c22631d3eb4e9 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+          "timestamp": "2026-09-10T19:21:36Z",
+          "message": "Merge 140df88bcb860ac091a28acdef00c76440f8b6a3 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+        },
+        {
+          "sha": "140df88bcb860ac091a28acdef00c76440f8b6a3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T13:21:26-06:00",
+          "message": "fix(template-bindings): keep the parser's reason when a fragment's base style does not parse (rich-style-tdn)\n\nA scope fragment whose base style fails Style.parse threw a TypeError\ncalling the string \"the name\", but a StyleSyntaxError proves only that\nthe string is not a definition: \"not\" and \"on\" are malformed\ndefinitions, not theme names. Only the theme of a render can tell a name\nfrom a typo, so the template layer does not guess. The message now says\nthe base style is not a style definition, and the StyleSyntaxError rides\nalong as the cause.\n\nTests: a name (\"repr.number\") and a malformed definition (\"not\") each\nthrow a TypeError whose cause is the StyleSyntaxError.\n"
         },
         {
           "sha": "703a429391407d5695e7082ba09c22631d3eb4e9",
