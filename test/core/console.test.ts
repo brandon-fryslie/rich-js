@@ -6,7 +6,7 @@ import {
   type ConsoleStream,
 } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
-import { Style, Theme } from "../../src/core/style.js";
+import { Style, StyleSyntaxError, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
@@ -14,6 +14,21 @@ import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Table, type TableOptions } from "../../src/renderables/table.js";
+import { Rule } from "../../src/renderables/rule.js";
+import { Tree } from "../../src/renderables/tree.js";
+import { Padding } from "../../src/renderables/padding.js";
+import { Spinner } from "../../src/renderables/spinner.js";
+import { Status } from "../../src/renderables/status.js";
+import { ProgressBar } from "../../src/renderables/progressBar.js";
+import {
+  Progress,
+  TaskProgressColumn,
+  TimeElapsedColumn,
+  TimeRemainingColumn,
+  type ProgressColumn,
+} from "../../src/renderables/progress.js";
+import { Markdown } from "../../src/renderables/markdown.js";
+import { Traceback } from "../../src/renderables/traceback.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -1182,5 +1197,67 @@ describe("Console theme resolution", () => {
   it("leaves repr.number unstyled under a theme that inherits nothing", () => {
     const theme = new Theme({}, { inherit: false });
     expect(printed("42", { theme })).toBe(printed("42", { highlight: false }));
+  });
+
+  it("throws when a table's header name is missing from a theme that inherits nothing", () => {
+    const table = new Table().addColumn("Name").addRow("Alice");
+    expect(() => printed(table, { theme: new Theme({}, { inherit: false }) })).toThrow(StyleSyntaxError);
+  });
+
+  /** A progress display with one task, drawn by `column`. */
+  function progressOf(column: ProgressColumn): Progress {
+    const progress = new Progress(column);
+    progress.addTask("task", { total: 100 });
+    return progress;
+  }
+
+  // [LAW:dataflow-not-control-flow] Each row names a style name a renderable
+  // draws with — a built-in default, or a name handed to its style option — and
+  // every row takes the same assertion.
+  const drawsWith: Array<{ label: string; name: string; make: (name: string) => Renderable }> = [
+    { label: "Panel border", name: "my.border", make: (name) => new Panel("x", { borderStyle: name }) },
+    { label: "Panel title", name: "my.title", make: (name) => new Panel("x", { title: "t", titleStyle: name }) },
+    { label: "Rule", name: "my.rule", make: (name) => new Rule("t", { style: name }) },
+    {
+      label: "Tree guide",
+      name: "my.guide",
+      make: (name) => {
+        const tree = new Tree("root", { guide_style: name });
+        tree.add("leaf");
+        return tree;
+      },
+    },
+    { label: "Padding", name: "my.pad", make: (name) => new Padding(new RichText("x"), 1, { style: name }) },
+    { label: "Spinner", name: "my.spinner", make: (name) => new Spinner("dots", "load", { style: name }) },
+    { label: "ProgressBar", name: "bar.complete", make: () => new ProgressBar({ total: 100, completed: 50 }) },
+    { label: "TaskProgressColumn", name: "progress.percentage", make: () => progressOf(new TaskProgressColumn()) },
+    { label: "TimeRemainingColumn", name: "progress.remaining", make: () => progressOf(new TimeRemainingColumn()) },
+    { label: "TimeElapsedColumn", name: "progress.elapsed", make: () => progressOf(new TimeElapsedColumn()) },
+    { label: "Markdown heading", name: "markdown.h1", make: () => new Markdown("# Title") },
+    { label: "Markdown inline code", name: "markdown.code", make: () => new Markdown("run `ls`") },
+    { label: "Traceback", name: "traceback.exc_type", make: () => new Traceback(new Error("boom")) },
+  ];
+
+  /** Two truecolor foregrounds and the SGR parameters each is written as. */
+  const COLORS = [
+    ["#123456", "38;2;18;52;86"],
+    ["#654321", "38;2;101;67;33"],
+  ] as const;
+
+  it.each(drawsWith)("$label takes $name from the console's theme", ({ name, make }) => {
+    for (const [hex, sgr] of COLORS) {
+      expect(printed(make(name), { theme: new Theme({ [name]: hex }) })).toContain(sgr);
+    }
+  });
+
+  it("Status takes its style name from its console's theme", () => {
+    for (const [hex, sgr] of COLORS) {
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", theme: new Theme({ "my.status": hex }) });
+      const status = new Status("working", { console: c, style: "my.status" });
+      status.start();
+      status.update("working-message");
+      status.stop();
+      expect(captured(chunks)).toContain(sgr);
+    }
   });
 });

@@ -53,19 +53,11 @@ function hangingWhitespace(line: Segment[]): number {
   return cellLen(TRAILING_WHITESPACE_RE.exec(plainOf(line))?.[0] ?? "");
 }
 
-// [LAW:single-enforcer] RichText is the *data-model* trust boundary for
-// link URLs — any Style carrying a link that enters a RichText is sanitized
-// in place, so callers that inspect `richText.style.link` or
-// `richText.spans[].style.link` see the same clean URL the renderer will
-// emit. Wire-byte safety is enforced separately in render.ts and style.ts
-// via the same shared `stripOscTerminators` helper (one rule, applied at
-// both seams). Together those layers guarantee the dirty bytes can neither
-// live in the in-memory model nor escape on the wire — even if a Style is
-// constructed and rendered via a path that bypasses RichText entirely.
-//
-// Called from `admitStyle`, which every style entering a RichText passes
-// through, and from `resolveStyle`, which every style leaving one for a render
-// passes through; no per-callsite wrap to forget.
+// [LAW:single-enforcer] RichText is the data-model trust boundary for link
+// URLs: a `Style` is sanitized as it enters (`admitStyle`), and the `Style` a
+// stored string resolves to is sanitized as it leaves for a render
+// (`resolveStyle`). Wire-byte safety is enforced separately in render.ts and
+// style.ts through the same `stripOscTerminators`.
 function sanitizeStyleLink(style: Style): Style {
   const link = style.link;
   if (!link) return style;

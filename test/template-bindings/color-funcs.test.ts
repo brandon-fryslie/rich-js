@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { RichText } from "../../src/core/text.js";
-import { Style } from "../../src/core/style.js";
 import { blendRgb } from "../../src/core/color.js";
 import { Oklch, IDENTITY } from "../../src/core/oklch.js";
 import { richTextFuncs, paletteFuncs } from "../../src/template-bindings/index.js";
@@ -14,6 +13,7 @@ import {
 import { parseHexColor } from "../../src/themes/colorRef.js";
 import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
+import { baseStyleOf } from "../core/base-style.js";
 
 // [LAW:behavior-not-structure] Every assertion below compares what a template
 // produces against what the underlying rich-js function produces for the same
@@ -39,16 +39,6 @@ function colorText(source: string): string {
     .evaluate({})
     .map((f) => f.plain)
     .join("");
-}
-
-/**
- * A fragment's base style as the `Style` every engine-built fragment carries.
- * `RichText.style` also admits a style name; narrowed once, here, a name fails
- * loudly rather than reading `String.prototype` members as style attributes.
- */
-function baseStyleOf(rt: RichText): Style {
-  if (rt.style instanceof Style) return rt.style;
-  throw new Error(`expected a fragment with a Style, got the style name ${JSON.stringify(rt.style)}`);
 }
 
 /** Evaluate a template producing one styled fragment; return its fg hex. */

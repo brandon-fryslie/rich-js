@@ -16,6 +16,7 @@ import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
 import { darken, lighten, contrastFor, ensureContrast } from "../../src/themes/colorMath.js";
 import { blendRgb, ColorRgba } from "../../src/core/color.js";
 import { Oklch, IDENTITY, type ThemeKey } from "../../src/core/oklch.js";
+import { baseStyleOf } from "../core/base-style.js";
 
 // [LAW:behavior-not-structure] Tests assert the binding contract — fragments
 // produced by template evaluation are equivalent to fragments produced by
@@ -57,17 +58,6 @@ function evalOneWith(e: Engine<RichText>, template: string): RichText {
   const result = e.parse(template).evaluate({});
   expect(result.length).toBe(1);
   return result[0]!;
-}
-
-/**
- * A fragment's base style as the `Style` every engine-built fragment carries.
- * `RichText.style` also admits a style name, and `String.prototype`'s legacy
- * HTML wrappers would let `.style.bold` type-check against that arm and compare
- * a function to `true`. Narrowed once, here, a name fails loudly instead.
- */
-function baseStyleOf(rt: RichText): Style {
-  if (rt.style instanceof Style) return rt.style;
-  throw new Error(`expected a fragment with a Style, got the style name ${JSON.stringify(rt.style)}`);
 }
 
 /** The truecolor hex a fragment's foreground resolves to. */
@@ -317,14 +307,14 @@ describe("composition: outer wraps inner additively (Style.add semantics)", () =
   it("fg over an inner attribute combines both", () => {
     const rt = evalOne(`{{ fg "red" (bold "x") }}`);
     expect(rt.plain).toBe("x");
-    expect(rt.style.bold).toBe(true);
+    expect(baseStyleOf(rt).bold).toBe(true);
     expect(baseStyleOf(rt).color?.name).toBe("red");
   });
 
   it("nesting order does not matter for disjoint slots", () => {
     const a = evalOne(`{{ fg "red" (bold "x") }}`);
     const b = evalOne(`{{ bold (fg "red" "x") }}`);
-    expect(b.style.bold).toBe(a.style.bold);
+    expect(baseStyleOf(b).bold).toBe(baseStyleOf(a).bold);
     expect(baseStyleOf(b).color?.name).toBe(baseStyleOf(a).color?.name);
   });
 
@@ -348,7 +338,7 @@ describe("composition: outer wraps inner additively (Style.add semantics)", () =
     ]);
     expect(baseStyleOf(rt).color?.name).toBe(expected.color?.name);
     expect(baseStyleOf(rt).bgcolor?.name).toBe(expected.bgcolor?.name);
-    expect(rt.style.bold).toBe(expected.bold);
+    expect(baseStyleOf(rt).bold).toBe(expected.bold);
   });
 });
 
@@ -392,6 +382,13 @@ describe("error surface", () => {
     );
   });
 
+  it("a scope fragment whose base style is a definition is styled over it", () => {
+    const defined = new RichText("42", { style: "italic" });
+    const out = engine.parse(`{{ bold .n }}`).evaluate({ n: defined });
+    expect(baseStyleOf(out[0]!).bold).toBe(true);
+    expect(baseStyleOf(out[0]!).italic).toBe(true);
+  });
+
   it("an unknown function name is a FuncNotFoundError", () => {
     expect(() => engine.parse(`{{ neonpurple "x" }}`).evaluate({})).toThrowError(
       /neonpurple|FuncNotFound/,
@@ -425,18 +422,18 @@ describe("multi-fragment templates", () => {
 describe("style function (multi-attribute spec)", () => {
   it("applies a single attribute spec", () => {
     const rt = evalOne(`{{ style "bold" "x" }}`);
-    expect(rt.style.bold).toBe(true);
+    expect(baseStyleOf(rt).bold).toBe(true);
   });
 
   it("applies multiple attributes from one spec", () => {
     const rt = evalOne(`{{ style "bold underline" "x" }}`);
-    expect(rt.style.bold).toBe(true);
+    expect(baseStyleOf(rt).bold).toBe(true);
     expect(baseStyleOf(rt).underline).toBe(true);
   });
 
   it("mixes attributes and a foreground color in one spec", () => {
     const rt = evalOne(`{{ style "bold #ff6b6b" "alarm!" }}`);
-    expect(rt.style.bold).toBe(true);
+    expect(baseStyleOf(rt).bold).toBe(true);
     expect(fgHex(rt)).toBe("#ff6b6b");
   });
 
@@ -448,32 +445,32 @@ describe("style function (multi-attribute spec)", () => {
 
   it("accepts 'not <attr>' for negation", () => {
     const rt = evalOne(`{{ style "not bold" "x" }}`);
-    expect(rt.style.bold).toBe(false);
+    expect(baseStyleOf(rt).bold).toBe(false);
   });
 
   it("accepts 'link <url>' inside the spec", () => {
     const rt = evalOne(`{{ style "bold link https://example.com" "x" }}`);
-    expect(rt.style.bold).toBe(true);
-    expect(rt.style.link).toBe("https://example.com");
+    expect(baseStyleOf(rt).bold).toBe(true);
+    expect(baseStyleOf(rt).link).toBe("https://example.com");
   });
 
   it("empty spec is a no-op (matches Style.parse semantics)", () => {
     const rt = evalOne(`{{ style "" "x" }}`);
     expect(rt.plain).toBe("x");
-    expect(rt.style.bold).toBeUndefined();
+    expect(baseStyleOf(rt).bold).toBeUndefined();
     expect(baseStyleOf(rt).color).toBeUndefined();
   });
 
   it("'none' spec is a no-op (DEFAULT_STYLES lookup)", () => {
     const rt = evalOne(`{{ style "none" "x" }}`);
-    expect(rt.style.bold).toBeUndefined();
+    expect(baseStyleOf(rt).bold).toBeUndefined();
     expect(baseStyleOf(rt).color).toBeUndefined();
   });
 
   it("produces the same fragment as nested per-attribute calls", () => {
     const spec = evalOne(`{{ style "bold underline #ff6b6b" "x" }}`);
     const nested = evalOne(`{{ underline (fg "#ff6b6b" (bold "x")) }}`);
-    expect(spec.style.bold).toBe(nested.style.bold);
+    expect(baseStyleOf(spec).bold).toBe(baseStyleOf(nested).bold);
     expect(baseStyleOf(spec).underline).toBe(baseStyleOf(nested).underline);
     expect(fgHex(spec)).toBe(fgHex(nested));
   });
@@ -490,12 +487,12 @@ describe("style function (multi-attribute spec)", () => {
       `{{ bold (fg (darken (color "primary") 2) "x") }}`,
     );
     expect(fgHex(viaSpec)).toBe(fgHex(viaFg));
-    expect(viaSpec.style.bold).toBe(true);
+    expect(baseStyleOf(viaSpec).bold).toBe(true);
   });
 
   it("composes with outer style functions (outer wins on conflict)", () => {
     const rt = evalOne(`{{ fg "blue" (style "red bold" "x") }}`);
-    expect(rt.style.bold).toBe(true);
+    expect(baseStyleOf(rt).bold).toBe(true);
     expect(baseStyleOf(rt).color?.name).toBe("blue");
   });
 
@@ -512,7 +509,7 @@ describe("style function (multi-attribute spec)", () => {
     expect(out[0]!.plain).toBe("a");
     expect(out[1]!.plain).toBe("b");
     for (const rt of out) {
-      expect(rt.style.bold).toBe(true);
+      expect(baseStyleOf(rt).bold).toBe(true);
       expect(fgHex(rt)).toBe("#ff6b6b");
     }
   });
@@ -520,7 +517,7 @@ describe("style function (multi-attribute spec)", () => {
   it("reusable via scope field", () => {
     const out = engine.parse(`{{ style .alert "danger" }}`).evaluate({ alert: "bold red" });
     expect(out[0]!.plain).toBe("danger");
-    expect(out[0]!.style.bold).toBe(true);
+    expect(baseStyleOf(out[0]!).bold).toBe(true);
     expect(baseStyleOf(out[0]!).color?.name).toBe("red");
   });
 
@@ -528,7 +525,7 @@ describe("style function (multi-attribute spec)", () => {
     const a = evalOne(`{{ "alarm!" | style "bold red" }}`);
     const b = evalOne(`{{ style "bold red" "alarm!" }}`);
     expect(a.plain).toBe(b.plain);
-    expect(a.style.bold).toBe(b.style.bold);
+    expect(baseStyleOf(a).bold).toBe(baseStyleOf(b).bold);
     expect(baseStyleOf(a).color?.name).toBe(baseStyleOf(b).color?.name);
   });
 
@@ -551,41 +548,41 @@ describe("link function (cell-splitter contract)", () => {
   it("link wraps a string literal with the link slot set", () => {
     const rt = evalOne(`{{ link "https://example.com" "label" }}`);
     expect(rt.plain).toBe("label");
-    expect(rt.style.link).toBe("https://example.com");
+    expect(baseStyleOf(rt).link).toBe("https://example.com");
   });
 
   it("equivalent to Style.parse(\"link URL\") for the same URL", () => {
     const rt = evalOne(`{{ link "https://example.com" "x" }}`);
-    expect(rt.style.link).toBe(Style.parse("link https://example.com").link);
+    expect(baseStyleOf(rt).link).toBe(Style.parse("link https://example.com").link);
   });
 
   it("nested links collapse with the outer winning", () => {
     const rt = evalOne(`{{ link "outer" (link "inner" "x") }}`);
-    expect(rt.style.link).toBe("outer");
+    expect(baseStyleOf(rt).link).toBe("outer");
   });
 
   it("link inside a non-link style preserves both", () => {
     const rt = evalOne(`{{ bold (link "u" "x") }}`);
-    expect(rt.style.bold).toBe(true);
-    expect(rt.style.link).toBe("u");
+    expect(baseStyleOf(rt).bold).toBe(true);
+    expect(baseStyleOf(rt).link).toBe("u");
   });
 
   it("non-link style inside a link preserves both", () => {
     const rt = evalOne(`{{ link "u" (bold "x") }}`);
-    expect(rt.style.bold).toBe(true);
-    expect(rt.style.link).toBe("u");
+    expect(baseStyleOf(rt).bold).toBe(true);
+    expect(baseStyleOf(rt).link).toBe("u");
   });
 
   it("link composes with foreground / background colour", () => {
     const rt = evalOne(`{{ link "u" (fg "red" (bg "white" "x")) }}`);
-    expect(rt.style.link).toBe("u");
+    expect(baseStyleOf(rt).link).toBe("u");
     expect(baseStyleOf(rt).color?.name).toBe("red");
     expect(baseStyleOf(rt).bgcolor?.name).toBe("white");
   });
 
   it("link composes with a palette-derived colour", () => {
     const rt = evalOneWith(gruvboxEngine, `{{ link "u" (fg (color "primary") "x") }}`);
-    expect(rt.style.link).toBe("u");
+    expect(baseStyleOf(rt).link).toBe("u");
     expect(fgHex(rt)).toBe(gruvbox.get("primary")!.hex);
   });
 
@@ -597,8 +594,8 @@ describe("link function (cell-splitter contract)", () => {
       Style.parse("red"),
     ]);
     expect(baseStyleOf(rt).color?.name).toBe(expected.color?.name);
-    expect(rt.style.bold).toBe(expected.bold);
-    expect(rt.style.link).toBe(expected.link);
+    expect(baseStyleOf(rt).bold).toBe(expected.bold);
+    expect(baseStyleOf(rt).link).toBe(expected.link);
   });
 });
 
@@ -616,7 +613,7 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
     const cells: { fragment: RichText; before: RichText[] }[] = [];
     let pending: RichText[] = [];
     for (const f of fragments) {
-      if (f.style.link) {
+      if (baseStyleOf(f).link) {
         cells.push({ fragment: f, before: pending });
         pending = [];
       } else {
@@ -631,7 +628,7 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
     const { cells, trailing } = splitCells(out);
     expect(cells.length).toBe(1);
     expect(cells[0]!.fragment.plain).toBe("a");
-    expect(cells[0]!.fragment.style.link).toBe("u");
+    expect(baseStyleOf(cells[0]!.fragment).link).toBe("u");
     expect(cells[0]!.before).toEqual([]);
     expect(trailing).toEqual([]);
   });
@@ -642,14 +639,14 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
     expect(cells.length).toBe(2);
 
     expect(cells[0]!.fragment.plain).toBe("a");
-    expect(cells[0]!.fragment.style.link).toBe("u1");
+    expect(baseStyleOf(cells[0]!.fragment).link).toBe("u1");
     expect(cells[0]!.before).toEqual([]);
 
     expect(cells[1]!.fragment.plain).toBe("b");
-    expect(cells[1]!.fragment.style.link).toBe("u2");
+    expect(baseStyleOf(cells[1]!.fragment).link).toBe("u2");
     expect(cells[1]!.before.length).toBe(1);
     expect(cells[1]!.before[0]!.plain).toBe(" ");
-    expect(cells[1]!.before[0]!.style.link).toBeUndefined();
+    expect(baseStyleOf(cells[1]!.before[0]!).link).toBeUndefined();
 
     expect(trailing).toEqual([]);
   });
@@ -658,7 +655,7 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
     const out = engine.parse(`{{ link "outer" (link "inner" "x") }}`).evaluate({});
     const { cells, trailing } = splitCells(out);
     expect(cells.length).toBe(1);
-    expect(cells[0]!.fragment.style.link).toBe("outer");
+    expect(baseStyleOf(cells[0]!.fragment).link).toBe("outer");
     expect(trailing).toEqual([]);
   });
 
@@ -666,8 +663,8 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
     const out = engine.parse(`{{ bold (link "u" "x") }}`).evaluate({});
     const { cells, trailing } = splitCells(out);
     expect(cells.length).toBe(1);
-    expect(cells[0]!.fragment.style.bold).toBe(true);
-    expect(cells[0]!.fragment.style.link).toBe("u");
+    expect(baseStyleOf(cells[0]!.fragment).bold).toBe(true);
+    expect(baseStyleOf(cells[0]!.fragment).link).toBe("u");
     expect(trailing).toEqual([]);
   });
 

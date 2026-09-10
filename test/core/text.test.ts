@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Span, RichText } from "../../src/core/text.js";
 import { Style, NULL_STYLE } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
+import { baseStyleOf } from "./base-style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -209,7 +210,7 @@ describe("RichText properties", () => {
     const t = new RichText("hi");
     const bold = Style.parse("bold");
     t.style = bold;
-    expect(t.style.bold).toBe(true);
+    expect(t.style).toBe(bold);
   });
 
   it(".justify defaults to undefined", () => {
@@ -996,13 +997,13 @@ describe("OSC-terminator stripping at the RichText trust boundary", () => {
 
   it("strips ESC/BEL/ST from options.style.link in the constructor", () => {
     const t = new RichText("click", { style: new Style({ link: dirty }) });
-    expect(t.style.link).toBe(clean);
+    expect(baseStyleOf(t).link).toBe(clean);
   });
 
   it("strips ESC/BEL/ST from a link assigned via the style setter", () => {
     const t = new RichText("click");
     t.style = new Style({ link: dirty });
-    expect(t.style.link).toBe(clean);
+    expect(baseStyleOf(t).link).toBe(clean);
   });
 
   it("returns the same Style reference when the URL is already clean (no needless clone)", () => {
