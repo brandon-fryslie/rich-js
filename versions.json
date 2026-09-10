@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-118",
+      "ref": "refs/pull/118/merge",
+      "sha": "e8e10ee3df62d907006ed19b36a960e8c071071a",
+      "timestamp": "2026-09-10T17:29:01.614Z",
+      "commits": [
+        {
+          "sha": "e8e10ee3df62d907006ed19b36a960e8c071071a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T11:28:34-06:00",
+          "message": "Merge 0b62a93e05c9805427d8125991bf5941cd4a9884 into a5ef4b92048e576bcd897067a183f5a4850844ef\n"
+        },
+        {
+          "sha": "0b62a93e05c9805427d8125991bf5941cd4a9884",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T11:28:28-06:00",
+          "message": "docs(highlighting): make the custom highlighter examples run (rich-docs-lxn, rich-docs-vaa)\n\nRequestHighlighter could not run as written. Its patterns used Python's\n(?P<name>) group syntax, which a JavaScript RegExp literal rejects. It\nset highlights and baseStyle as instance fields, but RegexHighlighter\nreads them from the class, so it would have highlighted nothing. It\ncalled the highlighter as a function instead of through .call(). Its\nper-group styles also relied on a Console looking http.method up in the\nTheme it was given, and no Console does that (rich-style-tdn). The\nexample now uses static fields and one literal baseStyle, and the page\nsays which names a baseStyle ending in \".\" can produce.\n\nRainbowHighlighter passed stylize its arguments as (start, end, style),\nbut the signature is (style, start, end). It also used Console without\nimporting it.\n\nThe opening example said ReprHighlighter styles file paths, True and a\nUUID. It has no path pattern and matches only lowercase true and false,\nand the example's \"a3f2-...\" was styled as a quoted string. The example\nand both pattern lists now name only what it styles (rich-docs-vaa).\n\nBoth custom highlighter blocks, copied from the page into a TypeScript\nproject that depends on the package, type-check under strict and\nnoUncheckedIndexedAccess and print the styles the page describes.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a5ef4b92048e576bcd897067a183f5a4850844ef",
