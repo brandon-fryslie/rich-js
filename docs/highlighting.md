@@ -1,17 +1,17 @@
 # Highlighting
 
-Automatic highlighting recognizes patterns in text — numbers, strings, booleans, file paths, URLs, UUIDs — and applies styles to them without any markup from the caller.
+Automatic highlighting recognizes patterns in text — numbers, strings, booleans, URLs, UUIDs — and applies styles to them without any markup from the caller.
 
 ## What automatic highlighting does
 
 When you pass a string to `print()` or `log()`, rich-js scans it for common patterns and colors them automatically:
 
 ```typescript
-console.print('path="/usr/local/bin", count=42, ok=True, id="a3f2-..."');
-// path is styled, 42 is styled, True is styled, the UUID is styled
+console.print('name="api", count=42, ok=true, owner=null, id=a3f2c1d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d');
+// "api", 42, true, null and the UUID are each styled
 ```
 
-The patterns include: numbers, quoted strings, booleans, `null`/`None`, file paths, URLs, and UUIDs.
+The patterns are numbers, quoted strings, `true`/`false`, `null`/`undefined`/`None`, URLs, and UUIDs.
 
 ## Enabling and disabling
 
@@ -34,53 +34,49 @@ console.print("42 and /usr/bin", { highlight: true });
 
 ### Regex-based highlighter
 
-The most common pattern: extend `RegexHighlighter` with a list of named-group regular expressions and a `baseStyle` prefix.
+The most common pattern: extend `RegexHighlighter` and set two static fields, `highlights` (a list of regular expressions) and `baseStyle`. Only named groups are styled, so a pattern with no `(?<name>…)` group highlights nothing.
 
 ```typescript
-import { RegexHighlighter, Theme, Console } from "@promptctl/rich-js";
+import { RegexHighlighter, Console } from "@promptctl/rich-js";
 
 class RequestHighlighter extends RegexHighlighter {
-  highlights = [
-    // Named groups become style names, prefixed with baseStyle
-    /(?P<method>GET|POST|PUT|DELETE|PATCH)/,
-    /(?P<status>[2]\d\d)/,   // 2xx — success
-    /(?P<error>[4-5]\d\d)/,  // 4xx/5xx — errors
+  static override highlights = [
+    /\b(?<method>GET|POST|PUT|DELETE|PATCH)\b/,
+    /\b(?<status>[1-5]\d\d)\b/,
   ];
-  baseStyle = "http.";
+  // The style every named group's match gets
+  static override baseStyle = "bold cyan";
 }
 
-const theme = new Theme({
-  "http.method": "bold cyan",
-  "http.status": "bold green",
-  "http.error":  "bold red",
-});
-
 // Use as a Console-level default
-const console = new Console({ highlighter: new RequestHighlighter(), theme });
+const console = new Console({ highlighter: new RequestHighlighter() });
 console.print("GET /api/users 200");
 console.print("DELETE /api/session 401");
 
-// Or as a one-off callable on a specific string
+// Or call it on one string to get a RichText
 const hl = new RequestHighlighter();
-const richText = hl("POST /api/login 200");
+const richText = hl.call("POST /api/login 200");
 console.print(richText);
 ```
 
+The fields must be `static`, because `RegexHighlighter` reads them from the class. Instance fields with the same names compile, but they are ignored and nothing is highlighted.
+
+A `baseStyle` ending in `.` names a separate style for each group: `baseStyle` followed by the group name. That is how `ReprHighlighter` pairs `"repr."` with `(?<number>…)` to style numbers as `repr.number`. The name has to be a built-in style, because a `Console` does not look names up in a `Theme` you give it; a group styled `http.method` comes out plain. To give each group a style of your own, write the highlighter from scratch and pass that style to `stylize`.
+
 ### Custom highlighter from scratch
 
-For complete control, extend the base `Highlighter` class and implement `highlight(text)`:
+For complete control, extend the base `Highlighter` class and implement `highlight(text)`. It styles the `RichText` in place with `stylize(style, start, end)`:
 
 ```typescript
-import { Highlighter, RichText } from "@promptctl/rich-js";
+import { Console, Highlighter, RichText } from "@promptctl/rich-js";
 
 const COLORS = ["red", "green", "yellow", "blue", "magenta", "cyan"];
 
 class RainbowHighlighter extends Highlighter {
-  highlight(text: RichText): RichText {
+  highlight(text: RichText): void {
     for (let i = 0; i < text.length; i++) {
-      text.stylize(i, i + 1, COLORS[i % COLORS.length]);
+      text.stylize(COLORS[i % COLORS.length]!, i, i + 1);
     }
-    return text;
   }
 }
 
@@ -92,7 +88,7 @@ console.print("Hello, World!");
 
 | Class | What it highlights |
 |---|---|
-| `ReprHighlighter` | Default. Numbers, strings, booleans, null, paths, URLs, UUIDs |
+| `ReprHighlighter` | Default. Numbers, quoted strings, booleans, null, URLs, UUIDs |
 | `JSONHighlighter` | JSON-formatted strings — keys, values, brackets |
 | `ISO8601Highlighter` | ISO 8601 date/time strings |
 
