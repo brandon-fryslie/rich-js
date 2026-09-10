@@ -43,21 +43,21 @@ export const ATTRIBUTE_NAMES = [
 
 export type AttributeName = (typeof ATTRIBUTE_NAMES)[number];
 
-// SGR codes for each attribute (on / off)
-const ATTRIBUTE_SGR: Record<AttributeName, [number, number]> = {
-  bold: [1, 22],
-  dim: [2, 22],
-  italic: [3, 23],
-  underline: [4, 24],
-  blink: [5, 25],
-  blink2: [6, 25],
-  reverse: [7, 27],
-  conceal: [8, 28],
-  strike: [9, 29],
-  underline2: [21, 24],
-  frame: [51, 54],
-  encircle: [52, 54],
-  overline: [53, 55],
+// The SGR parameter that turns each attribute on
+const ATTRIBUTE_SGR: Record<AttributeName, number> = {
+  bold: 1,
+  dim: 2,
+  italic: 3,
+  underline: 4,
+  blink: 5,
+  blink2: 6,
+  reverse: 7,
+  conceal: 8,
+  strike: 9,
+  underline2: 21,
+  frame: 51,
+  encircle: 52,
+  overline: 53,
 };
 
 /**
@@ -355,14 +355,13 @@ export class Style {
       attrs.push(...c.getAnsiCodes(false));
     }
 
-    for (const name of ATTRIBUTE_NAMES) {
-      const val = this[name];
-      if (val === true) {
-        attrs.push(`${ATTRIBUTE_SGR[name][0]}`);
-      } else if (val === false) {
-        attrs.push(`${ATTRIBUTE_SGR[name][1]}`);
-      }
-    }
+    // An attribute set false writes nothing, as in Python Rich 9d8f9a3's
+    // `_make_ansi_codes`. It overrides an inherited attribute when styles
+    // combine, and every styled run is written after a reset, so no off
+    // code is ever needed.
+    attrs.push(
+      ...ATTRIBUTE_NAMES.filter((name) => this[name] === true).map((name) => `${ATTRIBUTE_SGR[name]}`),
+    );
 
     return attrs.join(";");
   }

@@ -530,10 +530,11 @@ describe("Style.render", () => {
     );
   });
 
-  it("renders negated attribute (bold false) with the off SGR code", () => {
-    const s = new Style({ bold: false });
-    const result = s.render("test");
-    expect(result).toContain("\x1b[22m");
+  // Python Rich 9d8f9a3 renders `Style(bold=False)` as the bare text. A false
+  // attribute is an override for when styles combine, not a code of its own.
+  it("writes no SGR parameter for an attribute set false", () => {
+    expect(new Style({ bold: false }).render("test")).toBe("test");
+    expect(Style.parse("bold not italic").render("x")).toBe(Style.parse("bold").render("x"));
   });
 });
 
