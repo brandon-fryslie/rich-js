@@ -160,13 +160,42 @@ console.print("Hello!", { justify: "right" });
 | `"left"` | Placed at the left and padded out to the full width |
 | `"center"` | Padded on both sides to center the line |
 | `"right"` | Padded on the left to sit against the right edge |
-| `"full"` | Padded out to the full width; the spaces between words are not stretched |
+| `"full"` | The spaces between words widen until the line reaches the right edge; a paragraph's last line is left as it is |
 
-Alignment applies per line and after wrapping, so each line of a wrapped
-paragraph is placed in its own right. `"center"` and `"right"` align on the
-line's content: a wrap leaves the space that preceded it hanging on the line it
-closed, and counting that padding would push every such line half a space off
-true.
+Alignment applies after wrapping, so a wrapped paragraph is placed line by line.
+`"center"` and `"right"` align on the line's content: a wrap leaves the space
+that preceded it hanging on the line it closed, and counting that padding would
+push every such line half a space off true.
+
+`"full"` stretches every line of a paragraph but the last, which stays ragged the
+way it does in a printed book. A paragraph ends wherever the text has a newline.
+A line holding a single word has nothing to stretch, so it keeps its own width
+too. Each space you typed is a gap of its own, so a double space stays about
+twice as wide as a single one:
+
+```typescript
+const console = new Console({ width: 42 });
+console.print(
+  "Rich is a Python library for rich text in the terminal.  " +
+    "This port follows https://github.com/Textualize/rich closely, " +
+    "down to where the spaces go.",
+  { justify: "full" },
+);
+```
+
+```
+Rich is a Python library for rich text  in
+the   terminal.      This   port   follows
+https://github.com/Textualize/rich
+closely, down to where the spaces go.
+```
+
+The first two lines reach the edge, and the gap after `terminal.` is twice the
+width of the others on its line. The URL is one word, so it stays short even
+though more text follows it, and the last line is left ragged.
+
+A line that wraps straight after a double space is left with spaces on its end,
+so its last word stops short of the right edge.
 
 ### Overflow
 
