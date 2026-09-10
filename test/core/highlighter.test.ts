@@ -192,29 +192,45 @@ describe("ReprHighlighter", () => {
 
 // --- JSONHighlighter ---
 
+// Each expected list is the spans Python Rich 9d8f9a3's `JSONHighlighter` lays
+// down on the same source, in the order Rich lays them down: order decides which
+// style lands on top.
 describe("JSONHighlighter", () => {
-  it("highlights JSON keys", () => {
-    const h = new JSONHighlighter();
-    const text = new RichText('{"name": "value"}');
-    h.highlight(text);
-    const matched = matchedTexts(text, "json.key");
-    expect(matched).toContain('"name"');
+  const spansOf = (source: string) => {
+    const text = new JSONHighlighter().call(source);
+    return text.spans.map((s) => [text.plain.slice(s.start, s.end), s.style]);
+  };
+  const styled = (...pairs: [string, string][]) =>
+    pairs.map(([covered, name]) => [covered, resolveStyle(name)]);
+
+  it("styles every string, in arrays and with escaped quotes, then restyles keys", () => {
+    expect(spansOf('{"k": ["a", "b \\"q\\" c"]}')).toEqual(styled(
+      ["{", "json.brace"], ['"k"', "json.str"], ["[", "json.brace"], ['"a"', "json.str"],
+      ['"b \\"q\\" c"', "json.str"], ["]", "json.brace"], ["}", "json.brace"], ['"k"', "json.key"],
+    ));
   });
 
-  it("highlights JSON booleans", () => {
-    const h = new JSONHighlighter();
-    const text = new RichText('{"flag": true}');
-    h.highlight(text);
-    const matched = matchedTexts(text, "json.bool");
-    expect(matched).toContain("true");
+  it("styles numbers, true, false and null each their own way", () => {
+    expect(spansOf('{"n": 1.5, "t": true, "f": false, "z": null}')).toEqual(styled(
+      ["{", "json.brace"], ['"n"', "json.str"], ["1.5", "json.number"],
+      ['"t"', "json.str"], ["true", "json.bool_true"], ['"f"', "json.str"],
+      ["false", "json.bool_false"], ['"z"', "json.str"], ["null", "json.null"], ["}", "json.brace"],
+      ['"n"', "json.key"], ['"t"', "json.key"], ['"f"', "json.key"], ['"z"', "json.key"],
+    ));
   });
 
-  it("highlights JSON null", () => {
-    const h = new JSONHighlighter();
-    const text = new RichText('{"value": null}');
-    h.highlight(text);
-    const matched = matchedTexts(text, "json.null");
-    expect(matched).toContain("null");
+  it("keys only the string a colon follows, not a value and the key after it", () => {
+    expect(spansOf('{"a": "b", "c": 1}')).toEqual(styled(
+      ["{", "json.brace"], ['"a"', "json.str"], ['"b"', "json.str"], ['"c"', "json.str"],
+      ["1", "json.number"], ["}", "json.brace"], ['"a"', "json.key"], ['"c"', "json.key"],
+    ));
+  });
+
+  it("leaves words, numbers and brackets inside a string to the string", () => {
+    expect(spansOf('{"s": "true 12 [x]"}')).toEqual(styled(
+      ["{", "json.brace"], ['"s"', "json.str"], ['"true 12 [x]"', "json.str"],
+      ["}", "json.brace"], ['"s"', "json.key"],
+    ));
   });
 
   it("call creates highlighted RichText from string", () => {

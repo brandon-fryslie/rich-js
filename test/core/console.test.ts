@@ -702,6 +702,23 @@ describe("Console.printJson()", () => {
     expect(printJson({ colorSystem: "truecolor" }, '{"key": "value"}')).toBe(captured(chunks));
   });
 
+  it("highlights numbers, booleans, null and strings inside arrays with the theme's json styles", () => {
+    const expected = new RichText("", { end: "" })
+      .append("{", "json.brace").append("\n  ")
+      .append('"n"', "json.key").append(": ").append("1.5", "json.number").append(",\n  ")
+      .append('"t"', "json.key").append(": ").append("true", "json.bool_true").append(",\n  ")
+      .append('"f"', "json.key").append(": ").append("false", "json.bool_false").append(",\n  ")
+      .append('"z"', "json.key").append(": ").append("null", "json.null").append(",\n  ")
+      .append('"a"', "json.key").append(": ").append("[", "json.brace").append("\n    ")
+      .append('"s"', "json.str").append("\n  ")
+      .append("]", "json.brace").append("\n")
+      .append("}", "json.brace");
+    const { console: reference, chunks } = makeConsole({ colorSystem: "truecolor" });
+    reference.print(expected);
+    expect(printJson({ colorSystem: "truecolor" }, { n: 1.5, t: true, f: false, z: null, a: ["s"] }))
+      .toBe(captured(chunks));
+  });
+
   it("prints plain text when highlight is off", () => {
     expect(printJson({ colorSystem: "truecolor" }, '{"key": "value"}', { highlight: false }))
       .toBe('{\n  "key": "value"\n}\n');
