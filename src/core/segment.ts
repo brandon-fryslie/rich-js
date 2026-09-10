@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, cellFit, splitText, asCellCol, type CellCol } from "./cells.js";
+import { cellLen, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
 
 // --- ControlType ---
@@ -210,6 +210,11 @@ export class Segment {
    * running its guides into the next row; rebuilt to accumulate lines, it
    * dropped the zero-width-but-present line `RichText` emits at an offer of 0,
    * and a row split rendered nothing at all. A crop shortens; it does not count.
+   *
+   * A wide glyph the edge cuts through leaves a space in the cell it would have
+   * half-filled, so a cropped line still reaches the edge — the reference's
+   * `set_cell_size`, which `splitText` already is. An unbounded `width` crops
+   * nothing, and a segment the crop did not change leaves as itself.
    */
   static *cropLines(segments: Iterable<Segment>, width: number): Iterable<Segment> {
     const cap = Math.max(0, width);
@@ -222,11 +227,12 @@ export class Segment {
       const parts = segment.text.split("\n");
       for (let i = 0; i < parts.length; i++) {
         if (i > 0) used = 0;
-        const piece = cellFit(parts[i]!, asCellCol(cap - used));
+        const [piece] = splitText(parts[i]!, asCellCol(cap - used));
         used += cellLen(piece);
         parts[i] = piece;
       }
-      yield new Segment(parts.join("\n"), segment.style);
+      const cropped = parts.join("\n");
+      yield cropped === segment.text ? segment : new Segment(cropped, segment.style);
     }
   }
 

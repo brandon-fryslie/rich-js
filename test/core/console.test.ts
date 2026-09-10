@@ -10,6 +10,9 @@ import { Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
 import { Highlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
+import { Segment } from "../../src/core/segment.js";
+import type { Renderable } from "../../src/core/protocol.js";
+import { Panel } from "../../src/renderables/panel.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -536,6 +539,78 @@ describe("Console.print() soft wrapping", () => {
     c.print(longText, { softWrap: true });
     const output = captured(chunks);
     expect(output).toContain(longText);
+  });
+});
+
+// --- Cropping and overflow "ignore" ---
+
+// Every expected string here is what Python Rich 9d8f9a3 prints for the same
+// call at the same width, so a failure is a divergence from the reference.
+describe("Console.print() crop and overflow ignore", () => {
+  const print = (width: number, ...args: unknown[]): string => {
+    const { console: c, chunks } = makeConsole({ width });
+    c.print(...args);
+    return captured(chunks);
+  };
+  const tooWide: Renderable = {
+    *render() {
+      yield new Segment("x".repeat(20));
+      yield Segment.line();
+      yield new Segment("yy");
+    },
+  };
+  const firstLine = (output: string): string => output.split("\n")[0]!;
+
+  it("ignore does not wrap the line, and the crop cuts it at the edge", () => {
+    expect(print(12, "aaaa bbbb cccc dddd", { overflow: "ignore" })).toBe("aaaa bbbb cc\n");
+  });
+
+  it("ignore with crop off leaves the line at its full width", () => {
+    expect(print(12, "aaaa bbbb cccc dddd", { overflow: "ignore", crop: false }))
+      .toBe("aaaa bbbb cccc dddd\n");
+  });
+
+  it("crops each line of a multi-line string on its own", () => {
+    expect(print(12, "aaaa bbbb cccc dddd\nshort", { overflow: "ignore" }))
+      .toBe("aaaa bbbb cc\nshort\n");
+  });
+
+  it("still justifies a line that fits", () => {
+    expect(print(12, "hi", { overflow: "ignore", justify: "right" })).toBe("          hi\n");
+  });
+
+  it("crops whatever a renderable draws past the console width", () => {
+    expect(firstLine(print(12, tooWide, { crop: true }))).toBe("x".repeat(12));
+    expect(firstLine(print(12, tooWide, { crop: false }))).toBe("x".repeat(20));
+  });
+
+  it("leaves a space where the edge cuts through a wide glyph", () => {
+    expect(print(11, "日本語日本語日本語", { overflow: "ignore" })).toBe("日本語日本 \n");
+  });
+
+  it("crops the line-end along with the line it ends", () => {
+    expect(print(12, "aaaa bbbb cccc dddd", { overflow: "ignore", end: " ZZZ " }))
+      .toBe("aaaa bbbb cc");
+  });
+
+  it("soft wrap leaves the line whole even when crop is asked for", () => {
+    expect(print(12, "aaaa bbbb cccc dddd", { softWrap: true, crop: true }))
+      .toBe("aaaa bbbb cccc dddd\n");
+  });
+
+  it("keeps each span's style up to the edge", () => {
+    const { console: c, chunks } = makeConsole({ width: 12, colorSystem: "truecolor" });
+    c.print("[red]aaaa bbbb[/] [blue]cccc dddd[/]", { overflow: "ignore" });
+    expect(captured(chunks)).toBe("\x1b[31maaaa bbbb\x1b[0m \x1b[34mcc\x1b[0m\n");
+  });
+
+  it("lets a container's content run to the container's own edge", () => {
+    const lines = print(16, new Panel("aaaa bbbb cccc dddd eeee"), { overflow: "ignore" }).split("\n");
+    expect(lines.slice(0, 3)).toEqual([
+      "╭──────────────╮",
+      "│ aaaa bbbb cc │",
+      "╰──────────────╯",
+    ]);
   });
 });
 
