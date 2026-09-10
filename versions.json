@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-115",
+      "ref": "refs/pull/115/merge",
+      "sha": "9819ed26f4bc83ec3bc0241bf0f3be1428575513",
+      "timestamp": "2026-09-10T16:26:09.275Z",
+      "commits": [
+        {
+          "sha": "9819ed26f4bc83ec3bc0241bf0f3be1428575513",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T10:25:38-06:00",
+          "message": "Merge 286d57e2b7cf4dda51f679a7f57f7378129364c9 into fca2d879ffdfd2986697ae6a92dba1ecc738c663\n"
+        },
+        {
+          "sha": "286d57e2b7cf4dda51f679a7f57f7378129364c9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T10:25:15-06:00",
+          "message": "fix(console): make print honour crop and overflow \"ignore\" (rich-console-8lg)\n\n`crop` was accepted and never read, and `overflow: \"ignore\"` was mapped\naway before rendering, so it wrapped exactly like \"fold\".\n\nprint now cuts every line at the console width, the line-end included,\nunless `crop: false` or `softWrap` turns cropping off. \"ignore\" reaches\nthe render as `noWrap`, so the line is neither wrapped nor cut before\nthat crop. `Segment.cropLines` leaves a space where the edge splits a\nwide glyph. Each new test expects the output Python Rich 9d8f9a3 prints\nfor the same call.\n\ndocs/console.md now describes both options, and docs/strip.md no longer\nsays print leaves a too-wide FlexStrip item whole.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fca2d879ffdfd2986697ae6a92dba1ecc738c663",
