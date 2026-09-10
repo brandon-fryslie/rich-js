@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-113",
+      "ref": "refs/pull/113/merge",
+      "sha": "4ad9b544b28e8b724ad0f1ffc4a31063abaa3a13",
+      "timestamp": "2026-09-10T15:48:12.837Z",
+      "commits": [
+        {
+          "sha": "4ad9b544b28e8b724ad0f1ffc4a31063abaa3a13",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T09:47:41-06:00",
+          "message": "Merge 5604902f526fa7391c8dba7f8c90a3c406cc8f56 into 8537a6a476beb66144afdc130833b4a39c0391dc\n"
+        },
+        {
+          "sha": "5604902f526fa7391c8dba7f8c90a3c406cc8f56",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T09:46:32-06:00",
+          "message": "test(table): hold an expanding table's natural width in the width gates (rich-justify-0cr.3)\n\nAn expanding table spends whatever cells its offer leaves over, so the width it reaches depends on the offer. Its measured maximum still has to be the width its content wants. The natural-width and width-sweep gates each gain an expanding Table. If the stretch is counted in measure, three checks fail: the maximum claims the offer, a fit-mode Panel draws the offer instead of shrink-wrapping, and an unbounded offer no longer renders as the natural width.\n"
+        },
+        {
+          "sha": "79468c911df3117b0eb14946761940836d4df124",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T09:43:14-06:00",
+          "message": "feat(table): expand stretches columns to fill the offered width (rich-justify-0cr.3)\n\nTable.expand was accepted, stored and never read, so an expanding table rendered at its natural width. It now fills the width it is offered.\n\nThe width division runs a second pass over the cells the first pass leaves unspent. Each column's demand carries a stretch beside its want and weight: zero unless the table expands, and then the column's natural width, so the slack lands in proportion to content and the widest column grows most. Cells are left over only once every column has its natural width, so expand cannot widen one column while another is truncated, and a squeezed table renders the same with or without it. That is Rich's order too: it pads only once table_width < max_width.\n\nProgress passes expand straight to its grid. Its default is false and renders unchanged; with expand the row fills the terminal and the bar keeps its own width, so the bar column needed no ratio.\n\nDeclared column widths are kept under expand. Rich stretches them as well, so width: 6 renders 21 cells wide there, which is the kind of option-means-something-else defect this epic exists to remove.\n\nmeasure leaves the stretch out, so an expanding table still reports the width its content wants rather than the width it was offered.\n\nUn-skips the suite's only skipped test and drops its apology comment, and describes expand in docs/tables.md.\n"
+        },
+        {
+          "sha": "1f3f5285c3e827b3e5587b56f5e2b2f7c0cc4e09",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-08T09:40:34-06:00",
+          "message": "chore: drop the orphaned .claude/skills/next copy\n\nlit no longer writes this file. The mechanism that wrote\n.claude/skills/next/SKILL.md into every repo lit was set up in was removed in\nlinks-issue-tracker#493; the skill now ships from the links Claude Code plugin\n(install once, available everywhere) rather than being copied into each\nproject tree. This is the leftover output of that removed generator: nothing\nwrites it, refreshes it, or references it, and while it stayed tracked here it\nshadowed the plugin copy for any agent working in this repo.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8537a6a476beb66144afdc130833b4a39c0391dc",
