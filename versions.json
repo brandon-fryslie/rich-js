@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-117",
-      "ref": "refs/pull/117/merge",
-      "sha": "c43b3f3b2ac8592c296e73134d89b2119e953980",
-      "timestamp": "2026-09-10T17:13:20.674Z",
-      "commits": [
-        {
-          "sha": "c43b3f3b2ac8592c296e73134d89b2119e953980",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T11:12:47-06:00",
-          "message": "Merge a603f0b675e73359bcab985ce32ca32b76f689ba into 6f25759b75d7c29ebb41a7ca55a64eefa77d2e0f\n"
-        },
-        {
-          "sha": "a603f0b675e73359bcab985ce32ca32b76f689ba",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T11:11:59-06:00",
-          "message": "fix(highlighter): style every JSON token as Rich's JSONHighlighter does (rich-json-0yq)\n\nJSONHighlighter styled a string only when a colon came before it, so\nstrings inside arrays printed unstyled, and its string pattern stopped\nat an escaped quote. Each token kind ran as its own pass, so `true` and\n`12` inside a string were restyled as a boolean and a number.\n\nIt is now Python Rich 9d8f9a3's highlighter: one alternation of brace,\ntrue, false, null, number and string, scanned once, then a pass that\nmarks each string a colon follows as a key. The theme replaces json.bool\nwith Rich's json.bool_true (italic bright_green) and json.bool_false\n(italic bright_red). json.number becomes bold, and json.number and\njson.str carry Rich's not-italic and not-bold overrides.\n\nFor the ticket's evidence calls, printJson now writes Rich's bytes apart\nfrom SGR parameter order, which is rich-color-7kv.\n"
-        },
-        {
-          "sha": "ed13701c9c8ad532cfc4ffabb1ebac96b9e6c704",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T11:11:37-06:00",
-          "message": "fix(style): write no SGR parameter for an attribute set false (rich-style-h93)\n\nStyle.toSgrCodes wrote an attribute's off code (22, 23, ...) when the\nattribute was set false. Python Rich 9d8f9a3 writes a parameter only for\nan attribute set true. There, a false attribute overrides an inherited\none when styles combine. Every run is written after a reset, so the off\ncode never changed what a terminal shows, only the bytes: repr.url came\nout as 94;23;4 where Rich writes 4;94.\n\nThis also unblocks rich-json-0yq, whose json.number and json.str styles\ncarry Rich's italic=False and bold=False.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6f25759b75d7c29ebb41a7ca55a64eefa77d2e0f",
-      "timestamp": "2026-09-10T17:00:38.248Z",
+      "sha": "a5ef4b92048e576bcd897067a183f5a4850844ef",
+      "timestamp": "2026-09-10T17:19:55.458Z",
       "commits": [
         {
-          "sha": "6f25759b75d7c29ebb41a7ca55a64eefa77d2e0f",
+          "sha": "a5ef4b92048e576bcd897067a183f5a4850844ef",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T11:00:04-06:00",
-          "message": "fix(console): delegate printJson to the JSON renderable (rich-json-dxs.1, rich-json-dxs.2) (#116)\n\n`Console.printJson` built a key-sorted object and passed it to\n`JSON.stringify` as the replacer, behind an `as unknown as undefined`\ncast. JSON.stringify ignores a plain object in that position, so\n`sortKeys` did nothing, and no highlighter ran. `JSONRenderable` already\ndid both.\n\nprintJson now builds a `JSONRenderable` and prints it with soft wrap, as\nRich's print_json does, so a line wider than the console stays whole and\nthe output stays valid JSON. Its options are `JSONOptions`, which adds\n`highlight`.\n\njson.ts moves from renderables/ to core/. An import from core/console.ts\ninto renderables/ would have been a third upward edge out of core. The\nmodule imports only core primitives and sits at tier 6 beside pretty, for\nthe reason pretty.ts's header gives. CLAUDE.md's tier list names it.\n\nThe printJson tests expect Python Rich 9d8f9a3's output for key sorting\nat every depth and for a line wider than the console, and assert the\ntheme style Rich gives braces, keys and strings. All three fail against\nthe old implementation. docs/console.md no longer says printJson does\nnot colorize."
+          "timestamp": "2026-09-10T11:19:22-06:00",
+          "message": "fix(highlighter): style every JSON token as Rich does (rich-json-0yq, rich-style-h93) (#117)\n\n* fix(style): write no SGR parameter for an attribute set false (rich-style-h93)\n\nStyle.toSgrCodes wrote an attribute's off code (22, 23, ...) when the\nattribute was set false. Python Rich 9d8f9a3 writes a parameter only for\nan attribute set true. There, a false attribute overrides an inherited\none when styles combine. Every run is written after a reset, so the off\ncode never changed what a terminal shows, only the bytes: repr.url came\nout as 94;23;4 where Rich writes 4;94.\n\nThis also unblocks rich-json-0yq, whose json.number and json.str styles\ncarry Rich's italic=False and bold=False.\n\n* fix(highlighter): style every JSON token as Rich's JSONHighlighter does (rich-json-0yq)\n\nJSONHighlighter styled a string only when a colon came before it, so\nstrings inside arrays printed unstyled, and its string pattern stopped\nat an escaped quote. Each token kind ran as its own pass, so `true` and\n`12` inside a string were restyled as a boolean and a number.\n\nIt is now Python Rich 9d8f9a3's highlighter: one alternation of brace,\ntrue, false, null, number and string, scanned once, then a pass that\nmarks each string a colon follows as a key. The theme replaces json.bool\nwith Rich's json.bool_true (italic bright_green) and json.bool_false\n(italic bright_red). json.number becomes bold, and json.number and\njson.str carry Rich's not-italic and not-bold overrides.\n\nFor the ticket's evidence calls, printJson now writes Rich's bytes apart\nfrom SGR parameter order, which is rich-color-7kv."
         }
       ]
     }
