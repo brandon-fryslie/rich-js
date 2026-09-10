@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { TextColumn } from "../../src/renderables/progress.js";
+import {
+  BarColumn,
+  Progress,
+  TaskProgressColumn,
+  TextColumn,
+} from "../../src/renderables/progress.js";
+import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 
 const OPTS: RenderOptions = {
@@ -57,5 +63,37 @@ describe("TextColumn markup parsing (rich-core-y80)", () => {
   it("plain format with no tags is unchanged", () => {
     const col = new TextColumn("step: {task.description}");
     expect(joined(col, "build")).toBe("step: build");
+  });
+});
+
+// `Progress` lays its row out as a grid `Table` and passes `expand` straight
+// through, so what the table does with it is the whole of the behaviour here.
+describe("Progress expand (rich-justify-0cr.3)", () => {
+  const row = (expand: boolean, maxWidth: number): string => {
+    const progress = new Progress(
+      new TextColumn("{task.description}"),
+      new BarColumn(20),
+      new TaskProgressColumn(),
+      { expand },
+    );
+    const id = progress.addTask("compiling", { total: 100 });
+    progress.updateTask(id, { completed: 42 });
+    const lines = Segment.splitLines([...progress.render({ ...OPTS, maxWidth })]);
+    expect(lines).toHaveLength(1);
+    return lines[0]!.map((segment) => segment.text).join("");
+  };
+  // Filled and empty cells share one glyph and differ only in style.
+  const barCells = (line: string): number => [...line].filter((ch) => ch === "━").length;
+
+  it("keeps its natural width when it does not expand, whatever it is offered", () => {
+    expect(row(false, 120)).toBe(row(false, 45));
+    expect(row(false, 45).length).toBeLessThan(45);
+  });
+
+  it("fills the offer when it expands and leaves the bar at its own width", () => {
+    const line = row(true, 45);
+    expect(line).toHaveLength(45);
+    expect(line.startsWith("compiling ")).toBe(true);
+    expect(barCells(line)).toBe(20);
   });
 });

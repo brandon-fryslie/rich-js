@@ -65,21 +65,28 @@ function toRenderable(content: unknown): Renderable {
 
 /**
  * What one column asks of the width division: cells it takes off the top,
- * cells it would use if the table were not squeezed, and how hard it pulls
- * when the cells run short.
+ * cells it would use if the table were not squeezed, how hard it pulls when
+ * the cells run short, and how hard it pulls on the cells left over once every
+ * column has what it wanted.
  *
  * A declared `width` is a reservation rather than a bid — it is paid before
  * anyone competes, because a column told to be four cells wide is not asking
  * for a proportional share of four. A plain column reserves nothing and both
  * wants and weighs its natural content width. A ratio column wants more than
  * any budget can offer and weighs its ratio, so it absorbs whatever the
- * bounded columns leave behind.
+ * bounded columns leave behind. `stretch` is zero unless the table expands.
+ * Cells are left over only when no column is short, so a stretch can never
+ * widen one column while another is still truncated.
  */
 interface ColumnDemand {
   readonly reserved: number;
   readonly want: number;
   readonly weight: number;
+  readonly stretch: number;
 }
+
+/** The part of a demand that one round of `distribute` competes on. */
+type Bid = Pick<ColumnDemand, "want" | "weight">;
 
 /** A `want` no budget can satisfy: the column takes every cell its weight earns. */
 const UNBOUNDED = Number.MAX_SAFE_INTEGER;
@@ -112,7 +119,7 @@ const demandCells = (n: number): number => Math.min(cells(n), UNBOUNDED);
  * `Infinity` held open by a ratio column. Capping by want reaches that case in
  * one round.
  */
-function distribute(total: number, demands: readonly ColumnDemand[]): number[] {
+function distribute(total: number, demands: readonly Bid[]): number[] {
   const granted: number[] = demands.map(() => 0);
   let open = demands
     .map((_, index) => index)
@@ -264,17 +271,25 @@ function layoutTable(
   const reserved = seatedDemands.map((demand, index) => take(demand.reserved - seats[index]!));
 
   // What is left to apportion is the rest of what each column wanted. A table
-  // whose columns all fit leaves this budget partly unspent, which is how it
-  // stays narrower than the width it was offered.
-  const extra = distribute(
+  // whose columns all fit leaves this budget partly unspent.
+  const wanted = distribute(
     budget,
     seatedDemands.map((demand, index) => ({
-      reserved: 0,
       want: Math.max(0, demand.want - seats[index]! - reserved[index]!),
       weight: demand.weight,
     })),
   );
-  const columns = extra.map((cells, index) => seats[index]! + reserved[index]! + cells);
+  // The unspent part goes to the columns by their stretch. A table that does
+  // not expand stretches nothing, which is how it stays narrower than the width
+  // it was offered. The order is the reference's: Rich pads an expanding table
+  // only once `table_width < max_width`, never while it is collapsing a column.
+  const stretched = distribute(
+    budget - wanted.reduce((sum, cells) => sum + cells, 0),
+    seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.stretch })),
+  );
+  const columns = wanted.map(
+    (cells, index) => seats[index]! + reserved[index]! + cells + stretched[index]!,
+  );
   const cellWidths = columns.map((width) => padLeft + width + padRight);
 
   return {
@@ -624,6 +639,11 @@ export class Table implements Renderable, Measurable {
    * [LAW:one-source-of-truth] Both ends of the range are widths the geometry
    * actually produced — the maximum from the demands as they stand, the
    * minimum from the same layout with every column asking for a single cell.
+   * Neither end stretches: a stretch only spends cells an offer happens to
+   * leave over, and a renderable reports the width its content wants rather
+   * than the width it was offered. Letting it in made an expanding table
+   * measure `Infinity` against an unbounded offer, where `withBoundedWidth`
+   * needs a natural width to fall back on.
    * Neither can exceed the width offered and the tighter request cannot exceed
    * the looser one, so the range cannot invert. Deriving the minimum from raw
    * column and padding counts instead is what used to return
@@ -634,7 +654,12 @@ export class Table implements Renderable, Measurable {
     const outerWidth = this._outerWidth(options);
     const frame = this._frame();
     const demands = this._columnDemands();
-    const laidOut = layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
+    const laidOut = layoutTable(
+      outerWidth,
+      demands.map((demand) => ({ ...demand, stretch: 0 })),
+      this.padding,
+      frame,
+    ).totalWidth;
     // `UNBOUNDED` is this table's own infinity, so a layout that reached it has
     // no natural width to report — a column asked for every cell there is. Said
     // as the number, it escapes as a width a caller would try to draw:
@@ -647,6 +672,7 @@ export class Table implements Renderable, Measurable {
         reserved: 0,
         want: Math.min(1, demand.want),
         weight: 1,
+        stretch: 0,
       })),
       this.padding,
       frame,
@@ -703,8 +729,8 @@ export class Table implements Renderable, Measurable {
 
   /**
    * [LAW:dataflow-not-control-flow] The three ways a column can be sized —
-   * declared width, ratio, natural content — differ only in the `want` and
-   * `weight` they produce. They are resolved once, here, into uniform data, so
+   * declared width, ratio, natural content — differ only in the demand they
+   * produce, and `expand` only in its `stretch`. They are resolved once, here, into uniform data, so
    * `layoutTable` runs the same apportionment for every table and no sizing
    * mode gets its own path through the width division.
    */
@@ -719,11 +745,26 @@ export class Table implements Renderable, Measurable {
         // [LAW:single-enforcer] floored where it is parsed, the same rule
         // `normalizePadding` applies to a negative padding side.
         const declared = demandCells(col.width);
-        return { reserved: declared, want: declared, weight: 0 };
+        return { reserved: declared, want: declared, weight: 0, stretch: 0 };
       }
-      if (elastic) return { reserved: 0, want: UNBOUNDED, weight: demandCells(col.ratio ?? 1) };
+      if (elastic) {
+        return { reserved: 0, want: UNBOUNDED, weight: demandCells(col.ratio ?? 1), stretch: 0 };
+      }
       const natural = demandCells(this._naturalWidth(col, index));
-      return { reserved: 0, want: natural, weight: natural };
+      // `expand` is a stretch rather than a larger want: the column still
+      // competes for its natural width like any other, and only the cells left
+      // once every column has that are shared out. A larger want looks
+      // equivalent and is not — it lets a one-cell column claim cells while its
+      // neighbour is still truncated. The stretch is the natural width, so the
+      // widest column grows most, which is what keeps a `Progress` bar from
+      // getting no more of the slack than its percentage label. The reference
+      // weighs by width too: `ratio_distribute(max_width - table_width, widths)`.
+      //
+      // One deliberate divergence: Rich stretches declared-width columns as
+      // well, so `width: 6` under `expand` renders 21 cells wide — an option
+      // quietly meaning something else, the defect rich-justify-0cr exists to
+      // remove. A reservation's stretch is zero above.
+      return { reserved: 0, want: natural, weight: natural, stretch: this.expand ? natural : 0 };
     });
   }
 
