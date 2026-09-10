@@ -19,7 +19,6 @@
 
 import { cellLen } from "./cells.js";
 import { Segment } from "./segment.js";
-import { Style } from "./style.js";
 import { RichText } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
@@ -541,14 +540,13 @@ export class Pretty implements Renderable, Measurable {
   }
 
   private _addIndentGuides(text: RichText): void {
-    const guideStyle = Style.parse("repr.indent");
     const lines = text.plain.split("\n");
     let offset = 0;
     for (const line of lines) {
       const leadingSpaces = line.length - line.trimStart().length;
       for (let i = 0; i < leadingSpaces; i += this.indent) {
         if (i + offset < text.length) {
-          text.stylize(guideStyle, offset + i, offset + i + 1);
+          text.stylize("repr.indent", offset + i, offset + i + 1);
         }
       }
       offset += line.length + 1; // +1 for newline

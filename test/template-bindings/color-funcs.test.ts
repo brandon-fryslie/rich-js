@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { RichText } from "../../src/core/text.js";
+import { Style } from "../../src/core/style.js";
 import { blendRgb } from "../../src/core/color.js";
 import { Oklch, IDENTITY } from "../../src/core/oklch.js";
 import { richTextFuncs, paletteFuncs } from "../../src/template-bindings/index.js";
@@ -40,11 +41,21 @@ function colorText(source: string): string {
     .join("");
 }
 
+/**
+ * A fragment's base style as the `Style` every engine-built fragment carries.
+ * `RichText.style` also admits a style name; narrowed once, here, a name fails
+ * loudly rather than reading `String.prototype` members as style attributes.
+ */
+function baseStyleOf(rt: RichText): Style {
+  if (rt.style instanceof Style) return rt.style;
+  throw new Error(`expected a fragment with a Style, got the style name ${JSON.stringify(rt.style)}`);
+}
+
 /** Evaluate a template producing one styled fragment; return its fg hex. */
 function paintedFg(source: string): string {
   const frags = engine.parse(source).evaluate({});
   expect(frags.length).toBe(1);
-  return frags[0]!.style.color!.getTruecolor().hex;
+  return baseStyleOf(frags[0]!).color!.getTruecolor().hex;
 }
 
 describe("colors are values", () => {
@@ -58,7 +69,7 @@ describe("colors are values", () => {
     expect(out.length).toBe(2);
     const expected = palette.get("primary")!.hex;
     for (const frag of out) {
-      expect(frag.style.color!.getTruecolor().hex).toBe(expected);
+      expect(baseStyleOf(frag).color!.getTruecolor().hex).toBe(expected);
     }
   });
 

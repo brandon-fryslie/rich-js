@@ -39,7 +39,7 @@ const strip = new Strip(
 console.print(strip);
 ```
 
-The arrow between two cells inherits `fg = left.edgeStyle("right").bgcolor` and `bg = right.edgeStyle("left").bgcolor`. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's right-edge bg with no bg of its own, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's right-edge bg with no bg of its own, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
 
 `noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — for non-empty text `RichText.render` emits none either way, so it records the intent rather than changing the output.
 
@@ -103,24 +103,29 @@ new GradientJoiner({ steps: 4 });
 A joiner is a pure function `(leftItem | null, rightItem | null) -> Renderable`. Implement the interface to define your own:
 
 ```typescript
-import { Joiner, StyledRenderable, Renderable } from "@promptctl/rich-js";
+import type { Joiner, Renderable, RenderOptions, StyledRenderable } from "@promptctl/rich-js";
 
 class FadeJoiner<T extends StyledRenderable> implements Joiner<T> {
   join(left: T | null, right: T | null): Renderable {
-    // ...interpolate between left.edgeStyle("right").bgcolor
-    //                  and right.edgeStyle("left").bgcolor...
+    return {
+      *render(options: RenderOptions) {
+        const from = left?.edgeStyle("right", options).bgcolor;
+        const to = right?.edgeStyle("left", options).bgcolor;
+        // ...yield Segments interpolating between from and to...
+      },
+    };
   }
 }
 ```
 
-Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right"): Style` that reports the style of the item's leftmost and rightmost cell columns. `RichText` implements this directly; consumers with richer items can implement the interface themselves.
+Items in a Strip implement `StyledRenderable` — a `Renderable` plus `edgeStyle(side: "left" | "right", options: RenderOptions): Style`, which reports the style of the item's leftmost or rightmost cell column. It takes the render's options because an edge's style may be a [theme](./style#style-themes) name, and only the render knows which theme it is drawing for. So a joiner reads edges inside the `render` of the renderable it returns, as `FadeJoiner` does, and never in `join`. `RichText` implements `StyledRenderable` directly; consumers with richer items can implement the interface themselves.
 
 ## Edge styles are the protocol
 
-Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` and `R` paints its glyph with:
+Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` and `R`, rendered with `options`, paints its glyph with:
 
-- `fg = L.edgeStyle("right").bgcolor`
-- `bg = R.edgeStyle("left").bgcolor`
+- `fg = L.edgeStyle("right", options).bgcolor`
+- `bg = R.edgeStyle("left", options).bgcolor`
 
 The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 

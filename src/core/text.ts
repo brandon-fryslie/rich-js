@@ -7,7 +7,7 @@ import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./sanitize.js";
-import { withBoundedWidth } from "./protocol.js";
+import { getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
 // Strip control characters except \t and \n
@@ -63,9 +63,9 @@ function hangingWhitespace(line: Segment[]): number {
 // live in the in-memory model nor escape on the wire — even if a Style is
 // constructed and rendered via a path that bypasses RichText entirely.
 //
-// Co-located inside `resolveStyle` so any current or future RichText method
-// that normalizes a `string | Style` argument inherits sanitization
-// automatically; no per-callsite wrap to forget.
+// Called from `admitStyle`, which every style entering a RichText passes
+// through, and from `resolveStyle`, which every style leaving one for a render
+// passes through; no per-callsite wrap to forget.
 function sanitizeStyleLink(style: Style): Style {
   const link = style.link;
   if (!link) return style;
@@ -74,24 +74,39 @@ function sanitizeStyleLink(style: Style): Style {
   return style.withLink(cleaned);
 }
 
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  let resolved: Style;
-  if (typeof style === "string") {
-    try {
-      resolved = Style.parse(style);
-    } catch (err) {
-      // [LAW:single-enforcer] Styling is non-critical — an unrecognized style
-      // name (typo, missing theme key, bad concatenation) degrades to unstyled
-      // rather than crashing. Absorb only StyleSyntaxError at this trust
-      // boundary; other errors are genuine bugs and must surface.
-      if (err instanceof StyleSyntaxError) return NULL_STYLE;
-      throw err;
-    }
-  } else {
-    resolved = style;
+/**
+ * A style as a RichText keeps it: as given. A name stays a name because what
+ * it stands for depends on the theme of the render that draws it, which no
+ * RichText knows when the name arrives — the reference stores span styles the
+ * same way. A string holds no link until it is parsed, so only a `Style` has
+ * one to sanitize here.
+ */
+function admitStyle(style: string | Style): string | Style {
+  return style instanceof Style ? sanitizeStyleLink(style) : style;
+}
+
+/** A style that adds nothing: the empty definition, or a null `Style`. */
+function isEmptyStyle(style: string | Style): boolean {
+  return style instanceof Style ? style.isNull : style === "";
+}
+
+/**
+ * The style a stored `string | Style` stands for in this render.
+ *
+ * [LAW:single-enforcer] Styling is non-critical — an unrecognized style name
+ * (typo, missing theme key, bad concatenation) degrades to unstyled rather
+ * than crashing, as the reference's `Text.render` resolves with a null
+ * default. Absorb only StyleSyntaxError here; other errors are genuine bugs
+ * and must surface. A parsed string can carry a link, so the result is
+ * sanitized on the way out as well.
+ */
+function resolveStyle(options: RenderOptions, style: string | Style): Style {
+  try {
+    return sanitizeStyleLink(getStyle(options, style));
+  } catch (err) {
+    if (err instanceof StyleSyntaxError) return NULL_STYLE;
+    throw err;
   }
-  return sanitizeStyleLink(resolved);
 }
 
 // --- Span ---
@@ -151,7 +166,7 @@ export interface RichTextOptions {
 export class RichText implements Renderable, Measurable {
   private _text: string;
   private _spans: Span[];
-  private _style: Style;
+  private _style: string | Style;
   private _justify: "left" | "center" | "right" | "full" | undefined;
   private _overflow: "fold" | "crop" | "ellipsis" | undefined;
   private _end: string;
@@ -161,9 +176,9 @@ export class RichText implements Renderable, Measurable {
   constructor(text?: string, options?: RichTextOptions) {
     this._text = text ? stripControlChars(text) : "";
     this._spans = [];
-    // [LAW:single-enforcer] `resolveStyle` is the boundary that sanitizes
+    // [LAW:single-enforcer] `admitStyle` is the boundary that sanitizes
     // any link URL crossing into a RichText; downstream trusts the invariant.
-    this._style = resolveStyle(options?.style);
+    this._style = admitStyle(options?.style ?? NULL_STYLE);
     this._justify = options?.justify;
     this._overflow = options?.overflow;
     this._end = options?.end ?? "\n";
@@ -199,15 +214,13 @@ export class RichText implements Renderable, Measurable {
     return this._text.length > 0;
   }
 
-  get style(): Style {
+  /** The base style every span layers over: a `Style`, or a name resolved at render. */
+  get style(): string | Style {
     return this._style;
   }
 
-  set style(value: Style) {
-    // [LAW:single-enforcer] The setter is the only entry that doesn't pass
-    // through `resolveStyle` (its argument is already a Style); sanitize
-    // directly so the boundary contract holds for every Style assignment.
-    this._style = sanitizeStyleLink(value);
+  set style(value: string | Style) {
+    this._style = admitStyle(value);
   }
 
   get justify(): "left" | "center" | "right" | "full" | undefined {
@@ -262,16 +275,18 @@ export class RichText implements Renderable, Measurable {
    * text, the last character occupies the rightmost cell column — the bg
    * of that character covers both columns, so character-index lookup gives
    * the correct edge color.
+   *
+   * Takes the render's options because the edge is reported as it will be
+   * drawn, and a style name draws as whatever the render's theme says.
    */
-  edgeStyle(side: "left" | "right"): Style {
-    if (this._text.length === 0) return this._style;
+  edgeStyle(side: "left" | "right", options: RenderOptions): Style {
+    const base = resolveStyle(options, this._style);
+    if (this._text.length === 0) return base;
     const pos = side === "left" ? 0 : this._text.length - 1;
-    let result = this._style;
+    let result = base;
     for (const span of this._spans) {
       if (span.start <= pos && pos < span.end) {
-        const spanStyle =
-          typeof span.style === "string" ? Style.parse(span.style) : span.style;
-        result = result.add(spanStyle);
+        result = result.add(resolveStyle(options, span.style));
       }
     }
     return result;
@@ -295,12 +310,7 @@ export class RichText implements Renderable, Measurable {
     const sanitized = stripControlChars(content);
     const start = this._text.length;
     this._text += sanitized;
-    if (style !== undefined) {
-      const resolved = resolveStyle(style);
-      if (!resolved.isNull) {
-        this._spans.push(new Span(start, this._text.length, resolved));
-      }
-    }
+    this._addSpan(start, this._text.length, style ?? "");
     return this;
   }
 
@@ -344,10 +354,17 @@ export class RichText implements Renderable, Measurable {
 
   // --- Styling Operations ---
 
-  stylize(style: string | Style, start?: number, end?: number): this {
-    const resolved = resolveStyle(style);
-    if (resolved.isNull) return this;
+  /**
+   * The one way a span enters this text. [LAW:single-enforcer] An empty style
+   * adds nothing, as the reference's `if style:` has it, and every other style
+   * is admitted as given.
+   */
+  private _addSpan(start: number, end: number, style: string | Style): void {
+    if (isEmptyStyle(style)) return;
+    this._spans.push(new Span(start, end, admitStyle(style)));
+  }
 
+  stylize(style: string | Style, start?: number, end?: number): this {
     const len = this._text.length;
     const s = start !== undefined ? (start < 0 ? len + start : start) : 0;
     const e = end !== undefined ? (end < 0 ? len + end : end) : len;
@@ -356,7 +373,7 @@ export class RichText implements Renderable, Measurable {
     const clampedStart = Math.max(0, s);
     const clampedEnd = Math.min(len, e);
 
-    this._spans.push(new Span(clampedStart, clampedEnd, resolved));
+    this._addSpan(clampedStart, clampedEnd, style);
     return this;
   }
 
@@ -383,9 +400,7 @@ export class RichText implements Renderable, Measurable {
             const posInMatch = match[0].indexOf(groupValue, searchFrom);
             if (posInMatch >= 0) {
               const groupStart = match.index + posInMatch;
-              this._spans.push(
-                new Span(groupStart, groupStart + groupValue.length, groupName),
-              );
+              this._addSpan(groupStart, groupStart + groupValue.length, groupName);
               searchFrom = posInMatch + groupValue.length;
             }
           }
@@ -394,12 +409,7 @@ export class RichText implements Renderable, Measurable {
         continue;
       }
 
-      const resolvedStyle = style !== undefined ? resolveStyle(style) : NULL_STYLE;
-      if (!resolvedStyle.isNull) {
-        this._spans.push(
-          new Span(match.index, match.index + match[0].length, resolvedStyle),
-        );
-      }
+      this._addSpan(match.index, match.index + match[0].length, style ?? "");
       count++;
     }
 
@@ -412,8 +422,7 @@ export class RichText implements Renderable, Measurable {
     options?: { caseSensitive?: boolean },
   ): number {
     const caseSensitive = options?.caseSensitive !== false;
-    const resolved = resolveStyle(style);
-    if (resolved.isNull) return 0;
+    if (isEmptyStyle(style)) return 0;
 
     let count = 0;
     for (const word of words) {
@@ -423,9 +432,7 @@ export class RichText implements Renderable, Measurable {
       const re = new RegExp(`\\b${escaped}\\b`, flags);
       let match: RegExpExecArray | null;
       while ((match = re.exec(this._text)) !== null) {
-        this._spans.push(
-          new Span(match.index, match.index + match[0].length, resolved),
-        );
+        this._addSpan(match.index, match.index + match[0].length, style);
         count++;
       }
     }
@@ -792,9 +799,7 @@ export class RichText implements Renderable, Measurable {
     for (const frag of fragments) {
       const start = result.length;
       result.append(frag.plain);
-      if (!frag.style.isNull) {
-        result.stylize(frag.style, start, result.length);
-      }
+      result.stylize(frag.style, start, result.length);
       for (const span of frag.spans) {
         result.stylize(span.style, start + span.start, start + span.end);
       }
@@ -811,7 +816,8 @@ export class RichText implements Renderable, Measurable {
       return;
     }
 
-    const allSegments = this._buildSegments(text);
+    const base = resolveStyle(options, this._style);
+    const allSegments = this._buildSegments(text, base, options);
     const logicalLines = Segment.splitLines(allSegments);
     // [LAW:single-enforcer] The one crossing for this renderable's width, and
     // the call every other renderable already makes. A bare `cellCount` stood
@@ -851,6 +857,7 @@ export class RichText implements Renderable, Measurable {
       const placed = this._justifyLines(
         wrapped.map((piece) => [...this._fitLine(piece, budget, overflow)]),
         maxWidth,
+        base,
         justify,
       );
       for (let piece = 0; piece < placed.length; piece += 1) {
@@ -930,7 +937,7 @@ export class RichText implements Renderable, Measurable {
    * always did, and then folds into no piece at all: its range comes out empty
    * and no case handles it.
    */
-  private _buildSegments(text: string): Segment[] {
+  private _buildSegments(text: string, base: Style, options: RenderOptions): Segment[] {
     const clamp = (offset: number): number =>
       Math.max(0, Math.min(offset, text.length));
 
@@ -947,10 +954,10 @@ export class RichText implements Renderable, Measurable {
       boundaries.map((position, piece) => [position, piece]),
     );
 
-    const styles = boundaries.slice(0, -1).map(() => this._style);
+    const styles = boundaries.slice(0, -1).map(() => base);
     for (const span of this._spans) {
       const end = clamp(span.end);
-      const style = resolveStyle(span.style);
+      const style = resolveStyle(options, span.style);
       const opensAt = pieceAt.get(clamp(span.start))!;
       for (let piece = opensAt; boundaries[piece]! < end; piece++) {
         styles[piece] = styles[piece]!.add(style);
@@ -981,13 +988,14 @@ export class RichText implements Renderable, Measurable {
   private _justifyLines(
     lines: Segment[][],
     maxWidth: number,
+    base: Style,
     justify?: "left" | "center" | "right" | "full",
   ): Segment[][] {
     if (justify !== "full") {
       return lines.map((line) => [...this._justifyLine(line, maxWidth, justify)]);
     }
     return lines.map((line, index) =>
-      index === lines.length - 1 ? line : this._fillLine(line, maxWidth),
+      index === lines.length - 1 ? line : this._fillLine(line, maxWidth, base),
     );
   }
 
@@ -1060,7 +1068,7 @@ export class RichText implements Renderable, Measurable {
    * pinned in `text-justify.golden.txt`, by the `uneven` and `sentence`
    * blocks respectively.
    */
-  private _fillLine(line: Segment[], maxWidth: number): Segment[] {
+  private _fillLine(line: Segment[], maxWidth: number, base: Style): Segment[] {
     const plain = plainOf(line);
     const words = plain.split(" ");
     if (plain.endsWith(" ")) words.pop();
@@ -1093,7 +1101,7 @@ export class RichText implements Renderable, Measurable {
     // given here. A word with no characters turns none and answers with the
     // line's style, which is what two adjacent separators leave between them.
     const edgeStyle = (word: Segment[], at: number): Style =>
-      word.filter((segment) => segment.hasText).at(at)?.style ?? this._style;
+      word.filter((segment) => segment.hasText).at(at)?.style ?? base;
 
     const result: Segment[] = [];
     for (let index = 0; index < words.length; index += 1) {
@@ -1101,7 +1109,7 @@ export class RichText implements Renderable, Measurable {
       if (index < gaps) {
         const before = edgeStyle(pieces[index * 2]!, -1);
         const after = edgeStyle(pieces[index * 2 + 2]!, 0);
-        const style = before.equals(after) ? before : this._style;
+        const style = before.equals(after) ? before : base;
         result.push(
           new Segment(" ".repeat(spaces[index]!), style.isNull ? undefined : style),
         );

@@ -21,12 +21,23 @@ import { RichText } from "../core/text.js";
  * is the binding's own `T`. Misuse (`{{ red someMap }}`) fails loudly here
  * rather than producing a malformed fragment.
  *
+ * A fragment whose base style is a name fails here too. A name is resolved
+ * against the theme of the render that draws it, and a template runs before any
+ * render exists, so there is no `Style` to layer over. Every fragment the
+ * engine builds carries a `Style`; a name arrives only in a `RichText` handed
+ * in through scope.
+ *
  * Conflict resolution: `Style.add` — the outer (newly applied) style wins.
  */
 export function applyStyleToFragment(child: unknown, style: Style): RichText {
   if (!(child instanceof RichText)) {
     throw new TypeError(
       `template function expected a RichText fragment, got ${typeof child === "object" ? Object.prototype.toString.call(child) : typeof child}`,
+    );
+  }
+  if (!(child.style instanceof Style)) {
+    throw new TypeError(
+      `template function cannot style a fragment whose base style is the name "${child.style}": a style name resolves only against the theme of a render`,
     );
   }
   const result = child.copy();

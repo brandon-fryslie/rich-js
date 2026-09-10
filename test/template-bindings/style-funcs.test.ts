@@ -59,9 +59,20 @@ function evalOneWith(e: Engine<RichText>, template: string): RichText {
   return result[0]!;
 }
 
+/**
+ * A fragment's base style as the `Style` every engine-built fragment carries.
+ * `RichText.style` also admits a style name, and `String.prototype`'s legacy
+ * HTML wrappers would let `.style.bold` type-check against that arm and compare
+ * a function to `true`. Narrowed once, here, a name fails loudly instead.
+ */
+function baseStyleOf(rt: RichText): Style {
+  if (rt.style instanceof Style) return rt.style;
+  throw new Error(`expected a fragment with a Style, got the style name ${JSON.stringify(rt.style)}`);
+}
+
 /** The truecolor hex a fragment's foreground resolves to. */
 function fgHex(rt: RichText): string | undefined {
-  return rt.style.color?.getTruecolor().hex;
+  return baseStyleOf(rt).color?.getTruecolor().hex;
 }
 
 // ─── Colour sinks: fg / bg ──────────────────────────────────────────────────
@@ -80,14 +91,14 @@ describe("fg / bg accept the whole ColorSpec vocabulary", () => {
 
   it("fg paints a symbolic ANSI colour name, matching Style.parse", () => {
     const rt = evalOne(`{{ fg "magenta" "x" }}`);
-    expect(rt.style.color?.name).toBe(Style.parse("magenta").color?.name);
+    expect(baseStyleOf(rt).color?.name).toBe(Style.parse("magenta").color?.name);
   });
 
   it("fg paints a 256-index colour, matching Style.parse", () => {
     // The sink takes symbolic colours the terminal resolves itself — the
     // reach the old one-function-per-colour-name family could never have.
     const rt = evalOne(`{{ fg "color(196)" "x" }}`);
-    expect(rt.style.color?.name).toBe(Style.parse("color(196)").color?.name);
+    expect(baseStyleOf(rt).color?.name).toBe(Style.parse("color(196)").color?.name);
   });
 
   it("fg paints an rgb() triplet identically to the equivalent hex", () => {
@@ -98,14 +109,14 @@ describe("fg / bg accept the whole ColorSpec vocabulary", () => {
 
   it("bg paints the background slot and leaves the foreground untouched", () => {
     const rt = evalOne(`{{ bg "white" "x" }}`);
-    expect(rt.style.bgcolor?.name).toBe("white");
-    expect(rt.style.color).toBeUndefined();
+    expect(baseStyleOf(rt).bgcolor?.name).toBe("white");
+    expect(baseStyleOf(rt).color).toBeUndefined();
   });
 
   it("bg accepts hex / rgb / color(N) via ColorSpec.parse", () => {
-    expect(evalOne(`{{ bg "#112233" "x" }}`).style.bgcolor?.name).toBe("#112233");
-    expect(evalOne(`{{ bg "rgb(10,20,30)" "x" }}`).style.bgcolor?.name).toBe("rgb(10,20,30)");
-    expect(evalOne(`{{ bg "color(42)" "x" }}`).style.bgcolor?.name).toBe("color(42)");
+    expect(baseStyleOf(evalOne(`{{ bg "#112233" "x" }}`)).bgcolor?.name).toBe("#112233");
+    expect(baseStyleOf(evalOne(`{{ bg "rgb(10,20,30)" "x" }}`)).bgcolor?.name).toBe("rgb(10,20,30)");
+    expect(baseStyleOf(evalOne(`{{ bg "color(42)" "x" }}`)).bgcolor?.name).toBe("color(42)");
   });
 
   it("a spec ColorSpec.parse rejects fails loudly at the sink", () => {
@@ -119,17 +130,17 @@ describe("text attributes", () => {
   // [LAW:one-source-of-truth] Driven by the same inventory `Style.parse`
   // consults, so a new attribute is covered the moment it is declared.
   it.each([...ATTRIBUTE_NAMES])("%s sets its flag and its negation clears it", (name) => {
-    expect(evalOne(`{{ ${name} "x" }}`).style[name]).toBe(true);
-    expect(evalOne(`{{ not_${name} "x" }}`).style[name]).toBe(false);
+    expect(baseStyleOf(evalOne(`{{ ${name} "x" }}`))[name]).toBe(true);
+    expect(baseStyleOf(evalOne(`{{ not_${name} "x" }}`))[name]).toBe(false);
   });
 
   it.each(Object.entries(ATTRIBUTE_SHORT_ALIASES))(
     "short alias %s applies the same style as its canonical name",
     (alias, canonical) => {
-      expect(evalOne(`{{ ${alias} "x" }}`).style[canonical]).toBe(
-        evalOne(`{{ ${canonical} "x" }}`).style[canonical],
+      expect(baseStyleOf(evalOne(`{{ ${alias} "x" }}`))[canonical]).toBe(
+        baseStyleOf(evalOne(`{{ ${canonical} "x" }}`))[canonical],
       );
-      expect(evalOne(`{{ ${alias} "x" }}`).style[canonical]).toBe(true);
+      expect(baseStyleOf(evalOne(`{{ ${alias} "x" }}`))[canonical]).toBe(true);
     },
   );
 });
@@ -166,7 +177,7 @@ describe("color produces a value, not a styled fragment", () => {
       .evaluate({});
     expect(out.length).toBe(2);
     expect(fgHex(out[0]!)).toBe(gruvbox.get("accent")!.hex);
-    expect(out[1]!.style.bgcolor?.getTruecolor().hex).toBe(gruvbox.get("accent")!.hex);
+    expect(baseStyleOf(out[1]!).bgcolor?.getTruecolor().hex).toBe(gruvbox.get("accent")!.hex);
   });
 });
 
@@ -189,8 +200,8 @@ describe("colour math composes by nesting and matches the underlying function", 
   it("mix at 0 returns the first colour and at 100 the second", () => {
     const a = "#000000";
     const b = "#ffffff";
-    expect(evalOne(`{{ fg (mix "${a}" "${b}" 0) "x" }}`).style.color?.getTruecolor().hex).toBe(a);
-    expect(evalOne(`{{ fg (mix "${a}" "${b}" 100) "x" }}`).style.color?.getTruecolor().hex).toBe(b);
+    expect(baseStyleOf(evalOne(`{{ fg (mix "${a}" "${b}" 0) "x" }}`)).color?.getTruecolor().hex).toBe(a);
+    expect(baseStyleOf(evalOne(`{{ fg (mix "${a}" "${b}" 100) "x" }}`)).color?.getTruecolor().hex).toBe(b);
   });
 
   it("mix at an intermediate percentage equals blendRgb at the matching fraction", () => {
@@ -307,25 +318,25 @@ describe("composition: outer wraps inner additively (Style.add semantics)", () =
     const rt = evalOne(`{{ fg "red" (bold "x") }}`);
     expect(rt.plain).toBe("x");
     expect(rt.style.bold).toBe(true);
-    expect(rt.style.color?.name).toBe("red");
+    expect(baseStyleOf(rt).color?.name).toBe("red");
   });
 
   it("nesting order does not matter for disjoint slots", () => {
     const a = evalOne(`{{ fg "red" (bold "x") }}`);
     const b = evalOne(`{{ bold (fg "red" "x") }}`);
     expect(b.style.bold).toBe(a.style.bold);
-    expect(b.style.color?.name).toBe(a.style.color?.name);
+    expect(baseStyleOf(b).color?.name).toBe(baseStyleOf(a).color?.name);
   });
 
   it("bg over fg combines foreground and background", () => {
     const rt = evalOne(`{{ bg "white" (fg "red" "x") }}`);
-    expect(rt.style.color?.name).toBe("red");
-    expect(rt.style.bgcolor?.name).toBe("white");
+    expect(baseStyleOf(rt).color?.name).toBe("red");
+    expect(baseStyleOf(rt).bgcolor?.name).toBe("white");
   });
 
   it("conflicting slots: the outer call wins", () => {
     const rt = evalOne(`{{ fg "red" (fg "blue" "x") }}`);
-    expect(rt.style.color?.name).toBe("red");
+    expect(baseStyleOf(rt).color?.name).toBe("red");
   });
 
   it("template-built fragment equals the directly-constructed Style chain", () => {
@@ -335,8 +346,8 @@ describe("composition: outer wraps inner additively (Style.add semantics)", () =
       Style.parse("bold"),
       Style.parse("on white"),
     ]);
-    expect(rt.style.color?.name).toBe(expected.color?.name);
-    expect(rt.style.bgcolor?.name).toBe(expected.bgcolor?.name);
+    expect(baseStyleOf(rt).color?.name).toBe(expected.color?.name);
+    expect(baseStyleOf(rt).bgcolor?.name).toBe(expected.bgcolor?.name);
     expect(rt.style.bold).toBe(expected.bold);
   });
 });
@@ -353,7 +364,7 @@ describe("string lifting via the engine's fromString bridge", () => {
   it("a scope field that resolves to a string is lifted the same way", () => {
     const rt = engine.parse(`{{ fg "red" .name }}`).evaluate({ name: "Brandon" });
     expect(rt[0]!.plain).toBe("Brandon");
-    expect(rt[0]!.style.color?.name).toBe("red");
+    expect(baseStyleOf(rt[0]!).color?.name).toBe("red");
   });
 });
 
@@ -370,6 +381,15 @@ describe("error surface", () => {
 
   it("a number passed where a fragment is expected fails the liftable gate", () => {
     expect(() => engine.parse(`{{ bold 5 }}`).evaluate({})).toThrowError();
+  });
+
+  it("a scope fragment whose base style is a name cannot be styled", () => {
+    // A name has no `Style` until a render resolves it against a theme, and a
+    // template runs before any render, so there is nothing to layer over.
+    const named = new RichText("42", { style: "repr.number" });
+    expect(() => engine.parse(`{{ bold .n }}`).evaluate({ n: named })).toThrowError(
+      /base style is the name "repr\.number"/,
+    );
   });
 
   it("an unknown function name is a FuncNotFoundError", () => {
@@ -394,9 +414,9 @@ describe("multi-fragment templates", () => {
     const out = engine.parse(`{{ fg "red" "a" }}{{ fg "blue" "b" }}`).evaluate({});
     expect(out.length).toBe(2);
     expect(out[0]!.plain).toBe("a");
-    expect(out[0]!.style.color?.name).toBe("red");
+    expect(baseStyleOf(out[0]!).color?.name).toBe("red");
     expect(out[1]!.plain).toBe("b");
-    expect(out[1]!.style.color?.name).toBe("blue");
+    expect(baseStyleOf(out[1]!).color?.name).toBe("blue");
   });
 });
 
@@ -411,7 +431,7 @@ describe("style function (multi-attribute spec)", () => {
   it("applies multiple attributes from one spec", () => {
     const rt = evalOne(`{{ style "bold underline" "x" }}`);
     expect(rt.style.bold).toBe(true);
-    expect(rt.style.underline).toBe(true);
+    expect(baseStyleOf(rt).underline).toBe(true);
   });
 
   it("mixes attributes and a foreground color in one spec", () => {
@@ -422,8 +442,8 @@ describe("style function (multi-attribute spec)", () => {
 
   it("accepts 'on <bg>' for background", () => {
     const rt = evalOne(`{{ style "italic on white" "x" }}`);
-    expect(rt.style.italic).toBe(true);
-    expect(rt.style.bgcolor?.name).toBe("white");
+    expect(baseStyleOf(rt).italic).toBe(true);
+    expect(baseStyleOf(rt).bgcolor?.name).toBe("white");
   });
 
   it("accepts 'not <attr>' for negation", () => {
@@ -441,20 +461,20 @@ describe("style function (multi-attribute spec)", () => {
     const rt = evalOne(`{{ style "" "x" }}`);
     expect(rt.plain).toBe("x");
     expect(rt.style.bold).toBeUndefined();
-    expect(rt.style.color).toBeUndefined();
+    expect(baseStyleOf(rt).color).toBeUndefined();
   });
 
   it("'none' spec is a no-op (DEFAULT_STYLES lookup)", () => {
     const rt = evalOne(`{{ style "none" "x" }}`);
     expect(rt.style.bold).toBeUndefined();
-    expect(rt.style.color).toBeUndefined();
+    expect(baseStyleOf(rt).color).toBeUndefined();
   });
 
   it("produces the same fragment as nested per-attribute calls", () => {
     const spec = evalOne(`{{ style "bold underline #ff6b6b" "x" }}`);
     const nested = evalOne(`{{ underline (fg "#ff6b6b" (bold "x")) }}`);
     expect(spec.style.bold).toBe(nested.style.bold);
-    expect(spec.style.underline).toBe(nested.style.underline);
+    expect(baseStyleOf(spec).underline).toBe(baseStyleOf(nested).underline);
     expect(fgHex(spec)).toBe(fgHex(nested));
   });
 
@@ -476,12 +496,12 @@ describe("style function (multi-attribute spec)", () => {
   it("composes with outer style functions (outer wins on conflict)", () => {
     const rt = evalOne(`{{ fg "blue" (style "red bold" "x") }}`);
     expect(rt.style.bold).toBe(true);
-    expect(rt.style.color?.name).toBe("blue");
+    expect(baseStyleOf(rt).color?.name).toBe("blue");
   });
 
   it("composes inside a style spec (style spec wins over inner)", () => {
     const rt = evalOne(`{{ style "blue" (fg "red" "x") }}`);
-    expect(rt.style.color?.name).toBe("blue");
+    expect(baseStyleOf(rt).color?.name).toBe("blue");
   });
 
   it("reusable via Go template $var assignment", () => {
@@ -501,7 +521,7 @@ describe("style function (multi-attribute spec)", () => {
     const out = engine.parse(`{{ style .alert "danger" }}`).evaluate({ alert: "bold red" });
     expect(out[0]!.plain).toBe("danger");
     expect(out[0]!.style.bold).toBe(true);
-    expect(out[0]!.style.color?.name).toBe("red");
+    expect(baseStyleOf(out[0]!).color?.name).toBe("red");
   });
 
   it("works via the pipe form (last-arg piping)", () => {
@@ -509,7 +529,7 @@ describe("style function (multi-attribute spec)", () => {
     const b = evalOne(`{{ style "bold red" "alarm!" }}`);
     expect(a.plain).toBe(b.plain);
     expect(a.style.bold).toBe(b.style.bold);
-    expect(a.style.color?.name).toBe(b.style.color?.name);
+    expect(baseStyleOf(a).color?.name).toBe(baseStyleOf(b).color?.name);
   });
 
   it("an invalid token raises StyleSyntaxError through the engine", () => {
@@ -559,8 +579,8 @@ describe("link function (cell-splitter contract)", () => {
   it("link composes with foreground / background colour", () => {
     const rt = evalOne(`{{ link "u" (fg "red" (bg "white" "x")) }}`);
     expect(rt.style.link).toBe("u");
-    expect(rt.style.color?.name).toBe("red");
-    expect(rt.style.bgcolor?.name).toBe("white");
+    expect(baseStyleOf(rt).color?.name).toBe("red");
+    expect(baseStyleOf(rt).bgcolor?.name).toBe("white");
   });
 
   it("link composes with a palette-derived colour", () => {
@@ -576,7 +596,7 @@ describe("link function (cell-splitter contract)", () => {
       Style.parse("link u"),
       Style.parse("red"),
     ]);
-    expect(rt.style.color?.name).toBe(expected.color?.name);
+    expect(baseStyleOf(rt).color?.name).toBe(expected.color?.name);
     expect(rt.style.bold).toBe(expected.bold);
     expect(rt.style.link).toBe(expected.link);
   });
@@ -657,7 +677,7 @@ describe("multi-cell contract (consumer-side cell splitting)", () => {
     expect(cells.length).toBe(0);
     expect(trailing.length).toBe(1);
     expect(trailing[0]!.plain).toBe("hello");
-    expect(trailing[0]!.style.color?.name).toBe("red");
+    expect(baseStyleOf(trailing[0]!).color?.name).toBe("red");
   });
 
   it("leading literal before a link becomes the cell's joiner", () => {

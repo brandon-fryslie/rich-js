@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { getStyle, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
 // Guide characters
@@ -30,12 +30,6 @@ export interface TreeOptions {
   hideRoot?: boolean;
   guide_style?: string | Style;
   style?: string | Style;
-}
-
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
 }
 
 function toRenderable(label: string | RichText | Renderable): Renderable {
@@ -70,8 +64,8 @@ export class Tree implements Renderable, Measurable {
   readonly children: Tree[];
   expanded: boolean;
   readonly hideRoot: boolean;
-  readonly guideStyle: Style;
-  readonly style: Style;
+  readonly guideStyle: string | Style;
+  readonly style: string | Style;
 
   constructor(
     label: string | RichText | Renderable,
@@ -81,8 +75,8 @@ export class Tree implements Renderable, Measurable {
     this.children = [];
     this.expanded = options?.expanded !== false;
     this.hideRoot = options?.hideRoot ?? false;
-    this.guideStyle = resolveStyle(options?.guide_style);
-    this.style = resolveStyle(options?.style);
+    this.guideStyle = options?.guide_style ?? NULL_STYLE;
+    this.style = options?.style ?? NULL_STYLE;
   }
 
   add(label: string | RichText | Renderable, options?: TreeOptions): Tree {
@@ -97,7 +91,7 @@ export class Tree implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    for (const row of this._rows(options.asciiOnly ?? false, [], !this.hideRoot)) {
+    for (const row of this._rows(options, [], !this.hideRoot)) {
       yield* this._renderRow(options, row);
     }
   }
@@ -112,11 +106,13 @@ export class Tree implements Renderable, Measurable {
    * them run — which they would the moment a second walk existed.
    */
   private *_rows(
-    ascii: boolean,
+    options: RenderOptions,
     prefixes: string[],
     showLabel: boolean,
   ): Iterable<TreeRow> {
-    const guideStyle = this.guideStyle.isNull ? undefined : this.guideStyle;
+    const ascii = options.asciiOnly ?? false;
+    const ownGuide = getStyle(options, this.guideStyle);
+    const guideStyle = ownGuide.isNull ? undefined : ownGuide;
 
     if (showLabel) {
       yield { guides: prefixes.map((p) => [p, guideStyle]), label: this.label };
@@ -135,7 +131,8 @@ export class Tree implements Renderable, Measurable {
         : (isLast ? GUIDE_SPACE : GUIDE_VERT);
 
       // Child label with branch guide
-      const childGuideStyle = child.guideStyle.isNull ? guideStyle : child.guideStyle;
+      const childGuide = getStyle(options, child.guideStyle);
+      const childGuideStyle = childGuide.isNull ? guideStyle : childGuide;
 
       yield {
         guides: [...prefixes, branch].map((p) => [p, childGuideStyle]),
@@ -146,7 +143,7 @@ export class Tree implements Renderable, Measurable {
       if (child.expanded && child.children.length > 0) {
         const grandPrefixes = [...prefixes, continuation];
         for (let j = 0; j < child.children.length; j++) {
-          yield* child.children[j]!._rows(ascii, grandPrefixes, true);
+          yield* child.children[j]!._rows(options, grandPrefixes, true);
         }
       }
     }
@@ -195,7 +192,7 @@ export class Tree implements Renderable, Measurable {
     // mode drew a 40-cell frame around nine cells of tree, and an unbounded
     // offer came back unbounded.
     let natural = 0;
-    for (const row of this._rows(parsed.asciiOnly ?? false, [], !this.hideRoot)) {
+    for (const row of this._rows(parsed, [], !this.hideRoot)) {
       const guideWidth = row.guides.reduce((sum, [text]) => sum + cellLen(text), 0);
       natural = Math.max(natural, guideWidth + labelWidth(parsed, row.label));
     }

@@ -12,23 +12,18 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { getStyle } from "../core/protocol.js";
 
 export interface SpinnerOptions {
   speed?: number;
   style?: string | Style;
 }
 
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
-}
-
 export class Spinner implements Renderable, Measurable {
   readonly name: string;
   readonly text: string | undefined;
   readonly speed: number;
-  readonly style: Style;
+  readonly style: string | Style;
   private readonly _data: SpinnerData;
   private _frameIndex: number;
   private _lastUpdate: number;
@@ -42,7 +37,7 @@ export class Spinner implements Renderable, Measurable {
     this.name = spinnerName;
     this.text = text;
     this.speed = options?.speed ?? 1;
-    this.style = resolveStyle(options?.style);
+    this.style = options?.style ?? NULL_STYLE;
     this._data = data;
     this._frameIndex = 0;
     this._lastUpdate = Date.now();
@@ -69,9 +64,10 @@ export class Spinner implements Renderable, Measurable {
     return this._data.frames[this._frameIndex]!;
   }
 
-  *render(_options: RenderOptions): Iterable<Segment> {
+  *render(options: RenderOptions): Iterable<Segment> {
     const frame = this._currentFrame();
-    const spinStyle = this.style.isNull ? undefined : this.style;
+    const style = getStyle(options, this.style);
+    const spinStyle = style.isNull ? undefined : style;
     yield new Segment(frame, spinStyle);
     if (this.text) {
       yield new Segment(` ${this.text}`);

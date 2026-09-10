@@ -16,13 +16,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
-
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
-}
+import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * The one crossing where caller text becomes styled table content.
@@ -326,9 +320,9 @@ export interface ColumnOptions {
 export class Column {
   private _header!: RichText;
   private _footer!: RichText;
-  headerStyle: Style;
-  footerStyle: Style;
-  style: Style;
+  headerStyle: string | Style;
+  footerStyle: string | Style;
+  style: string | Style;
   justify: "left" | "center" | "right" | "full";
   width: number | undefined;
   minWidth: number | undefined;
@@ -341,9 +335,9 @@ export class Column {
   constructor(options?: ColumnOptions) {
     this.header = options?.header;
     this.footer = options?.footer;
-    this.headerStyle = resolveStyle(options?.headerStyle);
-    this.footerStyle = resolveStyle(options?.footerStyle);
-    this.style = resolveStyle(options?.style);
+    this.headerStyle = options?.headerStyle ?? NULL_STYLE;
+    this.footerStyle = options?.footerStyle ?? NULL_STYLE;
+    this.style = options?.style ?? NULL_STYLE;
     this.justify = options?.justify ?? "left";
     this.width = options?.width;
     this.minWidth = options?.minWidth;
@@ -461,12 +455,12 @@ export class Table implements Renderable, Measurable {
   readonly showLines: boolean;
   readonly showEdge: boolean;
   readonly padding: [number, number, number, number];
-  readonly style: Style;
-  readonly headerStyle: Style;
-  readonly footerStyle: Style;
-  readonly borderStyle: Style;
-  readonly titleStyle: Style;
-  readonly captionStyle: Style;
+  readonly style: string | Style;
+  readonly headerStyle: string | Style;
+  readonly footerStyle: string | Style;
+  readonly borderStyle: string | Style;
+  readonly titleStyle: string | Style;
+  readonly captionStyle: string | Style;
   readonly titleJustify: "left" | "center" | "right" | "full";
   readonly captionJustify: "left" | "center" | "right" | "full";
   readonly tableWidth: number | undefined;
@@ -487,12 +481,12 @@ export class Table implements Renderable, Measurable {
     this.showLines = options?.showLines ?? false;
     this.showEdge = options?.showEdge !== false;
     this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
-    this.style = resolveStyle(options?.style);
-    this.headerStyle = resolveStyle(options?.headerStyle ?? "table.header");
-    this.footerStyle = resolveStyle(options?.footerStyle ?? "table.footer");
-    this.borderStyle = resolveStyle(options?.borderStyle);
-    this.titleStyle = resolveStyle(options?.titleStyle ?? "table.title");
-    this.captionStyle = resolveStyle(options?.captionStyle ?? "table.caption");
+    this.style = options?.style ?? NULL_STYLE;
+    this.headerStyle = options?.headerStyle ?? "table.header";
+    this.footerStyle = options?.footerStyle ?? "table.footer";
+    this.borderStyle = options?.borderStyle ?? NULL_STYLE;
+    this.titleStyle = options?.titleStyle ?? "table.title";
+    this.captionStyle = options?.captionStyle ?? "table.caption";
     this.titleJustify = options?.titleJustify ?? "center";
     this.captionJustify = options?.captionJustify ?? "center";
     this.tableWidth = options?.width;
@@ -570,7 +564,8 @@ export class Table implements Renderable, Measurable {
     // the flags arrive as values rather than as branches around a step.
     const drawable = this.box?.substitute({ asciiOnly: options.asciiOnly });
     const box = (this.showHeader ? drawable : drawable?.plainHeaded()) ?? null;
-    const border = this.borderStyle.isNull ? undefined : this.borderStyle;
+    const borderStyle = getStyle(options, this.borderStyle);
+    const border = borderStyle.isNull ? undefined : borderStyle;
 
     // The one division of the width every row below is measured against.
     const geometry = this._geometry(this._outerWidth(options));
@@ -578,7 +573,7 @@ export class Table implements Renderable, Measurable {
 
     // Title
     if (this.title) {
-      yield* this._renderTitle(this.title, geometry.totalWidth, this.titleStyle, this.titleJustify);
+      yield* this._renderTitle(options, this.title, geometry.totalWidth, this.titleStyle, this.titleJustify);
     }
 
     // Top border
@@ -589,7 +584,7 @@ export class Table implements Renderable, Measurable {
     // Header row
     if (this.showHeader) {
       const headerCells = this._columns.map((c) => c.header as Renderable);
-      yield* this._renderRow(headerCells, geometry, box, "head", border, this.headerStyle);
+      yield* this._renderRow(options, headerCells, geometry, box, "head", border, this.headerStyle);
 
       // Header separator
       if (box) {
@@ -603,10 +598,10 @@ export class Table implements Renderable, Measurable {
       const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? toCellText(undefined));
 
       const rowStyle = this.rowStyles.length > 0
-        ? resolveStyle(this.rowStyles[rowIdx % this.rowStyles.length])
+        ? this.rowStyles[rowIdx % this.rowStyles.length]!
         : NULL_STYLE;
 
-      yield* this._renderRow(rowCells, geometry, box, "row", border, rowStyle);
+      yield* this._renderRow(options, rowCells, geometry, box, "row", border, rowStyle);
 
       // Row separator
       const showSep = this.showLines || row.endSection;
@@ -621,7 +616,7 @@ export class Table implements Renderable, Measurable {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
       const footerCells = this._columns.map((c) => c.footer as Renderable);
-      yield* this._renderRow(footerCells, geometry, box, "foot", border, this.footerStyle);
+      yield* this._renderRow(options, footerCells, geometry, box, "foot", border, this.footerStyle);
     }
 
     // Bottom border
@@ -631,7 +626,7 @@ export class Table implements Renderable, Measurable {
 
     // Caption
     if (this.caption) {
-      yield* this._renderTitle(this.caption, geometry.totalWidth, this.captionStyle, this.captionJustify);
+      yield* this._renderTitle(options, this.caption, geometry.totalWidth, this.captionStyle, this.captionJustify);
     }
   }
 
@@ -813,14 +808,16 @@ export class Table implements Renderable, Measurable {
   }
 
   private *_renderRow(
+    options: RenderOptions,
     cells: Renderable[],
     geometry: TableGeometry,
     box: Box | null,
     level: RowLevel,
     border: Style | undefined,
-    rowStyle: Style,
+    ownStyle: string | Style,
   ): Iterable<Segment> {
     const { padLeft, padRight, columns } = geometry;
+    const rowStyle = getStyle(options, ownStyle);
 
     // [LAW:dataflow-not-control-flow] Header, body and footer share this path;
     // the level crosses as a value the box answers with glyphs, not a branch.
@@ -832,11 +829,18 @@ export class Table implements Renderable, Measurable {
     const cellLines: Segment[][][] = columns.map((cellWidth, index) => {
       const col = this._columns[index]!;
       const cell = cells[index] ?? toRenderable("");
+      // The render's own options with the column's canvas laid over them, so a
+      // cell resolves its style names against the same theme as the table. The
+      // table owns the row's height: a cell inherits none, as the reference's
+      // `height=None` has it.
       const segs = [...cell.render({
+        ...options,
         maxWidth: cellWidth,
         justify: col.justify,
         overflow: col.overflow,
         noWrap: col.noWrap,
+        height: undefined,
+        maxHeight: undefined,
       })];
       const lines = Segment.splitLines(segs).map((line) =>
         Segment.adjustLineLength(line, cellWidth),
@@ -874,11 +878,13 @@ export class Table implements Renderable, Measurable {
   }
 
   private *_renderTitle(
+    options: RenderOptions,
     text: RichText,
     tableWidth: number,
-    style: Style,
+    ownStyle: string | Style,
     justify: "left" | "center" | "right" | "full",
   ): Iterable<Segment> {
+    const style = getStyle(options, ownStyle);
     const titleStyle = style.isNull ? undefined : style;
 
     // The table owns the canvas; the caller's text still says how it meets the
@@ -908,7 +914,15 @@ export class Table implements Renderable, Measurable {
     // rules — that a wrap's trailing whitespace is not content to centre
     // around, that `left` fills the canvas and an unset justify does not — and
     // a second copy of those is a second answer waiting to disagree.
-    const rendered = [...source.render({ maxWidth: tableWidth, justify })];
+    const rendered = [...source.render({
+      ...options,
+      maxWidth: tableWidth,
+      justify,
+      overflow: undefined,
+      noWrap: false,
+      height: undefined,
+      maxHeight: undefined,
+    })];
 
     // Every line the text has, because that is what the reference renders — a
     // title of "one\ntwo" occupies two lines there. Taking only the first

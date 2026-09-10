@@ -15,7 +15,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { getStyle, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -137,10 +137,16 @@ function frameOverhead(geometry: PanelGeometry): number {
   return geometry.left + geometry.right + geometry.padLeft + geometry.padRight;
 }
 
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
+/**
+ * The style of text set into a border: its own when one was given, the
+ * border's otherwise — the one rule for "what colour is the title text in".
+ */
+function borderTextStyle(
+  options: RenderOptions,
+  own: string | Style | undefined,
+  border: Style | undefined,
+): Style | undefined {
+  return own === undefined ? border : getStyle(options, own);
 }
 
 function toRenderable(content: string | RichText | Renderable): Renderable {
@@ -156,10 +162,10 @@ export class Panel implements Renderable, Measurable {
   readonly subtitle: string | RichText | undefined;
   readonly bottomRightAccessory: BorderAccessory | undefined;
   readonly expand: boolean;
-  readonly style: Style;
-  readonly borderStyle: Style;
-  readonly titleStyle: Style | undefined;
-  readonly subtitleStyle: Style | undefined;
+  readonly style: string | Style;
+  readonly borderStyle: string | Style;
+  readonly titleStyle: string | Style | undefined;
+  readonly subtitleStyle: string | Style | undefined;
   readonly width: number | undefined;
   readonly padding: [number, number, number, number];
 
@@ -173,10 +179,10 @@ export class Panel implements Renderable, Measurable {
     this.subtitle = options?.subtitle;
     this.bottomRightAccessory = options?.bottomRightAccessory;
     this.expand = options?.expand !== false;
-    this.style = resolveStyle(options?.style);
-    this.borderStyle = resolveStyle(options?.borderStyle);
-    this.titleStyle = options?.titleStyle === undefined ? undefined : resolveStyle(options.titleStyle);
-    this.subtitleStyle = options?.subtitleStyle === undefined ? undefined : resolveStyle(options.subtitleStyle);
+    this.style = options?.style ?? NULL_STYLE;
+    this.borderStyle = options?.borderStyle ?? NULL_STYLE;
+    this.titleStyle = options?.titleStyle;
+    this.subtitleStyle = options?.subtitleStyle;
     this.width = options?.width;
     this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
   }
@@ -184,8 +190,10 @@ export class Panel implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
     const box = options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box;
-    const border = this.borderStyle.isNull ? undefined : this.borderStyle;
-    const contentStyle = this.style.isNull ? undefined : this.style;
+    const borderStyle = getStyle(options, this.borderStyle);
+    const style = getStyle(options, this.style);
+    const border = borderStyle.isNull ? undefined : borderStyle;
+    const contentStyle = style.isNull ? undefined : style;
 
     const geometry = layoutPanel(this._getPanelWidth(options), this.padding);
     const [padTop, , padBottom] = this.padding;
@@ -193,7 +201,7 @@ export class Panel implements Renderable, Measurable {
     const contentLines = this._renderContent(options, geometry.contentWidth);
 
     // Top border (with optional title)
-    yield* this._renderTopBorder(box, geometry, border);
+    yield* this._renderTopBorder(options, box, geometry, border);
 
     // Top padding — a padding row is a content row whose content is nothing.
     for (let i = 0; i < padTop; i++) {
@@ -209,7 +217,7 @@ export class Panel implements Renderable, Measurable {
     }
 
     // Bottom border (with optional subtitle)
-    yield* this._renderBottomBorder(box, geometry, border);
+    yield* this._renderBottomBorder(options, box, geometry, border);
   }
 
   /**
@@ -331,6 +339,7 @@ export class Panel implements Renderable, Measurable {
   }
 
   private *_renderTopBorder(
+    options: RenderOptions,
     box: Box,
     geometry: PanelGeometry,
     border: Style | undefined,
@@ -348,9 +357,7 @@ export class Panel implements Renderable, Measurable {
     const titleText = typeof this.title === "string" ? this.title : this.title.plain;
     const titleDisplay = ` ${titleText} `;
     const titleWidth = cellLen(titleDisplay);
-    // Title gets its own style when set, else inherits the border style —
-    // single source of truth for "what color is the title text in".
-    const titleSeg = this.titleStyle ?? border;
+    const titleSeg = borderTextStyle(options, this.titleStyle, border);
 
     yield new Segment(box.top.left.repeat(geometry.left), border);
 
@@ -374,6 +381,7 @@ export class Panel implements Renderable, Measurable {
   }
 
   private *_renderBottomBorder(
+    options: RenderOptions,
     box: Box,
     geometry: PanelGeometry,
     border: Style | undefined,
@@ -390,10 +398,9 @@ export class Panel implements Renderable, Measurable {
         ? ` ${accessory} `
         : ` ${accessory.plain} `;
     const accessoryWidth = cellLen(accessoryDisplay);
-    const accessoryStyle =
-      accessory instanceof RichText && !accessory.style.isNull
-        ? accessory.style
-        : border;
+    const accessoryOwn =
+      accessory instanceof RichText ? getStyle(options, accessory.style) : NULL_STYLE;
+    const accessoryStyle = accessoryOwn.isNull ? border : accessoryOwn;
 
     yield new Segment(box.bottom.left.repeat(geometry.left), border);
 
@@ -409,7 +416,7 @@ export class Panel implements Renderable, Measurable {
         typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
       const subtitleDisplay = ` ${subtitleText} `;
       const subtitleWidth = cellLen(subtitleDisplay);
-      const subtitleSeg = this.subtitleStyle ?? border;
+      const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
 
       if (subtitleWidth >= centerWidth) {
         // Cell-aware clip — see _renderTopBorder.

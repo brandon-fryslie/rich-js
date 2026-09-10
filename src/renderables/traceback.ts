@@ -11,6 +11,7 @@
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
+import { getStyle } from "../core/protocol.js";
 
 export interface TracebackOptions {
   showLocals?: boolean;
@@ -69,9 +70,9 @@ export class Traceback implements Renderable {
     this.theme = options?.theme;
   }
 
-  *render(_options: RenderOptions): Iterable<Segment> {
-    const excTypeStyle = Style.parse("traceback.exc_type");
-    const textStyle = Style.parse("traceback.text");
+  *render(options: RenderOptions): Iterable<Segment> {
+    const excTypeStyle = getStyle(options, "traceback.exc_type");
+    const textStyle = getStyle(options, "traceback.text");
 
     // Error type and message
     const errorName = this.error.name || "Error";
@@ -100,23 +101,23 @@ export class Traceback implements Renderable {
       const omitted = displayFrames.length - this.maxFrames;
 
       for (const frame of first) {
-        yield* this._renderFrame(frame);
+        yield* this._renderFrame(frame, options);
       }
       yield new Segment(`  ... ${omitted} frames omitted ...`, textStyle);
       yield Segment.line();
       for (const frame of last) {
-        yield* this._renderFrame(frame);
+        yield* this._renderFrame(frame, options);
       }
     } else {
       for (const frame of displayFrames) {
-        yield* this._renderFrame(frame);
+        yield* this._renderFrame(frame, options);
       }
     }
   }
 
-  private *_renderFrame(frame: StackFrame): Iterable<Segment> {
+  private *_renderFrame(frame: StackFrame, options: RenderOptions): Iterable<Segment> {
     const pathStyle = Style.parse("dim");
-    const lineNoStyle = Style.parse("traceback.offset");
+    const lineNoStyle = getStyle(options, "traceback.offset");
 
     yield new Segment("  ");
     // Spec: suppressed frames show file and line only — no function name

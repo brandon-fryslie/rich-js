@@ -8,11 +8,12 @@ import {
 import { RichText } from "../../src/core/text.js";
 import { Style, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
-import { Highlighter } from "../../src/core/highlighter.js";
+import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Table, type TableOptions } from "../../src/renderables/table.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -1112,5 +1113,74 @@ describe("Console environment injection", () => {
     const c = new Console({ environment: { env: {} }, colorSystem: null });
     expect(c.isTerminal).toBe(false);
     expect(() => c.print("nowhere")).toThrow(/no `file` provided/);
+  });
+});
+
+// --- Theme resolution ---
+
+// Each case prints a style name through a console whose theme defines it, and
+// compares the bytes against a default console printing the definition itself.
+// Byte equality says the name drew as the theme's style; the reference Rich
+// 9d8f9a3 resolves every one of these through `console.get_style`.
+describe("Console theme resolution", () => {
+  /** The bytes one print writes, with colour on. */
+  function printed(item: unknown, options: ConsoleOptions = {}): string {
+    const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });
+    c.print(item);
+    return captured(chunks);
+  }
+
+  it("styles a markup tag with a name the theme adds", () => {
+    const theme = new Theme({ "my.header": "bold magenta" });
+    const themed = printed("[my.header]Section One[/my.header]", { theme });
+    expect(themed).toBe(printed("[bold magenta]Section One[/bold magenta]"));
+    expect(themed).not.toBe(printed("Section One"));
+  });
+
+  it("styles a highlighted number with the theme's repr.number", () => {
+    const theme = new Theme({ "repr.number": "bold red" });
+    const themed = printed("42", { theme });
+    expect(themed).toBe(printed("[bold red]42[/bold red]", { highlight: false }));
+    expect(themed).not.toBe(printed("42"));
+  });
+
+  it("resolves a RegexHighlighter group name through the theme", () => {
+    class RequestHighlighter extends RegexHighlighter {
+      static override highlights = [/\b(?<method>GET|POST)\b/];
+      static override baseStyle = "http.";
+    }
+    const theme = new Theme({ "http.method": "bold magenta" });
+    expect(printed("GET /users", { theme, highlighter: new RequestHighlighter() })).toBe(
+      printed("[bold magenta]GET[/bold magenta] /users", { highlight: false }),
+    );
+  });
+
+  it("styles a table header with the theme's table.header", () => {
+    const table = (options?: TableOptions) => new Table(options).addColumn("Name").addRow("Alice");
+    const theme = new Theme({ "table.header": "bold magenta" });
+    const themed = printed(table(), { theme });
+    expect(themed).toBe(printed(table({ headerStyle: "bold magenta" })));
+    expect(themed).not.toBe(printed(table()));
+  });
+
+  it("resolves a theme name inside a table cell", () => {
+    const table = (cell: string) => new Table({ showHeader: false }).addRow(cell);
+    const theme = new Theme({ "my.cell": "italic green" });
+    expect(printed(table("[my.cell]x[/my.cell]"), { theme })).toBe(
+      printed(table("[italic green]x[/italic green]")),
+    );
+  });
+
+  it("resolves one renderable against each console's own theme", () => {
+    const text = new RichText("42", { style: "repr.number" });
+    const red = printed(text, { highlight: false, theme: new Theme({ "repr.number": "red" }) });
+    const green = printed(text, { highlight: false, theme: new Theme({ "repr.number": "green" }) });
+    expect(red).toBe(printed(new RichText("42", { style: "red" }), { highlight: false }));
+    expect(green).toBe(printed(new RichText("42", { style: "green" }), { highlight: false }));
+  });
+
+  it("leaves repr.number unstyled under a theme that inherits nothing", () => {
+    const theme = new Theme({}, { inherit: false });
+    expect(printed("42", { theme })).toBe(printed("42", { highlight: false }));
   });
 });

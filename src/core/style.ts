@@ -489,6 +489,9 @@ export class Style {
 
   /**
    * Parse a space-separated style definition. Cached.
+   *
+   * A definition only: `"bold red"` parses, `"repr.number"` does not. Names
+   * belong to a `Theme`, and `Theme.resolve` is where one is looked up.
    */
   static parse(definition: string): Style {
     const normalized = Style.normalize(definition);
@@ -496,17 +499,6 @@ export class Style {
 
     const cached = styleParseCache.get(normalized);
     if (cached) return cached;
-
-    // Check DEFAULT_STYLES for semantic names (e.g., "table.header", "repr.number")
-    // [LAW:one-source-of-truth] Semantic names resolve through DEFAULT_STYLES
-    // Only check after initialization is complete (avoid circular reference)
-    if (defaultStylesReady && normalized.includes(".")) {
-      const semantic = DEFAULT_STYLES[normalized];
-      if (semantic !== undefined) {
-        styleParseCache.set(normalized, semantic);
-        return semantic;
-      }
-    }
 
     const result = parseStyleDefinition(normalized);
     styleParseCache.set(normalized, result);
@@ -571,6 +563,21 @@ export class Theme {
 
   get(name: string): Style | undefined {
     return this.styles.get(name);
+  }
+
+  /**
+   * The style a `string | Style` stands for under this theme: a name this
+   * theme defines, otherwise a definition for `Style.parse`, which throws
+   * `StyleSyntaxError` when the string is neither.
+   *
+   * [LAW:one-source-of-truth] The theme is the one map from names to styles.
+   * The lookup stays outside `Style.parse`'s process-wide cache on purpose:
+   * cached there, the first console to resolve `repr.number` would decide it
+   * for every console after it, whatever theme each was given.
+   */
+  resolve(style: string | Style): Style {
+    if (style instanceof Style) return style;
+    return this.styles.get(style) ?? Style.parse(style);
   }
 
   has(name: string): boolean {
@@ -661,8 +668,6 @@ function resolveColor(c: string | ColorSpec | undefined): ColorSpec | undefined 
 
 // --- DEFAULT_STYLES ---
 // [LAW:one-source-of-truth] Single canonical mapping of semantic names to styles
-
-let defaultStylesReady = false;
 
 export const DEFAULT_STYLES: Record<string, Style> = {
   none: NULL_STYLE,
@@ -812,4 +817,8 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "iso8601.timezone": Style.parse("bright_blue"),
 };
 
-defaultStylesReady = true;
+/**
+ * The theme a render resolves names against when nothing supplied one — what
+ * a renderable sees outside a `Console`, as in `renderToString`.
+ */
+export const DEFAULT_THEME = new Theme();

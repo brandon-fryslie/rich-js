@@ -9,6 +9,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { getStyle } from "../core/protocol.js";
 
 const FULL_BLOCK = "━";
 const EMPTY_BLOCK = "━";
@@ -23,29 +24,23 @@ export interface ProgressBarOptions {
   finishedStyle?: string | Style;
 }
 
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
-}
-
 export class ProgressBar implements Renderable, Measurable {
   total: number;
   completed: number;
   readonly width: number | undefined;
   readonly pulse: boolean;
-  readonly style: Style;
-  readonly completeStyle: Style;
-  readonly finishedStyle: Style;
+  readonly style: string | Style;
+  readonly completeStyle: string | Style;
+  readonly finishedStyle: string | Style;
 
   constructor(options?: ProgressBarOptions) {
     this.total = options?.total ?? 100;
     this.completed = options?.completed ?? 0;
     this.width = options?.width;
     this.pulse = options?.pulse ?? false;
-    this.style = resolveStyle(options?.style);
-    this.completeStyle = resolveStyle(options?.completeStyle ?? "bar.complete");
-    this.finishedStyle = resolveStyle(options?.finishedStyle ?? "bar.finished");
+    this.style = options?.style ?? NULL_STYLE;
+    this.completeStyle = options?.completeStyle ?? "bar.complete";
+    this.finishedStyle = options?.finishedStyle ?? "bar.finished";
   }
 
   get percentComplete(): number {
@@ -60,10 +55,10 @@ export class ProgressBar implements Renderable, Measurable {
     const filledWidth = Math.round(barWidth * percent);
     const emptyWidth = barWidth - filledWidth;
 
-    const fillStyle = isFinished
-      ? (this.finishedStyle.isNull ? undefined : this.finishedStyle)
-      : (this.completeStyle.isNull ? undefined : this.completeStyle);
-    const bgStyle = this.style.isNull ? undefined : this.style;
+    const fill = getStyle(options, isFinished ? this.finishedStyle : this.completeStyle);
+    const back = getStyle(options, this.style);
+    const fillStyle = fill.isNull ? undefined : fill;
+    const bgStyle = back.isNull ? undefined : back;
 
     if (filledWidth > 0) {
       yield new Segment(FULL_BLOCK.repeat(filledWidth), fillStyle);
