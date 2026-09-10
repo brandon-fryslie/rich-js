@@ -199,39 +199,96 @@ so its last word stops short of the right edge.
 
 ### Overflow
 
-Text is word-wrapped first. `overflow` decides what becomes of a line that is
-*still* too wide once wrapping is done, which is only ever a word longer than
-the whole width:
+Text is word-wrapped first. Three of the `overflow` modes decide what becomes of
+a line that is *still* too wide once wrapping is done, which is only ever a word
+longer than the whole width. The fourth, `"ignore"`, skips wrapping altogether:
 
 ```typescript
 const long = "This is a very long string that exceeds the available width";
 console.print(long, { overflow: "fold" });     // chop a word wider than the line across lines (default)
 console.print(long, { overflow: "crop" });     // cut such a word off at the edge
 console.print(long, { overflow: "ellipsis" }); // cut it off, marking it with …
-console.print(long, { overflow: "ignore" });   // same as "fold" today
+console.print(long, { overflow: "ignore" });   // don't wrap; the line is cut at the console width
 ```
 
-A string of ordinary words wraps identically under all three — the mode is a
-last resort, not the first thing a long line meets. They part company only on a
-word no break can help: at a width of 20, `"The quick
+A string of ordinary words wraps identically under the first three — the mode
+is a last resort, not the first thing a long line meets. They part company only
+on a word no break can help: at a width of 20, `"The quick
 brownfoxjumpsoverthelazydogandmore end"` keeps every character under `"fold"`
 and loses the tail of the long word under `"crop"` and `"ellipsis"`.
 
-`"ignore"` is accepted but is not yet distinct from the default — `print()`
-discards it and wraps.
+Under `"ignore"` the line is neither wrapped nor cut by any of those methods. It
+leaves the renderer at its natural width, and the [`crop` flag](#cropping) then
+cuts it at the console width:
+
+```typescript
+const console = new Console({ width: 12 });
+console.print("aaaa bbbb cccc dddd", { overflow: "ignore" });
+```
+
+```
+aaaa bbbb cc
+```
+
+Without `"ignore"`, the same call wraps after `bbbb` and prints two lines. A line
+that fits is still aligned: `"hi"` printed with
+`{ overflow: "ignore", justify: "right" }` at that width comes out as ten spaces
+and then `hi`.
+
+Inside a container the line runs to the container's own edge rather than the
+console's. At a width of 16, `new Panel("aaaa bbbb cccc dddd eeee")` printed with
+`{ overflow: "ignore" }` draws a single row of content, `│ aaaa bbbb cc │`.
+
+### Cropping
+
+After rendering, `print()` cuts every line at the console width. That is the
+`crop` flag, and it is on by default. It is not the same thing as
+`overflow: "crop"`: that mode cuts a single word too long to wrap, while the flag
+cuts whatever reaches the output, `end` included — at width 12,
+`{ overflow: "ignore", end: " ZZZ " }` prints `aaaa bbbb cc` and nothing after
+it.
+
+Word-wrapped text never runs past the width, so for it the flag changes nothing.
+It matters when something renders wider than the console: a line printed with
+`overflow: "ignore"`, or a renderable of your own that draws past the width it
+was given. Pass `crop: false` to let those lines through whole:
+
+```typescript
+const console = new Console({ width: 12 });
+console.print("aaaa bbbb cccc dddd", { overflow: "ignore", crop: false });
+```
+
+```
+aaaa bbbb cccc dddd
+```
+
+A wide character the edge cuts through leaves a space in its place. A CJK glyph
+takes two cells, so at width 11 the sixth glyph straddles the edge:
+
+```typescript
+const console = new Console({ width: 11 });
+console.print("日本語日本語日本語", { overflow: "ignore" });
+```
+
+```
+日本語日本 
+```
+
+The line is five glyphs and a trailing space, eleven cells in all.
 
 ### Soft wrapping
 
-`softWrap: true` turns word-wrapping off, so a long line runs past the terminal
-width instead of folding — the behavior of the built-in `console.log`:
+`softWrap: true` turns off word-wrapping and cropping both, so a long line runs
+past the terminal width instead of folding — the behavior of the built-in
+`console.log`:
 
 ```typescript
 console.print("A very long line...", { softWrap: true });
 ```
 
-`PrintOptions` also declares a `crop` flag. Nothing reads it: `print()` accepts
-it and wraps exactly as it would have. Use `overflow: "crop"` to truncate at the
-edge.
+It overrides the `crop` flag rather than deferring to it. At width 12,
+`console.print("aaaa bbbb cccc dddd", { softWrap: true, crop: true })` prints
+the whole line.
 
 ## Logging
 

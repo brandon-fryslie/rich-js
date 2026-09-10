@@ -806,4 +806,12 @@ describe("Segment.cropLines()", () => {
     const style = Style.parse("bold red");
     expect(crop([new Segment("hello world", style)], 5)[0]!.style).toBe(style);
   });
+
+  it("leaves a space in the cell a wide glyph cut at the edge would half-fill", () => {
+    expect(text(crop([new Segment("日本語")], 5))).toBe("日本 ");
+  });
+
+  it("crops nothing at an unbounded width", () => {
+    expect(text(crop([new Segment("hello\nworld")], Infinity))).toBe("hello\nworld");
+  });
 });

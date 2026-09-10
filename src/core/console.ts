@@ -413,6 +413,7 @@ export class Console {
     const doHighlight = opts.highlight ?? this._highlight;
     const sep = opts.sep ?? " ";
     const end = opts.end ?? "\n";
+    const softWrap = opts.softWrap ?? false;
     const printStyle = resolveStyle(opts.style);
 
     // Convert items to renderables
@@ -458,13 +459,19 @@ export class Console {
 
     // Render all items
     const allSegments: Segment[] = [];
+    // [LAW:parse-dont-validate] `"ignore"` is not a way of cutting a line but
+    // the absence of an edge to cut at: no break, and nothing cut at the width.
+    // That is what `noWrap` already means to `RichText`, so it crosses into the
+    // render as `noWrap`, and `overflow` carries only the methods a renderable
+    // applies. Soft wrap is the same request — the reference defaults it to
+    // `"ignore"` — which is why the two arrive at one field.
     const renderOpts: RenderOptions = {
       maxWidth: this.width,
       isTerminal: this.isTerminal,
       encoding: this.encoding,
-      justify: opts.justify === "default" ? undefined : opts.justify as RenderOptions["justify"],
-      overflow: opts.overflow === "ignore" ? undefined : opts.overflow as RenderOptions["overflow"],
-      noWrap: opts.softWrap,
+      justify: opts.justify === "default" ? undefined : opts.justify,
+      overflow: opts.overflow === "ignore" ? undefined : opts.overflow,
+      noWrap: softWrap || opts.overflow === "ignore",
     };
 
     for (const renderable of renderables) {
@@ -485,10 +492,18 @@ export class Console {
     // every other emitted text so it survives recording — otherwise
     // `exportText` and `exportHtml` would join consecutive prints onto a
     // single line. [LAW:single-enforcer]
-    this._writeSegments(final);
     // The common default end is "\n" — reuse Segment's cached newline rather
     // than allocating one per print; only a non-default end needs a fresh one.
-    if (end) this._writeSegments([end === "\n" ? Segment.line() : new Segment(end)]);
+    const terminator = end === "\n" ? Segment.line() : new Segment(end);
+
+    // Crop last, and crop the line-end with the rest: in the reference `end` is
+    // the tail of the printed line, so a line cut at the edge loses it too.
+    // Soft wrap turns cropping off whatever `crop` says, because a line it left
+    // whole is meant to reach the terminal whole. [LAW:dataflow-not-control-flow]
+    // Not cropping is an unbounded width rather than a skipped step — the same
+    // spelling `RichText` uses for `noWrap`.
+    const cropWidth = !softWrap && (opts.crop ?? true) ? this.width : Infinity;
+    this._writeSegments([...Segment.cropLines([...final, terminator], cropWidth)]);
   }
 
   log(...args: unknown[]): void {

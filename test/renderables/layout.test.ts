@@ -4,6 +4,7 @@ import type { LayoutOptions } from "../../src/renderables/layout.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
+import { RichText } from "../../src/core/text.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -186,5 +187,12 @@ describe("Layout", () => {
         expect(cellLen(line)).toBeLessThanOrEqual(maxWidth);
       }
     }
+  });
+
+  it("leaves a space where a pane's edge cuts through a wide glyph", () => {
+    // Python Rich 9d8f9a3 prints this first row for the same layout at width 9.
+    const pane = new Layout(new RichText("日本語日本語", { noWrap: true }));
+    const text = collectText(pane, { maxWidth: 9, height: 2, maxHeight: 2 });
+    expect(text.split("\n")[0]).toBe("日本語日 ");
   });
 });
