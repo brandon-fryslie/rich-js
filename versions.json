@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-118",
-      "ref": "refs/pull/118/merge",
-      "sha": "e8e10ee3df62d907006ed19b36a960e8c071071a",
-      "timestamp": "2026-09-10T17:29:01.614Z",
-      "commits": [
-        {
-          "sha": "e8e10ee3df62d907006ed19b36a960e8c071071a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T11:28:34-06:00",
-          "message": "Merge 0b62a93e05c9805427d8125991bf5941cd4a9884 into a5ef4b92048e576bcd897067a183f5a4850844ef\n"
-        },
-        {
-          "sha": "0b62a93e05c9805427d8125991bf5941cd4a9884",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T11:28:28-06:00",
-          "message": "docs(highlighting): make the custom highlighter examples run (rich-docs-lxn, rich-docs-vaa)\n\nRequestHighlighter could not run as written. Its patterns used Python's\n(?P<name>) group syntax, which a JavaScript RegExp literal rejects. It\nset highlights and baseStyle as instance fields, but RegexHighlighter\nreads them from the class, so it would have highlighted nothing. It\ncalled the highlighter as a function instead of through .call(). Its\nper-group styles also relied on a Console looking http.method up in the\nTheme it was given, and no Console does that (rich-style-tdn). The\nexample now uses static fields and one literal baseStyle, and the page\nsays which names a baseStyle ending in \".\" can produce.\n\nRainbowHighlighter passed stylize its arguments as (start, end, style),\nbut the signature is (style, start, end). It also used Console without\nimporting it.\n\nThe opening example said ReprHighlighter styles file paths, True and a\nUUID. It has no path pattern and matches only lowercase true and false,\nand the example's \"a3f2-...\" was styled as a quoted string. The example\nand both pattern lists now name only what it styles (rich-docs-vaa).\n\nBoth custom highlighter blocks, copied from the page into a TypeScript\nproject that depends on the package, type-check under strict and\nnoUncheckedIndexedAccess and print the styles the page describes.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a5ef4b92048e576bcd897067a183f5a4850844ef",
-      "timestamp": "2026-09-10T17:19:55.458Z",
+      "sha": "3e5818428ab8fcd5c677246d5eaafafffbec9eb2",
+      "timestamp": "2026-09-10T17:31:27.177Z",
       "commits": [
         {
-          "sha": "a5ef4b92048e576bcd897067a183f5a4850844ef",
+          "sha": "3e5818428ab8fcd5c677246d5eaafafffbec9eb2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T11:19:22-06:00",
-          "message": "fix(highlighter): style every JSON token as Rich does (rich-json-0yq, rich-style-h93) (#117)\n\n* fix(style): write no SGR parameter for an attribute set false (rich-style-h93)\n\nStyle.toSgrCodes wrote an attribute's off code (22, 23, ...) when the\nattribute was set false. Python Rich 9d8f9a3 writes a parameter only for\nan attribute set true. There, a false attribute overrides an inherited\none when styles combine. Every run is written after a reset, so the off\ncode never changed what a terminal shows, only the bytes: repr.url came\nout as 94;23;4 where Rich writes 4;94.\n\nThis also unblocks rich-json-0yq, whose json.number and json.str styles\ncarry Rich's italic=False and bold=False.\n\n* fix(highlighter): style every JSON token as Rich's JSONHighlighter does (rich-json-0yq)\n\nJSONHighlighter styled a string only when a colon came before it, so\nstrings inside arrays printed unstyled, and its string pattern stopped\nat an escaped quote. Each token kind ran as its own pass, so `true` and\n`12` inside a string were restyled as a boolean and a number.\n\nIt is now Python Rich 9d8f9a3's highlighter: one alternation of brace,\ntrue, false, null, number and string, scanned once, then a pass that\nmarks each string a colon follows as a key. The theme replaces json.bool\nwith Rich's json.bool_true (italic bright_green) and json.bool_false\n(italic bright_red). json.number becomes bold, and json.number and\njson.str carry Rich's not-italic and not-bold overrides.\n\nFor the ticket's evidence calls, printJson now writes Rich's bytes apart\nfrom SGR parameter order, which is rich-color-7kv."
+          "timestamp": "2026-09-10T11:30:50-06:00",
+          "message": "docs(highlighting): make the custom highlighter examples run (rich-docs-lxn, rich-docs-vaa) (#118)\n\nRequestHighlighter could not run as written. Its patterns used Python's\n(?P<name>) group syntax, which a JavaScript RegExp literal rejects. It\nset highlights and baseStyle as instance fields, but RegexHighlighter\nreads them from the class, so it would have highlighted nothing. It\ncalled the highlighter as a function instead of through .call(). Its\nper-group styles also relied on a Console looking http.method up in the\nTheme it was given, and no Console does that (rich-style-tdn). The\nexample now uses static fields and one literal baseStyle, and the page\nsays which names a baseStyle ending in \".\" can produce.\n\nRainbowHighlighter passed stylize its arguments as (start, end, style),\nbut the signature is (style, start, end). It also used Console without\nimporting it.\n\nThe opening example said ReprHighlighter styles file paths, True and a\nUUID. It has no path pattern and matches only lowercase true and false,\nand the example's \"a3f2-...\" was styled as a quoted string. The example\nand both pattern lists now name only what it styles (rich-docs-vaa).\n\nBoth custom highlighter blocks, copied from the page into a TypeScript\nproject that depends on the package, type-check under strict and\nnoUncheckedIndexedAccess and print the styles the page describes."
         }
       ]
     }
