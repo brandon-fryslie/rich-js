@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-119",
+      "ref": "refs/pull/119/merge",
+      "sha": "7e5069af7e63f4c78ee3aceb5625d831de609511",
+      "timestamp": "2026-09-10T18:16:53.730Z",
+      "commits": [
+        {
+          "sha": "7e5069af7e63f4c78ee3aceb5625d831de609511",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T12:16:23-06:00",
+          "message": "Merge c245b94057be65bc91aa140b6883a7ec03c10b99 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+        },
+        {
+          "sha": "c245b94057be65bc91aa140b6883a7ec03c10b99",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T11:52:24-06:00",
+          "message": "fix(style)!: resolve style names against the console theme (rich-style-tdn)\n\n`new Console({ theme })` changed nothing. Every style name was resolved when\nits renderable or span was built, through the built-in defaults inside\n`Style.parse`, before any console could offer a theme, and `Console` stored the\ntheme it was given without ever reading it. Names now resolve when they\nrender, in the theme of the console doing the printing, as they do in Rich.\n\n- `Theme.resolve(style)` is the one lookup from a name to a style. It stays\n  outside `Style.parse`'s process-wide cache, so two consoles with different\n  themes cannot bleed into each other. `Style.parse` parses definitions only.\n- `RenderOptions.theme` carries the printing console's theme, and every\n  renderable resolves its style names in `render` through one internal\n  resolver in `protocol.ts`. Table cells and titles now spread the render\n  options instead of building a fresh literal, so the theme reaches them.\n- `RichText` keeps its base and span styles as given and resolves them at\n  render.\n- Template style functions throw a `TypeError` for a fragment whose base style\n  is a name: a template runs before any render exists, so the name has no\n  theme to resolve against.\n\nBreaking:\n- `StyledRenderable.edgeStyle(side)` is now `edgeStyle(side, options)`, and a\n  joiner reads edges inside the `render` of the renderable it returns. The\n  built-in joiners do.\n- `Style.parse` no longer accepts a name: `Style.parse(\"repr.number\")` throws\n  `StyleSyntaxError`. Use `Theme.resolve`.\n- `RichText.style` is `string | Style`.\n- A renderable resolves its style strings at render, so a name its theme lacks\n  throws `StyleSyntaxError` when it is printed. Under\n  `new Theme(..., { inherit: false })` that includes built-in names such as\n  `table.header`, which used to resolve whatever the theme.\n\ndocs/style.md, highlighting.md, strip.md and protocol.md describe the new\nbehaviour, and every changed snippet was compiled and run in a consumer\nproject.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3e5818428ab8fcd5c677246d5eaafafffbec9eb2",
