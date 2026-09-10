@@ -125,6 +125,15 @@ const configurations: readonly Configuration[] = [
     }),
   },
   {
+    name: "Table that expands",
+    shape: "rectangular",
+    make: table({ expand: true }, (t) => {
+      t.addColumn("Name");
+      t.addColumn("Qty");
+      t.addRow("alpha", "12");
+    }),
+  },
+  {
     name: "Table with an unbounded column demand",
     shape: "rectangular",
     make: table({}, (t) => {

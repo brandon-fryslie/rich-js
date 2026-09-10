@@ -19,6 +19,7 @@ import { Panel } from "../../src/renderables/panel.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Layout } from "../../src/renderables/layout.js";
+import { Table } from "../../src/renderables/table.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -139,6 +140,21 @@ const contents: ReadonlyArray<{
       return layout;
     },
     rows: [["top"], ["a longer bottom"]],
+  },
+  {
+    name: "Table that expands",
+    // `expand` spends whatever the offer leaves over, so the width it reaches
+    // is a fact about the offer and not about the content. Counted into the
+    // maximum, it made this measure the whole offer, and an unbounded offer
+    // threw for want of a natural width that a plain table reports.
+    make: () => {
+      const table = new Table({ expand: true });
+      table.addColumn("Name");
+      table.addColumn("Qty");
+      table.addRow("alpha", "12");
+      return table;
+    },
+    rows: [["Name", "Qty"], ["alpha", "12"]],
   },
 ];
 
