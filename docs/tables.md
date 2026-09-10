@@ -54,7 +54,7 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 |---|---|
 | `width` | Fixed total width — disables auto-sizing, and overrides a container narrower than it |
 | `minWidth` | Minimum total width |
-| `expand` | Accepted, but not yet wired into sizing — a table renders at its natural width regardless |
+| `expand` | Fill the width offered. Every column first gets its natural width, then the cells left over are shared out in proportion to it; a column with a declared `width` keeps that width |
 
 ### Borders
 
@@ -119,7 +119,7 @@ for every column at once or not at all, so asking for 11 or 12 renders the same
 Width 2 is the narrowest table that keeps its frame; below it the border columns
 are dropped too, and the table renders as bare content. In the other direction a
 table never grows past its natural width — offer it 200 columns and it still
-renders at 13.
+renders at 13 — unless it is built with [`expand`](#sizing).
 
 Because the padding is bought before content grows back, a table between those
 two ladders spends cells on padding while its columns are still truncated. Wide
@@ -233,7 +233,7 @@ grid.addRow("[bold]Left content[/bold]", "[dim]Right content[/dim]");
 console.print(grid);
 ```
 
-A common pattern: use a grid to position content at both edges of the terminal on a single line. `expand` is the option for that, and it is [not yet wired into sizing](#sizing) — today the grid renders at its natural width rather than filling the terminal:
+A common pattern: use a grid to position content at both edges of the terminal on a single line. `expand` makes the grid fill the terminal, and the right-justified column carries its content to the far side — one cell short of the edge, because `Table.grid` pads the right of every column, the last one included:
 
 ```typescript
 const grid = Table.grid({ expand: true });

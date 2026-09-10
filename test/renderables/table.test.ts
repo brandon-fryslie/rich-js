@@ -338,10 +338,7 @@ describe("Table", () => {
     expect(lines.some((l) => l.includes("Total"))).toBe(true);
   });
 
-  // Spec: "expand: true — Table fills maxWidth"
-  // Source does not yet expand columns to fill available width; width calculation
-  // uses natural content width even when totalWidth is set. Skipped until fixed.
-  it.skip("expands to fill maxWidth when expand is true", () => {
+  it("expands to fill maxWidth when expand is true", () => {
     const t = new Table({ box: ASCII, expand: true });
     t.addColumn("A");
     t.addRow("x");
@@ -349,6 +346,64 @@ describe("Table", () => {
     // All content lines should be maxWidth wide
     const contentLines = lines.filter((l) => l.length > 0);
     expect(contentLines.every((l) => l.length === 40)).toBe(true);
+  });
+
+  it("spreads the slack in proportion to natural content, so the widest column grows most", () => {
+    // Every column gets its natural content width (1, 3 and 9), and the 17
+    // cells left over go by those widths: an equal split would give each the same.
+    const t = new Table({ box: ASCII, expand: true });
+    t.addColumn("A");
+    t.addColumn("Bee");
+    t.addColumn("CCCCCCCCC");
+    t.addRow("x", "yy", "zzz");
+    expect(collectLines(t, { maxWidth: 40 })).toEqual([
+      "+--------------------------------------+",
+      "| A  | Bee     | CCCCCCCCC             |",
+      "|----+---------+-----------------------|",
+      "| x  | yy      | zzz                   |",
+      "+--------------------------------------+",
+    ]);
+  });
+
+  it("keeps a declared column width under expand and stretches only the columns that bid", () => {
+    const t = new Table({ box: ASCII, expand: true });
+    t.addColumn("A", { width: 6 });
+    t.addColumn("Bee");
+    t.addRow("x", "yy");
+    expect(collectLines(t, { maxWidth: 40 })).toEqual([
+      "+--------------------------------------+",
+      "| A      | Bee                         |",
+      "|--------+-----------------------------|",
+      "| x      | yy                          |",
+      "+--------------------------------------+",
+    ]);
+  });
+
+  it("renders a squeezed table the same with or without expand", () => {
+    // At or below its natural width no cells are left over, so there is
+    // nothing for expand to hand out.
+    const build = (expand: boolean): Table => {
+      const t = new Table({ box: ASCII, expand });
+      t.addColumn("A");
+      t.addColumn("Bee");
+      t.addColumn("CCCCCCCCC");
+      t.addRow("x", "yy", "zzz");
+      return t;
+    };
+    for (const maxWidth of [12, 16, 20, 23]) {
+      expect(collectLines(build(true), { maxWidth })).toEqual(collectLines(build(false), { maxWidth }));
+    }
+  });
+
+  it("carries a right-justified grid column to the far side when the grid expands", () => {
+    const grid = Table.grid({ expand: true });
+    grid.addColumn();
+    grid.addColumn("", { justify: "right" });
+    grid.addRow("Left side", "Right side");
+    const [line] = collectLines(grid, { maxWidth: 40 });
+    expect(line).toHaveLength(40);
+    expect(line!.startsWith("Left side ")).toBe(true);
+    expect(line!.trimEnd().endsWith(" Right side")).toBe(true);
   });
 
   it("measurement returns minimum > 0 and maximum >= minimum", () => {
