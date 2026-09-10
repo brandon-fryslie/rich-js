@@ -7,6 +7,7 @@ import {
 } from "../../src/template-bindings/index.js";
 import {
   Style,
+  StyleSyntaxError,
   ATTRIBUTE_NAMES,
   ATTRIBUTE_SHORT_ALIASES,
 } from "../../src/core/style.js";
@@ -373,13 +374,23 @@ describe("error surface", () => {
     expect(() => engine.parse(`{{ bold 5 }}`).evaluate({})).toThrowError();
   });
 
-  it("a scope fragment whose base style is a name cannot be styled", () => {
+  it.each([
+    ["a name", "repr.number"],
+    ["a malformed definition", "not"],
+  ])("a scope fragment whose base style is %s cannot be styled, and keeps the parser's reason", (_, style) => {
     // A name has no `Style` until a render resolves it against a theme, and a
-    // template runs before any render, so there is nothing to layer over.
-    const named = new RichText("42", { style: "repr.number" });
-    expect(() => engine.parse(`{{ bold .n }}`).evaluate({ n: named })).toThrowError(
-      /base style is the name "repr\.number"/,
-    );
+    // template runs before any render, so only a definition gives it one.
+    let thrown: unknown;
+    try {
+      engine.parse(`{{ bold .n }}`).evaluate({ n: new RichText("42", { style }) });
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(TypeError);
+    expect(thrown).toMatchObject({
+      message: expect.stringContaining(`base style "${style}" is not a style definition`),
+      cause: expect.any(StyleSyntaxError),
+    });
   });
 
   it("a scope fragment whose base style is a definition is styled over it", () => {

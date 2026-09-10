@@ -35,9 +35,9 @@ export function applyStyleToFragment(child: unknown, style: Style): RichText {
 }
 
 /**
- * A fragment's base style as a `Style`. A string is parsed as a definition; a
- * name fails, because it resolves only against the theme of the render that
- * draws it, and a template runs before any render exists.
+ * A fragment's base style as a `Style`. A string must parse as a definition: a
+ * name resolves only against the theme of the render that draws it, and a
+ * template runs before any render exists.
  */
 function baseStyleOf(style: string | Style): Style {
   if (style instanceof Style) return style;
@@ -46,7 +46,8 @@ function baseStyleOf(style: string | Style): Style {
   } catch (err) {
     if (!(err instanceof StyleSyntaxError)) throw err;
     throw new TypeError(
-      `template function cannot style a fragment whose base style is the name "${style}": a style name resolves only against the theme of a render`,
+      `template function cannot style a fragment whose base style "${style}" is not a style definition: a style name resolves only against the theme of a render`,
+      { cause: err },
     );
   }
 }
