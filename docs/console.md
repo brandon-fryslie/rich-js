@@ -332,26 +332,45 @@ because `log()` puts the timestamp in front of your value.
 
 ## JSON output
 
-`printJson()` re-formats JSON across multiple lines with a two-space indent. It
-accepts either a JSON string, which it parses first, or an object:
+`printJson()` pretty-prints JSON with syntax highlighting. It takes either a JSON
+string, which it parses first, or an object, which it formats directly:
 
 ```typescript
 console.printJson('{"name": "Alice", "scores": [98, 87, 95]}');
 
 // Or pass an object directly
 console.printJson({ name: "Alice", scores: [98, 87, 95] });
-
-// Widen the indent
-console.printJson({ name: "Alice" }, { indent: 4 });
 ```
 
-The result is printed as plain text — `printJson` re-indents, it does not
-colorize. Passing the same JSON string to `print()` instead gets you the
-highlighting, since `print()` runs its highlighter over strings:
+A string that is not valid JSON throws the `SyntaxError` from `JSON.parse`.
+
+The second argument takes three options:
+
+- `indent` — spaces per nesting level. Defaults to `2`.
+- `sortKeys` — sort object keys at every depth, including objects inside
+  arrays. Keys compare by UTF-16 code unit, so `"Zebra"` sorts before `"apple"`.
+  Defaults to `false`.
+- `highlight` — colour keys, strings, numbers, booleans, `null` and braces.
+  Defaults to `true`; `false` prints plain text.
 
 ```typescript
-console.print('{"name": "Alice", "scores": [98, 87, 95]}');
+console.printJson({ name: "Alice" }, { indent: 4 });
+console.printJson({ zone: "eu", app: { port: 80, host: "a" } }, { sortKeys: true });
+console.printJson({ name: "Alice" }, { highlight: false });
 ```
+
+`highlight` belongs to `printJson`, not to the console. A console constructed
+with `highlight: false` still colours `printJson` output, because that setting
+controls what `print()` does to strings. Pass `{ highlight: false }` to
+`printJson` itself to get plain text.
+
+Lines are never wrapped or cropped. A line wider than the console runs past its
+edge, so the printed text stays valid JSON.
+
+To place formatted JSON inside a `Panel` or a `Table` cell instead of printing
+it, build the renderable `printJson` uses: `JSONRenderable.fromString` or
+`JSONRenderable.fromData`, both exported from `@promptctl/rich-js`, take the
+same options.
 
 ## Rules
 

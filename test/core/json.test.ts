@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { JSONRenderable } from "../../src/renderables/json.js";
+import { JSONRenderable } from "../../src/core/json.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";

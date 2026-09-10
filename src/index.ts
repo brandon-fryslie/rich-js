@@ -225,6 +225,10 @@ export {
 export { Pretty } from "./core/pretty.js";
 export type { PrettyOptions } from "./core/pretty.js";
 
+// JSON
+export { JSONRenderable } from "./core/json.js";
+export type { JSONOptions } from "./core/json.js";
+
 // Spinner data
 export { SPINNERS, DEFAULT_SPINNER } from "./core/spinnerData.js";
 export type { SpinnerData } from "./core/spinnerData.js";
@@ -258,8 +262,6 @@ export { Table, Column } from "./renderables/table.js";
 export type { TableOptions, ColumnOptions } from "./renderables/table.js";
 export { Tree } from "./renderables/tree.js";
 export type { TreeOptions } from "./renderables/tree.js";
-export { JSONRenderable } from "./renderables/json.js";
-export type { JSONOptions } from "./renderables/json.js";
 export { Columns } from "./renderables/columns.js";
 export type { ColumnsOptions } from "./renderables/columns.js";
 export { FlexStrip } from "./renderables/flexStrip.js";
