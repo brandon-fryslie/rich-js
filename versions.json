@@ -4,15 +4,22 @@
     {
       "version": "pr-119",
       "ref": "refs/pull/119/merge",
-      "sha": "cd68bed258b5168c2a0692b977d28e59d9bf6670",
-      "timestamp": "2026-09-10T19:22:07.982Z",
+      "sha": "3348bf89857407eb3bd33f0714e9778fe5cac934",
+      "timestamp": "2026-09-10T19:49:29.874Z",
       "commits": [
         {
-          "sha": "cd68bed258b5168c2a0692b977d28e59d9bf6670",
+          "sha": "3348bf89857407eb3bd33f0714e9778fe5cac934",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T19:21:36Z",
-          "message": "Merge 140df88bcb860ac091a28acdef00c76440f8b6a3 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+          "timestamp": "2026-09-10T19:48:54Z",
+          "message": "Merge 6d8dfbe32c58d82e1ee58ee8b87a47fa974b2df8 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+        },
+        {
+          "sha": "6d8dfbe32c58d82e1ee58ee8b87a47fa974b2df8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T13:48:33-06:00",
+          "message": "fix(panel): resolve a RichText accessory's style as the text itself does (rich-style-tdn)\n\nText forgives a style name the render's theme does not define: it draws\nwith no style. Panel resolved a RichText accessory's style with the\nstrict getStyle instead, so an accessory whose style no theme defines\nthrew inside a panel while the same text rendered itself without\ncomplaint. Before this branch it drew in the border style.\n\nRichText.resolvedStyle(options) is the text's own style resolved through\nthe one forgiving rule text.ts already holds. Panel's accessory calls\nit, and so do RichText's edgeStyle and render, which made the same call\ninline.\n\nTests:\n- panel: an accessory whose style name no theme defines renders the\n  same segments as an accessory with no style.\n- console: a console style and a print style that only the console's\n  theme defines each draw in the theme's colour.\n"
         },
         {
           "sha": "140df88bcb860ac091a28acdef00c76440f8b6a3",
