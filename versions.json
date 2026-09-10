@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-114",
-      "ref": "refs/pull/114/merge",
-      "sha": "1f924105583da374c79e28622c8f6fa1791af993",
-      "timestamp": "2026-09-10T16:05:02.224Z",
-      "commits": [
-        {
-          "sha": "1f924105583da374c79e28622c8f6fa1791af993",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T10:04:30-06:00",
-          "message": "Merge 14d61a4b01a42292895292bdab7eb53adafdf185 into 939d6adc1dad377830daf7dfaf204caee0fbf05a\n"
-        },
-        {
-          "sha": "14d61a4b01a42292895292bdab7eb53adafdf185",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T10:04:26-06:00",
-          "message": "docs(console): show full justification with a worked example (rich-justify-0cr.4)\n\nThe Justify table still described \"full\" as padding without stretching,\nwhich stopped being true when .1 implemented it. The row now says what it\ndoes, and a worked example follows it.\n\nThe example renders one paragraph at width 42 and shows the three things\nthat surprise a reader: the last line of a paragraph stays ragged, a line\nholding one word (a URL) keeps its width even when more text follows, and\nan authored double space is two gaps, so it comes out twice as wide as its\nneighbours. The snippet was run as written through this library and\nthrough Python Rich (9d8f9a3); the output block is byte-identical to both.\n\nThe ticket's suggested example, \"a  bb cccc dddd\" at width 12, was not\nused: with two cells of slack it renders the same whether a run of spaces\nis one gap or several, so it cannot show the third point, and its only\none-word line is also the last line.\n\nThe sentence \"each line of a wrapped paragraph is placed in its own right\"\nis also rewritten, because \"full\" has to know which line is last.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "939d6adc1dad377830daf7dfaf204caee0fbf05a",
-      "timestamp": "2026-09-10T15:54:32.698Z",
+      "sha": "fca2d879ffdfd2986697ae6a92dba1ecc738c663",
+      "timestamp": "2026-09-10T16:08:56.460Z",
       "commits": [
         {
-          "sha": "939d6adc1dad377830daf7dfaf204caee0fbf05a",
+          "sha": "fca2d879ffdfd2986697ae6a92dba1ecc738c663",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T09:53:56-06:00",
-          "message": "feat(table): expand stretches columns to fill the offered width (rich-justify-0cr.3) (#113)\n\n* chore: drop the orphaned .claude/skills/next copy\n\nlit no longer writes this file. The mechanism that wrote\n.claude/skills/next/SKILL.md into every repo lit was set up in was removed in\nlinks-issue-tracker#493; the skill now ships from the links Claude Code plugin\n(install once, available everywhere) rather than being copied into each\nproject tree. This is the leftover output of that removed generator: nothing\nwrites it, refreshes it, or references it, and while it stayed tracked here it\nshadowed the plugin copy for any agent working in this repo.\n\n* feat(table): expand stretches columns to fill the offered width (rich-justify-0cr.3)\n\nTable.expand was accepted, stored and never read, so an expanding table rendered at its natural width. It now fills the width it is offered.\n\nThe width division runs a second pass over the cells the first pass leaves unspent. Each column's demand carries a stretch beside its want and weight: zero unless the table expands, and then the column's natural width, so the slack lands in proportion to content and the widest column grows most. Cells are left over only once every column has its natural width, so expand cannot widen one column while another is truncated, and a squeezed table renders the same with or without it. That is Rich's order too: it pads only once table_width < max_width.\n\nProgress passes expand straight to its grid. Its default is false and renders unchanged; with expand the row fills the terminal and the bar keeps its own width, so the bar column needed no ratio.\n\nDeclared column widths are kept under expand. Rich stretches them as well, so width: 6 renders 21 cells wide there, which is the kind of option-means-something-else defect this epic exists to remove.\n\nmeasure leaves the stretch out, so an expanding table still reports the width its content wants rather than the width it was offered.\n\nUn-skips the suite's only skipped test and drops its apology comment, and describes expand in docs/tables.md.\n\n* test(table): hold an expanding table's natural width in the width gates (rich-justify-0cr.3)\n\nAn expanding table spends whatever cells its offer leaves over, so the width it reaches depends on the offer. Its measured maximum still has to be the width its content wants. The natural-width and width-sweep gates each gain an expanding Table. If the stretch is counted in measure, three checks fail: the maximum claims the offer, a fit-mode Panel draws the offer instead of shrink-wrapping, and an unbounded offer no longer renders as the natural width."
+          "timestamp": "2026-09-10T10:08:23-06:00",
+          "message": "docs(console): show full justification with a worked example (rich-justify-0cr.4) (#114)\n\nThe Justify table still described \"full\" as padding without stretching,\nwhich stopped being true when .1 implemented it. The row now says what it\ndoes, and a worked example follows it.\n\nThe example renders one paragraph at width 42 and shows the three things\nthat surprise a reader: the last line of a paragraph stays ragged, a line\nholding one word (a URL) keeps its width even when more text follows, and\nan authored double space is two gaps, so it comes out twice as wide as its\nneighbours. The snippet was run as written through this library and\nthrough Python Rich (9d8f9a3); the output block is byte-identical to both.\n\nThe ticket's suggested example, \"a  bb cccc dddd\" at width 12, was not\nused: with two cells of slack it renders the same whether a run of spaces\nis one gap or several, so it cannot show the third point, and its only\none-word line is also the last line.\n\nThe sentence \"each line of a wrapped paragraph is placed in its own right\"\nis also rewritten, because \"full\" has to know which line is last."
         }
       ]
     }
