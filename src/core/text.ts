@@ -252,6 +252,15 @@ export class RichText implements Renderable, Measurable {
   }
 
   /**
+   * This text's own style, spans aside, as the render drawing it resolves it.
+   * A name the render's theme does not define resolves to no style, because
+   * text forgives a missing name.
+   */
+  resolvedStyle(options: RenderOptions): Style {
+    return resolveStyle(options, this._style);
+  }
+
+  /**
    * The style of the cell-column at the named edge — base style merged with
    * any spans covering the leftmost (side="left") or rightmost (side="right")
    * character.
@@ -272,7 +281,7 @@ export class RichText implements Renderable, Measurable {
    * drawn, and a style name draws as whatever the render's theme says.
    */
   edgeStyle(side: "left" | "right", options: RenderOptions): Style {
-    const base = resolveStyle(options, this._style);
+    const base = this.resolvedStyle(options);
     if (this._text.length === 0) return base;
     const pos = side === "left" ? 0 : this._text.length - 1;
     let result = base;
@@ -807,7 +816,7 @@ export class RichText implements Renderable, Measurable {
       return;
     }
 
-    const base = resolveStyle(options, this._style);
+    const base = this.resolvedStyle(options);
     const allSegments = this._buildSegments(text, base, options);
     const logicalLines = Segment.splitLines(allSegments);
     // [LAW:single-enforcer] The one crossing for this renderable's width, and

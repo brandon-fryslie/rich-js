@@ -257,6 +257,22 @@ describe("Panel", () => {
     expect(lastLine.endsWith(" [2/9] +")).toBe(true);
   });
 
+  it("draws a RichText accessory whose style name no theme defines as it draws one with no style", () => {
+    // Text forgives a missing name, inside a panel as much as out of one.
+    const options = { maxWidth: 30 };
+    const typo = new Panel("Content", {
+      bottomRightAccessory: new RichText("[14/102]", { style: "no.such.style" }),
+      box: ASCII,
+      borderStyle: "red",
+    });
+    const plain = new Panel("Content", {
+      bottomRightAccessory: new RichText("[14/102]"),
+      box: ASCII,
+      borderStyle: "red",
+    });
+    expect(collectSegments(typo, options)).toEqual(collectSegments(plain, options));
+  });
+
   // --- Measurement ---
   // Spec: minimum > 0, maximum >= minimum
 

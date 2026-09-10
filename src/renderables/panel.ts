@@ -398,8 +398,7 @@ export class Panel implements Renderable, Measurable {
         ? ` ${accessory} `
         : ` ${accessory.plain} `;
     const accessoryWidth = cellLen(accessoryDisplay);
-    const accessoryOwn =
-      accessory instanceof RichText ? getStyle(options, accessory.style) : NULL_STYLE;
+    const accessoryOwn = accessory instanceof RichText ? accessory.resolvedStyle(options) : NULL_STYLE;
     const accessoryStyle = accessoryOwn.isNull ? border : accessoryOwn;
 
     yield new Segment(box.bottom.left.repeat(geometry.left), border);

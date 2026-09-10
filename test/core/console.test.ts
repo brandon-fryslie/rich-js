@@ -1261,6 +1261,20 @@ describe("Console theme resolution", () => {
     }
   });
 
+  it("styles what a console prints with a console style only its theme defines", () => {
+    for (const [hex, sgr] of COLORS) {
+      expect(printed("x", { style: "my.base", theme: new Theme({ "my.base": hex }) })).toContain(sgr);
+    }
+  });
+
+  it("styles one print with a print style only its console's theme defines", () => {
+    for (const [hex, sgr] of COLORS) {
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", theme: new Theme({ "my.base": hex }) });
+      c.print("x", { style: "my.base" });
+      expect(captured(chunks)).toContain(sgr);
+    }
+  });
+
   it("counts and draws words highlighted with a name only its console's theme defines", () => {
     for (const [hex, sgr] of COLORS) {
       const text = new RichText("the cat");
