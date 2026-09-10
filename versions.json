@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-117",
+      "ref": "refs/pull/117/merge",
+      "sha": "c43b3f3b2ac8592c296e73134d89b2119e953980",
+      "timestamp": "2026-09-10T17:13:20.674Z",
+      "commits": [
+        {
+          "sha": "c43b3f3b2ac8592c296e73134d89b2119e953980",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T11:12:47-06:00",
+          "message": "Merge a603f0b675e73359bcab985ce32ca32b76f689ba into 6f25759b75d7c29ebb41a7ca55a64eefa77d2e0f\n"
+        },
+        {
+          "sha": "a603f0b675e73359bcab985ce32ca32b76f689ba",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T11:11:59-06:00",
+          "message": "fix(highlighter): style every JSON token as Rich's JSONHighlighter does (rich-json-0yq)\n\nJSONHighlighter styled a string only when a colon came before it, so\nstrings inside arrays printed unstyled, and its string pattern stopped\nat an escaped quote. Each token kind ran as its own pass, so `true` and\n`12` inside a string were restyled as a boolean and a number.\n\nIt is now Python Rich 9d8f9a3's highlighter: one alternation of brace,\ntrue, false, null, number and string, scanned once, then a pass that\nmarks each string a colon follows as a key. The theme replaces json.bool\nwith Rich's json.bool_true (italic bright_green) and json.bool_false\n(italic bright_red). json.number becomes bold, and json.number and\njson.str carry Rich's not-italic and not-bold overrides.\n\nFor the ticket's evidence calls, printJson now writes Rich's bytes apart\nfrom SGR parameter order, which is rich-color-7kv.\n"
+        },
+        {
+          "sha": "ed13701c9c8ad532cfc4ffabb1ebac96b9e6c704",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T11:11:37-06:00",
+          "message": "fix(style): write no SGR parameter for an attribute set false (rich-style-h93)\n\nStyle.toSgrCodes wrote an attribute's off code (22, 23, ...) when the\nattribute was set false. Python Rich 9d8f9a3 writes a parameter only for\nan attribute set true. There, a false attribute overrides an inherited\none when styles combine. Every run is written after a reset, so the off\ncode never changed what a terminal shows, only the bytes: repr.url came\nout as 94;23;4 where Rich writes 4;94.\n\nThis also unblocks rich-json-0yq, whose json.number and json.str styles\ncarry Rich's italic=False and bold=False.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6f25759b75d7c29ebb41a7ca55a64eefa77d2e0f",
