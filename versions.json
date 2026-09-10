@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-116",
+      "ref": "refs/pull/116/merge",
+      "sha": "788347ce7deaf1321a5f959573da2d5ec8e2fbd0",
+      "timestamp": "2026-09-10T16:53:07.499Z",
+      "commits": [
+        {
+          "sha": "788347ce7deaf1321a5f959573da2d5ec8e2fbd0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T10:52:36-06:00",
+          "message": "Merge 8c62b6fdf648e0b1e7cd2a21ac9b4712937ffa1d into a8d9de902dc0c0498613487c9a679144b4881e8e\n"
+        },
+        {
+          "sha": "8c62b6fdf648e0b1e7cd2a21ac9b4712937ffa1d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T10:52:31-06:00",
+          "message": "fix(console): delegate printJson to the JSON renderable (rich-json-dxs.1, rich-json-dxs.2)\n\n`Console.printJson` built a key-sorted object and passed it to\n`JSON.stringify` as the replacer, behind an `as unknown as undefined`\ncast. JSON.stringify ignores a plain object in that position, so\n`sortKeys` did nothing, and no highlighter ran. `JSONRenderable` already\ndid both.\n\nprintJson now builds a `JSONRenderable` and prints it with soft wrap, as\nRich's print_json does, so a line wider than the console stays whole and\nthe output stays valid JSON. Its options are `JSONOptions`, which adds\n`highlight`.\n\njson.ts moves from renderables/ to core/. An import from core/console.ts\ninto renderables/ would have been a third upward edge out of core. The\nmodule imports only core primitives and sits at tier 6 beside pretty, for\nthe reason pretty.ts's header gives. CLAUDE.md's tier list names it.\n\nThe printJson tests expect Python Rich 9d8f9a3's output for key sorting\nat every depth and for a line wider than the console, and assert the\ntheme style Rich gives braces, keys and strings. All three fail against\nthe old implementation. docs/console.md no longer says printJson does\nnot colorize.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a8d9de902dc0c0498613487c9a679144b4881e8e",
