@@ -4,15 +4,22 @@
     {
       "version": "pr-119",
       "ref": "refs/pull/119/merge",
-      "sha": "7e5069af7e63f4c78ee3aceb5625d831de609511",
-      "timestamp": "2026-09-10T18:16:53.730Z",
+      "sha": "2fd68557da4160a3c64bd300a779e2ca8cc16ae8",
+      "timestamp": "2026-09-10T18:41:54.390Z",
       "commits": [
         {
-          "sha": "7e5069af7e63f4c78ee3aceb5625d831de609511",
+          "sha": "2fd68557da4160a3c64bd300a779e2ca8cc16ae8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T12:16:23-06:00",
-          "message": "Merge c245b94057be65bc91aa140b6883a7ec03c10b99 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+          "timestamp": "2026-09-10T18:41:17Z",
+          "message": "Merge 53d84d6ee207318a0b4d63a4f8377d07a4646995 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+        },
+        {
+          "sha": "53d84d6ee207318a0b4d63a4f8377d07a4646995",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T12:38:21-06:00",
+          "message": "fix(template-bindings): style a scope fragment whose base style is a definition (rich-style-tdn)\n\napplyStyleToFragment rejected every string base style, so a RichText\nhanded in through template scope with the style \"italic\" could not be\nmade bold. It now parses a string base as a style definition and throws\nits TypeError only when that parse fails, which is what a theme name\ndoes: a name resolves against the theme of a render, and a template runs\nbefore any render exists.\n\nThe link-sanitizer comment in RichText no longer promises that a raw\nrichText.style.link is clean. It names the two crossings instead:\nadmitStyle on the way in, resolveStyle on the way out to a render.\n\nTests:\n- test/core/base-style.ts holds baseStyleOf, the one narrowing of\n  RichText.style to a Style. The style-funcs, color-funcs and text tests\n  read style attributes through it, because String.prototype's legacy\n  bold and link methods let a raw rt.style.bold type-check and compare\n  a function to true.\n- style-funcs: {{ bold .n }} over a scope RichText styled italic comes\n  out bold and italic.\n- console: a Table under Theme({}, { inherit: false }) throws\n  StyleSyntaxError. Thirteen renderables (Panel border and title, Rule,\n  Tree guide, Padding, Spinner, ProgressBar, the percentage, remaining\n  and elapsed progress columns, Markdown heading and inline code,\n  Traceback) and Status each draw two theme colours as truecolor SGR.\n"
         },
         {
           "sha": "c245b94057be65bc91aa140b6883a7ec03c10b99",
