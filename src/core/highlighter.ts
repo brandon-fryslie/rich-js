@@ -98,16 +98,39 @@ export class ReprHighlighter extends RegexHighlighter {
 
 // --- JSONHighlighter ---
 
+// A JSON string as Python Rich 9d8f9a3 matches one, `b` bytes prefix included:
+// an opening quote with no backslash or word character before it, through the
+// first quote with no backslash before it, so an escaped quote stays inside.
+const JSON_STR = String.raw`(?<![\\\w])(?<str>b?".*?(?<!\\)")`;
+
 export class JSONHighlighter extends RegexHighlighter {
   static override baseStyle = "json.";
+  // [LAW:dataflow-not-control-flow] One alternation, scanned once, as Rich's
+  // `_combine_regex` joins it. A token claims its characters where the scan
+  // meets it, so the `true` and `12` inside `"true 12"` belong to the string.
   static override highlights = [
-    /(?<key>"[^"]*")\s*:/g,
-    /:\s*(?<str>"[^"]*")/g,
-    /(?<bool>\btrue\b|\bfalse\b)/g,
-    /(?<null>\bnull\b)/g,
-    /(?<number>-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
-    /(?<brace>[{}[\]])/g,
+    [
+      String.raw`(?<brace>[\{\[\(\)\]\}])`,
+      String.raw`\b(?<bool_true>true)\b|\b(?<bool_false>false)\b|\b(?<null>null)\b`,
+      String.raw`(?<number>(?<!\w)\-?[0-9]+\.?[0-9]*(e[\-\+]?\d+?)?\b|0x[0-9a-fA-F]*)`,
+      JSON_STR,
+    ].join("|"),
   ];
+
+  // A string followed by a colon is also a key. Its `json.key` span comes after
+  // its `json.str` span, so the key style lands on top. Each string is found on
+  // its own and then checked for a colon. One `string(?=:)` pattern would get
+  // this wrong: its lazy body can stretch past a value's closing quote to the
+  // next key's, marking `"b", "c"` in `{"a": "b", "c": 1}` as one key.
+  override highlight(text: RichText): void {
+    super.highlight(text);
+    const colon = /[ \n\r\t]*:/y;
+    for (const { index, 0: str } of text.plain.matchAll(new RegExp(JSON_STR, "g"))) {
+      const end = index + str.length;
+      colon.lastIndex = end;
+      if (colon.test(text.plain)) text.stylize("json.key", index, end);
+    }
+  }
 }
 
 // --- ISO8601Highlighter ---

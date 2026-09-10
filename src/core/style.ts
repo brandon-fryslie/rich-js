@@ -734,11 +734,12 @@ export const DEFAULT_STYLES: Record<string, Style> = {
 
   // JSON
   "json.brace": Style.parse("bold"),
-  "json.bool": Style.parse("italic bright_magenta"),
+  "json.bool_true": Style.parse("italic bright_green"),
+  "json.bool_false": Style.parse("italic bright_red"),
   "json.key": Style.parse("bold blue"),
   "json.null": Style.parse("italic magenta"),
-  "json.number": Style.parse("cyan"),
-  "json.str": Style.parse("green"),
+  "json.number": Style.parse("bold not italic cyan"),
+  "json.str": Style.parse("not bold not italic green"),
 
   // Markdown
   "markdown.h1": Style.parse("bold underline"),
