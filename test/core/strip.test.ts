@@ -6,7 +6,7 @@ import {
   PlainJoiner,
   GradientJoiner,
 } from "../../src/core/strip.js";
-import { Style } from "../../src/core/style.js";
+import { Style, Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
@@ -285,5 +285,32 @@ describe("edge-aware joiner protocol with varying interior styling", () => {
     const r = cell("", "white on red");
     expect(r.edgeStyle("left", OPTIONS).bgcolor?.name).toBe("red");
     expect(r.edgeStyle("right", OPTIONS).bgcolor?.name).toBe("red");
+  });
+});
+
+// A cell's style may be a theme name, which is a colour only against the theme
+// of the render drawing it. That is why a joiner reads edges from inside the
+// renderable it returns rather than in `join` — these pin the deferral, which
+// a joiner reading edges eagerly would pass every test above.
+describe("edge styles resolved against the render's theme", () => {
+  const THEMED: RenderOptions = {
+    maxWidth: 80,
+    theme: new Theme({ "strip.lead": "white on red", "strip.tail": "white on blue" }),
+  };
+
+  it("RichText.edgeStyle resolves a theme name through the render's theme", () => {
+    const r = cell("hello", "strip.lead");
+    expect(r.edgeStyle("left", THEMED).bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right", THEMED).bgcolor?.name).toBe("red");
+  });
+
+  it("PowerlineJoiner paints the transition in the theme's colours", () => {
+    const strip = new Strip(
+      [cell(" lead ", "strip.lead"), cell(" tail ", "strip.tail")],
+      new PowerlineJoiner({ glyph: ">" }),
+    );
+    const mid = [...strip.render(THEMED)].find((s) => s.text === ">")!;
+    expect(mid.style?.color?.name).toBe("red");
+    expect(mid.style?.bgcolor?.name).toBe("blue");
   });
 });
