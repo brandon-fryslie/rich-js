@@ -1,15 +1,20 @@
 /**
  * JSON — renders JSON data with syntax highlighting and pretty-printing.
+ *
+ * Lives in `core/` for the reason `pretty.ts` does, argued in its header: it
+ * turns foreign input into `RichText`, composes no other renderable, and
+ * imports core primitives only. `Console.printJson` delegates here, so this is
+ * where the console can reach it without an upward edge. [LAW:one-way-deps]
  */
 
-import { Segment } from "../core/segment.js";
-import { RichText } from "../core/text.js";
-import { JSONHighlighter } from "../core/highlighter.js";
+import { Segment } from "./segment.js";
+import { RichText } from "./text.js";
+import { JSONHighlighter } from "./highlighter.js";
 import type {
   Renderable,
   Measurable,
   RenderOptions,
-} from "../core/protocol.js";
+} from "./protocol.js";
 
 export interface JSONOptions {
   indent?: number;

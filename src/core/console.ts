@@ -9,6 +9,7 @@ import type { DetectColorOptions } from "./color.js";
 import { RichText } from "./text.js";
 import { renderMarkup } from "./markup.js";
 import { Pretty } from "./pretty.js";
+import { JSONRenderable, type JSONOptions } from "./json.js";
 import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
 // [LAW:one-way-deps] exception: one of the two sanctioned upward edges out of
@@ -525,12 +526,15 @@ export class Console {
     this._writeSegments(segments);
   }
 
-  printJson(json: string | object, options?: { indent?: number; sortKeys?: boolean }): void {
-    // Lazy import to avoid circular deps
-    const data = typeof json === "string" ? JSON.parse(json) as unknown : json;
-    const formatted = JSON.stringify(data, options?.sortKeys ? Object.keys(data as object).sort().reduce((r: Record<string, unknown>, k) => { r[k] = (data as Record<string, unknown>)[k]; return r; }, {}) as unknown as undefined : undefined, options?.indent ?? 2);
-    const text = new RichText(formatted, { end: "" });
-    this.print(text);
+  // [LAW:one-source-of-truth] `JSONRenderable` is the one formatter for JSON and
+  // `JSONOptions` is its option set; this method only picks the constructor. It
+  // prints with soft wrap, as the reference does, so a line wider than the
+  // console reaches the terminal whole and the output stays valid JSON.
+  printJson(json: string | object, options?: JSONOptions): void {
+    const renderable = typeof json === "string"
+      ? JSONRenderable.fromString(json, options)
+      : JSONRenderable.fromData(json, options);
+    this.print(renderable, { softWrap: true });
   }
 
   // --- Capture ---

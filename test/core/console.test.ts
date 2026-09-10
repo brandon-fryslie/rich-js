@@ -664,21 +664,52 @@ describe("Console.rule()", () => {
 
 // --- Console.printJson() ---
 
+// Every expected literal here is what Python Rich 9d8f9a3's `print_json` prints
+// for the same call at the same width.
 describe("Console.printJson()", () => {
-  it("pretty-prints a JSON string", () => {
-    const { console: c, chunks } = makeConsole();
-    c.printJson('{"key": "value"}');
-    const output = captured(chunks);
-    expect(output).toContain("key");
-    expect(output).toContain("value");
+  const printJson = (
+    overrides: ConsoleOptions,
+    ...args: Parameters<Console["printJson"]>
+  ): string => {
+    const { console: c, chunks } = makeConsole(overrides);
+    c.printJson(...args);
+    return captured(chunks);
+  };
+
+  it("parses a JSON string and re-indents it", () => {
+    expect(printJson({}, '{"a": [1, 2]}', { indent: 4 }))
+      .toBe('{\n    "a": [\n        1,\n        2\n    ]\n}\n');
   });
 
-  it("pretty-prints a JSON object", () => {
-    const { console: c, chunks } = makeConsole();
-    c.printJson({ key: "value" });
-    const output = captured(chunks);
-    expect(output).toContain("key");
-    expect(output).toContain("value");
+  it("sorts keys at every depth, including objects inside arrays", () => {
+    const data = { z: { b: 1, a: [{ d: 1, c: 2 }] }, a: true };
+    expect(printJson({}, data, { sortKeys: true })).toBe(
+      '{\n  "a": true,\n  "z": {\n    "a": [\n      {\n        "c": 2,\n        "d": 1\n      }\n    ],\n    "b": 1\n  }\n}\n',
+    );
+  });
+
+  // Pinned as the theme style Rich gives each token rather than as its bytes:
+  // rich-js orders SGR parameters colour-first (rich-color-7kv), which would
+  // fail a byte pin on every key without saying anything about highlighting.
+  it("highlights braces, keys and strings with the theme's json styles", () => {
+    const expected = new RichText('{\n  "key": "value"\n}', { end: "" })
+      .stylize("json.brace", 0, 1)
+      .stylize("json.key", 4, 9)
+      .stylize("json.str", 11, 18)
+      .stylize("json.brace", 19, 20);
+    const { console: reference, chunks } = makeConsole({ colorSystem: "truecolor" });
+    reference.print(expected);
+    expect(printJson({ colorSystem: "truecolor" }, '{"key": "value"}')).toBe(captured(chunks));
+  });
+
+  it("prints plain text when highlight is off", () => {
+    expect(printJson({ colorSystem: "truecolor" }, '{"key": "value"}', { highlight: false }))
+      .toBe('{\n  "key": "value"\n}\n');
+  });
+
+  it("keeps a line wider than the console whole, neither wrapped nor cropped", () => {
+    expect(printJson({ width: 20 }, { key: "a value that is much longer than twenty cells" }))
+      .toBe('{\n  "key": "a value that is much longer than twenty cells"\n}\n');
   });
 });
 
