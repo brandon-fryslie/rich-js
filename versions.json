@@ -4,15 +4,22 @@
     {
       "version": "pr-119",
       "ref": "refs/pull/119/merge",
-      "sha": "2fd68557da4160a3c64bd300a779e2ca8cc16ae8",
-      "timestamp": "2026-09-10T18:41:54.390Z",
+      "sha": "ff31ad41cbfb050a649d5dfdaabfc4d3533d66dd",
+      "timestamp": "2026-09-10T19:08:37.051Z",
       "commits": [
         {
-          "sha": "2fd68557da4160a3c64bd300a779e2ca8cc16ae8",
+          "sha": "ff31ad41cbfb050a649d5dfdaabfc4d3533d66dd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T18:41:17Z",
-          "message": "Merge 53d84d6ee207318a0b4d63a4f8377d07a4646995 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+          "timestamp": "2026-09-10T19:08:01Z",
+          "message": "Merge 703a429391407d5695e7082ba09c22631d3eb4e9 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+        },
+        {
+          "sha": "703a429391407d5695e7082ba09c22631d3eb4e9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T13:07:52-06:00",
+          "message": "fix(tree,text): keep theme resolution out of Tree.measure and the highlightWords count (rich-style-tdn)\n\nTree.measure walks the same rows render does, and that walk resolved\neach row's guide style through getStyle. A guide_style name the theme\ndid not define made measure throw, though a width needs no style. Rows\nnow carry their guide styles as given, nearest first, and _renderRow\nresolves them and draws the guides in the first that is not null.\nPython Rich's Tree.__rich_measure__ resolves no style either.\n\nhighlightWords returned 0 for an empty style, while _addSpan already\ndrops one. That return is gone, so the count is the words matched for\nany style, as in Python Rich's highlight_words. Checking a name there\ninstead would bring back the theme-blind lookup this branch removes.\n\nTests:\n- tree: a guide style name no theme defines measures as no guide style\n  does.\n- text: highlightWords counts every match for an undefined name and for\n  the empty style.\n- console: a word highlighted with a name only the console's theme\n  defines is counted and drawn in the theme's colour.\n"
         },
         {
           "sha": "53d84d6ee207318a0b4d63a4f8377d07a4646995",
