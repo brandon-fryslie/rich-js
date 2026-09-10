@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-115",
-      "ref": "refs/pull/115/merge",
-      "sha": "256809686a7d36f0384543a591d5f3d2d1239fee",
-      "timestamp": "2026-09-10T16:36:33.190Z",
-      "commits": [
-        {
-          "sha": "256809686a7d36f0384543a591d5f3d2d1239fee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T16:35:57Z",
-          "message": "Merge c45304b7fe302687606333217c4a27714d7a5903 into fca2d879ffdfd2986697ae6a92dba1ecc738c663\n"
-        },
-        {
-          "sha": "c45304b7fe302687606333217c4a27714d7a5903",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T10:35:53-06:00",
-          "message": "test(tree, layout): pin wide-glyph cropping to the reference\n\ncropLines now pads a wide glyph the edge cuts through, and Tree labels\nand Layout panes both crop through it, so their output changed as well.\nPython Rich 9d8f9a3 pads in both places, because render_lines crops\nwith set_cell_size. These tests assert its rows at width 9, and both\nfail against the old no-pad crop.\n"
-        },
-        {
-          "sha": "286d57e2b7cf4dda51f679a7f57f7378129364c9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T10:25:15-06:00",
-          "message": "fix(console): make print honour crop and overflow \"ignore\" (rich-console-8lg)\n\n`crop` was accepted and never read, and `overflow: \"ignore\"` was mapped\naway before rendering, so it wrapped exactly like \"fold\".\n\nprint now cuts every line at the console width, the line-end included,\nunless `crop: false` or `softWrap` turns cropping off. \"ignore\" reaches\nthe render as `noWrap`, so the line is neither wrapped nor cut before\nthat crop. `Segment.cropLines` leaves a space where the edge splits a\nwide glyph. Each new test expects the output Python Rich 9d8f9a3 prints\nfor the same call.\n\ndocs/console.md now describes both options, and docs/strip.md no longer\nsays print leaves a too-wide FlexStrip item whole.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "fca2d879ffdfd2986697ae6a92dba1ecc738c663",
-      "timestamp": "2026-09-10T16:08:56.460Z",
+      "sha": "a8d9de902dc0c0498613487c9a679144b4881e8e",
+      "timestamp": "2026-09-10T16:42:04.982Z",
       "commits": [
         {
-          "sha": "fca2d879ffdfd2986697ae6a92dba1ecc738c663",
+          "sha": "a8d9de902dc0c0498613487c9a679144b4881e8e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T10:08:23-06:00",
-          "message": "docs(console): show full justification with a worked example (rich-justify-0cr.4) (#114)\n\nThe Justify table still described \"full\" as padding without stretching,\nwhich stopped being true when .1 implemented it. The row now says what it\ndoes, and a worked example follows it.\n\nThe example renders one paragraph at width 42 and shows the three things\nthat surprise a reader: the last line of a paragraph stays ragged, a line\nholding one word (a URL) keeps its width even when more text follows, and\nan authored double space is two gaps, so it comes out twice as wide as its\nneighbours. The snippet was run as written through this library and\nthrough Python Rich (9d8f9a3); the output block is byte-identical to both.\n\nThe ticket's suggested example, \"a  bb cccc dddd\" at width 12, was not\nused: with two cells of slack it renders the same whether a run of spaces\nis one gap or several, so it cannot show the third point, and its only\none-word line is also the last line.\n\nThe sentence \"each line of a wrapped paragraph is placed in its own right\"\nis also rewritten, because \"full\" has to know which line is last."
+          "timestamp": "2026-09-10T10:41:36-06:00",
+          "message": "fix(console): make print honour crop and overflow \"ignore\" (rich-console-8lg) (#115)\n\n* fix(console): make print honour crop and overflow \"ignore\" (rich-console-8lg)\n\n`crop` was accepted and never read, and `overflow: \"ignore\"` was mapped\naway before rendering, so it wrapped exactly like \"fold\".\n\nprint now cuts every line at the console width, the line-end included,\nunless `crop: false` or `softWrap` turns cropping off. \"ignore\" reaches\nthe render as `noWrap`, so the line is neither wrapped nor cut before\nthat crop. `Segment.cropLines` leaves a space where the edge splits a\nwide glyph. Each new test expects the output Python Rich 9d8f9a3 prints\nfor the same call.\n\ndocs/console.md now describes both options, and docs/strip.md no longer\nsays print leaves a too-wide FlexStrip item whole.\n\n* test(tree, layout): pin wide-glyph cropping to the reference\n\ncropLines now pads a wide glyph the edge cuts through, and Tree labels\nand Layout panes both crop through it, so their output changed as well.\nPython Rich 9d8f9a3 pads in both places, because render_lines crops\nwith set_cell_size. These tests assert its rows at width 9, and both\nfail against the old no-pad crop."
         }
       ]
     }
