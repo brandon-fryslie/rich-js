@@ -45,7 +45,12 @@ function toRenderable(label: string | RichText | Renderable): Renderable {
 
 /** One emitted row: the guides that lead it, then the label that follows them. */
 interface TreeRow {
-  readonly guides: Array<[string, Style | undefined]>;
+  readonly guides: string[];
+  /**
+   * The styles the guides may be drawn in, nearest first, as given. Left
+   * unresolved because `measure` walks the rows too, and a width needs no theme.
+   */
+  readonly guideStyles: ReadonlyArray<string | Style>;
   readonly label: Renderable;
 }
 
@@ -111,11 +116,9 @@ export class Tree implements Renderable, Measurable {
     showLabel: boolean,
   ): Iterable<TreeRow> {
     const ascii = options.asciiOnly ?? false;
-    const ownGuide = getStyle(options, this.guideStyle);
-    const guideStyle = ownGuide.isNull ? undefined : ownGuide;
 
     if (showLabel) {
-      yield { guides: prefixes.map((p) => [p, guideStyle]), label: this.label };
+      yield { guides: prefixes, guideStyles: [this.guideStyle], label: this.label };
     }
 
     if (!this.expanded) return;
@@ -131,11 +134,9 @@ export class Tree implements Renderable, Measurable {
         : (isLast ? GUIDE_SPACE : GUIDE_VERT);
 
       // Child label with branch guide
-      const childGuide = getStyle(options, child.guideStyle);
-      const childGuideStyle = childGuide.isNull ? guideStyle : childGuide;
-
       yield {
-        guides: [...prefixes, branch].map((p) => [p, childGuideStyle]),
+        guides: [...prefixes, branch],
+        guideStyles: [child.guideStyle, this.guideStyle],
         label: child.label,
       };
 
@@ -168,10 +169,11 @@ export class Tree implements Renderable, Measurable {
     options: RenderOptions,
     row: TreeRow,
   ): Iterable<Segment> {
+    const guideStyle = row.guideStyles.map((style) => getStyle(options, style)).find((style) => !style.isNull);
     let left: number = options.maxWidth;
-    for (const [text, style] of row.guides) {
+    for (const text of row.guides) {
       const piece = cellFit(text, asCellCol(left));
-      if (piece.length > 0) yield new Segment(piece, style);
+      if (piece.length > 0) yield new Segment(piece, guideStyle);
       left -= cellLen(piece);
     }
     // The guides above are cropped by `cellFit`; the label was not, so a label
@@ -193,7 +195,7 @@ export class Tree implements Renderable, Measurable {
     // offer came back unbounded.
     let natural = 0;
     for (const row of this._rows(parsed, [], !this.hideRoot)) {
-      const guideWidth = row.guides.reduce((sum, [text]) => sum + cellLen(text), 0);
+      const guideWidth = row.guides.reduce((sum, text) => sum + cellLen(text), 0);
       natural = Math.max(natural, guideWidth + labelWidth(parsed, row.label));
     }
 

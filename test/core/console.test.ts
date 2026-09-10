@@ -1260,4 +1260,12 @@ describe("Console theme resolution", () => {
       expect(captured(chunks)).toContain(sgr);
     }
   });
+
+  it("counts and draws words highlighted with a name only its console's theme defines", () => {
+    for (const [hex, sgr] of COLORS) {
+      const text = new RichText("the cat");
+      expect(text.highlightWords(["cat"], "my.word")).toBe(1);
+      expect(printed(text, { theme: new Theme({ "my.word": hex }) })).toContain(sgr);
+    }
+  });
 });

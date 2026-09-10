@@ -396,6 +396,14 @@ describe("RichText.highlightWords()", () => {
     const count = t.highlightWords(["hello"], "bold", { caseSensitive: false });
     expect(count).toBe(3);
   });
+
+  it("counts every match, whatever its style resolves to", () => {
+    // A name resolves against the theme of the render that draws it, which
+    // does not exist yet, so the count cannot depend on it.
+    const t = new RichText("The cat sat on the mat");
+    expect(t.highlightWords(["cat", "mat"], "no.such.style")).toBe(2);
+    expect(t.highlightWords(["cat", "mat"], "")).toBe(2);
+  });
 });
 
 // =========================================================

@@ -414,7 +414,6 @@ export class RichText implements Renderable, Measurable {
     options?: { caseSensitive?: boolean },
   ): number {
     const caseSensitive = options?.caseSensitive !== false;
-    if (isEmptyStyle(style)) return 0;
 
     let count = 0;
     for (const word of words) {
