@@ -4,15 +4,29 @@
     {
       "version": "pr-124",
       "ref": "refs/pull/124/merge",
-      "sha": "db5e3c9f756af3b4008e474d3f711c5a1cdf4d8a",
-      "timestamp": "2026-09-11T12:41:25.484Z",
+      "sha": "1e0035b12dbf38810b56a1c9886ab82c275c775f",
+      "timestamp": "2026-09-11T12:50:04.492Z",
       "commits": [
         {
-          "sha": "db5e3c9f756af3b4008e474d3f711c5a1cdf4d8a",
+          "sha": "1e0035b12dbf38810b56a1c9886ab82c275c775f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T12:40:48Z",
-          "message": "Merge d4324ecd16ed8b19638fbafd95cefa29175cdfc0 into 883b8e57fc2199b44d88c601460f268a184c49a5\n"
+          "timestamp": "2026-09-11T12:49:35Z",
+          "message": "Merge 5316ac79de4ea47b9d7301a4a4e666bd3b94103b into 883b8e57fc2199b44d88c601460f268a184c49a5\n"
+        },
+        {
+          "sha": "5316ac79de4ea47b9d7301a4a4e666bd3b94103b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T06:49:22-06:00",
+          "message": "docs(packaging): stop claiming a release step verifies the Node floor\n\nBoth the `ci.yml` comment and its CLAUDE.md copy said the floor \"is verified by\npacking a tarball and installing it under the lowest admitted Node, which is a\nrelease step\". There is no such step. `publish.yml` pins Node 22, runs\nlint/test/build, and publishes; nothing in this repository packs a tarball and\ninstalls it under the floor.\n\nThe check was run by hand, once, on 48a80043, and is recorded in PR #124.\nAutomating it is rich-packaging-8b7, which carries the proven procedure.\n`test/seam/node-floor.ts`'s header had it right all along — \"done by hand on the\ncommit that set this floor and is recorded in its PR\" — so this is two copies of\none fact being brought back to the answer the third already gave.\n\nA comment promising a safety net is worse than the gap it papers over, because\nit stops the next reader from going to look for one. The gap is real and now\nstated where each file has room for it: the gate compares declarations and never\nexecutes `src/`, so the day `src/` reaches for a Node 22 API every check stays\ngreen while the package breaks on 20 — and CI cannot catch it, because\nsetup-node resolves a range to its newest satisfying version and has never once\nrun the declared floor.\n\nCLAUDE.md's sentence naming which documents the prose half reads gains\n`CLAUDE.md` alongside the other two, following f5dd8d9a putting it on the list.\n"
+        },
+        {
+          "sha": "f5dd8d9afd6b3fb917db18777b46281da9b51fc6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T06:47:48-06:00",
+          "message": "fix(seam): stop excluding required peers, and narrow what a red run blames\n\nFour findings from the PR #124 review, all in the node-floor gate.\n\n`peer` is no longer an exclusion flag. npm 7 and later install a required peer\ndependency as part of a default install, so its `engines` binds the floor like\nany other package's; dropping it understates the floor and raises no violation\nwhile doing so — the same leak as admitting a devDependency's range, pointed the\nother way, and the direction that fails silently. The review proposed narrowing\nthe check to `peer && optional`; removing the flag is the smaller fix and the\nmore honest one, because npm does not install an optional peer at all, so such a\npackage has no lockfile entry unless something else pulled it in, and that\nsomething else carries its own flag. A required peer now lands in\n`admittedByFlags` and not in `reachableFromRoot`, which is a `disagreement` — a\nstop-and-decide, where before it was a silent omission. The message for that arm\nnames required peers as the first thing to check.\n\nNothing changes for today's tree, and the review's supporting detail was wrong:\n`mobx` and `@promptctl/go-template-js` are recorded as plain `dev: true`, and the\nsole `peer: true` entry is `search-insights`, which is also `dev: true` and\ndeclares no `engines`.\n\n`treeFloor` now reports only the ranges that actually conflict when no range is\nstrictest, rather than the whole tree. With two packages those are the same set,\nwhich is why the existing fixture could not see the difference; a third package\ndeclaring `*` contains everything, constrains nothing, and had no business in a\nmessage telling someone which manifests to go read.\n\n`packageNameFromKey` replaces the key-slicing that was written out twice.\n[LAW:single-enforcer] — two copies of a parse are two answers to \"what is this\npackage called\" the day either one meets a lockfile shape the other has not.\n\n`lockfileVersion` was declared on the test's `Lockfile` type and never read;\ndeleted rather than explained.\n\nCLAUDE.md joins `DOCUMENTED_IN`. It was left off on the premise that it \"points\nat the field rather than naming a version\" — it does point at the field, and\nnames the version in the same breath (\"targeting Node.js >= 20; `package.json#engines`\nis the authority\"). Three copies were checked and the fourth was excused on a\npremise anyone could have read and disproved, which is how this fact came to have\nthree different answers to begin with.\n"
         },
         {
           "sha": "d4324ecd16ed8b19638fbafd95cefa29175cdfc0",
