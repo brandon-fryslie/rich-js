@@ -26,23 +26,10 @@
 
 import ts from "typescript";
 import path from "node:path";
-import { builtinModules } from "node:module";
 import { REPO_ROOT } from "../coverage/extract.js";
 import { runtimeModuleSpecifiers } from "./graph.js";
 import { isNameSlot } from "./identifiers.js";
-
-/**
- * [LAW:one-source-of-truth] The builtin list comes from the running Node,
- * not from a list kept here. It already carries the slashed forms
- * (`fs/promises`, `readline/promises`), so membership is one lookup; the
- * `node:` prefix stays a separate arm because specifiers exist under that
- * scheme which the array does not list.
- */
-const NODE_BUILTINS = new Set<string>(builtinModules);
-
-function isNodeBuiltin(specifier: string): boolean {
-  return specifier.startsWith("node:") || NODE_BUILTINS.has(specifier);
-}
+import { classifySpecifier } from "./specifiers.js";
 
 /**
  * Globals a browser does not provide. `globalThis` is standard and stays
@@ -82,7 +69,7 @@ export function browserSafetyViolations(sf: ts.SourceFile): SeamViolation[] {
     sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
 
   const imports = runtimeModuleSpecifiers(sf)
-    .filter((specifier) => isNodeBuiltin(specifier.text))
+    .filter((specifier) => classifySpecifier(specifier.text).kind === "builtin")
     .map(
       (specifier): SeamViolation => ({
         rule: "node-import",

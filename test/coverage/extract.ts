@@ -23,6 +23,36 @@ import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 const TEST_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(TEST_DIR, "..", "..");
 
+const PACKAGE_JSON_PATH = path.join(REPO_ROOT, "package.json");
+
+/**
+ * The fields of `package.json` any check here reads.
+ *
+ * Only the published surface is modelled — what a consumer's installer and
+ * resolver act on. `devDependencies` is deliberately absent, and its absence
+ * is the point: it describes this checkout, not the package, so a rule that
+ * consulted it would call a dependency satisfied because *we* happen to have
+ * it installed. That is the exact blindness `optional-peers.ts` exists to
+ * remove.
+ */
+export interface PackageManifest {
+  readonly name?: string;
+  readonly exports?: Readonly<Record<string, string | { import?: string }>>;
+  readonly dependencies?: Readonly<Record<string, string>>;
+  readonly peerDependencies?: Readonly<Record<string, string>>;
+  readonly peerDependenciesMeta?: Readonly<Record<string, { optional?: boolean }>>;
+}
+
+/**
+ * [LAW:one-source-of-truth] One parse of the manifest, at test-load time.
+ * The entry-module derivation reads it, and so does every rule that asks
+ * what the package promises a consumer; a second `readFileSync` would be a
+ * second reading of a file that is already the authority.
+ */
+export const PACKAGE_MANIFEST: PackageManifest = JSON.parse(
+  readFileSync(PACKAGE_JSON_PATH, "utf-8"),
+) as PackageManifest;
+
 // [LAW:one-source-of-truth] The public entry-module set is derived from
 // the `exports` field of `package.json` at test-load time — never a
 // hand-maintained list. Each subpath export's `import` target is a
@@ -41,27 +71,31 @@ export const REPO_ROOT = path.resolve(TEST_DIR, "..", "..");
  * verifier resolves symbols in. Both fall out of one walk of `package.json`,
  * so a new subpath export cannot reach one view and miss the other.
  */
-export const ENTRY_BY_SPECIFIER: ReadonlyMap<string, string> = deriveEntryModules();
+export const ENTRY_BY_SPECIFIER: ReadonlyMap<string, string> =
+  deriveEntryModules(PACKAGE_MANIFEST);
 
 export const ENTRY_MODULES: readonly string[] = Object.freeze([
   ...new Set(ENTRY_BY_SPECIFIER.values()),
 ]);
 
-function deriveEntryModules(): ReadonlyMap<string, string> {
-  const pkgPath = path.join(REPO_ROOT, "package.json");
-  const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as {
-    name?: string;
-    exports?: Record<string, string | { import?: string }>;
-  };
+/**
+ * [LAW:no-ambient-temporal-coupling] The manifest arrives as an argument
+ * rather than being read off module scope. Both are initialised when this
+ * module loads, and a parameter is what makes the order a fact of the
+ * expression instead of a fact of the line numbers — reorder the two
+ * declarations with an ambient read and the failure is a bare `ReferenceError`
+ * from the temporal dead zone, at load, in every suite at once.
+ */
+function deriveEntryModules(pkg: PackageManifest): ReadonlyMap<string, string> {
   if (!pkg.name) {
     throw new Error(
-      `coverage verifier: ${pkgPath} has no \`name\` field; ` +
+      `coverage verifier: ${PACKAGE_JSON_PATH} has no \`name\` field; ` +
         `cannot derive the specifier a reader would import from`,
     );
   }
   if (!pkg.exports) {
     throw new Error(
-      `coverage verifier: ${pkgPath} has no \`exports\` field; ` +
+      `coverage verifier: ${PACKAGE_JSON_PATH} has no \`exports\` field; ` +
         `nothing to derive the public entry-module set from`,
     );
   }
