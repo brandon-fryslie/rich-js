@@ -72,10 +72,10 @@ describe("the sideEffects declaration is true", () => {
  * fixtures are what say the scan can go red at all, and which shapes it
  * distinguishes.
  */
-function scan(source: string): ImportTimeEffect[] {
+function scan(source: string, name = "fixture.ts"): ImportTimeEffect[] {
   return importTimeEffects(
     ts.createSourceFile(
-      path.join(REPO_ROOT, "src", "fixture.ts"),
+      path.join(REPO_ROOT, "src", name),
       source,
       ts.ScriptTarget.ES2022,
       true,
@@ -121,6 +121,34 @@ describe("importTimeEffects", () => {
       },
     ]);
     expect(scan(`export class C { static x = 1; m() { register(C); } }`)).toEqual([]);
+  });
+
+  it("catches a statement inside a namespace, whose body runs as an IIFE", () => {
+    // The other place a declaration carries a statement list. A scan that
+    // stopped at top-level statements would be bypassed by writing the same
+    // call one nesting level down, and the failure names the inner line
+    // rather than the namespace wrapping it.
+    expect(scan(`export namespace Reg {\n  install();\n}`)).toEqual([
+      { rule: "effectful-statement", file: "src/fixture.ts", line: 2, kind: "ExpressionStatement" },
+    ]);
+    // `namespace A.B { … }` carries a ModuleDeclaration as its body rather
+    // than a block, so the dotted spelling is its own way through.
+    expect(scan(`namespace A.B {\n  install();\n}`)[0]).toMatchObject({ line: 2 });
+    expect(scan(`namespace Reg { export const x = 1; }`)).toEqual([]);
+  });
+
+  it("ignores an ambient declaration, which emits no code to run", () => {
+    expect(scan(`declare namespace Reg { const x: number; }`)).toEqual([]);
+    expect(scan(`declare module "x" { const y: number; }`)).toEqual([]);
+    expect(scan(`declare namespace A { namespace B { const x: number; } }`)).toEqual([]);
+    // The whole-file form of the same fact, and the one a `declare` modifier
+    // cannot carry: a `.d.ts` emits nothing and marks nothing `declare`.
+    // `listTypeScriptFiles("src")` matches `.d.ts`, so one added to the tree
+    // is swept in and must not be reported for code it never emits. The
+    // second line is the same source in a `.ts`, so the file is doing the
+    // work rather than the fixture being inert.
+    expect(scan(`namespace B {\n  install();\n}`, "fixture.d.ts")).toEqual([]);
+    expect(scan(`namespace B {\n  install();\n}`)[0]).toMatchObject({ line: 2 });
   });
 
   it("catches an import taken for its effects alone and names the specifier", () => {

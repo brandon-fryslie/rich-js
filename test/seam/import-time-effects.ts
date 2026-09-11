@@ -11,12 +11,14 @@
  * Two shapes say a module works at import time, and both are decided from
  * statement shape alone:
  *
- *   - a top-level statement that is not a declaration. A declaration binds a
- *     name; anything else in that position exists to be *run* — the
+ *   - a statement at module scope that is not a declaration. A declaration
+ *     binds a name; anything else in that position exists to be *run* — the
  *     registration call, the loop that patches a table, the `if` that installs
- *     a polyfill. A `static {}` block is the one form that smuggles arbitrary
- *     statements past a top-level scan, because it runs when the class
- *     declaration does, so it counts as one of those statements;
+ *     a polyfill. Two declarations carry a statement list that runs the moment
+ *     the declaration does, and module scope therefore reaches inside both: a
+ *     class's `static {}` blocks, and a `namespace`'s body, which TypeScript
+ *     emits as an IIFE. Miss either and a scan over top-level statements is
+ *     bypassed by writing the same call one nesting level down;
  *   - `import "./x.js"` with no bindings, which names a module for its effects
  *     and nothing else. Under this field that import is the first thing a
  *     bundler is entitled to drop.
@@ -76,6 +78,11 @@ export type ImportTimeEffect =
 
 /** Every reason importing `sf` would do work, in source order. */
 export function importTimeEffects(sf: ts.SourceFile): ImportTimeEffect[] {
+  // A declaration file emits nothing, so nothing in it can run. The sweep
+  // matches `.d.ts` — it asks for every `.ts` under `src/` — and this is the
+  // whole-file form of the fact `declare` carries on a single namespace.
+  if (sf.isDeclarationFile) return [];
+
   const file = path.relative(REPO_ROOT, sf.fileName);
   const lineOf = (node: ts.Node): number =>
     sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
@@ -118,16 +125,44 @@ export function describeEffect(effect: ImportTimeEffect): string {
 /**
  * The nodes `statement` executes when the module is imported.
  *
- * A declaration contributes no *statement*, save for the static blocks of a
- * top-level class: those are a statement list the class declaration runs on the
- * spot, and are the only place a declaration hides one. What a declaration
- * *evaluates* is a wider set than what it runs as statements — the header names
- * it, and names why this rule stops here.
+ * A declaration contributes no *statement* of its own, and two of them hide a
+ * statement list in their body — a class's static blocks, and a namespace's
+ * whole body, which TypeScript emits as an IIFE that runs when the module does.
+ * Both get the same rule rather than a second rule shaped like it, which is why
+ * this recurses: a namespace body is module scope by another name.
+ *
+ * What a declaration *evaluates* is a wider set than what it runs as
+ * statements — the header names it, and names why this rule stops there.
  */
 function runAtImport(statement: ts.Statement): ts.Node[] {
   if (!isDeclaration(statement)) return [statement];
-  if (!ts.isClassDeclaration(statement)) return [];
-  return statement.members.filter(ts.isClassStaticBlockDeclaration);
+  if (ts.isClassDeclaration(statement)) {
+    return statement.members.filter(ts.isClassStaticBlockDeclaration);
+  }
+  if (ts.isModuleDeclaration(statement)) return namespaceStatements(statement);
+  return [];
+}
+
+/**
+ * The statements a `namespace`'s body runs when the module is evaluated.
+ *
+ * A `declare` namespace emits no code, so its body never runs. The walk enters
+ * from the top of the file, so a namespace nested inside an ambient one is
+ * never reached to be asked — the outer `declare` stops it, which is the same
+ * answer one level cheaper.
+ *
+ * `namespace A.B { … }` carries a `ModuleDeclaration` as its own body rather
+ * than a block, so closing the plain form without following that one would
+ * leave the dotted spelling as the hole.
+ */
+function namespaceStatements(node: ts.ModuleDeclaration): ts.Node[] {
+  if (isAmbient(node) || node.body === undefined) return [];
+  if (ts.isModuleDeclaration(node.body)) return namespaceStatements(node.body);
+  return ts.isModuleBlock(node.body) ? node.body.statements.flatMap(runAtImport) : [];
+}
+
+function isAmbient(node: ts.ModuleDeclaration): boolean {
+  return (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.DeclareKeyword);
 }
 
 /**
