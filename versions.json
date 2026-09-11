@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-122",
-      "ref": "refs/pull/122/merge",
-      "sha": "859627d94e4a7758878f9190d5d0deb9e9981175",
-      "timestamp": "2026-09-11T11:33:36.621Z",
-      "commits": [
-        {
-          "sha": "859627d94e4a7758878f9190d5d0deb9e9981175",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T05:33:05-06:00",
-          "message": "Merge 14722e74b495a6fc63488a5d354f0b3201a51fad into 4c3cf55cfc6cb27d135938e3f1e4342b72bda865\n"
-        },
-        {
-          "sha": "14722e74b495a6fc63488a5d354f0b3201a51fad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T05:32:39-06:00",
-          "message": "docs(readme): document the package subpaths and the mobx install (rich-packaging-1xv.6)\n\nEvery import the README showed came from the bare package name, so a reader\nfollowing it wrote `import { Button } from \"@promptctl/rich-js\"` and got\nnothing — widgets left the main barrel two commits ago. Finding the right\nsubpath did not save them either: mobx is a peer marked optional, so\n`npm install @promptctl/rich-js` does not fetch it and does not warn, and\n`@promptctl/rich-js/widgets` fails at import with ERR_MODULE_NOT_FOUND until\nthey install it themselves.\n\nAn \"Entry points\" table under Installing now names the four areas that live\nbehind a subpath and why each does — `./widgets` and `./template-bindings`\nfor a third-party runtime dependency of their own, `./host` for the terminal\nseam, `./node/*` because they read node built-ins and the main entry point\nstays browser-safe. The table has no \"what you must install\" column, because\nthe two dependency-carrying subpaths are not symmetric: mobx is the\nconsumer's to install, while `@promptctl/go-template-js` is a plain\ndependency that arrives with the package. That asymmetry is carried in prose\nso it cannot be flattened into a row shape.\n\nA new Interactive Widgets section adds the first snippet that constructs a\nwidget, adapted from docs/widgets.md and kept complete enough to run — the\nCtrl+C handler included, since raw mode traps a reader who copies a shorter\nversion. The Status snippet imported only `Console` while calling\n`new Status(...)`; `Status` is on the barrel, so the import now names it.\n\nNothing in the test suite reads README.md, so the snippets were checked by\nhand: every module specifier resolved through node's own resolver against\n`package.json#exports`, and the widget snippet type-checked under `strict`\nagainst the built declarations.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4c3cf55cfc6cb27d135938e3f1e4342b72bda865",
-      "timestamp": "2026-09-11T11:21:41.511Z",
+      "sha": "781d65599a1e9e8eca7e24338099053f39728c6d",
+      "timestamp": "2026-09-11T11:38:08.121Z",
       "commits": [
         {
-          "sha": "4c3cf55cfc6cb27d135938e3f1e4342b72bda865",
+          "sha": "781d65599a1e9e8eca7e24338099053f39728c6d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T05:21:06-06:00",
-          "message": "perf(packaging)!: make mobx an optional peer (rich-packaging-1xv.5) (#121)\n\nmobx was a hard runtime dependency, so every consumer installed it whether\nor not a widget was ever constructed. The widgets split already took it out\nof the default bundle; this takes it out of the default install.\n\nIt is now a peer dependency marked optional in peerDependenciesMeta, which\nis the only spelling that does what the ticket asked. optionalDependencies\nwould not have: npm installs those and merely tolerates a build failure. A\nbare peer would not have either, since npm 7+ auto-installs peers. The pair\nis what makes npm neither fetch mobx nor warn about its absence. It stays in\ndevDependencies so this checkout's tests and demos still run.\n\nMeasured by packing a tarball and installing it into an empty project:\n8 packages before, 7 after, no mobx and no peer warning. The barrel renders\na Table with mobx absent; @promptctl/rich-js/widgets fails at import with\nERR_MODULE_NOT_FOUND until mobx is installed, and constructs a Button once\nit is. All 10 demo bundles still boot in Chromium under playwright.\n\nBREAKING CHANGE: consumers of @promptctl/rich-js/widgets must now install\nmobx themselves — `npm install @promptctl/rich-js mobx`.\n\nThe hazard this creates is invisible here by construction, which is why it\ncomes with a gate. mobx stays in devDependencies, so an `import { observable }\nfrom \"mobx\"` added under src/core/ would type-check, pass every test, run\nevery demo and build the docs — then break every downstream consumer at\ninstall time. test/seam/optional-peers.test.ts walks the runtime import graph\nfrom each package.json#exports entry separately and reports three ways: a\npackage declared nowhere, an optional peer reached from an entry that does\nnot provide it, and a PEER_PROVIDERS entry that can no longer reach the\npackage. Confirmed red by staging that exact import into src/core/measure.ts;\nit named the file, the line and the chain.\n\nclassifySpecifier moves to test/seam/specifiers.ts, which browser-safe.ts now\nshares rather than keeping a private copy — the same reason identifiers.ts\nexists. test/coverage/extract.ts gains PACKAGE_MANIFEST, one parse of\npackage.json, and deliberately does not model devDependencies: a rule that\nconsulted it would call a dependency satisfied because we happen to have it.\n\n@promptctl/go-template-js is the same shape and was left alone on purpose;\nit is filed as rich-packaging-1xv.dpo to be decided on its own merits."
+          "timestamp": "2026-09-11T05:37:29-06:00",
+          "message": "docs(readme): document the package subpaths and the mobx install (rich-packaging-1xv.6) (#122)\n\nEvery import the README showed came from the bare package name, so a reader\nfollowing it wrote `import { Button } from \"@promptctl/rich-js\"` and got\nnothing — widgets left the main barrel two commits ago. Finding the right\nsubpath did not save them either: mobx is a peer marked optional, so\n`npm install @promptctl/rich-js` does not fetch it and does not warn, and\n`@promptctl/rich-js/widgets` fails at import with ERR_MODULE_NOT_FOUND until\nthey install it themselves.\n\nAn \"Entry points\" table under Installing now names the four areas that live\nbehind a subpath and why each does — `./widgets` and `./template-bindings`\nfor a third-party runtime dependency of their own, `./host` for the terminal\nseam, `./node/*` because they read node built-ins and the main entry point\nstays browser-safe. The table has no \"what you must install\" column, because\nthe two dependency-carrying subpaths are not symmetric: mobx is the\nconsumer's to install, while `@promptctl/go-template-js` is a plain\ndependency that arrives with the package. That asymmetry is carried in prose\nso it cannot be flattened into a row shape.\n\nA new Interactive Widgets section adds the first snippet that constructs a\nwidget, adapted from docs/widgets.md and kept complete enough to run — the\nCtrl+C handler included, since raw mode traps a reader who copies a shorter\nversion. The Status snippet imported only `Console` while calling\n`new Status(...)`; `Status` is on the barrel, so the import now names it.\n\nNothing in the test suite reads README.md, so the snippets were checked by\nhand: every module specifier resolved through node's own resolver against\n`package.json#exports`, and the widget snippet type-checked under `strict`\nagainst the built declarations."
         }
       ]
     }
