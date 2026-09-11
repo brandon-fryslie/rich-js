@@ -16,6 +16,25 @@ Works on Linux, macOS, and Windows. Requires Node.js >= 20. ESM-only.
 npm install @promptctl/rich-js
 ```
 
+### Entry points
+
+Most of the library comes from the package name itself — `Console`, `Table`, `Panel`, `Tree`, and everything else in the snippets below. Four areas sit behind package subpaths instead — worth knowing before you go looking for one of them in the main entry point and find nothing there:
+
+| Import from | What lives there | Why it's separate |
+|---|---|---|
+| `@promptctl/rich-js/widgets` | Button, Checkbox, Toggle, TextInput, Dropdown, Slider, and the screen that mounts them | Carries a third-party runtime dependency of its own — MobX, for widget state |
+| `@promptctl/rich-js/template-bindings` | The styling vocabulary as Go-template functions, so styled text can be authored as a template | Carries a third-party runtime dependency of its own — `@promptctl/go-template-js`, the template engine |
+| `@promptctl/rich-js/host` | `TerminalHost`, `BrowserTerminalHost`, `hostStream` — the seam between rendering and a terminal | A program that just wants to write bytes through a host shouldn't pay for the widget set to do it |
+| `@promptctl/rich-js/node/save`, `/node/prompt`, `/node/traceback`, `/node/terminal-host` | File export, readline input, the crash handler, and the node TTY host | Each one reads node built-ins, and keeping them off the main entry point is what keeps that entry point browser-safe |
+
+The widget layer's MobX is the one dependency you install yourself. It is a peer dependency, and `npm install @promptctl/rich-js` deliberately doesn't fetch it — a program that prints a table shouldn't acquire a state library to do it:
+
+```sh
+npm install @promptctl/rich-js mobx
+```
+
+Import `@promptctl/rich-js/widgets` without MobX present and the import itself fails, with `ERR_MODULE_NOT_FOUND`. The main entry point is unaffected — every snippet on this page that imports from `@promptctl/rich-js` runs on the plain install. The template engine behind `template-bindings` is a plain dependency and arrives with the package, so that subpath needs nothing extra.
+
 ## Using the Console
 
 Import and construct a `Console` object:
@@ -145,7 +164,7 @@ await progress.run(async () => {
 For situations where it is hard to calculate progress, use `Status` to display a spinner animation with a message:
 
 ```typescript
-import { Console } from "@promptctl/rich-js";
+import { Console, Status } from "@promptctl/rich-js";
 
 const console = new Console();
 
@@ -265,6 +284,54 @@ installTraceback();
 ```
 
 `installTraceback` lives on the `node/traceback` subpath because it calls `process.on` and `process.exit`; the `Traceback` renderable itself stays in the main barrel, which remains browser-safe.
+
+</details>
+
+<details>
+<summary>Interactive Widgets</summary>
+
+Everything above draws once and returns. Widgets stay on screen and respond — a button that highlights under the cursor, a text field with a cursor you can move, a dropdown you filter by typing. They come from the `widgets` subpath and need MobX installed alongside the package (see [Entry points](#entry-points)).
+
+```typescript
+import { Button, TextInput, DefaultScreen, EventRouter } from "@promptctl/rich-js/widgets";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+
+const host = new NodeTerminalHost();
+const screen = new DefaultScreen({ host });
+const router = new EventRouter({ screen, host });
+
+const name = new TextInput({ placeholder: "your name" });
+const submit = new Button({ label: "Submit", variant: "primary" });
+
+const quit = (): void => {
+  router.stop();
+  screen.stop();
+  host.write("\n");
+};
+
+submit.onSubmit(() => {
+  quit();
+  host.write(`hello, ${name.value}\n`);
+  process.exit(0);
+});
+
+// Raw mode swallows Ctrl+C, so the app has to handle it itself.
+router.onKey(
+  (event) => {
+    if (event.ctrl && event.key === "c") {
+      quit();
+      process.exit(0);
+    }
+  },
+  { priority: "high" },
+);
+
+screen.mount(name, submit);
+screen.start();
+router.start();
+```
+
+`DefaultScreen` builds a focus manager when you don't pass one, so the `TextInput` has focus before the user touches anything and Tab moves between the two widgets. The screen re-renders through a MobX reaction: change a widget's state and the frame redraws itself, with no explicit repaint call anywhere. See [docs/widgets.md](docs/widgets.md) for the full widget set, key dispatch, layout placements, and how to write your own.
 
 </details>
 
