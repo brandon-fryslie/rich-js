@@ -4,15 +4,22 @@
     {
       "version": "pr-120",
       "ref": "refs/pull/120/merge",
-      "sha": "e1f75cda67542d2404b87cccd1f33ef17157599d",
-      "timestamp": "2026-09-11T01:05:26.676Z",
+      "sha": "4db27a22ffe35b580bfc02f9456e1a065d026751",
+      "timestamp": "2026-09-11T01:12:24.643Z",
       "commits": [
         {
-          "sha": "e1f75cda67542d2404b87cccd1f33ef17157599d",
+          "sha": "4db27a22ffe35b580bfc02f9456e1a065d026751",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T01:04:56Z",
-          "message": "Merge f24c987ebdfda91a6454081b029533967618744a into c70189904e6508c352d35f54db11aa4426df363c\n"
+          "timestamp": "2026-09-11T01:11:49Z",
+          "message": "Merge 5d2800f0443547f5f646320f4901f68793449d65 into c70189904e6508c352d35f54db11aa4426df363c\n"
+        },
+        {
+          "sha": "5d2800f0443547f5f646320f4901f68793449d65",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T19:11:44-06:00",
+          "message": "docs(seam): stop restating the import-time gate's grammar forms\n\nThe sentence naming what the gate catches drifted twice inside one PR. It named\n`static {}` as the only declaration carrying a statement list while the scan had\nhandled namespace bodies since `d4f3ff94`, and it described the bindingless\nimport as one spelling while `08784aa8` made it three. Review caught the first;\nthe second was already there underneath it.\n\nBoth are the same failure, and adding the missing items would only reset its\nclock: the paragraph and `test/seam/import-time-effects.ts`'s header were two\nenumerations of one grammar, and the header is the one that sits beside the code\nit describes. This file says as much about `HOST_ACCESS` a section up and about\nthe coverage allowlist a section down — a hand-maintained list of what a machine\nalready computes will be wrong, and will read as authoritative while it is.\n\nThe paragraph now states the rule at the altitude it can hold without drifting\nand hands the forms to the header.\n"
         },
         {
           "sha": "f24c987ebdfda91a6454081b029533967618744a",
