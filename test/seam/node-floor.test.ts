@@ -257,4 +257,64 @@ describe("the floor derivation", () => {
       /some-package declares a Node range npm cannot parse/,
     );
   });
+
+  it("refuses a manifest that declares no range, separately from a bad one", () => {
+    expect(() => nodeRange("", "package.json#engines.node")).toThrow(
+      /declares no Node range at all/,
+    );
+  });
+});
+
+/**
+ * The prose half, pinned the same way — and it needs the fixtures more than the
+ * derivation does.
+ *
+ * The two live documents can only ever exercise the passing path, because a
+ * document that has lost its claim is the thing being guarded against and is
+ * never what is checked in. So `noClaim` — the arm that fires precisely when
+ * this gate has stopped watching the sentence it was pointed at — would
+ * otherwise ship having never run.
+ */
+describe("the documented-floor derivation", () => {
+  it("reads the shapes both documents actually use", () => {
+    expect(nodeClaims("README.md", "Requires Node.js >= 20. ESM-only.")).toEqual([
+      { file: "README.md", line: 1, text: "Node.js >= 20", major: 20 },
+    ]);
+    expect(nodeClaims("docs/introduction.md", "It requires **Node.js ≥ 20** and is ESM-only.")).toEqual(
+      [{ file: "docs/introduction.md", line: 1, text: "Node.js ≥ 20", major: 20 }],
+    );
+  });
+
+  it("reports the line, so a red run says where to edit", () => {
+    const claims = nodeClaims("a.md", "intro\n\nNode >= 18\n");
+    expect(claims).toEqual([{ file: "a.md", line: 3, text: "Node >= 18", major: 18 }]);
+  });
+
+  it("catches a claim that disagrees with the field", () => {
+    const claims = nodeClaims("docs/introduction.md", "It requires **Node.js ≥ 18**.");
+    const violations = claimViolations(claims, 20, ["docs/introduction.md"]);
+    expect(violations.map((v) => v.kind)).toEqual(["wrongVersion"]);
+    expect(violations.map(describeClaimViolation).join("\n")).toContain("the field is the authority");
+  });
+
+  /**
+   * The arm the live documents cannot reach. A reworded sentence — "requires at
+   * least version 20 of Node.js" — carries the right number and still leaves
+   * this rule watching nothing, so silence has to be a failure rather than a
+   * pass.
+   */
+  it("fails on a document whose claim it can no longer find", () => {
+    const claims = nodeClaims("README.md", "Requires at least version 20 of Node.js.");
+    expect(claims).toEqual([]);
+    const violations = claimViolations(claims, 20, ["README.md"]);
+    expect(violations.map((v) => v.kind)).toEqual(["noClaim"]);
+    expect(violations.map(describeClaimViolation).join("\n")).toContain(
+      "silently stopped checking",
+    );
+  });
+
+  it("passes a document that names the declared floor", () => {
+    const claims = nodeClaims("README.md", "Requires Node.js >= 20.");
+    expect(claimViolations(claims, 20, ["README.md"])).toEqual([]);
+  });
 });
