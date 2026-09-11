@@ -1,0 +1,1 @@
+import{_ as i,o as t,c as a,ag as e}from"./chunks/framework.DVlkHO6K.js";const c=JSON.parse('{"title":"Styles","description":"","frontmatter":{},"headers":[],"relativePath":"style.md","filePath":"style.md"}'),n={name:"style.md"};function l(h,s,p,k,r,d){return t(),a("div",null,[...s[0]||(s[0]=[e("",43)])])}const y=i(n,[["render",l]]);export{c as __pageData,y as default};

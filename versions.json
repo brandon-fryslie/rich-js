@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-123",
+      "ref": "refs/pull/123/merge",
+      "sha": "86d110743fa60ba5fc09fd2fcb226d8f124c939f",
+      "timestamp": "2026-09-11T11:58:15.651Z",
+      "commits": [
+        {
+          "sha": "86d110743fa60ba5fc09fd2fcb226d8f124c939f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T05:57:43-06:00",
+          "message": "Merge 71c14438a908cadde1e1f5398ab5dc1dbacd32e7 into 781d65599a1e9e8eca7e24338099053f39728c6d\n"
+        },
+        {
+          "sha": "71c14438a908cadde1e1f5398ab5dc1dbacd32e7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T05:56:52-06:00",
+          "message": "perf(packaging)!: make the template engine an optional peer (rich-packaging-1xv.dpo)\n\n@promptctl/go-template-js was a hard runtime dependency, so every consumer\ninstalled it and its transitive @noble/hashes whether or not they ever\nauthored a template. The template-bindings subpath already kept it out of\nthe default bundle; this takes it out of the default install. Same move\nrich-packaging-1xv.5 made for mobx, and the last child of that epic.\n\nIt is now a peer dependency marked optional in peerDependenciesMeta, the\npair that makes npm neither fetch the package nor warn about its absence.\noptionalDependencies would not have: npm installs those. A bare peer would\nnot have either, since npm 7+ auto-installs peers. It stays in\ndevDependencies so this checkout's tests and demos still run.\n\nMeasured by packing a tarball into an empty project rather than by reading\npackage.json: the installed tree drops from 8 entries to 6, the two that\nleave being @promptctl/go-template-js and its transitive @noble/hashes, with\nno peer warning in either state. The barrel renders a Table with both peers\nabsent; @promptctl/rich-js/template-bindings fails at import with\nERR_MODULE_NOT_FOUND until the engine is installed, and renders bold-green\noutput through createRichTextEngine once it is. All 10 demo bundles still\nboot in Chromium under playwright, and the 130 template-bindings tests that\nimport the engine directly still pass.\n\nPEER_PROVIDERS gains one row naming @promptctl/rich-js/template-bindings.\nThe gate was confirmed red before being trusted, both ways it should go:\nwith the row missing it named src/template-bindings/index.ts:37, and with an\nimport of the engine staged into src/core/measure.ts it named the file, the\nline, and the chain src/index.ts -> src/core/measure.ts. Note it reported\none reach, not five — the other four imports of the engine are `import\ntype` and erase, which is the runtime-graph distinction working.\n\nThe \"what each published subpath costs to install\" block stated mobx's\ncontract concretely and would have under-described the new one. Its two\ncases are now one it.each over a literal table, plus a pin asserting that\ntable covers every optional peer package.json declares, so a third peer has\nto arrive with its contract written out instead of silently undescribed.\nThe values stay hand-written on purpose: deriving them from PEER_PROVIDERS\nwould restate the gate above rather than state the contract it protects.\n\nThree prose claims this falsifies, none of which any test reads — nothing in\nthe suite globs README.md, and symbol-existence.test.ts checks symbols, not\ndependency claims:\n\n  - docs/template-bindings.md: \"The engine is a dependency of rich-js, so\n    there is nothing extra to install.\"\n  - README.md: \"a plain dependency and arrives with the package, so that\n    subpath needs nothing extra.\"\n  - README.md: \"The widget layer's MobX is the one dependency you install\n    yourself\" — now false because there are two. The ticket had not spotted\n    this one.\n\nThe two subpaths are symmetric as of this change, which lifts the reason\nthe Entry points table deliberately had no \"what you must install\" column:\nthe asymmetry a row shape could have flattened is gone, so the table gains\nthe column and answers the question per row.\n\nCLAUDE.md's optional-peer section named mobx alone, which would have told an\nagent the engine was a plain dependency it could import from src/core/ —\nexactly the hazard that gate exists to catch, and invisible here because the\npackage is still in devDependencies. It now covers both peers with one rule\nrather than two copies of it. Its \"Node >= 20 (transitively required by\n@promptctl/go-template-js)\" attribution is also dropped: the engine no\nlonger binds a default install at all. What the real floor should be is a\nseparate question — package.json#engines is character-for-character vite's,\na devDependency no consumer installs, while string-width, now the only hard\ndependency, asks only for >=20 — and is filed rather than resolved here.\n\nBREAKING CHANGE: consumers of @promptctl/rich-js/template-bindings must now\ninstall @promptctl/go-template-js themselves — `npm install\n@promptctl/rich-js @promptctl/go-template-js`.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "781d65599a1e9e8eca7e24338099053f39728c6d",
