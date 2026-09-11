@@ -213,6 +213,24 @@ describe("the documented floor", () => {
  * is the failure the pair exists to rule out.
  */
 describe("the install set, derived twice", () => {
+  /**
+   * A lockfile as npm writes one, which is wider than what the rule reads.
+   *
+   * `LockEntry` deliberately omits `peer` and `optionalDependencies` — omission
+   * is how the rule refuses to consult them — so a fixture proving they are
+   * ignored has to hand them back in. The widening belongs here, at the fixture,
+   * and not in the type under test.
+   */
+  type RawLockPackages = Readonly<
+    Record<
+      string,
+      LockEntry & {
+        readonly peer?: boolean;
+        readonly optionalDependencies?: Readonly<Record<string, string>>;
+      }
+    >
+  >;
+
   it("agrees on a tree where the flags and the edges tell the same story", () => {
     const simple: LockPackages = {
       "": { dependencies: { a: "*" } },
@@ -259,12 +277,55 @@ describe("the install set, derived twice", () => {
    * way.
    */
   it("admits an entry npm marked only as a peer", () => {
-    const peered: Readonly<Record<string, LockEntry & { readonly peer?: boolean }>> = {
+    const peered: RawLockPackages = {
       "": {},
       "node_modules/required-peer": { peer: true },
       "node_modules/dev-peer": { peer: true, dev: true },
     };
     expect(admittedByFlags(peered)).toEqual(["node_modules/required-peer"]);
+  });
+
+  /**
+   * The other half of that change, and the reason the two are one change. npm
+   * records a peer under `peerDependencies`, never under `dependencies`, so a
+   * walk reading only the latter would admit a required peer by flag and be
+   * structurally incapable of reaching it — `disagreement` on every run for
+   * every tree with a required peer, which is a gate nobody can satisfy rather
+   * than a question anybody can answer.
+   */
+  it("follows a required peer edge, so both derivations see it", () => {
+    const withRequiredPeer: RawLockPackages = {
+      "": { dependencies: { a: "*" }, peerDependencies: { host: "^1" } },
+      "node_modules/a": {},
+      "node_modules/host": { peer: true },
+    };
+    expect(reachableFromRoot(withRequiredPeer).sort()).toEqual([
+      "node_modules/a",
+      "node_modules/host",
+    ]);
+    expect(productionKeys(withRequiredPeer)).toEqual({
+      kind: "agreed",
+      keys: ["node_modules/a", "node_modules/host"],
+    });
+  });
+
+  /**
+   * And stops at an optional one, read off `peerDependenciesMeta` — npm's own
+   * record of which peers it installs. This is the shape our own root entry has:
+   * `mobx` and `@promptctl/go-template-js` are both declared there as optional,
+   * which is exactly why neither binds the published floor.
+   */
+  it("does not follow an optional peer edge", () => {
+    const withOptionalPeer: RawLockPackages = {
+      "": {
+        dependencies: { a: "*" },
+        peerDependencies: { engine: "^1" },
+        peerDependenciesMeta: { engine: { optional: true } },
+      },
+      "node_modules/a": {},
+      "node_modules/engine": { dev: true },
+    };
+    expect(reachableFromRoot(withOptionalPeer)).toEqual(["node_modules/a"]);
   });
 
   /**
@@ -336,12 +397,7 @@ describe("the install set, derived twice", () => {
    * judgement the `optional` flag encodes, reached from the edge side.
    */
   it("does not follow an optional edge out of the root", () => {
-    const optionalEdge: Readonly<
-      Record<
-        string,
-        LockEntry & { readonly optionalDependencies?: Readonly<Record<string, string>> }
-      >
-    > = {
+    const optionalEdge: RawLockPackages = {
       "": { dependencies: { a: "*" }, optionalDependencies: { fsevents: "*" } },
       "node_modules/a": {},
       "node_modules/fsevents": {},

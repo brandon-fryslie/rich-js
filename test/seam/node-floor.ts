@@ -111,6 +111,8 @@ export interface LockEntry {
   readonly optional?: boolean;
   readonly engines?: Readonly<Record<string, string>>;
   readonly dependencies?: Readonly<Record<string, string>>;
+  readonly peerDependencies?: Readonly<Record<string, string>>;
+  readonly peerDependenciesMeta?: Readonly<Record<string, { readonly optional?: boolean }>>;
 }
 
 /** `package-lock.json#packages`, keyed by install path; `""` is the root. */
@@ -136,6 +138,11 @@ export type LockPackages = Readonly<Record<string, LockEntry>>;
  * stays green. An optional peer is a different animal and needs no flag here —
  * npm does not install one, so it has no entry unless something else pulled it
  * in, and that something else carries its own flag.
+ *
+ * Dropping `peer` from this list obliges `requiredEdges` to follow peer edges,
+ * and the two changes are one change: npm records a peer under
+ * `peerDependencies`, so admitting it here while the walk could not reach it
+ * would make the two derivations disagree permanently rather than usefully.
  *
  * Note what this list cannot promise: that it is complete. It is a claim about
  * npm's schema, which npm changes without asking, and the sentence that used to
@@ -166,23 +173,47 @@ export function admittedByFlags(packages: LockPackages): string[] {
 }
 
 /**
- * Entries reachable from the root's `dependencies`, following required edges.
+ * Every edge npm follows when it installs one entry: that entry's
+ * `dependencies`, plus the peers npm installs on its behalf.
  *
- * `optionalDependencies` are deliberately not followed. npm skips an optional
- * package whose `engines` the host fails rather than failing the install, so it
- * cannot bind a floor — which is the same judgement the `optional` flag encodes,
- * arrived at from the other side.
+ * [LAW:one-source-of-truth] Whether a peer edge is followed is read off
+ * `peerDependenciesMeta`, which is where npm keeps that fact, rather than
+ * inferred from anything else. "npm 7 and later install a required peer" and
+ * "npm skips an optional one" are one field seen from two sides, and a second
+ * rule deciding it here would be a rule that can disagree with the installer.
+ */
+function requiredEdges(entry: LockEntry | undefined): string[] {
+  const peers = Object.keys(entry?.peerDependencies ?? {}).filter(
+    (name) => entry?.peerDependenciesMeta?.[name]?.optional !== true,
+  );
+  return [...Object.keys(entry?.dependencies ?? {}), ...peers];
+}
+
+/**
+ * Entries reached from the root along the edges npm actually follows.
+ *
+ * `optionalDependencies` and optional peers are deliberately not followed. npm
+ * skips an optional package whose `engines` the host fails rather than failing
+ * the install, so it cannot bind a floor — which is the same judgement the
+ * `optional` flag encodes, arrived at from the other side.
+ *
+ * Required peers are followed, and leaving them out was a real bug for exactly
+ * as long as `admittedByFlags` stopped excluding `peer` entries. npm records a
+ * peer under `peerDependencies`, never under `dependencies`, so a walk that read
+ * only the latter could admit a required peer by flag and be structurally unable
+ * to reach it — a `disagreement` on every run, for every tree that has one. A
+ * gate nobody can satisfy is not a stop-and-decide; it is a gate that gets
+ * deleted.
  */
 export function reachableFromRoot(packages: LockPackages): string[] {
-  const root = packages[""];
   const reached = new Set<string>();
-  const queue = Object.keys(root?.dependencies ?? {}).map((name) => resolveFrom("", name, packages));
+  const queue = requiredEdges(packages[""]).map((name) => resolveFrom("", name, packages));
 
   while (queue.length > 0) {
     const key = queue.pop();
     if (key === undefined || reached.has(key)) continue;
     reached.add(key);
-    for (const name of Object.keys(packages[key]?.dependencies ?? {})) {
+    for (const name of requiredEdges(packages[key])) {
       queue.push(resolveFrom(key, name, packages));
     }
   }
@@ -256,11 +287,11 @@ export function describeProductionSet(set: ProductionSet): string {
     set.onlyByFlags
       .map(
         (key) =>
-          `    ${key} carries no exclusion flag this rule knows, but nothing in ` +
-          `package.json#dependencies reaches it. Either npm has a flag beyond ` +
+          `    ${key} carries no exclusion flag this rule knows, but no chain of ` +
+          `required edges from the root reaches it. Either npm has a flag beyond ` +
           `${EXCLUDED_BY_FLAG.join(", ")} and it belongs on that list, or the ` +
-          `entry really is installed and got there along an edge this walk does ` +
-          `not follow — a required peer dependency is the one to check first.`,
+          `entry really is installed and got there along a kind of edge ` +
+          `\`requiredEdges\` does not yet follow.`,
       )
       .concat(
         set.onlyByReachability.map(
