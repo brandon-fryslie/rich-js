@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-122",
+      "ref": "refs/pull/122/merge",
+      "sha": "859627d94e4a7758878f9190d5d0deb9e9981175",
+      "timestamp": "2026-09-11T11:33:36.621Z",
+      "commits": [
+        {
+          "sha": "859627d94e4a7758878f9190d5d0deb9e9981175",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T05:33:05-06:00",
+          "message": "Merge 14722e74b495a6fc63488a5d354f0b3201a51fad into 4c3cf55cfc6cb27d135938e3f1e4342b72bda865\n"
+        },
+        {
+          "sha": "14722e74b495a6fc63488a5d354f0b3201a51fad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T05:32:39-06:00",
+          "message": "docs(readme): document the package subpaths and the mobx install (rich-packaging-1xv.6)\n\nEvery import the README showed came from the bare package name, so a reader\nfollowing it wrote `import { Button } from \"@promptctl/rich-js\"` and got\nnothing — widgets left the main barrel two commits ago. Finding the right\nsubpath did not save them either: mobx is a peer marked optional, so\n`npm install @promptctl/rich-js` does not fetch it and does not warn, and\n`@promptctl/rich-js/widgets` fails at import with ERR_MODULE_NOT_FOUND until\nthey install it themselves.\n\nAn \"Entry points\" table under Installing now names the four areas that live\nbehind a subpath and why each does — `./widgets` and `./template-bindings`\nfor a third-party runtime dependency of their own, `./host` for the terminal\nseam, `./node/*` because they read node built-ins and the main entry point\nstays browser-safe. The table has no \"what you must install\" column, because\nthe two dependency-carrying subpaths are not symmetric: mobx is the\nconsumer's to install, while `@promptctl/go-template-js` is a plain\ndependency that arrives with the package. That asymmetry is carried in prose\nso it cannot be flattened into a row shape.\n\nA new Interactive Widgets section adds the first snippet that constructs a\nwidget, adapted from docs/widgets.md and kept complete enough to run — the\nCtrl+C handler included, since raw mode traps a reader who copies a shorter\nversion. The Status snippet imported only `Console` while calling\n`new Status(...)`; `Status` is on the barrel, so the import now names it.\n\nNothing in the test suite reads README.md, so the snippets were checked by\nhand: every module specifier resolved through node's own resolver against\n`package.json#exports`, and the widget snippet type-checked under `strict`\nagainst the built declarations.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4c3cf55cfc6cb27d135938e3f1e4342b72bda865",
