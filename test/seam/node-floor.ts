@@ -108,7 +108,6 @@ export interface InstalledPackage {
 export interface LockEntry {
   readonly dev?: boolean;
   readonly devOptional?: boolean;
-  readonly peer?: boolean;
   readonly optional?: boolean;
   readonly engines?: Readonly<Record<string, string>>;
   readonly dependencies?: Readonly<Record<string, string>>;
@@ -128,13 +127,36 @@ export type LockPackages = Readonly<Record<string, LockEntry>>;
  * development one — so an entry carrying it alone passes a check that looks for
  * the other three and finds none.
  *
+ * `peer` is deliberately *not* here, and it was until review caught it. npm 7
+ * and later install a required peer dependency as part of a default install, so
+ * an entry marked only `peer` is on the consumer's disk and its `engines` binds
+ * the floor like any other. Excluding it would drop that range silently, which
+ * is the same bug as admitting a devDependency's, pointed the other way: the
+ * declared floor comes out lower than the tree actually permits and the gate
+ * stays green. An optional peer is a different animal and needs no flag here —
+ * npm does not install one, so it has no entry unless something else pulled it
+ * in, and that something else carries its own flag.
+ *
  * Note what this list cannot promise: that it is complete. It is a claim about
  * npm's schema, which npm changes without asking, and the sentence that used to
  * sit here asserted a count ("the three ways npm records...") that was simply
  * wrong. `productionKeys` exists so the claim does not have to be right —
  * see the argument there.
  */
-const EXCLUDED_BY_FLAG = ["dev", "devOptional", "peer", "optional"] as const;
+const EXCLUDED_BY_FLAG = ["dev", "devOptional", "optional"] as const;
+
+/**
+ * The package name inside a lockfile key.
+ *
+ * [LAW:single-enforcer] npm keys entries by install path, so the name is
+ * whatever follows the last `node_modules/` — `node_modules/a/node_modules/b`
+ * is `b`. One rule, one home: the slice was written out twice, and two copies
+ * of a parse are two answers to "what is this package called" the day either
+ * one learns about a lockfile shape the other has not met.
+ */
+export function packageNameFromKey(key: string): string {
+  return key.slice(key.lastIndexOf("node_modules/") + "node_modules/".length);
+}
 
 /** Entries npm has not flagged as excluded from a consumer's default install. */
 export function admittedByFlags(packages: LockPackages): string[] {
@@ -235,8 +257,10 @@ export function describeProductionSet(set: ProductionSet): string {
       .map(
         (key) =>
           `    ${key} carries no exclusion flag this rule knows, but nothing in ` +
-          `package.json#dependencies reaches it. If npm has a flag beyond ` +
-          `${EXCLUDED_BY_FLAG.join(", ")}, add it.`,
+          `package.json#dependencies reaches it. Either npm has a flag beyond ` +
+          `${EXCLUDED_BY_FLAG.join(", ")} and it belongs on that list, or the ` +
+          `entry really is installed and got there along an edge this walk does ` +
+          `not follow — a required peer dependency is the one to check first.`,
       )
       .concat(
         set.onlyByReachability.map(
@@ -266,7 +290,15 @@ export type TreeFloor =
   | { readonly kind: "bound"; readonly range: NodeRange; readonly by: readonly string[] }
   /** No package in the tree declares `engines.node`; nothing constrains the floor. */
   | { readonly kind: "unconstrained" }
-  /** No single declared range is contained in all the others. */
+  /**
+   * No single declared range is contained in all the others.
+   *
+   * `packages` is the conflicting subset, not the whole tree. A package whose
+   * range contains or is contained in every other one is comparable to all of
+   * them and holds up nothing — listing it beside the pair that actually
+   * disagree sends whoever is reading a red run to read manifests that were
+   * never part of the problem.
+   */
   | { readonly kind: "incomparable"; readonly packages: readonly InstalledPackage[] };
 
 /**
@@ -286,7 +318,19 @@ export function treeFloor(packages: readonly InstalledPackage[]): TreeFloor {
     packages.every((other) => semver.subset(candidate.range, other.range)),
   );
   const first = strictest[0];
-  if (first === undefined) return { kind: "incomparable", packages };
+  if (first === undefined) {
+    // Only the ranges that disagree with something. When no range is strictest,
+    // at least one pair must be mutually non-containing — that pair is the
+    // finding, and a `*` sitting quietly in the same tree is not.
+    const conflicting = packages.filter((candidate) =>
+      packages.some(
+        (other) =>
+          !semver.subset(candidate.range, other.range) &&
+          !semver.subset(other.range, candidate.range),
+      ),
+    );
+    return { kind: "incomparable", packages: conflicting };
+  }
 
   return { kind: "bound", range: first.range, by: strictest.map((p) => p.name) };
 }

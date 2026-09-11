@@ -35,6 +35,7 @@ import {
   admittedByFlags,
   reachableFromRoot,
   describeProductionSet,
+  packageNameFromKey,
   type InstalledPackage,
   type NodeRange,
   type LockEntry,
@@ -42,7 +43,6 @@ import {
 } from "./node-floor.js";
 
 interface Lockfile {
-  readonly lockfileVersion: number;
   readonly packages: LockPackages;
 }
 
@@ -66,7 +66,7 @@ function treeFrom(keys: readonly string[]): InstalledPackage[] {
   for (const key of keys) {
     const declared = LOCKFILE.packages[key]?.engines?.["node"];
     if (declared === undefined) continue;
-    const name = key.slice(key.lastIndexOf("node_modules/") + "node_modules/".length);
+    const name = packageNameFromKey(key);
     tree.push({ name, range: nodeRange(declared, name) });
   }
   return tree;
@@ -118,7 +118,7 @@ describe("the install tree this rule reasons about", () => {
     const lockedNames = new Set(
       Object.entries(LOCKFILE.packages)
         .filter(([key, entry]) => key !== "" && entry.dev !== true)
-        .map(([key]) => key.slice(key.lastIndexOf("node_modules/") + "node_modules/".length)),
+        .map(([key]) => packageNameFromKey(key)),
     );
     const missing = Object.keys(PACKAGE_MANIFEST.dependencies ?? {}).filter(
       (name) => !lockedNames.has(name),
@@ -170,11 +170,17 @@ describe("package.json#engines.node", () => {
  *
  * They are not deduplicated away, because a reader looking for the floor opens
  * the README. They are demoted instead: still written out, no longer trusted.
- * CLAUDE.md is absent from the list on purpose — it points at the field rather
- * than naming a version, which is the better pattern and the one that needs no
- * checking.
+ *
+ * CLAUDE.md is on the list, and the reason it was once left off is worth
+ * keeping: the argument was that it "points at the field rather than naming a
+ * version." It does point at the field — and it names the version in the same
+ * breath ("targeting Node.js >= 20; `package.json#engines` is the authority").
+ * Naming the authority is better practice and buys exactly nothing here, because
+ * the stale literal is still a literal. Three copies were checked and the fourth
+ * was excused on a premise anyone could have read and disproved, which is how
+ * this fact came to have three different answers in the first place.
  */
-const DOCUMENTED_IN = ["README.md", "docs/introduction.md"];
+const DOCUMENTED_IN = ["README.md", "docs/introduction.md", "CLAUDE.md"];
 
 describe("the documented floor", () => {
   it("names the version package.json actually declares", () => {
@@ -221,25 +227,44 @@ describe("the install set, derived twice", () => {
   });
 
   /**
-   * All four flags, one entry each, because a list is only as good as its
-   * least-known member. `devOptional` is npm's mark for a package reachable only
-   * as an optional dependency of a development one, and npm sets it *instead of*
-   * `dev` and `optional` together — so an entry carrying it alone sailed through
-   * a filter that looked for the other three and found none. That is a
-   * devDependency's Node requirement reaching the published floor, which is the
-   * bug this whole rule was written to prevent, arriving through the rule
+   * Every flag on the list, one entry each, because a list is only as good as
+   * its least-known member. `devOptional` is npm's mark for a package reachable
+   * only as an optional dependency of a development one, and npm sets it
+   * *instead of* `dev` and `optional` together — so an entry carrying it alone
+   * sailed through a filter that looked for the other three and found none. That
+   * is a devDependency's Node requirement reaching the published floor, which is
+   * the bug this whole rule was written to prevent, arriving through the rule
    * itself.
    */
-  it("excludes an entry npm marked with any of the four flags", () => {
+  it("excludes an entry npm marked with any listed flag", () => {
     const flagged: LockPackages = {
       "": {},
       "node_modules/shipped": {},
       "node_modules/a": { dev: true },
       "node_modules/b": { devOptional: true },
-      "node_modules/c": { peer: true },
-      "node_modules/d": { optional: true },
+      "node_modules/c": { optional: true },
     };
     expect(admittedByFlags(flagged)).toEqual(["node_modules/shipped"]);
+  });
+
+  /**
+   * `peer` is the flag deliberately *not* on the list, and it has to be written
+   * into a fixture to stay off it — `LockEntry` no longer declares the field, so
+   * an entry saying `{}` would pass whether or not the exclusion came back.
+   *
+   * npm 7 and later install a required peer dependency during a default install,
+   * so its `engines` binds the floor. Excluding it would quietly lower the
+   * computed floor beneath what the tree permits and leave the gate green about
+   * it — the same leak as admitting a devDependency's range, pointed the other
+   * way.
+   */
+  it("admits an entry npm marked only as a peer", () => {
+    const peered: Readonly<Record<string, LockEntry & { readonly peer?: boolean }>> = {
+      "": {},
+      "node_modules/required-peer": { peer: true },
+      "node_modules/dev-peer": { peer: true, dev: true },
+    };
+    expect(admittedByFlags(peered)).toEqual(["node_modules/required-peer"]);
   });
 
   /**
@@ -349,6 +374,26 @@ describe("the floor derivation", () => {
     // Neither contains the other: 21.x satisfies `>=20` alone, 18.x the other alone.
     const floor = treeFloor([fixture("a", ">=20"), fixture("b", "^18 || ^22")]);
     expect(floor.kind).toBe("incomparable");
+  });
+
+  /**
+   * And it reports only the ranges that disagree. A tree of two is the shape
+   * where this cannot be got wrong — every package is in the conflict by
+   * definition — so the bug of listing the whole tree was invisible in the only
+   * fixture that existed. `c` declares `*`, contains everything, holds up
+   * nothing, and belongs nowhere near a message telling someone which two
+   * manifests to go read.
+   */
+  it("names only the conflicting ranges, not every package beside them", () => {
+    const floor = treeFloor([
+      fixture("a", ">=20"),
+      fixture("b", "^18 || ^22"),
+      fixture("c", "*"),
+    ]);
+    expect(floor.kind === "incomparable" && floor.packages.map((p) => p.name)).toEqual([
+      "a",
+      "b",
+    ]);
   });
 
   it("says nothing about a tree that declares nothing", () => {
