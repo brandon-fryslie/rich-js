@@ -4,15 +4,22 @@
     {
       "version": "pr-119",
       "ref": "refs/pull/119/merge",
-      "sha": "3348bf89857407eb3bd33f0714e9778fe5cac934",
-      "timestamp": "2026-09-10T19:49:29.874Z",
+      "sha": "cf0fecf8607c2a161d418d9265d5b3c81a28f9de",
+      "timestamp": "2026-09-11T00:05:32.536Z",
       "commits": [
         {
-          "sha": "3348bf89857407eb3bd33f0714e9778fe5cac934",
+          "sha": "cf0fecf8607c2a161d418d9265d5b3c81a28f9de",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T19:48:54Z",
-          "message": "Merge 6d8dfbe32c58d82e1ee58ee8b87a47fa974b2df8 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+          "timestamp": "2026-09-11T00:00:03Z",
+          "message": "Merge 358c29569336dbf727616b8f40258f1630ee101c into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+        },
+        {
+          "sha": "358c29569336dbf727616b8f40258f1630ee101c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T17:59:58-06:00",
+          "message": "test(strip): pin edge styles resolving against the render's theme (rich-style-tdn)\n\nEvery cell in this suite carried a literal style definition and OPTIONS\nnever carried a Theme, so nothing exercised the behaviour this branch\nintroduced: an edge style that is a theme name is a colour only against\nthe theme of the render drawing it.\n\nThat left the deferral unpinned. A joiner that read edgeStyle eagerly in\njoin(), instead of inside the renderable it returns, passed every case in\nthe file — there was no theme for it to lose. The joiner case fails under\nexactly that mutation; both cases fail when resolvedStyle drops\noptions.theme.\n"
         },
         {
           "sha": "6d8dfbe32c58d82e1ee58ee8b87a47fa974b2df8",
