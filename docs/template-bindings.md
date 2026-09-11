@@ -6,7 +6,7 @@ rich-js can hand its entire styling vocabulary to a template engine, so styled t
 {{ "deploy paused" | fg (color "warning") | bold }}
 ```
 
-There is no second markup grammar here. The syntax is standard [Go template](https://pkg.go.dev/text/template) syntax, parsed by [`@promptctl/go-template-js`](https://www.npmjs.com/package/@promptctl/go-template-js) — one parser, one AST, one error dialect. This module contributes only the styling functions. The engine is a dependency of rich-js, so there is nothing extra to install.
+There is no second markup grammar here. The syntax is standard [Go template](https://pkg.go.dev/text/template) syntax, parsed by [`@promptctl/go-template-js`](https://www.npmjs.com/package/@promptctl/go-template-js) — one parser, one AST, one error dialect. This module contributes only the styling functions. The engine is a peer dependency rather than a bundled one, so you install it alongside rich-js — `npm install @promptctl/rich-js @promptctl/go-template-js` — before reaching for this subpath. Without it, the import itself fails with `ERR_MODULE_NOT_FOUND`; the main entry point is unaffected.
 
 Use [markup](/markup) instead when a human writes the string and the styling is inline: `[bold red]alert[/]` is shorter and needs no engine. Reach for template bindings when the text is assembled from data, when the styling itself is computed, or when the template lives in a config file an author edits without redeploying.
 

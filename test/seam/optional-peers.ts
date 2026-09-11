@@ -55,6 +55,14 @@ export interface PeerProvider {
 }
 
 export const PEER_PROVIDERS: Readonly<Record<string, PeerProvider>> = {
+  "@promptctl/go-template-js": {
+    entries: ["@promptctl/rich-js/template-bindings"],
+    why:
+      "The engine is the grammar this subsystem binds styling functions into, " +
+      "and nothing outside `src/template-bindings/` imports it. It costs a " +
+      "consumer more than its own weight — `@noble/hashes` arrives with it — " +
+      "and buys nothing at all for a program that never authored a template.",
+  },
   mobx: {
     entries: ["@promptctl/rich-js/widgets"],
     why:
