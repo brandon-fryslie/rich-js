@@ -4,15 +4,22 @@
     {
       "version": "pr-120",
       "ref": "refs/pull/120/merge",
-      "sha": "3395880ffc2702221231f920cf729b13766bffa5",
-      "timestamp": "2026-09-11T00:43:03.293Z",
+      "sha": "62dd6b1398cb329c2ae799dfafdd28860df495d7",
+      "timestamp": "2026-09-11T00:50:30.533Z",
       "commits": [
         {
-          "sha": "3395880ffc2702221231f920cf729b13766bffa5",
+          "sha": "62dd6b1398cb329c2ae799dfafdd28860df495d7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T00:42:32Z",
-          "message": "Merge 4a260f7179ee2ce021cc6cd40221d42bcf8b1d97 into c70189904e6508c352d35f54db11aa4426df363c\n"
+          "timestamp": "2026-09-11T00:50:04Z",
+          "message": "Merge d4f3ff942400e46d04785312b5c65dd8b010b8c5 into c70189904e6508c352d35f54db11aa4426df363c\n"
+        },
+        {
+          "sha": "d4f3ff942400e46d04785312b5c65dd8b010b8c5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T18:49:59-06:00",
+          "message": "fix(seam): read the statements a namespace body runs at import\n\n`namespace Foo { install(); }` returned no finding. TypeScript emits a\nnon-ambient namespace as an IIFE that runs when the module is evaluated, so\nthat call runs at import exactly as the top-level `install();` the rule exists\nto catch — and a scan that stopped at top-level statements was bypassed by\nwriting the same call one nesting level down.\n\nThis is the class-static-block shape again, not the class-expression blind\nspot documented alongside it, and that difference is why it is fixed rather\nthan disclosed: a decorator is an expression and sorting a harmless one from a\nworking one is a purity judgement, while a bare statement in a namespace body\nis a statement. So `runAtImport` recurses — a namespace body is module scope by\nanother name, and gets the same rule rather than a second rule shaped like it.\nEach statement reports at its own line, so the failure names the call and not\nthe namespace wrapping it.\n\n`namespace A.B { … }` carries a ModuleDeclaration as its body rather than a\nblock, and closing only the plain form would have left the dotted spelling as\nthe hole; the walk follows both. Ambient declarations emit no code, so a\n`declare` namespace stops the walk, and `sf.isDeclarationFile` stops a whole\n`.d.ts` — which the sweep matches, since it asks for every `.ts` under `src/`.\n\nNo namespace exists in `src/` today, confirmed by walking the tree with the\nparser rather than grepping for a word that appears everywhere, so this closes\nthe hole at no cost in false positives.\n"
         },
         {
           "sha": "4a260f7179ee2ce021cc6cd40221d42bcf8b1d97",
