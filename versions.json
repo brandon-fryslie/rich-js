@@ -4,15 +4,22 @@
     {
       "version": "pr-120",
       "ref": "refs/pull/120/merge",
-      "sha": "b9b310286364de913d95e11cbd3b2accec14a8ef",
-      "timestamp": "2026-09-11T00:27:57.064Z",
+      "sha": "3395880ffc2702221231f920cf729b13766bffa5",
+      "timestamp": "2026-09-11T00:43:03.293Z",
       "commits": [
         {
-          "sha": "b9b310286364de913d95e11cbd3b2accec14a8ef",
+          "sha": "3395880ffc2702221231f920cf729b13766bffa5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-10T18:27:25-06:00",
-          "message": "Merge 935adbfca78cab962dc10b2f0d26b88bf7e09538 into c70189904e6508c352d35f54db11aa4426df363c\n"
+          "timestamp": "2026-09-11T00:42:32Z",
+          "message": "Merge 4a260f7179ee2ce021cc6cd40221d42bcf8b1d97 into c70189904e6508c352d35f54db11aa4426df363c\n"
+        },
+        {
+          "sha": "4a260f7179ee2ce021cc6cd40221d42bcf8b1d97",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T18:42:28-06:00",
+          "message": "docs(seam): disclose the whole of the import-time gate's blind spot\n\n`runAtImport`'s doc said static blocks \"are the only place a declaration hides\none\", meaning a statement list. Read as \"the only place a declaration hides\nimport-time work\" — which is how it reads — it is false, and a reader trusts\nthe gate to catch things it does not catch.\n\nA class evaluates its decorators, its `extends` clause, its computed member\nnames and its static field initializers when it is declared, and the gate\naccepts all four: `@register class C {}` and `static y = register(C)` pass.\nThat is the same limit already disclosed for `export const T = defineTheme(…)`\n— an expression's contents — not a second undisclosed one, and saying so is\nthe fix rather than extending the rule. Extending it is not available: `src/`\nholds mobx's `@observable` and a `static baseStyle = \"\"`, both of which\nevaluate on import and do nothing, so a rule over those positions would have\nto sort a harmless expression from a working one. That judgement is the line\nthe rule refuses everywhere else, and it would have been red on the widget set\nthe day it landed.\n\nFixtures now pin each accepted form, so the blind spot is a checked fact\nrather than a claimed one and anyone extending the rule is told what they\nchanged.\n"
         },
         {
           "sha": "935adbfca78cab962dc10b2f0d26b88bf7e09538",
