@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { getStyle, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 export type PaddingDimensions =
   | number
@@ -104,7 +104,7 @@ export class Padding implements Renderable, Measurable {
   readonly right: number;
   readonly bottom: number;
   readonly left: number;
-  readonly style: Style;
+  readonly style: string | Style;
   readonly expand: boolean;
 
   constructor(
@@ -118,7 +118,7 @@ export class Padding implements Renderable, Measurable {
     this.right = right;
     this.bottom = bottom;
     this.left = left;
-    this.style = resolveStyle(options?.style);
+    this.style = options?.style ?? NULL_STYLE;
     this.expand = options?.expand !== false;
   }
 
@@ -134,7 +134,8 @@ export class Padding implements Renderable, Measurable {
     const segments = [...this.renderable.render(innerOptions)];
     const lines = Segment.splitLines(segments);
 
-    const style = this.style.isNull ? undefined : this.style;
+    const resolved = getStyle(options, this.style);
+    const style = resolved.isNull ? undefined : resolved;
     // Zero-length spans need no branch to suppress: the wire boundary drops
     // empty segments, so a padding the width could not afford emits nothing.
     const leftPad = new Segment(" ".repeat(geometry.left), style);
@@ -189,10 +190,4 @@ export class Padding implements Renderable, Measurable {
     }
     return { minimum: overhead, maximum: options.maxWidth };
   }
-}
-
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
 }

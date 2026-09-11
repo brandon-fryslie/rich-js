@@ -3,7 +3,7 @@
  */
 
 import { Segment } from "./segment.js";
-import { Style, NULL_STYLE, Theme } from "./style.js";
+import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
 import { ColorDepth, resolveColorSystem } from "./color.js";
 import type { DetectColorOptions } from "./color.js";
 import { RichText } from "./text.js";
@@ -116,12 +116,6 @@ export interface PrintOptions {
   crop?: boolean;
   end?: string;
   sep?: string;
-}
-
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
 }
 
 // [LAW:single-enforcer] Color spec → ColorDepth resolution lives in
@@ -314,13 +308,15 @@ export class Console {
       env: environment.env,
     });
     this._getSize = resolveGetSize(options, environment, stream);
-    this._style = resolveStyle(options?.style);
+    // [LAW:no-ambient-temporal-coupling] The theme is assigned before the
+    // style, because the console's own style may be one of the theme's names.
+    this._theme = options?.theme ?? DEFAULT_THEME;
+    this._style = this._theme.resolve(options?.style ?? NULL_STYLE);
     this._forceInteractive = options?.forceInteractive;
     this._file = options?.file;
     this._record = options?.record ?? false;
     this._markup = options?.markup !== false;
     this._highlight = options?.highlight !== false;
-    this._theme = options?.theme ?? new Theme();
     this._highlighter = options?.highlighter ?? new ReprHighlighter();
     this._recorded = [];
     this._capture = null;
@@ -378,6 +374,7 @@ export class Console {
       isTerminal: this.isTerminal,
       encoding: this.encoding,
       asciiOnly: false,
+      theme: this._theme,
     };
   }
 
@@ -415,7 +412,7 @@ export class Console {
     const sep = opts.sep ?? " ";
     const end = opts.end ?? "\n";
     const softWrap = opts.softWrap ?? false;
-    const printStyle = resolveStyle(opts.style);
+    const printStyle = this._theme.resolve(opts.style ?? NULL_STYLE);
 
     // Convert items to renderables
     const renderables: Renderable[] = [];
@@ -467,9 +464,7 @@ export class Console {
     // applies. Soft wrap is the same request — the reference defaults it to
     // `"ignore"` — which is why the two arrive at one field.
     const renderOpts: RenderOptions = {
-      maxWidth: this.width,
-      isTerminal: this.isTerminal,
-      encoding: this.encoding,
+      ...this.options,
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow === "ignore" ? undefined : opts.overflow,
       noWrap: softWrap || opts.overflow === "ignore",

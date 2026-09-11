@@ -2,27 +2,9 @@ import { describe, it, expect } from "vitest";
 import { Span, RichText } from "../../src/core/text.js";
 import { Style, NULL_STYLE } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
+import { baseStyleOf } from "./base-style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
-
-/**
- * [LAW:parse-dont-validate] `Span.style` is `string | Style`, but assertions
- * about colour and attributes only mean anything against a resolved `Style`.
- * Cross that boundary once, here, and hand back the narrowed type — so no
- * assertion downstream has to re-ask, and a span carrying an unresolved style
- * name fails loudly with its range instead of silently.
- *
- * This is not merely a compiler formality. `String.prototype` still carries the
- * legacy HTML wrappers, so `span.style.bold` type-checks against the `string`
- * arm and quietly compares a *function* to `true` — an assertion that can never
- * fire. Narrowing first is what makes these tests mean what they read as.
- */
-function styleOf(span: Span): Style {
-  if (span.style instanceof Style) return span.style;
-  throw new Error(
-    `expected a resolved Style on span [${span.start}, ${span.end}), got the style name ${JSON.stringify(span.style)}`,
-  );
-}
 
 /** Collect an iterable into an array. */
 function collect<T>(iter: Iterable<T>): T[] {
@@ -221,14 +203,14 @@ describe("RichText properties", () => {
   });
 
   it(".style defaults to NULL_STYLE", () => {
-    expect(new RichText("hi").style.isNull).toBe(true);
+    expect(new RichText("hi").style).toBe(NULL_STYLE);
   });
 
   it(".style setter updates the base style", () => {
     const t = new RichText("hi");
     const bold = Style.parse("bold");
     t.style = bold;
-    expect(t.style.bold).toBe(true);
+    expect(t.style).toBe(bold);
   });
 
   it(".justify defaults to undefined", () => {
@@ -414,6 +396,14 @@ describe("RichText.highlightWords()", () => {
     const count = t.highlightWords(["hello"], "bold", { caseSensitive: false });
     expect(count).toBe(3);
   });
+
+  it("counts every match, whatever its style resolves to", () => {
+    // A name resolves against the theme of the render that draws it, which
+    // does not exist yet, so the count cannot depend on it.
+    const t = new RichText("The cat sat on the mat");
+    expect(t.highlightWords(["cat", "mat"], "no.such.style")).toBe(2);
+    expect(t.highlightWords(["cat", "mat"], "")).toBe(2);
+  });
 });
 
 // =========================================================
@@ -427,7 +417,7 @@ describe("RichText.copy()", () => {
     const copy = original.copy();
     expect(copy.plain).toBe("Hello");
     expect(copy.spans).toHaveLength(1);
-    expect(copy.style.bold).toBe(true);
+    expect(copy.style).toBe("bold");
     expect(copy.justify).toBe("center");
 
     // Modifying copy does not affect original
@@ -445,7 +435,7 @@ describe("RichText.blankCopy()", () => {
     expect(blank.plain).toBe("");
     expect(blank.spans).toHaveLength(0);
     expect(blank.justify).toBe("center");
-    expect(blank.style.italic).toBe(true);
+    expect(blank.style).toBe("italic");
   });
 
   it("accepts text argument", () => {
@@ -764,7 +754,7 @@ describe("RichText.assemble()", () => {
 
   it("accepts style option", () => {
     const t = RichText.assemble(["hello"], { style: "bold" });
-    expect(t.style.bold).toBe(true);
+    expect(t.style).toBe("bold");
   });
 });
 
@@ -795,10 +785,10 @@ describe("RichText.fromFragments()", () => {
     expect(t.spans).toHaveLength(2);
     expect(t.spans[0]!.start).toBe(0);
     expect(t.spans[0]!.end).toBe(5);
-    expect(styleOf(t.spans[0]!).color?.name).toBe("red");
+    expect(t.spans[0]!.style).toBe("red");
     expect(t.spans[1]!.start).toBe(5);
     expect(t.spans[1]!.end).toBe(10);
-    expect(styleOf(t.spans[1]!).color?.name).toBe("blue");
+    expect(t.spans[1]!.style).toBe("blue");
   });
 
   it("preserves a fragment's internal spans, shifted by its offset", () => {
@@ -809,11 +799,11 @@ describe("RichText.fromFragments()", () => {
     const t = RichText.fromFragments([f1, f2]);
     expect(t.plain).toBe("abcd");
     // Spans propagated and offset: "a" bold (0-1), "d" italic (3-4).
-    const bold = t.spans.find((s) => styleOf(s).bold === true);
+    const bold = t.spans.find((s) => s.style === "bold");
     expect(bold).toBeDefined();
     expect(bold!.start).toBe(0);
     expect(bold!.end).toBe(1);
-    const italic = t.spans.find((s) => styleOf(s).italic === true);
+    const italic = t.spans.find((s) => s.style === "italic");
     expect(italic).toBeDefined();
     expect(italic!.start).toBe(3);
     expect(italic!.end).toBe(4);
@@ -826,7 +816,7 @@ describe("RichText.fromFragments()", () => {
     expect(t.plain).toBe("hithere");
     // Only one span — for f2's underline.
     expect(t.spans).toHaveLength(1);
-    expect(styleOf(t.spans[0]!).underline).toBe(true);
+    expect(t.spans[0]!.style).toBe("underline");
     expect(t.spans[0]!.start).toBe(2);
     expect(t.spans[0]!.end).toBe(7);
   });
@@ -1015,13 +1005,13 @@ describe("OSC-terminator stripping at the RichText trust boundary", () => {
 
   it("strips ESC/BEL/ST from options.style.link in the constructor", () => {
     const t = new RichText("click", { style: new Style({ link: dirty }) });
-    expect(t.style.link).toBe(clean);
+    expect(baseStyleOf(t).link).toBe(clean);
   });
 
   it("strips ESC/BEL/ST from a link assigned via the style setter", () => {
     const t = new RichText("click");
     t.style = new Style({ link: dirty });
-    expect(t.style.link).toBe(clean);
+    expect(baseStyleOf(t).link).toBe(clean);
   });
 
   it("returns the same Style reference when the URL is already clean (no needless clone)", () => {

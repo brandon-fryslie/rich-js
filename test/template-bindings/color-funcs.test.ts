@@ -13,6 +13,7 @@ import {
 import { parseHexColor } from "../../src/themes/colorRef.js";
 import { GRUVBOX, DRACULA } from "../../src/themes/terminalThemes.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
+import { baseStyleOf } from "../core/base-style.js";
 
 // [LAW:behavior-not-structure] Every assertion below compares what a template
 // produces against what the underlying rich-js function produces for the same
@@ -44,7 +45,7 @@ function colorText(source: string): string {
 function paintedFg(source: string): string {
   const frags = engine.parse(source).evaluate({});
   expect(frags.length).toBe(1);
-  return frags[0]!.style.color!.getTruecolor().hex;
+  return baseStyleOf(frags[0]!).color!.getTruecolor().hex;
 }
 
 describe("colors are values", () => {
@@ -58,7 +59,7 @@ describe("colors are values", () => {
     expect(out.length).toBe(2);
     const expected = palette.get("primary")!.hex;
     for (const frag of out) {
-      expect(frag.style.color!.getTruecolor().hex).toBe(expected);
+      expect(baseStyleOf(frag).color!.getTruecolor().hex).toBe(expected);
     }
   });
 

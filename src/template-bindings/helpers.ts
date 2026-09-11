@@ -7,7 +7,7 @@
  * keeping one copy prevents the two from drifting.
  */
 
-import { Style } from "../core/style.js";
+import { Style, StyleSyntaxError } from "../core/style.js";
 import { RichText } from "../core/text.js";
 
 /**
@@ -30,6 +30,24 @@ export function applyStyleToFragment(child: unknown, style: Style): RichText {
     );
   }
   const result = child.copy();
-  result.style = child.style.add(style);
+  result.style = baseStyleOf(child.style).add(style);
   return result;
+}
+
+/**
+ * A fragment's base style as a `Style`. A string must parse as a definition: a
+ * name resolves only against the theme of the render that draws it, and a
+ * template runs before any render exists.
+ */
+function baseStyleOf(style: string | Style): Style {
+  if (style instanceof Style) return style;
+  try {
+    return Style.parse(style);
+  } catch (err) {
+    if (!(err instanceof StyleSyntaxError)) throw err;
+    throw new TypeError(
+      `template function cannot style a fragment whose base style "${style}" is not a style definition: a style name resolves only against the theme of a render`,
+      { cause: err },
+    );
+  }
 }

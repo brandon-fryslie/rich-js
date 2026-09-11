@@ -5,6 +5,7 @@
 
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
+import { DEFAULT_THEME, type Style, type Theme } from "./style.js";
 
 export interface RenderOptions {
   /**
@@ -27,6 +28,24 @@ export interface RenderOptions {
   noWrap?: boolean;
   highlight?: unknown;
   markup?: unknown;
+  /**
+   * The names a style string may use. A `Console` passes its own; absent, the
+   * built-in defaults apply. Read it through `getStyle` rather than directly.
+   */
+  theme?: Theme;
+}
+
+/**
+ * The style a `string | Style` stands for in this render.
+ *
+ * [LAW:single-enforcer] Every renderable resolves a style name here, at render
+ * time, because only the render knows whose theme it is drawing for. Resolved
+ * when a renderable was built instead, a name was fixed to the built-in
+ * defaults before any `Console` could offer its theme, and `new Console({
+ * theme })` changed nothing.
+ */
+export function getStyle(options: RenderOptions, style: string | Style): Style {
+  return (options.theme ?? DEFAULT_THEME).resolve(style);
 }
 
 /**

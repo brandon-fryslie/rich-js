@@ -4,7 +4,7 @@
  */
 
 import { Segment } from "../core/segment.js";
-import { Style, NULL_STYLE } from "../core/style.js";
+import { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { Rule } from "./rule.js";
 import type {
@@ -12,18 +12,13 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { getStyle } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   codeTheme?: string;
   inlineCodeStyle?: string | Style;
   hyperlinks?: boolean;
   justify?: "left" | "center" | "right" | "full";
-}
-
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
 }
 
 // Simple markdown token types
@@ -142,7 +137,7 @@ function applyInlineStyles(text: string): RichText {
       result.append(match[3], "italic");
     } else if (match[4]) {
       // Inline code: `text`
-      result.append(match[4], Style.parse("markdown.code"));
+      result.append(match[4], "markdown.code");
     } else if (match[5] && match[6]) {
       // Link: [text](url)
       result.append(match[5], new Style({ link: match[6] }));
@@ -161,12 +156,12 @@ function applyInlineStyles(text: string): RichText {
 
 export class Markdown implements Renderable, Measurable {
   readonly markdown: string;
-  readonly inlineCodeStyle: Style;
+  readonly inlineCodeStyle: string | Style;
   readonly hyperlinks: boolean;
 
   constructor(markdown: string, options?: MarkdownOptions) {
     this.markdown = markdown;
-    this.inlineCodeStyle = resolveStyle(options?.inlineCodeStyle ?? "markdown.code");
+    this.inlineCodeStyle = options?.inlineCodeStyle ?? "markdown.code";
     this.hyperlinks = options?.hyperlinks !== false;
   }
 
@@ -176,8 +171,7 @@ export class Markdown implements Renderable, Measurable {
     for (const token of tokens) {
       switch (token.type) {
         case "heading": {
-          const styleKey = `markdown.h${Math.min(token.level, 4)}` as string;
-          const style = Style.parse(styleKey);
+          const style = getStyle(options, `markdown.h${Math.min(token.level, 4)}`);
           const text = applyInlineStyles(token.text);
           yield* Segment.applyStyle([...text.render(options)], style);
           yield Segment.line();
@@ -192,7 +186,7 @@ export class Markdown implements Renderable, Measurable {
         }
 
         case "code_block": {
-          const codeStyle = Style.parse("markdown.code");
+          const codeStyle = getStyle(options, "markdown.code");
           const lines = token.code.split("\n");
           for (const line of lines) {
             yield new Segment(line, codeStyle);
@@ -217,7 +211,7 @@ export class Markdown implements Renderable, Measurable {
 
         case "blockquote": {
           const quoteStyle = Style.parse("dim italic");
-          yield new Segment("▎ ", Style.parse("markdown.hr"));
+          yield new Segment("▎ ", getStyle(options, "markdown.hr"));
           const text = applyInlineStyles(token.text);
           yield* Segment.applyStyle([...text.render(options)], quoteStyle);
           yield Segment.line();

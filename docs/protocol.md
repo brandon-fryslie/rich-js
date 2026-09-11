@@ -90,6 +90,29 @@ console.print(new Checkerboard(4, 8));
 
 This bypasses higher-level layout and is only needed for precise character-level control.
 
+### Drawing with theme names
+
+`options.theme` is the `Theme` of the console doing the printing. It is absent when nothing supplied one, as in `renderToString`, and then the built-in names apply. A `Segment` takes a `Style` that is already resolved, so a theme name cannot go in one. To draw with a name — a built-in like `repr.number`, or one the user's theme adds — render a `RichText` that carries it, and pass it the options you were given. The options are how the name reaches the theme:
+
+```typescript
+import type { Renderable, RenderOptions } from "@promptctl/rich-js";
+import { Console, RichText, Segment, Theme } from "@promptctl/rich-js";
+
+class Health implements Renderable {
+  constructor(private up: boolean) {}
+
+  *render(options: RenderOptions): Iterable<Segment> {
+    const style = this.up ? "health.up" : "health.down";
+    yield* new RichText(this.up ? "up" : "down", { style }).render(options);
+  }
+}
+
+const console = new Console({
+  theme: new Theme({ "health.up": "bold green", "health.down": "bold red" }),
+});
+console.print(new Health(true));
+```
+
 ## Measuring renderables
 
 Components like `Table` need to know how wide a renderable is before they can compute column widths. If you embed a custom renderable inside a `Table` or `Layout`, it must declare its width range by implementing `Measurable`:

@@ -6,13 +6,29 @@ import {
   type ConsoleStream,
 } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
-import { Style, Theme } from "../../src/core/style.js";
+import { Style, StyleSyntaxError, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
-import { Highlighter } from "../../src/core/highlighter.js";
+import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Table, type TableOptions } from "../../src/renderables/table.js";
+import { Rule } from "../../src/renderables/rule.js";
+import { Tree } from "../../src/renderables/tree.js";
+import { Padding } from "../../src/renderables/padding.js";
+import { Spinner } from "../../src/renderables/spinner.js";
+import { Status } from "../../src/renderables/status.js";
+import { ProgressBar } from "../../src/renderables/progressBar.js";
+import {
+  Progress,
+  TaskProgressColumn,
+  TimeElapsedColumn,
+  TimeRemainingColumn,
+  type ProgressColumn,
+} from "../../src/renderables/progress.js";
+import { Markdown } from "../../src/renderables/markdown.js";
+import { Traceback } from "../../src/renderables/traceback.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -1112,5 +1128,158 @@ describe("Console environment injection", () => {
     const c = new Console({ environment: { env: {} }, colorSystem: null });
     expect(c.isTerminal).toBe(false);
     expect(() => c.print("nowhere")).toThrow(/no `file` provided/);
+  });
+});
+
+// --- Theme resolution ---
+
+// Each case prints a style name through a console whose theme defines it, and
+// compares the bytes against a default console printing the definition itself.
+// Byte equality says the name drew as the theme's style; the reference Rich
+// 9d8f9a3 resolves every one of these through `console.get_style`.
+describe("Console theme resolution", () => {
+  /** The bytes one print writes, with colour on. */
+  function printed(item: unknown, options: ConsoleOptions = {}): string {
+    const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });
+    c.print(item);
+    return captured(chunks);
+  }
+
+  it("styles a markup tag with a name the theme adds", () => {
+    const theme = new Theme({ "my.header": "bold magenta" });
+    const themed = printed("[my.header]Section One[/my.header]", { theme });
+    expect(themed).toBe(printed("[bold magenta]Section One[/bold magenta]"));
+    expect(themed).not.toBe(printed("Section One"));
+  });
+
+  it("styles a highlighted number with the theme's repr.number", () => {
+    const theme = new Theme({ "repr.number": "bold red" });
+    const themed = printed("42", { theme });
+    expect(themed).toBe(printed("[bold red]42[/bold red]", { highlight: false }));
+    expect(themed).not.toBe(printed("42"));
+  });
+
+  it("resolves a RegexHighlighter group name through the theme", () => {
+    class RequestHighlighter extends RegexHighlighter {
+      static override highlights = [/\b(?<method>GET|POST)\b/];
+      static override baseStyle = "http.";
+    }
+    const theme = new Theme({ "http.method": "bold magenta" });
+    expect(printed("GET /users", { theme, highlighter: new RequestHighlighter() })).toBe(
+      printed("[bold magenta]GET[/bold magenta] /users", { highlight: false }),
+    );
+  });
+
+  it("styles a table header with the theme's table.header", () => {
+    const table = (options?: TableOptions) => new Table(options).addColumn("Name").addRow("Alice");
+    const theme = new Theme({ "table.header": "bold magenta" });
+    const themed = printed(table(), { theme });
+    expect(themed).toBe(printed(table({ headerStyle: "bold magenta" })));
+    expect(themed).not.toBe(printed(table()));
+  });
+
+  it("resolves a theme name inside a table cell", () => {
+    const table = (cell: string) => new Table({ showHeader: false }).addRow(cell);
+    const theme = new Theme({ "my.cell": "italic green" });
+    expect(printed(table("[my.cell]x[/my.cell]"), { theme })).toBe(
+      printed(table("[italic green]x[/italic green]")),
+    );
+  });
+
+  it("resolves one renderable against each console's own theme", () => {
+    const text = new RichText("42", { style: "repr.number" });
+    const red = printed(text, { highlight: false, theme: new Theme({ "repr.number": "red" }) });
+    const green = printed(text, { highlight: false, theme: new Theme({ "repr.number": "green" }) });
+    expect(red).toBe(printed(new RichText("42", { style: "red" }), { highlight: false }));
+    expect(green).toBe(printed(new RichText("42", { style: "green" }), { highlight: false }));
+  });
+
+  it("leaves repr.number unstyled under a theme that inherits nothing", () => {
+    const theme = new Theme({}, { inherit: false });
+    expect(printed("42", { theme })).toBe(printed("42", { highlight: false }));
+  });
+
+  it("throws when a table's header name is missing from a theme that inherits nothing", () => {
+    const table = new Table().addColumn("Name").addRow("Alice");
+    expect(() => printed(table, { theme: new Theme({}, { inherit: false }) })).toThrow(StyleSyntaxError);
+  });
+
+  /** A progress display with one task, drawn by `column`. */
+  function progressOf(column: ProgressColumn): Progress {
+    const progress = new Progress(column);
+    progress.addTask("task", { total: 100 });
+    return progress;
+  }
+
+  // [LAW:dataflow-not-control-flow] Each row names a style name a renderable
+  // draws with — a built-in default, or a name handed to its style option — and
+  // every row takes the same assertion.
+  const drawsWith: Array<{ label: string; name: string; make: (name: string) => Renderable }> = [
+    { label: "Panel border", name: "my.border", make: (name) => new Panel("x", { borderStyle: name }) },
+    { label: "Panel title", name: "my.title", make: (name) => new Panel("x", { title: "t", titleStyle: name }) },
+    { label: "Rule", name: "my.rule", make: (name) => new Rule("t", { style: name }) },
+    {
+      label: "Tree guide",
+      name: "my.guide",
+      make: (name) => {
+        const tree = new Tree("root", { guide_style: name });
+        tree.add("leaf");
+        return tree;
+      },
+    },
+    { label: "Padding", name: "my.pad", make: (name) => new Padding(new RichText("x"), 1, { style: name }) },
+    { label: "Spinner", name: "my.spinner", make: (name) => new Spinner("dots", "load", { style: name }) },
+    { label: "ProgressBar", name: "bar.complete", make: () => new ProgressBar({ total: 100, completed: 50 }) },
+    { label: "TaskProgressColumn", name: "progress.percentage", make: () => progressOf(new TaskProgressColumn()) },
+    { label: "TimeRemainingColumn", name: "progress.remaining", make: () => progressOf(new TimeRemainingColumn()) },
+    { label: "TimeElapsedColumn", name: "progress.elapsed", make: () => progressOf(new TimeElapsedColumn()) },
+    { label: "Markdown heading", name: "markdown.h1", make: () => new Markdown("# Title") },
+    { label: "Markdown inline code", name: "markdown.code", make: () => new Markdown("run `ls`") },
+    { label: "Traceback", name: "traceback.exc_type", make: () => new Traceback(new Error("boom")) },
+  ];
+
+  /** Two truecolor foregrounds and the SGR parameters each is written as. */
+  const COLORS = [
+    ["#123456", "38;2;18;52;86"],
+    ["#654321", "38;2;101;67;33"],
+  ] as const;
+
+  it.each(drawsWith)("$label takes $name from the console's theme", ({ name, make }) => {
+    for (const [hex, sgr] of COLORS) {
+      expect(printed(make(name), { theme: new Theme({ [name]: hex }) })).toContain(sgr);
+    }
+  });
+
+  it("Status takes its style name from its console's theme", () => {
+    for (const [hex, sgr] of COLORS) {
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", theme: new Theme({ "my.status": hex }) });
+      const status = new Status("working", { console: c, style: "my.status" });
+      status.start();
+      status.update("working-message");
+      status.stop();
+      expect(captured(chunks)).toContain(sgr);
+    }
+  });
+
+  it("styles what a console prints with a console style only its theme defines", () => {
+    for (const [hex, sgr] of COLORS) {
+      expect(printed("x", { style: "my.base", theme: new Theme({ "my.base": hex }) })).toContain(sgr);
+    }
+  });
+
+  it("styles one print with a print style only its console's theme defines", () => {
+    for (const [hex, sgr] of COLORS) {
+      const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", theme: new Theme({ "my.base": hex }) });
+      c.print("x", { style: "my.base" });
+      expect(captured(chunks)).toContain(sgr);
+    }
+  });
+
+  it("counts and draws words highlighted with a name only its console's theme defines", () => {
+    for (const [hex, sgr] of COLORS) {
+      const text = new RichText("the cat");
+      expect(text.highlightWords(["cat"], "my.word")).toBe(1);
+      expect(printed(text, { theme: new Theme({ "my.word": hex }) })).toContain(sgr);
+    }
   });
 });

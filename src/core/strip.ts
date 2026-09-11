@@ -37,13 +37,17 @@ import type { Renderable, RenderOptions } from "./protocol.js";
  * Items in a `Strip` expose their per-edge style so joiners can paint the
  * transition glyph at each boundary.
  *
- * `edgeStyle("left")` reports the style of the item's leftmost cell column;
- * `edgeStyle("right")` reports the rightmost. Joiners read only these — the
- * item's interior may carry any per-column variation without breaking the
- * join.
+ * `edgeStyle("left", options)` reports the style of the item's leftmost cell
+ * column; `edgeStyle("right", options)` reports the rightmost. Joiners read
+ * only these — the item's interior may carry any per-column variation without
+ * breaking the join.
+ *
+ * The edge is asked in a render, with that render's options, because a style
+ * name only becomes a colour against the render's theme. A joiner therefore
+ * reads edges inside the `render` of what it returns, never in `join`.
  */
 export interface StyledRenderable extends Renderable {
-  edgeStyle(side: "left" | "right"): Style;
+  edgeStyle(side: "left" | "right", options: RenderOptions): Style;
 }
 
 // --- Joiner ---
@@ -108,6 +112,11 @@ class FixedSegment implements Renderable {
   }
 }
 
+/** A renderable whose segments are computed from the options it is rendered with. */
+function deferred(emit: (options: RenderOptions) => Iterable<Segment>): Renderable {
+  return { render: emit };
+}
+
 // Endpoint and powerline join glyphs paint the adjacent item's edge bg
 // *as* their fg. If the edge has no bgcolor, the glyph degrades to the
 // default fg — which renders as nothing visible against the terminal
@@ -145,8 +154,9 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     // The endpoints are not control-flow special cases; they are the DATA cases
     // where a neighbour (hence its bg) is absent:
     //   • no left bg — the start cap, OR a left item with no background — has no
-    //     colour to bleed, so there is no separator to paint: EMPTY. (This
-    //     matches vim-airline / tmux-powerline: a colourless arrow is not drawn.)
+    //     colour to bleed, so there is no separator to paint and the join
+    //     yields nothing. (This matches vim-airline / tmux-powerline: a
+    //     colourless arrow is not drawn.)
     //   • no right bg — the end cap — bleeds the left colour out over the
     //     terminal background (fg = left bg, no bg).
     // Equal REAL bgs still emit: the glyph is drawn in its own background colour
@@ -156,13 +166,13 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     // thing that elides the separator, and that is paint logic, not structure.
     // "Absent" = no bg OR the terminal default (transparent) — paintableBg folds
     // both to undefined so an explicit `… on default` cannot smuggle a separator.
-    const leftBg = paintableBg(left?.edgeStyle("right").bgcolor);
-    if (leftBg === undefined) return EMPTY;
-    const rightBg = paintableBg(right?.edgeStyle("left").bgcolor);
-    return new FixedSegment(
-      this._glyph,
-      new Style({ color: leftBg, bgcolor: rightBg }),
-    );
+    const glyph = this._glyph;
+    return deferred(function* (options) {
+      const leftBg = paintableBg(left?.edgeStyle("right", options).bgcolor);
+      if (leftBg === undefined) return;
+      const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
+      yield new Segment(glyph, new Style({ color: leftBg, bgcolor: rightBg }));
+    });
   }
 }
 
@@ -191,27 +201,21 @@ export class CapsuleJoiner<T extends StyledRenderable = StyledRenderable> implem
   *_emit(left: T | null, right: T | null, options: RenderOptions): Iterable<Segment> {
     if (left === null && right === null) return;
     if (left === null) {
-      yield new Segment(this._left, bgAsFg(right!.edgeStyle("left")));
+      yield new Segment(this._left, bgAsFg(right!.edgeStyle("left", options)));
       return;
     }
     if (right === null) {
-      yield new Segment(this._right, bgAsFg(left.edgeStyle("right")));
+      yield new Segment(this._right, bgAsFg(left.edgeStyle("right", options)));
       return;
     }
     // Middle: close the left capsule, separator (unstyled), open the right.
-    yield new Segment(this._right, bgAsFg(left.edgeStyle("right")));
+    yield new Segment(this._right, bgAsFg(left.edgeStyle("right", options)));
     if (this._separator.length > 0) yield new Segment(this._separator);
-    yield new Segment(this._left, bgAsFg(right.edgeStyle("left")));
-    void options;
+    yield new Segment(this._left, bgAsFg(right.edgeStyle("left", options)));
   }
 
   join(left: T | null, right: T | null): Renderable {
-    const emit = this._emit.bind(this);
-    return {
-      *render(options: RenderOptions): Iterable<Segment> {
-        yield* emit(left, right, options);
-      },
-    };
+    return deferred((options) => this._emit(left, right, options));
   }
 }
 
@@ -265,28 +269,24 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
     // interpolate toward — the data (a missing neighbor) makes the gradient
     // empty. Same for edges lacking a bgcolor: nothing to blend between.
     if (left === null || right === null) return EMPTY;
-    const lbg = left.edgeStyle("right").bgcolor;
-    const rbg = right.edgeStyle("left").bgcolor;
-    if (!lbg || !rbg) return EMPTY;
-    const lTrip = lbg.getTruecolor();
-    const rTrip = rbg.getTruecolor();
     const steps = this._steps;
-    const samples = 2 * steps;
-    // Midpoint sampling across `2 * steps` half-cell positions: sample j has
-    // t = (j + 0.5) / samples. Cell i takes samples 2i (left half) and 2i+1
-    // (right half). No sample ever equals either anchor.
-    const segments: Segment[] = [];
-    for (let i = 0; i < steps; i++) {
-      const tLeft = (2 * i + 0.5) / samples;
-      const tRight = (2 * i + 1.5) / samples;
-      const fg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tLeft));
-      const bg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tRight));
-      segments.push(new Segment(HALF_BLOCK, new Style({ color: fg, bgcolor: bg })));
-    }
-    return {
-      *render(_options: RenderOptions): Iterable<Segment> {
-        yield* segments;
-      },
-    };
+    return deferred(function* (options) {
+      const lbg = left.edgeStyle("right", options).bgcolor;
+      const rbg = right.edgeStyle("left", options).bgcolor;
+      if (!lbg || !rbg) return;
+      const lTrip = lbg.getTruecolor();
+      const rTrip = rbg.getTruecolor();
+      const samples = 2 * steps;
+      // Midpoint sampling across `2 * steps` half-cell positions: sample j has
+      // t = (j + 0.5) / samples. Cell i takes samples 2i (left half) and 2i+1
+      // (right half). No sample ever equals either anchor.
+      for (let i = 0; i < steps; i++) {
+        const tLeft = (2 * i + 0.5) / samples;
+        const tRight = (2 * i + 1.5) / samples;
+        const fg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tLeft));
+        const bg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tRight));
+        yield new Segment(HALF_BLOCK, new Style({ color: fg, bgcolor: bg }));
+      }
+    });
   }
 }

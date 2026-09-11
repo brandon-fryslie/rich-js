@@ -61,7 +61,31 @@ console.print(richText);
 
 The fields must be `static`, because `RegexHighlighter` reads them from the class. Instance fields with the same names compile, but they are ignored and nothing is highlighted.
 
-A `baseStyle` ending in `.` names a separate style for each group: `baseStyle` followed by the group name. That is how `ReprHighlighter` pairs `"repr."` with `(?<number>…)` to style numbers as `repr.number`. The name has to be a built-in style, because a `Console` does not look names up in a `Theme` you give it; a group styled `http.method` comes out plain. To give each group a style of your own, write the highlighter from scratch and pass that style to `stylize`.
+A `baseStyle` ending in `.` names a separate style for each group: `baseStyle` followed by the group name. That is how `ReprHighlighter` pairs `"repr."` with `(?<number>…)` to style numbers as `repr.number`. Names are looked up in the [theme](./style#style-themes) of the console that prints the text, so a highlighter of your own takes its per-group colors from a `Theme`:
+
+```typescript
+import { Console, RegexHighlighter, Theme } from "@promptctl/rich-js";
+
+class HttpHighlighter extends RegexHighlighter {
+  static override highlights = [
+    /\b(?<method>GET|POST|PUT|DELETE|PATCH)\b/,
+    /\b(?<status>[1-5]\d\d)\b/,
+  ];
+  // Groups are styled http.method and http.status
+  static override baseStyle = "http.";
+}
+
+const console = new Console({
+  highlighter: new HttpHighlighter(),
+  theme: new Theme({
+    "http.method": "bold cyan",
+    "http.status": "magenta",
+  }),
+});
+console.print("GET /api/users 200");
+```
+
+A group whose name the theme does not define prints plain.
 
 ### Custom highlighter from scratch
 

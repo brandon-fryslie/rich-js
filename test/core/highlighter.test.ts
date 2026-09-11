@@ -7,20 +7,17 @@ import {
   ISO8601Highlighter,
 } from "../../src/core/highlighter.js";
 import { RichText } from "../../src/core/text.js";
-import { Style } from "../../src/core/style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
-/** Resolve a semantic style name (e.g. "repr.number") to its Style object for comparison. */
-function resolveStyle(name: string): Style {
-  return Style.parse(name);
-}
-
-/** Extract plain-text slices covered by spans matching a given resolved style. */
+/**
+ * Plain-text slices covered by spans carrying a given style name. A highlighter
+ * tags text with names, as the reference does; what a name looks like belongs to
+ * the theme of whatever render draws it.
+ */
 function matchedTexts(text: RichText, styleName: string): string[] {
-  const expected = resolveStyle(styleName);
   return text.spans
-    .filter((s) => s.style === expected)
+    .filter((s) => s.style === styleName)
     .map((s) => text.plain.slice(s.start, s.end));
 }
 
@@ -200,37 +197,35 @@ describe("JSONHighlighter", () => {
     const text = new JSONHighlighter().call(source);
     return text.spans.map((s) => [text.plain.slice(s.start, s.end), s.style]);
   };
-  const styled = (...pairs: [string, string][]) =>
-    pairs.map(([covered, name]) => [covered, resolveStyle(name)]);
 
   it("styles every string, in arrays and with escaped quotes, then restyles keys", () => {
-    expect(spansOf('{"k": ["a", "b \\"q\\" c"]}')).toEqual(styled(
+    expect(spansOf('{"k": ["a", "b \\"q\\" c"]}')).toEqual([
       ["{", "json.brace"], ['"k"', "json.str"], ["[", "json.brace"], ['"a"', "json.str"],
       ['"b \\"q\\" c"', "json.str"], ["]", "json.brace"], ["}", "json.brace"], ['"k"', "json.key"],
-    ));
+    ]);
   });
 
   it("styles numbers, true, false and null each their own way", () => {
-    expect(spansOf('{"n": 1.5, "t": true, "f": false, "z": null}')).toEqual(styled(
+    expect(spansOf('{"n": 1.5, "t": true, "f": false, "z": null}')).toEqual([
       ["{", "json.brace"], ['"n"', "json.str"], ["1.5", "json.number"],
       ['"t"', "json.str"], ["true", "json.bool_true"], ['"f"', "json.str"],
       ["false", "json.bool_false"], ['"z"', "json.str"], ["null", "json.null"], ["}", "json.brace"],
       ['"n"', "json.key"], ['"t"', "json.key"], ['"f"', "json.key"], ['"z"', "json.key"],
-    ));
+    ]);
   });
 
   it("keys only the string a colon follows, not a value and the key after it", () => {
-    expect(spansOf('{"a": "b", "c": 1}')).toEqual(styled(
+    expect(spansOf('{"a": "b", "c": 1}')).toEqual([
       ["{", "json.brace"], ['"a"', "json.str"], ['"b"', "json.str"], ['"c"', "json.str"],
       ["1", "json.number"], ["}", "json.brace"], ['"a"', "json.key"], ['"c"', "json.key"],
-    ));
+    ]);
   });
 
   it("leaves words, numbers and brackets inside a string to the string", () => {
-    expect(spansOf('{"s": "true 12 [x]"}')).toEqual(styled(
+    expect(spansOf('{"s": "true 12 [x]"}')).toEqual([
       ["{", "json.brace"], ['"s"', "json.str"], ['"true 12 [x]"', "json.str"],
       ["}", "json.brace"], ['"s"', "json.key"],
-    ));
+    ]);
   });
 
   it("call creates highlighted RichText from string", () => {

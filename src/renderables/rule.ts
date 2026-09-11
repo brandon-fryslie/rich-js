@@ -10,6 +10,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
+import { getStyle } from "../core/protocol.js";
 
 export type RuleAlign = "left" | "center" | "right";
 
@@ -26,7 +27,7 @@ export class Rule implements Renderable, Measurable {
   readonly title: string | undefined;
   readonly characters: string;
   readonly align: RuleAlign;
-  readonly style: Style;
+  readonly style: string | Style;
 
   constructor(title?: string, options?: RuleOptions) {
     const chars = options?.characters ?? DEFAULT_RULE_CHAR;
@@ -41,13 +42,14 @@ export class Rule implements Renderable, Measurable {
     this.title = title;
     this.characters = chars;
     this.align = align ?? "center";
-    this.style = resolveStyle(options?.style);
+    this.style = options?.style ?? NULL_STYLE;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
     const maxWidth = options.maxWidth;
     const ruleChar = options.asciiOnly ? ASCII_RULE_CHAR : this.characters;
-    const ruleStyle = this.style.isNull ? undefined : this.style;
+    const style = getStyle(options, this.style);
+    const ruleStyle = style.isNull ? undefined : style;
 
     if (!this.title) {
       // No title — just a line of repeated characters
@@ -111,10 +113,4 @@ function repeatToWidth(char: string, width: number): string {
   // Pad if needed (wide char couldn't fill exact width)
   const gap = width - w;
   return gap > 0 ? result + " ".repeat(gap) : result;
-}
-
-function resolveStyle(style: string | Style | undefined): Style {
-  if (style === undefined) return NULL_STYLE;
-  if (typeof style === "string") return Style.parse(style);
-  return style;
 }

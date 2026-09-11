@@ -3,7 +3,6 @@
  */
 
 import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
 import { escape as escapeMarkup, renderMarkup } from "../core/markup.js";
@@ -12,6 +11,7 @@ import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
 import { Table } from "./table.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
+import { getStyle } from "../core/protocol.js";
 
 // --- Task ---
 
@@ -83,35 +83,37 @@ export class BarColumn implements ProgressColumn {
 }
 
 export class TaskProgressColumn implements ProgressColumn {
-  *render(_options: RenderOptions, task?: Task): Iterable<Segment> {
+  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
     const percent = task && task.total
       ? Math.min(100, Math.round((task.completed / task.total) * 100))
       : 0;
-    yield new Segment(`${percent}%`, Style.parse("progress.percentage"));
+    yield new Segment(`${percent}%`, getStyle(options, "progress.percentage"));
   }
 }
 
 export class TimeRemainingColumn implements ProgressColumn {
-  *render(_options: RenderOptions, task?: Task): Iterable<Segment> {
+  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
+    const style = getStyle(options, "progress.remaining");
     if (!task || !task.total || !task.started || task.completed <= 0) {
-      yield new Segment("-:--:--", Style.parse("progress.remaining"));
+      yield new Segment("-:--:--", style);
       return;
     }
     const elapsed = (Date.now() - task.startTime) / 1000;
     const rate = task.completed / elapsed;
     const remaining = (task.total - task.completed) / rate;
-    yield new Segment(formatTime(remaining), Style.parse("progress.remaining"));
+    yield new Segment(formatTime(remaining), style);
   }
 }
 
 export class TimeElapsedColumn implements ProgressColumn {
-  *render(_options: RenderOptions, task?: Task): Iterable<Segment> {
+  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
+    const style = getStyle(options, "progress.elapsed");
     if (!task || !task.started) {
-      yield new Segment("0:00:00", Style.parse("progress.elapsed"));
+      yield new Segment("0:00:00", style);
       return;
     }
     const elapsed = (Date.now() - task.startTime) / 1000;
-    yield new Segment(formatTime(elapsed), Style.parse("progress.elapsed"));
+    yield new Segment(formatTime(elapsed), style);
   }
 }
 

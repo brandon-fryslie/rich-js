@@ -123,21 +123,35 @@ console.print("[my.header]Section One[/my.header]");
 console.print("[my.warning]Caution![/my.warning]");
 ```
 
-Theme names must be lowercase, start with a letter, and contain only letters, dots, dashes, or underscores.
+Theme names must be lowercase, start with a letter, and contain only letters, digits, dots, dashes, or underscores.
+
+A name is looked up when it is printed, in the theme of the console doing the printing. A `RichText` built once and printed by two consoles takes each console's colors, and a name the theme does not define prints plain.
 
 ### Customizing defaults
 
-A `Theme` inherits the built-in default styles and overrides any names it defines:
+A `Theme` starts from the built-in styles and overrides any names it defines. The built-in names are what rich-js itself draws with — `ReprHighlighter` styles numbers as `repr.number`, and a `Table` header is `table.header` — so redefining one changes how every console given the theme draws it:
 
 ```typescript
+import { Console, Theme } from "@promptctl/rich-js";
+
 const theme = new Theme({
-  // Override how numbers are highlighted by the ReprHighlighter
-  "repr.number": "bold cyan",
+  // The ReprHighlighter styles every number it finds as "repr.number"
+  "repr.number": "bold magenta",
 });
+
+const console = new Console({ theme });
+console.print("Retrying in 30 seconds");
+// 30 is bold magenta; under the built-in theme it is cyan
 ```
 
-To start from scratch without inheriting built-in styles:
+To start from scratch, pass `inherit: false`. The theme then defines only the names you give it:
 
 ```typescript
-const theme = new Theme({ "my.style": "bold" }, { inherit: false });
+const console = new Console({
+  theme: new Theme({ "my.style": "bold" }, { inherit: false }),
+});
+console.print("[my.style]Retrying[/my.style] in 30 seconds");
+// "Retrying" is bold; 30 is plain, because this theme has no repr.number
 ```
+
+Text forgives a missing name, but a renderable may not: a `Table` looks up `table.header` when it renders, so printing one under this theme throws `StyleSyntaxError`. Leave `inherit` on unless your theme defines every name your renderables use.

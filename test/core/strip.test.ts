@@ -6,7 +6,7 @@ import {
   PlainJoiner,
   GradientJoiner,
 } from "../../src/core/strip.js";
-import { Style } from "../../src/core/style.js";
+import { Style, Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
@@ -16,8 +16,8 @@ import type { RenderOptions } from "../../src/core/protocol.js";
 
 const OPTIONS: RenderOptions = { maxWidth: 80 };
 
-function render(strip: Strip): Segment[] {
-  return [...strip.render(OPTIONS)];
+function render(strip: Strip, options: RenderOptions = OPTIONS): Segment[] {
+  return [...strip.render(options)];
 }
 
 function cell(text: string, style: string | Style): RichText {
@@ -70,7 +70,7 @@ describe("PowerlineJoiner color inheritance", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
     const end = segs[segs.length - 1]!;
-    expect(end.style?.color?.name).toBe(BLUE.edgeStyle("right").bgcolor?.name);
+    expect(end.style?.color?.name).toBe(BLUE.edgeStyle("right", OPTIONS).bgcolor?.name);
     expect(end.style?.bgcolor).toBeUndefined();
   });
 
@@ -78,8 +78,8 @@ describe("PowerlineJoiner color inheritance", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const segs = render(strip);
     const mid = segs[1]!;
-    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
-    expect(mid.style?.bgcolor?.name).toBe(BLUE.edgeStyle("left").bgcolor?.name);
+    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
+    expect(mid.style?.bgcolor?.name).toBe(BLUE.edgeStyle("left", OPTIONS).bgcolor?.name);
   });
 });
 
@@ -112,8 +112,8 @@ describe("PowerlineJoiner same-bg structural join", () => {
     const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
     const mid = render(strip)[1]!;
     expect(mid.text).toBe(">");
-    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
-    expect(mid.style?.bgcolor?.name).toBe(BLUE.edgeStyle("left").bgcolor?.name);
+    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
+    expect(mid.style?.bgcolor?.name).toBe(BLUE.edgeStyle("left", OPTIONS).bgcolor?.name);
   });
 });
 
@@ -137,7 +137,7 @@ describe("PowerlineJoiner no-bg edges paint nothing", () => {
     const strip = new Strip([RED, FG_B], new PowerlineJoiner({ glyph: ">" }));
     const mid = render(strip)[1]!;
     expect(mid.text).toBe(">");
-    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
+    expect(mid.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
     expect(mid.style?.bgcolor).toBeUndefined();
   });
 
@@ -159,7 +159,7 @@ describe("CapsuleJoiner", () => {
     );
     const [start] = render(strip);
     expect(start!.text).toBe("(");
-    expect(start!.style?.color?.name).toBe(RED.edgeStyle("left").bgcolor?.name);
+    expect(start!.style?.color?.name).toBe(RED.edgeStyle("left", OPTIONS).bgcolor?.name);
     expect(start!.style?.bgcolor).toBeUndefined();
   });
 
@@ -171,7 +171,7 @@ describe("CapsuleJoiner", () => {
     const segs = render(strip);
     const end = segs[segs.length - 1]!;
     expect(end.text).toBe(")");
-    expect(end.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
+    expect(end.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
   });
 
   it("middle emits close-cap, separator, open-cap", () => {
@@ -183,8 +183,8 @@ describe("CapsuleJoiner", () => {
     expect(segs.map((s) => s.text)).toEqual([
       "(", " red ", ")", "·", "(", " blue ", ")",
     ]);
-    expect(segs[2]!.style?.color?.name).toBe(RED.edgeStyle("right").bgcolor?.name);
-    expect(segs[4]!.style?.color?.name).toBe(BLUE.edgeStyle("left").bgcolor?.name);
+    expect(segs[2]!.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
+    expect(segs[4]!.style?.color?.name).toBe(BLUE.edgeStyle("left", OPTIONS).bgcolor?.name);
   });
 });
 
@@ -257,16 +257,16 @@ describe("GradientJoiner", () => {
 describe("edge-aware joiner protocol with varying interior styling", () => {
   it("RichText.edgeStyle returns base style for unspanned text", () => {
     const r = cell("hello", "white on red");
-    expect(r.edgeStyle("left").bgcolor?.name).toBe("red");
-    expect(r.edgeStyle("right").bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("left", OPTIONS).bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right", OPTIONS).bgcolor?.name).toBe("red");
   });
 
   it("RichText.edgeStyle reports span-overridden bg at the matching edge", () => {
     const r = new RichText("hello", { style: "white on red", end: "" });
     // Spans override bg on the right edge.
     r.stylize("on green", 4, 5);
-    expect(r.edgeStyle("left").bgcolor?.name).toBe("red");
-    expect(r.edgeStyle("right").bgcolor?.name).toBe("green");
+    expect(r.edgeStyle("left", OPTIONS).bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right", OPTIONS).bgcolor?.name).toBe("green");
   });
 
   it("PowerlineJoiner paints the transition using the actual edge bgs", () => {
@@ -283,7 +283,41 @@ describe("edge-aware joiner protocol with varying interior styling", () => {
 
   it("empty RichText falls back to base style at both edges", () => {
     const r = cell("", "white on red");
-    expect(r.edgeStyle("left").bgcolor?.name).toBe("red");
-    expect(r.edgeStyle("right").bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("left", OPTIONS).bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right", OPTIONS).bgcolor?.name).toBe("red");
+  });
+});
+
+// A cell's style may be a theme name, which is a colour only against the theme
+// of the render drawing it. That is why a joiner reads edges from inside the
+// renderable it returns rather than in `join` — these pin the deferral, which
+// a joiner reading edges eagerly would pass every test above.
+describe("edge styles resolved against the render's theme", () => {
+  const THEMED: RenderOptions = {
+    maxWidth: 80,
+    theme: new Theme({ "strip.lead": "white on red", "strip.tail": "white on blue" }),
+  };
+
+  it("RichText.edgeStyle resolves a theme name through the render's theme", () => {
+    const r = cell("hello", "strip.lead");
+    expect(r.edgeStyle("left", THEMED).bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right", THEMED).bgcolor?.name).toBe("red");
+  });
+
+  it("resolves a span's theme name at the edge the span covers", () => {
+    const r = cell("ab", "strip.lead");
+    r.stylize("strip.tail", 1, 2);
+    expect(r.edgeStyle("left", THEMED).bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right", THEMED).bgcolor?.name).toBe("blue");
+  });
+
+  it("PowerlineJoiner paints the transition in the theme's colours", () => {
+    const strip = new Strip(
+      [cell(" lead ", "strip.lead"), cell(" tail ", "strip.tail")],
+      new PowerlineJoiner({ glyph: ">" }),
+    );
+    const mid = render(strip, THEMED).find((s) => s.text === ">")!;
+    expect(mid.style?.color?.name).toBe("red");
+    expect(mid.style?.bgcolor?.name).toBe("blue");
   });
 });

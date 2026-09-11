@@ -162,5 +162,14 @@ describe("Tree", () => {
       const m = tree.measure({ maxWidth: 40 });
       expect(m.minimum).toBeGreaterThan(0);
     });
+
+    it("measures a guide style name no theme defines as it measures no guide style", () => {
+      // Only a render's theme can resolve the name, and a width needs none.
+      const named = new Tree("Root", { guide_style: "my.guide" });
+      named.add("Child");
+      const plain = new Tree("Root");
+      plain.add("Child");
+      expect(named.measure({ maxWidth: 40 })).toEqual(plain.measure({ maxWidth: 40 }));
+    });
   });
 });
