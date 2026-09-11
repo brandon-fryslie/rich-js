@@ -20,20 +20,20 @@ npm install @promptctl/rich-js
 
 Most of the library comes from the package name itself — `Console`, `Table`, `Panel`, `Tree`, and everything else in the snippets below. Four areas sit behind package subpaths instead — worth knowing before you go looking for one of them in the main entry point and find nothing there:
 
-| Import from | What lives there | Why it's separate |
-|---|---|---|
-| `@promptctl/rich-js/widgets` | Button, Checkbox, Toggle, TextInput, Dropdown, Slider, and the screen that mounts them | Carries a third-party runtime dependency of its own — MobX, for widget state |
-| `@promptctl/rich-js/template-bindings` | The styling vocabulary as Go-template functions, so styled text can be authored as a template | Carries a third-party runtime dependency of its own — `@promptctl/go-template-js`, the template engine |
-| `@promptctl/rich-js/host` | `TerminalHost`, `BrowserTerminalHost`, `hostStream` — the seam between rendering and a terminal | A program that just wants to write bytes through a host shouldn't pay for the widget set to do it |
-| `@promptctl/rich-js/node/save`, `/node/prompt`, `/node/traceback`, `/node/terminal-host` | File export, readline input, the crash handler, and the node TTY host | Each one reads node built-ins, and keeping them off the main entry point is what keeps that entry point browser-safe |
+| Import from | What lives there | What you install yourself | Why it's separate |
+|---|---|---|---|
+| `@promptctl/rich-js/widgets` | Button, Checkbox, Toggle, TextInput, Dropdown, Slider, and the screen that mounts them | `mobx` | Carries a third-party runtime dependency of its own — MobX, for widget state |
+| `@promptctl/rich-js/template-bindings` | The styling vocabulary as Go-template functions, so styled text can be authored as a template | `@promptctl/go-template-js` | Carries a third-party runtime dependency of its own — the Go-template engine, for parsing and evaluating the templates |
+| `@promptctl/rich-js/host` | `TerminalHost`, `BrowserTerminalHost`, `hostStream` — the seam between rendering and a terminal | Nothing | A program that just wants to write bytes through a host shouldn't pay for the widget set to do it |
+| `@promptctl/rich-js/node/save`, `/node/prompt`, `/node/traceback`, `/node/terminal-host` | File export, readline input, the crash handler, and the node TTY host | Nothing | Each one reads node built-ins, and keeping them off the main entry point is what keeps that entry point browser-safe |
 
-The widget layer's MobX is the one dependency you install yourself. It is a peer dependency, and `npm install @promptctl/rich-js` deliberately doesn't fetch it — a program that prints a table shouldn't acquire a state library to do it:
+Those two peer dependencies are yours to install — `npm install @promptctl/rich-js` deliberately fetches neither, because a program that prints a table shouldn't acquire a state library or a template engine to do it. Add the ones you need:
 
 ```sh
-npm install @promptctl/rich-js mobx
+npm install @promptctl/rich-js mobx @promptctl/go-template-js
 ```
 
-Import `@promptctl/rich-js/widgets` without MobX present and the import itself fails, with `ERR_MODULE_NOT_FOUND`. The main entry point is unaffected — every snippet on this page that imports from `@promptctl/rich-js` runs on the plain install. The template engine behind `template-bindings` is a plain dependency and arrives with the package, so that subpath needs nothing extra.
+Import `@promptctl/rich-js/widgets` without MobX, or `@promptctl/rich-js/template-bindings` without the engine, and the import itself fails, with `ERR_MODULE_NOT_FOUND`. The main entry point is unaffected — every snippet on this page that imports from `@promptctl/rich-js` runs on the plain install.
 
 ## Using the Console
 

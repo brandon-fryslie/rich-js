@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is this project?
 
-A TypeScript port of Python's [Rich](https://github.com/Textualize/rich) library — rich text and beautiful formatting in the terminal. ESM-only, targeting Node.js >= 20 (transitively required by `@promptctl/go-template-js`).
+A TypeScript port of Python's [Rich](https://github.com/Textualize/rich) library — rich text and beautiful formatting in the terminal. ESM-only, targeting Node.js >= 20; `package.json#engines` is the authority on the exact floor.
 
 ## Commands
 
@@ -142,13 +142,13 @@ The counter-argument is real and worth naming: this *is* a terminal library, and
 
 `test/seam/browser-safe.test.ts` is what stops that failure from landing on someone other than the person who wrote the import: it walks the runtime import graph from every `package.json#exports` entry outside `src/node/` and fails in the unit suite, naming the file, the line, and the chain that reached it. A Node builtin on a runtime edge breaks it, and so does a module-scope read of any name in `AMBIENT_GLOBALS`. `test/seam/browser-safe.ts`'s header owns the rest — what module scope means here, and why there is no `typeof` exemption.
 
-### Installing this package does not install mobx
+### Installing this package installs neither of its optional peers
 
-`mobx` is an optional peer — `package.json` declares it under `peerDependencies` with `peerDependenciesMeta.mobx.optional` — so a consumer's `npm install` adds it for nobody and warns nobody about it. It is reachable only from the `./widgets` subpath, which fails at import with `ERR_MODULE_NOT_FOUND` until they install it themselves. `string-width` is reachable from the main barrel, so it stays a hard `dependency`.
+`string-width` aside, every third-party package `src/` imports at runtime is an optional peer — `package.json` declares it under `peerDependencies` with a `peerDependenciesMeta` row marking it `optional` — so a consumer's `npm install` adds it for nobody and warns nobody about it. There are two of them and the shape is the same both times: the dependency sits in the one subsystem that needs it and is reachable only through that subsystem's subpath, which fails at import with `ERR_MODULE_NOT_FOUND` until the consumer installs it themselves. `string-width` is reachable from the main barrel, so it stays a hard `dependency`.
 
 `test/seam/optional-peers.test.ts` walks the runtime import graph from each `package.json#exports` entry *separately* and asks what that one entry obliges a consumer to install. `PEER_PROVIDERS` in `test/seam/optional-peers.ts` is the allow-list, one row per optional peer with a required `why`; it goes red three ways — a package declared nowhere, an optional peer reached from an entry that does not provide it, and a listed entry that can no longer reach it, so the list cannot accumulate permissions nobody needs. `package.json` owns *which* packages are optional peers, `PEER_PROVIDERS` owns *which subpath provides* each, and npm has no field for that second half. Do not restate either list here.
 
-The trap is worse than the browser-safe one above. `mobx` is still in `devDependencies`, so it resolves perfectly in this checkout. You will be in `src/core/` or a renderable, you will want observable state, and you will think *"mobx is right there in `node_modules`, the import resolves, the tests are green — this is fine."* It is green because we have the package; the thing that would fail is its **absence**, in a stranger's project, at `npm install` time. Nothing here can see that by construction — the browser-safe leak at least broke the demo build. Keep the import under `src/widgets/`; if the dependency genuinely belongs on the default path, promote it to `dependencies` and drop its `peerDependenciesMeta` row as a change made on its own merits. `test/seam/optional-peers.ts`'s header owns the rest of the argument.
+The trap is worse than the browser-safe one above, and it is the same trap for both peers, because both are still in `devDependencies` and so resolve perfectly in this checkout. You will be in `src/core/` or a renderable; you will want observable state, or you will want to evaluate a template string; `mobx` or `@promptctl/go-template-js` will be right there in `node_modules`, and you will think *"the import resolves, the tests are green — this is fine."* It is green because we have the package; the thing that would fail is its **absence**, in a stranger's project, at `npm install` time. Nothing here can see that by construction — the browser-safe leak at least broke the demo build. Keep the import inside the subsystem that already carries that dependency, behind its own subpath; if the dependency genuinely belongs on the default path, promote it to `dependencies` and drop its `peerDependenciesMeta` row as a change made on its own merits. `test/seam/optional-peers.ts`'s header owns the rest of the argument.
 
 ### One list says who reaches the host
 

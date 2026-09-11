@@ -110,12 +110,34 @@ describe("what each published subpath costs to install", () => {
     expect(packagesFor("@promptctl/rich-js")).toEqual(["string-width"]);
   });
 
-  it("charges mobx to the widgets subpath and to nothing else", () => {
-    expect(packagesFor("@promptctl/rich-js/widgets")).toContain("mobx");
-    const elsewhere = REACHES.filter(
-      (r) => r.package === "mobx" && r.entry !== "@promptctl/rich-js/widgets",
-    );
+  /**
+   * Written out literally rather than read off `PEER_PROVIDERS`, which would
+   * turn this into a restatement of the gate above instead of the contract
+   * that gate protects. The two subpaths owe their package for the same
+   * reason, so they are two values of one test rather than two copies of it.
+   */
+  const SUBPATH_PEERS = [
+    { entry: "@promptctl/rich-js/widgets", pkg: "mobx" },
+    { entry: "@promptctl/rich-js/template-bindings", pkg: "@promptctl/go-template-js" },
+  ];
+
+  it.each(SUBPATH_PEERS)("charges $pkg to $entry and to nothing else", ({ entry, pkg }) => {
+    expect(packagesFor(entry)).toContain(pkg);
+    const elsewhere = REACHES.filter((r) => r.package === pkg && r.entry !== entry);
     expect(elsewhere).toEqual([]);
+  });
+
+  /**
+   * Hand-written values, checked coverage. Deriving `SUBPATH_PEERS` from
+   * `PEER_PROVIDERS` would make the cases above restate the gate instead of
+   * stating the contract, but a list nobody checks is a list that falls
+   * behind — so a third optional peer has to arrive with its contract
+   * written out rather than silently going undescribed.
+   */
+  it("states a contract for every optional peer the manifest declares", () => {
+    expect(SUBPATH_PEERS.map((s) => s.pkg).sort()).toEqual(
+      [...optionalPeers(PACKAGE_MANIFEST)].sort(),
+    );
   });
 
   it("keeps the node airlock an opt-in to builtins, not to new installs", () => {

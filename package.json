@@ -94,6 +94,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@promptctl/go-template-js": "^0.5.0",
     "@types/node": "^25.5.0",
     "mobx": "^6.15.0",
     "strip-ansi": "^7.2.0",
@@ -103,13 +104,16 @@
     "vitest": "^3.0.0"
   },
   "dependencies": {
-    "@promptctl/go-template-js": "^0.5.0",
     "string-width": "^8.2.0"
   },
   "peerDependencies": {
+    "@promptctl/go-template-js": "^0.5.0",
     "mobx": "^6.15.0"
   },
   "peerDependenciesMeta": {
+    "@promptctl/go-template-js": {
+      "optional": true
+    },
     "mobx": {
       "optional": true
     }
