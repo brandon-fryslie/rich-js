@@ -201,6 +201,10 @@ describe("importTimeEffects", () => {
     // that out here rather than from a broken consumer build.
     expect(scan(`export const T = defineTheme(base);`)).toEqual([]);
     expect(scan(`export const frozen = Object.freeze({});`)).toEqual([]);
+    // An enum's member initialisers are the same limit wearing the shape most
+    // often mistaken for a hole in the accept list: this needs no `const` to be
+    // legal, and it runs `register()` when the module is imported.
+    expect(scan(`export enum E { A = register() }`)).toEqual([]);
   });
 
   it("does not judge the expressions a class evaluates when it is declared", () => {

@@ -31,6 +31,15 @@
  * recognising something reports "safe" for the reason it should have reported
  * "broken".
  *
+ * Those kinds are read off the source somebody wrote, never off the JavaScript
+ * emitted for it. Desugaring is not the question a bundler is asking: a
+ * non-const `enum` emits an IIFE, a class emits property definitions, an object
+ * literal emits an allocation, and a rule counting those would report every
+ * file under `src/` and so distinguish nothing. "Declaration" here means the
+ * author bound a name rather than writing a statement — which is why a `static
+ * {}` block and a namespace body report, both being statement lists somebody
+ * wrote, and an `enum`, which has members rather than statements, does not.
+ *
  * WHAT THIS CANNOT SEE, stated plainly because a guard's blind spot read as
  * coverage is worse than no guard: an expression's contents. `export const T =
  * defineTheme(…)` is accepted on its shape, and whether `defineTheme` writes to
@@ -50,6 +59,14 @@
  * evaluate on import and do nothing, so a rule there would have to sort a
  * harmless expression from a working one. That is the judgement this file
  * refuses everywhere else, and buying it here would cost the rule its edge.
+ *
+ * An `enum` is that same limit in a third shape, and the one most likely to be
+ * read as a hole in the accept list: `enum E { A = register() }` is legal
+ * without `const`, evaluates its member initialisers on import, and is accepted
+ * exactly as `defineTheme(…)` above is. Narrowing the accept list to `const`
+ * enums is not the way out — `isolatedModules` is on, which makes `const enum`
+ * unsafe to export across a module boundary, and `ColorDepth` and `ControlType`
+ * are exported non-const enums a rule there would fail on its first day.
  */
 
 import ts from "typescript";
