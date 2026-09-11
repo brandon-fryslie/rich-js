@@ -160,10 +160,27 @@ describe("importTimeEffects", () => {
         specifier: "./polyfill.js",
       },
     ]);
+    // The spellings that emit as that bare import. Neither is empty in source,
+    // and both leave `import {} from "…"` behind — so a rule written against
+    // the shape of the first one misses the second.
+    expect(scan(`import {} from "./sibling.js";`)[0]).toMatchObject({
+      rule: "effect-only-import",
+      specifier: "./sibling.js",
+    });
+    expect(scan(`import { type T } from "./sibling.js";`)[0]).toMatchObject({
+      rule: "effect-only-import",
+      specifier: "./sibling.js",
+    });
+    // A wholly type-only clause binds nothing either, and is erased along with
+    // the statement, so nothing is left to run. Reporting these would trade a
+    // missed effect for a gate that is red on a file that does nothing.
+    expect(scan(`import type {} from "./sibling.js";`)).toEqual([]);
+    expect(scan(`import type { T } from "./sibling.js";`)).toEqual([]);
     // A binding is what makes an import a declaration rather than an errand.
     expect(scan(`import { x } from "./sibling.js";`)).toEqual([]);
-    expect(scan(`import type { T } from "./sibling.js";`)).toEqual([]);
     expect(scan(`import * as ns from "./sibling.js";`)).toEqual([]);
+    expect(scan(`import d from "./sibling.js";`)).toEqual([]);
+    expect(scan(`import d, { type T } from "./sibling.js";`)).toEqual([]);
   });
 
   it("allows every form whose job is to bind a name", () => {

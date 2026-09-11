@@ -19,9 +19,11 @@
  *     class's `static {}` blocks, and a `namespace`'s body, which TypeScript
  *     emits as an IIFE. Miss either and a scan over top-level statements is
  *     bypassed by writing the same call one nesting level down;
- *   - `import "./x.js"` with no bindings, which names a module for its effects
- *     and nothing else. Under this field that import is the first thing a
- *     bundler is entitled to drop.
+ *   - an import that binds no name and still runs: `import "./x.js"`, and the
+ *     two spellings that emit as it — empty braces, and braces whose every
+ *     element carries its own `type`. Under this field that import is the first
+ *     thing a bundler is entitled to drop. Its opposite is the wholly type-only
+ *     clause, which binds nothing either and is erased before the module runs.
  *
  * [LAW:enumeration-gap] The accept list is the declaration kinds, and every
  * other kind reports. Written the other way — a list of effectful kinds — a
@@ -190,5 +192,31 @@ function isDeclaration(statement: ts.Statement): boolean {
 
 /** `import "./x.js"` — a module named for its effects and nothing else. */
 function isEffectOnlyImport(statement: ts.Statement): statement is ts.ImportDeclaration {
-  return ts.isImportDeclaration(statement) && statement.importClause === undefined;
+  return ts.isImportDeclaration(statement) && emitsAsBareImport(statement.importClause);
+}
+
+/**
+ * Whether a clause leaves `import "…"` behind — nothing bound, and the
+ * statement still there to run.
+ *
+ * [LAW:parse-dont-validate] The question is not how many names the clause
+ * lists, which is none for the erased `import type {}` too, but whether the
+ * statement survives erasure while binding none of them. Three source forms
+ * reach that emit and only the first looks like it: no clause at all, empty
+ * braces, and braces whose every element carries its own `type`. `every` over
+ * no elements is what folds the second into the third rather than making it a
+ * case of its own.
+ */
+function emitsAsBareImport(clause: ts.ImportClause | undefined): boolean {
+  if (clause === undefined) return true;
+  const named = clause.namedBindings;
+  return (
+    !clause.isTypeOnly &&
+    // `import d, { type T } from "…"` binds no name through the braces and
+    // still binds `d`.
+    clause.name === undefined &&
+    named !== undefined &&
+    ts.isNamedImports(named) &&
+    named.elements.every((element) => element.isTypeOnly)
+  );
 }
