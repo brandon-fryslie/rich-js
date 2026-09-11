@@ -4,7 +4,7 @@
 
 ## Compatibility
 
-rich-js runs on **Linux**, **macOS**, and **Windows**. It requires **Node.js ≥ 18** and is ESM-only.
+rich-js runs on **Linux**, **macOS**, and **Windows**. It requires **Node.js ≥ 20** and is ESM-only.
 
 Color support varies by terminal:
 

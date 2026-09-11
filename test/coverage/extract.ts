@@ -41,6 +41,7 @@ export interface PackageManifest {
   readonly dependencies?: Readonly<Record<string, string>>;
   readonly peerDependencies?: Readonly<Record<string, string>>;
   readonly peerDependenciesMeta?: Readonly<Record<string, { optional?: boolean }>>;
+  readonly engines?: Readonly<Record<string, string>>;
 }
 
 /**
