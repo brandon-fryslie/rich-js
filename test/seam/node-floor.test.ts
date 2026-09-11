@@ -31,47 +31,40 @@ import {
   nodeClaims,
   claimViolations,
   describeClaimViolation,
+  productionKeys,
+  admittedByFlags,
+  reachableFromRoot,
+  describeProductionSet,
   type InstalledPackage,
   type NodeRange,
+  type LockEntry,
+  type LockPackages,
 } from "./node-floor.js";
 
-/** The fields of `package-lock.json` this rule reads. */
 interface Lockfile {
   readonly lockfileVersion: number;
-  readonly packages: Readonly<
-    Record<
-      string,
-      {
-        readonly dev?: boolean;
-        readonly peer?: boolean;
-        readonly optional?: boolean;
-        readonly engines?: Readonly<Record<string, string>>;
-      }
-    >
-  >;
+  readonly packages: LockPackages;
 }
 
 const LOCKFILE: Lockfile = JSON.parse(
   readFileSync(path.join(REPO_ROOT, "package-lock.json"), "utf-8"),
 ) as Lockfile;
 
+const PRODUCTION = productionKeys(LOCKFILE.packages);
+
 /**
  * Every package a consumer's default `npm install` puts on disk that declares
  * a Node range.
  *
- * The three exclusions are the three ways npm records "on disk here, but not
- * for them": `dev` is this checkout's tooling, `peer` is what the consumer
- * opts into by installing it themselves, and `optional` is what npm will skip
- * without failing. A package declaring no `engines` is simply absent — it
- * constrains nothing, and modelling it as `*` would put a range in the list
- * that no package actually asked for.
+ * Which packages those are is `productionKeys`' question and is answered twice
+ * over there; this only turns the agreed keys into ranges. A package declaring
+ * no `engines` is simply absent — it constrains nothing, and modelling it as
+ * `*` would put a range in the list that no package actually asked for.
  */
-function productionTree(): InstalledPackage[] {
+function treeFrom(keys: readonly string[]): InstalledPackage[] {
   const tree: InstalledPackage[] = [];
-  for (const [key, entry] of Object.entries(LOCKFILE.packages)) {
-    if (key === "") continue; // the root: this package, not something it installs
-    if (entry.dev === true || entry.peer === true || entry.optional === true) continue;
-    const declared = entry.engines?.["node"];
+  for (const key of keys) {
+    const declared = LOCKFILE.packages[key]?.engines?.["node"];
     if (declared === undefined) continue;
     const name = key.slice(key.lastIndexOf("node_modules/") + "node_modules/".length);
     tree.push({ name, range: nodeRange(declared, name) });
@@ -79,7 +72,7 @@ function productionTree(): InstalledPackage[] {
   return tree;
 }
 
-const TREE = productionTree();
+const TREE = treeFrom(PRODUCTION.kind === "agreed" ? PRODUCTION.keys : []);
 
 const DECLARED: NodeRange = nodeRange(
   PACKAGE_MANIFEST.engines?.["node"] ?? "",
@@ -103,6 +96,17 @@ const FLOOR_MAJOR: number = ((): number => {
 })();
 
 describe("the install tree this rule reasons about", () => {
+  /**
+   * [LAW:no-silent-failure] `TREE` is empty when the two derivations disagree,
+   * and an empty tree makes `treeFloor` return `unconstrained` — every floor
+   * assertion below would then pass by having nothing to check. So the
+   * disagreement is asserted first and on its own, where it reads as the
+   * failure it is rather than as a suspiciously quiet success.
+   */
+  it("is the same set whether read off npm's flags or walked from the root", () => {
+    expect(PRODUCTION.kind, describeProductionSet(PRODUCTION)).toBe("agreed");
+  });
+
   /**
    * [LAW:no-silent-failure] A lockfile that has not caught up with
    * `package.json` yields a tree missing the very dependency someone just
@@ -185,6 +189,139 @@ describe("the documented floor", () => {
       `Prose that tells a reader which Node to run has come loose from the ` +
         `field that decides it.\n\n  ${failures.join("\n\n  ")}\n`,
     ).toEqual([]);
+  });
+});
+
+/**
+ * The install-set derivation, pinned against lockfiles this repository does not
+ * have — and in one case cannot have. Our own `package-lock.json` carries `dev`
+ * 252 times, `optional` 76, `peer` once, and `devOptional` not at all. The flag
+ * whose absence from the exclusion list was the entire review finding is the one
+ * flag the live tree can never exercise, so every assertion about it lives here
+ * or nowhere.
+ *
+ * [LAW:one-source-of-truth] Each derivation is pinned on its own as well as
+ * through `productionKeys`, because asking twice only buys anything if the two
+ * answers can differ. Fixtures that went exclusively through the agreed question
+ * would pass just as happily with both halves computing the same mistake, which
+ * is the failure the pair exists to rule out.
+ */
+describe("the install set, derived twice", () => {
+  it("agrees on a tree where the flags and the edges tell the same story", () => {
+    const simple: LockPackages = {
+      "": { dependencies: { a: "*" } },
+      "node_modules/a": { dependencies: { b: "*" } },
+      "node_modules/b": {},
+      "node_modules/some-bundler": { dev: true },
+    };
+    expect(productionKeys(simple)).toEqual({
+      kind: "agreed",
+      keys: ["node_modules/a", "node_modules/b"],
+    });
+  });
+
+  /**
+   * All four flags, one entry each, because a list is only as good as its
+   * least-known member. `devOptional` is npm's mark for a package reachable only
+   * as an optional dependency of a development one, and npm sets it *instead of*
+   * `dev` and `optional` together — so an entry carrying it alone sailed through
+   * a filter that looked for the other three and found none. That is a
+   * devDependency's Node requirement reaching the published floor, which is the
+   * bug this whole rule was written to prevent, arriving through the rule
+   * itself.
+   */
+  it("excludes an entry npm marked with any of the four flags", () => {
+    const flagged: LockPackages = {
+      "": {},
+      "node_modules/shipped": {},
+      "node_modules/a": { dev: true },
+      "node_modules/b": { devOptional: true },
+      "node_modules/c": { peer: true },
+      "node_modules/d": { optional: true },
+    };
+    expect(admittedByFlags(flagged)).toEqual(["node_modules/shipped"]);
+  });
+
+  /**
+   * Why there are two derivations rather than a longer flag list. A flag npm
+   * invents next year is, to this rule, no flag at all, and an entry carrying
+   * only that flag passes `admittedByFlags` untouched. It still has to be
+   * *reached*, and it is not — so the pair goes red where the flag list alone
+   * would have handed the entry to the floor with a straight face.
+   */
+  it("refuses to guess when an unflagged entry is reached by nothing", () => {
+    const ghost: LockPackages = {
+      "": { dependencies: { a: "*" } },
+      "node_modules/a": {},
+      "node_modules/marked-by-some-future-npm": {},
+    };
+    const set = productionKeys(ghost);
+    expect(set.kind).toBe("disagreement");
+    expect(set.kind === "disagreement" && set.onlyByFlags).toEqual([
+      "node_modules/marked-by-some-future-npm",
+    ]);
+    expect(describeProductionSet(set)).toContain("devOptional");
+  });
+
+  /**
+   * The other direction, which is this rule's model of npm being wrong rather
+   * than npm's schema moving. It reports separately because the fix is
+   * different: nothing about the flag list would help.
+   */
+  it("refuses to guess when a flag excludes an entry the edges reach", () => {
+    const inconsistent: LockPackages = {
+      "": { dependencies: { a: "*" } },
+      "node_modules/a": { dev: true },
+    };
+    const set = productionKeys(inconsistent);
+    expect(set.kind).toBe("disagreement");
+    expect(set.kind === "disagreement" && set.onlyByReachability).toEqual(["node_modules/a"]);
+    expect(describeProductionSet(set)).toContain("npm flagged");
+  });
+
+  /**
+   * npm hoists what it can and nests what it cannot, so one name routinely sits
+   * at two paths holding two versions. A walk that read the hoisted copy for a
+   * dependent npm gave the nested one would take its `engines` off the wrong
+   * package — a floor derived from a version nobody installs.
+   */
+  it("resolves a nested copy before the hoisted one", () => {
+    const nested: LockPackages = {
+      "": { dependencies: { a: "*" } },
+      "node_modules/a": { dependencies: { shared: "*" } },
+      "node_modules/a/node_modules/shared": {},
+      "node_modules/shared": {},
+    };
+    expect(reachableFromRoot(nested).sort()).toEqual([
+      "node_modules/a",
+      "node_modules/a/node_modules/shared",
+    ]);
+  });
+
+  /**
+   * Optional edges are not followed, and the fixture has to widen
+   * `optionalDependencies` back in to say so — `LockEntry` does not declare the
+   * field, which is how the rule refuses to read it in the first place. The
+   * claim is worth checking anyway, because "the type has no such field" stops
+   * being the guarantee the moment someone adds one.
+   *
+   * npm installs an optional package where the host permits it and skips it
+   * where the host does not, rather than failing the install. A package that can
+   * be absent and leave the install working cannot bind the floor — the same
+   * judgement the `optional` flag encodes, reached from the edge side.
+   */
+  it("does not follow an optional edge out of the root", () => {
+    const optionalEdge: Readonly<
+      Record<
+        string,
+        LockEntry & { readonly optionalDependencies?: Readonly<Record<string, string>> }
+      >
+    > = {
+      "": { dependencies: { a: "*" }, optionalDependencies: { fsevents: "*" } },
+      "node_modules/a": {},
+      "node_modules/fsevents": {},
+    };
+    expect(reachableFromRoot(optionalEdge)).toEqual(["node_modules/a"]);
   });
 });
 

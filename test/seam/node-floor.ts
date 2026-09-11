@@ -104,6 +104,152 @@ export interface InstalledPackage {
   readonly range: NodeRange;
 }
 
+/** The fields of one `package-lock.json` entry this rule reads. */
+export interface LockEntry {
+  readonly dev?: boolean;
+  readonly devOptional?: boolean;
+  readonly peer?: boolean;
+  readonly optional?: boolean;
+  readonly engines?: Readonly<Record<string, string>>;
+  readonly dependencies?: Readonly<Record<string, string>>;
+}
+
+/** `package-lock.json#packages`, keyed by install path; `""` is the root. */
+export type LockPackages = Readonly<Record<string, LockEntry>>;
+
+/**
+ * The flags npm uses to mark an entry as something a consumer's default install
+ * does not require.
+ *
+ * `devOptional` is the one that was missing, and its absence is the reason this
+ * list is now a named constant with the semantics written down rather than a
+ * condition inline. npm sets it *instead of* setting `dev` and `optional`
+ * together, for a package reachable only as an optional dependency of a
+ * development one — so an entry carrying it alone passes a check that looks for
+ * the other three and finds none.
+ *
+ * Note what this list cannot promise: that it is complete. It is a claim about
+ * npm's schema, which npm changes without asking, and the sentence that used to
+ * sit here asserted a count ("the three ways npm records...") that was simply
+ * wrong. `productionKeys` exists so the claim does not have to be right —
+ * see the argument there.
+ */
+const EXCLUDED_BY_FLAG = ["dev", "devOptional", "peer", "optional"] as const;
+
+/** Entries npm has not flagged as excluded from a consumer's default install. */
+export function admittedByFlags(packages: LockPackages): string[] {
+  return Object.entries(packages)
+    .filter(([key, entry]) => key !== "" && !EXCLUDED_BY_FLAG.some((flag) => entry[flag] === true))
+    .map(([key]) => key);
+}
+
+/**
+ * Entries reachable from the root's `dependencies`, following required edges.
+ *
+ * `optionalDependencies` are deliberately not followed. npm skips an optional
+ * package whose `engines` the host fails rather than failing the install, so it
+ * cannot bind a floor — which is the same judgement the `optional` flag encodes,
+ * arrived at from the other side.
+ */
+export function reachableFromRoot(packages: LockPackages): string[] {
+  const root = packages[""];
+  const reached = new Set<string>();
+  const queue = Object.keys(root?.dependencies ?? {}).map((name) => resolveFrom("", name, packages));
+
+  while (queue.length > 0) {
+    const key = queue.pop();
+    if (key === undefined || reached.has(key)) continue;
+    reached.add(key);
+    for (const name of Object.keys(packages[key]?.dependencies ?? {})) {
+      queue.push(resolveFrom(key, name, packages));
+    }
+  }
+  return [...reached];
+}
+
+/**
+ * Where npm would find `name` when `fromKey` asks for it: the dependent's own
+ * nested tree first, then each enclosing one, ending at the top level.
+ */
+function resolveFrom(
+  fromKey: string,
+  name: string,
+  packages: LockPackages,
+): string | undefined {
+  let scope = fromKey === "" ? "" : `${fromKey}/`;
+  for (;;) {
+    const candidate = `${scope}node_modules/${name}`;
+    if (candidate in packages) return candidate;
+    if (scope === "") return undefined;
+    const enclosing = scope.lastIndexOf("node_modules/", scope.length - 2);
+    scope = enclosing <= 0 ? "" : scope.slice(0, enclosing);
+  }
+}
+
+/**
+ * The install set, or the reason two derivations of it disagree.
+ *
+ * [LAW:one-source-of-truth] Asked twice, on purpose, because the honest answer
+ * to "which packages does a consumer receive" is not available from either
+ * question alone. Reading npm's flags trusts a list of flag names to be
+ * complete, and it was not — `devOptional` was missing, which is a devDependency's
+ * Node requirement leaking into the published floor, character for character the
+ * bug this whole rule exists to prevent. Walking the dependency edges trusts this
+ * rule's model of npm's resolution instead. Neither is worth trusting alone; the
+ * pair is, because the failure that matters — an entry that should not be in the
+ * floor ending up in it — has to fool both at once, and a flag npm invents
+ * tomorrow fools only the first.
+ *
+ * So disagreement is a variant rather than a tie broken in favour of one side.
+ * A rule that picked a winner here would be asserting exactly the completeness
+ * it cannot establish.
+ */
+export type ProductionSet =
+  | { readonly kind: "agreed"; readonly keys: readonly string[] }
+  | {
+      readonly kind: "disagreement";
+      readonly onlyByFlags: readonly string[];
+      readonly onlyByReachability: readonly string[];
+    };
+
+export function productionKeys(packages: LockPackages): ProductionSet {
+  const byFlags = new Set(admittedByFlags(packages));
+  const byReach = new Set(reachableFromRoot(packages));
+
+  const onlyByFlags = [...byFlags].filter((key) => !byReach.has(key)).sort();
+  const onlyByReachability = [...byReach].filter((key) => !byFlags.has(key)).sort();
+
+  if (onlyByFlags.length > 0 || onlyByReachability.length > 0) {
+    return { kind: "disagreement", onlyByFlags, onlyByReachability };
+  }
+  return { kind: "agreed", keys: [...byFlags].sort() };
+}
+
+/** A disagreement, as the line a reader of a red run sees. */
+export function describeProductionSet(set: ProductionSet): string {
+  if (set.kind === "agreed") return "";
+  return (
+    `Two derivations of "what a consumer's install puts on disk" disagree, so ` +
+    `neither can be trusted to decide the Node floor.\n` +
+    set.onlyByFlags
+      .map(
+        (key) =>
+          `    ${key} carries no exclusion flag this rule knows, but nothing in ` +
+          `package.json#dependencies reaches it. If npm has a flag beyond ` +
+          `${EXCLUDED_BY_FLAG.join(", ")}, add it.`,
+      )
+      .concat(
+        set.onlyByReachability.map(
+          (key) =>
+            `    ${key} is reached from package.json#dependencies but npm flagged ` +
+            `it as excluded. Either this rule's model of npm's resolution is ` +
+            `wrong, or the lockfile is inconsistent.`,
+        ),
+      )
+      .join("\n")
+  );
+}
+
 /**
  * What the install tree permits, taken together.
  *
