@@ -149,12 +149,28 @@ describe("importTimeEffects", () => {
     expect(scan(`export { x } from "./sibling.js";`)).toEqual([]);
   });
 
-  it("does not judge what a module-scope initialiser calls", () => {
+  it("does not judge what an expression evaluated on import calls", () => {
     // The documented limit, pinned so it stays a known blind spot rather than
-    // becoming a surprise: this is accepted, and a reader of the rule should
-    // find out here rather than from a broken consumer build.
+    // becoming a surprise: every line here evaluates when the module is
+    // imported and is accepted anyway, and a reader of the rule should find
+    // that out here rather than from a broken consumer build.
     expect(scan(`export const T = defineTheme(base);`)).toEqual([]);
     expect(scan(`export const frozen = Object.freeze({});`)).toEqual([]);
+  });
+
+  it("does not judge the expressions a class evaluates when it is declared", () => {
+    // The rest of that limit, and the part most likely to be mistaken for
+    // coverage: a `static {}` block reports because it is a statement list,
+    // and a reader can reasonably expect its neighbours to report too. They
+    // do not. Sorting these from the harmless ones means judging the
+    // expression — and `src/widgets/` decorates with mobx's `@observable`
+    // while `src/core/highlighter.ts` declares `static baseStyle = ""`, so a
+    // rule over these positions is red on working code the day it lands.
+    expect(scan(`export class C { static y = register(C); }`)).toEqual([]);
+    expect(scan(`@register export class C {}`)).toEqual([]);
+    expect(scan(`export class C { @observable accessor x = 1; }`)).toEqual([]);
+    expect(scan(`export class C extends base() {}`)).toEqual([]);
+    expect(scan(`export class C { [key()] = 1; }`)).toEqual([]);
   });
 
   it("reports every effect in a file, in source order", () => {

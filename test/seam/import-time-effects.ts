@@ -34,9 +34,18 @@
  * syntactic rule answers. Purity of module-scope initialisers is held by the
  * other kind of evidence instead — a consumer bundle built with the field on,
  * run, and compared byte-for-byte against the same program built without it.
- * That measurement is recorded on ticket rich-packaging-1xv.4. The same limit
- * covers a class nested inside an initialiser: its static blocks are part of an
- * expression, not a top-level statement.
+ * That measurement is recorded on ticket rich-packaging-1xv.4.
+ *
+ * A class evaluates more than its static blocks when it is declared: its
+ * decorators, its `extends` clause, its computed member names and its static
+ * field initialisers all run then, and every one of them is this same limit
+ * rather than an undisclosed second one — `@register class C {}` and `static y =
+ * register(C)` are accepted. Extending the rule over those positions is not
+ * available: `src/widgets/` decorates with mobx's `@observable` and
+ * `src/core/highlighter.ts` declares `static baseStyle = ""`, both of which
+ * evaluate on import and do nothing, so a rule there would have to sort a
+ * harmless expression from a working one. That is the judgement this file
+ * refuses everywhere else, and buying it here would cost the rule its edge.
  */
 
 import ts from "typescript";
@@ -109,9 +118,11 @@ export function describeEffect(effect: ImportTimeEffect): string {
 /**
  * The nodes `statement` executes when the module is imported.
  *
- * A declaration contributes nothing, save for the static blocks of a top-level
- * class — those are a statement list the class declaration runs on the spot,
- * and are the only place a declaration hides one.
+ * A declaration contributes no *statement*, save for the static blocks of a
+ * top-level class: those are a statement list the class declaration runs on the
+ * spot, and are the only place a declaration hides one. What a declaration
+ * *evaluates* is a wider set than what it runs as statements — the header names
+ * it, and names why this rule stops here.
  */
 function runAtImport(statement: ts.Statement): ts.Node[] {
   if (!isDeclaration(statement)) return [statement];
