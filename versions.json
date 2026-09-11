@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-124",
+      "ref": "refs/pull/124/merge",
+      "sha": "b986eef3df29ba946b53343e7043545164d9ef6f",
+      "timestamp": "2026-09-11T12:27:39.063Z",
+      "commits": [
+        {
+          "sha": "b986eef3df29ba946b53343e7043545164d9ef6f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T06:27:03-06:00",
+          "message": "Merge 48a800436df9b6ab0bbeb58ac67ce9bddedae060 into 883b8e57fc2199b44d88c601460f268a184c49a5\n"
+        },
+        {
+          "sha": "48a800436df9b6ab0bbeb58ac67ce9bddedae060",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T06:26:34-06:00",
+          "message": "fix(packaging): declare the Node floor the install tree actually requires (rich-packaging-k9t)\n\n`package.json#engines.node` read `^20.19.0 || >=22.12.0` — character for\ncharacter the range `vite` declares. `vite` is a devDependency, so no consumer\nreceives it, and the published package was refusing Node 20.0-20.18, all of\n21.x, and 22.0-22.11 on the authority of a build tool those consumers never\ninstall. It now reads `>=20`, which is what `string-width` declares — the only\nhard runtime dependency, and the only package in the default install tree\nasking for more than Node 18.\n\nThe floor is now derived rather than asserted. `test/seam/node-floor.ts` reads\n`package-lock.json`, npm's own record of which packages a default install puts\non disk and what each declares, finds the strictest range among them, and\nrequires `engines.node` to denote exactly that set. It has no allow-list and no\n`why` field, unlike the seam rules around it, because there is no human claim\nleft for one to justify.\n\nThe comparison is `semver.subset`, not a check on minimum versions, and that\ndecides a real case: `subset(\">=20.19.0\", \"^20.19.0 || >=22.12.0\")` is false,\nbecause 21.x satisfies the first and not the second. Comparing minimums calls\nthose equivalent and passes — on exactly the disjoint range shape that caused\nthis bug. `semver` and `@types/semver` join devDependencies for it; the\nproduction tree is unchanged and `string-width` remains the only hard\ndependency.\n\nFour copies of this one fact existed and gave three answers: the field as\nabove, README.md 20, docs/introduction.md 18, and CLAUDE.md 20 while correctly\nnaming the field as the authority. `docs/introduction.md` is corrected, and the\nrule now reads both documents back and checks the version they name against the\nfield. A fifth copy turned up in `.github/workflows/ci.yml`, which restated the\nold range in a comment and credited it to a transitive dependency — both halves\nfalse by the time anyone read them, and both removed.\n\nThat workflow takes its Node from this field via `node-version-file`, so the\nchange was checked against a real run rather than reasoned about: setup-node\nresolves a range to its newest satisfying version, logging `Resolved\npackage.json as ^20.19.0 || >=22.12.0` and then taking 24.20.0. Widening the\nfloor does not lower CI's Node, and CI never exercised the floor in the first\nplace.\n\nVerified by packing the tarball and installing it into an empty project under\nNode 20.18.0 with `engine-strict=true`: the old range fails EBADENGINE, the new\none installs and renders a Table and a Panel with the expected text. CI cannot\nstand in for that check, which is filed as rich-packaging-8b7.\n\nlint clean on all three passes; 2454 tests across 84 files; docs:build clean.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "883b8e57fc2199b44d88c601460f268a184c49a5",
