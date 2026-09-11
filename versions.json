@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-121",
+      "ref": "refs/pull/121/merge",
+      "sha": "2c4148cab1cd3e7db9164aa45518a9d43761e556",
+      "timestamp": "2026-09-11T11:16:28.954Z",
+      "commits": [
+        {
+          "sha": "2c4148cab1cd3e7db9164aa45518a9d43761e556",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T05:15:56-06:00",
+          "message": "Merge 79955af156e5eb50a0b5017d8226f33a4551a048 into 9d4915df514cd8c7a32a95daf114e4d78cabe1d6\n"
+        },
+        {
+          "sha": "79955af156e5eb50a0b5017d8226f33a4551a048",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T05:15:32-06:00",
+          "message": "perf(packaging)!: make mobx an optional peer (rich-packaging-1xv.5)\n\nmobx was a hard runtime dependency, so every consumer installed it whether\nor not a widget was ever constructed. The widgets split already took it out\nof the default bundle; this takes it out of the default install.\n\nIt is now a peer dependency marked optional in peerDependenciesMeta, which\nis the only spelling that does what the ticket asked. optionalDependencies\nwould not have: npm installs those and merely tolerates a build failure. A\nbare peer would not have either, since npm 7+ auto-installs peers. The pair\nis what makes npm neither fetch mobx nor warn about its absence. It stays in\ndevDependencies so this checkout's tests and demos still run.\n\nMeasured by packing a tarball and installing it into an empty project:\n8 packages before, 7 after, no mobx and no peer warning. The barrel renders\na Table with mobx absent; @promptctl/rich-js/widgets fails at import with\nERR_MODULE_NOT_FOUND until mobx is installed, and constructs a Button once\nit is. All 10 demo bundles still boot in Chromium under playwright.\n\nBREAKING CHANGE: consumers of @promptctl/rich-js/widgets must now install\nmobx themselves — `npm install @promptctl/rich-js mobx`.\n\nThe hazard this creates is invisible here by construction, which is why it\ncomes with a gate. mobx stays in devDependencies, so an `import { observable }\nfrom \"mobx\"` added under src/core/ would type-check, pass every test, run\nevery demo and build the docs — then break every downstream consumer at\ninstall time. test/seam/optional-peers.test.ts walks the runtime import graph\nfrom each package.json#exports entry separately and reports three ways: a\npackage declared nowhere, an optional peer reached from an entry that does\nnot provide it, and a PEER_PROVIDERS entry that can no longer reach the\npackage. Confirmed red by staging that exact import into src/core/measure.ts;\nit named the file, the line and the chain.\n\nclassifySpecifier moves to test/seam/specifiers.ts, which browser-safe.ts now\nshares rather than keeping a private copy — the same reason identifiers.ts\nexists. test/coverage/extract.ts gains PACKAGE_MANIFEST, one parse of\npackage.json, and deliberately does not model devDependencies: a rule that\nconsulted it would call a dependency satisfied because we happen to have it.\n\n@promptctl/go-template-js is the same shape and was left alone on purpose;\nit is filed as rich-packaging-1xv.dpo to be decided on its own merits.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9d4915df514cd8c7a32a95daf114e4d78cabe1d6",
