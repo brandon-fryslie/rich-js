@@ -664,7 +664,28 @@ const INTERNAL_DEFAULT_THEME = new TerminalTheme(
 // --- ANSI ColorSpec Names ---
 // [LAW:one-source-of-truth] Single canonical mapping from name → palette index
 
-export const ANSI_COLOR_NAMES: Record<string, number> = {
+/**
+ * The table with every `greyNN` name repeated under the `grayNN` spelling.
+ *
+ * Rich accepts both spellings and the xterm palette only defines one, so the
+ * aliases are part of what this table *is* rather than a patch applied to it.
+ *
+ * [LAW:no-ambient-temporal-coupling] Which is why they arrive as an initializer
+ * and not as the loop that used to mutate the finished map: that loop made "has
+ * the aliases yet" a fact about module evaluation order, so the table had two
+ * shapes and nothing in its type said which one you were holding. It also made
+ * this module do work at import time, which is the claim `package.json`'s
+ * `sideEffects: false` makes on its behalf — see
+ * `test/seam/import-time-effects.ts`.
+ */
+function withGrayAliases(names: Record<string, number>): Record<string, number> {
+  const aliases = Object.entries(names)
+    .filter(([name]) => name.includes("grey"))
+    .map(([name, index]) => [name.replace("grey", "gray"), index] as const);
+  return { ...names, ...Object.fromEntries(aliases) };
+}
+
+export const ANSI_COLOR_NAMES: Record<string, number> = withGrayAliases({
   // Standard 16
   black: 0,
   red: 1,
@@ -926,11 +947,4 @@ export const ANSI_COLOR_NAMES: Record<string, number> = {
   grey85: 253,
   grey89: 254,
   grey93: 255,
-};
-
-// Add gray→grey aliases
-for (const [name, index] of Object.entries(ANSI_COLOR_NAMES)) {
-  if (name.includes("grey")) {
-    ANSI_COLOR_NAMES[name.replace("grey", "gray")] = index;
-  }
-}
+});
