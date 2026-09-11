@@ -22,9 +22,19 @@ jobs:
 
       # [LAW:one-source-of-truth] `package.json#engines.node` is the canonical
       # supported-runtime declaration; setup-node reads it via
-      # `node-version-file` so the workflow cannot drift from the engine
-      # constraint (which is `^20.19.0 || >=22.12.0`, dictated by a transitive
-      # dep). Bumping the engine in package.json automatically bumps CI.
+      # `node-version-file` so the workflow cannot drift from it. The range
+      # itself is deliberately not repeated here — this comment used to name it,
+      # and to credit it to a transitive dependency, and both halves were false
+      # by the time anyone read them. `test/seam/node-floor.test.ts` is what
+      # decides the range now.
+      #
+      # What setup-node does with a range is pick the NEWEST version satisfying
+      # it, not the oldest: the run at ^20.19.0 || >=22.12.0 logged "Resolved
+      # package.json as ^20.19.0 || >=22.12.0" and then took 24.20.0. So this
+      # job proves the package works at the top of its supported range and says
+      # nothing about the floor — the floor is verified by packing a tarball and
+      # installing it under the lowest admitted Node, which is a release step
+      # and not this one.
       - uses: actions/setup-node@v4
         with:
           node-version-file: package.json
