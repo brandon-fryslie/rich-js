@@ -16,8 +16,8 @@ import type { RenderOptions } from "../../src/core/protocol.js";
 
 const OPTIONS: RenderOptions = { maxWidth: 80 };
 
-function render(strip: Strip): Segment[] {
-  return [...strip.render(OPTIONS)];
+function render(strip: Strip, options: RenderOptions = OPTIONS): Segment[] {
+  return [...strip.render(options)];
 }
 
 function cell(text: string, style: string | Style): RichText {
@@ -304,12 +304,19 @@ describe("edge styles resolved against the render's theme", () => {
     expect(r.edgeStyle("right", THEMED).bgcolor?.name).toBe("red");
   });
 
+  it("resolves a span's theme name at the edge the span covers", () => {
+    const r = cell("ab", "strip.lead");
+    r.stylize("strip.tail", 1, 2);
+    expect(r.edgeStyle("left", THEMED).bgcolor?.name).toBe("red");
+    expect(r.edgeStyle("right", THEMED).bgcolor?.name).toBe("blue");
+  });
+
   it("PowerlineJoiner paints the transition in the theme's colours", () => {
     const strip = new Strip(
       [cell(" lead ", "strip.lead"), cell(" tail ", "strip.tail")],
       new PowerlineJoiner({ glyph: ">" }),
     );
-    const mid = [...strip.render(THEMED)].find((s) => s.text === ">")!;
+    const mid = render(strip, THEMED).find((s) => s.text === ">")!;
     expect(mid.style?.color?.name).toBe("red");
     expect(mid.style?.bgcolor?.name).toBe("blue");
   });
