@@ -4,15 +4,29 @@
     {
       "version": "pr-124",
       "ref": "refs/pull/124/merge",
-      "sha": "b986eef3df29ba946b53343e7043545164d9ef6f",
-      "timestamp": "2026-09-11T12:27:39.063Z",
+      "sha": "db5e3c9f756af3b4008e474d3f711c5a1cdf4d8a",
+      "timestamp": "2026-09-11T12:41:25.484Z",
       "commits": [
         {
-          "sha": "b986eef3df29ba946b53343e7043545164d9ef6f",
+          "sha": "db5e3c9f756af3b4008e474d3f711c5a1cdf4d8a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T06:27:03-06:00",
-          "message": "Merge 48a800436df9b6ab0bbeb58ac67ce9bddedae060 into 883b8e57fc2199b44d88c601460f268a184c49a5\n"
+          "timestamp": "2026-09-11T12:40:48Z",
+          "message": "Merge d4324ecd16ed8b19638fbafd95cefa29175cdfc0 into 883b8e57fc2199b44d88c601460f268a184c49a5\n"
+        },
+        {
+          "sha": "d4324ecd16ed8b19638fbafd95cefa29175cdfc0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T06:35:21-06:00",
+          "message": "fix(seam): derive the production install set twice, not from npm's flags alone\n\nThe PR #124 review found `devOptional` missing from the node-floor gate. npm\nsets that flag *instead of* `dev` and `optional` together, for a package\nreachable only as an optional dependency of a development one, so an entry\ncarrying it alone passed a filter that looked for the other three and found\nnone. That is a devDependency's Node requirement reaching the published floor —\ncharacter for character the bug this rule exists to prevent, arriving through\nthe rule itself.\n\nThe finding's concrete scenario was wrong, and checking it is what changed the\nfix. `fsevents` in this lockfile carries `dev` and `optional` together, both\nalready excluded, and `devOptional` appears zero times across all 257 entries.\nThe gap is real regardless — the flag was absent from the `LockEntry` type, so\nit would have been invisible had it ever appeared — but the comment claiming\n\"the three ways npm records on-disk-but-not-for-them\" was a completeness claim\nnobody can make about a schema npm owns and changes without asking.\n\nSo the fix is not a fourth flag. `productionKeys` now derives the install set\ntwice — `admittedByFlags` from npm's flags, `reachableFromRoot` by walking\nrequired dependency edges from the root, nested copies resolved before hoisted\nones and optional edges not followed — and returns a `disagreement` variant\nrather than picking a winner. A flag npm invents next year fools the first\nderivation and not the second, and the gate stops instead of leaking the entry\ninto the floor.\n\nFixtures pin each half separately as well as the pair, against lockfiles this\nrepository does not have. It cannot have the one that matters: `devOptional` is\nnever in our tree, so every assertion about the flag that caused the finding\nlives in a fixture or nowhere. Each was checked by mutation — dropping the flag,\nhoisting the nested resolution, following optional edges, and picking a winner\neach turn the relevant fixture red.\n"
+        },
+        {
+          "sha": "21d1b97710d5dd868d7ae8136161cf9d601195da",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T06:29:37-06:00",
+          "message": "test(seam): pin the prose half of the node-floor rule from both sides\n\n`claimViolations` was exercised only by the live README.md and\ndocs/introduction.md, which always contain a claim — so `noClaim`, the arm that\nfires when the sentence has been reworded past the pattern and the gate is\nwatching nothing, had never run. That is the arm whose whole job is to turn\nsilence into a failure, and it shipped untested.\n\nAdds fixtures for both arms plus the two live sentence shapes, and for\n`nodeRange`'s empty-string case, which is separate from a malformed range and\nwas likewise only asserted by absence.\n"
         },
         {
           "sha": "48a800436df9b6ab0bbeb58ac67ce9bddedae060",
