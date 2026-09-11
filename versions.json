@@ -4,15 +4,22 @@
     {
       "version": "pr-124",
       "ref": "refs/pull/124/merge",
-      "sha": "1e0035b12dbf38810b56a1c9886ab82c275c775f",
-      "timestamp": "2026-09-11T12:50:04.492Z",
+      "sha": "a36e60173939e105053a0c21b7a4d8a4053efa19",
+      "timestamp": "2026-09-11T12:57:06.243Z",
       "commits": [
         {
-          "sha": "1e0035b12dbf38810b56a1c9886ab82c275c775f",
+          "sha": "a36e60173939e105053a0c21b7a4d8a4053efa19",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T12:49:35Z",
-          "message": "Merge 5316ac79de4ea47b9d7301a4a4e666bd3b94103b into 883b8e57fc2199b44d88c601460f268a184c49a5\n"
+          "timestamp": "2026-09-11T12:56:36Z",
+          "message": "Merge 70420bbda239e8fba07c6b0b4ca917e05b31f905 into 883b8e57fc2199b44d88c601460f268a184c49a5\n"
+        },
+        {
+          "sha": "70420bbda239e8fba07c6b0b4ca917e05b31f905",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-11T06:56:19-06:00",
+          "message": "fix(seam): follow required peer edges, so both derivations can agree\n\nReview of f5dd8d9a found the half I left undone. Dropping `peer` from\n`EXCLUDED_BY_FLAG` was right — npm 7 and later install a required peer, so its\n`engines` binds the floor — but npm records a peer under `peerDependencies`,\nnever under `dependencies`, and `reachableFromRoot` walked only the latter. So\nthe flag derivation admitted a required peer that the edge derivation was\nstructurally incapable of reaching: `disagreement` on every run, for every tree\nthat has one.\n\nI argued on that thread that this was the designed stop-and-decide. It is not.\nA stop-and-decide is a question somebody can answer; this was a gate nobody\ncould satisfy, and it would have taken the floor computation down with it —\n`TREE` falls back to `[]` on disagreement, so `floorViolations` would have had\nnothing to check and passed while saying nothing.\n\n`requiredEdges` now names both kinds of edge npm follows for an entry, and reads\noptionality off `peerDependenciesMeta` rather than inferring it. [LAW:one-source-of-truth]\n\"npm installs a required peer\" and \"npm skips an optional one\" are one field seen\nfrom two sides; a second rule deciding it here is a rule that can disagree with\nthe installer. Dropping the flag and following the edge are one change, and the\ncomment on each now says so.\n\nNothing moves for today's tree — our root declares both peers optional in\n`peerDependenciesMeta`, which is precisely why neither binds the published floor.\nMutation-checked both ways: stopping at `dependencies` reddens the required-peer\nfixture, and ignoring `peerDependenciesMeta` reddens the live-tree agreement\nassertion, because `mobx` and `@promptctl/go-template-js` become reachable.\n"
         },
         {
           "sha": "5316ac79de4ea47b9d7301a4a4e666bd3b94103b",
