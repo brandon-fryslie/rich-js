@@ -4,15 +4,22 @@
     {
       "version": "pr-119",
       "ref": "refs/pull/119/merge",
-      "sha": "cf0fecf8607c2a161d418d9265d5b3c81a28f9de",
-      "timestamp": "2026-09-11T00:05:32.536Z",
+      "sha": "e8183f2bdf564bdb46e76da58f891ab89b8c2420",
+      "timestamp": "2026-09-11T00:06:57.399Z",
       "commits": [
         {
-          "sha": "cf0fecf8607c2a161d418d9265d5b3c81a28f9de",
+          "sha": "e8183f2bdf564bdb46e76da58f891ab89b8c2420",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T00:00:03Z",
-          "message": "Merge 358c29569336dbf727616b8f40258f1630ee101c into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+          "timestamp": "2026-09-11T00:06:21Z",
+          "message": "Merge cb7d5a3cf057f553f7cb917d2439838489f386d7 into 3e5818428ab8fcd5c677246d5eaafafffbec9eb2\n"
+        },
+        {
+          "sha": "cb7d5a3cf057f553f7cb917d2439838489f386d7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T18:06:17-06:00",
+          "message": "test(strip): pin the span branch of edgeStyle against the render's theme (rich-style-tdn)\n\nedgeStyle resolves the theme twice — once for the cell's base style and\nonce per span covering the edge column — and only the base path was\npinned. Dropping options.theme from the span branch alone left the whole\nsuite green, so a span styled by a theme name could silently degrade to\nno style and repaint or elide the separator with nothing to catch it.\n\nThe render helper now takes the options it renders with, so a themed\nrender uses the same spelling as every other case in the file.\n"
         },
         {
           "sha": "358c29569336dbf727616b8f40258f1630ee101c",
