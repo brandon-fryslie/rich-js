@@ -4,15 +4,29 @@
     {
       "version": "pr-120",
       "ref": "refs/pull/120/merge",
-      "sha": "62dd6b1398cb329c2ae799dfafdd28860df495d7",
-      "timestamp": "2026-09-11T00:50:30.533Z",
+      "sha": "e1f75cda67542d2404b87cccd1f33ef17157599d",
+      "timestamp": "2026-09-11T01:05:26.676Z",
       "commits": [
         {
-          "sha": "62dd6b1398cb329c2ae799dfafdd28860df495d7",
+          "sha": "e1f75cda67542d2404b87cccd1f33ef17157599d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T00:50:04Z",
-          "message": "Merge d4f3ff942400e46d04785312b5c65dd8b010b8c5 into c70189904e6508c352d35f54db11aa4426df363c\n"
+          "timestamp": "2026-09-11T01:04:56Z",
+          "message": "Merge f24c987ebdfda91a6454081b029533967618744a into c70189904e6508c352d35f54db11aa4426df363c\n"
+        },
+        {
+          "sha": "f24c987ebdfda91a6454081b029533967618744a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T19:04:42-06:00",
+          "message": "docs(seam): say which of source and emit the gate reads\n\nReview read the accept list as a claim that an `enum` is inert, and proposed\nnarrowing it to `const` enums on the grounds that a plain one emits an IIFE. The\npremise is right and the conclusion does not follow, but nothing in the header\nsaid why, and \"the accept list is the declaration kinds, and every other kind\nreports\" invites exactly that reading.\n\nThe gate reads the source somebody wrote, not the JavaScript emitted for it. If\ndesugaring counted, a class's property definitions and every object literal's\nallocation would report too, and the rule would distinguish nothing. What it asks\nis whether the author wrote a statement that runs at import — which a `static {}`\nblock and a namespace body are, and which an enum's members are not.\n\nWhere the finding lands is the blind spot already disclosed one paragraph down:\n`enum E { A = register() }` needs no `const` to be legal and does run on import,\nas an initialiser expression exactly like `defineTheme(…)`. It is now named there\nrather than left to be rediscovered, with a fixture pinning it as a known hole,\nand the reason the narrowing is unavailable recorded beside it — `isolatedModules`\nis on, so `const enum` is unsafe across a module boundary, and `ColorDepth` and\n`ControlType` are exported non-const enums that rule would fail on day one.\n"
+        },
+        {
+          "sha": "08784aa83cc91001cb72eff5681da5a9d3ae44c9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-10T19:04:24-06:00",
+          "message": "fix(seam): count the imports that bind nothing but still run\n\n`isEffectOnlyImport` tested `importClause === undefined`, which is the bare\n`import \"./x.js\"` and nothing else. Two more spellings emit as that same bare\nimport and were read as declarations: `import {} from \"./x.js\"`, whose clause is\npresent but empty, and `import { type T } from \"./x.js\"`, whose single element is\nerased and leaves the braces behind.\n\nThe predicate is now the definition rather than the shape — binds no name when\nthe module runs, and survives erasure. The second arm is what keeps `import type\n{}` out of it: that clause binds nothing either, but takes the whole statement\nwith it when it goes, so reporting it would trade a missed effect for a gate that\nis red on a file doing nothing. `every` over no elements folds the empty-brace\nspelling into the all-type one rather than making it a case of its own.\n"
         },
         {
           "sha": "d4f3ff942400e46d04785312b5c65dd8b010b8c5",
