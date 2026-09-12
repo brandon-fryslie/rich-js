@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-125",
-      "ref": "refs/pull/125/merge",
-      "sha": "5c3f38d4f3851b3d58cf991c5bd077151e1fe017",
-      "timestamp": "2026-09-12T10:31:51.739Z",
-      "commits": [
-        {
-          "sha": "5c3f38d4f3851b3d58cf991c5bd077151e1fe017",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T10:31:20Z",
-          "message": "Merge d0ae27b7a6f1b43324332acd8a290dcf6c61a1fa into 872928735f58d642006cefd8c0f628ac3009afd0\n"
-        },
-        {
-          "sha": "d0ae27b7a6f1b43324332acd8a290dcf6c61a1fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T04:31:15-06:00",
-          "message": "fix(ci): drop the npm cache from the job that never installs\n\nThe job split moved `npm ci` out of the publish job and left `cache: npm` on\nits setup-node step. With no lockfile install, the restore buys nothing and its\npost-job save runs anyway — latency inside the OIDC-bearing job, which the\nsplit exists to keep small, and a reader is told a lockfile-keyed install\nhappens here when none does.\n\nOne line marks the absence, since an omission cannot be read off the code and\nthe next person would otherwise put it back. The gate job keeps its cache; it\nis the one that runs `npm ci`.\n"
-        },
-        {
-          "sha": "0064ef46722d7c60c4db016314ca585a328cbc5b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T04:24:34-06:00",
-          "message": "fix(ci): give the release path one Node pin instead of two\n\nSplitting publish.yml into gate + publish gave the workflow two setup-node\nsteps, and the split left `node-version: 22` written out in both. A Node bump\ncould then land in the job that runs the checks and miss the job that runs\nnpm publish, leaving the gate vouching for a runtime the tarball never met —\nthe same drift this PR exists to remove, reintroduced one job over.\n\nOne workflow-level env var, read by both jobs. The prose about the npm CLI\nupgrade stops naming Node 22 as well, so the pin has exactly one home.\n\nDeliberately not `node-version-file: package.json`, which is where this ends\nup: `engines.node` is a range and setup-node resolves a range to its newest\nmatch, so switching would un-pin which Node executes a release. That is\nrich-workflows-0pr.2's call, alongside deploy.yml's `node-version: 20` and the\naction-major alignment, not a side effect of this ticket.\n"
-        },
-        {
-          "sha": "9ccf80812031ff31f997c268e79d1d0e90fb20f5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T04:16:09-06:00",
-          "message": "docs(ci): justify the gate action's boundary with a reason that cannot rot\n\nThe comment explained why provisioning stays with the caller by pointing at\npublish.yml's registry-url and npm upgrade. The job split moved both of those\ninto the publish job, which does not call this action — so the justification\ndescribed a caller that no longer exists, one commit after it was written.\n\nReplaced with the structural reason: `uses: ./.github/actions/gate` cannot\nresolve until the repository is on disk, so checkout is always the caller's and\nprovisioning stays with it. Three lines to two.\n\nNot documented here: that ci.yml is on checkout@v4 and the gate job on @v6, and\nthat one reads node-version-file while the other pins 22. That is drift\nrich-workflows-0pr.2 deletes, and resting this comment on it would put the\njustification back on ground that disappears when that ticket lands.\n"
-        },
-        {
-          "sha": "d4567f49d252705542cc7935e9390b29b3bc1688",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T04:07:31-06:00",
-          "message": "fix(ci): keep the demo gate out of the OIDC-bearing publish job\n\nMoving the browser gate onto the release path put vite/vitepress and their\nplugin graph, a Chromium download, and real headless page execution into the\nsame job that holds id-token: write for npm Trusted Publishing — a process\nwhose environment carries ACTIONS_ID_TOKEN_REQUEST_TOKEN. One compromised\ntransitive dependency running in those steps could request that token and mint\na forged npm publish credential.\n\nGitHub grants permissions per job, so a job boundary is the only thing that can\nscope the credential. publish.yml now runs the gate and the build in a job with\ncontents: read and no id-token, hands dist/ forward as an artifact, and leaves\nthe publish job holding checkout, setup-node, an npm CLI upgrade, the artifact\ndownload, the tag/version check, and npm publish.\n\nNo npm ci in the publish job, deliberately: installing the devDependency tree\nwould run every package's install scripts inside exactly the job the split\nprotects. npm pack --dry-run confirms the tarball is dist/, package.json and\nREADME.md, and package.json declares no prepare, prepack, or prepublishOnly —\nnothing on that path needs node_modules.\n\nThe npm Trusted Publisher trust binds the repository and the workflow filename,\nnot the job, so the split leaves the OIDC exchange untouched.\n"
-        },
-        {
-          "sha": "ad4ada3480cfde974741216d7a54e06c558b9c1f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T03:58:39-06:00",
-          "message": "fix(ci): run the demo gate on the publish path (rich-workflows-0pr.1)\n\npublish.yml ran lint, test, and build, then published. It never ran the docs\nbuild or the headless-browser demo gate that ci.yml treats as required on\nmaster — so a change breaking every browser demo cleared the release gate and\nshipped to npm with provenance attached. Neither lint nor test touches the\nbundle pipeline; the e2e job is the only thing that exercises the browser build\npath at all, and it was exactly the gate the release path skipped.\n\nClosing that by copying ci.yml's steps into publish.yml would have scheduled the\nsame bug again. Two lists that can disagree eventually do, and this pair drifted\nby omission — nobody deleted a check, the second copy simply never gained the\nones the first one did. So the checks move into .github/actions/gate, a\ncomposite action with no inputs, and both workflows call it. A check added to\nthe action is a check the release path cannot skip.\n\nA composite action rather than a reusable workflow because it injects its steps\ninto the caller's job: publish.yml keeps its OIDC identity, its registry-url\nsetup, and the npm ci it has already run. The caller owns provisioning —\ncheckout, setup-node, npm ci — because that is the one place the two paths\ngenuinely differ.\n\nnpm run build stays in publish.yml. lint already typechecks with --noEmit, so\nemitting dist/ is artifact production rather than a check, and it belongs to the\nonly path that produces an artifact.\n\nVerified: actionlint clean, and the gate's step list passes locally — lint, 2471\nunit tests, docs:build, and all 10 browser demos.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "872928735f58d642006cefd8c0f628ac3009afd0",
-      "timestamp": "2026-09-11T13:08:49.683Z",
+      "sha": "a92352ee719c2d933b94f6eb00396385213dcaff",
+      "timestamp": "2026-09-12T10:35:44.376Z",
       "commits": [
         {
-          "sha": "872928735f58d642006cefd8c0f628ac3009afd0",
+          "sha": "a92352ee719c2d933b94f6eb00396385213dcaff",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-11T07:08:17-06:00",
-          "message": "fix(packaging): declare the Node floor the install tree actually requires (rich-packaging-k9t) (#124)\n\n`package.json#engines.node` read `^20.19.0 || >=22.12.0` — character for character the range `vite` declares, and `vite` is a devDependency no consumer receives. The published package refused Node 20.0-20.18, all of 21.x and 22.0-22.11 on the authority of a build tool those consumers never install. It now reads `>=20`, what `string-width` — the only hard runtime dependency — declares.\n\n`test/seam/node-floor.ts` keeps it honest by *computing* the floor rather than declaring it: no allow-list and no `why` field, because a consumer's installer checks `engines` on every package it lands, so the versions that install cleanly are the intersection and no human claim is left to justify. It reads `package-lock.json`, derives the production install set two independent ways — npm's own flags, and a walk of required edges from the root — and reports a `disagreement` rather than picking a winner, so a flag npm invents later fails loudly instead of leaking a devDependency's requirement into the published floor.\n\nThe comparison is `semver.subset`, not a minimum-version check: `subset(\">=20.19.0\", \"^20.19.0 || >=22.12.0\")` is false, and a rule comparing minimums passes on exactly the disjoint range shape that caused the bug.\n\nThe prose half reads README.md, docs/introduction.md and CLAUDE.md back and checks the version they name against the field — four copies of this fact had given three answers. Two comments claiming a release step verified the floor were corrected; no such step exists, the check was run by hand once and recorded here, and automating it is rich-packaging-8b7.\n\nVerified in both directions before merge: npm pack, then install into an empty project under Node 20.18.0 with engine-strict — the old range fails EBADENGINE, the new one installs and renders a Table and a Panel, asserting on the output text."
+          "timestamp": "2026-09-12T04:35:13-06:00",
+          "message": "fix(ci): run the demo gate on the publish path (rich-workflows-0pr.1) (#125)\n\npublish.yml ran lint, test, and build, then published — never the docs build or\nthe headless-browser demo gate that ci.yml treats as required on master. Neither\nlint nor test touches the bundle pipeline, so a change breaking every browser\ndemo cleared the release gate and shipped to npm with provenance attached.\n\nThe checks now live in .github/actions/gate, a composite action with no inputs,\nand both workflows call it. Copying ci.yml's steps into publish.yml would have\nscheduled the same bug again: the two lists drifted by omission, and a second\ncopy drifts the same way on the path nobody watches.\n\nReview raised that this widened the blast radius of id-token: write, since the\ngate brought vite/vitepress, a Chromium download, and real headless execution\ninto the job holding the npm Trusted Publishing credential. permissions is\ngranted per job, so publish.yml is now two jobs: gate (contents: read, no\nid-token) runs the checks and the build and hands dist/ forward as an artifact;\npublish (needs: gate, id-token: write) holds checkout, setup-node, the npm CLI\nupgrade, the artifact download, the tag/version check, and npm publish. No\nnpm ci there — nothing on that path needs node_modules, and installing would\nrun every devDependency's install scripts inside exactly the job the split\nprotects.\n\nThe split's own fallout is folded in: one workflow-level Node pin read by both\njobs instead of two literals, and no npm cache on the job that never installs.\n\nVerified: actionlint clean, the gate's step list green locally (lint, 2471 unit\ntests, docs:build, 10 browser demos), and CI ran the composite on a real runner.\nProving the failure direction end to end is rich-workflows-0pr.3; Node\nresolution from engines across all three workflows is rich-workflows-0pr.2."
         }
       ]
     }
