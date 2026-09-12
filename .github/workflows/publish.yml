@@ -34,18 +34,6 @@ on:
     tags:
       - "v*"
 
-# [LAW:one-source-of-truth] One pin, read by both jobs below. Two literals would
-# let a Node bump land in the job that runs the checks and miss the job that
-# publishes, leaving the gate vouching for a runtime the tarball never met.
-#
-# A pin, not the canonical answer — `package.json#engines.node` is that, and
-# ci.yml already reads it via `node-version-file`. Moving this workflow onto it
-# changes which Node executes a release, since `engines` is a range and
-# setup-node resolves it to the newest match; that is rich-workflows-0pr.2's
-# call to make.
-env:
-  NODE_VERSION: "22"
-
 jobs:
   # Two jobs, and the boundary between them is the entire reason for the split:
   # `permissions` is granted per job, so no step can be scoped tighter than the
@@ -66,11 +54,15 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      # [LAW:single-enforcer] The same gate means the same runtime, not just the
+      # same step list: re-gating under a different Node than master ran is a
+      # different experiment from the one that passed. This reads what ci.yml
+      # reads, and ci.yml's setup-node step owns the argument for it.
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: package.json
           cache: npm
 
       - run: npm ci
@@ -107,12 +99,27 @@ jobs:
       # laptop publish cannot make.
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
+      # [LAW:one-source-of-truth] Two facts, two authorities: "which Node may a
+      # consumer install this on" is `engines.node`, and "which Node runs the
+      # release tooling" is this literal. Only the second is this job's
+      # question — it never executes `src/`, since the tarball's contents were
+      # compiled by `npm run build` over in the gate job and arrive here as an
+      # artifact. It runs the npm CLI installed below, whose own constraint is
+      # `^20.17.0 || >=22.9.0`, and `engines.node` (`>=20`) is not a subset of
+      # that: Node 20.5 and every 21.x satisfy engines and are refused by npm
+      # 11. Reading the version file here would cite a declaration that admits
+      # runtimes this job cannot use.
+      #
+      # v7 is also the major that stopped exporting a dummy NODE_AUTH_TOKEN
+      # beside `registry-url` (actions/setup-node#1558) — a placeholder that put
+      # a non-functional token into .npmrc on exactly this OIDC publish path.
+      #
       # No `cache: npm` — nothing in this job installs from the lockfile.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: "22"
           registry-url: "https://registry.npmjs.org"
 
       # Trusted Publishing needs npm CLI >= 11.5.1, which the bundled npm can
