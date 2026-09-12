@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-125",
+      "ref": "refs/pull/125/merge",
+      "sha": "06dd0e6c07304ba3663291ac826fe9241653eff7",
+      "timestamp": "2026-09-12T09:59:31.072Z",
+      "commits": [
+        {
+          "sha": "06dd0e6c07304ba3663291ac826fe9241653eff7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T03:59:00-06:00",
+          "message": "Merge ad4ada3480cfde974741216d7a54e06c558b9c1f into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+        },
+        {
+          "sha": "ad4ada3480cfde974741216d7a54e06c558b9c1f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T03:58:39-06:00",
+          "message": "fix(ci): run the demo gate on the publish path (rich-workflows-0pr.1)\n\npublish.yml ran lint, test, and build, then published. It never ran the docs\nbuild or the headless-browser demo gate that ci.yml treats as required on\nmaster — so a change breaking every browser demo cleared the release gate and\nshipped to npm with provenance attached. Neither lint nor test touches the\nbundle pipeline; the e2e job is the only thing that exercises the browser build\npath at all, and it was exactly the gate the release path skipped.\n\nClosing that by copying ci.yml's steps into publish.yml would have scheduled the\nsame bug again. Two lists that can disagree eventually do, and this pair drifted\nby omission — nobody deleted a check, the second copy simply never gained the\nones the first one did. So the checks move into .github/actions/gate, a\ncomposite action with no inputs, and both workflows call it. A check added to\nthe action is a check the release path cannot skip.\n\nA composite action rather than a reusable workflow because it injects its steps\ninto the caller's job: publish.yml keeps its OIDC identity, its registry-url\nsetup, and the npm ci it has already run. The caller owns provisioning —\ncheckout, setup-node, npm ci — because that is the one place the two paths\ngenuinely differ.\n\nnpm run build stays in publish.yml. lint already typechecks with --noEmit, so\nemitting dist/ is artifact production rather than a check, and it belongs to the\nonly path that produces an artifact.\n\nVerified: actionlint clean, and the gate's step list passes locally — lint, 2471\nunit tests, docs:build, and all 10 browser demos.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "872928735f58d642006cefd8c0f628ac3009afd0",
