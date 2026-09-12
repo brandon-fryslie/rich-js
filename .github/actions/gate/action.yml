@@ -16,9 +16,8 @@
 # callers run the identical list, which is the whole point: a gate with a
 # "skip the slow part" switch is not one gate, it is two gates and a lie.
 #
-# The caller owns provisioning — checkout, setup-node, `npm ci` — because that
-# is where the two paths genuinely differ: `publish.yml` needs a registry URL
-# and a newer npm for Trusted Publishing. It owns nothing else.
+# Provisioning — checkout, setup-node, `npm ci` — stays with the caller: a
+# local action cannot check out the repository it lives in.
 
 name: Gate
 description: >-
