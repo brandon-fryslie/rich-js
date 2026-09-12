@@ -4,15 +4,22 @@
     {
       "version": "pr-125",
       "ref": "refs/pull/125/merge",
-      "sha": "f2d948c0f3c831c4e84accf0c1ef5e6c9f439a85",
-      "timestamp": "2026-09-12T10:16:48.709Z",
+      "sha": "45686d38d5bb2be488712c9f620570490a75409f",
+      "timestamp": "2026-09-12T10:25:09.649Z",
       "commits": [
         {
-          "sha": "f2d948c0f3c831c4e84accf0c1ef5e6c9f439a85",
+          "sha": "45686d38d5bb2be488712c9f620570490a75409f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T10:16:14Z",
-          "message": "Merge 9ccf80812031ff31f997c268e79d1d0e90fb20f5 into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+          "timestamp": "2026-09-12T10:24:39Z",
+          "message": "Merge 0064ef46722d7c60c4db016314ca585a328cbc5b into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+        },
+        {
+          "sha": "0064ef46722d7c60c4db016314ca585a328cbc5b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T04:24:34-06:00",
+          "message": "fix(ci): give the release path one Node pin instead of two\n\nSplitting publish.yml into gate + publish gave the workflow two setup-node\nsteps, and the split left `node-version: 22` written out in both. A Node bump\ncould then land in the job that runs the checks and miss the job that runs\nnpm publish, leaving the gate vouching for a runtime the tarball never met —\nthe same drift this PR exists to remove, reintroduced one job over.\n\nOne workflow-level env var, read by both jobs. The prose about the npm CLI\nupgrade stops naming Node 22 as well, so the pin has exactly one home.\n\nDeliberately not `node-version-file: package.json`, which is where this ends\nup: `engines.node` is a range and setup-node resolves a range to its newest\nmatch, so switching would un-pin which Node executes a release. That is\nrich-workflows-0pr.2's call, alongside deploy.yml's `node-version: 20` and the\naction-major alignment, not a side effect of this ticket.\n"
         },
         {
           "sha": "9ccf80812031ff31f997c268e79d1d0e90fb20f5",
