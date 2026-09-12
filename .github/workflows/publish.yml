@@ -12,14 +12,14 @@
 # package.json disagree, rather than silently shipping a mislabeled version.
 #
 # Publishing uses npm Trusted Publishing (OIDC) — brandon-release-vcr. There
-# is no NPM_TOKEN secret; `npm publish` exchanges this job's GitHub Actions
+# is no NPM_TOKEN secret; `npm publish` exchanges the publish job's Actions
 # OIDC identity for a short-lived publish credential, gated by a trust
 # relationship configured on npmjs.com (Package → Settings → Trusted
-# Publisher). That trust binds THIS FILENAME (publish.yml) and THIS REPO —
-# renaming the workflow file silently breaks publishing (npm falls back to
-# "no credentials" and CI will start failing E401 on the next tag). If this
-# file is ever renamed, the trust config on npmjs.com must be updated in the
-# same change.
+# Publisher). That trust binds THIS FILENAME (publish.yml) and THIS REPO, not
+# the job — renaming the workflow file silently breaks publishing (npm falls
+# back to "no credentials" and CI will start failing E401 on the next tag). If
+# this file is ever renamed, the trust config on npmjs.com must be updated in
+# the same change.
 #
 # Release procedure:
 #   npm version <major|minor|patch> --no-git-tag-version   # bump on a branch
@@ -35,7 +35,58 @@ on:
       - "v*"
 
 jobs:
+  # Two jobs, and the boundary between them is the entire reason for the split:
+  # `permissions` is granted per job, so no step can be scoped tighter than the
+  # job it sits in. Everything that runs third-party code at scale — `npm ci`'s
+  # install scripts, vite/vitepress and their plugin graph, a Chromium
+  # download, real headless page execution — runs HERE, where there is no
+  # `id-token`, and hands `dist/` forward as an artifact.
+  #
+  # The split became necessary when the demo gate moved onto the release path
+  # (rich-workflows-0pr.1). Before that this job ran tsc and vitest; folding a
+  # browser build into a process whose environment carries
+  # ACTIONS_ID_TOKEN_REQUEST_TOKEN would have let a single compromised
+  # transitive dependency request that token and mint a forged npm publish
+  # credential. The gate got stricter and the credential got a smaller room to
+  # stand in; both halves are the same change.
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # [LAW:single-enforcer] The same gate master runs — one action, both
+      # paths. A tag must not be able to publish something that does not
+      # typecheck, whose tests fail, or whose browser demos are broken. Until
+      # this step existed the third of those shipped: lint and test never touch
+      # the bundle pipeline, so the release path was blind to precisely the
+      # failure the headless-browser job was written to catch.
+      - uses: ./.github/actions/gate
+
+      # `dist/` is the only thing `package.json#files` ships. Not a gate step —
+      # `lint` already typechecks with `--noEmit`, so this is artifact
+      # production, and it belongs to the one path that produces an artifact.
+      - run: npm run build
+
+      - name: Hand dist to the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  # [LAW:effects-at-boundaries] The irreversible step and the credential that
+  # authorizes it stand alone, in the smallest job that can perform them.
   publish:
+    needs: gate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -57,20 +108,16 @@ jobs:
       # depend on whatever setup-node happens to ship.
       - run: npm install -g npm@^11.5.1
 
-      - run: npm ci
-
-      # [LAW:single-enforcer] The same gate master runs — one action, both
-      # paths. A tag must not be able to publish something that does not
-      # typecheck, whose tests fail, or whose browser demos are broken. Until
-      # this step existed the third of those shipped: lint and test never touch
-      # the bundle pipeline, so the release path was blind to precisely the
-      # failure the headless-browser job was written to catch.
-      - uses: ./.github/actions/gate
-
-      # `dist/` is the only thing `package.json#files` ships. Not a gate step —
-      # `lint` already typechecks with `--noEmit`, so this is artifact
-      # production, and it belongs to the one path that produces an artifact.
-      - run: npm run build
+      # No `npm ci` here, deliberately: installing the devDependency tree would
+      # run every package's install scripts inside the OIDC-bearing job, which
+      # is the thing the job split exists to prevent. Nothing on this path needs
+      # node_modules — package.json declares no prepare/prepack/prepublishOnly,
+      # and `files` is ["dist"], which arrives as the artifact.
+      - name: Take dist from the gate job
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
 
       # [LAW:no-silent-failure] A tag that disagrees with package.json is a
       # release-process bug, and publishing anyway would put a version on npm
