@@ -4,15 +4,22 @@
     {
       "version": "pr-125",
       "ref": "refs/pull/125/merge",
-      "sha": "b462b70e792269e8b415149a703162d67508ec77",
-      "timestamp": "2026-09-12T10:08:08.816Z",
+      "sha": "f2d948c0f3c831c4e84accf0c1ef5e6c9f439a85",
+      "timestamp": "2026-09-12T10:16:48.709Z",
       "commits": [
         {
-          "sha": "b462b70e792269e8b415149a703162d67508ec77",
+          "sha": "f2d948c0f3c831c4e84accf0c1ef5e6c9f439a85",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T10:07:39Z",
-          "message": "Merge d4567f49d252705542cc7935e9390b29b3bc1688 into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+          "timestamp": "2026-09-12T10:16:14Z",
+          "message": "Merge 9ccf80812031ff31f997c268e79d1d0e90fb20f5 into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+        },
+        {
+          "sha": "9ccf80812031ff31f997c268e79d1d0e90fb20f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T04:16:09-06:00",
+          "message": "docs(ci): justify the gate action's boundary with a reason that cannot rot\n\nThe comment explained why provisioning stays with the caller by pointing at\npublish.yml's registry-url and npm upgrade. The job split moved both of those\ninto the publish job, which does not call this action — so the justification\ndescribed a caller that no longer exists, one commit after it was written.\n\nReplaced with the structural reason: `uses: ./.github/actions/gate` cannot\nresolve until the repository is on disk, so checkout is always the caller's and\nprovisioning stays with it. Three lines to two.\n\nNot documented here: that ci.yml is on checkout@v4 and the gate job on @v6, and\nthat one reads node-version-file while the other pins 22. That is drift\nrich-workflows-0pr.2 deletes, and resting this comment on it would put the\njustification back on ground that disappears when that ticket lands.\n"
         },
         {
           "sha": "d4567f49d252705542cc7935e9390b29b3bc1688",
