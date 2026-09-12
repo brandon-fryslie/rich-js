@@ -4,15 +4,22 @@
     {
       "version": "pr-125",
       "ref": "refs/pull/125/merge",
-      "sha": "06dd0e6c07304ba3663291ac826fe9241653eff7",
-      "timestamp": "2026-09-12T09:59:31.072Z",
+      "sha": "b462b70e792269e8b415149a703162d67508ec77",
+      "timestamp": "2026-09-12T10:08:08.816Z",
       "commits": [
         {
-          "sha": "06dd0e6c07304ba3663291ac826fe9241653eff7",
+          "sha": "b462b70e792269e8b415149a703162d67508ec77",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T03:59:00-06:00",
-          "message": "Merge ad4ada3480cfde974741216d7a54e06c558b9c1f into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+          "timestamp": "2026-09-12T10:07:39Z",
+          "message": "Merge d4567f49d252705542cc7935e9390b29b3bc1688 into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+        },
+        {
+          "sha": "d4567f49d252705542cc7935e9390b29b3bc1688",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T04:07:31-06:00",
+          "message": "fix(ci): keep the demo gate out of the OIDC-bearing publish job\n\nMoving the browser gate onto the release path put vite/vitepress and their\nplugin graph, a Chromium download, and real headless page execution into the\nsame job that holds id-token: write for npm Trusted Publishing — a process\nwhose environment carries ACTIONS_ID_TOKEN_REQUEST_TOKEN. One compromised\ntransitive dependency running in those steps could request that token and mint\na forged npm publish credential.\n\nGitHub grants permissions per job, so a job boundary is the only thing that can\nscope the credential. publish.yml now runs the gate and the build in a job with\ncontents: read and no id-token, hands dist/ forward as an artifact, and leaves\nthe publish job holding checkout, setup-node, an npm CLI upgrade, the artifact\ndownload, the tag/version check, and npm publish.\n\nNo npm ci in the publish job, deliberately: installing the devDependency tree\nwould run every package's install scripts inside exactly the job the split\nprotects. npm pack --dry-run confirms the tarball is dist/, package.json and\nREADME.md, and package.json declares no prepare, prepack, or prepublishOnly —\nnothing on that path needs node_modules.\n\nThe npm Trusted Publisher trust binds the repository and the workflow filename,\nnot the job, so the split leaves the OIDC exchange untouched.\n"
         },
         {
           "sha": "ad4ada3480cfde974741216d7a54e06c558b9c1f",
