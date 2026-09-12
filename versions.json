@@ -4,15 +4,22 @@
     {
       "version": "pr-125",
       "ref": "refs/pull/125/merge",
-      "sha": "45686d38d5bb2be488712c9f620570490a75409f",
-      "timestamp": "2026-09-12T10:25:09.649Z",
+      "sha": "5c3f38d4f3851b3d58cf991c5bd077151e1fe017",
+      "timestamp": "2026-09-12T10:31:51.739Z",
       "commits": [
         {
-          "sha": "45686d38d5bb2be488712c9f620570490a75409f",
+          "sha": "5c3f38d4f3851b3d58cf991c5bd077151e1fe017",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T10:24:39Z",
-          "message": "Merge 0064ef46722d7c60c4db016314ca585a328cbc5b into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+          "timestamp": "2026-09-12T10:31:20Z",
+          "message": "Merge d0ae27b7a6f1b43324332acd8a290dcf6c61a1fa into 872928735f58d642006cefd8c0f628ac3009afd0\n"
+        },
+        {
+          "sha": "d0ae27b7a6f1b43324332acd8a290dcf6c61a1fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T04:31:15-06:00",
+          "message": "fix(ci): drop the npm cache from the job that never installs\n\nThe job split moved `npm ci` out of the publish job and left `cache: npm` on\nits setup-node step. With no lockfile install, the restore buys nothing and its\npost-job save runs anyway — latency inside the OIDC-bearing job, which the\nsplit exists to keep small, and a reader is told a lockfile-keyed install\nhappens here when none does.\n\nOne line marks the absence, since an omission cannot be read off the code and\nthe next person would otherwise put it back. The gate job keeps its cache; it\nis the one that runs `npm ci`.\n"
         },
         {
           "sha": "0064ef46722d7c60c4db016314ca585a328cbc5b",
