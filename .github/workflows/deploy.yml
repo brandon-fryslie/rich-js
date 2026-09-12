@@ -44,7 +44,7 @@ jobs:
       contents: write       # push to gh-pages
       pull-requests: write  # sticky PR preview comment
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0    # multiplexer reads full git history for the per-deploy commit manifest
 
@@ -62,9 +62,16 @@ jobs:
             echo "slot=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-node@v4
+      # [LAW:one-source-of-truth] This job compiles `src/` — docs:build bundles
+      # examples/ through the demo tsconfig — so it must run a Node the package
+      # supports, and `engines.node` is that declaration. ci.yml's setup-node
+      # step owns the argument for reading it this way, range resolution
+      # included; not restated here. The `node-version: 20` this replaces
+      # encoded no constraint at all — it cleared vite's `^20.19.0` floor only
+      # because setup-node resolves a bare major to its newest patch.
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version-file: package.json
           cache: npm
 
       - run: npm ci

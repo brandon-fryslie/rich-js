@@ -19,7 +19,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # [LAW:one-source-of-truth] `package.json#engines.node` is the canonical
       # supported-runtime declaration; setup-node reads it via
@@ -27,7 +27,8 @@ jobs:
       # itself is deliberately not repeated here — this comment used to name it,
       # and to credit it to a transitive dependency, and both halves were false
       # by the time anyone read them. `test/seam/node-floor.test.ts` is what
-      # decides the range now.
+      # decides the range now. `deploy.yml` and `publish.yml`'s gate job read
+      # the same file and point back here rather than restating any of this.
       #
       # What setup-node does with a range is pick the NEWEST version satisfying
       # it, not the oldest: the run at ^20.19.0 || >=22.12.0 logged "Resolved
@@ -37,13 +38,14 @@ jobs:
       #
       # Nothing else does either, and this comment claimed otherwise until review
       # caught it: it called the tarball-under-the-lowest-Node check "a release
-      # step", and `publish.yml` has no such step — it pins Node 22 and
-      # publishes. That check was run by hand once, on the commit that set the
-      # floor, and is recorded in its PR. Automating it is rich-packaging-8b7.
+      # step", and `publish.yml` has no such step — its gate job resolves this
+      # same range, and the job that publishes never runs `src/` at all. That
+      # check was run by hand once, on the commit that set the floor, and is
+      # recorded in its PR. Automating it is rich-packaging-8b7.
       # Read the gap as it is: a floor wrong because `src/` reached for a newer
       # Node's API is caught by nobody today, and a comment promising a safety
       # net is worse than the gap, because it stops anyone looking for one.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
           cache: npm
