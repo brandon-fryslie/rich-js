@@ -34,6 +34,18 @@ on:
     tags:
       - "v*"
 
+# [LAW:one-source-of-truth] One pin, read by both jobs below. Two literals would
+# let a Node bump land in the job that runs the checks and miss the job that
+# publishes, leaving the gate vouching for a runtime the tarball never met.
+#
+# A pin, not the canonical answer — `package.json#engines.node` is that, and
+# ci.yml already reads it via `node-version-file`. Moving this workflow onto it
+# changes which Node executes a release, since `engines` is a range and
+# setup-node resolves it to the newest match; that is rich-workflows-0pr.2's
+# call to make.
+env:
+  NODE_VERSION: "22"
+
 jobs:
   # Two jobs, and the boundary between them is the entire reason for the split:
   # `permissions` is granted per job, so no step can be scoped tighter than the
@@ -58,7 +70,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - run: npm ci
@@ -99,13 +111,12 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
-      # Trusted Publishing needs npm CLI >= 11.5.1; Node 22's bundled npm
-      # lags that on some runner images, so pin explicitly rather than
-      # depend on whatever setup-node happens to ship.
+      # Trusted Publishing needs npm CLI >= 11.5.1, which the bundled npm can
+      # lag on some runner images — pin it rather than take what ships.
       - run: npm install -g npm@^11.5.1
 
       # No `npm ci` here, deliberately: installing the devDependency tree would
