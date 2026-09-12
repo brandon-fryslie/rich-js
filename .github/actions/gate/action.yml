@@ -1,0 +1,69 @@
+# The gate: every check a commit must pass before it is allowed to ship.
+#
+# [LAW:one-source-of-truth] This file is the only definition of that list.
+# `ci.yml` runs it on master and every PR; `publish.yml` runs it on the version
+# tag, before `npm publish`. Both call it, neither restates it.
+#
+# The alternative — the same steps written out in both files — is the bug this
+# action exists to close, and that bug shows up as an *omission*, which is the
+# hard kind to see. `publish.yml` ran lint and test and nothing that touched the
+# bundle pipeline, so a change breaking every browser demo cleared the release
+# gate and shipped to npm with provenance attached. Nobody removed a check; the
+# second copy of the list simply never grew the ones the first one gained. A
+# copied gate drifts silently, and it drifts on the path nobody watches.
+#
+# [LAW:dataflow-not-control-flow] No inputs, no flags, no per-caller mode. Both
+# callers run the identical list, which is the whole point: a gate with a
+# "skip the slow part" switch is not one gate, it is two gates and a lie.
+#
+# The caller owns provisioning — checkout, setup-node, `npm ci` — because that
+# is where the two paths genuinely differ: `publish.yml` needs a registry URL
+# and a newer npm for Trusted Publishing. It owns nothing else.
+
+name: Gate
+description: >-
+  Run every check a shippable commit must pass: typecheck, unit tests, and the
+  headless-browser demo gate.
+
+runs:
+  using: composite
+  steps:
+    # Three tsconfigs, not one — `test/` and `scripts/` are type-checked too,
+    # so a broken type in a test fails here even when vitest is green.
+    - run: npm run lint
+      shell: bash
+
+    - run: npm test
+      shell: bash
+
+    # Build the docs site so the headless gate has real output to probe.
+    # No VITEPRESS_BASE override — the default `/rich-js/` matches the
+    # baseURL in playwright.config.ts.
+    - name: Build docs site
+      run: npm run docs:build
+      shell: bash
+
+    # `--with-deps` installs the system libraries Chromium needs on
+    # ubuntu-latest (fonts, libnss, etc.). Chromium-only — we don't run
+    # Webkit/Firefox; the bundle output is the same for every browser.
+    - name: Install Chromium for Playwright
+      run: npx playwright install --with-deps chromium
+      shell: bash
+
+    # [LAW:dataflow-not-control-flow] The set of demos under test comes from
+    # the manifest — the same JSON the VitePress config / paths file / landing
+    # page read. CI does not enumerate demos; it runs whatever the manifest
+    # says.
+    - name: Headless-browser gate (demo pages)
+      run: npm run test:demos
+      shell: bash
+
+    # On failure, the HTML report (with traces + screenshots) is the primary
+    # debugging artefact. Skip upload on green to keep the run tidy.
+    - name: Upload Playwright report on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 14
