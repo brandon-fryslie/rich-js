@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-126",
+      "ref": "refs/pull/126/merge",
+      "sha": "5f3d9c58e1cb0bd9d6da0e3c3d2915367603c278",
+      "timestamp": "2026-09-12T10:51:59.232Z",
+      "commits": [
+        {
+          "sha": "5f3d9c58e1cb0bd9d6da0e3c3d2915367603c278",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T04:51:33-06:00",
+          "message": "Merge 71dd42802ce4ab8dc5fd15de87084e6081f0c847 into a92352ee719c2d933b94f6eb00396385213dcaff\n"
+        },
+        {
+          "sha": "71dd42802ce4ab8dc5fd15de87084e6081f0c847",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T04:51:09-06:00",
+          "message": "fix(ci): resolve Node from engines where the job runs src/ (rich-workflows-0pr.2)\n\nThree workflows resolved Node three ways: ci.yml read the version file,\npublish.yml carried one workflow-level pin, deploy.yml hardcoded 20. The\nrule now applied is not \"point everything at engines\" — it is that\n`engines.node` and \"which Node runs this job\" are two different facts, and\nthe version file is the right authority only where the job executes the\npackage's own code.\n\nBy that rule:\n\n- deploy.yml reads the version file. It compiles src/ (docs:build bundles\n  examples/ through the demo tsconfig), so it must run a supported Node.\n  The `20` it replaces encoded no constraint — it cleared vite's `^20.19.0`\n  floor only because setup-node resolves a bare major to its newest patch.\n- publish.yml's gate job reads the version file. The same gate means the\n  same runtime, not just the same step list; re-gating a release under a\n  different Node than master ran is a different experiment.\n- publish.yml's publish job keeps an explicit `22`, now with its actual\n  authority named. It never executes src/ — `npm run build` runs in the\n  gate job and dist/ arrives as an artifact — so it is not a runtime the\n  package must support. It runs the npm CLI, whose constraint is\n  `^20.17.0 || >=22.9.0`, and `semver.subset(\">=20\", that)` is false:\n  Node 20.5 and every 21.x satisfy engines and are refused by npm 11.\n\nThat dissolves the shared `env: NODE_VERSION`, which stood for two facts at\nonce. Its stated justification — \"the gate vouching for a runtime the\ntarball never met\" — did not hold either way: the tarball's contents are\ncompiled in the gate job.\n\ncheckout and setup-node are aligned on v7 across all three files (they were\nv4/v4/v6). v7 is the target rather than the incumbent v6 because it stops\nexporting a dummy NODE_AUTH_TOKEN beside `registry-url`\n(actions/setup-node#1558) — a placeholder landing a non-functional token in\n.npmrc on precisely this OIDC publish path, which publish.yml already spends\nfive lines warning hands off. setup-node v5's auto-cache-by-packageManager\nchange is inert here: package.json declares no `packageManager` field.\ncheckout v7's fork-PR restriction applies only to `pull_request_target` and\n`workflow_run`, neither of which any workflow here uses.\n\nAlso repairs a comment in ci.yml that this change falsified: it cited\n\"publish.yml pins Node 22 and publishes\" as evidence that nothing checks the\ntarball under the lowest admitted Node. The claim still holds; the evidence\nnow reads correctly.\n\nVerified: actionlint clean on all four workflows; npm run lint clean; 2471\nunit tests pass. The publish path itself remains unexercised — its one real\nrun failed at the registry — which is rich-workflows-0pr.3.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a92352ee719c2d933b94f6eb00396385213dcaff",
