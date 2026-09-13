@@ -52,6 +52,7 @@
     "dist"
   ],
   "scripts": {
+    "prepublishOnly": "node scripts/verify-release-tag.mjs",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -5,9 +5,21 @@
     "rootDir": ".",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["node"]
+    "types": ["node"],
+
+    /*
+     * [LAW:one-source-of-truth] `scripts/verify-release-tag.mjs` is JavaScript
+     * because the publish job that runs it has no `node_modules` on disk and so
+     * has no TypeScript to compile it with. That is a constraint on its
+     * interpreter, not a licence to leave it uninspected: `checkJs` holds its
+     * JSDoc types to the same strict options every other region gets from the
+     * root config, so `npm run lint` covers it like anything else.
+     */
+    "allowJs": true,
+    "checkJs": true
   },
   "include": [
+    "scripts/**/*.mjs",
     "vite.config.demos.ts",
     "vitest.config.ts",
     "playwright.config.ts",
