@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-127",
+      "ref": "refs/pull/127/merge",
+      "sha": "6b3bcb4c2bb73c2d0d721674785e1b43a077c30d",
+      "timestamp": "2026-09-13T01:21:59.428Z",
+      "commits": [
+        {
+          "sha": "6b3bcb4c2bb73c2d0d721674785e1b43a077c30d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T19:21:31-06:00",
+          "message": "Merge 57dfd5f89eb8c44d04e4dd53f13335c8d2271ab7 into b9def7e586f55c4cd3a3f436350fce4a68c13f2b\n"
+        },
+        {
+          "sha": "57dfd5f89eb8c44d04e4dd53f13335c8d2271ab7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-12T19:21:00-06:00",
+          "message": "fix(release): refuse to publish a version no tag names (rich-workflows-0pr.4)\n\nEleven versions of this package are on npm; five have a git tag. The ticket\nassumed the other six were a backfill waiting to happen. They are not, and\nfinding that out is what turned this into a gate.\n\nnpm records a `gitHead` with every publish. For five of the six untagged\nversions that commit no longer exists in this repository — they were branch\ntips, squash-merged and deleted — and for 0.7.0 it survives only as an orphan\noff master. Three of the versions (0.1.0, 0.5.0, 0.5.1) never appear in\nmaster's history at all: master steps 0.0.1 to 0.2.0 and 0.4.0 to 0.5.2. There\nis nothing left to point a tag at, so nothing about the six is recoverable.\nBrandon's call was to backfill none of them and close the hole instead.\n\nThe hole is not in this workflow. `publish.yml` triggers on `v*`, so a CI\nrelease carries a tag by construction — the tag is the trigger. Every untagged\nversion arrived by the other road, a hand-run `npm publish`, which no workflow\ncan observe: 0.8.0 appeared on the registry 26 seconds after CI failed on that\nsame version, and neither it nor 0.7.0 carries a provenance attestation, which\nonly the OIDC path can attach.\n\nSo the check moves to where both roads meet. `scripts/verify-release-tag.mjs`\nruns on `prepublishOnly` — which npm fires for every `npm publish` and for\nnothing else, before the tarball is built, aborting on a non-zero exit — and\nrefuses any tree whose HEAD carries no tag naming the version about to ship. It\nfails closed: a tree where git cannot answer is refused rather than assumed,\nso `rm -rf .git` is not a bypass. It is plain ESM on bare node because the\npublish job deliberately has no node_modules; `tsconfig.scripts.json` now\ntype-checks it, so lint still covers it.\n\npublish.yml's own \"Verify tag matches package.json version\" step is deleted in\nthe same change rather than left as a second rule about one invariant. The one\ncase where it was stricter, and why that case costs nothing, is written where\nit was removed. The mismatched-tag interlock is unchanged: a tag disagreeing\nwith package.json still cannot reach the registry, so it remains a safe way to\nexercise the release path end to end.\n\nVerified: `npm publish --dry-run` on untagged master is refused by the guard\nand aborted by npm; the same tree with the matching tag present publishes. The\nnpm lifecycle behaviour the guard depends on was established against a\nthrowaway package rather than assumed — `prepublishOnly` fires on publish and\ndry-run, not on `npm pack` or `npm install`.\n\nlint clean, 2478 tests pass, actionlint clean.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b9def7e586f55c4cd3a3f436350fce4a68c13f2b",
