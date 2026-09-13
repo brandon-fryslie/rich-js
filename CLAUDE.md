@@ -162,7 +162,7 @@ You will be adding a dependency, or a toolchain will announce the Node it wants,
 
 Say the blind spot out loud whenever you cite this gate; it is the optional-peers blind spot in another shape. A consumer does not install from our lockfile. They resolve `^8.2.0` themselves and may land on a `string-width` newer than ours, declaring a floor we have never read. This checks the tree *we* resolved. A green run proves something narrower than "the floor is right for everyone" — it proves the floor was not copied from outside the install tree, the failure that actually happened. Treat it as that and no more; a blind spot read as coverage is worse than no guard.
 
-### A version reaches npm only from a commit that carries its tag
+### A version reaches npm only from a commit origin has tagged
 
 Eleven versions of this package are published and five have a git tag. The six
 that do not — 0.1.0, 0.2.0, 0.5.0, 0.5.1, 0.5.2, 0.7.0 — cannot be given one, and
@@ -182,15 +182,22 @@ the check does not live in a workflow. `scripts/verify-release-tag.mjs` runs on
 before the tarball is built, and a non-zero exit aborts the publish. Both roads
 cross it. `publish.yml`'s own "Verify tag matches package.json version" step was
 deleted in the same change rather than left as a second rule about one invariant
-with nothing keeping the two agreed; the guard asks the broader question, and
-the one case where the deleted step was stricter is written out where it was
-deleted. That file's header owns the rest of the argument, including why it is
-JavaScript rather than TypeScript — the publish job has no `node_modules` on
+with nothing keeping the two agreed.
+
+It asks *origin* — `git ls-remote`, not the local ref store — and that is the
+half to keep hold of. The six gaps are missing tags on origin, so a tag that only
+ever existed on someone's laptop is the same defect wearing a disguise, and a
+guard that accepted one would not be closing the hole it claims to. Asking origin
+also makes the answer independent of workflow config: the publish job's checkout
+fetches with `--no-tags` and a single refspec, so the local refs there hold only
+the triggering tag, and a guard reading them would answer differently in CI than
+on a laptop. That file's header owns the rest of the argument, including why it
+is JavaScript rather than TypeScript — the publish job has no `node_modules` on
 disk, deliberately, and bare `node` is the only interpreter it can offer.
 
-`test/seam/release-tag.test.ts` builds real repositories in a temp directory and
-runs the guard against them, so what is checked is the contract and not the
-shape. Say its blind spot out loud whenever you cite it: that npm still runs
+`test/seam/release-tag.test.ts` builds real repositories pushing to a real bare
+origin in a temp directory and runs the guard against them, so what is checked is
+the contract and not the shape, and no network is involved. Say its blind spot out loud whenever you cite it: that npm still runs
 `prepublishOnly` and still aborts on a non-zero exit is npm's behavior, verified
 once by hand against a throwaway package and assumed from there. An npm that
 dropped the hook would leave the suite green and the gate gone. The suite holds
@@ -202,8 +209,9 @@ tree rather than permitting one. You will be releasing, the guard will refuse,
 and the fast path will look like `npm publish --ignore-scripts`, or a quick edit
 lifting the hook out of the manifest "just for this release." That is the exact
 keystroke that produced all six gaps, and it will feel justified because the
-version really is ready to ship. Tag the commit instead; it is one command, and
-it is the whole thing being asked for.
+version really is ready to ship. Push the tag instead — `git tag vX.Y.Z && git
+push origin vX.Y.Z` is the whole thing being asked for, and on the CI road that
+same push is what starts the release anyway.
 
 ### One list says who reaches the host
 

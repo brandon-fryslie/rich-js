@@ -148,21 +148,20 @@ jobs:
       # version" used to sit here, comparing GITHUB_REF_NAME to the manifest. It
       # was deleted when `scripts/verify-release-tag.mjs` landed on
       # `prepublishOnly`, which npm runs as the first thing in the `npm publish`
-      # below. The guard asks a broader question — is there a tag naming this
-      # version on this commit — and asks it on both release roads rather than
-      # only this one, so keeping the step would have left two rules about one
-      # invariant with nothing to keep them agreed. The interlock the old step
-      # provided is unchanged: a tag whose name disagrees with package.json
+      # below. The guard asks a broader question — does origin carry a tag naming
+      # this version, on this commit — and asks it on both release roads rather
+      # than only this one, so keeping the step would have left two rules about
+      # one invariant with nothing to keep them agreed. The interlock the old
+      # step provided is unchanged: a tag whose name disagrees with package.json
       # still cannot reach the registry, which is what makes a deliberately
       # mismatched tag a safe way to exercise this whole path.
       #
-      # The two are not nested, and the one case that separates them is worth
-      # stating rather than discovering. If a commit carries both v0.8.0 and
-      # v0.9.0 and the v0.9.0 push runs this workflow over a manifest saying
-      # 0.8.0, the old step failed and the guard allows it — and what it allows
-      # is publishing 0.8.0 from a commit tagged v0.8.0, which leaves npm and
-      # the tags reconciled. What is lost is a complaint about a mislabeled
-      # trigger; what is kept is the property that made this file worth gating.
+      # It asks origin rather than the local ref store, and that is what keeps
+      # the answer independent of this file. The checkout above fetches with
+      # `--no-tags` and a single refspec, so the only tag on disk here is the one
+      # that triggered the run — a guard reading local refs would answer
+      # differently in this job than on a laptop, and differently again if
+      # `fetch-tags` were ever set. `ls-remote` is the same question everywhere.
       #
       # No NODE_AUTH_TOKEN: npm CLI >= 11.5.1 detects the GitHub Actions OIDC
       # environment (id-token: write, above) and exchanges it for a

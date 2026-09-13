@@ -11,12 +11,13 @@
  * the unit suite can hold it in.
  *
  * [LAW:behavior-not-structure] What is asserted is the contract npm meets at
- * publish time: given a tree in some state, does the guard exit zero. Nothing
- * here reaches inside the script, so it may be rewritten in any shape that still
- * refuses the same trees. The fixtures are real git repositories in a temp
- * directory rather than a mocked `git`, because half of what is under test is
- * the question the guard asks git, and a mock would answer a question of this
- * test's own invention.
+ * publish time: given a repository and an origin in some state, does the guard
+ * exit zero. Nothing here reaches inside the script, so it may be rewritten in
+ * any shape that still refuses the same trees. The fixtures are real
+ * repositories pushing to a real bare origin on disk rather than a mocked `git`,
+ * because most of what is under test is the question the guard asks git, and a
+ * mock would answer a question of this test's own invention. No network: a bare
+ * repository in a temp directory is a perfectly good origin.
  *
  * The fixture runs a byte copy of the script rather than the file in place, and
  * that is forced by the design being tested: the guard resolves its package root
@@ -50,41 +51,52 @@ interface GuardResult {
   readonly output: string;
 }
 
+/** The repository a test arranges, and the one call that makes it ordinary. */
+interface Arena {
+  /** Run git in the work tree. */
+  readonly git: (...args: string[]) => void;
+  /** Create the work repository, wire `origin` to a bare repo, make one commit. */
+  readonly scaffold: () => void;
+}
+
 /**
- * Build a throwaway package around a byte copy of the guard and run it.
+ * Build a throwaway package around a byte copy of the guard, let the test arrange
+ * the repository around it, and run it.
  *
- * Each entry of `tagCommands` is the argument list for one `git tag` — the
- * variability lives in those values rather than in flags on this helper, so a
- * lightweight tag, an annotated one, and several at once are the same code path
- * with different data. `git: false` skips repository creation, which is the tree
- * the guard must refuse rather than assume.
+ * `arrange` receives the whole arena rather than a set of flags, so each test
+ * states the world it means in git's own vocabulary — pushed or not pushed,
+ * annotated or lightweight, origin present or removed — instead of this helper
+ * growing a boolean per scenario. A test that never calls `scaffold` is testing
+ * the tree that is not a repository at all.
  */
-function runGuard(
-  version: string,
-  tagCommands: readonly (readonly string[])[],
-  options: { readonly git: boolean } = { git: true },
-): GuardResult {
+function runGuard(version: string, arrange: (arena: Arena) => void): GuardResult {
   const root = mkdtempSync(path.join(tmpdir(), "release-tag-"));
   try {
-    mkdirSync(path.join(root, "scripts"));
-    copyFileSync(GUARD_PATH, path.join(root, GUARD_RELATIVE));
-    writeFileSync(path.join(root, "package.json"), JSON.stringify({ name: "fixture", version }));
+    const work = path.join(root, "work");
+    const origin = path.join(root, "origin.git");
+    mkdirSync(work);
+    mkdirSync(path.join(work, "scripts"), { recursive: true });
+    copyFileSync(GUARD_PATH, path.join(work, GUARD_RELATIVE));
+    writeFileSync(path.join(work, "package.json"), JSON.stringify({ name: "fixture", version }));
 
-    const git = (...args: readonly string[]): void => {
+    const git = (...args: string[]): void => {
       execFileSync("git", ["-c", "user.email=t@example.com", "-c", "user.name=t", ...args], {
-        cwd: root,
+        cwd: work,
         stdio: ["ignore", "ignore", "pipe"],
       });
     };
 
-    if (options.git) {
+    const scaffold = (): void => {
+      execFileSync("git", ["init", "-q", "--bare", origin], { stdio: ["ignore", "ignore", "pipe"] });
       git("init", "-q", "-b", "main");
+      git("remote", "add", "origin", origin);
       git("add", "-A");
       git("commit", "-qm", "fixture");
-      for (const command of tagCommands) git("tag", ...command);
-    }
+    };
 
-    const run = spawnSync(process.execPath, [path.join(root, GUARD_RELATIVE)], { encoding: "utf8" });
+    arrange({ git, scaffold });
+
+    const run = spawnSync(process.execPath, [path.join(work, GUARD_RELATIVE)], { encoding: "utf8" });
     return { status: run.status ?? -1, output: `${run.stdout}${run.stderr}` };
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -92,51 +104,112 @@ function runGuard(
 }
 
 describe("release-tag guard", () => {
-  it("publishes a version whose tag is on the commit", () => {
-    const result = runGuard("1.2.3", [["v1.2.3"]]);
+  it("publishes a version whose tag origin carries on this commit", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("tag", "v1.2.3");
+      git("push", "-q", "origin", "main", "--tags");
+    });
 
     expect(result.status).toBe(0);
     expect(result.output).toContain("v1.2.3");
   });
 
-  it("accepts an annotated tag, which a release may reasonably use", () => {
-    const result = runGuard("1.2.3", [["-a", "v1.2.3", "-m", "release 1.2.3"]]);
+  /*
+   * An annotated tag reports its own object sha under `refs/tags/<name>` and the
+   * commit only under the peeled `refs/tags/<name>^{}`. Querying just the plain
+   * ref would refuse every annotated release, so this is the case that keeps the
+   * peeled pattern in the ls-remote call.
+   */
+  it("publishes when the tag on origin is annotated rather than lightweight", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("tag", "-a", "v1.2.3", "-m", "release 1.2.3");
+      git("push", "-q", "origin", "main", "--tags");
+    });
 
     expect(result.status).toBe(0);
   });
 
-  it("refuses a commit carrying no tags, and says which tag it wanted", () => {
-    const result = runGuard("1.2.3", []);
+  it("refuses a commit no tag names, and says which tag it wanted", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("push", "-q", "origin", "main");
+    });
 
     expect(result.status).toBe(1);
     expect(result.output).toContain("git tag v1.2.3");
   });
 
   /*
-   * This is the case that keeps a deliberately mismatched tag a safe way to
-   * exercise the release path end to end: the run reaches the registry step and
-   * stops there, so the whole workflow can be exercised with no chance of an
-   * artifact being published. The `publish.yml` step that used to own that
-   * property was deleted when the guard landed, and this is where it now lives.
+   * The case that decides where the guard asks its question. A tag sitting only
+   * in the local ref store leaves npm holding a version that origin cannot
+   * describe — which is the exact end state of the six releases this gate exists
+   * to prevent a seventh of. A guard that read `git tag --points-at HEAD` would
+   * pass this happily; that is why it reads origin instead.
    */
-  it("refuses a commit whose only tag names a different version, and names what it found", () => {
-    const result = runGuard("1.2.3", [["v9.9.9"]]);
+  it("refuses a tag that exists locally but was never pushed", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("push", "-q", "origin", "main");
+      git("tag", "v1.2.3");
+    });
 
     expect(result.status).toBe(1);
-    expect(result.output).toContain("v9.9.9");
+    expect(result.output).toContain("no such tag");
   });
 
-  it("publishes when the right tag shares the commit with unrelated ones", () => {
-    const result = runGuard("1.2.3", [["v1.2.3"], ["nightly"]]);
-
-    expect(result.status).toBe(0);
-  });
-
-  it("refuses a tree that is not a repository rather than assuming it is tagged", () => {
-    const result = runGuard("1.2.3", [], { git: false });
+  /*
+   * This is what keeps a deliberately mismatched tag a safe way to exercise the
+   * release path end to end: the run reaches the registry step and stops there,
+   * so the whole workflow can be exercised with no chance of an artifact being
+   * published. The `publish.yml` step that used to own that property was deleted
+   * when the guard landed, and this is where it now lives.
+   */
+  it("refuses when origin's only tag names a different version", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("tag", "v9.9.9");
+      git("push", "-q", "origin", "main", "--tags");
+    });
 
     expect(result.status).toBe(1);
-    expect(result.output).toContain("could not read");
+    expect(result.output).toContain("no such tag");
+  });
+
+  it("refuses when origin's tag for this version points at a different commit", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("tag", "v1.2.3");
+      git("push", "-q", "origin", "main", "--tags");
+      git("commit", "-qm", "moved on", "--allow-empty");
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("this commit");
+  });
+
+  it("refuses a repository with no origin rather than assuming it is tagged", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("tag", "v1.2.3");
+      git("remote", "remove", "origin");
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("could not ask origin");
+  });
+
+  /*
+   * The failure detail has to be git's own words. `execFileSync` wraps every
+   * non-zero exit in "Command failed: <argv>", which names no cause and reads
+   * identically for each of them, so this pins that the refusal quotes stderr.
+   */
+  it("refuses a tree that is not a repository, quoting what git said", () => {
+    const result = runGuard("1.2.3", () => {});
+
+    expect(result.status).toBe(1);
+    expect(result.output).toContain("not a git repository");
   });
 
   /*

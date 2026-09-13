@@ -28,8 +28,12 @@ const PACKAGE_JSON_PATH = path.join(REPO_ROOT, "package.json");
 /**
  * The fields of `package.json` any check here reads.
  *
- * Only the published surface is modelled — what a consumer's installer and
- * resolver act on. `devDependencies` is deliberately absent, and its absence
+ * Almost all of it is the published surface — what a consumer's installer and
+ * resolver act on. `scripts` is the exception, and the line to hold is that it
+ * describes the maintainer's publish rather than the install: read it for what
+ * `npm publish` runs, never to conclude anything a consumer would experience.
+ *
+ * `devDependencies` is deliberately absent, and its absence
  * is the point: it describes this checkout, not the package, so a rule that
  * consulted it would call a dependency satisfied because *we* happen to have
  * it installed. That is the exact blindness `optional-peers.ts` exists to
