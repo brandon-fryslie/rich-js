@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-129",
+      "ref": "refs/pull/129/merge",
+      "sha": "7ba3dae239b3a02a5466f8774d753b31d45f0831",
+      "timestamp": "2026-09-15T14:11:49.101Z",
+      "commits": [
+        {
+          "sha": "7ba3dae239b3a02a5466f8774d753b31d45f0831",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-15T08:11:21-06:00",
+          "message": "Merge 3d2ff6f012cacd93ae377c2cf28846845c255571 into 600b009f17541100b0b7928950b4d183cd1694d5\n"
+        },
+        {
+          "sha": "3d2ff6f012cacd93ae377c2cf28846845c255571",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-15T08:11:16-06:00",
+          "message": "chore(deps)!: move every dependency to its latest release (0.10.0)\n\nPeer floors rise to mobx ^7.0.3 and @promptctl/go-template-js ^0.9.0.\n\n- mobx 7 drops observable.ref/.shallow for named observableRef and\n  observableShallow, and makeObservable now requires annotations; every\n  class uses TC39 accessor decorators, which register themselves, so the\n  three makeObservable(this) calls are gone.\n- TypeScript 7 ships no JavaScript compiler API, which the seam and\n  coverage gates are built on, so typescript stays on 6.0.3, the newest\n  release that has one. Its empty default for `types` is restored to\n  [\"node\"] in tsconfig.json.\n- Vite 8 compiles TypeScript with oxc, which passes TC39 decorators\n  through to Node verbatim. vitest now compiles project .ts files with\n  tsc and tsconfig.json, the compiler that builds dist/.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "600b009f17541100b0b7928950b4d183cd1694d5",
