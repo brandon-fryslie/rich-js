@@ -11,7 +11,7 @@
  *   disabled  — dimmed
  */
 
-import { observable, action } from "mobx";
+import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
@@ -37,9 +37,9 @@ export class Checkbox extends WidgetBase {
   @observable accessor label: string;
   @observable accessor checked: boolean;
 
-  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
   // re-render — see slider.ts.
-  @observable.ref private accessor _theme: TerminalTheme;
+  @observableRef private accessor _theme: TerminalTheme;
 
   constructor(options: CheckboxOptions) {
     super();

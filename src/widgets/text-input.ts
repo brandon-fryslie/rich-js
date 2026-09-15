@@ -56,7 +56,7 @@
  * or invoke them programmatically.
  */
 
-import { observable, action } from "mobx";
+import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
@@ -254,7 +254,7 @@ export class TextInput extends WidgetBase {
 
   @observable accessor value: string;
   @observable accessor cursorPosition: CodePoint;
-  @observable.ref accessor placeholder: string;
+  @observableRef accessor placeholder: string;
 
   private _theme: TerminalTheme;
   private readonly _maxLength: number | undefined;
@@ -266,9 +266,9 @@ export class TextInput extends WidgetBase {
   private readonly _maxRows: number | undefined;
   private readonly _minRows: number | undefined;
   private readonly _scrollIndicator: "arrows" | "indices" | "none";
-  @observable.ref accessor indicatorStyleOverride: Style | undefined;
-  @observable.ref accessor cursorStyleOverride: Style | undefined;
-  @observable.ref accessor contentStyleOverride: Style | undefined;
+  @observableRef accessor indicatorStyleOverride: Style | undefined;
+  @observableRef accessor cursorStyleOverride: Style | undefined;
+  @observableRef accessor contentStyleOverride: Style | undefined;
 
   /**
    * Last computed visual-row decomposition. Cached at the end of `render()`

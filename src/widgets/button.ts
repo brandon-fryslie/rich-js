@@ -16,7 +16,7 @@
  * partner depends on luminance.
  */
 
-import { observable, action } from "mobx";
+import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
@@ -56,11 +56,11 @@ export class Button extends WidgetBase {
   readonly focusable = true;
 
   @observable accessor label: string;
-  @observable.ref accessor variant: ButtonVariant;
+  @observableRef accessor variant: ButtonVariant;
 
-  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
   // re-render — see slider.ts.
-  @observable.ref private accessor _theme: TerminalTheme;
+  @observableRef private accessor _theme: TerminalTheme;
 
   constructor(options: ButtonOptions) {
     super();

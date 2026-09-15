@@ -280,7 +280,7 @@ class Counter extends WidgetBase {
 
 Two rules keep a custom widget composable. Return a stable width from `measure()` where you can — the screen uses it for layout and hit-testing, and a widget whose width changes with its state makes neighbouring `inline` items jump. And never emit cursor-positioning control segments: the host owns the screen, and a widget that moves the cursor corrupts the frame around it.
 
-Both decorators are load-bearing. `WidgetBase` calls `makeObservable(this)`, which wires up only decorated members, so without `@observable accessor` the counter would change its value, fire `onChange`, and never repaint — the screen's autorun would have no read to react to. And `@action` on the handler is what keeps MobX's strict mode quiet; mutating an observable outside one warns on every keypress. Importing from `"mobx"` adds nothing to what you already installed to get the widget layer running.
+Both decorators are load-bearing. MobX tracks only decorated members, so without `@observable accessor` the counter would change its value, fire `onChange`, and never repaint — the screen's autorun would have no read to react to. And `@action` on the handler is what keeps MobX's strict mode quiet; mutating an observable outside one warns on every keypress. Importing from `"mobx"` adds nothing to what you already installed to get the widget layer running.
 
 ## Overlays
 

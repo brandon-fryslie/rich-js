@@ -23,7 +23,7 @@
  * than the header. See docs/widgets.md → Dropdown.
  */
 
-import { observable, action } from "mobx";
+import { observable, action, observableRef, observableShallow } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
@@ -51,7 +51,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
   readonly id: string;
   readonly focusable = true;
 
-  @observable.shallow accessor options: string[];
+  @observableShallow accessor options: string[];
   @observable accessor selectedIndex: number;
   @observable accessor expanded: boolean = false;
   @observable accessor highlightedIndex: number;
@@ -70,10 +70,10 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     return result;
   }
 
-  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
   // re-render — render() and resolvePalette() read _theme.palette, so the
   // theme reference must participate in MobX reactivity.
-  @observable.ref private accessor _theme: TerminalTheme;
+  @observableRef private accessor _theme: TerminalTheme;
 
   constructor(options: DropdownOptions) {
     super();
