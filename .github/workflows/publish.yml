@@ -8,8 +8,11 @@
 # (@promptctl/cc-candybar) already does.
 #
 # The trigger is the version tag, so the tag is the single source of truth for
-# "this commit is released" — the workflow refuses to publish if the tag and
-# package.json disagree, rather than silently shipping a mislabeled version.
+# "this commit is released". Nothing in this file enforces that any more:
+# `scripts/verify-release-tag.mjs` runs on `prepublishOnly` and refuses any
+# publish whose version has no tag on the commit, which covers this workflow and
+# the hand-run `npm publish` that this workflow was never able to see. Six
+# published versions have no tag because that second road had no gate on it.
 #
 # Publishing uses npm Trusted Publishing (OIDC) — brandon-release-vcr. There
 # is no NPM_TOKEN secret; `npm publish` exchanges the publish job's Actions
@@ -129,28 +132,54 @@ jobs:
       # No `npm ci` here, deliberately: installing the devDependency tree would
       # run every package's install scripts inside the OIDC-bearing job, which
       # is the thing the job split exists to prevent. Nothing on this path needs
-      # node_modules — package.json declares no prepare/prepack/prepublishOnly,
-      # and `files` is ["dist"], which arrives as the artifact.
+      # node_modules — `files` is ["dist"], which arrives as the artifact, and
+      # the one lifecycle script package.json declares (`prepublishOnly`, the
+      # release-tag guard) is first-party, imports nothing, and runs on bare
+      # node. Anything added to that hook inherits this constraint: a hook that
+      # needs `node_modules` cannot be satisfied here without reopening the
+      # attack surface the job split closed.
       - name: Take dist from the gate job
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist
 
-      # [LAW:no-silent-failure] A tag that disagrees with package.json is a
-      # release-process bug, and publishing anyway would put a version on npm
-      # that no git tag describes. Fail loudly, before the irreversible step.
-      - name: Verify tag matches package.json version
-        run: |
-          set -euo pipefail
-          tag="${GITHUB_REF_NAME#v}"
-          pkg="$(node -p "require('./package.json').version")"
-          if [ "$tag" != "$pkg" ]; then
-            echo "::error::tag v${tag} does not match package.json version ${pkg}"
-            exit 1
-          fi
-          echo "publishing ${pkg}"
-
+      # [LAW:single-enforcer] A step named "Verify tag matches package.json
+      # version" used to sit here, comparing GITHUB_REF_NAME to the manifest. It
+      # was deleted when `scripts/verify-release-tag.mjs` landed on
+      # `prepublishOnly`, which npm runs as the first thing in the `npm publish`
+      # below. The guard asks a broader question — does origin carry a tag naming
+      # this version, on this commit — and asks it on both release roads rather
+      # than only this one, so keeping the step would have left two rules about
+      # one invariant with nothing to keep them agreed.
+      #
+      # What is guaranteed, stated narrowly because the deleted step was not
+      # strictly weaker: whatever reaches the registry is a version origin tags
+      # at this commit. What is NOT guaranteed is anything about which tag named
+      # this run — the guard never reads GITHUB_REF_NAME, because that exists on
+      # one road only, and a check consulting it would ask a different question
+      # in this job than on a laptop. So a commit carrying both v0.8.0 and
+      # v0.9.0 on origin, under a manifest saying 0.8.0, publishes 0.8.0 and
+      # says nothing about the v0.9.0 that triggered it. That is a mislabeled
+      # trigger rather than an untagged release, and it is reachable only when
+      # the manifest's version was already tagged at this commit — where npm's
+      # duplicate-version rejection also stands in the way, incidentally and not
+      # by anything here. `test/seam/release-tag.test.ts` pins both that case and
+      # the ordinary forgotten bump, which IS refused: push v0.9.0 over a
+      # manifest saying 0.8.0 and origin has no v0.8.0 at that commit.
+      #
+      # That last sentence is also why a deliberately mismatched tag remains a
+      # safe way to exercise this whole path: an experiment tags a commit that
+      # carries no manifest-matching tag, so the guard refuses before the
+      # registry step.
+      #
+      # It asks origin rather than the local ref store, and that is what keeps
+      # the answer independent of this file. The checkout above fetches with
+      # `--no-tags` and a single refspec, so the only tag on disk here is the one
+      # that triggered the run — a guard reading local refs would answer
+      # differently in this job than on a laptop, and differently again if
+      # `fetch-tags` were ever set. `ls-remote` is the same question everywhere.
+      #
       # No NODE_AUTH_TOKEN: npm CLI >= 11.5.1 detects the GitHub Actions OIDC
       # environment (id-token: write, above) and exchanges it for a
       # short-lived publish token automatically, gated by the trust
