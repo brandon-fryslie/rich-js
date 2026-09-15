@@ -50,7 +50,7 @@
  *      defeating single-enforcer; rejected.
  */
 
-import { autorun, makeObservable, observable, runInAction, type IReactionDisposer } from "mobx";
+import { autorun, observableShallow, runInAction, type IReactionDisposer } from "mobx";
 import { Segment } from "../core/segment.js";
 import { asCellCol, type CellCol } from "../core/cells.js";
 import { segmentsToString } from "../core/render.js";
@@ -117,7 +117,7 @@ export class DefaultScreen implements Screen {
 
   // [LAW:one-source-of-truth] The mounted widget list is observable so
   // mount/unmount triggers the render autorun without an extra subscription.
-  @observable.shallow
+  @observableShallow
   accessor widgetList: InteractiveWidget[] = [];
 
   // [LAW:one-source-of-truth] Placements live in a parallel Map keyed by
@@ -156,8 +156,6 @@ export class DefaultScreen implements Screen {
     const isTTY = this.host.isTTY;
     this.colorSystem = resolveSpec(options.colorSystem, isTTY);
     this.manageCursor = options.manageCursor ?? isTTY;
-
-    makeObservable(this);
   }
 
   get running(): boolean {

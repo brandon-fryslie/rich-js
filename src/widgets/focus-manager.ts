@@ -5,7 +5,7 @@
  * widgets react to focus/blur events, the manager never skips dispatch.
  */
 
-import { makeObservable, observable, action } from "mobx";
+import { action, observableRef, observableShallow } from "mobx";
 import type {
   InteractiveWidget,
   FocusManager,
@@ -14,17 +14,13 @@ import type {
 import type { Unsubscribe } from "../core/subscription.js";
 
 export class DefaultFocusManager implements FocusManager {
-  @observable.shallow
+  @observableShallow
   accessor widgetList: InteractiveWidget[] = [];
 
-  @observable.ref
+  @observableRef
   accessor currentWidget: InteractiveWidget | null = null;
 
   private readonly changeHandlers = new Set<(current: InteractiveWidget | null) => void>();
-
-  constructor() {
-    makeObservable(this);
-  }
 
   get current(): InteractiveWidget | null {
     return this.currentWidget;

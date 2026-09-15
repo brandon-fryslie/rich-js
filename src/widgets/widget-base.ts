@@ -3,11 +3,12 @@
  * [LAW:one-type-per-behavior] All widgets share the same base; differences
  * are in configuration and state, not in infrastructure.
  *
- * Uses makeObservable (not makeAutoObservable) because subclasses extend this.
- * MobX 6.x with TC39 decorators requires `accessor` keyword.
+ * Reactive state is declared with TC39 decorators, which MobX 7 requires on
+ * `accessor` members. Each decorator registers its own member, so there is no
+ * makeObservable call and subclasses add observables the same way.
  */
 
-import { makeObservable, observable, action } from "mobx";
+import { observable, action } from "mobx";
 import type { Segment } from "../core/segment.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type {
@@ -39,10 +40,6 @@ export abstract class WidgetBase implements InteractiveWidget {
 
   private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
   private readonly submitHandlers = new Set<(w: InteractiveWidget) => void>();
-
-  constructor() {
-    makeObservable(this);
-  }
 
   // --- Event handlers (override in subclass) ---
 

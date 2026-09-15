@@ -18,7 +18,7 @@
  *   disabled — dim
  */
 
-import { observable, action } from "mobx";
+import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
@@ -46,15 +46,15 @@ export class Slider extends WidgetBase {
   readonly focusable = true;
 
   @observable accessor value: number;
-  @observable.ref accessor min: number;
-  @observable.ref accessor max: number;
-  @observable.ref accessor step: number;
-  @observable.ref accessor width: number;
+  @observableRef accessor min: number;
+  @observableRef accessor max: number;
+  @observableRef accessor step: number;
+  @observableRef accessor width: number;
 
-  // [LAW:types-are-the-program] @observable.ref so setTheme() triggers a
+  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
   // re-render — render() reads _theme.palette, so the theme reference must
   // participate in MobX reactivity for Screen's autorun to fire on swap.
-  @observable.ref private accessor _theme: TerminalTheme;
+  @observableRef private accessor _theme: TerminalTheme;
   private _dragging = false;
 
   constructor(options: SliderOptions = {}) {
