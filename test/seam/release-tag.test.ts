@@ -166,7 +166,13 @@ describe("release-tag guard", () => {
    * published. The `publish.yml` step that used to own that property was deleted
    * when the guard landed, and this is where it now lives.
    */
-  it("refuses when origin's only tag names a different version", () => {
+  /*
+   * The ordinary forgotten bump: the manifest was never moved off 0.8.0 and
+   * v0.9.0 was pushed anyway. Origin carries no tag for the version in the
+   * manifest, so the release is refused — which is what keeps the case below a
+   * narrow one rather than the common one.
+   */
+  it("refuses when the pushed tag names a version the manifest does not", () => {
     const result = runGuard("1.2.3", ({ git, scaffold }) => {
       scaffold();
       git("tag", "v9.9.9");
@@ -174,7 +180,32 @@ describe("release-tag guard", () => {
     });
 
     expect(result.status).toBe(1);
-    expect(result.output).toContain("no such tag");
+  });
+
+  /*
+   * The limit of this guard, pinned rather than described. It asks whether origin
+   * carries a tag for the manifest's version on this commit, and never which tag
+   * named the run — information that exists only on the CI road, which is why it
+   * is not consulted. So a commit carrying both tags publishes the version the
+   * manifest names, and a run triggered by the other tag is not complained about.
+   *
+   * That is a mislabeled trigger, not an untagged release: what ships is tagged
+   * on origin, which is the property this gate exists for. The case is reachable
+   * only when the manifest's version was already tagged at this commit — where
+   * npm's own duplicate-version rejection also stands in the way, incidentally
+   * and not by anything here. `publish.yml` carries the same statement beside the
+   * step this replaced.
+   */
+  it("publishes the manifest's version when another version tag shares the commit", () => {
+    const result = runGuard("1.2.3", ({ git, scaffold }) => {
+      scaffold();
+      git("tag", "v1.2.3");
+      git("tag", "v9.9.9");
+      git("push", "-q", "origin", "main", "--tags");
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.output).toContain("v1.2.3");
   });
 
   it("refuses when origin's tag for this version points at a different commit", () => {

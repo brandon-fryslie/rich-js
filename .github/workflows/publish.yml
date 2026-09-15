@@ -151,10 +151,27 @@ jobs:
       # below. The guard asks a broader question — does origin carry a tag naming
       # this version, on this commit — and asks it on both release roads rather
       # than only this one, so keeping the step would have left two rules about
-      # one invariant with nothing to keep them agreed. The interlock the old
-      # step provided is unchanged: a tag whose name disagrees with package.json
-      # still cannot reach the registry, which is what makes a deliberately
-      # mismatched tag a safe way to exercise this whole path.
+      # one invariant with nothing to keep them agreed.
+      #
+      # What is guaranteed, stated narrowly because the deleted step was not
+      # strictly weaker: whatever reaches the registry is a version origin tags
+      # at this commit. What is NOT guaranteed is anything about which tag named
+      # this run — the guard never reads GITHUB_REF_NAME, because that exists on
+      # one road only, and a check consulting it would ask a different question
+      # in this job than on a laptop. So a commit carrying both v0.8.0 and
+      # v0.9.0 on origin, under a manifest saying 0.8.0, publishes 0.8.0 and
+      # says nothing about the v0.9.0 that triggered it. That is a mislabeled
+      # trigger rather than an untagged release, and it is reachable only when
+      # the manifest's version was already tagged at this commit — where npm's
+      # duplicate-version rejection also stands in the way, incidentally and not
+      # by anything here. `test/seam/release-tag.test.ts` pins both that case and
+      # the ordinary forgotten bump, which IS refused: push v0.9.0 over a
+      # manifest saying 0.8.0 and origin has no v0.8.0 at that commit.
+      #
+      # That last sentence is also why a deliberately mismatched tag remains a
+      # safe way to exercise this whole path: an experiment tags a commit that
+      # carries no manifest-matching tag, so the guard refuses before the
+      # registry step.
       #
       # It asks origin rather than the local ref store, and that is what keeps
       # the answer independent of this file. The checkout above fetches with
