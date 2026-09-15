@@ -2,39 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-128",
-      "ref": "refs/pull/128/merge",
-      "sha": "0cd783b0db5330d4dfe12db0a354fa99e4b1bbd7",
-      "timestamp": "2026-09-15T03:16:05.346Z",
-      "commits": [
-        {
-          "sha": "0cd783b0db5330d4dfe12db0a354fa99e4b1bbd7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-14T21:15:34-06:00",
-          "message": "Merge 61c4e324eb64456bb27af3c936020f27e5d99cfc into 1294880a9cbf5f9699182631879b1b06d78614f2\n"
-        },
-        {
-          "sha": "61c4e324eb64456bb27af3c936020f27e5d99cfc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-14T21:15:30-06:00",
-          "message": "chore(release): 0.9.0\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b9def7e586f55c4cd3a3f436350fce4a68c13f2b",
-      "timestamp": "2026-09-12T11:03:19.741Z",
+      "sha": "600b009f17541100b0b7928950b4d183cd1694d5",
+      "timestamp": "2026-09-15T03:16:40.257Z",
       "commits": [
         {
-          "sha": "b9def7e586f55c4cd3a3f436350fce4a68c13f2b",
+          "sha": "600b009f17541100b0b7928950b4d183cd1694d5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-12T05:02:51-06:00",
-          "message": "fix(ci): resolve Node from engines where the job runs src/ (rich-workflows-0pr.2) (#126)\n\nThree workflows resolved Node three ways: ci.yml read the version file,\npublish.yml carried one workflow-level pin, deploy.yml hardcoded 20. The\nrule now applied is not \"point everything at engines\" — it is that\n`engines.node` and \"which Node runs this job\" are two different facts, and\nthe version file is the right authority only where the job executes the\npackage's own code.\n\nBy that rule:\n\n- deploy.yml reads the version file. It compiles src/ (docs:build bundles\n  examples/ through the demo tsconfig), so it must run a supported Node.\n  The `20` it replaces encoded no constraint — it cleared vite's `^20.19.0`\n  floor only because setup-node resolves a bare major to its newest patch.\n- publish.yml's gate job reads the version file. The same gate means the\n  same runtime, not just the same step list; re-gating a release under a\n  different Node than master ran is a different experiment.\n- publish.yml's publish job keeps an explicit `22`, now with its actual\n  authority named. It never executes src/ — `npm run build` runs in the\n  gate job and dist/ arrives as an artifact — so it is not a runtime the\n  package must support. It runs the npm CLI, whose constraint is\n  `^20.17.0 || >=22.9.0`, and `semver.subset(\">=20\", that)` is false:\n  Node 20.5 and every 21.x satisfy engines and are refused by npm 11.\n\nThat dissolves the shared `env: NODE_VERSION`, which stood for two facts at\nonce. Its stated justification — \"the gate vouching for a runtime the\ntarball never met\" — did not hold either way: the tarball's contents are\ncompiled in the gate job.\n\ncheckout and setup-node are aligned on v7 across all three files (they were\nv4/v4/v6). v7 is the target rather than the incumbent v6 because it stops\nexporting a dummy NODE_AUTH_TOKEN beside `registry-url`\n(actions/setup-node#1558) — a placeholder landing a non-functional token in\n.npmrc on precisely this OIDC publish path, which publish.yml already spends\nfive lines warning hands off. setup-node v5's auto-cache-by-packageManager\nchange is inert here: package.json declares no `packageManager` field.\ncheckout v7's fork-PR restriction applies only to `pull_request_target` and\n`workflow_run`, neither of which any workflow here uses.\n\nAlso repairs a comment in ci.yml that this change falsified: it cited\n\"publish.yml pins Node 22 and publishes\" as evidence that nothing checks the\ntarball under the lowest admitted Node. The claim still holds; the evidence\nnow reads correctly.\n\nVerified: actionlint clean on all four workflows; npm run lint clean; 2471\nunit tests pass. The publish path itself remains unexercised — its one real\nrun failed at the registry — which is rich-workflows-0pr.3."
+          "timestamp": "2026-09-14T21:15:35-06:00",
+          "message": "chore(release): 0.9.0 (#128)"
+        },
+        {
+          "sha": "1294880a9cbf5f9699182631879b1b06d78614f2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-14T21:15:12-06:00",
+          "message": "fix(release): refuse to publish a version no tag names (rich-workflows-0pr.4) (#127)\n\n* fix(release): refuse to publish a version no tag names (rich-workflows-0pr.4)\n\nEleven versions of this package are on npm; five have a git tag. The ticket\nassumed the other six were a backfill waiting to happen. They are not, and\nfinding that out is what turned this into a gate.\n\nnpm records a `gitHead` with every publish. For five of the six untagged\nversions that commit no longer exists in this repository — they were branch\ntips, squash-merged and deleted — and for 0.7.0 it survives only as an orphan\noff master. Three of the versions (0.1.0, 0.5.0, 0.5.1) never appear in\nmaster's history at all: master steps 0.0.1 to 0.2.0 and 0.4.0 to 0.5.2. There\nis nothing left to point a tag at, so nothing about the six is recoverable.\nBrandon's call was to backfill none of them and close the hole instead.\n\nThe hole is not in this workflow. `publish.yml` triggers on `v*`, so a CI\nrelease carries a tag by construction — the tag is the trigger. Every untagged\nversion arrived by the other road, a hand-run `npm publish`, which no workflow\ncan observe: 0.8.0 appeared on the registry 26 seconds after CI failed on that\nsame version, and neither it nor 0.7.0 carries a provenance attestation, which\nonly the OIDC path can attach.\n\nSo the check moves to where both roads meet. `scripts/verify-release-tag.mjs`\nruns on `prepublishOnly` — which npm fires for every `npm publish` and for\nnothing else, before the tarball is built, aborting on a non-zero exit — and\nrefuses any tree whose HEAD carries no tag naming the version about to ship. It\nfails closed: a tree where git cannot answer is refused rather than assumed,\nso `rm -rf .git` is not a bypass. It is plain ESM on bare node because the\npublish job deliberately has no node_modules; `tsconfig.scripts.json` now\ntype-checks it, so lint still covers it.\n\npublish.yml's own \"Verify tag matches package.json version\" step is deleted in\nthe same change rather than left as a second rule about one invariant. The one\ncase where it was stricter, and why that case costs nothing, is written where\nit was removed. The mismatched-tag interlock is unchanged: a tag disagreeing\nwith package.json still cannot reach the registry, so it remains a safe way to\nexercise the release path end to end.\n\nVerified: `npm publish --dry-run` on untagged master is refused by the guard\nand aborted by npm; the same tree with the matching tag present publishes. The\nnpm lifecycle behaviour the guard depends on was established against a\nthrowaway package rather than assumed — `prepublishOnly` fires on publish and\ndry-run, not on `npm pack` or `npm install`.\n\nlint clean, 2478 tests pass, actionlint clean.\n\n* fix(release): ask origin for the tag, not the local ref store\n\nThe guard read `git tag --points-at HEAD`, which a tag that was never pushed\nsatisfies. That is not a lesser version of the failure this gate exists to\nprevent — it is the same one: the six untagged releases are missing tags on\norigin, and a tag living only on a laptop leaves npm holding a version origin\ncannot describe. Review caught it.\n\nSo the question changes rather than gaining a second half: `git ls-remote --tags\norigin refs/tags/vX refs/tags/vX^{}` compared against `git rev-parse HEAD`. One\nquestion, one authority. The peeled pattern is load-bearing — for an annotated\ntag `ls-remote` reports the tag object's own sha under the plain ref, so\nquerying only that ref would refuse every annotated release. Checked before\nrelying on it: `ls-remote` against this repository succeeds with no credentials\nat all, so the publish job does not depend on `persist-credentials`.\n\nThis also makes the answer independent of workflow config, which fixes a claim\nthat was wrong. A comment in publish.yml argued the guard would permit a commit\ncarrying two version tags; the checkout there runs with `--no-tags` and a single\nrefspec, so the co-located tag is not on disk and the guard would have refused.\nReading origin removes the dependency rather than restating it.\n\nTwo more from the same review:\n\nThe refusal quoted `error.message.split(\"\\n\")[0]`, which execFileSync fills with\n\"Command failed: <argv>\" for every non-zero exit — the same uninformative string\nwhatever went wrong, while the cause sits in stderr one line below. It now\nquotes stderr, so \"fatal: not a git repository\" reaches the reader, and a test\npins that rather than the generic substring.\n\n`PackageManifest`'s doc comment said it models only the published surface, which\n`scripts` is not. The comment now states the principle the interface actually\nfollows and keeps the devDependencies warning at full strength.\n\nThe remedy line is now read off the same data as the refusal: offering `git tag\nvX` when origin already carries that name handed the reader a command that would\nfail on the tag it had just printed.\n\nTests rebuilt around a real bare origin on disk — no network — including the\nnever-pushed case and a tag pointing at a different commit.\n\nlint clean, 2480 tests pass, actionlint clean.\n\n* fix(release): state the guard's guarantee narrowly and pin the shared-commit case\n\nThe deleted GITHUB_REF_NAME step was not strictly weaker than the guard:\na commit carrying both the manifest's tag and another version tag\npublishes the manifest's version without complaint. Say that in\npublish.yml and pin it in the suite beside the ordinary forgotten bump,\nwhich is still refused."
         }
       ]
     }
