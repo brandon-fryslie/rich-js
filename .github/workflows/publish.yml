@@ -113,7 +113,9 @@ jobs:
       # `^20.17.0 || >=22.9.0`, and `engines.node` (`>=20`) is not a subset of
       # that: Node 20.5 and every 21.x satisfy engines and are refused by npm
       # 11. Reading the version file here would cite a declaration that admits
-      # runtimes this job cannot use.
+      # runtimes this job cannot use. `NODE_VERSION_LITERALS` in
+      # `test/seam/workflow-pins.ts` grants exactly this literal, so changing it
+      # fails that gate until someone rereads this argument and updates the grant.
       #
       # v7 is also the major that stopped exporting a dummy NODE_AUTH_TOKEN
       # beside `registry-url` (actions/setup-node#1558) — a placeholder that put
