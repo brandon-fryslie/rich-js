@@ -25,7 +25,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   copyFileSync,
   mkdirSync,
@@ -69,6 +69,21 @@ function committableFiles(): string[] {
 }
 
 /**
+ * Run npm in `cwd` and return its stdout, or throw with both streams. tsc
+ * reports type errors on stdout, which a plain `execFileSync` error leaves out.
+ */
+function npm(cwd: string, ...args: string[]): string {
+  const result = spawnSync("npm", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+  if (result.error !== undefined) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(
+      `npm ${args.join(" ")} exited ${String(result.status)} in the staged checkout\n${result.stdout}${result.stderr}`,
+    );
+  }
+  return result.stdout;
+}
+
+/**
  * Copy the checkout, let the test change the copy, build it, and return what
  * npm would pack from it.
  */
@@ -82,14 +97,8 @@ function packStaged(arrange: (stage: string) => void): PackedFile[] {
     symlinkSync(path.join(REPO_ROOT, "node_modules"), path.join(stage, "node_modules"), "dir");
     arrange(stage);
 
-    execFileSync("npm", ["run", "build"], { cwd: stage, stdio: ["ignore", "pipe", "pipe"] });
-    const listing = parsePackListing(
-      execFileSync("npm", ["pack", "--dry-run", "--json"], {
-        cwd: stage,
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      }),
-    );
+    npm(stage, "run", "build");
+    const listing = parsePackListing(npm(stage, "pack", "--dry-run", "--json"));
     return listing.map((file) => ({
       path: file,
       contents: readFileSync(path.join(stage, file), "utf8"),
