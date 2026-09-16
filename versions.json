@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-134",
-      "ref": "refs/pull/134/merge",
-      "sha": "64e297da3d62b237511964fc3eb2582f5b72c410",
-      "timestamp": "2026-09-16T15:17:50.478Z",
-      "commits": [
-        {
-          "sha": "64e297da3d62b237511964fc3eb2582f5b72c410",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:17:25-06:00",
-          "message": "Merge 503eaaf240cc3e9b4badd9af7297f7abdefc2bc4 into f09106aaca526b2d20b7240a58b19775edc179d7\n"
-        },
-        {
-          "sha": "503eaaf240cc3e9b4badd9af7297f7abdefc2bc4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:17:20-06:00",
-          "message": "docs(readme): drop the bug log and shrink demo coverage to a pointer (rich-subtraction-8wh.1)\n\nThe README's demo-coverage section had drifted from the check it\ndescribed: it said every public export must be referenced under\nexamples/, which stopped being true when types moved to reachability\nfrom a demonstrated value. Beneath it sat a table of bugs the demos once\ncaught, a changelog entry on the npm landing page.\n\nBoth go. What remains is three sentences naming\ntest/coverage/coverage.test.ts and its allowlist as the answer to what\nthe demos cover. The \"Coverage summary\" and \"Not yet exercised\" sections\nthe ticket also names were already removed before this change.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f09106aaca526b2d20b7240a58b19775edc179d7",
-      "timestamp": "2026-09-16T15:13:01.675Z",
+      "sha": "7c101d59eb83f6b8968ee5051faa2b54cdb8fa69",
+      "timestamp": "2026-09-16T15:19:16.032Z",
       "commits": [
         {
-          "sha": "f09106aaca526b2d20b7240a58b19775edc179d7",
+          "sha": "7c101d59eb83f6b8968ee5051faa2b54cdb8fa69",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:12:33-06:00",
-          "message": "test(seam): build and pack the tarball to gate its contents (rich-artifact-c9k.3) (#133)\n\n* test(seam): build and pack the tarball to gate its contents (rich-artifact-c9k.3)\n\nThe artifact fixes from c9k.1 and c9k.2 are each one line in a different\nfile (a root LICENSE, THIRD-PARTY-NOTICES in `files`, sourceMap and\ndeclarationMap off, a clean step in `build`), and nothing read the tarball\nback. test/seam/tarball.test.ts copies the checkout into a temp directory,\nruns the real `npm run build`, and asks `npm pack --dry-run --json` what\nwould ship. It fails when LICENSE or THIRD-PARTY-NOTICES is missing or\nempty, when a .map entry ships, or when a packed file carries a\nsourceMappingURL. That last case covers excluding *.map from `files`,\nwhich c9k.2 rejected for leaving the same dead reference.\n\nIt builds rather than reading dist/, because the CI gate runs `npm test`\nbefore anything is built, and a laptop's dist/ is whatever the last build\nleft. A second staged build, with both licence files deleted and maps\nturned back on, must be refused, so the ticket's acceptance criterion is\nitself a test. The first build plants stale maps in dist/ to prove the\nclean step works.\n\nAlso corrects publish.yml's comment that `files` is [\"dist\"].\n\n* test(seam): copy only regular files into the tarball stage (rich-artifact-c9k.3)\n\nA nested repository or a submodule is listed by git ls-files as a\ndirectory, and copyFileSync threw on it before the build ever ran. A\nfresh checkout would not carry its contents either, so the stage now\ntakes only regular files.\n\n* test(seam): surface the compiler's output when the staged build fails (rich-artifact-c9k.3)\n\ntsc writes type errors to stdout, and an execFileSync error message carries\nonly stderr, so a broken build failed both tarball tests with a bare\n'Command failed'. Both npm calls now go through a helper whose error\nincludes both streams."
+          "timestamp": "2026-09-16T09:18:46-06:00",
+          "message": "docs(readme): drop the bug log and shrink demo coverage to a pointer (rich-subtraction-8wh.1) (#134)\n\nThe README's demo-coverage section had drifted from the check it\ndescribed: it said every public export must be referenced under\nexamples/, which stopped being true when types moved to reachability\nfrom a demonstrated value. Beneath it sat a table of bugs the demos once\ncaught, a changelog entry on the npm landing page.\n\nBoth go. What remains is three sentences naming\ntest/coverage/coverage.test.ts and its allowlist as the answer to what\nthe demos cover. The \"Coverage summary\" and \"Not yet exercised\" sections\nthe ticket also names were already removed before this change."
         }
       ]
     }
