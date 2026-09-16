@@ -79,12 +79,12 @@ describe("the workflows under .github/", () => {
 });
 
 describe("NODE_VERSION_LITERALS", () => {
-  it("gives every grant a reason, and grants each literal once", () => {
+  it("gives every grant a reason", () => {
+    // A surplus grant needs no check of its own here: `workflowViolations`
+    // already reports a grant with no occurrence left to cover.
     for (const grant of NODE_VERSION_LITERALS) {
       expect(grant.why.length, `${grant.file} ${grant.value} needs a why`).toBeGreaterThan(40);
     }
-    const keys = NODE_VERSION_LITERALS.map((g) => `${g.file} ${g.value}`);
-    expect(new Set(keys).size).toBe(keys.length);
   });
 });
 
@@ -198,6 +198,18 @@ describe("workflowViolations: node-version literals", () => {
     expect(
       workflowViolations([workflow("  node-version: 22\n  node-version: 22")], [GRANT]),
     ).toEqual([expect.objectContaining({ rule: "node-version-count", granted: 1, sites: expect.any(Array) })]);
+  });
+
+  it("passes a literal repeated in one file when each occurrence has its grant", () => {
+    expect(
+      workflowViolations([workflow("  node-version: 22\n  node-version: 22")], [GRANT, GRANT]),
+    ).toEqual([]);
+  });
+
+  it("scans a checkout with CRLF line endings the same as LF", () => {
+    expect(
+      workflowViolations([workflow("- uses: actions/checkout@v7\r\n  node-version: 22\r\n")], [GRANT]),
+    ).toEqual([]);
   });
 
   it("catches a grant whose literal is gone", () => {

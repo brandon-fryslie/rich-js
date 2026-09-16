@@ -188,7 +188,7 @@ function readPin(
 
 /** Every fact one workflow file states, in file order. */
 export function scanWorkflow(workflow: WorkflowText): WorkflowFact[] {
-  return workflow.text.split("\n").flatMap((raw, index): WorkflowFact[] => {
+  return workflow.text.split(/\r?\n/).flatMap((raw, index): WorkflowFact[] => {
     if (COMMENT_LINE.test(raw) || !MENTION.test(raw)) return [];
     const site: Site = { file: workflow.path, line: index + 1, text: raw.trim() };
     const key = groupsOf(KEY_LINE, raw);
