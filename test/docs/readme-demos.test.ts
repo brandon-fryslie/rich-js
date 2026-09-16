@@ -46,7 +46,8 @@ describe("readme-demos rule", () => {
       scriptedDemos({
         build: "npm run clean && tsc",
         strip: "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-strip/index.js",
+        demo: "tsc -p tsconfig.demo.json && node dist-demo/examples/rich-explore/index.js --flag",
       }),
-    ).toEqual(["strip → rich-strip"]);
+    ).toEqual(["demo → rich-explore", "strip → rich-strip"]);
   });
 });

@@ -18,8 +18,8 @@
 /** One demo as a user runs it, written `script → demo`. */
 export type DemoRun = `${string} → ${string}`;
 
-/** The node entry every demo script ends by running, compiled into `dist-demo/`. */
-const DEMO_ENTRY = /\bnode dist-demo\/examples\/([^/\s]+)\/index\.js$/;
+/** The node entry a demo script runs, compiled into `dist-demo/`, with or without arguments after it. */
+const DEMO_ENTRY = /\bnode dist-demo\/examples\/([^/\s]+)\/index\.js\b/;
 
 /** A table row's first two cells: `` | `npm run <script>` | <demo> | ``. */
 const TABLE_ROW = /^\| `npm run ([^`]+)` \| ([^|]+?) \|/;
