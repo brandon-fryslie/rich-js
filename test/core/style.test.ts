@@ -263,6 +263,38 @@ describe("Style.parse errors", () => {
       cause: expect.any(ColorParseError),
     });
   });
+
+  it.each([
+    ["a colour", "rd", 'Invalid style definition "rd" (did you mean "red"?)'],
+    ["an attribute", "bolt", 'Invalid style definition "bolt" (did you mean "bold"?)'],
+    ["a transposed name", "bold cyna", 'Invalid style definition "cyna" (did you mean "cyan"?)'],
+    ["a negated attribute", "not itallic", 'Invalid attribute: "itallic" (did you mean "italic"?)'],
+    ["a background colour", "on magneta", 'Invalid background color "magneta" (did you mean "magenta"?)'],
+    ["a capitalised colour", "bold Cyna", 'Invalid style definition "Cyna" (did you mean "cyan"?)'],
+    ["the default colour", "on defualt", 'Invalid background color "defualt" (did you mean "default"?)'],
+    ["a keyword", "nto bold", 'Invalid style definition "nto" (did you mean "not"?)'],
+  ])("a near miss for %s names its target", (_, definition, message) => {
+    expect(() => Style.parse(definition)).toThrow(message);
+  });
+
+  it("an ambiguous near miss names every candidate, never just one", () => {
+    expect(() => Style.parse("gold")).toThrow(
+      'Invalid style definition "gold" (did you mean "bold" or "gold1" or "gold3" or "gold4"?)',
+    );
+  });
+
+  // A position suggests only what it can hold. `bolt` is one edit from `bold`,
+  // which a background can never be, so there it has no near miss at all.
+  it("a background suggests colours only", () => {
+    expect(() => Style.parse("on bolt")).toThrow(/^Invalid background color "bolt": /);
+  });
+
+  it.each(["notastyle", "foobar", "hello", "strikethrough", "xyz"])(
+    "an unrelated word %s gets no suggestion",
+    (word) => {
+      expect(() => Style.parse(word)).toThrow(`Invalid style definition "${word}": `);
+    },
+  );
 });
 
 // --- toString ---

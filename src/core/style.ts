@@ -3,6 +3,7 @@
  */
 
 import {
+  COLOR_NAMES,
   ColorRgba,
   ColorSpec,
   ColorDepth,
@@ -589,18 +590,85 @@ export class Theme {
 
 const ATTRIBUTE_SET = new Set<string>(ATTRIBUTE_NAMES);
 
+// The words each position of a definition can hold: a bare token is a keyword,
+// an attribute or a colour name; `on` takes a colour name; `not` an attribute.
+// The short aliases are left out, since `b` is no help to someone who typed
+// `bolt` and a one-letter name sits one edit from every other short word.
+// [LAW:one-source-of-truth] Derived from the lists the parser accepts from; the
+// keywords are the three `parseStyleDefinition` reads before anything else.
+const FOREGROUND_WORDS = ["not", "on", "link", ...ATTRIBUTE_NAMES, ...COLOR_NAMES];
+
+/**
+ * Optimal string alignment distance: insertions, deletions, substitutions, and
+ * swaps of two neighbouring letters each cost one edit, so `cyna` is as near
+ * `cyan` as `rd` is to `red`. Kept to three rows, since only the two before the
+ * current one are ever read.
+ */
+function editDistance(a: string, b: string): number {
+  let before: number[] = [];
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const swap = i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1];
+      current[j] = Math.min(
+        previous[j]! + 1,
+        current[j - 1]! + 1,
+        previous[j - 1]! + Number(a[i - 1] !== b[j - 1]),
+        swap ? before[j - 2]! + 1 : Infinity,
+      );
+    }
+    [before, previous] = [previous, current];
+  }
+  return previous[b.length]!;
+}
+
+/**
+ * The ` (did you mean …?)` clause for a word no position accepted, or `""`
+ * when nothing in `words` is a plausible typo of it.
+ *
+ * Plausible means within one edit per three letters, at least one, which lets
+ * `rd` reach `red` and keeps `hello` from reaching `yellow`. Every name tied
+ * for nearest is offered: `gold` is one edit from `bold` and from three
+ * `goldN` colours, and choosing among them would be a guess the reader cannot
+ * tell from a finding. Case is not an edit, because the colour parser ignores
+ * it: `Cyna` is as near `cyan` as `cyna` is.
+ *
+ * This runs on every render that meets the bad style, since only successful
+ * parses are cached. Two words differ by at least their difference in length,
+ * so a name outside the budget on length alone is never measured — which is
+ * also what keeps a long garbage token from costing length × length per name.
+ */
+function nearMiss(word: string, words: readonly string[]): string {
+  const typed = word.toLowerCase();
+  const budget = Math.max(1, Math.floor(typed.length / 3));
+  const scored = words
+    .filter((name) => Math.abs(name.length - typed.length) <= budget)
+    .map((name) => ({ name, distance: editDistance(typed, name) }));
+  const nearest = Math.min(budget, ...scored.map((s) => s.distance));
+  const names = scored
+    .filter((s) => s.distance === nearest)
+    .map((s) => `"${s.name}"`)
+    .sort();
+  return names.length === 0 ? "" : ` (did you mean ${names.join(" or ")}?)`;
+}
+
 /**
  * A style token read as a colour. The colour parser's own error is the reason
  * the token failed, so it rides along twice: in the message, for a reader with
  * only the text, and as `cause`, for code that wants the original error.
  *
- * [LAW:single-enforcer] Both colour positions in a definition rewrap here.
+ * [LAW:single-enforcer] Both colour positions in a definition rewrap here, and
+ * the near miss is named here rather than by the colour parser: only a
+ * definition knows whether the token could also have been an attribute.
  */
-function parseStyleColor(token: string, failure: string): ColorSpec {
+function parseStyleColor(token: string, failure: string, words: readonly string[]): ColorSpec {
   try {
     return ColorSpec.parse(token);
   } catch (cause) {
-    throw new StyleSyntaxError(`${failure} "${token}": ${String(cause)}`, { cause });
+    throw new StyleSyntaxError(`${failure} "${token}"${nearMiss(token, words)}: ${String(cause)}`, {
+      cause,
+    });
   }
 }
 
@@ -621,7 +689,7 @@ function parseStyleDefinition(definition: string): Style {
       }
       const attrName = ATTRIBUTE_SHORT_ALIASES[next] ?? next;
       if (!ATTRIBUTE_SET.has(attrName)) {
-        throw new StyleSyntaxError(`Invalid attribute: "${next}"`);
+        throw new StyleSyntaxError(`Invalid attribute: "${next}"${nearMiss(next, ATTRIBUTE_NAMES)}`);
       }
       (opts as Record<string, boolean>)[attrName] = false;
       i++;
@@ -635,7 +703,7 @@ function parseStyleDefinition(definition: string): Style {
       if (!next) {
         throw new StyleSyntaxError(`Expected color after "on" in style definition`);
       }
-      opts.bgcolor = parseStyleColor(next, "Invalid background color");
+      opts.bgcolor = parseStyleColor(next, "Invalid background color", COLOR_NAMES);
       i++;
       continue;
     }
@@ -660,7 +728,7 @@ function parseStyleDefinition(definition: string): Style {
     }
 
     // Must be a color
-    opts.color = parseStyleColor(token, "Invalid style definition");
+    opts.color = parseStyleColor(token, "Invalid style definition", FOREGROUND_WORDS);
     i++;
   }
 
