@@ -4,15 +4,22 @@
     {
       "version": "pr-130",
       "ref": "refs/pull/130/merge",
-      "sha": "890d467e0f059ab4cd6a476fad6a426a6a9e6cf7",
-      "timestamp": "2026-09-16T12:14:54.472Z",
+      "sha": "caecb43a243f320708d67313eb988c9035e8128e",
+      "timestamp": "2026-09-16T12:15:54.881Z",
       "commits": [
         {
-          "sha": "890d467e0f059ab4cd6a476fad6a426a6a9e6cf7",
+          "sha": "caecb43a243f320708d67313eb988c9035e8128e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T12:13:52Z",
-          "message": "Merge fbb5d61e440c7b9ea218101e9b8bc046c792b7b8 into 378187e7ea59c7770ec7843c8bed2165600c2a45\n"
+          "timestamp": "2026-09-16T12:15:26Z",
+          "message": "Merge d33db9dbf29a35ff06df04385b5f3e17854acf41 into 378187e7ea59c7770ec7843c8bed2165600c2a45\n"
+        },
+        {
+          "sha": "d33db9dbf29a35ff06df04385b5f3e17854acf41",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T06:15:22-06:00",
+          "message": "fix(seam): report a quoted workflow key as unreadable (rich-workflows-0pr.sut)\n\nThe net under the recognised forms required the colon directly after the\nkey name, so \"uses\": and 'node-version': — valid YAML, run fine by\nActions — produced no fact and no report, and a disagreeing pin or an\nungranted literal written that way passed the gate. The net now allows a\nclosing quote before the colon, which is what the header and CLAUDE.md\nalready promised: a shape the gate does not read fails loudly.\n"
         },
         {
           "sha": "fbb5d61e440c7b9ea218101e9b8bc046c792b7b8",
