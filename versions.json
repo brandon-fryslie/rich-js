@@ -4,15 +4,22 @@
     {
       "version": "pr-130",
       "ref": "refs/pull/130/merge",
-      "sha": "155ba1bc5e0de53d65cfcac2ab67da618cfdc16a",
-      "timestamp": "2026-09-16T12:12:20.904Z",
+      "sha": "890d467e0f059ab4cd6a476fad6a426a6a9e6cf7",
+      "timestamp": "2026-09-16T12:14:54.472Z",
       "commits": [
         {
-          "sha": "155ba1bc5e0de53d65cfcac2ab67da618cfdc16a",
+          "sha": "890d467e0f059ab4cd6a476fad6a426a6a9e6cf7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T06:11:50-06:00",
-          "message": "Merge b0662ffb75cf32c6b679a9bf9072df8310de1f46 into 378187e7ea59c7770ec7843c8bed2165600c2a45\n"
+          "timestamp": "2026-09-16T12:13:52Z",
+          "message": "Merge fbb5d61e440c7b9ea218101e9b8bc046c792b7b8 into 378187e7ea59c7770ec7843c8bed2165600c2a45\n"
+        },
+        {
+          "sha": "fbb5d61e440c7b9ea218101e9b8bc046c792b7b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T06:13:47-06:00",
+          "message": "fix(seam): let each occurrence of a literal carry its own grant (rich-workflows-0pr.sut)\n\nThe grant table's uniqueness check forbade the second grant the count rule\nrequires, so a second job needing the same literal could satisfy neither.\nThe count rule already reports a surplus grant, so the uniqueness check\nenforced nothing it did not, and is deleted.\n\nAlso split lines on CRLF as well as LF, so a Windows checkout does not read\nevery pin as unreadable.\n"
         },
         {
           "sha": "b0662ffb75cf32c6b679a9bf9072df8310de1f46",
