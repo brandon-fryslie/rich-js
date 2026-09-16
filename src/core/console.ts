@@ -21,6 +21,7 @@ import { segmentsToString } from "./render.js";
 import type {
   Renderable,
   RenderOptions,
+  StyleErrorHandler,
 } from "./protocol.js";
 import { isRenderable } from "./protocol.js";
 
@@ -104,6 +105,11 @@ export interface ConsoleOptions {
   highlight?: boolean;
   theme?: Theme;
   highlighter?: Highlighter;
+  /**
+   * Told about each style string a render degrades to unstyled — a misspelled
+   * name, a key the theme lacks. Throw from it to make rendering strict.
+   */
+  onStyleError?: StyleErrorHandler;
 }
 
 export interface PrintOptions {
@@ -289,6 +295,7 @@ export class Console {
   private _markup: boolean;
   private _highlight: boolean;
   private _theme: Theme;
+  private _onStyleError: StyleErrorHandler | undefined;
   private _highlighter: Highlighter;
   private _recorded: Segment[];
   // [LAW:types-are-the-program] The capture state is carried in the *type*
@@ -318,6 +325,7 @@ export class Console {
     this._markup = options?.markup !== false;
     this._highlight = options?.highlight !== false;
     this._highlighter = options?.highlighter ?? new ReprHighlighter();
+    this._onStyleError = options?.onStyleError;
     this._recorded = [];
     this._capture = null;
   }
@@ -375,6 +383,7 @@ export class Console {
       encoding: this.encoding,
       asciiOnly: false,
       theme: this._theme,
+      onStyleError: this._onStyleError,
     };
   }
 

@@ -158,6 +158,7 @@ export type {
   RenderOptions,
   Renderable,
   Measurable,
+  StyleErrorHandler,
 } from "./core/protocol.js";
 export type { Unsubscribe } from "./core/subscription.js";
 

@@ -1137,6 +1137,63 @@ describe("Console environment injection", () => {
 // compares the bytes against a default console printing the definition itself.
 // Byte equality says the name drew as the theme's style; the reference Rich
 // 9d8f9a3 resolves every one of these through `console.get_style`.
+describe("Console style error reporting", () => {
+  function printed(item: unknown, options: ConsoleOptions = {}): string {
+    const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });
+    c.print(item);
+    return captured(chunks);
+  }
+
+  it("renders a misspelled style unstyled when no handler is given", () => {
+    expect(printed("[bold rd]typo color[/]")).toBe(printed("typo color"));
+  });
+
+  it("renders the same bytes with a handler as without one", () => {
+    const heard: string[] = [];
+    const onStyleError = (_error: StyleSyntaxError, style: string) => void heard.push(style);
+    expect(printed("[bold rd]typo color[/]", { onStyleError })).toBe(printed("typo color"));
+    expect(heard).toEqual(["bold rd"]);
+  });
+
+  it("hands the handler the parse error and the whole offending style string", () => {
+    const heard: Array<[StyleSyntaxError, string]> = [];
+    printed("[notastyle]unknown[/]", { onStyleError: (error, style) => void heard.push([error, style]) });
+    expect(heard).toHaveLength(1);
+    const [[error, style]] = heard as [[StyleSyntaxError, string]];
+    expect(error).toBeInstanceOf(StyleSyntaxError);
+    expect(style).toBe("notastyle");
+  });
+
+  it("reports a name the console's theme does not define", () => {
+    const heard: string[] = [];
+    const text = new RichText("x", { style: "my.missing" });
+    printed(text, { onStyleError: (_error, style) => void heard.push(style) });
+    expect(heard).toEqual(["my.missing"]);
+  });
+
+  it("does not call the handler for styles that parse", () => {
+    const heard: string[] = [];
+    printed("[bold red]fine[/] [my.ok]named[/]", {
+      theme: new Theme({ "my.ok": "italic" }),
+      onStyleError: (_error, style) => void heard.push(style),
+    });
+    expect(heard).toEqual([]);
+  });
+
+  it("fails the print when the handler throws", () => {
+    const strict = (error: StyleSyntaxError) => {
+      throw error;
+    };
+    expect(() => printed("[bold rd]typo color[/]", { onStyleError: strict })).toThrow(StyleSyntaxError);
+  });
+
+  it("reaches a style swallowed inside a nested renderable", () => {
+    const heard: string[] = [];
+    printed(new Panel(new RichText("inside", { style: "bold rd" })), { onStyleError: (_error, style) => void heard.push(style) });
+    expect(heard).toEqual(["bold rd"]);
+  });
+});
+
 describe("Console theme resolution", () => {
   /** The bytes one print writes, with colour on. */
   function printed(item: unknown, options: ConsoleOptions = {}): string {

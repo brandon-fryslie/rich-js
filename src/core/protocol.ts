@@ -5,7 +5,7 @@
 
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
-import { DEFAULT_THEME, type Style, type Theme } from "./style.js";
+import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
 
 export interface RenderOptions {
   /**
@@ -33,7 +33,24 @@ export interface RenderOptions {
    * built-in defaults apply. Read it through `getStyle` rather than directly.
    */
   theme?: Theme;
+  /**
+   * Told about a style string that failed to parse where a render degrades it
+   * to unstyled instead of failing. Absent, the failure passes silently. A
+   * handler that throws makes the render strict: the error leaves `render`.
+   */
+  onStyleError?: StyleErrorHandler;
 }
+
+/**
+ * Receives a style error a render would otherwise absorb: the parse failure,
+ * and the whole style string it came from — the error names only the token
+ * that failed, and `"bold rd"` loses its `bold` too.
+ *
+ * [LAW:no-mode-explosion] Strict mode is not a second option beside this one.
+ * It is a handler that throws, so there is no "strict and a callback" state
+ * whose order anyone has to define.
+ */
+export type StyleErrorHandler = (error: StyleSyntaxError, style: string) => void;
 
 /**
  * The style a `string | Style` stands for in this render.
