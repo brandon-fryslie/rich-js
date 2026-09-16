@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-131",
+      "ref": "refs/pull/131/merge",
+      "sha": "3b6ac3e35c33a5efbe4ea31bb32f88bad14ca620",
+      "timestamp": "2026-09-16T13:16:50.250Z",
+      "commits": [
+        {
+          "sha": "3b6ac3e35c33a5efbe4ea31bb32f88bad14ca620",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T07:16:22-06:00",
+          "message": "Merge 114674d773676a30f8be93a20d2ab5dd7d51cb05 into 7ddb9cc06d6d5fccda57bdd3e560254e517837a3\n"
+        },
+        {
+          "sha": "114674d773676a30f8be93a20d2ab5dd7d51cb05",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T07:16:16-06:00",
+          "message": "fix(artifact): ship the MIT license and upstream notices (rich-artifact-c9k.1)\n\npackage.json declared MIT, but the tarball carried no license text, so\nthe package claimed terms it never distributed. MIT also requires every\ncopy to keep the upstream copyright notices, and this package draws on\ntwo sources.\n\nLICENSE holds the unmodified MIT text with this project's copyright.\nTHIRD-PARTY-NOTICES reproduces two upstream notices: Rich (Will McGugan),\nthe project this is a port of, and cli-spinners (Sindre Sorhus), the\nsource of every built-in spinner. Rich carries the cli-spinners notice\ntoo.\n\nThey are two files so that license checkers that compare LICENSE to the\nMIT template still see a close match. Appending more license text to it\nwould break that comparison. npm always packs LICENSE but not a notices\nfile, so \"files\" now names THIRD-PARTY-NOTICES. Two comments that\nquoted files: [\"dist\"] now describe what that line meant: all of dist/\nships.\n\nVerified: npm pack lists both files, and the extracted tarball contains\nall three copyright lines.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7ddb9cc06d6d5fccda57bdd3e560254e517837a3",
