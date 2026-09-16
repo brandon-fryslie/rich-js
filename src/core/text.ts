@@ -85,19 +85,28 @@ function isEmptyStyle(style: string | Style): boolean {
 /**
  * The style a stored `string | Style` stands for in this render.
  *
+ * A parsed string can carry a link, so the result is sanitized on the way out
+ * as well.
+ */
+function resolveStyle(options: RenderOptions, style: string | Style): Style {
+  return sanitizeStyleLink(style instanceof Style ? style : resolveDefinition(options, style));
+}
+
+/**
  * [LAW:single-enforcer] Styling is non-critical — an unrecognized style name
  * (typo, missing theme key, bad concatenation) degrades to unstyled rather
  * than crashing, as the reference's `Text.render` resolves with a null
  * default. Absorb only StyleSyntaxError here; other errors are genuine bugs
- * and must surface. A parsed string can carry a link, so the result is
- * sanitized on the way out as well.
+ * and must surface. The render's `onStyleError` hears about each one first,
+ * and a handler that throws turns the degrade into a failure.
  */
-function resolveStyle(options: RenderOptions, style: string | Style): Style {
+function resolveDefinition(options: RenderOptions, style: string): Style {
   try {
-    return sanitizeStyleLink(getStyle(options, style));
+    return getStyle(options, style);
   } catch (err) {
-    if (err instanceof StyleSyntaxError) return NULL_STYLE;
-    throw err;
+    if (!(err instanceof StyleSyntaxError)) throw err;
+    options.onStyleError?.(err, style);
+    return NULL_STYLE;
   }
 }
 
