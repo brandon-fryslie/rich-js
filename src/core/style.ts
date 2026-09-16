@@ -100,8 +100,8 @@ export interface StyleOptions {
 }
 
 export class StyleSyntaxError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = "StyleSyntaxError";
   }
 }
@@ -589,6 +589,21 @@ export class Theme {
 
 const ATTRIBUTE_SET = new Set<string>(ATTRIBUTE_NAMES);
 
+/**
+ * A style token read as a colour. The colour parser's own error is the reason
+ * the token failed, so it rides along twice: in the message, for a reader with
+ * only the text, and as `cause`, for code that wants the original error.
+ *
+ * [LAW:single-enforcer] Both colour positions in a definition rewrap here.
+ */
+function parseStyleColor(token: string, failure: string): ColorSpec {
+  try {
+    return ColorSpec.parse(token);
+  } catch (cause) {
+    throw new StyleSyntaxError(`${failure} "${token}": ${String(cause)}`, { cause });
+  }
+}
+
 function parseStyleDefinition(definition: string): Style {
   const tokens = definition.split(/\s+/);
   const opts: StyleOptions = {};
@@ -620,11 +635,7 @@ function parseStyleDefinition(definition: string): Style {
       if (!next) {
         throw new StyleSyntaxError(`Expected color after "on" in style definition`);
       }
-      try {
-        opts.bgcolor = ColorSpec.parse(next);
-      } catch {
-        throw new StyleSyntaxError(`Invalid background color: "${next}"`);
-      }
+      opts.bgcolor = parseStyleColor(next, "Invalid background color");
       i++;
       continue;
     }
@@ -649,11 +660,7 @@ function parseStyleDefinition(definition: string): Style {
     }
 
     // Must be a color
-    try {
-      opts.color = ColorSpec.parse(token);
-    } catch {
-      throw new StyleSyntaxError(`Invalid style definition: "${token}"`);
-    }
+    opts.color = parseStyleColor(token, "Invalid style definition");
     i++;
   }
 

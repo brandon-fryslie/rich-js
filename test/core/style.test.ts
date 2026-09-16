@@ -7,7 +7,7 @@ import {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "../../src/core/style.js";
-import { ColorSpec, ColorDepth } from "../../src/core/color.js";
+import { ColorSpec, ColorDepth, ColorParseError } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (parse semantics, merge rules, render output), not implementation details (caches, internal fields)
 
@@ -245,6 +245,23 @@ describe("Style.parse errors", () => {
 
   it('throws on "not" at end of string', () => {
     expect(() => Style.parse("not")).toThrow(StyleSyntaxError);
+  });
+
+  it.each([
+    ["foreground", "color(300)", 'Invalid style definition "color(300)"'],
+    ["background", "on color(300)", 'Invalid background color "color(300)"'],
+  ])("a %s colour failure keeps the colour parser's reason", (_, definition, failure) => {
+    let thrown: unknown;
+    try {
+      Style.parse(definition);
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(StyleSyntaxError);
+    expect(thrown).toMatchObject({
+      message: `${failure}: ColorParseError: ColorSpec number 300 is out of range (0-255)`,
+      cause: expect.any(ColorParseError),
+    });
   });
 });
 
