@@ -270,6 +270,9 @@ describe("Style.parse errors", () => {
     ["a transposed name", "bold cyna", 'Invalid style definition "cyna" (did you mean "cyan"?)'],
     ["a negated attribute", "not itallic", 'Invalid attribute: "itallic" (did you mean "italic"?)'],
     ["a background colour", "on magneta", 'Invalid background color "magneta" (did you mean "magenta"?)'],
+    ["a capitalised colour", "bold Cyna", 'Invalid style definition "Cyna" (did you mean "cyan"?)'],
+    ["the default colour", "on defualt", 'Invalid background color "defualt" (did you mean "default"?)'],
+    ["a keyword", "nto bold", 'Invalid style definition "nto" (did you mean "not"?)'],
   ])("a near miss for %s names its target", (_, definition, message) => {
     expect(() => Style.parse(definition)).toThrow(message);
   });
@@ -284,6 +287,13 @@ describe("Style.parse errors", () => {
   // which a background can never be, so there it has no near miss at all.
   it("a background suggests colours only", () => {
     expect(() => Style.parse("on bolt")).toThrow(/^Invalid background color "bolt": /);
+  });
+
+  it("a long unrelated token is refused on length alone, without measuring it", () => {
+    const token = "x".repeat(2000);
+    const started = performance.now();
+    expect(() => Style.parse(token)).toThrow(`Invalid style definition "${token}": `);
+    expect(performance.now() - started).toBeLessThan(50);
   });
 
   it.each(["notastyle", "foobar", "hello", "strikethrough", "xyz"])(

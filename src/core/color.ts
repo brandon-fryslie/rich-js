@@ -948,3 +948,10 @@ export const ANSI_COLOR_NAMES: Record<string, number> = withGrayAliases({
   grey89: 254,
   grey93: 255,
 });
+
+/**
+ * Every word `ColorSpec.parse` accepts as a name rather than a `#hex`,
+ * `rgb()` or `color(N)` form: `default` and the named palette entries, which
+ * are exactly the two name checks `parseSingle` makes.
+ */
+export const COLOR_NAMES: readonly string[] = ["default", ...Object.keys(ANSI_COLOR_NAMES)];

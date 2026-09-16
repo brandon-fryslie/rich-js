@@ -3,7 +3,7 @@
  */
 
 import {
-  ANSI_COLOR_NAMES,
+  COLOR_NAMES,
   ColorRgba,
   ColorSpec,
   ColorDepth,
@@ -590,34 +590,37 @@ export class Theme {
 
 const ATTRIBUTE_SET = new Set<string>(ATTRIBUTE_NAMES);
 
-// The names each position of a definition can hold. The short aliases are
-// left out: `b` is no help to someone who typed `bolt`, and a one-letter name
-// sits one edit from every other short word.
-// [LAW:one-source-of-truth] Derived from the tables the parser accepts from.
-const COLOR_WORDS = Object.keys(ANSI_COLOR_NAMES);
-const FOREGROUND_WORDS = [...ATTRIBUTE_NAMES, ...COLOR_WORDS];
+// The words each position of a definition can hold: a bare token is a keyword,
+// an attribute or a colour name; `on` takes a colour name; `not` an attribute.
+// The short aliases are left out, since `b` is no help to someone who typed
+// `bolt` and a one-letter name sits one edit from every other short word.
+// [LAW:one-source-of-truth] Derived from the lists the parser accepts from; the
+// keywords are the three `parseStyleDefinition` reads before anything else.
+const FOREGROUND_WORDS = ["not", "on", "link", ...ATTRIBUTE_NAMES, ...COLOR_NAMES];
 
 /**
  * Optimal string alignment distance: insertions, deletions, substitutions, and
  * swaps of two neighbouring letters each cost one edit, so `cyna` is as near
- * `cyan` as `rd` is to `red`.
+ * `cyan` as `rd` is to `red`. Kept to three rows, since only the two before the
+ * current one are ever read.
  */
 function editDistance(a: string, b: string): number {
-  const d = Array.from({ length: a.length + 1 }, (_, i) =>
-    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
-  );
+  let before: number[] = [];
+  let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
   for (let i = 1; i <= a.length; i++) {
+    const current = [i];
     for (let j = 1; j <= b.length; j++) {
       const swap = i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1];
-      d[i]![j] = Math.min(
-        d[i - 1]![j]! + 1,
-        d[i]![j - 1]! + 1,
-        d[i - 1]![j - 1]! + Number(a[i - 1] !== b[j - 1]),
-        swap ? d[i - 2]![j - 2]! + 1 : Infinity,
+      current[j] = Math.min(
+        previous[j]! + 1,
+        current[j - 1]! + 1,
+        previous[j - 1]! + Number(a[i - 1] !== b[j - 1]),
+        swap ? before[j - 2]! + 1 : Infinity,
       );
     }
+    [before, previous] = [previous, current];
   }
-  return d[a.length]![b.length]!;
+  return previous[b.length]!;
 }
 
 /**
@@ -628,11 +631,20 @@ function editDistance(a: string, b: string): number {
  * `rd` reach `red` and keeps `hello` from reaching `yellow`. Every name tied
  * for nearest is offered: `gold` is one edit from `bold` and from three
  * `goldN` colours, and choosing among them would be a guess the reader cannot
- * tell from a finding.
+ * tell from a finding. Case is not an edit, because the colour parser ignores
+ * it: `Cyna` is as near `cyan` as `cyna` is.
+ *
+ * This runs on every render that meets the bad style, since only successful
+ * parses are cached. Two words differ by at least their difference in length,
+ * so a name outside the budget on length alone is never measured — which is
+ * also what keeps a long garbage token from costing length × length per name.
  */
 function nearMiss(word: string, words: readonly string[]): string {
-  const budget = Math.max(1, Math.floor(word.length / 3));
-  const scored = words.map((name) => ({ name, distance: editDistance(word, name) }));
+  const typed = word.toLowerCase();
+  const budget = Math.max(1, Math.floor(typed.length / 3));
+  const scored = words
+    .filter((name) => Math.abs(name.length - typed.length) <= budget)
+    .map((name) => ({ name, distance: editDistance(typed, name) }));
   const nearest = Math.min(budget, ...scored.map((s) => s.distance));
   const names = scored
     .filter((s) => s.distance === nearest)
@@ -691,7 +703,7 @@ function parseStyleDefinition(definition: string): Style {
       if (!next) {
         throw new StyleSyntaxError(`Expected color after "on" in style definition`);
       }
-      opts.bgcolor = parseStyleColor(next, "Invalid background color", COLOR_WORDS);
+      opts.bgcolor = parseStyleColor(next, "Invalid background color", COLOR_NAMES);
       i++;
       continue;
     }
