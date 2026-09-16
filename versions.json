@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-130",
+      "ref": "refs/pull/130/merge",
+      "sha": "155ba1bc5e0de53d65cfcac2ab67da618cfdc16a",
+      "timestamp": "2026-09-16T12:12:20.904Z",
+      "commits": [
+        {
+          "sha": "155ba1bc5e0de53d65cfcac2ab67da618cfdc16a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T06:11:50-06:00",
+          "message": "Merge b0662ffb75cf32c6b679a9bf9072df8310de1f46 into 378187e7ea59c7770ec7843c8bed2165600c2a45\n"
+        },
+        {
+          "sha": "b0662ffb75cf32c6b679a9bf9072df8310de1f46",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T06:11:45-06:00",
+          "message": "docs(claude): describe the workflow consistency gate (rich-workflows-0pr.sut)\n\nThe section every other test/seam gate has: what it asserts, why .github/\nneeded one, that code-review.yml is read rather than exempt, the temptation\nit guards against, and its blind spot. The gate's module header owns the\nargument; the section restates neither the pinned majors nor the granted\nliteral.\n"
+        },
+        {
+          "sha": "a1fe6ceacd7f281a2fc3b162d6b481f4cc26af3c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T06:09:49-06:00",
+          "message": "test(seam): gate workflow consistency instead of keeping it by hand (rich-workflows-0pr.sut)\n\nrich-workflows-0pr.2 put every action on one major and every job that runs\nsrc/ on node-version-file, and nothing held either in place: .github/ was\nthe one area with no seam gate.\n\ntest/seam/workflow-pins.test.ts reads every YAML file under .github/ and\nfails when a remote action is pinned to more than one major, and when a\nbare node-version: literal appears without a row in NODE_VERSION_LITERALS,\nor a row outlives its literal. code-review.yml is not exempt; its SHA pin's\n\"# vN\" trailer is what gets read.\n\nRegex over lines rather than a YAML parser: none is in the tree, and any\nnon-comment line mentioning either key in a shape the gate does not\nrecognise is reported as unreadable, so a new shape fails instead of\npassing unseen. Dependabot was considered and not added; the header says why.\n\nBlind spot: this checks that the files agree with each other, not that the\nmajor they agree on is right or that any workflow runs, and it trusts a SHA\npin's trailer without checking it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "378187e7ea59c7770ec7843c8bed2165600c2a45",
