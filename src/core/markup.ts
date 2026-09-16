@@ -14,9 +14,10 @@
  * (`[bold]a[italic]b[/bold]c[/italic]`) because a style is an annotation and
  * annotations may overlap freely; a plugin tag is a replacement whose handler
  * takes one contiguous `inner`, so an overlapping pair has no slice to hand it
- * and is rejected with a `MarkupError`.
+ * and is rejected with a `MarkupSyntaxError`.
  */
 
+import { cellLen } from "./cells.js";
 import { Style, StyleSyntaxError } from "./style.js";
 import { RichText, Span } from "./text.js";
 import { emojiReplace } from "./emoji.js";
@@ -52,6 +53,99 @@ export class MarkupError extends Error {
     super(message);
     this.name = "MarkupError";
   }
+}
+
+// --- MarkupSyntaxError ---
+
+/**
+ * A markup string that cannot be parsed, with where it went wrong.
+ *
+ * [LAW:types-are-the-program] A subclass rather than optional fields on
+ * `MarkupError`, because the parent is also what `MarkupRegistry.register`
+ * throws, and a registration has no source text to point into. Every error this
+ * class describes has a location, so none of its fields is optional and no
+ * caller has to ask whether one is present — `instanceof` is the only question.
+ *
+ * [LAW:one-source-of-truth] The constructor takes the facts the parser holds —
+ * the string, the offset of the offending tag, what was open — and derives
+ * `line`, `column` and the message from them, so the numbers a caller reads
+ * and the caret the message draws cannot disagree.
+ */
+export class MarkupSyntaxError extends MarkupError {
+  /** The problem alone, with no location, for callers building their own message. */
+  readonly reason: string;
+  /** The whole markup string that failed, as the caller passed it. */
+  readonly markup: string;
+  /** Index into `markup` of the tag the parser rejected. */
+  readonly offset: number;
+  /** 1-based line of `offset`; lines are separated by `\n`. */
+  readonly line: number;
+  /** 1-based column of `offset` within its line, in UTF-16 code units. */
+  readonly column: number;
+  /**
+   * The opening tags still open at `offset`, outermost first, as written. For
+   * overlapping plugin tags, only plugin tags are named.
+   */
+  readonly openTags: readonly string[];
+
+  constructor(
+    reason: string,
+    markup: string,
+    offset: number,
+    openTags: readonly string[],
+  ) {
+    const lineStart = markup.lastIndexOf("\n", offset - 1) + 1;
+    const lineEnd = markup.indexOf("\n", offset);
+    const text = markup.slice(lineStart, lineEnd === -1 ? markup.length : lineEnd);
+    const line = countNewlines(markup.slice(0, lineStart)) + 1;
+    const column = offset - lineStart + 1;
+    const open = openTags.length > 0 ? openTags.join(" ") : "none";
+    super(
+      `${reason} (line ${line}, column ${column})\n` +
+        `${excerpt(text, offset - lineStart)}\n` +
+        `Open tags: ${open}`,
+    );
+    this.name = "MarkupSyntaxError";
+    this.reason = reason;
+    this.markup = markup;
+    this.offset = offset;
+    this.line = line;
+    this.column = column;
+    this.openTags = openTags;
+  }
+}
+
+function countNewlines(text: string): number {
+  return text.split("\n").length - 1;
+}
+
+// Code points shown either side of the error before the excerpt is cut and
+// marked with an ellipsis. Enough to recognise the surrounding tags on a line
+// that is long, templated, or machine-assembled, without printing all of it.
+const EXCERPT_CONTEXT = 30;
+
+// C0 controls and DEL occupy no cell, so one left in the excerpt would pull the
+// caret out from under the column it names — and an ESC would let the message
+// itself emit terminal escapes. Each is shown as one space instead.
+const CONTROL_CHAR = /[\x00-\x1f\x7f]/g;
+
+/**
+ * Two lines: the source line around `index`, and a caret under it.
+ *
+ * The window is cut in code points, so a surrogate pair is never split, and the
+ * caret is placed by cell width, so a wide character before the error still
+ * leaves it under the right cell.
+ */
+function excerpt(text: string, index: number): string {
+  const chars = Array.from(text.replace(CONTROL_CHAR, " "));
+  const at = Array.from(text.slice(0, index)).length;
+  const from = Math.max(0, at - EXCERPT_CONTEXT);
+  const to = Math.min(chars.length, at + EXCERPT_CONTEXT);
+  const head = from > 0 ? "…" : "";
+  const tail = to < chars.length ? "…" : "";
+  const before = head + chars.slice(from, at).join("");
+  const shown = before + chars.slice(at, to).join("") + tail;
+  return `  ${shown}\n  ${" ".repeat(cellLen(before))}^`;
 }
 
 // --- escape ---
@@ -141,6 +235,28 @@ interface RenderOptions {
 }
 
 /**
+ * Where the slice being parsed sits in the string the caller passed.
+ *
+ * [LAW:dataflow-not-control-flow] The plugin-aware walk hands the built-in
+ * parser slices, and recurses into the inner slice of each plugin pair, so a
+ * tag's offset within its slice is not its offset in the caller's string. Every
+ * parse carries its origin — the whole string is simply the slice at base 0
+ * with nothing enclosing it — so an error is located the same way at any depth.
+ */
+interface SliceOrigin {
+  /** The whole markup string the caller passed. */
+  readonly source: string;
+  /** Offset of the slice within `source`. */
+  readonly base: number;
+  /** Opening plugin tags the slice sits inside, outermost first, as written. */
+  readonly enclosing: readonly string[];
+}
+
+function wholeString(markup: string): SliceOrigin {
+  return { source: markup, base: 0, enclosing: [] };
+}
+
+/**
  * Parses the built-in style dialect — `[bold red]text[/bold red]` — into a
  * `RichText` with styled spans. Module-private on purpose: `renderMarkup` is
  * this module's one crossing, and it delegates straight here the moment a
@@ -163,6 +279,7 @@ interface RenderOptions {
  */
 function render(
   markup: string,
+  origin: SliceOrigin,
   baseStyle?: string | Style,
   options?: RenderOptions,
 ): RichText {
@@ -184,6 +301,11 @@ function render(
   let plainText = "";
   const spans: Span[] = [];
   const openStack: OpenTag[] = [];
+  const unparsable = (reason: string, tag: ParsedTag): MarkupSyntaxError =>
+    new MarkupSyntaxError(reason, origin.source, origin.base + tag.start, [
+      ...origin.enclosing,
+      ...openStack.map((opened) => opened.tag),
+    ]);
 
   let lastEnd = 0;
 
@@ -196,7 +318,7 @@ function render(
     if (tag.isImplicitClose) {
       // [/] — close the most recent open tag
       if (openStack.length === 0) {
-        throw new MarkupError("Closing tag [/] has nothing to close");
+        throw unparsable(`Closing tag ${tag.fullMatch} has nothing to close`, tag);
       }
       const opened = openStack.pop()!;
       spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
@@ -204,9 +326,7 @@ function render(
       // [/style] — find and close matching open tag
       const idx = findLastOpen(openStack, tag.styleName);
       if (idx === -1) {
-        throw new MarkupError(
-          `Closing tag [/${tag.styleName}] doesn't match any open tag`,
-        );
+        throw unparsable(`Closing tag ${tag.fullMatch} doesn't match any open tag`, tag);
       }
       const opened = openStack[idx]!;
       spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
@@ -214,6 +334,7 @@ function render(
     } else {
       // Opening tag
       openStack.push({
+        tag: tag.fullMatch,
         styleName: tag.styleName,
         parameters: tag.parameters,
         textStart: plainText.length,
@@ -274,6 +395,7 @@ function render(
 }
 
 interface OpenTag {
+  tag: string;
   styleName: string;
   parameters: string | undefined;
   textStart: number;
@@ -480,22 +602,30 @@ export function renderMarkup(
   markup: string,
   options?: RenderMarkupOptions,
 ): RichText {
+  return renderSlice(markup, wholeString(markup), options);
+}
+
+function renderSlice(
+  markup: string,
+  origin: SliceOrigin,
+  options?: RenderMarkupOptions,
+): RichText {
   const registry = options?.registry ?? globalMarkupRegistry;
   const baseStyle = options?.baseStyle;
   const doEmoji = options?.emoji !== false;
 
   // Fast path: no `[` at all → no possible tags.
   if (!HAS_TAG_RE.test(markup)) {
-    return render(markup, baseStyle, { emoji: doEmoji });
+    return render(markup, origin, baseStyle, { emoji: doEmoji });
   }
 
   const tags = parseTags(markup);
   // Pair each opening plugin tag with its matching closer up-front, so the
   // splice walk can just iterate top-level pairs in source order with no
   // nested-state book-keeping.
-  const { annotated, topLevel: tagPairs } = pairPluginTags(tags, registry);
+  const { annotated, topLevel: tagPairs } = pairPluginTags(tags, registry, origin);
   if (tagPairs.size === 0) {
-    return render(markup, baseStyle, { emoji: doEmoji });
+    return render(markup, origin, baseStyle, { emoji: doEmoji });
   }
 
   // [LAW:one-type-per-behavior] Always assemble a single RichText. Fragments
@@ -510,22 +640,31 @@ export function renderMarkup(
     const close = annotated[closeIdx]!;
 
     if (open.start > cursor) {
-      out.append(render(markup.slice(cursor, open.start), baseStyle, { emoji: doEmoji }));
+      out.append(render(markup.slice(cursor, open.start), offsetBy(origin, cursor), baseStyle, { emoji: doEmoji }));
     }
 
     const innerRaw = markup.slice(open.end, close.start);
-    const innerRichText = renderMarkup(innerRaw, options);
+    const innerRichText = renderSlice(
+      innerRaw,
+      { ...offsetBy(origin, open.end), enclosing: [...origin.enclosing, open.fullMatch] },
+      options,
+    );
     const handler = registry.get(open.pluginName!)!;
     out.append(handler({ attrs: open.attrs!, children: innerRichText, raw: innerRaw }));
     cursor = close.end;
   }
 
   if (cursor < markup.length) {
-    out.append(render(markup.slice(cursor), baseStyle, { emoji: doEmoji }));
+    out.append(render(markup.slice(cursor), offsetBy(origin, cursor), baseStyle, { emoji: doEmoji }));
   }
 
   if (baseStyle) out.stylize(baseStyle);
   return out;
+}
+
+/** The origin of a sub-slice starting `offset` into the slice `origin` describes. */
+function offsetBy(origin: SliceOrigin, offset: number): SliceOrigin {
+  return { ...origin, base: origin.base + offset };
 }
 
 interface PluginTag extends ParsedTag {
@@ -536,6 +675,7 @@ interface PluginTag extends ParsedTag {
 function pairPluginTags(
   tags: ParsedTag[],
   registry: MarkupRegistry,
+  origin: SliceOrigin,
 ): { annotated: PluginTag[]; topLevel: Map<number, number> } {
   // Annotate tags with plugin info, then pair openers with closers. Only
   // top-level pairs are returned; inner pairs will be re-discovered by the
@@ -580,12 +720,19 @@ function pairPluginTags(
       // hand it. A style span may overlap because it annotates; a plugin pair
       // may not because it replaces.
       if (annotated[closeIdx]!.end > outerEnd) {
-        const inner = annotated[openIdx]!.pluginName;
-        const outer = annotated[outerOpenIdx]!.pluginName;
-        throw new MarkupError(
-          `Plugin tag [${inner}] overlaps [${outer}]: plugin tags must nest, ` +
+        const inner = annotated[openIdx]!;
+        const outer = annotated[outerOpenIdx]!;
+        const outerClose = annotated[pairs.get(outerOpenIdx)!]!;
+        // The caret goes under the outer pair's closing tag, the point where
+        // nesting breaks. This pass tracks plugin tags only, so the two pairs
+        // are what it can name as open there.
+        throw new MarkupSyntaxError(
+          `Plugin tag [${inner.pluginName}] overlaps [${outer.pluginName}]: plugin tags must nest, ` +
             `because a handler receives one contiguous slice. ` +
-            `Close [/${inner}] before [/${outer}].`,
+            `Close [/${inner.pluginName}] before [/${outer.pluginName}].`,
+          origin.source,
+          origin.base + outerClose.start,
+          [...origin.enclosing, outer.fullMatch, inner.fullMatch],
         );
       }
       continue;
