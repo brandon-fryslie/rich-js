@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-136",
+      "ref": "refs/pull/136/merge",
+      "sha": "2412914731242819b3fc2019dac0cb9db491002f",
+      "timestamp": "2026-09-16T15:30:18.559Z",
+      "commits": [
+        {
+          "sha": "2412914731242819b3fc2019dac0cb9db491002f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:29:54-06:00",
+          "message": "Merge 69e5d0f4573e055870f2d95c74deeb3d36a236de into 428422f9006db0af5d4edb693cb5c79c1d9a0bc1\n"
+        },
+        {
+          "sha": "69e5d0f4573e055870f2d95c74deeb3d36a236de",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:29:47-06:00",
+          "message": "refactor(text): drop the legacy overflow option from truncate (rich-subtraction-8wh.3, .4)\n\nRichText.truncate accepted `{ mode, marker }` and a legacy\n`{ overflow: \"fold\" | \"crop\" | \"ellipsis\" }`, and derived the marker\nthrough a three-level nested ternary over both. No caller in src/ or\nexamples/ used the legacy form; one test did.\n\nThe option is gone and the marker is `options?.marker ?? \"…\"`.\n\nBehaviour change: a bare `truncate(width)` used to crop with no\nmarker, because the ternary only defaulted to \"…\" when `mode` was\npassed. The doc comment already said the default was \"…\"; the code now\nagrees with it. `marker: \"\"` still crops raw.\n\nThe legacy test is rewritten to pin that default (`truncate(6)` on\n\"hello world\" is \"hello…\"). It lands with .3 rather than as .4 on its\nown: `tsconfig.test.json` type-checks test/, so removing the option\nturns the old call into an excess-property error and `npm run lint`\nfails until the test changes too. No docs page mentions truncate.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "428422f9006db0af5d4edb693cb5c79c1d9a0bc1",
