@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-132",
+      "ref": "refs/pull/132/merge",
+      "sha": "3eb908a4f4c3fd751ffe229fb4872f59c8f3ac5e",
+      "timestamp": "2026-09-16T14:54:12.308Z",
+      "commits": [
+        {
+          "sha": "3eb908a4f4c3fd751ffe229fb4872f59c8f3ac5e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T08:53:47-06:00",
+          "message": "Merge 7361a0788ff7ab1e1ccdecb05ef1c23bfc6bfc37 into 12dac135e453e56a8bb9d3b9c36b616c1d076742\n"
+        },
+        {
+          "sha": "7361a0788ff7ab1e1ccdecb05ef1c23bfc6bfc37",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T08:53:41-06:00",
+          "message": "fix(artifact): publish no sourcemaps (rich-artifact-c9k.2)\n\nThe tarball carried 200 .map files, every one naming a source under\n../../src/, which package.json#files does not publish. Each resolved to a\npath absent from a consumer's node_modules, and each .js/.d.ts carried a\nsourceMappingURL pointing at it.\n\ndist/ is the npm artifact and nothing else, so the root tsconfig now emits\nneither sourceMap nor declarationMap. Excluding *.map through `files`\ninstead would have left the sourceMappingURL comments dangling, which is\nthe same dead reference in a different place. Publishing src/ was the\nother way to make the maps resolve; it was not taken because tsc's ES2022\noutput keeps its comments and reads as the source minus its types, so the\nmaps bought a debugging consumer little for ~1 MB more and a published\nsrc/ layout contract.\n\ntsconfig.demo.json turns sourceMap back on: dist-demo/ sits beside src/\nand examples/, so its maps resolve and local debugging keeps them.\n\nnpm pack --dry-run: 404 files / 1.8 MB unpacked -> 204 files / 1.1 MB,\nzero .map entries.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "12dac135e453e56a8bb9d3b9c36b616c1d076742",
