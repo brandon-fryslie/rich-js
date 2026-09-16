@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7c101d59eb83f6b8968ee5051faa2b54cdb8fa69",
-      "timestamp": "2026-09-16T15:19:16.032Z",
+      "sha": "428422f9006db0af5d4edb693cb5c79c1d9a0bc1",
+      "timestamp": "2026-09-16T15:27:33.104Z",
       "commits": [
         {
-          "sha": "7c101d59eb83f6b8968ee5051faa2b54cdb8fa69",
+          "sha": "428422f9006db0af5d4edb693cb5c79c1d9a0bc1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:18:46-06:00",
-          "message": "docs(readme): drop the bug log and shrink demo coverage to a pointer (rich-subtraction-8wh.1) (#134)\n\nThe README's demo-coverage section had drifted from the check it\ndescribed: it said every public export must be referenced under\nexamples/, which stopped being true when types moved to reachability\nfrom a demonstrated value. Beneath it sat a table of bugs the demos once\ncaught, a changelog entry on the npm landing page.\n\nBoth go. What remains is three sentences naming\ntest/coverage/coverage.test.ts and its allowlist as the answer to what\nthe demos cover. The \"Coverage summary\" and \"Not yet exercised\" sections\nthe ticket also names were already removed before this change."
+          "timestamp": "2026-09-16T09:26:53-06:00",
+          "message": "docs(readme): one checked demo table for package users (rich-subtraction-8wh.2) (#135)\n\n* docs(readme): one checked demo table for package users (rich-subtraction-8wh.2)\n\nThe Demos section had three \"Features exercised\" tables mapping modules to\nhow each demo used them, a paragraph on the coverage gate, and an instruction\nto run jq against package.json to find the script list. All of it was written\nfor maintainers. The tables were hand-copied answers to a question\ntest/coverage/ already computes, and CLAUDE.md already explains the coverage\ngate to contributors.\n\nThe section now serves someone who has installed the package: the live\ngallery first, then how to clone and run a demo, then one table giving each\ndemo's npm script and a line on what it shows. The per-demo key-binding list\nis gone as well, because the interactive demos show their bindings on screen.\n\ntest/docs/readme-demos.test.ts holds that table to package.json: the rows must\nname exactly the scripts that run dist-demo/examples/<demo>/index.js, each\npaired with the demo it runs. Renaming a script or adding a demo now fails\nthe suite. The test can't check whether a description is still accurate.\n\ndocs/demos/index.md said the README lists \"what each one exercises\"; it now\nsays what the README actually gives.\n\n* test(docs): count demo scripts that pass arguments (rich-subtraction-8wh.2)"
         }
       ]
     }
