@@ -213,6 +213,43 @@ version really is ready to ship. Push the tag instead — `git tag vX.Y.Z && git
 push origin vX.Y.Z` is the whole thing being asked for, and on the CI road that
 same push is what starts the release anyway.
 
+### The tarball carries its licence and no source maps, and a test builds it to check
+
+Epic rich-artifact-c9k opened the npm tarball and found no `LICENSE` and about
+200 `.map` files — 1.0 MB of a 1.6 MB package — every one dead, pointing at
+`../src/`, which `package.json#files` does not publish. The fixes are a root
+`LICENSE`, which npm packs on its own; `THIRD-PARTY-NOTICES`, which `files` names;
+`sourceMap` and `declarationMap` false in `tsconfig.json`, with
+`tsconfig.demo.json` turning maps back on for `dist-demo/`; and `build` as
+`npm run clean && tsc`. Each is one line in a different file, and a later change
+can undo it without any other test noticing.
+
+`test/seam/tarball.test.ts` does not read `dist/`: in CI the gate runs `npm test`
+before anything builds, and on a laptop `dist/` is whatever the last build left.
+It copies every file git would commit, as it is on disk, into a temp directory,
+symlinks `node_modules`, runs the real `npm run build`, and asks
+`npm pack --dry-run --json` what ships. It plants stale maps in `dist/` to prove
+the clean step works, and a second build — licence files deleted, maps back
+on — must be refused. "No maps" means no `.map` entry and no
+`sourceMappingURL` comment in any packed file. The rule is `test/seam/tarball.ts`,
+and its header owns the rest of the argument; do not restate it here.
+
+You will want a map while debugging, flip `sourceMap` to true in `tsconfig.json`,
+watch the gate go red, and think *"one line in `files`, `"!dist/**/*.map"`, and the
+maps stay local."* That is the moment. Every `.js` and `.d.ts` still carries a
+`sourceMappingURL` to a missing file — the same dead reference in a smaller
+tarball — and the gate refuses that too. Maps for debugging come from
+`tsconfig.demo.json`, whose output sits beside the sources its maps name. If
+maps genuinely should ship, that is a decision made on its own merits — publish
+`src/` or inline the sources — and the gate changes in the same commit.
+
+Say its blind spot out loud whenever you cite this gate: it checks the tarball
+this checkout's own build produces in a clean copy, not the one that reaches the
+registry. On the CI road `publish.yml`'s gate job rebuilds a tagged commit with
+the same script; on the laptop road a hand `npm publish` can pack a `dist/` built
+some other way. And it checks only that the two licence files ship and are not
+empty, never that their text is right.
+
 ### The workflows agree with each other, and a test says so
 
 `.github/` was the one area of this repository with no seam gate, and the
