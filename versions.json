@@ -4,15 +4,22 @@
     {
       "version": "pr-140",
       "ref": "refs/pull/140/merge",
-      "sha": "34a3f8e3dee6eff245e3aeb26b9a053930f27bf3",
-      "timestamp": "2026-09-16T16:09:33.410Z",
+      "sha": "03b9e3162f6460a53f914aaf1eb95aa77bcd2cc5",
+      "timestamp": "2026-09-16T16:13:47.877Z",
       "commits": [
         {
-          "sha": "34a3f8e3dee6eff245e3aeb26b9a053930f27bf3",
+          "sha": "03b9e3162f6460a53f914aaf1eb95aa77bcd2cc5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T10:09:03-06:00",
-          "message": "Merge 53fddcaf9e2afed8486160d9ce340e7a3d9adbec into 4a47b57cf8b3a8adafc0290007d74429c624706a\n"
+          "timestamp": "2026-09-16T16:13:22Z",
+          "message": "Merge ba1a6971b8209d8c3499cb0b9d161a2e439985fc into 4a47b57cf8b3a8adafc0290007d74429c624706a\n"
+        },
+        {
+          "sha": "ba1a6971b8209d8c3499cb0b9d161a2e439985fc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T10:13:17-06:00",
+          "message": "fix(markup): keep control characters out of every part of the error message\n\nReview of #140 found two problems.\n\nThe excerpt replaced control characters with spaces, but the reason and\nthe \"Open tags\" line quoted tag text raw. The tag grammar admits ESC, so\n\"[bold\\x1b]\" put ESC ] (the start of an OSC sequence) into a message meant\nfor a terminal. printable() is now the one rule every quoted part of the\nmessage goes through. The reason and openTags fields keep the text as\nwritten.\n\nInside a plugin tag, \"[aa][/][/aa]\" said \"[/] has nothing to close\" and\nthen listed [aa] as open. [/] never closes a plugin tag, so the reason\nnow says there is no open style tag, which is true in both cases.\n"
         },
         {
           "sha": "53fddcaf9e2afed8486160d9ce340e7a3d9adbec",
