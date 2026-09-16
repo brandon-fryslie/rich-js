@@ -8,8 +8,20 @@
     "outDir": "dist",
     "rootDir": "src",
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
+
+    /*
+     * [LAW:one-source-of-truth] `dist/` is the npm artifact and nothing else, so
+     * what this config emits is what a consumer receives. A map here would point
+     * at `../../src/…`, and `package.json#files` does not publish `src/`: every
+     * one would resolve to a path absent from the consumer's `node_modules`, and
+     * each `.js`/`.d.ts` would carry a `sourceMappingURL` to it. Emitting none
+     * leaves no dead reference; the ES2022 output keeps its comments and reads
+     * as the source minus its types. Local debugging keeps its maps through
+     * `tsconfig.demo.json`, whose output sits beside the sources they name.
+     * Recorded on ticket rich-artifact-c9k.2.
+     */
+    "declarationMap": false,
+    "sourceMap": false,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
