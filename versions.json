@@ -4,15 +4,22 @@
     {
       "version": "pr-133",
       "ref": "refs/pull/133/merge",
-      "sha": "1dcc0bcb01d485d1f5b38cfb3c1364f42edc6308",
-      "timestamp": "2026-09-16T15:06:30.624Z",
+      "sha": "fcb8b0c71447946e6ef4d671def7dcdef0126561",
+      "timestamp": "2026-09-16T15:09:36.569Z",
       "commits": [
         {
-          "sha": "1dcc0bcb01d485d1f5b38cfb3c1364f42edc6308",
+          "sha": "fcb8b0c71447946e6ef4d671def7dcdef0126561",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:06:02-06:00",
-          "message": "Merge 80f80b005109939cb972eca367685f376985823e into 438535c846d32c83855821b9dd7213a3cfe6e822\n"
+          "timestamp": "2026-09-16T15:09:04Z",
+          "message": "Merge 8c94557a7f3f059596bde01cbbef6d15a84f370e into 438535c846d32c83855821b9dd7213a3cfe6e822\n"
+        },
+        {
+          "sha": "8c94557a7f3f059596bde01cbbef6d15a84f370e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:08:59-06:00",
+          "message": "test(seam): copy only regular files into the tarball stage (rich-artifact-c9k.3)\n\nA nested repository or a submodule is listed by git ls-files as a\ndirectory, and copyFileSync threw on it before the build ever ran. A\nfresh checkout would not carry its contents either, so the stage now\ntakes only regular files.\n"
         },
         {
           "sha": "80f80b005109939cb972eca367685f376985823e",
