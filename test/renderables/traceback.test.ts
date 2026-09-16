@@ -84,29 +84,52 @@ describe("Traceback", () => {
 
   // --- Max Frames ---
 
-  it("limits frames with maxFrames", () => {
-    const error = new Error("test");
-    const tb = new Traceback(error, { maxFrames: 2 });
-    const text = collectText(tb, { maxWidth: 80 });
-    expect(text).toContain("Error");
+  function stackOf(frameCount: number): Error {
+    const error = new Error("deep");
+    error.stack = [
+      "Error: deep",
+      ...Array.from({ length: frameCount }, (_, i) => `    at f${i} (/a.ts:${i + 1}:1)`),
+    ].join("\n");
+    return error;
+  }
+
+  function frameNames(text: string): string[] {
+    return [...text.matchAll(/^ {2}(f\d+) /gm)].map((m) => m[1]!);
+  }
+
+  it.each([
+    { maxFrames: 1, shown: ["f4"], omitted: 4 },
+    { maxFrames: 2, shown: ["f0", "f4"], omitted: 3 },
+    { maxFrames: 3, shown: ["f0", "f3", "f4"], omitted: 2 },
+  ])("shows exactly maxFrames=$maxFrames frames and counts the rest", ({ maxFrames, shown, omitted }) => {
+    const text = collectText(new Traceback(stackOf(5), { maxFrames }), { maxWidth: 80 });
+    expect(frameNames(text)).toEqual(shown);
+    expect(text).toContain(`... ${omitted} frames omitted ...`);
   });
 
-  it("defaults maxFrames to 100", () => {
-    const error = new Error("test");
-    const tb = new Traceback(error);
-    // Should render without issue at default maxFrames
-    const text = collectText(tb, { maxWidth: 80 });
-    expect(text).toContain("Error");
+  it("caps at 100 frames by default", () => {
+    const text = collectText(new Traceback(stackOf(101)), { maxWidth: 80 });
+    expect(frameNames(text)).toHaveLength(100);
+    expect(text).toContain("... 1 frames omitted ...");
   });
 
-  it("shows first N/2 and last N/2 frames with separator when exceeding maxFrames", () => {
-    // Create an error and set maxFrames very low
-    const error = new Error("test");
-    const tb = new Traceback(error, { maxFrames: 2 });
-    const text = collectText(tb, { maxWidth: 80 });
-    // If there are more frames than maxFrames, should show omission message
-    // The behavior depends on number of actual stack frames
-    expect(text).toContain("Error");
+  it("renders the name, message and one line per frame", () => {
+    // Pins the sample output docs/traceback.md shows for a caught exception.
+    const error = new TypeError("Invalid field: role");
+    error.stack = [
+      "TypeError: Invalid field: role",
+      "    at processUser (/app/src/users.ts:42:11)",
+      "    at Layer.handle (/app/node_modules/express/lib/router/layer.js:95:5)",
+      "    at main (/app/src/index.ts:12:3)",
+    ].join("\n");
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe([
+      "TypeError: Invalid field: role",
+      "",
+      "  processUser /app/src/users.ts:42",
+      "  Layer.handle /app/node_modules/express/lib/router/layer.js:95",
+      "  main /app/src/index.ts:12",
+      "",
+    ].join("\n"));
   });
 
   // Installing Traceback as the process-wide crash handler is a node

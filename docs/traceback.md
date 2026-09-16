@@ -1,6 +1,6 @@
 # Tracebacks
 
-Rich tracebacks show the code that caused an error, syntax-highlighted, with more context than a plain Node.js stack trace. They are especially useful for deeply nested errors where the plain trace gives you file names and line numbers but not the surrounding code.
+A rich traceback prints an error as its name and message, followed by one line per stack frame: the function in bold, then its file and line. It is the same information as a plain Node.js stack trace, laid out so the function names and line numbers stand out.
 
 ## Printing a caught exception
 
@@ -12,38 +12,21 @@ import { Console, Traceback } from "@promptctl/rich-js";
 const console = new Console();
 
 try {
-  riskyOperation();
+  processUser(user);
 } catch (error) {
   console.print(new Traceback(error));
 }
 ```
 
-The `showLocals` option displays a table of local variable values for each stack frame — this is the most impactful feature for debugging:
+```
+TypeError: Invalid field: role
 
-```typescript
-try {
-  processUser(user);
-} catch (error) {
-  console.print(new Traceback(error, { showLocals: true }));
-}
+  processUser /app/src/users.ts:42
+  Layer.handle /app/node_modules/express/lib/router/layer.js:95
+  main /app/src/index.ts:12
 ```
 
-```
-╭─ TypeError ──────────────────────────────────────────────────────────╮
-│                                                                      │
-│  processUser (src/users.ts:42)                                       │
-│                                                                      │
-│  40 │   const result = validate(user);                               │
-│  41 │   if (!result.ok) {                                            │
-│ ❱42 │     throw new TypeError(`Invalid field: ${result.field}`);     │
-│  43 │   }                                                            │
-│                                                                      │
-│  ╭─ locals ───────────────────────────────────────────────────────╮  │
-│  │  user    = User { id: 42, name: 'Alice', role: undefined }     │  │
-│  │  result  = { ok: False, field: 'role' }                        │  │
-│  ╰────────────────────────────────────────────────────────────────╯  │
-╰──────────────────────────────────────────────────────────────────────╯
-```
+A traceback shows only what the error's stack records. It cannot show source lines or local variables: an `Error` carries the location of each frame, not the code or the values that were in scope there.
 
 ## Installing as the global handler
 
@@ -84,30 +67,36 @@ Node's `--import ./crash-reporting.js` flag does the same thing from outside the
 
 ## Suppressing frames
 
-Framework and library frames are noise when debugging your own code. The `suppress` option hides implementation details, showing only the file and line without code:
+Framework and library frames are noise when debugging your own code. `suppress` takes a list of strings, and any frame whose file path contains one of them loses its function name, keeping your own functions the only names on screen:
 
 ```typescript
-import express from "express";
-
-installTraceback({
-  suppress: [express, "node_modules/express"],
-});
+installTraceback({ suppress: ["node_modules/express"] });
 ```
 
-Suppressed frames collapse to a single dim line showing the location, keeping the traceback focused on your code.
+```
+TypeError: Invalid field: role
+
+  processUser /app/src/users.ts:42
+  /app/node_modules/express/lib/router/layer.js:95
+  main /app/src/index.ts:12
+```
+
+A suppressed frame keeps its place in the list, so the order of calls stays intact.
 
 ## Max frames
 
-Deep recursion can produce hundreds of frames. By default, only the first and last N frames are shown with a count of the omitted middle:
-
-```
-... 248 frames omitted ...
-```
-
-Adjust the cap:
+Deep recursion can produce hundreds of frames. When a stack has more frames than `maxFrames` (100 by default), the traceback shows the first half and the last half of that budget and counts the frames omitted between them:
 
 ```typescript
-new Traceback(error, { maxFrames: 20 })
+new Traceback(error, { maxFrames: 2 })
+```
+
+```
+RangeError: Maximum call stack size exceeded
+
+  walk /app/src/tree.ts:1
+  ... 248 frames omitted ...
+  walk /app/src/tree.ts:250
 ```
 
 Pass `maxFrames: 0` to disable the cap and show every frame (use with caution for recursive errors).
