@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-131",
-      "ref": "refs/pull/131/merge",
-      "sha": "8f0d2523bd653962475206303a135665cabbbc7b",
-      "timestamp": "2026-09-16T14:45:12.802Z",
-      "commits": [
-        {
-          "sha": "8f0d2523bd653962475206303a135665cabbbc7b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T08:44:47-06:00",
-          "message": "Merge 77a971ef70e1ca74b907c1af1b5c1f3e4cee4de6 into 7ddb9cc06d6d5fccda57bdd3e560254e517837a3\n"
-        },
-        {
-          "sha": "77a971ef70e1ca74b907c1af1b5c1f3e4cee4de6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T08:44:42-06:00",
-          "message": "fix(artifact): add Textual's notice to THIRD-PARTY-NOTICES (rich-artifact-c9k.1)\n\nMost of the bundled themes, and the formulas buildPalette uses to derive\na full palette from base colours, come from Textual. Textual is MIT-\nlicensed under its own copyright (2021 Will McGugan), which the first\ncommit left out. Found in code review.\n"
-        },
-        {
-          "sha": "114674d773676a30f8be93a20d2ab5dd7d51cb05",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T07:16:16-06:00",
-          "message": "fix(artifact): ship the MIT license and upstream notices (rich-artifact-c9k.1)\n\npackage.json declared MIT, but the tarball carried no license text, so\nthe package claimed terms it never distributed. MIT also requires every\ncopy to keep the upstream copyright notices, and this package draws on\ntwo sources.\n\nLICENSE holds the unmodified MIT text with this project's copyright.\nTHIRD-PARTY-NOTICES reproduces two upstream notices: Rich (Will McGugan),\nthe project this is a port of, and cli-spinners (Sindre Sorhus), the\nsource of every built-in spinner. Rich carries the cli-spinners notice\ntoo.\n\nThey are two files so that license checkers that compare LICENSE to the\nMIT template still see a close match. Appending more license text to it\nwould break that comparison. npm always packs LICENSE but not a notices\nfile, so \"files\" now names THIRD-PARTY-NOTICES. Two comments that\nquoted files: [\"dist\"] now describe what that line meant: all of dist/\nships.\n\nVerified: npm pack lists both files, and the extracted tarball contains\nall three copyright lines.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7ddb9cc06d6d5fccda57bdd3e560254e517837a3",
-      "timestamp": "2026-09-16T12:18:07.016Z",
+      "sha": "12dac135e453e56a8bb9d3b9c36b616c1d076742",
+      "timestamp": "2026-09-16T14:47:22.091Z",
       "commits": [
         {
-          "sha": "7ddb9cc06d6d5fccda57bdd3e560254e517837a3",
+          "sha": "12dac135e453e56a8bb9d3b9c36b616c1d076742",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T06:17:37-06:00",
-          "message": "test(seam): gate workflow consistency instead of keeping it by hand (rich-workflows-0pr.sut) (#130)\n\n* test(seam): gate workflow consistency instead of keeping it by hand (rich-workflows-0pr.sut)\n\nrich-workflows-0pr.2 put every action on one major and every job that runs\nsrc/ on node-version-file, and nothing held either in place: .github/ was\nthe one area with no seam gate.\n\ntest/seam/workflow-pins.test.ts reads every YAML file under .github/ and\nfails when a remote action is pinned to more than one major, and when a\nbare node-version: literal appears without a row in NODE_VERSION_LITERALS,\nor a row outlives its literal. code-review.yml is not exempt; its SHA pin's\n\"# vN\" trailer is what gets read.\n\nRegex over lines rather than a YAML parser: none is in the tree, and any\nnon-comment line mentioning either key in a shape the gate does not\nrecognise is reported as unreadable, so a new shape fails instead of\npassing unseen. Dependabot was considered and not added; the header says why.\n\nBlind spot: this checks that the files agree with each other, not that the\nmajor they agree on is right or that any workflow runs, and it trusts a SHA\npin's trailer without checking it.\n\n* docs(claude): describe the workflow consistency gate (rich-workflows-0pr.sut)\n\nThe section every other test/seam gate has: what it asserts, why .github/\nneeded one, that code-review.yml is read rather than exempt, the temptation\nit guards against, and its blind spot. The gate's module header owns the\nargument; the section restates neither the pinned majors nor the granted\nliteral.\n\n* fix(seam): let each occurrence of a literal carry its own grant (rich-workflows-0pr.sut)\n\nThe grant table's uniqueness check forbade the second grant the count rule\nrequires, so a second job needing the same literal could satisfy neither.\nThe count rule already reports a surplus grant, so the uniqueness check\nenforced nothing it did not, and is deleted.\n\nAlso split lines on CRLF as well as LF, so a Windows checkout does not read\nevery pin as unreadable.\n\n* fix(seam): report a quoted workflow key as unreadable (rich-workflows-0pr.sut)\n\nThe net under the recognised forms required the colon directly after the\nkey name, so \"uses\": and 'node-version': — valid YAML, run fine by\nActions — produced no fact and no report, and a disagreeing pin or an\nungranted literal written that way passed the gate. The net now allows a\nclosing quote before the colon, which is what the header and CLAUDE.md\nalready promised: a shape the gate does not read fails loudly."
+          "timestamp": "2026-09-16T08:46:56-06:00",
+          "message": "fix(artifact): ship the MIT license and upstream notices (rich-artifact-c9k.1) (#131)\n\n* fix(artifact): ship the MIT license and upstream notices (rich-artifact-c9k.1)\n\npackage.json declared MIT, but the tarball carried no license text, so\nthe package claimed terms it never distributed. MIT also requires every\ncopy to keep the upstream copyright notices, and this package draws on\ntwo sources.\n\nLICENSE holds the unmodified MIT text with this project's copyright.\nTHIRD-PARTY-NOTICES reproduces two upstream notices: Rich (Will McGugan),\nthe project this is a port of, and cli-spinners (Sindre Sorhus), the\nsource of every built-in spinner. Rich carries the cli-spinners notice\ntoo.\n\nThey are two files so that license checkers that compare LICENSE to the\nMIT template still see a close match. Appending more license text to it\nwould break that comparison. npm always packs LICENSE but not a notices\nfile, so \"files\" now names THIRD-PARTY-NOTICES. Two comments that\nquoted files: [\"dist\"] now describe what that line meant: all of dist/\nships.\n\nVerified: npm pack lists both files, and the extracted tarball contains\nall three copyright lines.\n\n* fix(artifact): add Textual's notice to THIRD-PARTY-NOTICES (rich-artifact-c9k.1)\n\nMost of the bundled themes, and the formulas buildPalette uses to derive\na full palette from base colours, come from Textual. Textual is MIT-\nlicensed under its own copyright (2021 Will McGugan), which the first\ncommit left out. Found in code review."
         }
       ]
     }
