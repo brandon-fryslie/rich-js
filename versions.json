@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-142",
+      "ref": "refs/pull/142/merge",
+      "sha": "4c79a30cf6abe9708fa13813b471abd95df65e5b",
+      "timestamp": "2026-09-16T21:24:22.867Z",
+      "commits": [
+        {
+          "sha": "4c79a30cf6abe9708fa13813b471abd95df65e5b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T15:23:18-06:00",
+          "message": "Merge 06f0f899d00101d60bd612fab4319438e6c4133e into 3041c8664b507343a915002841046aa2a7da477b\n"
+        },
+        {
+          "sha": "06f0f899d00101d60bd612fab4319438e6c4133e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T15:23:13-06:00",
+          "message": "fix(traceback): drop options the renderer ignores and document real output (rich-traceback-i5d)\n\nTracebackOptions accepted showLocals, width and theme and read none of\nthem, and docs/traceback.md showed a bordered panel with highlighted\nsource lines and a locals table that the renderer has never produced.\n\nLocals are removed rather than implemented. An Error records where each\nframe was, not what was in scope; the only node route to that is an\ninspector session pausing on exceptions, which would have to pause on\nevery throw, caught ones included, to serve new Traceback(caughtError),\nand which a browser cannot run at all. width and theme sized and\ncoloured the source excerpt that does not exist either.\n\ndocs/traceback.md, the docs index card and the README blurb now show\nthe output as rendered. The suppress example passed a module object to\na string[] option and now passes a string.\n\nPinning the maxFrames sample turned up a truncation bug: slice(-half)\nis the whole array when maxFrames is 1, and an odd budget showed one\nframe fewer than it counted. The tail now takes maxFrames - head frames\nfrom an index, so the budget is spent exactly.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3041c8664b507343a915002841046aa2a7da477b",
