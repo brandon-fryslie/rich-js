@@ -168,8 +168,8 @@ name the console's theme does not define is dropped the same way.
 
 A style attached to text degrades to unstyled when the text is printed. That
 covers markup tags, a `RichText`'s own style, and the spans that `append`,
-`stylize`, `highlightWords` and highlighters add, wherever that text sits,
-including a table cell or a panel title.
+`stylize`, `highlightWords` and highlighters add, including in text placed inside
+another renderable, such as a table cell.
 
 Every other invalid style throws `StyleSyntaxError`:
 
