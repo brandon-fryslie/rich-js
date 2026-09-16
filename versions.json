@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-134",
+      "ref": "refs/pull/134/merge",
+      "sha": "64e297da3d62b237511964fc3eb2582f5b72c410",
+      "timestamp": "2026-09-16T15:17:50.478Z",
+      "commits": [
+        {
+          "sha": "64e297da3d62b237511964fc3eb2582f5b72c410",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:17:25-06:00",
+          "message": "Merge 503eaaf240cc3e9b4badd9af7297f7abdefc2bc4 into f09106aaca526b2d20b7240a58b19775edc179d7\n"
+        },
+        {
+          "sha": "503eaaf240cc3e9b4badd9af7297f7abdefc2bc4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:17:20-06:00",
+          "message": "docs(readme): drop the bug log and shrink demo coverage to a pointer (rich-subtraction-8wh.1)\n\nThe README's demo-coverage section had drifted from the check it\ndescribed: it said every public export must be referenced under\nexamples/, which stopped being true when types moved to reachability\nfrom a demonstrated value. Beneath it sat a table of bugs the demos once\ncaught, a changelog entry on the npm landing page.\n\nBoth go. What remains is three sentences naming\ntest/coverage/coverage.test.ts and its allowlist as the answer to what\nthe demos cover. The \"Coverage summary\" and \"Not yet exercised\" sections\nthe ticket also names were already removed before this change.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f09106aaca526b2d20b7240a58b19775edc179d7",
