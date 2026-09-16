@@ -313,6 +313,13 @@ describe("a syntax error inside a plugin-tagged string is located in the caller'
     expect(err.openTags).toEqual([]);
   });
 
+  it("says [/] found no style tag, since the plugin tag around it stays open", () => {
+    const err = rejectionOf("[aa][/][/aa]", registry());
+    expect(err.reason).toBe("Closing tag [/] has no open style tag to close");
+    expect(err.offset).toBe(4);
+    expect(err.openTags).toEqual(["[aa]"]);
+  });
+
   it("locates an error nested two plugin pairs deep, naming the enclosing tags", () => {
     const markup = "head\n[aa]one [bb][i]two[/u][/bb][/aa]";
     const err = rejectionOf(markup, registry());

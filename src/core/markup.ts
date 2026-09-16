@@ -101,9 +101,9 @@ export class MarkupSyntaxError extends MarkupError {
     const column = offset - lineStart + 1;
     const open = openTags.length > 0 ? openTags.join(" ") : "none";
     super(
-      `${reason} (line ${line}, column ${column})\n` +
+      `${printable(reason)} (line ${line}, column ${column})\n` +
         `${excerpt(text, offset - lineStart)}\n` +
-        `Open tags: ${open}`,
+        `Open tags: ${printable(open)}`,
     );
     this.name = "MarkupSyntaxError";
     this.reason = reason;
@@ -124,10 +124,19 @@ function countNewlines(text: string): number {
 // that is long, templated, or machine-assembled, without printing all of it.
 const EXCERPT_CONTEXT = 30;
 
-// C0 controls and DEL occupy no cell, so one left in the excerpt would pull the
-// caret out from under the column it names — and an ESC would let the message
-// itself emit terminal escapes. Each is shown as one space instead.
-const CONTROL_CHAR = /[\x00-\x1f\x7f]/g;
+/**
+ * `text` with each C0 control and DEL shown as one space.
+ *
+ * [LAW:single-enforcer] Every part of the message that quotes the caller's
+ * markup passes through here: the reason and the open tags quote tag text, and
+ * the tag grammar admits control characters, so an `ESC ]` inside a tag would
+ * otherwise open an OSC sequence in the terminal printing the error. In the
+ * excerpt it also keeps the caret aligned, since a control occupies no cell.
+ * The fields keep the text as written; only the message is made printable.
+ */
+function printable(text: string): string {
+  return text.replace(/[\x00-\x1f\x7f]/g, " ");
+}
 
 /**
  * Two lines: the source line around `index`, and a caret under it.
@@ -137,7 +146,7 @@ const CONTROL_CHAR = /[\x00-\x1f\x7f]/g;
  * leaves it under the right cell.
  */
 function excerpt(text: string, index: number): string {
-  const chars = Array.from(text.replace(CONTROL_CHAR, " "));
+  const chars = Array.from(printable(text));
   const at = Array.from(text.slice(0, index)).length;
   const from = Math.max(0, at - EXCERPT_CONTEXT);
   const to = Math.min(chars.length, at + EXCERPT_CONTEXT);
@@ -318,7 +327,9 @@ function render(
     if (tag.isImplicitClose) {
       // [/] — close the most recent open tag
       if (openStack.length === 0) {
-        throw unparsable(`Closing tag ${tag.fullMatch} has nothing to close`, tag);
+        // [/] never closes a plugin tag, so an enclosing plugin tag can be open
+        // here while no style tag is.
+        throw unparsable(`Closing tag ${tag.fullMatch} has no open style tag to close`, tag);
       }
       const opened = openStack.pop()!;
       spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));

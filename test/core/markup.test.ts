@@ -156,7 +156,7 @@ describe("markup syntax errors report their location", () => {
   it("locates a closing [/] with nothing open", () => {
     const err = rejectionOf("no tags[/]");
     expect(err).toBeInstanceOf(MarkupError);
-    expect(err.reason).toBe("Closing tag [/] has nothing to close");
+    expect(err.reason).toBe("Closing tag [/] has no open style tag to close");
     expect(err.markup).toBe("no tags[/]");
     expect([err.offset, err.line, err.column]).toEqual([7, 1, 8]);
     expect(err.openTags).toEqual([]);
@@ -210,6 +210,13 @@ describe("markup syntax errors report their location", () => {
     expect(err.message).not.toMatch(/[\t\x1b]/);
     expect(caret.indexOf("^")).toBe(source.indexOf("[/x]"));
     expect(err.column).toBe(6);
+  });
+
+  it("shows control characters inside the quoted tags as spaces too, keeping the fields as written", () => {
+    const err = rejectionOf("[bold\x1b][/x\x1b]");
+    expect(err.message).not.toMatch(/\x1b/);
+    expect(err.reason).toBe("Closing tag [/x\x1b] doesn't match any open tag");
+    expect(err.openTags).toEqual(["[bold\x1b]"]);
   });
 });
 
