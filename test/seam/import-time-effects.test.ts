@@ -25,8 +25,8 @@ import { importTimeEffects, describeEffect, type ImportTimeEffect } from "./impo
 
 /**
  * Every file under `src/`, not merely the ones reachable from an entry point.
- * `sideEffects: false` is read per-module by the bundler and `files: ["dist"]`
- * ships the whole tree, so a module nothing imports today is still covered by
+ * `sideEffects: false` is read per-module by the bundler and `files` ships the
+ * whole of `dist/`, so a module nothing imports today is still covered by
  * the field — and is the one most likely to grow a registration nobody
  * reviews for this.
  */
