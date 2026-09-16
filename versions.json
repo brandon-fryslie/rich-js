@@ -4,15 +4,22 @@
     {
       "version": "pr-133",
       "ref": "refs/pull/133/merge",
-      "sha": "fcb8b0c71447946e6ef4d671def7dcdef0126561",
-      "timestamp": "2026-09-16T15:09:36.569Z",
+      "sha": "3373c5de20d934115b1f60e9b7afe502b84b2efc",
+      "timestamp": "2026-09-16T15:10:49.462Z",
       "commits": [
         {
-          "sha": "fcb8b0c71447946e6ef4d671def7dcdef0126561",
+          "sha": "3373c5de20d934115b1f60e9b7afe502b84b2efc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T15:09:04Z",
-          "message": "Merge 8c94557a7f3f059596bde01cbbef6d15a84f370e into 438535c846d32c83855821b9dd7213a3cfe6e822\n"
+          "timestamp": "2026-09-16T15:10:17Z",
+          "message": "Merge 130794b012ebf88baa12be7f0129ea2112fa117d into 438535c846d32c83855821b9dd7213a3cfe6e822\n"
+        },
+        {
+          "sha": "130794b012ebf88baa12be7f0129ea2112fa117d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:10:12-06:00",
+          "message": "test(seam): surface the compiler's output when the staged build fails (rich-artifact-c9k.3)\n\ntsc writes type errors to stdout, and an execFileSync error message carries\nonly stderr, so a broken build failed both tarball tests with a bare\n'Command failed'. Both npm calls now go through a helper whose error\nincludes both streams.\n"
         },
         {
           "sha": "8c94557a7f3f059596bde01cbbef6d15a84f370e",
