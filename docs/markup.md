@@ -68,6 +68,9 @@ console.print("[bold]Hello[/red]");
 console.print("text[/]");
 ```
 
+A misspelled style name is not one of them. `[bold rd]typo[/]` parses, and the
+text prints unstyled; see [When a style is invalid](./style#when-a-style-is-invalid).
+
 The error is a `MarkupSyntaxError`, a subclass of `MarkupError`. Its message
 gives the line and column of the rejected tag, shows that line with a caret
 under the tag, and lists the tags still open there:

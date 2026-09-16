@@ -155,3 +155,78 @@ console.print("[my.style]Retrying[/my.style] in 30 seconds");
 ```
 
 Text forgives a missing name, but a renderable may not: a `Table` looks up `table.header` when it renders, so printing one under this theme throws `StyleSyntaxError`. Leave `inherit` on unless your theme defines every name your renderables use.
+
+## When a style is invalid
+
+If styled text printed plain, a style in it probably failed to parse. A style
+inside text that rich-js cannot parse does not throw: the text prints unstyled,
+and by default nothing reports it. The whole style string is dropped, not only
+the word that failed, so `[bold rd]typo color[/]` prints neither red nor bold. A
+name the console's theme does not define is dropped the same way.
+
+### What degrades and what throws
+
+A style attached to text degrades to unstyled when the text is printed. That
+covers markup tags, a `RichText`'s own style, and the spans that `append`,
+`stylize`, `highlightWords` and highlighters add, wherever that text sits,
+including a table cell or a panel title.
+
+Every other invalid style throws `StyleSyntaxError`:
+
+- `Style.parse` and `new Theme`, when you call them.
+- The `style` option of `console.print` and of `new Console`.
+- A style a renderable draws its own parts with, such as a `Panel` or `Table`
+  border, a `Rule`, or a `Tree`'s guide lines. These throw when the renderable
+  is printed.
+
+Markup that does not parse, such as a closing tag that matches no open tag,
+always throws. That error is a `MarkupSyntaxError`, described under
+[Markup parse errors](./markup#parse-errors).
+
+### Reporting dropped styles
+
+Pass `onStyleError` to the `Console` to hear about each style it drops. It
+receives the `StyleSyntaxError` and the whole style string that failed:
+
+```typescript
+import { Console } from "@promptctl/rich-js";
+
+const console = new Console({
+  onStyleError: (error, style) => {
+    process.stderr.write(`style "${style}": ${error.message}\n`);
+  },
+});
+
+console.print("[bold rd]typo color[/]");
+// stderr: style "bold rd": Invalid style definition "rd" (did you mean "red"?): ColorParseError: Failed to parse color: "rd"
+```
+
+The message names only the word that failed, which is why the handler also gets
+the whole string. When that word is close to a color or attribute name, the
+message suggests it. Theme names are never suggested, so `[my.heder]` gets no
+"did you mean".
+
+The handler runs each time a style is resolved, not once per distinct string. A
+style used twice is reported twice, and a `Live` display reports it again on
+every refresh, so deduplicate by `style` if you log.
+
+`renderToString` takes no handler. Text rendered through it drops invalid styles
+silently.
+
+### Failing on invalid styles
+
+To make invalid styles throw, rethrow from the handler:
+
+```typescript
+const console = new Console({
+  onStyleError: (error) => {
+    throw error;
+  },
+});
+
+console.print("[bold rd]typo color[/]"); // throws StyleSyntaxError
+```
+
+The error leaves `console.print` instead of being dropped. There is no separate
+strict option, because this handler is the strict mode. Use it in tests and in
+development, so a typo fails at the line that printed it.
