@@ -4,7 +4,9 @@
     "outDir": "dist-demo",
     "rootDir": ".",
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
+    // `dist-demo/` sits beside `src/` and `examples/`, so its maps resolve.
+    "sourceMap": true
   },
   "include": ["src/**/*.ts", "examples/**/*.ts"],
   "exclude": ["node_modules", "dist", "dist-demo", "test"]
