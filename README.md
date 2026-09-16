@@ -475,24 +475,7 @@ EXPORT_HTML=out.html npm run themes-and-color-studio  # also write a styled HTML
 
 ### Demo coverage is checked, not claimed
 
-`test/coverage/coverage.test.ts` asserts that every public export is referenced by at least one file under `examples/`. Add a public export without demoing it and CI fails.
-
-The check builds its universe from `package.json#exports` when the test loads, so there is no hand-written list of covered symbols to maintain — and none to drift out of date. Coverage is counted per *symbol origin*, meaning the declaring file plus the declared name, so one declaration re-exported under two names is still one thing to demonstrate. Renaming a symbol on import inside a demo still counts; `import * as rich` does not, because a namespace import never names what it pulls in.
-
-An export that genuinely cannot be demonstrated at runtime belongs in `test/coverage/coverage-allowlist.ts` with a written reason. The allowlist is validated in both directions: an entry pointing at no real export fails the suite, and so does an entry for something a demo now covers. You can neither widen the exemption quietly nor leave a stale one lying around.
-
-Two things to know before adding a demo. `examples/shared/` is a helper module rather than a demo, and references from it count — the verifier walks every file under `examples/`, not just the entry points. And a demo reaches the browser gallery only if it has an `examples/<name>/wire.ts`; `npm run demos:build` fails loudly when a `wire.ts` has no compiled output rather than dropping the demo from the site.
-
-That check is a floor, not a goal. A script that imports thirty exports and prints them in sequence passes it; a small interactive TUI that lets you drive eight of them in a real composition is the better demo, and no test can tell you which one you wrote.
-
-**Bugs found and fixed via demo integration** — the argument for exercising the library this way rather than only in unit tests:
-
-| Bug | Location | Impact | Fix |
-|---|---|---|---|
-| `Live.refresh()` strips all ANSI styles | `Live.refresh` in `src/renderables/live.ts` | Every renderable flowing through `Live` (including `Status`, `Progress`, `Spinner`) appeared unstyled | Apply `style.render(text, colorSystem)` instead of bare `s.text` |
-| `Progress.render()` drops column styles | `Progress.render` in `src/renderables/progress.ts` | Progress percentage, timing, and spinner styles were stripped when building table cells | Use `RichText.append(text, style)` to preserve segment styles |
-| `Tree` emits double blank lines | `Tree.render` in `src/renderables/tree.ts` | Label rendering and the explicit `Segment.line()` both contributed a newline, producing blank lines between tree entries | Make `RichText` stop emitting a trailing newline so `Tree`'s explicit `yield Segment.line()` remains the only line break |
-| `Spinner` constructor rejects `undefined` name | `Spinner` constructor in `src/renderables/spinner.ts` | `SpinnerColumn` (used by `Progress`) passed optional `string \| undefined` to required `string` parameter | Make `name` optional, default to `DEFAULT_SPINNER` |
+`test/coverage/coverage.test.ts` fails CI when a public export goes undemonstrated: a value must be imported by some file under `examples/`, and a type must be reachable from a value that is. The few exports no demo can reach are listed in `test/coverage/coverage-allowlist.ts`, each with its reason. Those two files, not this page, say what the demos cover.
 
 ## Environment Variables
 
