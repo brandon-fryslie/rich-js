@@ -54,7 +54,7 @@
   ],
   "scripts": {
     "prepublishOnly": "node scripts/verify-release-tag.mjs",
-    "build": "tsc",
+    "build": "npm run clean && tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit && tsc -p tsconfig.scripts.json && tsc -p tsconfig.test.json",
