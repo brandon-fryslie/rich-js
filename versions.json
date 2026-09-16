@@ -4,15 +4,22 @@
     {
       "version": "pr-131",
       "ref": "refs/pull/131/merge",
-      "sha": "3b6ac3e35c33a5efbe4ea31bb32f88bad14ca620",
-      "timestamp": "2026-09-16T13:16:50.250Z",
+      "sha": "8f0d2523bd653962475206303a135665cabbbc7b",
+      "timestamp": "2026-09-16T14:45:12.802Z",
       "commits": [
         {
-          "sha": "3b6ac3e35c33a5efbe4ea31bb32f88bad14ca620",
+          "sha": "8f0d2523bd653962475206303a135665cabbbc7b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T07:16:22-06:00",
-          "message": "Merge 114674d773676a30f8be93a20d2ab5dd7d51cb05 into 7ddb9cc06d6d5fccda57bdd3e560254e517837a3\n"
+          "timestamp": "2026-09-16T08:44:47-06:00",
+          "message": "Merge 77a971ef70e1ca74b907c1af1b5c1f3e4cee4de6 into 7ddb9cc06d6d5fccda57bdd3e560254e517837a3\n"
+        },
+        {
+          "sha": "77a971ef70e1ca74b907c1af1b5c1f3e4cee4de6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T08:44:42-06:00",
+          "message": "fix(artifact): add Textual's notice to THIRD-PARTY-NOTICES (rich-artifact-c9k.1)\n\nMost of the bundled themes, and the formulas buildPalette uses to derive\na full palette from base colours, come from Textual. Textual is MIT-\nlicensed under its own copyright (2021 Will McGugan), which the first\ncommit left out. Found in code review.\n"
         },
         {
           "sha": "114674d773676a30f8be93a20d2ab5dd7d51cb05",
