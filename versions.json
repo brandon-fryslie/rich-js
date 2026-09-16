@@ -4,15 +4,22 @@
     {
       "version": "pr-141",
       "ref": "refs/pull/141/merge",
-      "sha": "db53d5323861fb4ef15e9afad110db4433f3e1ec",
-      "timestamp": "2026-09-16T16:22:55.078Z",
+      "sha": "7a910148fb2ca928c645041035d56a193d7c2beb",
+      "timestamp": "2026-09-16T16:25:11.649Z",
       "commits": [
         {
-          "sha": "db53d5323861fb4ef15e9afad110db4433f3e1ec",
+          "sha": "7a910148fb2ca928c645041035d56a193d7c2beb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T10:22:28-06:00",
-          "message": "Merge 21f7d1772beb3253b4fbfc14717c105ce3c06f7f into af2c525ece4fc0ab7f3778ccf3695a3bb6beea9e\n"
+          "timestamp": "2026-09-16T16:24:44Z",
+          "message": "Merge 58583ce7ebd35f6b0ff3d79cf01543f28760fb2f into af2c525ece4fc0ab7f3778ccf3695a3bb6beea9e\n"
+        },
+        {
+          "sha": "58583ce7ebd35f6b0ff3d79cf01543f28760fb2f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T10:24:39-06:00",
+          "message": "docs(style): drop the panel title from the styles that degrade\n\nA Panel reads its title as plain text, so a style on it is never resolved\nand never reaches onStyleError. The sentence now names only a table cell,\nwhich does degrade and report. The title bug is rich-panel ticket filed\nseparately.\n"
         },
         {
           "sha": "21f7d1772beb3253b4fbfc14717c105ce3c06f7f",
