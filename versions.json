@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-137",
+      "ref": "refs/pull/137/merge",
+      "sha": "8b8f62bcd950c9849ed40d439a902340268a0a3d",
+      "timestamp": "2026-09-16T15:38:57.695Z",
+      "commits": [
+        {
+          "sha": "8b8f62bcd950c9849ed40d439a902340268a0a3d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:38:32-06:00",
+          "message": "Merge 52b706bea6008772a88ecad0348ac0515e2ed64a into eb7862cb8f3189662570f0508a1cead18e0a62a8\n"
+        },
+        {
+          "sha": "52b706bea6008772a88ecad0348ac0515e2ed64a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:38:28-06:00",
+          "message": "fix(style): keep the colour parser's reason in style parse errors (rich-diagnostics-un7.1)\n\nStyle.parse rewrapped every colour failure in a bare catch and threw the\noriginal away, so `color(300)` reported only `Invalid style definition:\n\"color(300)\"` while ColorSpec.parse on the same token knew the number was\nout of range.\n\nBoth colour positions (foreground and `on` background) now go through one\nhelper that carries the colour error in the message and as `cause`:\n\n  Invalid style definition \"color(300)\": ColorParseError: ColorSpec number\n  300 is out of range (0-255)\n\nStyleSyntaxError takes ErrorOptions so the cause can be chained. The\nmessage prefix drops its colon (`Invalid style definition \"x\": reason`) so\nthe chain reads as one `what: why` sequence.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "eb7862cb8f3189662570f0508a1cead18e0a62a8",
