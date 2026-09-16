@@ -106,8 +106,11 @@ export interface ConsoleOptions {
   theme?: Theme;
   highlighter?: Highlighter;
   /**
-   * Told about each style string a render degrades to unstyled — a misspelled
-   * name, a key the theme lacks. Throw from it to make rendering strict.
+   * Called each time a render resolves a style string it cannot parse — a
+   * misspelled name, a key the theme lacks — and degrades it to unstyled.
+   * Calls are per resolution, not per distinct string: a style read twice, or
+   * redrawn by a refresh, is reported again. Throw from it to make rendering
+   * strict.
    */
   onStyleError?: StyleErrorHandler;
 }

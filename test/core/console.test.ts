@@ -1131,12 +1131,6 @@ describe("Console environment injection", () => {
   });
 });
 
-// --- Theme resolution ---
-
-// Each case prints a style name through a console whose theme defines it, and
-// compares the bytes against a default console printing the definition itself.
-// Byte equality says the name drew as the theme's style; the reference Rich
-// 9d8f9a3 resolves every one of these through `console.get_style`.
 describe("Console style error reporting", () => {
   function printed(item: unknown, options: ConsoleOptions = {}): string {
     const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });
@@ -1180,6 +1174,15 @@ describe("Console style error reporting", () => {
     expect(heard).toEqual([]);
   });
 
+  it("reports a style once per resolution, so each print reports it again", () => {
+    const heard: string[] = [];
+    const { console: c } = makeConsole({ onStyleError: (_error, style) => void heard.push(style) });
+    const text = new RichText("x", { style: "notastyle" });
+    c.print(text);
+    c.print(text);
+    expect(heard).toEqual(["notastyle", "notastyle"]);
+  });
+
   it("fails the print when the handler throws", () => {
     const strict = (error: StyleSyntaxError) => {
       throw error;
@@ -1194,6 +1197,12 @@ describe("Console style error reporting", () => {
   });
 });
 
+// --- Theme resolution ---
+
+// Each case prints a style name through a console whose theme defines it, and
+// compares the bytes against a default console printing the definition itself.
+// Byte equality says the name drew as the theme's style; the reference Rich
+// 9d8f9a3 resolves every one of these through `console.get_style`.
 describe("Console theme resolution", () => {
   /** The bytes one print writes, with colour on. */
   function printed(item: unknown, options: ConsoleOptions = {}): string {

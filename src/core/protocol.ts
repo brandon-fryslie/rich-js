@@ -34,9 +34,10 @@ export interface RenderOptions {
    */
   theme?: Theme;
   /**
-   * Told about a style string that failed to parse where a render degrades it
-   * to unstyled instead of failing. Absent, the failure passes silently. A
-   * handler that throws makes the render strict: the error leaves `render`.
+   * Called each time a render degrades a style string it cannot parse to
+   * unstyled, once per resolution — a style the render reads twice is reported
+   * twice. Absent, the failure passes silently. A handler that throws makes
+   * the render strict: the error leaves `render`.
    */
   onStyleError?: StyleErrorHandler;
 }
