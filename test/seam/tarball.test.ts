@@ -28,11 +28,11 @@ import { describe, it, expect } from "vitest";
 import { execFileSync } from "node:child_process";
 import {
   copyFileSync,
-  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -56,11 +56,16 @@ function committableFiles(): string[] {
     ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
     { cwd: REPO_ROOT, encoding: "utf8" },
   );
-  // A tracked file deleted in the working tree is still listed; the copy
-  // mirrors the working tree, so it stays deleted.
+  // Only regular files on disk are copied. A tracked file deleted in the working
+  // tree is still listed, and the copy mirrors the working tree, so it stays
+  // deleted. A nested repository or a submodule is listed as a directory, and
+  // a fresh checkout would not have its contents either.
   return listing
     .split("\0")
-    .filter((file) => file !== "" && existsSync(path.join(REPO_ROOT, file)));
+    .filter(
+      (file) =>
+        file !== "" && statSync(path.join(REPO_ROOT, file), { throwIfNoEntry: false })?.isFile() === true,
+    );
 }
 
 /**
