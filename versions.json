@@ -4,15 +4,22 @@
     {
       "version": "pr-132",
       "ref": "refs/pull/132/merge",
-      "sha": "3eb908a4f4c3fd751ffe229fb4872f59c8f3ac5e",
-      "timestamp": "2026-09-16T14:54:12.308Z",
+      "sha": "0c4e72abd6f0d6074b0412e0360db24aa40cd574",
+      "timestamp": "2026-09-16T14:55:42.289Z",
       "commits": [
         {
-          "sha": "3eb908a4f4c3fd751ffe229fb4872f59c8f3ac5e",
+          "sha": "0c4e72abd6f0d6074b0412e0360db24aa40cd574",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T08:53:47-06:00",
-          "message": "Merge 7361a0788ff7ab1e1ccdecb05ef1c23bfc6bfc37 into 12dac135e453e56a8bb9d3b9c36b616c1d076742\n"
+          "timestamp": "2026-09-16T14:55:14Z",
+          "message": "Merge 359f63c81890bc6a4a8cfb115954fe95cafc5193 into 12dac135e453e56a8bb9d3b9c36b616c1d076742\n"
+        },
+        {
+          "sha": "359f63c81890bc6a4a8cfb115954fe95cafc5193",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T08:55:06-06:00",
+          "message": "fix(build): build dist/ from empty so stale output cannot ship (rich-artifact-c9k.2)\n\ntsc never deletes what it no longer emits, and package.json#files ships\nall of dist/. A checkout built before the previous commit kept its .map\nfiles through a rebuild, and a hand-run npm publish would have carried\nthem into the tarball still naming the unpublished src/. The same held\nfor the output of any module deleted or renamed since the last clean.\n\nbuild now runs clean first, so dist/ is exactly what tsc emits from src/\ntoday. Excluding *.map through files was not taken: it would state the\nno-maps decision a second time and leave other stale output shipping.\n"
         },
         {
           "sha": "7361a0788ff7ab1e1ccdecb05ef1c23bfc6bfc37",
