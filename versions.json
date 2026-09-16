@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-130",
-      "ref": "refs/pull/130/merge",
-      "sha": "caecb43a243f320708d67313eb988c9035e8128e",
-      "timestamp": "2026-09-16T12:15:54.881Z",
-      "commits": [
-        {
-          "sha": "caecb43a243f320708d67313eb988c9035e8128e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T12:15:26Z",
-          "message": "Merge d33db9dbf29a35ff06df04385b5f3e17854acf41 into 378187e7ea59c7770ec7843c8bed2165600c2a45\n"
-        },
-        {
-          "sha": "d33db9dbf29a35ff06df04385b5f3e17854acf41",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T06:15:22-06:00",
-          "message": "fix(seam): report a quoted workflow key as unreadable (rich-workflows-0pr.sut)\n\nThe net under the recognised forms required the colon directly after the\nkey name, so \"uses\": and 'node-version': — valid YAML, run fine by\nActions — produced no fact and no report, and a disagreeing pin or an\nungranted literal written that way passed the gate. The net now allows a\nclosing quote before the colon, which is what the header and CLAUDE.md\nalready promised: a shape the gate does not read fails loudly.\n"
-        },
-        {
-          "sha": "fbb5d61e440c7b9ea218101e9b8bc046c792b7b8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T06:13:47-06:00",
-          "message": "fix(seam): let each occurrence of a literal carry its own grant (rich-workflows-0pr.sut)\n\nThe grant table's uniqueness check forbade the second grant the count rule\nrequires, so a second job needing the same literal could satisfy neither.\nThe count rule already reports a surplus grant, so the uniqueness check\nenforced nothing it did not, and is deleted.\n\nAlso split lines on CRLF as well as LF, so a Windows checkout does not read\nevery pin as unreadable.\n"
-        },
-        {
-          "sha": "b0662ffb75cf32c6b679a9bf9072df8310de1f46",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T06:11:45-06:00",
-          "message": "docs(claude): describe the workflow consistency gate (rich-workflows-0pr.sut)\n\nThe section every other test/seam gate has: what it asserts, why .github/\nneeded one, that code-review.yml is read rather than exempt, the temptation\nit guards against, and its blind spot. The gate's module header owns the\nargument; the section restates neither the pinned majors nor the granted\nliteral.\n"
-        },
-        {
-          "sha": "a1fe6ceacd7f281a2fc3b162d6b481f4cc26af3c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T06:09:49-06:00",
-          "message": "test(seam): gate workflow consistency instead of keeping it by hand (rich-workflows-0pr.sut)\n\nrich-workflows-0pr.2 put every action on one major and every job that runs\nsrc/ on node-version-file, and nothing held either in place: .github/ was\nthe one area with no seam gate.\n\ntest/seam/workflow-pins.test.ts reads every YAML file under .github/ and\nfails when a remote action is pinned to more than one major, and when a\nbare node-version: literal appears without a row in NODE_VERSION_LITERALS,\nor a row outlives its literal. code-review.yml is not exempt; its SHA pin's\n\"# vN\" trailer is what gets read.\n\nRegex over lines rather than a YAML parser: none is in the tree, and any\nnon-comment line mentioning either key in a shape the gate does not\nrecognise is reported as unreadable, so a new shape fails instead of\npassing unseen. Dependabot was considered and not added; the header says why.\n\nBlind spot: this checks that the files agree with each other, not that the\nmajor they agree on is right or that any workflow runs, and it trusts a SHA\npin's trailer without checking it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "378187e7ea59c7770ec7843c8bed2165600c2a45",
-      "timestamp": "2026-09-15T14:13:49.310Z",
+      "sha": "7ddb9cc06d6d5fccda57bdd3e560254e517837a3",
+      "timestamp": "2026-09-16T12:18:07.016Z",
       "commits": [
         {
-          "sha": "378187e7ea59c7770ec7843c8bed2165600c2a45",
+          "sha": "7ddb9cc06d6d5fccda57bdd3e560254e517837a3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-15T08:13:13-06:00",
-          "message": "chore(deps)!: move every dependency to its latest release (0.10.0) (#129)\n\nPeer floors rise to mobx ^7.0.3 and @promptctl/go-template-js ^0.9.0.\n\n- mobx 7 drops observable.ref/.shallow for named observableRef and\n  observableShallow, and makeObservable now requires annotations; every\n  class uses TC39 accessor decorators, which register themselves, so the\n  three makeObservable(this) calls are gone.\n- TypeScript 7 ships no JavaScript compiler API, which the seam and\n  coverage gates are built on, so typescript stays on 6.0.3, the newest\n  release that has one. Its empty default for `types` is restored to\n  [\"node\"] in tsconfig.json.\n- Vite 8 compiles TypeScript with oxc, which passes TC39 decorators\n  through to Node verbatim. vitest now compiles project .ts files with\n  tsc and tsconfig.json, the compiler that builds dist/."
+          "timestamp": "2026-09-16T06:17:37-06:00",
+          "message": "test(seam): gate workflow consistency instead of keeping it by hand (rich-workflows-0pr.sut) (#130)\n\n* test(seam): gate workflow consistency instead of keeping it by hand (rich-workflows-0pr.sut)\n\nrich-workflows-0pr.2 put every action on one major and every job that runs\nsrc/ on node-version-file, and nothing held either in place: .github/ was\nthe one area with no seam gate.\n\ntest/seam/workflow-pins.test.ts reads every YAML file under .github/ and\nfails when a remote action is pinned to more than one major, and when a\nbare node-version: literal appears without a row in NODE_VERSION_LITERALS,\nor a row outlives its literal. code-review.yml is not exempt; its SHA pin's\n\"# vN\" trailer is what gets read.\n\nRegex over lines rather than a YAML parser: none is in the tree, and any\nnon-comment line mentioning either key in a shape the gate does not\nrecognise is reported as unreadable, so a new shape fails instead of\npassing unseen. Dependabot was considered and not added; the header says why.\n\nBlind spot: this checks that the files agree with each other, not that the\nmajor they agree on is right or that any workflow runs, and it trusts a SHA\npin's trailer without checking it.\n\n* docs(claude): describe the workflow consistency gate (rich-workflows-0pr.sut)\n\nThe section every other test/seam gate has: what it asserts, why .github/\nneeded one, that code-review.yml is read rather than exempt, the temptation\nit guards against, and its blind spot. The gate's module header owns the\nargument; the section restates neither the pinned majors nor the granted\nliteral.\n\n* fix(seam): let each occurrence of a literal carry its own grant (rich-workflows-0pr.sut)\n\nThe grant table's uniqueness check forbade the second grant the count rule\nrequires, so a second job needing the same literal could satisfy neither.\nThe count rule already reports a surplus grant, so the uniqueness check\nenforced nothing it did not, and is deleted.\n\nAlso split lines on CRLF as well as LF, so a Windows checkout does not read\nevery pin as unreadable.\n\n* fix(seam): report a quoted workflow key as unreadable (rich-workflows-0pr.sut)\n\nThe net under the recognised forms required the colon directly after the\nkey name, so \"uses\": and 'node-version': — valid YAML, run fine by\nActions — produced no fact and no report, and a disagreeing pin or an\nungranted literal written that way passed the gate. The net now allows a\nclosing quote before the colon, which is what the header and CLAUDE.md\nalready promised: a shape the gate does not read fails loudly."
         }
       ]
     }
