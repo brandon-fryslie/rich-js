@@ -4,15 +4,22 @@
     {
       "version": "pr-139",
       "ref": "refs/pull/139/merge",
-      "sha": "4cc58145a73e2a34485bb0413fef9728d3a58094",
-      "timestamp": "2026-09-16T15:56:18.452Z",
+      "sha": "ac4087bbaa9ff5d67fb753372072241fc4bfcc9b",
+      "timestamp": "2026-09-16T15:59:40.555Z",
       "commits": [
         {
-          "sha": "4cc58145a73e2a34485bb0413fef9728d3a58094",
+          "sha": "ac4087bbaa9ff5d67fb753372072241fc4bfcc9b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:55:50-06:00",
-          "message": "Merge a358ede336f530bff19adfb6675eb0ff837b7f15 into 6cf60451c1f9b48538659b3c80914e0b78d16243\n"
+          "timestamp": "2026-09-16T15:59:14Z",
+          "message": "Merge cf54f7a8bcd4bcc15bdc1bc182d2782d6ce7f137 into 6cf60451c1f9b48538659b3c80914e0b78d16243\n"
+        },
+        {
+          "sha": "cf54f7a8bcd4bcc15bdc1bc182d2782d6ce7f137",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:59:09-06:00",
+          "message": "fix(style): bound near-miss cost and cover every word the parser names\n\nChanges from the local review of the first commit:\n\n- Cost. Only successful parses are cached, so a bad style runs the\n  suggestion search again on every render. It measured 1.1 ms per failure,\n  and 290 ms for a 2000-character token. The search now skips any name\n  whose length differs from the token's by more than the budget, since two\n  words are at least that many edits apart; results are unchanged. It also\n  keeps three rows instead of a full grid. The measurements are now\n  0.10 ms and 0.017 ms. No failure cache was added, because it would be\n  more shared mutable state for a path that is already an error.\n- Case. The colour parser ignores case, so `Cyna` is now as near `cyan`\n  as `cyna` is.\n- Vocabulary. The comment said the name lists were built from the words\n  the parser accepts, but `default` and the `not`/`on`/`link` keywords\n  were missing. `COLOR_NAMES` now sits in color.ts beside the table\n  `parseSingle` reads, so the claim is true.\n"
         },
         {
           "sha": "a358ede336f530bff19adfb6675eb0ff837b7f15",
