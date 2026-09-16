@@ -4,15 +4,22 @@
     {
       "version": "pr-140",
       "ref": "refs/pull/140/merge",
-      "sha": "03b9e3162f6460a53f914aaf1eb95aa77bcd2cc5",
-      "timestamp": "2026-09-16T16:13:47.877Z",
+      "sha": "9ed4911b9c3283223b1243a04dd599a4c004857e",
+      "timestamp": "2026-09-16T16:16:20.167Z",
       "commits": [
         {
-          "sha": "03b9e3162f6460a53f914aaf1eb95aa77bcd2cc5",
+          "sha": "9ed4911b9c3283223b1243a04dd599a4c004857e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T16:13:22Z",
-          "message": "Merge ba1a6971b8209d8c3499cb0b9d161a2e439985fc into 4a47b57cf8b3a8adafc0290007d74429c624706a\n"
+          "timestamp": "2026-09-16T16:15:50Z",
+          "message": "Merge 2f10f734434c5aa264339a2d67b3f38b5c44d60d into 4a47b57cf8b3a8adafc0290007d74429c624706a\n"
+        },
+        {
+          "sha": "2f10f734434c5aa264339a2d67b3f38b5c44d60d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T10:15:45-06:00",
+          "message": "fix(markup): name every plugin pair open where an overlap is rejected\n\nMedium review of #140: the overlap error's openTags was [outer, inner],\npicked by hand, so a third pair still open at the caret was left out.\nIn \"[pa][pb][pc][/pa][/pc][/pb]\" it named [pa] [pb] and not [pc]. It is now\nderived from the pairs themselves: a pair is open at the caret when it\nopens before the rejected closing tag and closes at or after it.\n\nThe review's other finding, that \"[bold]x[click]y[/click]z[/bold]\" reports\nno open tags, comes from style tags not spanning a plugin pair at all,\nwhich master already rejects. It is filed as rich-markup-cg6 rather than\nreworded here.\n"
         },
         {
           "sha": "ba1a6971b8209d8c3499cb0b9d161a2e439985fc",
