@@ -3,6 +3,7 @@
  */
 
 import {
+  ANSI_COLOR_NAMES,
   ColorRgba,
   ColorSpec,
   ColorDepth,
@@ -589,18 +590,73 @@ export class Theme {
 
 const ATTRIBUTE_SET = new Set<string>(ATTRIBUTE_NAMES);
 
+// The names each position of a definition can hold. The short aliases are
+// left out: `b` is no help to someone who typed `bolt`, and a one-letter name
+// sits one edit from every other short word.
+// [LAW:one-source-of-truth] Derived from the tables the parser accepts from.
+const COLOR_WORDS = Object.keys(ANSI_COLOR_NAMES);
+const FOREGROUND_WORDS = [...ATTRIBUTE_NAMES, ...COLOR_WORDS];
+
+/**
+ * Optimal string alignment distance: insertions, deletions, substitutions, and
+ * swaps of two neighbouring letters each cost one edit, so `cyna` is as near
+ * `cyan` as `rd` is to `red`.
+ */
+function editDistance(a: string, b: string): number {
+  const d = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
+  );
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const swap = i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1];
+      d[i]![j] = Math.min(
+        d[i - 1]![j]! + 1,
+        d[i]![j - 1]! + 1,
+        d[i - 1]![j - 1]! + Number(a[i - 1] !== b[j - 1]),
+        swap ? d[i - 2]![j - 2]! + 1 : Infinity,
+      );
+    }
+  }
+  return d[a.length]![b.length]!;
+}
+
+/**
+ * The ` (did you mean …?)` clause for a word no position accepted, or `""`
+ * when nothing in `words` is a plausible typo of it.
+ *
+ * Plausible means within one edit per three letters, at least one, which lets
+ * `rd` reach `red` and keeps `hello` from reaching `yellow`. Every name tied
+ * for nearest is offered: `gold` is one edit from `bold` and from three
+ * `goldN` colours, and choosing among them would be a guess the reader cannot
+ * tell from a finding.
+ */
+function nearMiss(word: string, words: readonly string[]): string {
+  const budget = Math.max(1, Math.floor(word.length / 3));
+  const scored = words.map((name) => ({ name, distance: editDistance(word, name) }));
+  const nearest = Math.min(budget, ...scored.map((s) => s.distance));
+  const names = scored
+    .filter((s) => s.distance === nearest)
+    .map((s) => `"${s.name}"`)
+    .sort();
+  return names.length === 0 ? "" : ` (did you mean ${names.join(" or ")}?)`;
+}
+
 /**
  * A style token read as a colour. The colour parser's own error is the reason
  * the token failed, so it rides along twice: in the message, for a reader with
  * only the text, and as `cause`, for code that wants the original error.
  *
- * [LAW:single-enforcer] Both colour positions in a definition rewrap here.
+ * [LAW:single-enforcer] Both colour positions in a definition rewrap here, and
+ * the near miss is named here rather than by the colour parser: only a
+ * definition knows whether the token could also have been an attribute.
  */
-function parseStyleColor(token: string, failure: string): ColorSpec {
+function parseStyleColor(token: string, failure: string, words: readonly string[]): ColorSpec {
   try {
     return ColorSpec.parse(token);
   } catch (cause) {
-    throw new StyleSyntaxError(`${failure} "${token}": ${String(cause)}`, { cause });
+    throw new StyleSyntaxError(`${failure} "${token}"${nearMiss(token, words)}: ${String(cause)}`, {
+      cause,
+    });
   }
 }
 
@@ -621,7 +677,7 @@ function parseStyleDefinition(definition: string): Style {
       }
       const attrName = ATTRIBUTE_SHORT_ALIASES[next] ?? next;
       if (!ATTRIBUTE_SET.has(attrName)) {
-        throw new StyleSyntaxError(`Invalid attribute: "${next}"`);
+        throw new StyleSyntaxError(`Invalid attribute: "${next}"${nearMiss(next, ATTRIBUTE_NAMES)}`);
       }
       (opts as Record<string, boolean>)[attrName] = false;
       i++;
@@ -635,7 +691,7 @@ function parseStyleDefinition(definition: string): Style {
       if (!next) {
         throw new StyleSyntaxError(`Expected color after "on" in style definition`);
       }
-      opts.bgcolor = parseStyleColor(next, "Invalid background color");
+      opts.bgcolor = parseStyleColor(next, "Invalid background color", COLOR_WORDS);
       i++;
       continue;
     }
@@ -660,7 +716,7 @@ function parseStyleDefinition(definition: string): Style {
     }
 
     // Must be a color
-    opts.color = parseStyleColor(token, "Invalid style definition");
+    opts.color = parseStyleColor(token, "Invalid style definition", FOREGROUND_WORDS);
     i++;
   }
 
