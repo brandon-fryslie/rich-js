@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-133",
-      "ref": "refs/pull/133/merge",
-      "sha": "3373c5de20d934115b1f60e9b7afe502b84b2efc",
-      "timestamp": "2026-09-16T15:10:49.462Z",
-      "commits": [
-        {
-          "sha": "3373c5de20d934115b1f60e9b7afe502b84b2efc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T15:10:17Z",
-          "message": "Merge 130794b012ebf88baa12be7f0129ea2112fa117d into 438535c846d32c83855821b9dd7213a3cfe6e822\n"
-        },
-        {
-          "sha": "130794b012ebf88baa12be7f0129ea2112fa117d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:10:12-06:00",
-          "message": "test(seam): surface the compiler's output when the staged build fails (rich-artifact-c9k.3)\n\ntsc writes type errors to stdout, and an execFileSync error message carries\nonly stderr, so a broken build failed both tarball tests with a bare\n'Command failed'. Both npm calls now go through a helper whose error\nincludes both streams.\n"
-        },
-        {
-          "sha": "8c94557a7f3f059596bde01cbbef6d15a84f370e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:08:59-06:00",
-          "message": "test(seam): copy only regular files into the tarball stage (rich-artifact-c9k.3)\n\nA nested repository or a submodule is listed by git ls-files as a\ndirectory, and copyFileSync threw on it before the build ever ran. A\nfresh checkout would not carry its contents either, so the stage now\ntakes only regular files.\n"
-        },
-        {
-          "sha": "80f80b005109939cb972eca367685f376985823e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:05:54-06:00",
-          "message": "test(seam): build and pack the tarball to gate its contents (rich-artifact-c9k.3)\n\nThe artifact fixes from c9k.1 and c9k.2 are each one line in a different\nfile (a root LICENSE, THIRD-PARTY-NOTICES in `files`, sourceMap and\ndeclarationMap off, a clean step in `build`), and nothing read the tarball\nback. test/seam/tarball.test.ts copies the checkout into a temp directory,\nruns the real `npm run build`, and asks `npm pack --dry-run --json` what\nwould ship. It fails when LICENSE or THIRD-PARTY-NOTICES is missing or\nempty, when a .map entry ships, or when a packed file carries a\nsourceMappingURL. That last case covers excluding *.map from `files`,\nwhich c9k.2 rejected for leaving the same dead reference.\n\nIt builds rather than reading dist/, because the CI gate runs `npm test`\nbefore anything is built, and a laptop's dist/ is whatever the last build\nleft. A second staged build, with both licence files deleted and maps\nturned back on, must be refused, so the ticket's acceptance criterion is\nitself a test. The first build plants stale maps in dist/ to prove the\nclean step works.\n\nAlso corrects publish.yml's comment that `files` is [\"dist\"].\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "438535c846d32c83855821b9dd7213a3cfe6e822",
-      "timestamp": "2026-09-16T14:57:35.130Z",
+      "sha": "f09106aaca526b2d20b7240a58b19775edc179d7",
+      "timestamp": "2026-09-16T15:13:01.675Z",
       "commits": [
         {
-          "sha": "438535c846d32c83855821b9dd7213a3cfe6e822",
+          "sha": "f09106aaca526b2d20b7240a58b19775edc179d7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T08:57:03-06:00",
-          "message": "fix(artifact): publish no sourcemaps (rich-artifact-c9k.2) (#132)\n\n* fix(artifact): publish no sourcemaps (rich-artifact-c9k.2)\n\nThe tarball carried 200 .map files, every one naming a source under\n../../src/, which package.json#files does not publish. Each resolved to a\npath absent from a consumer's node_modules, and each .js/.d.ts carried a\nsourceMappingURL pointing at it.\n\ndist/ is the npm artifact and nothing else, so the root tsconfig now emits\nneither sourceMap nor declarationMap. Excluding *.map through `files`\ninstead would have left the sourceMappingURL comments dangling, which is\nthe same dead reference in a different place. Publishing src/ was the\nother way to make the maps resolve; it was not taken because tsc's ES2022\noutput keeps its comments and reads as the source minus its types, so the\nmaps bought a debugging consumer little for ~1 MB more and a published\nsrc/ layout contract.\n\ntsconfig.demo.json turns sourceMap back on: dist-demo/ sits beside src/\nand examples/, so its maps resolve and local debugging keeps them.\n\nnpm pack --dry-run: 404 files / 1.8 MB unpacked -> 204 files / 1.1 MB,\nzero .map entries.\n\n* fix(build): build dist/ from empty so stale output cannot ship (rich-artifact-c9k.2)\n\ntsc never deletes what it no longer emits, and package.json#files ships\nall of dist/. A checkout built before the previous commit kept its .map\nfiles through a rebuild, and a hand-run npm publish would have carried\nthem into the tarball still naming the unpublished src/. The same held\nfor the output of any module deleted or renamed since the last clean.\n\nbuild now runs clean first, so dist/ is exactly what tsc emits from src/\ntoday. Excluding *.map through files was not taken: it would state the\nno-maps decision a second time and leave other stale output shipping."
+          "timestamp": "2026-09-16T09:12:33-06:00",
+          "message": "test(seam): build and pack the tarball to gate its contents (rich-artifact-c9k.3) (#133)\n\n* test(seam): build and pack the tarball to gate its contents (rich-artifact-c9k.3)\n\nThe artifact fixes from c9k.1 and c9k.2 are each one line in a different\nfile (a root LICENSE, THIRD-PARTY-NOTICES in `files`, sourceMap and\ndeclarationMap off, a clean step in `build`), and nothing read the tarball\nback. test/seam/tarball.test.ts copies the checkout into a temp directory,\nruns the real `npm run build`, and asks `npm pack --dry-run --json` what\nwould ship. It fails when LICENSE or THIRD-PARTY-NOTICES is missing or\nempty, when a .map entry ships, or when a packed file carries a\nsourceMappingURL. That last case covers excluding *.map from `files`,\nwhich c9k.2 rejected for leaving the same dead reference.\n\nIt builds rather than reading dist/, because the CI gate runs `npm test`\nbefore anything is built, and a laptop's dist/ is whatever the last build\nleft. A second staged build, with both licence files deleted and maps\nturned back on, must be refused, so the ticket's acceptance criterion is\nitself a test. The first build plants stale maps in dist/ to prove the\nclean step works.\n\nAlso corrects publish.yml's comment that `files` is [\"dist\"].\n\n* test(seam): copy only regular files into the tarball stage (rich-artifact-c9k.3)\n\nA nested repository or a submodule is listed by git ls-files as a\ndirectory, and copyFileSync threw on it before the build ever ran. A\nfresh checkout would not carry its contents either, so the stage now\ntakes only regular files.\n\n* test(seam): surface the compiler's output when the staged build fails (rich-artifact-c9k.3)\n\ntsc writes type errors to stdout, and an execFileSync error message carries\nonly stderr, so a broken build failed both tarball tests with a bare\n'Command failed'. Both npm calls now go through a helper whose error\nincludes both streams."
         }
       ]
     }
