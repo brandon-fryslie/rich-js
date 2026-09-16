@@ -598,11 +598,11 @@ describe("RichText.truncate()", () => {
     expect(t.cellLength).toBeLessThanOrEqual(5);
   });
 
-  it("adds ellipsis when overflow is ellipsis", () => {
+  it("with no options, cuts on the right and marks the cut with \u2026", () => {
     const t = new RichText("hello world");
-    t.truncate(6, { overflow: "ellipsis" });
-    expect(t.plain).toContain("\u2026");
-    expect(t.cellLength).toBeLessThanOrEqual(6);
+    t.truncate(6);
+    expect(t.plain).toBe("hello\u2026");
+    expect(t.cellLength).toBe(6);
   });
 
   it("mode: right with default marker", () => {

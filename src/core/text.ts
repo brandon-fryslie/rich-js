@@ -554,8 +554,7 @@ export class RichText implements Renderable, Measurable {
   // --- Truncation ---
 
   /**
-   * Truncate to a fixed cell-column width. Three modes, plus a back-compat
-   * `overflow` form.
+   * Truncate to a fixed cell-column width, in one of three modes.
    *
    * - `mode: "right"` (default) \u2014 drop characters from the right; append
    *   `marker` (if any) at the cut.
@@ -566,10 +565,6 @@ export class RichText implements Renderable, Measurable {
    *
    * Marker default is `"\u2026"`. Pass `marker: ""` for raw cropping without an
    * indicator glyph.
-   *
-   * Legacy form: `{ overflow: "ellipsis" }` is equivalent to
-   * `{ mode: "right", marker: "\u2026" }`; `{ overflow: "crop" | "fold" }` is
-   * equivalent to `{ marker: "" }`.
    *
    * Spans are preserved through the cut: characters that survive keep their
    * styling; the marker (if any) is inserted as plain text with no span.
@@ -582,23 +577,14 @@ export class RichText implements Renderable, Measurable {
   truncate(
     width: number,
     options?: {
-      overflow?: "fold" | "crop" | "ellipsis";
       mode?: "right" | "left" | "middle";
       marker?: string;
     },
   ): this {
     if (this.cellLength <= width) return this;
 
-    const overflow = options?.overflow;
     const mode = options?.mode ?? "right";
-    const marker =
-      options?.marker !== undefined
-        ? options.marker
-        : overflow === "ellipsis"
-          ? "\u2026"
-          : overflow === undefined && options?.mode !== undefined
-            ? "\u2026"
-            : "";
+    const marker = options?.marker ?? "\u2026";
 
     const markerWidth = cellLen(marker);
     if (width <= 0) {
