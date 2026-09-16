@@ -733,17 +733,20 @@ function pairPluginTags(
       if (annotated[closeIdx]!.end > outerEnd) {
         const inner = annotated[openIdx]!;
         const outer = annotated[outerOpenIdx]!;
-        const outerClose = annotated[pairs.get(outerOpenIdx)!]!;
         // The caret goes under the outer pair's closing tag, the point where
-        // nesting breaks. This pass tracks plugin tags only, so the two pairs
-        // are what it can name as open there.
+        // nesting breaks. This pass sees plugin tags only; of those, a pair is
+        // open there when it opens before that tag and closes at or after it.
+        const caret = annotated[pairs.get(outerOpenIdx)!]!.start;
+        const openAtCaret = sortedOpens
+          .filter((o) => annotated[o]!.start < caret && annotated[pairs.get(o)!]!.start >= caret)
+          .map((o) => annotated[o]!.fullMatch);
         throw new MarkupSyntaxError(
           `Plugin tag [${inner.pluginName}] overlaps [${outer.pluginName}]: plugin tags must nest, ` +
             `because a handler receives one contiguous slice. ` +
             `Close [/${inner.pluginName}] before [/${outer.pluginName}].`,
           origin.source,
-          origin.base + outerClose.start,
-          [...origin.enclosing, outer.fullMatch, inner.fullMatch],
+          origin.base + caret,
+          [...origin.enclosing, ...openAtCaret],
         );
       }
       continue;

@@ -276,6 +276,14 @@ describe("plugin pairs must nest", () => {
     expect(err.openTags).toEqual(["[aa]", "[bb]"]);
   });
 
+  it("names every plugin pair open at the overlap's caret, and none that closed before it", () => {
+    const registry = new MarkupRegistry();
+    for (const name of ["pa", "pb", "pc", "pd"]) registry.register(name, (ctx) => ctx.children);
+    const err = rejectionOf("[pa][pd]x[/pd][pb][pc][/pa][/pc][/pb]", registry);
+    expect(err.offset).toBe(22);
+    expect(err.openTags).toEqual(["[pa]", "[pb]", "[pc]"]);
+  });
+
   it("renders an inner plugin tag that never closes, rather than rejecting it", () => {
     // No closer means no entry in `pairs` at all, so this shape never reaches
     // the overlap test. Pinned because the obvious alternative fix — rejecting
