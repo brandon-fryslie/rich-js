@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-138",
-      "ref": "refs/pull/138/merge",
-      "sha": "922737b06fb24304a3356782e294262b3d499eff",
-      "timestamp": "2026-09-16T15:49:10.211Z",
-      "commits": [
-        {
-          "sha": "922737b06fb24304a3356782e294262b3d499eff",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T15:48:43Z",
-          "message": "Merge 5ef5e9ae4accb64a142c78cebd9fca70b5f07b04 into d332bb2011ded6751430dc93ddac91ca18709311\n"
-        },
-        {
-          "sha": "5ef5e9ae4accb64a142c78cebd9fca70b5f07b04",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:48:38-06:00",
-          "message": "fix(console): state that onStyleError fires per resolution, not per string (rich-diagnostics-un7.2)\n\nReview found a style can resolve twice in one print (a Strip joiner reads an\nitem's edge style), so \"told about each style string\" overpromised. Dedup\nwould need render-scoped state nothing owns; the doc now says what happens\nand a test pins it. The new test block moves above the theme-resolution\nheader it had split from its describe.\n"
-        },
-        {
-          "sha": "95fd1a4caed57668f002225904df93ea431b7806",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:44:22-06:00",
-          "message": "feat(console): report swallowed style errors through onStyleError (rich-diagnostics-un7.2)\n\nA misspelled style name in a RichText renders unstyled with no trace, because\ntext.ts absorbs StyleSyntaxError so a bad style degrades instead of crashing.\nThat default stays. ConsoleOptions.onStyleError now hears about each absorbed\nerror, with the whole offending style string, carried to renderables on\nRenderOptions beside the theme. A handler that throws makes rendering strict;\nstrict is a handler value, not a second flag.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d332bb2011ded6751430dc93ddac91ca18709311",
-      "timestamp": "2026-09-16T15:40:44.579Z",
+      "sha": "6cf60451c1f9b48538659b3c80914e0b78d16243",
+      "timestamp": "2026-09-16T15:50:58.687Z",
       "commits": [
         {
-          "sha": "d332bb2011ded6751430dc93ddac91ca18709311",
+          "sha": "6cf60451c1f9b48538659b3c80914e0b78d16243",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:40:17-06:00",
-          "message": "fix(style): keep the colour parser's reason in style parse errors (rich-diagnostics-un7.1) (#137)\n\nStyle.parse rewrapped every colour failure in a bare catch and threw the\noriginal away, so `color(300)` reported only `Invalid style definition:\n\"color(300)\"` while ColorSpec.parse on the same token knew the number was\nout of range.\n\nBoth colour positions (foreground and `on` background) now go through one\nhelper that carries the colour error in the message and as `cause`:\n\n  Invalid style definition \"color(300)\": ColorParseError: ColorSpec number\n  300 is out of range (0-255)\n\nStyleSyntaxError takes ErrorOptions so the cause can be chained. The\nmessage prefix drops its colon (`Invalid style definition \"x\": reason`) so\nthe chain reads as one `what: why` sequence."
+          "timestamp": "2026-09-16T09:50:35-06:00",
+          "message": "feat(console): report swallowed style errors through onStyleError (rich-diagnostics-un7.2) (#138)\n\n* feat(console): report swallowed style errors through onStyleError (rich-diagnostics-un7.2)\n\nA misspelled style name in a RichText renders unstyled with no trace, because\ntext.ts absorbs StyleSyntaxError so a bad style degrades instead of crashing.\nThat default stays. ConsoleOptions.onStyleError now hears about each absorbed\nerror, with the whole offending style string, carried to renderables on\nRenderOptions beside the theme. A handler that throws makes rendering strict;\nstrict is a handler value, not a second flag.\n\n* fix(console): state that onStyleError fires per resolution, not per string (rich-diagnostics-un7.2)\n\nReview found a style can resolve twice in one print (a Strip joiner reads an\nitem's edge style), so \"told about each style string\" overpromised. Dedup\nwould need render-scoped state nothing owns; the doc now says what happens\nand a test pins it. The new test block moves above the theme-resolution\nheader it had split from its describe."
         }
       ]
     }
