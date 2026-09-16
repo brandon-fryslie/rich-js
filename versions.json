@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-140",
+      "ref": "refs/pull/140/merge",
+      "sha": "34a3f8e3dee6eff245e3aeb26b9a053930f27bf3",
+      "timestamp": "2026-09-16T16:09:33.410Z",
+      "commits": [
+        {
+          "sha": "34a3f8e3dee6eff245e3aeb26b9a053930f27bf3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T10:09:03-06:00",
+          "message": "Merge 53fddcaf9e2afed8486160d9ce340e7a3d9adbec into 4a47b57cf8b3a8adafc0290007d74429c624706a\n"
+        },
+        {
+          "sha": "53fddcaf9e2afed8486160d9ce340e7a3d9adbec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T10:08:59-06:00",
+          "message": "feat(markup): report where a markup string fails to parse (rich-diagnostics-un7.4)\n\nA markup parse failure now throws MarkupSyntaxError, a subclass of\nMarkupError. The message gives the line and column of the rejected tag,\nan excerpt of that line with a caret under the tag, and the tags still\nopen there. The same facts are fields (reason, markup, offset, line,\ncolumn, openTags) for callers building their own message.\n\nIt is a subclass rather than optional fields because MarkupRegistry.register\nalso throws MarkupError and has no source text to point into. Existing\ncatches of MarkupError still catch parse failures.\n\nThe plugin-aware walk parses the caller's string in slices, so every\nparse now carries its origin: the whole string, where the slice starts\nin it, and the plugin tags around it. Offsets are reported in the\ncaller's string at any depth.\n\nThe excerpt is cut to 30 code points either side, places the caret by\ncell width, and shows control characters as spaces so the caret stays\naligned and the message cannot emit terminal escapes.\n\nThe rich-explore coverage demo previously used \"[bold[bad\", which never\nthrew, so its MarkupError line never printed; it now fails for real and\nshows the location.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4a47b57cf8b3a8adafc0290007d74429c624706a",
