@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-133",
+      "ref": "refs/pull/133/merge",
+      "sha": "1dcc0bcb01d485d1f5b38cfb3c1364f42edc6308",
+      "timestamp": "2026-09-16T15:06:30.624Z",
+      "commits": [
+        {
+          "sha": "1dcc0bcb01d485d1f5b38cfb3c1364f42edc6308",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:06:02-06:00",
+          "message": "Merge 80f80b005109939cb972eca367685f376985823e into 438535c846d32c83855821b9dd7213a3cfe6e822\n"
+        },
+        {
+          "sha": "80f80b005109939cb972eca367685f376985823e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:05:54-06:00",
+          "message": "test(seam): build and pack the tarball to gate its contents (rich-artifact-c9k.3)\n\nThe artifact fixes from c9k.1 and c9k.2 are each one line in a different\nfile (a root LICENSE, THIRD-PARTY-NOTICES in `files`, sourceMap and\ndeclarationMap off, a clean step in `build`), and nothing read the tarball\nback. test/seam/tarball.test.ts copies the checkout into a temp directory,\nruns the real `npm run build`, and asks `npm pack --dry-run --json` what\nwould ship. It fails when LICENSE or THIRD-PARTY-NOTICES is missing or\nempty, when a .map entry ships, or when a packed file carries a\nsourceMappingURL. That last case covers excluding *.map from `files`,\nwhich c9k.2 rejected for leaving the same dead reference.\n\nIt builds rather than reading dist/, because the CI gate runs `npm test`\nbefore anything is built, and a laptop's dist/ is whatever the last build\nleft. A second staged build, with both licence files deleted and maps\nturned back on, must be refused, so the ticket's acceptance criterion is\nitself a test. The first build plants stale maps in dist/ to prove the\nclean step works.\n\nAlso corrects publish.yml's comment that `files` is [\"dist\"].\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "438535c846d32c83855821b9dd7213a3cfe6e822",
