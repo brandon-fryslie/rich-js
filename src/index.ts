@@ -210,7 +210,7 @@ export type {
 export { EMOJI, emojiReplace, Emoji, NoEmoji } from "./core/emoji.js";
 
 // Markup
-export { MarkupError, escape as escapeMarkup } from "./core/markup.js";
+export { MarkupError, MarkupSyntaxError, escape as escapeMarkup } from "./core/markup.js";
 
 // Highlighter
 export {

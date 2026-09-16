@@ -68,6 +68,44 @@ console.print("[bold]Hello[/red]");
 console.print("text[/]");
 ```
 
+The error is a `MarkupSyntaxError`, a subclass of `MarkupError`. Its message
+gives the line and column of the rejected tag, shows that line with a caret
+under the tag, and lists the tags still open there:
+
+```text
+Closing tag [/red] doesn't match any open tag (line 1, column 12)
+  [bold]Hello[/red]
+             ^
+Open tags: [bold]
+```
+
+On a long line the excerpt is cut to about thirty characters either side of the
+tag, with `…` marking each cut.
+
+To build your own message, read the same facts from the error's fields:
+
+```typescript
+import { MarkupSyntaxError, renderMarkup } from "@promptctl/rich-js";
+
+try {
+  renderMarkup(template);
+} catch (err) {
+  if (err instanceof MarkupSyntaxError) {
+    err.reason;   // "Closing tag [/red] doesn't match any open tag"
+    err.markup;   // the whole string that failed
+    err.offset;   // index of the rejected tag in `markup`
+    err.line;     // 1-based
+    err.column;   // 1-based, in UTF-16 code units, like `offset`
+    err.openTags; // ["[bold]"], outermost first
+  }
+  throw err;
+}
+```
+
+The position is counted in the whole string you passed, even when a
+`MarkupRegistry` has handed part of it to a plugin tag's handler, and `openTags`
+then includes the plugin tags around the error.
+
 ## Links
 
 Make text a clickable hyperlink (terminal support required):

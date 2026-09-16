@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { Tag, MarkupError, escape, MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
+import { Tag, MarkupError, MarkupSyntaxError, escape, MarkupRegistry, renderMarkup } from "../../src/core/markup.js";
+import { cellLen } from "../../src/core/cells.js";
 import type { Style } from "../../src/core/style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -128,6 +129,94 @@ describe("render closing tags", () => {
 
   it("implicit close with preceding text and nothing open throws MarkupError", () => {
     expect(() => renderBuiltin("no tags[/]")).toThrow(MarkupError);
+  });
+});
+
+// --- render: where a syntax error is ---
+
+// The rejection a caller catches, so each assertion below reads its fields
+// rather than matching a message it would have to know the layout of.
+function rejectionOf(markup: string): MarkupSyntaxError {
+  try {
+    renderBuiltin(markup);
+  } catch (err) {
+    if (err instanceof MarkupSyntaxError) return err;
+    throw err;
+  }
+  return expect.unreachable(`${JSON.stringify(markup)} parsed without error`);
+}
+
+// The excerpt and caret lines of a message, with their two-space indent.
+function excerptOf(err: MarkupSyntaxError): { source: string; caret: string } {
+  const [, source, caret] = err.message.split("\n");
+  return { source: source!, caret: caret! };
+}
+
+describe("markup syntax errors report their location", () => {
+  it("locates a closing [/] with nothing open", () => {
+    const err = rejectionOf("no tags[/]");
+    expect(err).toBeInstanceOf(MarkupError);
+    expect(err.reason).toBe("Closing tag [/] has no open style tag to close");
+    expect(err.markup).toBe("no tags[/]");
+    expect([err.offset, err.line, err.column]).toEqual([7, 1, 8]);
+    expect(err.openTags).toEqual([]);
+  });
+
+  it("locates a named close that matches no open tag, naming what is open", () => {
+    const err = rejectionOf("[bold][red]hello[/italic] world");
+    expect(err.reason).toBe("Closing tag [/italic] doesn't match any open tag");
+    expect([err.offset, err.line, err.column]).toEqual([16, 1, 17]);
+    expect(err.openTags).toEqual(["[bold]", "[red]"]);
+  });
+
+  it("does not name a tag that closed before the error as open", () => {
+    expect(rejectionOf("[bold]a[/bold][red]b[/]c[/]").openTags).toEqual([]);
+  });
+
+  it("counts line and column from the start of the offending line", () => {
+    const err = rejectionOf("line one\n[red]two\n[b]x[/green]");
+    expect(err.offset).toBe(22);
+    expect([err.line, err.column]).toEqual([3, 5]);
+    expect(err.openTags).toEqual(["[red]", "[b]"]);
+  });
+
+  it("writes the location, the offending line with a caret under the tag, and the open tags", () => {
+    expect(rejectionOf("first\n[bold]hello[/italic]\nlast").message).toBe(
+      "Closing tag [/italic] doesn't match any open tag (line 2, column 12)\n" +
+        "  [bold]hello[/italic]\n" +
+        "             ^\n" +
+        "Open tags: [bold]",
+    );
+    expect(rejectionOf("[/]").message.split("\n").at(-1)).toBe("Open tags: none");
+  });
+
+  it("cuts a long line around the error and keeps the caret under the tag", () => {
+    const { source, caret } = excerptOf(rejectionOf(`${"a".repeat(200)}[/x]${"b".repeat(200)}`));
+    expect(source.startsWith("  …")).toBe(true);
+    expect(source.endsWith("…")).toBe(true);
+    expect(source.length).toBeLessThan(80);
+    expect(source.slice(caret.indexOf("^"))).toMatch(/^\[\/x\]/);
+  });
+
+  it("places the caret by cell width when wide characters precede the tag", () => {
+    const { source, caret } = excerptOf(rejectionOf("界界界[/x]"));
+    const before = source.slice(0, source.indexOf("[/x]"));
+    expect(caret.indexOf("^")).toBe(cellLen(before));
+  });
+
+  it("shows control characters as spaces, so the caret stays aligned and no escape is emitted", () => {
+    const err = rejectionOf("\t\x1b[0m[/x]");
+    const { source, caret } = excerptOf(err);
+    expect(err.message).not.toMatch(/[\t\x1b]/);
+    expect(caret.indexOf("^")).toBe(source.indexOf("[/x]"));
+    expect(err.column).toBe(6);
+  });
+
+  it("shows control characters inside the quoted tags as spaces too, keeping the fields as written", () => {
+    const err = rejectionOf("[bold\x1b][/x\x1b]");
+    expect(err.message).not.toMatch(/\x1b/);
+    expect(err.reason).toBe("Closing tag [/x\x1b] doesn't match any open tag");
+    expect(err.openTags).toEqual(["[bold\x1b]"]);
   });
 });
 

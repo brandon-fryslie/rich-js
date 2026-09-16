@@ -30,7 +30,7 @@ import {
   Emoji, NoEmoji, EMOJI, emojiReplace,
   // Style system
   StyleStack, Theme, DEFAULT_STYLES, Style, NULL_STYLE,
-  StyleSyntaxError, MarkupError,
+  StyleSyntaxError, MarkupError, MarkupSyntaxError,
   // Color
   STANDARD_TABLE, WINDOWS_TABLE,
   ColorParseError, ColorDepth, ColorSpec, parseRgbHex,
@@ -220,8 +220,12 @@ export class CoverageRenderable implements Renderable {
     try { Style.parse("zzzz_invalid"); } catch (e) {
       items.push(new RichText(`StyleSyntaxError: ${e instanceof StyleSyntaxError}`, { end: "" }));
     }
-    try { renderMarkup("[bold[bad"); } catch (e) {
+    try { renderMarkup("[bold]hello\n[red]world[/italic]"); } catch (e) {
       items.push(new RichText(`MarkupError: ${e instanceof MarkupError}`, { end: "" }));
+      if (e instanceof MarkupSyntaxError) {
+        items.push(new RichText(`line ${e.line}, column ${e.column}; open: ${e.openTags.join(" ")}`, { end: "" }));
+        items.push(new RichText(e.message, { end: "" }));
+      }
     }
 
     // ── 12. Spinner data ─────────────────────────────────────────────

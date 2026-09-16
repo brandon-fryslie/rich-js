@@ -4,6 +4,7 @@ import {
   renderMarkup,
   globalMarkupRegistry,
   MarkupError,
+  MarkupSyntaxError,
 } from "../../src/core/markup.js";
 import { RichText } from "../../src/core/text.js";
 import { Console } from "../../src/core/console.js";
@@ -269,6 +270,20 @@ describe("plugin pairs must nest", () => {
     expect(() => renderMarkup("[aa]x[bb]y[/aa]z[/bb]", { registry: twoTags() })).toThrow(MarkupError);
   });
 
+  it("puts the overlap's caret under the outer pair's closing tag", () => {
+    const err = rejectionOf("[aa]x[bb]y[/aa]z[/bb]", twoTags());
+    expect(err.offset).toBe(10);
+    expect(err.openTags).toEqual(["[aa]", "[bb]"]);
+  });
+
+  it("names every plugin pair open at the overlap's caret, and none that closed before it", () => {
+    const registry = new MarkupRegistry();
+    for (const name of ["pa", "pb", "pc", "pd"]) registry.register(name, (ctx) => ctx.children);
+    const err = rejectionOf("[pa][pd]x[/pd][pb][pc][/pa][/pc][/pb]", registry);
+    expect(err.offset).toBe(22);
+    expect(err.openTags).toEqual(["[pa]", "[pb]", "[pc]"]);
+  });
+
   it("renders an inner plugin tag that never closes, rather than rejecting it", () => {
     // No closer means no entry in `pairs` at all, so this shape never reaches
     // the overlap test. Pinned because the obvious alternative fix — rejecting
@@ -287,3 +302,47 @@ describe("plugin pairs must nest", () => {
     expect(renderToString(out, { colorSystem: null })).toBe("abc");
   });
 });
+
+// The plugin walk parses the caller's string in slices — around each plugin
+// pair, and inside it — so every offset below is one a slice-relative count
+// would get wrong.
+describe("a syntax error inside a plugin-tagged string is located in the caller's string", () => {
+  function registry(): MarkupRegistry {
+    const r = new MarkupRegistry();
+    r.register("aa", (ctx) => ctx.children);
+    r.register("bb", (ctx) => ctx.children);
+    return r;
+  }
+
+  it("locates an error in the text after a plugin pair", () => {
+    const err = rejectionOf("[aa]x[/aa] then [/nope]", registry());
+    expect([err.offset, err.column]).toEqual([16, 17]);
+    expect(err.markup).toBe("[aa]x[/aa] then [/nope]");
+    expect(err.openTags).toEqual([]);
+  });
+
+  it("says [/] found no style tag, since the plugin tag around it stays open", () => {
+    const err = rejectionOf("[aa][/][/aa]", registry());
+    expect(err.reason).toBe("Closing tag [/] has no open style tag to close");
+    expect(err.offset).toBe(4);
+    expect(err.openTags).toEqual(["[aa]"]);
+  });
+
+  it("locates an error nested two plugin pairs deep, naming the enclosing tags", () => {
+    const markup = "head\n[aa]one [bb][i]two[/u][/bb][/aa]";
+    const err = rejectionOf(markup, registry());
+    expect(err.offset).toBe(markup.indexOf("[/u]"));
+    expect([err.line, err.column]).toEqual([2, 19]);
+    expect(err.openTags).toEqual(["[aa]", "[bb]", "[i]"]);
+  });
+});
+
+function rejectionOf(markup: string, registry: MarkupRegistry): MarkupSyntaxError {
+  try {
+    renderMarkup(markup, { registry });
+  } catch (err) {
+    if (err instanceof MarkupSyntaxError) return err;
+    throw err;
+  }
+  return expect.unreachable(`${JSON.stringify(markup)} parsed without error`);
+}
