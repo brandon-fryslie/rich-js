@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-137",
-      "ref": "refs/pull/137/merge",
-      "sha": "8b8f62bcd950c9849ed40d439a902340268a0a3d",
-      "timestamp": "2026-09-16T15:38:57.695Z",
-      "commits": [
-        {
-          "sha": "8b8f62bcd950c9849ed40d439a902340268a0a3d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:38:32-06:00",
-          "message": "Merge 52b706bea6008772a88ecad0348ac0515e2ed64a into eb7862cb8f3189662570f0508a1cead18e0a62a8\n"
-        },
-        {
-          "sha": "52b706bea6008772a88ecad0348ac0515e2ed64a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:38:28-06:00",
-          "message": "fix(style): keep the colour parser's reason in style parse errors (rich-diagnostics-un7.1)\n\nStyle.parse rewrapped every colour failure in a bare catch and threw the\noriginal away, so `color(300)` reported only `Invalid style definition:\n\"color(300)\"` while ColorSpec.parse on the same token knew the number was\nout of range.\n\nBoth colour positions (foreground and `on` background) now go through one\nhelper that carries the colour error in the message and as `cause`:\n\n  Invalid style definition \"color(300)\": ColorParseError: ColorSpec number\n  300 is out of range (0-255)\n\nStyleSyntaxError takes ErrorOptions so the cause can be chained. The\nmessage prefix drops its colon (`Invalid style definition \"x\": reason`) so\nthe chain reads as one `what: why` sequence.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "eb7862cb8f3189662570f0508a1cead18e0a62a8",
-      "timestamp": "2026-09-16T15:34:53.235Z",
+      "sha": "d332bb2011ded6751430dc93ddac91ca18709311",
+      "timestamp": "2026-09-16T15:40:44.579Z",
       "commits": [
         {
-          "sha": "eb7862cb8f3189662570f0508a1cead18e0a62a8",
+          "sha": "d332bb2011ded6751430dc93ddac91ca18709311",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T09:34:25-06:00",
-          "message": "refactor(text): drop the legacy overflow option from truncate (rich-subtraction-8wh.3, .4) (#136)\n\nRichText.truncate accepted `{ mode, marker }` and a legacy\n`{ overflow: \"fold\" | \"crop\" | \"ellipsis\" }`, and derived the marker\nthrough a three-level nested ternary over both. No caller in src/ or\nexamples/ used the legacy form; one test did.\n\nThe option is gone and the marker is `options?.marker ?? \"…\"`.\n\nBehaviour change: a bare `truncate(width)` used to crop with no\nmarker, because the ternary only defaulted to \"…\" when `mode` was\npassed. The doc comment already said the default was \"…\"; the code now\nagrees with it. `marker: \"\"` still crops raw.\n\nThe legacy test is rewritten to pin that default (`truncate(6)` on\n\"hello world\" is \"hello…\"). It lands with .3 rather than as .4 on its\nown: `tsconfig.test.json` type-checks test/, so removing the option\nturns the old call into an excess-property error and `npm run lint`\nfails until the test changes too. No docs page mentions truncate."
+          "timestamp": "2026-09-16T09:40:17-06:00",
+          "message": "fix(style): keep the colour parser's reason in style parse errors (rich-diagnostics-un7.1) (#137)\n\nStyle.parse rewrapped every colour failure in a bare catch and threw the\noriginal away, so `color(300)` reported only `Invalid style definition:\n\"color(300)\"` while ColorSpec.parse on the same token knew the number was\nout of range.\n\nBoth colour positions (foreground and `on` background) now go through one\nhelper that carries the colour error in the message and as `cause`:\n\n  Invalid style definition \"color(300)\": ColorParseError: ColorSpec number\n  300 is out of range (0-255)\n\nStyleSyntaxError takes ErrorOptions so the cause can be chained. The\nmessage prefix drops its colon (`Invalid style definition \"x\": reason`) so\nthe chain reads as one `what: why` sequence."
         }
       ]
     }
