@@ -134,7 +134,8 @@ jobs:
       # No `npm ci` here, deliberately: installing the devDependency tree would
       # run every package's install scripts inside the OIDC-bearing job, which
       # is the thing the job split exists to prevent. Nothing on this path needs
-      # node_modules — `files` is ["dist"], which arrives as the artifact, and
+      # node_modules — `files` is `dist/`, which arrives as the artifact, plus
+      # `THIRD-PARTY-NOTICES`, which the checkout above provides with `LICENSE`, and
       # the one lifecycle script package.json declares (`prepublishOnly`, the
       # release-tag guard) is first-party, imports nothing, and runs on bare
       # node. Anything added to that hook inherits this constraint: a hook that
