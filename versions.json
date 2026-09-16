@@ -4,15 +4,22 @@
     {
       "version": "pr-139",
       "ref": "refs/pull/139/merge",
-      "sha": "ac4087bbaa9ff5d67fb753372072241fc4bfcc9b",
-      "timestamp": "2026-09-16T15:59:40.555Z",
+      "sha": "8e698e7de767fb6e9a020b6d2667c1514a6d410d",
+      "timestamp": "2026-09-16T16:01:00.269Z",
       "commits": [
         {
-          "sha": "ac4087bbaa9ff5d67fb753372072241fc4bfcc9b",
+          "sha": "8e698e7de767fb6e9a020b6d2667c1514a6d410d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T15:59:14Z",
-          "message": "Merge cf54f7a8bcd4bcc15bdc1bc182d2782d6ce7f137 into 6cf60451c1f9b48538659b3c80914e0b78d16243\n"
+          "timestamp": "2026-09-16T16:00:34Z",
+          "message": "Merge fc0a0d0ce5d5cfbfd39e5621d1b74f6c440d7ef3 into 6cf60451c1f9b48538659b3c80914e0b78d16243\n"
+        },
+        {
+          "sha": "fc0a0d0ce5d5cfbfd39e5621d1b74f6c440d7ef3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T10:00:25-06:00",
+          "message": "test(style): drop the wall-clock bound on near-miss cost\n\nThis test asserted that a 2000-character token parses in under 50 ms. The\nlocal medium review pointed out it can fail on a slow CI worker even when\nthe code is correct, and a fast machine could pass it without the length\nfilter. It timed the clock rather than checking behaviour. The unrelated-\nword tests already check what a user sees. The cost bound comes from the\nlength-difference argument documented on nearMiss.\n"
         },
         {
           "sha": "cf54f7a8bcd4bcc15bdc1bc182d2782d6ce7f137",
