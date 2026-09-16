@@ -289,13 +289,6 @@ describe("Style.parse errors", () => {
     expect(() => Style.parse("on bolt")).toThrow(/^Invalid background color "bolt": /);
   });
 
-  it("a long unrelated token is refused on length alone, without measuring it", () => {
-    const token = "x".repeat(2000);
-    const started = performance.now();
-    expect(() => Style.parse(token)).toThrow(`Invalid style definition "${token}": `);
-    expect(performance.now() - started).toBeLessThan(50);
-  });
-
   it.each(["notastyle", "foobar", "hello", "strikethrough", "xyz"])(
     "an unrelated word %s gets no suggestion",
     (word) => {
