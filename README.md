@@ -379,103 +379,30 @@ saveHtml(console, "output.html");
 
 ## Demos
 
-Every demo below also runs in your browser on the [live demo gallery](https://brandon-fryslie.github.io/rich-js/master/demos/) — the same code mounted against an xterm.js terminal, nothing to install. To drive one against your own terminal instead, run its npm script:
+The [live demo gallery](https://brandon-fryslie.github.io/rich-js/master/demos/) runs every demo in your browser, against an xterm.js terminal — the same code that runs under Node, with nothing to install. Each gallery page links to the demo's source in [`examples/`](https://github.com/brandon-fryslie/rich-js/tree/master/examples), which is the place to look for working code to copy.
+
+To run a demo in your own terminal instead, clone the repository, install, and use the demo's npm script:
 
 ```sh
-# Interactive
-npm run demo                       # rich-explore — TUI file browser + markdown/code reader
-npm run sessions                   # claude-sessions — Claude Code session browser
-npm run demo-inputs                # rich-config — TextInput / palette search
-npm run demo:dropdown              # dropdown-demo — Dropdown widget showcase
-npm run dash                       # rich-dash — Live dashboard
-npm run template-bindings          # rich-template-bindings — go-template / reactive bindings playground
-
-# Non-interactive transcripts
-npm run themes-and-color-studio    # color / palette / theme / contrast tour (eight sections)
-npm run strip                      # rich-strip — side-by-side joiner showcase
-npm run markup-plugins             # rich-markup-plugins — plugin-tag examples
+git clone https://github.com/brandon-fryslie/rich-js.git
+cd rich-js
+npm install
+npm run demo
 ```
 
-`rich-explore`, `claude-sessions`, and `themes-and-color-studio` are covered in detail below. `package.json` holds the authoritative script list — `jq .scripts package.json` to see it.
+| Script | Demo | What it shows |
+|---|---|---|
+| `npm run demo` | rich-explore | A file browser: a directory tree beside a Markdown, source-code, or JSON preview. `npm run demo -- <path>` browses somewhere other than the current directory. |
+| `npm run sessions` | claude-sessions | A reader for the Claude Code session logs under `~/.claude/projects/`, with search across files. |
+| `npm run dash` | rich-dash | A live dashboard: system stats, a running job, and this README rendered as Markdown. |
+| `npm run demo-inputs` | rich-config | The widgets — checkbox, toggle, slider, dropdown, text input, button — driving a theme and palette viewer. |
+| `npm run demo:dropdown` | dropdown-demo | Three `Dropdown` widgets: a plain one, one filtered as you type, and one whose options change every few seconds. |
+| `npm run template-bindings` | rich-template-bindings | Type a template on the left and watch it render on the right. |
+| `npm run themes-and-color-studio` | themes-and-color-studio | A printed tour of colours, palettes, bundled themes, and contrast. Prints once and exits; set `EXPORT_HTML=out.html` to save it as HTML too. |
+| `npm run strip` | rich-strip | Every built-in `Joiner`, printed side by side. Prints once and exits. |
+| `npm run markup-plugins` | rich-markup-plugins | Custom markup tags registered through `MarkupRegistry`. Prints once and exits. |
 
-### rich-explore — TUI file browser + markdown/code reader
-
-A two-pane file browser with a directory tree on the left and a file preview on the right. Navigate with vim-style keys, Tab to switch focus, Enter/arrow keys to expand/collapse directories.
-
-```sh
-npm run demo               # browse current directory
-npm run demo -- /some/path # browse a specific path
-```
-
-**Features exercised:**
-
-| Module | How it's used |
-|---|---|
-| `Console` | Render orchestrator, style application, color-system detection |
-| `Layout` | Row split (tree / preview), column split (header / body / footer), `ratio` and `size` allocation |
-| `Panel` | Bordered panes with dynamic titles (`▸ Tree (20)`), `borderStyle`, `padding`, focus-aware styling |
-| `Tree` | Recursive directory tree with guide lines, `guide_style`, mixed RichText labels |
-| `Table` + `Column` | Directory listing (name, kind, size, mtime), styled headers, right-justified columns |
-| `Markdown` | Renders `.md` files in the preview pane |
-| `Syntax` | Syntax-highlighted source code with `lineNumbers` and per-extension language detection |
-| `JSONRenderable` | Pretty-printed + highlighted JSON file preview |
-| `RichText` + `Span` | Labels, headers, status bar; `.stylize()`, `.append()`, `end` control |
-| `Style` | Parsed inline everywhere (`"bold cyan"`, `"reverse bold"`, `"bold white on blue"`) |
-| `Segment` | Used directly in the `Window` renderable for line splitting, padding, and clipping |
-| `Renderable` protocol | Custom `Window` class implements `Renderable` for viewport clipping |
-| `Box` | `ROUNDED` (Panel default), `HEAVY_HEAD` (Table default) |
-
-### claude-sessions — Claude Code session browser
-
-Browses `~/.claude/projects/` JSONL session files. Two-level sidebar (projects → sessions) on top, conversation viewer below. Pretty-prints every block type (human turns, assistant responses, tool calls, subagents, system events, errors) with per-block raw-JSON toggle. Includes local search, global cross-file search, subagent drill-down with session stack, and hidden-block reveal.
-
-```sh
-npm run sessions
-```
-
-**Key bindings:** `↑↓/jk` navigate, `→/Enter` open/drill, `←` back, `Tab` focus, `\` toggle browser, `v` raw view, `e` expand, `H` hidden blocks, `/` local search, `S` global search, `n/N` next/prev match, `p` parent, `u` pop subagent, `q` quit.
-
-**Features exercised (incremental to rich-explore):**
-
-| Module | How it's used |
-|---|---|
-| `Rule` | Turn-duration system blocks rendered as horizontal dividers; input/output separators in tool-call blocks |
-| `Group` | Composes multi-section tool-call blocks (input + Rule + result) into a single renderable |
-| `Pretty` | Per-block raw view (toggled with `v`) — exercises `ReprHighlighter`, indent guides, `maxString`, `expandAll` |
-| `Traceback` | Error blocks with stack traces render via `Traceback` for styled frame display |
-| `Markdown` | Assistant text rendering (Claude output is often markdown) |
-| `Syntax` | Bash command highlighting in tool-call input summaries |
-| `Panel` | Six distinct border-color schemes by block kind (cyan/blue/yellow/red/magenta/green) |
-| `Layout` | Column split (browser-on-top / viewer-on-bottom), dynamic height budgeting |
-
-### themes-and-color-studio — color, palette, theme, and contrast tour
-
-A one-shot non-interactive demo that walks every public surface of the color subsystem in eight sections: ColorRgba values and parsing, ColorSpec and downgrade tables, color-system detection, the theme registry, colour references through `resolveColorRef`, every bundled `TerminalTheme` constant, OKLCH transposition (hue circle / chroma sweep / lightness invert / themeKeyForRoot), and the WCAG contrast toolkit.
-
-```sh
-npm run themes-and-color-studio                       # terminal output
-EXPORT_HTML=out.html npm run themes-and-color-studio  # also write a styled HTML transcript
-```
-
-**Features exercised (incremental to above):**
-
-| Module | How it's used |
-|---|---|
-| `ColorRgba` / `parseRgbHex` / `parseRgbaHex` / `blendRgb` | Pixel-level values, two hex parsers, linear blend, alpha compositing |
-| `ColorSpec` / `ColorDepth` | Every factory; downgrade across `STANDARD_TABLE` / `EIGHT_BIT_TABLE` / `WINDOWS_TABLE`; `ANSI_COLOR_NAMES` lookups; `ColorParseError` |
-| `detectColorSystem` / `resolveColorSystem` | Env-driven color-system detection with `DetectColorOptions` fixtures; spec-string resolution |
-| `Palette` / `resolveColorRef` / `parseHexColor` / `buildPalette` | Palette names and `#RRGGBB` literals through one checkpoint against gruvbox, including the hex round-trip that shows it is idempotent and the `ColorRefError` miss; `BaseColors` → derived `text-*` / `on-*` / `*-muted` vars |
-| Theme registry | `getThemePalette` / `listThemePalettes` / `getThemeBaseColors` walking every bundled theme; raw `THEMES` / `ThemePaletteData` via subpath |
-| `TerminalTheme` constants | All bundled constants (`DEFAULT`, `SVG_EXPORT`, `MONOKAI`, `NORD`, `GRUVBOX`, `DRACULA`, `TOKYO_NIGHT`, `FLEXOKI`, `CYBERPUNK`, `CATPPUCCIN_*`, `SOLARIZED_*`, `ROSE_PINE*`, `ATOM_ONE_*`, `TEXTUAL_*`) |
-| `Oklch` / `transposePalette` / `themeKeyForRoot` | Round-trip + `IDENTITY` / `INVERT_LIGHTNESS`; hue circle; chroma sweep; light↔dark invert; `ANCHORED_ROOTS` / `isAnchored` |
-| `relativeLuminance` / `contrastRatio` / `contrastFor` / `ensureContrast` | WCAG contrast matrix, hue-preserving lightness adjustment to clear the AA threshold |
-| `Console` record / `saveHtml` | Optional HTML export via `EXPORT_HTML=path`; same render pipeline drives both terminal and file output |
-
----
-
-### Demo coverage is checked, not claimed
-
-`test/coverage/coverage.test.ts` fails CI when a public export goes undemonstrated: a value must be imported by some file under `examples/`, and a type must be reachable from a value that is. The few exports no demo can reach are listed in `test/coverage/coverage-allowlist.ts`, each with its reason. Those two files, not this page, say what the demos cover.
+`Ctrl-C` quits any demo that stays running.
 
 ## Environment Variables
 
