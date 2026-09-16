@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-140",
-      "ref": "refs/pull/140/merge",
-      "sha": "9ed4911b9c3283223b1243a04dd599a4c004857e",
-      "timestamp": "2026-09-16T16:16:20.167Z",
-      "commits": [
-        {
-          "sha": "9ed4911b9c3283223b1243a04dd599a4c004857e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T16:15:50Z",
-          "message": "Merge 2f10f734434c5aa264339a2d67b3f38b5c44d60d into 4a47b57cf8b3a8adafc0290007d74429c624706a\n"
-        },
-        {
-          "sha": "2f10f734434c5aa264339a2d67b3f38b5c44d60d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T10:15:45-06:00",
-          "message": "fix(markup): name every plugin pair open where an overlap is rejected\n\nMedium review of #140: the overlap error's openTags was [outer, inner],\npicked by hand, so a third pair still open at the caret was left out.\nIn \"[pa][pb][pc][/pa][/pc][/pb]\" it named [pa] [pb] and not [pc]. It is now\nderived from the pairs themselves: a pair is open at the caret when it\nopens before the rejected closing tag and closes at or after it.\n\nThe review's other finding, that \"[bold]x[click]y[/click]z[/bold]\" reports\nno open tags, comes from style tags not spanning a plugin pair at all,\nwhich master already rejects. It is filed as rich-markup-cg6 rather than\nreworded here.\n"
-        },
-        {
-          "sha": "ba1a6971b8209d8c3499cb0b9d161a2e439985fc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T10:13:17-06:00",
-          "message": "fix(markup): keep control characters out of every part of the error message\n\nReview of #140 found two problems.\n\nThe excerpt replaced control characters with spaces, but the reason and\nthe \"Open tags\" line quoted tag text raw. The tag grammar admits ESC, so\n\"[bold\\x1b]\" put ESC ] (the start of an OSC sequence) into a message meant\nfor a terminal. printable() is now the one rule every quoted part of the\nmessage goes through. The reason and openTags fields keep the text as\nwritten.\n\nInside a plugin tag, \"[aa][/][/aa]\" said \"[/] has nothing to close\" and\nthen listed [aa] as open. [/] never closes a plugin tag, so the reason\nnow says there is no open style tag, which is true in both cases.\n"
-        },
-        {
-          "sha": "53fddcaf9e2afed8486160d9ce340e7a3d9adbec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T10:08:59-06:00",
-          "message": "feat(markup): report where a markup string fails to parse (rich-diagnostics-un7.4)\n\nA markup parse failure now throws MarkupSyntaxError, a subclass of\nMarkupError. The message gives the line and column of the rejected tag,\nan excerpt of that line with a caret under the tag, and the tags still\nopen there. The same facts are fields (reason, markup, offset, line,\ncolumn, openTags) for callers building their own message.\n\nIt is a subclass rather than optional fields because MarkupRegistry.register\nalso throws MarkupError and has no source text to point into. Existing\ncatches of MarkupError still catch parse failures.\n\nThe plugin-aware walk parses the caller's string in slices, so every\nparse now carries its origin: the whole string, where the slice starts\nin it, and the plugin tags around it. Offsets are reported in the\ncaller's string at any depth.\n\nThe excerpt is cut to 30 code points either side, places the caret by\ncell width, and shows control characters as spaces so the caret stays\naligned and the message cannot emit terminal escapes.\n\nThe rich-explore coverage demo previously used \"[bold[bad\", which never\nthrew, so its MarkupError line never printed; it now fails for real and\nshows the location.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4a47b57cf8b3a8adafc0290007d74429c624706a",
-      "timestamp": "2026-09-16T16:02:35.967Z",
+      "sha": "af2c525ece4fc0ab7f3778ccf3695a3bb6beea9e",
+      "timestamp": "2026-09-16T16:18:05.056Z",
       "commits": [
         {
-          "sha": "4a47b57cf8b3a8adafc0290007d74429c624706a",
+          "sha": "af2c525ece4fc0ab7f3778ccf3695a3bb6beea9e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T10:02:06-06:00",
-          "message": "feat(style): suggest near-miss style and colour names (rich-diagnostics-un7.3) (#139)\n\n* feat(style): suggest near-miss style and colour names (rich-diagnostics-un7.3)\n\nA style token that no position accepts now names what it most plausibly\nmeant: `rd` suggests `red`, `bolt` suggests `bold`, `not itallic` suggests\n`italic`. Because the suggestion is part of the StyleSyntaxError message,\nit reaches onStyleError handlers with no further wiring.\n\nThe suggestion is built by the style parser, not the colour parser. Each\nposition has its own vocabulary: a bare token may be an attribute or a\ncolour, `on X` only a colour, `not X` only an attribute. Suggesting in\nColorParseError too would print the suggestion twice, because the style\nerror quotes the colour error. The two could also disagree, since `gold`\nis near `bold` as well as the `goldN` colours.\n\nA name counts as a near miss when it is within one edit per three letters,\nand never less than one edit. Swapping two neighbouring letters counts as\none edit. Every name tied for nearest is listed, because picking one of a\ntie would be a guess. Unrelated words (`notastyle`, `hello`) get no\nsuggestion.\n\n* fix(style): bound near-miss cost and cover every word the parser names\n\nChanges from the local review of the first commit:\n\n- Cost. Only successful parses are cached, so a bad style runs the\n  suggestion search again on every render. It measured 1.1 ms per failure,\n  and 290 ms for a 2000-character token. The search now skips any name\n  whose length differs from the token's by more than the budget, since two\n  words are at least that many edits apart; results are unchanged. It also\n  keeps three rows instead of a full grid. The measurements are now\n  0.10 ms and 0.017 ms. No failure cache was added, because it would be\n  more shared mutable state for a path that is already an error.\n- Case. The colour parser ignores case, so `Cyna` is now as near `cyan`\n  as `cyna` is.\n- Vocabulary. The comment said the name lists were built from the words\n  the parser accepts, but `default` and the `not`/`on`/`link` keywords\n  were missing. `COLOR_NAMES` now sits in color.ts beside the table\n  `parseSingle` reads, so the claim is true.\n\n* test(style): drop the wall-clock bound on near-miss cost\n\nThis test asserted that a 2000-character token parses in under 50 ms. The\nlocal medium review pointed out it can fail on a slow CI worker even when\nthe code is correct, and a fast machine could pass it without the length\nfilter. It timed the clock rather than checking behaviour. The unrelated-\nword tests already check what a user sees. The cost bound comes from the\nlength-difference argument documented on nearMiss."
+          "timestamp": "2026-09-16T10:17:40-06:00",
+          "message": "feat(markup): report where a markup string fails to parse (rich-diagnostics-un7.4) (#140)\n\n* feat(markup): report where a markup string fails to parse (rich-diagnostics-un7.4)\n\nA markup parse failure now throws MarkupSyntaxError, a subclass of\nMarkupError. The message gives the line and column of the rejected tag,\nan excerpt of that line with a caret under the tag, and the tags still\nopen there. The same facts are fields (reason, markup, offset, line,\ncolumn, openTags) for callers building their own message.\n\nIt is a subclass rather than optional fields because MarkupRegistry.register\nalso throws MarkupError and has no source text to point into. Existing\ncatches of MarkupError still catch parse failures.\n\nThe plugin-aware walk parses the caller's string in slices, so every\nparse now carries its origin: the whole string, where the slice starts\nin it, and the plugin tags around it. Offsets are reported in the\ncaller's string at any depth.\n\nThe excerpt is cut to 30 code points either side, places the caret by\ncell width, and shows control characters as spaces so the caret stays\naligned and the message cannot emit terminal escapes.\n\nThe rich-explore coverage demo previously used \"[bold[bad\", which never\nthrew, so its MarkupError line never printed; it now fails for real and\nshows the location.\n\n* fix(markup): keep control characters out of every part of the error message\n\nReview of #140 found two problems.\n\nThe excerpt replaced control characters with spaces, but the reason and\nthe \"Open tags\" line quoted tag text raw. The tag grammar admits ESC, so\n\"[bold\\x1b]\" put ESC ] (the start of an OSC sequence) into a message meant\nfor a terminal. printable() is now the one rule every quoted part of the\nmessage goes through. The reason and openTags fields keep the text as\nwritten.\n\nInside a plugin tag, \"[aa][/][/aa]\" said \"[/] has nothing to close\" and\nthen listed [aa] as open. [/] never closes a plugin tag, so the reason\nnow says there is no open style tag, which is true in both cases.\n\n* fix(markup): name every plugin pair open where an overlap is rejected\n\nMedium review of #140: the overlap error's openTags was [outer, inner],\npicked by hand, so a third pair still open at the caret was left out.\nIn \"[pa][pb][pc][/pa][/pc][/pb]\" it named [pa] [pb] and not [pc]. It is now\nderived from the pairs themselves: a pair is open at the caret when it\nopens before the rejected closing tag and closes at or after it.\n\nThe review's other finding, that \"[bold]x[click]y[/click]z[/bold]\" reports\nno open tags, comes from style tags not spanning a plugin pair at all,\nwhich master already rejects. It is filed as rich-markup-cg6 rather than\nreworded here."
         }
       ]
     }
