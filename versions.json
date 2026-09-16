@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-139",
+      "ref": "refs/pull/139/merge",
+      "sha": "4cc58145a73e2a34485bb0413fef9728d3a58094",
+      "timestamp": "2026-09-16T15:56:18.452Z",
+      "commits": [
+        {
+          "sha": "4cc58145a73e2a34485bb0413fef9728d3a58094",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:55:50-06:00",
+          "message": "Merge a358ede336f530bff19adfb6675eb0ff837b7f15 into 6cf60451c1f9b48538659b3c80914e0b78d16243\n"
+        },
+        {
+          "sha": "a358ede336f530bff19adfb6675eb0ff837b7f15",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:55:45-06:00",
+          "message": "feat(style): suggest near-miss style and colour names (rich-diagnostics-un7.3)\n\nA style token that no position accepts now names what it most plausibly\nmeant: `rd` suggests `red`, `bolt` suggests `bold`, `not itallic` suggests\n`italic`. Because the suggestion is part of the StyleSyntaxError message,\nit reaches onStyleError handlers with no further wiring.\n\nThe suggestion is built by the style parser, not the colour parser. Each\nposition has its own vocabulary: a bare token may be an attribute or a\ncolour, `on X` only a colour, `not X` only an attribute. Suggesting in\nColorParseError too would print the suggestion twice, because the style\nerror quotes the colour error. The two could also disagree, since `gold`\nis near `bold` as well as the `goldN` colours.\n\nA name counts as a near miss when it is within one edit per three letters,\nand never less than one edit. Swapping two neighbouring letters counts as\none edit. Every name tied for nearest is listed, because picking one of a\ntie would be a guess. Unrelated words (`notastyle`, `hello`) get no\nsuggestion.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6cf60451c1f9b48538659b3c80914e0b78d16243",
