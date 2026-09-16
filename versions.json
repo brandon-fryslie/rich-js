@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-138",
+      "ref": "refs/pull/138/merge",
+      "sha": "3bb16d6e52d6b0e28b1c9c7a3a2257f8980199a5",
+      "timestamp": "2026-09-16T15:44:50.509Z",
+      "commits": [
+        {
+          "sha": "3bb16d6e52d6b0e28b1c9c7a3a2257f8980199a5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:44:26-06:00",
+          "message": "Merge 95fd1a4caed57668f002225904df93ea431b7806 into d332bb2011ded6751430dc93ddac91ca18709311\n"
+        },
+        {
+          "sha": "95fd1a4caed57668f002225904df93ea431b7806",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T09:44:22-06:00",
+          "message": "feat(console): report swallowed style errors through onStyleError (rich-diagnostics-un7.2)\n\nA misspelled style name in a RichText renders unstyled with no trace, because\ntext.ts absorbs StyleSyntaxError so a bad style degrades instead of crashing.\nThat default stays. ConsoleOptions.onStyleError now hears about each absorbed\nerror, with the whole offending style string, carried to renderables on\nRenderOptions beside the theme. A handler that throws makes rendering strict;\nstrict is a handler value, not a second flag.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d332bb2011ded6751430dc93ddac91ca18709311",
