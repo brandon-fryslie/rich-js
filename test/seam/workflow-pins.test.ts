@@ -164,6 +164,8 @@ describe("workflowViolations: majors", () => {
     ["a branch ref", "- uses: actions/checkout@main"],
     ["a docker image", "- uses: docker://alpine:3.20"],
     ["a flow mapping", "  with: { node-version: 22 }"],
+    ["a double-quoted uses key", '      - "uses": actions/checkout@v6'],
+    ["a single-quoted node-version key", "          'node-version': 20"],
   ])("reports %s as unreadable rather than passing it", (_, line) => {
     expect(workflowViolations([workflow(line)], [])).toEqual([
       expect.objectContaining({ rule: "unreadable" }),

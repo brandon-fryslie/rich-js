@@ -130,8 +130,13 @@ export type WorkflowViolation =
     };
 
 const COMMENT_LINE = /^\s*#/;
-/** Mentions either key anywhere on the line; the net under the recognised forms. */
-const MENTION = /\b(?:uses|node-version)\s*:/;
+/**
+ * Mentions either key anywhere on the line, the net under the recognised forms.
+ * It is looser than `KEY_LINE` on purpose: a quoted key (`"uses":`) is valid
+ * YAML that `KEY_LINE` does not read, and it must reach the unreadable report
+ * rather than fall through the net and produce no fact at all.
+ */
+const MENTION = /\b(?:uses|node-version)["']?\s*:/;
 /** A block-mapping key, optionally the first key of a sequence item. */
 const KEY_LINE = /^\s*(?:-\s+)?(uses|node-version)\s*:\s*(.*)$/;
 const TRAILER = /\s+#\s*(.*)$/;
