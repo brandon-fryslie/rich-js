@@ -4,15 +4,22 @@
     {
       "version": "pr-148",
       "ref": "refs/pull/148/merge",
-      "sha": "f0f8d41619bd4c27cb5531893e60cc4e3597556a",
-      "timestamp": "2026-09-17T07:23:23.666Z",
+      "sha": "caa422b76003a0a5ce4b2794c51ec93d0e2ff512",
+      "timestamp": "2026-09-17T07:41:44.866Z",
       "commits": [
         {
-          "sha": "f0f8d41619bd4c27cb5531893e60cc4e3597556a",
+          "sha": "caa422b76003a0a5ce4b2794c51ec93d0e2ff512",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T07:22:57Z",
-          "message": "Merge 901305da01e0c9704a2d82851256cc26c7e0dc57 into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
+          "timestamp": "2026-09-17T07:41:20Z",
+          "message": "Merge 65bfdcdcf89b533404eb2ffb0784f31e407f260c into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
+        },
+        {
+          "sha": "65bfdcdcf89b533404eb2ffb0784f31e407f260c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T01:41:15-06:00",
+          "message": "refactor(pretty): tighten Frame allocation and column tracking from repeat high review\n\n- _formatObject's per-slot Frame varied only in `reserve`, which takes just\n  two values (last slot vs every other), so build two shared frames instead\n  of one per slot — was O(N) allocations for an N-slot container, now O(1).\n- _expandSlot tracked `column` as a second variable hand-synchronized with\n  `out` at every append. Derive it instead via lineColumn(at.column, out) —\n  one source of truth, and a future third piece of per-hole text can no\n  longer update `out` without updating `column` to match, which would have\n  silently reintroduced a stale-budget bug of the same shape this PR fixes.\n\nA third finding — the expand branch's own opening-bracket line (`key: Set {`)\nis emitted with no width check against `at.column` at all, unlike the\ncompact try a few lines above it — is real, pre-existing (confirmed\nunaffected by every fix on this branch), and needs a different fix shape\n(there's no way to reflow a fixed literal like `Set {`; the real fix is a\ndesign decision about breaking the key onto its own line). Filed as\nrich-pretty-xms.0l4 rather than folded into this PR.\n"
         },
         {
           "sha": "901305da01e0c9704a2d82851256cc26c7e0dc57",
