@@ -110,10 +110,17 @@ const DEFAULT_COLOR = ColorSpec.default();
 /**
  * A `Style` as it appears on screen under `theme`.
  *
- * The order is the terminal's: colours resolve through the theme, `reverse`
- * swaps them, `dim` fades the glyph toward whatever background it ended up
- * on, and `conceal` finally paints the glyph in that background. Text under
- * `conceal` is still present, and still selectable, in both formats.
+ * The order is the terminal's: colours resolve through the theme and lose
+ * their alpha — paper over the canvas, ink over the paper, as `toSgrCodes`
+ * flattens them — `reverse` swaps them, `dim` fades the glyph toward whatever
+ * background it ended up on, and `conceal` finally paints the glyph in that
+ * background. Every step after flattening works on opaque colour, so no
+ * exporter ever draws a translucent one. Text under `conceal` is still
+ * present, and still selectable, in both formats.
+ *
+ * The one difference from `toSgrCodes` is the substrate: a terminal cannot
+ * know what lies under its cells and assumes black, while an export draws its
+ * own canvas and flattens over that.
  *
  * `theme` omitted is `ColorSpec.getTruecolor`'s own fallback — black canvas,
  * white ink, the standard ANSI table. Choosing it there rather than naming a
@@ -122,8 +129,10 @@ const DEFAULT_COLOR = ColorSpec.default();
 export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
   const inkSpec = style.color ?? DEFAULT_COLOR;
   const paperSpec = style.bgcolor ?? DEFAULT_COLOR;
-  const ink = inkSpec.getTruecolor(theme, true);
-  const paper = paperSpec.getTruecolor(theme, false);
+  const canvas = DEFAULT_COLOR.getTruecolor(theme, false);
+  // [LAW:single-enforcer] `flattenAlpha` is the one place alpha is composited.
+  const paper = paperSpec.flattenAlpha(canvas).getTruecolor(theme, false);
+  const ink = inkSpec.flattenAlpha(paper).getTruecolor(theme, true);
 
   // A reversed run always paints: its background is the ink, which is never
   // the canvas, even when the ink is the theme's default foreground.

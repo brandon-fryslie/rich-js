@@ -59,6 +59,15 @@ describe("resolveLook colours", () => {
     expect(look("conceal").foreground).toEqual(PAPER);
   });
 
+  it("flattens alpha — paper over the canvas, ink over the paper — before reverse, dim and conceal", () => {
+    // ink #ff000080 over paper #0000ff, then swapped: an opaque background
+    expect(look("reverse #ff000080 on #0000ff").background).toEqual(new ColorRgba(128, 0, 127));
+    // paper #0000ff80 over the theme canvas (16, 32, 48), and the glyph hidden in it
+    const concealed = look("conceal on #0000ff80");
+    expect(concealed.background).toEqual(new ColorRgba(8, 16, 152));
+    expect(concealed.foreground).toEqual(new ColorRgba(8, 16, 152));
+  });
+
   it("falls back to black canvas and white ink without a theme", () => {
     const l = resolveLook(Style.parse("reverse"));
     expect(l.foreground).toEqual(new ColorRgba(0, 0, 0));
