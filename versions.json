@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-144",
+      "ref": "refs/pull/144/merge",
+      "sha": "68bb3f5c5dfb170375c6512f325a0626e47276eb",
+      "timestamp": "2026-09-17T03:49:54.819Z",
+      "commits": [
+        {
+          "sha": "68bb3f5c5dfb170375c6512f325a0626e47276eb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T21:49:30-06:00",
+          "message": "Merge 2c6954d6aac5efcf11ffdf9651b4da45e1a78cb3 into fb3760e18120214e2379ed0e1affb2e356c17ba2\n"
+        },
+        {
+          "sha": "2c6954d6aac5efcf11ffdf9651b4da45e1a78cb3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T21:49:14-06:00",
+          "message": "fix(console): end belongs to text; a renderable ends its own lines (rich-console-dcg)\n\nTwo consecutive prints of a Panel, Table or Rule left a blank line between\nthem: the renderable closed its last line and print then appended `end`\nregardless.\n\nThe ticket framed the choice as an intended aesthetic or a column-tracking\nconsole, and described Python Rich as the second. Rich 15.0.0 is neither. It\nattaches `sep` and `end` only to runs of text items and lets any other\nrenderable own its line breaks. Column tracking would also have been wrong:\n`print(\"a\\n\")` is \"a\\n\\n\" in Rich and must stay so, and only the item's kind,\nnot the cursor column, separates that trailing break from a Panel's.\n\nConsole.print now builds a PrintBlock list. A run of adjacent text items\n(strings, RichText, data) is joined by `sep` and ended by `end`. Any other\nrenderable is a block whose lines are each closed by the print. This also\nfixes the mixed cases, which matched Rich in none of these ways before:\n`print(\"a\", panel, \"b\")` put the panel's top edge on the \"a\" line and led\n\"b\" with a space, and `end` was appended after a renderable.\n\nOne deliberate divergence from Rich remains: a renderable that leaves its last\nline open, such as Strip, has it closed here, so the next print and the\nexport start on a new line.\n\nLine ends added by print stay outside the print and console styles, as Rich\nemits them.\n\nDocs: docs/console.md gains a \"Line ends\" section. The blank line drawn in\ndocs/group.md and explained in docs/pretty.md is gone.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fb3760e18120214e2379ed0e1affb2e356c17ba2",
