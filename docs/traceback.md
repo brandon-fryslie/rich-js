@@ -85,18 +85,26 @@ A suppressed frame keeps its place in the list, so the order of calls stays inta
 
 ## Max frames
 
-Deep recursion can produce hundreds of frames. When a stack has more frames than `maxFrames` (100 by default), the traceback shows the first half and the last half of that budget and counts the frames omitted between them:
+A traceback can only show the frames the error recorded, and V8 records 10 by default. Raise `Error.stackTraceLimit` to see deeper stacks. Once a stack has more frames than `maxFrames` (100 by default), the traceback shows the first half and the last half of that budget and counts the frames omitted between them:
 
 ```typescript
-new Traceback(error, { maxFrames: 2 })
+Error.stackTraceLimit = 1000;
+
+try {
+  walk(250);
+} catch (error) {
+  console.print(new Traceback(error, { maxFrames: 4 }));
+}
 ```
 
 ```
-RangeError: Maximum call stack size exceeded
+RangeError: Tree too deep
 
-  walk /app/src/tree.ts:1
-  ... 248 frames omitted ...
-  walk /app/src/tree.ts:250
+  walk file:///app/src/tree.mjs:4
+  walk file:///app/src/tree.mjs:5
+  ... 251 frames omitted ...
+  async node:internal/modules/esm/loader:650
+  async asyncRunEntryPointWithESMLoader node:internal/modules/run_main:101
 ```
 
-Pass `maxFrames: 0` to disable the cap and show every frame (use with caution for recursive errors).
+Pass `maxFrames: 0` to disable the cap and show every recorded frame.
