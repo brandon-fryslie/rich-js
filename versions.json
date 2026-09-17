@@ -4,15 +4,22 @@
     {
       "version": "pr-150",
       "ref": "refs/pull/150/merge",
-      "sha": "2bf51871c7d85d46abbb430602bfa71e1d513831",
-      "timestamp": "2026-09-17T11:00:05.901Z",
+      "sha": "3380f9f93d133185ecedb85abcd6b75669832745",
+      "timestamp": "2026-09-17T11:07:29.728Z",
       "commits": [
         {
-          "sha": "2bf51871c7d85d46abbb430602bfa71e1d513831",
+          "sha": "3380f9f93d133185ecedb85abcd6b75669832745",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:59:40-06:00",
-          "message": "Merge 4cedae010aa834ab5daa0995bfb96db84612471f into e964187e2f6b6429a000f7b8afbeceae46d7c9de\n"
+          "timestamp": "2026-09-17T11:07:00Z",
+          "message": "Merge 1dfc29dd08fd09821226f64050b55c50efce1e19 into e964187e2f6b6429a000f7b8afbeceae46d7c9de\n"
+        },
+        {
+          "sha": "1dfc29dd08fd09821226f64050b55c50efce1e19",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T05:06:56-06:00",
+          "message": "fix(export): flatten alpha before reverse, dim and conceal (rich-export-9a1.1)\n\nresolveLook handed translucent colours straight to the swap, the fade and\nconceal. toSgrCodes flattens first, so an exported #rrggbbaa run drew other\ncolours than the terminal did, and conceal over a translucent background left\nthe glyph visible. Paper now flattens over the theme canvas and ink over the\npaper, through ColorSpec.flattenAlpha, before anything else sees them.\n"
         },
         {
           "sha": "4cedae010aa834ab5daa0995bfb96db84612471f",
