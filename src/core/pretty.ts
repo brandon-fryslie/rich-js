@@ -292,12 +292,14 @@ type Shape = { readonly kind: "text"; readonly text: string } | Container;
 const SEPARATOR = ", ";
 
 /**
- * What joins a container's positions across lines, once it has expanded.
- * rich-pretty-xms: named so the width it costs a non-last slot's own compact
- * try — reserved via `Frame.reserve` — cannot drift from the literal
- * `_formatObject` actually joins with.
+ * What joins a container's positions across lines, once it has expanded —
+ * `SEPARATOR` without the trailing space a newline already provides.
+ * rich-pretty-xms: named, and derived rather than a second hand-typed
+ * literal, so the width it costs a non-last slot's own compact try —
+ * reserved via `Frame.reserve` — cannot drift from what `_formatObject`
+ * actually joins with.
  */
-const EXPAND_SEPARATOR = ",";
+const EXPAND_SEPARATOR = SEPARATOR.trimEnd();
 
 /** The marker for positions the bound dropped, or nothing when it dropped none. */
 const elided = (dropped: number): Slot[] =>
