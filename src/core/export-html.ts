@@ -103,12 +103,14 @@ function runHtml({ text, look }: ExportRun): string {
 /**
  * `segments` under `theme` as a complete HTML document.
  *
- * The newline written straight after `<pre>` is the one an HTML parser drops,
- * so a recording that opens with a blank row keeps it.
+ * A browser draws no line for a newline at either edge of a `pre`: the parser
+ * drops the one straight after `<pre>`, and the one before `</pre>` ends a
+ * line without starting another. So the page opens with a newline of its own
+ * and every row ends with one, and a blank first or last row is still drawn.
  */
 export function encodeHtml(segments: Iterable<Segment>, theme?: TerminalTheme): string {
   const canvas = exportCanvas(theme);
-  const rows = exportLines(segments, theme).map((row) => row.map(runHtml).join(""));
+  const rows = exportLines(segments, theme).map((row) => `${row.map(runHtml).join("")}\n`);
   const css = [
     `body{background:${canvas.background.hex};color:${canvas.foreground.hex};padding:1em}`,
     "pre{margin:0;font-family:monospace;white-space:pre;overflow-x:auto}",
@@ -118,6 +120,6 @@ export function encodeHtml(segments: Iterable<Segment>, theme?: TerminalTheme): 
   return [
     "<!DOCTYPE html>",
     `<html><head><meta charset="utf-8"><style>\n${css}\n</style></head>`,
-    `<body><pre>\n${rows.join("\n")}</pre></body></html>`,
+    `<body><pre>\n${rows.join("")}</pre></body></html>`,
   ].join("\n");
 }

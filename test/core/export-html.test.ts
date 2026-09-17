@@ -47,6 +47,11 @@ describe("encodeHtml page", () => {
   it("keeps a leading blank row past the newline an HTML parser drops after <pre>", () => {
     expect(encodeHtml([new Segment("\nx")], THEME)).toContain("<pre>\n\n<span");
   });
+
+  it("ends every row with a newline, so a trailing blank row is drawn", () => {
+    expect(encodeHtml([new Segment("x\n\n")], THEME)).toContain("x</span>\n\n</pre>");
+    expect(encodeHtml([new Segment("x")], THEME)).toContain("x</span>\n</pre>");
+  });
 });
 
 describe("encodeHtml runs", () => {
