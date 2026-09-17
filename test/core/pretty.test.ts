@@ -128,6 +128,36 @@ describe("Pretty", () => {
     expect(text).not.toContain("metadata: { active");
   });
 
+  it("charges a container's compact try for the trailing comma a non-last slot gets (rich-pretty-xms)", () => {
+    // `k`'s array `[1, 2, 3, 10]` is exactly 13 cells, and the budget left
+    // after `    k: ` (column 7) at width 20 is also exactly 13 — but `k`
+    // isn't the container's last slot, so `_formatObject` appends a `,`
+    // right after it before the newline. Uncharged, that `,` pushes the
+    // line to 21 cells and wraps mid-array instead of expanding `k`.
+    const data = { k: [1, 2, 3, 10], z: 1 };
+    const text = collectText(new Pretty(data, { indentGuides: false }), { maxWidth: 20 });
+    const lines = text.split("\n");
+    for (const line of lines) {
+      expect(cellLen(line)).toBeLessThanOrEqual(20);
+    }
+    expect(text).toContain("k: [\n");
+    expect(text).not.toContain("k: [1, 2, 3, 10]");
+  });
+
+  it("charges a Map key's compact try for the tail that follows it", () => {
+    // The key holds the first hole of a Map slot, and its tail (`" => "`)
+    // is fixed literal text that lands right after it — the same shape of
+    // charge as a non-last slot's trailing comma, just within one slot
+    // instead of between two.
+    const data = new Map([[[1, 2, 3, 10], "x"]]);
+    const text = collectText(new Pretty(data, { indentGuides: false }), { maxWidth: 20 });
+    const lines = text.split("\n");
+    for (const line of lines) {
+      expect(cellLen(line)).toBeLessThanOrEqual(20);
+    }
+    expect(text).not.toContain("[1, 2, 3, 10] =>");
+  });
+
   it("still fits a keyed container compactly when the key leaves room", () => {
     // The fix must not overcorrect into expanding everything that sits under
     // a key — only what the key's width actually pushes past the budget.
