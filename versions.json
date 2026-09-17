@@ -4,15 +4,22 @@
     {
       "version": "pr-146",
       "ref": "refs/pull/146/merge",
-      "sha": "56400678324ddffd7fd2290ac83c2b04f44706db",
-      "timestamp": "2026-09-17T06:31:10.393Z",
+      "sha": "4c5bcc58c9d3fe025ad9c0c5385bf472ac00cecb",
+      "timestamp": "2026-09-17T06:43:17.303Z",
       "commits": [
         {
-          "sha": "56400678324ddffd7fd2290ac83c2b04f44706db",
+          "sha": "4c5bcc58c9d3fe025ad9c0c5385bf472ac00cecb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T00:30:36-06:00",
-          "message": "Merge 0c2a9d2129f347dae732cd9a6721bc7b34157a62 into f1fa4c67a02bf30d31c99c910401d795eb2d5039\n"
+          "timestamp": "2026-09-17T06:42:48Z",
+          "message": "Merge f66a3132e476e21bf7bd946397c9cf6d6daf8a12 into f1fa4c67a02bf30d31c99c910401d795eb2d5039\n"
+        },
+        {
+          "sha": "f66a3132e476e21bf7bd946397c9cf6d6daf8a12",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T00:42:43-06:00",
+          "message": "fix(strip): correct overclaiming comments from /code-review high\n\n/code-review high on this branch caught two comments I wrote that overclaim\n\"every renderable ends its own last line\" as a universal, checked fact. It\nisn't: Spinner, ProgressBar, and StatusRenderable never yield a trailing\nline terminator, verified live — they're line fragments, not block-level\nrenderables, and Group composition runs a bare Spinner into whatever follows\nit. Corrected both comments to name that real exception instead of a false\nuniversal, and filed rich-flexstrip-5kf.4cq to decide whether that split\nshould be a checked seam test.\n\nThe review also caught that docs/group.md's explanation of why RichText's\ndefault `end` doesn't already close a directly-embedded line is now false\n(RichText.render() emits `end` unconditionally since rich-text-5ai,\nindependent of Console) — and, discovered while verifying that, both\ndocumented Group examples now print a spurious blank line per item as a\nresult. That's an unrelated, pre-existing regression from rich-text-5ai\n(commit f1fa4c67), not something this branch touches or introduces; filed as\nrich-flexstrip-5kf.c4u with a verified repro and fix direction rather than\nfolding an unrelated docs fix into this PR.\n"
         },
         {
           "sha": "0c2a9d2129f347dae732cd9a6721bc7b34157a62",
