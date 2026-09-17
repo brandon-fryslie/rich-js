@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-150",
+      "ref": "refs/pull/150/merge",
+      "sha": "2bf51871c7d85d46abbb430602bfa71e1d513831",
+      "timestamp": "2026-09-17T11:00:05.901Z",
+      "commits": [
+        {
+          "sha": "2bf51871c7d85d46abbb430602bfa71e1d513831",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T04:59:40-06:00",
+          "message": "Merge 4cedae010aa834ab5daa0995bfb96db84612471f into e964187e2f6b6429a000f7b8afbeceae46d7c9de\n"
+        },
+        {
+          "sha": "4cedae010aa834ab5daa0995bfb96db84612471f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T04:59:26-06:00",
+          "message": "feat(export): resolve recorded output into the rows both exporters draw (rich-export-9a1.1)\n\nThe research ticket asked for design/export-pipeline.md. CLAUDE.md forbids a\nsecond description of a subsystem outside docs/, so the design lands as the\nmodule that makes it true, with the rationale in its header and the claims\npinned by tests.\n\nsrc/core/export-lines.ts resolves a recorded Segment stream under a\nTerminalTheme into rows of { text, look } runs. ExportLook carries only\nresolved values: reverse, dim, conceal, default colours and the theme's ANSI\ntable are consumed here, so neither the HTML nor the SVG exporter can forget\none. parseHref is the single checkpoint for links an export may publish\n(http, https, mailto, ftp, file); a refused link keeps its text.\n\nNothing consumes it yet: rich-export-9a1.2 routes exportHtml through it and\ndeletes the two style-to-CSS converters it replaces.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e964187e2f6b6429a000f7b8afbeceae46d7c9de",
