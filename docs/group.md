@@ -8,8 +8,8 @@ Many renderables — `Panel`, `Layout`, and others — accept only a **single** 
 import { Console, Group, Panel, RichText } from "@promptctl/rich-js";
 
 const console = new Console();
-const first = new RichText("First line\n");
-const second = new RichText("Second line\n");
+const first = new RichText("First line");
+const second = new RichText("Second line");
 
 // ✗ Panel's second parameter is its options object, not more content.
 //   This compiles and runs — it just silently drops `second`.
@@ -41,10 +41,10 @@ const console = new Console();
 console.print(
   new Panel(
     new Group(
-      renderMarkup("[bold cyan]Section Heading[/bold cyan]\n"),
-      renderMarkup("[dim]───────────────────────[/dim]\n"),
-      renderMarkup("Main body content goes here.\n"),
-      renderMarkup("[dim]Footer note.[/dim]\n"),
+      renderMarkup("[bold cyan]Section Heading[/bold cyan]"),
+      renderMarkup("[dim]───────────────────────[/dim]"),
+      renderMarkup("Main body content goes here."),
+      renderMarkup("[dim]Footer note.[/dim]"),
     ),
     { title: "My Panel" }
   )
@@ -60,7 +60,7 @@ console.print(
 ╰─────────────────────────────────────────╯
 ```
 
-Every item above ends in `\n`, and dropping it changes the output. A group emits its children's segments back to back and inserts nothing between them, so each child has to end its own line. `Panel`, `Rule`, `Table`, [`Strip`](./strip), and `FlexStrip` already do and stack without help; a `RichText` breaks the line only when its text ends in `\n`. The `end` newline a `RichText` carries by default will not do it — `console.print` appends that, and a group never calls `console.print`. Without the four `\n`s, the panel above collapses to one run-together line.
+A group emits its children's segments back to back and inserts nothing between them, so each child has to end its own line. `Panel`, `Rule`, `Table`, [`Strip`](./strip), and `FlexStrip` already do and stack without help. A `RichText` — and `renderMarkup`'s result, which is one — does it too, through its `end` option: every `RichText` draws a trailing `end` (default `"\n"`) itself, regardless of what its own text contains. That's why none of the calls above put a `\n` inside the markup: the text is the content, `end` is the line break, and writing both stacks two newlines into one row. Drop `end` to `""` — as [`Strip`](./strip) does for its own cells — for a `RichText` that should *not* end its own line, such as one meant to run straight into whatever the group renders next.
 
 ## Building a group from a generator
 
@@ -72,12 +72,12 @@ import { Console, Group, Panel, renderMarkup } from "@promptctl/rich-js";
 const console = new Console();
 
 function* buildContent(items: string[]) {
-  yield renderMarkup("[bold cyan]Results[/bold cyan]\n");
-  yield renderMarkup("[dim]─────────[/dim]\n");
+  yield renderMarkup("[bold cyan]Results[/bold cyan]");
+  yield renderMarkup("[dim]─────────[/dim]");
   for (const item of items) {
-    yield renderMarkup(`• ${item}\n`);
+    yield renderMarkup(`• ${item}`);
   }
-  yield renderMarkup(`[dim]Total: ${items.length}[/dim]\n`);
+  yield renderMarkup(`[dim]Total: ${items.length}[/dim]`);
 }
 
 console.print(
