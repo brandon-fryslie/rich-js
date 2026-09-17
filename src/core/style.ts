@@ -8,7 +8,6 @@ import {
   ColorSpec,
   ColorDepth,
 } from "./color.js";
-import type { TerminalTheme } from "./color.js";
 import { stripOscTerminators } from "./sanitize.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color` and the leaf
@@ -396,36 +395,6 @@ export class Style {
     }
 
     return result;
-  }
-
-  /**
-   * Returns a CSS style string for HTML rendering.
-   */
-  getHtmlStyle(theme?: TerminalTheme): string {
-    if (this.isNull) return "";
-    const parts: string[] = [];
-
-    if (this.color) {
-      const triplet = this.color.getTruecolor(theme, true);
-      parts.push(`color: ${triplet.hex}`);
-    }
-    if (this.bgcolor) {
-      const triplet = this.bgcolor.getTruecolor(theme, false);
-      parts.push(`background-color: ${triplet.hex}`);
-    }
-    if (this.bold) parts.push("font-weight: bold");
-    if (this.italic) parts.push("font-style: italic");
-
-    const decorations: string[] = [];
-    if (this.underline) decorations.push("underline");
-    if (this.strike) decorations.push("line-through");
-    if (this.overline) decorations.push("overline");
-    if (decorations.length > 0) {
-      parts.push(`text-decoration: ${decorations.join(" ")}`);
-    }
-    if (this.dim) parts.push("opacity: 0.5");
-
-    return parts.join("; ");
   }
 
   /**

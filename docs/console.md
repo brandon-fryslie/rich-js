@@ -479,6 +479,16 @@ const text = console.exportText();       // plain text
 const html = console.exportHtml();       // HTML with inline styles
 ```
 
+`exportHtml` draws the page in a `TerminalTheme`. The theme supplies the page background, the default text colour and the colours ANSI colour names resolve to; with no theme the page is white text on black over the standard ANSI colours.
+
+```typescript
+import { SOLARIZED_LIGHT } from "@promptctl/rich-js";
+
+const html = console.exportHtml({ theme: SOLARIZED_LIGHT });
+```
+
+Every style attribute is written into the page, including reverse, dim, blink, frame and encircle. A link becomes an `<a>` element only when its scheme is on a short allowlist of web, mail and file schemes; any other link, such as `javascript:`, exports as its styled text alone, because an exported page is made to be published.
+
 To persist the exported output to disk, use the node-only helpers from the `node/save` subpath:
 
 ```typescript
@@ -488,7 +498,7 @@ saveText(console, "output.txt");
 saveHtml(console, "output.html");
 ```
 
-These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. The recording buffer is cleared after writing by default; pass `{ clear: false }` to preserve it for a second export (e.g. saving both `.txt` and `.html` from the same recorded run).
+These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. Each takes the same options as the export it writes, so `saveHtml(console, "output.html", { theme: SOLARIZED_LIGHT })` saves the themed page. The recording buffer is cleared after writing by default; pass `{ clear: false }` to preserve it for a second export (e.g. saving both `.txt` and `.html` from the same recorded run).
 
 ## Error / stderr output
 

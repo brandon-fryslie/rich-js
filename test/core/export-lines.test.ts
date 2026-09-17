@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { exportLines, parseHref, resolveLook } from "../../src/core/export-lines.js";
+import { exportCanvas, exportLines, parseHref, resolveLook } from "../../src/core/export-lines.js";
 import { ColorRgba, ColorTable, STANDARD_TABLE, TerminalTheme } from "../../src/core/color.js";
 import { Style } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
@@ -124,6 +124,18 @@ describe("parseHref", () => {
     for (const link of ["javascript:alert(1)", "data:text/html,<b>", "vbscript:x", "/relative", "", "not a url"]) {
       expect(parseHref(link)).toBeNull();
     }
+  });
+});
+
+describe("exportCanvas", () => {
+  it("is the theme's own background and foreground", () => {
+    expect(exportCanvas(THEME)).toEqual({ background: PAPER, foreground: INK });
+  });
+
+  it("is what an unstyled run's ink and a reversed run's glyph resolve to", () => {
+    const canvas = exportCanvas(THEME);
+    expect(look("none").foreground).toEqual(canvas.foreground);
+    expect(look("reverse").foreground).toEqual(canvas.background);
   });
 });
 

@@ -19,7 +19,7 @@ import type { Console } from "../core/console.js";
 export function saveText(
   out: Console,
   path: string,
-  options?: { clear?: boolean },
+  options?: Parameters<Console["exportText"]>[0],
 ): void {
   writeFileSync(path, out.exportText(options), "utf-8");
 }
@@ -27,7 +27,7 @@ export function saveText(
 export function saveHtml(
   out: Console,
   path: string,
-  options?: { clear?: boolean },
+  options?: Parameters<Console["exportHtml"]>[0],
 ): void {
   writeFileSync(path, out.exportHtml(options), "utf-8");
 }
