@@ -16,8 +16,15 @@ import type { RenderOptions } from "../../src/core/protocol.js";
 
 const OPTIONS: RenderOptions = { maxWidth: 80 };
 
+// Strip now ends its own last line (rich-flexstrip-5kf), matching FlexStrip
+// and every other composable renderable. That terminator is pinned by its
+// own tests below; stripping it here keeps the joiner/color assertions in
+// the rest of this file about what they were always about.
 function render(strip: Strip, options: RenderOptions = OPTIONS): Segment[] {
-  return [...strip.render(options)];
+  const segs = [...strip.render(options)];
+  const last = segs.at(-1);
+  if (last && last.text === "\n" && !last.style && !last.control) segs.pop();
+  return segs;
 }
 
 function cell(text: string, style: string | Style): RichText {
@@ -56,6 +63,24 @@ describe("Strip render walk", () => {
     expect(segs.map((s) => s.text)).toEqual([
       " red ", ">", " blue ", ">", " green ", ">",
     ]);
+  });
+
+  // rich-flexstrip-5kf: Strip ends its own last line, matching FlexStrip and
+  // every other composable renderable (docs/group.md), so a `Group` of a
+  // Strip followed by another renderable puts that renderable on its own
+  // line instead of running it onto the Strip's.
+  it("ends its own render with a plain line terminator", () => {
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
+    const segs = [...strip.render(OPTIONS)];
+    const last = segs.at(-1)!;
+    expect(last.text).toBe("\n");
+    expect(last.style).toBeUndefined();
+    expect(last.control).toBeUndefined();
+  });
+
+  it("emits no terminator for an empty strip", () => {
+    const strip = new Strip([], new PowerlineJoiner());
+    expect([...strip.render(OPTIONS)]).toEqual([]);
   });
 });
 

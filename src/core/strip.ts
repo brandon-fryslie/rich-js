@@ -87,6 +87,16 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
       const next = i + 1 < items.length ? items[i + 1]! : null;
       yield* this.joiner.join(item, next).render(options);
     }
+
+    // [LAW:one-source-of-truth] Every renderable in this codebase ends its
+    // own last line — `FlexStrip` does it per line, `Panel`/`Rule`/`Table` do
+    // it structurally, `RichText` does it via `end` — so `Group` can emit
+    // children back to back with nothing in between (docs/group.md). A Strip
+    // that left its last line open broke only under composition: printed
+    // alone, Console's own "close whatever the renderable left open" step
+    // (console.ts) papered over it, and a `Group` of a Strip and a RichText
+    // ran the RichText onto the Strip's line instead of below it.
+    yield Segment.line();
   }
 }
 

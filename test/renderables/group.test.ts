@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Group } from "../../src/renderables/group.js";
+import { FlexStrip } from "../../src/renderables/flexStrip.js";
 import { Segment } from "../../src/core/segment.js";
+import { Strip, PowerlineJoiner } from "../../src/core/strip.js";
+import { RichText } from "../../src/core/text.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -72,5 +75,26 @@ describe("Group", () => {
     const group = new Group(...getPanels());
     const text = collectText(group, { maxWidth: 80 });
     expect(text).toBe("ABC");
+  });
+
+  // rich-flexstrip-5kf: Group inserts nothing between children (docs/group.md)
+  // — every child must end its own line. Strip and FlexStrip are siblings
+  // over the same Joiner protocol, documented on one page, and must agree.
+  describe("a Strip/FlexStrip followed by another renderable", () => {
+    const cellA = new RichText("a", { style: "white on red", end: "" });
+    const cellB = new RichText("b", { style: "white on blue", end: "" });
+    const after = new RichText("after\n", { end: "" });
+
+    it("Strip puts the next renderable on its own line", () => {
+      const strip = new Strip([cellA, cellB], new PowerlineJoiner({ glyph: ">" }));
+      const group = new Group(strip, after);
+      expect(collectText(group, { maxWidth: 80 })).toBe("a>b>\nafter\n");
+    });
+
+    it("FlexStrip puts the next renderable on its own line", () => {
+      const flexStrip = new FlexStrip([cellA, cellB], { joiner: new PowerlineJoiner({ glyph: ">" }) });
+      const group = new Group(flexStrip, after);
+      expect(collectText(group, { maxWidth: 80 })).toBe("a>b>\nafter\n");
+    });
   });
 });
