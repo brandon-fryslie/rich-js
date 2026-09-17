@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-147",
-      "ref": "refs/pull/147/merge",
-      "sha": "2a1066112a2f9d40648fe5bf83c314b6b20ba213",
-      "timestamp": "2026-09-17T06:50:47.200Z",
-      "commits": [
-        {
-          "sha": "2a1066112a2f9d40648fe5bf83c314b6b20ba213",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T00:50:18-06:00",
-          "message": "Merge 3e7a8fe2ddfd28529c6657cb6ee926175c1e969e into 9e8950e3e237c9077d0c80c249b361300b48f43e\n"
-        },
-        {
-          "sha": "3e7a8fe2ddfd28529c6657cb6ee926175c1e969e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T00:50:03-06:00",
-          "message": "fix(docs): drop double-stacked newlines in group.md's Group examples (rich-flexstrip-5kf.c4u)\n\ncommit f1fa4c67 (rich-text-5ai) made RichText.render() draw its `end`\nunconditionally. All three Group examples on docs/group.md built their\nRichText/renderMarkup content with a literal trailing \"\\n\" in the text\nAND relied on the default end (\"\\n\"), so every item printed a spurious\nblank line after it. Drop the literal \"\\n\"s and let the default `end`\nsupply the line break, matching what the page's shown output already\nclaims. Also corrects the explanatory paragraph, which asserted\n`console.print` (not RichText itself) draws the default `end` -- true\nbefore f1fa4c67, false since.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9e8950e3e237c9077d0c80c249b361300b48f43e",
-      "timestamp": "2026-09-17T06:47:27.557Z",
+      "sha": "8cd13ca5f863e1e0e07610705d9e02ba211a7be8",
+      "timestamp": "2026-09-17T06:54:59.052Z",
       "commits": [
         {
-          "sha": "9e8950e3e237c9077d0c80c249b361300b48f43e",
+          "sha": "8cd13ca5f863e1e0e07610705d9e02ba211a7be8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T00:47:01-06:00",
-          "message": "fix(strip): Strip ends its own last line, matching FlexStrip (#146)\n\n* fix(strip): Strip ends its own last line, matching FlexStrip (rich-flexstrip-5kf)\n\nStrip and FlexStrip are sibling renderables over the same Joiner protocol,\ndocumented on one page, and disagreed about who terminates the last line:\nFlexStrip ends every line with Segment.line(), Strip never emitted one.\n\nPrinted alone this was invisible — Console.print already closes whatever a\nrenderable left open (rich-console-dcg) — but it broke composition: docs/group.md\ndocuments that Group inserts nothing between children, so each child must end\nits own line the way Panel, Rule and Table already do. A Group of a Strip\nfollowed by another renderable ran the two together on one line; the same\nGroup with a FlexStrip put the second renderable on its own line, as intended.\n\nThe original ticket framed the fix the other way (make FlexStrip stop\nterminating, to match Strip) — investigation on the rich-console-dcg branch\nfound that backwards: FlexStrip already follows the codebase's convention\nthat every renderable ends its own lines, and Strip is the outlier. Fixed by\ngiving Strip the same trailing Segment.line() FlexStrip already emits.\n\nStrip's own render-walk tests (joiner glyph/color placement) strip the new\nterminator via a small helper so they stay focused on what they pin; the\nterminator itself and the Group composition contract get dedicated tests.\n\n* fix(strip): correct overclaiming comments from /code-review high\n\n/code-review high on this branch caught two comments I wrote that overclaim\n\"every renderable ends its own last line\" as a universal, checked fact. It\nisn't: Spinner, ProgressBar, and StatusRenderable never yield a trailing\nline terminator, verified live — they're line fragments, not block-level\nrenderables, and Group composition runs a bare Spinner into whatever follows\nit. Corrected both comments to name that real exception instead of a false\nuniversal, and filed rich-flexstrip-5kf.4cq to decide whether that split\nshould be a checked seam test.\n\nThe review also caught that docs/group.md's explanation of why RichText's\ndefault `end` doesn't already close a directly-embedded line is now false\n(RichText.render() emits `end` unconditionally since rich-text-5ai,\nindependent of Console) — and, discovered while verifying that, both\ndocumented Group examples now print a spurious blank line per item as a\nresult. That's an unrelated, pre-existing regression from rich-text-5ai\n(commit f1fa4c67), not something this branch touches or introduces; filed as\nrich-flexstrip-5kf.c4u with a verified repro and fix direction rather than\nfolding an unrelated docs fix into this PR."
+          "timestamp": "2026-09-17T00:54:31-06:00",
+          "message": "fix(docs): drop double-stacked newlines in group.md's Group examples (rich-flexstrip-5kf.c4u) (#147)\n\ncommit f1fa4c67 (rich-text-5ai) made RichText.render() draw its `end`\nunconditionally. All three Group examples on docs/group.md built their\nRichText/renderMarkup content with a literal trailing \"\\n\" in the text\nAND relied on the default end (\"\\n\"), so every item printed a spurious\nblank line after it. Drop the literal \"\\n\"s and let the default `end`\nsupply the line break, matching what the page's shown output already\nclaims. Also corrects the explanatory paragraph, which asserted\n`console.print` (not RichText itself) draws the default `end` -- true\nbefore f1fa4c67, false since."
         }
       ]
     }
