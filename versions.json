@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-148",
-      "ref": "refs/pull/148/merge",
-      "sha": "61b880aefe2710ca9447163a470b2a1a8eb2d376",
-      "timestamp": "2026-09-17T07:53:26.161Z",
-      "commits": [
-        {
-          "sha": "61b880aefe2710ca9447163a470b2a1a8eb2d376",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T07:53:00Z",
-          "message": "Merge bcdfe536d54da0f55644e3e02d6d21d8d6442fdb into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
-        },
-        {
-          "sha": "bcdfe536d54da0f55644e3e02d6d21d8d6442fdb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T01:52:56-06:00",
-          "message": "style(pretty): derive EXPAND_SEPARATOR from SEPARATOR instead of a second literal\n\nMedium review: two independently hand-typed literals for the same\npunctuation is exactly the drift risk EXPAND_SEPARATOR's own comment says\nit exists to prevent.\n"
-        },
-        {
-          "sha": "65bfdcdcf89b533404eb2ffb0784f31e407f260c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T01:41:15-06:00",
-          "message": "refactor(pretty): tighten Frame allocation and column tracking from repeat high review\n\n- _formatObject's per-slot Frame varied only in `reserve`, which takes just\n  two values (last slot vs every other), so build two shared frames instead\n  of one per slot — was O(N) allocations for an N-slot container, now O(1).\n- _expandSlot tracked `column` as a second variable hand-synchronized with\n  `out` at every append. Derive it instead via lineColumn(at.column, out) —\n  one source of truth, and a future third piece of per-hole text can no\n  longer update `out` without updating `column` to match, which would have\n  silently reintroduced a stale-budget bug of the same shape this PR fixes.\n\nA third finding — the expand branch's own opening-bracket line (`key: Set {`)\nis emitted with no width check against `at.column` at all, unlike the\ncompact try a few lines above it — is real, pre-existing (confirmed\nunaffected by every fix on this branch), and needs a different fix shape\n(there's no way to reflow a fixed literal like `Set {`; the real fix is a\ndesign decision about breaking the key onto its own line). Filed as\nrich-pretty-xms.0l4 rather than folded into this PR.\n"
-        },
-        {
-          "sha": "901305da01e0c9704a2d82851256cc26c7e0dc57",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T01:22:52-06:00",
-          "message": "fix(pretty): a container's compact try also charges for what follows it\n\nThe medium review on this PR found the same accounting gap on the trailing\nside: a non-last slot's compact value can fit maxWidth - column exactly and\nstill overrun once _formatObject's own trailing \",\" lands after it, wrapping\nmid-container the same way the leading-key bug did.\n\nFrame gains `reserve`: cells a fixed piece of literal text already known to\nfollow a value — the rest of its own hole.tail, or the slot-join separator —\nwill cost on the same line, charged symmetrically with `column`. Threaded\nthrough _expandSlot per hole (only the slot's last hole inherits the outer\nslot's own reserve) and through _formatObject's per-slot Frame (0 for the\nlast slot, 1 for every other).\n\nVerified the same gap exists, symmetrically, for a Map entry's \" => \" tail\nfollowing a compact key — fixed by the same mechanism, pinned by a second\ntest. A third manifestation (a bare scalar or self-describing value trailing\na compact key within one slot, e.g. `[1,2,3,10] => \"v\"`) shares the same root\ncause but needs a different fix shape (scalars/self-describing text have no\ncompact-fit apparatus at all) — confirmed present on master already, not a\nregression from either fix on this branch, and added to the already-filed\nfollow-up ticket (rich-pretty-xms.tmf) rather than fixed here.\n"
-        },
-        {
-          "sha": "65bfe40824368cab56d55f95a1ef522df496cfe5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T01:13:41-06:00",
-          "message": "fix(pretty): address high-review findings on rich-pretty-xms\n\n- Hoist the per-slot `deeper` Frame back to a single construction outside\n  `.map()` — every field was identical across slots at a given nesting\n  level (column: innerColumn doesn't vary per slot, only _expandSlot's own\n  running column varies per hole within one), so building it fresh per\n  slot was pure allocation churn with no behavioral difference.\n- The new width-pinning test compared raw `.length` instead of `cellLen`,\n  diverging from every other width assertion in this file and from the\n  budget math the fix itself is built on. Switched to `cellLen`.\n\nA third finding (Pretty's self-describing \"text\" shape — Error, custom\ntoString — never consults column/width for multi-line values) is real but\npre-existing and out of this ticket's scope; filed as rich-pretty-xms.tmf.\n"
-        },
-        {
-          "sha": "979f891de72cf1185edec6e4f2a5bdfdc8b1c483",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T01:03:37-06:00",
-          "message": "fix(pretty): a container's compact try is charged for the key it sits under (rich-pretty-xms)\n\nPretty's fit-on-one-line decision for a nested container budgeted the\nremaining width as maxWidth minus the indent alone, which is only the true\nremaining width when nothing precedes the value on its line. A value under\na key — `metadata: { ... }` — has that key's width and separator eaten\nfrom the same line, uncounted, so a container could pass the fit test and\nstill overrun the width once its key was prepended, wrapping mid-container.\n\nFrame now carries `column`: where a value's text actually begins on the\nline it lands on, threaded through `_expandSlot` per hole (so a Map\nentry's `\" => \"` and a second hole are charged too, and a multi-line\ninsert resets the column to its own last line rather than accumulating\nacross lines that were never on the same row). The one-line probe path\nalready tracked this correctly via its shrinking `budget`; only the\nlay-out path's own compact try was deriving the budget from depth instead\nof position.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8cd13ca5f863e1e0e07610705d9e02ba211a7be8",
-      "timestamp": "2026-09-17T06:54:59.052Z",
+      "sha": "bbfbbe7eb8685493c17fea64f66b850ba7469a11",
+      "timestamp": "2026-09-17T07:55:24.599Z",
       "commits": [
         {
-          "sha": "8cd13ca5f863e1e0e07610705d9e02ba211a7be8",
+          "sha": "bbfbbe7eb8685493c17fea64f66b850ba7469a11",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T00:54:31-06:00",
-          "message": "fix(docs): drop double-stacked newlines in group.md's Group examples (rich-flexstrip-5kf.c4u) (#147)\n\ncommit f1fa4c67 (rich-text-5ai) made RichText.render() draw its `end`\nunconditionally. All three Group examples on docs/group.md built their\nRichText/renderMarkup content with a literal trailing \"\\n\" in the text\nAND relied on the default end (\"\\n\"), so every item printed a spurious\nblank line after it. Drop the literal \"\\n\"s and let the default `end`\nsupply the line break, matching what the page's shown output already\nclaims. Also corrects the explanatory paragraph, which asserted\n`console.print` (not RichText itself) draws the default `end` -- true\nbefore f1fa4c67, false since."
+          "timestamp": "2026-09-17T01:54:57-06:00",
+          "message": "fix(pretty): a container's compact try is charged for the key it sits under (#148)\n\nMerging: full review sequence (high → medium → high → medium → low) complete, all findings addressed or routed to follow-up tickets, working tree clean.\n\nThe \"Review\" (AI Code Review) CI check shows FAILURE / mergeStateStatus UNSTABLE — verified via `gh run view --log-failed`: it's the CI job's own Claude subscription hitting its rate limit (\"You've hit your limit · resets Sep 18, 11am (UTC)\"), not a code finding. Same infra issue seen on PR #147. This repo has no required status checks; UNSTABLE ≠ blocked.\n\nFollow-up tickets filed (not folded into this PR — different bug class / different fix shape each):\n- rich-pretty-xms.tmf — Pretty's self-describing \"text\" shape (Error/custom toString) and bare scalars never go through any compact-fit budget at all.\n- rich-pretty-xms.0l4 — the expand branch's own opening-bracket line (`key: Set {`) is emitted with no width check against the column it lands at."
         }
       ]
     }
