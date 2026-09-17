@@ -181,7 +181,7 @@ Map {
 
 ## Truncating large values
 
-`maxLength` caps how many entries are shown, and the ones it drops are counted in a trailing `... +N` whatever the container. `maxString` cuts strings to that many characters and appends the number dropped — inside the quotes, as part of the string:
+`maxLength` caps how many entries are shown, and the ones it drops are counted in a trailing `... +N` whatever the container. `maxString` cuts strings to that many characters and counts the rest after the closing quote — outside the value, so the count is never mistaken for the string's own content:
 
 ```typescript
 import { Console, Pretty } from "@promptctl/rich-js";
@@ -195,7 +195,7 @@ console.print(new Pretty({ bio: "Field biologist. ".repeat(20) }, { maxString: 2
 
 ```
 [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ... +990]
-{ bio: "Field biologist. Field b+316" }
+{ bio: "Field biologist. Field b"+316 }
 ```
 
 ## Nesting inside another renderable

@@ -363,11 +363,15 @@ export class Pretty implements Renderable, Measurable {
 
     switch (typeof value) {
       case "string": {
-        let str = value;
-        if (this.maxString !== undefined && str.length > this.maxString) {
-          str = str.slice(0, this.maxString) + `+${value.length - this.maxString}`;
+        // The dropped count is an annotation about the value, not part of it,
+        // so it goes after the closing quote — the way `maxLength`'s `... +N`
+        // sits beside the kept entries rather than inside the last one. Inside
+        // the quotes it reads as content, and copying it out yields a string
+        // the program never held.
+        if (this.maxString === undefined || value.length <= this.maxString) {
+          return JSON.stringify(value);
         }
-        return JSON.stringify(str);
+        return JSON.stringify(value.slice(0, this.maxString)) + `+${value.length - this.maxString}`;
       }
       case "number":
       case "bigint":
