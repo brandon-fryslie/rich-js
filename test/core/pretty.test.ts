@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Pretty } from "../../src/core/pretty.js";
+import { cellLen } from "../../src/core/cells.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { Highlighter, NullHighlighter } from "../../src/core/highlighter.js";
 import type { RichText } from "../../src/core/text.js";
@@ -121,7 +122,7 @@ describe("Pretty", () => {
     const text = collectText(new Pretty(data, { indentGuides: false }), { maxWidth: 43 });
     const lines = text.split("\n");
     for (const line of lines) {
-      expect(line.length).toBeLessThanOrEqual(43);
+      expect(cellLen(line)).toBeLessThanOrEqual(43);
     }
     expect(text).toContain("metadata: {\n");
     expect(text).not.toContain("metadata: { active");

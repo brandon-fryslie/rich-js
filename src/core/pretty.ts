@@ -487,17 +487,14 @@ export class Pretty implements Renderable, Measurable {
 
     const indentStr = " ".repeat(this.indent * at.inset);
     const innerIndent = " ".repeat(this.indent * (at.inset + 1));
-    const innerColumn = cellLen(innerIndent);
-    const parts = shape.slots.map((slot) => {
-      const deeper: Frame = {
-        inset: at.inset + 1,
-        level: at.level + 1,
-        maxWidth: at.maxWidth,
-        column: innerColumn,
-        open: at.open,
-      };
-      return innerIndent + this._expandSlot(slot, deeper);
-    });
+    const deeper: Frame = {
+      inset: at.inset + 1,
+      level: at.level + 1,
+      maxWidth: at.maxWidth,
+      column: cellLen(innerIndent),
+      open: at.open,
+    };
+    const parts = shape.slots.map((slot) => innerIndent + this._expandSlot(slot, deeper));
     return shape.open + "\n" + parts.join(",\n") + "\n" + indentStr + shape.close;
   }
 
