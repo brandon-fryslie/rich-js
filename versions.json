@@ -4,15 +4,22 @@
     {
       "version": "pr-145",
       "ref": "refs/pull/145/merge",
-      "sha": "7f48df6f9e33c91b1312d531e279a30bc73989d7",
-      "timestamp": "2026-09-17T04:51:55.218Z",
+      "sha": "676aa86940ecfcb98a20188ea91a876f7668cb8c",
+      "timestamp": "2026-09-17T04:55:17.414Z",
       "commits": [
         {
-          "sha": "7f48df6f9e33c91b1312d531e279a30bc73989d7",
+          "sha": "676aa86940ecfcb98a20188ea91a876f7668cb8c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:51:21Z",
-          "message": "Merge 0539dd280a974e781151abf4dfb89e3c2c5e420a into d0428a0649d7811ea5023266241bc3c107246b70\n"
+          "timestamp": "2026-09-17T04:54:48Z",
+          "message": "Merge adc9a8ef5729f8cca0f25a6d3729fda549df56c2 into d0428a0649d7811ea5023266241bc3c107246b70\n"
+        },
+        {
+          "sha": "adc9a8ef5729f8cca0f25a6d3729fda549df56c2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T22:54:39-06:00",
+          "message": "test(text): pin the end/embedded-newline stacking as intentional\n\n/code-review medium re-raised the same end-doubling observation the\nhigh review found and this branch's PR comment already addressed:\ncontent already ending in \"\\n\" stacks with a non-empty default end,\nmatching how a custom end already stacked pre-fix. Pin it as a named\ntest so a third review reads it as a decision, not a gap.\n"
         },
         {
           "sha": "0539dd280a974e781151abf4dfb89e3c2c5e420a",
