@@ -4,15 +4,22 @@
     {
       "version": "pr-143",
       "ref": "refs/pull/143/merge",
-      "sha": "da02d812625b1f2d9f66e61f9f6a6fa82c7aee64",
-      "timestamp": "2026-09-17T03:23:44.524Z",
+      "sha": "35558d5dce2df0d5ef68404834f55ac483eb1dc7",
+      "timestamp": "2026-09-17T03:27:26.465Z",
       "commits": [
         {
-          "sha": "da02d812625b1f2d9f66e61f9f6a6fa82c7aee64",
+          "sha": "35558d5dce2df0d5ef68404834f55ac483eb1dc7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T21:23:19-06:00",
-          "message": "Merge fa6e52861f1a50be3be0e42759d8a62d8b106e4c into e360188e4fd2d62b620564c65d9adc9060c20c52\n"
+          "timestamp": "2026-09-17T03:26:59Z",
+          "message": "Merge 862248031b6855e79e7c6e4148a1836151696944 into e360188e4fd2d62b620564c65d9adc9060c20c52\n"
+        },
+        {
+          "sha": "862248031b6855e79e7c6e4148a1836151696944",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T21:26:55-06:00",
+          "message": "docs(table): name the table's rendered width, not its content's, in the declared-width example (rich-table-width-y1a)\n"
         },
         {
           "sha": "fa6e52861f1a50be3be0e42759d8a62d8b106e4c",
