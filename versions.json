@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-145",
+      "ref": "refs/pull/145/merge",
+      "sha": "426397fae80cd23172c1f67f54636a0da6be3a22",
+      "timestamp": "2026-09-17T04:40:52.984Z",
+      "commits": [
+        {
+          "sha": "426397fae80cd23172c1f67f54636a0da6be3a22",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T22:40:25-06:00",
+          "message": "Merge f3963bc2441f797cdac8fb3aaaa3d7c4d7941b3c into d0428a0649d7811ea5023266241bc3c107246b70\n"
+        },
+        {
+          "sha": "f3963bc2441f797cdac8fb3aaaa3d7c4d7941b3c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T22:39:12-06:00",
+          "message": "fix(text): end draws the same trailing segment for empty and non-empty text (rich-text-5ai)\n\nRichText.render() gave `end` two meanings: honored for empty text (any\ntruthy value, including the default \"\\n\"), but silently dropped for\nnon-empty text unless it was a non-default value. `end: \"\"` was a\nno-op on the common (non-empty) path even though every internal\nembedding site (columns, table cells, tree labels, panel content, now\nprogress's TextColumn) already set it defensively.\n\nOne rule now: `end` is its own trailing segment whenever it is a\nnon-empty string, for empty and non-empty text alike. Console.print\nalready clears a text item's `end` before rendering it (rich-console-dcg),\nso printed output is unaffected. Callers that render a RichText directly\nand embed it as a line rather than a printed unit now need to clear\n`end` themselves, matching the existing convention — Panel's bare-string\ncontent and TextColumn's markup output were the two gaps, fixed here.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d0428a0649d7811ea5023266241bc3c107246b70",
