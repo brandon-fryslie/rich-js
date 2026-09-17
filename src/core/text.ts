@@ -806,11 +806,6 @@ export class RichText implements Renderable, Measurable {
 
   *render(options: RenderOptions): Iterable<Segment> {
     const text = this._expandTabs(this._text);
-    if (text.length === 0) {
-      if (this._end) yield new Segment(this._end);
-      return;
-    }
-
     const base = this.resolvedStyle(options);
     const allSegments = this._buildSegments(text, base, options);
     const logicalLines = Segment.splitLines(allSegments);
@@ -863,7 +858,13 @@ export class RichText implements Renderable, Measurable {
       }
     }
 
-    if (this._end && this._end !== "\n") {
+    // [LAW:single-enforcer] The one place `end` is emitted, for empty and
+    // non-empty text alike — the pre-fix code checked it once for empty text
+    // (truthy) and again for non-empty text (truthy and not the default
+    // "\n"), which gave `end` two meanings depending on whether the text was
+    // empty (rich-text-5ai). Empty text takes zero iterations of the loop
+    // above, so this is reached either way with nothing yielded but this.
+    if (this._end) {
       yield new Segment(this._end);
     }
   }

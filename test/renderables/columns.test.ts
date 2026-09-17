@@ -178,4 +178,14 @@ describe("Columns", () => {
     const m = cols.measure({ maxWidth: 40 });
     expect(m.minimum).toBeGreaterThan(0);
   });
+
+  // rich-text-5ai: same gap the code review found in table.ts's
+  // `toRenderable` — a `RichText` item implements `render`, so it left
+  // through the passthrough arm untouched, keeping its default `end: "\n"`
+  // and drawing a stray extra row once `RichText.render` started honoring
+  // `end` for non-empty text.
+  it("does not draw a blank row for a RichText item with an embedded trailing newline", () => {
+    const cols = new Columns([new RichText("foo\n"), "bar"]);
+    expect(collectLines(cols, { maxWidth: 40 })).toHaveLength(1);
+  });
 });

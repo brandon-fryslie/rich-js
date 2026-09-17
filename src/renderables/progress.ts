@@ -61,7 +61,13 @@ export class TextColumn implements ProgressColumn {
     // Use a callback so `$&`/`$1`/`$$` in the task description aren't
     // reinterpreted by String.replace as replacement patterns.
     const formatted = this.format.replace(/\{task\.description\}/g, () => description);
-    yield* renderMarkup(formatted).render(options);
+    // [LAW:one-type-per-behavior] A column is a row fragment, not a printed
+    // line, so it clears `end` the same way `toCellText` does in table.ts —
+    // `renderMarkup` returns a fresh `RichText` each call, so it is safe to
+    // mutate directly rather than copy.
+    const text = renderMarkup(formatted);
+    text.end = "";
+    yield* text.render(options);
   }
 }
 

@@ -884,6 +884,52 @@ describe("RichText.render()", () => {
     expect(segments[0]!.text).toBe("\n");
   });
 
+  // rich-text-5ai: `end` used to mean two different things depending on
+  // whether the text was empty — honored for empty text, dropped for
+  // non-empty text unless it was a non-default value. One rule now: `end` is
+  // its own trailing segment whenever it is a non-empty string, empty or
+  // non-empty text alike — this pins all five rows of the ticket's table.
+  describe("end is one rule for empty and non-empty text alike", () => {
+    const segmentTexts = (t: RichText) =>
+      collect(t.render({ maxWidth: 40 })).map((s) => s.text);
+
+    it("non-empty text, default end: content, then the default terminator", () => {
+      expect(segmentTexts(new RichText("a"))).toEqual(["a", "\n"]);
+    });
+
+    it("non-empty text, end \"\": content only, no terminator", () => {
+      expect(segmentTexts(new RichText("a", { end: "" }))).toEqual(["a"]);
+    });
+
+    it("non-empty text, custom end: content, then the custom terminator", () => {
+      expect(segmentTexts(new RichText("a", { end: "<<" }))).toEqual(["a", "<<"]);
+    });
+
+    it("empty text, default end: just the default terminator", () => {
+      expect(segmentTexts(new RichText(""))).toEqual(["\n"]);
+    });
+
+    it("empty text, end \"\": nothing at all", () => {
+      expect(segmentTexts(new RichText("", { end: "" }))).toEqual([]);
+    });
+
+    // Flagged independently by two code-review passes on rich-text-5ai as a
+    // "doubled newline" regression. It is not one: `end` and an embedded
+    // trailing "\n" in the content are two different things stacking, the
+    // same as Python's `print("hi\n")` producing two newlines. Pre-fix,
+    // a *custom* end already stacked this way (`"hi\n<<"`) — only the
+    // *default* "\n" end special-cased itself away when content already
+    // ended in "\n", which is the same "two meanings for end" defect this
+    // ticket exists to remove. Direct-render consumers who want exactly one
+    // trailing newline pass `end: ""`; `Console.print` is unaffected either
+    // way, since it clears a text item's own `end` before rendering.
+    it("content already ending in \\n stacks with a non-empty end, same as a custom end always did", () => {
+      expect(segmentTexts(new RichText("a\n"))).toEqual(["a", "\n", "\n"]);
+      expect(segmentTexts(new RichText("a\n", { end: "<<" }))).toEqual(["a", "\n", "<<"]);
+      expect(segmentTexts(new RichText("a\n", { end: "" }))).toEqual(["a", "\n"]);
+    });
+  });
+
   it("does not wrap when noWrap is set", () => {
     const t = new RichText("abcdefghij", { noWrap: true });
     const segments = collect(t.render({ maxWidth: 5 }));

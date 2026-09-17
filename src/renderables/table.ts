@@ -46,8 +46,14 @@ function toCellText(content: unknown): RichText {
 }
 
 function toRenderable(content: unknown): Renderable {
-  // A `RichText` leaves through this arm too — it implements `Renderable`, so
-  // the prototype carries `render` and the instance is returned untouched.
+  // [LAW:single-enforcer] `toCellText` is the one place that clears a cell's
+  // `end` — route a directly-passed `RichText` through it rather than letting
+  // it leave via the passthrough arm below untouched (rich-text-5ai code
+  // review): the passthrough exists for a genuine non-text `Renderable` (a
+  // nested `Panel` or `Table`), which carries no `end` to clear.
+  if (content instanceof RichText) {
+    return toCellText(content);
+  }
   if (typeof content === "object" && content !== null && "render" in content) {
     return content as Renderable;
   }

@@ -33,10 +33,14 @@ describe("renderToString", () => {
     expect(out).toBe("hi");
   });
 
-  it("emits exactly the bytes the renderable produces — no implicit trailing newline", () => {
+  it("emits exactly the bytes the renderable produces — nothing added, nothing stripped", () => {
     // [LAW:one-source-of-truth] renderToString does not add or strip newlines;
-    // the renderable's segment stream is the only source of truth.
-    expect(renderToString(new RichText("hi"), { colorSystem: null })).toBe("hi");
+    // the renderable's segment stream — `end` included, "\n" by default
+    // (rich-text-5ai) — is the only source of truth.
+    const text = new RichText("hi");
+    const fromSegments = segmentsToString([...text.render({ maxWidth: 80 })], null);
+    expect(renderToString(text, { colorSystem: null })).toBe(fromSegments);
+    expect(fromSegments).toBe("hi\n");
   });
 
   it("is referentially transparent — same args produce byte-identical output", () => {
