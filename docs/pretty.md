@@ -132,7 +132,32 @@ console.print(new Pretty([1, 2, 3], { expandAll: true }));
 ]
 ```
 
-The fit test measures the container by itself, not the key it sits under, so a nested container can still overrun the width by the length of its key. Reach for `expandAll` when a nested structure wraps in a way you did not expect.
+The fit test charges a nested container for the key it sits under, not just the container's own one-line form — `metadata: ` costs 10 cells that `metadata`'s own budget has to spend too, so it expands rather than overrunning the line:
+
+```typescript
+import { Console, Pretty } from "@promptctl/rich-js";
+
+const console = new Console({ width: 43 });
+
+console.print(
+  new Pretty({
+    name: "Alice",
+    scores: [98, 87, 95],
+    metadata: { active: true, role: "admin" },
+  }),
+);
+```
+
+```
+{
+    name: "Alice",
+    scores: [98, 87, 95],
+    metadata: {
+        active: true,
+        role: "admin"
+    }
+}
+```
 
 Every container has a one-line form, `Map` and `Set` included, and takes it when the line has room for it:
 

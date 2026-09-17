@@ -105,6 +105,35 @@ describe("Pretty", () => {
       .toBe("{ s: Set { 1, 2 } }");
   });
 
+  it("charges a container's compact try for the key it sits under (rich-pretty-xms)", () => {
+    // `metadata`'s own compact form is 30 cells, and the indent expanding
+    // it sits under is 4 — 34 <= 43 — but the line it lands on also carries
+    // `metadata: `, another 10 cells, for 44: one past the width. Budgeting
+    // from the indent alone (ignoring the key) let this pass and wrap
+    // mid-container. No line below may exceed the console width, and
+    // `metadata` must break structurally — onto its own lines — rather than
+    // wrap inside the compact form.
+    const data = {
+      name: "Alice",
+      scores: [98, 87, 95],
+      metadata: { active: true, role: "admin" },
+    };
+    const text = collectText(new Pretty(data, { indentGuides: false }), { maxWidth: 43 });
+    const lines = text.split("\n");
+    for (const line of lines) {
+      expect(line.length).toBeLessThanOrEqual(43);
+    }
+    expect(text).toContain("metadata: {\n");
+    expect(text).not.toContain("metadata: { active");
+  });
+
+  it("still fits a keyed container compactly when the key leaves room", () => {
+    // The fix must not overcorrect into expanding everything that sits under
+    // a key — only what the key's width actually pushes past the budget.
+    const text = collectText(new Pretty({ metadata: { active: true } }), { maxWidth: 80 });
+    expect(text).toBe('{ metadata: { active: true } }');
+  });
+
   // --- Expand All Mode ---
 
   it("expandAll forces expansion of all containers", () => {
