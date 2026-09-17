@@ -26,10 +26,11 @@ const BLINK_KEYFRAMES = "rich-blink";
 // [LAW:dataflow-not-control-flow] Each enum-valued field of a look is a table
 // from its values to the declarations it adds, so every value is spelled once
 // and `Record` makes a new value a compile error until it has a row.
-const UNDERLINE: Record<ExportLook["underline"], { readonly line: readonly string[]; readonly style: readonly string[] }> = {
-  none: { line: [], style: [] },
-  single: { line: ["underline"], style: [] },
-  double: { line: ["underline"], style: ["text-decoration-style:double"] },
+// A double underline adds no line to the glyph's own span; `runHtml` draws it.
+const UNDERLINE_LINE: Record<ExportLook["underline"], readonly string[]> = {
+  none: [],
+  single: ["underline"],
+  double: [],
 };
 
 const BLINK: Record<ExportLook["blink"], readonly string[]> = {
@@ -47,33 +48,56 @@ const OUTLINE: Record<ExportLook["outline"], readonly string[]> = {
 };
 
 /**
- * One look as inline CSS.
+ * The glyph colour, and the background when one is painted.
  *
  * Dim arrives already blended into `foreground`. `opacity` is never written:
  * it fades a painted background along with the glyph, which is the bug the
  * blend exists to avoid.
  */
-function lookCss(look: ExportLook): string {
+function paintCss(look: ExportLook): string[] {
+  return [
+    `color:${look.foreground.hex}`,
+    ...(look.background === "canvas" ? [] : [`background-color:${look.background.hex}`]),
+  ];
+}
+
+/** What is drawn on the glyph: weight, slant, single-style lines, blink, outline. */
+function glyphCss(look: ExportLook): string[] {
   const lines = [
-    ...UNDERLINE[look.underline].line,
+    ...UNDERLINE_LINE[look.underline],
     ...(look.strike ? ["line-through"] : []),
     ...(look.overline ? ["overline"] : []),
   ];
   return [
-    `color:${look.foreground.hex}`,
-    ...(look.background === "canvas" ? [] : [`background-color:${look.background.hex}`]),
     ...(look.bold ? ["font-weight:bold"] : []),
     ...(look.italic ? ["font-style:italic"] : []),
     ...(lines.length === 0 ? [] : [`text-decoration-line:${lines.join(" ")}`]),
-    ...UNDERLINE[look.underline].style,
     ...BLINK[look.blink],
     ...OUTLINE[look.outline],
-  ].join(";");
+  ];
 }
 
+const span = (css: readonly string[], content: string): string =>
+  `<span style="${escapeAttribute(css.join(";"))}">${content}</span>`;
+
+/**
+ * One run as markup.
+ *
+ * An element has one `text-decoration-style`, so a double underline sharing a
+ * span with a strike would double the strike too. It gets an outer span of its
+ * own instead. That span carries the paint, because a descendant's background
+ * may be painted over an ancestor's underline, and the blink, so the underline
+ * blinks with the glyph.
+ */
 function runHtml({ text, look }: ExportRun): string {
-  const span = `<span style="${escapeAttribute(lookCss(look))}">${escapeText(text)}</span>`;
-  return look.href === null ? span : `<a href="${escapeAttribute(look.href)}">${span}</a>`;
+  const glyph = escapeText(text);
+  const drawn = look.underline === "double"
+    ? span(
+      [...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
+      span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph),
+    )
+    : span([...paintCss(look), ...glyphCss(look)], glyph);
+  return look.href === null ? drawn : `<a href="${escapeAttribute(look.href)}">${drawn}</a>`;
 }
 
 /**

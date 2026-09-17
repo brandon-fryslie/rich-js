@@ -73,14 +73,20 @@ describe("encodeHtml runs", () => {
     expect(cssOf(html(Style.parse("bold italic")))).toBe(`color:${INK.hex};font-weight:bold;font-style:italic`);
   });
 
-  it("lists every decoration line, and a double underline's style", () => {
-    expect(cssOf(html(Style.parse("underline strike overline")))).toContain(
-      "text-decoration-line:underline line-through overline",
+  it("lists every single-style decoration line on the glyph's span", () => {
+    expect(cssOf(html(Style.parse("underline strike overline")))).toBe(
+      `color:${INK.hex};text-decoration-line:underline line-through overline`,
     );
-    expect(cssOf(html(Style.parse("underline2")))).toContain(
-      "text-decoration-line:underline;text-decoration-style:double",
+    expect(html(Style.parse("underline"))).not.toContain("text-decoration-style");
+  });
+
+  it("doubles only the underline, on an outer span that carries the paint and the blink", () => {
+    expect(html(Style.parse("underline2 strike overline blink on #ff0000"))).toContain(
+      `<span style="color:${INK.hex};background-color:#ff0000;text-decoration-line:underline;` +
+        `text-decoration-style:double;animation:rich-blink 1s step-end infinite">` +
+        `<span style="color:${INK.hex};text-decoration-line:line-through overline;` +
+        `animation:rich-blink 1s step-end infinite">x</span></span>`,
     );
-    expect(cssOf(html(Style.parse("underline")))).not.toContain("text-decoration-style");
   });
 
   it("blinks slow and fast against keyframes that hide the glyph", () => {
