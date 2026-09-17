@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-149",
-      "ref": "refs/pull/149/merge",
-      "sha": "a7708e10b9598a6b62e6113ded35ca5dfc889494",
-      "timestamp": "2026-09-17T10:48:20.886Z",
-      "commits": [
-        {
-          "sha": "a7708e10b9598a6b62e6113ded35ca5dfc889494",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T10:47:55Z",
-          "message": "Merge 430f763c262d0fbc116582689ee3e187473e48d4 into bbfbbe7eb8685493c17fea64f66b850ba7469a11\n"
-        },
-        {
-          "sha": "430f763c262d0fbc116582689ee3e187473e48d4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:47:50-06:00",
-          "message": "docs(console): print's string-truncation count sits after the closing quote (rich-pretty-efq)\n\nPRINT_DATA_BOUNDS' header and docs/console.md both still described maxString's\n+N as inside the quotes, the form this branch removed.\n"
-        },
-        {
-          "sha": "61fb1907764fe4a937bcda17d85c327e68f26946",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:46:25-06:00",
-          "message": "fix(pretty): maxString's dropped count sits outside the closing quote (rich-pretty-efq)\n\nPretty cut a long string and appended \"+N\" before JSON.stringify, so the\ncount was quoted as the string's own content — \"Field b+316\" — and copying\nthe rendered value yielded a string the program never held. Quote the kept\nprefix first and annotate after it: \"Field b\"+316, the same way maxLength's\n\"... +N\" sits beside the kept entries rather than inside the last one.\n\nThe ticket's second instance (Map/Set maxLength truncating silently) is\nalready fixed on master by the shared `elided()` marker every container\nkind goes through; verified, nothing to change.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "bbfbbe7eb8685493c17fea64f66b850ba7469a11",
-      "timestamp": "2026-09-17T07:55:24.599Z",
+      "sha": "e964187e2f6b6429a000f7b8afbeceae46d7c9de",
+      "timestamp": "2026-09-17T10:50:38.937Z",
       "commits": [
         {
-          "sha": "bbfbbe7eb8685493c17fea64f66b850ba7469a11",
+          "sha": "e964187e2f6b6429a000f7b8afbeceae46d7c9de",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T01:54:57-06:00",
-          "message": "fix(pretty): a container's compact try is charged for the key it sits under (#148)\n\nMerging: full review sequence (high → medium → high → medium → low) complete, all findings addressed or routed to follow-up tickets, working tree clean.\n\nThe \"Review\" (AI Code Review) CI check shows FAILURE / mergeStateStatus UNSTABLE — verified via `gh run view --log-failed`: it's the CI job's own Claude subscription hitting its rate limit (\"You've hit your limit · resets Sep 18, 11am (UTC)\"), not a code finding. Same infra issue seen on PR #147. This repo has no required status checks; UNSTABLE ≠ blocked.\n\nFollow-up tickets filed (not folded into this PR — different bug class / different fix shape each):\n- rich-pretty-xms.tmf — Pretty's self-describing \"text\" shape (Error/custom toString) and bare scalars never go through any compact-fit budget at all.\n- rich-pretty-xms.0l4 — the expand branch's own opening-bracket line (`key: Set {`) is emitted with no width check against the column it lands at."
+          "timestamp": "2026-09-17T04:50:06-06:00",
+          "message": "fix(pretty): maxString's dropped count sits outside the closing quote (#149)\n\n* fix(pretty): maxString's dropped count sits outside the closing quote (rich-pretty-efq)\n\nPretty cut a long string and appended \"+N\" before JSON.stringify, so the\ncount was quoted as the string's own content — \"Field b+316\" — and copying\nthe rendered value yielded a string the program never held. Quote the kept\nprefix first and annotate after it: \"Field b\"+316, the same way maxLength's\n\"... +N\" sits beside the kept entries rather than inside the last one.\n\nThe ticket's second instance (Map/Set maxLength truncating silently) is\nalready fixed on master by the shared `elided()` marker every container\nkind goes through; verified, nothing to change.\n\n* docs(console): print's string-truncation count sits after the closing quote (rich-pretty-efq)\n\nPRINT_DATA_BOUNDS' header and docs/console.md both still described maxString's\n+N as inside the quotes, the form this branch removed."
         }
       ]
     }
