@@ -200,6 +200,21 @@ describe("Pretty", () => {
     expect(text).toContain("+90");
   });
 
+  it("puts maxString's dropped count outside the closing quote", () => {
+    // Inside the quotes the count reads as the string's own content — a
+    // `+90` the value never held. `maxLength`'s `... +N` already sits beside
+    // the kept entries; a cut string is annotated the same way.
+    const long = "a".repeat(100);
+    expect(collectText(new Pretty(long, { maxString: 10 }), { maxWidth: 80 }))
+      .toBe('"aaaaaaaaaa"+90');
+    expect(collectText(new Pretty({ s: long }, { maxString: 10 }), { maxWidth: 80 }))
+      .toBe('{ s: "aaaaaaaaaa"+90 }');
+  });
+
+  it("leaves a string at exactly maxString untouched", () => {
+    expect(collectText(new Pretty("abc", { maxString: 3 }), { maxWidth: 80 })).toBe('"abc"');
+  });
+
   // --- Indent ---
 
   it("accepts indent option to control indentation width", () => {

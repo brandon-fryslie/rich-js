@@ -114,7 +114,7 @@ Data printed this way is truncated by default, because `print` formats whatever
 it is handed and a debug line should not cost megabytes. A container shows its
 first 100 entries, nesting stops at 16 levels deep, and a string inside the data
 is cut at 1000 characters. Every one of those announces itself in the output —
-`... +4900`, `{...}`, `+49000` inside the quotes — so a truncated value never
+`... +4900`, `{...}`, `+49000` after the closing quote — so a truncated value never
 passes for a complete one.
 
 These bounds belong to `print` and `log`, not to the formatter. A `Pretty` you

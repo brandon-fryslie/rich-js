@@ -275,8 +275,8 @@ const NO_HIGHLIGHT = new NullHighlighter();
  * `print(deeplyNested)` descends until the stack gives out, and a single
  * response body assigned to a field arrives in full — each of them a debug line
  * that costs megabytes or hangs the terminal. All three bounds announce
- * themselves in the output (`... +N`, `{...}`, `+N` inside the quotes), so this
- * truncates visibly and never silently. [LAW:no-silent-failure]
+ * themselves in the output (`... +N`, `{...}`, `+N` after the closing quote),
+ * so this truncates visibly and never silently. [LAW:no-silent-failure]
  *
  * `maxString` reaches only strings nested inside data; a string argument is
  * printed by the arm above, where the caller asked for that string by name.
