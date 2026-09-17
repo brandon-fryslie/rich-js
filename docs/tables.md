@@ -100,8 +100,8 @@ A declared `width` does not lift that bound. The table's outer width is the
 smaller of its `width` and the width it is offered, and both `render` and
 `measure` read that one number. Inside it the table sizes to its content as it
 would without a `width`, so a declared width is a ceiling rather than a size:
-a table declared at 40 around five cells of content renders at five, and
-[`expand`](#sizing) is what fills it out to 40. Offered 12 columns, neither
+a table declared at 40 whose content needs nine cells renders nine cells wide,
+and [`expand`](#sizing) is what fills it out to 40. Offered 12 columns, neither
 grows past 12.
 
 Cells go out in a fixed order — the two outer border columns, then one content
