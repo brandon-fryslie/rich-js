@@ -4,15 +4,22 @@
     {
       "version": "pr-151",
       "ref": "refs/pull/151/merge",
-      "sha": "9835863609159a5639037fb30208124d5d473518",
-      "timestamp": "2026-09-17T11:22:27.434Z",
+      "sha": "38219f938b583592df20c4c68af6f05b307cd0c4",
+      "timestamp": "2026-09-17T11:24:23.239Z",
       "commits": [
         {
-          "sha": "9835863609159a5639037fb30208124d5d473518",
+          "sha": "38219f938b583592df20c4c68af6f05b307cd0c4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:22:01-06:00",
-          "message": "Merge 99a35ed727ddd3f3921ec8c04808ce4bddf8f851 into 7cdac56067ef8a3c6235aab0602b92e8bed91f0a\n"
+          "timestamp": "2026-09-17T11:23:50Z",
+          "message": "Merge 43f3437d649df8ea03f236eb717773f5c045ac15 into 7cdac56067ef8a3c6235aab0602b92e8bed91f0a\n"
+        },
+        {
+          "sha": "43f3437d649df8ea03f236eb717773f5c045ac15",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T05:23:45-06:00",
+          "message": "fix(export): a trailing blank row is drawn in the HTML export\n\nA newline straight before </pre> ends a line without drawing another, so a\nrecording ending in a blank row lost it. Every row now ends with its own\nnewline, matching the newline the page writes after <pre> for the parser to\ndrop. Checked in headless Chromium: the pre's height in lines equals\nexportLines' row count for blank rows first, last, both and in between.\n"
         },
         {
           "sha": "99a35ed727ddd3f3921ec8c04808ce4bddf8f851",
