@@ -84,7 +84,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it:
 0   cells · color · sanitize · subscription
 1   oklch · style · wrap
 2   segment
-3   box · protocol
+3   box · protocol · export-lines
 4   measure · emoji · text · strip · render
 5   markup · highlighter
 6   pretty · json
@@ -121,6 +121,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.
 - **box** — box-drawing character sets. One `Box` type, many pre-built instances (ASCII, SQUARE, ROUNDED, HEAVY, DOUBLE, …).
 - **protocol** — `Renderable` and `Measurable` interfaces. `Renderable.render(options) → Iterable<Segment>`. `Measurable.measure(options) → {minimum, maximum}`. Single authority for the rendering contract.
+- **export-lines** — recorded segments resolved against a `TerminalTheme` into the rows every exporter draws: `exportLines`, `resolveLook`, `parseHref`. The HTML and SVG exporters are two encodings of this one picture; its module header owns why `reverse`, `dim` and `conceal` are resolved here and not in either format.
 - **measure** — `Measurement` value type (min/max cell width). `Measurement.get()` is the single enforcer for measuring a `Measurable`.
 - **markup** — parses Rich markup strings (`[bold red]text[/]`) into `RichText`.
 - **text** — `RichText`: styled text with `Span[]` annotations. Primary text type for the library; implements `Renderable` and `Measurable`.
