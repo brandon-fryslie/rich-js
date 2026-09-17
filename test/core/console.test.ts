@@ -681,6 +681,18 @@ describe("Console.print() line ends", () => {
     expect(printed([new RichText("a"), "b", 1]).out).toBe("a b 1\n");
   });
 
+  it("uses the print's end, not a RichText argument's own", () => {
+    expect(printed(["a", new RichText(""), "b"]).out).toBe("a  b\n");
+    expect(printed([new RichText("")]).out).toBe("\n");
+    expect(printed([new RichText("a", { end: "!" }), "b"]).out).toBe("a b\n");
+  });
+
+  it("leaves a printed RichText's own end as the caller set it", () => {
+    const text = new RichText("a", { end: "!" });
+    printed([text]);
+    expect(text.end).toBe("!");
+  });
+
   it("prints a bare line break when given nothing", () => {
     expect(printed([]).out).toBe("\n");
   });

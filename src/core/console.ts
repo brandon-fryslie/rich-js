@@ -439,23 +439,29 @@ export class Console {
     // renderable is a block of its own that occupies whole lines, so neither
     // `sep` nor `end` ever touches it. That is the reference's split — `end`
     // belongs to text, not to the print — and it is what lets two printed panels
-    // stack with no blank line between them. The line is not closed by asking
-    // where the cursor sits: `print("a\n")` is a line and an empty one, here as
-    // in the reference and in every other `print`, and only the kind of the
-    // item can tell that trailing break from a `Panel`'s. A call with nothing
-    // to print is one empty text run, so it still ends the line.
+    // stack with no blank line between them. The one place the reference cuts
+    // differently is data: it gives a container lines of its own, and here all
+    // data is text. The line is not closed by asking where the cursor sits:
+    // `print("a\n")` is a line and an empty one, here as in the reference and
+    // in every other `print`, and only the kind of the item can tell that
+    // trailing break from a `Panel`'s. A call with nothing to print is one
+    // empty text run, so it still ends the line.
     const blocks: PrintBlock[] = items.length === 0 ? [{ kind: "text", items: [] }] : [];
     for (const item of items) {
-      // Four arms, and they are the whole domain. A `RichText` is already text.
-      // Any other renderable draws itself, as a block. A string is the only kind
-      // of argument that can *contain* markup, so it is the only kind the markup
-      // dialect is applied to. Everything else is data, and `Pretty` is the
-      // single authority on how a JavaScript value displays — `String(value)`
-      // was a second, weaker one that answered `[object Object]` for every
-      // object and let the markup parser eat it. [LAW:one-source-of-truth]
+      // Four arms, and they are the whole domain. A `RichText` is already text;
+      // it runs as a copy with its own `end` cleared, as a string's is, because
+      // the line end of a run is the print's. Any other renderable draws itself,
+      // as a block. A string is the only kind of argument that can *contain*
+      // markup, so it is the only kind the markup dialect is applied to.
+      // Everything else is data, and `Pretty` is the single authority on how a
+      // JavaScript value displays — `String(value)` was a second, weaker one
+      // that answered `[object Object]` for every object and let the markup
+      // parser eat it. [LAW:one-source-of-truth]
       let text: Renderable;
       if (item instanceof RichText) {
-        text = item;
+        const richText = item.copy();
+        richText.end = "";
+        text = richText;
       } else if (isRenderable(item)) {
         blocks.push({ kind: "lines", renderable: item });
         continue;
