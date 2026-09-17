@@ -4,15 +4,22 @@
     {
       "version": "pr-151",
       "ref": "refs/pull/151/merge",
-      "sha": "97986f195e5e9621f8bd9b5b0206dc30d7253305",
-      "timestamp": "2026-09-17T11:18:53.584Z",
+      "sha": "9835863609159a5639037fb30208124d5d473518",
+      "timestamp": "2026-09-17T11:22:27.434Z",
       "commits": [
         {
-          "sha": "97986f195e5e9621f8bd9b5b0206dc30d7253305",
+          "sha": "9835863609159a5639037fb30208124d5d473518",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:18:22-06:00",
-          "message": "Merge fbf45d3a6934ff53ffc07fe07431da38bfecb045 into 7cdac56067ef8a3c6235aab0602b92e8bed91f0a\n"
+          "timestamp": "2026-09-17T05:22:01-06:00",
+          "message": "Merge 99a35ed727ddd3f3921ec8c04808ce4bddf8f851 into 7cdac56067ef8a3c6235aab0602b92e8bed91f0a\n"
+        },
+        {
+          "sha": "99a35ed727ddd3f3921ec8c04808ce4bddf8f851",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T05:21:57-06:00",
+          "message": "fix(export): a double underline no longer doubles strike and overline\n\nCSS gives an element one text-decoration-style, so underline2 sharing a span\nwith strike drew a double strike-through the terminal never showed. The\ndouble underline now sits on an outer span carrying the paint (so no inner\nbackground covers it) and the blink (so it blinks with the glyph); strike and\noverline stay single on the inner span. Checked in headless Chromium over a\npainted background.\n"
         },
         {
           "sha": "fbf45d3a6934ff53ffc07fe07431da38bfecb045",
