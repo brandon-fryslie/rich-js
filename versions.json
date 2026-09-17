@@ -4,15 +4,22 @@
     {
       "version": "pr-144",
       "ref": "refs/pull/144/merge",
-      "sha": "68bb3f5c5dfb170375c6512f325a0626e47276eb",
-      "timestamp": "2026-09-17T03:49:54.819Z",
+      "sha": "8a12813256aa3e84b20200e7d224f8549c4b7a72",
+      "timestamp": "2026-09-17T03:56:56.697Z",
       "commits": [
         {
-          "sha": "68bb3f5c5dfb170375c6512f325a0626e47276eb",
+          "sha": "8a12813256aa3e84b20200e7d224f8549c4b7a72",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T21:49:30-06:00",
-          "message": "Merge 2c6954d6aac5efcf11ffdf9651b4da45e1a78cb3 into fb3760e18120214e2379ed0e1affb2e356c17ba2\n"
+          "timestamp": "2026-09-17T03:56:26Z",
+          "message": "Merge 0d6cd3f1a4cd9592be659b0fc6885d7d91a4d360 into fb3760e18120214e2379ed0e1affb2e356c17ba2\n"
+        },
+        {
+          "sha": "0d6cd3f1a4cd9592be659b0fc6885d7d91a4d360",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T21:56:21-06:00",
+          "message": "fix(console): a RichText argument runs with the print's end, not its own\n\nA RichText passed to print joined the text run as it was, so its own `end`\nstill rendered. RichText writes `end` for empty text and for any non-default\nvalue. So `print(\"a\", new RichText(\"\"), \"b\")` broke the line mid-run as\n\"a \\n b\\n\", `print(new RichText(\"\"))` printed two line breaks, and\n`print(new RichText(\"a\", { end: \"!\" }), \"b\")` put \"!\" inside the line.\nPython Rich ignores an item's own `end` in all three cases.\n\nThe RichText arm now runs a copy with `end` cleared, as the string arm already\ndoes, and the caller's object is left untouched.\n\nThe block comment now also says where this port's text/block split differs\nfrom the reference: data. Rich gives a container lines of its own. That\nquestion is filed as rich-console-5k3.\n"
         },
         {
           "sha": "2c6954d6aac5efcf11ffdf9651b4da45e1a78cb3",
