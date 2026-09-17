@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-145",
-      "ref": "refs/pull/145/merge",
-      "sha": "676aa86940ecfcb98a20188ea91a876f7668cb8c",
-      "timestamp": "2026-09-17T04:55:17.414Z",
-      "commits": [
-        {
-          "sha": "676aa86940ecfcb98a20188ea91a876f7668cb8c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:54:48Z",
-          "message": "Merge adc9a8ef5729f8cca0f25a6d3729fda549df56c2 into d0428a0649d7811ea5023266241bc3c107246b70\n"
-        },
-        {
-          "sha": "adc9a8ef5729f8cca0f25a6d3729fda549df56c2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T22:54:39-06:00",
-          "message": "test(text): pin the end/embedded-newline stacking as intentional\n\n/code-review medium re-raised the same end-doubling observation the\nhigh review found and this branch's PR comment already addressed:\ncontent already ending in \"\\n\" stacks with a non-empty default end,\nmatching how a custom end already stacked pre-fix. Pin it as a named\ntest so a third review reads it as a decision, not a gap.\n"
-        },
-        {
-          "sha": "0539dd280a974e781151abf4dfb89e3c2c5e420a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T22:51:15-06:00",
-          "message": "fix(table,columns,layout): clear end on a RichText embedded directly, not just via string\n\n/code-review high on rich-text-5ai found that table.ts's toRenderable\npassthrough arm returns a directly-embedded RichText untouched (it\nimplements render, so it never reaches toCellText's end-clearing), and\nthat layout.ts's constructor/update only clear end on the string\nbranch. Both draw a stray extra blank line once RichText.render honors\nend for non-empty text. columns.ts had the identical passthrough gap,\ncaught by the same grep pattern while fixing table.ts.\n\nAll three now route a directly-passed RichText through the same\ncopy-and-clear treatment the string branch already gets, matching the\nconvention panel.ts and tree.ts already follow. Regression tests added\nfor each.\n"
-        },
-        {
-          "sha": "f3963bc2441f797cdac8fb3aaaa3d7c4d7941b3c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T22:39:12-06:00",
-          "message": "fix(text): end draws the same trailing segment for empty and non-empty text (rich-text-5ai)\n\nRichText.render() gave `end` two meanings: honored for empty text (any\ntruthy value, including the default \"\\n\"), but silently dropped for\nnon-empty text unless it was a non-default value. `end: \"\"` was a\nno-op on the common (non-empty) path even though every internal\nembedding site (columns, table cells, tree labels, panel content, now\nprogress's TextColumn) already set it defensively.\n\nOne rule now: `end` is its own trailing segment whenever it is a\nnon-empty string, for empty and non-empty text alike. Console.print\nalready clears a text item's `end` before rendering it (rich-console-dcg),\nso printed output is unaffected. Callers that render a RichText directly\nand embed it as a line rather than a printed unit now need to clear\n`end` themselves, matching the existing convention — Panel's bare-string\ncontent and TextColumn's markup output were the two gaps, fixed here.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d0428a0649d7811ea5023266241bc3c107246b70",
-      "timestamp": "2026-09-17T03:59:26.806Z",
+      "sha": "f1fa4c67a02bf30d31c99c910401d795eb2d5039",
+      "timestamp": "2026-09-17T04:55:51.001Z",
       "commits": [
         {
-          "sha": "d0428a0649d7811ea5023266241bc3c107246b70",
+          "sha": "f1fa4c67a02bf30d31c99c910401d795eb2d5039",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T21:59:03-06:00",
-          "message": "fix(console): end belongs to text; a renderable ends its own lines (rich-console-dcg) (#144)\n\n* fix(console): end belongs to text; a renderable ends its own lines (rich-console-dcg)\n\nTwo consecutive prints of a Panel, Table or Rule left a blank line between\nthem: the renderable closed its last line and print then appended `end`\nregardless.\n\nThe ticket framed the choice as an intended aesthetic or a column-tracking\nconsole, and described Python Rich as the second. Rich 15.0.0 is neither. It\nattaches `sep` and `end` only to runs of text items and lets any other\nrenderable own its line breaks. Column tracking would also have been wrong:\n`print(\"a\\n\")` is \"a\\n\\n\" in Rich and must stay so, and only the item's kind,\nnot the cursor column, separates that trailing break from a Panel's.\n\nConsole.print now builds a PrintBlock list. A run of adjacent text items\n(strings, RichText, data) is joined by `sep` and ended by `end`. Any other\nrenderable is a block whose lines are each closed by the print. This also\nfixes the mixed cases, which matched Rich in none of these ways before:\n`print(\"a\", panel, \"b\")` put the panel's top edge on the \"a\" line and led\n\"b\" with a space, and `end` was appended after a renderable.\n\nOne deliberate divergence from Rich remains: a renderable that leaves its last\nline open, such as Strip, has it closed here, so the next print and the\nexport start on a new line.\n\nLine ends added by print stay outside the print and console styles, as Rich\nemits them.\n\nDocs: docs/console.md gains a \"Line ends\" section. The blank line drawn in\ndocs/group.md and explained in docs/pretty.md is gone.\n\n* fix(console): a RichText argument runs with the print's end, not its own\n\nA RichText passed to print joined the text run as it was, so its own `end`\nstill rendered. RichText writes `end` for empty text and for any non-default\nvalue. So `print(\"a\", new RichText(\"\"), \"b\")` broke the line mid-run as\n\"a \\n b\\n\", `print(new RichText(\"\"))` printed two line breaks, and\n`print(new RichText(\"a\", { end: \"!\" }), \"b\")` put \"!\" inside the line.\nPython Rich ignores an item's own `end` in all three cases.\n\nThe RichText arm now runs a copy with `end` cleared, as the string arm already\ndoes, and the caller's object is left untouched.\n\nThe block comment now also says where this port's text/block split differs\nfrom the reference: data. Rich gives a container lines of its own. That\nquestion is filed as rich-console-5k3."
+          "timestamp": "2026-09-16T22:55:20-06:00",
+          "message": "fix(text): end draws the same trailing segment for empty and non-empty text (#145)\n\n* fix(text): end draws the same trailing segment for empty and non-empty text (rich-text-5ai)\n\nRichText.render() gave `end` two meanings: honored for empty text (any\ntruthy value, including the default \"\\n\"), but silently dropped for\nnon-empty text unless it was a non-default value. `end: \"\"` was a\nno-op on the common (non-empty) path even though every internal\nembedding site (columns, table cells, tree labels, panel content, now\nprogress's TextColumn) already set it defensively.\n\nOne rule now: `end` is its own trailing segment whenever it is a\nnon-empty string, for empty and non-empty text alike. Console.print\nalready clears a text item's `end` before rendering it (rich-console-dcg),\nso printed output is unaffected. Callers that render a RichText directly\nand embed it as a line rather than a printed unit now need to clear\n`end` themselves, matching the existing convention — Panel's bare-string\ncontent and TextColumn's markup output were the two gaps, fixed here.\n\n* fix(table,columns,layout): clear end on a RichText embedded directly, not just via string\n\n/code-review high on rich-text-5ai found that table.ts's toRenderable\npassthrough arm returns a directly-embedded RichText untouched (it\nimplements render, so it never reaches toCellText's end-clearing), and\nthat layout.ts's constructor/update only clear end on the string\nbranch. Both draw a stray extra blank line once RichText.render honors\nend for non-empty text. columns.ts had the identical passthrough gap,\ncaught by the same grep pattern while fixing table.ts.\n\nAll three now route a directly-passed RichText through the same\ncopy-and-clear treatment the string branch already gets, matching the\nconvention panel.ts and tree.ts already follow. Regression tests added\nfor each.\n\n* test(text): pin the end/embedded-newline stacking as intentional\n\n/code-review medium re-raised the same end-doubling observation the\nhigh review found and this branch's PR comment already addressed:\ncontent already ending in \"\\n\" stacks with a non-empty default end,\nmatching how a custom end already stacked pre-fix. Pin it as a named\ntest so a third review reads it as a decision, not a gap."
         }
       ]
     }
