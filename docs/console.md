@@ -130,6 +130,39 @@ A *string argument* is never truncated either — `maxString` applies only to
 strings found inside data, since a string you passed to `print` is one you asked
 for by name.
 
+### Line ends
+
+`sep` and `end` belong to text. Adjacent strings, `RichText` values and data are
+joined with `sep`, a space by default, and the line they make is ended with
+`end`, a line break by default. Any other renderable takes whole lines of its
+own: text before it ends its line first, text after it starts on a new one, and
+neither `sep` nor `end` is placed next to it. Printed renderables therefore stack
+with no blank line between them:
+
+```typescript
+console.print("before", new Panel("one", { width: 9 }), "after", "that");
+console.print(new Panel("two", { width: 9 }), { end: "" });
+console.print("done");
+```
+
+```
+before
+╭───────╮
+│ one   │
+╰───────╯
+after that
+╭───────╮
+│ two   │
+╰───────╯
+done
+```
+
+The `end: ""` in the second call changes nothing, because that call printed no
+text. A renderable's last line is always ended, even one whose render did not
+end it. Python Rich differs here: it leaves such a line open, and the next print
+carries on along it. A line break at the end of a string is text, so
+`console.print("a\n")` prints `a` and then an empty line.
+
 ### Style argument
 
 Apply a style to the entire print call:

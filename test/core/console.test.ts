@@ -630,6 +630,89 @@ describe("Console.print() crop and overflow ignore", () => {
   });
 });
 
+// --- Line ends ---
+
+// `end` belongs to text, and a renderable ends its own lines. Every expected
+// string here is what Python Rich 15.0.0 prints for the same call, except where
+// a test says otherwise; recording is checked beside stdout because a line end
+// that reached the terminal and not the recording joins prints in an export.
+describe("Console.print() line ends", () => {
+  const panel = (): Panel => new Panel("x", { width: 5 });
+  const PANEL = "╭───╮\n│ x │\n╰───╯\n";
+  const printed = (...calls: unknown[][]): { out: string; text: string; html: string } => {
+    const { console: c, chunks } = makeConsole({ width: 20, record: true });
+    for (const args of calls) c.print(...args);
+    const out = captured(chunks);
+    return { out, text: c.exportText({ clear: false }), html: c.exportHtml() };
+  };
+
+  it("stacks two printed panels with no blank line between them", () => {
+    const { out, text, html } = printed([panel()], [panel()]);
+    expect(out).toBe(PANEL + PANEL);
+    expect(text).toBe(PANEL + PANEL);
+    expect(html).toContain("╰───╯\n╭───╮");
+  });
+
+  it("ends a printed table or rule with exactly one line break", () => {
+    const table = new Table().addColumn("h").addRow("v");
+    expect(printed([table]).out).toBe("┏━━━┓\n┃ h ┃\n┡━━━┩\n│ v │\n└───┘\n");
+    expect(printed([new Rule()]).out).toBe("─".repeat(20) + "\n");
+  });
+
+  it("keeps a string's trailing line break as a line of its own", () => {
+    expect(printed(["a\n"]).out).toBe("a\n\n");
+  });
+
+  it("ends the text before a renderable and starts the text after it on a new line", () => {
+    const { out, text } = printed(["a", panel(), "b"]);
+    expect(out).toBe(`a\n${PANEL}b\n`);
+    expect(text).toBe(`a\n${PANEL}b\n`);
+  });
+
+  it("does not put end after a renderable", () => {
+    expect(printed([panel(), { end: "!!" }]).out).toBe(PANEL);
+  });
+
+  it("does not put sep between renderables", () => {
+    expect(printed([panel(), panel(), { sep: "|" }]).out).toBe(PANEL + PANEL);
+  });
+
+  it("joins RichText, strings and data as one line", () => {
+    expect(printed([new RichText("a"), "b", 1]).out).toBe("a b 1\n");
+  });
+
+  it("prints a bare line break when given nothing", () => {
+    expect(printed([]).out).toBe("\n");
+  });
+
+  it("carries on at the start of a line after text ended with end: \"\"", () => {
+    expect(printed(["a", { end: "" }], [panel()]).out).toBe(`a${PANEL}`);
+  });
+
+  // Not the reference: Python Rich leaves a renderable's unclosed last line
+  // open, and the next print runs on after it. Here a renderable occupies whole
+  // lines whatever it yields, so the next print — and the export — starts clean.
+  it("closes the last line of a renderable that left it open", () => {
+    const open: Renderable = {
+      *render() {
+        yield new Segment("xy");
+      },
+    };
+    const { out, text } = printed([open], ["z"]);
+    expect(out).toBe("xy\nz\n");
+    expect(text).toBe("xy\nz\n");
+  });
+
+  it("does not style a renderable's line breaks", () => {
+    const { console: c, chunks } = makeConsole({ width: 20, colorSystem: "truecolor" });
+    c.print(panel(), { style: "red" });
+    const lines = captured(chunks).split("\n");
+    expect(lines.pop()).toBe("");
+    expect(lines).toHaveLength(3);
+    for (const line of lines) expect(line).toMatch(/^\x1b\[31m.*\x1b\[0m$/);
+  });
+});
+
 // --- Console.log() ---
 
 describe("Console.log()", () => {

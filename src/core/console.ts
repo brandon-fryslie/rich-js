@@ -127,6 +127,13 @@ export interface PrintOptions {
   sep?: string;
 }
 
+// [LAW:types-are-the-program] The two kinds of block a print is made of, and
+// the discriminator is who ends the lines: a text run is ended by the print's
+// `end`, a renderable's lines are each closed by the print.
+type PrintBlock =
+  | { kind: "text"; items: Renderable[] }
+  | { kind: "lines"; renderable: Renderable };
+
 // [LAW:single-enforcer] Color spec → ColorDepth resolution lives in
 // `resolveColorSystem`. This helper just normalizes the option shape (string |
 // enum | null) into the cached `_colorSystem` field. WINDOWS has no string
@@ -426,30 +433,39 @@ export class Console {
     const softWrap = opts.softWrap ?? false;
     const printStyle = this._theme.resolve(opts.style ?? NULL_STYLE);
 
-    // Convert items to renderables
-    const renderables: Renderable[] = [];
-    for (let i = 0; i < items.length; i++) {
-      if (i > 0 && sep) {
-        renderables.push(new RichText(sep, { end: "" }));
-      }
-
-      // Three arms, and they are the whole domain. A renderable draws itself.
-      // A string is the only kind of argument that can *contain* markup, so it
-      // is the only kind the markup dialect is applied to. Everything else is
-      // data, and `Pretty` is the single authority on how a JavaScript value
-      // displays — `String(value)` was a second, weaker one that answered
-      // `[object Object]` for every object and let the markup parser eat it.
-      // [LAW:one-source-of-truth]
-      const item = items[i];
-      if (isRenderable(item)) {
-        renderables.push(item);
+    // A print is a column of blocks, and every argument joins one of two kinds.
+    // Text — a string, a `RichText`, or data — runs together: adjacent text
+    // items are one block, joined by `sep` and ended by `end`. Any other
+    // renderable is a block of its own that occupies whole lines, so neither
+    // `sep` nor `end` ever touches it. That is the reference's split — `end`
+    // belongs to text, not to the print — and it is what lets two printed panels
+    // stack with no blank line between them. The line is not closed by asking
+    // where the cursor sits: `print("a\n")` is a line and an empty one, here as
+    // in the reference and in every other `print`, and only the kind of the
+    // item can tell that trailing break from a `Panel`'s. A call with nothing
+    // to print is one empty text run, so it still ends the line.
+    const blocks: PrintBlock[] = items.length === 0 ? [{ kind: "text", items: [] }] : [];
+    for (const item of items) {
+      // Four arms, and they are the whole domain. A `RichText` is already text.
+      // Any other renderable draws itself, as a block. A string is the only kind
+      // of argument that can *contain* markup, so it is the only kind the markup
+      // dialect is applied to. Everything else is data, and `Pretty` is the
+      // single authority on how a JavaScript value displays — `String(value)`
+      // was a second, weaker one that answered `[object Object]` for every
+      // object and let the markup parser eat it. [LAW:one-source-of-truth]
+      let text: Renderable;
+      if (item instanceof RichText) {
+        text = item;
+      } else if (isRenderable(item)) {
+        blocks.push({ kind: "lines", renderable: item });
+        continue;
       } else if (typeof item === "string") {
         const richText = doMarkup ? renderMarkup(item) : new RichText(item);
         richText.end = "";
         if (doHighlight) {
           this._highlighter.highlight(richText);
         }
-        renderables.push(richText);
+        text = richText;
       } else {
         // The highlighter travels with the value. `highlight` and a custom
         // `highlighter` are console-wide settings, so they have to reach a
@@ -459,16 +475,17 @@ export class Console {
         // Indent guides are styling too, and travel with the same decision —
         // the console owns what `highlight` means for everything it emits,
         // rather than `Pretty` inferring it back out of the highlighter.
-        renderables.push(new Pretty(item, {
+        text = new Pretty(item, {
           ...PRINT_DATA_BOUNDS,
           highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
           indentGuides: doHighlight,
-        }));
+        });
       }
+      const run = blocks.at(-1);
+      if (run?.kind === "text") run.items.push(new RichText(sep, { end: "" }), text);
+      else blocks.push({ kind: "text", items: [text] });
     }
 
-    // Render all items
-    const allSegments: Segment[] = [];
     // [LAW:parse-dont-validate] `"ignore"` is not a way of cutting a line but
     // the absence of an edge to cut at: no break, and nothing cut at the width.
     // That is what `noWrap` already means to `RichText`, so it crosses into the
@@ -482,27 +499,34 @@ export class Console {
       noWrap: softWrap || opts.overflow === "ignore",
     };
 
-    for (const renderable of renderables) {
-      allSegments.push(...renderable.render(renderOpts));
-    }
+    // The print style, then the console's base style, over what each block drew
+    // and not over the line ends added below: a styled break carries SGR codes
+    // across the newline.
+    // [LAW:dataflow-not-control-flow] no style to apply is an empty list, not
+    // a skipped step.
+    const styles = [printStyle, this._style].filter((style) => !style.isNull);
+    const styleContent = (segments: Iterable<Segment>): Iterable<Segment> =>
+      styles.reduce((styled, style) => Segment.applyStyle(styled, style), segments);
 
-    // Apply print style
-    const styled = printStyle.isNull
-      ? allSegments
-      : [...Segment.applyStyle(allSegments, printStyle)];
-
-    // Apply base console style
-    const final = this._style.isNull
-      ? styled
-      : [...Segment.applyStyle(styled, this._style)];
-
-    // Output. The line-end goes through the same writeSegments funnel as
-    // every other emitted text so it survives recording — otherwise
-    // `exportText` and `exportHtml` would join consecutive prints onto a
-    // single line. [LAW:single-enforcer]
+    // Every line end goes through the same writeSegments funnel as the text it
+    // ends, so it survives recording — otherwise `exportText` and `exportHtml`
+    // would join consecutive prints onto a single line. [LAW:single-enforcer]
     // The common default end is "\n" — reuse Segment's cached newline rather
     // than allocating one per print; only a non-default end needs a fresh one.
     const terminator = end === "\n" ? Segment.line() : new Segment(end);
+    const output: Segment[] = [];
+    for (const block of blocks) {
+      if (block.kind === "text") {
+        output.push(...styleContent(block.items.flatMap((item) => [...item.render(renderOpts)])), terminator);
+      } else {
+        // A block's lines are closed whether or not it closed them itself: a
+        // `Panel` ends in a line break and a `Strip` does not, and both leave
+        // the next print at the start of a line.
+        for (const line of Segment.splitLines(block.renderable.render(renderOpts))) {
+          output.push(...styleContent(line), Segment.line());
+        }
+      }
+    }
 
     // Crop last, and crop the line-end with the rest: in the reference `end` is
     // the tail of the printed line, so a line cut at the edge loses it too.
@@ -511,7 +535,7 @@ export class Console {
     // Not cropping is an unbounded width rather than a skipped step — the same
     // spelling `RichText` uses for `noWrap`.
     const cropWidth = !softWrap && (opts.crop ?? true) ? this.width : Infinity;
-    this._writeSegments([...Segment.cropLines([...final, terminator], cropWidth)]);
+    this._writeSegments([...Segment.cropLines(output, cropWidth)]);
   }
 
   log(...args: unknown[]): void {
