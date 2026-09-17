@@ -650,7 +650,7 @@ describe("Console.print() line ends", () => {
     const { out, text, html } = printed([panel()], [panel()]);
     expect(out).toBe(PANEL + PANEL);
     expect(text).toBe(PANEL + PANEL);
-    expect(html).toContain("╰───╯\n╭───╮");
+    expect(html).toMatch(/╯<\/span>\n<span[^>]*>╭/);
   });
 
   it("ends a printed table or rule with exactly one line break", () => {
@@ -966,8 +966,7 @@ describe("Console record and export", () => {
     c.print("second row");
     const html = c.exportHtml();
     // The newlines land inside the <pre> block which preserves whitespace.
-    expect(html).toContain("first row\n");
-    expect(html).toContain("second row\n");
+    expect(html).toMatch(/first row<\/span>\n<span[^>]*>second row</);
   });
 
   it("saveText() writes plain text to a file", async () => {

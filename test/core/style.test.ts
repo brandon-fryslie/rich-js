@@ -667,65 +667,6 @@ describe("clearMetaAndLinks", () => {
   });
 });
 
-// --- getHtmlStyle ---
-
-describe("getHtmlStyle", () => {
-  it("returns empty string for null style", () => {
-    expect(new Style().getHtmlStyle()).toBe("");
-  });
-
-  it("bold produces font-weight: bold", () => {
-    const s = new Style({ bold: true });
-    expect(s.getHtmlStyle()).toContain("font-weight: bold");
-  });
-
-  it("italic produces font-style: italic", () => {
-    const s = new Style({ italic: true });
-    expect(s.getHtmlStyle()).toContain("font-style: italic");
-  });
-
-  it("underline produces text-decoration containing underline", () => {
-    const s = new Style({ underline: true });
-    expect(s.getHtmlStyle()).toContain("text-decoration");
-    expect(s.getHtmlStyle()).toContain("underline");
-  });
-
-  it("strike produces text-decoration containing line-through", () => {
-    const s = new Style({ strike: true });
-    expect(s.getHtmlStyle()).toContain("line-through");
-  });
-
-  it("overline produces text-decoration containing overline", () => {
-    const s = new Style({ overline: true });
-    expect(s.getHtmlStyle()).toContain("overline");
-  });
-
-  it("dim produces opacity: 0.5", () => {
-    const s = new Style({ dim: true });
-    expect(s.getHtmlStyle()).toContain("opacity: 0.5");
-  });
-
-  it("color produces a CSS color with hex value", () => {
-    const s = new Style({ color: "red" });
-    const html = s.getHtmlStyle();
-    expect(html).toMatch(/color:\s*#[0-9a-f]{6}/);
-  });
-
-  it("bgcolor produces a CSS background-color with hex value", () => {
-    const s = new Style({ bgcolor: "blue" });
-    const html = s.getHtmlStyle();
-    expect(html).toMatch(/background-color:\s*#[0-9a-f]{6}/);
-  });
-
-  it("combines multiple underline decorations", () => {
-    const s = new Style({ underline: true, strike: true, overline: true });
-    const html = s.getHtmlStyle();
-    expect(html).toContain("underline");
-    expect(html).toContain("line-through");
-    expect(html).toContain("overline");
-  });
-});
-
 // --- Static factory methods ---
 
 describe("Style.null", () => {

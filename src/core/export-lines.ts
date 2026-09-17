@@ -6,9 +6,9 @@
  * is the picture. What a styled cell *looks like* — which colour its glyph is,
  * whether its background is painted, which decorations it carries, where it
  * links — is decided here, once, and an exporter decides only how to write
- * that down. Before it existed the decision was made twice, by
- * `Style.getHtmlStyle` and by `Console`'s private CSS converter, and the two
- * had already disagreed: one honoured `underline2`, the other dropped it.
+ * that down. Before it existed the decision was made twice, by a CSS method
+ * on `Style` and by a private converter on `Console`, and the two had already
+ * disagreed: one honoured `underline2`, the other dropped it.
  *
  * [LAW:types-are-the-program] `ExportLook` has no `reverse`, `dim`, `conceal`
  * or default colour, because all four are consumed by `resolveLook` and turned
@@ -107,6 +107,26 @@ const DIM_FADE = 0.4;
 
 const DEFAULT_COLOR = ColorSpec.default();
 
+/** What an unstyled cell shows under a theme: the canvas, and ink on it. */
+export interface ExportCanvas {
+  readonly background: ColorRgba;
+  readonly foreground: ColorRgba;
+}
+
+/**
+ * The ground every export is drawn on under `theme`.
+ *
+ * An exporter paints its page or window with this; `resolveLook` flattens
+ * every run over the same `background`, so a run showing the canvas and the
+ * page around it cannot come out different colours.
+ */
+export function exportCanvas(theme?: TerminalTheme): ExportCanvas {
+  return {
+    background: DEFAULT_COLOR.getTruecolor(theme, false),
+    foreground: DEFAULT_COLOR.getTruecolor(theme, true),
+  };
+}
+
 /**
  * A `Style` as it appears on screen under `theme`.
  *
@@ -129,7 +149,7 @@ const DEFAULT_COLOR = ColorSpec.default();
 export function resolveLook(style: Style, theme?: TerminalTheme): ExportLook {
   const inkSpec = style.color ?? DEFAULT_COLOR;
   const paperSpec = style.bgcolor ?? DEFAULT_COLOR;
-  const canvas = DEFAULT_COLOR.getTruecolor(theme, false);
+  const canvas = exportCanvas(theme).background;
   // [LAW:single-enforcer] `flattenAlpha` is the one place alpha is composited.
   const paper = paperSpec.flattenAlpha(canvas).getTruecolor(theme, false);
   const ink = inkSpec.flattenAlpha(paper).getTruecolor(theme, true);

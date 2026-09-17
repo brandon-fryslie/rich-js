@@ -5,7 +5,8 @@
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
 import { ColorDepth, resolveColorSystem } from "./color.js";
-import type { DetectColorOptions } from "./color.js";
+import type { DetectColorOptions, TerminalTheme } from "./color.js";
+import { encodeHtml } from "./export-html.js";
 import { RichText } from "./text.js";
 import { renderMarkup } from "./markup.js";
 import { Pretty } from "./pretty.js";
@@ -601,49 +602,12 @@ export class Console {
     return text;
   }
 
-  exportHtml({ clear = true }: { clear?: boolean } = {}): string {
-    const parts: string[] = [];
-    parts.push('<!DOCTYPE html>');
-    parts.push('<html><head><meta charset="utf-8"><style>');
-    parts.push('body{background:#000;color:#fff;font-family:monospace;padding:1em}');
-    parts.push('pre{margin:0;white-space:pre-wrap;word-wrap:break-word}');
-    parts.push('</style></head><body><pre>');
-
-    for (const segment of this._recorded) {
-      if (segment.isControl) continue;
-      const css = this._styleToCss(segment.style);
-      const escaped = segment.text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      parts.push(css ? `<span style="${css}">${escaped}</span>` : escaped);
-    }
-
-    parts.push('</pre></body></html>');
+  // [LAW:single-enforcer] `encodeHtml` draws the picture `exportLines`
+  // resolves; nothing here interprets a `Style`.
+  exportHtml({ theme, clear = true }: { theme?: TerminalTheme; clear?: boolean } = {}): string {
+    const html = encodeHtml(this._recorded, theme);
     if (clear) this._recorded = [];
-    return parts.join("");
-  }
-
-  private _styleToCss(style: Style | undefined): string {
-    if (!style || style.isNull) return "";
-    const parts: string[] = [];
-    if (style.bold) parts.push("font-weight:bold");
-    if (style.italic) parts.push("font-style:italic");
-    if (style.dim) parts.push("opacity:0.5");
-    const underlineParts: string[] = [];
-    if (style.underline || style.underline2) underlineParts.push("underline");
-    if (style.strike) underlineParts.push("line-through");
-    if (style.overline) underlineParts.push("overline");
-    if (underlineParts.length) parts.push(`text-decoration:${underlineParts.join(" ")}`);
-    if (style.color && !style.color.isDefault) {
-      const t = style.color.getTruecolor();
-      parts.push(`color:${t.hex}`);
-    }
-    if (style.bgcolor && !style.bgcolor.isDefault) {
-      const t = style.bgcolor.getTruecolor();
-      parts.push(`background-color:${t.hex}`);
-    }
-    return parts.join(";");
+    return html;
   }
 
   // --- Internal ---
