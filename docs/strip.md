@@ -41,7 +41,7 @@ console.print(strip);
 
 The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's right-edge bg with no bg of its own, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
 
-`noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — for non-empty text `RichText.render` emits none either way, so it records the intent rather than changing the output.
+`noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — without it, a cell's default `end` would draw a trailing `"\n"` into the middle of the strip's single line, breaking the layout it is meant to hold together.
 
 ## Built-in joiners
 

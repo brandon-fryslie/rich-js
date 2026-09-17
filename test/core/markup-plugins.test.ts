@@ -32,7 +32,7 @@ describe("MarkupRegistry", () => {
     expect(received!.raw).toBe("bar");
     // Child renderable is the parsed inner content.
     const text = renderToString(out, { colorSystem: null });
-    expect(text).toBe("bar");
+    expect(text).toBe("bar\n");
   });
 
   it("splices the handler's Renderable into the output stream where the tag was", () => {
@@ -40,7 +40,7 @@ describe("MarkupRegistry", () => {
     registry.register("badge", () => new RichText("[BADGE]", { end: "" }));
     const out = renderMarkup("hello [badge]ignored[/badge] world", { registry });
     const text = renderToString(out, { colorSystem: null });
-    expect(text).toBe("hello [BADGE] world");
+    expect(text).toBe("hello [BADGE] world\n");
   });
 
   it("supports nested built-in style tags inside a plugin tag", () => {
@@ -53,7 +53,7 @@ describe("MarkupRegistry", () => {
     renderMarkup("[click verb=foo]plain [bold]important[/bold] tail[/click]", {
       registry,
     });
-    expect(captured).toBe("plain important tail");
+    expect(captured).toBe("plain important tail\n");
   });
 
   it("supports nested plugin tags", () => {
@@ -65,21 +65,21 @@ describe("MarkupRegistry", () => {
     });
     const out = renderMarkup("[outer]a[inner]b[/inner]c[/outer]", { registry });
     const text = renderToString(out, { colorSystem: null });
-    expect(text).toBe("<O:a[I]c:O>");
+    expect(text).toBe("<O:a[I]c:O>\n");
   });
 
   it("falls back to literal/style behavior when a tag is unregistered", () => {
     const registry = new MarkupRegistry();
     registry.register("click", () => new RichText("HANDLED", { end: "" }));
     const before = renderMarkup("[click]x[/click]", { registry });
-    expect(renderToString(before, { colorSystem: null })).toBe("HANDLED");
+    expect(renderToString(before, { colorSystem: null })).toBe("HANDLED\n");
     registry.unregister("click");
     const after = renderMarkup("[click]x[/click]", { registry });
     // With no handler, falls back to legacy parse: "click" is not a known
     // style, but the parser still treats it as a span style and Style.parse
     // gracefully degrades to no styling. Either way, the visible plain text
     // is "x".
-    expect(renderToString(after, { colorSystem: null })).toBe("x");
+    expect(renderToString(after, { colorSystem: null })).toBe("x\n");
   });
 
   it("rejects registering over a built-in style name", () => {
@@ -116,12 +116,12 @@ describe("MarkupRegistry", () => {
     });
 
     expect(renderToString(renderMarkup("[table]x[/table]", { registry }), { colorSystem: null }))
-      .toBe("HANDLED");
+      .toBe("HANDLED\n");
     expect(attrs).toEqual({});
 
     expect(
       renderToString(renderMarkup("[table rows=2]x[/table]", { registry }), { colorSystem: null }),
-    ).toBe("HANDLED");
+    ).toBe("HANDLED\n");
     expect(attrs).toEqual({ rows: "2" });
   });
 
@@ -164,7 +164,7 @@ describe("MarkupRegistry", () => {
     globalMarkupRegistry.register("greet", () => new RichText("HI", { end: "" }));
     try {
       const out = renderMarkup("[greet]ignored[/greet]");
-      expect(renderToString(out, { colorSystem: null })).toBe("HI");
+      expect(renderToString(out, { colorSystem: null })).toBe("HI\n");
     } finally {
       globalMarkupRegistry.unregister("greet");
     }
@@ -289,17 +289,17 @@ describe("plugin pairs must nest", () => {
     // the overlap test. Pinned because the obvious alternative fix — rejecting
     // whenever a closing tag's match is not the top of the stack — breaks it.
     const out = renderMarkup("[aa]x[bb]y[/aa]", { registry: twoTags() });
-    expect(renderToString(out, { colorSystem: null })).toBe("<A>xy</A>");
+    expect(renderToString(out, { colorSystem: null })).toBe("<A>xy</A>\n");
   });
 
   it("resolves two sequential top-level pairs", () => {
     const out = renderMarkup("[aa]x[/aa] mid [bb]y[/bb]", { registry: twoTags() });
-    expect(renderToString(out, { colorSystem: null })).toBe("<A>x</A> mid <B>y</B>");
+    expect(renderToString(out, { colorSystem: null })).toBe("<A>x</A> mid <B>y</B>\n");
   });
 
   it("leaves the built-in dialect's non-strict nesting alone", () => {
     const out = renderMarkup("[bold]a[italic]b[/bold]c[/italic]", { registry: twoTags() });
-    expect(renderToString(out, { colorSystem: null })).toBe("abc");
+    expect(renderToString(out, { colorSystem: null })).toBe("abc\n");
   });
 });
 

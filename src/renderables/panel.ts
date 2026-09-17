@@ -150,8 +150,18 @@ function borderTextStyle(
 }
 
 function toRenderable(content: string | RichText | Renderable): Renderable {
-  if (typeof content === "string") return new RichText(content);
-  if (content instanceof RichText) return content;
+  // [LAW:one-type-per-behavior] Content embedded in a panel is a line, not a
+  // printed unit — the same reason columns, table cells, tree labels, and
+  // every other embedding site build their RichText with `end: ""`. Now that
+  // `RichText.render` honors `end` uniformly (rich-text-5ai), leaving this at
+  // the default "\n" would draw a trailing blank row whenever content ends
+  // with a literal newline.
+  if (typeof content === "string") return new RichText(content, { end: "" });
+  if (content instanceof RichText) {
+    const copy = content.copy();
+    copy.end = "";
+    return copy;
+  }
   return content;
 }
 
