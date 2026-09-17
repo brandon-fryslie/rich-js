@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-148",
+      "ref": "refs/pull/148/merge",
+      "sha": "aef71d52086b0235d1dca11dc884db9790a8cc56",
+      "timestamp": "2026-09-17T07:04:17.875Z",
+      "commits": [
+        {
+          "sha": "aef71d52086b0235d1dca11dc884db9790a8cc56",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T01:03:52-06:00",
+          "message": "Merge 979f891de72cf1185edec6e4f2a5bdfdc8b1c483 into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
+        },
+        {
+          "sha": "979f891de72cf1185edec6e4f2a5bdfdc8b1c483",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T01:03:37-06:00",
+          "message": "fix(pretty): a container's compact try is charged for the key it sits under (rich-pretty-xms)\n\nPretty's fit-on-one-line decision for a nested container budgeted the\nremaining width as maxWidth minus the indent alone, which is only the true\nremaining width when nothing precedes the value on its line. A value under\na key — `metadata: { ... }` — has that key's width and separator eaten\nfrom the same line, uncounted, so a container could pass the fit test and\nstill overrun the width once its key was prepended, wrapping mid-container.\n\nFrame now carries `column`: where a value's text actually begins on the\nline it lands on, threaded through `_expandSlot` per hole (so a Map\nentry's `\" => \"` and a second hole are charged too, and a multi-line\ninsert resets the column to its own last line rather than accumulating\nacross lines that were never on the same row). The one-line probe path\nalready tracked this correctly via its shrinking `budget`; only the\nlay-out path's own compact try was deriving the budget from depth instead\nof position.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8cd13ca5f863e1e0e07610705d9e02ba211a7be8",

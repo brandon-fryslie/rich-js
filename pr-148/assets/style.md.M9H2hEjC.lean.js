@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as t,ag as e}from"./chunks/framework.DjMGo8V2.js";const c=JSON.parse('{"title":"Styles","description":"","frontmatter":{},"headers":[],"relativePath":"style.md","filePath":"style.md"}'),n={name:"style.md"};function l(h,s,p,r,d,k){return a(),t("div",null,[...s[0]||(s[0]=[e("",60)])])}const y=i(n,[["render",l]]);export{c as __pageData,y as default};
