@@ -4,15 +4,22 @@
     {
       "version": "pr-142",
       "ref": "refs/pull/142/merge",
-      "sha": "4c79a30cf6abe9708fa13813b471abd95df65e5b",
-      "timestamp": "2026-09-16T21:24:22.867Z",
+      "sha": "c7334e404f9a043e9389c1e248cd574478e6096a",
+      "timestamp": "2026-09-17T03:15:55.529Z",
       "commits": [
         {
-          "sha": "4c79a30cf6abe9708fa13813b471abd95df65e5b",
+          "sha": "c7334e404f9a043e9389c1e248cd574478e6096a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T15:23:18-06:00",
-          "message": "Merge 06f0f899d00101d60bd612fab4319438e6c4133e into 3041c8664b507343a915002841046aa2a7da477b\n"
+          "timestamp": "2026-09-17T03:15:24Z",
+          "message": "Merge e716075b94d6ea4b8f958b63a84f4dab72b68f7a into 3041c8664b507343a915002841046aa2a7da477b\n"
+        },
+        {
+          "sha": "e716075b94d6ea4b8f958b63a84f4dab72b68f7a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T21:15:20-06:00",
+          "message": "docs(traceback): capture the max-frames sample from a real stack (rich-traceback-i5d)\n\nThe previous sample came from a hand-written 250-frame error.stack. V8\nrecords Error.stackTraceLimit frames, 10 by default, so no real error\nreaches the default cap of 100 and the sample could not be reproduced.\nThe section now says to raise the limit, and the sample is output\ncaptured from a real recursion under plain node.\n\nThe sample's last two frames show the async marker read as part of\nthe function name, filed as rich-traceback-dbs.\n"
         },
         {
           "sha": "06f0f899d00101d60bd612fab4319438e6c4133e",
