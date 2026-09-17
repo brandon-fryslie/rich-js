@@ -26,6 +26,7 @@ dist         README.md     test
 
 | Option | Description |
 |---|---|
+| `width` | Fixed width for every column, fitting as many columns as that width allows. Offered less than one column, the column renders at the offer — a declared width never makes a line wider than the space given |
 | `equal` | Force all columns to the same width (uses the widest item as the common width) |
 | `expand` | Stretch the column layout to fill the full terminal width |
 | `columnFirst` | Fill columns top-to-bottom before left-to-right (like `ls`) |

@@ -102,9 +102,10 @@ export class Columns implements Renderable, Measurable {
     const maxWidth = options.maxWidth;
     const gutter = this.gutterWidth;
 
-    if (this.colWidth !== undefined) {
-      const numCols = Math.max(1, Math.floor((maxWidth + gutter) / (this.colWidth + gutter)));
-      return { numCols, colWidths: new Array(numCols).fill(this.colWidth) as number[] };
+    const declared = this._declaredWidth(options);
+    if (declared !== undefined) {
+      const numCols = Math.max(1, Math.floor((maxWidth + gutter) / (declared + gutter)));
+      return { numCols, colWidths: new Array(numCols).fill(declared) as number[] };
     }
 
     if (this.equal) {
@@ -152,11 +153,26 @@ export class Columns implements Renderable, Measurable {
     return widest;
   }
 
+  /**
+   * The declared column width, bounded by the width offered.
+   *
+   * [LAW:single-enforcer] A declared width is what a column asks for, not what
+   * it takes — the contract `Table._outerWidth` keeps for a declared table
+   * width. Read by `_divide` for render and by `_naturalWidth` for measure, so
+   * the two answer from one number: laid out at the raw declared width, a
+   * six-cell column offered three emitted six-cell lines while `measure`
+   * reported three, and the terminal's soft wrap took the frame of everything
+   * printed after it.
+   */
+  private _declaredWidth(options: RenderOptions): number | undefined {
+    return this.colWidth === undefined ? undefined : Math.min(this.colWidth, options.maxWidth);
+  }
+
   /** The width at which every item sits on one row: n columns and the gutters between them. */
   private _naturalWidth(options: RenderOptions): number {
     const count = this.renderables.length;
     if (count === 0) return 0;
-    const width = this.colWidth ?? this._itemWidth(options);
+    const width = this._declaredWidth(options) ?? this._itemWidth(options);
     return count * width + this.gutterWidth * (count - 1);
   }
 

@@ -143,12 +143,10 @@ describe("Columns", () => {
 
   // --- A declared column width is a cell count ---
 
-  // These live here rather than in the width sweep because a Columns with a
-  // declared `width` legitimately overruns a narrower `options.maxWidth`, the
-  // way a Table with a declared `width` does — so the sweep's upper bound is
-  // the wrong assertion for them. What holds instead is the equivalence the
-  // sweep pins for `options.maxWidth`: a cell count is a non-negative integer,
-  // and a width that is not one renders as the one it floors to.
+  // The sweep pins this equivalence for `options.maxWidth`; these pin it for the
+  // declared width, which reaches the layout by the constructor instead. A cell
+  // count is a non-negative integer, and a width that is not one renders as the
+  // one it floors to.
   it.each([
     ["NaN", NaN, 0],
     ["-5", -5, 0],
@@ -159,6 +157,18 @@ describe("Columns", () => {
         maxWidth: 80,
       });
     expect(at(given)).toEqual(at(floor));
+  });
+
+  // --- A declared column width yields to a narrower offer ---
+
+  it("renders a declared width wider than the offer at the offer", () => {
+    const cols = (): Columns => new Columns(["aaaaaa", "bbbbbb"], { width: 6 });
+    // Laid out at the declared six cells, this emitted six-cell lines into a
+    // three-cell request while `measure` reported three.
+    expect(collectLines(cols(), { maxWidth: 3 })).toEqual(["aaa", "aaa", "bbb", "bbb"]);
+    expect(cols().measure({ maxWidth: 3 })).toEqual({ minimum: 1, maximum: 3 });
+    // Offered room, the declared width is what each column gets.
+    expect(collectLines(cols(), { maxWidth: 14 })).toEqual(["aaaaaa  bbbbbb"]);
   });
 
   // --- Measurement (columns-behavior.md) ---
