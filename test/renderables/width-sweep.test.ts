@@ -78,11 +78,6 @@ const oversized: Renderable = {
   },
 };
 
-// A declared `width` is swept like any other configuration now that
-// `Table._outerWidth` bounds it by the offer. It was excluded while `render`
-// laid out at the declared width and ignored a narrower `options.maxWidth`,
-// which made the sweep's own bound the wrong assertion for it
-// (`rich-table-width-y1a`). `Columns` still has that defect and is still out.
 function table(options: TableOptions, build: (t: Table) => void): () => Table {
   return () => {
     const t = new Table(options);
@@ -224,6 +219,18 @@ const configurations: readonly Configuration[] = [
     make: () => new Columns(["alpha", "beta", "gamma"], { equal: true }),
   },
   {
+    name: "Columns at a declared width",
+    shape: "rectangular",
+    make: () => new Columns(["alpha", "beta", "gamma"], { width: 8 }),
+  },
+  {
+    name: "Columns at a declared unbounded width",
+    shape: "rectangular",
+    // The column asks for every cell there is, so under a finite offer it gets
+    // the offer — and under an unbounded one there is no natural width to give.
+    make: () => new Columns(["alpha", "beta"], { width: Infinity }),
+  },
+  {
     name: "Columns of panels",
     shape: "rectangular",
     make: () => new Columns([new Panel("one"), new Panel("two")]),
@@ -318,6 +325,7 @@ const noNaturalWidth: ReadonlySet<string> = new Set([
   "Layout wrapping content that ignores its width",
   "Tree with a label that ignores its width",
   "Columns wrapping content that ignores its width",
+  "Columns at a declared unbounded width",
 ]);
 
 describe("width sweep", () => {

@@ -52,7 +52,7 @@ Columns resize to fit terminal width, wrapping text when needed. Cell values can
 
 | Option | Description |
 |---|---|
-| `width` | Fixed total width — disables auto-sizing, and overrides a container narrower than it |
+| `width` | Largest total width — the table sizes to its content up to this, and never past the width offered ([Narrow widths](#narrow-widths)) |
 | `minWidth` | Minimum total width |
 | `expand` | Fill the width offered. Every column first gets its natural width, then the cells left over are shared out in proportion to it; a column with a declared `width` keeps that width |
 
@@ -90,11 +90,19 @@ markup in the cell text, or `rowStyles` for a whole row.
 
 ## Narrow widths
 
-A table with no declared `width` never emits a line wider than the width it is
-given, however narrow that gets — a cramped terminal, or a `Layout` or `Columns`
-split that squeezes the table below its natural size. This matters beyond looks: an oversized row is
+A table never emits a line wider than the width it is given, however narrow that
+gets — a cramped terminal, or a `Layout` or `Columns` split that squeezes the
+table below its natural size. This matters beyond looks: an oversized row is
 soft-wrapped by the terminal, and the wrap destroys the frame of everything
 printed after it.
+
+A declared `width` does not lift that bound. The table's outer width is the
+smaller of its `width` and the width it is offered, and both `render` and
+`measure` read that one number. Inside it the table sizes to its content as it
+would without a `width`, so a declared width is a ceiling rather than a size:
+a table declared at 40 around five cells of content renders at five, and
+[`expand`](#sizing) is what fills it out to 40. Offered 12 columns, neither
+grows past 12.
 
 Cells go out in a fixed order — the two outer border columns, then one content
 cell for each column together with the divider in front of it, then the padding,
