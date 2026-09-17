@@ -76,7 +76,7 @@ features:
 
   - icon: 🐛
     title: Tracebacks
-    details: Render error stack traces with the surrounding source code highlighted and local variable tables per frame — dramatically easier to read than plain Node.js errors.
+    details: Print an error as its name, message and one line per stack frame, with library frames suppressed. Install it once to format every uncaught exception and unhandled rejection.
     link: /traceback
     linkText: Learn about tracebacks
 

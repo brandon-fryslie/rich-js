@@ -261,7 +261,7 @@ console.print(syntax);
 <details>
 <summary>Tracebacks</summary>
 
-Rich can render beautiful tracebacks that are easier to read and show more context than standard Node.js errors:
+Rich can print an error as its name and message followed by one line per stack frame, with library frames suppressed on request:
 
 ```typescript
 import { Console, Traceback } from "@promptctl/rich-js";

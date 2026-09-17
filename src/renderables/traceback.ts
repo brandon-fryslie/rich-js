@@ -6,6 +6,14 @@
  * `process.exit`, so that lives behind the node seam as `installTraceback` in
  * `src/node/traceback.ts` — which is what keeps this module, and therefore the
  * main barrel, importable in a browser.
+ *
+ * [LAW:types-are-the-program] `TracebackOptions` names only what the renderer
+ * reads. There is no `showLocals`: an `Error` carries a stack of locations and
+ * nothing of the values in scope at them. The one way to get those in node —
+ * an inspector session pausing on exceptions — would have to pause on every
+ * throw, caught ones included, to serve `new Traceback(caughtError)`, and it
+ * cannot exist in a browser at all. Nor is there a `width` or `theme`: those
+ * sized and coloured a source-code excerpt this renderer does not produce.
  */
 
 import { Segment } from "../core/segment.js";
@@ -14,11 +22,8 @@ import type { Renderable, RenderOptions } from "../core/protocol.js";
 import { getStyle } from "../core/protocol.js";
 
 export interface TracebackOptions {
-  showLocals?: boolean;
   suppress?: string[];
   maxFrames?: number;
-  width?: number;
-  theme?: string;
 }
 
 
@@ -57,17 +62,11 @@ export class Traceback implements Renderable {
   readonly error: Error;
   readonly maxFrames: number;
   readonly suppress: string[];
-  readonly showLocals: boolean;
-  readonly width: number | undefined;
-  readonly theme: string | undefined;
 
   constructor(error: Error, options?: TracebackOptions) {
     this.error = error;
     this.maxFrames = options?.maxFrames ?? 100;
     this.suppress = options?.suppress ?? [];
-    this.showLocals = options?.showLocals ?? false;
-    this.width = options?.width;
-    this.theme = options?.theme;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
@@ -95,9 +94,12 @@ export class Traceback implements Renderable {
 
     let displayFrames = filteredFrames;
     if (this.maxFrames > 0 && displayFrames.length > this.maxFrames) {
-      const half = Math.floor(this.maxFrames / 2);
-      const first = displayFrames.slice(0, half);
-      const last = displayFrames.slice(-half);
+      // Spend the budget exactly: the tail takes `maxFrames - head` rather than
+      // a second `head`, so an odd budget shows every frame it counts, and it
+      // slices from an index because `slice(-0)` is the whole array.
+      const head = Math.floor(this.maxFrames / 2);
+      const first = displayFrames.slice(0, head);
+      const last = displayFrames.slice(displayFrames.length - (this.maxFrames - head));
       const omitted = displayFrames.length - this.maxFrames;
 
       for (const frame of first) {
