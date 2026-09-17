@@ -23,6 +23,16 @@ export interface ColumnsOptions {
 }
 
 function toRenderable(item: unknown): Renderable & Partial<Measurable> {
+  // [LAW:single-enforcer] A `RichText` passed directly implements `render`
+  // and would otherwise leave through the passthrough arm below untouched,
+  // keeping its default `end: "\n"` (rich-text-5ai) — the same gap the code
+  // review found in table.ts's `toRenderable`. A column item is a row
+  // fragment, not a printed unit, same as every other embedding site.
+  if (item instanceof RichText) {
+    const copy = item.copy();
+    copy.end = "";
+    return copy;
+  }
   if (typeof item === "object" && item !== null && "render" in item) {
     return item as Renderable & Partial<Measurable>;
   }

@@ -1145,4 +1145,23 @@ describe("Table cells wrap before the overflow method sees them", () => {
       "└────────────┘",
     ]);
   });
+
+  // rich-text-5ai code review: a `RichText` cell reached the wire through
+  // `toRenderable`'s passthrough arm (it implements `render`), which skipped
+  // `toCellText`'s `end` clearing — its default `end: "\n"` then drew a
+  // genuine extra blank row under the real one, once `RichText.render`
+  // started honoring `end` for non-empty text.
+  it("does not draw a blank row for a RichText cell with an embedded trailing newline", () => {
+    const table = new Table();
+    table.addColumn("a");
+    table.addColumn("b");
+    table.addRow(new RichText("foo\n"), "bar");
+    expect(collectLines(table, { maxWidth: 40 })).toEqual([
+      "┏━━━━━┳━━━━━┓",
+      "┃ a   ┃ b   ┃",
+      "┡━━━━━╇━━━━━┩",
+      "│ foo │ bar │",
+      "└─────┴─────┘",
+    ]);
+  });
 });

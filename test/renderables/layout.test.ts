@@ -195,4 +195,18 @@ describe("Layout", () => {
     const text = collectText(pane, { maxWidth: 9, height: 2, maxHeight: 2 });
     expect(text.split("\n")[0]).toBe("日本語日 ");
   });
+
+  // rich-text-5ai code review: only the constructor's string branch built its
+  // `RichText` with `end: ""`; a `RichText` passed directly kept its default
+  // `end: "\n"`, which `Segment.cropLines` (unlike table.ts's `splitLines`
+  // path) does not normalize away — a real extra blank row in a fixed-size
+  // pane. Covers both the constructor and `update()`.
+  it("does not draw a blank row for a RichText leaf with an embedded trailing newline", () => {
+    const layout = new Layout(new RichText("status: ok\n"));
+    expect(collectText(layout, { maxWidth: 40 })).toBe("status: ok\n");
+
+    const updated = new Layout("placeholder");
+    updated.update(new RichText("status: ok\n"));
+    expect(collectText(updated, { maxWidth: 40 })).toBe("status: ok\n");
+  });
 });
