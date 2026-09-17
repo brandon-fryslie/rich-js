@@ -59,13 +59,34 @@ const reprHighlighter = new ReprHighlighter();
 
 /**
  * Where a laying-out traversal is: how far the output is indented (`inset`),
- * and how deep in the data we are (`level`).
+ * how deep in the data we are (`level`), and how much of the current line is
+ * already spoken for (`column`).
  *
- * The two are separate numbers because they answer to different things —
+ * `inset` and `level` are separate because they answer to different things —
  * `level` is what `maxDepth` caps, and only ever increases. Collapsing them
  * made the cap read the layout number, and every compact probe reset it, so the
  * cap never fired at all. `Probe` is why that cannot recur: the traversal that
  * used to do the resetting has no `inset` to reset.
+ *
+ * `column` is separate from `inset` for the same reason: `inset` says how deep
+ * a value's *own* children would indent if it expands, which is fixed for
+ * every hole in a slot. `column` says where its *own* text begins on the line
+ * it is placed onto — which a `key: ` prefix or a Map entry's `" => "` moves
+ * per hole, without touching `inset`. rich-pretty-xms: a container's compact
+ * try used `maxWidth - cellLen(indentStr)` as its budget, which is only the
+ * true remaining width when nothing precedes the value on its line — true for
+ * an array element, false for `metadata: { ... }`, where the key eats 10 cells
+ * `indentStr` never counted. Threading the real column through is the fix;
+ * deriving a budget from `inset` alone was the bug.
+ *
+ * `reserve` is `column`'s mirror: cells a fixed piece of literal text —
+ * a hole's own `tail`, or the `,` `_formatObject` joins non-last slots with —
+ * is known to cost on this same line immediately after the value, before the
+ * value has been asked to fit. Charged as `maxWidth - column - reserve`, the
+ * same way `column` charges what precedes. Without it, a value could fit
+ * `maxWidth - column` exactly and still overrun once its own trailing `tail`
+ * or the container's own trailing `,` landed after it — the same failure as
+ * the untracked-key bug, mirrored onto the other side of the value.
  *
  * `open` holds the objects between the root and here, not every object seen. A
  * value joins on the way down and leaves on the way back up, so a cycle is
@@ -78,10 +99,34 @@ interface Frame {
   readonly inset: number;
   readonly level: number;
   readonly maxWidth: number;
+  readonly column: number;
+  readonly reserve: number;
   readonly open: WeakSet<object>;
 }
 
-const rootFrame = (maxWidth: number): Frame => ({ inset: 0, level: 0, maxWidth, open: new WeakSet() });
+const rootFrame = (maxWidth: number): Frame => ({
+  inset: 0,
+  level: 0,
+  maxWidth,
+  column: 0,
+  reserve: 0,
+  open: new WeakSet(),
+});
+
+/**
+ * The column reached after `text` is appended to a line currently at `column`.
+ *
+ * A hole's formatted value can itself span multiple lines — a nested
+ * container that failed its own compact try. What comes after it (a Map
+ * entry's tail, the next hole) sits after `text`'s *last* line, not at
+ * `column + cellLen(text)`, so a multi-line insert resets the column to that
+ * last line's width instead of accumulating across lines that were never on
+ * the same row.
+ */
+function lineColumn(column: number, text: string): number {
+  const lastNewline = text.lastIndexOf("\n");
+  return lastNewline === -1 ? column + cellLen(text) : cellLen(text.slice(lastNewline + 1));
+}
 
 /**
  * Where a fits-on-one-line traversal is.
@@ -245,6 +290,16 @@ type Shape = { readonly kind: "text"; readonly text: string } | Container;
 
 /** What joins a container's positions on one line. Its width is charged for, so it is named once. */
 const SEPARATOR = ", ";
+
+/**
+ * What joins a container's positions across lines, once it has expanded —
+ * `SEPARATOR` without the trailing space a newline already provides.
+ * rich-pretty-xms: named, and derived rather than a second hand-typed
+ * literal, so the width it costs a non-last slot's own compact try —
+ * reserved via `Frame.reserve` — cannot drift from what `_formatObject`
+ * actually joins with.
+ */
+const EXPAND_SEPARATOR = SEPARATOR.trimEnd();
 
 /** The marker for positions the bound dropped, or nothing when it dropped none. */
 const elided = (dropped: number): Slot[] =>
@@ -442,35 +497,78 @@ export class Pretty implements Renderable, Measurable {
     const shape = this._shape(value, at.level, Infinity);
     if (shape.kind === "text") return shape.text;
 
-    const indentStr = " ".repeat(this.indent * at.inset);
     if (!this.expandAll) {
+      // rich-pretty-xms: budget from `at.column` and `at.reserve`, not from
+      // `at.inset` alone. `at.column` is where *this* value's text actually
+      // starts on its line, which already includes whatever `_expandSlot`
+      // prepended for us (a key and its separator, a Map entry's `" => "`,
+      // ...); `at.reserve` is what a fixed piece of literal text — the rest
+      // of this hole's own tail, or the trailing `,` a non-last slot gets
+      // joined with — is known to cost right after, before this value's own
+      // text even starts. Deriving the budget from the indent alone assumed
+      // nothing precedes *or follows* the value on its line, which is only
+      // true at the root and for the last hole of an array's last element.
       const compact = this._joinOneLine(shape, {
         level: at.level + 1,
-        budget: at.maxWidth - cellLen(indentStr),
+        budget: at.maxWidth - at.column - at.reserve,
         open: at.open,
       });
       if (compact !== null) return compact;
     }
 
+    const indentStr = " ".repeat(this.indent * at.inset);
     const innerIndent = " ".repeat(this.indent * (at.inset + 1));
-    const deeper: Frame = { inset: at.inset + 1, level: at.level + 1, maxWidth: at.maxWidth, open: at.open };
-    const parts = shape.slots.map((slot) => innerIndent + this._expandSlot(slot, deeper));
-    return shape.open + "\n" + parts.join(",\n") + "\n" + indentStr + shape.close;
+    // Every non-last slot gets `EXPAND_SEPARATOR` appended right after it
+    // below, on the same line as whatever its own last character was — the
+    // last slot doesn't. Two frames, not one per slot: `reserve` is the only
+    // field that varies, and it only ever takes these two values.
+    const base = { inset: at.inset + 1, level: at.level + 1, maxWidth: at.maxWidth, column: cellLen(innerIndent), open: at.open };
+    const midFrame: Frame = { ...base, reserve: cellLen(EXPAND_SEPARATOR) };
+    const lastFrame: Frame = { ...base, reserve: 0 };
+    const lastSlot = shape.slots.length - 1;
+    const parts = shape.slots.map((slot, i) =>
+      innerIndent + this._expandSlot(slot, i === lastSlot ? lastFrame : midFrame),
+    );
+    return shape.open + "\n" + parts.join(EXPAND_SEPARATOR + "\n") + "\n" + indentStr + shape.close;
   }
 
-  /** One position, with every value in it laid out. */
+  /**
+   * One position, with every value in it laid out.
+   *
+   * `at.column` is where `slot.head` begins. Rather than hand-tracking a
+   * second, parallel "column so far" alongside `out` — two values a future
+   * edit could update out of step, silently reintroducing a stale-budget bug
+   * of the same shape this file just fixed — each hole derives its own
+   * column fresh from `out` via `lineColumn`, the one place "text just
+   * emitted" becomes "column now". [LAW:one-source-of-truth] `out` is
+   * already the complete record; `column` is a read of it, not a second copy
+   * of the same fact. `_joinOneLine`'s probe sibling tracks the analogous
+   * thing via `budget` shrinking instead, because a probe already discards
+   * anything that overruns and so never needs to know where a multi-line
+   * insert's last line ends.
+   *
+   * Each hole's `reserve` is its own `tail` plus, only for the slot's last
+   * hole, whatever `at.reserve` already asked this whole slot to leave room
+   * for (`_formatObject`'s trailing `,`). An earlier hole's tail is never
+   * folded into a later hole's reserve — it is spent, not carried, the moment
+   * `out` grows past it.
+   */
   private _expandSlot(slot: Slot, at: Frame): string {
     let out = slot.head;
-    for (const hole of slot.holes) {
+    const lastHole = slot.holes.length - 1;
+    for (let i = 0; i < slot.holes.length; i++) {
+      const hole = slot.holes[i]!;
       // This is the read that costs the least when it fails: neighbours are
       // unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows everything
       // that could be read.
+      let text: string;
       try {
-        out += this._format(hole.read(), at);
+        const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
+        text = this._format(hole.read(), { ...at, column: lineColumn(at.column, out), reserve });
       } catch (error) {
-        out += threw(error);
+        text = threw(error);
       }
-      out += hole.tail;
+      out += text + hole.tail;
     }
     return out;
   }
