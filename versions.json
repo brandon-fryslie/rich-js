@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-151",
-      "ref": "refs/pull/151/merge",
-      "sha": "38219f938b583592df20c4c68af6f05b307cd0c4",
-      "timestamp": "2026-09-17T11:24:23.239Z",
-      "commits": [
-        {
-          "sha": "38219f938b583592df20c4c68af6f05b307cd0c4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T11:23:50Z",
-          "message": "Merge 43f3437d649df8ea03f236eb717773f5c045ac15 into 7cdac56067ef8a3c6235aab0602b92e8bed91f0a\n"
-        },
-        {
-          "sha": "43f3437d649df8ea03f236eb717773f5c045ac15",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:23:45-06:00",
-          "message": "fix(export): a trailing blank row is drawn in the HTML export\n\nA newline straight before </pre> ends a line without drawing another, so a\nrecording ending in a blank row lost it. Every row now ends with its own\nnewline, matching the newline the page writes after <pre> for the parser to\ndrop. Checked in headless Chromium: the pre's height in lines equals\nexportLines' row count for blank rows first, last, both and in between.\n"
-        },
-        {
-          "sha": "99a35ed727ddd3f3921ec8c04808ce4bddf8f851",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:21:57-06:00",
-          "message": "fix(export): a double underline no longer doubles strike and overline\n\nCSS gives an element one text-decoration-style, so underline2 sharing a span\nwith strike drew a double strike-through the terminal never showed. The\ndouble underline now sits on an outer span carrying the paint (so no inner\nbackground covers it) and the blink (so it blinks with the glyph); strike and\noverline stay single on the inner span. Checked in headless Chromium over a\npainted background.\n"
-        },
-        {
-          "sha": "fbf45d3a6934ff53ffc07fe07431da38bfecb045",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:18:15-06:00",
-          "message": "feat(export)!: theme-aware, attribute-complete HTML export (rich-export-9a1.2)\n\nConsole.exportHtml({ theme?, clear? }) now draws exportLines' resolved picture\nthrough a new core module, export-html (encodeHtml). The page's background and\ndefault text colour come from the theme via a new exportCanvas in export-lines,\nthe same ground resolveLook flattens runs over. Every ExportLook field is\nwritten: reverse and dim arrive as resolved colours (no opacity), double\nunderline, strike, overline, blink via keyframes, frame and encircle, and\nallowed links as <a> elements. Refused links export as styled text. pre no\nlonger re-wraps recorded rows.\n\nsaveHtml and saveText take the full option type of the export they write.\n\nBREAKING CHANGE: Style.getHtmlStyle is removed with no replacement; export\nthrough Console.exportHtml. The exported HTML markup changes shape.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7cdac56067ef8a3c6235aab0602b92e8bed91f0a",
-      "timestamp": "2026-09-17T11:09:27.368Z",
+      "sha": "de2b472a24ce472f8f71199c4e8278ea098e43a5",
+      "timestamp": "2026-09-17T11:26:03.745Z",
       "commits": [
         {
-          "sha": "7cdac56067ef8a3c6235aab0602b92e8bed91f0a",
+          "sha": "de2b472a24ce472f8f71199c4e8278ea098e43a5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:08:57-06:00",
-          "message": "feat(export): shared export resolution for HTML and SVG (rich-export-9a1.1) (#150)\n\n* feat(export): resolve recorded output into the rows both exporters draw (rich-export-9a1.1)\n\nThe research ticket asked for design/export-pipeline.md. CLAUDE.md forbids a\nsecond description of a subsystem outside docs/, so the design lands as the\nmodule that makes it true, with the rationale in its header and the claims\npinned by tests.\n\nsrc/core/export-lines.ts resolves a recorded Segment stream under a\nTerminalTheme into rows of { text, look } runs. ExportLook carries only\nresolved values: reverse, dim, conceal, default colours and the theme's ANSI\ntable are consumed here, so neither the HTML nor the SVG exporter can forget\none. parseHref is the single checkpoint for links an export may publish\n(http, https, mailto, ftp, file); a refused link keeps its text.\n\nNothing consumes it yet: rich-export-9a1.2 routes exportHtml through it and\ndeletes the two style-to-CSS converters it replaces.\n\n* fix(export): flatten alpha before reverse, dim and conceal (rich-export-9a1.1)\n\nresolveLook handed translucent colours straight to the swap, the fade and\nconceal. toSgrCodes flattens first, so an exported #rrggbbaa run drew other\ncolours than the terminal did, and conceal over a translucent background left\nthe glyph visible. Paper now flattens over the theme canvas and ink over the\npaper, through ColorSpec.flattenAlpha, before anything else sees them."
+          "timestamp": "2026-09-17T05:25:30-06:00",
+          "message": "feat(export)!: theme-aware, attribute-complete HTML export (rich-export-9a1.2) (#151)\n\n* feat(export)!: theme-aware, attribute-complete HTML export (rich-export-9a1.2)\n\nConsole.exportHtml({ theme?, clear? }) now draws exportLines' resolved picture\nthrough a new core module, export-html (encodeHtml). The page's background and\ndefault text colour come from the theme via a new exportCanvas in export-lines,\nthe same ground resolveLook flattens runs over. Every ExportLook field is\nwritten: reverse and dim arrive as resolved colours (no opacity), double\nunderline, strike, overline, blink via keyframes, frame and encircle, and\nallowed links as <a> elements. Refused links export as styled text. pre no\nlonger re-wraps recorded rows.\n\nsaveHtml and saveText take the full option type of the export they write.\n\nBREAKING CHANGE: Style.getHtmlStyle is removed with no replacement; export\nthrough Console.exportHtml. The exported HTML markup changes shape.\n\n* fix(export): a double underline no longer doubles strike and overline\n\nCSS gives an element one text-decoration-style, so underline2 sharing a span\nwith strike drew a double strike-through the terminal never showed. The\ndouble underline now sits on an outer span carrying the paint (so no inner\nbackground covers it) and the blink (so it blinks with the glyph); strike and\noverline stay single on the inner span. Checked in headless Chromium over a\npainted background.\n\n* fix(export): a trailing blank row is drawn in the HTML export\n\nA newline straight before </pre> ends a line without drawing another, so a\nrecording ending in a blank row lost it. Every row now ends with its own\nnewline, matching the newline the page writes after <pre> for the parser to\ndrop. Checked in headless Chromium: the pre's height in lines equals\nexportLines' row count for blank rows first, last, both and in between."
         }
       ]
     }
