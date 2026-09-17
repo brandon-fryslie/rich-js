@@ -4,15 +4,22 @@
     {
       "version": "pr-145",
       "ref": "refs/pull/145/merge",
-      "sha": "426397fae80cd23172c1f67f54636a0da6be3a22",
-      "timestamp": "2026-09-17T04:40:52.984Z",
+      "sha": "7f48df6f9e33c91b1312d531e279a30bc73989d7",
+      "timestamp": "2026-09-17T04:51:55.218Z",
       "commits": [
         {
-          "sha": "426397fae80cd23172c1f67f54636a0da6be3a22",
+          "sha": "7f48df6f9e33c91b1312d531e279a30bc73989d7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T22:40:25-06:00",
-          "message": "Merge f3963bc2441f797cdac8fb3aaaa3d7c4d7941b3c into d0428a0649d7811ea5023266241bc3c107246b70\n"
+          "timestamp": "2026-09-17T04:51:21Z",
+          "message": "Merge 0539dd280a974e781151abf4dfb89e3c2c5e420a into d0428a0649d7811ea5023266241bc3c107246b70\n"
+        },
+        {
+          "sha": "0539dd280a974e781151abf4dfb89e3c2c5e420a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T22:51:15-06:00",
+          "message": "fix(table,columns,layout): clear end on a RichText embedded directly, not just via string\n\n/code-review high on rich-text-5ai found that table.ts's toRenderable\npassthrough arm returns a directly-embedded RichText untouched (it\nimplements render, so it never reaches toCellText's end-clearing), and\nthat layout.ts's constructor/update only clear end on the string\nbranch. Both draw a stray extra blank line once RichText.render honors\nend for non-empty text. columns.ts had the identical passthrough gap,\ncaught by the same grep pattern while fixing table.ts.\n\nAll three now route a directly-passed RichText through the same\ncopy-and-clear treatment the string branch already gets, matching the\nconvention panel.ts and tree.ts already follow. Regression tests added\nfor each.\n"
         },
         {
           "sha": "f3963bc2441f797cdac8fb3aaaa3d7c4d7941b3c",
