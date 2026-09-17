@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-147",
+      "ref": "refs/pull/147/merge",
+      "sha": "2a1066112a2f9d40648fe5bf83c314b6b20ba213",
+      "timestamp": "2026-09-17T06:50:47.200Z",
+      "commits": [
+        {
+          "sha": "2a1066112a2f9d40648fe5bf83c314b6b20ba213",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T00:50:18-06:00",
+          "message": "Merge 3e7a8fe2ddfd28529c6657cb6ee926175c1e969e into 9e8950e3e237c9077d0c80c249b361300b48f43e\n"
+        },
+        {
+          "sha": "3e7a8fe2ddfd28529c6657cb6ee926175c1e969e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T00:50:03-06:00",
+          "message": "fix(docs): drop double-stacked newlines in group.md's Group examples (rich-flexstrip-5kf.c4u)\n\ncommit f1fa4c67 (rich-text-5ai) made RichText.render() draw its `end`\nunconditionally. All three Group examples on docs/group.md built their\nRichText/renderMarkup content with a literal trailing \"\\n\" in the text\nAND relied on the default end (\"\\n\"), so every item printed a spurious\nblank line after it. Drop the literal \"\\n\"s and let the default `end`\nsupply the line break, matching what the page's shown output already\nclaims. Also corrects the explanatory paragraph, which asserted\n`console.print` (not RichText itself) draws the default `end` -- true\nbefore f1fa4c67, false since.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9e8950e3e237c9077d0c80c249b361300b48f43e",
