@@ -4,15 +4,22 @@
     {
       "version": "pr-149",
       "ref": "refs/pull/149/merge",
-      "sha": "3947edeae8b3c34cf81e4213d14300297fb57041",
-      "timestamp": "2026-09-17T10:46:55.711Z",
+      "sha": "a7708e10b9598a6b62e6113ded35ca5dfc889494",
+      "timestamp": "2026-09-17T10:48:20.886Z",
       "commits": [
         {
-          "sha": "3947edeae8b3c34cf81e4213d14300297fb57041",
+          "sha": "a7708e10b9598a6b62e6113ded35ca5dfc889494",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:46:30-06:00",
-          "message": "Merge 61fb1907764fe4a937bcda17d85c327e68f26946 into bbfbbe7eb8685493c17fea64f66b850ba7469a11\n"
+          "timestamp": "2026-09-17T10:47:55Z",
+          "message": "Merge 430f763c262d0fbc116582689ee3e187473e48d4 into bbfbbe7eb8685493c17fea64f66b850ba7469a11\n"
+        },
+        {
+          "sha": "430f763c262d0fbc116582689ee3e187473e48d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T04:47:50-06:00",
+          "message": "docs(console): print's string-truncation count sits after the closing quote (rich-pretty-efq)\n\nPRINT_DATA_BOUNDS' header and docs/console.md both still described maxString's\n+N as inside the quotes, the form this branch removed.\n"
         },
         {
           "sha": "61fb1907764fe4a937bcda17d85c327e68f26946",
