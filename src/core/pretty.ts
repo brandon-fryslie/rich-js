@@ -516,45 +516,43 @@ export class Pretty implements Renderable, Measurable {
 
     const indentStr = " ".repeat(this.indent * at.inset);
     const innerIndent = " ".repeat(this.indent * (at.inset + 1));
-    const innerColumn = cellLen(innerIndent);
+    // Every non-last slot gets `EXPAND_SEPARATOR` appended right after it
+    // below, on the same line as whatever its own last character was — the
+    // last slot doesn't. Two frames, not one per slot: `reserve` is the only
+    // field that varies, and it only ever takes these two values.
+    const base = { inset: at.inset + 1, level: at.level + 1, maxWidth: at.maxWidth, column: cellLen(innerIndent), open: at.open };
+    const midFrame: Frame = { ...base, reserve: cellLen(EXPAND_SEPARATOR) };
+    const lastFrame: Frame = { ...base, reserve: 0 };
     const lastSlot = shape.slots.length - 1;
-    const parts = shape.slots.map((slot, i) => {
-      const deeper: Frame = {
-        inset: at.inset + 1,
-        level: at.level + 1,
-        maxWidth: at.maxWidth,
-        column: innerColumn,
-        // Every non-last slot gets `EXPAND_SEPARATOR` appended right after it
-        // below, on the same line as whatever its own last character was.
-        reserve: i === lastSlot ? 0 : cellLen(EXPAND_SEPARATOR),
-        open: at.open,
-      };
-      return innerIndent + this._expandSlot(slot, deeper);
-    });
+    const parts = shape.slots.map((slot, i) =>
+      innerIndent + this._expandSlot(slot, i === lastSlot ? lastFrame : midFrame),
+    );
     return shape.open + "\n" + parts.join(EXPAND_SEPARATOR + "\n") + "\n" + indentStr + shape.close;
   }
 
   /**
    * One position, with every value in it laid out.
    *
-   * `at.column` is where `slot.head` begins; `column` tracks where the line
-   * actually is as the slot's own text accumulates, so each hole is formatted
-   * knowing exactly how much of the line the head and any prior hole already
-   * spent. [LAW:one-source-of-truth] `lineColumn` is the one place that turns
-   * "text just emitted" into "column now" — `_joinOneLine`'s probe sibling
-   * tracks the same thing via `budget` shrinking instead of `column` growing,
-   * because a probe already discards anything that overruns and so never
-   * needs to know where a multi-line insert's last line ends.
+   * `at.column` is where `slot.head` begins. Rather than hand-tracking a
+   * second, parallel "column so far" alongside `out` — two values a future
+   * edit could update out of step, silently reintroducing a stale-budget bug
+   * of the same shape this file just fixed — each hole derives its own
+   * column fresh from `out` via `lineColumn`, the one place "text just
+   * emitted" becomes "column now". [LAW:one-source-of-truth] `out` is
+   * already the complete record; `column` is a read of it, not a second copy
+   * of the same fact. `_joinOneLine`'s probe sibling tracks the analogous
+   * thing via `budget` shrinking instead, because a probe already discards
+   * anything that overruns and so never needs to know where a multi-line
+   * insert's last line ends.
    *
    * Each hole's `reserve` is its own `tail` plus, only for the slot's last
    * hole, whatever `at.reserve` already asked this whole slot to leave room
    * for (`_formatObject`'s trailing `,`). An earlier hole's tail is never
    * folded into a later hole's reserve — it is spent, not carried, the moment
-   * `column` walks past it.
+   * `out` grows past it.
    */
   private _expandSlot(slot: Slot, at: Frame): string {
     let out = slot.head;
-    let column = lineColumn(at.column, slot.head);
     const lastHole = slot.holes.length - 1;
     for (let i = 0; i < slot.holes.length; i++) {
       const hole = slot.holes[i]!;
@@ -564,14 +562,11 @@ export class Pretty implements Renderable, Measurable {
       let text: string;
       try {
         const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
-        text = this._format(hole.read(), { ...at, column, reserve });
+        text = this._format(hole.read(), { ...at, column: lineColumn(at.column, out), reserve });
       } catch (error) {
         text = threw(error);
       }
-      out += text;
-      column = lineColumn(column, text);
-      out += hole.tail;
-      column = lineColumn(column, hole.tail);
+      out += text + hole.tail;
     }
     return out;
   }
