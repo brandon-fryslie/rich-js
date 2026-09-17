@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-142",
-      "ref": "refs/pull/142/merge",
-      "sha": "c7334e404f9a043e9389c1e248cd574478e6096a",
-      "timestamp": "2026-09-17T03:15:55.529Z",
-      "commits": [
-        {
-          "sha": "c7334e404f9a043e9389c1e248cd574478e6096a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T03:15:24Z",
-          "message": "Merge e716075b94d6ea4b8f958b63a84f4dab72b68f7a into 3041c8664b507343a915002841046aa2a7da477b\n"
-        },
-        {
-          "sha": "e716075b94d6ea4b8f958b63a84f4dab72b68f7a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T21:15:20-06:00",
-          "message": "docs(traceback): capture the max-frames sample from a real stack (rich-traceback-i5d)\n\nThe previous sample came from a hand-written 250-frame error.stack. V8\nrecords Error.stackTraceLimit frames, 10 by default, so no real error\nreaches the default cap of 100 and the sample could not be reproduced.\nThe section now says to raise the limit, and the sample is output\ncaptured from a real recursion under plain node.\n\nThe sample's last two frames show the async marker read as part of\nthe function name, filed as rich-traceback-dbs.\n"
-        },
-        {
-          "sha": "06f0f899d00101d60bd612fab4319438e6c4133e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T15:23:13-06:00",
-          "message": "fix(traceback): drop options the renderer ignores and document real output (rich-traceback-i5d)\n\nTracebackOptions accepted showLocals, width and theme and read none of\nthem, and docs/traceback.md showed a bordered panel with highlighted\nsource lines and a locals table that the renderer has never produced.\n\nLocals are removed rather than implemented. An Error records where each\nframe was, not what was in scope; the only node route to that is an\ninspector session pausing on exceptions, which would have to pause on\nevery throw, caught ones included, to serve new Traceback(caughtError),\nand which a browser cannot run at all. width and theme sized and\ncoloured the source excerpt that does not exist either.\n\ndocs/traceback.md, the docs index card and the README blurb now show\nthe output as rendered. The suppress example passed a module object to\na string[] option and now passes a string.\n\nPinning the maxFrames sample turned up a truncation bug: slice(-half)\nis the whole array when maxFrames is 1, and an odd budget showed one\nframe fewer than it counted. The tail now takes maxFrames - head frames\nfrom an index, so the budget is spent exactly.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "3041c8664b507343a915002841046aa2a7da477b",
-      "timestamp": "2026-09-16T16:28:30.912Z",
+      "sha": "e360188e4fd2d62b620564c65d9adc9060c20c52",
+      "timestamp": "2026-09-17T03:17:25.568Z",
       "commits": [
         {
-          "sha": "3041c8664b507343a915002841046aa2a7da477b",
+          "sha": "e360188e4fd2d62b620564c65d9adc9060c20c52",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-16T10:28:06-06:00",
-          "message": "docs(style): document the degrade-versus-strict contract (rich-diagnostics-un7.5) (#141)\n\n* docs(style): document the degrade-versus-strict contract (rich-diagnostics-un7.5)\n\ndocs/style.md never said that an invalid style inside text is dropped\nsilently, so a reader whose text printed plain had nothing to go on. The\nnew \"When a style is invalid\" section says what degrades (styles attached\nto text: markup tags, RichText styles, spans, highlighters) and what throws\nStyleSyntaxError (Style.parse, new Theme, print/Console style options, a\nrenderable's own border/rule/guide styles), links markup parse errors to\ndocs/markup.md, and covers onStyleError, including the did-you-mean message\nand per-resolution call counts, and rethrowing from it as the strict mode.\n\ndocs/markup.md's parse-errors section now points a misspelled style name\nat that section, since it is not a parse error.\n\nEvery behavioral claim and the sample message were checked against real\noutput. renderToString has no handler; that gap is filed as\nrich-diagnostics-ejn.\n\n* docs(style): drop the panel title from the styles that degrade\n\nA Panel reads its title as plain text, so a style on it is never resolved\nand never reaches onStyleError. The sentence now names only a table cell,\nwhich does degrade and report. The title bug is rich-panel ticket filed\nseparately."
+          "timestamp": "2026-09-16T21:16:56-06:00",
+          "message": "fix(traceback): drop options the renderer ignores and document real output (rich-traceback-i5d) (#142)\n\n* fix(traceback): drop options the renderer ignores and document real output (rich-traceback-i5d)\n\nTracebackOptions accepted showLocals, width and theme and read none of\nthem, and docs/traceback.md showed a bordered panel with highlighted\nsource lines and a locals table that the renderer has never produced.\n\nLocals are removed rather than implemented. An Error records where each\nframe was, not what was in scope; the only node route to that is an\ninspector session pausing on exceptions, which would have to pause on\nevery throw, caught ones included, to serve new Traceback(caughtError),\nand which a browser cannot run at all. width and theme sized and\ncoloured the source excerpt that does not exist either.\n\ndocs/traceback.md, the docs index card and the README blurb now show\nthe output as rendered. The suppress example passed a module object to\na string[] option and now passes a string.\n\nPinning the maxFrames sample turned up a truncation bug: slice(-half)\nis the whole array when maxFrames is 1, and an odd budget showed one\nframe fewer than it counted. The tail now takes maxFrames - head frames\nfrom an index, so the budget is spent exactly.\n\n* docs(traceback): capture the max-frames sample from a real stack (rich-traceback-i5d)\n\nThe previous sample came from a hand-written 250-frame error.stack. V8\nrecords Error.stackTraceLimit frames, 10 by default, so no real error\nreaches the default cap of 100 and the sample could not be reproduced.\nThe section now says to raise the limit, and the sample is output\ncaptured from a real recursion under plain node.\n\nThe sample's last two frames show the async marker read as part of\nthe function name, filed as rich-traceback-dbs."
         }
       ]
     }
