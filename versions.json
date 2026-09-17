@@ -4,15 +4,22 @@
     {
       "version": "pr-148",
       "ref": "refs/pull/148/merge",
-      "sha": "aef71d52086b0235d1dca11dc884db9790a8cc56",
-      "timestamp": "2026-09-17T07:04:17.875Z",
+      "sha": "2774d59051d5990ee4c556b55839062f45d89a1d",
+      "timestamp": "2026-09-17T07:14:16.711Z",
       "commits": [
         {
-          "sha": "aef71d52086b0235d1dca11dc884db9790a8cc56",
+          "sha": "2774d59051d5990ee4c556b55839062f45d89a1d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T01:03:52-06:00",
-          "message": "Merge 979f891de72cf1185edec6e4f2a5bdfdc8b1c483 into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
+          "timestamp": "2026-09-17T07:13:46Z",
+          "message": "Merge 65bfe40824368cab56d55f95a1ef522df496cfe5 into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
+        },
+        {
+          "sha": "65bfe40824368cab56d55f95a1ef522df496cfe5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T01:13:41-06:00",
+          "message": "fix(pretty): address high-review findings on rich-pretty-xms\n\n- Hoist the per-slot `deeper` Frame back to a single construction outside\n  `.map()` — every field was identical across slots at a given nesting\n  level (column: innerColumn doesn't vary per slot, only _expandSlot's own\n  running column varies per hole within one), so building it fresh per\n  slot was pure allocation churn with no behavioral difference.\n- The new width-pinning test compared raw `.length` instead of `cellLen`,\n  diverging from every other width assertion in this file and from the\n  budget math the fix itself is built on. Switched to `cellLen`.\n\nA third finding (Pretty's self-describing \"text\" shape — Error, custom\ntoString — never consults column/width for multi-line values) is real but\npre-existing and out of this ticket's scope; filed as rich-pretty-xms.tmf.\n"
         },
         {
           "sha": "979f891de72cf1185edec6e4f2a5bdfdc8b1c483",
