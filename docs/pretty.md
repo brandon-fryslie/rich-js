@@ -197,7 +197,4 @@ console.print(new Panel(new Pretty(data, { expandAll: true }), { title: "User" }
 │     ]                                   │
 │ }                                       │
 ╰─────────────────────────────────────────╯
-
 ```
-
-The blank line after the panel is real. `Panel` ends its own render with a line break and `print` then appends its line end regardless, so a printed panel always leaves one behind it.
