@@ -60,7 +60,7 @@ console.print(
 ╰─────────────────────────────────────────╯
 ```
 
-Every item above ends in `\n`, and dropping it changes the output. A group emits its children's segments back to back and inserts nothing between them, so each child has to end its own line. `Panel`, `Rule`, and `Table` already do and stack without help; a `RichText` breaks the line only when its text ends in `\n`. The `end` newline a `RichText` carries by default will not do it — `console.print` appends that, and a group never calls `console.print`. Without the four `\n`s, the panel above collapses to one run-together line.
+Every item above ends in `\n`, and dropping it changes the output. A group emits its children's segments back to back and inserts nothing between them, so each child has to end its own line. `Panel`, `Rule`, `Table`, [`Strip`](./strip), and `FlexStrip` already do and stack without help; a `RichText` breaks the line only when its text ends in `\n`. The `end` newline a `RichText` carries by default will not do it — `console.print` appends that, and a group never calls `console.print`. Without the four `\n`s, the panel above collapses to one run-together line.
 
 ## Building a group from a generator
 

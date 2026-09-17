@@ -87,6 +87,19 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
       const next = i + 1 < items.length ? items[i + 1]! : null;
       yield* this.joiner.join(item, next).render(options);
     }
+
+    // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line
+    // it emits, including the last, and the other block-level renderables
+    // (`Panel`/`Rule`/`Table` structurally, `RichText` via `end`) do too — so
+    // `Group` can emit children back to back with nothing in between
+    // (docs/group.md). A `Strip` that left its last line open broke only
+    // under composition: printed alone, Console's own "close whatever the
+    // renderable left open" step (console.ts) papered over it, and a `Group`
+    // of a Strip and a RichText ran the RichText onto the Strip's line
+    // instead of below it. (Not every renderable follows this — a `Spinner`
+    // or `ProgressBar` is a line *fragment*, not a block; see
+    // rich-flexstrip-5kf.4cq for the open question of formalizing that split.)
+    yield Segment.line();
   }
 }
 

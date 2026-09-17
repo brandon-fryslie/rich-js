@@ -526,8 +526,10 @@ export class Console {
         output.push(...styleContent(block.items.flatMap((item) => [...item.render(renderOpts)])), terminator);
       } else {
         // A block's lines are closed whether or not it closed them itself: a
-        // `Panel` ends in a line break and a `Strip` does not, and both leave
-        // the next print at the start of a line.
+        // `Panel` ends in a line break and a bare `Spinner` or `ProgressBar`
+        // does not (they're line fragments, meant to be composed within a
+        // line — rich-flexstrip-5kf.4cq), and both leave the next print at
+        // the start of a line.
         for (const line of Segment.splitLines(block.renderable.render(renderOpts))) {
           output.push(...styleContent(line), Segment.line());
         }
