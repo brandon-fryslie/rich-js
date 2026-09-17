@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-150",
-      "ref": "refs/pull/150/merge",
-      "sha": "3380f9f93d133185ecedb85abcd6b75669832745",
-      "timestamp": "2026-09-17T11:07:29.728Z",
-      "commits": [
-        {
-          "sha": "3380f9f93d133185ecedb85abcd6b75669832745",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T11:07:00Z",
-          "message": "Merge 1dfc29dd08fd09821226f64050b55c50efce1e19 into e964187e2f6b6429a000f7b8afbeceae46d7c9de\n"
-        },
-        {
-          "sha": "1dfc29dd08fd09821226f64050b55c50efce1e19",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:06:56-06:00",
-          "message": "fix(export): flatten alpha before reverse, dim and conceal (rich-export-9a1.1)\n\nresolveLook handed translucent colours straight to the swap, the fade and\nconceal. toSgrCodes flattens first, so an exported #rrggbbaa run drew other\ncolours than the terminal did, and conceal over a translucent background left\nthe glyph visible. Paper now flattens over the theme canvas and ink over the\npaper, through ColorSpec.flattenAlpha, before anything else sees them.\n"
-        },
-        {
-          "sha": "4cedae010aa834ab5daa0995bfb96db84612471f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:59:26-06:00",
-          "message": "feat(export): resolve recorded output into the rows both exporters draw (rich-export-9a1.1)\n\nThe research ticket asked for design/export-pipeline.md. CLAUDE.md forbids a\nsecond description of a subsystem outside docs/, so the design lands as the\nmodule that makes it true, with the rationale in its header and the claims\npinned by tests.\n\nsrc/core/export-lines.ts resolves a recorded Segment stream under a\nTerminalTheme into rows of { text, look } runs. ExportLook carries only\nresolved values: reverse, dim, conceal, default colours and the theme's ANSI\ntable are consumed here, so neither the HTML nor the SVG exporter can forget\none. parseHref is the single checkpoint for links an export may publish\n(http, https, mailto, ftp, file); a refused link keeps its text.\n\nNothing consumes it yet: rich-export-9a1.2 routes exportHtml through it and\ndeletes the two style-to-CSS converters it replaces.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e964187e2f6b6429a000f7b8afbeceae46d7c9de",
-      "timestamp": "2026-09-17T10:50:38.937Z",
+      "sha": "7cdac56067ef8a3c6235aab0602b92e8bed91f0a",
+      "timestamp": "2026-09-17T11:09:27.368Z",
       "commits": [
         {
-          "sha": "e964187e2f6b6429a000f7b8afbeceae46d7c9de",
+          "sha": "7cdac56067ef8a3c6235aab0602b92e8bed91f0a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T04:50:06-06:00",
-          "message": "fix(pretty): maxString's dropped count sits outside the closing quote (#149)\n\n* fix(pretty): maxString's dropped count sits outside the closing quote (rich-pretty-efq)\n\nPretty cut a long string and appended \"+N\" before JSON.stringify, so the\ncount was quoted as the string's own content — \"Field b+316\" — and copying\nthe rendered value yielded a string the program never held. Quote the kept\nprefix first and annotate after it: \"Field b\"+316, the same way maxLength's\n\"... +N\" sits beside the kept entries rather than inside the last one.\n\nThe ticket's second instance (Map/Set maxLength truncating silently) is\nalready fixed on master by the shared `elided()` marker every container\nkind goes through; verified, nothing to change.\n\n* docs(console): print's string-truncation count sits after the closing quote (rich-pretty-efq)\n\nPRINT_DATA_BOUNDS' header and docs/console.md both still described maxString's\n+N as inside the quotes, the form this branch removed."
+          "timestamp": "2026-09-17T05:08:57-06:00",
+          "message": "feat(export): shared export resolution for HTML and SVG (rich-export-9a1.1) (#150)\n\n* feat(export): resolve recorded output into the rows both exporters draw (rich-export-9a1.1)\n\nThe research ticket asked for design/export-pipeline.md. CLAUDE.md forbids a\nsecond description of a subsystem outside docs/, so the design lands as the\nmodule that makes it true, with the rationale in its header and the claims\npinned by tests.\n\nsrc/core/export-lines.ts resolves a recorded Segment stream under a\nTerminalTheme into rows of { text, look } runs. ExportLook carries only\nresolved values: reverse, dim, conceal, default colours and the theme's ANSI\ntable are consumed here, so neither the HTML nor the SVG exporter can forget\none. parseHref is the single checkpoint for links an export may publish\n(http, https, mailto, ftp, file); a refused link keeps its text.\n\nNothing consumes it yet: rich-export-9a1.2 routes exportHtml through it and\ndeletes the two style-to-CSS converters it replaces.\n\n* fix(export): flatten alpha before reverse, dim and conceal (rich-export-9a1.1)\n\nresolveLook handed translucent colours straight to the swap, the fade and\nconceal. toSgrCodes flattens first, so an exported #rrggbbaa run drew other\ncolours than the terminal did, and conceal over a translucent background left\nthe glyph visible. Paper now flattens over the theme canvas and ink over the\npaper, through ColorSpec.flattenAlpha, before anything else sees them."
         }
       ]
     }
