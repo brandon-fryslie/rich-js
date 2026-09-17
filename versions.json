@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-143",
+      "ref": "refs/pull/143/merge",
+      "sha": "da02d812625b1f2d9f66e61f9f6a6fa82c7aee64",
+      "timestamp": "2026-09-17T03:23:44.524Z",
+      "commits": [
+        {
+          "sha": "da02d812625b1f2d9f66e61f9f6a6fa82c7aee64",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T21:23:19-06:00",
+          "message": "Merge fa6e52861f1a50be3be0e42759d8a62d8b106e4c into e360188e4fd2d62b620564c65d9adc9060c20c52\n"
+        },
+        {
+          "sha": "fa6e52861f1a50be3be0e42759d8a62d8b106e4c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-16T21:23:15-06:00",
+          "message": "fix(columns): a declared column width yields to a narrower offer (rich-table-width-y1a)\n\n`new Columns(items, { width: 6 })` rendered at `maxWidth: 3` laid out one\nsix-cell column and emitted six-cell lines into a three-cell request, while\n`measure` already reported three. The terminal soft-wraps an oversized line and\nthe wrap takes the frame of everything printed after it.\n\n`Columns._declaredWidth(options)` bounds the declared width by the offer, and\nboth `_divide` (render) and `_naturalWidth` (measure) read it, the same shape\n`Table._outerWidth` gave the Table half of this ticket in #79. A declared width\nis now what a column asks for, not what it takes, across both renderables.\n\nThe width sweep gains \"Columns at a declared width\" and \"Columns at a declared\nunbounded width\", and the header note that excluded declared-width Columns is\ndeleted. Without the fix those two configurations and the new pinned test in\ncolumns.test.ts fail (5 tests); with it the suite is green.\n\ndocs/tables.md said a declared `width` was a \"Fixed total width — disables\nauto-sizing, and overrides a container narrower than it\". Neither half is true\non master: the container wins, and a declared width is a ceiling the table sizes\nto its content within — five cells of content under `width: 40` render at five\nunless `expand` is set (verified unchanged back to before #77). \"Narrow widths\"\nnow states that contract once, and the Sizing row links to it.\ndocs/columns.md gains the `width` row it never had.\n\nFiled, not fixed here: rich-columns-awe (Columns `expand` and `padding` are\naccepted and never applied) and rich-table-width-5cj (whether a declared Table\nwidth should imply `expand`, as it does in upstream Rich).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e360188e4fd2d62b620564c65d9adc9060c20c52",
