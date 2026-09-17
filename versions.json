@@ -4,15 +4,22 @@
     {
       "version": "pr-148",
       "ref": "refs/pull/148/merge",
-      "sha": "2774d59051d5990ee4c556b55839062f45d89a1d",
-      "timestamp": "2026-09-17T07:14:16.711Z",
+      "sha": "f0f8d41619bd4c27cb5531893e60cc4e3597556a",
+      "timestamp": "2026-09-17T07:23:23.666Z",
       "commits": [
         {
-          "sha": "2774d59051d5990ee4c556b55839062f45d89a1d",
+          "sha": "f0f8d41619bd4c27cb5531893e60cc4e3597556a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T07:13:46Z",
-          "message": "Merge 65bfe40824368cab56d55f95a1ef522df496cfe5 into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
+          "timestamp": "2026-09-17T07:22:57Z",
+          "message": "Merge 901305da01e0c9704a2d82851256cc26c7e0dc57 into 8cd13ca5f863e1e0e07610705d9e02ba211a7be8\n"
+        },
+        {
+          "sha": "901305da01e0c9704a2d82851256cc26c7e0dc57",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T01:22:52-06:00",
+          "message": "fix(pretty): a container's compact try also charges for what follows it\n\nThe medium review on this PR found the same accounting gap on the trailing\nside: a non-last slot's compact value can fit maxWidth - column exactly and\nstill overrun once _formatObject's own trailing \",\" lands after it, wrapping\nmid-container the same way the leading-key bug did.\n\nFrame gains `reserve`: cells a fixed piece of literal text already known to\nfollow a value — the rest of its own hole.tail, or the slot-join separator —\nwill cost on the same line, charged symmetrically with `column`. Threaded\nthrough _expandSlot per hole (only the slot's last hole inherits the outer\nslot's own reserve) and through _formatObject's per-slot Frame (0 for the\nlast slot, 1 for every other).\n\nVerified the same gap exists, symmetrically, for a Map entry's \" => \" tail\nfollowing a compact key — fixed by the same mechanism, pinned by a second\ntest. A third manifestation (a bare scalar or self-describing value trailing\na compact key within one slot, e.g. `[1,2,3,10] => \"v\"`) shares the same root\ncause but needs a different fix shape (scalars/self-describing text have no\ncompact-fit apparatus at all) — confirmed present on master already, not a\nregression from either fix on this branch, and added to the already-filed\nfollow-up ticket (rich-pretty-xms.tmf) rather than fixed here.\n"
         },
         {
           "sha": "65bfe40824368cab56d55f95a1ef522df496cfe5",
