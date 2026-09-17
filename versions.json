@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-146",
+      "ref": "refs/pull/146/merge",
+      "sha": "56400678324ddffd7fd2290ac83c2b04f44706db",
+      "timestamp": "2026-09-17T06:31:10.393Z",
+      "commits": [
+        {
+          "sha": "56400678324ddffd7fd2290ac83c2b04f44706db",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T00:30:36-06:00",
+          "message": "Merge 0c2a9d2129f347dae732cd9a6721bc7b34157a62 into f1fa4c67a02bf30d31c99c910401d795eb2d5039\n"
+        },
+        {
+          "sha": "0c2a9d2129f347dae732cd9a6721bc7b34157a62",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T00:30:22-06:00",
+          "message": "fix(strip): Strip ends its own last line, matching FlexStrip (rich-flexstrip-5kf)\n\nStrip and FlexStrip are sibling renderables over the same Joiner protocol,\ndocumented on one page, and disagreed about who terminates the last line:\nFlexStrip ends every line with Segment.line(), Strip never emitted one.\n\nPrinted alone this was invisible — Console.print already closes whatever a\nrenderable left open (rich-console-dcg) — but it broke composition: docs/group.md\ndocuments that Group inserts nothing between children, so each child must end\nits own line the way Panel, Rule and Table already do. A Group of a Strip\nfollowed by another renderable ran the two together on one line; the same\nGroup with a FlexStrip put the second renderable on its own line, as intended.\n\nThe original ticket framed the fix the other way (make FlexStrip stop\nterminating, to match Strip) — investigation on the rich-console-dcg branch\nfound that backwards: FlexStrip already follows the codebase's convention\nthat every renderable ends its own lines, and Strip is the outlier. Fixed by\ngiving Strip the same trailing Segment.line() FlexStrip already emits.\n\nStrip's own render-walk tests (joiner glyph/color placement) strip the new\nterminator via a small helper so they stay focused on what they pin; the\nterminator itself and the Group composition contract get dedicated tests.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f1fa4c67a02bf30d31c99c910401d795eb2d5039",
