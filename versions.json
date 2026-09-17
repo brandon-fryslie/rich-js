@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-151",
+      "ref": "refs/pull/151/merge",
+      "sha": "97986f195e5e9621f8bd9b5b0206dc30d7253305",
+      "timestamp": "2026-09-17T11:18:53.584Z",
+      "commits": [
+        {
+          "sha": "97986f195e5e9621f8bd9b5b0206dc30d7253305",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T05:18:22-06:00",
+          "message": "Merge fbf45d3a6934ff53ffc07fe07431da38bfecb045 into 7cdac56067ef8a3c6235aab0602b92e8bed91f0a\n"
+        },
+        {
+          "sha": "fbf45d3a6934ff53ffc07fe07431da38bfecb045",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-17T05:18:15-06:00",
+          "message": "feat(export)!: theme-aware, attribute-complete HTML export (rich-export-9a1.2)\n\nConsole.exportHtml({ theme?, clear? }) now draws exportLines' resolved picture\nthrough a new core module, export-html (encodeHtml). The page's background and\ndefault text colour come from the theme via a new exportCanvas in export-lines,\nthe same ground resolveLook flattens runs over. Every ExportLook field is\nwritten: reverse and dim arrive as resolved colours (no opacity), double\nunderline, strike, overline, blink via keyframes, frame and encircle, and\nallowed links as <a> elements. Refused links export as styled text. pre no\nlonger re-wraps recorded rows.\n\nsaveHtml and saveText take the full option type of the export they write.\n\nBREAKING CHANGE: Style.getHtmlStyle is removed with no replacement; export\nthrough Console.exportHtml. The exported HTML markup changes shape.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7cdac56067ef8a3c6235aab0602b92e8bed91f0a",
