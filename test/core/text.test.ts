@@ -912,6 +912,22 @@ describe("RichText.render()", () => {
     it("empty text, end \"\": nothing at all", () => {
       expect(segmentTexts(new RichText("", { end: "" }))).toEqual([]);
     });
+
+    // Flagged independently by two code-review passes on rich-text-5ai as a
+    // "doubled newline" regression. It is not one: `end` and an embedded
+    // trailing "\n" in the content are two different things stacking, the
+    // same as Python's `print("hi\n")` producing two newlines. Pre-fix,
+    // a *custom* end already stacked this way (`"hi\n<<"`) — only the
+    // *default* "\n" end special-cased itself away when content already
+    // ended in "\n", which is the same "two meanings for end" defect this
+    // ticket exists to remove. Direct-render consumers who want exactly one
+    // trailing newline pass `end: ""`; `Console.print` is unaffected either
+    // way, since it clears a text item's own `end` before rendering.
+    it("content already ending in \\n stacks with a non-empty end, same as a custom end always did", () => {
+      expect(segmentTexts(new RichText("a\n"))).toEqual(["a", "\n", "\n"]);
+      expect(segmentTexts(new RichText("a\n", { end: "<<" }))).toEqual(["a", "\n", "<<"]);
+      expect(segmentTexts(new RichText("a\n", { end: "" }))).toEqual(["a", "\n"]);
+    });
   });
 
   it("does not wrap when noWrap is set", () => {
