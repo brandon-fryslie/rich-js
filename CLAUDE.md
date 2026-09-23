@@ -81,7 +81,7 @@ non-interactive program needs from the terminal without any of the above
 Build order within `src/core/`. Each tier imports only from tiers above it:
 
 ```
-0   cells · color · sanitize · subscription
+0   cells · color · osc8 · subscription
 1   oklch · style · wrap
 2   segment
 3   box · protocol · export-lines
@@ -117,7 +117,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **oklch** — perceptually-uniform polar colour space. sRGB ↔ OKLab ↔ OKLCH, reversible but for the final 0–255 quantization. This is where equal numeric deltas mean equal perceptual deltas, which is what transposition needs.
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.
-- **sanitize** — `stripOscTerminators`. One rule, one home: the bytes that would break out of an OSC 8 hyperlink wrap. Imported by both the data-model boundary and the wire-byte boundaries.
+- **osc8** — the OSC 8 hyperlink wire grammar, one home: the terminator bytes a URL may not carry (`stripOscTerminators`, used by RichText at its data-model boundary), the producer every link is written through (`osc8Open` — sanitize + a URL-derived `id=` so a split link hovers as one — and `OSC8_CLOSE`), and the reader: `osc8Sequences` (typed scan of rendered bytes) over the `OSC8` pattern (exported for composing into a larger regex).
 - **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.
 - **box** — box-drawing character sets. One `Box` type, many pre-built instances (ASCII, SQUARE, ROUNDED, HEAVY, DOUBLE, …).
 - **protocol** — `Renderable` and `Measurable` interfaces. `Renderable.render(options) → Iterable<Segment>`. `Measurable.measure(options) → {minimum, maximum}`. Single authority for the rendering contract.

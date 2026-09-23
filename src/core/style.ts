@@ -8,10 +8,10 @@ import {
   ColorSpec,
   ColorDepth,
 } from "./color.js";
-import { stripOscTerminators } from "./sanitize.js";
+import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color` and the leaf
-// `core/sanitize` (a dep-free utility module). The substrate fallback is the
+// `core/osc8` (the link wire grammar). The substrate fallback is the
 // canonical canvas color (black), inlined to avoid pulling in any preset
 // theme constants. Preset themes live in `src/themes/` and depend on core,
 // never the reverse.
@@ -377,21 +377,8 @@ export class Style {
     let result = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
 
     if (this.link) {
-      // [LAW:types-are-the-program] OSC 8 emits with empty params so the
-      // byte stream is a pure function of (style, text, colorSystem) — no
-      // global counter, no construction-order dependence. Tradeoff: terminals
-      // can no longer hover-group non-adjacent same-URL spans (when linked
-      // segments are separated by other content, each becomes its own OSC 8
-      // pair instead of sharing an id). The coalescer in render.ts already
-      // merges adjacent same-link runs into one wrap, so the common case is
-      // unaffected; non-adjacent hover-grouping is the intentional sacrifice.
-      //
-      // [LAW:single-enforcer] Wire-byte sanitization at the OSC 8 emit site
-      // — paired with the same call in render.ts:segmentsToString so every
-      // path that turns `Style.link` into bytes goes through one rule. Style
-      // itself stays a faithful container (this.link is unchanged); only the
-      // bytes going out the door are stripped.
-      result = `\x1b]8;;${stripOscTerminators(this.link)}\x1b\\${result}\x1b]8;;\x1b\\`;
+      // [LAW:single-enforcer] One OSC 8 spelling, shared with segmentsToString.
+      result = `${osc8Open(this.link)}${result}${OSC8_CLOSE}`;
     }
 
     return result;

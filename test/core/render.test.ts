@@ -7,6 +7,14 @@ import { Segment } from "../../src/core/segment.js";
 import { Strip, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { renderMarkup } from "../../src/core/markup.js";
+import { osc8Sequences } from "../../src/core/osc8.js";
+
+// Every OSC 8 open in `out` as `{ params, uri }` (a close has an empty uri).
+function osc8Opens(out: string): { params: string; uri: string }[] {
+  return osc8Sequences(out)
+    .filter((s) => s.uri !== "")
+    .map(({ params, uri }) => ({ params, uri }));
+}
 
 // [LAW:behavior-not-structure] Tests assert observable bytes — ANSI codes,
 // terminator newlines, color stripping — not internal walk shape.
@@ -97,9 +105,6 @@ describe("segmentsToString coalescing", () => {
   function countSgrResets(out: string): number {
     return [...out.matchAll(/\x1b\[0m/g)].length;
   }
-  function countOsc8Opens(out: string): number {
-    return [...out.matchAll(/\x1b\]8;[^\\]*\x1b\\/g)].length / 2;
-  }
 
   it("coalesces three adjacent same-style segments into one SGR open/close pair", () => {
     const segs = [
@@ -139,7 +144,7 @@ describe("segmentsToString coalescing", () => {
     // One SGR wrap (same non-link style), two OSC 8 pairs (different links).
     expect(countSgrOpens(out)).toBe(1);
     expect(countSgrResets(out)).toBe(1);
-    expect(countOsc8Opens(out)).toBe(2);
+    expect(osc8Opens(out)).toHaveLength(2);
     // OSC 8 open appears AFTER the SGR open; OSC 8 close BEFORE the SGR reset.
     const sgrOpen = out.indexOf("\x1b[");
     const sgrReset = out.lastIndexOf("\x1b[0m");
@@ -157,7 +162,7 @@ describe("segmentsToString coalescing", () => {
     ];
     const out = segmentsToString(segs, ColorDepth.TRUECOLOR);
     expect(countSgrOpens(out)).toBe(1);
-    expect(countOsc8Opens(out)).toBe(1);
+    expect(osc8Opens(out)).toHaveLength(1);
   });
 
   it("emits no SGR wraps when colorSystem is null even for adjacent styled segments", () => {
@@ -234,14 +239,32 @@ describe("segmentsToString coalescing", () => {
     expect(outA).toBe(outB);
   });
 
-  it("emits OSC 8 with empty params (no id= annotation) in the coalesced pipeline", () => {
-    const linked = new Style({ link: "https://example.com" });
-    const out = segmentsToString(
-      [new Segment("click", linked)],
-      ColorDepth.TRUECOLOR,
-    );
-    expect(out).toContain("\x1b]8;;https://example.com\x1b\\");
-    expect(out).not.toMatch(/\x1b\]8;id=/);
+  // [LAW:behavior-not-structure] The hover contract: a terminal treats cells
+  // as one hyperlink when they share the URI AND the id. A link whose text
+  // changes style mid-span cannot share one OSC 8 pair (the pair nests inside
+  // an SGR run), so every pair it becomes must carry the same id — or the
+  // span highlights in pieces.
+  it("gives every OSC 8 pair of one link the same id when its text spans two SGR runs", () => {
+    const url = "https://split.example";
+    const segs = [
+      new Segment("▸", new Style({ bold: true, link: url })),
+      new Segment(" open", new Style({ link: url })),
+    ];
+    const out = segmentsToString(segs, ColorDepth.TRUECOLOR);
+    const open = { params: "id=3051f306", uri: url };
+    expect(osc8Opens(out)).toEqual([open, open]);
+  });
+
+  it("gives non-adjacent spans with the same URL the same id — one URL is one link", () => {
+    const url = "https://same.example";
+    const out = segmentsToString([
+      new Segment("✕", new Style({ link: url })),
+      new Segment(" between ", Style.parse("red")),
+      new Segment("▾ menu", new Style({ bold: true, link: url })),
+    ], ColorDepth.TRUECOLOR);
+    const opens = osc8Opens(out);
+    expect(opens).toHaveLength(2);
+    expect(opens[1]).toEqual(opens[0]);
   });
 });
 
@@ -261,18 +284,16 @@ describe("OSC 8 wrap is escape-safe", () => {
       [...t.render({ maxWidth: 80 })],
       ColorDepth.TRUECOLOR,
     );
-    // Extract the URL slot of the opening OSC 8 introducer: the bytes between
-    // `\x1b]8;;` and the terminating `\x1b\` of that introducer.
-    const match = /\x1b\]8;;([^\x1b\x07\x9c]*)\x1b\\/.exec(out);
-    expect(match).not.toBeNull();
+    const [open] = osc8Opens(out);
+    expect(open).toBeDefined();
     // The URL slot must contain zero OSC terminators — otherwise an attacker
     // could close the OSC 8 early and inject arbitrary terminal control bytes.
-    expect(match![1]).not.toContain("\x1b");
-    expect(match![1]).not.toContain("\x07");
-    expect(match![1]).not.toContain("\x9c");
+    expect(open!.uri).not.toContain("\x1b");
+    expect(open!.uri).not.toContain("\x07");
+    expect(open!.uri).not.toContain("\x9c");
     // And the "BAD" suffix from the dirty URL is now part of the (sanitized)
     // URL, not arbitrary terminal-control text following an escaped OSC.
-    expect(match![1]).toBe("https://evil.example/\\BAD");
+    expect(open!.uri).toBe("https://evil.example/\\BAD");
   });
 
   it("sanitizes wire bytes even when a dirty Style bypasses RichText entirely (segmentsToString)", () => {
@@ -289,9 +310,9 @@ describe("OSC 8 wrap is escape-safe", () => {
       [new Segment("click", dirtyStyle)],
       ColorDepth.TRUECOLOR,
     );
-    const match = /\x1b\]8;;([^\x1b\x07\x9c]*)\x1b\\/.exec(out);
-    expect(match).not.toBeNull();
-    expect(match![1]).toBe("https://evil.example/\\BAD");
+    const [open] = osc8Opens(out);
+    expect(open).toBeDefined();
+    expect(open!.uri).toBe("https://evil.example/\\BAD");
   });
 
   it("sanitizes wire bytes when a dirty Style goes through the per-segment `Style.render` path", () => {
@@ -302,8 +323,8 @@ describe("OSC 8 wrap is escape-safe", () => {
     const dirty = "https://evil.example/\x1b\\BAD";
     const dirtyStyle = new Style({ link: dirty });
     const out = dirtyStyle.render("click", ColorDepth.TRUECOLOR);
-    const match = /\x1b\]8;;([^\x1b\x07\x9c]*)\x1b\\/.exec(out);
-    expect(match).not.toBeNull();
-    expect(match![1]).toBe("https://evil.example/\\BAD");
+    const [open] = osc8Opens(out);
+    expect(open).toBeDefined();
+    expect(open!.uri).toBe("https://evil.example/\\BAD");
   });
 });

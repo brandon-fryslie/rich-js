@@ -572,10 +572,12 @@ describe("Style.render", () => {
     expect(a.render("x")).toBe(b.render("x"));
   });
 
-  it("emits OSC 8 with empty params (no id=N annotation)", () => {
+  // The id is FNV-1a of the URI — pinned as a literal so a change to the
+  // derivation shows up here, not only as a self-consistent new value.
+  it("emits OSC 8 with an id= derived from the URI", () => {
     const s = new Style({ link: "https://example.com" });
     expect(s.render("click")).toBe(
-      "\x1b]8;;https://example.com\x1b\\click\x1b]8;;\x1b\\",
+      "\x1b]8;id=6fbc04d3;https://example.com\x1b\\click\x1b]8;;\x1b\\",
     );
   });
 

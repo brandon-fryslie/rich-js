@@ -6,7 +6,7 @@ import { cellLen, cellCount } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
-import { stripOscTerminators } from "./sanitize.js";
+import { stripOscTerminators } from "./osc8.js";
 import { getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
@@ -56,8 +56,9 @@ function hangingWhitespace(line: Segment[]): number {
 // [LAW:single-enforcer] RichText is the data-model trust boundary for link
 // URLs: a `Style` is sanitized as it enters (`admitStyle`), and the `Style` a
 // stored string resolves to is sanitized as it leaves for a render
-// (`resolveStyle`). Wire-byte safety is enforced separately in render.ts and
-// style.ts through the same `stripOscTerminators`.
+// (`resolveStyle`). Wire-byte safety is enforced separately by `osc8Open`
+// (core/osc8.ts), which every link producer calls and which applies the same
+// `stripOscTerminators`.
 function sanitizeStyleLink(style: Style): Style {
   const link = style.link;
   if (!link) return style;
