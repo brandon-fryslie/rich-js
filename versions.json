@@ -4,15 +4,22 @@
     {
       "version": "pr-152",
       "ref": "refs/pull/152/merge",
-      "sha": "2a6ec2ac3b8b72da17d2de3176637f2141ee465a",
-      "timestamp": "2026-09-23T08:56:38.773Z",
+      "sha": "831fb4bbc9a98810b33756c3f0a46a263ac7c6b2",
+      "timestamp": "2026-09-23T09:10:57.824Z",
       "commits": [
         {
-          "sha": "2a6ec2ac3b8b72da17d2de3176637f2141ee465a",
+          "sha": "831fb4bbc9a98810b33756c3f0a46a263ac7c6b2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T02:56:10-06:00",
-          "message": "Merge 266e93db9f526c51551491969ef3d61fa690bb6d into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
+          "timestamp": "2026-09-23T09:10:30Z",
+          "message": "Merge 2840b907c02089ef72313c118b12f04c7478c229 into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
+        },
+        {
+          "sha": "2840b907c02089ef72313c118b12f04c7478c229",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-23T03:10:26-06:00",
+          "message": "chore(release): 0.11.0\n"
         },
         {
           "sha": "266e93db9f526c51551491969ef3d61fa690bb6d",
