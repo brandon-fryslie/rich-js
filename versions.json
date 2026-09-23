@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-152",
+      "ref": "refs/pull/152/merge",
+      "sha": "2a6ec2ac3b8b72da17d2de3176637f2141ee465a",
+      "timestamp": "2026-09-23T08:56:38.773Z",
+      "commits": [
+        {
+          "sha": "2a6ec2ac3b8b72da17d2de3176637f2141ee465a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-23T02:56:10-06:00",
+          "message": "Merge 266e93db9f526c51551491969ef3d61fa690bb6d into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
+        },
+        {
+          "sha": "266e93db9f526c51551491969ef3d61fa690bb6d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-23T02:56:05-06:00",
+          "message": "feat(osc8): every link carries an id derived from its URL, so a split link hovers as one\n\nA terminal treats cells as one hyperlink when they share the URI and the id.\nWith empty params, each OSC 8 open was its own link, and the coalescer can only\nshare one pair across a run of identical SGR — so a link whose text changes\nstyle mid-span (a bold glyph beside plain text) highlighted in pieces on hover.\n\nThe id is FNV-1a of the sanitized URI: the byte stream stays a pure function of\n(style, text, colorSystem), which is why the id was dropped in the first place.\nTerminals key on the (id, URI) pair, so a hash collision merges nothing.\n\nThe OSC 8 open/close was spelled by hand at both producers (segmentsToString,\nStyle.render); both now call osc8Open / OSC8_CLOSE in core/osc8.ts. OSC8, the\nread-back pattern, is exported for consumers that parse rendered bytes.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "de2b472a24ce472f8f71199c4e8278ea098e43a5",
