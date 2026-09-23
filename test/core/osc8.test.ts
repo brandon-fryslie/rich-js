@@ -27,6 +27,11 @@ describe("osc8Sequences", () => {
     ]);
   });
 
+  it("reads a URI containing `;` whole — only the params field stops at `;`", () => {
+    const url = "https://example.com/;jsessionid=1;foo=bar";
+    expect(osc8Sequences(`${osc8Open(url)}x${OSC8_CLOSE}`).map((seq) => seq.uri)).toEqual([url, ""]);
+  });
+
   it("accepts every terminator the sanitizer removes: ESC \\, BEL, and 8-bit ST", () => {
     for (const st of ["\x1b\\", "\x07", "\x9c"]) {
       const seq = `\x1b]8;;https://a.example${st}`;
