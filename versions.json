@@ -4,15 +4,22 @@
     {
       "version": "pr-152",
       "ref": "refs/pull/152/merge",
-      "sha": "831fb4bbc9a98810b33756c3f0a46a263ac7c6b2",
-      "timestamp": "2026-09-23T09:10:57.824Z",
+      "sha": "9f510244d80161f2b0a7549f2e73ea36842ae399",
+      "timestamp": "2026-09-23T09:17:35.081Z",
       "commits": [
         {
-          "sha": "831fb4bbc9a98810b33756c3f0a46a263ac7c6b2",
+          "sha": "9f510244d80161f2b0a7549f2e73ea36842ae399",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T09:10:30Z",
-          "message": "Merge 2840b907c02089ef72313c118b12f04c7478c229 into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
+          "timestamp": "2026-09-23T09:17:09Z",
+          "message": "Merge b307fa78d5c9970bd3e16a5934f5f43eecb49378 into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
+        },
+        {
+          "sha": "b307fa78d5c9970bd3e16a5934f5f43eecb49378",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-23T03:17:05-06:00",
+          "message": "fix(osc8): one terminator set, UTF-8 id hash, typed read-back\n\nReview fixes for the OSC 8 link-id change.\n\n- osc8.ts absorbs sanitize.ts: the sanitizer, the producer and the\n  reader now read one TERMINATORS constant. The reader previously\n  stopped only at ESC \\ and BEL while the sanitizer also treated the\n  8-bit ST (0x9C) as a terminator; a 0x9C-terminated link was counted\n  as visible width by any measure built on OSC8.source.\n- linkId hashes the URL's UTF-8 bytes, so the id is standard FNV-1a\n  that another runtime can reproduce (it hashed UTF-16 code units).\n- osc8Sequences(text) is the typed read-back ({index, length, params,\n  uri}); OSC8 stays exported for composing into a larger pattern.\n  Tests and the coverage demo read through it instead of re-spelling\n  the grammar or remapping positional groups.\n- Docs state that same-URL spans hover as one link even when not\n  adjacent (deliberate: same URL, same click), pinned by a test.\n- CLAUDE.md tier map: osc8 replaces sanitize at tier 0.\n"
         },
         {
           "sha": "2840b907c02089ef72313c118b12f04c7478c229",
