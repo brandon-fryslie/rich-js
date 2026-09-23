@@ -4,7 +4,7 @@
  * [LAW:one-source-of-truth] The single definition of "bytes that prematurely
  * terminate an OSC 8 hyperlink wrap": ESC (`\x1b`), BEL (`\x07`), ST (`\x9c`).
  * Both the data-model boundary (RichText, in text.ts) and the wire-byte
- * boundaries (`segmentsToString` in render.ts; `Style.render` in style.ts)
+ * boundary (`osc8Open` in osc8.ts, which every OSC 8 producer calls)
  * import this helper — the rule lives once and is applied wherever a URL
  * crosses into territory it could break out of.
  *

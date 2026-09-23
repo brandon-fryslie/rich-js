@@ -42,6 +42,8 @@ import {
   Segment, ControlType, isRenderable, isMeasurable,
   // Segment → ANSI, without a Console
   renderToString, segmentsToString, segmentToString,
+  // Reading rendered bytes back
+  OSC8,
   // Text spans
   Span,
   // Spinner data
@@ -325,6 +327,18 @@ export class CoverageRenderable implements Renderable {
     items.push(new RichText(
       `segmentsToString(2 segs, no color): ` +
       JSON.stringify(segmentsToString([styled, new Segment("!")], null)),
+      { end: "" },
+    ));
+    // A link split across two styles is two OSC 8 pairs sharing one id, so a
+    // terminal hovers it as one link. OSC8 reads the rendered bytes back.
+    const url = "https://example.com";
+    const split = segmentsToString([
+      new Segment("▸", new Style({ bold: true, link: url })),
+      new Segment(" open", new Style({ link: url })),
+    ], ColorDepth.TRUECOLOR);
+    const opens = [...split.matchAll(new RegExp(OSC8.source, "g"))].filter((m) => m[2] !== "");
+    items.push(new RichText(
+      `split link: ${opens.length} OSC 8 opens, ids ${opens.map((m) => m[1]).join(" ")}`,
       { end: "" },
     ));
     // A control segment carries no text — ControlType names what it does.

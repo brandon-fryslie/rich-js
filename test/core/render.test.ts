@@ -7,6 +7,14 @@ import { Segment } from "../../src/core/segment.js";
 import { Strip, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { renderMarkup } from "../../src/core/markup.js";
+import { OSC8 } from "../../src/core/osc8.js";
+
+// The URL slot of the first OSC 8 open, shaped like a regex match so
+// `match![1]` reads it.
+function openUrl(out: string): [string, string] | null {
+  const m = OSC8.exec(out);
+  return m ? [m[0], m[2]!] : null;
+}
 
 // [LAW:behavior-not-structure] Tests assert observable bytes — ANSI codes,
 // terminator newlines, color stripping — not internal walk shape.
@@ -234,14 +242,24 @@ describe("segmentsToString coalescing", () => {
     expect(outA).toBe(outB);
   });
 
-  it("emits OSC 8 with empty params (no id= annotation) in the coalesced pipeline", () => {
-    const linked = new Style({ link: "https://example.com" });
-    const out = segmentsToString(
-      [new Segment("click", linked)],
-      ColorDepth.TRUECOLOR,
-    );
-    expect(out).toContain("\x1b]8;;https://example.com\x1b\\");
-    expect(out).not.toMatch(/\x1b\]8;id=/);
+  // [LAW:behavior-not-structure] The hover contract: a terminal treats cells
+  // as one hyperlink when they share the URI AND the id. A link whose text
+  // changes style mid-span cannot share one OSC 8 pair (the pair nests inside
+  // an SGR run), so every pair it becomes must carry the same id — or the
+  // span highlights in pieces.
+  it("gives every OSC 8 pair of one link the same id when its text spans two SGR runs", () => {
+    const url = "https://split.example";
+    const segs = [
+      new Segment("▸", new Style({ bold: true, link: url })),
+      new Segment(" open", new Style({ link: url })),
+    ];
+    const out = segmentsToString(segs, ColorDepth.TRUECOLOR);
+    const opens = [...out.matchAll(new RegExp(OSC8.source, "g"))]
+      .filter((m) => m[2] !== "")
+      .map((m) => [m[1], m[2]]);
+    expect(opens).toHaveLength(2);
+    expect(opens[0]![0]).toMatch(/^id=[0-9a-f]{8}$/);
+    expect(opens[1]).toEqual(opens[0]);
   });
 });
 
@@ -261,9 +279,8 @@ describe("OSC 8 wrap is escape-safe", () => {
       [...t.render({ maxWidth: 80 })],
       ColorDepth.TRUECOLOR,
     );
-    // Extract the URL slot of the opening OSC 8 introducer: the bytes between
-    // `\x1b]8;;` and the terminating `\x1b\` of that introducer.
-    const match = /\x1b\]8;;([^\x1b\x07\x9c]*)\x1b\\/.exec(out);
+    // Extract the URL slot of the opening OSC 8 introducer.
+    const match = openUrl(out);
     expect(match).not.toBeNull();
     // The URL slot must contain zero OSC terminators — otherwise an attacker
     // could close the OSC 8 early and inject arbitrary terminal control bytes.
@@ -289,7 +306,7 @@ describe("OSC 8 wrap is escape-safe", () => {
       [new Segment("click", dirtyStyle)],
       ColorDepth.TRUECOLOR,
     );
-    const match = /\x1b\]8;;([^\x1b\x07\x9c]*)\x1b\\/.exec(out);
+    const match = openUrl(out);
     expect(match).not.toBeNull();
     expect(match![1]).toBe("https://evil.example/\\BAD");
   });
@@ -302,7 +319,7 @@ describe("OSC 8 wrap is escape-safe", () => {
     const dirty = "https://evil.example/\x1b\\BAD";
     const dirtyStyle = new Style({ link: dirty });
     const out = dirtyStyle.render("click", ColorDepth.TRUECOLOR);
-    const match = /\x1b\]8;;([^\x1b\x07\x9c]*)\x1b\\/.exec(out);
+    const match = openUrl(out);
     expect(match).not.toBeNull();
     expect(match![1]).toBe("https://evil.example/\\BAD");
   });

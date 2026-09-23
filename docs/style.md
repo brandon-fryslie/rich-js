@@ -77,6 +77,8 @@ Include a hyperlink in a style:
 
 Link rendering depends on the terminal — most modern terminals support clickable hyperlinks.
 
+Links are written as OSC 8 hyperlinks, each carrying an `id` derived from its URL. Terminals treat cells with the same URL and id as one link, so a link whose text changes style partway through still highlights as a whole on hover. To read rendered bytes back, match them with the exported `OSC8` pattern: group 1 is the params, group 2 the URL, and both are empty on a close.
+
 ## Style objects
 
 The string definition is parsed into a `Style` object. You can construct one directly instead:
