@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-152",
-      "ref": "refs/pull/152/merge",
-      "sha": "6b496e99271c7e39b9b82168fb7073080e6bf0cb",
-      "timestamp": "2026-09-23T09:28:12.387Z",
-      "commits": [
-        {
-          "sha": "6b496e99271c7e39b9b82168fb7073080e6bf0cb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T09:27:38Z",
-          "message": "Merge d40777cb7193acfeba2441e88895920997e0f175 into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
-        },
-        {
-          "sha": "d40777cb7193acfeba2441e88895920997e0f175",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T03:27:33-06:00",
-          "message": "docs(style): params is the raw field, id= included\n"
-        },
-        {
-          "sha": "a871c7beadcab1e05c5a8bd87344df45a21032c1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T03:23:55-06:00",
-          "message": "fix(osc8): review — text.ts names the wire enforcer; pin a ';' in the URI\n"
-        },
-        {
-          "sha": "b307fa78d5c9970bd3e16a5934f5f43eecb49378",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T03:17:05-06:00",
-          "message": "fix(osc8): one terminator set, UTF-8 id hash, typed read-back\n\nReview fixes for the OSC 8 link-id change.\n\n- osc8.ts absorbs sanitize.ts: the sanitizer, the producer and the\n  reader now read one TERMINATORS constant. The reader previously\n  stopped only at ESC \\ and BEL while the sanitizer also treated the\n  8-bit ST (0x9C) as a terminator; a 0x9C-terminated link was counted\n  as visible width by any measure built on OSC8.source.\n- linkId hashes the URL's UTF-8 bytes, so the id is standard FNV-1a\n  that another runtime can reproduce (it hashed UTF-16 code units).\n- osc8Sequences(text) is the typed read-back ({index, length, params,\n  uri}); OSC8 stays exported for composing into a larger pattern.\n  Tests and the coverage demo read through it instead of re-spelling\n  the grammar or remapping positional groups.\n- Docs state that same-URL spans hover as one link even when not\n  adjacent (deliberate: same URL, same click), pinned by a test.\n- CLAUDE.md tier map: osc8 replaces sanitize at tier 0.\n"
-        },
-        {
-          "sha": "2840b907c02089ef72313c118b12f04c7478c229",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T03:10:26-06:00",
-          "message": "chore(release): 0.11.0\n"
-        },
-        {
-          "sha": "266e93db9f526c51551491969ef3d61fa690bb6d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T02:56:05-06:00",
-          "message": "feat(osc8): every link carries an id derived from its URL, so a split link hovers as one\n\nA terminal treats cells as one hyperlink when they share the URI and the id.\nWith empty params, each OSC 8 open was its own link, and the coalescer can only\nshare one pair across a run of identical SGR — so a link whose text changes\nstyle mid-span (a bold glyph beside plain text) highlighted in pieces on hover.\n\nThe id is FNV-1a of the sanitized URI: the byte stream stays a pure function of\n(style, text, colorSystem), which is why the id was dropped in the first place.\nTerminals key on the (id, URI) pair, so a hash collision merges nothing.\n\nThe OSC 8 open/close was spelled by hand at both producers (segmentsToString,\nStyle.render); both now call osc8Open / OSC8_CLOSE in core/osc8.ts. OSC8, the\nread-back pattern, is exported for consumers that parse rendered bytes.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "de2b472a24ce472f8f71199c4e8278ea098e43a5",
-      "timestamp": "2026-09-17T11:26:03.745Z",
+      "sha": "43c135499762625165f7e86133adf1fb9b592208",
+      "timestamp": "2026-09-23T09:32:34.843Z",
       "commits": [
         {
-          "sha": "de2b472a24ce472f8f71199c4e8278ea098e43a5",
+          "sha": "43c135499762625165f7e86133adf1fb9b592208",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-17T05:25:30-06:00",
-          "message": "feat(export)!: theme-aware, attribute-complete HTML export (rich-export-9a1.2) (#151)\n\n* feat(export)!: theme-aware, attribute-complete HTML export (rich-export-9a1.2)\n\nConsole.exportHtml({ theme?, clear? }) now draws exportLines' resolved picture\nthrough a new core module, export-html (encodeHtml). The page's background and\ndefault text colour come from the theme via a new exportCanvas in export-lines,\nthe same ground resolveLook flattens runs over. Every ExportLook field is\nwritten: reverse and dim arrive as resolved colours (no opacity), double\nunderline, strike, overline, blink via keyframes, frame and encircle, and\nallowed links as <a> elements. Refused links export as styled text. pre no\nlonger re-wraps recorded rows.\n\nsaveHtml and saveText take the full option type of the export they write.\n\nBREAKING CHANGE: Style.getHtmlStyle is removed with no replacement; export\nthrough Console.exportHtml. The exported HTML markup changes shape.\n\n* fix(export): a double underline no longer doubles strike and overline\n\nCSS gives an element one text-decoration-style, so underline2 sharing a span\nwith strike drew a double strike-through the terminal never showed. The\ndouble underline now sits on an outer span carrying the paint (so no inner\nbackground covers it) and the blink (so it blinks with the glyph); strike and\noverline stay single on the inner span. Checked in headless Chromium over a\npainted background.\n\n* fix(export): a trailing blank row is drawn in the HTML export\n\nA newline straight before </pre> ends a line without drawing another, so a\nrecording ending in a blank row lost it. Every row now ends with its own\nnewline, matching the newline the page writes after <pre> for the parser to\ndrop. Checked in headless Chromium: the pre's height in lines equals\nexportLines' row count for blank rows first, last, both and in between."
+          "timestamp": "2026-09-23T03:31:27-06:00",
+          "message": "feat(osc8): links carry a URL-derived id so a split link hovers as one (#152)\n\n* feat(osc8): every link carries an id derived from its URL, so a split link hovers as one\n\nA terminal treats cells as one hyperlink when they share the URI and the id.\nWith empty params, each OSC 8 open was its own link, and the coalescer can only\nshare one pair across a run of identical SGR — so a link whose text changes\nstyle mid-span (a bold glyph beside plain text) highlighted in pieces on hover.\n\nThe id is FNV-1a of the sanitized URI: the byte stream stays a pure function of\n(style, text, colorSystem), which is why the id was dropped in the first place.\nTerminals key on the (id, URI) pair, so a hash collision merges nothing.\n\nThe OSC 8 open/close was spelled by hand at both producers (segmentsToString,\nStyle.render); both now call osc8Open / OSC8_CLOSE in core/osc8.ts. OSC8, the\nread-back pattern, is exported for consumers that parse rendered bytes.\n\n* chore(release): 0.11.0\n\n* fix(osc8): one terminator set, UTF-8 id hash, typed read-back\n\nReview fixes for the OSC 8 link-id change.\n\n- osc8.ts absorbs sanitize.ts: the sanitizer, the producer and the\n  reader now read one TERMINATORS constant. The reader previously\n  stopped only at ESC \\ and BEL while the sanitizer also treated the\n  8-bit ST (0x9C) as a terminator; a 0x9C-terminated link was counted\n  as visible width by any measure built on OSC8.source.\n- linkId hashes the URL's UTF-8 bytes, so the id is standard FNV-1a\n  that another runtime can reproduce (it hashed UTF-16 code units).\n- osc8Sequences(text) is the typed read-back ({index, length, params,\n  uri}); OSC8 stays exported for composing into a larger pattern.\n  Tests and the coverage demo read through it instead of re-spelling\n  the grammar or remapping positional groups.\n- Docs state that same-URL spans hover as one link even when not\n  adjacent (deliberate: same URL, same click), pinned by a test.\n- CLAUDE.md tier map: osc8 replaces sanitize at tier 0.\n\n* fix(osc8): review — text.ts names the wire enforcer; pin a ';' in the URI\n\n* docs(style): params is the raw field, id= included"
         }
       ]
     }
