@@ -77,7 +77,7 @@ Include a hyperlink in a style:
 
 Link rendering depends on the terminal — most modern terminals support clickable hyperlinks.
 
-Links are written as OSC 8 hyperlinks, each carrying an `id` derived from its URL. Terminals treat cells with the same URL and id as one link, so a link whose text changes style partway through still highlights as a whole on hover. Two separate spans with the same URL also highlight together, because clicking either does the same thing. To read rendered bytes back, call `osc8Sequences(text)`. It returns each sequence's position, `params` (the id) and `uri`, and a close has an empty `uri`. The raw `OSC8` pattern is also exported, for building into a larger regex.
+Links are written as OSC 8 hyperlinks, each carrying an `id` derived from its URL. Terminals treat cells with the same URL and id as one link, so a link whose text changes style partway through still highlights as a whole on hover. Two separate spans with the same URL also highlight together, because clicking either does the same thing. To read rendered bytes back, call `osc8Sequences(text)`. It returns each sequence's position, its raw `params` field (for example `id=6fbc04d3`) and its `uri`. A close has an empty `uri`. The raw `OSC8` pattern is also exported, for building into a larger regex.
 
 ## Style objects
 
