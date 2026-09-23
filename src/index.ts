@@ -195,7 +195,8 @@ export {
 export type { RenderToStringOptions } from "./core/render.js";
 
 // OSC 8 hyperlink wire grammar — for consumers that read rendered bytes back
-export { OSC8 } from "./core/osc8.js";
+export { OSC8, osc8Sequences } from "./core/osc8.js";
+export type { Osc8Sequence } from "./core/osc8.js";
 
 // Markup plugin tags
 export {

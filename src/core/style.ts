@@ -11,7 +11,7 @@ import {
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color` and the leaf
-// `core/osc8` (the link wire grammar, over the dep-free `core/sanitize`). The substrate fallback is the
+// `core/osc8` (the link wire grammar). The substrate fallback is the
 // canonical canvas color (black), inlined to avoid pulling in any preset
 // theme constants. Preset themes live in `src/themes/` and depend on core,
 // never the reverse.

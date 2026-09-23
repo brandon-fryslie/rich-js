@@ -44,6 +44,7 @@ import {
   renderToString, segmentsToString, segmentToString,
   // Reading rendered bytes back
   OSC8,
+  osc8Sequences,
   // Text spans
   Span,
   // Spinner data
@@ -330,15 +331,19 @@ export class CoverageRenderable implements Renderable {
       { end: "" },
     ));
     // A link split across two styles is two OSC 8 pairs sharing one id, so a
-    // terminal hovers it as one link. OSC8 reads the rendered bytes back.
+    // terminal hovers it as one link. osc8Sequences reads the rendered bytes back.
     const url = "https://example.com";
     const split = segmentsToString([
       new Segment("▸", new Style({ bold: true, link: url })),
       new Segment(" open", new Style({ link: url })),
     ], ColorDepth.TRUECOLOR);
-    const opens = [...split.matchAll(new RegExp(OSC8.source, "g"))].filter((m) => m[2] !== "");
+    const opens = osc8Sequences(split).filter((s) => s.uri !== "");
+    // OSC8 composes into a larger pattern: SGR + OSC 8 are every escape that
+    // occupies no columns, so stripping them leaves the visible text.
+    const ZERO_WIDTH = new RegExp(`\\x1b\\[[0-9;]*m|${OSC8.source}`, "g");
     items.push(new RichText(
-      `split link: ${opens.length} OSC 8 opens, ids ${opens.map((m) => m[1]).join(" ")}`,
+      `split link: ${opens.length} OSC 8 opens, ids ${opens.map((s) => s.params).join(" ")}; ` +
+      `visible ${JSON.stringify(split.replace(ZERO_WIDTH, ""))}`,
       { end: "" },
     ));
     // A control segment carries no text — ControlType names what it does.

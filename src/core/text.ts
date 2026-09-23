@@ -6,7 +6,7 @@ import { cellLen, cellCount } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
-import { stripOscTerminators } from "./sanitize.js";
+import { stripOscTerminators } from "./osc8.js";
 import { getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
