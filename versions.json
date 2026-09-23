@@ -4,15 +4,22 @@
     {
       "version": "pr-152",
       "ref": "refs/pull/152/merge",
-      "sha": "9f510244d80161f2b0a7549f2e73ea36842ae399",
-      "timestamp": "2026-09-23T09:17:35.081Z",
+      "sha": "43f7bcd061fa9a7b08cdbf2428276d2ba916951a",
+      "timestamp": "2026-09-23T09:24:30.248Z",
       "commits": [
         {
-          "sha": "9f510244d80161f2b0a7549f2e73ea36842ae399",
+          "sha": "43f7bcd061fa9a7b08cdbf2428276d2ba916951a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T09:17:09Z",
-          "message": "Merge b307fa78d5c9970bd3e16a5934f5f43eecb49378 into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
+          "timestamp": "2026-09-23T09:24:00Z",
+          "message": "Merge a871c7beadcab1e05c5a8bd87344df45a21032c1 into de2b472a24ce472f8f71199c4e8278ea098e43a5\n"
+        },
+        {
+          "sha": "a871c7beadcab1e05c5a8bd87344df45a21032c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-23T03:23:55-06:00",
+          "message": "fix(osc8): review — text.ts names the wire enforcer; pin a ';' in the URI\n"
         },
         {
           "sha": "b307fa78d5c9970bd3e16a5934f5f43eecb49378",
