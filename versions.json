@@ -4,15 +4,22 @@
     {
       "version": "pr-157",
       "ref": "refs/pull/157/merge",
-      "sha": "4474c3296c4b260d023425f2ee01c9a8d40107d8",
-      "timestamp": "2026-09-24T22:58:46.711Z",
+      "sha": "7ce214d2fdf69053550ac79e5a15ca26fd19f958",
+      "timestamp": "2026-09-24T22:59:17.170Z",
       "commits": [
         {
-          "sha": "4474c3296c4b260d023425f2ee01c9a8d40107d8",
+          "sha": "7ce214d2fdf69053550ac79e5a15ca26fd19f958",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T22:58:21Z",
-          "message": "Merge 706044fda540275554fbfea15ab06caa2c55ac7b into 0ebad636398f4343583857a8813f317960354e61\n"
+          "timestamp": "2026-09-24T22:58:42Z",
+          "message": "Merge 1b0c8385d9c0cf1f05e5a0c8eb32ffa07b665e7f into 0ebad636398f4343583857a8813f317960354e61\n"
+        },
+        {
+          "sha": "1b0c8385d9c0cf1f05e5a0c8eb32ffa07b665e7f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T16:58:38-06:00",
+          "message": "docs(contrast): ensureDrawn example declares what it measures against; states the opaque return\n"
         },
         {
           "sha": "706044fda540275554fbfea15ab06caa2c55ac7b",
