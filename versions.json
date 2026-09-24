@@ -4,15 +4,22 @@
     {
       "version": "pr-155",
       "ref": "refs/pull/155/merge",
-      "sha": "b31b3f9cf6bf749e2a99ba793fcc7989d5f1844c",
-      "timestamp": "2026-09-24T19:46:21.430Z",
+      "sha": "46ffc8b56dd92ad1d71881f6e67cedc684d4ce15",
+      "timestamp": "2026-09-24T19:50:10.936Z",
       "commits": [
         {
-          "sha": "b31b3f9cf6bf749e2a99ba793fcc7989d5f1844c",
+          "sha": "46ffc8b56dd92ad1d71881f6e67cedc684d4ce15",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T19:45:53Z",
-          "message": "Merge e01e0edb2184eda5b4bc290a39494a83f0125156 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+          "timestamp": "2026-09-24T19:49:43Z",
+          "message": "Merge 8bd6a6a235838f1bb6a28936196b9f3d0e40ba5e into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "8bd6a6a235838f1bb6a28936196b9f3d0e40ba5e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:49:39-06:00",
+          "message": "docs(template-bindings): point to contrast.md for the drawn-depth guarantee\n"
         },
         {
           "sha": "e01e0edb2184eda5b4bc290a39494a83f0125156",
