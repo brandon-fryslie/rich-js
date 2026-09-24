@@ -8,6 +8,7 @@ import {
   relativeLuminance,
 } from "../core/color.js";
 import { Oklch } from "../core/oklch.js";
+import { SURFACE_BLACK } from "../core/style.js";
 
 const LEVEL_STEP = 0.1;
 
@@ -107,10 +108,11 @@ export function alphaBlend(
 /**
  * Pick a contrasting foreground (black or white) for a background, using the
  * WCAG relative-luminance threshold of 0.179 (the perceptually correct cutoff
- * where black and white are equally readable).
+ * where black and white are equally readable). A translucent `bg` is judged
+ * as drawn (see `drawnBackground`).
  */
 export function contrastFor(bg: ColorRgba): ColorRgba {
-  const lum = relativeLuminance(bg);
+  const lum = relativeLuminance(drawnBackground(bg));
   return lum > 0.179
     ? new ColorRgba(0, 0, 0)
     : new ColorRgba(255, 255, 255);
@@ -137,10 +139,10 @@ const CONTRAST_ITERS = 20;
  * background where even pure black-or-white tops out below the target) does it
  * fall back to `contrastFor`'s black/white — the true maximum-contrast pick.
  *
- * A translucent `fg` is flattened over `bg` first (the displayed color is
- * `fg` composited over `bg`), so the ratio is measured on what the eye
- * actually sees and the returned color is opaque. `bg` is treated as the
- * opaque substrate.
+ * A translucent `bg` is measured as the terminal draws it — composited over
+ * the SGR writer's substrate — and a translucent `fg` is then flattened over
+ * that (the displayed color is `fg` composited over `bg`), so the ratio is
+ * measured on what the eye actually sees and the returned color is opaque.
  *
  * `drawnAt` is the depth the terminal will draw the pair at. At 256 colours
  * the terminal rounds text and background independently, and two roundings
@@ -161,15 +163,28 @@ export function ensureContrast(
   minRatio = 4.5, // WCAG AA for normal text
   drawnAt: ColorDepth = ColorDepth.TRUECOLOR,
 ): ColorRgba {
-  const chosen = ensureTruecolorContrast(fg, bg, minRatio);
+  const ground = drawnBackground(bg);
+  const chosen = ensureTruecolorContrast(fg, ground, minRatio);
   // [LAW:dataflow-not-control-flow] The depth names the table the terminal
   // draws from; only one whose entries have a known RGB can be measured.
   const table = MEASURABLE_DOWNGRADE[drawnAt];
   if (table === undefined) return chosen;
-  const drawnBg = table.get(table.match(bg));
+  const drawnBg = table.get(table.match(ground));
   const drawn = table.get(table.match(chosen));
   if (contrastRatio(drawn, drawnBg) >= minRatio) return chosen;
   return table.get(table.matchReadable(chosen, drawnBg, minRatio));
+}
+
+/**
+ * A background as the terminal draws it. [LAW:one-source-of-truth] The SGR
+ * writer (`Style.toSgrCodes`) composites a translucent background over
+ * `SURFACE_BLACK` before emitting it, so text chosen for that background is
+ * chosen against the same composite — measuring the raw RGBA instead reads a
+ * lighter colour than the one drawn, and text that "clears" it can land below
+ * the floor. Opaque colours composite to themselves.
+ */
+function drawnBackground(bg: ColorRgba): ColorRgba {
+  return bg.compositeOver(SURFACE_BLACK);
 }
 
 /**

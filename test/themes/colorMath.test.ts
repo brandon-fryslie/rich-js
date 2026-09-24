@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ColorDepth, ColorRgba, ColorSpec } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, parseRgbaHex } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
 import {
   darken,
@@ -194,6 +194,32 @@ describe("ensureContrast", () => {
         expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(Math.min(4.5, best) - 1e-9);
       }
     }
+  });
+});
+
+describe("a translucent background is measured as the terminal draws it", () => {
+  // The SGR writer composites a translucent background over black before it
+  // draws it; the text chosen for it must clear the floor against THAT colour.
+  const bg = parseRgbaHex("037a8eeb");
+  const flat = bg.compositeOver(new ColorRgba(0, 0, 0));
+  const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
+
+  it("truecolor: the chosen text clears the floor on the composite", () => {
+    for (const fg of [new ColorRgba(0x07, 0x07, 0x14), new ColorRgba(0xe2, 0xe2, 0xff)]) {
+      expect(contrastRatio(ensureContrast(fg, bg, 4.5), flat)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("256: the drawn text clears the floor on the drawn composite", () => {
+    const fg = new ColorRgba(0xe2, 0xe2, 0xff);
+    const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT);
+    expect(contrastRatio(drawn(chosen), drawn(flat))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("contrastFor picks its pole on the composite", () => {
+    // Raw #c0c0c0 is light and wants black; at half alpha over black it draws
+    // as #606060, which is dark and wants white.
+    expect(contrastFor(parseRgbaHex("c0c0c080")).hex).toBe("#ffffff");
   });
 });
 
