@@ -193,9 +193,9 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
   private readonly _glyph: string;
   private readonly _divider: string;
 
-  constructor(options?: PowerlineJoinerOptions) {
-    this._glyph = options?.glyph ?? "";
-    this._divider = options?.divider ?? "";
+  constructor(options: PowerlineJoinerOptions = POWERLINE_JOINER_GLYPHS) {
+    this._glyph = options.glyph;
+    this._divider = options.divider;
   }
 
   join(left: T | null, right: T | null): Renderable {
