@@ -6,9 +6,9 @@ import {
   blendRgb,
   contrastRatio,
   relativeLuminance,
+  SURFACE_BLACK,
 } from "../core/color.js";
 import { Oklch } from "../core/oklch.js";
-import { SURFACE_BLACK } from "../core/style.js";
 
 const LEVEL_STEP = 0.1;
 
@@ -183,8 +183,9 @@ export function ensureContrast(
  * A background as it is drawn: composited over the surface beneath it. That
  * surface is a fact about where the pair is drawn, so it arrives as a value:
  * the SGR writer (`Style.toSgrCodes`) composites over `SURFACE_BLACK`, the
- * default here, while an export flattens over its own canvas
- * (`exportCanvas(theme).background`, `core/export-lines.ts`) and passes that.
+ * default here; a caller choosing text for a different surface — an export's
+ * canvas, `exportCanvas(theme).background` — names that one. The surface is
+ * opaque: nothing lies under it.
  * [LAW:one-source-of-truth] Text is chosen against the colour the surface will
  * show — measuring the raw RGBA reads a colour that is drawn nowhere, and text
  * that "clears" it can land below the floor. Opaque colours composite to

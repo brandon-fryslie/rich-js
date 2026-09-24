@@ -226,8 +226,19 @@ describe("a translucent background is measured as the terminal draws it", () => 
     expect(contrastFor(parseRgbaHex("c0c0c080")).hex).toBe("#ffffff");
   });
 
+  it("translucent text over a translucent background is measured as the writer draws it", () => {
+    // The writer flattens the background over black, then the text over that.
+    const fg = parseRgbaHex("e2e2ff99");
+    const flatBg = bg.compositeOver(new ColorRgba(0, 0, 0));
+    for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT]) {
+      const chosen = ensureContrast(fg, bg, 4.5, depth);
+      const shown = depth === ColorDepth.EIGHT_BIT ? drawn : (c: ColorRgba) => c;
+      expect(contrastRatio(shown(chosen), shown(flatBg))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
   it("an export's canvas is the surface its caller names", () => {
-    // The same half-alpha #c0c0c0 on a white export canvas draws as #e0e0e0,
+    // The same half-alpha #c0c0c0 on a white export canvas draws as #dfdfdf,
     // which is light and wants black — and text chosen for it clears there.
     const white = new ColorRgba(255, 255, 255);
     const bg = parseRgbaHex("c0c0c080");
