@@ -4,15 +4,22 @@
     {
       "version": "pr-153",
       "ref": "refs/pull/153/merge",
-      "sha": "5782892ba0f2a70eea5e9a9e622e112d3ce376f4",
-      "timestamp": "2026-09-24T12:44:55.281Z",
+      "sha": "40b8678edc25898a9bbf394c0b9a4306749a4ac6",
+      "timestamp": "2026-09-24T12:54:40.093Z",
       "commits": [
         {
-          "sha": "5782892ba0f2a70eea5e9a9e622e112d3ce376f4",
+          "sha": "40b8678edc25898a9bbf394c0b9a4306749a4ac6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T06:44:02-06:00",
-          "message": "Merge 2cb0fc9a4d9e8711142cc21ae93d43ca04223ee3 into 43c135499762625165f7e86133adf1fb9b592208\n"
+          "timestamp": "2026-09-24T12:54:15Z",
+          "message": "Merge ae7518456703f2e0d2384081481536922132ed37 into 43c135499762625165f7e86133adf1fb9b592208\n"
+        },
+        {
+          "sha": "ae7518456703f2e0d2384081481536922132ed37",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T06:54:09-06:00",
+          "message": "fix(strip): the powerline arrow and its divider are one pair; palette colours compare by slot\n\nA caller replacing only the glyph (\">\" for ASCII) kept the U+E0B1 divider\nbeside it, which renders as tofu without a powerline font. PowerlineJoinerOptions\nnow requires both; the unset case is the exported POWERLINE_JOINER_GLYPHS pair.\n\nindistinct() compared valueless colours by name, so \"red\" and \"color(1)\" —\none palette slot — were two colours. It compares type + number now.\n"
         },
         {
           "sha": "2cb0fc9a4d9e8711142cc21ae93d43ca04223ee3",
