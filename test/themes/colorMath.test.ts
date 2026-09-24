@@ -322,6 +322,16 @@ describe("ensureContrast drawn at ansi", () => {
     expect(collided).toBeGreaterThan(0);
     expect(failures).toEqual([]);
   });
+
+  it("a replacement reads against its ground's nominal colour, not merely another index", () => {
+    // Green on teal was the nearest-other-index answer: 1.08:1.
+    const bg = new ColorRgba(0x1d, 0xcd, 0x56);
+    const fg = new ColorRgba(0x00, 0x4f, 0x44);
+    const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
+    expect(STANDARD_TABLE.match(ensureContrast(fg, bg, 4.5))).toBe(STANDARD_TABLE.match(bg));
+    const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD);
+    expect(contrastRatio(nominal(chosen), nominal(bg))).toBeGreaterThanOrEqual(4.5);
+  });
 });
 
 describe("ensureDrawn", () => {

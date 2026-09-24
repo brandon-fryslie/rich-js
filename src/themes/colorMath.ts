@@ -180,13 +180,21 @@ export function ensureContrast(
   const indexed = INDEXED_DOWNGRADE[drawnAt];
   if (indexed !== undefined) {
     const groundIndex = indexed.match(ground);
-    // [LAW:no-defensive-null-guards] Sixteen entries, one refused: the match
-    // always exists, and the `!` states that.
-    return indexed.match(chosen) !== groundIndex
-      ? chosen
-      : indexed.get(
-          indexed.matchWhere(chosen, (_, index) => index !== groundIndex)!,
-        );
+    if (indexed.match(chosen) !== groundIndex) return chosen;
+    // The table's nominal colours are not the theme's, but they say which
+    // side of the ground text belongs on, so the replacement is the nearest
+    // entry that clears the floor against the ground's nominal colour (or the
+    // one with the most contrast) — never merely the nearest other index,
+    // which is as often the ground's own lightness in another hue. The ground
+    // measures 1:1 against itself, so it is refused whenever a floor exists.
+    const readable = indexed.matchReadable(chosen, indexed.get(groundIndex), minRatio);
+    // [LAW:no-defensive-null-guards] Sixteen entries, one refused: with no
+    // floor to clear the nearest other index exists, and the `!` states that.
+    return indexed.get(
+      readable !== groundIndex
+        ? readable
+        : indexed.matchWhere(chosen, (_, index) => index !== groundIndex)!,
+    );
   }
   const table = MEASURABLE_DOWNGRADE[drawnAt];
   if (table === undefined) return chosen;
