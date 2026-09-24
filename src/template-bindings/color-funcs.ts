@@ -57,7 +57,7 @@
  */
 
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
-import { blendRgb, type ColorRgba } from "../core/color.js";
+import { blendRgb, ColorDepth, type ColorRgba } from "../core/color.js";
 import { Oklch, IDENTITY } from "../core/oklch.js";
 import type { ThemeKey } from "../core/oklch.js";
 import { HEX_COLOR_RE, parseHexColor } from "../themes/colorRef.js";
@@ -186,16 +186,22 @@ const RATIO_RANGE = {
 const contrastOnFunc = colorFunc(["string"], ((bgHex: string) =>
   contrastFor(asColor(bgHex, "contrastOn")).hex) as TemplateFunc["fn"]);
 
-const readableOnFunc = colorFunc(["string", "string", "float"], ((
-  fgHex: string,
-  bgHex: string,
-  ratio: number,
-) =>
-  ensureContrast(
-    asColor(fgHex, "readableOn"),
-    asColor(bgHex, "readableOn"),
-    asAmount(ratio, "readableOn", "ratio", RATIO_RANGE),
-  ).hex) as TemplateFunc["fn"]);
+/**
+ * The `readableOn` binding, measuring at the depth `drawnAt` names when it is
+ * evaluated — a consumer that renders at a per-call depth registers its own.
+ */
+export const readableOnFunc = (drawnAt: () => ColorDepth): TemplateFunc =>
+  colorFunc(["string", "string", "float"], ((
+    fgHex: string,
+    bgHex: string,
+    ratio: number,
+  ) =>
+    ensureContrast(
+      asColor(fgHex, "readableOn"),
+      asColor(bgHex, "readableOn"),
+      asAmount(ratio, "readableOn", "ratio", RATIO_RANGE),
+      drawnAt(),
+    ).hex) as TemplateFunc["fn"]);
 
 // --- OKLCH axes ---
 //
@@ -249,14 +255,20 @@ function oklchAxisFuncs(): FuncMap {
  *
  * Pair with `paletteFuncs()` to name colors from a theme, and with
  * `richTextStyleFuncs()`'s `fg`/`bg` to paint them onto text.
+ *
+ * @param drawnAt the depth the terminal will draw at, read on every
+ *   `readableOn` evaluation so a host that learns its depth per render passes
+ *   one getter; defaults to truecolor.
  */
-export function colorFuncs(): FuncMap {
+export function colorFuncs(
+  drawnAt: () => ColorDepth = () => ColorDepth.TRUECOLOR,
+): FuncMap {
   return {
     darken: darkenFunc,
     lighten: lightenFunc,
     mix: mixFunc,
     contrastOn: contrastOnFunc,
-    readableOn: readableOnFunc,
+    readableOn: readableOnFunc(drawnAt),
     ...oklchAxisFuncs(),
   };
 }

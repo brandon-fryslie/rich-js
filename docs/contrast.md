@@ -59,6 +59,16 @@ Key properties:
 const strong = ensureContrast(link, panel, 7);
 ```
 
+### Measured where it is drawn — `drawnAt`
+
+`ensureContrast(fg, bg, minRatio, drawnAt = ColorDepth.TRUECOLOR)` takes a fourth argument: the depth the terminal will draw at. At truecolor the colours are drawn as computed. At 256 colours the terminal rounds text and background to its palette **independently**, and two roundings can meet in the middle — a pair that read at 4.5:1 can draw at 2:1. So at `ColorDepth.EIGHT_BIT` the answer is measured on the drawn pair: a colour that still clears the floor once rounded is returned unchanged, and one that does not is replaced by the nearest 256-colour entry (indices 16–255, never the terminal-defined ANSI 0–15) that clears it — or, when no entry can clear it on that background, by the entry with the most contrast, the same honest fallback as truecolor's black/white. At `STANDARD` the terminal chooses its own colours, so no ratio exists and the truecolor answer stands.
+
+```typescript
+const drawn = ensureContrast(link, panel, 4.5, ColorDepth.EIGHT_BIT);
+```
+
+In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given — see [Template Bindings](/template-bindings).
+
 ## How transposition uses it
 
 The theme explorer routes **every** text cell through `ensureContrast` against its actual background, with a live "minimum contrast" control as the `minRatio`. That's why a transposed or lightness-shifted theme never renders dark-on-dark — readability is enforced at one boundary rather than hoped for per call. See [Theme Transposition](/transpose) for the full picture.

@@ -1115,3 +1115,15 @@ describe("Style.normalize", () => {
     expect(Style.normalize("bold   italic")).toBe("bold italic");
   });
 });
+
+describe("toSgrCodes at 256 colours rounds every colour on its own", () => {
+  it("a foreground that is a neighbour's background rounds exactly as that background does", () => {
+    // A powerline arrow is drawn in the left cell's background: the seam
+    // stays one shape only if both round to the same index.
+    for (const [left, right] of [["#400000", "#580000"], ["#e8c547", "#1e2030"], ["#004000", "#003800"]]) {
+      const cell = Style.parse(`on ${left}`).toSgrCodes(ColorDepth.EIGHT_BIT);
+      const arrow = Style.parse(`${left} on ${right}`).toSgrCodes(ColorDepth.EIGHT_BIT);
+      expect([left, arrow.split(";").slice(0, 3).join(";")]).toEqual([left, cell.replace(/^48/, "38")]);
+    }
+  });
+});

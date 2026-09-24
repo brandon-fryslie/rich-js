@@ -1,4 +1,12 @@
-import { ColorRgba, blendRgb } from "../core/color.js";
+import {
+  ColorDepth,
+  ColorRgba,
+  ColorTable,
+  EIGHT_BIT_DOWNGRADE_TABLE,
+  blendRgb,
+  contrastRatio,
+  relativeLuminance,
+} from "../core/color.js";
 import { Oklch } from "../core/oklch.js";
 
 const LEVEL_STEP = 0.1;
@@ -108,36 +116,11 @@ export function contrastFor(bg: ColorRgba): ColorRgba {
     : new ColorRgba(255, 255, 255);
 }
 
-/**
- * WCAG 2.x relative luminance (0..1) of an opaque color. The single
- * luminance function in the codebase — `contrastFor`, `contrastRatio`, and
- * any caller that needs to reason about readability all funnel through it.
- * [LAW:one-source-of-truth]
- */
-export function relativeLuminance(c: ColorRgba): number {
-  const ch = (v: number): number => {
-    const x = v / 255;
-    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue);
-}
-
-/**
- * WCAG 2.x contrast ratio between two colors, in [1, 21]. Symmetric — the
- * order of arguments does not matter. 4.5 is the AA threshold for normal
- * text, 3.0 for large text.
- *
- * Assumes opaque inputs: alpha is ignored, since the displayed contrast of a
- * translucent color depends on what it composites over. For a translucent
- * foreground, flatten it first (or use `ensureContrast`, which does).
- */
-export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
-  const la = relativeLuminance(a);
-  const lb = relativeLuminance(b);
-  const hi = la > lb ? la : lb;
-  const lo = la > lb ? lb : la;
-  return (hi + 0.05) / (lo + 0.05);
-}
+// [LAW:one-way-deps] The WCAG measures live in core/color.ts, beside the
+// ColorTable whose `matchReadable` needs them to pick a drawn text colour, and
+// below the theme math here. Re-exported so this module stays the colour-math
+// surface.
+export { relativeLuminance, contrastRatio };
 
 // Iterations for the lightness bisection below. 20 resolves L to ~1e-6 — far
 // finer than 8-bit quantization or the eye.
@@ -159,6 +142,13 @@ const CONTRAST_ITERS = 20;
  * actually sees and the returned color is opaque. `bg` is treated as the
  * opaque substrate.
  *
+ * `drawnAt` is the depth the terminal will draw the pair at. At 256 colours
+ * the terminal rounds text and background independently, and two roundings
+ * can meet in the middle, so the ratio is measured on the drawn pair: a
+ * colour that loses the floor there is replaced by the nearest cube/grey entry
+ * that clears it (whose own rounding is itself). Every other depth draws a
+ * colour the chosen one IS (truecolor) or one only the terminal knows (ANSI).
+ *
  * [LAW:single-enforcer] The one place "is this text readable, and if not fix
  * it" is decided. Callers route every fg/bg pair through here and the
  * unreadable state never reaches output. [LAW:dataflow-not-control-flow] the
@@ -169,6 +159,34 @@ export function ensureContrast(
   fg: ColorRgba,
   bg: ColorRgba,
   minRatio = 4.5, // WCAG AA for normal text
+  drawnAt: ColorDepth = ColorDepth.TRUECOLOR,
+): ColorRgba {
+  const chosen = ensureTruecolorContrast(fg, bg, minRatio);
+  // [LAW:dataflow-not-control-flow] The depth names the table the terminal
+  // draws from; only one whose entries have a known RGB can be measured.
+  const table = MEASURABLE_DOWNGRADE[drawnAt];
+  if (table === undefined) return chosen;
+  const drawnBg = table.get(table.match(bg));
+  const drawn = table.get(table.match(chosen));
+  if (contrastRatio(drawn, drawnBg) >= minRatio) return chosen;
+  return table.get(table.matchReadable(chosen, drawnBg, minRatio));
+}
+
+/**
+ * The downgrade tables whose entries the terminal draws at a known RGB, by the
+ * depth that draws from them. 256 colours is the one: its cube and grey ramp
+ * are fixed by xterm. ANSI 0–15 and the default colour are the terminal
+ * theme's own, so text drawn there has no ratio to keep; truecolor draws the
+ * chosen colour itself.
+ */
+const MEASURABLE_DOWNGRADE: Partial<Record<ColorDepth, ColorTable>> = {
+  [ColorDepth.EIGHT_BIT]: EIGHT_BIT_DOWNGRADE_TABLE,
+};
+
+function ensureTruecolorContrast(
+  fg: ColorRgba,
+  bg: ColorRgba,
+  minRatio: number,
 ): ColorRgba {
   // Flatten translucency so the guarantee holds for the displayed color, not
   // the raw bytes (e.g. a "#FFFFFF60" text-disabled over a light surface).

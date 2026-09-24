@@ -60,12 +60,13 @@ import {
   SOLARIZED_LIGHT,
   ATOM_ONE_DARK,
 } from "../../src/themes/terminalThemes.js";
-import type { TerminalTheme } from "../../src/core/color.js";
+import { ColorDepth, type TerminalTheme } from "../../src/core/color.js";
 import {
   richTextFuncs,
   createRichTextEngine,
   paletteFuncs,
   colorFuncs,
+  readableOnFunc,
   renderTemplate,
 } from "../../src/template-bindings/index.js";
 import { makeAutoObservable, autorun, runInAction } from "mobx";
@@ -115,7 +116,27 @@ function makeCalculatorEngine(theme: TerminalTheme): Engine<RichText> {
   });
 }
 
+// `readableOn` measures its contrast floor on the colours the terminal will
+// DRAW, so text that would lose its floor once the terminal rounds text and
+// background independently is replaced by the nearest 256-colour entry that
+// clears it. An engine drawn at one depth throughout passes it once —
+// `richTextFuncs(() => depth)`. This one shows the other shape: `readableOnFunc`
+// registered over the key alone, for a host whose depth is not the engine's
+// (cc-candybar swaps it per segment).
+function makeEngineDrawnAt(theme: TerminalTheme, depth: ColorDepth): Engine<RichText> {
+  return createEngine<RichText>({
+    fromString: (s) => new RichText(s),
+    toString: (rt) => rt.plain,
+    funcs: {
+      ...richTextFuncs(),
+      ...paletteFuncs(() => theme.palette),
+      readableOn: readableOnFunc(() => depth),
+    },
+  });
+}
+
 const gruvboxEngine    = makeEngine(GRUVBOX);
+const gruvbox256Engine = makeEngineDrawnAt(GRUVBOX, ColorDepth.EIGHT_BIT);
 const tokyoEngine      = makeEngine(TOKYO_NIGHT);
 const gruvboxCalcEngine = makeCalculatorEngine(GRUVBOX);
 
@@ -522,7 +543,7 @@ darken $p 3                      → {{ darken $p 3 }}
 lighten $p 2                     → {{ lighten $p 2 }}
 mix (color "background") $p 50   → {{ mix (color "background") $p 50 }}
 contrastOn (color "surface")     → {{ contrastOn (color "surface") }}
-readableOn "#4b6a8a" $p          → {{ readableOn "#4b6a8a" $p }}
+readableOn "#4b6a8a" $p 4.5      → {{ readableOn "#4b6a8a" $p 4.5 }}
 shiftHue $p 120                  → {{ shiftHue $p 120 }}
 scaleChroma $p 0.2               → {{ scaleChroma $p 0.2 }}
 scaleLightness $p 1.25           → {{ scaleLightness $p 1.25 }}
@@ -545,7 +566,7 @@ const SWATCH_TMPL =
 const READABLE_TMPL =
 `{{- $bg  := color "surface" -}}
 {{- $raw := "#4b6a8a" -}}
-{{ "  raw #4b6a8a on surface  " | bg $bg | fg $raw }}  {{ "  readableOn → clears AA  " | bg $bg | fg (readableOn $raw $bg) }}`;
+{{ "  raw #4b6a8a on surface  " | bg $bg | fg $raw }}  {{ "  readableOn → clears AA  " | bg $bg | fg (readableOn $raw $bg 4.5) }}`;
 
 // Same colour math, same sinks, no palette: every colour is a literal, and
 // `contrastOn` still picks the ink. This is what `createRichTextEngine()` gets
@@ -558,6 +579,8 @@ const secColorValues = makeSection("Colour values — compute · name · paint",
   makeDemoRow("no sinks registered → colours print as hex", CALC_TMPL, gruvboxCalcEngine),
   makeDemoRow("same expressions, painted (contrastOn ink)", SWATCH_TMPL, gruvboxEngine),
   makeDemoRow("contrastOn vs readableOn",                   READABLE_TMPL, gruvboxEngine),
+  makeDemoRow("readableOnFunc — floor measured at 256 colours",
+                                                            READABLE_TMPL, gruvbox256Engine),
   makeDemoRow("createRichTextEngine() — no palette, literals only",
                                                             NO_PALETTE_TMPL, themelessEngine),
 ]);

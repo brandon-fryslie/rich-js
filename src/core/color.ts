@@ -79,20 +79,83 @@ export class ColorRgba {
   }
 }
 
+/**
+ * WCAG 2.x relative luminance (0..1) of an opaque color. The single
+ * luminance function in the codebase — `contrastFor`, `contrastRatio`, and
+ * any caller that needs to reason about readability all funnel through it.
+ * [LAW:one-source-of-truth]
+ */
+export function relativeLuminance(c: ColorRgba): number {
+  const ch = (v: number): number => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue);
+}
+
+/**
+ * WCAG 2.x contrast ratio between two colors, in [1, 21]. Symmetric — the
+ * order of arguments does not matter. 4.5 is the AA threshold for normal
+ * text, 3.0 for large text.
+ *
+ * Assumes opaque inputs: alpha is ignored, since the displayed contrast of a
+ * translucent color depends on what it composites over. For a translucent
+ * foreground, flatten it first (or use `ensureContrast`, which does).
+ */
+export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
+  return luminanceRatio(relativeLuminance(a), relativeLuminance(b));
+}
+
+// [LAW:single-enforcer] The WCAG ratio over two relative luminances — the one
+// formula `contrastRatio` and `ColorTable.matchReadable` (which caches its
+// entries' luminances) both measure with.
+function luminanceRatio(la: number, lb: number): number {
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+
 // --- ColorTable ---
+
+/**
+ * An indexed palette: entry `i` of `colors` is terminal index `firstIndex + i`.
+ * `firstIndex` lets a table hold only the part of a palette a downgrade may
+ * choose (the 256-colour cube and grey ramp start at 16) while every index it
+ * reports is the terminal's own.
+ */
+// [LAW:single-enforcer] The one size policy for ColorTable's memos: a key is
+// derived from colours a long-running host computes without end (ramp stops,
+// mixes), so an unbounded map grows with every render. Clearing at the cap is
+// the policy `cellLen` already uses; a refill costs one table scan per key.
+const TABLE_CACHE_MAX = 4096;
+
+function remember(cache: Map<string, number>, key: string, index: number): number {
+  if (cache.size >= TABLE_CACHE_MAX) cache.clear();
+  cache.set(key, index);
+  return index;
+}
 
 export class ColorTable {
   private readonly colors: ColorRgba[];
+  private readonly firstIndex: number;
   private readonly matchCache = new Map<string, number>();
+  private readonly readableCache = new Map<string, number>();
 
-  constructor(colors: ColorRgba[]) {
+  constructor(colors: ColorRgba[], firstIndex = 0) {
     this.colors = colors;
+    this.firstIndex = firstIndex;
   }
 
   get(index: number): ColorRgba {
-    return this.colors[index]!;
+    return this.colors[index - this.firstIndex]!;
   }
 
+  private luminanceCache: readonly number[] | undefined;
+  /** Each entry's relative luminance, computed once per table. */
+  private luminances(): readonly number[] {
+    this.luminanceCache ??= this.colors.map(relativeLuminance);
+    return this.luminanceCache;
+  }
+
+  /** How many entries the table holds (terminal indices `firstIndex`…). */
   get size(): number {
     return this.colors.length;
   }
@@ -120,8 +183,48 @@ export class ColorTable {
         bestIndex = i;
       }
     }
-    this.matchCache.set(key, bestIndex);
-    return bestIndex;
+    return remember(this.matchCache, key, this.firstIndex + bestIndex);
+  }
+
+  /**
+   * The nearest entry to `value` (the distance `match` uses) among those that
+   * clear `minRatio` against `on`; when none does, the entry with the most
+   * contrast against `on`. Text downgraded on its own background: `match`
+   * moves text and background independently, and two independent roundings
+   * can meet in the middle, so a pair that read at 4.5:1 in truecolor can
+   * draw at 2:1. [LAW:dataflow-not-control-flow] One scan scores every entry;
+   * the ratio decides which one wins.
+   */
+  matchReadable(value: ColorRgba, on: ColorRgba, minRatio: number): number {
+    const key = `${value.red},${value.green},${value.blue}|${on.red},${on.green},${on.blue}|${minRatio}`;
+    const cached = this.readableCache.get(key);
+    if (cached !== undefined) return cached;
+
+    const lOn = relativeLuminance(on);
+    let best = 0;
+    let bestPasses = false;
+    let bestScore = -Infinity;
+    for (let i = 0; i < this.colors.length; i++) {
+      const c = this.colors[i]!;
+      const lc = this.luminances()[i]!;
+      const ratio = luminanceRatio(lc, lOn);
+      const passes = ratio >= minRatio;
+      const dr = c.red - value.red;
+      const dg = c.green - value.green;
+      const db = c.blue - value.blue;
+      // A passing entry scores by closeness; a failing one only by contrast,
+      // and loses to every passing one.
+      const score = passes ? -(dr * dr + dg * dg + db * db) : ratio;
+      if (
+        (passes && !bestPasses) ||
+        (passes === bestPasses && score > bestScore)
+      ) {
+        best = i;
+        bestPasses = passes;
+        bestScore = score;
+      }
+    }
+    return remember(this.readableCache, key, this.firstIndex + best);
   }
 }
 
@@ -438,7 +541,7 @@ export class ColorSpec {
 
     switch (targetSystem) {
       case ColorDepth.EIGHT_BIT: {
-        const index = EIGHT_BIT_TABLE.match(triplet);
+        const index = EIGHT_BIT_DOWNGRADE_TABLE.match(triplet);
         return ColorSpec.fromAnsi(index);
       }
       case ColorDepth.STANDARD: {
@@ -636,6 +739,16 @@ function buildWindowsTable(): ColorRgba[] {
 
 export const STANDARD_TABLE = new ColorTable(buildStandard16());
 export const EIGHT_BIT_TABLE = new ColorTable(build256Table());
+/**
+ * What a downgrade to 256 colours may choose: the cube and the grey ramp,
+ * indices 16–255. Indices 0–15 are the terminal's own ANSI colours, which
+ * every theme redefines, so their RGB is unknown and a match against them is
+ * a guess; Python Rich never picks them either.
+ */
+export const EIGHT_BIT_DOWNGRADE_TABLE = new ColorTable(
+  build256Table().slice(16),
+  16,
+);
 export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 
 // --- Internal fallback theme ---

@@ -145,6 +145,41 @@ describe("ColorTable", () => {
     expect(first).toBe(1);
   });
 
+  it(".match() stays correct past its memo's size cap", () => {
+    const entries = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 0, 255]] as const;
+    const table = new ColorTable(entries.map(([r, g, b]) => new ColorRgba(r, g, b)));
+    const oracle = (r: number, g: number, b: number): number => {
+      const d = entries.map(([er, eg, eb]) => (er - r) ** 2 + (eg - g) ** 2 + (eb - b) ** 2);
+      return d.indexOf(Math.min(...d));
+    };
+    // 64 × 64 × 2 = 8192 distinct keys, twice the cap, then a key from the
+    // first half again, which the clear has dropped and must recompute.
+    for (let r = 0; r < 256; r += 4)
+      for (let g = 0; g < 256; g += 4)
+        for (const b of [0, 255])
+          expect(table.match(new ColorRgba(r, g, b))).toBe(oracle(r, g, b));
+    expect(table.match(new ColorRgba(0, 4, 0))).toBe(oracle(0, 4, 0));
+  });
+
+  it(".matchReadable() picks the nearest entry that clears the ratio, else the most contrast", () => {
+    const black = new ColorRgba(0, 0, 0);
+    // Blue itself draws at 2.4:1 on black; red (5.3) and green (15.3) pass,
+    // and green is nearer this sky blue than red is.
+    const sky = new ColorRgba(0, 60, 255);
+    expect(palette.match(sky)).toBe(3);
+    expect(palette.matchReadable(sky, black, 4.5)).toBe(2);
+    // An entry that already passes is its own answer.
+    expect(palette.matchReadable(new ColorRgba(240, 10, 10), black, 4.5)).toBe(1);
+    // Nothing reaches 21:1 on mid-grey: the most contrast wins (black, 5.3:1).
+    expect(palette.matchReadable(sky, new ColorRgba(128, 128, 128), 21)).toBe(0);
+    // Indices are the terminal's: a table starting at 16 answers from 16.
+    const offset = new ColorTable(
+      [black, new ColorRgba(255, 0, 0), new ColorRgba(0, 255, 0), new ColorRgba(0, 0, 255)],
+      16,
+    );
+    expect(offset.matchReadable(sky, black, 4.5)).toBe(18);
+  });
+
   it("STANDARD_TABLE has 16 entries", () => {
     expect(STANDARD_TABLE.size).toBe(16);
   });
@@ -425,10 +460,20 @@ describe("ColorSpec.downgrade()", () => {
   it("TRUECOLOR downgrades to EIGHT_BIT", () => {
     const c = ColorSpec.fromRgb(255, 0, 0);
     const downgraded = c.downgrade(ColorDepth.EIGHT_BIT);
-    expect(downgraded.type).toBe(ColorDepth.STANDARD); // 255,0,0 matches standard red
-    // At minimum it should have a number
-    expect(downgraded.number).toBeDefined();
+    // The cube's pure red, not ANSI 9: indices 0-15 are the terminal's own.
+    expect([downgraded.type, downgraded.number]).toEqual([ColorDepth.EIGHT_BIT, 196]);
   });
+
+  it("a downgrade to 256 never picks a terminal-defined index 0-15", () => {
+    for (let v = 0; v < 256; v += 5) {
+      const rgbs: [number, number, number][] = [[v, v, v], [v, 0, 0], [0, v, 0], [0, 0, v], [v, 255 - v, v]];
+      for (const rgb of rgbs) {
+        const n = ColorSpec.fromRgb(...rgb).downgrade(ColorDepth.EIGHT_BIT).number!;
+        expect([rgb, n >= 16]).toEqual([rgb, true]);
+      }
+    }
+  });
+
 
   it("TRUECOLOR downgrades to STANDARD", () => {
     const c = ColorSpec.fromRgb(255, 0, 0);
