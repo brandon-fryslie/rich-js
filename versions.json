@@ -4,15 +4,22 @@
     {
       "version": "pr-157",
       "ref": "refs/pull/157/merge",
-      "sha": "8761c879d8332e1189470a3b37db55f34ff8eab5",
-      "timestamp": "2026-09-24T23:03:18.821Z",
+      "sha": "1dacc5213e599ad76faa87f0da58916ae06a3f31",
+      "timestamp": "2026-09-24T23:16:14.525Z",
       "commits": [
         {
-          "sha": "8761c879d8332e1189470a3b37db55f34ff8eab5",
+          "sha": "1dacc5213e599ad76faa87f0da58916ae06a3f31",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T23:02:49Z",
-          "message": "Merge 9f30bef2dd5ed3b66ddb549c01ffbb2b60c82168 into 0ebad636398f4343583857a8813f317960354e61\n"
+          "timestamp": "2026-09-24T23:15:51Z",
+          "message": "Merge 9a52a485977c4d43ae56213ed30252d1ea9a41b8 into 0ebad636398f4343583857a8813f317960354e61\n"
+        },
+        {
+          "sha": "9a52a485977c4d43ae56213ed30252d1ea9a41b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T17:15:46-06:00",
+          "message": "fix(color): ansi is measured on its table's nominal colours; ensureDrawn checks its floor at every depth\n\n- One table per depth (DRAWN_FROM): ANSI's sixteen nominal colours stand in\n  for the theme's, so ensureContrast holds the floor on them (a truecolor\n  answer on another-but-unreadable index no longer passes) and ensureDrawn's\n  floor holds at ansi too. The separate index-only arm is gone.\n- ensureDrawn runs accept at every depth; truecolor draws from no table, so\n  a refusal there is undefined like any exhausted search.\n- drawnColour(colour, drawnAt, substrate?) exports the one rounding\n  ensureDrawn hands its predicate.\n- The seam knows a theme slot by its number, whatever depth spells it.\n- One rgbDistance for every table scan.\n"
         },
         {
           "sha": "9f30bef2dd5ed3b66ddb549c01ffbb2b60c82168",
