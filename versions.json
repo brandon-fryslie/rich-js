@@ -2,88 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-157",
-      "ref": "refs/pull/157/merge",
-      "sha": "55be7b53394694c32151639807b21a093391eaa7",
-      "timestamp": "2026-09-24T23:24:59.974Z",
-      "commits": [
-        {
-          "sha": "55be7b53394694c32151639807b21a093391eaa7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T23:24:24Z",
-          "message": "Merge 35f0ebed3aa8f2ea27cf7e8c293fcc128816e420 into 0ebad636398f4343583857a8813f317960354e61\n"
-        },
-        {
-          "sha": "35f0ebed3aa8f2ea27cf7e8c293fcc128816e420",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T17:24:19-06:00",
-          "message": "docs(contrast): ansi is measured on the nominal table; ensureContrast reads drawnColour; test and demo cite what they measure\n"
-        },
-        {
-          "sha": "9a52a485977c4d43ae56213ed30252d1ea9a41b8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T17:15:46-06:00",
-          "message": "fix(color): ansi is measured on its table's nominal colours; ensureDrawn checks its floor at every depth\n\n- One table per depth (DRAWN_FROM): ANSI's sixteen nominal colours stand in\n  for the theme's, so ensureContrast holds the floor on them (a truecolor\n  answer on another-but-unreadable index no longer passes) and ensureDrawn's\n  floor holds at ansi too. The separate index-only arm is gone.\n- ensureDrawn runs accept at every depth; truecolor draws from no table, so\n  a refusal there is undefined like any exhausted search.\n- drawnColour(colour, drawnAt, substrate?) exports the one rounding\n  ensureDrawn hands its predicate.\n- The seam knows a theme slot by its number, whatever depth spells it.\n- One rgbDistance for every table scan.\n"
-        },
-        {
-          "sha": "9f30bef2dd5ed3b66ddb549c01ffbb2b60c82168",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T17:02:45-06:00",
-          "message": "fix(color): an ansi replacement reads against its ground's nominal colour\n\nText landing on its background's index was replaced by the nearest other\nindex, which is as often the ground's own lightness in another hue: of 1602\nrandom collisions at a 4.5 floor, 458 drew below 2:1 against the nominal\ntable. It is now the nearest entry clearing the floor against the ground's\nnominal colour (matchReadable), the most-contrast entry when none does: 0.\n"
-        },
-        {
-          "sha": "1b0c8385d9c0cf1f05e5a0c8eb32ffa07b665e7f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T16:58:38-06:00",
-          "message": "docs(contrast): ensureDrawn example declares what it measures against; states the opaque return\n"
-        },
-        {
-          "sha": "706044fda540275554fbfea15ab06caa2c55ac7b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T16:58:16-06:00",
-          "message": "fix(color): screen renders at the depth it encodes; matchWhere nearest-first; ensureDrawn returns the colour it measured\n\n- Screen passes its colorSystem in RenderOptions, so the powerline seam\n  decides on the colours the frame is encoded at.\n- ColorTable.matchWhere offers entries nearest-first and stops at the first\n  accepted, so an expensive predicate runs only as far as the answer.\n- ensureDrawn returns chosen composited opaque over its substrate — the\n  colour the floor was measured on — at every depth.\n- ColorSpec.fixedValue refuses an EIGHT_BIT spec on a theme slot (0-15).\n- toSgrCodes' JSDoc back on toSgrCodes; strip.md states the arrow is L.bg as drawn.\n"
-        },
-        {
-          "sha": "d3b3621c34592ea72b1d16b5287c4b1691d6d836",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T16:50:31-06:00",
-          "message": "chore(release): 0.15.0\n"
-        },
-        {
-          "sha": "a4e7c6f439b0e6606729f143d395a4a4c53b161e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T16:50:31-06:00",
-          "message": "fix(strip): an arrow is drawn in its left ground as drawn, and measured as the writer draws it\n\nStyle.drawnColors is the one account of the colours a style puts on screen;\ntoSgrCodes encodes exactly those, and the joiner measures its arrow through\nthem, so a translucent ground is not composited a second time over the\nground the arrow enters.\n"
-        },
-        {
-          "sha": "cd08ba2b5a980ea890c181c2fb7486c6fe25bf64",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T16:39:16-06:00",
-          "message": "feat(color): floors hold on the colours drawn — the strip's seam, ansi text, and ensureDrawn\n\n- RenderOptions.colorSystem: the depth the output is encoded at, set by\n  renderToString and Console, so a renderable can measure what it draws\n- PowerlineJoiner decides arrow or divider on the drawn colours: two grounds\n  256 colours or ANSI draw as one are one ground, and the divider sits on the\n  left item's own ground, so it reads exactly as that item's text\n- ensureContrast at ANSI: text never lands on its background's index\n- ensureDrawn(chosen, drawnAt, accept): the nearest drawable colour a stated\n  floor accepts, for floors that are not text on a background\n- ColorSpec.fixedValue, ColorTable.matchWhere\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0ebad636398f4343583857a8813f317960354e61",
-      "timestamp": "2026-09-24T20:42:11.655Z",
+      "sha": "17d6f65bd455f5cb9d51fab0cc9a0358d9c323de",
+      "timestamp": "2026-09-24T23:31:13.723Z",
       "commits": [
         {
-          "sha": "0ebad636398f4343583857a8813f317960354e61",
+          "sha": "17d6f65bd455f5cb9d51fab0cc9a0358d9c323de",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T14:41:41-06:00",
-          "message": "fix(color): contrast is chosen against a translucent background as drawn (#156)\n\n* fix(color): contrast is chosen against a translucent background as the writer draws it\n\n* chore(release): 0.13.1\n\n* test(color): the truecolor path is pinned on a background translucency visibly changes\n\n* fix(color): the surface a translucent background composites over is the caller's — black for the terminal writer, the canvas for an export\n\n* fix(color): one SURFACE_BLACK beside compositeOver; docs say what flattens; translucent text over translucent ground pinned; 0.14.0\n\n* fix(color): a translucent substrate is refused; docs name the drawn ground and no export wiring"
+          "timestamp": "2026-09-24T17:30:44-06:00",
+          "message": "feat(color): floors hold on the colours drawn — the strip's seam, ansi text, and ensureDrawn (#157)\n\n* feat(color): floors hold on the colours drawn — the strip's seam, ansi text, and ensureDrawn\n\n- RenderOptions.colorSystem: the depth the output is encoded at, set by\n  renderToString and Console, so a renderable can measure what it draws\n- PowerlineJoiner decides arrow or divider on the drawn colours: two grounds\n  256 colours or ANSI draw as one are one ground, and the divider sits on the\n  left item's own ground, so it reads exactly as that item's text\n- ensureContrast at ANSI: text never lands on its background's index\n- ensureDrawn(chosen, drawnAt, accept): the nearest drawable colour a stated\n  floor accepts, for floors that are not text on a background\n- ColorSpec.fixedValue, ColorTable.matchWhere\n\n* fix(strip): an arrow is drawn in its left ground as drawn, and measured as the writer draws it\n\nStyle.drawnColors is the one account of the colours a style puts on screen;\ntoSgrCodes encodes exactly those, and the joiner measures its arrow through\nthem, so a translucent ground is not composited a second time over the\nground the arrow enters.\n\n* chore(release): 0.15.0\n\n* fix(color): screen renders at the depth it encodes; matchWhere nearest-first; ensureDrawn returns the colour it measured\n\n- Screen passes its colorSystem in RenderOptions, so the powerline seam\n  decides on the colours the frame is encoded at.\n- ColorTable.matchWhere offers entries nearest-first and stops at the first\n  accepted, so an expensive predicate runs only as far as the answer.\n- ensureDrawn returns chosen composited opaque over its substrate — the\n  colour the floor was measured on — at every depth.\n- ColorSpec.fixedValue refuses an EIGHT_BIT spec on a theme slot (0-15).\n- toSgrCodes' JSDoc back on toSgrCodes; strip.md states the arrow is L.bg as drawn.\n\n* docs(contrast): ensureDrawn example declares what it measures against; states the opaque return\n\n* fix(color): an ansi replacement reads against its ground's nominal colour\n\nText landing on its background's index was replaced by the nearest other\nindex, which is as often the ground's own lightness in another hue: of 1602\nrandom collisions at a 4.5 floor, 458 drew below 2:1 against the nominal\ntable. It is now the nearest entry clearing the floor against the ground's\nnominal colour (matchReadable), the most-contrast entry when none does: 0.\n\n* fix(color): ansi is measured on its table's nominal colours; ensureDrawn checks its floor at every depth\n\n- One table per depth (DRAWN_FROM): ANSI's sixteen nominal colours stand in\n  for the theme's, so ensureContrast holds the floor on them (a truecolor\n  answer on another-but-unreadable index no longer passes) and ensureDrawn's\n  floor holds at ansi too. The separate index-only arm is gone.\n- ensureDrawn runs accept at every depth; truecolor draws from no table, so\n  a refusal there is undefined like any exhausted search.\n- drawnColour(colour, drawnAt, substrate?) exports the one rounding\n  ensureDrawn hands its predicate.\n- The seam knows a theme slot by its number, whatever depth spells it.\n- One rgbDistance for every table scan.\n\n* docs(contrast): ansi is measured on the nominal table; ensureContrast reads drawnColour; test and demo cite what they measure"
         }
       ]
     }
