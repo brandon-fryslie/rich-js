@@ -71,6 +71,8 @@ const tint = Oklch.fromRgba(surface)
 
 `mix(b, t)` is `mixAxes(b, { l: t, c: t, h: t, alpha: t })`. A weak `h` beside a strong `c` keeps the starting colour's hue at high chroma. Only a truly achromatic start adopts the target's hue, so to land on the target's hue from a near-grey, pass `h: 1`.
 
+`a.deltaE(b)` is the perceptual distance between two colours, ΔE_OK: Euclidean distance in OKLab. Around 0.02 is the smallest difference the eye resolves.
+
 ## transposePalette — a whole theme at once
 
 `transposePalette(palette, key, name?)` returns a new `Palette` with every color transposed. It is pure, and `IDENTITY` is byte-exact (no lossy round-trip):

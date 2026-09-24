@@ -335,6 +335,22 @@ export class Oklch {
     );
   }
 
+  /**
+   * ΔE_OK — the Euclidean distance between this colour and `other` in OKLab
+   * (CSS Color 4's `deltaEOK`), where ~0.02 is the smallest difference the eye
+   * resolves. Alpha is not a coordinate of the space and does not count.
+   * Symmetric and pure.
+   */
+  deltaE(other: Oklch): number {
+    const a = (this.h * Math.PI) / 180;
+    const b = (other.h * Math.PI) / 180;
+    return Math.hypot(
+      this.l - other.l,
+      this.c * Math.cos(a) - other.c * Math.cos(b),
+      this.c * Math.sin(a) - other.c * Math.sin(b),
+    );
+  }
+
   /** Linear-sRGB coordinates for an explicit (l, C, h). Pure; `toRgba` passes
    * already-normalized values so this never sees out-of-range inputs. */
   private toLinearRgb(l: number, C: number, h: number): { r: number; g: number; b: number } {

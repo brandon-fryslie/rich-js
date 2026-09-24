@@ -361,6 +361,16 @@ describe("Oklch.mix", () => {
     expect(() => a.mixAxes(b, noAlpha)).toThrow(/Oklch\.mixAxes: alpha weight .* got undefined/);
   });
 
+  it("deltaE is OKLab distance: zero to itself, symmetric, a pure lightness gap is that gap", () => {
+    const a = from(200, 100, 50);
+    const b = from(20, 60, 200);
+    expect(a.deltaE(a)).toBe(0);
+    expect(a.deltaE(b)).toBeCloseTo(b.deltaE(a), 12);
+    expect(new Oklch(0.3, 0, 0).deltaE(new Oklch(0.7, 0, 0))).toBeCloseTo(0.4, 12);
+    // Same chroma, opposite hues: the chord through the axis, 2C.
+    expect(new Oklch(0.5, 0.1, 30).deltaE(new Oklch(0.5, 0.1, 210))).toBeCloseTo(0.2, 12);
+  });
+
   it("two achromatic endpoints stay achromatic", () => {
     const mid = from(30, 30, 30).mix(from(220, 220, 220), 0.5);
     expect(mid.c).toBeLessThan(1e-6);
