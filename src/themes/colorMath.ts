@@ -1,5 +1,8 @@
 import {
+  ColorDepth,
   ColorRgba,
+  ColorTable,
+  EIGHT_BIT_DOWNGRADE_TABLE,
   blendRgb,
   contrastRatio,
   relativeLuminance,
@@ -138,6 +141,13 @@ const CONTRAST_ITERS = 20;
  * actually sees and the returned color is opaque. `bg` is treated as the
  * opaque substrate.
  *
+ * `drawnAt` is the depth the terminal will draw the pair at. At 256 colours
+ * the terminal rounds text and background independently, and two roundings
+ * can meet in the middle, so the ratio is measured on the drawn pair: a
+ * colour that loses the floor there is replaced by the nearest cube/grey entry
+ * that clears it (whose own rounding is itself). Every other depth draws a
+ * colour the chosen one IS (truecolor) or one only the terminal knows (ANSI).
+ *
  * [LAW:single-enforcer] The one place "is this text readable, and if not fix
  * it" is decided. Callers route every fg/bg pair through here and the
  * unreadable state never reaches output. [LAW:dataflow-not-control-flow] the
@@ -148,6 +158,34 @@ export function ensureContrast(
   fg: ColorRgba,
   bg: ColorRgba,
   minRatio = 4.5, // WCAG AA for normal text
+  drawnAt: ColorDepth = ColorDepth.TRUECOLOR,
+): ColorRgba {
+  const chosen = ensureTruecolorContrast(fg, bg, minRatio);
+  // [LAW:dataflow-not-control-flow] The depth names the table the terminal
+  // draws from; only one whose entries have a known RGB can be measured.
+  const table = MEASURABLE_DOWNGRADE[drawnAt];
+  if (table === undefined) return chosen;
+  const drawnBg = table.get(table.match(bg));
+  const drawn = table.get(table.match(chosen));
+  if (contrastRatio(drawn, drawnBg) >= minRatio) return chosen;
+  return table.get(table.matchReadable(chosen, drawnBg, minRatio));
+}
+
+/**
+ * The downgrade tables whose entries the terminal draws at a known RGB, by the
+ * depth that draws from them. 256 colours is the one: its cube and grey ramp
+ * are fixed by xterm. ANSI 0–15 and the default colour are the terminal
+ * theme's own, so text drawn there has no ratio to keep; truecolor draws the
+ * chosen colour itself.
+ */
+const MEASURABLE_DOWNGRADE: Partial<Record<ColorDepth, ColorTable>> = {
+  [ColorDepth.EIGHT_BIT]: EIGHT_BIT_DOWNGRADE_TABLE,
+};
+
+function ensureTruecolorContrast(
+  fg: ColorRgba,
+  bg: ColorRgba,
+  minRatio: number,
 ): ColorRgba {
   // Flatten translucency so the guarantee holds for the displayed color, not
   // the raw bytes (e.g. a "#FFFFFF60" text-disabled over a light surface).

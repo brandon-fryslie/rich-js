@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ColorRgba } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
 import {
   darken,
@@ -194,5 +194,49 @@ describe("ensureContrast", () => {
         expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(Math.min(4.5, best) - 1e-9);
       }
     }
+  });
+});
+
+describe("ensureContrast drawn at 256 colours", () => {
+  const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
+  // Every grey and three hues of text over backgrounds across the range.
+  const pairs: [ColorRgba, ColorRgba][] = [];
+  for (let b = 0; b < 256; b += 17) {
+    const bg = new ColorRgba(b, Math.round(b * 0.9), Math.round(b * 0.8));
+    for (const [r, g, bl] of [[231, 42, 187], [111, 122, 140], [80, 200, 120], [250, 250, 250]]) {
+      pairs.push([new ColorRgba(r!, g!, bl!), bg]);
+    }
+  }
+
+  it("the drawn pair clears the floor wherever the 256 palette can", () => {
+    for (const [fg, bg] of pairs) {
+      const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT);
+      const best = Math.max(
+        contrastRatio(new ColorRgba(0, 0, 0), drawn(bg)),
+        contrastRatio(new ColorRgba(255, 255, 255), drawn(bg)),
+      );
+      const after = contrastRatio(drawn(chosen), drawn(bg));
+      expect([fg.hex, bg.hex, after >= Math.min(4.5, best) - 1e-9]).toEqual([fg.hex, bg.hex, true]);
+    }
+  });
+
+  it("a colour that already clears the floor once drawn is the truecolor answer, unchanged", () => {
+    for (const [fg, bg] of pairs) {
+      const truecolor = ensureContrast(fg, bg, 4.5);
+      if (contrastRatio(drawn(truecolor), drawn(bg)) < 4.5) continue;
+      expect(ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT).hex).toBe(truecolor.hex);
+    }
+  });
+
+  it("magenta on plum: legible in truecolor, lost when both round, kept when measured drawn", () => {
+    const fg = new ColorRgba(0xe7, 0x2a, 0xbb);
+    const bg = new ColorRgba(0x2e, 0x08, 0x2f);
+    expect(contrastRatio(drawn(ensureContrast(fg, bg, 4.5)), drawn(bg))).toBeLessThan(4.5);
+    expect(contrastRatio(drawn(ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT)), drawn(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("at ansi the terminal draws its own colours, so the truecolor answer stands", () => {
+    const [fg, bg] = pairs[5]!;
+    expect(ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD).hex).toBe(ensureContrast(fg, bg, 4.5).hex);
   });
 });

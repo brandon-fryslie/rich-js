@@ -7,7 +7,7 @@ import {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "../../src/core/style.js";
-import { ColorSpec, ColorDepth, ColorParseError, contrastRatio } from "../../src/core/color.js";
+import { ColorSpec, ColorDepth, ColorParseError } from "../../src/core/color.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (parse semantics, merge rules, render output), not implementation details (caches, internal fields)
 
@@ -1116,15 +1116,14 @@ describe("Style.normalize", () => {
   });
 });
 
-describe("toSgrCodes at 256 colours: text is rounded against its own drawn background", () => {
-  it("a pair that reads at AA in truecolor still reads at AA once both halves are rounded", () => {
-    // Magenta text on a deep plum clears AA at 4.57:1; rounded independently
-    // the pair draws at 3.25:1.
-    const style = Style.parse("#e72abb on #2e082f");
-    const codes = style.toSgrCodes(ColorDepth.EIGHT_BIT).split(";").map(Number);
-    const fg = ColorSpec.fromAnsi(codes[2]!).getTruecolor();
-    const bg = ColorSpec.fromAnsi(codes[5]!).getTruecolor();
-    expect([codes[0], codes[3]]).toEqual([38, 48]);
-    expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
+describe("toSgrCodes at 256 colours rounds every colour on its own", () => {
+  it("a foreground that is a neighbour's background rounds exactly as that background does", () => {
+    // A powerline arrow is drawn in the left cell's background: the seam
+    // stays one shape only if both round to the same index.
+    for (const [left, right] of [["#400000", "#580000"], ["#e8c547", "#1e2030"], ["#004000", "#003800"]]) {
+      const cell = Style.parse(`on ${left}`).toSgrCodes(ColorDepth.EIGHT_BIT);
+      const arrow = Style.parse(`${left} on ${right}`).toSgrCodes(ColorDepth.EIGHT_BIT);
+      expect([left, arrow.split(";").slice(0, 3).join(";")]).toEqual([left, cell.replace(/^48/, "38")]);
+    }
   });
 });

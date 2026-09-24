@@ -38,11 +38,12 @@ import { createEngine, type Engine, type FuncMap } from "@promptctl/go-template-
 import { RichText } from "../core/text.js";
 import { Style } from "../core/style.js";
 import { Segment } from "../core/segment.js";
+import { ColorDepth } from "../core/color.js";
 import { richTextStyleFuncs } from "./style-funcs.js";
 import { colorFuncs } from "./color-funcs.js";
 
 export { paletteFuncs } from "./palette-funcs.js";
-export { colorFuncs } from "./color-funcs.js";
+export { colorFuncs, readableOnFunc } from "./color-funcs.js";
 
 /**
  * Funcs registered by the rich-js binding — the colour sinks, the palette-free
@@ -61,8 +62,10 @@ export { colorFuncs } from "./color-funcs.js";
  * into a wider engine must keep `T = RichText`; merging into an engine
  * whose `T` is something else will compile but fail at evaluation time.
  */
-export function richTextFuncs(): FuncMap {
-  return { ...richTextStyleFuncs(), ...colorFuncs() };
+export function richTextFuncs(
+  drawnAt: () => ColorDepth = () => ColorDepth.TRUECOLOR,
+): FuncMap {
+  return { ...richTextStyleFuncs(), ...colorFuncs(drawnAt) };
 }
 
 /**

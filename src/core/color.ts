@@ -133,6 +133,14 @@ export class ColorTable {
     return this.colors[index - this.firstIndex]!;
   }
 
+  private luminanceCache: readonly number[] | undefined;
+  /** Each entry's relative luminance, computed once per table. */
+  private luminances(): readonly number[] {
+    this.luminanceCache ??= this.colors.map(relativeLuminance);
+    return this.luminanceCache;
+  }
+
+  /** How many entries the table holds (terminal indices `firstIndex`…). */
   get size(): number {
     return this.colors.length;
   }
@@ -178,12 +186,14 @@ export class ColorTable {
     const cached = this.readableCache.get(key);
     if (cached !== undefined) return cached;
 
+    const lOn = relativeLuminance(on);
     let best = 0;
     let bestPasses = false;
     let bestScore = -Infinity;
     for (let i = 0; i < this.colors.length; i++) {
       const c = this.colors[i]!;
-      const ratio = contrastRatio(c, on);
+      const lc = this.luminances()[i]!;
+      const ratio = (Math.max(lc, lOn) + 0.05) / (Math.min(lc, lOn) + 0.05);
       const passes = ratio >= minRatio;
       const dr = c.red - value.red;
       const dg = c.green - value.green;
@@ -442,34 +452,6 @@ export class ColorSpec {
   /**
    * Downgrade to a lower-fidelity color depth. Cached.
    */
-  /**
-   * This colour downgraded to `targetSystem` as TEXT drawn on `bg`, a
-   * background already flattened and holding this text's substrate. At 256
-   * colours both halves have a known RGB, so the text keeps at least the
-   * contrast the pair had before either was rounded (or the most the 256
-   * palette offers on the drawn background, when that is less): the nearest
-   * cube/grey entry that clears it. Everywhere else a colour's drawn RGB is
-   * the terminal's to decide — ANSI 0–15, the default colour — so there is
-   * no ratio to keep, and the text downgrades alone.
-   */
-  downgradeOn(targetSystem: ColorDepth, bg: ColorSpec): ColorSpec {
-    const drawnBg = bg.downgrade(targetSystem);
-    const measurable =
-      targetSystem === ColorDepth.EIGHT_BIT &&
-      this.type > ColorDepth.EIGHT_BIT &&
-      this.type !== ColorDepth.WINDOWS &&
-      (drawnBg.type === ColorDepth.EIGHT_BIT ||
-        drawnBg.type === ColorDepth.TRUECOLOR);
-    if (!measurable) return this.downgrade(targetSystem);
-    const text = this.getTruecolor();
-    const index = EIGHT_BIT_DOWNGRADE_TABLE.matchReadable(
-      text,
-      drawnBg.getTruecolor(),
-      contrastRatio(text, bg.getTruecolor()),
-    );
-    return ColorSpec.fromAnsi(index);
-  }
-
   downgrade(targetSystem: ColorDepth): ColorSpec {
     if (this.type === ColorDepth.DEFAULT) return this;
     if (this.type <= targetSystem) return this;

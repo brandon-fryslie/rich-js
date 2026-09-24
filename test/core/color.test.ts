@@ -12,7 +12,6 @@ import {
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
   ANSI_COLOR_NAMES,
-  contrastRatio,
 } from "../../src/core/color.js";
 import {
   DEFAULT_TERMINAL_THEME,
@@ -440,48 +439,6 @@ describe("ColorSpec.downgrade()", () => {
     }
   });
 
-  describe("downgradeOn: text keeps its contrast against the background it is drawn on", () => {
-    const drawn = (spec: ColorSpec) => spec.getTruecolor();
-    // Every grey and cube-ish pair at the AA floor, rounded both ways.
-    const pairs: [ColorSpec, ColorSpec][] = [];
-    for (let b = 0; b < 256; b += 17) {
-      for (const hue of [[1, 0.2, 0.2], [0.2, 1, 0.4], [0.3, 0.4, 1], [1, 1, 1]] as const) {
-        const bg = ColorSpec.fromRgb(b, Math.round(b * 0.9), Math.round(b * 0.8));
-        const fg = ColorSpec.fromRgb(
-          ...(hue.map((k) => Math.round(Math.min(255, (255 - b) * k + (b < 128 ? b : 0)))) as [number, number, number]),
-        );
-        pairs.push([fg, bg]);
-      }
-    }
-
-    it("the drawn pair is never less legible than the truecolor pair, where the palette allows", () => {
-      for (const [fg, bg] of pairs) {
-        const before = contrastRatio(drawn(fg), drawn(bg));
-        const bg256 = bg.downgrade(ColorDepth.EIGHT_BIT);
-        const fg256 = fg.downgradeOn(ColorDepth.EIGHT_BIT, bg);
-        const after = contrastRatio(drawn(fg256), drawn(bg256));
-        const best = Math.max(
-          contrastRatio(new ColorRgba(0, 0, 0), drawn(bg256)),
-          contrastRatio(new ColorRgba(255, 255, 255), drawn(bg256)),
-        );
-        expect([fg.name, bg.name, after >= Math.min(before, best) - 1e-9]).toEqual([fg.name, bg.name, true]);
-        expect(fg256.number! >= 16).toBe(true);
-      }
-    });
-
-    it("text already legible after an independent rounding is rounded exactly as before", () => {
-      const fg = ColorSpec.fromRgb(250, 250, 250);
-      const bg = ColorSpec.fromRgb(10, 10, 10);
-      expect(fg.downgradeOn(ColorDepth.EIGHT_BIT, bg).number).toBe(fg.downgrade(ColorDepth.EIGHT_BIT).number);
-    });
-
-    it("off 256 colours, text downgrades alone: ANSI's RGB is the terminal's", () => {
-      const fg = ColorSpec.fromRgb(120, 130, 140);
-      const bg = ColorSpec.fromRgb(100, 110, 120);
-      expect(fg.downgradeOn(ColorDepth.STANDARD, bg)).toBe(fg.downgrade(ColorDepth.STANDARD));
-      expect(fg.downgradeOn(ColorDepth.EIGHT_BIT, ColorSpec.parse("red"))).toBe(fg.downgrade(ColorDepth.EIGHT_BIT));
-    });
-  });
 
   it("TRUECOLOR downgrades to STANDARD", () => {
     const c = ColorSpec.fromRgb(255, 0, 0);
