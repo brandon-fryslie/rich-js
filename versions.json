@@ -2,109 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-155",
-      "ref": "refs/pull/155/merge",
-      "sha": "46ffc8b56dd92ad1d71881f6e67cedc684d4ce15",
-      "timestamp": "2026-09-24T19:50:10.936Z",
-      "commits": [
-        {
-          "sha": "46ffc8b56dd92ad1d71881f6e67cedc684d4ce15",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T19:49:43Z",
-          "message": "Merge 8bd6a6a235838f1bb6a28936196b9f3d0e40ba5e into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
-        },
-        {
-          "sha": "8bd6a6a235838f1bb6a28936196b9f3d0e40ba5e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:49:39-06:00",
-          "message": "docs(template-bindings): point to contrast.md for the drawn-depth guarantee\n"
-        },
-        {
-          "sha": "e01e0edb2184eda5b4bc290a39494a83f0125156",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:45:48-06:00",
-          "message": "docs(contrast): the 256-colour path's fallback when no entry clears the ratio\n"
-        },
-        {
-          "sha": "d7bf4a60740dd7bea5dfbe0d5294d189d0a92bb7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:41:28-06:00",
-          "message": "fix(color): one WCAG ratio formula; matchReadable pinned directly; contrast docs name drawnAt\n"
-        },
-        {
-          "sha": "f3fab311919df85ed94845b5f500684ee1cde7b3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:32:55-06:00",
-          "message": "docs: richTextFuncs' drawnAt, readableOnFunc, and the 16-255 downgrade table\n"
-        },
-        {
-          "sha": "404b32d64db1a6f13976e14dd647ab29b4fca8bf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:27:00-06:00",
-          "message": "fix(template-bindings): drawnAt documented and defaulted once; binding pinned through an engine\n"
-        },
-        {
-          "sha": "5ade5b54c78ad2871f08896ef5738c42aefe8ddd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:17:55-06:00",
-          "message": "chore(release): 0.13.0\n"
-        },
-        {
-          "sha": "746511b397b8019629cf7a96c15494f9d9803e91",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:17:55-06:00",
-          "message": "fix(color): ColorTable memos are bounded — a long-running host no longer grows them per colour\n"
-        },
-        {
-          "sha": "47f8b9e3d94434a69b74d966b482ad8551792ea5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:15:30-06:00",
-          "message": "docs(examples): one 256-colour engine; readableOn demos pass the required ratio\n"
-        },
-        {
-          "sha": "c86efafa45a149022da8597c2ffaf99668622606",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:14:42-06:00",
-          "message": "docs(examples): demonstrate readableOnFunc at 256 colours\n"
-        },
-        {
-          "sha": "38d50ace49cb0436eb2c72737c47261d2cb26c16",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:12:39-06:00",
-          "message": "fix(color): measure the floor where text is chosen, not in the SGR writer\n\nReview of #155: downgradeOn treated every foreground as text, so powerline\narrows (fg = a neighbour's bg) and gradient half-blocks were dragged to grey,\nand an exact-ratio target recoloured text still legible after plain rounding.\nAt the writer a text foreground and a fill foreground are the same value, so\nthe rule moves to the choice: ensureContrast(fg, bg, ratio, drawnAt) measures\non the pair the terminal draws and, at 256, falls back to the nearest\ncube/grey entry that clears the floor (which rounds to itself). The writer\nrounds every colour on its own again, as Python Rich does.\n\n- remove ColorSpec.downgradeOn; toSgrCodes is master's again\n- ensureContrast gains drawnAt (default TRUECOLOR); ansi/default unmeasurable\n- colorFuncs/richTextFuncs take a drawnAt getter; readableOnFunc exported\n- ColorTable caches entry luminances; size documented as an entry count\n"
-        },
-        {
-          "sha": "79a6e4a299e1c2458b8353c25edb82b868c91458",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:00:53-06:00",
-          "message": "feat(color): text keeps its contrast at 256 colours; downgrades never pick terminal-defined ANSI 0-15\n\nA downgrade to 256 colours matched against all 256 entries, so it could land\non ANSI 0-15, whose RGB every terminal theme redefines, and Style.toSgrCodes\nrounded text and background independently, so two roundings could meet in\nthe middle: a 4.57:1 pair drew at 3.25:1.\n\n- EIGHT_BIT_DOWNGRADE_TABLE holds the cube and grey ramp (16-255); ColorTable\n  takes a firstIndex so its matches are terminal indices.\n- ColorTable.matchReadable: the nearest entry that clears a ratio against a\n  background, else the most contrast.\n- ColorSpec.downgradeOn(target, bg): at 256 colours text keeps the contrast\n  the truecolor pair had (or the most the palette offers on the drawn bg);\n  elsewhere the drawn RGB is the terminal's and text downgrades alone.\n- relativeLuminance/contrastRatio move to core/color.ts, below both the\n  theme math and the SGR writer; themes/colorMath re-exports them.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0c8cae200bd50f39ac8f43ae1d2900744efebd74",
-      "timestamp": "2026-09-24T13:07:59.662Z",
+      "sha": "8e1fc535357ce72ac112d1e66340fbb4cd3e6ced",
+      "timestamp": "2026-09-24T19:51:57.705Z",
       "commits": [
         {
-          "sha": "0c8cae200bd50f39ac8f43ae1d2900744efebd74",
+          "sha": "8e1fc535357ce72ac112d1e66340fbb4cd3e6ced",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T07:07:32-06:00",
-          "message": "chore(release)!: 0.12.0 (#154)\n\nBREAKING CHANGE: PowerlineJoinerOptions requires glyph and divider together (#153). A caller that replaced only the arrow must also pass a divider; new PowerlineJoiner() draws POWERLINE_JOINER_GLYPHS."
+          "timestamp": "2026-09-24T13:51:25-06:00",
+          "message": "feat(color): text floors hold at 256 colours; downgrades never pick ANSI 0-15 (#155)\n\n* feat(color): text keeps its contrast at 256 colours; downgrades never pick terminal-defined ANSI 0-15\n\nA downgrade to 256 colours matched against all 256 entries, so it could land\non ANSI 0-15, whose RGB every terminal theme redefines, and Style.toSgrCodes\nrounded text and background independently, so two roundings could meet in\nthe middle: a 4.57:1 pair drew at 3.25:1.\n\n- EIGHT_BIT_DOWNGRADE_TABLE holds the cube and grey ramp (16-255); ColorTable\n  takes a firstIndex so its matches are terminal indices.\n- ColorTable.matchReadable: the nearest entry that clears a ratio against a\n  background, else the most contrast.\n- ColorSpec.downgradeOn(target, bg): at 256 colours text keeps the contrast\n  the truecolor pair had (or the most the palette offers on the drawn bg);\n  elsewhere the drawn RGB is the terminal's and text downgrades alone.\n- relativeLuminance/contrastRatio move to core/color.ts, below both the\n  theme math and the SGR writer; themes/colorMath re-exports them.\n\n* fix(color): measure the floor where text is chosen, not in the SGR writer\n\nReview of #155: downgradeOn treated every foreground as text, so powerline\narrows (fg = a neighbour's bg) and gradient half-blocks were dragged to grey,\nand an exact-ratio target recoloured text still legible after plain rounding.\nAt the writer a text foreground and a fill foreground are the same value, so\nthe rule moves to the choice: ensureContrast(fg, bg, ratio, drawnAt) measures\non the pair the terminal draws and, at 256, falls back to the nearest\ncube/grey entry that clears the floor (which rounds to itself). The writer\nrounds every colour on its own again, as Python Rich does.\n\n- remove ColorSpec.downgradeOn; toSgrCodes is master's again\n- ensureContrast gains drawnAt (default TRUECOLOR); ansi/default unmeasurable\n- colorFuncs/richTextFuncs take a drawnAt getter; readableOnFunc exported\n- ColorTable caches entry luminances; size documented as an entry count\n\n* docs(examples): demonstrate readableOnFunc at 256 colours\n\n* docs(examples): one 256-colour engine; readableOn demos pass the required ratio\n\n* fix(color): ColorTable memos are bounded — a long-running host no longer grows them per colour\n\n* chore(release): 0.13.0\n\n* fix(template-bindings): drawnAt documented and defaulted once; binding pinned through an engine\n\n* docs: richTextFuncs' drawnAt, readableOnFunc, and the 16-255 downgrade table\n\n* fix(color): one WCAG ratio formula; matchReadable pinned directly; contrast docs name drawnAt\n\n* docs(contrast): the 256-colour path's fallback when no entry clears the ratio\n\n* docs(template-bindings): point to contrast.md for the drawn-depth guarantee"
         }
       ]
     }
