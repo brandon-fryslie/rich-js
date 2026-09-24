@@ -178,9 +178,8 @@ export function ensureContrast(
   // draws from; every table is measured the same way.
   const table = DRAWN_FROM[drawnAt];
   if (table === undefined) return chosen;
-  const drawnBg = table.get(table.match(ground));
-  const drawn = table.get(table.match(chosen));
-  if (contrastRatio(drawn, drawnBg) >= minRatio) return chosen;
+  const drawnBg = drawnColour(ground, drawnAt, substrate);
+  if (contrastRatio(drawnColour(chosen, drawnAt, substrate), drawnBg) >= minRatio) return chosen;
   return table.get(table.matchReadable(chosen, drawnBg, minRatio));
 }
 

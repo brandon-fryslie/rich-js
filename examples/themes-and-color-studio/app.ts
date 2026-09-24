@@ -1076,7 +1076,10 @@ export function runDemo(
     const at256 = (c: ColorRgba) => ColorSpec.fromRgba(drawnColour(c, ColorDepth.EIGHT_BIT)).downgrade(ColorDepth.EIGHT_BIT);
     const kept = ensureDrawn(selected, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
       Oklch.fromRgba(candidate).deltaE(Oklch.fromRgba(drawn(neighbour))) >= 0.1,
-    )!;
+    );
+    // No entry at all may hold a floor; a real caller says so rather than
+    // drawing the colour it refused.
+    if (kept === undefined) throw new Error("no 256-colour entry holds the selection floor");
     for (const [label, cell] of [["before", selected], ["after ", kept]] as const) {
       out.print(
         new RichText(`      ${label}  `)

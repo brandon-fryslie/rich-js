@@ -3,6 +3,7 @@ import {
   Strip,
   PowerlineJoiner,
   POWERLINE_JOINER_GLYPHS,
+  SEAM_MIN_DELTA_E,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
@@ -178,7 +179,7 @@ describe("PowerlineJoiner same-bg structural join", () => {
     ["ansi", ColorDepth.STANDARD, "#f06050", "#e02040"],
   ] as const)("measures the seam on the colours drawn at %s", (_, depth, a, b) => {
     const [ca, cb] = [a, b].map((c) => ColorSpec.parse(c)) as [ColorSpec, ColorSpec];
-    expect(Oklch.fromRgba(ca.value!).deltaE(Oklch.fromRgba(cb.value!))).toBeGreaterThanOrEqual(0.04);
+    expect(Oklch.fromRgba(ca.value!).deltaE(Oklch.fromRgba(cb.value!))).toBeGreaterThanOrEqual(SEAM_MIN_DELTA_E);
     expect(ca.downgrade(depth).number).toBe(cb.downgrade(depth).number);
     const strip = new Strip(
       [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
