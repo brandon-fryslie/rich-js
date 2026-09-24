@@ -345,8 +345,14 @@ export class Style {
     const fgFlat = this.color?.flattenAlpha(fgSubstrate);
 
     if (fgFlat) {
+      // Text is downgraded against the background it is drawn on, so the
+      // two roundings cannot meet in the middle (ColorSpec.downgradeOn).
       const c =
-        colorSystem !== undefined ? fgFlat.downgrade(colorSystem) : fgFlat;
+        colorSystem === undefined
+          ? fgFlat
+          : bgFlat === undefined
+            ? fgFlat.downgrade(colorSystem)
+            : fgFlat.downgradeOn(colorSystem, bgFlat);
       attrs.push(...c.getAnsiCodes(true));
     }
     if (bgFlat) {

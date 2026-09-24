@@ -79,18 +79,58 @@ export class ColorRgba {
   }
 }
 
+/**
+ * WCAG 2.x relative luminance (0..1) of an opaque color. The single
+ * luminance function in the codebase — `contrastFor`, `contrastRatio`, and
+ * any caller that needs to reason about readability all funnel through it.
+ * [LAW:one-source-of-truth]
+ */
+export function relativeLuminance(c: ColorRgba): number {
+  const ch = (v: number): number => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue);
+}
+
+/**
+ * WCAG 2.x contrast ratio between two colors, in [1, 21]. Symmetric — the
+ * order of arguments does not matter. 4.5 is the AA threshold for normal
+ * text, 3.0 for large text.
+ *
+ * Assumes opaque inputs: alpha is ignored, since the displayed contrast of a
+ * translucent color depends on what it composites over. For a translucent
+ * foreground, flatten it first (or use `ensureContrast`, which does).
+ */
+export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const hi = la > lb ? la : lb;
+  const lo = la > lb ? lb : la;
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 // --- ColorTable ---
 
+/**
+ * An indexed palette: entry `i` of `colors` is terminal index `firstIndex + i`.
+ * `firstIndex` lets a table hold only the part of a palette a downgrade may
+ * choose (the 256-colour cube and grey ramp start at 16) while every index it
+ * reports is the terminal's own.
+ */
 export class ColorTable {
   private readonly colors: ColorRgba[];
+  private readonly firstIndex: number;
   private readonly matchCache = new Map<string, number>();
+  private readonly readableCache = new Map<string, number>();
 
-  constructor(colors: ColorRgba[]) {
+  constructor(colors: ColorRgba[], firstIndex = 0) {
     this.colors = colors;
+    this.firstIndex = firstIndex;
   }
 
   get(index: number): ColorRgba {
-    return this.colors[index]!;
+    return this.colors[index - this.firstIndex]!;
   }
 
   get size(): number {
@@ -120,8 +160,48 @@ export class ColorTable {
         bestIndex = i;
       }
     }
-    this.matchCache.set(key, bestIndex);
-    return bestIndex;
+    this.matchCache.set(key, this.firstIndex + bestIndex);
+    return this.firstIndex + bestIndex;
+  }
+
+  /**
+   * The nearest entry to `value` (the distance `match` uses) among those that
+   * clear `minRatio` against `on`; when none does, the entry with the most
+   * contrast against `on`. Text downgraded on its own background: `match`
+   * moves text and background independently, and two independent roundings
+   * can meet in the middle, so a pair that read at 4.5:1 in truecolor can
+   * draw at 2:1. [LAW:dataflow-not-control-flow] One scan scores every entry;
+   * the ratio decides which one wins.
+   */
+  matchReadable(value: ColorRgba, on: ColorRgba, minRatio: number): number {
+    const key = `${value.red},${value.green},${value.blue}|${on.red},${on.green},${on.blue}|${minRatio}`;
+    const cached = this.readableCache.get(key);
+    if (cached !== undefined) return cached;
+
+    let best = 0;
+    let bestPasses = false;
+    let bestScore = -Infinity;
+    for (let i = 0; i < this.colors.length; i++) {
+      const c = this.colors[i]!;
+      const ratio = contrastRatio(c, on);
+      const passes = ratio >= minRatio;
+      const dr = c.red - value.red;
+      const dg = c.green - value.green;
+      const db = c.blue - value.blue;
+      // A passing entry scores by closeness; a failing one only by contrast,
+      // and loses to every passing one.
+      const score = passes ? -(dr * dr + dg * dg + db * db) : ratio;
+      if (
+        (passes && !bestPasses) ||
+        (passes === bestPasses && score > bestScore)
+      ) {
+        best = i;
+        bestPasses = passes;
+        bestScore = score;
+      }
+    }
+    this.readableCache.set(key, this.firstIndex + best);
+    return this.firstIndex + best;
   }
 }
 
@@ -362,6 +442,34 @@ export class ColorSpec {
   /**
    * Downgrade to a lower-fidelity color depth. Cached.
    */
+  /**
+   * This colour downgraded to `targetSystem` as TEXT drawn on `bg`, a
+   * background already flattened and holding this text's substrate. At 256
+   * colours both halves have a known RGB, so the text keeps at least the
+   * contrast the pair had before either was rounded (or the most the 256
+   * palette offers on the drawn background, when that is less): the nearest
+   * cube/grey entry that clears it. Everywhere else a colour's drawn RGB is
+   * the terminal's to decide — ANSI 0–15, the default colour — so there is
+   * no ratio to keep, and the text downgrades alone.
+   */
+  downgradeOn(targetSystem: ColorDepth, bg: ColorSpec): ColorSpec {
+    const drawnBg = bg.downgrade(targetSystem);
+    const measurable =
+      targetSystem === ColorDepth.EIGHT_BIT &&
+      this.type > ColorDepth.EIGHT_BIT &&
+      this.type !== ColorDepth.WINDOWS &&
+      (drawnBg.type === ColorDepth.EIGHT_BIT ||
+        drawnBg.type === ColorDepth.TRUECOLOR);
+    if (!measurable) return this.downgrade(targetSystem);
+    const text = this.getTruecolor();
+    const index = EIGHT_BIT_DOWNGRADE_TABLE.matchReadable(
+      text,
+      drawnBg.getTruecolor(),
+      contrastRatio(text, bg.getTruecolor()),
+    );
+    return ColorSpec.fromAnsi(index);
+  }
+
   downgrade(targetSystem: ColorDepth): ColorSpec {
     if (this.type === ColorDepth.DEFAULT) return this;
     if (this.type <= targetSystem) return this;
@@ -438,7 +546,7 @@ export class ColorSpec {
 
     switch (targetSystem) {
       case ColorDepth.EIGHT_BIT: {
-        const index = EIGHT_BIT_TABLE.match(triplet);
+        const index = EIGHT_BIT_DOWNGRADE_TABLE.match(triplet);
         return ColorSpec.fromAnsi(index);
       }
       case ColorDepth.STANDARD: {
@@ -636,6 +744,16 @@ function buildWindowsTable(): ColorRgba[] {
 
 export const STANDARD_TABLE = new ColorTable(buildStandard16());
 export const EIGHT_BIT_TABLE = new ColorTable(build256Table());
+/**
+ * What a downgrade to 256 colours may choose: the cube and the grey ramp,
+ * indices 16–255. Indices 0–15 are the terminal's own ANSI colours, which
+ * every theme redefines, so their RGB is unknown and a match against them is
+ * a guess; Python Rich never picks them either.
+ */
+export const EIGHT_BIT_DOWNGRADE_TABLE = new ColorTable(
+  build256Table().slice(16),
+  16,
+);
 export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 
 // --- Internal fallback theme ---

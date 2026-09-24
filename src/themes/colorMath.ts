@@ -1,4 +1,9 @@
-import { ColorRgba, blendRgb } from "../core/color.js";
+import {
+  ColorRgba,
+  blendRgb,
+  contrastRatio,
+  relativeLuminance,
+} from "../core/color.js";
 import { Oklch } from "../core/oklch.js";
 
 const LEVEL_STEP = 0.1;
@@ -108,36 +113,10 @@ export function contrastFor(bg: ColorRgba): ColorRgba {
     : new ColorRgba(255, 255, 255);
 }
 
-/**
- * WCAG 2.x relative luminance (0..1) of an opaque color. The single
- * luminance function in the codebase — `contrastFor`, `contrastRatio`, and
- * any caller that needs to reason about readability all funnel through it.
- * [LAW:one-source-of-truth]
- */
-export function relativeLuminance(c: ColorRgba): number {
-  const ch = (v: number): number => {
-    const x = v / 255;
-    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
-  };
-  return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue);
-}
-
-/**
- * WCAG 2.x contrast ratio between two colors, in [1, 21]. Symmetric — the
- * order of arguments does not matter. 4.5 is the AA threshold for normal
- * text, 3.0 for large text.
- *
- * Assumes opaque inputs: alpha is ignored, since the displayed contrast of a
- * translucent color depends on what it composites over. For a translucent
- * foreground, flatten it first (or use `ensureContrast`, which does).
- */
-export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
-  const la = relativeLuminance(a);
-  const lb = relativeLuminance(b);
-  const hi = la > lb ? la : lb;
-  const lo = la > lb ? lb : la;
-  return (hi + 0.05) / (lo + 0.05);
-}
+// [LAW:one-way-deps] The WCAG measures live in core/color.ts, below both the
+// theme math here and the SGR writer (core/style.ts), which measures the pair
+// it downgrades. Re-exported so this module stays the colour-math surface.
+export { relativeLuminance, contrastRatio };
 
 // Iterations for the lightness bisection below. 20 resolves L to ~1e-6 — far
 // finer than 8-bit quantization or the eye.
