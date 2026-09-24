@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-157",
+      "ref": "refs/pull/157/merge",
+      "sha": "525faeb2787e47befc9558660f5da077364a95b7",
+      "timestamp": "2026-09-24T22:51:18.011Z",
+      "commits": [
+        {
+          "sha": "525faeb2787e47befc9558660f5da077364a95b7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T16:50:50-06:00",
+          "message": "Merge d3b3621c34592ea72b1d16b5287c4b1691d6d836 into 0ebad636398f4343583857a8813f317960354e61\n"
+        },
+        {
+          "sha": "d3b3621c34592ea72b1d16b5287c4b1691d6d836",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T16:50:31-06:00",
+          "message": "chore(release): 0.15.0\n"
+        },
+        {
+          "sha": "a4e7c6f439b0e6606729f143d395a4a4c53b161e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T16:50:31-06:00",
+          "message": "fix(strip): an arrow is drawn in its left ground as drawn, and measured as the writer draws it\n\nStyle.drawnColors is the one account of the colours a style puts on screen;\ntoSgrCodes encodes exactly those, and the joiner measures its arrow through\nthem, so a translucent ground is not composited a second time over the\nground the arrow enters.\n"
+        },
+        {
+          "sha": "cd08ba2b5a980ea890c181c2fb7486c6fe25bf64",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T16:39:16-06:00",
+          "message": "feat(color): floors hold on the colours drawn — the strip's seam, ansi text, and ensureDrawn\n\n- RenderOptions.colorSystem: the depth the output is encoded at, set by\n  renderToString and Console, so a renderable can measure what it draws\n- PowerlineJoiner decides arrow or divider on the drawn colours: two grounds\n  256 colours or ANSI draw as one are one ground, and the divider sits on the\n  left item's own ground, so it reads exactly as that item's text\n- ensureContrast at ANSI: text never lands on its background's index\n- ensureDrawn(chosen, drawnAt, accept): the nearest drawable colour a stated\n  floor accepts, for floors that are not text on a background\n- ColorSpec.fixedValue, ColorTable.matchWhere\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0ebad636398f4343583857a8813f317960354e61",
