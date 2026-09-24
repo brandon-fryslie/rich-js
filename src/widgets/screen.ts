@@ -269,6 +269,10 @@ export class DefaultScreen implements Screen {
       maxWidth: width,
       isTerminal: true,
       encoding: "utf-8",
+      // [LAW:one-source-of-truth] The depth the frame is encoded at (below,
+      // `segmentsToString`), so a renderable that decides on drawn colours
+      // decides on the ones this screen draws.
+      colorSystem: this.colorSystem,
     };
 
     const lines: Segment[][] = [];

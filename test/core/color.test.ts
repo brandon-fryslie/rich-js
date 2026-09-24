@@ -453,6 +453,8 @@ describe("ColorSpec.fixedValue", () => {
     expect(ColorSpec.fromAnsi(9).fixedValue).toBeUndefined();
     expect(ColorSpec.parse("red").fixedValue).toBeUndefined();
     expect(ColorSpec.default().fixedValue).toBeUndefined();
+    // The constructor admits an EIGHT_BIT spec on a theme slot.
+    expect(new ColorSpec("color(1)", ColorDepth.EIGHT_BIT, 1).fixedValue).toBeUndefined();
   });
 });
 
@@ -464,6 +466,20 @@ describe("ColorTable.matchWhere()", () => {
     const refused = STANDARD_TABLE.matchWhere(near, (_, i) => i !== all);
     expect(refused).not.toBe(all);
     expect(refused).toBeDefined();
+  });
+
+  it("asks the predicate nearest-first and stops at the first it takes", () => {
+    const table = EIGHT_BIT_TABLE;
+    const value = new ColorRgba(128, 128, 128);
+    const asked: number[] = [];
+    const nearest = table.match(value);
+    const found = table.matchWhere(value, (_, i) => {
+      asked.push(i);
+      return i !== nearest;
+    });
+    expect(asked[0]).toBe(nearest);
+    expect(asked).toHaveLength(2);
+    expect(found).toBe(asked[1]);
   });
 
   it("is undefined when the predicate takes nothing", () => {

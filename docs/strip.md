@@ -57,7 +57,7 @@ new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow, U+E0B1 divider
 
 The arrow is painted *in the left neighbour's background colour*, so it is drawn only when there is one. That single rule covers all three positions:
 
-- `join(L, R)`: glyph with `fg = L.bg`, `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour and `bg = L.bg`.
+- `join(L, R)`: glyph with `fg = L.bg` as drawn (flattened onto the render substrate, so opaque — the arrow is the left cell continuing, not composited a second time over `R`), `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour and `bg = L.bg`.
 - `join(L, null)`: glyph with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
 - `join(null, R)`: empty. There is no left neighbour, so there is no colour to bleed and no arrow to draw. The strip begins cleanly, matching vim-airline / tmux-powerline / claude-powerline.
 

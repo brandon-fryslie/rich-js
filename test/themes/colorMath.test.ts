@@ -353,6 +353,15 @@ describe("ensureDrawn", () => {
     expect(Oklch.fromRgba(repaired).deltaE(Oklch.fromRgba(chosen))).toBeLessThan(0.2);
   });
 
+  it("returns the colour the floor was measured on: composited opaque over the substrate", () => {
+    const translucent = new ColorRgba(0xf0, 0xf0, 0xf0, 0.5);
+    for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
+      const out = ensureDrawn(translucent, depth, () => true)!;
+      expect(out.alpha).toBe(1);
+      expect(out.hex).toBe(translucent.compositeOver(black).hex);
+    }
+  });
+
   it("is undefined when no drawn colour is accepted", () => {
     expect(ensureDrawn(chosen, ColorDepth.EIGHT_BIT, () => false)).toBeUndefined();
   });

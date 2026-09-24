@@ -197,7 +197,7 @@ export function ensureContrast(
 }
 
 /**
- * `chosen`, or — when the depth the terminal draws at rounds it to a colour
+ * `chosen` (composited opaque over `substrate`), or — when the depth the terminal draws at rounds it to a colour
  * `accept` refuses — the nearest colour that depth draws as itself which
  * `accept` takes. `accept` sees the candidate as drawn, and `drawn`, the same
  * rounding for any other colour it measures against, so the caller states a
@@ -216,14 +216,16 @@ export function ensureDrawn(
   accept: (candidate: ColorRgba, drawn: (c: ColorRgba) => ColorRgba) => boolean,
   substrate: ColorRgba = SURFACE_BLACK,
 ): ColorRgba | undefined {
+  // The floor was measured on `chosen` composited over `substrate`, so that
+  // opaque colour is what is returned — never a translucent one a different
+  // ground would composite into a colour `accept` never saw.
+  const opaque = drawnBackground(chosen, substrate);
   const table = MEASURABLE_DOWNGRADE[drawnAt];
-  if (table === undefined) return chosen;
+  if (table === undefined) return opaque;
   const drawn = (c: ColorRgba): ColorRgba =>
     table.get(table.match(drawnBackground(c, substrate)));
-  if (accept(drawn(chosen), drawn)) return chosen;
-  const index = table.matchWhere(drawnBackground(chosen, substrate), (entry) =>
-    accept(entry, drawn),
-  );
+  if (accept(drawn(opaque), drawn)) return opaque;
+  const index = table.matchWhere(opaque, (entry) => accept(entry, drawn));
   return index === undefined ? undefined : table.get(index);
 }
 

@@ -318,16 +318,6 @@ export class Style {
   }
 
   /**
-   * Returns the SGR parameter list this style emits (e.g. `"1;31;48;2;0;0;255"`),
-   * or `""` when the style has no SGR contribution. Excludes OSC 8 link bytes —
-   * links are not SGR. The Strip renderer uses this string as the group key for
-   * adjacent-same-style coalescing; the per-segment `render` path wraps the
-   * returned codes in `\x1b[...m`.
-   *
-   * [LAW:one-source-of-truth] One computation of SGR codes — both `render` and
-   * the segment coalescer derive from this.
-   */
-  /**
    * The colours this style puts on screen at `colorSystem`: each flattened
    * onto what lies beneath it — the background onto the terminal's black, the
    * foreground onto that background — then downgraded to the depth. The one
@@ -354,6 +344,16 @@ export class Style {
     };
   }
 
+  /**
+   * Returns the SGR parameter list this style emits (e.g. `"1;31;48;2;0;0;255"`),
+   * or `""` when the style has no SGR contribution. Excludes OSC 8 link bytes —
+   * links are not SGR. The Strip renderer uses this string as the group key for
+   * adjacent-same-style coalescing; the per-segment `render` path wraps the
+   * returned codes in `\x1b[...m`.
+   *
+   * [LAW:one-source-of-truth] One computation of SGR codes — both `render` and
+   * the segment coalescer derive from this.
+   */
   toSgrCodes(colorSystem?: ColorDepth): string {
     if (this.isNull) return "";
 

@@ -239,27 +239,24 @@ export class ColorTable {
   /**
    * The nearest entry to `value` (the distance `match` uses) among those
    * `accept` takes, given each entry's colour and terminal index; `undefined`
-   * when it takes none. Uncached: the predicate is the caller's, and a
+   * when it takes none. Entries are offered nearest-first (ties to the lower
+   * index) and the first taken wins, so an expensive predicate runs only as
+   * far out as the answer. Uncached: the predicate is the caller's, and a
    * closure has no key.
    */
   matchWhere(
     value: ColorRgba,
     accept: (entry: ColorRgba, index: number) => boolean,
   ): number | undefined {
-    let best: number | undefined;
-    let bestDist = Infinity;
-    for (let i = 0; i < this.colors.length; i++) {
-      const c = this.colors[i]!;
+    const dist = this.colors.map((c) => {
       const dr = c.red - value.red;
       const dg = c.green - value.green;
       const db = c.blue - value.blue;
-      const dist = dr * dr + dg * dg + db * db;
-      if (dist < bestDist && accept(c, this.firstIndex + i)) {
-        best = this.firstIndex + i;
-        bestDist = dist;
-      }
-    }
-    return best;
+      return dr * dr + dg * dg + db * db;
+    });
+    const nearestFirst = [...dist.keys()].sort((a, b) => dist[a]! - dist[b]!);
+    const found = nearestFirst.find((i) => accept(this.colors[i]!, this.firstIndex + i));
+    return found === undefined ? undefined : this.firstIndex + found;
   }
 }
 
@@ -446,7 +443,9 @@ export class ColorSpec {
       case ColorDepth.TRUECOLOR:
         return this.value;
       case ColorDepth.EIGHT_BIT:
-        return EIGHT_BIT_TABLE.get(this.number!);
+        // The constructor admits an EIGHT_BIT spec at 0–15; those are the
+        // theme's own slots whatever depth names them.
+        return this.number! < 16 ? undefined : EIGHT_BIT_TABLE.get(this.number!);
       case ColorDepth.DEFAULT:
       case ColorDepth.STANDARD:
       case ColorDepth.WINDOWS:
