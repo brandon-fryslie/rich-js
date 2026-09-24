@@ -2,81 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-153",
-      "ref": "refs/pull/153/merge",
-      "sha": "3cd625fa7a67354d1aee2ed3b2525df68bd75d0d",
-      "timestamp": "2026-09-24T13:03:33.721Z",
-      "commits": [
-        {
-          "sha": "3cd625fa7a67354d1aee2ed3b2525df68bd75d0d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:03:02Z",
-          "message": "Merge 037c3e58c7a28efc1de444c392cbfd6f8470a002 into 43c135499762625165f7e86133adf1fb9b592208\n"
-        },
-        {
-          "sha": "037c3e58c7a28efc1de444c392cbfd6f8470a002",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T07:02:56-06:00",
-          "message": "fix(strip): seams measured as drawn (alpha flattened); frozen default pair; docs name the divider case\n\nPushback: a plain-JS caller omitting divider — the required pair in\nPowerlineJoinerOptions is the contract; a runtime ?? would be the defensive\nfallback the pair replaced.\n"
-        },
-        {
-          "sha": "cbe3eb11574dfab8a712a7d3608cd2c19d753d88",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T06:55:00-06:00",
-          "message": "fix(strip): new PowerlineJoiner() draws POWERLINE_JOINER_GLYPHS, not a second copy of it\n"
-        },
-        {
-          "sha": "ae7518456703f2e0d2384081481536922132ed37",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T06:54:09-06:00",
-          "message": "fix(strip): the powerline arrow and its divider are one pair; palette colours compare by slot\n\nA caller replacing only the glyph (\">\" for ASCII) kept the U+E0B1 divider\nbeside it, which renders as tofu without a powerline font. PowerlineJoinerOptions\nnow requires both; the unset case is the exported POWERLINE_JOINER_GLYPHS pair.\n\nindistinct() compared valueless colours by name, so \"red\" and \"color(1)\" —\none palette slot — were two colours. It compares type + number now.\n"
-        },
-        {
-          "sha": "2cb0fc9a4d9e8711142cc21ae93d43ca04223ee3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T06:43:58-06:00",
-          "message": "feat(strip): powerline draws the divider between neighbours whose backgrounds the eye cannot tell apart\n"
-        },
-        {
-          "sha": "801efd5427b647a4a9e2ceaf00bf7b0aa168d6b6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T06:36:35-06:00",
-          "message": "feat(oklch): deltaE — OKLab distance (CSS Color 4 deltaEOK)\n"
-        },
-        {
-          "sha": "2097c5170240b877b459bc5e8904dc02a2131300",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T06:31:07-06:00",
-          "message": "fix(oklch): mixAxes checks its four axes by name, mix reports t, one shared interpolation; docs and independent tests\n"
-        },
-        {
-          "sha": "fd3b339d5535233206aee1df0aea8f8a6921e8d4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T06:28:46-06:00",
-          "message": "feat(oklch): mixAxes moves each axis its own share; mix is its uniform case\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "43c135499762625165f7e86133adf1fb9b592208",
-      "timestamp": "2026-09-23T09:32:34.843Z",
+      "sha": "22607175fa92177b43f79927214588ff450f201a",
+      "timestamp": "2026-09-24T13:05:35.321Z",
       "commits": [
         {
-          "sha": "43c135499762625165f7e86133adf1fb9b592208",
+          "sha": "22607175fa92177b43f79927214588ff450f201a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-23T03:31:27-06:00",
-          "message": "feat(osc8): links carry a URL-derived id so a split link hovers as one (#152)\n\n* feat(osc8): every link carries an id derived from its URL, so a split link hovers as one\n\nA terminal treats cells as one hyperlink when they share the URI and the id.\nWith empty params, each OSC 8 open was its own link, and the coalescer can only\nshare one pair across a run of identical SGR — so a link whose text changes\nstyle mid-span (a bold glyph beside plain text) highlighted in pieces on hover.\n\nThe id is FNV-1a of the sanitized URI: the byte stream stays a pure function of\n(style, text, colorSystem), which is why the id was dropped in the first place.\nTerminals key on the (id, URI) pair, so a hash collision merges nothing.\n\nThe OSC 8 open/close was spelled by hand at both producers (segmentsToString,\nStyle.render); both now call osc8Open / OSC8_CLOSE in core/osc8.ts. OSC8, the\nread-back pattern, is exported for consumers that parse rendered bytes.\n\n* chore(release): 0.11.0\n\n* fix(osc8): one terminator set, UTF-8 id hash, typed read-back\n\nReview fixes for the OSC 8 link-id change.\n\n- osc8.ts absorbs sanitize.ts: the sanitizer, the producer and the\n  reader now read one TERMINATORS constant. The reader previously\n  stopped only at ESC \\ and BEL while the sanitizer also treated the\n  8-bit ST (0x9C) as a terminator; a 0x9C-terminated link was counted\n  as visible width by any measure built on OSC8.source.\n- linkId hashes the URL's UTF-8 bytes, so the id is standard FNV-1a\n  that another runtime can reproduce (it hashed UTF-16 code units).\n- osc8Sequences(text) is the typed read-back ({index, length, params,\n  uri}); OSC8 stays exported for composing into a larger pattern.\n  Tests and the coverage demo read through it instead of re-spelling\n  the grammar or remapping positional groups.\n- Docs state that same-URL spans hover as one link even when not\n  adjacent (deliberate: same URL, same click), pinned by a test.\n- CLAUDE.md tier map: osc8 replaces sanitize at tier 0.\n\n* fix(osc8): review — text.ts names the wire enforcer; pin a ';' in the URI\n\n* docs(style): params is the raw field, id= included"
+          "timestamp": "2026-09-24T07:05:09-06:00",
+          "message": "feat: OKLCH per-axis mix and ΔE; powerline seams stay visible between near-equal backgrounds (#153)\n\n* feat(oklch): mixAxes moves each axis its own share; mix is its uniform case\n\n* fix(oklch): mixAxes checks its four axes by name, mix reports t, one shared interpolation; docs and independent tests\n\n* feat(oklch): deltaE — OKLab distance (CSS Color 4 deltaEOK)\n\n* feat(strip): powerline draws the divider between neighbours whose backgrounds the eye cannot tell apart\n\n* fix(strip): the powerline arrow and its divider are one pair; palette colours compare by slot\n\nA caller replacing only the glyph (\">\" for ASCII) kept the U+E0B1 divider\nbeside it, which renders as tofu without a powerline font. PowerlineJoinerOptions\nnow requires both; the unset case is the exported POWERLINE_JOINER_GLYPHS pair.\n\nindistinct() compared valueless colours by name, so \"red\" and \"color(1)\" —\none palette slot — were two colours. It compares type + number now.\n\n* fix(strip): new PowerlineJoiner() draws POWERLINE_JOINER_GLYPHS, not a second copy of it\n\n* fix(strip): seams measured as drawn (alpha flattened); frozen default pair; docs name the divider case\n\nPushback: a plain-JS caller omitting divider — the required pair in\nPowerlineJoinerOptions is the contract; a runtime ?? would be the defensive\nfallback the pair replaced."
         }
       ]
     }
