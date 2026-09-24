@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-155",
+      "ref": "refs/pull/155/merge",
+      "sha": "532f360a25e6dae2101748e4869e35a3272fe41b",
+      "timestamp": "2026-09-24T19:02:05.410Z",
+      "commits": [
+        {
+          "sha": "532f360a25e6dae2101748e4869e35a3272fe41b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:00:58-06:00",
+          "message": "Merge 79a6e4a299e1c2458b8353c25edb82b868c91458 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "79a6e4a299e1c2458b8353c25edb82b868c91458",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:00:53-06:00",
+          "message": "feat(color): text keeps its contrast at 256 colours; downgrades never pick terminal-defined ANSI 0-15\n\nA downgrade to 256 colours matched against all 256 entries, so it could land\non ANSI 0-15, whose RGB every terminal theme redefines, and Style.toSgrCodes\nrounded text and background independently, so two roundings could meet in\nthe middle: a 4.57:1 pair drew at 3.25:1.\n\n- EIGHT_BIT_DOWNGRADE_TABLE holds the cube and grey ramp (16-255); ColorTable\n  takes a firstIndex so its matches are terminal indices.\n- ColorTable.matchReadable: the nearest entry that clears a ratio against a\n  background, else the most contrast.\n- ColorSpec.downgradeOn(target, bg): at 256 colours text keeps the contrast\n  the truecolor pair had (or the most the palette offers on the drawn bg);\n  elsewhere the drawn RGB is the terminal's and text downgrades alone.\n- relativeLuminance/contrastRatio move to core/color.ts, below both the\n  theme math and the SGR writer; themes/colorMath re-exports them.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0c8cae200bd50f39ac8f43ae1d2900744efebd74",
