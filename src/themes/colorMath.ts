@@ -143,9 +143,10 @@ const CONTRAST_ITERS = 20;
  * fall back to `contrastFor`'s black/white — the true maximum-contrast pick.
  *
  * A translucent `bg` is measured as it is drawn — composited over
- * `substrate`, the SGR writer's black by default — and a translucent `fg` is then flattened over
- * that (the displayed color is `fg` composited over `bg`), so the ratio is
- * measured on what the eye actually sees and the returned color is opaque.
+ * `substrate`, the SGR writer's black by default — and a translucent `fg` is
+ * then flattened over that drawn background, the order the writer composites
+ * in, so the ratio is measured on what the eye actually sees and the returned
+ * color is opaque.
  *
  * `drawnAt` is the depth the terminal will draw the pair at. At 256 colours
  * the terminal rounds text and background independently, and two roundings
@@ -184,14 +185,21 @@ export function ensureContrast(
  * surface is a fact about where the pair is drawn, so it arrives as a value:
  * the SGR writer (`Style.toSgrCodes`) composites over `SURFACE_BLACK`, the
  * default here; a caller choosing text for a different surface — an export's
- * canvas, `exportCanvas(theme).background` — names that one. The surface is
- * opaque: nothing lies under it.
+ * canvas, `exportCanvas(theme).background` — names that one.
+ * [LAW:no-silent-failure] A surface has nothing under it, so a translucent one
+ * has no drawn colour to offer; `compositeOver` would read its raw RGB as if
+ * it were opaque, so it is refused here rather than measured wrong.
  * [LAW:one-source-of-truth] Text is chosen against the colour the surface will
  * show — measuring the raw RGBA reads a colour that is drawn nowhere, and text
  * that "clears" it can land below the floor. Opaque colours composite to
  * themselves.
  */
 function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
+  if (substrate.alpha !== 1) {
+    throw new RangeError(
+      `a contrast substrate is the opaque surface under a translucent background; got ${substrate.hex}`,
+    );
+  }
   return bg.compositeOver(substrate);
 }
 

@@ -237,6 +237,12 @@ describe("a translucent background is measured as the terminal draws it", () => 
     }
   });
 
+  it("a translucent surface is refused, not measured as if opaque", () => {
+    const fg = new ColorRgba(255, 255, 255);
+    expect(() => ensureContrast(fg, bg, 4.5, ColorDepth.TRUECOLOR, parseRgbaHex("ffffff80"))).toThrow(RangeError);
+    expect(() => contrastFor(bg, parseRgbaHex("ffffff80"))).toThrow(RangeError);
+  });
+
   it("an export's canvas is the surface its caller names", () => {
     // The same half-alpha #c0c0c0 on a white export canvas draws as #dfdfdf,
     // which is light and wants black — and text chosen for it clears there.
