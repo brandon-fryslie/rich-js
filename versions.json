@@ -4,15 +4,22 @@
     {
       "version": "pr-155",
       "ref": "refs/pull/155/merge",
-      "sha": "48568c83f5b550f3249e2e957908eacbf6a38d37",
-      "timestamp": "2026-09-24T19:33:26.575Z",
+      "sha": "107cb70a7b66f9a2094e35ec43463168587b4b9e",
+      "timestamp": "2026-09-24T19:42:10.153Z",
       "commits": [
         {
-          "sha": "48568c83f5b550f3249e2e957908eacbf6a38d37",
+          "sha": "107cb70a7b66f9a2094e35ec43463168587b4b9e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T19:33:00Z",
-          "message": "Merge f3fab311919df85ed94845b5f500684ee1cde7b3 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+          "timestamp": "2026-09-24T19:41:33Z",
+          "message": "Merge d7bf4a60740dd7bea5dfbe0d5294d189d0a92bb7 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "d7bf4a60740dd7bea5dfbe0d5294d189d0a92bb7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:41:28-06:00",
+          "message": "fix(color): one WCAG ratio formula; matchReadable pinned directly; contrast docs name drawnAt\n"
         },
         {
           "sha": "f3fab311919df85ed94845b5f500684ee1cde7b3",
