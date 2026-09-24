@@ -116,9 +116,10 @@ export function contrastFor(bg: ColorRgba): ColorRgba {
     : new ColorRgba(255, 255, 255);
 }
 
-// [LAW:one-way-deps] The WCAG measures live in core/color.ts, below both the
-// theme math here and the SGR writer (core/style.ts), which measures the pair
-// it downgrades. Re-exported so this module stays the colour-math surface.
+// [LAW:one-way-deps] The WCAG measures live in core/color.ts, beside the
+// ColorTable whose `matchReadable` needs them to pick a drawn text colour, and
+// below the theme math here. Re-exported so this module stays the colour-math
+// surface.
 export { relativeLuminance, contrastRatio };
 
 // Iterations for the lightness bisection below. 20 resolves L to ~1e-6 — far

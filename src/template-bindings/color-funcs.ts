@@ -255,6 +255,10 @@ function oklchAxisFuncs(): FuncMap {
  *
  * Pair with `paletteFuncs()` to name colors from a theme, and with
  * `richTextStyleFuncs()`'s `fg`/`bg` to paint them onto text.
+ *
+ * @param drawnAt the depth the terminal will draw at, read on every
+ *   `readableOn` evaluation so a host that learns its depth per render passes
+ *   one getter; defaults to truecolor.
  */
 export function colorFuncs(
   drawnAt: () => ColorDepth = () => ColorDepth.TRUECOLOR,

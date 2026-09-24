@@ -47,9 +47,10 @@ export { colorFuncs, readableOnFunc } from "./color-funcs.js";
 
 /**
  * Funcs registered by the rich-js binding — the colour sinks, the palette-free
- * colour math, text attributes, and the `link` cell-splitter. Everything here
- * is configuration-free by construction; the two that need a theme (`color`,
- * `ramp`) ship separately via `paletteFuncs(getPalette)`, merged consumer-side.
+ * colour math, text attributes, and the `link` cell-splitter. Nothing here
+ * needs a theme; the two that do (`color`, `ramp`) ship separately via
+ * `paletteFuncs(getPalette)`, merged consumer-side. `drawnAt` is forwarded to
+ * `colorFuncs` — the depth `readableOn` measures at, truecolor when omitted.
  *
  * `FuncMap` is not parameterised over `T` in `@promptctl/go-template-js` — the engine's
  * `T` lives on the `Engine`/`EngineConfig`, and per-function input/output
@@ -62,9 +63,9 @@ export { colorFuncs, readableOnFunc } from "./color-funcs.js";
  * into a wider engine must keep `T = RichText`; merging into an engine
  * whose `T` is something else will compile but fail at evaluation time.
  */
-export function richTextFuncs(
-  drawnAt: () => ColorDepth = () => ColorDepth.TRUECOLOR,
-): FuncMap {
+// [LAW:one-source-of-truth] The truecolor default lives on `colorFuncs` alone;
+// an omitted `drawnAt` is forwarded as omitted.
+export function richTextFuncs(drawnAt?: () => ColorDepth): FuncMap {
   return { ...richTextStyleFuncs(), ...colorFuncs(drawnAt) };
 }
 

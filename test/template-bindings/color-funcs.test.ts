@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { RichText } from "../../src/core/text.js";
-import { blendRgb } from "../../src/core/color.js";
+import { blendRgb, ColorDepth, ColorSpec } from "../../src/core/color.js";
 import { Oklch, IDENTITY } from "../../src/core/oklch.js";
 import { richTextFuncs, paletteFuncs } from "../../src/template-bindings/index.js";
 import {
@@ -149,6 +149,30 @@ describe("color math matches the underlying functions", () => {
     expect(contrastRatio(parseHexColor(loud), parseHexColor("#31344a"))).toBeGreaterThanOrEqual(6.99);
     expect(() => colorText(`{{ readableOn "#3a3f58" "#31344a" 0.5 }}`)).toThrow(/1\.\.21/);
     expect(() => colorText(`{{ readableOn "#3a3f58" "#31344a" 30 }}`)).toThrow(/1\.\.21/);
+  });
+
+  it("readableOn measures at the depth the caller's getter names, read per evaluation", () => {
+    // Magenta on plum: the truecolor answer is legible until the terminal
+    // rounds text and background to 256 colours independently.
+    let depth = ColorDepth.TRUECOLOR;
+    const drawnEngine = createEngine<RichText>({
+      fromString: (s) => new RichText(s),
+      toString: (rt) => rt.plain,
+      funcs: richTextFuncs(() => depth),
+    });
+    const [fg, bg] = ["#e72abb", "#2e082f"];
+    const tpl = drawnEngine.parse(`{{ readableOn "${fg}" "${bg}" 4.5 }}`);
+    const run = (): string => tpl.evaluate({}).map((f) => f.plain).join("");
+    const expected = (d: ColorDepth): string =>
+      ensureContrast(parseHexColor(fg), parseHexColor(bg), 4.5, d).hex;
+
+    expect(run()).toBe(expected(ColorDepth.TRUECOLOR));
+    depth = ColorDepth.EIGHT_BIT;
+    expect(run()).toBe(expected(ColorDepth.EIGHT_BIT));
+    expect(expected(ColorDepth.EIGHT_BIT)).not.toBe(expected(ColorDepth.TRUECOLOR));
+    const drawn = (hex: string) =>
+      ColorSpec.parse(hex).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
+    expect(contrastRatio(drawn(run()), drawn(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
   it("registers one function per OKLCH ThemeKey axis, each matching applyKey", () => {
