@@ -327,11 +327,17 @@ export class Style {
    * [LAW:one-source-of-truth] One computation of SGR codes — both `render` and
    * the segment coalescer derive from this.
    */
-  toSgrCodes(colorSystem?: ColorDepth): string {
-    if (this.isNull) return "";
-
-    const attrs: string[] = [];
-
+  /**
+   * The colours this style puts on screen at `colorSystem`: each flattened
+   * onto what lies beneath it — the background onto the terminal's black, the
+   * foreground onto that background — then downgraded to the depth. The one
+   * account of what a style draws: `toSgrCodes` encodes exactly these, and a
+   * renderable choosing between two ways of drawing measures them.
+   */
+  drawnColors(colorSystem?: ColorDepth): {
+    readonly color: ColorSpec | undefined;
+    readonly bgcolor: ColorSpec | undefined;
+  } {
     // [LAW:dataflow-not-control-flow] Always resolve a substrate and flatten
     // alpha before downgrade. Opaque colors short-circuit inside compositeOver,
     // so the same code path runs every render — the alpha value is the data,
@@ -340,17 +346,21 @@ export class Style {
     const bgFlat = this.bgcolor?.flattenAlpha(surface);
     const fgSubstrate = bgFlat?.getTruecolor(undefined, false) ?? surface;
     const fgFlat = this.color?.flattenAlpha(fgSubstrate);
+    const at = (c: ColorSpec): ColorSpec =>
+      colorSystem !== undefined ? c.downgrade(colorSystem) : c;
+    return {
+      color: fgFlat === undefined ? undefined : at(fgFlat),
+      bgcolor: bgFlat === undefined ? undefined : at(bgFlat),
+    };
+  }
 
-    if (fgFlat) {
-      const c =
-        colorSystem !== undefined ? fgFlat.downgrade(colorSystem) : fgFlat;
-      attrs.push(...c.getAnsiCodes(true));
-    }
-    if (bgFlat) {
-      const c =
-        colorSystem !== undefined ? bgFlat.downgrade(colorSystem) : bgFlat;
-      attrs.push(...c.getAnsiCodes(false));
-    }
+  toSgrCodes(colorSystem?: ColorDepth): string {
+    if (this.isNull) return "";
+
+    const attrs: string[] = [];
+    const drawn = this.drawnColors(colorSystem);
+    if (drawn.color) attrs.push(...drawn.color.getAnsiCodes(true));
+    if (drawn.bgcolor) attrs.push(...drawn.bgcolor.getAnsiCodes(false));
 
     // An attribute set false writes nothing, as in Python Rich 9d8f9a3's
     // `_make_ansi_codes`. It overrides an inherited attribute when styles

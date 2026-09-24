@@ -193,9 +193,16 @@ describe("PowerlineJoiner same-bg structural join", () => {
           [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
           new PowerlineJoiner({ glyph: ">", divider: "|" }),
         ),
-      )[1]!.text;
-    expect(mid("#FFFFFF0A", "#FFFFFF60")).toBe(">");
-    expect(mid("#FFFFFF60", "#FFFFFF61")).toBe("|");
+      )[1]!;
+    expect(mid("#FFFFFF0A", "#FFFFFF60").text).toBe(">");
+    expect(mid("#FFFFFF60", "#FFFFFF61").text).toBe("|");
+    // The arrow continues its cell: drawn in the left ground as the writer
+    // draws it, opaque, never composited again over the ground it enters.
+    const arrow = mid("#FFFFFF60", "#FFFFFF0A");
+    expect(arrow.style?.color?.value?.hex).toBe(
+      new Style({ bgcolor: "#FFFFFF60" }).drawnColors().bgcolor?.value?.hex,
+    );
+    expect(arrow.style?.color?.value?.alpha).toBe(1);
   });
 
   it("draws the divider on the left item's own ground, so it reads as that item's text", () => {

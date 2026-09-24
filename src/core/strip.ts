@@ -28,7 +28,7 @@
 
 import { Segment } from "./segment.js";
 import { Style } from "./style.js";
-import { ColorDepth, ColorSpec, SURFACE_BLACK, blendRgb } from "./color.js";
+import { ColorDepth, ColorSpec, blendRgb } from "./color.js";
 import { Oklch } from "./oklch.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
@@ -158,28 +158,24 @@ function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
  */
 export const SEAM_MIN_DELTA_E = 0.04;
 
-// Two backgrounds the eye cannot tell apart. What is measured is what is
-// drawn: each colour flattened onto the substrate Style.toSgrCodes flattens it
-// onto, so two alphas over one RGB are the two greys they render as, then
-// downgraded to the depth the render encodes at, so two colours 256 colours
-// round to one cube entry are the one entry they render as. A colour whose RGB
-// is the terminal theme's own (ANSI 0–15) has no value here, so two of them
-// are the same only when they are the same palette slot — `type` + `number`,
-// never the name, which spells one slot many ways ("red", "color(1)").
-function indistinct(
-  a: ColorSpec,
-  b: ColorSpec | undefined,
-  colorSystem: ColorDepth | null | undefined,
-): boolean {
-  if (b === undefined) return false;
+// An arrow the eye cannot tell from the ground it is drawn on. What is
+// measured is what is drawn — `Style.drawnColors`, the colours the writer
+// encodes: the arrow's colour flattened onto its ground and the ground onto
+// the terminal's black, both downgraded to the depth the render encodes at,
+// so two grounds 256 colours round to one cube entry are the one entry they
+// render as. A colour whose RGB is the terminal theme's own (ANSI 0–15) has no
+// value here, so two of them are the same only when they are the same palette
+// slot — `type` + `number`, never the name, which spells one slot many ways
+// ("red", "color(1)").
+function vanishes(arrow: Style, colorSystem: ColorDepth | null | undefined): boolean {
   // No colour emitted draws nothing to tell apart; measure what was handed.
-  const depth = colorSystem ?? ColorDepth.TRUECOLOR;
-  const [da, db] = [a, b].map((c) => c.flattenAlpha(SURFACE_BLACK).downgrade(depth)) as [ColorSpec, ColorSpec];
-  const av = da.fixedValue;
-  const bv = db.fixedValue;
+  const { color, bgcolor } = arrow.drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
+  if (color === undefined || bgcolor === undefined) return false;
+  const av = color.fixedValue;
+  const bv = bgcolor.fixedValue;
   return av !== undefined && bv !== undefined
     ? Oklch.fromRgba(av).deltaE(Oklch.fromRgba(bv)) < SEAM_MIN_DELTA_E
-    : da.type === db.type && da.number === db.number;
+    : color.type === bgcolor.type && color.number === bgcolor.number;
 }
 
 // [LAW:types-are-the-program] The glyph and its divider are one vocabulary: a
@@ -240,12 +236,16 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
       const leftBg = paintableBg(leftEdge?.bgcolor);
       if (leftBg === undefined) return;
       const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
-      // The divider is the left item's text on the left item's own ground —
-      // the two grounds are one colour as drawn — so it reads exactly as
-      // well as that item's text does, at any depth.
-      yield indistinct(leftBg, rightBg, options.colorSystem)
+      // The arrow is the left cell continuing: its ground as the writer draws
+      // it, so a translucent ground is not composited a second time over the
+      // right one.
+      const leftDrawn = new Style({ bgcolor: leftBg }).drawnColors().bgcolor;
+      const arrow = new Style({ color: leftDrawn, bgcolor: rightBg });
+      // The divider is the left item's text on the left item's own ground,
+      // so it reads exactly as well as that item's text does, at any depth.
+      yield vanishes(arrow, options.colorSystem)
         ? new Segment(divider, new Style({ color: leftEdge?.color, bgcolor: leftBg }))
-        : new Segment(glyph, new Style({ color: leftBg, bgcolor: rightBg }));
+        : new Segment(glyph, arrow);
     });
   }
 }
