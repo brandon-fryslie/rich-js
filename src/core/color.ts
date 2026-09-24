@@ -235,6 +235,32 @@ export class ColorTable {
     }
     return remember(this.readableCache, key, this.firstIndex + best);
   }
+
+  /**
+   * The nearest entry to `value` (the distance `match` uses) among those
+   * `accept` takes, given each entry's colour and terminal index; `undefined`
+   * when it takes none. Uncached: the predicate is the caller's, and a
+   * closure has no key.
+   */
+  matchWhere(
+    value: ColorRgba,
+    accept: (entry: ColorRgba, index: number) => boolean,
+  ): number | undefined {
+    let best: number | undefined;
+    let bestDist = Infinity;
+    for (let i = 0; i < this.colors.length; i++) {
+      const c = this.colors[i]!;
+      const dr = c.red - value.red;
+      const dg = c.green - value.green;
+      const db = c.blue - value.blue;
+      const dist = dr * dr + dg * dg + db * db;
+      if (dist < bestDist && accept(c, this.firstIndex + i)) {
+        best = this.firstIndex + i;
+        bestDist = dist;
+      }
+    }
+    return best;
+  }
 }
 
 // --- Enums ---
@@ -407,6 +433,25 @@ export class ColorSpec {
 
   get isDefault(): boolean {
     return this.type === ColorDepth.DEFAULT;
+  }
+
+  /**
+   * The colour every terminal draws this spec as, where that is fixed: a
+   * truecolor value, or a 256-colour cube or grey-ramp entry (xterm fixes
+   * indices 16–255, and `fromAnsi` types only those as EIGHT_BIT). ANSI 0–15
+   * and the default colour are the terminal theme's own, so they have none.
+   */
+  get fixedValue(): ColorRgba | undefined {
+    switch (this.type) {
+      case ColorDepth.TRUECOLOR:
+        return this.value;
+      case ColorDepth.EIGHT_BIT:
+        return EIGHT_BIT_TABLE.get(this.number!);
+      case ColorDepth.DEFAULT:
+      case ColorDepth.STANDARD:
+      case ColorDepth.WINDOWS:
+        return undefined;
+    }
   }
 
   get isSystemDefined(): boolean {

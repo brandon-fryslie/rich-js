@@ -172,6 +172,9 @@ export function renderToString(
     isTerminal: false,
     encoding: "utf-8",
     asciiOnly: false,
+    // [LAW:one-source-of-truth] The depth the segments below are encoded at,
+    // so a renderable measures what this very call will draw.
+    colorSystem,
   };
 
   return segmentsToString(renderable.render(renderOptions), colorSystem);

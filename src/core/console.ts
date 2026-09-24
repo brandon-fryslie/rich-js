@@ -395,6 +395,7 @@ export class Console {
       asciiOnly: false,
       theme: this._theme,
       onStyleError: this._onStyleError,
+      colorSystem: this._colorSystem,
     };
   }
 

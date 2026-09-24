@@ -61,7 +61,7 @@ const strong = ensureContrast(link, panel, 7);
 
 ### Measured where it is drawn — `drawnAt`
 
-`ensureContrast(fg, bg, minRatio, drawnAt = ColorDepth.TRUECOLOR)` takes a fourth argument: the depth the terminal will draw at. At truecolor the colours are drawn as computed. At 256 colours the terminal rounds text and background to its palette **independently**, and two roundings can meet in the middle — a pair that read at 4.5:1 can draw at 2:1. So at `ColorDepth.EIGHT_BIT` the answer is measured on the drawn pair: a colour that still clears the floor once rounded is returned unchanged, and one that does not is replaced by the nearest 256-colour entry (indices 16–255, never the terminal-defined ANSI 0–15) that clears it — or, when no entry can clear it on that background, by the entry with the most contrast, the same honest fallback as truecolor's black/white. At `STANDARD` the terminal chooses its own colours, so no ratio exists and the truecolor answer stands.
+`ensureContrast(fg, bg, minRatio, drawnAt = ColorDepth.TRUECOLOR)` takes a fourth argument: the depth the terminal will draw at. At truecolor the colours are drawn as computed. At 256 colours the terminal rounds text and background to its palette **independently**, and two roundings can meet in the middle — a pair that read at 4.5:1 can draw at 2:1. So at `ColorDepth.EIGHT_BIT` the answer is measured on the drawn pair: a colour that still clears the floor once rounded is returned unchanged, and one that does not is replaced by the nearest 256-colour entry (indices 16–255, never the terminal-defined ANSI 0–15) that clears it — or, when no entry can clear it on that background, by the entry with the most contrast, the same honest fallback as truecolor's black/white. At `STANDARD` the terminal draws its own theme's colours, so no ratio exists. Text on its background's index is still that background's colour in every theme, though, so a truecolor answer that lands on the background's index is replaced by the nearest entry on another index. Otherwise the truecolor answer stands.
 
 ```typescript
 const drawn = ensureContrast(link, panel, 4.5, ColorDepth.EIGHT_BIT);
@@ -70,6 +70,18 @@ const drawn = ensureContrast(link, panel, 4.5, ColorDepth.EIGHT_BIT);
 A translucent background is measured as drawn, composited over the surface beneath it: a fifth argument, `substrate`, defaulting to black, which is what the terminal writer composites over. A caller choosing text for another surface (an export flattens over its canvas, `exportCanvas(theme).background`) passes that surface; it must be opaque. `contrastFor(bg, substrate)` takes the same surface.
 
 In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given — see [Template Bindings](/template-bindings).
+
+### A floor that is not text — `ensureDrawn`
+
+Some floors are not text on a background. Examples are a selected cell that must stand off every unselected one, or two nested panels that must not merge. `ensureDrawn(chosen, drawnAt, accept)` is the same repair with the floor stated by you. `accept(candidate, drawn)` is shown the candidate as drawn, plus `drawn`, the same rounding for any colour it compares against. When the chosen colour's rounding is accepted, it comes back unchanged. When it is refused, the nearest 256-colour entry that is accepted comes back instead (it draws as itself). The result is `undefined` when no entry is accepted. Truecolor and `STANDARD` have no rounding to repair, so `chosen` comes back as it was.
+
+```typescript
+import { ColorDepth, ensureDrawn, Oklch } from "@promptctl/rich-js";
+
+const panelOk = ensureDrawn(panel, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
+  Oklch.fromRgba(candidate).deltaE(Oklch.fromRgba(drawn(outer))) >= 0.05,
+);
+```
 
 ## How transposition uses it
 

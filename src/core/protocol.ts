@@ -6,6 +6,7 @@
 import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
+import type { ColorDepth } from "./color.js";
 
 export interface RenderOptions {
   /**
@@ -28,6 +29,14 @@ export interface RenderOptions {
   noWrap?: boolean;
   highlight?: unknown;
   markup?: unknown;
+  /**
+   * The depth the output will be encoded at, `null` when it carries no colour.
+   * A renderable choosing between two ways of drawing something — the strip's
+   * arrow or its divider — decides on the colours the terminal will draw at
+   * this depth, which at 256 colours or fewer are not the colours it was
+   * handed. Absent means truecolor.
+   */
+  colorSystem?: ColorDepth | null;
   /**
    * The names a style string may use. A `Console` passes its own; absent, the
    * built-in defaults apply. Read it through `getStyle` rather than directly.

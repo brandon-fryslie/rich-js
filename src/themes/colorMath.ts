@@ -3,6 +3,7 @@ import {
   ColorRgba,
   ColorTable,
   EIGHT_BIT_DOWNGRADE_TABLE,
+  STANDARD_TABLE,
   blendRgb,
   contrastRatio,
   relativeLuminance,
@@ -152,8 +153,11 @@ const CONTRAST_ITERS = 20;
  * the terminal rounds text and background independently, and two roundings
  * can meet in the middle, so the ratio is measured on the drawn pair: a
  * colour that loses the floor there is replaced by the nearest cube/grey entry
- * that clears it (whose own rounding is itself). Every other depth draws a
- * colour the chosen one IS (truecolor) or one only the terminal knows (ANSI).
+ * that clears it (whose own rounding is itself). At ANSI the terminal draws
+ * its own theme's colours, so no ratio exists — but text and background on
+ * one index are one colour in every theme, so the floor there is a different
+ * index: text that lands on its background's is replaced by the nearest entry
+ * that does not. Truecolor draws the colour chosen.
  *
  * [LAW:single-enforcer] The one place "is this text readable, and if not fix
  * it" is decided. Callers route every fg/bg pair through here and the
@@ -171,13 +175,56 @@ export function ensureContrast(
   const ground = drawnBackground(bg, substrate);
   const chosen = ensureTruecolorContrast(fg, ground, minRatio);
   // [LAW:dataflow-not-control-flow] The depth names the table the terminal
-  // draws from; only one whose entries have a known RGB can be measured.
+  // draws from: one whose entries have a known RGB is measured by ratio, one
+  // whose entries are the terminal theme's own only by index.
+  const indexed = INDEXED_DOWNGRADE[drawnAt];
+  if (indexed !== undefined) {
+    const groundIndex = indexed.match(ground);
+    // [LAW:no-defensive-null-guards] Sixteen entries, one refused: the match
+    // always exists, and the `!` states that.
+    return indexed.match(chosen) !== groundIndex
+      ? chosen
+      : indexed.get(
+          indexed.matchWhere(chosen, (_, index) => index !== groundIndex)!,
+        );
+  }
   const table = MEASURABLE_DOWNGRADE[drawnAt];
   if (table === undefined) return chosen;
   const drawnBg = table.get(table.match(ground));
   const drawn = table.get(table.match(chosen));
   if (contrastRatio(drawn, drawnBg) >= minRatio) return chosen;
   return table.get(table.matchReadable(chosen, drawnBg, minRatio));
+}
+
+/**
+ * `chosen`, or — when the depth the terminal draws at rounds it to a colour
+ * `accept` refuses — the nearest colour that depth draws as itself which
+ * `accept` takes. `accept` sees the candidate as drawn, and `drawn`, the same
+ * rounding for any other colour it measures against, so the caller states a
+ * floor once and it holds on the colours the terminal shows. Truecolor draws
+ * what was chosen and ANSI draws the terminal theme's own colours, so only a
+ * table with known RGB — 256 colours — has a rounding to repair; `undefined`
+ * there means no cube or grey entry is accepted.
+ *
+ * `ensureContrast` is this with a contrast ratio as the floor; this is for a
+ * floor that is not text on its background (an open state standing off every
+ * closed cell, two planes standing off each other).
+ */
+export function ensureDrawn(
+  chosen: ColorRgba,
+  drawnAt: ColorDepth,
+  accept: (candidate: ColorRgba, drawn: (c: ColorRgba) => ColorRgba) => boolean,
+  substrate: ColorRgba = SURFACE_BLACK,
+): ColorRgba | undefined {
+  const table = MEASURABLE_DOWNGRADE[drawnAt];
+  if (table === undefined) return chosen;
+  const drawn = (c: ColorRgba): ColorRgba =>
+    table.get(table.match(drawnBackground(c, substrate)));
+  if (accept(drawn(chosen), drawn)) return chosen;
+  const index = table.matchWhere(drawnBackground(chosen, substrate), (entry) =>
+    accept(entry, drawn),
+  );
+  return index === undefined ? undefined : table.get(index);
 }
 
 /**
@@ -212,6 +259,15 @@ function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
  */
 const MEASURABLE_DOWNGRADE: Partial<Record<ColorDepth, ColorTable>> = {
   [ColorDepth.EIGHT_BIT]: EIGHT_BIT_DOWNGRADE_TABLE,
+};
+
+/**
+ * The downgrade tables whose entries the terminal draws in its own theme's
+ * colours, by the depth that draws from them: ANSI 0–15. No ratio can be
+ * measured there; only whether two colours landed on one index.
+ */
+const INDEXED_DOWNGRADE: Partial<Record<ColorDepth, ColorTable>> = {
+  [ColorDepth.STANDARD]: STANDARD_TABLE,
 };
 
 function ensureTruecolorContrast(

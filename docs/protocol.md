@@ -56,7 +56,7 @@ console.print(new UserReport([
 ```
 
 The `render` method:
-- Receives `RenderOptions` with `maxWidth` and other context
+- Receives `RenderOptions` with `maxWidth` and other context, including `colorSystem`, the depth the output will be encoded at, for a renderable that decides on the colours the terminal will draw
 - Returns an iterable of renderables — a generator is recommended
 - Can yield strings, tables, panels, other renderables, or `Segment` objects
 

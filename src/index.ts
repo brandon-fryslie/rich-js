@@ -99,6 +99,7 @@ export {
   contrastRatio,
   contrastFor,
   ensureContrast,
+  ensureDrawn,
 } from "./themes/colorMath.js";
 // A number → a color through ordered stops, interpolated in OKLCH — the one
 // color operation whose input is a measurement rather than a color, so a

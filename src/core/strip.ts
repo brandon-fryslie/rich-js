@@ -28,7 +28,7 @@
 
 import { Segment } from "./segment.js";
 import { Style } from "./style.js";
-import { ColorSpec, SURFACE_BLACK, blendRgb } from "./color.js";
+import { ColorDepth, ColorSpec, SURFACE_BLACK, blendRgb } from "./color.js";
 import { Oklch } from "./oklch.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
@@ -160,17 +160,26 @@ export const SEAM_MIN_DELTA_E = 0.04;
 
 // Two backgrounds the eye cannot tell apart. What is measured is what is
 // drawn: each colour flattened onto the substrate Style.toSgrCodes flattens it
-// onto, so two alphas over one RGB are the two greys they render as. A palette
-// colour has no value here, so two of them are the same only when they are the
-// same palette slot — `type` + `number`, never the name, which spells one slot
-// many ways ("red", "color(1)").
-function indistinct(a: ColorSpec, b: ColorSpec | undefined): boolean {
+// onto, so two alphas over one RGB are the two greys they render as, then
+// downgraded to the depth the render encodes at, so two colours 256 colours
+// round to one cube entry are the one entry they render as. A colour whose RGB
+// is the terminal theme's own (ANSI 0–15) has no value here, so two of them
+// are the same only when they are the same palette slot — `type` + `number`,
+// never the name, which spells one slot many ways ("red", "color(1)").
+function indistinct(
+  a: ColorSpec,
+  b: ColorSpec | undefined,
+  colorSystem: ColorDepth | null | undefined,
+): boolean {
   if (b === undefined) return false;
-  const av = a.flattenAlpha(SURFACE_BLACK).value;
-  const bv = b.flattenAlpha(SURFACE_BLACK).value;
+  // No colour emitted draws nothing to tell apart; measure what was handed.
+  const depth = colorSystem ?? ColorDepth.TRUECOLOR;
+  const [da, db] = [a, b].map((c) => c.flattenAlpha(SURFACE_BLACK).downgrade(depth)) as [ColorSpec, ColorSpec];
+  const av = da.fixedValue;
+  const bv = db.fixedValue;
   return av !== undefined && bv !== undefined
     ? Oklch.fromRgba(av).deltaE(Oklch.fromRgba(bv)) < SEAM_MIN_DELTA_E
-    : a.type === b.type && a.number === b.number;
+    : da.type === db.type && da.number === db.number;
 }
 
 // [LAW:types-are-the-program] The glyph and its divider are one vocabulary: a
@@ -216,8 +225,10 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     // structural boundary, never suppressed. The arrow would be drawn in its own
     // background colour there and vanish, so the seam is the DIVIDER instead, in
     // the left item's text colour — the vim-airline convention for neighbours
-    // that share a background. "Equal" is perceptual (SEAM_MIN_DELTA_E): an
-    // arrow a hair off its background is as invisible as one exactly on it.
+    // that share a background. "Equal" is perceptual (SEAM_MIN_DELTA_E) and
+    // measured on the colours the terminal draws at `options.colorSystem`: an
+    // arrow a hair off its background is as invisible as one exactly on it,
+    // and two backgrounds 256 colours round to one entry are one background.
     // Background colour is paint, not structure; its ABSENCE (nothing to paint)
     // is the only thing that elides the separator, and that is paint logic.
     // "Absent" = no bg OR the terminal default (transparent) — paintableBg folds
@@ -229,8 +240,11 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
       const leftBg = paintableBg(leftEdge?.bgcolor);
       if (leftBg === undefined) return;
       const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
-      yield indistinct(leftBg, rightBg)
-        ? new Segment(divider, new Style({ color: leftEdge?.color, bgcolor: rightBg }))
+      // The divider is the left item's text on the left item's own ground —
+      // the two grounds are one colour as drawn — so it reads exactly as
+      // well as that item's text does, at any depth.
+      yield indistinct(leftBg, rightBg, options.colorSystem)
+        ? new Segment(divider, new Style({ color: leftEdge?.color, bgcolor: leftBg }))
         : new Segment(glyph, new Style({ color: leftBg, bgcolor: rightBg }));
     });
   }
