@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as t}from"./chunks/framework.CTIZUO-z.js";const g=JSON.parse('{"title":"Render Groups","description":"","frontmatter":{},"headers":[],"relativePath":"group.md","filePath":"group.md"}'),e={name:"group.md"};function p(h,s,l,k,r,d){return a(),n("div",null,[...s[0]||(s[0]=[t("",16)])])}const c=i(e,[["render",p]]);export{g as __pageData,c as default};
