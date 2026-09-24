@@ -4,15 +4,22 @@
     {
       "version": "pr-155",
       "ref": "refs/pull/155/merge",
-      "sha": "532f360a25e6dae2101748e4869e35a3272fe41b",
-      "timestamp": "2026-09-24T19:02:05.410Z",
+      "sha": "22e125f65a4dd159967e66eb527cc830369a742c",
+      "timestamp": "2026-09-24T19:13:16.301Z",
       "commits": [
         {
-          "sha": "532f360a25e6dae2101748e4869e35a3272fe41b",
+          "sha": "22e125f65a4dd159967e66eb527cc830369a742c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:00:58-06:00",
-          "message": "Merge 79a6e4a299e1c2458b8353c25edb82b868c91458 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+          "timestamp": "2026-09-24T13:12:43-06:00",
+          "message": "Merge 38d50ace49cb0436eb2c72737c47261d2cb26c16 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "38d50ace49cb0436eb2c72737c47261d2cb26c16",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:12:39-06:00",
+          "message": "fix(color): measure the floor where text is chosen, not in the SGR writer\n\nReview of #155: downgradeOn treated every foreground as text, so powerline\narrows (fg = a neighbour's bg) and gradient half-blocks were dragged to grey,\nand an exact-ratio target recoloured text still legible after plain rounding.\nAt the writer a text foreground and a fill foreground are the same value, so\nthe rule moves to the choice: ensureContrast(fg, bg, ratio, drawnAt) measures\non the pair the terminal draws and, at 256, falls back to the nearest\ncube/grey entry that clears the floor (which rounds to itself). The writer\nrounds every colour on its own again, as Python Rich does.\n\n- remove ColorSpec.downgradeOn; toSgrCodes is master's again\n- ensureContrast gains drawnAt (default TRUECOLOR); ansi/default unmeasurable\n- colorFuncs/richTextFuncs take a drawnAt getter; readableOnFunc exported\n- ColorTable caches entry luminances; size documented as an entry count\n"
         },
         {
           "sha": "79a6e4a299e1c2458b8353c25edb82b868c91458",
