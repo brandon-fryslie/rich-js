@@ -4,15 +4,22 @@
     {
       "version": "pr-153",
       "ref": "refs/pull/153/merge",
-      "sha": "85298791da4bb432ef415148ab29262a12b1d7ec",
-      "timestamp": "2026-09-24T12:55:35.623Z",
+      "sha": "3cd625fa7a67354d1aee2ed3b2525df68bd75d0d",
+      "timestamp": "2026-09-24T13:03:33.721Z",
       "commits": [
         {
-          "sha": "85298791da4bb432ef415148ab29262a12b1d7ec",
+          "sha": "3cd625fa7a67354d1aee2ed3b2525df68bd75d0d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T12:55:05Z",
-          "message": "Merge cbe3eb11574dfab8a712a7d3608cd2c19d753d88 into 43c135499762625165f7e86133adf1fb9b592208\n"
+          "timestamp": "2026-09-24T13:03:02Z",
+          "message": "Merge 037c3e58c7a28efc1de444c392cbfd6f8470a002 into 43c135499762625165f7e86133adf1fb9b592208\n"
+        },
+        {
+          "sha": "037c3e58c7a28efc1de444c392cbfd6f8470a002",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T07:02:56-06:00",
+          "message": "fix(strip): seams measured as drawn (alpha flattened); frozen default pair; docs name the divider case\n\nPushback: a plain-JS caller omitting divider — the required pair in\nPowerlineJoinerOptions is the contract; a runtime ?? would be the defensive\nfallback the pair replaced.\n"
         },
         {
           "sha": "cbe3eb11574dfab8a712a7d3608cd2c19d753d88",
