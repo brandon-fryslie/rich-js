@@ -337,7 +337,8 @@ export function runDemo(
 
     // Downgrade walk — same TRUECOLOR input, rendered at TRUECOLOR plus the
     // two quantization targets `ColorSpec.downgrade` accepts (EIGHT_BIT via
-    // EIGHT_BIT_TABLE.match, STANDARD via STANDARD_TABLE.match).
+    // EIGHT_BIT_DOWNGRADE_TABLE.match — indices 16–255, never the terminal's
+    // own ANSI 0–15 — and STANDARD via STANDARD_TABLE.match).
     const ribbon = ColorSpec.parse("#ff7e2a");
     const eightBit = ribbon.downgrade(ColorDepth.EIGHT_BIT);
     const standard = ribbon.downgrade(ColorDepth.STANDARD);
