@@ -4,15 +4,22 @@
     {
       "version": "pr-156",
       "ref": "refs/pull/156/merge",
-      "sha": "4731e5e0d0cb7057587f8fdf1b08ad4c59dc98d4",
-      "timestamp": "2026-09-24T20:18:00.531Z",
+      "sha": "ba1c0e99f58fd7d7d03fe3174e3ee4f14be530cc",
+      "timestamp": "2026-09-24T20:21:30.005Z",
       "commits": [
         {
-          "sha": "4731e5e0d0cb7057587f8fdf1b08ad4c59dc98d4",
+          "sha": "ba1c0e99f58fd7d7d03fe3174e3ee4f14be530cc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T14:17:22-06:00",
-          "message": "Merge e05de3e1a380b9e357d1004615c8597eae765416 into 8e1fc535357ce72ac112d1e66340fbb4cd3e6ced\n"
+          "timestamp": "2026-09-24T20:20:26Z",
+          "message": "Merge ac033372695caf9627d7cc5c362ebae051a923fb into 8e1fc535357ce72ac112d1e66340fbb4cd3e6ced\n"
+        },
+        {
+          "sha": "ac033372695caf9627d7cc5c362ebae051a923fb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T14:20:18-06:00",
+          "message": "test(color): the truecolor path is pinned on a background translucency visibly changes\n"
         },
         {
           "sha": "e05de3e1a380b9e357d1004615c8597eae765416",
