@@ -225,6 +225,17 @@ describe("a translucent background is measured as the terminal draws it", () => 
     // as #606060, which is dark and wants white.
     expect(contrastFor(parseRgbaHex("c0c0c080")).hex).toBe("#ffffff");
   });
+
+  it("an export's canvas is the surface its caller names", () => {
+    // The same half-alpha #c0c0c0 on a white export canvas draws as #e0e0e0,
+    // which is light and wants black — and text chosen for it clears there.
+    const white = new ColorRgba(255, 255, 255);
+    const bg = parseRgbaHex("c0c0c080");
+    expect(contrastFor(bg, white).hex).toBe("#000000");
+    const onCanvas = bg.compositeOver(white);
+    const text = ensureContrast(new ColorRgba(0x33, 0x66, 0x99), bg, 4.5, ColorDepth.TRUECOLOR, white);
+    expect(contrastRatio(text, onCanvas)).toBeGreaterThanOrEqual(4.5);
+  });
 });
 
 describe("ensureContrast drawn at 256 colours", () => {

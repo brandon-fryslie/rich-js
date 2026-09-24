@@ -109,10 +109,13 @@ export function alphaBlend(
  * Pick a contrasting foreground (black or white) for a background, using the
  * WCAG relative-luminance threshold of 0.179 (the perceptually correct cutoff
  * where black and white are equally readable). A translucent `bg` is judged
- * as drawn (see `drawnBackground`).
+ * as drawn: composited over `substrate` (see `drawnBackground`).
  */
-export function contrastFor(bg: ColorRgba): ColorRgba {
-  const lum = relativeLuminance(drawnBackground(bg));
+export function contrastFor(
+  bg: ColorRgba,
+  substrate: ColorRgba = SURFACE_BLACK,
+): ColorRgba {
+  const lum = relativeLuminance(drawnBackground(bg, substrate));
   return lum > 0.179
     ? new ColorRgba(0, 0, 0)
     : new ColorRgba(255, 255, 255);
@@ -139,8 +142,8 @@ const CONTRAST_ITERS = 20;
  * background where even pure black-or-white tops out below the target) does it
  * fall back to `contrastFor`'s black/white — the true maximum-contrast pick.
  *
- * A translucent `bg` is measured as the terminal draws it — composited over
- * the SGR writer's substrate — and a translucent `fg` is then flattened over
+ * A translucent `bg` is measured as it is drawn — composited over
+ * `substrate`, the SGR writer's black by default — and a translucent `fg` is then flattened over
  * that (the displayed color is `fg` composited over `bg`), so the ratio is
  * measured on what the eye actually sees and the returned color is opaque.
  *
@@ -162,8 +165,9 @@ export function ensureContrast(
   bg: ColorRgba,
   minRatio = 4.5, // WCAG AA for normal text
   drawnAt: ColorDepth = ColorDepth.TRUECOLOR,
+  substrate: ColorRgba = SURFACE_BLACK,
 ): ColorRgba {
-  const ground = drawnBackground(bg);
+  const ground = drawnBackground(bg, substrate);
   const chosen = ensureTruecolorContrast(fg, ground, minRatio);
   // [LAW:dataflow-not-control-flow] The depth names the table the terminal
   // draws from; only one whose entries have a known RGB can be measured.
@@ -176,15 +180,18 @@ export function ensureContrast(
 }
 
 /**
- * A background as the terminal draws it. [LAW:one-source-of-truth] The SGR
- * writer (`Style.toSgrCodes`) composites a translucent background over
- * `SURFACE_BLACK` before emitting it, so text chosen for that background is
- * chosen against the same composite — measuring the raw RGBA instead reads a
- * lighter colour than the one drawn, and text that "clears" it can land below
- * the floor. Opaque colours composite to themselves.
+ * A background as it is drawn: composited over the surface beneath it. That
+ * surface is a fact about where the pair is drawn, so it arrives as a value:
+ * the SGR writer (`Style.toSgrCodes`) composites over `SURFACE_BLACK`, the
+ * default here, while an export flattens over its own canvas
+ * (`exportCanvas(theme).background`, `core/export-lines.ts`) and passes that.
+ * [LAW:one-source-of-truth] Text is chosen against the colour the surface will
+ * show — measuring the raw RGBA reads a colour that is drawn nowhere, and text
+ * that "clears" it can land below the floor. Opaque colours composite to
+ * themselves.
  */
-function drawnBackground(bg: ColorRgba): ColorRgba {
-  return bg.compositeOver(SURFACE_BLACK);
+function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
+  return bg.compositeOver(substrate);
 }
 
 /**

@@ -67,6 +67,8 @@ const strong = ensureContrast(link, panel, 7);
 const drawn = ensureContrast(link, panel, 4.5, ColorDepth.EIGHT_BIT);
 ```
 
+A translucent background is measured as drawn, composited over the surface beneath it: a fifth argument, `substrate`, defaulting to black, which is what the terminal writer composites over. An export that flattens over its own canvas passes that canvas. `contrastFor(bg, substrate)` takes the same surface.
+
 In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given — see [Template Bindings](/template-bindings).
 
 ## How transposition uses it
