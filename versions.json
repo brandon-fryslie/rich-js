@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-156",
+      "ref": "refs/pull/156/merge",
+      "sha": "4731e5e0d0cb7057587f8fdf1b08ad4c59dc98d4",
+      "timestamp": "2026-09-24T20:18:00.531Z",
+      "commits": [
+        {
+          "sha": "4731e5e0d0cb7057587f8fdf1b08ad4c59dc98d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T14:17:22-06:00",
+          "message": "Merge e05de3e1a380b9e357d1004615c8597eae765416 into 8e1fc535357ce72ac112d1e66340fbb4cd3e6ced\n"
+        },
+        {
+          "sha": "e05de3e1a380b9e357d1004615c8597eae765416",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T14:17:17-06:00",
+          "message": "chore(release): 0.13.1\n"
+        },
+        {
+          "sha": "866e8e3cf6d1a072dd578117917b9ddb8e3c16f0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T14:17:16-06:00",
+          "message": "fix(color): contrast is chosen against a translucent background as the writer draws it\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8e1fc535357ce72ac112d1e66340fbb4cd3e6ced",

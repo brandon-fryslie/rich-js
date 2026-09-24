@@ -1,0 +1,1 @@
+import{_ as i,o as a,c as e,ag as t}from"./chunks/framework.CTIZUO-z.js";const c=JSON.parse('{"title":"Strip + Joiner","description":"","frontmatter":{},"headers":[],"relativePath":"strip.md","filePath":"strip.md"}'),n={name:"strip.md"};function h(l,s,p,k,r,o){return a(),e("div",null,[...s[0]||(s[0]=[t("",57)])])}const g=i(n,[["render",h]]);export{c as __pageData,g as default};
