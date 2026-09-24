@@ -4,15 +4,29 @@
     {
       "version": "pr-155",
       "ref": "refs/pull/155/merge",
-      "sha": "c9665a1bbc723a13b509f1039244b0bfb29ecf68",
-      "timestamp": "2026-09-24T19:16:07.842Z",
+      "sha": "430f4f7cff89265590b83d70fb23f22ee7af273b",
+      "timestamp": "2026-09-24T19:18:27.546Z",
       "commits": [
         {
-          "sha": "c9665a1bbc723a13b509f1039244b0bfb29ecf68",
+          "sha": "430f4f7cff89265590b83d70fb23f22ee7af273b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T19:15:35Z",
-          "message": "Merge 47f8b9e3d94434a69b74d966b482ad8551792ea5 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+          "timestamp": "2026-09-24T19:18:00Z",
+          "message": "Merge 5ade5b54c78ad2871f08896ef5738c42aefe8ddd into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "5ade5b54c78ad2871f08896ef5738c42aefe8ddd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:17:55-06:00",
+          "message": "chore(release): 0.13.0\n"
+        },
+        {
+          "sha": "746511b397b8019629cf7a96c15494f9d9803e91",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:17:55-06:00",
+          "message": "fix(color): ColorTable memos are bounded — a long-running host no longer grows them per colour\n"
         },
         {
           "sha": "47f8b9e3d94434a69b74d966b482ad8551792ea5",
