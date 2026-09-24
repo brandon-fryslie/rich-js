@@ -73,11 +73,13 @@ In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `col
 
 ### A floor that is not text — `ensureDrawn`
 
-Some floors are not text on a background. Examples are a selected cell that must stand off every unselected one, or two nested panels that must not merge. `ensureDrawn(chosen, drawnAt, accept)` is the same repair with the floor stated by you. `accept(candidate, drawn)` is shown the candidate as drawn, plus `drawn`, the same rounding for any colour it compares against. When the chosen colour's rounding is accepted, it comes back unchanged. When it is refused, the nearest 256-colour entry that is accepted comes back instead (it draws as itself). The result is `undefined` when no entry is accepted. Truecolor and `STANDARD` have no rounding to repair, so `chosen` comes back as it was.
+Some floors are not text on a background. Examples are a selected cell that must stand off every unselected one, or two nested panels that must not merge. `ensureDrawn(chosen, drawnAt, accept)` is the same repair with the floor stated by you. `accept(candidate, drawn)` is shown the candidate as drawn, plus `drawn`, the same rounding for any colour it compares against. When the chosen colour's rounding is accepted, it comes back as it is drawn: composited over the substrate (black unless you pass another), so a translucent colour returns opaque. When it is refused, the nearest 256-colour entry that is accepted comes back instead (it draws as itself). The result is `undefined` when no entry is accepted. Truecolor and `STANDARD` have no rounding to repair, so `chosen` comes back composited and otherwise as it was.
 
 ```typescript
-import { ColorDepth, ensureDrawn, Oklch } from "@promptctl/rich-js";
+import { ColorDepth, ColorRgba, ensureDrawn, Oklch } from "@promptctl/rich-js";
 
+// A nested panel that must stay visibly apart from the one around it.
+const outer = new ColorRgba(30, 42, 58);
 const panelOk = ensureDrawn(panel, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
   Oklch.fromRgba(candidate).deltaE(Oklch.fromRgba(drawn(outer))) >= 0.05,
 );
