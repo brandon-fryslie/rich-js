@@ -4,15 +4,22 @@
     {
       "version": "pr-157",
       "ref": "refs/pull/157/merge",
-      "sha": "7ce214d2fdf69053550ac79e5a15ca26fd19f958",
-      "timestamp": "2026-09-24T22:59:17.170Z",
+      "sha": "8761c879d8332e1189470a3b37db55f34ff8eab5",
+      "timestamp": "2026-09-24T23:03:18.821Z",
       "commits": [
         {
-          "sha": "7ce214d2fdf69053550ac79e5a15ca26fd19f958",
+          "sha": "8761c879d8332e1189470a3b37db55f34ff8eab5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T22:58:42Z",
-          "message": "Merge 1b0c8385d9c0cf1f05e5a0c8eb32ffa07b665e7f into 0ebad636398f4343583857a8813f317960354e61\n"
+          "timestamp": "2026-09-24T23:02:49Z",
+          "message": "Merge 9f30bef2dd5ed3b66ddb549c01ffbb2b60c82168 into 0ebad636398f4343583857a8813f317960354e61\n"
+        },
+        {
+          "sha": "9f30bef2dd5ed3b66ddb549c01ffbb2b60c82168",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T17:02:45-06:00",
+          "message": "fix(color): an ansi replacement reads against its ground's nominal colour\n\nText landing on its background's index was replaced by the nearest other\nindex, which is as often the ground's own lightness in another hue: of 1602\nrandom collisions at a 4.5 floor, 458 drew below 2:1 against the nominal\ntable. It is now the nearest entry clearing the floor against the ground's\nnominal colour (matchReadable), the most-contrast entry when none does: 0.\n"
         },
         {
           "sha": "1b0c8385d9c0cf1f05e5a0c8eb32ffa07b665e7f",
