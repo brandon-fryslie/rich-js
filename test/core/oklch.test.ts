@@ -5,6 +5,7 @@ import {
   INVERT_LIGHTNESS,
   Oklch,
   isIdentityKey,
+  type OklchWeights,
 } from "../../src/core/oklch.js";
 
 // Reference values from Björn Ottosson's OKLab spec; tolerance accounts
@@ -322,29 +323,42 @@ describe("Oklch.mix", () => {
     const a = from(200, 100, 50);
     const b = from(20, 60, 200);
     for (const t of [-0.5, 1.5, Number.NaN]) {
-      expect(() => a.mix(b, t)).toThrow(/Oklch\.mix: l weight must be in \[0, 1\]/);
+      expect(() => a.mix(b, t)).toThrow(/Oklch\.mix: t must be in \[0, 1\]/);
     }
   });
 
-  it("mixAxes moves each axis its own share; uniform weights are mix", () => {
+  it("mixAxes moves each axis its own share", () => {
     const gray = from(40, 40, 40);
     const red = from(220, 40, 60);
-    const t = gray.mixAxes(red, { l: 0.2, c: 0.8, h: 1, alpha: 0 });
+    const t = gray.mixAxes(red, { l: 0.2, c: 0.8, h: 0.3, alpha: 0 });
     expect(t.l).toBeCloseTo(gray.l + (red.l - gray.l) * 0.2, 12);
     expect(t.c).toBeCloseTo(gray.c + (red.c - gray.c) * 0.8, 12);
-    // A gray has no hue of its own, so it adopts the other endpoint's.
+    // A gray has no hue of its own, so at ANY hue weight it takes red's —
+    // not 30% of the way round from the 0° `fromRgba` pins a gray to.
     expect(t.h).toBeCloseTo(red.h, 10);
-    for (const w of [0, 0.3, 1]) {
-      expect(gray.mixAxes(red, { l: w, c: w, h: w, alpha: w })).toEqual(gray.mix(red, w));
-    }
+    expect(t.alpha).toBe(gray.alpha);
   });
 
-  it("mixAxes names the axis whose weight is outside [0, 1]", () => {
+  it("mixAxes weights the hue arc on its own, across 0°", () => {
+    const a = new Oklch(0.6, 0.15, 350);
+    const b = new Oklch(0.6, 0.15, 30);
+    const t = a.mixAxes(b, { l: 0, c: 0, h: 0.25, alpha: 0 });
+    expect(t.h).toBeCloseTo(0, 10);
+    expect(t.c).toBeCloseTo(0.15, 12);
+    expect(t.l).toBeCloseTo(0.6, 12);
+  });
+
+  it("mixAxes names the axis whose weight is outside [0, 1], missing, or NaN", () => {
     const a = from(200, 100, 50);
     const b = from(20, 60, 200);
     expect(() => a.mixAxes(b, { l: 0.5, c: 1.5, h: 0, alpha: 0 })).toThrow(
-      /Oklch\.mix: c weight must be in \[0, 1\]; got 1\.5/,
+      /Oklch\.mixAxes: c weight must be in \[0, 1\]; got 1\.5/,
     );
+    expect(() => a.mixAxes(b, { l: 0.5, c: 0.5, h: Number.NaN, alpha: 0 })).toThrow(
+      /Oklch\.mixAxes: h weight/,
+    );
+    const noAlpha = { l: 0.5, c: 0.5, h: 0.5 } as unknown as OklchWeights;
+    expect(() => a.mixAxes(b, noAlpha)).toThrow(/Oklch\.mixAxes: alpha weight .* got undefined/);
   });
 
   it("two achromatic endpoints stay achromatic", () => {

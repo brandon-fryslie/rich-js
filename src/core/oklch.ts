@@ -56,6 +56,10 @@ export interface OklchWeights {
   readonly alpha: number;
 }
 
+// The axes `mixAxes` checks, named once so a weights object's own keys — a
+// missing one, or an extra field riding along — never decide what is checked.
+const OKLCH_AXES = ["l", "c", "h", "alpha"] as const satisfies readonly (keyof OklchWeights)[];
+
 export const IDENTITY: ThemeKey = Object.freeze({
   hueShift: 0,
   chromaScale: 1,
@@ -260,30 +264,57 @@ export class Oklch {
    * there too.
    */
   mix(toward: Oklch, t: number): Oklch {
-    return this.mixAxes(toward, { l: t, c: t, h: t, alpha: t });
+    if (!(t >= 0 && t <= 1)) {
+      throw new RangeError(`Oklch.mix: t must be in [0, 1]; got ${t}`);
+    }
+    return this.#interpolate(toward, t, t, t, t);
   }
 
   /**
    * `mix` with each axis moved its own share of the way: `weights.l` of the
    * lightness gap, `weights.c` of the chroma gap, and so on, each in [0, 1].
-   * `mix(toward, t)` is exactly `mixAxes(toward, { l: t, c: t, h: t, alpha: t })`
-   * — one interpolation, so the shorter-arc hue, the powerless-endpoint rule
-   * and the range check are the same whichever is called.
+   * `mix(toward, t)` is `mixAxes` with every weight `t` — one interpolation,
+   * so the shorter-arc hue and the powerless-endpoint rule are the same
+   * whichever is called.
    *
    * It exists because perceptual axes are independent: a tint can take most of
    * a hue's colourfulness while keeping close to the lightness it started at,
    * which a single `t` cannot say — raising `t` for chroma drags lightness with
    * it. Every weight is required: an axis left out would need a default, and
    * "unchanged" (0) and "same as the others" are both plausible readings.
+   *
+   * A weak `h` beside a strong `c` shows the starting colour's hue at high
+   * chroma. The powerless rule covers only a truly achromatic start, so a
+   * near-grey whose hue is noise (a theme surface at c ≈ 0.004) keeps that
+   * noise in proportion. To land on the target's hue, pass `h: 1`.
    */
   mixAxes(toward: Oklch, weights: OklchWeights): Oklch {
-    for (const [axis, w] of Object.entries(weights)) {
+    for (const axis of OKLCH_AXES) {
+      const w = weights[axis];
       if (!(w >= 0 && w <= 1)) {
         throw new RangeError(
-          `Oklch.mix: ${axis} weight must be in [0, 1]; got ${w}`,
+          `Oklch.mixAxes: ${axis} weight must be in [0, 1]; got ${w}`,
         );
       }
     }
+    return this.#interpolate(
+      toward,
+      weights.l,
+      weights.c,
+      weights.h,
+      weights.alpha,
+    );
+  }
+
+  // The one interpolation both entry points share; each has already checked
+  // its own weights, so this is the arithmetic alone.
+  #interpolate(
+    toward: Oklch,
+    wl: number,
+    wc: number,
+    wh: number,
+    walpha: number,
+  ): Oklch {
     const thisHasHue = this.c >= ACHROMATIC_EPS;
     const towardHasHue = toward.c >= ACHROMATIC_EPS;
     const fromH = wrapHue(thisHasHue ? this.h : towardHasHue ? toward.h : 0);
@@ -295,12 +326,12 @@ export class Oklch {
     const arc = toH - fromH;
     const fromU = arc < -180 ? fromH - 360 : fromH;
     const toU = arc > 180 ? toH - 360 : toH;
-    const c = lerp(this.c, toward.c, weights.c);
+    const c = lerp(this.c, toward.c, wc);
     return new Oklch(
-      lerp(this.l, toward.l, weights.l),
+      lerp(this.l, toward.l, wl),
       c,
-      hueOf(c, wrapHue(lerp(fromU, toU, weights.h))),
-      lerp(this.alpha, toward.alpha, weights.alpha),
+      hueOf(c, wrapHue(lerp(fromU, toU, wh))),
+      lerp(this.alpha, toward.alpha, walpha),
     );
   }
 
