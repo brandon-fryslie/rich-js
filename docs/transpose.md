@@ -55,6 +55,24 @@ const rotated = Oklch.fromRgba(someColor).applyKey({
 }).toRgba();
 ```
 
+## Mixing two colours
+
+`a.mix(b, t)` is the colour `t` of the way from `a` toward `b` in OKLCH: every axis moves by the same `t`, hue along the shorter arc, and a grey endpoint adopts the other's hue instead of rotating from 0°.
+
+When the axes should move by different amounts, `mixAxes` takes one weight per axis, each in [0, 1] and all four required:
+
+```ts
+// Most of the hue's colour, little of its lightness, the hue's own angle,
+// the surface's opacity: a tint that stays near the surface it decorates.
+const tint = Oklch.fromRgba(surface)
+  .mixAxes(Oklch.fromRgba(primary), { l: 0.2, c: 0.8, h: 1, alpha: 0 })
+  .toRgba();
+```
+
+`mix(b, t)` is `mixAxes(b, { l: t, c: t, h: t, alpha: t })`. A weak `h` beside a strong `c` keeps the starting colour's hue at high chroma. Only a truly achromatic start adopts the target's hue, so to land on the target's hue from a near-grey, pass `h: 1`.
+
+`a.deltaE(b)` is the perceptual distance between two colours, ΔE_OK: Euclidean distance in OKLab. Around 0.02 is the smallest difference the eye resolves.
+
 ## transposePalette — a whole theme at once
 
 `transposePalette(palette, key, name?)` returns a new `Palette` with every color transposed. It is pure, and `IDENTITY` is byte-exact (no lossy round-trip):

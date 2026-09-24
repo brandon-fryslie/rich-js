@@ -33,7 +33,7 @@ const strip = new Strip(
     cell(" claude.ai ", "white on cyan"),
     cell(" 3.4k tok ", "white on green"),
   ],
-  new PowerlineJoiner(), // default glyph: U+E0B0 ()
+  new PowerlineJoiner(), // default pair: POWERLINE_JOINER_GLYPHS
 );
 
 console.print(strip);
@@ -52,14 +52,22 @@ The strip itself ends its own line, the same way [`Group`](./group)'s other chil
 Classic powerline arrows.
 
 ```typescript
-new PowerlineJoiner({ glyph: "\ue0b0" });
+new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow, U+E0B1 divider
 ```
 
 The arrow is painted *in the left neighbour's background colour*, so it is drawn only when there is one. That single rule covers all three positions:
 
-- `join(L, R)`: glyph with `fg = L.bg`, `bg = R.bg`.
+- `join(L, R)`: glyph with `fg = L.bg`, `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour.
 - `join(L, null)`: glyph with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
 - `join(null, R)`: empty. There is no left neighbour, so there is no colour to bleed and no arrow to draw. The strip begins cleanly, matching vim-airline / tmux-powerline / claude-powerline.
+
+When `L` and `R` share a background, the arrow would be drawn in its own background colour and vanish. The joiner draws the divider there instead (`divider`, U+E0B1 by default, the thin arrow) in `L`'s text colour, which is the vim-airline convention. "Share" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04), measured as drawn (a translucent background flattened onto the render substrate), count as one. Named or indexed colours have no RGB value to measure, so two of them share only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
+
+```typescript
+new PowerlineJoiner({ glyph: ">", divider: "|" }); // an ASCII pair
+```
+
+`glyph` and `divider` are given together or not at all. A replacement arrow with the default divider beside it would leave a glyph the arrow's font may not have.
 
 An item *without* a background is the same case as a missing one. If `L` has no `bgcolor`, the join to its right is empty too — so a colourless cell has no arrow after it, wherever it sits in the strip. `… on default` counts as no background: the terminal default is transparent, so there is still nothing to paint.
 
@@ -128,6 +136,8 @@ Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` an
 
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
+
+and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead.
 
 The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 

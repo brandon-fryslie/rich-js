@@ -5,6 +5,7 @@ import {
   INVERT_LIGHTNESS,
   Oklch,
   isIdentityKey,
+  type OklchWeights,
 } from "../../src/core/oklch.js";
 
 // Reference values from Björn Ottosson's OKLab spec; tolerance accounts
@@ -324,6 +325,50 @@ describe("Oklch.mix", () => {
     for (const t of [-0.5, 1.5, Number.NaN]) {
       expect(() => a.mix(b, t)).toThrow(/Oklch\.mix: t must be in \[0, 1\]/);
     }
+  });
+
+  it("mixAxes moves each axis its own share", () => {
+    const gray = from(40, 40, 40);
+    const red = from(220, 40, 60);
+    const t = gray.mixAxes(red, { l: 0.2, c: 0.8, h: 0.3, alpha: 0 });
+    expect(t.l).toBeCloseTo(gray.l + (red.l - gray.l) * 0.2, 12);
+    expect(t.c).toBeCloseTo(gray.c + (red.c - gray.c) * 0.8, 12);
+    // A gray has no hue of its own, so at ANY hue weight it takes red's —
+    // not 30% of the way round from the 0° `fromRgba` pins a gray to.
+    expect(t.h).toBeCloseTo(red.h, 10);
+    expect(t.alpha).toBe(gray.alpha);
+  });
+
+  it("mixAxes weights the hue arc on its own, across 0°", () => {
+    const a = new Oklch(0.6, 0.15, 350);
+    const b = new Oklch(0.6, 0.15, 30);
+    const t = a.mixAxes(b, { l: 0, c: 0, h: 0.25, alpha: 0 });
+    expect(t.h).toBeCloseTo(0, 10);
+    expect(t.c).toBeCloseTo(0.15, 12);
+    expect(t.l).toBeCloseTo(0.6, 12);
+  });
+
+  it("mixAxes names the axis whose weight is outside [0, 1], missing, or NaN", () => {
+    const a = from(200, 100, 50);
+    const b = from(20, 60, 200);
+    expect(() => a.mixAxes(b, { l: 0.5, c: 1.5, h: 0, alpha: 0 })).toThrow(
+      /Oklch\.mixAxes: c weight must be in \[0, 1\]; got 1\.5/,
+    );
+    expect(() => a.mixAxes(b, { l: 0.5, c: 0.5, h: Number.NaN, alpha: 0 })).toThrow(
+      /Oklch\.mixAxes: h weight/,
+    );
+    const noAlpha = { l: 0.5, c: 0.5, h: 0.5 } as unknown as OklchWeights;
+    expect(() => a.mixAxes(b, noAlpha)).toThrow(/Oklch\.mixAxes: alpha weight .* got undefined/);
+  });
+
+  it("deltaE is OKLab distance: zero to itself, symmetric, a pure lightness gap is that gap", () => {
+    const a = from(200, 100, 50);
+    const b = from(20, 60, 200);
+    expect(a.deltaE(a)).toBe(0);
+    expect(a.deltaE(b)).toBeCloseTo(b.deltaE(a), 12);
+    expect(new Oklch(0.3, 0, 0).deltaE(new Oklch(0.7, 0, 0))).toBeCloseTo(0.4, 12);
+    // Same chroma, opposite hues: the chord through the axis, 2C.
+    expect(new Oklch(0.5, 0.1, 30).deltaE(new Oklch(0.5, 0.1, 210))).toBeCloseTo(0.2, 12);
   });
 
   it("two achromatic endpoints stay achromatic", () => {

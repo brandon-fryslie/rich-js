@@ -14,6 +14,8 @@ import {
   Console,
   Strip,
   PowerlineJoiner,
+  SEAM_MIN_DELTA_E,
+  POWERLINE_JOINER_GLYPHS,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
@@ -52,6 +54,26 @@ export function runDemo(host: TerminalHost): DemoHandle {
   };
 
   showcase("PowerlineJoiner", new Strip(cells, new PowerlineJoiner()));
+  // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
+  // arrow in their shared colour, so the joiner draws the thin divider there.
+  const shared = ["one", "two", "three"].map(
+    (t) => new RichText(` ${t} `, { style: Style.parse("white on #3a3f58"), end: "", noWrap: true }),
+  );
+  showcase(
+    `PowerlineJoiner, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
+    new Strip(shared, new PowerlineJoiner()),
+  );
+  // The arrow and its divider are one vocabulary, replaced together: here the
+  // default pair spelled out, then the ASCII pair a terminal without a
+  // powerline font would take.
+  showcase(
+    `PowerlineJoiner, default pair spelled out (${JSON.stringify(POWERLINE_JOINER_GLYPHS)})`,
+    new Strip([...cells, ...shared], new PowerlineJoiner(POWERLINE_JOINER_GLYPHS)),
+  );
+  showcase(
+    "PowerlineJoiner, ASCII pair",
+    new Strip([...cells, ...shared], new PowerlineJoiner({ glyph: ">", divider: "|" })),
+  );
   showcase("CapsuleJoiner", new Strip(cells, new CapsuleJoiner()));
   showcase("PlainJoiner", new Strip(cells, new PlainJoiner()));
   showcase("GradientJoiner (steps=6)", new Strip(cells, new GradientJoiner({ steps: 6 })));

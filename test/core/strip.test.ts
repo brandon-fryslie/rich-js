@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   Strip,
   PowerlineJoiner,
+  POWERLINE_JOINER_GLYPHS,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
@@ -42,13 +43,13 @@ describe("Strip render walk", () => {
   });
 
   it("emits item, end-cap for one item (no leading arrow)", () => {
-    const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const segs = render(strip);
     expect(segs.map((s) => s.text)).toEqual([" red ", ">"]);
   });
 
   it("emits item, mid-join, item, end-cap for two items (no leading arrow)", () => {
-    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const segs = render(strip);
     expect(segs.map((s) => s.text)).toEqual([" red ", ">", " blue ", ">"]);
   });
@@ -56,7 +57,7 @@ describe("Strip render walk", () => {
   it("scales linearly: 2N segments for N items", () => {
     const strip = new Strip(
       [RED, BLUE, GREEN],
-      new PowerlineJoiner({ glyph: ">" }),
+      new PowerlineJoiner({ glyph: ">", divider: "|" }),
     );
     const segs = render(strip);
     expect(segs).toHaveLength(6);
@@ -70,7 +71,7 @@ describe("Strip render walk", () => {
   // Strip followed by another renderable puts that renderable on its own
   // line instead of running it onto the Strip's.
   it("ends its own render with a plain line terminator", () => {
-    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const segs = [...strip.render(OPTIONS)];
     const last = segs.at(-1)!;
     expect(last.text).toBe("\n");
@@ -86,13 +87,13 @@ describe("Strip render walk", () => {
 
 describe("PowerlineJoiner color inheritance", () => {
   it("emits no leading arrow at the start", () => {
-    const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const segs = render(strip);
     expect(segs[0]!.text).toBe(" red ");
   });
 
   it("end cap fg = last item's right-edge bg, no bg", () => {
-    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const segs = render(strip);
     const end = segs[segs.length - 1]!;
     expect(end.style?.color?.name).toBe(BLUE.edgeStyle("right", OPTIONS).bgcolor?.name);
@@ -100,7 +101,7 @@ describe("PowerlineJoiner color inheritance", () => {
   });
 
   it("middle join fg = left.right-edge.bg, bg = right.left-edge.bg", () => {
-    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const segs = render(strip);
     const mid = segs[1]!;
     expect(mid.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
@@ -119,22 +120,72 @@ describe("PowerlineJoiner color inheritance", () => {
 describe("PowerlineJoiner same-bg structural join", () => {
   const RED_A = cell(" a ", "white on red");
   const RED_B = cell(" b ", "white on red");
+  const BLUE_C = cell(" c ", "white on blue");
 
   it("emits the mid-join chevron structurally even when both neighbors share a bg", () => {
-    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
-    expect(render(strip).map((s) => s.text)).toEqual([" a ", ">", " b ", ">"]);
+    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">", divider: "|" }));
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", "|", " b ", ">"]);
   });
 
-  it("paints the equal-bg mid-join invisibly (fg === bg), not as a skipped segment", () => {
-    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
+  it("draws the equal-bg mid-join as the divider in the left item's text colour", () => {
+    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const mid = render(strip)[1]!;
-    expect(mid.text).toBe(">");
-    expect(mid.style?.color?.name).toBe("red");
+    expect(mid.text).toBe("|");
+    expect(mid.style?.color?.name).toBe("white");
     expect(mid.style?.bgcolor?.name).toBe("red");
   });
 
+  it("treats backgrounds the eye cannot tell apart as equal; a visible difference keeps the arrow", () => {
+    const joined = (a: string, b: string) =>
+      render(
+        new Strip(
+          [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
+          new PowerlineJoiner({ glyph: ">", divider: "|" }),
+        ),
+      )[1]!;
+    expect(joined("#402020", "#412121").text).toBe("|");
+    const far = joined("#402020", "#204040");
+    expect(far.text).toBe(">");
+    expect(far.style?.color?.value?.hex).toBe("#402020");
+  });
+
+  it("knows one palette slot by any of its spellings, and two slots apart", () => {
+    const mid = (a: string, b: string) =>
+      render(
+        new Strip(
+          [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
+          new PowerlineJoiner({ glyph: ">", divider: "|" }),
+        ),
+      )[1]!.text;
+    expect(mid("red", "color(1)")).toBe("|");
+    expect(mid("red", "green")).toBe(">");
+    expect(mid("color(1)", "color(9)")).toBe(">");
+  });
+
+  it("measures a translucent background as the colour it is drawn in", () => {
+    const mid = (a: string, b: string) =>
+      render(
+        new Strip(
+          [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
+          new PowerlineJoiner({ glyph: ">", divider: "|" }),
+        ),
+      )[1]!.text;
+    expect(mid("#FFFFFF0A", "#FFFFFF60")).toBe(">");
+    expect(mid("#FFFFFF60", "#FFFFFF61")).toBe("|");
+  });
+
+  it("freezes the default pair every bare joiner reads", () => {
+    expect(Object.isFrozen(POWERLINE_JOINER_GLYPHS)).toBe(true);
+  });
+
+  it("defaults the arrow and its divider as one pair", () => {
+    const texts = render(new Strip([RED_A, RED_B, BLUE_C], new PowerlineJoiner())).map((s) => s.text);
+    expect(texts[1]).toBe(POWERLINE_JOINER_GLYPHS.divider);
+    expect(texts[3]).toBe(POWERLINE_JOINER_GLYPHS.glyph);
+  });
+
   it("still emits a visible arrow when neighbor bgs differ", () => {
-    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED, BLUE], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const mid = render(strip)[1]!;
     expect(mid.text).toBe(">");
     expect(mid.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
@@ -152,14 +203,14 @@ describe("PowerlineJoiner no-bg edges paint nothing", () => {
   const FG_B = cell("b", "blue"); // fg only — no bgcolor
 
   it("emits no separator anywhere when items are fg-only (no bg to bleed)", () => {
-    const strip = new Strip([FG_A, FG_B], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([FG_A, FG_B], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     // start (no left), mid (left has no bg), end (left has no bg) all paint
     // nothing — the glyph never appears.
     expect(render(strip).map((s) => s.text)).toEqual(["a", "b"]);
   });
 
   it("a left item WITH a bg still bleeds into a right item without one", () => {
-    const strip = new Strip([RED, FG_B], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([RED, FG_B], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const mid = render(strip)[1]!;
     expect(mid.text).toBe(">");
     expect(mid.style?.color?.name).toBe(RED.edgeStyle("right", OPTIONS).bgcolor?.name);
@@ -171,7 +222,7 @@ describe("PowerlineJoiner no-bg edges paint nothing", () => {
     // terminal background. It must behave like a fg-only edge: no separator.
     const DEF_A = cell("a", "red on default");
     const DEF_B = cell("b", "blue on default");
-    const strip = new Strip([DEF_A, DEF_B], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([DEF_A, DEF_B], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     expect(render(strip).map((s) => s.text)).toEqual(["a", "b"]);
   });
 });
@@ -299,7 +350,7 @@ describe("edge-aware joiner protocol with varying interior styling", () => {
     left.stylize("on yellow", 1, 2); // right edge becomes yellow
     const right = new RichText("cd", { style: "white on blue", end: "" });
     right.stylize("on green", 0, 1); // left edge is green
-    const strip = new Strip([left, right], new PowerlineJoiner({ glyph: ">" }));
+    const strip = new Strip([left, right], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const segs = render(strip);
     const mid = segs.find((s) => s.text === ">")!;
     expect(mid.style?.color?.name).toBe("yellow");
@@ -339,7 +390,7 @@ describe("edge styles resolved against the render's theme", () => {
   it("PowerlineJoiner paints the transition in the theme's colours", () => {
     const strip = new Strip(
       [cell(" lead ", "strip.lead"), cell(" tail ", "strip.tail")],
-      new PowerlineJoiner({ glyph: ">" }),
+      new PowerlineJoiner({ glyph: ">", divider: "|" }),
     );
     const mid = render(strip, THEMED).find((s) => s.text === ">")!;
     expect(mid.style?.color?.name).toBe("red");

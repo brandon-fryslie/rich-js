@@ -27,8 +27,9 @@
  */
 
 import { Segment } from "./segment.js";
-import { Style } from "./style.js";
+import { Style, SURFACE_BLACK } from "./style.js";
 import { ColorSpec, blendRgb } from "./color.js";
+import { Oklch } from "./oklch.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
@@ -148,16 +149,55 @@ function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
 
 // --- PowerlineJoiner ---
 
-export interface PowerlineJoinerOptions {
-  /** Glyph used for every join (default: U+E0B0, the powerline right-arrow). */
-  glyph?: string;
+/**
+ * The least ΔE_OK two neighbouring backgrounds must differ by for the powerline
+ * arrow between them to be seen. Below it the arrow is drawn in a colour the
+ * eye cannot tell from its own background, so the joiner draws the divider
+ * instead. Twice the ~.02 threshold of a visible difference, because a seam is
+ * one cell wide.
+ */
+export const SEAM_MIN_DELTA_E = 0.04;
+
+// Two backgrounds the eye cannot tell apart. What is measured is what is
+// drawn: each colour flattened onto the substrate Style.toSgrCodes flattens it
+// onto, so two alphas over one RGB are the two greys they render as. A palette
+// colour has no value here, so two of them are the same only when they are the
+// same palette slot — `type` + `number`, never the name, which spells one slot
+// many ways ("red", "color(1)").
+function indistinct(a: ColorSpec, b: ColorSpec | undefined): boolean {
+  if (b === undefined) return false;
+  const av = a.flattenAlpha(SURFACE_BLACK).value;
+  const bv = b.flattenAlpha(SURFACE_BLACK).value;
+  return av !== undefined && bv !== undefined
+    ? Oklch.fromRgba(av).deltaE(Oklch.fromRgba(bv)) < SEAM_MIN_DELTA_E
+    : a.type === b.type && a.number === b.number;
 }
+
+// [LAW:types-are-the-program] The glyph and its divider are one vocabulary: a
+// caller who replaces the arrow (say with ASCII ">") must also say what divides,
+// or the default thin arrow would render as tofu beside it. So they are given
+// together or not at all — the default pair is the unset case.
+export interface PowerlineJoinerOptions {
+  /** Glyph used for every join. */
+  glyph: string;
+  /**
+   * Glyph drawn between neighbours whose backgrounds the eye cannot tell apart,
+   * in the left item's text colour — the arrow itself would vanish into the
+   * shared background.
+   */
+  divider: string;
+}
+
+/** The powerline pair: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow). */
+export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({ glyph: "\ue0b0", divider: "\ue0b1" });
 
 export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   private readonly _glyph: string;
+  private readonly _divider: string;
 
-  constructor(options?: PowerlineJoinerOptions) {
-    this._glyph = options?.glyph ?? "";
+  constructor(options: PowerlineJoinerOptions = POWERLINE_JOINER_GLYPHS) {
+    this._glyph = options.glyph;
+    this._divider = options.divider;
   }
 
   join(left: T | null, right: T | null): Renderable {
@@ -172,19 +212,26 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     //     colourless arrow is not drawn.)
     //   • no right bg — the end cap — bleeds the left colour out over the
     //     terminal background (fg = left bg, no bg).
-    // Equal REAL bgs still emit: the glyph is drawn in its own background colour
-    // and is invisible, but the cell is present — a same-bg seam between two
-    // distinct items is a structural boundary, never suppressed. Background
-    // colour is paint, not structure; its ABSENCE (nothing to paint) is the only
-    // thing that elides the separator, and that is paint logic, not structure.
+    // Equal REAL bgs still emit: a same-bg seam between two distinct items is a
+    // structural boundary, never suppressed. The arrow would be drawn in its own
+    // background colour there and vanish, so the seam is the DIVIDER instead, in
+    // the left item's text colour — the vim-airline convention for neighbours
+    // that share a background. "Equal" is perceptual (SEAM_MIN_DELTA_E): an
+    // arrow a hair off its background is as invisible as one exactly on it.
+    // Background colour is paint, not structure; its ABSENCE (nothing to paint)
+    // is the only thing that elides the separator, and that is paint logic.
     // "Absent" = no bg OR the terminal default (transparent) — paintableBg folds
     // both to undefined so an explicit `… on default` cannot smuggle a separator.
     const glyph = this._glyph;
+    const divider = this._divider;
     return deferred(function* (options) {
-      const leftBg = paintableBg(left?.edgeStyle("right", options).bgcolor);
+      const leftEdge = left?.edgeStyle("right", options);
+      const leftBg = paintableBg(leftEdge?.bgcolor);
       if (leftBg === undefined) return;
       const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
-      yield new Segment(glyph, new Style({ color: leftBg, bgcolor: rightBg }));
+      yield indistinct(leftBg, rightBg)
+        ? new Segment(divider, new Style({ color: leftEdge?.color, bgcolor: rightBg }))
+        : new Segment(glyph, new Style({ color: leftBg, bgcolor: rightBg }));
     });
   }
 }
