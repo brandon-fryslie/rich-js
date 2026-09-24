@@ -4,15 +4,22 @@
     {
       "version": "pr-157",
       "ref": "refs/pull/157/merge",
-      "sha": "1dacc5213e599ad76faa87f0da58916ae06a3f31",
-      "timestamp": "2026-09-24T23:16:14.525Z",
+      "sha": "55be7b53394694c32151639807b21a093391eaa7",
+      "timestamp": "2026-09-24T23:24:59.974Z",
       "commits": [
         {
-          "sha": "1dacc5213e599ad76faa87f0da58916ae06a3f31",
+          "sha": "55be7b53394694c32151639807b21a093391eaa7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T23:15:51Z",
-          "message": "Merge 9a52a485977c4d43ae56213ed30252d1ea9a41b8 into 0ebad636398f4343583857a8813f317960354e61\n"
+          "timestamp": "2026-09-24T23:24:24Z",
+          "message": "Merge 35f0ebed3aa8f2ea27cf7e8c293fcc128816e420 into 0ebad636398f4343583857a8813f317960354e61\n"
+        },
+        {
+          "sha": "35f0ebed3aa8f2ea27cf7e8c293fcc128816e420",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T17:24:19-06:00",
+          "message": "docs(contrast): ansi is measured on the nominal table; ensureContrast reads drawnColour; test and demo cite what they measure\n"
         },
         {
           "sha": "9a52a485977c4d43ae56213ed30252d1ea9a41b8",
