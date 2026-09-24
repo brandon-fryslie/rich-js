@@ -4,15 +4,22 @@
     {
       "version": "pr-156",
       "ref": "refs/pull/156/merge",
-      "sha": "ead463a2db6f9cdf0a6c67113b788a8c4b6fbf76",
-      "timestamp": "2026-09-24T20:22:39.612Z",
+      "sha": "e92af52770e240e9cf18b6cf5659a60a2155a8cf",
+      "timestamp": "2026-09-24T20:23:13.917Z",
       "commits": [
         {
-          "sha": "ead463a2db6f9cdf0a6c67113b788a8c4b6fbf76",
+          "sha": "e92af52770e240e9cf18b6cf5659a60a2155a8cf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T14:21:03-06:00",
-          "message": "Merge ac033372695caf9627d7cc5c362ebae051a923fb into 8e1fc535357ce72ac112d1e66340fbb4cd3e6ced\n"
+          "timestamp": "2026-09-24T20:22:17Z",
+          "message": "Merge d4e0737fff5c6359b2f2fb7a45827da1c201a31b into 8e1fc535357ce72ac112d1e66340fbb4cd3e6ced\n"
+        },
+        {
+          "sha": "d4e0737fff5c6359b2f2fb7a45827da1c201a31b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T14:22:12-06:00",
+          "message": "fix(color): the surface a translucent background composites over is the caller's — black for the terminal writer, the canvas for an export\n"
         },
         {
           "sha": "ac033372695caf9627d7cc5c362ebae051a923fb",
