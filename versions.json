@@ -4,15 +4,22 @@
     {
       "version": "pr-155",
       "ref": "refs/pull/155/merge",
-      "sha": "430f4f7cff89265590b83d70fb23f22ee7af273b",
-      "timestamp": "2026-09-24T19:18:27.546Z",
+      "sha": "9d5adac5574aedd65cfbf2c72a7e700bcfc5e4e7",
+      "timestamp": "2026-09-24T19:27:27.869Z",
       "commits": [
         {
-          "sha": "430f4f7cff89265590b83d70fb23f22ee7af273b",
+          "sha": "9d5adac5574aedd65cfbf2c72a7e700bcfc5e4e7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T19:18:00Z",
-          "message": "Merge 5ade5b54c78ad2871f08896ef5738c42aefe8ddd into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+          "timestamp": "2026-09-24T19:27:05Z",
+          "message": "Merge 404b32d64db1a6f13976e14dd647ab29b4fca8bf into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "404b32d64db1a6f13976e14dd647ab29b4fca8bf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:27:00-06:00",
+          "message": "fix(template-bindings): drawnAt documented and defaulted once; binding pinned through an engine\n"
         },
         {
           "sha": "5ade5b54c78ad2871f08896ef5738c42aefe8ddd",
