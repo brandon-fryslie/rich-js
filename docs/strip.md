@@ -57,11 +57,11 @@ new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow, U+E0B1 divider
 
 The arrow is painted *in the left neighbour's background colour*, so it is drawn only when there is one. That single rule covers all three positions:
 
-- `join(L, R)`: glyph with `fg = L.bg`, `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour.
+- `join(L, R)`: glyph with `fg = L.bg` as drawn (flattened onto the render substrate, so opaque — the arrow is the left cell continuing, not composited a second time over `R`), `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour and `bg = L.bg`.
 - `join(L, null)`: glyph with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
 - `join(null, R)`: empty. There is no left neighbour, so there is no colour to bleed and no arrow to draw. The strip begins cleanly, matching vim-airline / tmux-powerline / claude-powerline.
 
-When `L` and `R` share a background, the arrow would be drawn in its own background colour and vanish. The joiner draws the divider there instead (`divider`, U+E0B1 by default, the thin arrow) in `L`'s text colour, which is the vim-airline convention. "Share" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04), measured as drawn (a translucent background flattened onto the render substrate), count as one. Named or indexed colours have no RGB value to measure, so two of them share only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
+When `L` and `R` share a background, the arrow would be drawn in its own background colour and vanish. The joiner draws the divider there instead (`divider`, U+E0B1 by default, the thin arrow) in `L`'s text colour on `L`'s own background, which is the vim-airline convention. The divider is therefore `L`'s text, and it reads exactly as well as that text does. "Share" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) count as one. They are measured as drawn: a translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`). So two backgrounds that 256 colours or ANSI draw as one entry share, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them share only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
 ```typescript
 new PowerlineJoiner({ glyph: ">", divider: "|" }); // an ASCII pair

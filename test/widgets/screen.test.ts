@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Writable } from "stream";
 import { observable, runInAction } from "mobx";
 import { Segment } from "../../src/core/segment.js";
+import { ColorDepth } from "../../src/core/color.js";
 import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
@@ -159,6 +160,34 @@ describe("DefaultScreen", () => {
       // First mounted widget auto-focuses, so it gets the "*" prefix.
       expect(output).toContain("*Alpha");
       expect(output).toContain(" Beta");
+    });
+
+    it("renders widgets at the depth it encodes the frame at", async () => {
+      // A renderable that decides on drawn colours (the powerline seam) must
+      // see the depth this screen draws, not an unset one read as truecolor.
+      const seen: RenderOptions["colorSystem"][] = [];
+      class DepthWidget extends StubWidget {
+        override render(options: RenderOptions): Iterable<Segment> {
+          seen.push(options.colorSystem);
+          return super.render(options);
+        }
+      }
+      const host = new NodeTerminalHost({
+        stdout: new CapturingStream() as unknown as NodeJS.WriteStream,
+      });
+      const at256 = new DefaultScreen({
+        host,
+        width: 40,
+        colorSystem: "256",
+        manageCursor: false,
+        focusManager: new DefaultFocusManager(),
+      });
+      at256.mount(new DepthWidget("d", "Depth"));
+      at256.start();
+      await flush();
+      at256.stop();
+      expect(seen.length).toBeGreaterThan(0);
+      expect(new Set(seen)).toEqual(new Set([ColorDepth.EIGHT_BIT]));
     });
 
     it("first frame writes no cursor-up sequence", async () => {

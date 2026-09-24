@@ -3,6 +3,7 @@ import {
   ColorRgba,
   ColorTable,
   EIGHT_BIT_DOWNGRADE_TABLE,
+  STANDARD_TABLE,
   blendRgb,
   contrastRatio,
   relativeLuminance,
@@ -152,8 +153,11 @@ const CONTRAST_ITERS = 20;
  * the terminal rounds text and background independently, and two roundings
  * can meet in the middle, so the ratio is measured on the drawn pair: a
  * colour that loses the floor there is replaced by the nearest cube/grey entry
- * that clears it (whose own rounding is itself). Every other depth draws a
- * colour the chosen one IS (truecolor) or one only the terminal knows (ANSI).
+ * that clears it (whose own rounding is itself). At ANSI the terminal draws
+ * its own theme's colours, so the ratio is measured on the table's nominal
+ * ones (`DRAWN_FROM`): they say which side of the ground text belongs on, and
+ * text on its background's index measures 1:1 and is always replaced.
+ * Truecolor draws the colour chosen.
  *
  * [LAW:single-enforcer] The one place "is this text readable, and if not fix
  * it" is decided. Callers route every fg/bg pair through here and the
@@ -171,13 +175,62 @@ export function ensureContrast(
   const ground = drawnBackground(bg, substrate);
   const chosen = ensureTruecolorContrast(fg, ground, minRatio);
   // [LAW:dataflow-not-control-flow] The depth names the table the terminal
-  // draws from; only one whose entries have a known RGB can be measured.
-  const table = MEASURABLE_DOWNGRADE[drawnAt];
+  // draws from; every table is measured the same way.
+  const table = DRAWN_FROM[drawnAt];
   if (table === undefined) return chosen;
-  const drawnBg = table.get(table.match(ground));
-  const drawn = table.get(table.match(chosen));
-  if (contrastRatio(drawn, drawnBg) >= minRatio) return chosen;
+  const drawnBg = drawnColour(ground, drawnAt, substrate);
+  if (contrastRatio(drawnColour(chosen, drawnAt, substrate), drawnBg) >= minRatio) return chosen;
   return table.get(table.matchReadable(chosen, drawnBg, minRatio));
+}
+
+/**
+ * `chosen` (composited opaque over `substrate`), or — when the depth the
+ * terminal draws at rounds it to a colour `accept` refuses — the nearest colour that depth draws as itself which
+ * `accept` takes. `accept` sees the candidate as drawn, and `drawn`, the same
+ * rounding for any other colour it measures against, so the caller states a
+ * floor once and it holds on the colours the terminal shows — at ANSI, on
+ * the table's nominal colours, as `ensureContrast` measures there. Truecolor
+ * draws from no table, so a colour refused there has no replacement;
+ * `undefined` means nothing the depth draws is accepted.
+ *
+ * `ensureContrast` is this with a contrast ratio as the floor; this is for a
+ * floor that is not text on its background (an open state standing off every
+ * closed cell, two planes standing off each other).
+ */
+export function ensureDrawn(
+  chosen: ColorRgba,
+  drawnAt: ColorDepth,
+  accept: (candidate: ColorRgba, drawn: (c: ColorRgba) => ColorRgba) => boolean,
+  substrate: ColorRgba = SURFACE_BLACK,
+): ColorRgba | undefined {
+  // The floor was measured on `chosen` composited over `substrate`, so that
+  // opaque colour is what is returned — never a translucent one a different
+  // ground would composite into a colour `accept` never saw.
+  const opaque = drawnBackground(chosen, substrate);
+  const drawn = (c: ColorRgba): ColorRgba => drawnColour(c, drawnAt, substrate);
+  if (accept(drawn(opaque), drawn)) return opaque;
+  // [LAW:dataflow-not-control-flow] Truecolor draws from no table, so it has
+  // no candidates: a refusal there is `undefined` like any exhausted search.
+  const table = DRAWN_FROM[drawnAt];
+  const index = table?.matchWhere(opaque, (entry) => accept(entry, drawn));
+  return index === undefined ? undefined : table!.get(index);
+}
+
+/**
+ * The colour a ground is shown as at `drawnAt`: composited over `substrate`
+ * (the SGR writer's black by default), then rounded to the table that depth
+ * draws from — at ANSI, that table's nominal colour stands in for the
+ * theme's. The one account `ensureDrawn` and `ensureContrast` measure by, for
+ * a caller that measures a floor of its own.
+ */
+export function drawnColour(
+  colour: ColorRgba,
+  drawnAt: ColorDepth,
+  substrate: ColorRgba = SURFACE_BLACK,
+): ColorRgba {
+  const opaque = drawnBackground(colour, substrate);
+  const table = DRAWN_FROM[drawnAt];
+  return table === undefined ? opaque : table.get(table.match(opaque));
 }
 
 /**
@@ -204,14 +257,17 @@ function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
 }
 
 /**
- * The downgrade tables whose entries the terminal draws at a known RGB, by the
- * depth that draws from them. 256 colours is the one: its cube and grey ramp
- * are fixed by xterm. ANSI 0–15 and the default colour are the terminal
- * theme's own, so text drawn there has no ratio to keep; truecolor draws the
- * chosen colour itself.
+ * The downgrade table the terminal draws from, by depth, measured at each
+ * entry's colour. The 256-colour cube and grey ramp are fixed by xterm, so
+ * those measurements are exact. ANSI 0–15 are the terminal theme's own, so
+ * the table's nominal colours stand in for them: they are wrong in hue from
+ * theme to theme, but not about which side of a ground an entry sits on —
+ * and two colours on one index are one colour in every theme, which the
+ * nominal ratio of 1 refuses. Truecolor draws the chosen colour itself.
  */
-const MEASURABLE_DOWNGRADE: Partial<Record<ColorDepth, ColorTable>> = {
+const DRAWN_FROM: Partial<Record<ColorDepth, ColorTable>> = {
   [ColorDepth.EIGHT_BIT]: EIGHT_BIT_DOWNGRADE_TABLE,
+  [ColorDepth.STANDARD]: STANDARD_TABLE,
 };
 
 function ensureTruecolorContrast(

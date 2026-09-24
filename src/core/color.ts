@@ -142,6 +142,15 @@ function remember(cache: Map<string, number>, key: string, index: number): numbe
   return index;
 }
 
+// [LAW:one-source-of-truth] The one distance every table scan ranks by, so
+// `matchWhere`'s "nearest by the distance `match` uses" cannot drift.
+function rgbDistance(a: ColorRgba, b: ColorRgba): number {
+  const dr = a.red - b.red;
+  const dg = a.green - b.green;
+  const db = a.blue - b.blue;
+  return dr * dr + dg * dg + db * db;
+}
+
 export class ColorTable {
   private readonly colors: ColorRgba[];
   private readonly firstIndex: number;
@@ -183,10 +192,7 @@ export class ColorTable {
     let bestDist = Infinity;
     for (let i = 0; i < this.colors.length; i++) {
       const c = this.colors[i]!;
-      const dr = c.red - value.red;
-      const dg = c.green - value.green;
-      const db = c.blue - value.blue;
-      const dist = dr * dr + dg * dg + db * db;
+      const dist = rgbDistance(c, value);
       if (dist < bestDist) {
         bestDist = dist;
         bestIndex = i;
@@ -218,12 +224,9 @@ export class ColorTable {
       const lc = this.luminances()[i]!;
       const ratio = luminanceRatio(lc, lOn);
       const passes = ratio >= minRatio;
-      const dr = c.red - value.red;
-      const dg = c.green - value.green;
-      const db = c.blue - value.blue;
       // A passing entry scores by closeness; a failing one only by contrast,
       // and loses to every passing one.
-      const score = passes ? -(dr * dr + dg * dg + db * db) : ratio;
+      const score = passes ? -rgbDistance(c, value) : ratio;
       if (
         (passes && !bestPasses) ||
         (passes === bestPasses && score > bestScore)
@@ -234,6 +237,24 @@ export class ColorTable {
       }
     }
     return remember(this.readableCache, key, this.firstIndex + best);
+  }
+
+  /**
+   * The nearest entry to `value` (the distance `match` uses) among those
+   * `accept` takes, given each entry's colour and terminal index; `undefined`
+   * when it takes none. Entries are offered nearest-first (ties to the lower
+   * index) and the first taken wins, so an expensive predicate runs only as
+   * far out as the answer. Uncached: the predicate is the caller's, and a
+   * closure has no key.
+   */
+  matchWhere(
+    value: ColorRgba,
+    accept: (entry: ColorRgba, index: number) => boolean,
+  ): number | undefined {
+    const dist = this.colors.map((c) => rgbDistance(c, value));
+    const nearestFirst = [...dist.keys()].sort((a, b) => dist[a]! - dist[b]!);
+    const found = nearestFirst.find((i) => accept(this.colors[i]!, this.firstIndex + i));
+    return found === undefined ? undefined : this.firstIndex + found;
   }
 }
 
@@ -407,6 +428,29 @@ export class ColorSpec {
 
   get isDefault(): boolean {
     return this.type === ColorDepth.DEFAULT;
+  }
+
+  /**
+   * The colour every terminal draws this spec as, where that is fixed — before
+   * any alpha is flattened, so a translucent value is drawn composited over
+   * its ground (`flattenAlpha`) and should be measured that way: a
+   * truecolor value, or a 256-colour cube or grey-ramp entry (xterm fixes
+   * indices 16–255, and `fromAnsi` types only those as EIGHT_BIT). ANSI 0–15
+   * and the default colour are the terminal theme's own, so they have none.
+   */
+  get fixedValue(): ColorRgba | undefined {
+    switch (this.type) {
+      case ColorDepth.TRUECOLOR:
+        return this.value;
+      case ColorDepth.EIGHT_BIT:
+        // The constructor admits an EIGHT_BIT spec at 0–15; those are the
+        // theme's own slots whatever depth names them.
+        return this.number! < 16 ? undefined : EIGHT_BIT_TABLE.get(this.number!);
+      case ColorDepth.DEFAULT:
+      case ColorDepth.STANDARD:
+      case ColorDepth.WINDOWS:
+        return undefined;
+    }
   }
 
   get isSystemDefined(): boolean {

@@ -8,8 +8,11 @@ import {
   contrastFor,
   contrastRatio,
   ensureContrast,
+  ensureDrawn,
+  drawnColour,
   relativeLuminance,
 } from "../../src/themes/colorMath.js";
+import { STANDARD_TABLE } from "../../src/core/color.js";
 
 const mid = new ColorRgba(128, 128, 128);
 const black = new ColorRgba(0, 0, 0);
@@ -293,8 +296,108 @@ describe("ensureContrast drawn at 256 colours", () => {
     expect(contrastRatio(drawn(ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT)), drawn(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("at ansi the terminal draws its own colours, so the truecolor answer stands", () => {
-    const [fg, bg] = pairs[5]!;
-    expect(ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD).hex).toBe(ensureContrast(fg, bg, 4.5).hex);
+  it("at ansi a truecolor answer stands wherever the table's nominal colours still read it", () => {
+    const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
+    let stood = 0;
+    for (const [fg, bg] of pairs) {
+      const truecolor = ensureContrast(fg, bg, 4.5);
+      if (contrastRatio(nominal(truecolor), nominal(bg)) < 4.5) continue;
+      stood++;
+      expect(ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD).hex).toBe(truecolor.hex);
+    }
+    expect(stood).toBeGreaterThan(0);
+  });
+});
+
+describe("ensureContrast drawn at ansi", () => {
+  // No ratio exists at ansi, but text on its background's index is the
+  // background's colour in every terminal theme.
+  it("text never lands on its background's index", () => {
+    const failures: string[] = [];
+    let collided = 0;
+    for (let v = 0; v < 256; v += 15) {
+      for (const bg of [new ColorRgba(v, v, v), new ColorRgba(v, 40, 60), new ColorRgba(200, v, 90)]) {
+        for (const fg of [bg, new ColorRgba(v, v, 255 - v), new ColorRgba(255 - v, v, v)]) {
+          if (STANDARD_TABLE.match(ensureContrast(fg, bg, 3)) === STANDARD_TABLE.match(bg)) collided++;
+          const chosen = ensureContrast(fg, bg, 3, ColorDepth.STANDARD);
+          if (STANDARD_TABLE.match(chosen) === STANDARD_TABLE.match(bg)) failures.push(`${fg.hex} on ${bg.hex}`);
+        }
+      }
+    }
+    expect(collided).toBeGreaterThan(0);
+    expect(failures).toEqual([]);
+  });
+
+  it("a replacement reads against its ground's nominal colour, not merely another index", () => {
+    // Green on teal was the nearest-other-index answer: 1.08:1.
+    const bg = new ColorRgba(0x1d, 0xcd, 0x56);
+    const fg = new ColorRgba(0x00, 0x4f, 0x44);
+    const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
+    expect(STANDARD_TABLE.match(ensureContrast(fg, bg, 4.5))).toBe(STANDARD_TABLE.match(bg));
+    const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD);
+    expect(contrastRatio(nominal(chosen), nominal(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("ensureDrawn", () => {
+  const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
+  const ground = new ColorRgba(0x10, 0x70, 0x30);
+  // A floor that is not text on a background: stand at least ΔE .2 off
+  // `ground` as drawn.
+  const apart = (candidate: ColorRgba, shown: (c: ColorRgba) => ColorRgba) =>
+    Oklch.fromRgba(candidate).deltaE(Oklch.fromRgba(shown(ground))) >= 0.2;
+  // Apart in truecolor, one cube entry at 256.
+  const chosen = new ColorRgba(0x00, 0x30, 0x70);
+
+  it("truecolor draws what was chosen: a refusal there has no replacement", () => {
+    expect(ensureDrawn(chosen, ColorDepth.TRUECOLOR, () => true)?.hex).toBe(chosen.hex);
+    expect(ensureDrawn(chosen, ColorDepth.TRUECOLOR, () => false)).toBeUndefined();
+  });
+
+  it("drawnColour is the colour accept is shown: composited, then rounded", () => {
+    const translucent = new ColorRgba(0x10, 0x70, 0x30, 0.5);
+    const flat = translucent.compositeOver(black);
+    expect(drawnColour(translucent, ColorDepth.TRUECOLOR).hex).toBe(flat.hex);
+    expect(drawnColour(translucent, ColorDepth.EIGHT_BIT).hex).toBe(drawn(flat).hex);
+    let shown: ColorRgba | undefined;
+    ensureDrawn(translucent, ColorDepth.EIGHT_BIT, (candidate) => ((shown = candidate), true));
+    expect(shown?.hex).toBe(drawnColour(translucent, ColorDepth.EIGHT_BIT).hex);
+  });
+
+  it("at ansi the floor holds on the table's nominal colours", () => {
+    const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
+    const apartAtAnsi = (candidate: ColorRgba, shown: (c: ColorRgba) => ColorRgba) =>
+      STANDARD_TABLE.match(candidate) !== STANDARD_TABLE.match(shown(ground));
+    const onGround = new ColorRgba(0x10, 0x60, 0x20);
+    expect(STANDARD_TABLE.match(onGround)).toBe(STANDARD_TABLE.match(ground));
+    const repaired = ensureDrawn(onGround, ColorDepth.STANDARD, apartAtAnsi)!;
+    expect(nominal(repaired).hex).toBe(repaired.hex);
+    expect(STANDARD_TABLE.match(repaired)).not.toBe(STANDARD_TABLE.match(ground));
+  });
+
+  it("keeps the chosen colour when its drawn colour is accepted", () => {
+    const far = new ColorRgba(0xf0, 0xf0, 0xf0);
+    expect(ensureDrawn(far, ColorDepth.EIGHT_BIT, apart)?.hex).toBe(far.hex);
+  });
+
+  it("repairs a rounding the floor refuses with the nearest entry it accepts, which draws as itself", () => {
+    expect(apart(drawn(chosen), drawn)).toBe(false);
+    const repaired = ensureDrawn(chosen, ColorDepth.EIGHT_BIT, apart)!;
+    expect(drawn(repaired).hex).toBe(repaired.hex);
+    expect(apart(repaired, drawn)).toBe(true);
+    expect(Oklch.fromRgba(repaired).deltaE(Oklch.fromRgba(chosen))).toBeLessThan(0.2);
+  });
+
+  it("returns the colour the floor was measured on: composited opaque over the substrate", () => {
+    const translucent = new ColorRgba(0xf0, 0xf0, 0xf0, 0.5);
+    for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT, ColorDepth.STANDARD]) {
+      const out = ensureDrawn(translucent, depth, () => true)!;
+      expect(out.alpha).toBe(1);
+      expect(out.hex).toBe(translucent.compositeOver(black).hex);
+    }
+  });
+
+  it("is undefined when no drawn colour is accepted", () => {
+    expect(ensureDrawn(chosen, ColorDepth.EIGHT_BIT, () => false)).toBeUndefined();
   });
 });

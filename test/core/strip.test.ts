@@ -3,6 +3,7 @@ import {
   Strip,
   PowerlineJoiner,
   POWERLINE_JOINER_GLYPHS,
+  SEAM_MIN_DELTA_E,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
@@ -11,6 +12,9 @@ import { Style, Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
+import { ColorDepth, ColorSpec } from "../../src/core/color.js";
+import { Oklch } from "../../src/core/oklch.js";
+import { renderToString } from "../../src/core/render.js";
 
 // [LAW:behavior-not-structure] Tests assert what consumers observe — segment
 // text, fg/bg pairs, ordering — not the internal walk.
@@ -160,6 +164,32 @@ describe("PowerlineJoiner same-bg structural join", () => {
     expect(mid("red", "color(1)")).toBe("|");
     expect(mid("red", "green")).toBe(">");
     expect(mid("color(1)", "color(9)")).toBe(">");
+    // An EIGHT_BIT spec on 0–15 is the same theme slot.
+    const slot = new Style({ color: "white", bgcolor: new ColorSpec("color(1)", ColorDepth.EIGHT_BIT, 1) });
+    expect(
+      render(new Strip([cell(" a ", slot), cell(" b ", "white on red")], new PowerlineJoiner({ glyph: ">", divider: "|" })))[1]!.text,
+    ).toBe("|");
+  });
+
+  // Two grounds apart in truecolor that a lower depth draws as one colour: the
+  // arrow would be drawn in the very colour it sits on, so the seam is the
+  // divider at that depth and the arrow above it.
+  it.each([
+    ["256 colours", ColorDepth.EIGHT_BIT, "#107030", "#003070"],
+    ["ansi", ColorDepth.STANDARD, "#f06050", "#e02040"],
+  ] as const)("measures the seam on the colours drawn at %s", (_, depth, a, b) => {
+    const [ca, cb] = [a, b].map((c) => ColorSpec.parse(c)) as [ColorSpec, ColorSpec];
+    expect(Oklch.fromRgba(ca.value!).deltaE(Oklch.fromRgba(cb.value!))).toBeGreaterThanOrEqual(SEAM_MIN_DELTA_E);
+    expect(ca.downgrade(depth).number).toBe(cb.downgrade(depth).number);
+    const strip = new Strip(
+      [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
+      new PowerlineJoiner({ glyph: ">", divider: "|" }),
+    );
+    const mid = (colorSystem: ColorDepth) => render(strip, { maxWidth: 80, colorSystem })[1]!.text;
+    expect([mid(ColorDepth.TRUECOLOR), mid(depth)]).toEqual([">", "|"]);
+    // renderToString hands its own depth to the renderables it encodes.
+    const text = renderToString(strip, { colorSystem: depth, width: 80 }).replace(/\x1b\[[0-9;]*m/g, "");
+    expect(text).toContain(" a | b ");
   });
 
   it("measures a translucent background as the colour it is drawn in", () => {
@@ -169,9 +199,28 @@ describe("PowerlineJoiner same-bg structural join", () => {
           [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
           new PowerlineJoiner({ glyph: ">", divider: "|" }),
         ),
-      )[1]!.text;
-    expect(mid("#FFFFFF0A", "#FFFFFF60")).toBe(">");
-    expect(mid("#FFFFFF60", "#FFFFFF61")).toBe("|");
+      )[1]!;
+    expect(mid("#FFFFFF0A", "#FFFFFF60").text).toBe(">");
+    expect(mid("#FFFFFF60", "#FFFFFF61").text).toBe("|");
+    // The arrow continues its cell: drawn in the left ground as the writer
+    // draws it, opaque, never composited again over the ground it enters.
+    const arrow = mid("#FFFFFF60", "#FFFFFF0A");
+    expect(arrow.style?.color?.value?.hex).toBe(
+      new Style({ bgcolor: "#FFFFFF60" }).drawnColors().bgcolor?.value?.hex,
+    );
+    expect(arrow.style?.color?.value?.alpha).toBe(1);
+  });
+
+  it("draws the divider on the left item's own ground, so it reads as that item's text", () => {
+    // Two grounds the eye cannot tell apart, but not one colour.
+    const mid = render(
+      new Strip(
+        [cell(" a ", "white on #402020"), cell(" b ", "white on #412121")],
+        new PowerlineJoiner({ glyph: ">", divider: "|" }),
+      ),
+    )[1]!;
+    expect(mid.text).toBe("|");
+    expect(mid.style?.bgcolor?.value?.hex).toBe("#402020");
   });
 
   it("freezes the default pair every bare joiner reads", () => {

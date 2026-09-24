@@ -442,6 +442,51 @@ describe("ColorSpec.flattenAlpha()", () => {
 // ColorSpec.downgrade()
 // ---------------------------------------------------------------------------
 
+describe("ColorSpec.fixedValue", () => {
+  it("is the colour every terminal draws: a truecolor value, or a 256-colour cube or grey entry", () => {
+    expect(ColorSpec.parse("#123456").fixedValue?.hex).toBe("#123456");
+    expect(ColorSpec.fromAnsi(23).fixedValue?.hex).toBe(EIGHT_BIT_TABLE.get(23).hex);
+    expect(ColorSpec.fromAnsi(240).fixedValue?.hex).toBe(EIGHT_BIT_TABLE.get(240).hex);
+  });
+
+  it("is absent where the terminal theme decides: ANSI 0-15 and the default", () => {
+    expect(ColorSpec.fromAnsi(9).fixedValue).toBeUndefined();
+    expect(ColorSpec.parse("red").fixedValue).toBeUndefined();
+    expect(ColorSpec.default().fixedValue).toBeUndefined();
+    // The constructor admits an EIGHT_BIT spec on a theme slot.
+    expect(new ColorSpec("color(1)", ColorDepth.EIGHT_BIT, 1).fixedValue).toBeUndefined();
+  });
+});
+
+describe("ColorTable.matchWhere()", () => {
+  it("is the nearest entry the predicate takes, by the distance match uses", () => {
+    const near = new ColorRgba(200, 10, 10);
+    const all = STANDARD_TABLE.matchWhere(near, () => true);
+    expect(all).toBe(STANDARD_TABLE.match(near));
+    const refused = STANDARD_TABLE.matchWhere(near, (_, i) => i !== all);
+    expect(refused).not.toBe(all);
+    expect(refused).toBeDefined();
+  });
+
+  it("asks the predicate nearest-first and stops at the first it takes", () => {
+    const table = EIGHT_BIT_TABLE;
+    const value = new ColorRgba(128, 128, 128);
+    const asked: number[] = [];
+    const nearest = table.match(value);
+    const found = table.matchWhere(value, (_, i) => {
+      asked.push(i);
+      return i !== nearest;
+    });
+    expect(asked[0]).toBe(nearest);
+    expect(asked).toHaveLength(2);
+    expect(found).toBe(asked[1]);
+  });
+
+  it("is undefined when the predicate takes nothing", () => {
+    expect(STANDARD_TABLE.matchWhere(new ColorRgba(0, 0, 0), () => false)).toBeUndefined();
+  });
+});
+
 describe("ColorSpec.downgrade()", () => {
   it("DEFAULT returns self regardless of target system", () => {
     const def = ColorSpec.default();
