@@ -4,15 +4,22 @@
     {
       "version": "pr-155",
       "ref": "refs/pull/155/merge",
-      "sha": "107cb70a7b66f9a2094e35ec43463168587b4b9e",
-      "timestamp": "2026-09-24T19:42:10.153Z",
+      "sha": "b31b3f9cf6bf749e2a99ba793fcc7989d5f1844c",
+      "timestamp": "2026-09-24T19:46:21.430Z",
       "commits": [
         {
-          "sha": "107cb70a7b66f9a2094e35ec43463168587b4b9e",
+          "sha": "b31b3f9cf6bf749e2a99ba793fcc7989d5f1844c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T19:41:33Z",
-          "message": "Merge d7bf4a60740dd7bea5dfbe0d5294d189d0a92bb7 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+          "timestamp": "2026-09-24T19:45:53Z",
+          "message": "Merge e01e0edb2184eda5b4bc290a39494a83f0125156 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "e01e0edb2184eda5b4bc290a39494a83f0125156",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:45:48-06:00",
+          "message": "docs(contrast): the 256-colour path's fallback when no entry clears the ratio\n"
         },
         {
           "sha": "d7bf4a60740dd7bea5dfbe0d5294d189d0a92bb7",
