@@ -9,6 +9,7 @@ import {
   contrastRatio,
   ensureContrast,
   ensureDrawn,
+  drawnColour,
   relativeLuminance,
 } from "../../src/themes/colorMath.js";
 import { STANDARD_TABLE } from "../../src/core/color.js";
@@ -295,12 +296,16 @@ describe("ensureContrast drawn at 256 colours", () => {
     expect(contrastRatio(drawn(ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT)), drawn(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
-  it("at ansi the terminal draws its own colours, so a truecolor answer on another index stands", () => {
+  it("at ansi a truecolor answer stands wherever the table's nominal colours still read it", () => {
+    const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
+    let stood = 0;
     for (const [fg, bg] of pairs) {
       const truecolor = ensureContrast(fg, bg, 4.5);
-      if (STANDARD_TABLE.match(truecolor) === STANDARD_TABLE.match(bg)) continue;
+      if (contrastRatio(nominal(truecolor), nominal(bg)) < 4.5) continue;
+      stood++;
       expect(ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD).hex).toBe(truecolor.hex);
     }
+    expect(stood).toBeGreaterThan(0);
   });
 });
 
@@ -344,10 +349,30 @@ describe("ensureDrawn", () => {
   // Apart in truecolor, one cube entry at 256.
   const chosen = new ColorRgba(0x00, 0x30, 0x70);
 
-  it("truecolor draws what was chosen, and ansi the terminal's own colours: nothing to repair", () => {
-    for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.STANDARD]) {
-      expect(ensureDrawn(chosen, depth, () => false)?.hex).toBe(chosen.hex);
-    }
+  it("truecolor draws what was chosen: a refusal there has no replacement", () => {
+    expect(ensureDrawn(chosen, ColorDepth.TRUECOLOR, () => true)?.hex).toBe(chosen.hex);
+    expect(ensureDrawn(chosen, ColorDepth.TRUECOLOR, () => false)).toBeUndefined();
+  });
+
+  it("drawnColour is the colour accept is shown: composited, then rounded", () => {
+    const translucent = new ColorRgba(0x10, 0x70, 0x30, 0.5);
+    const flat = translucent.compositeOver(black);
+    expect(drawnColour(translucent, ColorDepth.TRUECOLOR).hex).toBe(flat.hex);
+    expect(drawnColour(translucent, ColorDepth.EIGHT_BIT).hex).toBe(drawn(flat).hex);
+    let shown: ColorRgba | undefined;
+    ensureDrawn(translucent, ColorDepth.EIGHT_BIT, (candidate) => ((shown = candidate), true));
+    expect(shown?.hex).toBe(drawnColour(translucent, ColorDepth.EIGHT_BIT).hex);
+  });
+
+  it("at ansi the floor holds on the table's nominal colours", () => {
+    const nominal = (c: ColorRgba) => STANDARD_TABLE.get(STANDARD_TABLE.match(c));
+    const apartAtAnsi = (candidate: ColorRgba, shown: (c: ColorRgba) => ColorRgba) =>
+      STANDARD_TABLE.match(candidate) !== STANDARD_TABLE.match(shown(ground));
+    const onGround = new ColorRgba(0x10, 0x60, 0x20);
+    expect(STANDARD_TABLE.match(onGround)).toBe(STANDARD_TABLE.match(ground));
+    const repaired = ensureDrawn(onGround, ColorDepth.STANDARD, apartAtAnsi)!;
+    expect(nominal(repaired).hex).toBe(repaired.hex);
+    expect(STANDARD_TABLE.match(repaired)).not.toBe(STANDARD_TABLE.match(ground));
   });
 
   it("keeps the chosen colour when its drawn colour is accepted", () => {

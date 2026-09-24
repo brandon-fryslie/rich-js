@@ -163,6 +163,11 @@ describe("PowerlineJoiner same-bg structural join", () => {
     expect(mid("red", "color(1)")).toBe("|");
     expect(mid("red", "green")).toBe(">");
     expect(mid("color(1)", "color(9)")).toBe(">");
+    // An EIGHT_BIT spec on 0–15 is the same theme slot.
+    const slot = new Style({ color: "white", bgcolor: new ColorSpec("color(1)", ColorDepth.EIGHT_BIT, 1) });
+    expect(
+      render(new Strip([cell(" a ", slot), cell(" b ", "white on red")], new PowerlineJoiner({ glyph: ">", divider: "|" })))[1]!.text,
+    ).toBe("|");
   });
 
   // Two grounds apart in truecolor that a lower depth draws as one colour: the

@@ -165,8 +165,8 @@ export const SEAM_MIN_DELTA_E = 0.04;
 // so two grounds 256 colours round to one cube entry are the one entry they
 // render as. A colour whose RGB is the terminal theme's own (ANSI 0–15) has no
 // value here, so two of them are the same only when they are the same palette
-// slot — `type` + `number`, never the name, which spells one slot many ways
-// ("red", "color(1)").
+// slot — its `number`, never the name or the depth that spells it ("red",
+// "color(1)", an EIGHT_BIT spec on 0–15 are one slot).
 function vanishes(arrow: Style, colorSystem: ColorDepth | null | undefined): boolean {
   // No colour emitted draws nothing to tell apart; measure what was handed.
   const { color, bgcolor } = arrow.drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
@@ -175,7 +175,7 @@ function vanishes(arrow: Style, colorSystem: ColorDepth | null | undefined): boo
   const bv = bgcolor.fixedValue;
   return av !== undefined && bv !== undefined
     ? Oklch.fromRgba(av).deltaE(Oklch.fromRgba(bv)) < SEAM_MIN_DELTA_E
-    : color.type === bgcolor.type && color.number === bgcolor.number;
+    : color.number === bgcolor.number;
 }
 
 // [LAW:types-are-the-program] The glyph and its divider are one vocabulary: a

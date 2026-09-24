@@ -85,6 +85,7 @@ import {
   contrastFor,
   ensureContrast,
   ensureDrawn,
+  drawnColour,
   lighten,
   darken,
   // Section 5 — a number → a colour over ordered stops
@@ -1070,7 +1071,9 @@ export function runDemo(
     out.print(bold("    ensureDrawn — a selection that must stay distinct once drawn at 256"));
     const neighbour = parseRgbHex("003070");
     const selected = parseRgbHex("107030");
-    const at256 = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT);
+    // drawnColour: the colour a ground is shown as at a depth — the rounding
+    // ensureDrawn hands its predicate as `drawn`.
+    const at256 = (c: ColorRgba) => ColorSpec.fromRgba(drawnColour(c, ColorDepth.EIGHT_BIT)).downgrade(ColorDepth.EIGHT_BIT);
     const kept = ensureDrawn(selected, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
       Oklch.fromRgba(candidate).deltaE(Oklch.fromRgba(drawn(neighbour))) >= 0.1,
     )!;

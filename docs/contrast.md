@@ -73,7 +73,9 @@ In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `col
 
 ### A floor that is not text — `ensureDrawn`
 
-Some floors are not text on a background. Examples are a selected cell that must stand off every unselected one, or two nested panels that must not merge. `ensureDrawn(chosen, drawnAt, accept)` is the same repair with the floor stated by you. `accept(candidate, drawn)` is shown the candidate as drawn, plus `drawn`, the same rounding for any colour it compares against. When the chosen colour's rounding is accepted, it comes back as it is drawn: composited over the substrate (black unless you pass another), so a translucent colour returns opaque. When it is refused, the nearest 256-colour entry that is accepted comes back instead (it draws as itself). The result is `undefined` when no entry is accepted. Truecolor and `STANDARD` have no rounding to repair, so `chosen` comes back composited and otherwise as it was.
+Some floors are not text on a background. Examples are a selected cell that must stand off every unselected one, or two nested panels that must not merge. `ensureDrawn(chosen, drawnAt, accept)` is the same repair with the floor stated by you. `accept(candidate, drawn)` is shown the candidate as drawn, plus `drawn`, the same rounding for any colour it compares against. When the chosen colour as drawn is accepted, it comes back composited over the substrate (black unless you pass another), so a translucent colour returns opaque. When it is refused, the nearest entry of the table the depth draws from that is accepted comes back instead (it draws as itself): the 256-colour cube and grey ramp, or at `STANDARD` the sixteen ANSI entries, whose nominal colours stand in for the theme's as they do in `ensureContrast`. Truecolor draws from no table, so a colour refused there has no replacement. The result is `undefined` when nothing is accepted.
+
+`drawnColour(colour, drawnAt, substrate?)` is that same rounding on its own, for a floor measured outside `accept`.
 
 ```typescript
 import { ColorDepth, ColorRgba, ensureDrawn, Oklch } from "@promptctl/rich-js";
