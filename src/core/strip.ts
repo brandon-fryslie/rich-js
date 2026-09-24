@@ -27,7 +27,7 @@
  */
 
 import { Segment } from "./segment.js";
-import { Style } from "./style.js";
+import { Style, SURFACE_BLACK } from "./style.js";
 import { ColorSpec, blendRgb } from "./color.js";
 import { Oklch } from "./oklch.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
@@ -158,14 +158,16 @@ function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
  */
 export const SEAM_MIN_DELTA_E = 0.04;
 
-// Two backgrounds the eye cannot tell apart. Colours with RGB values are
-// measured; a palette colour has no value here, so two of them are the same
-// only when they are the same palette slot — `type` + `number`, never the name,
-// which spells one slot many ways ("red", "color(1)").
+// Two backgrounds the eye cannot tell apart. What is measured is what is
+// drawn: each colour flattened onto the substrate Style.toSgrCodes flattens it
+// onto, so two alphas over one RGB are the two greys they render as. A palette
+// colour has no value here, so two of them are the same only when they are the
+// same palette slot — `type` + `number`, never the name, which spells one slot
+// many ways ("red", "color(1)").
 function indistinct(a: ColorSpec, b: ColorSpec | undefined): boolean {
   if (b === undefined) return false;
-  const av = a.value;
-  const bv = b.value;
+  const av = a.flattenAlpha(SURFACE_BLACK).value;
+  const bv = b.flattenAlpha(SURFACE_BLACK).value;
   return av !== undefined && bv !== undefined
     ? Oklch.fromRgba(av).deltaE(Oklch.fromRgba(bv)) < SEAM_MIN_DELTA_E
     : a.type === b.type && a.number === b.number;
@@ -187,7 +189,7 @@ export interface PowerlineJoinerOptions {
 }
 
 /** The powerline pair: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow). */
-export const POWERLINE_JOINER_GLYPHS: PowerlineJoinerOptions = { glyph: "\ue0b0", divider: "\ue0b1" };
+export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({ glyph: "\ue0b0", divider: "\ue0b1" });
 
 export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   private readonly _glyph: string;

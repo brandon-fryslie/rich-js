@@ -162,6 +162,22 @@ describe("PowerlineJoiner same-bg structural join", () => {
     expect(mid("color(1)", "color(9)")).toBe(">");
   });
 
+  it("measures a translucent background as the colour it is drawn in", () => {
+    const mid = (a: string, b: string) =>
+      render(
+        new Strip(
+          [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
+          new PowerlineJoiner({ glyph: ">", divider: "|" }),
+        ),
+      )[1]!.text;
+    expect(mid("#FFFFFF0A", "#FFFFFF60")).toBe(">");
+    expect(mid("#FFFFFF60", "#FFFFFF61")).toBe("|");
+  });
+
+  it("freezes the default pair every bare joiner reads", () => {
+    expect(Object.isFrozen(POWERLINE_JOINER_GLYPHS)).toBe(true);
+  });
+
   it("defaults the arrow and its divider as one pair", () => {
     const texts = render(new Strip([RED_A, RED_B, BLUE_C], new PowerlineJoiner())).map((s) => s.text);
     expect(texts[1]).toBe(POWERLINE_JOINER_GLYPHS.divider);

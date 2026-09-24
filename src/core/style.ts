@@ -15,7 +15,7 @@ import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 // canonical canvas color (black), inlined to avoid pulling in any preset
 // theme constants. Preset themes live in `src/themes/` and depend on core,
 // never the reverse.
-const SURFACE_BLACK = new ColorRgba(0, 0, 0);
+export const SURFACE_BLACK = new ColorRgba(0, 0, 0);
 
 // --- Attribute definitions ---
 
