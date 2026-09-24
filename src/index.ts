@@ -36,7 +36,7 @@ export {
   INVERT_LIGHTNESS,
   isIdentityKey,
 } from "./core/oklch.js";
-export type { ThemeKey } from "./core/oklch.js";
+export type { ThemeKey, OklchWeights } from "./core/oklch.js";
 
 // Themes — semantic palettes (distinct from ColorTable quantization LUTs)
 export { Palette } from "./themes/palette.js";

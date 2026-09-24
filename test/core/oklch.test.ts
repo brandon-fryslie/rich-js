@@ -322,8 +322,29 @@ describe("Oklch.mix", () => {
     const a = from(200, 100, 50);
     const b = from(20, 60, 200);
     for (const t of [-0.5, 1.5, Number.NaN]) {
-      expect(() => a.mix(b, t)).toThrow(/Oklch\.mix: t must be in \[0, 1\]/);
+      expect(() => a.mix(b, t)).toThrow(/Oklch\.mix: l weight must be in \[0, 1\]/);
     }
+  });
+
+  it("mixAxes moves each axis its own share; uniform weights are mix", () => {
+    const gray = from(40, 40, 40);
+    const red = from(220, 40, 60);
+    const t = gray.mixAxes(red, { l: 0.2, c: 0.8, h: 1, alpha: 0 });
+    expect(t.l).toBeCloseTo(gray.l + (red.l - gray.l) * 0.2, 12);
+    expect(t.c).toBeCloseTo(gray.c + (red.c - gray.c) * 0.8, 12);
+    // A gray has no hue of its own, so it adopts the other endpoint's.
+    expect(t.h).toBeCloseTo(red.h, 10);
+    for (const w of [0, 0.3, 1]) {
+      expect(gray.mixAxes(red, { l: w, c: w, h: w, alpha: w })).toEqual(gray.mix(red, w));
+    }
+  });
+
+  it("mixAxes names the axis whose weight is outside [0, 1]", () => {
+    const a = from(200, 100, 50);
+    const b = from(20, 60, 200);
+    expect(() => a.mixAxes(b, { l: 0.5, c: 1.5, h: 0, alpha: 0 })).toThrow(
+      /Oklch\.mix: c weight must be in \[0, 1\]; got 1\.5/,
+    );
   });
 
   it("two achromatic endpoints stay achromatic", () => {

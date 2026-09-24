@@ -48,6 +48,14 @@ export interface ThemeKey {
   readonly lightnessShift: number;
 }
 
+/** How far `Oklch.mixAxes` moves each axis toward its target, each in [0, 1]. */
+export interface OklchWeights {
+  readonly l: number;
+  readonly c: number;
+  readonly h: number;
+  readonly alpha: number;
+}
+
 export const IDENTITY: ThemeKey = Object.freeze({
   hueShift: 0,
   chromaScale: 1,
@@ -252,8 +260,29 @@ export class Oklch {
    * there too.
    */
   mix(toward: Oklch, t: number): Oklch {
-    if (!(t >= 0 && t <= 1)) {
-      throw new RangeError(`Oklch.mix: t must be in [0, 1]; got ${t}`);
+    return this.mixAxes(toward, { l: t, c: t, h: t, alpha: t });
+  }
+
+  /**
+   * `mix` with each axis moved its own share of the way: `weights.l` of the
+   * lightness gap, `weights.c` of the chroma gap, and so on, each in [0, 1].
+   * `mix(toward, t)` is exactly `mixAxes(toward, { l: t, c: t, h: t, alpha: t })`
+   * — one interpolation, so the shorter-arc hue, the powerless-endpoint rule
+   * and the range check are the same whichever is called.
+   *
+   * It exists because perceptual axes are independent: a tint can take most of
+   * a hue's colourfulness while keeping close to the lightness it started at,
+   * which a single `t` cannot say — raising `t` for chroma drags lightness with
+   * it. Every weight is required: an axis left out would need a default, and
+   * "unchanged" (0) and "same as the others" are both plausible readings.
+   */
+  mixAxes(toward: Oklch, weights: OklchWeights): Oklch {
+    for (const [axis, w] of Object.entries(weights)) {
+      if (!(w >= 0 && w <= 1)) {
+        throw new RangeError(
+          `Oklch.mix: ${axis} weight must be in [0, 1]; got ${w}`,
+        );
+      }
     }
     const thisHasHue = this.c >= ACHROMATIC_EPS;
     const towardHasHue = toward.c >= ACHROMATIC_EPS;
@@ -266,12 +295,12 @@ export class Oklch {
     const arc = toH - fromH;
     const fromU = arc < -180 ? fromH - 360 : fromH;
     const toU = arc > 180 ? toH - 360 : toH;
-    const c = lerp(this.c, toward.c, t);
+    const c = lerp(this.c, toward.c, weights.c);
     return new Oklch(
-      lerp(this.l, toward.l, t),
+      lerp(this.l, toward.l, weights.l),
       c,
-      hueOf(c, wrapHue(lerp(fromU, toU, t))),
-      lerp(this.alpha, toward.alpha, t),
+      hueOf(c, wrapHue(lerp(fromU, toU, weights.h))),
+      lerp(this.alpha, toward.alpha, weights.alpha),
     );
   }
 
