@@ -205,8 +205,12 @@ describe("a translucent background is measured as the terminal draws it", () => 
   const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
 
   it("truecolor: the chosen text clears the floor on the composite", () => {
-    for (const fg of [new ColorRgba(0x07, 0x07, 0x14), new ColorRgba(0xe2, 0xe2, 0xff)]) {
-      expect(contrastRatio(ensureContrast(fg, bg, 4.5), flat)).toBeGreaterThanOrEqual(4.5);
+    // Half-alpha white draws as mid grey: text that clears the raw white
+    // (dark) must still clear the grey the writer actually draws.
+    const halfWhite = parseRgbaHex("ffffff80");
+    const drawnGrey = halfWhite.compositeOver(new ColorRgba(0, 0, 0));
+    for (const fg of [new ColorRgba(255, 255, 255), new ColorRgba(0x33, 0x66, 0x99)]) {
+      expect(contrastRatio(ensureContrast(fg, halfWhite, 4.5), drawnGrey)).toBeGreaterThanOrEqual(4.5);
     }
   });
 
