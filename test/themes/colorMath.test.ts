@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ColorDepth, ColorRgba, ColorSpec } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, parseRgbaHex } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
 import {
   darken,
@@ -194,6 +194,64 @@ describe("ensureContrast", () => {
         expect(contrastRatio(out, bg)).toBeGreaterThanOrEqual(Math.min(4.5, best) - 1e-9);
       }
     }
+  });
+});
+
+describe("a translucent background is measured as the terminal draws it", () => {
+  // The SGR writer composites a translucent background over black before it
+  // draws it; the text chosen for it must clear the floor against THAT colour.
+  const bg = parseRgbaHex("037a8eeb");
+  const flat = bg.compositeOver(new ColorRgba(0, 0, 0));
+  const drawn = (c: ColorRgba) => ColorSpec.fromRgba(c).downgrade(ColorDepth.EIGHT_BIT).getTruecolor();
+
+  it("truecolor: the chosen text clears the floor on the composite", () => {
+    // Half-alpha white draws as mid grey: text that clears the raw white
+    // (dark) must still clear the grey the writer actually draws.
+    const halfWhite = parseRgbaHex("ffffff80");
+    const drawnGrey = halfWhite.compositeOver(new ColorRgba(0, 0, 0));
+    for (const fg of [new ColorRgba(255, 255, 255), new ColorRgba(0x33, 0x66, 0x99)]) {
+      expect(contrastRatio(ensureContrast(fg, halfWhite, 4.5), drawnGrey)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("256: the drawn text clears the floor on the drawn composite", () => {
+    const fg = new ColorRgba(0xe2, 0xe2, 0xff);
+    const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.EIGHT_BIT);
+    expect(contrastRatio(drawn(chosen), drawn(flat))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("contrastFor picks its pole on the composite", () => {
+    // Raw #c0c0c0 is light and wants black; at half alpha over black it draws
+    // as #606060, which is dark and wants white.
+    expect(contrastFor(parseRgbaHex("c0c0c080")).hex).toBe("#ffffff");
+  });
+
+  it("translucent text over a translucent background is measured as the writer draws it", () => {
+    // The writer flattens the background over black, then the text over that.
+    const fg = parseRgbaHex("e2e2ff99");
+    const flatBg = bg.compositeOver(new ColorRgba(0, 0, 0));
+    for (const depth of [ColorDepth.TRUECOLOR, ColorDepth.EIGHT_BIT]) {
+      const chosen = ensureContrast(fg, bg, 4.5, depth);
+      const shown = depth === ColorDepth.EIGHT_BIT ? drawn : (c: ColorRgba) => c;
+      expect(contrastRatio(shown(chosen), shown(flatBg))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("a translucent surface is refused, not measured as if opaque", () => {
+    const fg = new ColorRgba(255, 255, 255);
+    expect(() => ensureContrast(fg, bg, 4.5, ColorDepth.TRUECOLOR, parseRgbaHex("ffffff80"))).toThrow(RangeError);
+    expect(() => contrastFor(bg, parseRgbaHex("ffffff80"))).toThrow(RangeError);
+  });
+
+  it("an export's canvas is the surface its caller names", () => {
+    // The same half-alpha #c0c0c0 on a white export canvas draws as #dfdfdf,
+    // which is light and wants black — and text chosen for it clears there.
+    const white = new ColorRgba(255, 255, 255);
+    const bg = parseRgbaHex("c0c0c080");
+    expect(contrastFor(bg, white).hex).toBe("#000000");
+    const onCanvas = bg.compositeOver(white);
+    const text = ensureContrast(new ColorRgba(0x33, 0x66, 0x99), bg, 4.5, ColorDepth.TRUECOLOR, white);
+    expect(contrastRatio(text, onCanvas)).toBeGreaterThanOrEqual(4.5);
   });
 });
 

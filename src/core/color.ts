@@ -80,6 +80,15 @@ export class ColorRgba {
 }
 
 /**
+ * The surface a terminal draws a translucent colour over. A terminal cannot
+ * know what lies under its cells, so the SGR writer (`Style.toSgrCodes`), the
+ * strip's seam test and the contrast choosers (`themes/colorMath`) all
+ * composite over this one colour. [LAW:one-source-of-truth] One constant, so
+ * the colour text is chosen against is the colour the writer draws.
+ */
+export const SURFACE_BLACK = new ColorRgba(0, 0, 0);
+
+/**
  * WCAG 2.x relative luminance (0..1) of an opaque color. The single
  * luminance function in the codebase — `contrastFor`, `contrastRatio`, and
  * any caller that needs to reason about readability all funnel through it.

@@ -27,8 +27,8 @@
  */
 
 import { Segment } from "./segment.js";
-import { Style, SURFACE_BLACK } from "./style.js";
-import { ColorSpec, blendRgb } from "./color.js";
+import { Style } from "./style.js";
+import { ColorSpec, SURFACE_BLACK, blendRgb } from "./color.js";
 import { Oklch } from "./oklch.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 

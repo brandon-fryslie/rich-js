@@ -19,7 +19,7 @@ contrastRatio(black, white);     // ~21  (the maximum)
 contrastRatio(white, white);     // 1    (the minimum)
 ```
 
-`4.5:1` is the WCAG AA threshold for normal text; `3:1` for large text. These functions assume **opaque** inputs — the displayed contrast of a translucent color depends on what it composites over, so flatten first (or use `ensureContrast`, which does).
+`4.5:1` is the WCAG AA threshold for normal text; `3:1` for large text. `contrastRatio` and `relativeLuminance` measure the colours they are given and assume **opaque** inputs — the displayed contrast of a translucent color depends on what it composites over, so flatten first (`c.compositeOver(new ColorRgba(0, 0, 0))` for a terminal cell, which draws translucency over black). The pickers, `contrastFor` and `ensureContrast`, flatten a translucent background themselves, so check their answer against the flattened background too.
 
 ## Picking a readable color from scratch
 
@@ -66,6 +66,8 @@ const strong = ensureContrast(link, panel, 7);
 ```typescript
 const drawn = ensureContrast(link, panel, 4.5, ColorDepth.EIGHT_BIT);
 ```
+
+A translucent background is measured as drawn, composited over the surface beneath it: a fifth argument, `substrate`, defaulting to black, which is what the terminal writer composites over. A caller choosing text for another surface (an export flattens over its canvas, `exportCanvas(theme).background`) passes that surface; it must be opaque. `contrastFor(bg, substrate)` takes the same surface.
 
 In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given — see [Template Bindings](/template-bindings).
 

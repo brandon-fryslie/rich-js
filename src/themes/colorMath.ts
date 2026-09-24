@@ -6,6 +6,7 @@ import {
   blendRgb,
   contrastRatio,
   relativeLuminance,
+  SURFACE_BLACK,
 } from "../core/color.js";
 import { Oklch } from "../core/oklch.js";
 
@@ -107,10 +108,14 @@ export function alphaBlend(
 /**
  * Pick a contrasting foreground (black or white) for a background, using the
  * WCAG relative-luminance threshold of 0.179 (the perceptually correct cutoff
- * where black and white are equally readable).
+ * where black and white are equally readable). A translucent `bg` is judged
+ * as drawn: composited over `substrate` (see `drawnBackground`).
  */
-export function contrastFor(bg: ColorRgba): ColorRgba {
-  const lum = relativeLuminance(bg);
+export function contrastFor(
+  bg: ColorRgba,
+  substrate: ColorRgba = SURFACE_BLACK,
+): ColorRgba {
+  const lum = relativeLuminance(drawnBackground(bg, substrate));
   return lum > 0.179
     ? new ColorRgba(0, 0, 0)
     : new ColorRgba(255, 255, 255);
@@ -137,10 +142,11 @@ const CONTRAST_ITERS = 20;
  * background where even pure black-or-white tops out below the target) does it
  * fall back to `contrastFor`'s black/white — the true maximum-contrast pick.
  *
- * A translucent `fg` is flattened over `bg` first (the displayed color is
- * `fg` composited over `bg`), so the ratio is measured on what the eye
- * actually sees and the returned color is opaque. `bg` is treated as the
- * opaque substrate.
+ * A translucent `bg` is measured as it is drawn — composited over
+ * `substrate`, the SGR writer's black by default — and a translucent `fg` is
+ * then flattened over that drawn background, the order the writer composites
+ * in, so the ratio is measured on what the eye actually sees and the returned
+ * color is opaque.
  *
  * `drawnAt` is the depth the terminal will draw the pair at. At 256 colours
  * the terminal rounds text and background independently, and two roundings
@@ -160,16 +166,41 @@ export function ensureContrast(
   bg: ColorRgba,
   minRatio = 4.5, // WCAG AA for normal text
   drawnAt: ColorDepth = ColorDepth.TRUECOLOR,
+  substrate: ColorRgba = SURFACE_BLACK,
 ): ColorRgba {
-  const chosen = ensureTruecolorContrast(fg, bg, minRatio);
+  const ground = drawnBackground(bg, substrate);
+  const chosen = ensureTruecolorContrast(fg, ground, minRatio);
   // [LAW:dataflow-not-control-flow] The depth names the table the terminal
   // draws from; only one whose entries have a known RGB can be measured.
   const table = MEASURABLE_DOWNGRADE[drawnAt];
   if (table === undefined) return chosen;
-  const drawnBg = table.get(table.match(bg));
+  const drawnBg = table.get(table.match(ground));
   const drawn = table.get(table.match(chosen));
   if (contrastRatio(drawn, drawnBg) >= minRatio) return chosen;
   return table.get(table.matchReadable(chosen, drawnBg, minRatio));
+}
+
+/**
+ * A background as it is drawn: composited over the surface beneath it. That
+ * surface is a fact about where the pair is drawn, so it arrives as a value:
+ * the SGR writer (`Style.toSgrCodes`) composites over `SURFACE_BLACK`, the
+ * default here; a caller choosing text for a different surface — an export's
+ * canvas, `exportCanvas(theme).background` — names that one.
+ * [LAW:no-silent-failure] A surface has nothing under it, so a translucent one
+ * has no drawn colour to offer; `compositeOver` would read its raw RGB as if
+ * it were opaque, so it is refused here rather than measured wrong.
+ * [LAW:one-source-of-truth] Text is chosen against the colour the surface will
+ * show — measuring the raw RGBA reads a colour that is drawn nowhere, and text
+ * that "clears" it can land below the floor. Opaque colours composite to
+ * themselves.
+ */
+function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
+  if (substrate.alpha !== 1) {
+    throw new RangeError(
+      `a contrast substrate is the opaque surface under a translucent background; got ${substrate.hex}`,
+    );
+  }
+  return bg.compositeOver(substrate);
 }
 
 /**
