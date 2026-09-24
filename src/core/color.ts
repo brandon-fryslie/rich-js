@@ -103,11 +103,14 @@ export function relativeLuminance(c: ColorRgba): number {
  * foreground, flatten it first (or use `ensureContrast`, which does).
  */
 export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
-  const la = relativeLuminance(a);
-  const lb = relativeLuminance(b);
-  const hi = la > lb ? la : lb;
-  const lo = la > lb ? lb : la;
-  return (hi + 0.05) / (lo + 0.05);
+  return luminanceRatio(relativeLuminance(a), relativeLuminance(b));
+}
+
+// [LAW:single-enforcer] The WCAG ratio over two relative luminances — the one
+// formula `contrastRatio` and `ColorTable.matchReadable` (which caches its
+// entries' luminances) both measure with.
+function luminanceRatio(la: number, lb: number): number {
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
 }
 
 // --- ColorTable ---
@@ -204,7 +207,7 @@ export class ColorTable {
     for (let i = 0; i < this.colors.length; i++) {
       const c = this.colors[i]!;
       const lc = this.luminances()[i]!;
-      const ratio = (Math.max(lc, lOn) + 0.05) / (Math.min(lc, lOn) + 0.05);
+      const ratio = luminanceRatio(lc, lOn);
       const passes = ratio >= minRatio;
       const dr = c.red - value.red;
       const dg = c.green - value.green;

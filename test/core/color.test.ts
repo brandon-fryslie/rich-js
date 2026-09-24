@@ -161,6 +161,25 @@ describe("ColorTable", () => {
     expect(table.match(new ColorRgba(0, 4, 0))).toBe(oracle(0, 4, 0));
   });
 
+  it(".matchReadable() picks the nearest entry that clears the ratio, else the most contrast", () => {
+    const black = new ColorRgba(0, 0, 0);
+    // Blue itself draws at 2.4:1 on black; red (5.3) and green (15.3) pass,
+    // and green is nearer this sky blue than red is.
+    const sky = new ColorRgba(0, 60, 255);
+    expect(palette.match(sky)).toBe(3);
+    expect(palette.matchReadable(sky, black, 4.5)).toBe(2);
+    // An entry that already passes is its own answer.
+    expect(palette.matchReadable(new ColorRgba(240, 10, 10), black, 4.5)).toBe(1);
+    // Nothing reaches 21:1 on mid-grey: the most contrast wins (black, 5.3:1).
+    expect(palette.matchReadable(sky, new ColorRgba(128, 128, 128), 21)).toBe(0);
+    // Indices are the terminal's: a table starting at 16 answers from 16.
+    const offset = new ColorTable(
+      [black, new ColorRgba(255, 0, 0), new ColorRgba(0, 255, 0), new ColorRgba(0, 0, 255)],
+      16,
+    );
+    expect(offset.matchReadable(sky, black, 4.5)).toBe(18);
+  });
+
   it("STANDARD_TABLE has 16 entries", () => {
     expect(STANDARD_TABLE.size).toBe(16);
   });
