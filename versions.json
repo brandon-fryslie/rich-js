@@ -4,15 +4,22 @@
     {
       "version": "pr-153",
       "ref": "refs/pull/153/merge",
-      "sha": "40b8678edc25898a9bbf394c0b9a4306749a4ac6",
-      "timestamp": "2026-09-24T12:54:40.093Z",
+      "sha": "85298791da4bb432ef415148ab29262a12b1d7ec",
+      "timestamp": "2026-09-24T12:55:35.623Z",
       "commits": [
         {
-          "sha": "40b8678edc25898a9bbf394c0b9a4306749a4ac6",
+          "sha": "85298791da4bb432ef415148ab29262a12b1d7ec",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T12:54:15Z",
-          "message": "Merge ae7518456703f2e0d2384081481536922132ed37 into 43c135499762625165f7e86133adf1fb9b592208\n"
+          "timestamp": "2026-09-24T12:55:05Z",
+          "message": "Merge cbe3eb11574dfab8a712a7d3608cd2c19d753d88 into 43c135499762625165f7e86133adf1fb9b592208\n"
+        },
+        {
+          "sha": "cbe3eb11574dfab8a712a7d3608cd2c19d753d88",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T06:55:00-06:00",
+          "message": "fix(strip): new PowerlineJoiner() draws POWERLINE_JOINER_GLYPHS, not a second copy of it\n"
         },
         {
           "sha": "ae7518456703f2e0d2384081481536922132ed37",
