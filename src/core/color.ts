@@ -118,6 +118,18 @@ export function contrastRatio(a: ColorRgba, b: ColorRgba): number {
  * choose (the 256-colour cube and grey ramp start at 16) while every index it
  * reports is the terminal's own.
  */
+// [LAW:single-enforcer] The one size policy for ColorTable's memos: a key is
+// derived from colours a long-running host computes without end (ramp stops,
+// mixes), so an unbounded map grows with every render. Clearing at the cap is
+// the policy `cellLen` already uses; a refill costs one table scan per key.
+const TABLE_CACHE_MAX = 4096;
+
+function remember(cache: Map<string, number>, key: string, index: number): number {
+  if (cache.size >= TABLE_CACHE_MAX) cache.clear();
+  cache.set(key, index);
+  return index;
+}
+
 export class ColorTable {
   private readonly colors: ColorRgba[];
   private readonly firstIndex: number;
@@ -168,8 +180,7 @@ export class ColorTable {
         bestIndex = i;
       }
     }
-    this.matchCache.set(key, this.firstIndex + bestIndex);
-    return this.firstIndex + bestIndex;
+    return remember(this.matchCache, key, this.firstIndex + bestIndex);
   }
 
   /**
@@ -210,8 +221,7 @@ export class ColorTable {
         bestScore = score;
       }
     }
-    this.readableCache.set(key, this.firstIndex + best);
-    return this.firstIndex + best;
+    return remember(this.readableCache, key, this.firstIndex + best);
   }
 }
 

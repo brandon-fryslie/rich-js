@@ -145,6 +145,22 @@ describe("ColorTable", () => {
     expect(first).toBe(1);
   });
 
+  it(".match() stays correct past its memo's size cap", () => {
+    const entries = [[0, 0, 0], [255, 0, 0], [0, 255, 0], [0, 0, 255]] as const;
+    const table = new ColorTable(entries.map(([r, g, b]) => new ColorRgba(r, g, b)));
+    const oracle = (r: number, g: number, b: number): number => {
+      const d = entries.map(([er, eg, eb]) => (er - r) ** 2 + (eg - g) ** 2 + (eb - b) ** 2);
+      return d.indexOf(Math.min(...d));
+    };
+    // 64 × 64 × 2 = 8192 distinct keys, twice the cap, then a key from the
+    // first half again, which the clear has dropped and must recompute.
+    for (let r = 0; r < 256; r += 4)
+      for (let g = 0; g < 256; g += 4)
+        for (const b of [0, 255])
+          expect(table.match(new ColorRgba(r, g, b))).toBe(oracle(r, g, b));
+    expect(table.match(new ColorRgba(0, 4, 0))).toBe(oracle(0, 4, 0));
+  });
+
   it("STANDARD_TABLE has 16 entries", () => {
     expect(STANDARD_TABLE.size).toBe(16);
   });
