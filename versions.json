@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-154",
-      "ref": "refs/pull/154/merge",
-      "sha": "55abaa91ff29a0079e2719719ca786235d48e724",
-      "timestamp": "2026-09-24T13:06:41.701Z",
-      "commits": [
-        {
-          "sha": "55abaa91ff29a0079e2719719ca786235d48e724",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T07:05:39-06:00",
-          "message": "Merge 74b51136fa6c9a435d314d197618181e63bf7121 into 22607175fa92177b43f79927214588ff450f201a\n"
-        },
-        {
-          "sha": "74b51136fa6c9a435d314d197618181e63bf7121",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T07:05:33-06:00",
-          "message": "chore(release): 0.12.0\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "22607175fa92177b43f79927214588ff450f201a",
-      "timestamp": "2026-09-24T13:05:35.321Z",
+      "sha": "0c8cae200bd50f39ac8f43ae1d2900744efebd74",
+      "timestamp": "2026-09-24T13:07:59.662Z",
       "commits": [
         {
-          "sha": "22607175fa92177b43f79927214588ff450f201a",
+          "sha": "0c8cae200bd50f39ac8f43ae1d2900744efebd74",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T07:05:09-06:00",
-          "message": "feat: OKLCH per-axis mix and ΔE; powerline seams stay visible between near-equal backgrounds (#153)\n\n* feat(oklch): mixAxes moves each axis its own share; mix is its uniform case\n\n* fix(oklch): mixAxes checks its four axes by name, mix reports t, one shared interpolation; docs and independent tests\n\n* feat(oklch): deltaE — OKLab distance (CSS Color 4 deltaEOK)\n\n* feat(strip): powerline draws the divider between neighbours whose backgrounds the eye cannot tell apart\n\n* fix(strip): the powerline arrow and its divider are one pair; palette colours compare by slot\n\nA caller replacing only the glyph (\">\" for ASCII) kept the U+E0B1 divider\nbeside it, which renders as tofu without a powerline font. PowerlineJoinerOptions\nnow requires both; the unset case is the exported POWERLINE_JOINER_GLYPHS pair.\n\nindistinct() compared valueless colours by name, so \"red\" and \"color(1)\" —\none palette slot — were two colours. It compares type + number now.\n\n* fix(strip): new PowerlineJoiner() draws POWERLINE_JOINER_GLYPHS, not a second copy of it\n\n* fix(strip): seams measured as drawn (alpha flattened); frozen default pair; docs name the divider case\n\nPushback: a plain-JS caller omitting divider — the required pair in\nPowerlineJoinerOptions is the contract; a runtime ?? would be the defensive\nfallback the pair replaced."
+          "timestamp": "2026-09-24T07:07:32-06:00",
+          "message": "chore(release)!: 0.12.0 (#154)\n\nBREAKING CHANGE: PowerlineJoinerOptions requires glyph and divider together (#153). A caller that replaced only the arrow must also pass a divider; new PowerlineJoiner() draws POWERLINE_JOINER_GLYPHS."
         }
       ]
     }
