@@ -64,7 +64,7 @@ describe("renderToString", () => {
         new RichText(" main ", { style: "white on blue", end: "" }),
         new RichText(" foo ", { style: "white on cyan", end: "" }),
       ],
-      new PowerlineJoiner({ glyph: ">" }),
+      new PowerlineJoiner({ glyph: ">", divider: "|" }),
     );
     const out = renderToString(strip, { colorSystem: ColorDepth.TRUECOLOR });
     expect(out).toContain(" main ");

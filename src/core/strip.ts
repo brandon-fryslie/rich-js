@@ -159,27 +159,35 @@ function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
 export const SEAM_MIN_DELTA_E = 0.04;
 
 // Two backgrounds the eye cannot tell apart. Colours with RGB values are
-// measured; a named or indexed colour has no value here, so two of them are
-// the same only when they are the same colour.
+// measured; a palette colour has no value here, so two of them are the same
+// only when they are the same palette slot — `type` + `number`, never the name,
+// which spells one slot many ways ("red", "color(1)").
 function indistinct(a: ColorSpec, b: ColorSpec | undefined): boolean {
   if (b === undefined) return false;
   const av = a.value;
   const bv = b.value;
   return av !== undefined && bv !== undefined
     ? Oklch.fromRgba(av).deltaE(Oklch.fromRgba(bv)) < SEAM_MIN_DELTA_E
-    : a.name === b.name;
+    : a.type === b.type && a.number === b.number;
 }
 
+// [LAW:types-are-the-program] The glyph and its divider are one vocabulary: a
+// caller who replaces the arrow (say with ASCII ">") must also say what divides,
+// or the default thin arrow would render as tofu beside it. So they are given
+// together or not at all — the default pair is the unset case.
 export interface PowerlineJoinerOptions {
-  /** Glyph used for every join (default: U+E0B0, the powerline right-arrow). */
-  glyph?: string;
+  /** Glyph used for every join. */
+  glyph: string;
   /**
-   * Glyph drawn between neighbours whose backgrounds the eye cannot tell apart
-   * (default: U+E0B1, the powerline thin right-arrow), in the left item's text
-   * colour — the arrow itself would vanish into the shared background.
+   * Glyph drawn between neighbours whose backgrounds the eye cannot tell apart,
+   * in the left item's text colour — the arrow itself would vanish into the
+   * shared background.
    */
-  divider?: string;
+  divider: string;
 }
+
+/** The powerline pair: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow). */
+export const POWERLINE_JOINER_GLYPHS: PowerlineJoinerOptions = { glyph: "\ue0b0", divider: "\ue0b1" };
 
 export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   private readonly _glyph: string;

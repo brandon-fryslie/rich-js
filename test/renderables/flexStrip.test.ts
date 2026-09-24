@@ -70,7 +70,7 @@ describe("FlexStrip", () => {
       cell(" baz ", "white on magenta"),
     ];
     // PowerlineJoiner: start-cap = glyph fg=item.bg no bg; end-cap = same; mid = glyph fg=L.bg bg=R.bg.
-    const strip = new FlexStrip(items, { joiner: new PowerlineJoiner({ glyph: ">" }) });
+    const strip = new FlexStrip(items, { joiner: new PowerlineJoiner({ glyph: ">", divider: "|" }) });
     // width tight so we wrap after 2 items: per item " main " etc = 6. Line = >+6+>+6+>+6+> ... try 14 cells → fits 1 item: >+6+> = 8; add 2: 8 - 1(end) +1(mid)+6+1(end) = 16 > 14 → break.
     const lines = renderLines(strip, OPTS(14));
     expect(lines.length).toBeGreaterThan(1);

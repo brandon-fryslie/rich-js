@@ -15,6 +15,7 @@ import {
   Strip,
   PowerlineJoiner,
   SEAM_MIN_DELTA_E,
+  POWERLINE_JOINER_GLYPHS,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
@@ -61,6 +62,17 @@ export function runDemo(host: TerminalHost): DemoHandle {
   showcase(
     `PowerlineJoiner, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
     new Strip(shared, new PowerlineJoiner()),
+  );
+  // The arrow and its divider are one vocabulary, replaced together: here the
+  // default pair spelled out, then the ASCII pair a terminal without a
+  // powerline font would take.
+  showcase(
+    `PowerlineJoiner, default pair spelled out (${JSON.stringify(POWERLINE_JOINER_GLYPHS)})`,
+    new Strip([...cells, ...shared], new PowerlineJoiner(POWERLINE_JOINER_GLYPHS)),
+  );
+  showcase(
+    "PowerlineJoiner, ASCII pair",
+    new Strip([...cells, ...shared], new PowerlineJoiner({ glyph: ">", divider: "|" })),
   );
   showcase("CapsuleJoiner", new Strip(cells, new CapsuleJoiner()));
   showcase("PlainJoiner", new Strip(cells, new PlainJoiner()));

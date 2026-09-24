@@ -174,6 +174,7 @@ export {
   Strip,
   PowerlineJoiner,
   SEAM_MIN_DELTA_E,
+  POWERLINE_JOINER_GLYPHS,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
