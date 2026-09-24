@@ -4,15 +4,29 @@
     {
       "version": "pr-155",
       "ref": "refs/pull/155/merge",
-      "sha": "22e125f65a4dd159967e66eb527cc830369a742c",
-      "timestamp": "2026-09-24T19:13:16.301Z",
+      "sha": "c9665a1bbc723a13b509f1039244b0bfb29ecf68",
+      "timestamp": "2026-09-24T19:16:07.842Z",
       "commits": [
         {
-          "sha": "22e125f65a4dd159967e66eb527cc830369a742c",
+          "sha": "c9665a1bbc723a13b509f1039244b0bfb29ecf68",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-24T13:12:43-06:00",
-          "message": "Merge 38d50ace49cb0436eb2c72737c47261d2cb26c16 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+          "timestamp": "2026-09-24T19:15:35Z",
+          "message": "Merge 47f8b9e3d94434a69b74d966b482ad8551792ea5 into 0c8cae200bd50f39ac8f43ae1d2900744efebd74\n"
+        },
+        {
+          "sha": "47f8b9e3d94434a69b74d966b482ad8551792ea5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:15:30-06:00",
+          "message": "docs(examples): one 256-colour engine; readableOn demos pass the required ratio\n"
+        },
+        {
+          "sha": "c86efafa45a149022da8597c2ffaf99668622606",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-24T13:14:42-06:00",
+          "message": "docs(examples): demonstrate readableOnFunc at 256 colours\n"
         },
         {
           "sha": "38d50ace49cb0436eb2c72737c47261d2cb26c16",
