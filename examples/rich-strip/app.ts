@@ -14,6 +14,7 @@ import {
   Console,
   Strip,
   PowerlineJoiner,
+  SEAM_MIN_DELTA_E,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,
@@ -52,6 +53,15 @@ export function runDemo(host: TerminalHost): DemoHandle {
   };
 
   showcase("PowerlineJoiner", new Strip(cells, new PowerlineJoiner()));
+  // Neighbours whose backgrounds sit closer than SEAM_MIN_DELTA_E would hide the
+  // arrow in their shared colour, so the joiner draws the thin divider there.
+  const shared = ["one", "two", "three"].map(
+    (t) => new RichText(` ${t} `, { style: Style.parse("white on #3a3f58"), end: "", noWrap: true }),
+  );
+  showcase(
+    `PowerlineJoiner, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
+    new Strip(shared, new PowerlineJoiner()),
+  );
   showcase("CapsuleJoiner", new Strip(cells, new CapsuleJoiner()));
   showcase("PlainJoiner", new Strip(cells, new PlainJoiner()));
   showcase("GradientJoiner (steps=6)", new Strip(cells, new GradientJoiner({ steps: 6 })));

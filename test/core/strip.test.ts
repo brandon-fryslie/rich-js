@@ -121,16 +121,30 @@ describe("PowerlineJoiner same-bg structural join", () => {
   const RED_B = cell(" b ", "white on red");
 
   it("emits the mid-join chevron structurally even when both neighbors share a bg", () => {
-    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
-    expect(render(strip).map((s) => s.text)).toEqual([" a ", ">", " b ", ">"]);
+    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">", divider: "|" }));
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", "|", " b ", ">"]);
   });
 
-  it("paints the equal-bg mid-join invisibly (fg === bg), not as a skipped segment", () => {
-    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">" }));
+  it("draws the equal-bg mid-join as the divider in the left item's text colour", () => {
+    const strip = new Strip([RED_A, RED_B], new PowerlineJoiner({ glyph: ">", divider: "|" }));
     const mid = render(strip)[1]!;
-    expect(mid.text).toBe(">");
-    expect(mid.style?.color?.name).toBe("red");
+    expect(mid.text).toBe("|");
+    expect(mid.style?.color?.name).toBe("white");
     expect(mid.style?.bgcolor?.name).toBe("red");
+  });
+
+  it("treats backgrounds the eye cannot tell apart as equal; a visible difference keeps the arrow", () => {
+    const joined = (a: string, b: string) =>
+      render(
+        new Strip(
+          [cell(" a ", `white on ${a}`), cell(" b ", `white on ${b}`)],
+          new PowerlineJoiner({ glyph: ">", divider: "|" }),
+        ),
+      )[1]!;
+    expect(joined("#402020", "#412121").text).toBe("|");
+    const far = joined("#402020", "#204040");
+    expect(far.text).toBe(">");
+    expect(far.style?.color?.value?.hex).toBe("#402020");
   });
 
   it("still emits a visible arrow when neighbor bgs differ", () => {

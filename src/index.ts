@@ -173,6 +173,7 @@ export type { RichTextOptions } from "./core/text.js";
 export {
   Strip,
   PowerlineJoiner,
+  SEAM_MIN_DELTA_E,
   CapsuleJoiner,
   PlainJoiner,
   GradientJoiner,

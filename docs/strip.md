@@ -61,6 +61,12 @@ The arrow is painted *in the left neighbour's background colour*, so it is drawn
 - `join(L, null)`: glyph with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
 - `join(null, R)`: empty. There is no left neighbour, so there is no colour to bleed and no arrow to draw. The strip begins cleanly, matching vim-airline / tmux-powerline / claude-powerline.
 
+When `L` and `R` share a background, the arrow would be drawn in its own background colour and vanish. The joiner draws the divider there instead (`divider`, default U+E0B1, the thin arrow) in `L`'s text colour, which is the vim-airline convention. "Share" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) count as one. Named or indexed colours have no RGB value to measure, so two of them share only when they are the same colour.
+
+```typescript
+new PowerlineJoiner({ glyph: ">", divider: "|" }); // an ASCII pair
+```
+
 An item *without* a background is the same case as a missing one. If `L` has no `bgcolor`, the join to its right is empty too — so a colourless cell has no arrow after it, wherever it sits in the strip. `… on default` counts as no background: the terminal default is transparent, so there is still nothing to paint.
 
 ### `CapsuleJoiner`
@@ -128,6 +134,8 @@ Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` an
 
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
+
+and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead.
 
 The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 
