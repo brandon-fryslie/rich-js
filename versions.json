@@ -4,15 +4,22 @@
     {
       "version": "pr-158",
       "ref": "refs/pull/158/merge",
-      "sha": "8481ab059e839b9dc53efc7002239fa7c359d886",
-      "timestamp": "2026-09-26T20:43:51.006Z",
+      "sha": "0607223a4957547be0934521856a879811269a55",
+      "timestamp": "2026-09-26T20:51:21.707Z",
       "commits": [
         {
-          "sha": "8481ab059e839b9dc53efc7002239fa7c359d886",
+          "sha": "0607223a4957547be0934521856a879811269a55",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-26T14:43:21-06:00",
-          "message": "Merge e8d5e3d952bd819d1e0c9bc9fe2b0470355ff100 into 17d6f65bd455f5cb9d51fab0cc9a0358d9c323de\n"
+          "timestamp": "2026-09-26T14:50:53-06:00",
+          "message": "Merge 0fee642479ea774dfa8a5e60491f3fc508ae97e2 into 17d6f65bd455f5cb9d51fab0cc9a0358d9c323de\n"
+        },
+        {
+          "sha": "0fee642479ea774dfa8a5e60491f3fc508ae97e2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-26T14:50:49-06:00",
+          "message": "fix(strip): a flat cap draws no segment; caps and arrows share one drawn-ground helper\n\n- cap(\"\", …) yields nothing, the same output as a join with nothing to paint\n- drawnGround hoisted beside paintableBg instead of rebuilt per join\n- tests pin the default tail and the lead/tail on every wrapped FlexStrip line\n- docs and the strip demo describe the four-glyph set; package-lock at 0.16.0\n"
         },
         {
           "sha": "e8d5e3d952bd819d1e0c9bc9fe2b0470355ff100",
