@@ -72,7 +72,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
   );
   showcase(
     "PowerlineJoiner, ASCII pair",
-    new Strip([...cells, ...shared], new PowerlineJoiner({ glyph: ">", divider: "|" })),
+    new Strip([...cells, ...shared], new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" })),
   );
   showcase("CapsuleJoiner", new Strip(cells, new CapsuleJoiner()));
   showcase("PlainJoiner", new Strip(cells, new PlainJoiner()));

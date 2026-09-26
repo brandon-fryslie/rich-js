@@ -86,15 +86,15 @@ describe("Group", () => {
     const after = new RichText("after\n", { end: "" });
 
     it("Strip puts the next renderable on its own line", () => {
-      const strip = new Strip([cellA, cellB], new PowerlineJoiner({ glyph: ">", divider: "|" }));
+      const strip = new Strip([cellA, cellB], new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }));
       const group = new Group(strip, after);
-      expect(collectText(group, { maxWidth: 80 })).toBe("a>b>\nafter\n");
+      expect(collectText(group, { maxWidth: 80 })).toBe("<a>b>\nafter\n");
     });
 
     it("FlexStrip puts the next renderable on its own line", () => {
-      const flexStrip = new FlexStrip([cellA, cellB], { joiner: new PowerlineJoiner({ glyph: ">", divider: "|" }) });
+      const flexStrip = new FlexStrip([cellA, cellB], { joiner: new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }) });
       const group = new Group(flexStrip, after);
-      expect(collectText(group, { maxWidth: 80 })).toBe("a>b>\nafter\n");
+      expect(collectText(group, { maxWidth: 80 })).toBe("<a>b>\nafter\n");
     });
   });
 });
