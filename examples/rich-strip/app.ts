@@ -63,15 +63,15 @@ export function runDemo(host: TerminalHost): DemoHandle {
     `PowerlineJoiner, shared background (divider below ΔE ${SEAM_MIN_DELTA_E})`,
     new Strip(shared, new PowerlineJoiner()),
   );
-  // The arrow and its divider are one vocabulary, replaced together: here the
-  // default pair spelled out, then the ASCII pair a terminal without a
-  // powerline font would take.
+  // The arrow, its divider and the two caps are one vocabulary, replaced
+  // together: here the default set spelled out, then the ASCII set a terminal
+  // without a powerline font would take.
   showcase(
-    `PowerlineJoiner, default pair spelled out (${JSON.stringify(POWERLINE_JOINER_GLYPHS)})`,
+    `PowerlineJoiner, default set spelled out (${JSON.stringify(POWERLINE_JOINER_GLYPHS)})`,
     new Strip([...cells, ...shared], new PowerlineJoiner(POWERLINE_JOINER_GLYPHS)),
   );
   showcase(
-    "PowerlineJoiner, ASCII pair",
+    "PowerlineJoiner, ASCII set",
     new Strip([...cells, ...shared], new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" })),
   );
   showcase("CapsuleJoiner", new Strip(cells, new CapsuleJoiner()));

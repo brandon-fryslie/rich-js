@@ -106,9 +106,9 @@ describe("PowerlineJoiner color inheritance", () => {
     expect(segs[4]!.style?.bgcolor).toBeUndefined();
   });
 
-  it("empty caps begin and end the strip flat", () => {
+  it("empty caps begin and end the strip flat — no segment at either end", () => {
     const strip = new Strip([RED], new PowerlineJoiner({ glyph: ">", divider: "|", lead: "", tail: "" }));
-    expect(renderToString(strip, { colorSystem: null, width: 80 })).toBe(" red \n");
+    expect(render(strip).map((s) => s.text)).toEqual([" red "]);
   });
 
   it("an empty lead begins the strip flat", () => {
@@ -252,6 +252,7 @@ describe("PowerlineJoiner same-bg structural join", () => {
     expect(texts[0]).toBe(POWERLINE_JOINER_GLYPHS.lead);
     expect(texts[2]).toBe(POWERLINE_JOINER_GLYPHS.divider);
     expect(texts[4]).toBe(POWERLINE_JOINER_GLYPHS.glyph);
+    expect(texts[6]).toBe(POWERLINE_JOINER_GLYPHS.tail);
   });
 
   it("still emits a visible arrow when neighbor bgs differ", () => {

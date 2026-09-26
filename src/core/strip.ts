@@ -147,6 +147,19 @@ function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
   return bg !== undefined && !bg.isDefault ? bg : undefined;
 }
 
+// A cap or arrow is its cell continuing: that cell's ground as the writer draws
+// it, so a translucent ground is not composited a second time over whatever it
+// enters.
+function drawnGround(bg: ColorSpec): ColorSpec | undefined {
+  return new Style({ bgcolor: bg }).drawnColors().bgcolor;
+}
+
+// A cap is its glyph in its cell's ground, and "" is a flat end: no glyph, so
+// no segment — the same output as a join with nothing to paint.
+function* cap(glyph: string, bg: ColorSpec): Iterable<Segment> {
+  if (glyph !== "") yield new Segment(glyph, new Style({ color: drawnGround(bg) }));
+}
+
 // --- PowerlineJoiner ---
 
 /**
@@ -266,19 +279,15 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
       const leftEdge = left?.edgeStyle("right", options);
       const leftBg = paintableBg(leftEdge?.bgcolor);
       const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
-      // A cap or arrow is its cell continuing: that cell's ground as the writer
-      // draws it, so a translucent ground is not composited a second time over
-      // whatever it enters.
-      const drawn = (bg: ColorSpec) => new Style({ bgcolor: bg }).drawnColors().bgcolor;
       if (leftBg === undefined) {
-        if (rightBg !== undefined) yield new Segment(lead, new Style({ color: drawn(rightBg) }));
+        if (rightBg !== undefined) yield* cap(lead, rightBg);
         return;
       }
       if (rightBg === undefined) {
-        yield new Segment(tail, new Style({ color: drawn(leftBg) }));
+        yield* cap(tail, leftBg);
         return;
       }
-      const arrow = new Style({ color: drawn(leftBg), bgcolor: rightBg });
+      const arrow = new Style({ color: drawnGround(leftBg), bgcolor: rightBg });
       // The divider is the left item's text on the left item's own ground,
       // so it reads exactly as well as that item's text does, at any depth.
       yield vanishes(arrow, options.colorSystem)

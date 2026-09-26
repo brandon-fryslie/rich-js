@@ -139,7 +139,7 @@ Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` an
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
 
-and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead.
+and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead. Where only one side has a background, the colour comes from that side alone: the lead takes `fg = R.edgeStyle("left", options).bgcolor`, the tail `fg = L.edgeStyle("right", options).bgcolor`, and neither has a bg.
 
 The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 
