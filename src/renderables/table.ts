@@ -8,7 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
 import type { RowLevel } from "../core/box.js";
 import { RichText } from "../core/text.js";
-import { renderMarkup } from "../core/markup.js";
+import { embed, embeddedText } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -17,49 +17,6 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
-
-/**
- * The one crossing where caller text becomes styled table content.
- *
- * Cells, headers, footers, the title and the caption each used to build their
- * own `RichText` straight from the constructor — which does not parse markup —
- * so the markup rule had five homes and was absent from all five, and
- * `[red]Solo[/red]` reached the terminal with its tags intact.
- * [LAW:single-enforcer]
- *
- * Parsing is unconditional because that is what the reference does rather than
- * because it is the simpler branch: Rich's `Console.__init__` declares
- * `markup: bool = True`, and all five positions reach the wire through Rich's
- * own `render_str`. A table-level opt-out would be a mode with no reference
- * behaviour to define. [LAW:no-mode-explosion]
- *
- * `end` is cleared on both arms, not passed in, because a table cell is a
- * fragment rather than a line — the same two steps Rich takes for a printed
- * string. The `RichText` arm copies first: clearing in place would reach back
- * into the caller's object.
- */
-function toCellText(content: unknown): RichText {
-  const text =
-    content instanceof RichText ? content.copy() : renderMarkup(String(content ?? ""));
-  text.end = "";
-  return text;
-}
-
-function toRenderable(content: unknown): Renderable {
-  // [LAW:single-enforcer] `toCellText` is the one place that clears a cell's
-  // `end` — route a directly-passed `RichText` through it rather than letting
-  // it leave via the passthrough arm below untouched (rich-text-5ai code
-  // review): the passthrough exists for a genuine non-text `Renderable` (a
-  // nested `Panel` or `Table`), which carries no `end` to clear.
-  if (content instanceof RichText) {
-    return toCellText(content);
-  }
-  if (typeof content === "object" && content !== null && "render" in content) {
-    return content as Renderable;
-  }
-  return toCellText(content);
-}
-
 
 // --- Width division ---
 
@@ -360,7 +317,7 @@ export class Column {
    * constructor-only stamp held only until the first `columns[0].footer = mine`
    * — which installed content that had parsed no markup, still carried its
    * `end`, and was still owned by the caller, into a slot every reader below
-   * assumes `toCellText` has been through. [LAW:parse-dont-validate] The setter
+   * assumes `embeddedText` has been through. [LAW:parse-dont-validate] The setter
    * is the border, so the guarantee holds for the object's whole lifetime and
    * the constructor is one caller of it rather than the one place it is true.
    *
@@ -369,7 +326,7 @@ export class Column {
    * a column always has one and `show_footer` alone decides whether it is
    * drawn. Modelling the absence as `undefined` instead made "no column has a
    * footer" a state the render path could ask about — and it did, skipping the
-   * row a caller had asked for. `toCellText` already maps nothing onto empty,
+   * row a caller had asked for. `embeddedText` already maps nothing onto empty,
    * which is why the setters take `undefined` rather than defaulting around it.
    */
   get header(): RichText {
@@ -377,7 +334,7 @@ export class Column {
   }
 
   set header(content: string | RichText | undefined) {
-    this._header = toCellText(content);
+    this._header = embeddedText(content);
   }
 
   get footer(): RichText {
@@ -385,7 +342,7 @@ export class Column {
   }
 
   set footer(content: string | RichText | undefined) {
-    this._footer = toCellText(content);
+    this._footer = embeddedText(content);
   }
 
   get flexible(): boolean {
@@ -478,9 +435,9 @@ export class Table implements Renderable, Measurable {
     this._rows = [];
     this.box = options?.box !== undefined ? options.box : HEAVY_HEAD;
     const titleVal = options?.title;
-    this.title = titleVal !== undefined ? toCellText(titleVal) : undefined;
+    this.title = titleVal !== undefined ? embeddedText(titleVal) : undefined;
     const captionVal = options?.caption;
-    this.caption = captionVal !== undefined ? toCellText(captionVal) : undefined;
+    this.caption = captionVal !== undefined ? embeddedText(captionVal) : undefined;
     this.expand = options?.expand ?? false;
     this.showHeader = options?.showHeader !== false;
     this.showFooter = options?.showFooter ?? false;
@@ -537,7 +494,7 @@ export class Table implements Renderable, Measurable {
     //
     // Ahead of the column loop: a cell that throws must leave no phantom column
     // behind. [LAW:no-ambient-temporal-coupling]
-    const resolved = cells.map(toRenderable);
+    const resolved = cells.map(embed);
 
     // Auto-create columns if needed
     while (this._columns.length < resolved.length) {
@@ -601,7 +558,7 @@ export class Table implements Renderable, Measurable {
     // Data rows
     for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
       const row = this._rows[rowIdx]!;
-      const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? toCellText(undefined));
+      const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? embeddedText(undefined));
 
       const rowStyle = this.rowStyles.length > 0
         ? this.rowStyles[rowIdx % this.rowStyles.length]!
@@ -782,7 +739,7 @@ export class Table implements Renderable, Measurable {
    */
   private *_columnCells(col: Column, index: number): Iterable<Renderable> {
     if (this.showHeader) yield col.header;
-    for (const row of this._rows) yield row.cells[index] ?? toCellText(undefined);
+    for (const row of this._rows) yield row.cells[index] ?? embeddedText(undefined);
     if (this.showFooter) yield col.footer;
   }
 
@@ -834,7 +791,7 @@ export class Table implements Renderable, Measurable {
     // rendered at all.
     const cellLines: Segment[][][] = columns.map((cellWidth, index) => {
       const col = this._columns[index]!;
-      const cell = cells[index] ?? toRenderable("");
+      const cell = cells[index] ?? embed("");
       // The render's own options with the column's canvas laid over them, so a
       // cell resolves its style names against the same theme as the table. The
       // table owns the row's height: a cell inherits none, as the reference's

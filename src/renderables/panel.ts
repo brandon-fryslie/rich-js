@@ -8,6 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, ROUNDED } from "../core/box.js";
 import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
+import { embed, inlineLabel } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -149,22 +150,6 @@ function borderTextStyle(
   return own === undefined ? border : getStyle(options, own);
 }
 
-function toRenderable(content: string | RichText | Renderable): Renderable {
-  // [LAW:one-type-per-behavior] Content embedded in a panel is a line, not a
-  // printed unit — the same reason columns, table cells, tree labels, and
-  // every other embedding site build their RichText with `end: ""`. Now that
-  // `RichText.render` honors `end` uniformly (rich-text-5ai), leaving this at
-  // the default "\n" would draw a trailing blank row whenever content ends
-  // with a literal newline.
-  if (typeof content === "string") return new RichText(content, { end: "" });
-  if (content instanceof RichText) {
-    const copy = content.copy();
-    copy.end = "";
-    return copy;
-  }
-  return content;
-}
-
 export class Panel implements Renderable, Measurable {
   readonly renderable: Renderable;
   readonly box: Box;
@@ -183,7 +168,7 @@ export class Panel implements Renderable, Measurable {
     content: string | RichText | Renderable,
     options?: PanelOptions,
   ) {
-    this.renderable = toRenderable(content);
+    this.renderable = embed(content);
     this.box = options?.box ?? ROUNDED;
     this.title = options?.title;
     this.subtitle = options?.subtitle;
@@ -360,8 +345,11 @@ export class Panel implements Renderable, Measurable {
     border: Style | undefined,
   ): Iterable<Segment> {
     const innerBorderWidth = geometry.spanWidth;
+    const titleSeg = borderTextStyle(options, this.titleStyle, border);
+    const title = inlineLabel(this.title, options, titleSeg);
+    const titleWidth = Segment.getLineLength(title);
 
-    if (!this.title) {
+    if (titleWidth === 0) {
       yield new Segment(box.top.left.repeat(geometry.left), border);
       yield new Segment(box.top.horizontal.repeat(innerBorderWidth), border);
       yield new Segment(box.top.right.repeat(geometry.right), border);
@@ -369,25 +357,20 @@ export class Panel implements Renderable, Measurable {
       return;
     }
 
-    const titleText = typeof this.title === "string" ? this.title : this.title.plain;
-    const titleDisplay = ` ${titleText} `;
-    const titleWidth = cellLen(titleDisplay);
-    const titleSeg = borderTextStyle(options, this.titleStyle, border);
-
     yield new Segment(box.top.left.repeat(geometry.left), border);
 
     if (titleWidth >= innerBorderWidth) {
-      // Title fills the border. [LAW:one-source-of-truth] cellLen / setCellSize
-      // are the cell-width authority — plain .slice would miscount wide chars
-      // and break border alignment.
-      yield new Segment(setCellSize(titleDisplay, asCellCol(innerBorderWidth)), titleSeg);
+      // Title fills the border. [LAW:one-source-of-truth] adjustLineLength is
+      // cell-aware — a plain .slice would miscount wide chars and break border
+      // alignment.
+      yield* Segment.adjustLineLength(title, innerBorderWidth, titleSeg);
     } else {
       // Center the title in the top border
       const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
       const rightRuleWidth = innerBorderWidth - titleWidth - leftRuleWidth;
 
       if (leftRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(leftRuleWidth), border);
-      yield new Segment(titleDisplay, titleSeg);
+      yield* title;
       if (rightRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(rightRuleWidth), border);
     }
 
@@ -423,23 +406,22 @@ export class Panel implements Renderable, Measurable {
     // as its centering canvas.
     const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
 
-    if (!this.subtitle) {
+    const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
+    const subtitle = inlineLabel(this.subtitle, options, subtitleSeg);
+    const subtitleWidth = Segment.getLineLength(subtitle);
+
+    if (subtitleWidth === 0) {
       if (centerWidth > 0) yield new Segment(box.bottom.horizontal.repeat(centerWidth), border);
     } else {
-      const subtitleText =
-        typeof this.subtitle === "string" ? this.subtitle : this.subtitle.plain;
-      const subtitleDisplay = ` ${subtitleText} `;
-      const subtitleWidth = cellLen(subtitleDisplay);
-      const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
 
       if (subtitleWidth >= centerWidth) {
         // Cell-aware clip — see _renderTopBorder.
-        yield new Segment(setCellSize(subtitleDisplay, asCellCol(centerWidth)), subtitleSeg);
+        yield* Segment.adjustLineLength(subtitle, centerWidth, subtitleSeg);
       } else {
         const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
         const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
         if (leftRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(leftRuleWidth), border);
-        yield new Segment(subtitleDisplay, subtitleSeg);
+        yield* subtitle;
         if (rightRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(rightRuleWidth), border);
       }
     }
