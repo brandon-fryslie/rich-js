@@ -78,6 +78,10 @@ function glyphCss(look: ExportLook): string[] {
   ];
 }
 
+// `unset` hands the anchor the run's look and drops the host's `a` rules;
+// `revert` gives back the browser's link cursor and focus ring.
+const ANCHOR_CSS = "all:unset;cursor:revert;outline:revert";
+
 const span = (css: readonly string[], content: string): string =>
   `<span style="${escapeAttribute(css.join(";"))}">${content}</span>`;
 
@@ -100,7 +104,7 @@ function runHtml({ text, look }: ExportRun): string {
     : span([...paintCss(look), ...glyphCss(look)], glyph);
   return look.href === null
     ? drawn
-    : `<a href="${escapeAttribute(look.href)}" style="color:inherit;text-decoration:inherit">${drawn}</a>`;
+    : `<a href="${escapeAttribute(look.href)}" style="${ANCHOR_CSS}">${drawn}</a>`;
 }
 
 /**
@@ -114,7 +118,8 @@ export const HTML_FRAGMENT_CSS = `@keyframes ${BLINK_KEYFRAMES}{50%{color:transp
  *
  * [LAW:locality-or-seam] Every rule is inline on the `pre` or below it, so the
  * fragment styles nothing outside itself; the host page keeps its own `body`,
- * `pre` and `a` rules.
+ * `pre` and `a` rules. The seam holds the other way too: `all:initial` stops
+ * the host's `pre` rules and inherited typography from reaching the rows.
  *
  * A browser draws no line for a newline at either edge of a `pre`: the parser
  * drops the one straight after the open tag, and the one before `</pre>` ends a
@@ -125,9 +130,10 @@ export function encodeHtmlFragment(segments: Iterable<Segment>, theme?: Terminal
   const canvas = exportCanvas(theme);
   const rows = exportLines(segments, theme).map((row) => `${row.map(runHtml).join("")}\n`);
   const css = [
+    "all:initial",
+    "display:block",
     `background:${canvas.background.hex}`,
     `color:${canvas.foreground.hex}`,
-    "margin:0",
     "padding:1em",
     "font-family:monospace",
     "white-space:pre",

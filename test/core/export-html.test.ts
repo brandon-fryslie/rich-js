@@ -112,7 +112,7 @@ describe("encodeHtml links and escaping", () => {
   it("wraps a linkable run in an anchor that inherits the run's look", () => {
     const page = html(new Style({ link: "https://example.com/a?b=1&c=2", bold: true }));
     expect(page).toContain(
-      `<a href="https://example.com/a?b=1&amp;c=2" style="color:inherit;text-decoration:inherit">` +
+      `<a href="https://example.com/a?b=1&amp;c=2" style="all:unset;cursor:revert;outline:revert">` +
         `<span style="color:${INK.hex};font-weight:bold">x</span></a>`,
     );
   });
@@ -138,7 +138,7 @@ describe("encodeHtmlFragment", () => {
 
   it("is one pre painted in the theme's canvas, styled only inline", () => {
     const fragment = encodeHtmlFragment(segments, THEME);
-    expect(fragment).toMatch(new RegExp(`^<pre style="background:${PAPER.hex};color:${INK.hex};[^"]*">[^]*</pre>$`));
+    expect(fragment).toMatch(new RegExp(`^<pre style="[^"]*background:${PAPER.hex};color:${INK.hex};[^"]*">[^]*</pre>$`));
     expect(fragment.match(/<pre/g)).toHaveLength(1);
     expect(fragment).not.toContain("<style");
   });
