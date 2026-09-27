@@ -4,15 +4,22 @@
     {
       "version": "pr-162",
       "ref": "refs/pull/162/merge",
-      "sha": "1f65523d3492ee5e60f201234dbf7666b0724fa1",
-      "timestamp": "2026-09-27T09:14:25.353Z",
+      "sha": "af397edae575d3e0343ec70d42e147d21a5eeb48",
+      "timestamp": "2026-09-27T09:19:51.797Z",
       "commits": [
         {
-          "sha": "1f65523d3492ee5e60f201234dbf7666b0724fa1",
+          "sha": "af397edae575d3e0343ec70d42e147d21a5eeb48",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T09:14:02Z",
-          "message": "Merge cbc61b5b2fc1aa5dd02b954b628ff3b7e35d3a8f into 293a83e962bc40e2cc8a865ee089fb9f3a36b534\n"
+          "timestamp": "2026-09-27T09:19:24Z",
+          "message": "Merge d269fda3e7faa9c8deacdf54bcdacf162cc0ccd5 into 293a83e962bc40e2cc8a865ee089fb9f3a36b534\n"
+        },
+        {
+          "sha": "d269fda3e7faa9c8deacdf54bcdacf162cc0ccd5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T03:19:20-06:00",
+          "message": "fix(renderables): containers forward height by the contract\n\nReview of #162: once Layout shapes its panes, a Panel forwarding its region\nunchanged let a nested Layout fill it and the crop took the panel's bottom\nborder. Panel and Padding now inset the budget by their own rows\n(insetHeight); Group, Columns and Tree hand each child the rows as a ceiling\n(stackedHeight). rich-dash's ClipHeight reserve, which compensated by hand,\nis gone.\n"
         },
         {
           "sha": "cbc61b5b2fc1aa5dd02b954b628ff3b7e35d3a8f",
