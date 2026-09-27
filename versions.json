@@ -2,32 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "15a366eb8b3b731c3afabcff39c7b04b1a52c57f",
-      "timestamp": "2026-09-27T12:10:19.231Z",
-      "commits": [
-        {
-          "sha": "15a366eb8b3b731c3afabcff39c7b04b1a52c57f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:09:43-06:00",
-          "message": "feat(viewport): a Viewport shows a window of rows onto taller content (rich-viewport-owi.3) (#166)\n\n* feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n\n* fix(viewport): ensureVisible counts rendered lines, and the demo follows the terminal's size (rich-viewport-owi.3)\n\nThe docs and demo passed an item index where ensureVisible counts the lines\nthe content renders to; the demo now renders each entry on one line and the\npage says so. The demo's Console reads the host's live size and its node\nbootstrap tears down on SIGTERM too. Render slices only the rows it shows.\n\n* chore(viewport): just recipe for the viewport demo (rich-viewport-owi.3)\n\n* fix(viewport): the demo paints its first frame on start (rich-viewport-owi.3)\n\nLive.start draws nothing with autoRefresh off, so frame 0 was never shown and\nthe screen stayed blank until the first tick."
-        }
-      ]
-    },
-    {
       "version": "pr-168",
       "ref": "refs/pull/168/merge",
-      "sha": "83212892da1575684d67d3dc76618ca0b8a101a5",
-      "timestamp": "2026-09-27T12:09:14.529Z",
+      "sha": "df1effa249549c859ab1e43f35f0e0d7dd12ee25",
+      "timestamp": "2026-09-27T12:18:05.050Z",
       "commits": [
         {
-          "sha": "83212892da1575684d67d3dc76618ca0b8a101a5",
+          "sha": "df1effa249549c859ab1e43f35f0e0d7dd12ee25",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T12:08:47Z",
-          "message": "Merge 1a10407e91e03c9c84701d914bd7c5693bdb5fd9 into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
+          "timestamp": "2026-09-27T12:17:38Z",
+          "message": "Merge 6d6ff5a615e64bcbc1e6048eb311ad23e647f88b into 15a366eb8b3b731c3afabcff39c7b04b1a52c57f\n"
+        },
+        {
+          "sha": "6d6ff5a615e64bcbc1e6048eb311ad23e647f88b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:17:33-06:00",
+          "message": "test(export-html): the isolation spec cannot pass by reading the wrong element\n\nA missing host id fell back to body, so before and after compared body\nwith itself; and padding/margin shorthands are not guaranteed to\nserialise from getComputedStyle. Throw on a missing id, read longhands.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "1a10407e91e03c9c84701d914bd7c5693bdb5fd9",
@@ -49,6 +41,21 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T05:58:53-06:00",
           "message": "feat(export-html): an embeddable fragment; the document is that fragment in a shell (rich-docs-examples-xuu.n71)\n\n`encodeHtmlFragment` returns one `pre` carrying its canvas and every rule\ninline, anchors included, so it can sit in a page this library does not own\nwithout restyling that page's body, pre or links. The blink keyframes, the one\nthing an inline style cannot say, are `HTML_FRAGMENT_CSS`, included once by the\nhost page. `encodeHtml` is the fragment wrapped in a document that paints the\npage in the same canvas and includes that CSS, so the two cannot draw different\npictures.\n\nTwo export-html tests pinned the bare `<pre>` and `<a href>` tags; they now\nmatch the attributed tags, their assertions otherwise unchanged.\n"
+        }
+      ]
+    },
+    {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "15a366eb8b3b731c3afabcff39c7b04b1a52c57f",
+      "timestamp": "2026-09-27T12:10:19.231Z",
+      "commits": [
+        {
+          "sha": "15a366eb8b3b731c3afabcff39c7b04b1a52c57f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:09:43-06:00",
+          "message": "feat(viewport): a Viewport shows a window of rows onto taller content (rich-viewport-owi.3) (#166)\n\n* feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n\n* fix(viewport): ensureVisible counts rendered lines, and the demo follows the terminal's size (rich-viewport-owi.3)\n\nThe docs and demo passed an item index where ensureVisible counts the lines\nthe content renders to; the demo now renders each entry on one line and the\npage says so. The demo's Console reads the host's live size and its node\nbootstrap tears down on SIGTERM too. Render slices only the rows it shows.\n\n* chore(viewport): just recipe for the viewport demo (rich-viewport-owi.3)\n\n* fix(viewport): the demo paints its first frame on start (rich-viewport-owi.3)\n\nLive.start draws nothing with autoRefresh off, so frame 0 was never shown and\nthe screen stayed blank until the first tick."
         }
       ]
     }
