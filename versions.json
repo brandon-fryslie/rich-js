@@ -4,15 +4,22 @@
     {
       "version": "pr-163",
       "ref": "refs/pull/163/merge",
-      "sha": "d3ff26648eb4e2459dd974e1f37809071586daca",
-      "timestamp": "2026-09-27T11:25:25.219Z",
+      "sha": "3cb9b635e6d0adcd1626657ca0bdf93a22ab4848",
+      "timestamp": "2026-09-27T11:36:05.880Z",
       "commits": [
         {
-          "sha": "d3ff26648eb4e2459dd974e1f37809071586daca",
+          "sha": "3cb9b635e6d0adcd1626657ca0bdf93a22ab4848",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T11:24:59Z",
-          "message": "Merge af3ef8ca15941587820b6c55be0b8e05ace2afec into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+          "timestamp": "2026-09-27T11:35:34Z",
+          "message": "Merge 63b281da5dcc6cc024eccb598331f6e87ffd1b2e into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+        },
+        {
+          "sha": "63b281da5dcc6cc024eccb598331f6e87ffd1b2e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:35:29-06:00",
+          "message": "fix(live): alt-screen rows are erased before drawing, not padded to a width\n\nReview of #163: padding each row to options.maxWidth threw on an unbounded\nconsole width (' '.repeat(Infinity)), and parsing the width would not have\nhelped — Infinity is a cell count. Erasing the row first clears the last\nframe's cells with no width at all, from column 0 where the erase is safe.\n\nThe Height contract said an inline Live crops taller output; it applies its\nverticalOverflow, and 'visible' scrolls.\n"
         },
         {
           "sha": "af3ef8ca15941587820b6c55be0b8e05ace2afec",
