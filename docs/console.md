@@ -33,6 +33,7 @@ After construction, `Console` exposes information about the terminal:
 | `console.encoding` | Output encoding (e.g. `"utf-8"`) |
 | `console.isTerminal` | `true` when writing to a real TTY |
 | `console.colorSystem` | Detected color depth — a `ColorDepth`, or `null` for no color |
+| `console.destination` | What output is encoded for: `{ colorSystem, hyperlinks }`, the color depth plus whether OSC 8 links are written, with the constructor options applied — see [Environment variables](#environment-variables) |
 
 `width` and `height` reflect the current terminal size — if the user resizes the window they update automatically.
 
