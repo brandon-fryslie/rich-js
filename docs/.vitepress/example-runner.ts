@@ -23,7 +23,7 @@
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page and line: a type error, a program that does not bundle (the page
- * only), a throw from a block not marked `throws`, a
+ * only), a run that outlasts its deadline, a throw from a block not marked `throws`, a
  * `throws` block that returns, a `silent` block that writes, a static block
  * that writes nothing, context that writes, a disallowed escape, an unknown
  * marker.
@@ -45,6 +45,7 @@ import {
   buildProgram,
   exampleContext,
   splitRecords,
+  type BarrelExport,
   type BlockRecord,
   type ExampleContext,
   type ExampleProgram,
@@ -129,16 +130,15 @@ export class ExampleCompiler {
     return this.previous;
   }
 
-  /** The value exports of the main barrel, by the name a reader imports them under. */
-  barrelValues(): string[] {
+  /** The main barrel's exports, by the name a reader imports them under. */
+  barrelExports(): BarrelExport[] {
     const program = this.compile(`import {} from ${JSON.stringify(MAIN_BARREL)};`);
     const checker = program.getTypeChecker();
     const barrel = program.getSourceFile(path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(MAIN_BARREL)!))!;
     return checker
       .getExportsOfModule(checker.getSymbolAtLocation(barrel)!)
-      .filter((symbol) => (resolveAlias(symbol, checker).flags & ts.SymbolFlags.Value) !== 0)
-      .map((symbol) => symbol.name)
-      .sort();
+      .map((symbol) => ({ name: symbol.name, typeOnly: (resolveAlias(symbol, checker).flags & ts.SymbolFlags.Value) === 0 }))
+      .sort((a, b) => (a.name < b.name ? -1 : 1));
   }
 
   /** Type-check `program`, throwing every error at the page line it came from. */
@@ -190,19 +190,34 @@ export async function bundleExample(source: string): Promise<string> {
   return chunks[0]!.code;
 }
 
-/** Run `script` in the example terminal and return every byte it wrote, or the error it stopped with. */
-async function capture(script: string): Promise<{ stream: string; error: unknown }> {
+/**
+ * How long a static example may run. Its point is what it prints, not when;
+ * one that waits on something is `live`.
+ */
+const RUN_DEADLINE_MS = 5_000;
+
+type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
+
+/** Run `script` in the example terminal: every byte it wrote, and how the run ended. */
+async function capture(script: string): Promise<{ stream: string; end: RunEnd }> {
   const chunks: string[] = [];
   const decoder = new TextDecoder();
   const terminal: SimulatedTerminal = {
     ...TERMINAL,
     write: (chunk) => chunks.push(typeof chunk === "string" ? chunk : decoder.decode(chunk)),
   };
-  const error = await runInTerminal(script, terminal).then(
-    () => null,
-    (e: unknown) => e ?? new Error("the example rejected with no reason"),
-  );
-  return { stream: chunks.join(""), error };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const end = await Promise.race([
+    runInTerminal(script, terminal).then(
+      (): RunEnd => ({ kind: "finished" }),
+      (error: unknown): RunEnd => ({ kind: "threw", error: error ?? new Error("the example rejected with no reason") }),
+    ),
+    new Promise<RunEnd>((resolve) => {
+      timer = setTimeout(() => resolve({ kind: "stalled" }), RUN_DEADLINE_MS);
+    }),
+  ]);
+  clearTimeout(timer);
+  return { stream: chunks.join(""), end };
 }
 
 const SGR = /\x1b\[[0-9;]*m/g;
@@ -231,10 +246,11 @@ function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: Blo
   return record.ended.kind === "completed" ? record.output : `${record.output}${record.ended.line}\n`;
 }
 
-/** Where a run that threw stopped: in the prelude or context, or at the first block with no record. */
-function stoppedAt(page: string, context: ExampleContext | null, finished: boolean, chain: readonly Fence[], records: number): string {
-  if (!finished) return context === null ? `docs/${page} (generated code)` : `docs/${page}:${context.line} (exampleContext)`;
-  const failed = chain[records];
+/** Where a run that did not finish stopped: the first part of the program with no record. */
+function stoppedAt(page: string, context: ExampleContext | null, chain: readonly Fence[], records: number): string {
+  if (records === 0) return `docs/${page} (imports and prelude)`;
+  if (records === 1 && context !== null) return `docs/${page}:${context.line} (exampleContext)`;
+  const failed = chain[records - 2];
   return failed === undefined ? `docs/${page}` : `docs/${page}:${failed.line}`;
 }
 
@@ -269,21 +285,26 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   const fences = scanFences(page, markdown);
   const chain = fences.filter(runsAtBuild);
   const context = exampleContext(page, markdown);
-  const program = buildProgram(page, context, chain, compiler.barrelValues());
+  const program = buildProgram(page, context, chain, compiler.barrelExports());
   compiler.check(program);
   const script = await bundleExample(program.source).catch((error: unknown) => {
     throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
   });
-  const { stream, error } = await capture(script);
+  const { stream, end } = await capture(script);
   const records = splitRecords(stream);
-  if (error !== null) {
-    const where = stoppedAt(page, context, records.context.finished, chain, records.blocks.length);
-    throw new Error(`${where}: the example threw ${String(error)}`, { cause: error });
+  if (end.kind !== "finished") {
+    const where = stoppedAt(page, context, chain, records.length);
+    if (end.kind === "stalled") throw new Error(`${where}: the example did not finish within ${RUN_DEADLINE_MS / 1000} s; mark it \`live\``);
+    throw new Error(`${where}: the example threw ${String(end.error)}`, { cause: end.error });
   }
-  if (records.context.output !== "") {
-    throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(records.context.output.slice(0, 60))}; it may not print`);
+  const [prelude, contextRecord, ...blocks] = records as [BlockRecord, BlockRecord, ...BlockRecord[]];
+  if (prelude.output !== "") {
+    throw new Error(`docs/${page} (imports and prelude) wrote ${JSON.stringify(prelude.output.slice(0, 60))}`);
   }
-  const shown = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, records.blocks[i]!)]));
+  if (contextRecord.output !== "") {
+    throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(contextRecord.output.slice(0, 60))}; it may not print`);
+  }
+  const shown = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
 
   const lines = markdown.split(/\r?\n/);
   for (const fence of [...fences].reverse()) {
@@ -313,7 +334,7 @@ function sourceStamp(): string {
     .join("\n");
 }
 
-export function docsExamplesPlugin(): DocsExamplesPlugin {
+export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamplesPlugin {
   const compiler = new ExampleCompiler();
   const docsRoot = path.join(REPO_ROOT, "docs") + path.sep;
   // VitePress builds twice, server then client, and both pass every page
@@ -328,7 +349,7 @@ export function docsExamplesPlugin(): DocsExamplesPlugin {
       if (!id.endsWith(".md") || !id.startsWith(docsRoot)) return null;
       const page = path.relative(docsRoot, id);
       if (NOT_YET_MIGRATED.has(page) || !scanFences(page, code).length) return null;
-      const key = `${sourceStamp()}\u0000${code}`;
+      const key = `${stamp()}\u0000${code}`;
       const last = runs.get(id);
       const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code);
       runs.set(id, { key, result });

@@ -8,7 +8,7 @@
  *
  * The program is, in order:
  *   - every import on the blocks it runs, hoisted and merged;
- *   - the prelude: every value the main barrel exports that those imports do
+ *   - the prelude: every name the main barrel exports that those imports do
  *     not bind, then `const console = new Console();`. That is exactly what
  *     `docs/introduction.md` tells readers an example assumes, and nothing
  *     more. A name the reader writes themselves goes in the page's
@@ -20,8 +20,9 @@
  *     included. A `throws` block is a `try` in the scope it sits in, so
  *     nothing it declares reaches the blocks below it.
  *
- * Each block ends by writing a sentinel to `process.stdout`, and that is how
- * the runner cuts one captured stream into per-block output. The terminal the
+ * The prelude, the context and each block end by writing a sentinel to
+ * `process.stdout`, and that is how the runner cuts one captured stream into
+ * per-block output and tells which part a run stopped in. The terminal the
  * program writes to belongs to the runner, so a sentinel cannot collide with
  * anything a real terminal would receive.
  */
@@ -80,19 +81,33 @@ export function exampleContext(page: string, markdown: string): ExampleContext |
   return { code: body.map((l) => l.slice(indent)).join("\n"), line: keyAt + 2 };
 }
 
-/** One import, as it is written back out. `key` is what makes two of them the same import. */
-interface Hoisted {
-  readonly key: string;
+/**
+ * One import on the page, hoisted: a bare import, kept whole, or one name an
+ * import binds and the export that name is. Two blocks importing one export
+ * merge into one import however each wrote it.
+ */
+type Hoisted = Bare | Binding;
+
+interface Bare {
+  readonly kind: "bare";
   readonly text: string;
   readonly line: number;
-  /** The local names it binds. */
-  readonly binds: readonly string[];
-  /**
-   * The name, when this is `import type { X }` from the main barrel: when `X`
-   * is a barrel value it is hoisted as the value import, which brings the type
-   * too and cannot sit beside the prelude's import of `X`.
-   */
-  readonly barrelType: string | null;
+}
+
+interface Binding {
+  readonly kind: "binding";
+  readonly line: number;
+  readonly local: string;
+  readonly from: string;
+  /** The export's name: `default` for a default import, `*` for a namespace. */
+  readonly imported: string;
+  readonly typeOnly: boolean;
+}
+
+/** A name the main barrel exports, and whether it is a type and nothing else. */
+export interface BarrelExport {
+  readonly name: string;
+  readonly typeOnly: boolean;
 }
 
 /** A block's code split into its imports and the rest, the rest keeping its line count. */
@@ -110,37 +125,37 @@ function splitImports(code: string, firstLine: number): { imports: Hoisted[]; bo
   return { imports, body };
 }
 
-/**
- * An import declaration as one hoisted import per binding, so two blocks
- * importing overlapping names merge to one binding each, and every name it
- * binds is known to the prelude. A bare import binds nothing and is kept whole.
- */
+/** An import declaration as one hoisted import per name it binds; a bare import binds none and is kept whole. */
 function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line: number): Hoisted[] {
   const clause = statement.importClause;
-  if (clause === undefined) {
-    const text = statement.getText(source);
-    return [{ key: text, text, line, binds: [], barrelType: null }];
-  }
-  const from = JSON.stringify((statement.moduleSpecifier as ts.StringLiteral).text);
-  const typeOnly = clause.isTypeOnly ? "type " : "";
-  const specifier = (statement.moduleSpecifier as ts.StringLiteral).text;
-  const one = (text: string, local: string, barrelType: string | null = null): Hoisted => ({ key: text, text, line, binds: [local], barrelType });
+  if (clause === undefined) return [{ kind: "bare", text: statement.getText(source), line }];
+  const from = (statement.moduleSpecifier as ts.StringLiteral).text;
+  const binding = (local: string, imported: string, typeOnly: boolean): Binding => ({
+    kind: "binding",
+    line,
+    local,
+    from,
+    imported,
+    typeOnly: clause.isTypeOnly || typeOnly,
+  });
   const bindings = clause.namedBindings;
   return [
-    ...(clause.name === undefined ? [] : [one(`import ${typeOnly}${clause.name.text} from ${from};`, clause.name.text)]),
+    ...(clause.name === undefined ? [] : [binding(clause.name.text, "default", false)]),
     ...(bindings === undefined
       ? []
       : ts.isNamespaceImport(bindings)
-        ? [one(`import ${typeOnly}* as ${bindings.name.text} from ${from};`, bindings.name.text)]
-        : bindings.elements.map((element) => {
-            const local = element.name.text;
-            const imported = element.propertyName?.text ?? local;
-            const binding = imported === local ? local : `${imported} as ${local}`;
-            const elementTypeOnly = clause.isTypeOnly || element.isTypeOnly ? "type " : "";
-            const barrelType = elementTypeOnly !== "" && specifier === MAIN_BARREL && imported === local ? local : null;
-            return one(`import { ${elementTypeOnly}${binding} } from ${from};`, local, barrelType);
-          })),
+        ? [binding(bindings.name.text, "*", false)]
+        : bindings.elements.map((element) => binding(element.name.text, element.propertyName?.text ?? element.name.text, element.isTypeOnly))),
   ];
+}
+
+function importText(binding: Binding): string {
+  const type = binding.typeOnly ? "type " : "";
+  const from = JSON.stringify(binding.from);
+  const { local, imported } = binding;
+  if (imported === "*") return `import ${type}* as ${local} from ${from};`;
+  if (imported === "default") return `import ${type}${local} from ${from};`;
+  return `import { ${type}${imported === local ? local : `${imported} as ${local}`} } from ${from};`;
 }
 
 /** Lines of generated source, each remembering the page line it came from. */
@@ -180,40 +195,39 @@ export function buildProgram(
   page: string,
   context: ExampleContext | null,
   blocks: readonly Fence[],
-  barrelValues: readonly string[],
+  barrel: readonly BarrelExport[],
 ): ExampleProgram {
   const parts = blocks.map((block) => ({ block, ...splitImports(block.code, block.line + 1) }));
   const contextPart = context === null ? null : { line: context.line, ...splitImports(context.code, context.line) };
-  const barrel = new Set(barrelValues);
-  const asValueImport = (imp: Hoisted): Hoisted => {
-    if (imp.barrelType === null || !barrel.has(imp.barrelType)) return imp;
-    const text = `import { ${imp.barrelType} } from ${JSON.stringify(MAIN_BARREL)};`;
-    return { ...imp, key: text, text, barrelType: null };
-  };
-  const allImports = [...(contextPart?.imports ?? []), ...parts.flatMap((p) => p.imports)].map(asValueImport);
+  const barrelValues = new Set(barrel.filter((e) => !e.typeOnly).map((e) => e.name));
 
-  const hoisted = new Map<string, Hoisted>();
-  const bound = new Map<string, Hoisted>();
-  for (const imp of allImports) {
-    if (hoisted.has(imp.key)) continue;
-    for (const name of imp.binds) {
-      const earlier = bound.get(name);
-      if (earlier !== undefined) {
-        throw new Error(
-          `docs/${page}:${imp.line}: imports ${name}, which docs/${page}:${earlier.line} already imports differently`,
-        );
-      }
-      bound.set(name, imp);
+  const bare = new Map<string, Bare>();
+  const bound = new Map<string, Binding>();
+  for (const imp of [...(contextPart?.imports ?? []), ...parts.flatMap((p) => p.imports)]) {
+    if (imp.kind === "bare") {
+      if (!bare.has(imp.text)) bare.set(imp.text, imp);
+      continue;
     }
-    hoisted.set(imp.key, imp);
+    const earlier = bound.get(imp.local);
+    if (earlier !== undefined && (earlier.from !== imp.from || earlier.imported !== imp.imported)) {
+      throw new Error(`docs/${page}:${imp.line}: imports ${imp.local}, which docs/${page}:${earlier.line} already imports differently`);
+    }
+    // A value import brings the type too, so one export imported both ways is the value import.
+    bound.set(imp.local, earlier === undefined ? imp : { ...earlier, typeOnly: earlier.typeOnly && imp.typeOnly });
   }
 
   const out = new SourceBuilder();
-  for (const imp of hoisted.values()) out.add(imp.text, imp.line);
-  const prelude = barrelValues.filter((name) => !bound.has(name));
+  for (const imp of bare.values()) out.add(imp.text, imp.line);
+  for (const imp of bound.values()) {
+    // Every barrel value is a value in every example, so the page's own import of one is never type-only.
+    const barrelValue = imp.from === MAIN_BARREL && barrelValues.has(imp.imported);
+    out.add(importText({ ...imp, typeOnly: imp.typeOnly && !barrelValue }), imp.line);
+  }
+  const prelude = barrel.filter((e) => !bound.has(e.name)).map((e) => (e.typeOnly ? `type ${e.name}` : e.name));
   out.add(`import { ${prelude.join(", ")} } from ${JSON.stringify(MAIN_BARREL)};`, null);
   out.add("const console = new Console();", null);
   out.add(THREW_HELPER, null);
+  out.add(WRITE_END, null);
   out.add("{", null);
   if (contextPart !== null) out.add(contextPart.body, contextPart.line);
   out.add(WRITE_END, null);
@@ -244,33 +258,21 @@ export interface BlockRecord {
 
 const RECORD = new RegExp(`${BLOCK_END}|${BLOCK_THREW}(.*?)${THREW_CLOSE}`, "gs");
 
-/** What the prelude and `exampleContext` wrote, and whether they got to the end. */
-export interface ContextRecord {
-  readonly output: string;
-  readonly finished: boolean;
-}
-
 /**
- * A run's captured stream cut at the sentinels: first what the context wrote,
- * then one record per block that finished. A run that stopped early has fewer
- * records than blocks, and the first block without one is where it stopped;
- * one that stopped before the context finished has none.
+ * A run's captured stream cut at the sentinels: one record per part of the
+ * program that finished, in order (the imports and prelude, the context, then
+ * each block). A run that stopped early has fewer records than parts, and the first part without one is
+ * where it stopped.
  */
-export function splitRecords(stream: string): { context: ContextRecord; blocks: BlockRecord[] } {
+export function splitRecords(stream: string): BlockRecord[] {
   const records: BlockRecord[] = [];
-  let context: string | null = null;
   let at = 0;
   for (const match of stream.matchAll(RECORD)) {
-    const output = stream.slice(at, match.index);
-    at = match.index + match[0].length;
-    if (context === null) {
-      context = output;
-      continue;
-    }
     records.push({
-      output,
+      output: stream.slice(at, match.index),
       ended: match[1] === undefined ? { kind: "completed" } : { kind: "threw", line: JSON.parse(match[1]) as string },
     });
+    at = match.index + match[0].length;
   }
-  return { context: context === null ? { output: stream, finished: false } : { output: context, finished: true }, blocks: records };
+  return records;
 }

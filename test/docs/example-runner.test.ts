@@ -6,7 +6,7 @@
  * the page and line. Nothing here reads the generated program.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readFileSync, statSync, utimesSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../coverage/extract.js";
 import {
@@ -98,6 +98,24 @@ describe("one page, one program", { timeout: 30_000 }, () => {
     expect(shown[1]).toMatch(/>RangeError(&#10;)*</);
   });
 
+  it("merges a type import and a value import of one export, from any entry point", async () => {
+    const shown = outputs(
+      await run(
+        page(
+          fence('import { BrowserTerminalHost } from "@promptctl/rich-js/host";\nconsole.print(typeof BrowserTerminalHost);'),
+          fence('import type { BrowserTerminalHost } from "@promptctl/rich-js/host";\nconst host: BrowserTerminalHost | null = null;\nconsole.print(String(host));'),
+        ),
+      ),
+    );
+    expect(shown[0]).toContain("function");
+    expect(shown[1]).toContain("null");
+  });
+
+  it("assumes the main barrel's types as well as its values", async () => {
+    const shown = outputs(await run(fence("const width = (options: RenderOptions) => options.maxWidth;\nconsole.print(String(typeof width));")))[0]!;
+    expect(shown).toContain("function");
+  });
+
   it("lets a block import a barrel type it also uses as a value", async () => {
     const shown = outputs(
       await run(fence('import type { Console } from "@promptctl/rich-js";\nconst c: Console = new Console({ width: 20 });\nc.print("typed");')),
@@ -166,6 +184,11 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
       page(fence('import type { Panel } from "@promptctl/rich-js";\nconsole.print(Panel.fit("a") satisfies Panel);'), fence('import { Rule as Panel } from "@promptctl/rich-js";\nconsole.print(new Panel());')),
       /fixture\.md:7: imports Panel, which docs\/fixture\.md:2 already imports differently/,
     ],
+    [
+      "a run that never finishes, at the block it waits in",
+      page(fence('console.print("first");'), fence("await new Promise(() => {});\nconsole.print(1);")),
+      /fixture\.md:5: the example did not finish within 5 s; mark it `live`/,
+    ],
     // Every name a default-plus-named import binds is the page's, so the
     // prelude does not import `Panel` a second time: the one error is the page's.
     [
@@ -194,18 +217,14 @@ describe("the plugin", () => {
   });
 
   it("runs a page again when src/ changes under it", { timeout: 60_000 }, async () => {
-    const plugin = docsExamplesPlugin();
+    let edits = 0;
+    const plugin = docsExamplesPlugin(() => String(edits));
     const id = path.join(REPO_ROOT, "docs", "fixture-src-edit.md");
     const markdown = fence("console.print(String(Math.random()));");
     const first = await plugin.transform(markdown, id);
-    const touched = path.join(REPO_ROOT, "src", "index.ts");
-    const { mtime } = statSync(touched);
-    utimesSync(touched, new Date(), new Date(mtime.getTime() + 1000));
-    try {
-      expect(await plugin.transform(markdown, id)).not.toEqual(first);
-    } finally {
-      utimesSync(touched, new Date(), mtime);
-    }
+    expect(await plugin.transform(markdown, id)).toEqual(first);
+    edits += 1;
+    expect(await plugin.transform(markdown, id)).not.toEqual(first);
   });
 
   it("passes a page that has not migrated through untouched", async () => {
