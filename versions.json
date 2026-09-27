@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-173",
+      "ref": "refs/pull/173/merge",
+      "sha": "d04b1bca491b5c0869bbda801b734d0421c985dd",
+      "timestamp": "2026-09-27T13:41:17.925Z",
+      "commits": [
+        {
+          "sha": "d04b1bca491b5c0869bbda801b734d0421c985dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:40:43-06:00",
+          "message": "Merge 21f2082dcfeea39ed6232ee4bbe27adca0031e45 into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
+        },
+        {
+          "sha": "21f2082dcfeea39ed6232ee4bbe27adca0031e45",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:40:39-06:00",
+          "message": "fix(renderables): a string handed to a panel, tree, column or layout draws its markup (rich-panel-gbe)\n\nnew Panel(\"[bold]x[/bold]\") drew the tags literally. Table cells had parsed\nmarkup since their own fix, but panel bodies, tree labels, column items and\nlayout panes each built a RichText from the constructor, which does not.\nThe five copies of \"caller content -> something to lay out\" are now one,\nsrc/renderables/embed.ts, and progress's TextColumn uses it too.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-172",
       "ref": "refs/pull/172/merge",
       "sha": "4cd46273ccf101923f35e7a4b781240cda23da57",
