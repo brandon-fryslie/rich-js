@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-161",
+      "ref": "refs/pull/161/merge",
+      "sha": "dd2d6afba0a39df4c93fc666904f7d303998a64e",
+      "timestamp": "2026-09-27T08:41:03.992Z",
+      "commits": [
+        {
+          "sha": "dd2d6afba0a39df4c93fc666904f7d303998a64e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T02:40:38-06:00",
+          "message": "Merge 856c2739c759fc4fc20f8527faeb9d260cbf40be into cac5b40d387bb71ab13eb93f586a00563e54283d\n"
+        },
+        {
+          "sha": "856c2739c759fc4fc20f8527faeb9d260cbf40be",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T02:39:03-06:00",
+          "message": "refactor(style)!: styled text reaches the wire only through segmentsToString\n\nStyle.render(text, colorSystem?) was a second ANSI encoder beside\nsegmentsToString: it could not express a null colour depth, always emitted\nOSC 8 links whatever the destination took, and nested SGR inside the link\nwhere the serializer nests the link inside SGR. Nothing in src/ called it.\nsegmentToString(new Segment(text, style), destination) is the one encoder,\nand the style byte tests now go through it with the same assertions.\n\nBREAKING CHANGE: Style.render is removed; use\nsegmentToString(new Segment(text, style), destination).\n"
+        },
+        {
+          "sha": "2b39f47331c5c6f528f68e438bae18943940717a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T02:37:35-06:00",
+          "message": "refactor(render)!: the serializer takes where it writes as one Destination\n\nsegmentsToString(segments, destination) and segmentToString(segment,\ndestination) replace the positional colorSystem + hyperlinks pair, so a call\nreads segmentsToString(segs, resolveDestination(\"auto\")) or\n{ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true } instead of a bare\n`true`, and a depth can no longer be paired with a link setting taken from a\ndifferent destination.\n\nConsole, Live, Screen and renderToString hand their destination through\nwhole. renderToString applies its overrides (noColor, hyperlinks) once, where\nit builds the value; Console applies its hyperlinks override once, in its\nconstructor. Console.destination replaces Console.hyperlinks, so Live reads\nthe value its console encodes for rather than two of its fields.\n\nBREAKING CHANGE: segmentsToString and segmentToString take a Destination\nin place of (colorSystem, hyperlinks). Console.hyperlinks is removed; read\nconsole.destination.hyperlinks.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "cac5b40d387bb71ab13eb93f586a00563e54283d",
