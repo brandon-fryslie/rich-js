@@ -61,11 +61,16 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
  * title or subtitle in its border, a rule's title — as one line of segments:
  * a space either side, its own styles over `base`. The caller cuts it to the
  * room it has with `Segment.adjustLineLength`, which is cell-aware.
+ *
+ * Content with no text is no label at all, not two spaces: an absent title, an
+ * empty string, an empty `RichText` and markup that styles nothing all draw
+ * the plain line, as Rich's do (an empty `Text` is falsy there).
  */
 export function inlineLabel(content: unknown, options: RenderOptions, base: Style | undefined): Segment[] {
   // The label's own justify would re-justify the padded text within its own
   // width and move its spaces; where it sits is the caller's to decide.
-  const text = embeddedText(content).pad(1);
+  const bare = embeddedText(content);
+  const text = bare.plain === "" ? bare : bare.pad(1);
   text.justify = undefined;
   const line = text.render({ ...options, maxWidth: text.cellLength, noWrap: true, justify: "left" });
   return [...Segment.applyStyle(line, base)];

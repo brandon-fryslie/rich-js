@@ -53,15 +53,15 @@ export class Rule implements Renderable, Measurable {
     const style = getStyle(options, this.style);
     const ruleStyle = style.isNull ? undefined : style;
 
-    if (!this.title) {
+    const title = inlineLabel(this.title, options, ruleStyle);
+    const titleWidth = Segment.getLineLength(title);
+
+    if (titleWidth === 0) {
       // No title — just a line of repeated characters
       yield new Segment(repeatToWidth(ruleChar, maxWidth), ruleStyle);
       yield Segment.line();
       return;
     }
-
-    const title = inlineLabel(this.title, options, ruleStyle);
-    const titleWidth = Segment.getLineLength(title);
 
     if (titleWidth >= maxWidth) {
       // Title fills the whole width; adjustLineLength cuts by cells, not code units.

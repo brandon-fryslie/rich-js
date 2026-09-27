@@ -56,6 +56,14 @@ describe("content embedded in a renderable", () => {
     });
   }
 
+  it("draws the plain line for a title with no text, however it is spelled", () => {
+    const plain = (r: Renderable) => renderToString(r, { width: 12 }).replace(/\x1b\[[0-9;]*m/g, "");
+    for (const empty of ["", new RichText(""), "[bold][/bold]"]) {
+      expect(plain(new Rule(empty))).toBe(plain(new Rule()));
+      expect(plain(new Panel("x", { title: empty, subtitle: empty }))).toBe(plain(new Panel("x")));
+    }
+  });
+
   it("keeps both spaces around a label whose RichText is justified", () => {
     const top = renderToString(new Panel("hi", { title: new RichText("x", { justify: "right" }), width: 17 }), { width: 17 }).split("\n")[0]!;
     expect(top.replace(/\x1b\[[0-9;]*m/g, "")).toBe("╭────── x ──────╮");

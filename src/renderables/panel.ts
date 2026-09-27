@@ -345,18 +345,17 @@ export class Panel implements Renderable, Measurable {
     border: Style | undefined,
   ): Iterable<Segment> {
     const innerBorderWidth = geometry.spanWidth;
+    const titleSeg = borderTextStyle(options, this.titleStyle, border);
+    const title = inlineLabel(this.title, options, titleSeg);
+    const titleWidth = Segment.getLineLength(title);
 
-    if (!this.title) {
+    if (titleWidth === 0) {
       yield new Segment(box.top.left.repeat(geometry.left), border);
       yield new Segment(box.top.horizontal.repeat(innerBorderWidth), border);
       yield new Segment(box.top.right.repeat(geometry.right), border);
       yield Segment.line();
       return;
     }
-
-    const titleSeg = borderTextStyle(options, this.titleStyle, border);
-    const title = inlineLabel(this.title, options, titleSeg);
-    const titleWidth = Segment.getLineLength(title);
 
     yield new Segment(box.top.left.repeat(geometry.left), border);
 
@@ -407,12 +406,13 @@ export class Panel implements Renderable, Measurable {
     // as its centering canvas.
     const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
 
-    if (!this.subtitle) {
+    const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
+    const subtitle = inlineLabel(this.subtitle, options, subtitleSeg);
+    const subtitleWidth = Segment.getLineLength(subtitle);
+
+    if (subtitleWidth === 0) {
       if (centerWidth > 0) yield new Segment(box.bottom.horizontal.repeat(centerWidth), border);
     } else {
-      const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
-      const subtitle = inlineLabel(this.subtitle, options, subtitleSeg);
-      const subtitleWidth = Segment.getLineLength(subtitle);
 
       if (subtitleWidth >= centerWidth) {
         // Cell-aware clip — see _renderTopBorder.
