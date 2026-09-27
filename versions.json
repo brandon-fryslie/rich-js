@@ -2,32 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca",
-      "timestamp": "2026-09-27T13:23:56.043Z",
-      "commits": [
-        {
-          "sha": "ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:23:28-06:00",
-          "message": "fix(host): BrowserTerminalHost returns the carriage before every newline (#171)\n\n* fix(host): BrowserTerminalHost returns the carriage before every newline\n\nxterm.js has no tty in front of it, so a bare newline moved down without\nreturning to column 0: every row a Console wrote started where the last one\nended, and every demo on the docs site drew as a staircase. The host now does\nthe tty's ONLCR translation for strings and bytes. The e2e gate only asked\nwhether a demo drew anything; it now also checks rich-viewport's rows start at\nthe panel's left border, which fails without this fix.\n\n* fix(host): no copy for a byte write without a newline; the harness writes bare newlines; the edge check waits for boot\n\n* docs(host): node's raw mode keeps the tty's newline translation"
-        }
-      ]
-    },
-    {
       "version": "pr-172",
       "ref": "refs/pull/172/merge",
-      "sha": "3ea5acefc45983c79f700450903005c477acec3f",
-      "timestamp": "2026-09-27T13:21:34.108Z",
+      "sha": "4cd46273ccf101923f35e7a4b781240cda23da57",
+      "timestamp": "2026-09-27T13:28:07.042Z",
       "commits": [
         {
-          "sha": "3ea5acefc45983c79f700450903005c477acec3f",
+          "sha": "4cd46273ccf101923f35e7a4b781240cda23da57",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T13:21:05Z",
-          "message": "Merge 422598f5d3ce0227dc2df6b9c10204871130c4b5 into 1bb62e5b5cbc7ad116598c470917742bce11171d\n"
+          "timestamp": "2026-09-27T13:27:39Z",
+          "message": "Merge 8f85fbd36b629efe716b2a29243fbc3fbbc3ef37 into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
+        },
+        {
+          "sha": "8f85fbd36b629efe716b2a29243fbc3fbbc3ef37",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:27:35-06:00",
+          "message": "fix(docs): output ends its HTML block; the run cache follows src/; a non-Error throw has no orphan colon (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "422598f5d3ce0227dc2df6b9c10204871130c4b5",
@@ -42,6 +34,21 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T07:09:04-06:00",
           "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca",
+      "timestamp": "2026-09-27T13:23:56.043Z",
+      "commits": [
+        {
+          "sha": "ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:23:28-06:00",
+          "message": "fix(host): BrowserTerminalHost returns the carriage before every newline (#171)\n\n* fix(host): BrowserTerminalHost returns the carriage before every newline\n\nxterm.js has no tty in front of it, so a bare newline moved down without\nreturning to column 0: every row a Console wrote started where the last one\nended, and every demo on the docs site drew as a staircase. The host now does\nthe tty's ONLCR translation for strings and bytes. The e2e gate only asked\nwhether a demo drew anything; it now also checks rich-viewport's rows start at\nthe panel's left border, which fails without this fix.\n\n* fix(host): no copy for a byte write without a newline; the harness writes bare newlines; the edge check waits for boot\n\n* docs(host): node's raw mode keeps the tty's newline translation"
         }
       ]
     }
