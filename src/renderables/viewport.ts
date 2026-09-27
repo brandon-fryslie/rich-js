@@ -88,7 +88,8 @@ export class Viewport implements Renderable, Measurable {
 
   /**
    * Scroll the least distance that shows lines `start` up to but not
-   * including `end`. A range already in view does not move; one taller than
+   * including `end` — lines of the content as it renders at the viewport's
+   * width, so an item that wraps spans more than one. A range already in view does not move; one taller than
    * the viewport shows its first line at the top.
    */
   ensureVisible(start: number, end: number): void {
@@ -108,7 +109,7 @@ export class Viewport implements Renderable, Measurable {
     );
     this._moves = [];
 
-    const shown = fitHeight(lines.slice(this._offset), { rows: extent.rows, exact: true });
+    const shown = fitHeight(lines.slice(this._offset, this._offset + extent.rows), { rows: extent.rows, exact: true });
     for (const line of shown) {
       yield* line;
       yield Segment.line();

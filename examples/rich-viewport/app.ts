@@ -25,7 +25,9 @@ const ENTRIES = Array.from({ length: 40 }, (_, i) => {
 });
 
 function list(selected: number): RichText {
-  const text = new RichText("", { end: "" });
+  // One line per entry, so an entry's index is its line: `ensureVisible`
+  // counts the lines the content renders to, and a wrapped entry would span two.
+  const text = new RichText("", { end: "", noWrap: true, overflow: "ellipsis" });
   ENTRIES.forEach((entry, i) => {
     const style = i === selected ? "reverse bold" : entry.status === 500 ? "red" : "";
     text.append(`${entry.text}  ${entry.status}${i < ENTRIES.length - 1 ? "\n" : ""}`, style);
@@ -41,8 +43,14 @@ function cursorAt(frame: number): number {
 }
 
 export function runDemo(host: TerminalHost): DemoHandle {
-  const { cols } = host.size();
-  const consoleOut = new Console({ forceTerminal: true, file: hostStream(host), width: cols });
+  const consoleOut = new Console({
+    forceTerminal: true,
+    file: hostStream(host),
+    getSize: () => {
+      const { cols, rows } = host.size();
+      return { width: cols, height: rows };
+    },
+  });
   const viewport = new Viewport(list(0), { rows: 8 });
   const frameFor = (selected: number): Panel => {
     viewport.content = list(selected);
