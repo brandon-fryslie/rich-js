@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-170",
+      "ref": "refs/pull/170/merge",
+      "sha": "e927d9107be0cdc1e5263adf3088becbce557fff",
+      "timestamp": "2026-09-27T12:46:41.003Z",
+      "commits": [
+        {
+          "sha": "e927d9107be0cdc1e5263adf3088becbce557fff",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T12:46:14Z",
+          "message": "Merge 8448f73d74fa94967785ad4b1083c419a35348df into aefbf88c55ee93af415485a19af3f0a5629084ef\n"
+        },
+        {
+          "sha": "8448f73d74fa94967785ad4b1083c419a35348df",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:46:10-06:00",
+          "message": "fix(viewport): a narrower scrollbar glyph's padding keeps its part's style; gutter wording\n"
+        },
+        {
+          "sha": "04fbc606064561951f454d47340f62ced40a6619",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:37:38-06:00",
+          "message": "fix(viewport): the thumb touches an end only when the view has reached it; one crop per row\n"
+        },
+        {
+          "sha": "67e1ea9b084ce251577738585c9f6aada2555be9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:33:38-06:00",
+          "message": "feat(viewport): a scrollbar, and rows held to the viewport's width (rich-viewport-owi.4)\n\nEvery row is cropped or padded to the width the viewport is given, so\ncontent that ignores its width no longer spills past the edge. An optional\nScrollbar (thumb + track, each a glyph and a style; SCROLLBAR is the stock\nlook) is drawn in a gutter at the right edge from the offset the render\nresolves. No scrollbar is a gutter zero cells wide, so every row takes the\nsame path. Viewport joins the width sweep.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-169",
       "ref": "refs/pull/169/merge",
       "sha": "5d1c46434ac6a38536d3a0a031496bdeedefb286",
@@ -34,35 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T06:30:10-06:00",
           "message": "feat(ansi): decode ANSI bytes back into RichText (rich-docs-examples-xuu.9hv)\n\nA port of Rich's AnsiDecoder and Text.from_ansi: `decodeAnsi` for a whole\ncapture, `AnsiDecoder` for a stream read a line at a time. Colours decode to\nthe ColorSpec kind their escape names and are never resolved to RGB, so one\ncaptured run exports correctly under a light theme and a dark one.\n\nTwo departures from Rich, both toward what a terminal shows: the link is\ndecoder state beside the SGR style, so an SGR reset inside a link leaves it\nopen; and a line ends only at \\n, with the text after its last \\r replacing\nwhat came before, while codes before the \\r still apply.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-170",
-      "ref": "refs/pull/170/merge",
-      "sha": "2f8845a0d9bdcac7bee058a766065f6253b09c71",
-      "timestamp": "2026-09-27T12:38:14.902Z",
-      "commits": [
-        {
-          "sha": "2f8845a0d9bdcac7bee058a766065f6253b09c71",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T12:37:43Z",
-          "message": "Merge 04fbc606064561951f454d47340f62ced40a6619 into aefbf88c55ee93af415485a19af3f0a5629084ef\n"
-        },
-        {
-          "sha": "04fbc606064561951f454d47340f62ced40a6619",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:37:38-06:00",
-          "message": "fix(viewport): the thumb touches an end only when the view has reached it; one crop per row\n"
-        },
-        {
-          "sha": "67e1ea9b084ce251577738585c9f6aada2555be9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:33:38-06:00",
-          "message": "feat(viewport): a scrollbar, and rows held to the viewport's width (rich-viewport-owi.4)\n\nEvery row is cropped or padded to the width the viewport is given, so\ncontent that ignores its width no longer spills past the edge. An optional\nScrollbar (thumb + track, each a glyph and a style; SCROLLBAR is the stock\nlook) is drawn in a gutter at the right edge from the offset the render\nresolves. No scrollbar is a gutter zero cells wide, so every row takes the\nsame path. Viewport joins the width sweep.\n"
         }
       ]
     },
