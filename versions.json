@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-162",
-      "ref": "refs/pull/162/merge",
-      "sha": "dcef9e751028e013764d336a7cdbcf3c1a3430d8",
-      "timestamp": "2026-09-27T09:26:40.085Z",
-      "commits": [
-        {
-          "sha": "dcef9e751028e013764d336a7cdbcf3c1a3430d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T09:26:07Z",
-          "message": "Merge c2a26c48af1334115ed3533a1316b6b7c426bc0c into 293a83e962bc40e2cc8a865ee089fb9f3a36b534\n"
-        },
-        {
-          "sha": "c2a26c48af1334115ed3533a1316b6b7c426bc0c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:26:02-06:00",
-          "message": "fix(renderables): a region's setter shapes it — Panel and Padding too\n\nEscalation review of #162. A Panel handing its content an exact region is\nthat region's setter, so it now shapes what comes back: its frame stretches\ndown a pane and a tall body is cropped above the bottom border. The shaping\nand the row parse are one pair of helpers in protocol.ts (fitHeight,\nregionRows) shared by Layout, Panel and Padding; insetHeight and\nstackedHeight parse rows through cellCount. Markdown stacks its blocks.\nrich-dash's ClipHeight is deleted as redundant and InjectMaxHeight shapes\nthe region it sets.\n"
-        },
-        {
-          "sha": "d269fda3e7faa9c8deacdf54bcdacf162cc0ccd5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:19:20-06:00",
-          "message": "fix(renderables): containers forward height by the contract\n\nReview of #162: once Layout shapes its panes, a Panel forwarding its region\nunchanged let a nested Layout fill it and the crop took the panel's bottom\nborder. Panel and Padding now inset the budget by their own rows\n(insetHeight); Group, Columns and Tree hand each child the rows as a ceiling\n(stackedHeight). rich-dash's ClipHeight reserve, which compensated by hand,\nis gone.\n"
-        },
-        {
-          "sha": "cbc61b5b2fc1aa5dd02b954b628ff3b7e35d3a8f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:13:57-06:00",
-          "message": "fix(layout): fill only a region; natural height otherwise, and both splits shape\n\nReview of #162: padding to the 24-row fallback made console.print(layout)\nalways 24 rows. A layout now fills only an exact region; under a ceiling or\nno budget each pane takes its declared size or its content's height, which\ndeletes the fallback. Rows parse through cellCount (NaN/negative hold none,\nInfinity is natural), row splits shape their panes too, and shaping fits the\nline count only.\n"
-        },
-        {
-          "sha": "51adc0d1f6c13c0cbfc176f2587e665508d08a1f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:07:49-06:00",
-          "message": "refactor(protocol)!: one Height budget replaces height and maxHeight (rich-viewport-owi.1)\n\nRenderOptions carried a vertical budget as two independent optional numbers,\nwhich admitted a region taller than its ceiling and a region with no ceiling,\nand the one reader (Layout) resolved them ceiling-first. It is now one field,\n`height?: Height` — `{ rows, exact }` — whose doc comment is the contract:\na region (`exact`) is shaped to exactly `rows` by whoever set it, a ceiling\nis cropped by whoever imposed it, containers forward less their own rows,\nstackers demote a region to a ceiling, and there is no vertical Measurable.\n\nLayout's column split now keeps that promise: each pane is shaped to its\nshare, so a short pane no longer pulls the panes below it up.\n\nThe design document the ticket named is not written: CLAUDE.md forbids a\nsecond description outside docs/, and rich-export-9a1.1 set the precedent\nof contract-as-code plus decisions in the sibling tickets (.2, .3, .5).\n\nBREAKING CHANGE: RenderOptions.height is a Height object and maxHeight is\ngone. `{ height: n, maxHeight: n }` becomes `{ height: { rows: n, exact: true } }`.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "293a83e962bc40e2cc8a865ee089fb9f3a36b534",
-      "timestamp": "2026-09-27T08:50:13.656Z",
+      "sha": "cba3ca7a61d983aa38b8e31005c6fa9044d89ebe",
+      "timestamp": "2026-09-27T09:27:18.003Z",
       "commits": [
         {
-          "sha": "293a83e962bc40e2cc8a865ee089fb9f3a36b534",
+          "sha": "cba3ca7a61d983aa38b8e31005c6fa9044d89ebe",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T02:49:47-06:00",
-          "message": "refactor(render)!: the serializer takes where it writes as one Destination (#161)\n\n* refactor(render)!: the serializer takes where it writes as one Destination\n\nsegmentsToString(segments, destination) and segmentToString(segment,\ndestination) replace the positional colorSystem + hyperlinks pair, so a call\nreads segmentsToString(segs, resolveDestination(\"auto\")) or\n{ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true } instead of a bare\n`true`, and a depth can no longer be paired with a link setting taken from a\ndifferent destination.\n\nConsole, Live, Screen and renderToString hand their destination through\nwhole. renderToString applies its overrides (noColor, hyperlinks) once, where\nit builds the value; Console applies its hyperlinks override once, in its\nconstructor. Console.destination replaces Console.hyperlinks, so Live reads\nthe value its console encodes for rather than two of its fields.\n\nBREAKING CHANGE: segmentsToString and segmentToString take a Destination\nin place of (colorSystem, hyperlinks). Console.hyperlinks is removed; read\nconsole.destination.hyperlinks.\n\n* refactor(style)!: styled text reaches the wire only through segmentsToString\n\nStyle.render(text, colorSystem?) was a second ANSI encoder beside\nsegmentsToString: it could not express a null colour depth, always emitted\nOSC 8 links whatever the destination took, and nested SGR inside the link\nwhere the serializer nests the link inside SGR. Nothing in src/ called it.\nsegmentToString(new Segment(text, style), destination) is the one encoder,\nand the style byte tests now go through it with the same assertions.\n\nBREAKING CHANGE: Style.render is removed; use\nsegmentToString(new Segment(text, style), destination).\n\n* fix(render): the set-once destination is readonly, SGR codes need a depth, Live follows an explicit hyperlinks: false\n\n- Console._destination is readonly: set once, now public through `destination`.\n- Style.toSgrCodes takes a required depth; the optional form existed for the\n  removed Style.render, and omitting it silently skipped the downgrade.\n- osc8.ts: the bytes are a function of the destination, not the depth alone.\n- A Live on a console with hyperlinks: false writes no OSC 8 on a terminal."
+          "timestamp": "2026-09-27T03:26:49-06:00",
+          "message": "refactor(protocol)!: one Height budget replaces height and maxHeight (rich-viewport-owi.1) (#162)\n\n* refactor(protocol)!: one Height budget replaces height and maxHeight (rich-viewport-owi.1)\n\nRenderOptions carried a vertical budget as two independent optional numbers,\nwhich admitted a region taller than its ceiling and a region with no ceiling,\nand the one reader (Layout) resolved them ceiling-first. It is now one field,\n`height?: Height` — `{ rows, exact }` — whose doc comment is the contract:\na region (`exact`) is shaped to exactly `rows` by whoever set it, a ceiling\nis cropped by whoever imposed it, containers forward less their own rows,\nstackers demote a region to a ceiling, and there is no vertical Measurable.\n\nLayout's column split now keeps that promise: each pane is shaped to its\nshare, so a short pane no longer pulls the panes below it up.\n\nThe design document the ticket named is not written: CLAUDE.md forbids a\nsecond description outside docs/, and rich-export-9a1.1 set the precedent\nof contract-as-code plus decisions in the sibling tickets (.2, .3, .5).\n\nBREAKING CHANGE: RenderOptions.height is a Height object and maxHeight is\ngone. `{ height: n, maxHeight: n }` becomes `{ height: { rows: n, exact: true } }`.\n\n* fix(layout): fill only a region; natural height otherwise, and both splits shape\n\nReview of #162: padding to the 24-row fallback made console.print(layout)\nalways 24 rows. A layout now fills only an exact region; under a ceiling or\nno budget each pane takes its declared size or its content's height, which\ndeletes the fallback. Rows parse through cellCount (NaN/negative hold none,\nInfinity is natural), row splits shape their panes too, and shaping fits the\nline count only.\n\n* fix(renderables): containers forward height by the contract\n\nReview of #162: once Layout shapes its panes, a Panel forwarding its region\nunchanged let a nested Layout fill it and the crop took the panel's bottom\nborder. Panel and Padding now inset the budget by their own rows\n(insetHeight); Group, Columns and Tree hand each child the rows as a ceiling\n(stackedHeight). rich-dash's ClipHeight reserve, which compensated by hand,\nis gone.\n\n* fix(renderables): a region's setter shapes it — Panel and Padding too\n\nEscalation review of #162. A Panel handing its content an exact region is\nthat region's setter, so it now shapes what comes back: its frame stretches\ndown a pane and a tall body is cropped above the bottom border. The shaping\nand the row parse are one pair of helpers in protocol.ts (fitHeight,\nregionRows) shared by Layout, Panel and Padding; insetHeight and\nstackedHeight parse rows through cellCount. Markdown stacks its blocks.\nrich-dash's ClipHeight is deleted as redundant and InjectMaxHeight shapes\nthe region it sets."
         }
       ]
     }
