@@ -88,9 +88,9 @@ interface Hoisted {
   /** The local names it binds. */
   readonly binds: readonly string[];
   /**
-   * The name, when this is `import type { X }` from the main barrel: the
-   * prelude's value import of `X` already brings its type, and both at once
-   * would declare `X` twice.
+   * The name, when this is `import type { X }` from the main barrel: when `X`
+   * is a barrel value it is hoisted as the value import, which brings the type
+   * too and cannot sit beside the prelude's import of `X`.
    */
   readonly barrelType: string | null;
 }
@@ -185,9 +185,12 @@ export function buildProgram(
   const parts = blocks.map((block) => ({ block, ...splitImports(block.code, block.line + 1) }));
   const contextPart = context === null ? null : { line: context.line, ...splitImports(context.code, context.line) };
   const barrel = new Set(barrelValues);
-  const allImports = [...(contextPart?.imports ?? []), ...parts.flatMap((p) => p.imports)].filter(
-    (imp) => imp.barrelType === null || !barrel.has(imp.barrelType),
-  );
+  const asValueImport = (imp: Hoisted): Hoisted => {
+    if (imp.barrelType === null || !barrel.has(imp.barrelType)) return imp;
+    const text = `import { ${imp.barrelType} } from ${JSON.stringify(MAIN_BARREL)};`;
+    return { ...imp, key: text, text, barrelType: null };
+  };
+  const allImports = [...(contextPart?.imports ?? []), ...parts.flatMap((p) => p.imports)].map(asValueImport);
 
   const hoisted = new Map<string, Hoisted>();
   const bound = new Map<string, Hoisted>();

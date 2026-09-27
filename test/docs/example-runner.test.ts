@@ -159,6 +159,11 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
       page(fence('import { Panel as P } from "@promptctl/rich-js";\nconsole.print(P.fit("a"));'), fence('import { Rule as P } from "@promptctl/rich-js";\nconsole.print(new P());')),
       /fixture\.md:7: imports P, which docs\/fixture\.md:2 already imports differently/,
     ],
+    [
+      "a barrel type import and another import binding the same name",
+      page(fence('import type { Panel } from "@promptctl/rich-js";\nconsole.print(Panel.fit("a") satisfies Panel);'), fence('import { Rule as Panel } from "@promptctl/rich-js";\nconsole.print(new Panel());')),
+      /fixture\.md:7: imports Panel, which docs\/fixture\.md:2 already imports differently/,
+    ],
     // Every name a default-plus-named import binds is the page's, so the
     // prelude does not import `Panel` a second time: the one error is the page's.
     [
