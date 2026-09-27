@@ -26,10 +26,13 @@
  * `50%\r100%` is `100%`, `Downloading\rDone` is `Doneloading`, and `done\r`
  * is still `done`. Columns are counted in characters, not cells, so a wide
  * character overwritten by a narrow one is where this and a terminal differ.
+ * Erase in line (`\x1b[K`) is honoured for the same reason, because a redraw
+ * is usually `\r\x1b[K` and the old text must not show through a shorter new
+ * one.
  *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped. It is not a terminal
- * emulator — cursor movement is dropped, not performed.
+ * emulator — any other cursor movement is dropped, not performed.
  *
  * Tier 5 of `src/core/`: it builds `RichText`, so it sits above `text`, and
  * `RichText` cannot offer a `fromAnsi` static without importing upward.
@@ -46,19 +49,24 @@ type Token =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "sgr"; readonly params: string }
   | { readonly kind: "link"; readonly uri: string }
-  | { readonly kind: "return" };
+  | { readonly kind: "return" }
+  | { readonly kind: "erase"; readonly mode: EraseMode };
+
+/** `\x1b[K`'s parameter: 0 erases from the cursor on, 1 up to it, 2 the whole line. */
+type EraseMode = "0" | "1" | "2";
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
  * order: a carriage return; an SGR sequence (group 1, its parameters — a
  * private marker such as the `>` of `\x1b[>4;2m` makes it some other CSI);
- * any other CSI sequence; any other OSC sequence, with the terminators OSC 8
- * accepts or cut off by the end of the line; any other escape, ECMA-48's
- * intermediates and one final byte (`\x1b(B`, `\x1b)0`, `\x1b#8`, `\x1bc`).
- * Only the first two become tokens.
+ * erase in line (group 2, its mode); any other CSI sequence; any other string
+ * escape — OSC, DCS, APC, PM, SOS — run to the terminators OSC 8 accepts or
+ * cut off by the end of the line; any other escape, ECMA-48's intermediates
+ * and one final byte (`\x1b(B`, `\x1b)0`, `\x1b#8`, `\x1bc`). Only the first
+ * three become tokens.
  */
 const ESCAPE =
-  /\r|\x1b\[([0-9;:]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
+  /\r|\x1b\[([0-9;:]*)m|\x1b\[([012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -66,6 +74,7 @@ function* escapeTokens(bytes: string): Generator<Token> {
     if (match.index > at) yield { kind: "text", text: bytes.slice(at, match.index) };
     if (match[0] === "\r") yield { kind: "return" };
     if (match[1] !== undefined) yield { kind: "sgr", params: match[1] };
+    if (match[2] !== undefined) yield { kind: "erase", mode: (match[2] || "0") as EraseMode };
     at = match.index + match[0].length;
   }
   if (at < bytes.length) yield { kind: "text", text: bytes.slice(at) };
@@ -126,8 +135,10 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   ...ATTRIBUTE_NAMES.map((name): [number, SgrOp] => [ATTRIBUTE_SGR[name], adding({ [name]: true })]),
   [22, adding({ bold: false, dim: false })],
   [23, adding({ italic: false })],
-  [24, adding({ underline: false })],
-  [25, adding({ blink: false })],
+  // ECMA-48: 24 is "neither singly nor doubly underlined", 25 "steady" at
+  // either speed. Rich's table clears only the first of each pair.
+  [24, adding({ underline: false, underline2: false })],
+  [25, adding({ blink: false, blink2: false })],
   [26, adding({ blink2: false })],
   [27, adding({ reverse: false })],
   [28, adding({ conceal: false })],
@@ -136,6 +147,9 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   [39, adding({ color: ColorSpec.default() })],
   [48, (style, rest) => style.add(new Style({ bgcolor: extendedColor(rest) }))],
   [49, adding({ bgcolor: ColorSpec.default() })],
+  // Underline colour has no field on Style; its arguments are still spent, or
+  // `58;2;1;2;3` would read on as bold, dim and italic.
+  [58, (style, rest) => (extendedColor(rest), style)],
   [54, adding({ frame: false, encircle: false })],
   [55, adding({ overline: false })],
   ...Array.from({ length: 8 }, (_, n): [number, SgrOp][] => [
@@ -162,6 +176,14 @@ function applySgr(style: Style, params: string): Style {
   let result = style;
   for (const code of codes) result = (SGR_OPS.get(code) ?? identity)(result, codes);
   return result;
+}
+
+const BLANK: [string, Style] = [" ", NULL_STYLE];
+
+/** Erase in line: the cells before the cursor go blank, the ones from it on go. */
+function erase(cells: [string, Style][], column: number, mode: EraseMode): void {
+  if (mode !== "0") cells.fill(BLANK, 0, Math.min(column + 1, cells.length));
+  if (mode !== "1") cells.length = Math.min(column, cells.length);
 }
 
 /**
@@ -198,6 +220,9 @@ export class AnsiDecoder {
         }
         case "return":
           column = 0;
+          break;
+        case "erase":
+          erase(cells, column, token.mode);
           break;
         case "sgr":
           this.sgr = applySgr(this.sgr, token.params);

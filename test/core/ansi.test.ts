@@ -148,6 +148,26 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(text.spans).toEqual([]);
   });
 
+  it("erases within the line from the cursor, up to it, or all of it", () => {
+    expect(decodeAnsi("Downloading 100%\r\x1b[KDone").plain).toBe("Done");
+    expect(decodeAnsi("Downloading\r\x1b[2KDone").plain).toBe("Done");
+    expect(decodeAnsi("abcdef\rab\x1b[1K").plain).toBe("   def");
+  });
+
+  it("drops string escapes to their terminator, payload included", () => {
+    expect(decodeAnsi("\x1b_Gf=100;AAAA\x1b\\hi\x1bPq#0;2\x1b\\!").plain).toBe("hi!");
+  });
+
+  it("spends an underline colour's arguments without applying them", () => {
+    expect(decodeAnsi("\x1b[58;2;1;2;3mx").spans).toEqual([]);
+    expect(decodeAnsi("\x1b[58;5;196;1mx").spans.length).toBe(1);
+  });
+
+  it("clears both underlines at 24 and both blinks at 25", () => {
+    const text = decodeAnsi("\x1b[21;6ma\x1b[24;25mb");
+    expect([styleAt(text, 1).underline2, styleAt(text, 1).blink2]).toEqual([false, false]);
+  });
+
   it("drops an OSC the line cuts off", () => {
     expect(decodeAnsi("a\x1b]0;title").plain).toBe("a");
   });
