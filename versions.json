@@ -4,15 +4,22 @@
     {
       "version": "pr-165",
       "ref": "refs/pull/165/merge",
-      "sha": "0b858b1239e67798e00ca1814f49e06385dd7781",
-      "timestamp": "2026-09-27T11:37:09.868Z",
+      "sha": "959daa623f6d685c0fd0125d4e7ea8f3a35d15cd",
+      "timestamp": "2026-09-27T11:41:21.581Z",
       "commits": [
         {
-          "sha": "0b858b1239e67798e00ca1814f49e06385dd7781",
+          "sha": "959daa623f6d685c0fd0125d4e7ea8f3a35d15cd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:36:47-06:00",
-          "message": "Merge 98ee8a4556b9ba76ed86c282d4930a7b4ff2a9b0 into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+          "timestamp": "2026-09-27T11:40:52Z",
+          "message": "Merge 830c6284d70fcf8edc164e5a44b0ac279209bee2 into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+        },
+        {
+          "sha": "830c6284d70fcf8edc164e5a44b0ac279209bee2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:40:47-06:00",
+          "message": "fix(docs): runInTerminal rejects on every failure, types to ConsoleStream, bundles keep process.env (rich-docs-examples-xuu.iy5)\n"
         },
         {
           "sha": "98ee8a4556b9ba76ed86c282d4930a7b4ff2a9b0",
