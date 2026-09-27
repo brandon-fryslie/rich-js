@@ -46,7 +46,7 @@ describe("decodeAnsi round trip", () => {
     const bytes = renderToString(sample, { colorSystem: ColorDepth.TRUECOLOR, width: 200 });
     expect(bytes).toContain("38;2;58;123;213");
     expect(bytes).toContain("38;5;200");
-    expect(bytes).toContain("31");
+    expect(bytes).toContain("\x1b[31;1m");
   });
 });
 
@@ -133,15 +133,28 @@ describe("decodeAnsi lines and other escapes", () => {
     expect(decodeAnsi("a\n\nb\n").plain).toBe("a\n\nb");
   });
 
-  it("keeps the text after a line's last carriage return, styled by codes before it", () => {
+  it("returns to the first column at a carriage return, and later text overwrites", () => {
     const text = decodeAnsi("10%\r\x1b[1m50%\r100%");
     expect(text.plain).toBe("100%");
     expect(styleAt(text, 0).bold).toBe(true);
+    expect(decodeAnsi("Downloading\rDone").plain).toBe("Doneloading");
+    expect(decodeAnsi("done\r").plain).toBe("done");
+    expect(new AnsiDecoder().decodeLine("\x1b[32mok\r").plain).toBe("ok");
   });
 
-  it("drops cursor movement, titles, charset designations and two-byte escapes", () => {
-    const text = decodeAnsi("\x1b[2K\x1b[1Aa\x1b]0;title\x07b\x1b(Bc\x1b7d\x1b[?25le");
-    expect(text.plain).toBe("abcde");
+  it("drops cursor movement, titles, charset designations and other escapes", () => {
+    const text = decodeAnsi("\x1b[2K\x1b[1Aa\x1b]0;title\x07b\x1b(Bc\x1b7d\x1b[?25le\x1bcf\x1b)0g\x1b#8h\x1b%Gi");
+    expect(text.plain).toBe("abcdefghi");
+    expect(text.spans).toEqual([]);
+  });
+
+  it("drops an OSC the line cuts off", () => {
+    expect(decodeAnsi("a\x1b]0;title").plain).toBe("a");
+  });
+
+  it("reads a CSI with a private marker as no SGR", () => {
+    const text = decodeAnsi("\x1b[>4;2mhello");
+    expect(text.plain).toBe("hello");
     expect(text.spans).toEqual([]);
   });
 

@@ -21,9 +21,11 @@
  *
  * Carriage returns are the other departure, and the same argument. Rich splits
  * lines with Python's `splitlines`, which also breaks at `\r`, so its `a\rb`
- * is two lines. Here a line ends only at `\n` (or `\r\n`), and the text after
- * a line's last `\r` replaces the text before it, as a progress bar redrawing
- * in place looks on a terminal; codes before the `\r` still style what follows.
+ * is two lines. Here a line ends only at `\n`, and `\r` returns to the first
+ * column, so later text overwrites earlier text character by character:
+ * `50%\r100%` is `100%`, `Downloading\rDone` is `Doneloading`, and `done\r`
+ * is still `done`. Columns are counted in characters, not cells, so a wide
+ * character overwritten by a narrow one is where this and a terminal differ.
  *
  * Everything else follows Rich: malformed SGR parameters are skipped rather
  * than refused, and every other escape is dropped. It is not a terminal
@@ -35,7 +37,7 @@
 
 import { ColorSpec } from "./color.js";
 import { osc8Sequences } from "./osc8.js";
-import { NULL_STYLE, Style } from "./style.js";
+import { ATTRIBUTE_NAMES, ATTRIBUTE_SGR, NULL_STYLE, Style } from "./style.js";
 import type { StyleOptions } from "./style.js";
 import { RichText } from "./text.js";
 import type { RichTextOptions } from "./text.js";
@@ -48,13 +50,15 @@ type Token =
 
 /**
  * Every escape but OSC 8, which `osc8Sequences` reads before this runs. In
- * order: a carriage return; an SGR sequence (group 1, its parameters); any
- * other CSI sequence; any other OSC sequence, with the terminators OSC 8
- * accepts; a charset designation, which carries one more byte; any other
- * two-byte escape. Only the first two become tokens.
+ * order: a carriage return; an SGR sequence (group 1, its parameters — a
+ * private marker such as the `>` of `\x1b[>4;2m` makes it some other CSI);
+ * any other CSI sequence; any other OSC sequence, with the terminators OSC 8
+ * accepts or cut off by the end of the line; any other escape, ECMA-48's
+ * intermediates and one final byte (`\x1b(B`, `\x1b)0`, `\x1b#8`, `\x1bc`).
+ * Only the first two become tokens.
  */
 const ESCAPE =
-  /\r|\x1b\[([0-?]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c)|\x1b\([\s\S]?|\x1b[0-?@-Z\\-_]/g;
+  /\r|\x1b\[([0-9;:]*)m|\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -86,10 +90,10 @@ function* tokens(line: string): Generator<Token> {
  */
 type SgrOp = (style: Style, rest: Iterator<number>) => Style;
 
-const adding =
-  (options: StyleOptions): SgrOp =>
-  (style) =>
-    style.add(new Style(options));
+function adding(options: StyleOptions): SgrOp {
+  const added = new Style(options);
+  return (style) => style.add(added);
+}
 
 function next(rest: Iterator<number>): number | undefined {
   const step = rest.next();
@@ -117,16 +121,9 @@ function extendedColor(rest: Iterator<number>): ColorSpec | undefined {
 // reset included; a code this table does not name is the identity.
 const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   [0, () => NULL_STYLE],
-  [1, adding({ bold: true })],
-  [2, adding({ dim: true })],
-  [3, adding({ italic: true })],
-  [4, adding({ underline: true })],
-  [5, adding({ blink: true })],
-  [6, adding({ blink2: true })],
-  [7, adding({ reverse: true })],
-  [8, adding({ conceal: true })],
-  [9, adding({ strike: true })],
-  [21, adding({ underline2: true })],
+  // [LAW:one-source-of-truth] The codes that turn an attribute on are the
+  // ones `Style.toSgrCodes` writes; only the codes that turn one off are ours.
+  ...ATTRIBUTE_NAMES.map((name): [number, SgrOp] => [ATTRIBUTE_SGR[name], adding({ [name]: true })]),
   [22, adding({ bold: false, dim: false })],
   [23, adding({ italic: false })],
   [24, adding({ underline: false })],
@@ -139,9 +136,6 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   [39, adding({ color: ColorSpec.default() })],
   [48, (style, rest) => style.add(new Style({ bgcolor: extendedColor(rest) }))],
   [49, adding({ bgcolor: ColorSpec.default() })],
-  [51, adding({ frame: true })],
-  [52, adding({ encircle: true })],
-  [53, adding({ overline: true })],
   [54, adding({ frame: false, encircle: false })],
   [55, adding({ overline: false })],
   ...Array.from({ length: 8 }, (_, n): [number, SgrOp][] => [
@@ -156,8 +150,8 @@ const identity: SgrOp = (style) => style;
 
 /**
  * `params` applied to `style`. An empty parameter is 0 and one above 255 is
- * 255; one that is not a number — a colon sub-parameter, a private marker —
- * is skipped, as in Rich.
+ * 255; one that is not a number — a colon sub-parameter — is skipped, as in
+ * Rich.
  */
 function applySgr(style: Style, params: string): Style {
   const codes = params
@@ -172,8 +166,10 @@ function applySgr(style: Style, params: string): Style {
 
 /**
  * A stateful decoder: the style an escape sets carries on across lines, and
- * across calls, as it does on a terminal. Use one decoder per stream, so
- * output read a line at a time decodes as it would have all at once.
+ * across calls, as it does on a terminal. Use one decoder per stream and hand
+ * it whole lines, so output read a line at a time decodes as it would have
+ * all at once. It buffers nothing: a chunk cut mid-line or mid-escape decodes
+ * as the line it appears to be.
  */
 export class AnsiDecoder {
   private sgr: Style = NULL_STYLE;
@@ -186,16 +182,22 @@ export class AnsiDecoder {
     );
   }
 
-  /** One line of output, holding no `\n`. */
+  /**
+   * One line of output, holding no `\n`, written the way a terminal writes
+   * it: `\r` returns to the first column, and text overwrites from there.
+   */
   decodeLine(line: string): RichText {
-    let pieces: [string, Style][] = [];
+    const cells: [string, Style][] = [];
+    let column = 0;
     for (const token of tokens(line)) {
       switch (token.kind) {
-        case "text":
-          pieces.push([token.text, this.sgr.withLink(this.link)]);
+        case "text": {
+          const style = this.sgr.withLink(this.link);
+          for (const char of token.text) cells[column++] = [char, style];
           break;
+        }
         case "return":
-          pieces = [];
+          column = 0;
           break;
         case "sgr":
           this.sgr = applySgr(this.sgr, token.params);
@@ -205,7 +207,13 @@ export class AnsiDecoder {
           break;
       }
     }
-    return RichText.assemble(pieces);
+    const runs: [string, Style][] = [];
+    for (const [char, style] of cells) {
+      const last = runs.at(-1);
+      if (last?.[1] === style) last[0] += char;
+      else runs.push([char, style]);
+    }
+    return RichText.assemble(runs);
   }
 }
 
