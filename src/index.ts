@@ -208,6 +208,9 @@ export type { RenderToStringOptions } from "./core/render.js";
 export { OSC8, osc8Sequences } from "./core/osc8.js";
 export type { Osc8Sequence } from "./core/osc8.js";
 
+// ANSI bytes back into styled text
+export { AnsiDecoder, decodeAnsi } from "./core/ansi.js";
+
 // Markup plugin tags
 export {
   MarkupRegistry,

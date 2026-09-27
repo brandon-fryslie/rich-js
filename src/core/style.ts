@@ -39,8 +39,8 @@ export const ATTRIBUTE_NAMES = [
 
 export type AttributeName = (typeof ATTRIBUTE_NAMES)[number];
 
-// The SGR parameter that turns each attribute on
-const ATTRIBUTE_SGR: Record<AttributeName, number> = {
+// The SGR parameter that turns each attribute on. `ansi.ts` reads it back.
+export const ATTRIBUTE_SGR: Record<AttributeName, number> = {
   bold: 1,
   dim: 2,
   italic: 3,

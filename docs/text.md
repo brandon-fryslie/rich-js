@@ -86,3 +86,29 @@ console.print(new Panel(heading));
 │                                                    Total │
 ╰──────────────────────────────────────────────────────────╯
 ```
+
+## Decoding ANSI output
+
+`decodeAnsi` turns bytes a program has already written, escape codes and all, back into a `RichText`. Use it to show another command's coloured output inside a Panel, or to replay a captured log:
+
+```typescript
+import { Console, Panel, decodeAnsi } from "@promptctl/rich-js";
+
+const captured = "\x1b[1;32m✔\x1b[0m 12 passed  \x1b[31m✘\x1b[0m 1 failed";
+
+const console = new Console();
+console.print(new Panel(decodeAnsi(captured), { title: "npm test" }));
+```
+
+Each colour keeps the kind it was written as. `\x1b[31m` decodes to standard colour 1, not to a particular red, so the terminal or exported theme that draws the text still picks the shade. Text attributes and OSC 8 hyperlinks decode too. Other escapes, cursor movement included, are dropped. A carriage return goes back to the start of the line and the text after it overwrites what was there, and erase-in-line (`\x1b[K`) clears it, so a progress line redrawn in place decodes to its final state.
+
+To decode output as it arrives, one line at a time, keep one `AnsiDecoder` for the whole stream. A style that one line sets stays in effect on the lines after it, the way it would on a terminal:
+
+```typescript
+import { AnsiDecoder } from "@promptctl/rich-js";
+
+const decoder = new AnsiDecoder();
+for (const line of lines) {
+  console.print(decoder.decodeLine(line));
+}
+```

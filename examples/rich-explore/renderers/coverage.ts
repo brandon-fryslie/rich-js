@@ -45,6 +45,9 @@ import {
   // Reading rendered bytes back
   OSC8,
   osc8Sequences,
+  // ANSI bytes back into styled text
+  AnsiDecoder,
+  decodeAnsi,
   // Text spans
   Span,
   // Spinner data
@@ -346,6 +349,13 @@ export class CoverageRenderable implements Renderable {
       `visible ${JSON.stringify(split.replace(ZERO_WIDTH, ""))}`,
       { end: "" },
     ));
+    // decodeAnsi reads the same bytes back as styled text — the bold glyph and
+    // the link survive, so the line below draws exactly like the segments above.
+    items.push(new RichText("decoded: ", { end: "" }).append(decodeAnsi(split)));
+    // One AnsiDecoder per stream: the bold set on the first line carries on.
+    const decoder = new AnsiDecoder();
+    const [first, second] = decoder.decode("\x1b[1;35mline one\nline two\x1b[0m");
+    items.push(new RichText("streamed: ", { end: "" }).append(first!).append(" / ").append(second!));
     // A control segment carries no text — ControlType names what it does.
     const bell = new Segment("", undefined, [[ControlType.BELL]]);
     items.push(new RichText(
