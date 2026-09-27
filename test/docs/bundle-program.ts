@@ -9,8 +9,7 @@
  */
 import { build } from "vite";
 import { resolve } from "node:path";
-
-export const REPO_ROOT = resolve(import.meta.dirname, "..", "..");
+import { REPO_ROOT } from "../coverage/extract.js";
 
 /** An absolute import specifier for a file in this repository. */
 export function repoPath(path: string): string {
