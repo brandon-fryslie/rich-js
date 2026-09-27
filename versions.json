@@ -4,15 +4,22 @@
     {
       "version": "pr-168",
       "ref": "refs/pull/168/merge",
-      "sha": "a07e2b06b9fa6fca26c015faa1bf1737d82e3e16",
-      "timestamp": "2026-09-27T12:06:45.528Z",
+      "sha": "83212892da1575684d67d3dc76618ca0b8a101a5",
+      "timestamp": "2026-09-27T12:09:14.529Z",
       "commits": [
         {
-          "sha": "a07e2b06b9fa6fca26c015faa1bf1737d82e3e16",
+          "sha": "83212892da1575684d67d3dc76618ca0b8a101a5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T12:06:19Z",
-          "message": "Merge 9ecb8c802629fae15a2114596cd5a4c39c7248fe into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
+          "timestamp": "2026-09-27T12:08:47Z",
+          "message": "Merge 1a10407e91e03c9c84701d914bd7c5693bdb5fd9 into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
+        },
+        {
+          "sha": "1a10407e91e03c9c84701d914bd7c5693bdb5fd9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:08:42-06:00",
+          "message": "fix(export-html): pin the fragment's rows left to right\n\n`all` does not reset direction or unicode-bidi, so an rtl host page\nstill reordered box-drawing edges and right-aligned every row.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "9ecb8c802629fae15a2114596cd5a4c39c7248fe",
@@ -70,49 +77,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T05:50:11-06:00",
           "message": "feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-165",
-      "ref": "refs/pull/165/merge",
-      "sha": "ece3fa0fdf7fe4485c386ce91ba1c48f3585100d",
-      "timestamp": "2026-09-27T12:03:56.948Z",
-      "commits": [
-        {
-          "sha": "ece3fa0fdf7fe4485c386ce91ba1c48f3585100d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T12:03:12Z",
-          "message": "Merge c2712586c08b5e333a3b542ff09d7ebf87abaa63 into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
-        },
-        {
-          "sha": "c2712586c08b5e333a3b542ff09d7ebf87abaa63",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:03:07-06:00",
-          "message": "test(docs): bundle-program reads REPO_ROOT from its one definition\n\ntest/coverage/extract.ts already owns the repository root; a second\ncomputation from a different directory could drift from it silently.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "474bde749f39748967b6e3874ce06e78ecc43a38",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:56:24-06:00",
-          "message": "test(docs): overlapping runs stay in their own terminals; header names the one ambient read (rich-docs-examples-xuu.iy5)\n"
-        },
-        {
-          "sha": "830c6284d70fcf8edc164e5a44b0ac279209bee2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:40:47-06:00",
-          "message": "fix(docs): runInTerminal rejects on every failure, types to ConsoleStream, bundles keep process.env (rich-docs-examples-xuu.iy5)\n"
-        },
-        {
-          "sha": "98ee8a4556b9ba76ed86c282d4930a7b4ff2a9b0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:36:43-06:00",
-          "message": "feat(docs): a simulated process runs an example's own new Console() in a terminal we supply (rich-docs-examples-xuu.iy5)\n\n`runInTerminal(program, terminal)` evaluates a bundled program as the body of\nan async function whose parameter is named `process`, so every free `process`\nin it — the library included — binds to a stand-in built from the terminal.\nNothing global is swapped: the build's and the page's own `process` are never\ntouched, and two runs can overlap.\n\nProven in Node (test/docs/simulated-process.test.ts, under a hostile host env)\nand in Chromium (e2e/simulated-process.spec.ts).\n"
         }
       ]
     },
