@@ -4,15 +4,22 @@
     {
       "version": "pr-159",
       "ref": "refs/pull/159/merge",
-      "sha": "c8c298f6d34b5e35315f137ba7a6cda4f02432f2",
-      "timestamp": "2026-09-27T07:28:54.925Z",
+      "sha": "71757f1d7e5db6564a3cc27654a4c7552e06ac42",
+      "timestamp": "2026-09-27T07:31:22.814Z",
       "commits": [
         {
-          "sha": "c8c298f6d34b5e35315f137ba7a6cda4f02432f2",
+          "sha": "71757f1d7e5db6564a3cc27654a4c7552e06ac42",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:28:33Z",
-          "message": "Merge 4a82c05abefe6b30a7a2929417132143ed586269 into a7fc70011dc34238e1113ecad0eb85e003f29199\n"
+          "timestamp": "2026-09-27T07:30:52Z",
+          "message": "Merge 48e6f894070ae644078d7a6266bef222fd2afff2 into a7fc70011dc34238e1113ecad0eb85e003f29199\n"
+        },
+        {
+          "sha": "48e6f894070ae644078d7a6266bef222fd2afff2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T01:30:47-06:00",
+          "message": "fix(color): FORCE_COLOR is a preference too; Console takes a hyperlinks option\n\nFORCE_COLOR=0 no longer drops links on a terminal; forced-on FORCE_COLOR\nstill keeps them on a pipe. ConsoleOptions.hyperlinks mirrors renderToString's\nso a file sink can ask for plain text. resolveColorSystem gets its JSDoc back.\n"
         },
         {
           "sha": "4a82c05abefe6b30a7a2929417132143ed586269",
