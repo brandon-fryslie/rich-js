@@ -65,7 +65,7 @@ function frame(state: State) {
 
 ## Scrollbar
 
-Pass `scrollbar` to draw one down the right edge. The content renders one cell narrower to make room for it.
+Pass `scrollbar` to draw one down the right edge. The content renders narrower by the scrollbar's gutter, one cell for `SCROLLBAR`.
 
 ```typescript
 import { RichText, SCROLLBAR, Viewport } from "@promptctl/rich-js";

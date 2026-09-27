@@ -11,8 +11,8 @@
  *
  * Its width is the width it is given, in both directions: each row is cropped
  * or padded to it, so content that ignores its width cannot spill past the
- * viewport's edge and the scrollbar, drawn in a gutter at that edge, sits in
- * one column. [LAW:dataflow-not-control-flow] A viewport with no scrollbar
+ * viewport's edge and the scrollbar, drawn in a gutter at that edge, lines up
+ * down every row. [LAW:dataflow-not-control-flow] A viewport with no scrollbar
  * has a gutter zero cells wide, and every row takes the same path either way.
  *
  * [LAW:no-ambient-temporal-coupling] Neither half of what an offset is clamped
@@ -160,8 +160,12 @@ export class Viewport implements Renderable, Measurable {
     // The content's cells and the gutter's drawn cells sum to the offer: a
     // gutter wider than the whole offer is drawn cropped to it.
     const drawn = Math.min(gutter, options.maxWidth);
-    const cell = ({ glyph, style }: ScrollbarPart): Segment[] =>
-      Segment.adjustLineLength([new Segment(glyph, getStyle(options, style))], drawn);
+    // The style reaches the padding too, so a glyph narrower than the gutter
+    // still fills its cell with its part's background.
+    const cell = ({ glyph, style }: ScrollbarPart): Segment[] => {
+      const resolved = getStyle(options, style);
+      return Segment.adjustLineLength([new Segment(glyph, resolved)], drawn, resolved);
+    };
     const thumbCell = cell(this.scrollbar.thumb);
     const trackCell = cell(this.scrollbar.track);
     for (const [row, line] of shown.entries()) {

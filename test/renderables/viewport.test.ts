@@ -292,7 +292,15 @@ describe("the scrollbar", () => {
     expect(styleOf("│")).toEqual(Style.parse("blue"));
   });
 
-  it("takes any glyphs, and its gutter is as wide as the wider", () => {
+  it("fills the rest of a narrower glyph's cell in that part's style", () => {
+    const blocks = { thumb: { glyph: "██", style: "" }, track: { glyph: "░", style: "on blue" } };
+    const segments = [...new Viewport(numbered(8), { rows: 2, scrollbar: blocks }).render({ maxWidth: 4 })];
+    const afterTrack = segments[segments.findIndex((s) => s.text === "░") + 1]!;
+    expect(afterTrack.text).toBe(" ");
+    expect(afterTrack.style).toEqual(Style.parse("on blue"));
+  });
+
+    it("takes any glyphs, and its gutter is as wide as the wider", () => {
     const blocks = { thumb: { glyph: "██", style: "" }, track: { glyph: "░", style: "" } };
     expect(rows(new Viewport(numbered(8), { rows: 2, scrollbar: blocks }), undefined, 4)).toEqual([
       "0 ██",
