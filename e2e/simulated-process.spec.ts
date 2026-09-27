@@ -14,9 +14,7 @@ import { bundleExample } from "../docs/.vitepress/example-runner.js";
 import { REPO_ROOT } from "../test/coverage/extract.js";
 import { resolve } from "node:path";
 
-const repoPath = (file: string): string => resolve(REPO_ROOT, file);
-
-const LIBRARY = JSON.stringify(repoPath("src/index.ts"));
+const LIBRARY = JSON.stringify(resolve(REPO_ROOT, "src/index.ts"));
 
 interface Run {
   readonly output: readonly string[];
@@ -29,7 +27,7 @@ interface Run {
 // terminal and reports what it wrote and what `process` looked like to the
 // page around it.
 const HARNESS = `
-import { runInTerminal } from ${JSON.stringify(repoPath("docs/.vitepress/simulated-process.ts"))};
+import { runInTerminal } from ${JSON.stringify(resolve(REPO_ROOT, "docs/.vitepress/simulated-process.ts"))};
 globalThis.runExample = async (program) => {
   const output = [];
   const before = typeof process;

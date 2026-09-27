@@ -15,9 +15,7 @@ import { bundleExample } from "../../docs/.vitepress/example-runner.js";
 import { REPO_ROOT } from "../coverage/extract.js";
 import { resolve } from "node:path";
 
-const repoPath = (file: string): string => resolve(REPO_ROOT, file);
-
-const LIBRARY = JSON.stringify(repoPath("src/index.ts"));
+const LIBRARY = JSON.stringify(resolve(REPO_ROOT, "src/index.ts"));
 
 function terminal(columns: number): SimulatedTerminal & { readonly output: string[] } {
   const output: string[] = [];

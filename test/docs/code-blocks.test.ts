@@ -136,6 +136,17 @@ describe("extractCodeBlocks", () => {
     expect(blocks.map((b) => [b.marker, b.code])).toEqual([["static", "a;"], ["silent", "b;"], ["throws", "c;"]]);
   });
 
+  // Every fence is tracked whatever its language, so an unterminated bash
+  // fence would otherwise swallow the TypeScript below it just the same.
+  it("throws on a fence of any language that is never closed", () => {
+    expect(() => blocksOf(["```bash", "echo hi"].join("\n"))).toThrow(/fixture\.md:1 opens a fence that is never closed/);
+  });
+
+  it("reads a page saved with CRLF line endings", () => {
+    const blocks = blocksOf(["```ts silent", "const a = 1;", "```"].join("\r\n"));
+    expect(blocks.map((b) => [b.marker, b.code, b.line])).toEqual([["silent", "const a = 1;", 1]]);
+  });
+
   it("throws on an unknown marker, naming the page and line", () => {
     expect(() => blocksOf(["", "```ts quiet", "a;", "```"].join("\n"))).toThrow(/fixture\.md:2: unknown example marker "quiet"/);
   });

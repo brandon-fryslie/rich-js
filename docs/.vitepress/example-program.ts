@@ -61,7 +61,7 @@ export interface ExampleContext {
  * read as something it is not.
  */
 export function exampleContext(page: string, markdown: string): ExampleContext | null {
-  const lines = markdown.split("\n");
+  const lines = markdown.split(/\r?\n/);
   const end = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
   const keyAt = lines.slice(0, Math.max(end, 0)).findIndex((line) => /^exampleContext\s*:/.test(line));
   if (keyAt === -1) return null;

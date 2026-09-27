@@ -83,7 +83,9 @@ const FENCE = /^(`{3,})(.*)$/;
  * otherwise drop code from every reader at once.
  */
 export function scanFences(page: string, markdown: string): Fence[] {
-  const lines = markdown.split("\n");
+  // A page saved with CRLF endings is read line by line all the same; a `\r`
+  // left on a fence line would stop it matching and hide the page's examples.
+  const lines = markdown.split(/\r?\n/);
   const fences: Fence[] = [];
   let open: { readonly index: number; readonly ticks: string; readonly info: string } | null = null;
   lines.forEach((text, index) => {

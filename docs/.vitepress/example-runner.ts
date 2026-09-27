@@ -281,7 +281,7 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   }
   const shown = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, records.blocks[i]!)]));
 
-  const lines = markdown.split("\n");
+  const lines = markdown.split(/\r?\n/);
   for (const fence of [...fences].reverse()) {
     if (MARKERS[fence.marker].run === "browser") continue;
     // Blank lines on both sides: markdown's HTML block runs to the next blank
