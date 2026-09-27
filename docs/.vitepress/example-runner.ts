@@ -32,7 +32,7 @@ import { build } from "vite";
 import ts from "typescript";
 import { statSync } from "node:fs";
 import path from "node:path";
-import { ENTRY_BY_SPECIFIER, REPO_ROOT, loadCompilerOptions } from "../../test/coverage/extract.js";
+import { ENTRY_BY_SPECIFIER, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../test/coverage/extract.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
 import { decodeAnsi, osc8Sequences } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
@@ -223,7 +223,9 @@ function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: Blo
   const escape = disallowedEscape(record.output);
   if (escape !== null) throw new Error(`${at}: writes the escape ${escape}, which moves the cursor or clears the screen; mark it \`live\``);
   if (outcome === "silent") return null;
-  return record.ended.kind === "threw" ? `${record.output}${record.ended.name}: ${record.ended.message}\n` : record.output;
+  if (record.ended.kind === "completed") return record.output;
+  // A thrown non-Error has no name, and shows as its message alone.
+  return `${record.output}${[record.ended.name, record.ended.message].filter((part) => part !== "").join(": ")}\n`;
 }
 
 /** Where a run that threw stopped: in the prelude or context, or at the first block with no record. */
@@ -280,7 +282,9 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   const lines = markdown.split("\n");
   for (const fence of [...fences].reverse()) {
     if (MARKERS[fence.marker].run === "browser") continue;
-    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown.get(fence) ?? null));
+    // Blank lines on both sides: markdown's HTML block runs to the next blank
+    // line, and would swallow prose written straight under the fence.
+    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown.get(fence) ?? null), "");
   }
   return lines.join("\n");
 }
@@ -296,13 +300,21 @@ export interface DocsExamplesPlugin {
   transform(code: string, id: string): Promise<{ code: string; map: null } | null>;
 }
 
+/** Every file under `src/` and when it last changed: what a page's output depends on besides the page. */
+function sourceStamp(): string {
+  return listTypeScriptFiles("src")
+    .map((file) => `${file}:${statSync(file).mtimeMs}`)
+    .join("\n");
+}
+
 export function docsExamplesPlugin(): DocsExamplesPlugin {
   const compiler = new ExampleCompiler();
   const docsRoot = path.join(REPO_ROOT, "docs") + path.sep;
   // VitePress builds twice, server then client, and both pass every page
-  // through this transform. The last run of each page is kept by its source,
-  // so a build runs a page once and `docs:dev` re-runs it when it is edited.
-  const runs = new Map<string, { readonly code: string; readonly result: Promise<string> }>();
+  // through this transform. The last run of each page is kept by what its
+  // output is a function of, the page and `src/`, so a build runs a page once
+  // and `docs:dev` re-runs it when either is edited.
+  const runs = new Map<string, { readonly key: string; readonly result: Promise<string> }>();
   return {
     name: "rich-docs-examples",
     enforce: "pre",
@@ -310,9 +322,10 @@ export function docsExamplesPlugin(): DocsExamplesPlugin {
       if (!id.endsWith(".md") || !id.startsWith(docsRoot)) return null;
       const page = path.relative(docsRoot, id);
       if (NOT_YET_MIGRATED.has(page) || !scanFences(page, code).length) return null;
+      const key = `${sourceStamp()}\u0000${code}`;
       const last = runs.get(id);
-      const result = last !== undefined && last.code === code ? last.result : runPageExamples(compiler, page, code);
-      runs.set(id, { code, result });
+      const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code);
+      runs.set(id, { key, result });
       return { code: await result, map: null };
     },
   };

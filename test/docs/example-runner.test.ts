@@ -6,7 +6,7 @@
  * the page and line. Nothing here reads the generated program.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync, utimesSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT } from "../coverage/extract.js";
 import {
@@ -36,7 +36,7 @@ describe("docs/panel.md", { timeout: 60_000 }, () => {
       expect(html).toMatch(/<div class="rich-example-light"><pre style="[^"]*background:#fafafa/);
       expect(html).toMatch(/<div class="rich-example-dark"><pre style="[^"]*background:#282c34/);
     }
-    expect(result.replace(/\n\n<div class="rich-example-output"[^\n]*<\/div>/g, "")).toBe(PANEL);
+    expect(result.replace(/\n\n<div class="rich-example-output"[^\n]*<\/div>\n/g, "")).toBe(PANEL);
   });
 
   it("fails naming panel.md and the line of an example that throws", async () => {
@@ -90,6 +90,17 @@ describe("one page, one program", { timeout: 30_000 }, () => {
   it("blames the exampleContext, not the first block, when the context throws", async () => {
     const context = ["---", "exampleContext: |", '  console.print("half");', '  throw new Error("ctx");', "---", ""].join("\n");
     await expect(run(context + fence('console.print("x");'))).rejects.toThrow("docs/fixture.md:3 (exampleContext): the example threw Error: ctx");
+  });
+
+  it("shows a thrown non-Error as its message alone", async () => {
+    const shown = outputs(await run(fence('throw "plain";', "ts throws")))[0]!;
+    expect(shown).toMatch(/>plain(&#10;)*</);
+    expect(shown).not.toContain(": plain");
+  });
+
+  it("leaves prose written straight under a fence to markdown", async () => {
+    const result = await run(`${fence('console.print("x");')}\n**after**`);
+    expect(result).toMatch(/<\/div>\n\n\*\*after\*\*$/);
   });
 
   it("shows a silent block's note in place of output", async () => {
@@ -157,6 +168,21 @@ describe("the plugin", () => {
     const first = await plugin.transform(markdown, id);
     expect(await plugin.transform(markdown, id)).toEqual(first);
     expect(await plugin.transform(`${markdown}\n`, id)).not.toEqual(first);
+  });
+
+  it("runs a page again when src/ changes under it", { timeout: 60_000 }, async () => {
+    const plugin = docsExamplesPlugin();
+    const id = path.join(REPO_ROOT, "docs", "fixture-src-edit.md");
+    const markdown = fence("console.print(String(Math.random()));");
+    const first = await plugin.transform(markdown, id);
+    const touched = path.join(REPO_ROOT, "src", "index.ts");
+    const { mtime } = statSync(touched);
+    utimesSync(touched, new Date(), new Date(mtime.getTime() + 1000));
+    try {
+      expect(await plugin.transform(markdown, id)).not.toEqual(first);
+    } finally {
+      utimesSync(touched, new Date(), mtime);
+    }
   });
 
   it("passes a page that has not migrated through untouched", async () => {
