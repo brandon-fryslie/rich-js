@@ -15,7 +15,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { fitHeight, getStyle, insetHeight, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
@@ -240,11 +240,16 @@ export class Panel implements Renderable, Measurable {
     options: RenderOptions,
     contentWidth: number,
   ): Segment[][] {
-    const innerOptions: RenderOptions = {
-      ...options,
-      maxWidth: contentWidth,
-    };
-    const lines = Segment.splitLines([...this.renderable.render(innerOptions)]);
+    // Two border rows and the vertical padding are the panel's own. Handed on
+    // as a region, the rest is the panel's to shape, which is what stretches
+    // its frame down a pane and keeps its bottom border inside one.
+    const [padTop, , padBottom] = this.padding;
+    const height = insetHeight(options.height, 2 + padTop + padBottom);
+    const innerOptions: RenderOptions = { ...options, maxWidth: contentWidth, height };
+    const lines = fitHeight(
+      Segment.splitLines([...this.renderable.render(innerOptions)]),
+      height,
+    );
     return contentWidth === 0 ? [] : lines;
   }
 

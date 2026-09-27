@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { cellCount } from "../core/cells.js";
 
 export interface ColumnsOptions {
@@ -92,7 +92,7 @@ export class Columns implements Renderable, Measurable {
           item === undefined
             ? []
             : Segment.splitLines([
-                ...item.render({ ...options, maxWidth: width }),
+                ...item.render({ ...options, maxWidth: width, height: stackedHeight(options.height) }),
               ]);
         return { lines, width };
       });

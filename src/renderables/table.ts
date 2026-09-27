@@ -846,7 +846,6 @@ export class Table implements Renderable, Measurable {
         overflow: col.overflow,
         noWrap: col.noWrap,
         height: undefined,
-        maxHeight: undefined,
       })];
       const lines = Segment.splitLines(segs).map((line) =>
         Segment.adjustLineLength(line, cellWidth),
@@ -927,7 +926,6 @@ export class Table implements Renderable, Measurable {
       overflow: undefined,
       noWrap: false,
       height: undefined,
-      maxHeight: undefined,
     })];
 
     // Every line the text has, because that is what the reference renders — a

@@ -18,8 +18,10 @@ export interface RenderOptions {
    */
   maxWidth: number;
   minWidth?: number;
-  height?: number;
-  maxHeight?: number;
+  /**
+   * The rows this renderable may occupy. Absent, nothing limits them.
+   */
+  height?: Height;
   isTerminal?: boolean;
   encoding?: string;
   legacyWindows?: boolean;
@@ -49,6 +51,82 @@ export interface RenderOptions {
    * the render strict: the error leaves `render`.
    */
   onStyleError?: StyleErrorHandler;
+}
+
+/**
+ * A vertical budget: a count of rows, and whether they are a region the
+ * renderable stands in or a ceiling it stays under.
+ *
+ * `exact: true` is a region — a `Layout` pane, a full-screen frame. The output
+ * is exactly `rows` tall. A renderable may fill the region — a layout divides
+ * it, a frame can stretch to its last row — or ignore it and emit its natural
+ * height; either way, whoever set the region shapes what comes back to it
+ * (`fitHeight`). Setting a region is a promise to shape, so no renderable pads
+ * or crops itself to one.
+ *
+ * `exact: false` is a ceiling — the terminal an inline print lands on. Content
+ * keeps its natural height beneath it, and nothing pads up to the ceiling.
+ * Output taller than the ceiling is cropped by whoever imposed it.
+ *
+ * A renderable passing its whole space to one child must forward the budget
+ * less the rows it draws itself, and of the same kind (`insetHeight`). One
+ * stacking several children must hand each the rows as a ceiling
+ * (`stackedHeight`): any one of them may use all of it, and none may claim it
+ * as its region. Forwarded unchanged, a layout nested in a panel fills the
+ * panel's whole region and the region's crop takes the panel's bottom border.
+ *
+ * [LAW:types-are-the-program] One field, because the fact is one count and one
+ * bit about it. As two numbers, `height` and `maxHeight`, it admitted a region
+ * taller than its ceiling and a region with no ceiling at all, and the one
+ * reader in the library resolved them `maxHeight ?? height` — the ceiling ahead
+ * of the region it contains.
+ *
+ * There is no vertical `Measurable`. A parent chooses widths from its
+ * children's measurements before any of them renders; nothing chooses rows
+ * that way, because a renderable's height is a consequence of the width it
+ * renders at. Rendering and counting the lines is the measurement.
+ */
+export interface Height {
+  readonly rows: number;
+  readonly exact: boolean;
+}
+
+/**
+ * The budget a renderable hands the one child filling its space: its own, less
+ * the `rows` it draws itself, and of the same kind.
+ */
+export function insetHeight(height: Height | undefined, rows: number): Height | undefined {
+  return height && { rows: cellCount(height.rows - rows), exact: height.exact };
+}
+
+/**
+ * The budget a renderable hands each of several children it stacks: its rows,
+ * as a ceiling.
+ */
+export function stackedHeight(height: Height | undefined): Height | undefined {
+  return height && { rows: cellCount(height.rows), exact: false };
+}
+
+/**
+ * The rows a region holds, parsed as a cell count, or `undefined` when there
+ * is no region to fill: a ceiling, no budget, or a region of `Infinity` rows,
+ * which names no count — as an unbounded width resolves to a natural one in
+ * `withBoundedWidth`.
+ */
+export function regionRows(height: Height | undefined): number | undefined {
+  return height?.exact && height.rows !== Infinity ? cellCount(height.rows) : undefined;
+}
+
+/**
+ * What came back from a child, held to the region `height` names — blank rows
+ * padded below, overflow cropped from the bottom — or left at its own height
+ * when `height` is no region. This is the shaping a region's setter owes.
+ */
+export function fitHeight(lines: Segment[][], height: Height | undefined): Segment[][] {
+  const rows = regionRows(height) ?? lines.length;
+  const fitted = lines.slice(0, rows);
+  while (fitted.length < rows) fitted.push([]);
+  return fitted;
 }
 
 /**

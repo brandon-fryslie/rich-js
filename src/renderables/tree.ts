@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { getStyle, isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
 // Guide characters
@@ -179,7 +179,7 @@ export class Tree implements Renderable, Measurable {
     // The guides above are cropped by `cellFit`; the label was not, so a label
     // that ignores the width it is handed pushed the row past the offer the
     // guides had just been fitted into.
-    yield* Segment.cropLines(row.label.render({ ...options, maxWidth: left }), left);
+    yield* Segment.cropLines(row.label.render({ ...options, maxWidth: left, height: stackedHeight(options.height) }), left);
     yield Segment.line();
   }
 

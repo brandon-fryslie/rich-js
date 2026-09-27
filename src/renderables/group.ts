@@ -8,6 +8,7 @@ import type {
   Renderable,
   RenderOptions,
 } from "../core/protocol.js";
+import { stackedHeight } from "../core/protocol.js";
 
 export class Group implements Renderable {
   readonly renderables: Renderable[];
@@ -17,8 +18,9 @@ export class Group implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
+    const memberOptions = { ...options, height: stackedHeight(options.height) };
     for (const renderable of this.renderables) {
-      yield* renderable.render(options);
+      yield* renderable.render(memberOptions);
     }
   }
 }

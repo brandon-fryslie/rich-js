@@ -159,6 +159,7 @@ export {
 } from "./core/protocol.js";
 export type {
   RenderOptions,
+  Height,
   Renderable,
   Measurable,
   StyleErrorHandler,

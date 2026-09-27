@@ -64,7 +64,7 @@ interface Configuration {
 }
 
 function renderAt(config: Configuration, maxWidth: number): string[] {
-  const options: RenderOptions = { maxWidth, height: 6, maxHeight: 6 };
+  const options: RenderOptions = { maxWidth, height: { rows: 6, exact: true } };
   return Segment.splitLines([...config.make().render(options)]).map((line) =>
     line.map((segment) => segment.text).join(""),
   );
@@ -372,7 +372,7 @@ describe("width sweep", () => {
 
       it("measures a range a parent layout can act on, from 0 up", () => {
         for (let width = 0; width <= 20; width++) {
-          const m = config.make().measure({ maxWidth: width, height: 6, maxHeight: 6 });
+          const m = config.make().measure({ maxWidth: width, height: { rows: 6, exact: true } });
           // An inverted range — `Panel.measure({maxWidth: 1})` returned
           // {minimum: 5, maximum: 1} before this epic — is invisible to any
           // render-only assertion and cannot be divided by the parent that
@@ -385,7 +385,7 @@ describe("width sweep", () => {
       });
 
       it("renders an unbounded width exactly as its own natural width", () => {
-        const unbounded: RenderOptions = { maxWidth: Infinity, height: 6, maxHeight: 6 };
+        const unbounded: RenderOptions = { maxWidth: Infinity, height: { rows: 6, exact: true } };
         const natural = config.make().measure(unbounded).maximum;
 
         if (noNaturalWidth.has(config.name)) {

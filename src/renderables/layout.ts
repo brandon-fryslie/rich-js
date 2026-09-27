@@ -9,7 +9,14 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import {
+  fitHeight,
+  isMeasurable,
+  regionRows,
+  stackedHeight,
+  withBoundedWidth,
+  withCellWidth,
+} from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
 
@@ -49,6 +56,24 @@ function toRenderable(renderable: Renderable | string): Renderable {
     return copy;
   }
   return renderable;
+}
+
+/**
+ * A pane rendered into a region of `rows` and held to exactly that many lines,
+ * or — with `rows` undefined — rendered under the layout's own budget, as a
+ * ceiling, at its natural height.
+ *
+ * [LAW:single-enforcer] The region's setter shapes it (`fitHeight`). Forwarded
+ * unshaped, a pane whose content ran short pulled every pane below it up, and
+ * one that ran long pushed them down.
+ */
+function paneLines(
+  pane: Layout,
+  options: RenderOptions,
+  rows: number | undefined,
+): Segment[][] {
+  const height = rows === undefined ? stackedHeight(options.height) : { rows, exact: true };
+  return fitHeight(Segment.splitLines(pane.render({ ...options, height })), height);
 }
 
 export class Layout implements Renderable, Measurable {
@@ -185,18 +210,19 @@ export class Layout implements Renderable, Measurable {
     children: Layout[],
     options: RenderOptions,
   ): Iterable<Segment> {
-    // Vertical stacking: each child gets full width, proportional height
-    const totalHeight = options.maxHeight ?? options.height ?? 24;
-    const heights = this._distributeSpace(children, totalHeight);
+    // Each pane gets full width and its share of the region. With no region —
+    // a ceiling, or no budget at all — a pane's share is its declared `size`,
+    // and a pane without one takes its content's height.
+    const region = regionRows(options.height);
+    const shares = region === undefined
+      ? children.map((child) => child.size)
+      : this._distributeSpace(children, region);
 
     for (let i = 0; i < children.length; i++) {
-      const child = children[i]!;
-      const childOptions: RenderOptions = {
-        ...options,
-        maxHeight: heights[i],
-        height: heights[i],
-      };
-      yield* child.render(childOptions);
+      for (const line of paneLines(children[i]!, options, shares[i])) {
+        yield* line;
+        yield Segment.line();
+      }
     }
   }
 
@@ -207,12 +233,13 @@ export class Layout implements Renderable, Measurable {
     // Horizontal side-by-side: divide the requested width once, then merge
     // child lines. The budget arrives parsed from `render` — unparsed, a NaN
     // width made every share NaN and the merge threw `Invalid array length`.
+    // Every pane stands in the whole region, and with none the merge pads the
+    // row to its tallest pane.
     const widths = this._distributeSpace(children, options.maxWidth);
+    const region = regionRows(options.height);
     const cells = children.map((child, i) => ({
       width: widths[i]!,
-      lines: Segment.splitLines([
-        ...child.render({ ...options, maxWidth: widths[i]! }),
-      ]),
+      lines: paneLines(child, { ...options, maxWidth: widths[i]! }, region),
     }));
     yield* Segment.mergeHorizontal(cells);
   }

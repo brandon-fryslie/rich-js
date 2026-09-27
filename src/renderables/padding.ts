@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { fitHeight, getStyle, insetHeight, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 export type PaddingDimensions =
   | number
@@ -129,10 +129,11 @@ export class Padding implements Renderable, Measurable {
     const innerOptions: RenderOptions = {
       ...options,
       maxWidth: geometry.contentWidth,
+      height: insetHeight(options.height, this.top + this.bottom),
     };
 
     const segments = [...this.renderable.render(innerOptions)];
-    const lines = Segment.splitLines(segments);
+    const lines = fitHeight(Segment.splitLines(segments), innerOptions.height);
 
     const resolved = getStyle(options, this.style);
     const style = resolved.isNull ? undefined : resolved;
