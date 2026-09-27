@@ -410,5 +410,5 @@ npm run demo
 |---|---|
 | `NO_COLOR` | Disable all color (hyperlinks still print) |
 | `FORCE_COLOR` | Enable color regardless of `TERM` |
-| `TERM=dumb` | Disable color and style |
+| `TERM=dumb` | Disable color, style, and hyperlinks |
 | `COLUMNS` / `LINES` | Override terminal dimensions |
