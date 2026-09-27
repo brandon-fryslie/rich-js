@@ -4,15 +4,22 @@
     {
       "version": "pr-162",
       "ref": "refs/pull/162/merge",
-      "sha": "af397edae575d3e0343ec70d42e147d21a5eeb48",
-      "timestamp": "2026-09-27T09:19:51.797Z",
+      "sha": "dcef9e751028e013764d336a7cdbcf3c1a3430d8",
+      "timestamp": "2026-09-27T09:26:40.085Z",
       "commits": [
         {
-          "sha": "af397edae575d3e0343ec70d42e147d21a5eeb48",
+          "sha": "dcef9e751028e013764d336a7cdbcf3c1a3430d8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T09:19:24Z",
-          "message": "Merge d269fda3e7faa9c8deacdf54bcdacf162cc0ccd5 into 293a83e962bc40e2cc8a865ee089fb9f3a36b534\n"
+          "timestamp": "2026-09-27T09:26:07Z",
+          "message": "Merge c2a26c48af1334115ed3533a1316b6b7c426bc0c into 293a83e962bc40e2cc8a865ee089fb9f3a36b534\n"
+        },
+        {
+          "sha": "c2a26c48af1334115ed3533a1316b6b7c426bc0c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T03:26:02-06:00",
+          "message": "fix(renderables): a region's setter shapes it — Panel and Padding too\n\nEscalation review of #162. A Panel handing its content an exact region is\nthat region's setter, so it now shapes what comes back: its frame stretches\ndown a pane and a tall body is cropped above the bottom border. The shaping\nand the row parse are one pair of helpers in protocol.ts (fitHeight,\nregionRows) shared by Layout, Panel and Padding; insetHeight and\nstackedHeight parse rows through cellCount. Markdown stacks its blocks.\nrich-dash's ClipHeight is deleted as redundant and InjectMaxHeight shapes\nthe region it sets.\n"
         },
         {
           "sha": "d269fda3e7faa9c8deacdf54bcdacf162cc0ccd5",
