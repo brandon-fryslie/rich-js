@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-173",
+      "ref": "refs/pull/173/merge",
+      "sha": "9cdd56cbed40c882a91ee2ced178130c43900b1a",
+      "timestamp": "2026-09-27T14:09:26.397Z",
+      "commits": [
+        {
+          "sha": "9cdd56cbed40c882a91ee2ced178130c43900b1a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T14:08:51Z",
+          "message": "Merge e02f2e651bb3e0999498afbb84058eb261aff0aa into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
+        },
+        {
+          "sha": "e02f2e651bb3e0999498afbb84058eb261aff0aa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T08:08:47-06:00",
+          "message": "fix(renderables): a title with no text draws the plain line, however it is spelled (rich-panel-gbe)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "1457e104574c97442264b3e50f36d8cab0495447",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:53:54-06:00",
+          "message": "fix(renderables): a justified RichText label keeps its spaces; only a string is read as markup (rich-panel-gbe)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "10c5eadb8ff4d91729e67ff760547c3a247bc680",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:48:47-06:00",
+          "message": "fix(renderables): panel titles, subtitles and rule titles draw their markup too (rich-panel-gbe)\n\nReview of #173: a panel's title and subtitle and a rule's title are set into\na border line through inlineLabel, which parses markup, keeps a RichText's\nspans, and is cut by cells. Rule takes a RichText title as Rich's does.\nembed.ts no longer claims fidelity to render_str that it lacks; the console's\nmarkup and highlight settings not reaching embedded content is\nrich-markup-3sw. Every site is tested with a RichText as well as a string.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "21f2082dcfeea39ed6232ee4bbe27adca0031e45",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:40:39-06:00",
+          "message": "fix(renderables): a string handed to a panel, tree, column or layout draws its markup (rich-panel-gbe)\n\nnew Panel(\"[bold]x[/bold]\") drew the tags literally. Table cells had parsed\nmarkup since their own fix, but panel bodies, tree labels, column items and\nlayout panes each built a RichText from the constructor, which does not.\nThe five copies of \"caller content -> something to lay out\" are now one,\nsrc/renderables/embed.ts, and progress's TextColumn uses it too.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-172",
       "ref": "refs/pull/172/merge",
       "sha": "46010da07441dc0a3188d907df6ce7181081db53",
@@ -48,42 +91,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T07:09:04-06:00",
           "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-173",
-      "ref": "refs/pull/173/merge",
-      "sha": "f8dd3b42b07609f7627f258a6be56d483dcd40a5",
-      "timestamp": "2026-09-27T13:54:25.884Z",
-      "commits": [
-        {
-          "sha": "f8dd3b42b07609f7627f258a6be56d483dcd40a5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T13:53:59Z",
-          "message": "Merge 1457e104574c97442264b3e50f36d8cab0495447 into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
-        },
-        {
-          "sha": "1457e104574c97442264b3e50f36d8cab0495447",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:53:54-06:00",
-          "message": "fix(renderables): a justified RichText label keeps its spaces; only a string is read as markup (rich-panel-gbe)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "10c5eadb8ff4d91729e67ff760547c3a247bc680",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:48:47-06:00",
-          "message": "fix(renderables): panel titles, subtitles and rule titles draw their markup too (rich-panel-gbe)\n\nReview of #173: a panel's title and subtitle and a rule's title are set into\na border line through inlineLabel, which parses markup, keeps a RichText's\nspans, and is cut by cells. Rule takes a RichText title as Rich's does.\nembed.ts no longer claims fidelity to render_str that it lacks; the console's\nmarkup and highlight settings not reaching embedded content is\nrich-markup-3sw. Every site is tested with a RichText as well as a string.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "21f2082dcfeea39ed6232ee4bbe27adca0031e45",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:40:39-06:00",
-          "message": "fix(renderables): a string handed to a panel, tree, column or layout draws its markup (rich-panel-gbe)\n\nnew Panel(\"[bold]x[/bold]\") drew the tags literally. Table cells had parsed\nmarkup since their own fix, but panel bodies, tree labels, column items and\nlayout panes each built a RichText from the constructor, which does not.\nThe five copies of \"caller content -> something to lay out\" are now one,\nsrc/renderables/embed.ts, and progress's TextColumn uses it too.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         }
       ]
     },
