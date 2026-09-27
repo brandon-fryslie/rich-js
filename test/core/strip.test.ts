@@ -250,8 +250,9 @@ describe("PowerlineJoiner same-bg structural join", () => {
   it("defaults the arrow, its divider and its lead as one set", () => {
     const segs = render(new Strip([RED_A, RED_B, BLUE_C], new PowerlineJoiner()));
     const texts = segs.map((s) => s.text);
-    // The default lead is the notch (U+E0D7), not an arrow pointing out: the
-    // literal, so a change of default cannot pass by agreeing with itself.
+    // The default lead is the notch U+E0D7, not an arrow pointing out. The test
+    // pins the literal rather than POWERLINE_JOINER_GLYPHS.lead, so a changed
+    // default cannot pass by comparing the constant to itself.
     expect(texts[0]).toBe("\ue0d7");
     expect(segs[0]!.style?.color?.name).toBe(RED_A.edgeStyle("left", OPTIONS).bgcolor?.name);
     expect(segs[0]!.style?.bgcolor).toBeUndefined();
