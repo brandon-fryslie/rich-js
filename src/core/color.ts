@@ -389,8 +389,10 @@ function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
 }
 
 /**
- * Where segments are written, as the two facts the serializer needs: the
- * colour depth SGR is drawn at, and whether OSC 8 hyperlinks are emitted.
+ * Where segments are written, as everything the serializer (`segmentsToString`)
+ * needs to know about it: the colour depth SGR is drawn at, and whether OSC 8
+ * hyperlinks are emitted. The serializer takes this value whole, so a fact the
+ * encoding comes to need joins it here rather than the serializer's signature.
  */
 export interface Destination {
   readonly colorSystem: ColorDepth | null;

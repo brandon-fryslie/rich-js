@@ -12,17 +12,23 @@
  *
  * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentsToString`
  * and is the single way segments become wire bytes. `Console._writeSegments`,
- * `Live.refresh`, and `segmentToString` all delegate here, so terminal output,
- * live frames, string export, and single-segment encoding agree by construction.
+ * `Live.refresh`, `Screen`'s frame paint, `renderToString`, and
+ * `segmentToString` all delegate here, so terminal output, live frames, widget
+ * frames, string export, and single-segment encoding agree by construction.
+ *
+ * [LAW:one-source-of-truth] What the encoding needs from where it writes
+ * arrives as one `Destination` value. Each caller resolves its destination
+ * once — spec, detection, and its own overrides — and hands it through whole,
+ * so a depth is never paired with a link setting taken from somewhere else.
  *
  * [LAW:dataflow-not-control-flow] The same pipeline runs every render: collect
  * non-control non-empty pieces, partition by SGR-codes (SGR-runs), partition
  * each run by link (link-runs), emit one SGR open/close per run with link
  * open/close pairs sitting inside. Colour and hyperlinks are two facts about
- * the destination, carried as two values: `colorSystem === null` empties every
- * piece's SGR-codes, and `hyperlinks === false` empties every piece's link. A
- * colour depth never removes a link — a hyperlink is not a colour, and a
- * NO_COLOR terminal still follows OSC 8.
+ * the destination: `colorSystem === null` empties every piece's SGR-codes, and
+ * `hyperlinks === false` empties every piece's link. A colour depth never
+ * removes a link — a hyperlink is not a colour, and a NO_COLOR terminal still
+ * follows OSC 8.
  *
  * [LAW:types-are-the-program] Adjacent same-style segments share an SGR wrap
  * because the SGR-codes string is the same group key for both — the
@@ -31,7 +37,7 @@
  */
 
 import { ColorDepth, resolveDestination } from "./color.js";
-import type { DetectColorOptions } from "./color.js";
+import type { DetectColorOptions, Destination } from "./color.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
@@ -76,11 +82,7 @@ interface Piece {
   readonly link: string | undefined;
 }
 
-function segmentToPiece(
-  segment: Segment,
-  colorSystem: ColorDepth | null,
-  hyperlinks: boolean,
-): Piece | undefined {
+function segmentToPiece(segment: Segment, destination: Destination): Piece | undefined {
   if (segment.isControl) return undefined;
   if (segment.text.length === 0) return undefined;
   const style = segment.style;
@@ -91,36 +93,28 @@ function segmentToPiece(
   // their own fact. Coupling them let a colour setting delete every control.
   return {
     text: segment.text,
-    sgrCodes: colorSystem === null ? "" : style.toSgrCodes(colorSystem),
-    link: hyperlinks ? style.link : undefined,
+    sgrCodes: destination.colorSystem === null ? "" : style.toSgrCodes(destination.colorSystem),
+    link: destination.hyperlinks ? style.link : undefined,
   };
 }
 
 /**
- * Encodes a single segment as ANSI bytes. Equivalent to
- * `segmentsToString([segment], colorSystem, hyperlinks)` — same SGR / OSC 8 layout.
+ * Encodes a single segment as ANSI bytes for `destination`. Equivalent to
+ * `segmentsToString([segment], destination)` — same SGR / OSC 8 layout.
  */
-export function segmentToString(
-  segment: Segment,
-  colorSystem: ColorDepth | null,
-  hyperlinks: boolean,
-): string {
-  return segmentsToString([segment], colorSystem, hyperlinks);
+export function segmentToString(segment: Segment, destination: Destination): string {
+  return segmentsToString([segment], destination);
 }
 
 /**
- * Encodes a sequence of segments as ANSI bytes, coalescing adjacent
- * same-SGR segments under a single SGR open/close pair, with OSC 8 link
- * pairs nested inside per same-link sub-run.
+ * Encodes a sequence of segments as ANSI bytes for `destination`, coalescing
+ * adjacent same-SGR segments under a single SGR open/close pair, with OSC 8
+ * link pairs nested inside per same-link sub-run.
  */
-export function segmentsToString(
-  segments: Iterable<Segment>,
-  colorSystem: ColorDepth | null,
-  hyperlinks: boolean,
-): string {
+export function segmentsToString(segments: Iterable<Segment>, destination: Destination): string {
   const pieces: Piece[] = [];
   for (const s of segments) {
-    const p = segmentToPiece(s, colorSystem, hyperlinks);
+    const p = segmentToPiece(s, destination);
     if (p) pieces.push(p);
   }
   if (pieces.length === 0) return "";
@@ -161,18 +155,24 @@ export function renderToString(
 ): string {
   const width = options?.width ?? DEFAULT_WIDTH;
   // [LAW:dataflow-not-control-flow] An absent spec is truecolor; an explicit
-  // `null` stays null (`??` would collapse it). `noColor` is a colour choice,
-  // so it overrides the depth and leaves hyperlinks to the destination.
+  // `null` stays null (`??` would collapse it).
   // [LAW:single-enforcer] Specs resolve through `resolveDestination`.
   const detectOptions: DetectColorOptions = {};
   if (options?.env !== undefined) detectOptions.env = options.env;
   if (options?.isTTY !== undefined) detectOptions.isTTY = options.isTTY;
   const rawSpec = options?.colorSystem;
-  const destination = resolveDestination(
+  const resolved = resolveDestination(
     rawSpec === undefined ? ColorDepth.TRUECOLOR : rawSpec,
     detectOptions,
   );
-  const colorSystem = options?.noColor ? null : destination.colorSystem;
+  // [LAW:single-enforcer] This call's overrides are applied here, once, to
+  // make the one destination everything below is drawn for. `noColor` is a
+  // colour choice, so it overrides the depth and leaves hyperlinks to the
+  // destination; an explicit `hyperlinks` overrides what the destination takes.
+  const destination: Destination = {
+    colorSystem: options?.noColor ? null : resolved.colorSystem,
+    hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
+  };
   const renderOptions: RenderOptions = {
     maxWidth: width,
     isTerminal: false,
@@ -180,12 +180,8 @@ export function renderToString(
     asciiOnly: false,
     // [LAW:one-source-of-truth] The depth the segments below are encoded at,
     // so a renderable measures what this very call will draw.
-    colorSystem,
+    colorSystem: destination.colorSystem,
   };
 
-  return segmentsToString(
-    renderable.render(renderOptions),
-    colorSystem,
-    options?.hyperlinks ?? destination.hyperlinks,
-  );
+  return segmentsToString(renderable.render(renderOptions), destination);
 }

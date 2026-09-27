@@ -1237,10 +1237,10 @@ describe("Console and Live hyperlinks", () => {
     new Console({ environment: host.environment, ...options }).print(linked);
     return host.stdout.chunks.join("");
   };
-  const refreshed = (env: NodeJS.ProcessEnv, isTTY: boolean): string => {
+  const refreshed = (env: NodeJS.ProcessEnv, isTTY: boolean, options: ConsoleOptions = {}): string => {
     const host = makeEnvironment({ env, stdout: { isTTY } });
     const live = new Live(new RichText("go", { style: new Style({ link: "https://example.com" }) }), {
-      console: new Console({ environment: host.environment }),
+      console: new Console({ environment: host.environment, ...options }),
       autoRefresh: false,
     });
     live.refresh();
@@ -1270,6 +1270,12 @@ describe("Console and Live hyperlinks", () => {
   it("Live frames follow the console: links under NO_COLOR, none on a pipe", () => {
     expect(refreshed({ NO_COLOR: "1", TERM: "xterm-256color" }, true)).toContain(OSC8);
     expect(refreshed({ TERM: "xterm-256color" }, false)).not.toContain(OSC8);
+  });
+
+  it("Live frames follow the console's explicit hyperlinks: false on a terminal", () => {
+    const out = refreshed({ TERM: "xterm-256color" }, true, { hyperlinks: false });
+    expect(out).toContain("go");
+    expect(out).not.toContain(OSC8);
   });
 });
 
