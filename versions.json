@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-171",
+      "ref": "refs/pull/171/merge",
+      "sha": "aa314736a16f435d61f7bd821d2cce6b6bcd82f2",
+      "timestamp": "2026-09-27T13:06:51.603Z",
+      "commits": [
+        {
+          "sha": "aa314736a16f435d61f7bd821d2cce6b6bcd82f2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:06:23-06:00",
+          "message": "Merge 89af22a12e75ea3ed06988514ec50471e941eca8 into 3d3d398ccbbb291b57cc776aa96ed7e10f1ce978\n"
+        },
+        {
+          "sha": "89af22a12e75ea3ed06988514ec50471e941eca8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:06:18-06:00",
+          "message": "fix(host): BrowserTerminalHost returns the carriage before every newline\n\nxterm.js has no tty in front of it, so a bare newline moved down without\nreturning to column 0: every row a Console wrote started where the last one\nended, and every demo on the docs site drew as a staircase. The host now does\nthe tty's ONLCR translation for strings and bytes. The e2e gate only asked\nwhether a demo drew anything; it now also checks rich-viewport's rows start at\nthe panel's left border, which fails without this fix.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-169",
       "ref": "refs/pull/169/merge",
       "sha": "71c5f004dacf34d46de8dce8aa940168b1efc1a6",
