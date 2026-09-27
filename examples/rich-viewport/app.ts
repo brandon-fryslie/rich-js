@@ -61,12 +61,16 @@ export function runDemo(host: TerminalHost): DemoHandle {
     });
   };
 
-  const live = new Live(frameFor(0), { console: consoleOut, autoRefresh: false });
-  live.start();
+  // `autoRefresh: false`: a frame is drawn only when `paint` asks, so the
+  // first one is painted by hand — `start` draws nothing.
+  const live = new Live(undefined, { console: consoleOut, autoRefresh: false });
   let frame = 0;
+  const paint = (): void => live.update(frameFor(cursorAt(frame)), { refresh: true });
+  live.start();
+  paint();
   const timer = setInterval(() => {
     frame += 1;
-    live.update(frameFor(cursorAt(frame)), { refresh: true });
+    paint();
   }, 120);
 
   return {
