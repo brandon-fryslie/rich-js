@@ -33,13 +33,13 @@ const strip = new Strip(
     cell(" claude.ai ", "white on cyan"),
     cell(" 3.4k tok ", "white on green"),
   ],
-  new PowerlineJoiner(), // default pair: POWERLINE_JOINER_GLYPHS
+  new PowerlineJoiner(), // default set: POWERLINE_JOINER_GLYPHS
 );
 
 console.print(strip);
 ```
 
-The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip starts cleanly (no leading arrow); the last arrow has fg = the last cell's right-edge bg with no bg of its own, bleeding out into the terminal. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's colour and closes with a tail cap in the last cell's, each with no bg of its own, so both ends meet the terminal with the same shape. Swap the joiner — the strip restyles with no other code change.
 
 `noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — without it, a cell's default `end` would draw a trailing `"\n"` into the middle of the strip's single line, breaking the layout it is meant to hold together.
 
@@ -52,24 +52,26 @@ The strip itself ends its own line, the same way [`Group`](./group)'s other chil
 Classic powerline arrows.
 
 ```typescript
-new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow, U+E0B1 divider
+new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow and tail, U+E0B1 divider, U+E0B2 lead
 ```
 
-The arrow is painted *in the left neighbour's background colour*, so it is drawn only when there is one. That single rule covers all three positions:
+Every join is painted in whichever neighbour has a background colour. That single rule covers all three positions:
 
 - `join(L, R)`: glyph with `fg = L.bg` as drawn (flattened onto the render substrate, so opaque — the arrow is the left cell continuing, not composited a second time over `R`), `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour and `bg = L.bg`.
-- `join(L, null)`: glyph with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
-- `join(null, R)`: empty. There is no left neighbour, so there is no colour to bleed and no arrow to draw. The strip begins cleanly, matching vim-airline / tmux-powerline / claude-powerline.
+- `join(L, null)`: `tail` with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
+- `join(null, R)`: `lead` with `fg = R.bg` and no bg — the first cell reaches back into the terminal.
 
 When `L` and `R` share a background, the arrow would be drawn in its own background colour and vanish. The joiner draws the divider there instead (`divider`, U+E0B1 by default, the thin arrow) in `L`'s text colour on `L`'s own background, which is the vim-airline convention. The divider is therefore `L`'s text, and it reads exactly as well as that text does. "Share" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) count as one. They are measured as drawn: a translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`). So two backgrounds that 256 colours or ANSI draw as one entry share, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them share only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
 ```typescript
-new PowerlineJoiner({ glyph: ">", divider: "|" }); // an ASCII pair
+new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }); // an ASCII set
+new PowerlineJoiner({ ...POWERLINE_JOINER_GLYPHS, lead: "\ue0b6", tail: "\ue0b4" }); // rounded ends
+new PowerlineJoiner({ ...POWERLINE_JOINER_GLYPHS, lead: "", tail: "" }); // flat ends
 ```
 
-`glyph` and `divider` are given together or not at all. A replacement arrow with the default divider beside it would leave a glyph the arrow's font may not have.
+`glyph`, `divider`, `lead` and `tail` are given together or not at all. A replacement arrow with the default divider beside it would leave a glyph the arrow's font may not have. A cap shape is a value of this set, never a joiner of its own; `""` draws that end flat.
 
-An item *without* a background is the same case as a missing one. If `L` has no `bgcolor`, the join to its right is empty too — so a colourless cell has no arrow after it, wherever it sits in the strip. `… on default` counts as no background: the terminal default is transparent, so there is still nothing to paint.
+An item *without* a background is the same case as a missing one. A colourless `L` before a coloured `R` is led in exactly as the strip's start is, a coloured `L` before a colourless `R` is tailed out exactly as its end is, and two colourless neighbours join with nothing — so every coloured run is capped the same way wherever it sits in the strip. `… on default` counts as no background: the terminal default is transparent, so there is still nothing to paint.
 
 ### `CapsuleJoiner`
 
@@ -137,7 +139,7 @@ Joiners read only the two edge columns. A `PowerlineJoiner` between items `L` an
 - `fg = L.edgeStyle("right", options).bgcolor`
 - `bg = R.edgeStyle("left", options).bgcolor`
 
-and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead.
+and, where those two backgrounds are within `SEAM_MIN_DELTA_E`, draws its divider with `fg = L.edgeStyle("right", options).color` instead. Where only one side has a background, the colour comes from that side alone: the lead takes `fg = R.edgeStyle("left", options).bgcolor`, the tail `fg = L.edgeStyle("right", options).bgcolor`, and neither has a bg.
 
 The interior of each item is invisible to the joiner. That means a cell can vary `bgcolor`, `fgcolor`, or text attributes per column without breaking the join — only the column the joiner actually meets matters.
 

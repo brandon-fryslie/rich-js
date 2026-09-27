@@ -62,23 +62,25 @@ describe("FlexStrip", () => {
     expect(lines.length).toBeGreaterThan(1);
   });
 
-  it("wraps with a PowerlineJoiner: end-of-line uses end-cap, start-of-line uses start-cap", () => {
+  it("wraps with a PowerlineJoiner: every line opens with the lead and closes with the tail", () => {
     const items = [
       cell(" main ", "white on blue"),
       cell(" foo ", "white on cyan"),
       cell(" bar ", "white on green"),
       cell(" baz ", "white on magenta"),
     ];
-    // PowerlineJoiner: start-cap = glyph fg=item.bg no bg; end-cap = same; mid = glyph fg=L.bg bg=R.bg.
-    const strip = new FlexStrip(items, { joiner: new PowerlineJoiner({ glyph: ">", divider: "|" }) });
-    // width tight so we wrap after 2 items: per item " main " etc = 6. Line = >+6+>+6+>+6+> ... try 14 cells → fits 1 item: >+6+> = 8; add 2: 8 - 1(end) +1(mid)+6+1(end) = 16 > 14 → break.
+    // PowerlineJoiner: start-cap = lead fg=item.bg no bg; end-cap = tail fg=item.bg no bg;
+    // mid = glyph fg=L.bg bg=R.bg. Caps distinct from the arrow so each is seen.
+    const strip = new FlexStrip(items, { joiner: new PowerlineJoiner({ glyph: ">", divider: "|", lead: "(", tail: ")" }) });
+    // Each item is 6 wide. One item per line is (+6+) = 8; a second adds
+    // >+6 = 7 → 15 > 14, so every line holds exactly one item.
     const lines = renderLines(strip, OPTS(14));
     expect(lines.length).toBeGreaterThan(1);
-    // PowerlineJoiner's start-cap is empty (right-arrow with no source has
-    // nothing to bleed from), but every line ends with the end-cap glyph —
-    // and the protocol fires that end-cap at every line boundary.
+    // The protocol fires both caps at every line boundary, so every wrapped
+    // line opens with the lead and closes with the tail.
     for (const ln of lines) {
-      expect(ln.endsWith(">")).toBe(true);
+      expect(ln.startsWith("(")).toBe(true);
+      expect(ln.endsWith(")")).toBe(true);
     }
   });
 

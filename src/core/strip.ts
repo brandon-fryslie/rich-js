@@ -147,6 +147,19 @@ function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
   return bg !== undefined && !bg.isDefault ? bg : undefined;
 }
 
+// A cap or arrow is its cell continuing: that cell's ground as the writer draws
+// it, so a translucent ground is not composited a second time over whatever it
+// enters.
+function drawnGround(bg: ColorSpec): ColorSpec | undefined {
+  return new Style({ bgcolor: bg }).drawnColors().bgcolor;
+}
+
+// A cap is its glyph in its cell's ground, and "" is a flat end: no glyph, so
+// no segment — the same output as a join with nothing to paint.
+function* cap(glyph: string, bg: ColorSpec): Iterable<Segment> {
+  if (glyph !== "") yield new Segment(glyph, new Style({ color: drawnGround(bg) }));
+}
+
 // --- PowerlineJoiner ---
 
 /**
@@ -178,12 +191,14 @@ function vanishes(arrow: Style, colorSystem: ColorDepth | null | undefined): boo
     : color.number === bgcolor.number;
 }
 
-// [LAW:types-are-the-program] The glyph and its divider are one vocabulary: a
-// caller who replaces the arrow (say with ASCII ">") must also say what divides,
-// or the default thin arrow would render as tofu beside it. So they are given
-// together or not at all — the default pair is the unset case.
+// [LAW:types-are-the-program] The arrow, its divider and the two caps are one
+// vocabulary: a caller who replaces the arrow (say with ASCII ">") must also say
+// what divides and what caps, or the default powerline glyphs would render as
+// tofu beside it. So they are given together or not at all — the default set is
+// the unset case. A cap shape (rounded, slanted, flat) is therefore a value of
+// this record, never a joiner of its own.
 export interface PowerlineJoinerOptions {
-  /** Glyph used for every join. */
+  /** Glyph for every join between two coloured items. */
   glyph: string;
   /**
    * Glyph drawn between neighbours whose backgrounds the eye cannot tell apart,
@@ -191,32 +206,59 @@ export interface PowerlineJoinerOptions {
    * shared background.
    */
   divider: string;
+  /**
+   * Glyph for every join a coloured item is entered from nothing — the strip's
+   * start, or a colourless left neighbour — painted in the right item's
+   * background. `""` begins a coloured run flat.
+   */
+  lead: string;
+  /**
+   * Glyph for every join a coloured item leaves into nothing — the strip's end,
+   * or a colourless right neighbour — painted in the left item's background.
+   * `""` ends a coloured run flat.
+   */
+  tail: string;
 }
 
-/** The powerline pair: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow). */
-export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({ glyph: "\ue0b0", divider: "\ue0b1" });
+/**
+ * The powerline set: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow),
+ * led by U+E0B2 (left-arrow) and tailed by the arrow itself — so a strip's two
+ * ends are one shape.
+ */
+export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({
+  glyph: "\ue0b0",
+  divider: "\ue0b1",
+  lead: "\ue0b2",
+  tail: "\ue0b0",
+});
 
 export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
   private readonly _glyph: string;
   private readonly _divider: string;
+  private readonly _lead: string;
+  private readonly _tail: string;
 
   constructor(options: PowerlineJoinerOptions = POWERLINE_JOINER_GLYPHS) {
     this._glyph = options.glyph;
     this._divider = options.divider;
+    this._lead = options.lead;
+    this._tail = options.tail;
   }
 
   join(left: T | null, right: T | null): Renderable {
-    // [LAW:dataflow-not-control-flow] One expression for all three positions
-    // (start cap, mid-join, end cap). The powerline separator is painted in the
-    // LEFT edge's bg — the colour bleeding rightward — over the RIGHT edge's bg.
-    // The endpoints are not control-flow special cases; they are the DATA cases
+    // [LAW:dataflow-not-control-flow] One table for all three positions (start
+    // cap, mid-join, end cap), read off which side has a colour to paint. The
+    // endpoints are not control-flow special cases; they are the DATA cases
     // where a neighbour (hence its bg) is absent:
-    //   • no left bg — the start cap, OR a left item with no background — has no
-    //     colour to bleed, so there is no separator to paint and the join
-    //     yields nothing. (This matches vim-airline / tmux-powerline: a
-    //     colourless arrow is not drawn.)
-    //   • no right bg — the end cap — bleeds the left colour out over the
-    //     terminal background (fg = left bg, no bg).
+    //   • both bgs — the arrow in the LEFT bg (the colour bleeding rightward)
+    //     over the RIGHT bg.
+    //   • left bg only — the end cap, OR a coloured item before a colourless
+    //     one — the tail bleeds the left colour out over the terminal
+    //     background (fg = left bg, no bg).
+    //   • right bg only — the start cap, OR a colourless item before a coloured
+    //     one — the lead: the right colour reaching back over the terminal
+    //     background (fg = right bg, no bg).
+    //   • neither — nothing to paint, so the join yields nothing.
     // Equal REAL bgs still emit: a same-bg seam between two distinct items is a
     // structural boundary, never suppressed. The arrow would be drawn in its own
     // background colour there and vanish, so the seam is the DIVIDER instead, in
@@ -231,16 +273,21 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     // both to undefined so an explicit `… on default` cannot smuggle a separator.
     const glyph = this._glyph;
     const divider = this._divider;
+    const lead = this._lead;
+    const tail = this._tail;
     return deferred(function* (options) {
       const leftEdge = left?.edgeStyle("right", options);
       const leftBg = paintableBg(leftEdge?.bgcolor);
-      if (leftBg === undefined) return;
       const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
-      // The arrow is the left cell continuing: its ground as the writer draws
-      // it, so a translucent ground is not composited a second time over the
-      // right one.
-      const leftDrawn = new Style({ bgcolor: leftBg }).drawnColors().bgcolor;
-      const arrow = new Style({ color: leftDrawn, bgcolor: rightBg });
+      if (leftBg === undefined) {
+        if (rightBg !== undefined) yield* cap(lead, rightBg);
+        return;
+      }
+      if (rightBg === undefined) {
+        yield* cap(tail, leftBg);
+        return;
+      }
+      const arrow = new Style({ color: drawnGround(leftBg), bgcolor: rightBg });
       // The divider is the left item's text on the left item's own ground,
       // so it reads exactly as well as that item's text does, at any depth.
       yield vanishes(arrow, options.colorSystem)
