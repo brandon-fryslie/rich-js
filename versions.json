@@ -2,24 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-167",
-      "ref": "refs/pull/167/merge",
-      "sha": "2edaac35d640077118fb4d752fe47b7c090f8aeb",
-      "timestamp": "2026-09-27T11:53:44.617Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "4330960b9b55a226959723f67bcdc7a6f8eaa812",
+      "timestamp": "2026-09-27T11:54:10.905Z",
       "commits": [
         {
-          "sha": "2edaac35d640077118fb4d752fe47b7c090f8aeb",
+          "sha": "4330960b9b55a226959723f67bcdc7a6f8eaa812",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:53:08-06:00",
-          "message": "Merge 384a3cf6a8f8a3330bba7878fb4f643a501cc9cf into b49a644ea58af11990f6f036694400a835147ca6\n"
-        },
-        {
-          "sha": "384a3cf6a8f8a3330bba7878fb4f643a501cc9cf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:53:04-06:00",
-          "message": "docs: TERM=dumb drops hyperlinks; console.destination in the attributes table\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+          "timestamp": "2026-09-27T05:53:19-06:00",
+          "message": "docs: TERM=dumb drops hyperlinks; console.destination in the attributes table (#167)\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     },
@@ -42,21 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T05:50:11-06:00",
           "message": "feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "b49a644ea58af11990f6f036694400a835147ca6",
-      "timestamp": "2026-09-27T11:43:10.473Z",
-      "commits": [
-        {
-          "sha": "b49a644ea58af11990f6f036694400a835147ca6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:42:36-06:00",
-          "message": "feat(render): Console and Live supply the Height budget (rich-viewport-owi.2) (#163)\n\n* feat(render): Console and Live supply the Height budget (rich-viewport-owi.2)\n\nConsole.options carries the terminal's rows as a ceiling, and print hands\neach stacked block stackedHeight of it. Live renders under the same rows:\ninline as a ceiling with its crop kept, alt-screen as a region shaped with\nfitHeight and written with no newline after the last row, so a full-height\nframe no longer scrolls.\n\ninsetHeight, stackedHeight, regionRows and fitHeight are exported from the\nbarrel and documented in docs/protocol.md beside the width contract.\n\nrich-dash's InjectMaxHeight wrapper and its reserved row are gone: Live\nsupplies the height they injected. The job pane gains a build-log tail that\nfills the rows under its bars, which is what demonstrates the four helpers.\n\ndocs/live.md dropped a false claim that the last frame is shown `visible`\non stop — stop() refreshes under the configured overflow.\n\n* fix(live): an alt-screen frame writes every cell, and a transient stop erases nothing\n\nReview of #163: the alternate screen is only homed between frames, so a\nshorter frame left the last one's rows and line tails showing. Its rows are\nnow padded to the width. Its lines are no longer counted for _clearLast,\nwhich was one row off now the cursor ends on the last row, and pointless\nbefore leaving the buffer.\n\nConsole.options reads the size once, and Live takes its rows from those\noptions. print's stackedHeight was an identity on a ceiling, so it is gone.\nThe Height contract says what the setter of a ceiling does with taller\noutput: Live crops it, print lets it scroll. The inline full-height scroll\nis rich-live-4rh.\n\n* fix(live): alt-screen rows are erased before drawing, not padded to a width\n\nReview of #163: padding each row to options.maxWidth threw on an unbounded\nconsole width (' '.repeat(Infinity)), and parsing the width would not have\nhelped — Infinity is a cell count. Erasing the row first clears the last\nframe's cells with no width at all, from column 0 where the erase is safe.\n\nThe Height contract said an inline Live crops taller output; it applies its\nverticalOverflow, and 'visible' scrolls."
         }
       ]
     },
