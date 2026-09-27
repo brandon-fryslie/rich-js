@@ -28,7 +28,7 @@ const BLANK = `<div id="slot"></div>`;
 
 const PROPERTIES = [
   "background-color", "color", "font-family", "font-size", "font-weight", "line-height", "letter-spacing",
-  "text-align", "padding", "margin", "border-top-width", "white-space", "text-decoration-line",
+  "text-align", "padding-top", "padding-left", "margin-top", "margin-left", "border-top-width", "white-space", "text-decoration-line",
   "text-underline-offset", "direction", "unicode-bidi",
 ];
 
@@ -37,7 +37,11 @@ type Computed = Record<string, string[]>;
 function hostStyles(page: Page): Promise<Computed> {
   return page.evaluate((properties) => {
     const read = (el: Element) => properties.map((p) => getComputedStyle(el).getPropertyValue(p));
-    const byId = (id: string) => document.getElementById(id) ?? document.body;
+    const byId = (id: string) => {
+      const el = document.getElementById(id);
+      if (el === null) throw new Error(`host page has no #${id}`);
+      return el;
+    };
     return { body: read(document.body), a: read(byId("host-link")), pre: read(byId("host-pre")) };
   }, PROPERTIES);
 }
