@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-168",
+      "ref": "refs/pull/168/merge",
+      "sha": "2340ce3f8c1cd6476e66ed2654d6647539ce6505",
+      "timestamp": "2026-09-27T11:59:23.192Z",
+      "commits": [
+        {
+          "sha": "2340ce3f8c1cd6476e66ed2654d6647539ce6505",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:58:57-06:00",
+          "message": "Merge b50876937023985e7ea411bf0fd6838ed09ab3dc into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
+        },
+        {
+          "sha": "b50876937023985e7ea411bf0fd6838ed09ab3dc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:58:53-06:00",
+          "message": "feat(export-html): an embeddable fragment; the document is that fragment in a shell (rich-docs-examples-xuu.n71)\n\n`encodeHtmlFragment` returns one `pre` carrying its canvas and every rule\ninline, anchors included, so it can sit in a page this library does not own\nwithout restyling that page's body, pre or links. The blink keyframes, the one\nthing an inline style cannot say, are `HTML_FRAGMENT_CSS`, included once by the\nhost page. `encodeHtml` is the fragment wrapped in a document that paints the\npage in the same canvas and includes that CSS, so the two cannot draw different\npictures.\n\nTwo export-html tests pinned the bare `<pre>` and `<a href>` tags; they now\nmatch the attributed tags, their assertions otherwise unchanged.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-165",
       "ref": "refs/pull/165/merge",
       "sha": "b4c5660ebb626b818bc0e464d014427a09af5b7b",
