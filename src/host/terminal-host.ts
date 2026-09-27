@@ -55,8 +55,11 @@ export type ResizeHandler = (size: TerminalSize) => void;
 
 export interface TerminalHost {
   /**
-   * Write raw bytes (or UTF-8 text) to the terminal. The byte sequence is
-   * written verbatim; no escape interpretation, no framing.
+   * Write raw bytes (or UTF-8 text) to the terminal as a program's output
+   * reaches it: no escape interpretation, no framing, and a terminal on a
+   * tty receives each newline as carriage return + newline, the tty's own
+   * output translation. A host with no tty in front of its terminal does
+   * that translation itself.
    */
   write(data: Uint8Array | string): void;
 
@@ -171,8 +174,14 @@ export class BrowserTerminalHost implements TerminalHost {
     return true;
   }
 
+  // [LAW:single-enforcer] xterm.js is a terminal with no tty in front of
+  // it, so this host is where the tty's newline translation happens. Left to
+  // the terminal, a bare newline moves down without returning, and every row
+  // a Console writes starts where the last one ended — every demo drew as a
+  // staircase. Here and not in each page's xterm options, so every writer
+  // through this host gets it.
   write(data: Uint8Array | string): void {
-    this.terminal.write(data);
+    this.terminal.write(returnBeforeNewline(data));
   }
 
   size(): TerminalSize {
@@ -253,4 +262,22 @@ export class BrowserTerminalHost implements TerminalHost {
     this.dataHandlers.clear();
     this.resizeHandlers.clear();
   }
+}
+
+/**
+ * `data` with a carriage return before every newline — the tty's ONLCR. A
+ * newline byte never occurs inside a multi-byte UTF-8 character, so the bytes
+ * are translated as bytes. A newline already preceded by a carriage return
+ * gains a second one, which returns to a column the cursor is already in, as
+ * the kernel's translation does.
+ */
+function returnBeforeNewline(data: Uint8Array | string): Uint8Array | string {
+  if (typeof data === "string") return data.replaceAll("\n", "\r\n");
+  const out = new Uint8Array(data.length + data.filter((byte) => byte === 0x0a).length);
+  let at = 0;
+  for (const byte of data) {
+    if (byte === 0x0a) out[at++] = 0x0d;
+    out[at++] = byte;
+  }
+  return out;
 }

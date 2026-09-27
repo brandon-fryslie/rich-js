@@ -89,10 +89,20 @@ describe("BrowserTerminalHost", () => {
       expect(host.isTTY).toBe(true);
     });
 
-    it("write() forwards verbatim to the terminal", () => {
+    it("write() forwards bytes without interpreting escapes", () => {
       host.write("hello");
       host.write(new Uint8Array([0x1b, 0x5b, 0x4b]));
       expect(term.written).toEqual(["hello", new Uint8Array([0x1b, 0x5b, 0x4b])]);
+    });
+
+    it("write() returns the carriage before every newline, as a tty does", () => {
+      // Without it, each row a Console writes starts where the last one ended.
+      host.write("a\nb\n");
+      host.write(new Uint8Array([0x61, 0x0a, 0xe2, 0x94, 0x82, 0x0a]));
+      expect(term.written).toEqual([
+        "a\r\nb\r\n",
+        new Uint8Array([0x61, 0x0d, 0x0a, 0xe2, 0x94, 0x82, 0x0d, 0x0a]),
+      ]);
     });
 
     it("size() reflects the current terminal dimensions", () => {
