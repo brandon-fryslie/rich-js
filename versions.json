@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "1bb62e5b5cbc7ad116598c470917742bce11171d",
+      "timestamp": "2026-09-27T13:09:54.943Z",
+      "commits": [
+        {
+          "sha": "1bb62e5b5cbc7ad116598c470917742bce11171d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:09:22-06:00",
+          "message": "feat(ansi): decode ANSI bytes back into RichText (rich-docs-examples-xuu.9hv) (#169)\n\n* feat(ansi): decode ANSI bytes back into RichText (rich-docs-examples-xuu.9hv)\n\nA port of Rich's AnsiDecoder and Text.from_ansi: `decodeAnsi` for a whole\ncapture, `AnsiDecoder` for a stream read a line at a time. Colours decode to\nthe ColorSpec kind their escape names and are never resolved to RGB, so one\ncaptured run exports correctly under a light theme and a dark one.\n\nTwo departures from Rich, both toward what a terminal shows: the link is\ndecoder state beside the SGR style, so an SGR reset inside a link leaves it\nopen; and a line ends only at \\n, with the text after its last \\r replacing\nwhat came before, while codes before the \\r still apply.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(ansi): a carriage return moves the cursor; every escape shape is dropped (rich-docs-examples-xuu.9hv)\n\n\\r returns to column 0 and later text overwrites, so CRLF and a trailing\n\\r keep their line. A private-marker CSI is not SGR; ECMA-48's\nintermediates-plus-final escapes and an OSC cut off by the line are dropped.\nAttribute on-codes derive from style.ts's ATTRIBUTE_SGR.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(ansi): erase in line, string escapes, underline colour, 24/25 clear both variants (rich-docs-examples-xuu.9hv)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(ansi): a string escape runs to its terminator past a stray ESC; one span per style; 26 is reserved (rich-docs-examples-xuu.9hv)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-171",
       "ref": "refs/pull/171/merge",
       "sha": "aa314736a16f435d61f7bd821d2cce6b6bcd82f2",
@@ -20,64 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T07:06:18-06:00",
           "message": "fix(host): BrowserTerminalHost returns the carriage before every newline\n\nxterm.js has no tty in front of it, so a bare newline moved down without\nreturning to column 0: every row a Console wrote started where the last one\nended, and every demo on the docs site drew as a staircase. The host now does\nthe tty's ONLCR translation for strings and bytes. The e2e gate only asked\nwhether a demo drew anything; it now also checks rich-viewport's rows start at\nthe panel's left border, which fails without this fix.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-169",
-      "ref": "refs/pull/169/merge",
-      "sha": "71c5f004dacf34d46de8dce8aa940168b1efc1a6",
-      "timestamp": "2026-09-27T12:58:05.920Z",
-      "commits": [
-        {
-          "sha": "71c5f004dacf34d46de8dce8aa940168b1efc1a6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T12:57:40Z",
-          "message": "Merge 3593140009bcedf27432d5500b4acfdf28e39e5b into 3d3d398ccbbb291b57cc776aa96ed7e10f1ce978\n"
-        },
-        {
-          "sha": "3593140009bcedf27432d5500b4acfdf28e39e5b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:57:35-06:00",
-          "message": "fix(ansi): a string escape runs to its terminator past a stray ESC; one span per style; 26 is reserved (rich-docs-examples-xuu.9hv)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "7e395518941f515a79587ec908cc4e43baf69b40",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:41:21-06:00",
-          "message": "fix(ansi): erase in line, string escapes, underline colour, 24/25 clear both variants (rich-docs-examples-xuu.9hv)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "e1930adab62398535e876d3b93de9a38d6801a59",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:36:19-06:00",
-          "message": "fix(ansi): a carriage return moves the cursor; every escape shape is dropped (rich-docs-examples-xuu.9hv)\n\n\\r returns to column 0 and later text overwrites, so CRLF and a trailing\n\\r keep their line. A private-marker CSI is not SGR; ECMA-48's\nintermediates-plus-final escapes and an OSC cut off by the line are dropped.\nAttribute on-codes derive from style.ts's ATTRIBUTE_SGR.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "694bd67493c4d8a88b7e392e6c33291389e1705a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:30:10-06:00",
-          "message": "feat(ansi): decode ANSI bytes back into RichText (rich-docs-examples-xuu.9hv)\n\nA port of Rich's AnsiDecoder and Text.from_ansi: `decodeAnsi` for a whole\ncapture, `AnsiDecoder` for a stream read a line at a time. Colours decode to\nthe ColorSpec kind their escape names and are never resolved to RGB, so one\ncaptured run exports correctly under a light theme and a dark one.\n\nTwo departures from Rich, both toward what a terminal shows: the link is\ndecoder state beside the SGR style, so an SGR reset inside a link leaves it\nopen; and a line ends only at \\n, with the text after its last \\r replacing\nwhat came before, while codes before the \\r still apply.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "3d3d398ccbbb291b57cc776aa96ed7e10f1ce978",
-      "timestamp": "2026-09-27T12:50:44.505Z",
-      "commits": [
-        {
-          "sha": "3d3d398ccbbb291b57cc776aa96ed7e10f1ce978",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:50:18-06:00",
-          "message": "feat(viewport): a scrollbar, and rows held to the viewport's width (rich-viewport-owi.4) (#170)\n\n* feat(viewport): a scrollbar, and rows held to the viewport's width (rich-viewport-owi.4)\n\nEvery row is cropped or padded to the width the viewport is given, so\ncontent that ignores its width no longer spills past the edge. An optional\nScrollbar (thumb + track, each a glyph and a style; SCROLLBAR is the stock\nlook) is drawn in a gutter at the right edge from the offset the render\nresolves. No scrollbar is a gutter zero cells wide, so every row takes the\nsame path. Viewport joins the width sweep.\n\n* fix(viewport): the thumb touches an end only when the view has reached it; one crop per row\n\n* fix(viewport): a narrower scrollbar glyph's padding keeps its part's style; gutter wording"
         }
       ]
     }
