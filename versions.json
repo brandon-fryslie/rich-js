@@ -4,15 +4,22 @@
     {
       "version": "pr-173",
       "ref": "refs/pull/173/merge",
-      "sha": "d04b1bca491b5c0869bbda801b734d0421c985dd",
-      "timestamp": "2026-09-27T13:41:17.925Z",
+      "sha": "aca85bb905433054e42393fb857e341cc048f396",
+      "timestamp": "2026-09-27T13:49:38.506Z",
       "commits": [
         {
-          "sha": "d04b1bca491b5c0869bbda801b734d0421c985dd",
+          "sha": "aca85bb905433054e42393fb857e341cc048f396",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:40:43-06:00",
-          "message": "Merge 21f2082dcfeea39ed6232ee4bbe27adca0031e45 into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
+          "timestamp": "2026-09-27T13:49:16Z",
+          "message": "Merge 10c5eadb8ff4d91729e67ff760547c3a247bc680 into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
+        },
+        {
+          "sha": "10c5eadb8ff4d91729e67ff760547c3a247bc680",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:48:47-06:00",
+          "message": "fix(renderables): panel titles, subtitles and rule titles draw their markup too (rich-panel-gbe)\n\nReview of #173: a panel's title and subtitle and a rule's title are set into\na border line through inlineLabel, which parses markup, keeps a RichText's\nspans, and is cut by cells. Rule takes a RichText title as Rich's does.\nembed.ts no longer claims fidelity to render_str that it lacks; the console's\nmarkup and highlight settings not reaching embedded content is\nrich-markup-3sw. Every site is tested with a RichText as well as a string.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "21f2082dcfeea39ed6232ee4bbe27adca0031e45",
