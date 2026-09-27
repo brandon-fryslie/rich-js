@@ -4,15 +4,22 @@
     {
       "version": "pr-172",
       "ref": "refs/pull/172/merge",
-      "sha": "10c5eb67852ff95b09207fb52fc718a71766ee6d",
-      "timestamp": "2026-09-27T23:09:50.081Z",
+      "sha": "31cade87482480f28492b3d218031ebba1b33dea",
+      "timestamp": "2026-09-27T23:26:22.007Z",
       "commits": [
         {
-          "sha": "10c5eb67852ff95b09207fb52fc718a71766ee6d",
+          "sha": "31cade87482480f28492b3d218031ebba1b33dea",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T23:09:22Z",
-          "message": "Merge c6e5e24cbdc0835fa9cc8b4c92ae7618f9f9c1b8 into 457c7569a1df73053a9f6332afbae6be66cf7879\n"
+          "timestamp": "2026-09-27T23:25:55Z",
+          "message": "Merge d0a7551e345805e937533a1772a2eeef12aca1b1 into 457c7569a1df73053a9f6332afbae6be66cf7879\n"
+        },
+        {
+          "sha": "d0a7551e345805e937533a1772a2eeef12aca1b1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T17:25:49-06:00",
+          "message": "fix(docs): a character split across writes decodes whole; the runner header stops enumerating its checks (rich-docs-examples-xuu.812)\n\nByte writes were decoded one chunk at a time, so a multi-byte character\nsplit across two writes became U+FFFD. The header's list of failures had\ndrifted from the checks twice; it now states the one claim, and the\ndeadline says it catches a run that waits, not one that spins.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "c6e5e24cbdc0835fa9cc8b4c92ae7618f9f9c1b8",
