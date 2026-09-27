@@ -21,6 +21,7 @@ import type { Highlighter } from "./highlighter.js";
 import { Rule, type RuleOptions } from "../renderables/rule.js";
 import { segmentsToString } from "./render.js";
 import type {
+  Height,
   Renderable,
   RenderOptions,
   StyleErrorHandler,
@@ -393,9 +394,15 @@ export class Console {
     return this._theme;
   }
 
-  get options(): RenderOptions {
+  get options(): RenderOptions & { height: Height } {
+    // One read of the size, so a resize cannot pair one frame's width with
+    // another's height.
+    const { width, height } = this.size;
     return {
-      maxWidth: this.width,
+      maxWidth: width,
+      // The terminal an inline print lands on: a ceiling, never a region —
+      // content keeps its natural height beneath it.
+      height: { rows: height, exact: false },
       isTerminal: this.isTerminal,
       encoding: this.encoding,
       asciiOnly: false,

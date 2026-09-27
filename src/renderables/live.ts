@@ -6,13 +6,14 @@
  *   region. Good for spinners/progress bars below other output.
  * - **Alt-screen** (`altScreen: true`): enters the alternate screen buffer
  *   on start, cursor-homes on each refresh (no clear flicker), and restores
- *   the original buffer on stop. Good for full-screen TUI apps.
+ *   the original buffer on stop. The screen is the frame's region, so a
+ *   `Layout` fills it. Good for full-screen TUI apps.
  */
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { segmentsToString } from "../core/render.js";
-import type { Renderable } from "../core/protocol.js";
+import { fitHeight, type Height, type Renderable } from "../core/protocol.js";
 
 export interface LiveOptions {
   refreshPerSecond?: number;
@@ -119,29 +120,51 @@ export class Live {
       this._clearLast();
     }
 
-    const segments = [...this._renderable.render(this._console.options)];
-    const lines = Segment.splitLines(segments);
-    const maxHeight = this._console.height;
-
-    let displayLines = lines;
-    if (this._verticalOverflow !== "visible" && lines.length > maxHeight) {
-      displayLines = lines.slice(0, maxHeight);
-      if (this._verticalOverflow === "ellipsis" && displayLines.length > 0) {
-        displayLines[displayLines.length - 1] = [new Segment("...")];
-      }
-    }
+    // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
+    // rows and differ only in what those rows are: the alternate screen is a
+    // region the frame stands in, and an inline frame keeps its natural height
+    // under them as a ceiling. Live set the budget, so Live shapes what comes
+    // back — its overflow policy, then `fitHeight`, which pads only a region.
+    const options = this._console.options;
+    const height: Height = { rows: options.height.rows, exact: this._altScreen };
+    const lines = Segment.splitLines(this._renderable.render({ ...options, height }));
+    const displayLines = fitHeight(this._overflow(lines, height.rows), height);
 
     // [LAW:single-enforcer] Per-line encoding routes through the same
     // tree-coalescer `Console._writeSegments` uses, so Live frames coalesce
     // adjacent same-style segments into shared SGR pairs on the wire and
     // encode for the console's own destination.
+    // The alternate screen is not erased between frames — the cursor only goes
+    // home — so each of its rows is erased before it is drawn, or a shorter
+    // frame leaves the last one's rows and line tails showing. The erase comes
+    // first because the cursor is then at the row's start; after a row that
+    // fills the width it would take the last cell. An inline frame's rows were
+    // erased by `_clearLast`.
+    const lead = this._altScreen ? "\x1b[2K" : "";
     const destination = this._console.destination;
     const output = displayLines
-      .map((line) => segmentsToString(line, destination))
+      .map((line) => lead + segmentsToString(line, destination))
       .join("\n");
 
-    this._console.file.write(output + "\n");
-    this._lastLineCount = displayLines.length;
+    // Inline, the newline leaves the cursor under the frame, where `_clearLast`
+    // counts up from. On the alternate screen the next frame starts from home,
+    // and a newline after a full-height frame's last row scrolls its first row
+    // off the top.
+    this._console.file.write(this._altScreen ? output : output + "\n");
+    // What `_clearLast` erases: an inline frame's rows. An alternate-screen
+    // frame is erased by leaving the buffer.
+    this._lastLineCount = this._altScreen ? 0 : displayLines.length;
+  }
+
+  // Lines past `rows`: dropped, with the last kept row replaced by an ellipsis,
+  // or left for the terminal to scroll.
+  private _overflow(lines: Segment[][], rows: number): Segment[][] {
+    if (this._verticalOverflow === "visible" || lines.length <= rows) return lines;
+    const kept = lines.slice(0, rows);
+    if (this._verticalOverflow === "ellipsis" && kept.length > 0) {
+      kept[kept.length - 1] = [new Segment("...")];
+    }
+    return kept;
   }
 
   private _clearLast(): void {

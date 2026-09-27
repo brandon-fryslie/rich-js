@@ -156,6 +156,10 @@ export {
   isMeasurable,
   withCellWidth,
   withBoundedWidth,
+  insetHeight,
+  stackedHeight,
+  regionRows,
+  fitHeight,
 } from "./core/protocol.js";
 export type {
   RenderOptions,

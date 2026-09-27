@@ -197,3 +197,41 @@ That answer has to come from the renderable, which is why it is a second functio
 A renderable whose content cannot measure itself has no natural width to fall back on, and `withBoundedWidth` throws a `RangeError` saying so. That is the honest outcome — an unbounded offer around unmeasurable content has no right answer, and the alternatives are to lose the content silently or to guess. Render at a finite width, or give the content a `measure()`.
 
 `measure` answers the same question in advance, so its answer carries the same ceiling: `minimum <= maximum <= options.maxWidth`. Parent layouts divide space from the range you return, so a minimum above your own maximum leaves them nothing they can honour — and a `maximum` of "whatever I was offered" is the other failure, less obvious and just as costly. It tells every parent you want all the space there is, so a `Panel` in fit mode draws its frame at the full console width around your four cells of content, and an unbounded offer comes back unbounded.
+
+## The height contract
+
+`options.height` is the vertical budget, and unlike `maxWidth` it may be absent: a renderable rendered to a string, or inside a `Table` cell, has no rows to answer to. When it is present it is a `Height` — a count of `rows`, and whether those rows are a region or a ceiling.
+
+A **ceiling** (`exact: false`) is what `console.print` and an inline `Live` hand you: the terminal's rows. Draw at your natural height beneath it. Nothing pads up to a ceiling, and output taller than it is the setter's to handle: an inline `Live` applies its `verticalOverflow`, and a print lets the terminal scroll it.
+
+A **region** (`exact: true`) is what a `Layout` pane or an alternate-screen `Live` hands you: the output will be exactly `rows` tall. You may fill it — a log showing its newest lines, a chart stretching to the bottom — or ignore it and draw your natural height. Either way you do not pad or crop yourself to it: whoever set the region shapes what comes back.
+
+Four functions carry the rules, so a renderable that composes children calls them rather than doing the arithmetic:
+
+- `regionRows(height)` — the rows to fill, or `undefined` when there is no region.
+- `insetHeight(height, rows)` — the budget for the one child filling your space, less the `rows` you draw yourself.
+- `stackedHeight(height)` — the budget for each of several children stacked down your space: your rows as a ceiling, so no one of them claims the whole region.
+- `fitHeight(lines, height)` — lines held to a region, padded or cropped; left alone for anything else. Call it on what comes back from a child whose region you set.
+
+```typescript
+import type { Renderable, RenderOptions } from "@promptctl/rich-js";
+import { Segment, fitHeight, insetHeight } from "@promptctl/rich-js";
+
+// A title row, and a body in the rows it leaves.
+class Titled implements Renderable {
+  constructor(private title: string, private body: Renderable) {}
+
+  *render(options: RenderOptions): Iterable<Segment> {
+    yield new Segment(this.title);
+    yield Segment.line();
+    const height = insetHeight(options.height, 1);
+    const lines = Segment.splitLines(this.body.render({ ...options, height }));
+    for (const line of fitHeight(lines, height)) {
+      yield* line;
+      yield Segment.line();
+    }
+  }
+}
+```
+
+Forward the budget unchanged and a `Layout` inside `Titled` fills the whole region, one row too tall, and the crop above takes its last row. The doc comment on `Height` in the source is the authority on these rules.
