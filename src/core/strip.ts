@@ -222,13 +222,19 @@ export interface PowerlineJoinerOptions {
 
 /**
  * The powerline set: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow),
- * led by U+E0B2 (left-arrow) and tailed by the arrow itself — so a strip's two
- * ends are one shape.
+ * led by U+E0D7 (Nerd Fonts ple-left_hard_divider_inverse, the right-arrow's
+ * inverse) and tailed by the arrow itself. The lead leaves empty a triangle
+ * whose base is its cell's left edge and whose point touches the first item, so
+ * the run opens notched — as if an arrow before it pointed in — rather than
+ * with a shape pointing out. The notch is the terminal's own background showing
+ * through, never a colour painted to imitate it, so it matches under a
+ * translucent terminal background too. The lead is a Powerline Extra glyph: a
+ * classic powerline font lacks it.
  */
 export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({
   glyph: "\ue0b0",
   divider: "\ue0b1",
-  lead: "\ue0b2",
+  lead: "\ue0d7",
   tail: "\ue0b0",
 });
 
@@ -256,8 +262,8 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     //     one — the tail bleeds the left colour out over the terminal
     //     background (fg = left bg, no bg).
     //   • right bg only — the start cap, OR a colourless item before a coloured
-    //     one — the lead: the right colour reaching back over the terminal
-    //     background (fg = right bg, no bg).
+    //     one — the lead: the right colour painted over the terminal
+    //     background in the lead's shape (fg = right bg, no bg).
     //   • neither — nothing to paint, so the join yields nothing.
     // Equal REAL bgs still emit: a same-bg seam between two distinct items is a
     // structural boundary, never suppressed. The arrow would be drawn in its own

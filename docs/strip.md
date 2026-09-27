@@ -39,7 +39,7 @@ const strip = new Strip(
 console.print(strip);
 ```
 
-The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's colour and closes with a tail cap in the last cell's, each with no bg of its own, so both ends meet the terminal with the same shape. Swap the joiner — the strip restyles with no other code change.
+The arrow between two cells takes its fg from the left cell's right-edge background and its bg from the right cell's left-edge background. The strip opens with a lead cap in the first cell's colour and closes with a tail cap in the last cell's, each with no bg of its own. The default lead is a notch cut into the first cell — as if an arrow before it pointed in — rather than a shape pointing out, and the tail is the arrow pointing on out, so a run reads as one chevron from end to end. Swap the joiner — the strip restyles with no other code change.
 
 `noWrap: true` is the option doing the work here: without it, a cell wider than the console wraps across lines and takes the strip's layout with it. `end: ""` declares that the cell contributes no line terminator of its own — without it, a cell's default `end` would draw a trailing `"\n"` into the middle of the strip's single line, breaking the layout it is meant to hold together.
 
@@ -49,17 +49,19 @@ The strip itself ends its own line, the same way [`Group`](./group)'s other chil
 
 ### `PowerlineJoiner`
 
-Classic powerline arrows.
+Powerline arrows.
 
 ```typescript
-new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow and tail, U+E0B1 divider, U+E0B2 lead
+new PowerlineJoiner(); // POWERLINE_JOINER_GLYPHS: U+E0B0 arrow and tail, U+E0B1 divider, U+E0D7 lead (a notch)
 ```
+
+The arrow, divider and tail are classic powerline glyphs. The lead is from the Powerline Extra range that Nerd Fonts carry, and a classic powerline-patched font does not have it; under such a font, pass `{ ...POWERLINE_JOINER_GLYPHS, lead: "" }` to open each run flat.
 
 Every join is painted in whichever neighbour has a background colour. That single rule covers all three positions:
 
 - `join(L, R)`: glyph with `fg = L.bg` as drawn (flattened onto the render substrate, so opaque — the arrow is the left cell continuing, not composited a second time over `R`), `bg = R.bg` — or, when the two backgrounds are indistinct (below), the divider with `fg = L`'s text colour and `bg = L.bg`.
 - `join(L, null)`: `tail` with `fg = L.bg` and no bg — the last cell bleeds out into the terminal.
-- `join(null, R)`: `lead` with `fg = R.bg` and no bg — the first cell reaches back into the terminal.
+- `join(null, R)`: `lead` with `fg = R.bg` and no bg. The default, U+E0D7, leaves empty a triangle whose base is its cell's left edge and whose point touches the first cell, so that cell opens notched and the terminal's own background shows through the notch — it matches that background exactly, translucent or not, because nothing is painted to imitate it.
 
 When `L` and `R` share a background, the arrow would be drawn in its own background colour and vanish. The joiner draws the divider there instead (`divider`, U+E0B1 by default, the thin arrow) in `L`'s text colour on `L`'s own background, which is the vim-airline convention. The divider is therefore `L`'s text, and it reads exactly as well as that text does. "Share" is perceptual: two backgrounds closer than `SEAM_MIN_DELTA_E` (ΔE_OK 0.04) count as one. They are measured as drawn: a translucent background is flattened onto the render substrate, then rounded to the depth the render encodes at (`RenderOptions.colorSystem`). So two backgrounds that 256 colours or ANSI draw as one entry share, however far apart they were computed. Named or indexed colours have no RGB value to measure, so two of them share only when they are the same palette slot, however it is spelled (`red` and `color(1)` are one slot).
 
