@@ -4,15 +4,22 @@
     {
       "version": "pr-159",
       "ref": "refs/pull/159/merge",
-      "sha": "1f3377ddf10dc0d58b184a00b47c58531bb01ef0",
-      "timestamp": "2026-09-27T07:22:54.002Z",
+      "sha": "c8c298f6d34b5e35315f137ba7a6cda4f02432f2",
+      "timestamp": "2026-09-27T07:28:54.925Z",
       "commits": [
         {
-          "sha": "1f3377ddf10dc0d58b184a00b47c58531bb01ef0",
+          "sha": "c8c298f6d34b5e35315f137ba7a6cda4f02432f2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:22:25-06:00",
-          "message": "Merge 17a5ba44c72c1962139892267174b27b0fd400da into a7fc70011dc34238e1113ecad0eb85e003f29199\n"
+          "timestamp": "2026-09-27T07:28:33Z",
+          "message": "Merge 4a82c05abefe6b30a7a2929417132143ed586269 into a7fc70011dc34238e1113ecad0eb85e003f29199\n"
+        },
+        {
+          "sha": "4a82c05abefe6b30a7a2929417132143ed586269",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T01:28:28-06:00",
+          "message": "fix(render): one resolver decides colour depth and hyperlinks together\n\nresolveDestination(spec, detect) → { colorSystem, hyperlinks } replaces the\nthree copies of spec resolution in Console, Screen and renderToString.\nAn explicit depth keeps links (a file sink at truecolor keeps them again);\nunder auto, links follow the terminal probe without NO_COLOR, so TERM=dumb\nand non-TTY output stay linkless while NO_COLOR keeps them.\n"
         },
         {
           "sha": "17a5ba44c72c1962139892267174b27b0fd400da",
