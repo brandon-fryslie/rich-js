@@ -17,7 +17,7 @@ import { SOLARIZED_LIGHT } from "../src/themes/terminalThemes.js";
 const HOST = `
 <style>
   body { background: rgb(1, 2, 3); color: rgb(4, 5, 6); font-family: serif; padding: 7px; margin: 3px;
-         line-height: 3; font-weight: 300; letter-spacing: 2px; text-align: center }
+         line-height: 3; font-weight: 300; letter-spacing: 2px; text-align: center; direction: rtl }
   pre { margin: 13px; font-family: cursive; white-space: pre-wrap; border: 5px solid red; font-size: 30px }
   a { color: rgb(9, 9, 9); text-decoration: underline; font-weight: 900; text-underline-offset: 4px }
 </style>
@@ -29,7 +29,7 @@ const BLANK = `<div id="slot"></div>`;
 const PROPERTIES = [
   "background-color", "color", "font-family", "font-size", "font-weight", "line-height", "letter-spacing",
   "text-align", "padding", "margin", "border-top-width", "white-space", "text-decoration-line",
-  "text-underline-offset",
+  "text-underline-offset", "direction", "unicode-bidi",
 ];
 
 type Computed = Record<string, string[]>;

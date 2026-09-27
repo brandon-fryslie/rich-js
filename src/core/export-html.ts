@@ -119,7 +119,8 @@ export const HTML_FRAGMENT_CSS = `@keyframes ${BLINK_KEYFRAMES}{50%{color:transp
  * [LAW:locality-or-seam] Every rule is inline on the `pre` or below it, so the
  * fragment styles nothing outside itself; the host page keeps its own `body`,
  * `pre` and `a` rules. The seam holds the other way too: `all:initial` stops
- * the host's `pre` rules and inherited typography from reaching the rows.
+ * the host's `pre` rules and inherited typography from reaching the rows, and
+ * the two properties `all` does not cover pin the rows left to right.
  *
  * A browser draws no line for a newline at either edge of a `pre`: the parser
  * drops the one straight after the open tag, and the one before `</pre>` ends a
@@ -131,6 +132,8 @@ export function encodeHtmlFragment(segments: Iterable<Segment>, theme?: Terminal
   const rows = exportLines(segments, theme).map((row) => `${row.map(runHtml).join("")}\n`);
   const css = [
     "all:initial",
+    "direction:ltr",
+    "unicode-bidi:isolate",
     "display:block",
     `background:${canvas.background.hex}`,
     `color:${canvas.foreground.hex}`,
