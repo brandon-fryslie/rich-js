@@ -2,39 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-164",
-      "ref": "refs/pull/164/merge",
-      "sha": "18fd675842dc6c52a14b4d4aa65dec0e21b6b357",
-      "timestamp": "2026-09-27T10:06:11.175Z",
-      "commits": [
-        {
-          "sha": "18fd675842dc6c52a14b4d4aa65dec0e21b6b357",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T04:05:44-06:00",
-          "message": "Merge 802ac898a0f9a6574d5f0036f8782a50ddd54037 into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
-        },
-        {
-          "sha": "802ac898a0f9a6574d5f0036f8782a50ddd54037",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:49:43-06:00",
-          "message": "docs: TERM=dumb drops hyperlinks; console.hyperlinks in the attributes table\n"
-        }
-      ]
-    },
-    {
       "version": "pr-163",
       "ref": "refs/pull/163/merge",
-      "sha": "730477af6679f3d2cfa4718c74d6c86d4d514c35",
-      "timestamp": "2026-09-27T09:37:46.396Z",
+      "sha": "d3ff26648eb4e2459dd974e1f37809071586daca",
+      "timestamp": "2026-09-27T11:25:25.219Z",
       "commits": [
         {
-          "sha": "730477af6679f3d2cfa4718c74d6c86d4d514c35",
+          "sha": "d3ff26648eb4e2459dd974e1f37809071586daca",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:37:18-06:00",
-          "message": "Merge cdb2717c6ddc504bb9def239c9133211cc637d78 into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+          "timestamp": "2026-09-27T11:24:59Z",
+          "message": "Merge af3ef8ca15941587820b6c55be0b8e05ace2afec into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+        },
+        {
+          "sha": "af3ef8ca15941587820b6c55be0b8e05ace2afec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:24:54-06:00",
+          "message": "fix(live): an alt-screen frame writes every cell, and a transient stop erases nothing\n\nReview of #163: the alternate screen is only homed between frames, so a\nshorter frame left the last one's rows and line tails showing. Its rows are\nnow padded to the width. Its lines are no longer counted for _clearLast,\nwhich was one row off now the cursor ends on the last row, and pointless\nbefore leaving the buffer.\n\nConsole.options reads the size once, and Live takes its rows from those\noptions. print's stackedHeight was an identity on a ceiling, so it is gone.\nThe Height contract says what the setter of a ceiling does with taller\noutput: Live crops it, print lets it scroll. The inline full-height scroll\nis rich-live-4rh.\n"
         },
         {
           "sha": "cdb2717c6ddc504bb9def239c9133211cc637d78",
