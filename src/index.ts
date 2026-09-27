@@ -264,6 +264,8 @@ export { Align } from "./renderables/align.js";
 export type { Alignment } from "./renderables/align.js";
 export { Padding } from "./renderables/padding.js";
 export type { PaddingDimensions } from "./renderables/padding.js";
+export { Viewport } from "./renderables/viewport.js";
+export type { ViewportOptions } from "./renderables/viewport.js";
 export { Rule } from "./renderables/rule.js";
 export type { RuleAlign, RuleOptions } from "./renderables/rule.js";
 export { Panel } from "./renderables/panel.js";

@@ -401,6 +401,7 @@ npm run demo
 | `npm run themes-and-color-studio` | themes-and-color-studio | A printed tour of colours, palettes, bundled themes, and contrast. Prints once and exits; set `EXPORT_HTML=out.html` to save it as HTML too. |
 | `npm run strip` | rich-strip | Every built-in `Joiner`, printed side by side. Prints once and exits. |
 | `npm run markup-plugins` | rich-markup-plugins | Custom markup tags registered through `MarkupRegistry`. Prints once and exits. |
+| `npm run viewport` | rich-viewport | A cursor walking a list taller than its window, kept in view by `Viewport.ensureVisible`. |
 
 `Ctrl-C` quits any demo that stays running.
 

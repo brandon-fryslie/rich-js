@@ -64,6 +64,7 @@ export const guideSidebar: SidebarGroup[] = [
       { text: 'Strip + Joiner', link: '/strip' },
       { text: 'Group', link: '/group' },
       { text: 'Padding', link: '/padding' },
+      { text: 'Viewport', link: '/viewport' },
     ],
   },
   {
