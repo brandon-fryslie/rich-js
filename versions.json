@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-166",
+      "ref": "refs/pull/166/merge",
+      "sha": "1062475a24928d0ab32bb8071dcde776cb0048dd",
+      "timestamp": "2026-09-27T12:04:32.341Z",
+      "commits": [
+        {
+          "sha": "1062475a24928d0ab32bb8071dcde776cb0048dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T12:04:02Z",
+          "message": "Merge f04cbf1eeceba68a7f85776ec3819bb7bf404d8d into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
+        },
+        {
+          "sha": "f04cbf1eeceba68a7f85776ec3819bb7bf404d8d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:03:57-06:00",
+          "message": "fix(viewport): the demo paints its first frame on start (rich-viewport-owi.3)\n\nLive.start draws nothing with autoRefresh off, so frame 0 was never shown and\nthe screen stayed blank until the first tick.\n"
+        },
+        {
+          "sha": "b15c7bed15d870f3db3b4e8db5ed540e7a622d66",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:02:50-06:00",
+          "message": "chore(viewport): just recipe for the viewport demo (rich-viewport-owi.3)\n"
+        },
+        {
+          "sha": "f0ca16d5b0642b835226acbe5645447dd216ad19",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:01:31-06:00",
+          "message": "fix(viewport): ensureVisible counts rendered lines, and the demo follows the terminal's size (rich-viewport-owi.3)\n\nThe docs and demo passed an item index where ensureVisible counts the lines\nthe content renders to; the demo now renders each entry on one line and the\npage says so. The demo's Console reads the host's live size and its node\nbootstrap tears down on SIGTERM too. Render slices only the rows it shows.\n"
+        },
+        {
+          "sha": "6ffdb7717d268ae1a5eaf517302d4bbca7807339",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:50:11-06:00",
+          "message": "feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-165",
       "ref": "refs/pull/165/merge",
       "sha": "ece3fa0fdf7fe4485c386ce91ba1c48f3585100d",
@@ -41,42 +84,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T05:36:43-06:00",
           "message": "feat(docs): a simulated process runs an example's own new Console() in a terminal we supply (rich-docs-examples-xuu.iy5)\n\n`runInTerminal(program, terminal)` evaluates a bundled program as the body of\nan async function whose parameter is named `process`, so every free `process`\nin it — the library included — binds to a stand-in built from the terminal.\nNothing global is swapped: the build's and the page's own `process` are never\ntouched, and two runs can overlap.\n\nProven in Node (test/docs/simulated-process.test.ts, under a hostile host env)\nand in Chromium (e2e/simulated-process.spec.ts).\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-166",
-      "ref": "refs/pull/166/merge",
-      "sha": "d0ba16109a7b7c3125d2ae727eb54bbd8616d6ac",
-      "timestamp": "2026-09-27T12:03:24.947Z",
-      "commits": [
-        {
-          "sha": "d0ba16109a7b7c3125d2ae727eb54bbd8616d6ac",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T12:02:55Z",
-          "message": "Merge b15c7bed15d870f3db3b4e8db5ed540e7a622d66 into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
-        },
-        {
-          "sha": "b15c7bed15d870f3db3b4e8db5ed540e7a622d66",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:02:50-06:00",
-          "message": "chore(viewport): just recipe for the viewport demo (rich-viewport-owi.3)\n"
-        },
-        {
-          "sha": "f0ca16d5b0642b835226acbe5645447dd216ad19",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T06:01:31-06:00",
-          "message": "fix(viewport): ensureVisible counts rendered lines, and the demo follows the terminal's size (rich-viewport-owi.3)\n\nThe docs and demo passed an item index where ensureVisible counts the lines\nthe content renders to; the demo now renders each entry on one line and the\npage says so. The demo's Console reads the host's live size and its node\nbootstrap tears down on SIGTERM too. Render slices only the rows it shows.\n"
-        },
-        {
-          "sha": "6ffdb7717d268ae1a5eaf517302d4bbca7807339",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:50:11-06:00",
-          "message": "feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n"
         }
       ]
     },
