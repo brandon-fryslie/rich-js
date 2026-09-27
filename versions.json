@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-169",
+      "ref": "refs/pull/169/merge",
+      "sha": "501e87207d0b3d35b45846bc9614745047b956c1",
+      "timestamp": "2026-09-27T12:30:41.429Z",
+      "commits": [
+        {
+          "sha": "501e87207d0b3d35b45846bc9614745047b956c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:30:14-06:00",
+          "message": "Merge 694bd67493c4d8a88b7e392e6c33291389e1705a into aefbf88c55ee93af415485a19af3f0a5629084ef\n"
+        },
+        {
+          "sha": "694bd67493c4d8a88b7e392e6c33291389e1705a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:30:10-06:00",
+          "message": "feat(ansi): decode ANSI bytes back into RichText (rich-docs-examples-xuu.9hv)\n\nA port of Rich's AnsiDecoder and Text.from_ansi: `decodeAnsi` for a whole\ncapture, `AnsiDecoder` for a stream read a line at a time. Colours decode to\nthe ColorSpec kind their escape names and are never resolved to RGB, so one\ncaptured run exports correctly under a light theme and a dark one.\n\nTwo departures from Rich, both toward what a terminal shows: the link is\ndecoder state beside the SGR style, so an SGR reset inside a link leaves it\nopen; and a line ends only at \\n, with the text after its last \\r replacing\nwhat came before, while codes before the \\r still apply.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "aefbf88c55ee93af415485a19af3f0a5629084ef",
