@@ -58,8 +58,8 @@ export interface TerminalHost {
    * Write raw bytes (or UTF-8 text) to the terminal as a program's output
    * reaches it: no escape interpretation, no framing, and a terminal on a
    * tty receives each newline as carriage return + newline, the tty's own
-   * output translation. A host with no tty in front of its terminal does
-   * that translation itself.
+   * output translation, which node's raw mode leaves on. A host with no tty
+   * in front of its terminal does that translation itself.
    */
   write(data: Uint8Array | string): void;
 
