@@ -2,45 +2,31 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-159",
-      "ref": "refs/pull/159/merge",
-      "sha": "71757f1d7e5db6564a3cc27654a4c7552e06ac42",
-      "timestamp": "2026-09-27T07:31:22.814Z",
+      "version": "pr-160",
+      "ref": "refs/pull/160/merge",
+      "sha": "31d1837b75a14bd1307b8851646fa2d2a8be59ca",
+      "timestamp": "2026-09-27T07:49:10.388Z",
       "commits": [
         {
-          "sha": "71757f1d7e5db6564a3cc27654a4c7552e06ac42",
+          "sha": "31d1837b75a14bd1307b8851646fa2d2a8be59ca",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:30:52Z",
-          "message": "Merge 48e6f894070ae644078d7a6266bef222fd2afff2 into a7fc70011dc34238e1113ecad0eb85e003f29199\n"
+          "timestamp": "2026-09-27T01:48:02-06:00",
+          "message": "Merge 007a09ec34b66e973ecce4476a4af1b267d1615a into a7fc70011dc34238e1113ecad0eb85e003f29199\n"
         },
         {
-          "sha": "48e6f894070ae644078d7a6266bef222fd2afff2",
+          "sha": "007a09ec34b66e973ecce4476a4af1b267d1615a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:30:47-06:00",
-          "message": "fix(color): FORCE_COLOR is a preference too; Console takes a hyperlinks option\n\nFORCE_COLOR=0 no longer drops links on a terminal; forced-on FORCE_COLOR\nstill keeps them on a pipe. ConsoleOptions.hyperlinks mirrors renderToString's\nso a file sink can ask for plain text. resolveColorSystem gets its JSDoc back.\n"
+          "timestamp": "2026-09-27T01:47:45-06:00",
+          "message": "chore(release)!: 0.17.0\n\nThe default powerline lead changed shape, which is breaking for 0.x.\n"
         },
         {
-          "sha": "4a82c05abefe6b30a7a2929417132143ed586269",
+          "sha": "3203cecbd0627dd0d2bce4bf13d7a7437d142b1f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:28:28-06:00",
-          "message": "fix(render): one resolver decides colour depth and hyperlinks together\n\nresolveDestination(spec, detect) → { colorSystem, hyperlinks } replaces the\nthree copies of spec resolution in Console, Screen and renderToString.\nAn explicit depth keeps links (a file sink at truecolor keeps them again);\nunder auto, links follow the terminal probe without NO_COLOR, so TERM=dumb\nand non-TTY output stay linkless while NO_COLOR keeps them.\n"
-        },
-        {
-          "sha": "17a5ba44c72c1962139892267174b27b0fd400da",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:22:21-06:00",
-          "message": "chore: 0.17.0\n"
-        },
-        {
-          "sha": "3d150b363b98dc1a36d6a38dd807ea6b7879ec25",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:19:02-06:00",
-          "message": "fix(render)!: colour depth governs SGR only — hyperlinks are their own fact\n\nsegmentsToString/segmentToString take a required `hyperlinks` argument;\nrenderToString gains a `hyperlinks` option (default true). A null colour\nsystem (NO_COLOR, colour depth none) no longer strips OSC 8 links. Console\nand Live emit links exactly when the destination is a terminal, so piped\noutput stays plain.\n"
+          "timestamp": "2026-09-27T01:47:42-06:00",
+          "message": "feat(strip)!: the default powerline lead is a notch cut into the first cell\n\nPOWERLINE_JOINER_GLYPHS leads with U+E0D6 (inverse right-arrow) instead of\nU+E0B2. Drawn by the existing cap painter (fg = the cell's background, no bg),\nit inks the top-left and bottom-left of the cell and leaves a right-pointing\ntriangle empty, so a coloured run opens notched, as if an arrow before it\npointed in. The notch is the terminal's own background showing through, so it\nmatches under a translucent terminal background; a reverse-video U+E0B0 notch\ndrew visibly darker there. The arrow, divider and tail are unchanged.\n\nBREAKING CHANGE: new PowerlineJoiner() draws U+E0D6 as its lead cap, not U+E0B2.\nPass { ...POWERLINE_JOINER_GLYPHS, lead: \"\" } for the old shape.\n"
         }
       ]
     },
