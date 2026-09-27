@@ -315,6 +315,9 @@ export class Console {
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
       { isTTY: this._isTerminal, env: environment.env },
     );
+    // [LAW:single-enforcer] The console's one override, an explicit
+    // `hyperlinks`, is applied here and nowhere else; every write encodes for
+    // this value whole.
     this._destination = {
       colorSystem: resolved.colorSystem,
       hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
@@ -366,9 +369,13 @@ export class Console {
     return this._destination.colorSystem;
   }
 
-  /** Whether this console emits OSC 8 hyperlinks. */
-  get hyperlinks(): boolean {
-    return this._destination.hyperlinks;
+  /**
+   * Where this console writes: the colour depth it draws at and whether it
+   * emits OSC 8 hyperlinks, overrides applied — the value its output is
+   * encoded for, for anything that encodes on its behalf (`Live`).
+   */
+  get destination(): Destination {
+    return this._destination;
   }
 
   // [LAW:one-source-of-truth] Output target lookup matches `_write`'s:
@@ -623,11 +630,7 @@ export class Console {
         if (!segment.isControl) this._recorded.push(segment);
       }
     }
-    const encoded = segmentsToString(
-      segments,
-      this._destination.colorSystem,
-      this._destination.hyperlinks,
-    );
+    const encoded = segmentsToString(segments, this._destination);
     if (encoded.length > 0) this._write(encoded);
   }
 

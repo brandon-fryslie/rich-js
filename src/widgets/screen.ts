@@ -463,11 +463,7 @@ export class DefaultScreen implements Screen {
         // Use the frame's captured width, not a re-read of this.width —
         // see FrameLayout for the rationale.
         const clipped = Segment.adjustLineLength(line, width, undefined, false);
-        buf += segmentsToString(
-          clipped,
-          this.destination.colorSystem,
-          this.destination.hyperlinks,
-        );
+        buf += segmentsToString(clipped, this.destination);
       }
       // [LAW:single-enforcer] Erase-to-end-of-line is the single mechanism
       // for overwriting stale content. We do not pre-clear lines.
