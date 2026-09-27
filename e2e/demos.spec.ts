@@ -90,3 +90,20 @@ for (const { name } of manifest.demos) {
     ).toHaveLength(0);
   });
 }
+
+// "Drew something" passes a frame whose rows each start where the last one
+// ended: every demo drew as a staircase while the gate above stayed green,
+// because nothing returned the carriage before a newline. A Panel's rows all
+// start at its left border, so any row that does not has been pushed along.
+test("a demo's rows start at the left edge: rich-viewport", async ({ page }) => {
+  await page.goto("demos-app/rich-viewport/");
+  // A boot failure should read as its own message, not a missing "╭".
+  await expect(page.locator("#status")).toContainText("ready");
+  const rows = page.locator(".xterm-rows > div");
+  await expect(rows.first()).toContainText("╭");
+  const drawn = (await rows.allTextContents()).filter((row) => row.trim() !== "");
+  expect(drawn.length, "the panel drew no rows").toBeGreaterThan(2);
+  for (const row of drawn) {
+    expect(row, `a row does not start at the panel's left border: ${JSON.stringify(drawn)}`).toMatch(/^[╭│╰]/);
+  }
+});

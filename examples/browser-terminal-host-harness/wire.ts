@@ -61,9 +61,9 @@ export function mountHarness(terminal: XtermTerminal): HarnessHandle {
 
   const size: TerminalSize = host.size();
   host.write(`\x1b[2J\x1b[H`); // clear + cursor home
-  host.write(`rich-js · BrowserTerminalHost harness\r\n`);
-  host.write(`size: ${size.cols}x${size.rows} · isTTY=${host.isTTY}\r\n`);
-  host.write(`type to echo, Enter for newline, Ctrl-D to detach\r\n\r\n> `);
+  host.write(`rich-js · BrowserTerminalHost harness\n`);
+  host.write(`size: ${size.cols}x${size.rows} · isTTY=${host.isTTY}\n`);
+  host.write(`type to echo, Enter for newline, Ctrl-D to detach\n\n> `);
 
   let detached = false;
 
@@ -77,7 +77,7 @@ export function mountHarness(terminal: XtermTerminal): HarnessHandle {
       const code = ch.charCodeAt(0);
       if (code === 0x04) {
         // Ctrl-D — detach
-        host.write(`\r\n[detached]\r\n`);
+        host.write(`\n[detached]\n`);
         unsubData();
         unsubResize();
         detached = true;
@@ -85,7 +85,7 @@ export function mountHarness(terminal: XtermTerminal): HarnessHandle {
       }
       if (code === 0x0d) {
         // Enter
-        host.write(`\r\n> `);
+        host.write(`\n> `);
         continue;
       }
       if (code === 0x7f) {
@@ -98,7 +98,7 @@ export function mountHarness(terminal: XtermTerminal): HarnessHandle {
   };
 
   const resizeHandler: ResizeHandler = (newSize) => {
-    host.write(`\r\n[resize: ${newSize.cols}x${newSize.rows}]\r\n> `);
+    host.write(`\n[resize: ${newSize.cols}x${newSize.rows}]\n> `);
   };
 
   const unsubData = host.onData(dataHandler);
