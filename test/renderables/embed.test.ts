@@ -56,6 +56,17 @@ describe("content embedded in a renderable", () => {
     });
   }
 
+  it("keeps both spaces around a label whose RichText is justified", () => {
+    const top = renderToString(new Panel("hi", { title: new RichText("x", { justify: "right" }), width: 17 }), { width: 17 }).split("\n")[0]!;
+    expect(top.replace(/\x1b\[[0-9;]*m/g, "")).toBe("╭────── x ──────╮");
+  });
+
+  it("draws a value that is not a string as it is written, without reading markup in it", () => {
+    const out = renderToString(new Columns([{ a: 1 }, "[bold]b[/bold]"]), { width: 40 });
+    expect(out).toContain("[object Object]");
+    expect(out).toContain(`${BOLD}b`);
+  });
+
   // The label is cut by cells, so a wide character never lands half inside
   // the border and pushes the corner out of line.
   it("cuts a title too wide for its border by cells, keeping the border square", () => {

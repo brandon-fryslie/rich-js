@@ -27,9 +27,19 @@ import { Segment } from "../core/segment.js";
 import type { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 
-/** Caller content as the text an embedding site lays out: markup parsed, `end` cleared. */
+/**
+ * Caller content as the text an embedding site lays out, `end` cleared. A
+ * string is the only kind of content that can contain markup, so it is the only
+ * kind parsed; any other value is its `String` form as written, so an object's
+ * `[object Object]` is not eaten as a tag.
+ */
 export function embeddedText(content: unknown): RichText {
-  const text = content instanceof RichText ? content.copy() : renderMarkup(String(content ?? ""));
+  const text =
+    content instanceof RichText
+      ? content.copy()
+      : typeof content === "string"
+        ? renderMarkup(content)
+        : new RichText(String(content ?? ""));
   text.end = "";
   return text;
 }
@@ -53,7 +63,10 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
  * room it has with `Segment.adjustLineLength`, which is cell-aware.
  */
 export function inlineLabel(content: unknown, options: RenderOptions, base: Style | undefined): Segment[] {
+  // The label's own justify would re-justify the padded text within its own
+  // width and move its spaces; where it sits is the caller's to decide.
   const text = embeddedText(content).pad(1);
+  text.justify = undefined;
   const line = text.render({ ...options, maxWidth: text.cellLength, noWrap: true, justify: "left" });
   return [...Segment.applyStyle(line, base)];
 }
