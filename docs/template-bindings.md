@@ -237,13 +237,14 @@ Passing a palette name where a color belongs is the other common slip, and it na
 `renderTemplate` is the shortcut for the live-render case — a preview pane, a status line, anything that recompiles a template the user is currently editing. It compiles, flattens the fragments, renders to a `Segment[]`, and wraps the whole flow so a broken template degrades instead of throwing:
 
 ```typescript
-import { segmentsToString, detectColorSystem } from "@promptctl/rich-js";
+import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
 import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/template-bindings";
 
 const engine = createRichTextEngine();
 
 const segments = renderTemplate(engine, `{{ .who | fg "#4ade80" }}`, { who: "world" });
-process.stdout.write(segmentsToString(segments, detectColorSystem(), process.stdout.isTTY) + "\n");
+const { colorSystem, hyperlinks } = resolveDestination("auto");
+process.stdout.write(segmentsToString(segments, colorSystem, hyperlinks) + "\n");
 ```
 
 ::: warning Don't route ANSI back through `Console`

@@ -8,6 +8,7 @@ import {
 import { RichText } from "../../src/core/text.js";
 import { Style, StyleSyntaxError, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
+import { Live } from "../../src/renderables/live.js";
 import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
@@ -1225,21 +1226,47 @@ describe("Console environment injection", () => {
   });
 });
 
-describe("Console hyperlinks", () => {
-  // A colour depth never removes a link; only a non-terminal destination does.
+describe("Console and Live hyperlinks", () => {
+  // A hyperlink is not a colour: NO_COLOR keeps links, a destination that takes
+  // no escapes (no TTY, TERM=dumb) drops them, an explicit depth keeps them.
   const linked = "[link=https://example.com]go[/link]";
+  const OSC8 = "\x1b]8;";
+  const SGR = /\x1b\[[0-9;]*m/;
+  const printed = (options: ConsoleOptions, env: NodeJS.ProcessEnv, isTTY: boolean): string => {
+    const host = makeEnvironment({ env, stdout: { isTTY } });
+    new Console({ environment: host.environment, ...options }).print(linked);
+    return host.stdout.chunks.join("");
+  };
+  const refreshed = (env: NodeJS.ProcessEnv, isTTY: boolean): string => {
+    const host = makeEnvironment({ env, stdout: { isTTY } });
+    const live = new Live(new RichText("go", { style: new Style({ link: "https://example.com" }) }), {
+      console: new Console({ environment: host.environment }),
+      autoRefresh: false,
+    });
+    live.refresh();
+    return host.stdout.chunks.join("");
+  };
 
-  it("a terminal with no colour keeps its OSC 8 links", () => {
-    const { console: c, chunks } = makeConsole({ forceTerminal: true, colorSystem: null });
-    c.print(linked);
-    expect(chunks.join("")).toContain("\x1b]8;");
-    expect(chunks.join("")).not.toMatch(/\x1b\[[0-9;]*m/);
+  it("NO_COLOR on a terminal keeps links and draws no SGR", () => {
+    const out = printed({}, { NO_COLOR: "1", TERM: "xterm-256color" }, true);
+    expect(out).toContain(OSC8);
+    expect(out).not.toMatch(SGR);
   });
 
-  it("a pipe gets no OSC 8 links", () => {
-    const { console: c, chunks } = makeConsole({ forceTerminal: false, colorSystem: "truecolor" });
+  it("a pipe and a TERM=dumb terminal get no links", () => {
+    expect(printed({}, { TERM: "xterm-256color" }, false)).not.toContain(OSC8);
+    expect(printed({}, { TERM: "dumb" }, true)).not.toContain(OSC8);
+  });
+
+  it("an explicit colour depth keeps links on a file sink", () => {
+    const { console: c, chunks } = makeConsole({ colorSystem: "truecolor" });
     c.print(linked);
-    expect(chunks.join("")).not.toContain("\x1b]8;");
+    expect(chunks.join("")).toContain(OSC8);
+  });
+
+  it("Live frames follow the console: links under NO_COLOR, none on a pipe", () => {
+    expect(refreshed({ NO_COLOR: "1", TERM: "xterm-256color" }, true)).toContain(OSC8);
+    expect(refreshed({ TERM: "xterm-256color" }, false)).not.toContain(OSC8);
   });
 });
 

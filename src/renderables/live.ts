@@ -136,7 +136,7 @@ export class Live {
     // adjacent same-style segments into shared SGR pairs on the wire and
     // honor the console's colour depth and terminal-ness the same way.
     const colorSystem = this._console.colorSystem;
-    const hyperlinks = this._console.isTerminal;
+    const hyperlinks = this._console.hyperlinks;
     const output = displayLines
       .map((line) => segmentsToString(line, colorSystem, hyperlinks))
       .join("\n");

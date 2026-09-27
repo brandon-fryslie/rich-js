@@ -35,6 +35,7 @@ import {
   // Section 3 — color-system detection
   detectColorSystem,
   resolveColorSystem,
+  resolveDestination,
   // Section 4 — theme registry (also via subpath, see below)
   getThemePalette,
   listThemePalettes,
@@ -455,6 +456,20 @@ export function runDemo(
       const depth = resolveColorSystem(spec, cases[1]!.opts);
       const label = depth === null ? "null" : ColorDepth[depth];
       out.print(new RichText(`      "${spec.padEnd(9)}"  →  ${label}`));
+    }
+    out.print(blank());
+
+    // resolveDestination: the colour depth AND whether OSC 8 links are drawn.
+    // A hyperlink is not a colour — NO_COLOR keeps links; no TTY or TERM=dumb
+    // (a destination that takes no escapes) drops them.
+    out.print(dim("    resolveDestination(\"auto\", opts):"));
+    for (const c of [
+      ...cases,
+      { label: "TTY + TERM=dumb            ", opts: { env: { TERM: "dumb" }, isTTY: true } },
+    ]) {
+      const d = resolveDestination("auto", c.opts);
+      const depth = d.colorSystem === null ? "null" : ColorDepth[d.colorSystem];
+      out.print(new RichText(`      ${c.label}  →  ${depth}, links ${d.hyperlinks ? "on" : "off"}`));
     }
     out.print(blank());
   }

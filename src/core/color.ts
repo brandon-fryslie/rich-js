@@ -327,14 +327,25 @@ const STRING_TO_DEPTH: Record<string, ColorDepth | null> = {
 export function detectColorSystem(
   options: DetectColorOptions = {},
 ): ColorDepth | null {
-  const env = options.env ?? (typeof process !== "undefined" ? process.env : {});
+  // NO_COLOR: any non-empty value disables color. It is a preference about
+  // colour, not a fact about the terminal, so it sits outside the probe.
+  const noColor = envOf(options)["NO_COLOR"];
+  if (noColor !== undefined && noColor !== "") return null;
+  return terminalColorSystem(options);
+}
+
+function envOf(options: DetectColorOptions): NodeJS.ProcessEnv {
+  return options.env ?? (typeof process !== "undefined" ? process.env : {});
+}
+
+// What the destination can draw, preferences aside: FORCE_COLOR, TTY presence,
+// TERM=dumb/unknown, COLORTERM, known terminal names, TERM patterns. `null`
+// here means the destination takes no escapes at all.
+function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
+  const env = envOf(options);
   const isTTY =
     options.isTTY ??
     (typeof process !== "undefined" ? (process.stdout?.isTTY ?? false) : false);
-
-  // NO_COLOR: any non-empty value disables color.
-  const noColor = env["NO_COLOR"];
-  if (noColor !== undefined && noColor !== "") return null;
 
   // FORCE_COLOR: explicit override, wins over TTY/TERM detection.
   const force = env["FORCE_COLOR"];
@@ -383,6 +394,40 @@ export function detectColorSystem(
  *
  * [LAW:single-enforcer] All string→ColorDepth resolution flows through here.
  */
+/**
+ * Where segments are written, as the two facts the serializer needs: the
+ * colour depth SGR is drawn at, and whether OSC 8 hyperlinks are emitted.
+ */
+export interface Destination {
+  readonly colorSystem: ColorDepth | null;
+  readonly hyperlinks: boolean;
+}
+
+/**
+ * Resolve a colour spec into a `Destination`.
+ *
+ * [LAW:single-enforcer] The one place a spec becomes both facts. A hyperlink is
+ * not a colour: an explicit depth — `"none"` and `null` included — states a
+ * colour choice and keeps links, and under `"auto"` links follow what the
+ * terminal can take (no TTY, TERM=dumb: none) while NO_COLOR, a colour
+ * preference, leaves them alone.
+ */
+export function resolveDestination(
+  spec: string | ColorDepth | null,
+  options?: DetectColorOptions,
+): Destination {
+  if (spec !== "auto") {
+    return {
+      colorSystem: typeof spec === "string" ? resolveColorSystem(spec) : spec,
+      hyperlinks: true,
+    };
+  }
+  return {
+    colorSystem: detectColorSystem(options),
+    hyperlinks: terminalColorSystem(options ?? {}) !== null,
+  };
+}
+
 export function resolveColorSystem(
   spec: string,
   options?: DetectColorOptions,

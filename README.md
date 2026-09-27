@@ -408,7 +408,7 @@ npm run demo
 
 | Variable | Effect |
 |---|---|
-| `NO_COLOR` | Disable all color |
+| `NO_COLOR` | Disable all color (hyperlinks still print) |
 | `FORCE_COLOR` | Enable color regardless of `TERM` |
 | `TERM=dumb` | Disable color and style |
 | `COLUMNS` / `LINES` | Override terminal dimensions |

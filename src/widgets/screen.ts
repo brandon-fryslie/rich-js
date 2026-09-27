@@ -54,7 +54,8 @@ import { autorun, observableShallow, runInAction, type IReactionDisposer } from 
 import { Segment } from "../core/segment.js";
 import { asCellCol, type CellCol } from "../core/cells.js";
 import { segmentsToString } from "../core/render.js";
-import { ColorDepth, resolveColorSystem } from "../core/color.js";
+import { ColorDepth, resolveDestination } from "../core/color.js";
+import type { Destination } from "../core/color.js";
 import type { RenderOptions } from "../core/protocol.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { FLOW, hasOverlay } from "./types.js";
@@ -145,7 +146,7 @@ export class DefaultScreen implements Screen {
 
   private readonly host: TerminalHost;
   private readonly widthOverride: number | undefined;
-  private readonly colorSystem: ColorDepth | null;
+  private readonly destination: Destination;
   private readonly manageCursor: boolean;
 
   constructor(options: ScreenOptions) {
@@ -154,7 +155,10 @@ export class DefaultScreen implements Screen {
     this.focusManager = options.focusManager ?? new DefaultFocusManager();
 
     const isTTY = this.host.isTTY;
-    this.colorSystem = resolveSpec(options.colorSystem, isTTY);
+    this.destination = resolveDestination(
+      options.colorSystem === undefined ? "auto" : options.colorSystem,
+      { isTTY },
+    );
     this.manageCursor = options.manageCursor ?? isTTY;
   }
 
@@ -272,7 +276,7 @@ export class DefaultScreen implements Screen {
       // [LAW:one-source-of-truth] The depth the frame is encoded at (below,
       // `segmentsToString`), so a renderable that decides on drawn colours
       // decides on the ones this screen draws.
-      colorSystem: this.colorSystem,
+      colorSystem: this.destination.colorSystem,
     };
 
     const lines: Segment[][] = [];
@@ -459,7 +463,11 @@ export class DefaultScreen implements Screen {
         // Use the frame's captured width, not a re-read of this.width —
         // see FrameLayout for the rationale.
         const clipped = Segment.adjustLineLength(line, width, undefined, false);
-        buf += segmentsToString(clipped, this.colorSystem, true);
+        buf += segmentsToString(
+          clipped,
+          this.destination.colorSystem,
+          this.destination.hyperlinks,
+        );
       }
       // [LAW:single-enforcer] Erase-to-end-of-line is the single mechanism
       // for overwriting stale content. We do not pre-clear lines.
@@ -470,19 +478,6 @@ export class DefaultScreen implements Screen {
     this.host.write(buf);
     this.lastLineCount = drawCount;
   }
-}
-
-// [LAW:single-enforcer] One function resolves the color-system spec into a
-// ColorDepth (or null). String specs route through resolveColorSystem; enum
-// values pass through; null/`"none"` strip color.
-function resolveSpec(
-  spec: ColorSystemSpec | undefined,
-  isTTY: boolean,
-): ColorDepth | null {
-  if (spec === null) return null;
-  if (spec === undefined) return resolveColorSystem("auto", { isTTY });
-  if (typeof spec === "string") return resolveColorSystem(spec, { isTTY });
-  return spec;
 }
 
 // Normalize a MountEntry into its internal { widget, placement } form.

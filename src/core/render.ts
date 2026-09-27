@@ -30,7 +30,7 @@
  * mechanical fold over it.
  */
 
-import { ColorDepth, resolveColorSystem } from "./color.js";
+import { ColorDepth, resolveDestination } from "./color.js";
 import type { DetectColorOptions } from "./color.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
@@ -61,7 +61,9 @@ export interface RenderToStringOptions {
   noColor?: boolean;
   /**
    * Whether OSC 8 hyperlinks are emitted. Independent of `colorSystem`: a
-   * null colour system strips SGR and keeps links. Default true.
+   * null colour system strips SGR and keeps links. Default: what the
+   * destination takes — true for an explicit depth, detected under `"auto"`
+   * (no TTY or TERM=dumb: false). `false` with `colorSystem: null` is plain text.
    */
   hyperlinks?: boolean;
 }
@@ -158,26 +160,19 @@ export function renderToString(
   options?: RenderToStringOptions,
 ): string {
   const width = options?.width ?? DEFAULT_WIDTH;
-  // [LAW:dataflow-not-control-flow] Distinguish "explicit null" from the
-  // defaulted case. `??` would collapse `null` into the default; `in` would
-  // accept an explicit `undefined` value as authoritative. Only an explicit
-  // `null` (or `noColor: true`) strips color; everything else — absent field,
-  // explicit `undefined` — falls back to truecolor.
-  // [LAW:single-enforcer] String specs route through `resolveColorSystem`;
-  // enum/null pass through unchanged.
-  const rawSpec = options?.colorSystem;
-  // [LAW:dataflow-not-control-flow] Build the detect options unconditionally;
-  // `resolveColorSystem` ignores them for non-`"auto"` specs.
+  // [LAW:dataflow-not-control-flow] An absent spec is truecolor; an explicit
+  // `null` stays null (`??` would collapse it). `noColor` is a colour choice,
+  // so it overrides the depth and leaves hyperlinks to the destination.
+  // [LAW:single-enforcer] Specs resolve through `resolveDestination`.
   const detectOptions: DetectColorOptions = {};
   if (options?.env !== undefined) detectOptions.env = options.env;
   if (options?.isTTY !== undefined) detectOptions.isTTY = options.isTTY;
-  const colorSystem = options?.noColor
-    ? null
-    : rawSpec === undefined
-      ? ColorDepth.TRUECOLOR
-      : typeof rawSpec === "string"
-        ? resolveColorSystem(rawSpec, detectOptions)
-        : rawSpec;
+  const rawSpec = options?.colorSystem;
+  const destination = resolveDestination(
+    rawSpec === undefined ? ColorDepth.TRUECOLOR : rawSpec,
+    detectOptions,
+  );
+  const colorSystem = options?.noColor ? null : destination.colorSystem;
   const renderOptions: RenderOptions = {
     maxWidth: width,
     isTerminal: false,
@@ -191,6 +186,6 @@ export function renderToString(
   return segmentsToString(
     renderable.render(renderOptions),
     colorSystem,
-    options?.hyperlinks ?? true,
+    options?.hyperlinks ?? destination.hyperlinks,
   );
 }
