@@ -67,7 +67,7 @@ export interface RenderOptions {
  * `exact: false` is a ceiling — the terminal an inline print lands on. Content
  * keeps its natural height beneath it, and nothing pads up to the ceiling.
  * Output taller than the ceiling is its setter's to handle: an inline `Live`
- * crops it, and a print lets the terminal scroll it.
+ * applies its `verticalOverflow`, and a print lets the terminal scroll it.
  *
  * A renderable passing its whole space to one child must forward the budget
  * less the rows it draws itself, and of the same kind (`insetHeight`). One

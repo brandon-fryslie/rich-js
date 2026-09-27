@@ -128,21 +128,22 @@ export class Live {
     const options = this._console.options;
     const height: Height = { rows: options.height.rows, exact: this._altScreen };
     const lines = Segment.splitLines(this._renderable.render({ ...options, height }));
-    const fitted = fitHeight(this._overflow(lines, height.rows), height);
-    // The alternate screen is not erased between frames — the cursor only goes
-    // home — so a frame there is the whole rectangle, every cell written, or a
-    // shorter frame leaves the last one's rows and line tails showing.
-    const displayLines = this._altScreen
-      ? fitted.map((line) => Segment.adjustLineLength(line, options.maxWidth))
-      : fitted;
+    const displayLines = fitHeight(this._overflow(lines, height.rows), height);
 
     // [LAW:single-enforcer] Per-line encoding routes through the same
     // tree-coalescer `Console._writeSegments` uses, so Live frames coalesce
     // adjacent same-style segments into shared SGR pairs on the wire and
     // encode for the console's own destination.
+    // The alternate screen is not erased between frames — the cursor only goes
+    // home — so each of its rows is erased before it is drawn, or a shorter
+    // frame leaves the last one's rows and line tails showing. The erase comes
+    // first because the cursor is then at the row's start; after a row that
+    // fills the width it would take the last cell. An inline frame's rows were
+    // erased by `_clearLast`.
+    const lead = this._altScreen ? "\x1b[2K" : "";
     const destination = this._console.destination;
     const output = displayLines
-      .map((line) => segmentsToString(line, destination))
+      .map((line) => lead + segmentsToString(line, destination))
       .join("\n");
 
     // Inline, the newline leaves the cursor under the frame, where `_clearLast`

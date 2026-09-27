@@ -202,7 +202,7 @@ A renderable whose content cannot measure itself has no natural width to fall ba
 
 `options.height` is the vertical budget, and unlike `maxWidth` it may be absent: a renderable rendered to a string, or inside a `Table` cell, has no rows to answer to. When it is present it is a `Height` — a count of `rows`, and whether those rows are a region or a ceiling.
 
-A **ceiling** (`exact: false`) is what `console.print` and an inline `Live` hand you: the terminal's rows. Draw at your natural height beneath it. Nothing pads up to a ceiling, and output taller than it is the setter's to handle: an inline `Live` crops it, and a print lets the terminal scroll it.
+A **ceiling** (`exact: false`) is what `console.print` and an inline `Live` hand you: the terminal's rows. Draw at your natural height beneath it. Nothing pads up to a ceiling, and output taller than it is the setter's to handle: an inline `Live` applies its `verticalOverflow`, and a print lets the terminal scroll it.
 
 A **region** (`exact: true`) is what a `Layout` pane or an alternate-screen `Live` hands you: the output will be exactly `rows` tall. You may fill it — a log showing its newest lines, a chart stretching to the bottom — or ignore it and draw your natural height. Either way you do not pad or crop yourself to it: whoever set the region shapes what comes back.
 

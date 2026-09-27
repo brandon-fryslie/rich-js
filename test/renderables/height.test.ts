@@ -69,28 +69,42 @@ describe("alt-screen Live frames", () => {
     // Six rows, not seven: a trailing newline would leave an empty seventh
     // element here, and on a terminal it scrolls the first row off the top.
     expect(rows).toHaveLength(6);
-    expect(rows[0]!.trimEnd()).toBe("top");
-    expect(rows[3]!.trimEnd()).toBe("bottom");
+    expect(rows[0]!.replace("\x1b[2K", "").trimEnd()).toBe("top");
+    expect(rows[3]!.replace("\x1b[2K", "").trimEnd()).toBe("bottom");
   });
+
+  // Each alternate-screen row is erased before it is drawn.
+  const erased = (text: string) => `\x1b[2K${text}`;
 
   it("short content is padded to the screen, and tall content cropped to it", () => {
-    const pad = (text: string) => text.padEnd(20);
     expect(frame(new Probe(2), 4, { altScreen: true }).split("\n")).toEqual(
-      ["line 0", "line 1", "", ""].map(pad),
+      ["line 0", "line 1", "", ""].map(erased),
     );
     expect(frame(new Probe(9), 3, { altScreen: true, verticalOverflow: "crop" }).split("\n")).toEqual(
-      ["line 0", "line 1", "line 2"].map(pad),
+      ["line 0", "line 1", "line 2"].map(erased),
     );
   });
 
-  it("a shorter frame overwrites every cell of the one before it", () => {
+  it("a shorter frame erases every row of the one before it", () => {
     const { console, out } = sized(4);
     const live = new Live(new Probe(4), { console, autoRefresh: false, altScreen: true });
     live.refresh();
     const before = out().length;
     live.update(new Probe(1), { refresh: true });
     const rows = out().slice(before).replace(/^\x1b\[H/, "").split("\n");
-    expect(rows).toEqual(["line 0", "", "", ""].map((text) => text.padEnd(20)));
+    expect(rows).toEqual(["line 0", "", "", ""].map(erased));
+  });
+
+  it("an unbounded console width draws a frame", () => {
+    const chunks: string[] = [];
+    const console = new Console({
+      width: Infinity,
+      height: 2,
+      colorSystem: null,
+      file: { write: (s: string) => void chunks.push(s) },
+    });
+    new Live(new RichText("hi", { end: "" }), { console, autoRefresh: false, altScreen: true }).refresh();
+    expect(chunks.join("").replace(/^\x1b\[2J\x1b\[H/, "").split("\n")).toEqual(["hi", ""].map(erased));
   });
 
   it("a transient stop leaves the buffer and erases nothing inside it", () => {
