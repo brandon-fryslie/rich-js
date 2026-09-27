@@ -13,7 +13,8 @@
  *     `docs/introduction.md` tells readers an example assumes, and nothing
  *     more. A name the reader writes themselves goes in the page's
  *     `exampleContext`, never here;
- *   - the page's `exampleContext` frontmatter, if any, at top level;
+ *   - the page's `exampleContext` frontmatter, if any, in a scope of its own
+ *     that every block is nested inside, so it too may redeclare any name;
  *   - the blocks, each nested inside the scope of the one before, so a block
  *     sees everything above it and may redeclare any name, `console`
  *     included. A `throws` block is a `try` in the scope it sits in, so
@@ -101,31 +102,34 @@ function splitImports(code: string, firstLine: number): { imports: Hoisted[]; bo
 }
 
 /**
- * An import declaration as one hoisted import per named binding, so two blocks
- * importing overlapping names merge to one binding each. A default, namespace
- * or bare import is kept whole.
+ * An import declaration as one hoisted import per binding, so two blocks
+ * importing overlapping names merge to one binding each, and every name it
+ * binds is known to the prelude. A bare import binds nothing and is kept whole.
  */
 function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line: number): Hoisted[] {
-  const from = (statement.moduleSpecifier as ts.StringLiteral).text;
   const clause = statement.importClause;
-  const named = clause?.namedBindings !== undefined && ts.isNamedImports(clause.namedBindings) ? clause.namedBindings : null;
-  if (clause === undefined || clause.name !== undefined || named === null) {
+  if (clause === undefined) {
     const text = statement.getText(source);
-    const binds = [clause?.name?.text, clause?.namedBindings && ts.isNamespaceImport(clause.namedBindings) ? clause.namedBindings.name.text : undefined];
-    return [{ key: text, text, line, binds: binds.filter((b): b is string => b !== undefined) }];
+    return [{ key: text, text, line, binds: [] }];
   }
-  return named.elements.map((element) => {
-    const local = element.name.text;
-    const imported = element.propertyName?.text ?? local;
-    const typeOnly = clause.isTypeOnly || element.isTypeOnly ? "type " : "";
-    const binding = imported === local ? local : `${imported} as ${local}`;
-    return {
-      key: `${from}\u0000${typeOnly}${binding}`,
-      text: `import { ${typeOnly}${binding} } from ${JSON.stringify(from)};`,
-      line,
-      binds: [local],
-    };
-  });
+  const from = JSON.stringify((statement.moduleSpecifier as ts.StringLiteral).text);
+  const typeOnly = clause.isTypeOnly ? "type " : "";
+  const one = (text: string, local: string): Hoisted => ({ key: text, text, line, binds: [local] });
+  const bindings = clause.namedBindings;
+  return [
+    ...(clause.name === undefined ? [] : [one(`import ${typeOnly}${clause.name.text} from ${from};`, clause.name.text)]),
+    ...(bindings === undefined
+      ? []
+      : ts.isNamespaceImport(bindings)
+        ? [one(`import ${typeOnly}* as ${bindings.name.text} from ${from};`, bindings.name.text)]
+        : bindings.elements.map((element) => {
+            const local = element.name.text;
+            const imported = element.propertyName?.text ?? local;
+            const binding = imported === local ? local : `${imported} as ${local}`;
+            const elementTypeOnly = clause.isTypeOnly || element.isTypeOnly ? "type " : "";
+            return one(`import { ${elementTypeOnly}${binding} } from ${from};`, local);
+          })),
+  ];
 }
 
 /** Lines of generated source, each remembering the page line it came from. */
@@ -188,10 +192,11 @@ export function buildProgram(
   out.add(`import { ${prelude.join(", ")} } from ${JSON.stringify(MAIN_BARREL)};`, null);
   out.add("const console = new Console();", null);
   out.add(THREW_HELPER, null);
+  out.add("{", null);
   if (contextPart !== null) out.add(contextPart.body, contextPart.line);
   out.add(WRITE_END, null);
 
-  let open = 0;
+  let open = 1;
   for (const { block, body } of parts) {
     if (block.marker === "throws") {
       out.add("try {", null);
@@ -217,12 +222,19 @@ export interface BlockRecord {
 
 const RECORD = new RegExp(`${BLOCK_END}|${BLOCK_THREW}(.*?)${THREW_CLOSE}`, "gs");
 
+/** What the prelude and `exampleContext` wrote, and whether they got to the end. */
+export interface ContextRecord {
+  readonly output: string;
+  readonly finished: boolean;
+}
+
 /**
  * A run's captured stream cut at the sentinels: first what the context wrote,
  * then one record per block that finished. A run that stopped early has fewer
- * records than blocks, and the first block without one is where it stopped.
+ * records than blocks, and the first block without one is where it stopped;
+ * one that stopped before the context finished has none.
  */
-export function splitRecords(stream: string): { context: string; blocks: BlockRecord[] } {
+export function splitRecords(stream: string): { context: ContextRecord; blocks: BlockRecord[] } {
   const records: BlockRecord[] = [];
   let context: string | null = null;
   let at = 0;
@@ -239,5 +251,5 @@ export function splitRecords(stream: string): { context: string; blocks: BlockRe
       ended: threw === null ? { kind: "completed" } : { kind: "threw", name: threw[0], message: threw[1] },
     });
   }
-  return { context: context ?? stream, blocks: records };
+  return { context: context === null ? { output: stream, finished: false } : { output: context, finished: true }, blocks: records };
 }

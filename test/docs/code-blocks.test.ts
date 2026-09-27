@@ -127,6 +127,15 @@ describe("extractCodeBlocks", () => {
     expect(blocks.map((b) => [b.marker, b.code])).toEqual([["silent", "const a = 1;"], ["static", "a;"]]);
   });
 
+  // VitePress reads these attributes itself; a parser that took `ts{2}` for
+  // another language would drop the block from every reader without a word.
+  it("reads a TypeScript fence among VitePress's own attributes, marker and all", () => {
+    const blocks = blocksOf(
+      ["```ts{2}", "a;", "```", "```typescript:line-numbers=3 silent", "b;", "```", "```ts [panel.ts] {1} throws", "c;", "```"].join("\n"),
+    );
+    expect(blocks.map((b) => [b.marker, b.code])).toEqual([["static", "a;"], ["silent", "b;"], ["throws", "c;"]]);
+  });
+
   it("throws on an unknown marker, naming the page and line", () => {
     expect(() => blocksOf(["", "```ts quiet", "a;", "```"].join("\n"))).toThrow(/fixture\.md:2: unknown example marker "quiet"/);
   });

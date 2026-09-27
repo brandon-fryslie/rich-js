@@ -30,6 +30,7 @@
 
 import { build } from "vite";
 import ts from "typescript";
+import { statSync } from "node:fs";
 import path from "node:path";
 import { ENTRY_BY_SPECIFIER, REPO_ROOT, loadCompilerOptions } from "../../test/coverage/extract.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
@@ -37,13 +38,14 @@ import { decodeAnsi, osc8Sequences } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
 import type { Segment } from "../../src/index.js";
 import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../../src/themes/terminalThemes.js";
-import { MARKERS, scanFences, type Fence } from "./example-markers.js";
+import { MARKERS, runsAtBuild, scanFences, type BuildMarker, type Fence } from "./example-markers.js";
 import {
   MAIN_BARREL,
   buildProgram,
   exampleContext,
   splitRecords,
   type BlockRecord,
+  type ExampleContext,
   type ExampleProgram,
 } from "./example-program.js";
 import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
@@ -95,9 +97,14 @@ const TERMINAL = { columns: EXAMPLE_COLUMNS, rows: 24, isTTY: true, env: { TERM:
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
-/** A TypeScript program over the repo's own options, reusing its predecessor's parsed files. */
+/**
+ * A TypeScript program over the repo's own options. Every file but the
+ * example is parsed once and kept until its mtime changes, so each page
+ * re-checks `src/` without re-reading it, and `docs:dev` still sees an edit.
+ */
 export class ExampleCompiler {
   private previous: ts.Program | undefined = undefined;
+  private readonly parsed = new Map<string, { readonly mtimeMs: number; readonly file: ts.SourceFile }>();
   private readonly options: ts.CompilerOptions = {
     ...loadCompilerOptions(),
     paths: Object.fromEntries([...ENTRY_BY_SPECIFIER].map(([spec, src]) => [spec, [path.join(REPO_ROOT, src)]])),
@@ -106,10 +113,15 @@ export class ExampleCompiler {
   private compile(source: string): ts.Program {
     const host = ts.createCompilerHost(this.options);
     const getSourceFile = host.getSourceFile.bind(host);
-    host.getSourceFile = (fileName, language, ...rest) =>
-      fileName === PROGRAM_FILE
-        ? ts.createSourceFile(fileName, source, language, true)
-        : getSourceFile(fileName, language, ...rest);
+    host.getSourceFile = (fileName, language, ...rest) => {
+      if (fileName === PROGRAM_FILE) return ts.createSourceFile(fileName, source, language, true);
+      const mtimeMs = statSync(fileName, { throwIfNoEntry: false })?.mtimeMs ?? -1;
+      const kept = this.parsed.get(fileName);
+      if (kept !== undefined && kept.mtimeMs === mtimeMs) return kept.file;
+      const file = getSourceFile(fileName, language, ...rest);
+      if (file !== undefined) this.parsed.set(fileName, { mtimeMs, file });
+      return file;
+    };
     const fileExists = host.fileExists.bind(host);
     host.fileExists = (fileName) => fileName === PROGRAM_FILE || fileExists(fileName);
     this.previous = ts.createProgram({ rootNames: [PROGRAM_FILE], options: this.options, host, oldProgram: this.previous });
@@ -198,16 +210,27 @@ function disallowedEscape(output: string): string | null {
   return at === -1 ? null : JSON.stringify(rest.replace(SGR, "").slice(at, at + 8));
 }
 
-/** The bytes a block shows, held to what its marker promised. */
-function blockBytes(fence: Fence, record: BlockRecord): string {
+/**
+ * The bytes a block shows, held to what its marker promised; `null` for a
+ * `silent` block, whose note stands in place of output.
+ */
+function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: BlockRecord): string | null {
   const at = `docs/${fence.page}:${fence.line}`;
-  const outcome = MARKERS[fence.marker].run === "build" ? MARKERS[fence.marker as "static" | "silent" | "throws"].outcome : null;
+  const { outcome } = MARKERS[fence.marker];
   if (outcome === "throws" && record.ended.kind === "completed") throw new Error(`${at}: marked \`throws\` but returned normally`);
   if (outcome === "silent" && record.output !== "") throw new Error(`${at}: marked \`silent\` but wrote ${JSON.stringify(record.output.slice(0, 60))}`);
   if (outcome === "prints" && record.output === "") throw new Error(`${at}: writes nothing; mark it \`silent\``);
   const escape = disallowedEscape(record.output);
   if (escape !== null) throw new Error(`${at}: writes the escape ${escape}, which moves the cursor or clears the screen; mark it \`live\``);
+  if (outcome === "silent") return null;
   return record.ended.kind === "threw" ? `${record.output}${record.ended.name}: ${record.ended.message}\n` : record.output;
+}
+
+/** Where a run that threw stopped: in the prelude or context, or at the first block with no record. */
+function stoppedAt(page: string, context: ExampleContext | null, finished: boolean, chain: readonly Fence[], records: number): string {
+  if (!finished) return context === null ? `docs/${page} (generated code)` : `docs/${page}:${context.line} (exampleContext)`;
+  const failed = chain[records];
+  return failed === undefined ? `docs/${page}` : `docs/${page}:${failed.line}`;
 }
 
 /** Decoded bytes, drawn once per site colour mode. */
@@ -239,18 +262,20 @@ function outputHtml(fence: Fence, bytes: string | null): string {
 /** `markdown` with each executed or exempt example's output written under its fence. */
 export async function runPageExamples(compiler: ExampleCompiler, page: string, markdown: string): Promise<string> {
   const fences = scanFences(page, markdown);
-  const chain = fences.filter((fence) => MARKERS[fence.marker].run === "build");
-  const program = buildProgram(page, exampleContext(page, markdown), chain, compiler.barrelValues());
+  const chain = fences.filter(runsAtBuild);
+  const context = exampleContext(page, markdown);
+  const program = buildProgram(page, context, chain, compiler.barrelValues());
   compiler.check(program);
   const { stream, error } = await capture(await bundleExample(program.source));
-  const { context, blocks } = splitRecords(stream);
-  if (context !== "") throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(context.slice(0, 60))}; it may not print`);
+  const records = splitRecords(stream);
   if (error !== null) {
-    const failed = chain[blocks.length];
-    const where = failed === undefined ? `docs/${page}` : `docs/${page}:${failed.line}`;
+    const where = stoppedAt(page, context, records.context.finished, chain, records.blocks.length);
     throw new Error(`${where}: the example threw ${String(error)}`, { cause: error });
   }
-  const shown = new Map(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
+  if (records.context.output !== "") {
+    throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(records.context.output.slice(0, 60))}; it may not print`);
+  }
+  const shown = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, records.blocks[i]!)]));
 
   const lines = markdown.split("\n");
   for (const fence of [...fences].reverse()) {
@@ -273,7 +298,11 @@ export interface DocsExamplesPlugin {
 
 export function docsExamplesPlugin(): DocsExamplesPlugin {
   const compiler = new ExampleCompiler();
-  const docsRoot = path.join(REPO_ROOT, "docs");
+  const docsRoot = path.join(REPO_ROOT, "docs") + path.sep;
+  // VitePress builds twice, server then client, and both pass every page
+  // through this transform. The last run of each page is kept by its source,
+  // so a build runs a page once and `docs:dev` re-runs it when it is edited.
+  const runs = new Map<string, { readonly code: string; readonly result: Promise<string> }>();
   return {
     name: "rich-docs-examples",
     enforce: "pre",
@@ -281,7 +310,10 @@ export function docsExamplesPlugin(): DocsExamplesPlugin {
       if (!id.endsWith(".md") || !id.startsWith(docsRoot)) return null;
       const page = path.relative(docsRoot, id);
       if (NOT_YET_MIGRATED.has(page) || !scanFences(page, code).length) return null;
-      return { code: await runPageExamples(compiler, page, code), map: null };
+      const last = runs.get(id);
+      const result = last !== undefined && last.code === code ? last.result : runPageExamples(compiler, page, code);
+      runs.set(id, { code, result });
+      return { code: await result, map: null };
     },
   };
 }

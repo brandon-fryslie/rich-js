@@ -4,8 +4,8 @@
  *
  * A fence's info string is its language and at most one marker word:
  * ```` ```ts ````, ```` ```ts silent ````. Static is the default and has no
- * word. The build-time runner, the example widget, the docs gate and
- * `test/docs/code-blocks.ts` all read fences through `scanFences`.
+ * word, and it may sit among VitePress's own fence attributes. The build-time
+ * runner and `test/docs/code-blocks.ts` both read fences through `scanFences`.
  *
  * [LAW:one-source-of-truth] That sharing is the point. The symbol-existence
  * sweep once matched fences with its own pattern that accepted only a bare
@@ -45,6 +45,14 @@ export const MARKERS = {
 } as const satisfies Record<string, MarkerRule>;
 
 export type Marker = keyof typeof MARKERS;
+
+/** The markers whose blocks run at build time, in the page's chain. */
+export type BuildMarker = { [M in Marker]: (typeof MARKERS)[M]["run"] extends "build" ? M : never }[Marker];
+
+/** Whether a block runs at build time; the runner's chain is exactly these. */
+export function runsAtBuild(fence: Fence): fence is Fence & { readonly marker: BuildMarker } {
+  return MARKERS[fence.marker].run === "build";
+}
 
 /** The word a page writes for each marker, `static` having none. */
 const MARKER_BY_WORD: ReadonlyMap<string, Marker> = new Map(
@@ -105,10 +113,21 @@ export function scanFences(page: string, markdown: string): Fence[] {
   return fences;
 }
 
+/**
+ * VitePress's own info-string attributes: highlighted lines (`{2,4}`), line
+ * numbers (`:line-numbers`, `:line-numbers=5`, `:no-line-numbers`) and a
+ * code-group title (`[config.ts]`). They are VitePress's to read, so they are
+ * neither the language nor a marker. VitePress ends the language at the first
+ * `{`, `:`, `[` or space, and so does this: a `ts{2}` fence is TypeScript.
+ */
+const VITEPRESS_ATTRIBUTE = /\{[^}]*\}|\[[^\]]*\]|:(?:no-)?line-numbers(?:=\d+)?/g;
+const LANGUAGE = /^([^\s{:[]*)(.*)$/s;
+
 /** The marker of a TypeScript fence's info string, or `null` for another language. */
 function typescriptMarker(page: string, line: number, info: string): Marker | null {
-  const [language = "", ...words] = info.split(/\s+/);
+  const [, language, attributes] = LANGUAGE.exec(info) as unknown as [string, string, string];
   if (!TYPESCRIPT.has(language)) return null;
+  const words = attributes.replace(VITEPRESS_ATTRIBUTE, " ").split(/\s+/).filter((word) => word !== "");
   if (words.length === 0) return "static";
   const marker = words.length === 1 ? MARKER_BY_WORD.get(words[0]!) : undefined;
   if (marker === undefined) {

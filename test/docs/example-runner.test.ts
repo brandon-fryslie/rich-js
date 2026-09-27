@@ -82,6 +82,22 @@ describe("one page, one program", { timeout: 30_000 }, () => {
     await expect(run(noisy + fence('console.print("x");'))).rejects.toThrow(/exampleContext wrote/);
   });
 
+  it("lets the exampleContext redeclare console for every block below it", async () => {
+    const context = ["---", "exampleContext: |", "  const console = new Console({ width: 20 });", "---", ""].join("\n");
+    expect(outputs(await run(context + fence("console.print(new Rule());")))[0]!.match(/─/g)).toHaveLength(40);
+  });
+
+  it("blames the exampleContext, not the first block, when the context throws", async () => {
+    const context = ["---", "exampleContext: |", '  console.print("half");', '  throw new Error("ctx");', "---", ""].join("\n");
+    await expect(run(context + fence('console.print("x");'))).rejects.toThrow("docs/fixture.md:3 (exampleContext): the example threw Error: ctx");
+  });
+
+  it("shows a silent block's note in place of output", async () => {
+    const shown = outputs(await run(page(fence("const a = 1;", "ts silent"), fence("console.print(a);"))))[0]!;
+    expect(shown).toContain("This example prints nothing.");
+    expect(shown).not.toContain("<pre");
+  });
+
   it("shows a throws block's output, then the error, and keeps its names to itself", async () => {
     const shown = outputs(await run(page(fence('console.print("before");\nthrow new RangeError("nope");', "ts throws"))))[0]!;
     expect(shown).toContain("before");
@@ -116,6 +132,13 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
       page(fence('import { Panel as P } from "@promptctl/rich-js";\nconsole.print(P.fit("a"));'), fence('import { Rule as P } from "@promptctl/rich-js";\nconsole.print(new P());')),
       /fixture\.md:7: imports P, which docs\/fixture\.md:2 already imports differently/,
     ],
+    // Every name a default-plus-named import binds is the page's, so the
+    // prelude does not import `Panel` a second time: the one error is the page's.
+    [
+      "a default import the barrel does not have, and nothing blamed on generated code",
+      fence('import Rich, { Panel } from "@promptctl/rich-js";\nconsole.print(Panel.fit(String(Rich)));'),
+      /^docs example does not compile:\ndocs\/fixture\.md:2: [^\n]*has no default export[^\n]*$/,
+    ],
   ];
   for (const [what, markdown, message] of failures) {
     it(what, async () => {
@@ -125,6 +148,17 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
 });
 
 describe("the plugin", () => {
+  // VitePress builds server then client, and both pass every page through the
+  // transform. A page whose output differs on every run shows whether it ran twice.
+  it("runs a page once per source, and again when the source changes", { timeout: 60_000 }, async () => {
+    const plugin = docsExamplesPlugin();
+    const id = path.join(REPO_ROOT, "docs", "fixture-runs-once.md");
+    const markdown = fence("console.print(String(Math.random()));");
+    const first = await plugin.transform(markdown, id);
+    expect(await plugin.transform(markdown, id)).toEqual(first);
+    expect(await plugin.transform(`${markdown}\n`, id)).not.toEqual(first);
+  });
+
   it("passes a page that has not migrated through untouched", async () => {
     expect(NOT_YET_MIGRATED.has("panel.md")).toBe(true);
     expect(await docsExamplesPlugin().transform(PANEL, path.join(REPO_ROOT, "docs", "panel.md"))).toBeNull();
