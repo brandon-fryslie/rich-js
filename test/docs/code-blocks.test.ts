@@ -21,12 +21,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  extractCodeBlocks,
   extractImportedNames,
   extractMemberUses,
-  type CodeBlock,
   type MemberUse,
 } from "./code-blocks.js";
+import { scanFences, type Fence } from "../../docs/.vitepress/example-markers.js";
 
 /**
  * The specifiers a fixture may treat as this package's.
@@ -37,20 +36,20 @@ import {
  */
 const OUR_SPECIFIERS: ReadonlySet<string> = new Set(["@promptctl/rich-js"]);
 
-function blocksOf(markdown: string): CodeBlock[] {
-  return extractCodeBlocks("fixture.md", markdown);
+function blocksOf(markdown: string): Fence[] {
+  return scanFences("fixture.md", markdown);
 }
 
 /**
  * The one block a single-block fixture defines.
  *
- * [LAW:parse-dont-validate] Returning `CodeBlock` rather than the first element
+ * [LAW:parse-dont-validate] Returning `Fence` rather than the first element
  * of an array is what lets the assertions below read the block without asking
  * whether it is there. A fixture that grew a second block, or lost its only
  * one, is a broken fixture and says so here rather than failing later as a
  * confusing assertion on undefined.
  */
-function oneBlockOf(markdown: string): CodeBlock {
+function oneBlockOf(markdown: string): Fence {
   const [block, ...rest] = blocksOf(markdown);
   if (!block || rest.length > 0) {
     throw new Error(`fixture defines ${blocksOf(markdown).length} blocks, expected exactly 1`);
@@ -83,7 +82,7 @@ function signaturesIn(markdown: string): string[] {
   return extractMemberUses(blocksOf(markdown), OUR_SPECIFIERS).map(signature).sort();
 }
 
-describe("extractCodeBlocks", () => {
+describe("scanFences", () => {
   it("takes both spellings of the info string and nothing else", () => {
     const blocks = blocksOf(
       [
@@ -107,6 +106,28 @@ describe("extractCodeBlocks", () => {
       ].join("\n"),
     );
     expect(blocks.map((b) => b.code)).toEqual(["const a = 1;", "const b = 2;"]);
+  });
+
+  it("reads every CommonMark fence form, and prose that only looks like one as prose", () => {
+    const blocks = blocksOf(
+      [
+        "```ts``` is how a fence opens.",
+        "",
+        "   ```ts",
+        "   const a = 1;",
+        "     const b = 2;",
+        "  ```",
+        "",
+        "~~~ts",
+        "```",
+        "const c = 3;",
+        "~~~",
+      ].join("\n"),
+    );
+    expect(blocks.map((b) => [b.line, b.code])).toEqual([
+      [3, "const a = 1;\n  const b = 2;"],
+      [8, "```\nconst c = 3;"],
+    ]);
   });
 
   it("reports the line of the opening fence, which failures are anchored to", () => {

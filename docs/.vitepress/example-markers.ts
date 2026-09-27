@@ -72,13 +72,15 @@ export interface Fence {
   readonly code: string;
 }
 
-const FENCE = /^(`{3,})(.*)$/;
+const FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 
 /**
  * Every TypeScript fence on one page, in source order.
  *
  * Every fence is tracked, whatever its language, so a line inside a `bash` or
- * output block is never read as the start of TypeScript. An unknown marker word
+ * output block is never read as the start of TypeScript. A fence is
+ * CommonMark's: up to three spaces of indent, a run of backticks or of tildes,
+ * closed by a run of the same character at least as long. An unknown marker word
  * or an unterminated fence throws, naming the page and line: either would
  * otherwise drop code from every reader at once.
  */
@@ -87,24 +89,30 @@ export function scanFences(page: string, markdown: string): Fence[] {
   // left on a fence line would stop it matching and hide the page's examples.
   const lines = markdown.split(/\r?\n/);
   const fences: Fence[] = [];
-  let open: { readonly index: number; readonly ticks: string; readonly info: string } | null = null;
+  let open: { readonly index: number; readonly indent: number; readonly run: string; readonly info: string } | null = null;
   lines.forEach((text, index) => {
     const match = FENCE.exec(text);
     if (match === null) return;
-    const [, ticks, info] = match as unknown as [string, string, string];
+    const [, indent, run, info] = match as unknown as [string, string, string, string];
     if (open === null) {
-      open = { index, ticks, info: info.trim() };
+      // A backtick fence's info string cannot hold a backtick: "```ts``` is…" is prose.
+      if (run[0] === "`" && info.includes("`")) return;
+      open = { index, indent: indent.length, run, info: info.trim() };
       return;
     }
-    if (ticks.length < open.ticks.length || info.trim() !== "") return;
+    if (run[0] !== open.run[0] || run.length < open.run.length || info.trim() !== "") return;
     const marker = typescriptMarker(page, open.index + 1, open.info);
+    const outdent = new RegExp(`^ {0,${open.indent}}`);
     if (marker !== null) {
       fences.push({
         page,
         line: open.index + 1,
         closeLine: index + 1,
         marker,
-        code: lines.slice(open.index + 1, index).join("\n"),
+        code: lines
+          .slice(open.index + 1, index)
+          .map((line) => line.replace(outdent, ""))
+          .join("\n"),
       });
     }
     open = null;

@@ -46,10 +46,7 @@
  */
 
 import ts from "typescript";
-import { scanFences, type Fence } from "../../docs/.vitepress/example-markers.js";
-
-/** A fenced code block, with the page and line a failure should be reported at. */
-export type CodeBlock = Fence;
+import type { Fence } from "../../docs/.vitepress/example-markers.js";
 
 /** A name a page imports from one of this package's entry points. */
 export interface ImportedName {
@@ -103,16 +100,6 @@ export interface MemberUse {
 }
 
 
-/**
- * Every TypeScript block on one page, in source order, marker or not.
- *
- * [LAW:one-source-of-truth] The fences are read by `scanFences`, the parser the
- * docs build runs examples through, so a block carrying a marker word is a
- * block here too.
- */
-export function extractCodeBlocks(page: string, markdown: string): CodeBlock[] {
-  return scanFences(page, markdown);
-}
 
 /**
  * Parse one block on its own.
@@ -121,7 +108,7 @@ export function extractCodeBlocks(page: string, markdown: string): CodeBlock[] {
  * and does not matter here, because the parser recovers and still produces a
  * tree over everything it did understand. Nothing downstream reads diagnostics.
  */
-function parseBlock(block: CodeBlock): ts.SourceFile {
+function parseBlock(block: Fence): ts.SourceFile {
   return ts.createSourceFile(
     `${block.page}:${block.line}.ts`,
     block.code,
@@ -131,7 +118,7 @@ function parseBlock(block: CodeBlock): ts.SourceFile {
 }
 
 /** The 1-based line in the page that a node inside a block sits on. */
-function pageLineOf(block: CodeBlock, source: ts.SourceFile, node: ts.Node): number {
+function pageLineOf(block: Fence, source: ts.SourceFile, node: ts.Node): number {
   const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
   return block.line + 1 + line;
 }
@@ -148,7 +135,7 @@ function pageLineOf(block: CodeBlock, source: ts.SourceFile, node: ts.Node): num
  * of it — the same exclusion the demo-coverage gate makes for the same reason
  * — and a default import names whatever the module chose to call its default.
  */
-export function extractImportedNames(block: CodeBlock): ImportedName[] {
+export function extractImportedNames(block: Fence): ImportedName[] {
   return importedNamesIn(block, parseBlock(block)).map((found) => found.imported);
 }
 
@@ -157,7 +144,7 @@ export function extractImportedNames(block: CodeBlock): ImportedName[] {
  * node so a caller that needs to order imports against other page positions can.
  */
 function importedNamesIn(
-  block: CodeBlock,
+  block: Fence,
   source: ts.SourceFile,
 ): { imported: ImportedName; node: ts.Node }[] {
   const names: { imported: ImportedName; node: ts.Node }[] = [];
@@ -205,7 +192,7 @@ function importedNamesIn(
  * [LAW:effects-at-boundaries]
  */
 export function extractMemberUses(
-  blocks: readonly CodeBlock[],
+  blocks: readonly Fence[],
   ourSpecifiers: ReadonlySet<string>,
 ): MemberUse[] {
   const parsed = blocks.map((block) => ({ block, source: parseBlock(block) }));
