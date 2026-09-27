@@ -23,7 +23,7 @@ import {
   Style,
   type Renderable,
 } from "../../../src/index.js";
-import { ClipHeight, InjectMaxHeight } from "./clip.js";
+import { InjectMaxHeight } from "./clip.js";
 import type { TickContext, Widget } from "./widget.js";
 
 export interface RuntimeOptions {
@@ -143,8 +143,7 @@ function wrapInPanel(widget: Widget, body: Renderable): Renderable {
     style: Style.parse("bold"),
     end: "",
   });
-  // The panel hands the body its region less its own border rows.
-  return new Panel(new ClipHeight(body), {
+  return new Panel(body, {
     title,
     borderStyle: widget.borderStyle ?? "cyan",
     padding: [0, 1],

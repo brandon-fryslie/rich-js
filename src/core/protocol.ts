@@ -60,13 +60,13 @@ export interface RenderOptions {
  * `exact: true` is a region — a `Layout` pane, a full-screen frame. The output
  * is exactly `rows` tall. A renderable may fill the region — a layout divides
  * it, a frame can stretch to its last row — or ignore it and emit its natural
- * height; either way, whoever set the region shapes what comes back to it,
- * padding blank rows below and cropping overflow from the bottom. Setting a
- * region is a promise to shape, so no renderable pads or crops itself to one.
+ * height; either way, whoever set the region shapes what comes back to it
+ * (`fitHeight`). Setting a region is a promise to shape, so no renderable pads
+ * or crops itself to one.
  *
  * `exact: false` is a ceiling — the terminal an inline print lands on. Content
- * keeps its natural height beneath it and nothing pads. Output taller than the
- * ceiling is cropped by whoever imposed it.
+ * keeps its natural height beneath it, and nothing pads up to the ceiling.
+ * Output taller than the ceiling is cropped by whoever imposed it.
  *
  * A renderable passing its whole space to one child must forward the budget
  * less the rows it draws itself, and of the same kind (`insetHeight`). One
@@ -96,7 +96,7 @@ export interface Height {
  * the `rows` it draws itself, and of the same kind.
  */
 export function insetHeight(height: Height | undefined, rows: number): Height | undefined {
-  return height && { rows: Math.max(0, height.rows - rows), exact: height.exact };
+  return height && { rows: cellCount(height.rows - rows), exact: height.exact };
 }
 
 /**
@@ -104,7 +104,29 @@ export function insetHeight(height: Height | undefined, rows: number): Height | 
  * as a ceiling.
  */
 export function stackedHeight(height: Height | undefined): Height | undefined {
-  return height && { rows: height.rows, exact: false };
+  return height && { rows: cellCount(height.rows), exact: false };
+}
+
+/**
+ * The rows a region holds, parsed as a cell count, or `undefined` when there
+ * is no region to fill: a ceiling, no budget, or a region of `Infinity` rows,
+ * which names no count — as an unbounded width resolves to a natural one in
+ * `withBoundedWidth`.
+ */
+export function regionRows(height: Height | undefined): number | undefined {
+  return height?.exact && height.rows !== Infinity ? cellCount(height.rows) : undefined;
+}
+
+/**
+ * What came back from a child, held to the region `height` names — blank rows
+ * padded below, overflow cropped from the bottom — or left at its own height
+ * when `height` is no region. This is the shaping a region's setter owes.
+ */
+export function fitHeight(lines: Segment[][], height: Height | undefined): Segment[][] {
+  const rows = regionRows(height) ?? lines.length;
+  const fitted = lines.slice(0, rows);
+  while (fitted.length < rows) fitted.push([]);
+  return fitted;
 }
 
 /**

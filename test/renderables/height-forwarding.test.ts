@@ -6,6 +6,7 @@ import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Segment } from "../../src/core/segment.js";
+import { RichText } from "../../src/core/text.js";
 import type { Height, Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] What a child is handed, and what the frame
@@ -32,6 +33,12 @@ describe("a container filling its space with one child forwards the budget less 
     const probe = new Probe();
     [...new Padding(probe, [1, 0, 2, 0]).render(region)];
     expect(probe.seen).toEqual([{ rows: 5, exact: true }]);
+  });
+
+  it("rows that parse to no count hand on none", () => {
+    const probe = new Probe();
+    [...new Panel(probe).render({ maxWidth: 20, height: { rows: NaN, exact: true } })];
+    expect(probe.seen).toEqual([{ rows: 0, exact: true }]);
   });
 
   it("a ceiling stays a ceiling", () => {
@@ -62,6 +69,27 @@ describe("a container stacking several children hands each the rows as a ceiling
     tree.add(b);
     [...tree.render(region)];
     expect([...a.seen, ...b.seen]).toEqual([ceiling, ceiling]);
+  });
+});
+
+describe("a panel shapes the region it hands its content", () => {
+  const rowsOf = (content: string, opts: RenderOptions): string[] =>
+    [...new Panel(new RichText(content)).render(opts)]
+      .map((s) => s.text).join("").split("\n").slice(0, -1);
+
+  it("stretching its frame down a region its content leaves short", () => {
+    const rows = rowsOf("a", { maxWidth: 10, height: { rows: 5, exact: true } });
+    expect(rows).toHaveLength(5);
+    expect(rows[4]).toMatch(/^╰─+╯$/);
+  });
+
+  it("cropping content that overflows it, above the bottom border", () => {
+    const rows = rowsOf("1\n2\n3\n4\n5", { maxWidth: 10, height: { rows: 4, exact: true } });
+    expect(rows.map((r) => r.trimEnd())).toEqual(["╭────────╮", "│ 1      │", "│ 2      │", "╰────────╯"]);
+  });
+
+  it("and under a ceiling, drawing at its content's height", () => {
+    expect(rowsOf("a", { maxWidth: 10, height: { rows: 5, exact: false } })).toHaveLength(3);
   });
 });
 

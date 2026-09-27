@@ -9,7 +9,14 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import {
+  fitHeight,
+  isMeasurable,
+  regionRows,
+  stackedHeight,
+  withBoundedWidth,
+  withCellWidth,
+} from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
 
@@ -52,39 +59,21 @@ function toRenderable(renderable: Renderable | string): Renderable {
 }
 
 /**
- * The rows a layout fills: a region's, parsed as a cell count. A ceiling is
- * not a region, so under one — or under no budget — this is `undefined` and
- * the layout keeps its natural height (see `Height`). So is a region of
- * `Infinity` rows, which names no count to fill, as an unbounded width
- * resolves to a natural one in `withBoundedWidth`.
- */
-function regionRows(options: RenderOptions): number | undefined {
-  const height = options.height;
-  return height?.exact && height.rows !== Infinity ? cellCount(height.rows) : undefined;
-}
-
-/**
  * A pane rendered into a region of `rows` and held to exactly that many lines,
- * or — with `rows` undefined — rendered under the layout's own budget at its
- * natural height.
+ * or — with `rows` undefined — rendered under the layout's own budget, as a
+ * ceiling, at its natural height.
  *
- * [LAW:single-enforcer] The region's setter shapes it (see `Height`). Forwarded
+ * [LAW:single-enforcer] The region's setter shapes it (`fitHeight`). Forwarded
  * unshaped, a pane whose content ran short pulled every pane below it up, and
- * one that ran long pushed them down. Only the line count is fitted: the width
- * is already held, by a leaf's crop or a row's merge.
+ * one that ran long pushed them down.
  */
 function paneLines(
   pane: Layout,
   options: RenderOptions,
   rows: number | undefined,
 ): Segment[][] {
-  const lines = Segment.splitLines(
-    pane.render(rows === undefined ? options : { ...options, height: { rows, exact: true } }),
-  );
-  const count = rows ?? lines.length;
-  const fitted = lines.slice(0, count);
-  while (fitted.length < count) fitted.push([]);
-  return fitted;
+  const height = rows === undefined ? stackedHeight(options.height) : { rows, exact: true };
+  return fitHeight(Segment.splitLines(pane.render({ ...options, height })), height);
 }
 
 export class Layout implements Renderable, Measurable {
@@ -224,7 +213,7 @@ export class Layout implements Renderable, Measurable {
     // Each pane gets full width and its share of the region. With no region —
     // a ceiling, or no budget at all — a pane's share is its declared `size`,
     // and a pane without one takes its content's height.
-    const region = regionRows(options);
+    const region = regionRows(options.height);
     const shares = region === undefined
       ? children.map((child) => child.size)
       : this._distributeSpace(children, region);
@@ -247,7 +236,7 @@ export class Layout implements Renderable, Measurable {
     // Every pane stands in the whole region, and with none the merge pads the
     // row to its tallest pane.
     const widths = this._distributeSpace(children, options.maxWidth);
-    const region = regionRows(options);
+    const region = regionRows(options.height);
     const cells = children.map((child, i) => ({
       width: widths[i]!,
       lines: paneLines(child, { ...options, maxWidth: widths[i]! }, region),

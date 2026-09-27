@@ -12,7 +12,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle } from "../core/protocol.js";
+import { getStyle, stackedHeight } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   codeTheme?: string;
@@ -165,7 +165,9 @@ export class Markdown implements Renderable, Measurable {
     this.hyperlinks = options?.hyperlinks !== false;
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  *render(rawOptions: RenderOptions): Iterable<Segment> {
+    // Every block below is one of a stack.
+    const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
     const tokens = tokenize(this.markdown);
 
     for (const token of tokens) {
