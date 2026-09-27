@@ -25,9 +25,30 @@ describe("Layout", () => {
       new Layout("Top", { name: "top" }),
       new Layout("Bottom", { name: "bottom" }),
     );
-    const text = collectText(layout, { maxWidth: 40, height: 10, maxHeight: 10 });
+    const text = collectText(layout, { maxWidth: 40, height: { rows: 10, exact: true } });
     expect(text).toContain("Top");
     expect(text).toContain("Bottom");
+  });
+
+  // The column split sets each pane's region, so it is the one that shapes it:
+  // a short pane is padded down to its share and a long one cropped to it, and
+  // the pane below starts where its share does either way.
+  it("holds every pane of a column split to its share", () => {
+    const layout = new Layout();
+    layout.splitColumn(
+      new Layout("one line"),
+      new Layout(new RichText("a\nb\nc\nd\ne\nf\ng")),
+      new Layout("last"),
+    );
+    const rows = collectText(layout, { maxWidth: 10, height: { rows: 9, exact: true } })
+      .split("\n")
+      .slice(0, -1);
+    expect(rows).toHaveLength(9);
+    expect(rows.map((r) => r.trimEnd())).toEqual([
+      "one line", "", "",
+      "a", "b", "c",
+      "last", "", "",
+    ]);
   });
 
   it("getByName finds named layouts", () => {
@@ -73,7 +94,7 @@ describe("Layout", () => {
   // one `columns.test.ts` pins for a declared column width: a cell count is a
   // non-negative integer, and one that is not renders as the one it floors to.
   describe("a declared size is a cell count", () => {
-    const options: RenderOptions = { maxWidth: 40, height: 5, maxHeight: 5 };
+    const options: RenderOptions = { maxWidth: 40, height: { rows: 5, exact: true } };
 
     const row = (paneOptions: LayoutOptions): Layout => {
       const layout = new Layout();
@@ -117,7 +138,7 @@ describe("Layout", () => {
   // reported a natural width of 0, and `_distributeSpace` — dividing by the same
   // ratios at render time — disagreed by handing both panes real space.
   describe("a ratio is a share weight", () => {
-    const options: RenderOptions = { maxWidth: 40, height: 5, maxHeight: 5 };
+    const options: RenderOptions = { maxWidth: 40, height: { rows: 5, exact: true } };
 
     const row = (paneOptions: LayoutOptions, other = "y"): Layout => {
       const layout = new Layout();
@@ -182,7 +203,7 @@ describe("Layout", () => {
       },
     };
     for (const maxWidth of [0, 1, 5, 12]) {
-      const text = collectText(new Layout(wide), { maxWidth, height: 5, maxHeight: 5 });
+      const text = collectText(new Layout(wide), { maxWidth, height: { rows: 5, exact: true } });
       for (const line of text.split("\n")) {
         expect(cellLen(line)).toBeLessThanOrEqual(maxWidth);
       }
@@ -192,7 +213,7 @@ describe("Layout", () => {
   it("leaves a space where a pane's edge cuts through a wide glyph", () => {
     // Python Rich 9d8f9a3 prints this first row for the same layout at width 9.
     const pane = new Layout(new RichText("日本語日本語", { noWrap: true }));
-    const text = collectText(pane, { maxWidth: 9, height: 2, maxHeight: 2 });
+    const text = collectText(pane, { maxWidth: 9, height: { rows: 2, exact: true } });
     expect(text.split("\n")[0]).toBe("日本語日 ");
   });
 

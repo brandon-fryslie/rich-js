@@ -18,8 +18,10 @@ export interface RenderOptions {
    */
   maxWidth: number;
   minWidth?: number;
-  height?: number;
-  maxHeight?: number;
+  /**
+   * The rows this renderable may occupy. Absent, nothing limits them.
+   */
+  height?: Height;
   isTerminal?: boolean;
   encoding?: string;
   legacyWindows?: boolean;
@@ -49,6 +51,42 @@ export interface RenderOptions {
    * the render strict: the error leaves `render`.
    */
   onStyleError?: StyleErrorHandler;
+}
+
+/**
+ * A vertical budget: a count of rows, and whether they are a region the
+ * renderable stands in or a ceiling it stays under.
+ *
+ * `exact: true` is a region — a `Layout` pane, a full-screen frame. The output
+ * is exactly `rows` tall. A renderable may fill the region (`Panel` stretches
+ * its frame, `Layout` divides it) or ignore it and emit its natural height;
+ * either way, whoever set the region shapes what comes back to it, padding
+ * blank rows below and cropping overflow from the bottom. Setting a region is
+ * a promise to shape, so no renderable pads or crops itself to one.
+ *
+ * `exact: false` is a ceiling — the terminal an inline print lands on. Content
+ * keeps its natural height beneath it and nothing pads. Output taller than the
+ * ceiling is cropped by whoever imposed it.
+ *
+ * A renderable passing its whole space to one child forwards the budget less
+ * the rows it draws itself — a `Panel`'s border — and of the same kind. One
+ * stacking several children hands each the rows as a ceiling: any one of them
+ * may use all of it, and none may claim it as its region.
+ *
+ * [LAW:types-are-the-program] One field, because the fact is one count and one
+ * bit about it. As two numbers, `height` and `maxHeight`, it admitted a region
+ * taller than its ceiling and a region with no ceiling at all, and the one
+ * reader in the library resolved them `maxHeight ?? height` — the ceiling ahead
+ * of the region it contains.
+ *
+ * There is no vertical `Measurable`. A parent chooses widths from its
+ * children's measurements before any of them renders; nothing chooses rows
+ * that way, because a renderable's height is a consequence of the width it
+ * renders at. Rendering and counting the lines is the measurement.
+ */
+export interface Height {
+  readonly rows: number;
+  readonly exact: boolean;
 }
 
 /**

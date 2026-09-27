@@ -4,11 +4,11 @@
  *
  * Two pieces:
  *   - `ClipHeight` wraps a renderable and slices its line output to fit the
- *     incoming `maxHeight`. Optional `reserve` accounts for borders or
+ *     incoming `height`. Optional `reserve` accounts for borders or
  *     padding that the caller has already committed to (e.g. a Panel's two
  *     border rows).
  *   - `InjectMaxHeight` re-runs a renderable with a caller-supplied
- *     `maxHeight`, so the runtime can push terminal height into Layout's
+ *     `height`, so the runtime can push terminal height into Layout's
  *     RenderOptions without modifying core.
  *
  * Both follow [LAW:dataflow-not-control-flow]: same code path every frame,
@@ -30,7 +30,7 @@ export class ClipHeight implements Renderable {
   *render(options: RenderOptions): Iterable<Segment> {
     const segs = [...this.inner.render(options)];
     const lines = Segment.splitLines(segs);
-    const ceiling = options.maxHeight ?? lines.length;
+    const ceiling = options.height?.rows ?? lines.length;
     const cap = Math.max(1, ceiling - this.reserve);
     const clipped = lines.slice(0, cap);
     for (let i = 0; i < clipped.length; i++) {
@@ -47,7 +47,9 @@ export class InjectMaxHeight implements Renderable {
   ) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const maxHeight = this.getHeight();
-    yield* this.inner.render({ ...options, maxHeight, height: maxHeight });
+    yield* this.inner.render({
+      ...options,
+      height: { rows: this.getHeight(), exact: true },
+    });
   }
 }

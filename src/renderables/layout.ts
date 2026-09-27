@@ -185,18 +185,24 @@ export class Layout implements Renderable, Measurable {
     children: Layout[],
     options: RenderOptions,
   ): Iterable<Segment> {
-    // Vertical stacking: each child gets full width, proportional height
-    const totalHeight = options.maxHeight ?? options.height ?? 24;
+    // Vertical stacking: each child gets full width and a region of its share.
+    // A ceiling is divided exactly as a region is — a layout fills whatever
+    // budget it is handed, which is what makes it a layout.
+    const totalHeight = options.height?.rows ?? 24;
     const heights = this._distributeSpace(children, totalHeight);
 
     for (let i = 0; i < children.length; i++) {
-      const child = children[i]!;
-      const childOptions: RenderOptions = {
-        ...options,
-        maxHeight: heights[i],
-        height: heights[i],
-      };
-      yield* child.render(childOptions);
+      const rows = heights[i]!;
+      const lines = Segment.splitLines(
+        children[i]!.render({ ...options, height: { rows, exact: true } }),
+      );
+      // [LAW:single-enforcer] The region's setter shapes it (see `Height`).
+      // Forwarded unshaped, a pane whose content ran short pulled every pane
+      // below it up, and one that ran long pushed them down.
+      for (const line of Segment.setShape(lines, options.maxWidth, rows)) {
+        yield* line;
+        yield Segment.line();
+      }
     }
   }
 

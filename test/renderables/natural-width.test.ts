@@ -31,7 +31,7 @@ const OFFER = 40;
 /** Panel's frame at its default padding: two borders and one cell either side. */
 const PANEL_OVERHEAD = 4;
 
-const options: RenderOptions = { maxWidth: OFFER, height: 8, maxHeight: 8 };
+const options: RenderOptions = { maxWidth: OFFER, height: { rows: 8, exact: true } };
 
 const contents: ReadonlyArray<{
   readonly name: string;
