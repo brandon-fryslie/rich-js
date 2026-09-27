@@ -4,12 +4,10 @@
  * `environment:` or `file:` — writes to that terminal at its size and colour
  * depth.
  *
- * It needs no library change. `Console` falls back to the ambient `process`
- * when it is given no environment (`ambientEnvironment` in
- * src/core/console.ts), and colour detection reads the same name
- * (`detectColorSystem` in src/core/color.ts). Both are bare references to
- * `process`, so whatever `process` resolves to where the library's code runs
- * is the host it talks to.
+ * It needs no library change. `Console` given no environment reads the bare
+ * name `process` (`ambientEnvironment` in src/core/console.ts) and takes its
+ * size, TTY and colour depth from that, so whatever `process` resolves to
+ * where the library's code runs is the host it talks to.
  *
  * [LAW:no-shared-mutable-globals] That resolution is made lexical, never
  * global. `runInTerminal` evaluates the program as the body of a function whose

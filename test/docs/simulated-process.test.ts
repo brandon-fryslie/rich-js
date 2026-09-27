@@ -91,6 +91,20 @@ describe("runInTerminal", () => {
     expect(stripAnsi(frames.at(-1) ?? "")).toContain("100%");
   });
 
+  it("keeps two overlapping runs in their own terminals", async () => {
+    const [table, progress] = await Promise.all([bundleProgram(TABLE_PROGRAM), bundleProgram(PROGRESS_PROGRAM)]);
+    const wide = terminal(75);
+    const narrow = terminal(52);
+    await Promise.all([runInTerminal(progress, wide), runInTerminal(table, narrow), runInTerminal(table, wide)]);
+
+    const narrowText = stripAnsi(narrow.output.join(""));
+    expect(narrowText).not.toContain("Copying");
+    for (const line of narrowText.split("\n").filter((l) => l !== "")) expect(cellLen(line)).toBe(52);
+    const wideText = stripAnsi(wide.output.join(""));
+    expect(wideText).toContain("Copying");
+    expect(wideText).toContain("Mars");
+  });
+
   it("leaves the build's own process as it was", async () => {
     const own = globalThis.process;
     const env = { ...process.env };
