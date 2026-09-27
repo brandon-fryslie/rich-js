@@ -1,18 +1,19 @@
 /**
  * The one crossing where content a caller hands a renderable — a table cell, a
- * panel's body, a tree label, a column item, a layout pane — becomes something
- * that renderable can lay out. [LAW:single-enforcer]
+ * panel's body, title or subtitle, a tree label, a column item, a layout pane,
+ * a rule's title — becomes something that renderable can lay out.
+ * [LAW:single-enforcer]
  *
  * Each of those sites used to build its own `RichText` straight from the
  * constructor, which does not parse markup, so `[red]Solo[/red]` reached the
  * terminal with its tags intact. Table cells were fixed on their own first; the
- * other four kept the defect until the rule moved here.
+ * rest kept the defect until the rule moved here.
  *
- * Parsing is unconditional because that is what the reference does rather than
- * because it is the simpler branch: Rich's `Console.__init__` declares
- * `markup: bool = True`, and every one of these positions reaches the wire
- * through Rich's own `render_str`. A per-renderable opt-out would be a mode
- * with no reference behaviour to define. [LAW:no-mode-explosion]
+ * Markup is parsed because Rich parses it: every one of these positions
+ * reaches the wire through Rich's `render_str`, and a console's markup is on by
+ * default. Rich's `render_str` also honours `Console(markup=False)` and runs the
+ * console's highlighter; this crossing does neither, because the console's
+ * settings do not reach it (rich-markup-3sw).
  *
  * `end` is cleared because embedded text is a fragment rather than a printed
  * line; left at the default `"\n"` it draws a trailing blank row. A `RichText`
@@ -21,7 +22,9 @@
  */
 
 import { renderMarkup } from "../core/markup.js";
-import type { Measurable, Renderable } from "../core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
+import { Segment } from "../core/segment.js";
+import type { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 
 /** Caller content as the text an embedding site lays out: markup parsed, `end` cleared. */
@@ -41,4 +44,16 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
     return content as Renderable & Partial<Measurable>;
   }
   return embeddedText(content);
+}
+
+/**
+ * Caller content set into a line it shares with other drawing — a panel's
+ * title or subtitle in its border, a rule's title — as one line of segments:
+ * a space either side, its own styles over `base`. The caller cuts it to the
+ * room it has with `Segment.adjustLineLength`, which is cell-aware.
+ */
+export function inlineLabel(content: unknown, options: RenderOptions, base: Style | undefined): Segment[] {
+  const text = embeddedText(content).pad(1);
+  const line = text.render({ ...options, maxWidth: text.cellLength, noWrap: true, justify: "left" });
+  return [...Segment.applyStyle(line, base)];
 }

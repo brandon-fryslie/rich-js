@@ -179,8 +179,8 @@ describe("Columns", () => {
     expect(m.minimum).toBeGreaterThan(0);
   });
 
-  // rich-text-5ai: same gap the code review found in table.ts's
-  // `toRenderable` — a `RichText` item implements `render`, so it left
+  // rich-text-5ai: same gap the code review found in table cells — a
+  // `RichText` item implements `render`, so it left
   // through the passthrough arm untouched, keeping its default `end: "\n"`
   // and drawing a stray extra row once `RichText.render` started honoring
   // `end` for non-empty text.

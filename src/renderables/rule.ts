@@ -4,6 +4,7 @@
 
 import { cellLen } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
+import type { RichText } from "../core/text.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import type {
   Renderable,
@@ -11,6 +12,7 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { getStyle } from "../core/protocol.js";
+import { inlineLabel } from "./embed.js";
 
 export type RuleAlign = "left" | "center" | "right";
 
@@ -24,12 +26,12 @@ const ASCII_RULE_CHAR = "-";
 const DEFAULT_RULE_CHAR = "\u2500"; // ─
 
 export class Rule implements Renderable, Measurable {
-  readonly title: string | undefined;
+  readonly title: string | RichText | undefined;
   readonly characters: string;
   readonly align: RuleAlign;
   readonly style: string | Style;
 
-  constructor(title?: string, options?: RuleOptions) {
+  constructor(title?: string | RichText, options?: RuleOptions) {
     const chars = options?.characters ?? DEFAULT_RULE_CHAR;
     if (chars.length === 0) {
       throw new Error("Rule characters must not be empty");
@@ -58,13 +60,12 @@ export class Rule implements Renderable, Measurable {
       return;
     }
 
-    // With title
-    const titleText = ` ${this.title} `;
-    const titleWidth = cellLen(titleText);
+    const title = inlineLabel(this.title, options, ruleStyle);
+    const titleWidth = Segment.getLineLength(title);
 
     if (titleWidth >= maxWidth) {
-      // Title fills the whole width
-      yield new Segment(titleText.slice(0, maxWidth), ruleStyle);
+      // Title fills the whole width; adjustLineLength cuts by cells, not code units.
+      yield* Segment.adjustLineLength(title, maxWidth, ruleStyle);
       yield Segment.line();
       return;
     }
@@ -83,7 +84,7 @@ export class Rule implements Renderable, Measurable {
     if (leftWidth > 0) {
       yield new Segment(repeatToWidth(ruleChar, leftWidth), ruleStyle);
     }
-    yield new Segment(titleText, ruleStyle);
+    yield* title;
     if (rightWidth > 0) {
       yield new Segment(repeatToWidth(ruleChar, rightWidth), ruleStyle);
     }

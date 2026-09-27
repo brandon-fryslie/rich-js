@@ -39,8 +39,6 @@ function growthRatio(ratio: number): number {
   return Number.isFinite(ratio) && ratio > 0 ? ratio : 0;
 }
 
-// [LAW:single-enforcer] A leaf's content is a pane, not a printed unit — the
-// same reason panel.ts and table.ts clear `end` on a `RichText` they embed.
 /**
  * A pane rendered into a region of `rows` and held to exactly that many lines,
  * or — with `rows` undefined — rendered under the layout's own budget, as a
