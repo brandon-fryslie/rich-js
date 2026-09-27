@@ -86,7 +86,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it:
 2   segment
 3   box · protocol · export-lines
 4   measure · emoji · text · strip · render · export-html
-5   markup · highlighter
+5   markup · highlighter · ansi
 6   pretty · json
 7   console                           (orchestrator)
 ```
@@ -129,6 +129,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **pretty** — `Pretty`: a JavaScript value formatted as `RichText`. It lives in `core/` rather than `renderables/`, and the argument for that is in its module header — read it there. Sharing the "implements `Renderable`" trait with `Table` is not what decides the directory; `RichText` implements it too.
 - **json** — `JSONRenderable`: JSON data or a JSON string, re-serialized with an indent and highlighted, held as a `RichText`. It lives in `core/` for the same reason `pretty` does, and its module header points at that argument — read it there.
 - **highlighter** — `Highlighter` base + built-ins (`RegexHighlighter`, `ReprHighlighter`, `JSONHighlighter`, `ISO8601Highlighter`). Mutates a `RichText` by adding style spans.
+- **ansi** — `decodeAnsi` and `AnsiDecoder`: bytes a program already wrote, escape codes and all, back into `RichText`. Each colour stays the kind it was emitted as, never RGB, so the theme that exports it still picks the shade. Its module header owns where it departs from Rich.
 - **strip** — `Strip` + `Joiner`: edge-aware horizontal layout, where each transition between adjacent items (including the two endpoints) is an explicit position the joiner names.
 - **render** — `renderToString` and `segmentsToString`. Pure, one-shot Segment→ANSI emission with no `Console` and no writes to stdout. Every path to wire bytes delegates here.
 - **emoji** — emoji shortcode substitution (`emojiReplace`).
