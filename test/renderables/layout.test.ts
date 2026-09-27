@@ -51,6 +51,48 @@ describe("Layout", () => {
     ]);
   });
 
+  describe("with no region, a layout keeps its natural height", () => {
+    const rowsOf = (opts: RenderOptions): string[] => {
+      const layout = new Layout();
+      layout.splitColumn(
+        new Layout("head", { size: 2 }),
+        new Layout(new RichText("a\nb\nc")),
+      );
+      return collectText(layout, opts).split("\n").slice(0, -1).map((r) => r.trimEnd());
+    };
+    const natural = ["head", "", "a", "b", "c"];
+
+    it("under no budget: a declared size, else the content's height", () => {
+      expect(rowsOf({ maxWidth: 10 })).toEqual(natural);
+    });
+
+    it("under a ceiling, which is not a region to fill", () => {
+      expect(rowsOf({ maxWidth: 10, height: { rows: 40, exact: false } })).toEqual(natural);
+    });
+
+    it("under a region of Infinity rows, which names no count to fill", () => {
+      expect(rowsOf({ maxWidth: 10, height: { rows: Infinity, exact: true } })).toEqual(natural);
+    });
+
+    it("and a region that parses to no rows holds none", () => {
+      for (const rows of [NaN, -1, 0]) {
+        expect(rowsOf({ maxWidth: 10, height: { rows, exact: true } })).toEqual([]);
+      }
+    });
+  });
+
+  it("holds every pane of a row split to the region", () => {
+    const layout = new Layout();
+    layout.splitRow(
+      new Layout(new RichText("1\n2\n3\n4\n5")),
+      new Layout("x"),
+    );
+    const rows = collectText(layout, { maxWidth: 4, height: { rows: 3, exact: true } })
+      .split("\n")
+      .slice(0, -1);
+    expect(rows.map((r) => r.trimEnd())).toEqual(["1 x", "2", "3"]);
+  });
+
   it("getByName finds named layouts", () => {
     const layout = new Layout();
     layout.splitColumn(

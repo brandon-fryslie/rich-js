@@ -58,20 +58,20 @@ export interface RenderOptions {
  * renderable stands in or a ceiling it stays under.
  *
  * `exact: true` is a region — a `Layout` pane, a full-screen frame. The output
- * is exactly `rows` tall. A renderable may fill the region (`Panel` stretches
- * its frame, `Layout` divides it) or ignore it and emit its natural height;
- * either way, whoever set the region shapes what comes back to it, padding
- * blank rows below and cropping overflow from the bottom. Setting a region is
- * a promise to shape, so no renderable pads or crops itself to one.
+ * is exactly `rows` tall. A renderable may fill the region — a layout divides
+ * it, a frame can stretch to its last row — or ignore it and emit its natural
+ * height; either way, whoever set the region shapes what comes back to it,
+ * padding blank rows below and cropping overflow from the bottom. Setting a
+ * region is a promise to shape, so no renderable pads or crops itself to one.
  *
  * `exact: false` is a ceiling — the terminal an inline print lands on. Content
  * keeps its natural height beneath it and nothing pads. Output taller than the
  * ceiling is cropped by whoever imposed it.
  *
- * A renderable passing its whole space to one child forwards the budget less
- * the rows it draws itself — a `Panel`'s border — and of the same kind. One
- * stacking several children hands each the rows as a ceiling: any one of them
- * may use all of it, and none may claim it as its region.
+ * A renderable passing its whole space to one child must forward the budget
+ * less the rows it draws itself, and of the same kind. One stacking several
+ * children must hand each the rows as a ceiling: any one of them may use all
+ * of it, and none may claim it as its region.
  *
  * [LAW:types-are-the-program] One field, because the fact is one count and one
  * bit about it. As two numbers, `height` and `maxHeight`, it admitted a region

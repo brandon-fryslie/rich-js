@@ -7,8 +7,8 @@
  *     incoming `height`. Optional `reserve` accounts for borders or
  *     padding that the caller has already committed to (e.g. a Panel's two
  *     border rows).
- *   - `InjectMaxHeight` re-runs a renderable with a caller-supplied
- *     `height`, so the runtime can push terminal height into Layout's
+ *   - `InjectMaxHeight` re-runs a renderable in a caller-supplied
+ *     region (`height`, `exact`), so the runtime can push terminal height into Layout's
  *     RenderOptions without modifying core.
  *
  * Both follow [LAW:dataflow-not-control-flow]: same code path every frame,
