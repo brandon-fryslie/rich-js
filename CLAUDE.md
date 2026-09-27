@@ -122,7 +122,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **box** — box-drawing character sets. One `Box` type, many pre-built instances (ASCII, SQUARE, ROUNDED, HEAVY, DOUBLE, …).
 - **protocol** — `Renderable` and `Measurable` interfaces. `Renderable.render(options) → Iterable<Segment>`. `Measurable.measure(options) → {minimum, maximum}`. Single authority for the rendering contract.
 - **export-lines** — recorded segments resolved against a `TerminalTheme` into the rows every exporter draws, and the canvas they are drawn on: `exportLines`, `resolveLook`, `exportCanvas`, `parseHref`. The HTML and SVG exporters are two encodings of this one picture; its module header owns why `reverse`, `dim` and `conceal` are resolved here and not in either format.
-- **export-html** — `encodeHtml`: recorded segments as a standalone HTML document, an encoding of `export-lines` that inspects no `Style`. `Console.exportHtml` is this plus clearing the buffer.
+- **export-html** — `encodeHtmlFragment`: recorded segments as one inline-styled `pre` that can sit in a page this library does not own, an encoding of `export-lines` that inspects no `Style`; `encodeHtml` is that fragment in a standalone document. `Console.exportHtml` is the document plus clearing the buffer.
 - **measure** — `Measurement` value type (min/max cell width). `Measurement.get()` is the single enforcer for measuring a `Measurable`.
 - **markup** — parses Rich markup strings (`[bold red]text[/]`) into `RichText`.
 - **text** — `RichText`: styled text with `Span[]` annotations. Primary text type for the library; implements `Renderable` and `Measurable`.

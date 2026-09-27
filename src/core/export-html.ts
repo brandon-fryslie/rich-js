@@ -1,5 +1,6 @@
 /**
- * export-html — recorded segments drawn as a standalone HTML document.
+ * export-html — recorded segments drawn as HTML: a fragment that can sit in
+ * a page this library does not own, and a standalone document around it.
  *
  * An encoding of `export-lines` and nothing more. What a run looks like under
  * a theme is decided there; this module decides only how CSS says it. It never
@@ -77,6 +78,10 @@ function glyphCss(look: ExportLook): string[] {
   ];
 }
 
+// `unset` hands the anchor the run's look and drops the host's `a` rules;
+// `revert` gives back the browser's link cursor and focus ring.
+const ANCHOR_CSS = "all:unset;cursor:revert;outline:revert";
+
 const span = (css: readonly string[], content: string): string =>
   `<span style="${escapeAttribute(css.join(";"))}">${content}</span>`;
 
@@ -97,29 +102,62 @@ function runHtml({ text, look }: ExportRun): string {
       span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph),
     )
     : span([...paintCss(look), ...glyphCss(look)], glyph);
-  return look.href === null ? drawn : `<a href="${escapeAttribute(look.href)}">${drawn}</a>`;
+  return look.href === null
+    ? drawn
+    : `<a href="${escapeAttribute(look.href)}" style="${ANCHOR_CSS}">${drawn}</a>`;
+}
+
+/**
+ * The CSS a page includes once, wherever fragments appear: what an inline
+ * style cannot say. A fragment that blinks draws steadily without it.
+ */
+export const HTML_FRAGMENT_CSS = `@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent}}`;
+
+/**
+ * `segments` under `theme` as one `pre` carrying its canvas, for embedding.
+ *
+ * [LAW:locality-or-seam] Every rule is inline on the `pre` or below it, so the
+ * fragment styles nothing outside itself; the host page keeps its own `body`,
+ * `pre` and `a` rules. The seam holds the other way too: `all:initial` stops
+ * the host's `pre` rules and inherited typography from reaching the rows, and
+ * the two properties `all` does not cover pin the rows left to right.
+ *
+ * A browser draws no line for a newline at either edge of a `pre`: the parser
+ * drops the one straight after the open tag, and the one before `</pre>` ends a
+ * line without starting another. So the fragment opens with a newline of its
+ * own and every row ends with one, and a blank first or last row is still drawn.
+ */
+export function encodeHtmlFragment(segments: Iterable<Segment>, theme?: TerminalTheme): string {
+  const canvas = exportCanvas(theme);
+  const rows = exportLines(segments, theme).map((row) => `${row.map(runHtml).join("")}\n`);
+  const css = [
+    "all:initial",
+    "direction:ltr",
+    "unicode-bidi:isolate",
+    "display:block",
+    `background:${canvas.background.hex}`,
+    `color:${canvas.foreground.hex}`,
+    "padding:1em",
+    "font-family:monospace",
+    "white-space:pre",
+    "overflow-x:auto",
+  ].join(";");
+  return `<pre style="${css}">\n${rows.join("")}</pre>`;
 }
 
 /**
  * `segments` under `theme` as a complete HTML document.
  *
- * A browser draws no line for a newline at either edge of a `pre`: the parser
- * drops the one straight after `<pre>`, and the one before `</pre>` ends a
- * line without starting another. So the page opens with a newline of its own
- * and every row ends with one, and a blank first or last row is still drawn.
+ * [LAW:one-source-of-truth] The document is the fragment in a shell, so the
+ * two cannot draw different pictures. The shell paints the page around the
+ * `pre` in the same canvas and includes the fragment CSS once.
  */
 export function encodeHtml(segments: Iterable<Segment>, theme?: TerminalTheme): string {
   const canvas = exportCanvas(theme);
-  const rows = exportLines(segments, theme).map((row) => `${row.map(runHtml).join("")}\n`);
-  const css = [
-    `body{background:${canvas.background.hex};color:${canvas.foreground.hex};padding:1em}`,
-    "pre{margin:0;font-family:monospace;white-space:pre;overflow-x:auto}",
-    "a{color:inherit;text-decoration:inherit}",
-    `@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent}}`,
-  ].join("\n");
+  const css = `body{background:${canvas.background.hex};color:${canvas.foreground.hex};margin:0}\n${HTML_FRAGMENT_CSS}`;
   return [
     "<!DOCTYPE html>",
     `<html><head><meta charset="utf-8"><style>\n${css}\n</style></head>`,
-    `<body><pre>\n${rows.join("")}</pre></body></html>`,
+    `<body>${encodeHtmlFragment(segments, theme)}</body></html>`,
   ].join("\n");
 }

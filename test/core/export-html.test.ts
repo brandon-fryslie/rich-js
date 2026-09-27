@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { encodeHtml } from "../../src/core/export-html.js";
+import { encodeHtml, encodeHtmlFragment, HTML_FRAGMENT_CSS } from "../../src/core/export-html.js";
 import { exportCanvas } from "../../src/core/export-lines.js";
 import { ColorRgba, STANDARD_TABLE, TerminalTheme } from "../../src/core/color.js";
 import { Console } from "../../src/core/console.js";
@@ -45,7 +45,7 @@ describe("encodeHtml page", () => {
   });
 
   it("keeps a leading blank row past the newline an HTML parser drops after <pre>", () => {
-    expect(encodeHtml([new Segment("\nx")], THEME)).toContain("<pre>\n\n<span");
+    expect(encodeHtml([new Segment("\nx")], THEME)).toMatch(/<pre [^>]*>\n\n<span/);
   });
 
   it("ends every row with a newline, so a trailing blank row is drawn", () => {
@@ -112,9 +112,9 @@ describe("encodeHtml links and escaping", () => {
   it("wraps a linkable run in an anchor that inherits the run's look", () => {
     const page = html(new Style({ link: "https://example.com/a?b=1&c=2", bold: true }));
     expect(page).toContain(
-      `<a href="https://example.com/a?b=1&amp;c=2"><span style="color:${INK.hex};font-weight:bold">x</span></a>`,
+      `<a href="https://example.com/a?b=1&amp;c=2" style="all:unset;cursor:revert;outline:revert">` +
+        `<span style="color:${INK.hex};font-weight:bold">x</span></a>`,
     );
-    expect(page).toContain("a{color:inherit;text-decoration:inherit}");
   });
 
   it("exports a refused link as its styled text with no anchor", () => {
@@ -125,5 +125,26 @@ describe("encodeHtml links and escaping", () => {
 
   it("escapes markup characters in text", () => {
     expect(html(Style.parse("none"), `<b> & "q"`)).toContain(`>&lt;b&gt; &amp; "q"</span>`);
+  });
+});
+
+describe("encodeHtmlFragment", () => {
+  const segments = [new Segment("a\n"), new Segment("x", new Style({ link: "https://example.com", blink: true }))];
+
+  it("is exactly what the document's body holds", () => {
+    const fragment = encodeHtmlFragment(segments, THEME);
+    expect(encodeHtml(segments, THEME)).toContain(`<body>${fragment}</body>`);
+  });
+
+  it("is one pre painted in the theme's canvas, styled only inline", () => {
+    const fragment = encodeHtmlFragment(segments, THEME);
+    expect(fragment).toMatch(new RegExp(`^<pre style="[^"]*background:${PAPER.hex};color:${INK.hex};[^"]*">[^]*</pre>$`));
+    expect(fragment.match(/<pre/g)).toHaveLength(1);
+    expect(fragment).not.toContain("<style");
+  });
+
+  it("leaves the blink keyframes to the page, included once by the document", () => {
+    expect(encodeHtmlFragment(segments, THEME)).not.toContain("@keyframes");
+    expect(encodeHtml(segments, THEME).split(HTML_FRAGMENT_CSS)).toHaveLength(2);
   });
 });
