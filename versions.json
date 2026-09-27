@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-168",
+      "ref": "refs/pull/168/merge",
+      "sha": "a07e2b06b9fa6fca26c015faa1bf1737d82e3e16",
+      "timestamp": "2026-09-27T12:06:45.528Z",
+      "commits": [
+        {
+          "sha": "a07e2b06b9fa6fca26c015faa1bf1737d82e3e16",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T12:06:19Z",
+          "message": "Merge 9ecb8c802629fae15a2114596cd5a4c39c7248fe into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
+        },
+        {
+          "sha": "9ecb8c802629fae15a2114596cd5a4c39c7248fe",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:06:15-06:00",
+          "message": "fix(export-html): the host page's styles stop at the fragment too\n\nThe fragment kept its own rules off the host but not the host's off it:\na docs theme's body line-height gapped every box-drawn row, and its `a`\nrules made linked runs heavier than their neighbours. `all:initial` on\nthe pre and `all:unset` on the anchor cut both directions at once; the\ne2e now compares the fragment in a hostile host against a blank page.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "b50876937023985e7ea411bf0fd6838ed09ab3dc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:58:53-06:00",
+          "message": "feat(export-html): an embeddable fragment; the document is that fragment in a shell (rich-docs-examples-xuu.n71)\n\n`encodeHtmlFragment` returns one `pre` carrying its canvas and every rule\ninline, anchors included, so it can sit in a page this library does not own\nwithout restyling that page's body, pre or links. The blink keyframes, the one\nthing an inline style cannot say, are `HTML_FRAGMENT_CSS`, included once by the\nhost page. `encodeHtml` is the fragment wrapped in a document that paints the\npage in the same canvas and includes that CSS, so the two cannot draw different\npictures.\n\nTwo export-html tests pinned the bare `<pre>` and `<a href>` tags; they now\nmatch the attributed tags, their assertions otherwise unchanged.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-166",
       "ref": "refs/pull/166/merge",
       "sha": "1062475a24928d0ab32bb8071dcde776cb0048dd",
@@ -84,28 +113,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T05:36:43-06:00",
           "message": "feat(docs): a simulated process runs an example's own new Console() in a terminal we supply (rich-docs-examples-xuu.iy5)\n\n`runInTerminal(program, terminal)` evaluates a bundled program as the body of\nan async function whose parameter is named `process`, so every free `process`\nin it — the library included — binds to a stand-in built from the terminal.\nNothing global is swapped: the build's and the page's own `process` are never\ntouched, and two runs can overlap.\n\nProven in Node (test/docs/simulated-process.test.ts, under a hostile host env)\nand in Chromium (e2e/simulated-process.spec.ts).\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-168",
-      "ref": "refs/pull/168/merge",
-      "sha": "2340ce3f8c1cd6476e66ed2654d6647539ce6505",
-      "timestamp": "2026-09-27T11:59:23.192Z",
-      "commits": [
-        {
-          "sha": "2340ce3f8c1cd6476e66ed2654d6647539ce6505",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:58:57-06:00",
-          "message": "Merge b50876937023985e7ea411bf0fd6838ed09ab3dc into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
-        },
-        {
-          "sha": "b50876937023985e7ea411bf0fd6838ed09ab3dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:58:53-06:00",
-          "message": "feat(export-html): an embeddable fragment; the document is that fragment in a shell (rich-docs-examples-xuu.n71)\n\n`encodeHtmlFragment` returns one `pre` carrying its canvas and every rule\ninline, anchors included, so it can sit in a page this library does not own\nwithout restyling that page's body, pre or links. The blink keyframes, the one\nthing an inline style cannot say, are `HTML_FRAGMENT_CSS`, included once by the\nhost page. `encodeHtml` is the fragment wrapped in a document that paints the\npage in the same canvas and includes that CSS, so the two cannot draw different\npictures.\n\nTwo export-html tests pinned the bare `<pre>` and `<a href>` tags; they now\nmatch the attributed tags, their assertions otherwise unchanged.\n"
         }
       ]
     },
