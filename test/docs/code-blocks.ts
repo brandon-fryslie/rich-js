@@ -46,14 +46,10 @@
  */
 
 import ts from "typescript";
+import { scanFences, type Fence } from "../../docs/.vitepress/example-markers.js";
 
 /** A fenced code block, with the page and line a failure should be reported at. */
-export interface CodeBlock {
-  readonly page: string;
-  /** 1-based line of the block's opening fence. */
-  readonly line: number;
-  readonly code: string;
-}
+export type CodeBlock = Fence;
 
 /** A name a page imports from one of this package's entry points. */
 export interface ImportedName {
@@ -107,46 +103,15 @@ export interface MemberUse {
 }
 
 
-const FENCE_OPEN = /^```(?:typescript|ts)\s*$/;
-const FENCE_CLOSE = /^```\s*$/;
-
 /**
- * Every TypeScript block on one page, in source order.
+ * Every TypeScript block on one page, in source order, marker or not.
  *
- * Both spellings of the info string are accepted because `docs/` uses both —
- * 210 blocks say `typescript` and one says `ts`, and a reader cannot see which
- * a page chose. Matching the site's own renderer is the only defensible rule.
+ * [LAW:one-source-of-truth] The fences are read by `scanFences`, the parser the
+ * docs build runs examples through, so a block carrying a marker word is a
+ * block here too.
  */
 export function extractCodeBlocks(page: string, markdown: string): CodeBlock[] {
-  const lines = markdown.split("\n");
-  const blocks: CodeBlock[] = [];
-  let openedAt: number | null = null;
-  lines.forEach((line, index) => {
-    const inBlock = openedAt !== null;
-    if (!inBlock && FENCE_OPEN.test(line)) {
-      openedAt = index;
-      return;
-    }
-    if (openedAt !== null && FENCE_CLOSE.test(line)) {
-      blocks.push({
-        page,
-        line: openedAt + 1,
-        code: lines.slice(openedAt + 1, index).join("\n"),
-      });
-      openedAt = null;
-    }
-  });
-  // An unterminated fence would otherwise swallow the rest of the page into a
-  // block nobody checks, shrinking the sweep silently — the failure the
-  // sweep-sanity assertions next door exist to make impossible.
-  // [LAW:no-silent-failure]
-  if (openedAt !== null) {
-    throw new Error(
-      `docs/${page}:${(openedAt as number) + 1} opens a TypeScript fence that is ` +
-        `never closed; everything after it would go unchecked`,
-    );
-  }
-  return blocks;
+  return scanFences(page, markdown);
 }
 
 /**

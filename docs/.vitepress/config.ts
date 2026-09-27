@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitepress'
 import { guideSidebar, pageSidebarRegions } from './sidebar.js'
+import { docsExamplesPlugin } from './example-runner.js'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -88,6 +89,12 @@ export default defineConfig({
     search: {
       provider: 'local',
     },
+  },
+
+  vite: {
+    // Runs each migrated page's examples and writes their output under them;
+    // `example-runner.ts`'s header owns why it is a pre-transform.
+    plugins: [docsExamplesPlugin()],
   },
 
   markdown: {

@@ -118,8 +118,21 @@ describe("extractCodeBlocks", () => {
   // block, shrinking the sweep with no sign that it shrank. [LAW:no-silent-failure]
   it("throws on a fence that is never closed", () => {
     expect(() => blocksOf(["```typescript", "const a = 1;"].join("\n"))).toThrow(
-      /fixture\.md:1 opens a TypeScript fence that is never closed/,
+      /fixture\.md:1 opens a fence that is never closed/,
     );
+  });
+
+  it("counts a block whose fence carries a marker, and names the marker", () => {
+    const blocks = blocksOf(["```ts silent", "const a = 1;", "```", "", "```typescript", "a;", "```"].join("\n"));
+    expect(blocks.map((b) => [b.marker, b.code])).toEqual([["silent", "const a = 1;"], ["static", "a;"]]);
+  });
+
+  it("throws on an unknown marker, naming the page and line", () => {
+    expect(() => blocksOf(["", "```ts quiet", "a;", "```"].join("\n"))).toThrow(/fixture\.md:2: unknown example marker "quiet"/);
+  });
+
+  it("reads a line inside another language's fence as that fence's content", () => {
+    expect(blocksOf(["```md", "```ts", "a;", "```", "```ts", "b;", "```"].join("\n")).map((b) => b.code)).toEqual(["b;"]);
   });
 });
 
