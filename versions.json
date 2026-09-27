@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "b49a644ea58af11990f6f036694400a835147ca6",
+      "timestamp": "2026-09-27T11:43:10.473Z",
+      "commits": [
+        {
+          "sha": "b49a644ea58af11990f6f036694400a835147ca6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:42:36-06:00",
+          "message": "feat(render): Console and Live supply the Height budget (rich-viewport-owi.2) (#163)\n\n* feat(render): Console and Live supply the Height budget (rich-viewport-owi.2)\n\nConsole.options carries the terminal's rows as a ceiling, and print hands\neach stacked block stackedHeight of it. Live renders under the same rows:\ninline as a ceiling with its crop kept, alt-screen as a region shaped with\nfitHeight and written with no newline after the last row, so a full-height\nframe no longer scrolls.\n\ninsetHeight, stackedHeight, regionRows and fitHeight are exported from the\nbarrel and documented in docs/protocol.md beside the width contract.\n\nrich-dash's InjectMaxHeight wrapper and its reserved row are gone: Live\nsupplies the height they injected. The job pane gains a build-log tail that\nfills the rows under its bars, which is what demonstrates the four helpers.\n\ndocs/live.md dropped a false claim that the last frame is shown `visible`\non stop — stop() refreshes under the configured overflow.\n\n* fix(live): an alt-screen frame writes every cell, and a transient stop erases nothing\n\nReview of #163: the alternate screen is only homed between frames, so a\nshorter frame left the last one's rows and line tails showing. Its rows are\nnow padded to the width. Its lines are no longer counted for _clearLast,\nwhich was one row off now the cursor ends on the last row, and pointless\nbefore leaving the buffer.\n\nConsole.options reads the size once, and Live takes its rows from those\noptions. print's stackedHeight was an identity on a ceiling, so it is gone.\nThe Height contract says what the setter of a ceiling does with taller\noutput: Live crops it, print lets it scroll. The inline full-height scroll\nis rich-live-4rh.\n\n* fix(live): alt-screen rows are erased before drawing, not padded to a width\n\nReview of #163: padding each row to options.maxWidth threw on an unbounded\nconsole width (' '.repeat(Infinity)), and parsing the width would not have\nhelped — Infinity is a cell count. Erasing the row first clears the last\nframe's cells with no width at all, from column 0 where the erase is safe.\n\nThe Height contract said an inline Live crops taller output; it applies its\nverticalOverflow, and 'visible' scrolls."
+        }
+      ]
+    },
+    {
       "version": "pr-165",
       "ref": "refs/pull/165/merge",
       "sha": "959daa623f6d685c0fd0125d4e7ea8f3a35d15cd",
@@ -27,57 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T05:36:43-06:00",
           "message": "feat(docs): a simulated process runs an example's own new Console() in a terminal we supply (rich-docs-examples-xuu.iy5)\n\n`runInTerminal(program, terminal)` evaluates a bundled program as the body of\nan async function whose parameter is named `process`, so every free `process`\nin it — the library included — binds to a stand-in built from the terminal.\nNothing global is swapped: the build's and the page's own `process` are never\ntouched, and two runs can overlap.\n\nProven in Node (test/docs/simulated-process.test.ts, under a hostile host env)\nand in Chromium (e2e/simulated-process.spec.ts).\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-163",
-      "ref": "refs/pull/163/merge",
-      "sha": "3cb9b635e6d0adcd1626657ca0bdf93a22ab4848",
-      "timestamp": "2026-09-27T11:36:05.880Z",
-      "commits": [
-        {
-          "sha": "3cb9b635e6d0adcd1626657ca0bdf93a22ab4848",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T11:35:34Z",
-          "message": "Merge 63b281da5dcc6cc024eccb598331f6e87ffd1b2e into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
-        },
-        {
-          "sha": "63b281da5dcc6cc024eccb598331f6e87ffd1b2e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:35:29-06:00",
-          "message": "fix(live): alt-screen rows are erased before drawing, not padded to a width\n\nReview of #163: padding each row to options.maxWidth threw on an unbounded\nconsole width (' '.repeat(Infinity)), and parsing the width would not have\nhelped — Infinity is a cell count. Erasing the row first clears the last\nframe's cells with no width at all, from column 0 where the erase is safe.\n\nThe Height contract said an inline Live crops taller output; it applies its\nverticalOverflow, and 'visible' scrolls.\n"
-        },
-        {
-          "sha": "af3ef8ca15941587820b6c55be0b8e05ace2afec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:24:54-06:00",
-          "message": "fix(live): an alt-screen frame writes every cell, and a transient stop erases nothing\n\nReview of #163: the alternate screen is only homed between frames, so a\nshorter frame left the last one's rows and line tails showing. Its rows are\nnow padded to the width. Its lines are no longer counted for _clearLast,\nwhich was one row off now the cursor ends on the last row, and pointless\nbefore leaving the buffer.\n\nConsole.options reads the size once, and Live takes its rows from those\noptions. print's stackedHeight was an identity on a ceiling, so it is gone.\nThe Height contract says what the setter of a ceiling does with taller\noutput: Live crops it, print lets it scroll. The inline full-height scroll\nis rich-live-4rh.\n"
-        },
-        {
-          "sha": "cdb2717c6ddc504bb9def239c9133211cc637d78",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:37:06-06:00",
-          "message": "feat(render): Console and Live supply the Height budget (rich-viewport-owi.2)\n\nConsole.options carries the terminal's rows as a ceiling, and print hands\neach stacked block stackedHeight of it. Live renders under the same rows:\ninline as a ceiling with its crop kept, alt-screen as a region shaped with\nfitHeight and written with no newline after the last row, so a full-height\nframe no longer scrolls.\n\ninsetHeight, stackedHeight, regionRows and fitHeight are exported from the\nbarrel and documented in docs/protocol.md beside the width contract.\n\nrich-dash's InjectMaxHeight wrapper and its reserved row are gone: Live\nsupplies the height they injected. The job pane gains a build-log tail that\nfills the rows under its bars, which is what demonstrates the four helpers.\n\ndocs/live.md dropped a false claim that the last frame is shown `visible`\non stop — stop() refreshes under the configured overflow.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "cba3ca7a61d983aa38b8e31005c6fa9044d89ebe",
-      "timestamp": "2026-09-27T09:27:18.003Z",
-      "commits": [
-        {
-          "sha": "cba3ca7a61d983aa38b8e31005c6fa9044d89ebe",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:26:49-06:00",
-          "message": "refactor(protocol)!: one Height budget replaces height and maxHeight (rich-viewport-owi.1) (#162)\n\n* refactor(protocol)!: one Height budget replaces height and maxHeight (rich-viewport-owi.1)\n\nRenderOptions carried a vertical budget as two independent optional numbers,\nwhich admitted a region taller than its ceiling and a region with no ceiling,\nand the one reader (Layout) resolved them ceiling-first. It is now one field,\n`height?: Height` — `{ rows, exact }` — whose doc comment is the contract:\na region (`exact`) is shaped to exactly `rows` by whoever set it, a ceiling\nis cropped by whoever imposed it, containers forward less their own rows,\nstackers demote a region to a ceiling, and there is no vertical Measurable.\n\nLayout's column split now keeps that promise: each pane is shaped to its\nshare, so a short pane no longer pulls the panes below it up.\n\nThe design document the ticket named is not written: CLAUDE.md forbids a\nsecond description outside docs/, and rich-export-9a1.1 set the precedent\nof contract-as-code plus decisions in the sibling tickets (.2, .3, .5).\n\nBREAKING CHANGE: RenderOptions.height is a Height object and maxHeight is\ngone. `{ height: n, maxHeight: n }` becomes `{ height: { rows: n, exact: true } }`.\n\n* fix(layout): fill only a region; natural height otherwise, and both splits shape\n\nReview of #162: padding to the 24-row fallback made console.print(layout)\nalways 24 rows. A layout now fills only an exact region; under a ceiling or\nno budget each pane takes its declared size or its content's height, which\ndeletes the fallback. Rows parse through cellCount (NaN/negative hold none,\nInfinity is natural), row splits shape their panes too, and shaping fits the\nline count only.\n\n* fix(renderables): containers forward height by the contract\n\nReview of #162: once Layout shapes its panes, a Panel forwarding its region\nunchanged let a nested Layout fill it and the crop took the panel's bottom\nborder. Panel and Padding now inset the budget by their own rows\n(insetHeight); Group, Columns and Tree hand each child the rows as a ceiling\n(stackedHeight). rich-dash's ClipHeight reserve, which compensated by hand,\nis gone.\n\n* fix(renderables): a region's setter shapes it — Panel and Padding too\n\nEscalation review of #162. A Panel handing its content an exact region is\nthat region's setter, so it now shapes what comes back: its frame stretches\ndown a pane and a tall body is cropped above the bottom border. The shaping\nand the row parse are one pair of helpers in protocol.ts (fitHeight,\nregionRows) shared by Layout, Panel and Padding; insetHeight and\nstackedHeight parse rows through cellCount. Markdown stacks its blocks.\nrich-dash's ClipHeight is deleted as redundant and InjectMaxHeight shapes\nthe region it sets."
         }
       ]
     }
