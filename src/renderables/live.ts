@@ -6,13 +6,14 @@
  *   region. Good for spinners/progress bars below other output.
  * - **Alt-screen** (`altScreen: true`): enters the alternate screen buffer
  *   on start, cursor-homes on each refresh (no clear flicker), and restores
- *   the original buffer on stop. Good for full-screen TUI apps.
+ *   the original buffer on stop. The screen is the frame's region, so a
+ *   `Layout` fills it. Good for full-screen TUI apps.
  */
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { segmentsToString } from "../core/render.js";
-import type { Renderable } from "../core/protocol.js";
+import { fitHeight, type Height, type Renderable } from "../core/protocol.js";
 
 export interface LiveOptions {
   refreshPerSecond?: number;
@@ -119,17 +120,16 @@ export class Live {
       this._clearLast();
     }
 
-    const segments = [...this._renderable.render(this._console.options)];
-    const lines = Segment.splitLines(segments);
-    const maxHeight = this._console.height;
-
-    let displayLines = lines;
-    if (this._verticalOverflow !== "visible" && lines.length > maxHeight) {
-      displayLines = lines.slice(0, maxHeight);
-      if (this._verticalOverflow === "ellipsis" && displayLines.length > 0) {
-        displayLines[displayLines.length - 1] = [new Segment("...")];
-      }
-    }
+    // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
+    // rows and differ only in what those rows are: the alternate screen is a
+    // region the frame stands in, and an inline frame keeps its natural height
+    // under them as a ceiling. Live set the budget, so Live shapes what comes
+    // back — its overflow policy, then `fitHeight`, which pads only a region.
+    const height: Height = { rows: this._console.height, exact: this._altScreen };
+    const lines = Segment.splitLines(
+      this._renderable.render({ ...this._console.options, height }),
+    );
+    const displayLines = fitHeight(this._overflow(lines, height.rows), height);
 
     // [LAW:single-enforcer] Per-line encoding routes through the same
     // tree-coalescer `Console._writeSegments` uses, so Live frames coalesce
@@ -140,8 +140,23 @@ export class Live {
       .map((line) => segmentsToString(line, destination))
       .join("\n");
 
-    this._console.file.write(output + "\n");
+    // Inline, the newline leaves the cursor under the frame, where `_clearLast`
+    // counts up from. On the alternate screen the next frame starts from home,
+    // and a newline after a full-height frame's last row scrolls its first row
+    // off the top.
+    this._console.file.write(this._altScreen ? output : output + "\n");
     this._lastLineCount = displayLines.length;
+  }
+
+  // Lines past `rows`: dropped, with the last kept row replaced by an ellipsis,
+  // or left for the terminal to scroll.
+  private _overflow(lines: Segment[][], rows: number): Segment[][] {
+    if (this._verticalOverflow === "visible" || lines.length <= rows) return lines;
+    const kept = lines.slice(0, rows);
+    if (this._verticalOverflow === "ellipsis" && kept.length > 0) {
+      kept[kept.length - 1] = [new Segment("...")];
+    }
+    return kept;
   }
 
   private _clearLast(): void {

@@ -25,7 +25,7 @@ import type {
   RenderOptions,
   StyleErrorHandler,
 } from "./protocol.js";
-import { isRenderable } from "./protocol.js";
+import { isRenderable, stackedHeight } from "./protocol.js";
 
 // --- Types ---
 
@@ -396,6 +396,9 @@ export class Console {
   get options(): RenderOptions {
     return {
       maxWidth: this.width,
+      // The terminal an inline print lands on: a ceiling, never a region —
+      // content keeps its natural height beneath it.
+      height: { rows: this.height, exact: false },
       isTerminal: this.isTerminal,
       encoding: this.encoding,
       asciiOnly: false,
@@ -506,8 +509,12 @@ export class Console {
     // render as `noWrap`, and `overflow` carries only the methods a renderable
     // applies. Soft wrap is the same request — the reference defaults it to
     // `"ignore"` — which is why the two arrive at one field.
+    // A print stacks its blocks down the terminal, so each one may use the
+    // whole ceiling and none may claim it as a region.
+    const baseOptions = this.options;
     const renderOpts: RenderOptions = {
-      ...this.options,
+      ...baseOptions,
+      height: stackedHeight(baseOptions.height),
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow === "ignore" ? undefined : opts.overflow,
       noWrap: softWrap || opts.overflow === "ignore",

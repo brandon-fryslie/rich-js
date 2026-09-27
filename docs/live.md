@@ -56,7 +56,7 @@ live.update(newRenderable, { refresh: true });
 
 ## Alternate screen (fullscreen)
 
-Enter fullscreen mode with `altScreen: true`. `start()` switches to the alternate screen buffer and `stop()` restores the original:
+Enter fullscreen mode with `altScreen: true`. `start()` switches to the alternate screen buffer and `stop()` restores the original. Each frame is the whole screen: the renderable is handed the terminal's rows as a region, so a `Layout` divides all of them, and a shorter frame is padded to the bottom row:
 
 ```typescript
 const live = new Live(layout, { altScreen: true });
@@ -106,13 +106,11 @@ When the renderable is taller than the terminal:
 |---|---|
 | `"crop"` | Show up to terminal height; hide the rest |
 | `"ellipsis"` | Same as crop, but replace the last visible line with `...` (default) |
-| `"visible"` | Show the full renderable (cannot be properly cleared in this mode) |
+| `"visible"` | Show the full renderable (cannot be properly cleared in this mode). On the alternate screen a frame never grows past the screen, so this crops too |
 
 ```typescript
 const live = new Live(tallRenderable, { verticalOverflow: "crop" });
 ```
-
-When the live display stops, the last frame is always shown as `visible`.
 
 ## Print and log during live display
 

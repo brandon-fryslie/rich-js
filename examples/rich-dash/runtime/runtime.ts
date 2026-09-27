@@ -23,7 +23,6 @@ import {
   Style,
   type Renderable,
 } from "../../../src/index.js";
-import { InjectMaxHeight } from "./clip.js";
 import type { TickContext, Widget } from "./widget.js";
 
 export interface RuntimeOptions {
@@ -78,11 +77,7 @@ export class DashboardRuntime {
     }
 
     const consoleOut = options.console ?? new Console({ forceTerminal: true });
-    // Inject the terminal height into the root render so Layout's column
-    // splits distribute correctly, and reserve one row to keep Live's
-    // trailing newline from scrolling the alt-screen buffer.
-    const root = new InjectMaxHeight(this._layout, () => consoleOut.height - 1);
-    this._live = new Live(root, {
+    this._live = new Live(this._layout, {
       console: consoleOut,
       refreshPerSecond: this._fps,
       autoRefresh: false,
