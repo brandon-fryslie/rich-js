@@ -4,8 +4,9 @@
 
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
-import { ColorDepth, resolveColorSystem } from "./color.js";
-import type { DetectColorOptions, TerminalTheme } from "./color.js";
+import { ColorDepth, resolveDestination } from "./color.js";
+import type { Destination } from "./color.js";
+import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
 import { RichText } from "./text.js";
 import { renderMarkup } from "./markup.js";
@@ -66,8 +67,15 @@ export interface ConsoleOptions {
    * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
    * `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for `WINDOWS`,
    * which has no string spec), or `null` for no color. Default `"auto"`.
+   * Colour only: an explicit depth, `null` included, keeps hyperlinks.
    */
   colorSystem?: string | ColorDepth | null;
+  /**
+   * Whether OSC 8 hyperlinks are emitted. Default: what the destination takes
+   * — true for an explicit `colorSystem`, detected under `"auto"` (no TTY or
+   * TERM=dumb: false). `false` with `colorSystem: null` writes plain text.
+   */
+  hyperlinks?: boolean;
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
@@ -134,27 +142,6 @@ export interface PrintOptions {
 type PrintBlock =
   | { kind: "text"; items: Renderable[] }
   | { kind: "lines"; renderable: Renderable };
-
-// [LAW:single-enforcer] Color spec → ColorDepth resolution lives in
-// `resolveColorSystem`. This helper just normalizes the option shape (string |
-// enum | null) into the cached `_colorSystem` field. WINDOWS has no string
-// spec; callers reach it via the enum directly.
-//
-// [LAW:dataflow-not-control-flow] `isTTY` and `env` are forwarded
-// unconditionally; `resolveColorSystem` ignores them for non-`"auto"` specs.
-// Passing both is what keeps detection inside the console's injected
-// environment — left to its own defaults, `detectColorSystem` would consult
-// the ambient `process.env` and `process.stdout.isTTY` even for a console
-// bound to a different stream.
-function resolveOptionColorSystem(
-  spec: string | ColorDepth | null | undefined,
-  detect: DetectColorOptions,
-): ColorDepth | null {
-  if (spec === null) return null;
-  if (spec === undefined) return resolveColorSystem("auto", detect);
-  if (typeof spec === "string") return resolveColorSystem(spec, detect);
-  return spec;
-}
 
 // A host with an environment but no streams — what a browser looks like from
 // here. Frozen so the shared instance cannot be mutated into a fake terminal.
@@ -288,7 +275,7 @@ const NO_HIGHLIGHT = new NullHighlighter();
 const PRINT_DATA_BOUNDS = { maxLength: 100, maxDepth: 16, maxString: 1000 } as const;
 
 export class Console {
-  private _colorSystem: ColorDepth | null;
+  private _destination: Destination;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
   // `width`/`height` options collapse into a closure that returns them; a
   // caller-supplied `getSize` overrides. Every size read in this class goes
@@ -321,10 +308,17 @@ export class Console {
     const stream = boundStream(environment, options?.stderr ?? false);
     this._stream = stream;
     this._isTerminal = effectiveIsTTY(options, stream);
-    this._colorSystem = resolveOptionColorSystem(options?.colorSystem, {
-      isTTY: this._isTerminal,
-      env: environment.env,
-    });
+    // [LAW:dataflow-not-control-flow] `isTTY` and `env` are forwarded
+    // unconditionally, so detection stays inside the console's injected
+    // environment rather than the ambient process's.
+    const resolved = resolveDestination(
+      options?.colorSystem === undefined ? "auto" : options.colorSystem,
+      { isTTY: this._isTerminal, env: environment.env },
+    );
+    this._destination = {
+      colorSystem: resolved.colorSystem,
+      hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
+    };
     this._getSize = resolveGetSize(options, environment, stream);
     // [LAW:no-ambient-temporal-coupling] The theme is assigned before the
     // style, because the console's own style may be one of the theme's names.
@@ -369,7 +363,12 @@ export class Console {
   }
 
   get colorSystem(): ColorDepth | null {
-    return this._colorSystem;
+    return this._destination.colorSystem;
+  }
+
+  /** Whether this console emits OSC 8 hyperlinks. */
+  get hyperlinks(): boolean {
+    return this._destination.hyperlinks;
   }
 
   // [LAW:one-source-of-truth] Output target lookup matches `_write`'s:
@@ -395,7 +394,7 @@ export class Console {
       asciiOnly: false,
       theme: this._theme,
       onStyleError: this._onStyleError,
-      colorSystem: this._colorSystem,
+      colorSystem: this._destination.colorSystem,
     };
   }
 
@@ -624,7 +623,11 @@ export class Console {
         if (!segment.isControl) this._recorded.push(segment);
       }
     }
-    const encoded = segmentsToString(segments, this._colorSystem);
+    const encoded = segmentsToString(
+      segments,
+      this._destination.colorSystem,
+      this._destination.hyperlinks,
+    );
     if (encoded.length > 0) this._write(encoded);
   }
 

@@ -18,10 +18,11 @@
  * [LAW:dataflow-not-control-flow] The same pipeline runs every render: collect
  * non-control non-empty pieces, partition by SGR-codes (SGR-runs), partition
  * each run by link (link-runs), emit one SGR open/close per run with link
- * open/close pairs sitting inside. `colorSystem === null` is data: every piece
- * is collected with empty SGR-codes *and* no link, so the same pipeline emits
- * plain text — no SGR wraps and no OSC 8 hyperlink wraps. NO_COLOR therefore
- * strips *all* ANSI escape emission, not just colors.
+ * open/close pairs sitting inside. Colour and hyperlinks are two facts about
+ * the destination, carried as two values: `colorSystem === null` empties every
+ * piece's SGR-codes, and `hyperlinks === false` empties every piece's link. A
+ * colour depth never removes a link — a hyperlink is not a colour, and a
+ * NO_COLOR terminal still follows OSC 8.
  *
  * [LAW:types-are-the-program] Adjacent same-style segments share an SGR wrap
  * because the SGR-codes string is the same group key for both — the
@@ -29,7 +30,7 @@
  * mechanical fold over it.
  */
 
-import { ColorDepth, resolveColorSystem } from "./color.js";
+import { ColorDepth, resolveDestination } from "./color.js";
 import type { DetectColorOptions } from "./color.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
@@ -41,8 +42,8 @@ export interface RenderToStringOptions {
   /**
    * Color encoding to emit. Accepts a string spec (`"auto"`, `"truecolor"`,
    * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value, or `null` to
-   * strip *all* ANSI escape emission — SGR colors/attributes *and* OSC 8
-   * hyperlinks. Default truecolor.
+   * strip SGR colors/attributes. Hyperlinks are `hyperlinks`' concern. Default
+   * truecolor.
    */
   colorSystem?: string | ColorDepth | null;
   /**
@@ -58,6 +59,13 @@ export interface RenderToStringOptions {
   isTTY?: boolean;
   /** When true, forces `colorSystem` to `null` regardless of the explicit value. */
   noColor?: boolean;
+  /**
+   * Whether OSC 8 hyperlinks are emitted. Independent of `colorSystem`: a
+   * null colour system strips SGR and keeps links. Default: what the
+   * destination takes — true for an explicit depth, detected under `"auto"`
+   * (no TTY or TERM=dumb: false). `false` with `colorSystem: null` is plain text.
+   */
+  hyperlinks?: boolean;
 }
 
 const DEFAULT_WIDTH = 80;
@@ -71,29 +79,33 @@ interface Piece {
 function segmentToPiece(
   segment: Segment,
   colorSystem: ColorDepth | null,
+  hyperlinks: boolean,
 ): Piece | undefined {
   if (segment.isControl) return undefined;
   if (segment.text.length === 0) return undefined;
   const style = segment.style;
-  if (!style || style.isNull || colorSystem === null) {
+  if (!style || style.isNull) {
     return { text: segment.text, sgrCodes: "", link: undefined };
   }
+  // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
+  // their own fact. Coupling them let a colour setting delete every control.
   return {
     text: segment.text,
-    sgrCodes: style.toSgrCodes(colorSystem),
-    link: style.link,
+    sgrCodes: colorSystem === null ? "" : style.toSgrCodes(colorSystem),
+    link: hyperlinks ? style.link : undefined,
   };
 }
 
 /**
  * Encodes a single segment as ANSI bytes. Equivalent to
- * `segmentsToString([segment], colorSystem)` — same SGR / OSC 8 layout.
+ * `segmentsToString([segment], colorSystem, hyperlinks)` — same SGR / OSC 8 layout.
  */
 export function segmentToString(
   segment: Segment,
   colorSystem: ColorDepth | null,
+  hyperlinks: boolean,
 ): string {
-  return segmentsToString([segment], colorSystem);
+  return segmentsToString([segment], colorSystem, hyperlinks);
 }
 
 /**
@@ -104,10 +116,11 @@ export function segmentToString(
 export function segmentsToString(
   segments: Iterable<Segment>,
   colorSystem: ColorDepth | null,
+  hyperlinks: boolean,
 ): string {
   const pieces: Piece[] = [];
   for (const s of segments) {
-    const p = segmentToPiece(s, colorSystem);
+    const p = segmentToPiece(s, colorSystem, hyperlinks);
     if (p) pieces.push(p);
   }
   if (pieces.length === 0) return "";
@@ -147,26 +160,19 @@ export function renderToString(
   options?: RenderToStringOptions,
 ): string {
   const width = options?.width ?? DEFAULT_WIDTH;
-  // [LAW:dataflow-not-control-flow] Distinguish "explicit null" from the
-  // defaulted case. `??` would collapse `null` into the default; `in` would
-  // accept an explicit `undefined` value as authoritative. Only an explicit
-  // `null` (or `noColor: true`) strips color; everything else — absent field,
-  // explicit `undefined` — falls back to truecolor.
-  // [LAW:single-enforcer] String specs route through `resolveColorSystem`;
-  // enum/null pass through unchanged.
-  const rawSpec = options?.colorSystem;
-  // [LAW:dataflow-not-control-flow] Build the detect options unconditionally;
-  // `resolveColorSystem` ignores them for non-`"auto"` specs.
+  // [LAW:dataflow-not-control-flow] An absent spec is truecolor; an explicit
+  // `null` stays null (`??` would collapse it). `noColor` is a colour choice,
+  // so it overrides the depth and leaves hyperlinks to the destination.
+  // [LAW:single-enforcer] Specs resolve through `resolveDestination`.
   const detectOptions: DetectColorOptions = {};
   if (options?.env !== undefined) detectOptions.env = options.env;
   if (options?.isTTY !== undefined) detectOptions.isTTY = options.isTTY;
-  const colorSystem = options?.noColor
-    ? null
-    : rawSpec === undefined
-      ? ColorDepth.TRUECOLOR
-      : typeof rawSpec === "string"
-        ? resolveColorSystem(rawSpec, detectOptions)
-        : rawSpec;
+  const rawSpec = options?.colorSystem;
+  const destination = resolveDestination(
+    rawSpec === undefined ? ColorDepth.TRUECOLOR : rawSpec,
+    detectOptions,
+  );
+  const colorSystem = options?.noColor ? null : destination.colorSystem;
   const renderOptions: RenderOptions = {
     maxWidth: width,
     isTerminal: false,
@@ -177,5 +183,9 @@ export function renderToString(
     colorSystem,
   };
 
-  return segmentsToString(renderable.render(renderOptions), colorSystem);
+  return segmentsToString(
+    renderable.render(renderOptions),
+    colorSystem,
+    options?.hyperlinks ?? destination.hyperlinks,
+  );
 }

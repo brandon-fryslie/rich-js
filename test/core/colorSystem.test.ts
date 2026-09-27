@@ -3,6 +3,7 @@ import {
   ColorDepth,
   resolveColorSystem,
   detectColorSystem,
+  resolveDestination,
 } from "../../src/core/color.js";
 import { renderToString } from "../../src/core/render.js";
 import { RichText } from "../../src/core/text.js";
@@ -236,5 +237,29 @@ describe("renderToString accepts ColorSystemSpec strings", () => {
       width: 10,
     });
     expect(out).not.toMatch(/\x1b\[/);
+  });
+});
+
+describe("resolveDestination (spec → colour depth + hyperlinks)", () => {
+  // [LAW:one-type-per-behavior] A hyperlink is not a colour: a colour choice
+  // never removes links; only a destination that takes no escapes does.
+  const TTY = { env: { TERM: "xterm-256color" }, isTTY: true };
+  it.each([
+    ["none", TTY, null, true],
+    ["truecolor", { env: EMPTY, isTTY: false }, ColorDepth.TRUECOLOR, true],
+    ["auto", TTY, ColorDepth.EIGHT_BIT, true],
+    ["auto", { env: { NO_COLOR: "1", TERM: "xterm-256color" }, isTTY: true }, null, true],
+    ["auto", { env: { TERM: "xterm-256color" }, isTTY: false }, null, false],
+    ["auto", { env: { TERM: "dumb" }, isTTY: true }, null, false],
+    ["auto", { env: { FORCE_COLOR: "1" }, isTTY: false }, ColorDepth.STANDARD, true],
+    ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: true }, null, true],
+    ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: false }, null, false],
+  ] as const)("%s %j → %s, links %s", (spec, opts, colorSystem, hyperlinks) => {
+    expect(resolveDestination(spec, opts)).toEqual({ colorSystem, hyperlinks });
+  });
+
+  it("an explicit null or enum depth keeps links", () => {
+    expect(resolveDestination(null)).toEqual({ colorSystem: null, hyperlinks: true });
+    expect(resolveDestination(ColorDepth.STANDARD).hyperlinks).toBe(true);
   });
 });

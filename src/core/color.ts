@@ -327,21 +327,35 @@ const STRING_TO_DEPTH: Record<string, ColorDepth | null> = {
 export function detectColorSystem(
   options: DetectColorOptions = {},
 ): ColorDepth | null {
-  const env = options.env ?? (typeof process !== "undefined" ? process.env : {});
+  // NO_COLOR and FORCE_COLOR are preferences about colour, not facts about the
+  // terminal, so they sit outside the probe. NO_COLOR (any non-empty value)
+  // beats FORCE_COLOR; FORCE_COLOR beats TTY/TERM detection.
+  const noColor = envOf(options)["NO_COLOR"];
+  if (noColor !== undefined && noColor !== "") return null;
+  const forced = forcedColorSystem(envOf(options));
+  return forced !== undefined ? forced : terminalColorSystem(options);
+}
+
+// FORCE_COLOR's depth: `undefined` when unset, `null` for its off values.
+function forcedColorSystem(env: NodeJS.ProcessEnv): ColorDepth | null | undefined {
+  const force = env["FORCE_COLOR"];
+  if (force === undefined || force === "") return undefined;
+  const mapped = STRING_TO_DEPTH[force];
+  return mapped !== undefined ? mapped : ColorDepth.STANDARD;
+}
+
+function envOf(options: DetectColorOptions): NodeJS.ProcessEnv {
+  return options.env ?? (typeof process !== "undefined" ? process.env : {});
+}
+
+// What the destination can draw, preferences aside: TTY presence,
+// TERM=dumb/unknown, COLORTERM, known terminal names, TERM patterns. `null`
+// here means the destination takes no escapes at all.
+function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
+  const env = envOf(options);
   const isTTY =
     options.isTTY ??
     (typeof process !== "undefined" ? (process.stdout?.isTTY ?? false) : false);
-
-  // NO_COLOR: any non-empty value disables color.
-  const noColor = env["NO_COLOR"];
-  if (noColor !== undefined && noColor !== "") return null;
-
-  // FORCE_COLOR: explicit override, wins over TTY/TERM detection.
-  const force = env["FORCE_COLOR"];
-  if (force !== undefined && force !== "") {
-    const mapped = STRING_TO_DEPTH[force];
-    return mapped !== undefined ? mapped : ColorDepth.STANDARD;
-  }
 
   if (!isTTY) return null;
 
@@ -372,6 +386,43 @@ export function detectColorSystem(
   // Default: a terminal exists (isTTY=true) but we couldn't classify it.
   // Assume safe baseline rather than disabling color.
   return ColorDepth.STANDARD;
+}
+
+/**
+ * Where segments are written, as the two facts the serializer needs: the
+ * colour depth SGR is drawn at, and whether OSC 8 hyperlinks are emitted.
+ */
+export interface Destination {
+  readonly colorSystem: ColorDepth | null;
+  readonly hyperlinks: boolean;
+}
+
+/**
+ * Resolve a colour spec into a `Destination`.
+ *
+ * [LAW:single-enforcer] The one place a spec becomes both facts. A hyperlink is
+ * not a colour: an explicit depth — `"none"` and `null` included — states a
+ * colour choice and keeps links, and under `"auto"` links follow what the
+ * terminal can take (no TTY, TERM=dumb: none) while NO_COLOR and FORCE_COLOR=0,
+ * colour preferences, leave them alone. A FORCE_COLOR that forces colour on
+ * declares the destination takes escapes, so it keeps links on a pipe too.
+ */
+export function resolveDestination(
+  spec: string | ColorDepth | null,
+  options?: DetectColorOptions,
+): Destination {
+  if (spec !== "auto") {
+    return {
+      colorSystem: typeof spec === "string" ? resolveColorSystem(spec) : spec,
+      hyperlinks: true,
+    };
+  }
+  return {
+    colorSystem: detectColorSystem(options),
+    hyperlinks:
+      (forcedColorSystem(envOf(options ?? {})) ?? null) !== null ||
+      terminalColorSystem(options ?? {}) !== null,
+  };
 }
 
 /**

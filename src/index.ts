@@ -22,12 +22,13 @@ export {
   blendRgb,
   resolveColorSystem,
   detectColorSystem,
+  resolveDestination,
   STANDARD_TABLE,
   EIGHT_BIT_TABLE,
   WINDOWS_TABLE,
   ANSI_COLOR_NAMES,
 } from "./core/color.js";
-export type { DetectColorOptions } from "./core/color.js";
+export type { DetectColorOptions, Destination } from "./core/color.js";
 
 // Perceptually-uniform color space (manipulation, transposition).
 export {

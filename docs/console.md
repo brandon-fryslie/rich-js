@@ -568,9 +568,9 @@ const animated = new Console({ forceInteractive: true }); // always show animati
 
 | Variable | Effect |
 |---|---|
-| `NO_COLOR` | Disable color |
+| `NO_COLOR` | Disable color; hyperlinks still print |
 | `FORCE_COLOR` | Enable color regardless of `TERM` |
-| `TERM=dumb` | Disable color |
+| `TERM=dumb` | Disable color and hyperlinks |
 | `COLUMNS` / `LINES` | Override terminal dimensions |
 
 `NO_COLOR` takes precedence over `FORCE_COLOR`.
@@ -579,6 +579,12 @@ Both `NO_COLOR` and `TERM=dumb` drop the console to no color system at all, and
 that takes the text attributes with it — `"[bold red]X[/bold red]"` prints as a
 bare `X`, with neither the color nor the bold. Neither variable changes
 dimensions or wrapping.
+
+A hyperlink is not a color. `NO_COLOR` keeps `[link=…]` as an OSC 8 link; what
+drops links is a destination that takes no escapes at all — `TERM=dumb`, or
+output that is not a TTY while `colorSystem` is `"auto"`. An explicit
+`colorSystem` (`"none"` and `null` included) keeps links; pass
+`hyperlinks: false` with `colorSystem: null` for plain text.
 
 ## Injecting the environment
 
