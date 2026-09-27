@@ -6,6 +6,7 @@ import { Segment } from "../core/segment.js";
 import { cellFit, cellLen, asCellCol } from "../core/cells.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { RichText } from "../core/text.js";
+import { embed } from "./embed.js";
 import type {
   Renderable,
   Measurable,
@@ -30,17 +31,6 @@ export interface TreeOptions {
   hideRoot?: boolean;
   guide_style?: string | Style;
   style?: string | Style;
-}
-
-function toRenderable(label: string | RichText | Renderable): Renderable {
-  if (typeof label === "string") return new RichText(label, { end: "" });
-  if (label instanceof RichText) {
-    // Ensure no trailing newline in tree labels
-    const copy = label.copy();
-    copy.end = "";
-    return copy;
-  }
-  return label;
 }
 
 /** One emitted row: the guides that lead it, then the label that follows them. */
@@ -76,7 +66,7 @@ export class Tree implements Renderable, Measurable {
     label: string | RichText | Renderable,
     options?: TreeOptions,
   ) {
-    this.label = toRenderable(label);
+    this.label = embed(label);
     this.children = [];
     this.expanded = options?.expanded !== false;
     this.hideRoot = options?.hideRoot ?? false;

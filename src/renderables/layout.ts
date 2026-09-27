@@ -3,7 +3,7 @@
  */
 
 import { Segment } from "../core/segment.js";
-import { RichText } from "../core/text.js";
+import { embed } from "./embed.js";
 import type {
   Renderable,
   Measurable,
@@ -41,23 +41,6 @@ function growthRatio(ratio: number): number {
 
 // [LAW:single-enforcer] A leaf's content is a pane, not a printed unit — the
 // same reason panel.ts and table.ts clear `end` on a `RichText` they embed.
-// The string branch already built one with `end: ""`; a `RichText` passed
-// directly needs the same treatment, or it keeps its default `end: "\n"`
-// (rich-text-5ai code review) and draws a trailing blank row through
-// `Segment.cropLines`, which — unlike table.ts's `splitLines`-based cell
-// rendering — does not normalize a trailing empty line away.
-function toRenderable(renderable: Renderable | string): Renderable {
-  if (typeof renderable === "string") {
-    return new RichText(renderable, { end: "" });
-  }
-  if (renderable instanceof RichText) {
-    const copy = renderable.copy();
-    copy.end = "";
-    return copy;
-  }
-  return renderable;
-}
-
 /**
  * A pane rendered into a region of `rows` and held to exactly that many lines,
  * or — with `rows` undefined — rendered under the layout's own budget, as a
@@ -88,7 +71,7 @@ export class Layout implements Renderable, Measurable {
 
   constructor(renderable?: Renderable | string, options?: LayoutOptions) {
     if (renderable !== undefined) {
-      this._renderable = toRenderable(renderable);
+      this._renderable = embed(renderable);
     }
     this.name = options?.name;
     this.ratio = options?.ratio ?? 1;
@@ -164,7 +147,7 @@ export class Layout implements Renderable, Measurable {
   }
 
   update(renderable: Renderable | string): void {
-    this._renderable = toRenderable(renderable);
+    this._renderable = embed(renderable);
   }
 
   getByName(name: string): Layout | undefined {

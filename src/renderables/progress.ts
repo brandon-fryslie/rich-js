@@ -5,7 +5,8 @@
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
-import { escape as escapeMarkup, renderMarkup } from "../core/markup.js";
+import { escape as escapeMarkup } from "../core/markup.js";
+import { embeddedText } from "./embed.js";
 import { ProgressBar } from "./progressBar.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
@@ -61,13 +62,9 @@ export class TextColumn implements ProgressColumn {
     // Use a callback so `$&`/`$1`/`$$` in the task description aren't
     // reinterpreted by String.replace as replacement patterns.
     const formatted = this.format.replace(/\{task\.description\}/g, () => description);
-    // [LAW:one-type-per-behavior] A column is a row fragment, not a printed
-    // line, so it clears `end` the same way `toCellText` does in table.ts —
-    // `renderMarkup` returns a fresh `RichText` each call, so it is safe to
-    // mutate directly rather than copy.
-    const text = renderMarkup(formatted);
-    text.end = "";
-    yield* text.render(options);
+    // [LAW:single-enforcer] A column is a row fragment, the same as any
+    // embedded text.
+    yield* embeddedText(formatted).render(options);
   }
 }
 

@@ -4,7 +4,6 @@
 
 import { Segment } from "../core/segment.js";
 import { Measurement } from "../core/measure.js";
-import { RichText } from "../core/text.js";
 import type { PaddingDimensions } from "./padding.js";
 import type {
   Renderable,
@@ -13,6 +12,7 @@ import type {
 } from "../core/protocol.js";
 import { isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { cellCount } from "../core/cells.js";
+import { embed } from "./embed.js";
 
 export interface ColumnsOptions {
   expand?: boolean;
@@ -20,23 +20,6 @@ export interface ColumnsOptions {
   width?: number;
   padding?: PaddingDimensions;
   columnFirst?: boolean;
-}
-
-function toRenderable(item: unknown): Renderable & Partial<Measurable> {
-  // [LAW:single-enforcer] A `RichText` passed directly implements `render`
-  // and would otherwise leave through the passthrough arm below untouched,
-  // keeping its default `end: "\n"` (rich-text-5ai) — the same gap the code
-  // review found in table.ts's `toRenderable`. A column item is a row
-  // fragment, not a printed unit, same as every other embedding site.
-  if (item instanceof RichText) {
-    const copy = item.copy();
-    copy.end = "";
-    return copy;
-  }
-  if (typeof item === "object" && item !== null && "render" in item) {
-    return item as Renderable & Partial<Measurable>;
-  }
-  return new RichText(String(item ?? ""), { end: "" });
 }
 
 export class Columns implements Renderable, Measurable {
@@ -48,7 +31,7 @@ export class Columns implements Renderable, Measurable {
   readonly gutterWidth: number;
 
   constructor(items?: Iterable<unknown>, options?: ColumnsOptions) {
-    this.renderables = items ? [...items].map(toRenderable) : [];
+    this.renderables = items ? [...items].map(embed) : [];
     this.expand = options?.expand ?? false;
     this.equal = options?.equal ?? false;
     // A declared column width is a cell count like any other, and it reaches

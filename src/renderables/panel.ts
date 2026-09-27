@@ -8,6 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, ROUNDED } from "../core/box.js";
 import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
+import { embed } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -149,22 +150,6 @@ function borderTextStyle(
   return own === undefined ? border : getStyle(options, own);
 }
 
-function toRenderable(content: string | RichText | Renderable): Renderable {
-  // [LAW:one-type-per-behavior] Content embedded in a panel is a line, not a
-  // printed unit — the same reason columns, table cells, tree labels, and
-  // every other embedding site build their RichText with `end: ""`. Now that
-  // `RichText.render` honors `end` uniformly (rich-text-5ai), leaving this at
-  // the default "\n" would draw a trailing blank row whenever content ends
-  // with a literal newline.
-  if (typeof content === "string") return new RichText(content, { end: "" });
-  if (content instanceof RichText) {
-    const copy = content.copy();
-    copy.end = "";
-    return copy;
-  }
-  return content;
-}
-
 export class Panel implements Renderable, Measurable {
   readonly renderable: Renderable;
   readonly box: Box;
@@ -183,7 +168,7 @@ export class Panel implements Renderable, Measurable {
     content: string | RichText | Renderable,
     options?: PanelOptions,
   ) {
-    this.renderable = toRenderable(content);
+    this.renderable = embed(content);
     this.box = options?.box ?? ROUNDED;
     this.title = options?.title;
     this.subtitle = options?.subtitle;
