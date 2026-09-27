@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-166",
+      "ref": "refs/pull/166/merge",
+      "sha": "824574f7a031352456d902df72dee2063fa36494",
+      "timestamp": "2026-09-27T12:02:03.165Z",
+      "commits": [
+        {
+          "sha": "824574f7a031352456d902df72dee2063fa36494",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T12:01:35Z",
+          "message": "Merge f0ca16d5b0642b835226acbe5645447dd216ad19 into 4330960b9b55a226959723f67bcdc7a6f8eaa812\n"
+        },
+        {
+          "sha": "f0ca16d5b0642b835226acbe5645447dd216ad19",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T06:01:31-06:00",
+          "message": "fix(viewport): ensureVisible counts rendered lines, and the demo follows the terminal's size (rich-viewport-owi.3)\n\nThe docs and demo passed an item index where ensureVisible counts the lines\nthe content renders to; the demo now renders each entry on one line and the\npage says so. The demo's Console reads the host's live size and its node\nbootstrap tears down on SIGTERM too. Render slices only the rows it shows.\n"
+        },
+        {
+          "sha": "6ffdb7717d268ae1a5eaf517302d4bbca7807339",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:50:11-06:00",
+          "message": "feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-168",
       "ref": "refs/pull/168/merge",
       "sha": "2340ce3f8c1cd6476e66ed2654d6647539ce6505",
@@ -71,28 +100,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T05:53:19-06:00",
           "message": "docs: TERM=dumb drops hyperlinks; console.destination in the attributes table (#167)\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-166",
-      "ref": "refs/pull/166/merge",
-      "sha": "2fed66d77f8e3540da738ed5ef8d526f89dc9008",
-      "timestamp": "2026-09-27T11:50:41.128Z",
-      "commits": [
-        {
-          "sha": "2fed66d77f8e3540da738ed5ef8d526f89dc9008",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:50:15-06:00",
-          "message": "Merge 6ffdb7717d268ae1a5eaf517302d4bbca7807339 into b49a644ea58af11990f6f036694400a835147ca6\n"
-        },
-        {
-          "sha": "6ffdb7717d268ae1a5eaf517302d4bbca7807339",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T05:50:11-06:00",
-          "message": "feat(viewport): a Viewport shows a window of rows onto taller content and keeps a range in view (rich-viewport-owi.3)\n\nScroll operations are queued and resolved at the next render, in call order,\nclamping after each move: the rows and the content's length that an offset is\nclamped against only exist once the viewport renders. The scroll position\nbelongs to the viewport, so a view rebuilt every frame keeps one Viewport and\nreplaces its content.\n"
         }
       ]
     }
