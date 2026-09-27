@@ -69,9 +69,11 @@ export interface RenderOptions {
  * ceiling is cropped by whoever imposed it.
  *
  * A renderable passing its whole space to one child must forward the budget
- * less the rows it draws itself, and of the same kind. One stacking several
- * children must hand each the rows as a ceiling: any one of them may use all
- * of it, and none may claim it as its region.
+ * less the rows it draws itself, and of the same kind (`insetHeight`). One
+ * stacking several children must hand each the rows as a ceiling
+ * (`stackedHeight`): any one of them may use all of it, and none may claim it
+ * as its region. Forwarded unchanged, a layout nested in a panel fills the
+ * panel's whole region and the region's crop takes the panel's bottom border.
  *
  * [LAW:types-are-the-program] One field, because the fact is one count and one
  * bit about it. As two numbers, `height` and `maxHeight`, it admitted a region
@@ -87,6 +89,22 @@ export interface RenderOptions {
 export interface Height {
   readonly rows: number;
   readonly exact: boolean;
+}
+
+/**
+ * The budget a renderable hands the one child filling its space: its own, less
+ * the `rows` it draws itself, and of the same kind.
+ */
+export function insetHeight(height: Height | undefined, rows: number): Height | undefined {
+  return height && { rows: Math.max(0, height.rows - rows), exact: height.exact };
+}
+
+/**
+ * The budget a renderable hands each of several children it stacks: its rows,
+ * as a ceiling.
+ */
+export function stackedHeight(height: Height | undefined): Height | undefined {
+  return height && { rows: height.rows, exact: false };
 }
 
 /**

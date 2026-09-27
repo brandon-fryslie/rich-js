@@ -143,10 +143,8 @@ function wrapInPanel(widget: Widget, body: Renderable): Renderable {
     style: Style.parse("bold"),
     end: "",
   });
-  // Reserve 2 rows for the panel's top/bottom borders so the body never
-  // overflows its cell. The 2-row reserve is the same constant Panel uses
-  // internally; encoding it once at the seam keeps panel and body in sync.
-  return new Panel(new ClipHeight(body, 2), {
+  // The panel hands the body its region less its own border rows.
+  return new Panel(new ClipHeight(body), {
     title,
     borderStyle: widget.borderStyle ?? "cyan",
     padding: [0, 1],
