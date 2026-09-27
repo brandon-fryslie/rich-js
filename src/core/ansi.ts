@@ -66,7 +66,7 @@ type EraseMode = "0" | "1" | "2";
  * three become tokens.
  */
 const ESCAPE =
-  /\r|\x1b\[([0-9;:]*)m|\x1b\[([012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
+  /\r|\x1b\[([0-9;:]*)m|\x1b\[([012]?)K|\x1b\[[0-?]*[ -/]*[@-~]|\x1b[\]P_^X][\s\S]*?(?:\x07|\x1b\\|\x9c|$)|\x1b[ -/]*[0-~]/g;
 
 function* escapeTokens(bytes: string): Generator<Token> {
   let at = 0;
@@ -139,7 +139,6 @@ const SGR_OPS: ReadonlyMap<number, SgrOp> = new Map<number, SgrOp>([
   // either speed. Rich's table clears only the first of each pair.
   [24, adding({ underline: false, underline2: false })],
   [25, adding({ blink: false, blink2: false })],
-  [26, adding({ blink2: false })],
   [27, adding({ reverse: false })],
   [28, adding({ conceal: false })],
   [29, adding({ strike: false })],
@@ -235,7 +234,7 @@ export class AnsiDecoder {
     const runs: [string, Style][] = [];
     for (const [char, style] of cells) {
       const last = runs.at(-1);
-      if (last?.[1] === style) last[0] += char;
+      if (last?.[1].equals(style)) last[0] += char;
       else runs.push([char, style]);
     }
     return RichText.assemble(runs);

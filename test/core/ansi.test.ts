@@ -168,6 +168,14 @@ describe("decodeAnsi lines and other escapes", () => {
     expect([styleAt(text, 1).underline2, styleAt(text, 1).blink2]).toEqual([false, false]);
   });
 
+  it("drops a string escape whose payload holds a stray ESC", () => {
+    expect(decodeAnsi("\x1b]0;bad\x1bXtitle\x07after").plain).toBe("after");
+  });
+
+  it("gives one span to one style split by an escape that changes nothing", () => {
+    expect(decodeAnsi("\x1b[1mab\x1b[Kcd\x1b[1mef").spans.length).toBe(1);
+  });
+
   it("drops an OSC the line cuts off", () => {
     expect(decodeAnsi("a\x1b]0;title").plain).toBe("a");
   });
