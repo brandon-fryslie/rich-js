@@ -222,13 +222,17 @@ export interface PowerlineJoinerOptions {
 
 /**
  * The powerline set: U+E0B0 (right-arrow) divided by U+E0B1 (thin right-arrow),
- * led by U+E0B2 (left-arrow) and tailed by the arrow itself — so a strip's two
- * ends are one shape.
+ * led by U+E0D6 (inverse right-arrow) and tailed by the arrow itself. The lead
+ * inks the top-left and bottom-left of the first cell and leaves a
+ * right-pointing triangle empty, so the run opens notched — as if an arrow
+ * before it pointed in — rather than with a shape pointing out. The notch is
+ * the terminal's own background showing through, never a colour painted to
+ * imitate it, so it matches under a translucent terminal background too.
  */
 export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({
   glyph: "\ue0b0",
   divider: "\ue0b1",
-  lead: "\ue0b2",
+  lead: "\ue0d6",
   tail: "\ue0b0",
 });
 
