@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-165",
+      "ref": "refs/pull/165/merge",
+      "sha": "0b858b1239e67798e00ca1814f49e06385dd7781",
+      "timestamp": "2026-09-27T11:37:09.868Z",
+      "commits": [
+        {
+          "sha": "0b858b1239e67798e00ca1814f49e06385dd7781",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:36:47-06:00",
+          "message": "Merge 98ee8a4556b9ba76ed86c282d4930a7b4ff2a9b0 into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+        },
+        {
+          "sha": "98ee8a4556b9ba76ed86c282d4930a7b4ff2a9b0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T05:36:43-06:00",
+          "message": "feat(docs): a simulated process runs an example's own new Console() in a terminal we supply (rich-docs-examples-xuu.iy5)\n\n`runInTerminal(program, terminal)` evaluates a bundled program as the body of\nan async function whose parameter is named `process`, so every free `process`\nin it — the library included — binds to a stand-in built from the terminal.\nNothing global is swapped: the build's and the page's own `process` are never\ntouched, and two runs can overlap.\n\nProven in Node (test/docs/simulated-process.test.ts, under a hostile host env)\nand in Chromium (e2e/simulated-process.spec.ts).\n"
+        }
+      ]
+    },
+    {
       "version": "pr-163",
       "ref": "refs/pull/163/merge",
       "sha": "3cb9b635e6d0adcd1626657ca0bdf93a22ab4848",
