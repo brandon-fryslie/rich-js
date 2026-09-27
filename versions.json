@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-163",
+      "ref": "refs/pull/163/merge",
+      "sha": "730477af6679f3d2cfa4718c74d6c86d4d514c35",
+      "timestamp": "2026-09-27T09:37:46.396Z",
+      "commits": [
+        {
+          "sha": "730477af6679f3d2cfa4718c74d6c86d4d514c35",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T03:37:18-06:00",
+          "message": "Merge cdb2717c6ddc504bb9def239c9133211cc637d78 into cba3ca7a61d983aa38b8e31005c6fa9044d89ebe\n"
+        },
+        {
+          "sha": "cdb2717c6ddc504bb9def239c9133211cc637d78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T03:37:06-06:00",
+          "message": "feat(render): Console and Live supply the Height budget (rich-viewport-owi.2)\n\nConsole.options carries the terminal's rows as a ceiling, and print hands\neach stacked block stackedHeight of it. Live renders under the same rows:\ninline as a ceiling with its crop kept, alt-screen as a region shaped with\nfitHeight and written with no newline after the last row, so a full-height\nframe no longer scrolls.\n\ninsetHeight, stackedHeight, regionRows and fitHeight are exported from the\nbarrel and documented in docs/protocol.md beside the width contract.\n\nrich-dash's InjectMaxHeight wrapper and its reserved row are gone: Live\nsupplies the height they injected. The job pane gains a build-log tail that\nfills the rows under its bars, which is what demonstrates the four helpers.\n\ndocs/live.md dropped a false claim that the last frame is shown `visible`\non stop — stop() refreshes under the configured overflow.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "cba3ca7a61d983aa38b8e31005c6fa9044d89ebe",
