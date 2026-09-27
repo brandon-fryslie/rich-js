@@ -74,12 +74,33 @@ describe("alt-screen Live frames", () => {
   });
 
   it("short content is padded to the screen, and tall content cropped to it", () => {
-    expect(frame(new Probe(2), 4, { altScreen: true }).split("\n")).toEqual(["line 0", "line 1", "", ""]);
-    expect(frame(new Probe(9), 3, { altScreen: true, verticalOverflow: "crop" }).split("\n")).toEqual([
-      "line 0",
-      "line 1",
-      "line 2",
-    ]);
+    const pad = (text: string) => text.padEnd(20);
+    expect(frame(new Probe(2), 4, { altScreen: true }).split("\n")).toEqual(
+      ["line 0", "line 1", "", ""].map(pad),
+    );
+    expect(frame(new Probe(9), 3, { altScreen: true, verticalOverflow: "crop" }).split("\n")).toEqual(
+      ["line 0", "line 1", "line 2"].map(pad),
+    );
+  });
+
+  it("a shorter frame overwrites every cell of the one before it", () => {
+    const { console, out } = sized(4);
+    const live = new Live(new Probe(4), { console, autoRefresh: false, altScreen: true });
+    live.refresh();
+    const before = out().length;
+    live.update(new Probe(1), { refresh: true });
+    const rows = out().slice(before).replace(/^\x1b\[H/, "").split("\n");
+    expect(rows).toEqual(["line 0", "", "", ""].map((text) => text.padEnd(20)));
+  });
+
+  it("a transient stop leaves the buffer and erases nothing inside it", () => {
+    const { console, out } = sized(4);
+    const live = new Live(new Probe(2), { console, autoRefresh: false, altScreen: true, transient: true });
+    live.start();
+    live.refresh();
+    const before = out().length;
+    live.stop();
+    expect(out().slice(before)).toBe("\x1b[?25h\x1b[0m\x1b[?1049l");
   });
 });
 

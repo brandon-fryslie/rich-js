@@ -125,11 +125,16 @@ export class Live {
     // region the frame stands in, and an inline frame keeps its natural height
     // under them as a ceiling. Live set the budget, so Live shapes what comes
     // back — its overflow policy, then `fitHeight`, which pads only a region.
-    const height: Height = { rows: this._console.height, exact: this._altScreen };
-    const lines = Segment.splitLines(
-      this._renderable.render({ ...this._console.options, height }),
-    );
-    const displayLines = fitHeight(this._overflow(lines, height.rows), height);
+    const options = this._console.options;
+    const height: Height = { rows: options.height.rows, exact: this._altScreen };
+    const lines = Segment.splitLines(this._renderable.render({ ...options, height }));
+    const fitted = fitHeight(this._overflow(lines, height.rows), height);
+    // The alternate screen is not erased between frames — the cursor only goes
+    // home — so a frame there is the whole rectangle, every cell written, or a
+    // shorter frame leaves the last one's rows and line tails showing.
+    const displayLines = this._altScreen
+      ? fitted.map((line) => Segment.adjustLineLength(line, options.maxWidth))
+      : fitted;
 
     // [LAW:single-enforcer] Per-line encoding routes through the same
     // tree-coalescer `Console._writeSegments` uses, so Live frames coalesce
@@ -145,7 +150,9 @@ export class Live {
     // and a newline after a full-height frame's last row scrolls its first row
     // off the top.
     this._console.file.write(this._altScreen ? output : output + "\n");
-    this._lastLineCount = displayLines.length;
+    // What `_clearLast` erases: an inline frame's rows. An alternate-screen
+    // frame is erased by leaving the buffer.
+    this._lastLineCount = this._altScreen ? 0 : displayLines.length;
   }
 
   // Lines past `rows`: dropped, with the last kept row replaced by an ellipsis,
