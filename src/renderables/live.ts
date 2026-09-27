@@ -134,10 +134,11 @@ export class Live {
     // [LAW:single-enforcer] Per-line encoding routes through the same
     // tree-coalescer `Console._writeSegments` uses, so Live frames coalesce
     // adjacent same-style segments into shared SGR pairs on the wire and
-    // honor `colorSystem === null` (NO_COLOR, dumb terminal) the same way.
+    // honor the console's colour depth and terminal-ness the same way.
     const colorSystem = this._console.colorSystem;
+    const hyperlinks = this._console.isTerminal;
     const output = displayLines
-      .map((line) => segmentsToString(line, colorSystem))
+      .map((line) => segmentsToString(line, colorSystem, hyperlinks))
       .join("\n");
 
     this._console.file.write(output + "\n");

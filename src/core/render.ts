@@ -18,10 +18,11 @@
  * [LAW:dataflow-not-control-flow] The same pipeline runs every render: collect
  * non-control non-empty pieces, partition by SGR-codes (SGR-runs), partition
  * each run by link (link-runs), emit one SGR open/close per run with link
- * open/close pairs sitting inside. `colorSystem === null` is data: every piece
- * is collected with empty SGR-codes *and* no link, so the same pipeline emits
- * plain text — no SGR wraps and no OSC 8 hyperlink wraps. NO_COLOR therefore
- * strips *all* ANSI escape emission, not just colors.
+ * open/close pairs sitting inside. Colour and hyperlinks are two facts about
+ * the destination, carried as two values: `colorSystem === null` empties every
+ * piece's SGR-codes, and `hyperlinks === false` empties every piece's link. A
+ * colour depth never removes a link — a hyperlink is not a colour, and a
+ * NO_COLOR terminal still follows OSC 8.
  *
  * [LAW:types-are-the-program] Adjacent same-style segments share an SGR wrap
  * because the SGR-codes string is the same group key for both — the
@@ -41,8 +42,8 @@ export interface RenderToStringOptions {
   /**
    * Color encoding to emit. Accepts a string spec (`"auto"`, `"truecolor"`,
    * `"256"`, `"ansi"`, `"none"`), a `ColorDepth` enum value, or `null` to
-   * strip *all* ANSI escape emission — SGR colors/attributes *and* OSC 8
-   * hyperlinks. Default truecolor.
+   * strip SGR colors/attributes. Hyperlinks are `hyperlinks`' concern. Default
+   * truecolor.
    */
   colorSystem?: string | ColorDepth | null;
   /**
@@ -58,6 +59,11 @@ export interface RenderToStringOptions {
   isTTY?: boolean;
   /** When true, forces `colorSystem` to `null` regardless of the explicit value. */
   noColor?: boolean;
+  /**
+   * Whether OSC 8 hyperlinks are emitted. Independent of `colorSystem`: a
+   * null colour system strips SGR and keeps links. Default true.
+   */
+  hyperlinks?: boolean;
 }
 
 const DEFAULT_WIDTH = 80;
@@ -71,29 +77,33 @@ interface Piece {
 function segmentToPiece(
   segment: Segment,
   colorSystem: ColorDepth | null,
+  hyperlinks: boolean,
 ): Piece | undefined {
   if (segment.isControl) return undefined;
   if (segment.text.length === 0) return undefined;
   const style = segment.style;
-  if (!style || style.isNull || colorSystem === null) {
+  if (!style || style.isNull) {
     return { text: segment.text, sgrCodes: "", link: undefined };
   }
+  // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
+  // their own fact. Coupling them let a colour setting delete every control.
   return {
     text: segment.text,
-    sgrCodes: style.toSgrCodes(colorSystem),
-    link: style.link,
+    sgrCodes: colorSystem === null ? "" : style.toSgrCodes(colorSystem),
+    link: hyperlinks ? style.link : undefined,
   };
 }
 
 /**
  * Encodes a single segment as ANSI bytes. Equivalent to
- * `segmentsToString([segment], colorSystem)` — same SGR / OSC 8 layout.
+ * `segmentsToString([segment], colorSystem, hyperlinks)` — same SGR / OSC 8 layout.
  */
 export function segmentToString(
   segment: Segment,
   colorSystem: ColorDepth | null,
+  hyperlinks: boolean,
 ): string {
-  return segmentsToString([segment], colorSystem);
+  return segmentsToString([segment], colorSystem, hyperlinks);
 }
 
 /**
@@ -104,10 +114,11 @@ export function segmentToString(
 export function segmentsToString(
   segments: Iterable<Segment>,
   colorSystem: ColorDepth | null,
+  hyperlinks: boolean,
 ): string {
   const pieces: Piece[] = [];
   for (const s of segments) {
-    const p = segmentToPiece(s, colorSystem);
+    const p = segmentToPiece(s, colorSystem, hyperlinks);
     if (p) pieces.push(p);
   }
   if (pieces.length === 0) return "";
@@ -177,5 +188,9 @@ export function renderToString(
     colorSystem,
   };
 
-  return segmentsToString(renderable.render(renderOptions), colorSystem);
+  return segmentsToString(
+    renderable.render(renderOptions),
+    colorSystem,
+    options?.hyperlinks ?? true,
+  );
 }

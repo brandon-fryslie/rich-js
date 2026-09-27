@@ -322,12 +322,12 @@ export class CoverageRenderable implements Renderable {
     // The two lower-level entry points the above delegates to.
     const styled = new Segment("segment", Style.parse("bold green"));
     items.push(new RichText(
-      `segmentToString: ${JSON.stringify(segmentToString(styled, ColorDepth.STANDARD))}`,
+      `segmentToString: ${JSON.stringify(segmentToString(styled, ColorDepth.STANDARD, true))}`,
       { end: "" },
     ));
     items.push(new RichText(
       `segmentsToString(2 segs, no color): ` +
-      JSON.stringify(segmentsToString([styled, new Segment("!")], null)),
+      JSON.stringify(segmentsToString([styled, new Segment("!")], null, true)),
       { end: "" },
     ));
     // A link split across two styles is two OSC 8 pairs sharing one id, so a
@@ -336,7 +336,7 @@ export class CoverageRenderable implements Renderable {
     const split = segmentsToString([
       new Segment("▸", new Style({ bold: true, link: url })),
       new Segment(" open", new Style({ link: url })),
-    ], ColorDepth.TRUECOLOR);
+    ], ColorDepth.TRUECOLOR, true);
     const opens = osc8Sequences(split).filter((s) => s.uri !== "");
     // OSC8 composes into a larger pattern: SGR + OSC 8 are every escape that
     // occupies no columns, so stripping them leaves the visible text.

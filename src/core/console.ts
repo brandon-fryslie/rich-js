@@ -624,7 +624,12 @@ export class Console {
         if (!segment.isControl) this._recorded.push(segment);
       }
     }
-    const encoded = segmentsToString(segments, this._colorSystem);
+    const encoded = segmentsToString(
+      segments,
+      this._colorSystem,
+      // A pipe or file gets no OSC 8: links belong to a terminal, whatever its colour depth.
+      this._isTerminal,
+    );
     if (encoded.length > 0) this._write(encoded);
   }
 

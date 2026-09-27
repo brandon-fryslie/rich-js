@@ -1225,6 +1225,24 @@ describe("Console environment injection", () => {
   });
 });
 
+describe("Console hyperlinks", () => {
+  // A colour depth never removes a link; only a non-terminal destination does.
+  const linked = "[link=https://example.com]go[/link]";
+
+  it("a terminal with no colour keeps its OSC 8 links", () => {
+    const { console: c, chunks } = makeConsole({ forceTerminal: true, colorSystem: null });
+    c.print(linked);
+    expect(chunks.join("")).toContain("\x1b]8;");
+    expect(chunks.join("")).not.toMatch(/\x1b\[[0-9;]*m/);
+  });
+
+  it("a pipe gets no OSC 8 links", () => {
+    const { console: c, chunks } = makeConsole({ forceTerminal: false, colorSystem: "truecolor" });
+    c.print(linked);
+    expect(chunks.join("")).not.toContain("\x1b]8;");
+  });
+});
+
 describe("Console style error reporting", () => {
   function printed(item: unknown, options: ConsoleOptions = {}): string {
     const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", ...options });

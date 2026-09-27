@@ -243,7 +243,7 @@ import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/templat
 const engine = createRichTextEngine();
 
 const segments = renderTemplate(engine, `{{ .who | fg "#4ade80" }}`, { who: "world" });
-process.stdout.write(segmentsToString(segments, detectColorSystem()) + "\n");
+process.stdout.write(segmentsToString(segments, detectColorSystem(), process.stdout.isTTY) + "\n");
 ```
 
 ::: warning Don't route ANSI back through `Console`
@@ -262,7 +262,7 @@ const broken = renderTemplate(engine, `{{ no_such_function "x" }}`, {}, {
   errorStyle: "yellow",
 });
 
-process.stdout.write(segmentsToString(broken, null) + "\n"); // [error: …]
+process.stdout.write(segmentsToString(broken, null, false) + "\n"); // [error: …]
 ```
 
 `maxWidth` defaults to 400 — wide enough that the downstream line-splitting decides the real width, matching the usual "render wide, fit on output" pipeline.
