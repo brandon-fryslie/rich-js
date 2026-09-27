@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "8791477a07ba5f10d2b3e55efb400b8f63544c20",
+      "timestamp": "2026-09-27T07:49:42.170Z",
+      "commits": [
+        {
+          "sha": "8791477a07ba5f10d2b3e55efb400b8f63544c20",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T01:48:39-06:00",
+          "message": "fix(render)!: colour depth governs SGR only — hyperlinks are their own fact (#159)\n\n* fix(render)!: colour depth governs SGR only — hyperlinks are their own fact\n\nsegmentsToString/segmentToString take a required `hyperlinks` argument;\nrenderToString gains a `hyperlinks` option (default true). A null colour\nsystem (NO_COLOR, colour depth none) no longer strips OSC 8 links. Console\nand Live emit links exactly when the destination is a terminal, so piped\noutput stays plain.\n\n* chore: 0.17.0\n\n* fix(render): one resolver decides colour depth and hyperlinks together\n\nresolveDestination(spec, detect) → { colorSystem, hyperlinks } replaces the\nthree copies of spec resolution in Console, Screen and renderToString.\nAn explicit depth keeps links (a file sink at truecolor keeps them again);\nunder auto, links follow the terminal probe without NO_COLOR, so TERM=dumb\nand non-TTY output stay linkless while NO_COLOR keeps them.\n\n* fix(color): FORCE_COLOR is a preference too; Console takes a hyperlinks option\n\nFORCE_COLOR=0 no longer drops links on a terminal; forced-on FORCE_COLOR\nstill keeps them on a pipe. ConsoleOptions.hyperlinks mirrors renderToString's\nso a file sink can ask for plain text. resolveColorSystem gets its JSDoc back."
+        }
+      ]
+    },
+    {
       "version": "pr-160",
       "ref": "refs/pull/160/merge",
       "sha": "31d1837b75a14bd1307b8851646fa2d2a8be59ca",
@@ -27,21 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T01:47:42-06:00",
           "message": "feat(strip)!: the default powerline lead is a notch cut into the first cell\n\nPOWERLINE_JOINER_GLYPHS leads with U+E0D6 (inverse right-arrow) instead of\nU+E0B2. Drawn by the existing cap painter (fg = the cell's background, no bg),\nit inks the top-left and bottom-left of the cell and leaves a right-pointing\ntriangle empty, so a coloured run opens notched, as if an arrow before it\npointed in. The notch is the terminal's own background showing through, so it\nmatches under a translucent terminal background; a reverse-video U+E0B0 notch\ndrew visibly darker there. The arrow, divider and tail are unchanged.\n\nBREAKING CHANGE: new PowerlineJoiner() draws U+E0D6 as its lead cap, not U+E0B2.\nPass { ...POWERLINE_JOINER_GLYPHS, lead: \"\" } for the old shape.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "a7fc70011dc34238e1113ecad0eb85e003f29199",
-      "timestamp": "2026-09-27T06:43:13.250Z",
-      "commits": [
-        {
-          "sha": "a7fc70011dc34238e1113ecad0eb85e003f29199",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T00:42:44-06:00",
-          "message": "feat(strip)!: powerline caps are values — a lead opens a coloured run, a tail closes it (#158)\n\n* feat(strip)!: powerline caps are values — a lead opens a coloured run, a tail closes it\n\nPowerlineJoinerOptions gains lead and tail beside glyph and divider. A join is\npainted in whichever neighbour has a background: both, the arrow; left only, the\ntail; right only, the lead; neither, nothing. The default set leads with U+E0B2\nand tails with U+E0B0, so a strip's two ends are one shape; \"\" draws an end flat.\n\nBREAKING CHANGE: PowerlineJoinerOptions requires lead and tail, and the default\njoiner now draws a start cap.\n\n* fix(strip): a flat cap draws no segment; caps and arrows share one drawn-ground helper\n\n- cap(\"\", …) yields nothing, the same output as a join with nothing to paint\n- drawnGround hoisted beside paintableBg instead of rebuilt per join\n- tests pin the default tail and the lead/tail on every wrapped FlexStrip line\n- docs and the strip demo describe the four-glyph set; package-lock at 0.16.0"
         }
       ]
     }
