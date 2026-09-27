@@ -4,15 +4,36 @@
     {
       "version": "pr-172",
       "ref": "refs/pull/172/merge",
-      "sha": "f0f2d2b39576b5215193d54396b104979e3c13da",
-      "timestamp": "2026-09-27T22:43:52.418Z",
+      "sha": "10c5eb67852ff95b09207fb52fc718a71766ee6d",
+      "timestamp": "2026-09-27T23:09:50.081Z",
       "commits": [
         {
-          "sha": "f0f2d2b39576b5215193d54396b104979e3c13da",
+          "sha": "10c5eb67852ff95b09207fb52fc718a71766ee6d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:43:19Z",
-          "message": "Merge 71bcc5e1309f9b2ab9b4f458a496dfdeeefe66ca into 457c7569a1df73053a9f6332afbae6be66cf7879\n"
+          "timestamp": "2026-09-27T23:09:22Z",
+          "message": "Merge c6e5e24cbdc0835fa9cc8b4c92ae7618f9f9c1b8 into 457c7569a1df73053a9f6332afbae6be66cf7879\n"
+        },
+        {
+          "sha": "c6e5e24cbdc0835fa9cc8b4c92ae7618f9f9c1b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T17:09:17-06:00",
+          "message": "fix(docs): examples merge imports by export, assume barrel types, and stop on a stalled run (rich-docs-examples-xuu.812)\n\n- An import is now a binding of a local name to an export, so a type and a\n  value import of one export merge from any entry point, not only the main\n  barrel; the barrelType special case is gone.\n- The prelude imports the main barrel's types as well as its values, which\n  is what docs/introduction.md tells readers.\n- A run that has not finished after 5 s fails at the block it waits in.\n- The prelude writes its own sentinel, so a throw there is no longer blamed\n  on the page's exampleContext.\n- The plugin takes its source stamp as an argument; its test no longer\n  rewrites src/index.ts's mtime.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "65af0e3c802854461c95b7f28c3d6d7d7cc4d7de",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T17:09:17-06:00",
+          "message": "fix(docs): the fence scanner reads every CommonMark fence form (rich-docs-examples-xuu.812)\n\nAn indented or tilde fence was invisible to both the runner and the\nsymbol-existence sweep, and prose starting with ```ts``` opened a fence\nthat mispaired every one after it. The sweep now calls scanFences\ndirectly; extractCodeBlocks and CodeBlock were aliases of it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "2a1e43f95f77ca46798cde121a777c2723ef9e54",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T16:58:43-06:00",
+          "message": "fix(docs): a program that does not bundle names its page (rich-docs-examples-xuu.812)\n\nEvery other failure the runner reports is prefixed with the page; a\nbundler rejection (an import that type-checks but ships no JavaScript)\npropagated bare.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "71bcc5e1309f9b2ab9b4f458a496dfdeeefe66ca",
