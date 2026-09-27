@@ -252,6 +252,8 @@ describe("resolveDestination (spec → colour depth + hyperlinks)", () => {
     ["auto", { env: { TERM: "xterm-256color" }, isTTY: false }, null, false],
     ["auto", { env: { TERM: "dumb" }, isTTY: true }, null, false],
     ["auto", { env: { FORCE_COLOR: "1" }, isTTY: false }, ColorDepth.STANDARD, true],
+    ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: true }, null, true],
+    ["auto", { env: { FORCE_COLOR: "0", TERM: "xterm-256color" }, isTTY: false }, null, false],
   ] as const)("%s %j → %s, links %s", (spec, opts, colorSystem, hyperlinks) => {
     expect(resolveDestination(spec, opts)).toEqual({ colorSystem, hyperlinks });
   });

@@ -583,7 +583,8 @@ dimensions or wrapping.
 A hyperlink is not a color. `NO_COLOR` keeps `[link=…]` as an OSC 8 link; what
 drops links is a destination that takes no escapes at all — `TERM=dumb`, or
 output that is not a TTY while `colorSystem` is `"auto"`. An explicit
-`colorSystem` (`"none"` and `null` included) always keeps links.
+`colorSystem` (`"none"` and `null` included) keeps links; pass
+`hyperlinks: false` with `colorSystem: null` for plain text.
 
 ## Injecting the environment
 

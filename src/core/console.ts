@@ -67,8 +67,15 @@ export interface ConsoleOptions {
    * Color encoding. Accepts a string spec (`"auto"`, `"truecolor"`, `"256"`,
    * `"ansi"`, `"none"`), a `ColorDepth` enum value (use this for `WINDOWS`,
    * which has no string spec), or `null` for no color. Default `"auto"`.
+   * Colour only: an explicit depth, `null` included, keeps hyperlinks.
    */
   colorSystem?: string | ColorDepth | null;
+  /**
+   * Whether OSC 8 hyperlinks are emitted. Default: what the destination takes
+   * — true for an explicit `colorSystem`, detected under `"auto"` (no TTY or
+   * TERM=dumb: false). `false` with `colorSystem: null` writes plain text.
+   */
+  hyperlinks?: boolean;
   /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
@@ -304,10 +311,14 @@ export class Console {
     // [LAW:dataflow-not-control-flow] `isTTY` and `env` are forwarded
     // unconditionally, so detection stays inside the console's injected
     // environment rather than the ambient process's.
-    this._destination = resolveDestination(
+    const resolved = resolveDestination(
       options?.colorSystem === undefined ? "auto" : options.colorSystem,
       { isTTY: this._isTerminal, env: environment.env },
     );
+    this._destination = {
+      colorSystem: resolved.colorSystem,
+      hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
+    };
     this._getSize = resolveGetSize(options, environment, stream);
     // [LAW:no-ambient-temporal-coupling] The theme is assigned before the
     // style, because the console's own style may be one of the theme's names.

@@ -327,18 +327,28 @@ const STRING_TO_DEPTH: Record<string, ColorDepth | null> = {
 export function detectColorSystem(
   options: DetectColorOptions = {},
 ): ColorDepth | null {
-  // NO_COLOR: any non-empty value disables color. It is a preference about
-  // colour, not a fact about the terminal, so it sits outside the probe.
+  // NO_COLOR and FORCE_COLOR are preferences about colour, not facts about the
+  // terminal, so they sit outside the probe. NO_COLOR (any non-empty value)
+  // beats FORCE_COLOR; FORCE_COLOR beats TTY/TERM detection.
   const noColor = envOf(options)["NO_COLOR"];
   if (noColor !== undefined && noColor !== "") return null;
-  return terminalColorSystem(options);
+  const forced = forcedColorSystem(envOf(options));
+  return forced !== undefined ? forced : terminalColorSystem(options);
+}
+
+// FORCE_COLOR's depth: `undefined` when unset, `null` for its off values.
+function forcedColorSystem(env: NodeJS.ProcessEnv): ColorDepth | null | undefined {
+  const force = env["FORCE_COLOR"];
+  if (force === undefined || force === "") return undefined;
+  const mapped = STRING_TO_DEPTH[force];
+  return mapped !== undefined ? mapped : ColorDepth.STANDARD;
 }
 
 function envOf(options: DetectColorOptions): NodeJS.ProcessEnv {
   return options.env ?? (typeof process !== "undefined" ? process.env : {});
 }
 
-// What the destination can draw, preferences aside: FORCE_COLOR, TTY presence,
+// What the destination can draw, preferences aside: TTY presence,
 // TERM=dumb/unknown, COLORTERM, known terminal names, TERM patterns. `null`
 // here means the destination takes no escapes at all.
 function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
@@ -346,13 +356,6 @@ function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
   const isTTY =
     options.isTTY ??
     (typeof process !== "undefined" ? (process.stdout?.isTTY ?? false) : false);
-
-  // FORCE_COLOR: explicit override, wins over TTY/TERM detection.
-  const force = env["FORCE_COLOR"];
-  if (force !== undefined && force !== "") {
-    const mapped = STRING_TO_DEPTH[force];
-    return mapped !== undefined ? mapped : ColorDepth.STANDARD;
-  }
 
   if (!isTTY) return null;
 
@@ -386,15 +389,6 @@ function terminalColorSystem(options: DetectColorOptions): ColorDepth | null {
 }
 
 /**
- * Resolve a string spec into a `ColorDepth` (or `null` for no color).
- *
- * `"auto"` triggers env-based detection; all other recognized specs are
- * direct table lookups against `STRING_TO_DEPTH`. Throws on unknown specs
- * — silent fallback would mask user typos.
- *
- * [LAW:single-enforcer] All string→ColorDepth resolution flows through here.
- */
-/**
  * Where segments are written, as the two facts the serializer needs: the
  * colour depth SGR is drawn at, and whether OSC 8 hyperlinks are emitted.
  */
@@ -409,8 +403,9 @@ export interface Destination {
  * [LAW:single-enforcer] The one place a spec becomes both facts. A hyperlink is
  * not a colour: an explicit depth — `"none"` and `null` included — states a
  * colour choice and keeps links, and under `"auto"` links follow what the
- * terminal can take (no TTY, TERM=dumb: none) while NO_COLOR, a colour
- * preference, leaves them alone.
+ * terminal can take (no TTY, TERM=dumb: none) while NO_COLOR and FORCE_COLOR=0,
+ * colour preferences, leave them alone. A FORCE_COLOR that forces colour on
+ * declares the destination takes escapes, so it keeps links on a pipe too.
  */
 export function resolveDestination(
   spec: string | ColorDepth | null,
@@ -424,10 +419,21 @@ export function resolveDestination(
   }
   return {
     colorSystem: detectColorSystem(options),
-    hyperlinks: terminalColorSystem(options ?? {}) !== null,
+    hyperlinks:
+      (forcedColorSystem(envOf(options ?? {})) ?? null) !== null ||
+      terminalColorSystem(options ?? {}) !== null,
   };
 }
 
+/**
+ * Resolve a string spec into a `ColorDepth` (or `null` for no color).
+ *
+ * `"auto"` triggers env-based detection; all other recognized specs are
+ * direct table lookups against `STRING_TO_DEPTH`. Throws on unknown specs
+ * — silent fallback would mask user typos.
+ *
+ * [LAW:single-enforcer] All string→ColorDepth resolution flows through here.
+ */
 export function resolveColorSystem(
   spec: string,
   options?: DetectColorOptions,

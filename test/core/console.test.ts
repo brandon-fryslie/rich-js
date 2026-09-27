@@ -1258,10 +1258,13 @@ describe("Console and Live hyperlinks", () => {
     expect(printed({}, { TERM: "dumb" }, true)).not.toContain(OSC8);
   });
 
-  it("an explicit colour depth keeps links on a file sink", () => {
-    const { console: c, chunks } = makeConsole({ colorSystem: "truecolor" });
-    c.print(linked);
-    expect(chunks.join("")).toContain(OSC8);
+  it("an explicit colour depth keeps links on a file sink; hyperlinks: false drops them", () => {
+    const keep = makeConsole({ colorSystem: "truecolor" });
+    keep.console.print(linked);
+    expect(keep.chunks.join("")).toContain(OSC8);
+    const plain = makeConsole({ colorSystem: null, hyperlinks: false });
+    plain.console.print(linked);
+    expect(plain.chunks.join("")).toBe("go\n");
   });
 
   it("Live frames follow the console: links under NO_COLOR, none on a pipe", () => {
