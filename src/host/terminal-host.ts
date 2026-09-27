@@ -273,11 +273,14 @@ export class BrowserTerminalHost implements TerminalHost {
  */
 function returnBeforeNewline(data: Uint8Array | string): Uint8Array | string {
   if (typeof data === "string") return data.replaceAll("\n", "\r\n");
-  const out = new Uint8Array(data.length + data.filter((byte) => byte === 0x0a).length);
+  let newlines = 0;
+  for (let i = 0; i < data.length; i++) newlines += Number(data[i] === 0x0a);
+  if (newlines === 0) return data;
+  const out = new Uint8Array(data.length + newlines);
   let at = 0;
-  for (const byte of data) {
-    if (byte === 0x0a) out[at++] = 0x0d;
-    out[at++] = byte;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] === 0x0a) out[at++] = 0x0d;
+    out[at++] = data[i]!;
   }
   return out;
 }

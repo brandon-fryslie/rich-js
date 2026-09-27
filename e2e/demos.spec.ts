@@ -97,6 +97,8 @@ for (const { name } of manifest.demos) {
 // start at its left border, so any row that does not has been pushed along.
 test("a demo's rows start at the left edge: rich-viewport", async ({ page }) => {
   await page.goto("demos-app/rich-viewport/");
+  // A boot failure should read as its own message, not a missing "╭".
+  await expect(page.locator("#status")).toContainText("ready");
   const rows = page.locator(".xterm-rows > div");
   await expect(rows.first()).toContainText("╭");
   const drawn = (await rows.allTextContents()).filter((row) => row.trim() !== "");
