@@ -148,6 +148,8 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
     ["a static block that writes nothing", fence("const n = 1;"), /fixture\.md:1: writes nothing; mark it `silent`/],
     ["a throws block that returns", fence("const n = 1;", "ts throws"), /fixture\.md:1: marked `throws` but returned normally/],
     ["a cursor escape", fence('process.stdout.write("\\x1b[2J");'), /fixture\.md:1: writes the escape .* mark it `live`/],
+    // csstype carries types and no JavaScript: it type-checks and cannot be bundled.
+    ["an import that type-checks and does not bundle", fence('import * as css from "csstype";\nconsole.print(typeof css);'), /^docs\/fixture\.md: bundling failed: /],
     ["an unknown marker", fence("1;", "ts loud"), /fixture\.md:1: unknown example marker "loud"/],
     [
       "an exampleContext whose code is not indented",

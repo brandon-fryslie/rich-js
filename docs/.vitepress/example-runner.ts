@@ -22,7 +22,8 @@
  *      encode them twice, as a light and a dark fragment.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
- * page and line: a type error, a throw from a block not marked `throws`, a
+ * page and line: a type error, a program that does not bundle (the page
+ * only), a throw from a block not marked `throws`, a
  * `throws` block that returns, a `silent` block that writes, a static block
  * that writes nothing, context that writes, a disallowed escape, an unknown
  * marker.
@@ -270,7 +271,10 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   const context = exampleContext(page, markdown);
   const program = buildProgram(page, context, chain, compiler.barrelValues());
   compiler.check(program);
-  const { stream, error } = await capture(await bundleExample(program.source));
+  const script = await bundleExample(program.source).catch((error: unknown) => {
+    throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
+  });
+  const { stream, error } = await capture(script);
   const records = splitRecords(stream);
   if (error !== null) {
     const where = stoppedAt(page, context, records.context.finished, chain, records.blocks.length);
