@@ -92,10 +92,21 @@ describe("one page, one program", { timeout: 30_000 }, () => {
     await expect(run(context + fence('console.print("x");'))).rejects.toThrow("docs/fixture.md:3 (exampleContext): the example threw Error: ctx");
   });
 
-  it("shows a thrown non-Error as its message alone", async () => {
-    const shown = outputs(await run(fence('throw "plain";', "ts throws")))[0]!;
-    expect(shown).toMatch(/>plain(&#10;)*</);
-    expect(shown).not.toContain(": plain");
+  it("shows a thrown value the way Node reports it, an empty one included", async () => {
+    const shown = outputs(await run(page(fence('throw "";', "ts throws"), fence("throw new RangeError();", "ts throws"))));
+    expect(shown[0]).toContain(`Uncaught ""`);
+    expect(shown[1]).toMatch(/>RangeError(&#10;)*</);
+  });
+
+  it("lets a block import a barrel type it also uses as a value", async () => {
+    const shown = outputs(
+      await run(fence('import type { Console } from "@promptctl/rich-js";\nconst c: Console = new Console({ width: 20 });\nc.print("typed");')),
+    )[0]!;
+    expect(shown).toContain("typed");
+  });
+
+  it("lets a static block print a hyperlink", async () => {
+    expect(outputs(await run(fence('console.print("[link=https://example.com]site[/link]");')))[0]).toContain("site");
   });
 
   it("leaves prose written straight under a fence to markdown", async () => {
@@ -138,6 +149,11 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
     ["a throws block that returns", fence("const n = 1;", "ts throws"), /fixture\.md:1: marked `throws` but returned normally/],
     ["a cursor escape", fence('process.stdout.write("\\x1b[2J");'), /fixture\.md:1: writes the escape .* mark it `live`/],
     ["an unknown marker", fence("1;", "ts loud"), /fixture\.md:1: unknown example marker "loud"/],
+    [
+      "an exampleContext whose code is not indented",
+      ["---", "exampleContext: |", "const items = [];", "---", fence("console.print(1);")].join("\n"),
+      /fixture\.md:3: exampleContext is empty; its code must be indented/,
+    ],
     [
       "two imports binding one name differently",
       page(fence('import { Panel as P } from "@promptctl/rich-js";\nconsole.print(P.fit("a"));'), fence('import { Rule as P } from "@promptctl/rich-js";\nconsole.print(new P());')),

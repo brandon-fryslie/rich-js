@@ -73,6 +73,9 @@ export function exampleContext(page: string, markdown: string): ExampleContext |
     if (line.trim() !== "" && !/^\s/.test(line)) break;
     body.push(line);
   }
+  if (body.every((line) => line.trim() === "")) {
+    throw new Error(`docs/${page}:${keyAt + 2}: exampleContext is empty; its code must be indented under \`exampleContext: |\``);
+  }
   const indent = Math.min(...body.filter((l) => l.trim() !== "").map((l) => /^\s*/.exec(l)![0].length));
   return { code: body.map((l) => l.slice(indent)).join("\n"), line: keyAt + 2 };
 }
@@ -84,6 +87,12 @@ interface Hoisted {
   readonly line: number;
   /** The local names it binds. */
   readonly binds: readonly string[];
+  /**
+   * The name, when this is `import type { X }` from the main barrel: the
+   * prelude's value import of `X` already brings its type, and both at once
+   * would declare `X` twice.
+   */
+  readonly barrelType: string | null;
 }
 
 /** A block's code split into its imports and the rest, the rest keeping its line count. */
@@ -110,11 +119,12 @@ function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line:
   const clause = statement.importClause;
   if (clause === undefined) {
     const text = statement.getText(source);
-    return [{ key: text, text, line, binds: [] }];
+    return [{ key: text, text, line, binds: [], barrelType: null }];
   }
   const from = JSON.stringify((statement.moduleSpecifier as ts.StringLiteral).text);
   const typeOnly = clause.isTypeOnly ? "type " : "";
-  const one = (text: string, local: string): Hoisted => ({ key: text, text, line, binds: [local] });
+  const specifier = (statement.moduleSpecifier as ts.StringLiteral).text;
+  const one = (text: string, local: string, barrelType: string | null = null): Hoisted => ({ key: text, text, line, binds: [local], barrelType });
   const bindings = clause.namedBindings;
   return [
     ...(clause.name === undefined ? [] : [one(`import ${typeOnly}${clause.name.text} from ${from};`, clause.name.text)]),
@@ -127,7 +137,8 @@ function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line:
             const imported = element.propertyName?.text ?? local;
             const binding = imported === local ? local : `${imported} as ${local}`;
             const elementTypeOnly = clause.isTypeOnly || element.isTypeOnly ? "type " : "";
-            return one(`import { ${elementTypeOnly}${binding} } from ${from};`, local);
+            const barrelType = elementTypeOnly !== "" && specifier === MAIN_BARREL && imported === local ? local : null;
+            return one(`import { ${elementTypeOnly}${binding} } from ${from};`, local, barrelType);
           })),
   ];
 }
@@ -146,10 +157,15 @@ class SourceBuilder {
   }
 }
 
+/**
+ * The line a thrown value is shown as, the way Node reports it: an `Error` as
+ * `Name: message` (just `Name` when the message is empty), anything else as
+ * `Uncaught` and the value, a string quoted so `throw ""` still shows.
+ */
 const THREW_HELPER = [
   "const __richExampleThrew = (error: unknown): string =>",
   `  ${JSON.stringify(BLOCK_THREW)} +`,
-  "  JSON.stringify(error instanceof Error ? [error.name, error.message] : [\"\", String(error)]) +",
+  "  JSON.stringify(error instanceof Error ? Error.prototype.toString.call(error) : `Uncaught ${typeof error === \"string\" ? JSON.stringify(error) : String(error)}`) +",
   `  ${JSON.stringify(THREW_CLOSE)};`,
 ].join("\n");
 
@@ -168,7 +184,10 @@ export function buildProgram(
 ): ExampleProgram {
   const parts = blocks.map((block) => ({ block, ...splitImports(block.code, block.line + 1) }));
   const contextPart = context === null ? null : { line: context.line, ...splitImports(context.code, context.line) };
-  const allImports = [...(contextPart?.imports ?? []), ...parts.flatMap((p) => p.imports)];
+  const barrel = new Set(barrelValues);
+  const allImports = [...(contextPart?.imports ?? []), ...parts.flatMap((p) => p.imports)].filter(
+    (imp) => imp.barrelType === null || !barrel.has(imp.barrelType),
+  );
 
   const hoisted = new Map<string, Hoisted>();
   const bound = new Map<string, Hoisted>();
@@ -217,7 +236,7 @@ export function buildProgram(
 /** One block's share of a run: what it printed, and how it ended. */
 export interface BlockRecord {
   readonly output: string;
-  readonly ended: { readonly kind: "completed" } | { readonly kind: "threw"; readonly name: string; readonly message: string };
+  readonly ended: { readonly kind: "completed" } | { readonly kind: "threw"; readonly line: string };
 }
 
 const RECORD = new RegExp(`${BLOCK_END}|${BLOCK_THREW}(.*?)${THREW_CLOSE}`, "gs");
@@ -245,10 +264,9 @@ export function splitRecords(stream: string): { context: ContextRecord; blocks: 
       context = output;
       continue;
     }
-    const threw = match[1] === undefined ? null : (JSON.parse(match[1]) as [string, string]);
     records.push({
       output,
-      ended: threw === null ? { kind: "completed" } : { kind: "threw", name: threw[0], message: threw[1] },
+      ended: match[1] === undefined ? { kind: "completed" } : { kind: "threw", line: JSON.parse(match[1]) as string },
     });
   }
   return { context: context === null ? { output: stream, finished: false } : { output: context, finished: true }, blocks: records };

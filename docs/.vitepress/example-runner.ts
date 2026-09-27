@@ -32,7 +32,7 @@ import { build } from "vite";
 import ts from "typescript";
 import { statSync } from "node:fs";
 import path from "node:path";
-import { ENTRY_BY_SPECIFIER, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../test/coverage/extract.js";
+import { ENTRY_BY_SPECIFIER, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions, resolveAlias } from "../../test/coverage/extract.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
 import { decodeAnsi, osc8Sequences } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
@@ -135,7 +135,7 @@ export class ExampleCompiler {
     const barrel = program.getSourceFile(path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(MAIN_BARREL)!))!;
     return checker
       .getExportsOfModule(checker.getSymbolAtLocation(barrel)!)
-      .filter((symbol) => (checker.getAliasedSymbol(symbol).flags & ts.SymbolFlags.Value) !== 0)
+      .filter((symbol) => (resolveAlias(symbol, checker).flags & ts.SymbolFlags.Value) !== 0)
       .map((symbol) => symbol.name)
       .sort();
   }
@@ -156,13 +156,17 @@ export class ExampleCompiler {
 /**
  * `source` as the one self-contained script `runInTerminal` takes: every
  * import inlined, this package's entry points resolved to `src/`, and every
- * `process` read left as the free name the stand-in binds.
+ * `process` read left as the free name the stand-in binds. Everything that
+ * runs a program under the simulated process bundles it here, the tests of
+ * that module included.
  */
 export async function bundleExample(source: string): Promise<string> {
   const result = await build({
     configFile: false,
     logLevel: "silent",
     root: REPO_ROOT,
+    // Left alone, a build rewrites `process.env` to `{}` at bundle time, and
+    // the program's env reads never reach the stand-in `runInTerminal` binds.
     environments: { client: { keepProcessEnv: true } },
     plugins: [
       {
@@ -223,9 +227,7 @@ function blockBytes(fence: Fence & { readonly marker: BuildMarker }, record: Blo
   const escape = disallowedEscape(record.output);
   if (escape !== null) throw new Error(`${at}: writes the escape ${escape}, which moves the cursor or clears the screen; mark it \`live\``);
   if (outcome === "silent") return null;
-  if (record.ended.kind === "completed") return record.output;
-  // A thrown non-Error has no name, and shows as its message alone.
-  return `${record.output}${[record.ended.name, record.ended.message].filter((part) => part !== "").join(": ")}\n`;
+  return record.ended.kind === "completed" ? record.output : `${record.output}${record.ended.line}\n`;
 }
 
 /** Where a run that threw stopped: in the prelude or context, or at the first block with no record. */
