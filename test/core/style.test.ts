@@ -8,6 +8,12 @@ import {
   DEFAULT_STYLES,
 } from "../../src/core/style.js";
 import { ColorSpec, ColorDepth, ColorParseError } from "../../src/core/color.js";
+import { Segment } from "../../src/core/segment.js";
+import { segmentToString } from "../../src/core/render.js";
+
+// The bytes `style` draws `text` as, through the one encoder.
+const drawn = (style: Style, text: string, colorSystem = ColorDepth.TRUECOLOR): string =>
+  segmentToString(new Segment(text, style), { colorSystem, hyperlinks: true });
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (parse semantics, merge rules, render output), not implementation details (caches, internal fields)
 
@@ -500,21 +506,21 @@ describe("Style.equals", () => {
   });
 });
 
-// --- .render ---
+// --- What a style draws on the wire ---
 
-describe("Style.render", () => {
+describe("a style on the wire", () => {
   it("returns empty string for empty text", () => {
     const s = new Style({ bold: true });
-    expect(s.render("")).toBe("");
+    expect(drawn(s, "")).toBe("");
   });
 
   it("null style returns plain text unchanged", () => {
-    expect(NULL_STYLE.render("hello")).toBe("hello");
+    expect(drawn(NULL_STYLE, "hello")).toBe("hello");
   });
 
   it("bold text contains ANSI escape sequence", () => {
     const s = new Style({ bold: true });
-    const result = s.render("hello");
+    const result = drawn(s, "hello");
     expect(result).toContain("\x1b[");
     expect(result).toContain("m");
     expect(result).toContain("hello");
@@ -523,19 +529,19 @@ describe("Style.render", () => {
 
   it("renders with SGR code 1 for bold", () => {
     const s = new Style({ bold: true });
-    const result = s.render("test");
+    const result = drawn(s, "test");
     expect(result).toContain("\x1b[1m");
   });
 
   it("renders with SGR code 3 for italic", () => {
     const s = new Style({ italic: true });
-    const result = s.render("test");
+    const result = drawn(s, "test");
     expect(result).toContain("\x1b[3m");
   });
 
   it("renders with multiple SGR codes for combined attributes", () => {
     const s = new Style({ bold: true, italic: true });
-    const result = s.render("test");
+    const result = drawn(s, "test");
     // Should contain both codes separated by ;
     expect(result).toMatch(/\x1b\[\d+(;\d+)*m/);
     expect(result).toContain("test");
@@ -543,7 +549,7 @@ describe("Style.render", () => {
 
   it("includes color escape codes", () => {
     const s = new Style({ color: "red" });
-    const result = s.render("test");
+    const result = drawn(s, "test");
     expect(result).toContain("\x1b[");
     expect(result).toContain("test");
     expect(result).toContain("\x1b[0m");
@@ -551,15 +557,15 @@ describe("Style.render", () => {
 
   it("includes OSC 8 for links", () => {
     const s = new Style({ link: "https://example.com" });
-    const result = s.render("click");
+    const result = drawn(s, "click");
     expect(result).toContain("\x1b]8;");
     expect(result).toContain("https://example.com");
     expect(result).toContain("\x1b\\");
     expect(result).toContain("click");
   });
 
-  // [LAW:types-are-the-program] Style.render is a pure function of
-  // (style, text, colorSystem). Two Styles constructed with the same link URL
+  // [LAW:types-are-the-program] The bytes are a pure function of
+  // (style, text, destination). Two Styles constructed with the same link URL
   // must produce byte-identical OSC 8 output regardless of construction order
   // or how many other linked Styles have been created in the process. The
   // previous module-level nextLinkId counter broke this theorem; this test
@@ -569,14 +575,14 @@ describe("Style.render", () => {
     const a = new Style({ link: "https://target.example" });
     new Style({ link: "https://noise.example/b" });
     const b = new Style({ link: "https://target.example" });
-    expect(a.render("x")).toBe(b.render("x"));
+    expect(drawn(a, "x")).toBe(drawn(b, "x"));
   });
 
   // The id is FNV-1a of the URI — pinned as a literal so a change to the
   // derivation shows up here, not only as a self-consistent new value.
   it("emits OSC 8 with an id= derived from the URI", () => {
     const s = new Style({ link: "https://example.com" });
-    expect(s.render("click")).toBe(
+    expect(drawn(s, "click")).toBe(
       "\x1b]8;id=6fbc04d3;https://example.com\x1b\\click\x1b]8;;\x1b\\",
     );
   });
@@ -584,8 +590,8 @@ describe("Style.render", () => {
   // Python Rich 9d8f9a3 renders `Style(bold=False)` as the bare text. A false
   // attribute is an override for when styles combine, not a code of its own.
   it("writes no SGR parameter for an attribute set false", () => {
-    expect(new Style({ bold: false }).render("test")).toBe("test");
-    expect(Style.parse("bold not italic").render("x")).toBe(Style.parse("bold").render("x"));
+    expect(drawn(new Style({ bold: false }), "test")).toBe("test");
+    expect(drawn(Style.parse("bold not italic"), "x")).toBe(drawn(Style.parse("bold"), "x"));
   });
 });
 
@@ -1018,10 +1024,10 @@ describe("DEFAULT_STYLES (additional)", () => {
   });
 });
 
-describe("Style.render with colorSystem", () => {
+describe("a style on the wire at a colour depth", () => {
   it("renders with ANSI codes when colorSystem is STANDARD", () => {
     const s = Style.parse("red");
-    const result = s.render("x", ColorDepth.STANDARD);
+    const result = drawn(s, "x", ColorDepth.STANDARD);
     expect(result).toContain("\x1b[");
     expect(result).toContain("m");
     expect(result).toContain("x");
@@ -1035,10 +1041,10 @@ describe("Style.render with colorSystem", () => {
 // "flatten then lose alpha" path closed: any change that bypasses
 // flattenAlpha will fail one of these.
 
-describe("Style.render alpha compositing", () => {
+describe("a style on the wire: alpha compositing", () => {
   it("opaque fg/bg pass through unchanged (regression check)", () => {
     const s = new Style({ color: ColorSpec.fromRgb(255, 0, 0) });
-    expect(s.render("x", ColorDepth.TRUECOLOR)).toBe(
+    expect(drawn(s, "x", ColorDepth.TRUECOLOR)).toBe(
       "\x1b[38;2;255;0;0mx\x1b[0m",
     );
   });
@@ -1049,7 +1055,7 @@ describe("Style.render alpha compositing", () => {
       color: ColorSpec.parse("#ff000080"),
       bgcolor: ColorSpec.parse("#ffffff"),
     });
-    const result = s.render("x", ColorDepth.TRUECOLOR);
+    const result = drawn(s, "x", ColorDepth.TRUECOLOR);
     expect(result).toContain("38;2;255;127;127");
     // bg unchanged (already opaque)
     expect(result).toContain("48;2;255;255;255");
@@ -1059,7 +1065,7 @@ describe("Style.render alpha compositing", () => {
     // DEFAULT_TERMINAL_THEME.backgroundColor is (0,0,0). Hex alpha 0x80
     // is 128/255 ≈ 0.502, so 50.2% red over black → (128, 0, 0).
     const s = new Style({ color: ColorSpec.parse("#ff000080") });
-    const result = s.render("x", ColorDepth.TRUECOLOR);
+    const result = drawn(s, "x", ColorDepth.TRUECOLOR);
     expect(result).toContain("38;2;128;0;0");
   });
 
@@ -1070,7 +1076,7 @@ describe("Style.render alpha compositing", () => {
       color: ColorSpec.fromRgb(255, 0, 0),
       bgcolor: ColorSpec.parse("#ffffff80"),
     });
-    const result = s.render("x", ColorDepth.TRUECOLOR);
+    const result = drawn(s, "x", ColorDepth.TRUECOLOR);
     expect(result).toContain("48;2;128;128;128");
     expect(result).toContain("38;2;255;0;0");
   });
@@ -1082,7 +1088,7 @@ describe("Style.render alpha compositing", () => {
       color: ColorSpec.parse("#ff000080"),
       bgcolor: ColorSpec.parse("#ffffff80"),
     });
-    const result = s.render("x", ColorDepth.TRUECOLOR);
+    const result = drawn(s, "x", ColorDepth.TRUECOLOR);
     expect(result).toContain("38;2;192;64;64");
     expect(result).toContain("48;2;128;128;128");
   });
@@ -1093,8 +1099,8 @@ describe("Style.render alpha compositing", () => {
     // match a darker red. Either way, the index for (127,0,0) ≠ index for (255,0,0).
     const translucent = new Style({ color: ColorSpec.parse("#ff000080") });
     const opaque = new Style({ color: ColorSpec.parse("#ff0000") });
-    const tOut = translucent.render("x", ColorDepth.EIGHT_BIT);
-    const oOut = opaque.render("x", ColorDepth.EIGHT_BIT);
+    const tOut = drawn(translucent, "x", ColorDepth.EIGHT_BIT);
+    const oOut = drawn(opaque, "x", ColorDepth.EIGHT_BIT);
     expect(tOut).not.toBe(oOut);
   });
 
@@ -1102,7 +1108,7 @@ describe("Style.render alpha compositing", () => {
     // Palette colors (STANDARD/EIGHT_BIT) carry no alpha, so flattenAlpha
     // is a no-op. The output for a "red" style must be the bare 31 SGR code.
     const s = Style.parse("red");
-    expect(s.render("x", ColorDepth.STANDARD)).toBe("\x1b[31mx\x1b[0m");
+    expect(drawn(s, "x", ColorDepth.STANDARD)).toBe("\x1b[31mx\x1b[0m");
   });
 });
 

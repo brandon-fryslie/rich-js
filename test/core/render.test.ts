@@ -224,8 +224,8 @@ describe("segmentsToString coalescing", () => {
 
   it("avoids the legacy N-pairs-per-cell layout (regression bar)", () => {
     // Pre-coalescer behavior: 3 cells → 3 SGR open/close pairs. The new floor
-    // is 1. A future regression that goes back to per-segment Style.render
-    // would push this back to 3.
+    // is 1. A future regression that goes back to per-segment encoding would
+    // push this back to 3.
     const segs = [
       new Segment(" a ", STYLE),
       new Segment(" b ", STYLE),
@@ -324,19 +324,6 @@ describe("OSC 8 wrap is escape-safe", () => {
     expect(dirtyStyle.link).toBe(dirty); // Style stays faithful (precondition)
     const out = segmentsToString(
       [new Segment("click", dirtyStyle)], { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
-    const [open] = osc8Opens(out);
-    expect(open).toBeDefined();
-    expect(open!.uri).toBe("https://evil.example/\\BAD");
-  });
-
-  it("sanitizes wire bytes when a dirty Style goes through the per-segment `Style.render` path", () => {
-    // [LAW:single-enforcer] The other byte producer: Style.render is still
-    // used by callers outside the segmentsToString coalescer (any code that
-    // calls `style.render(text, cs)` directly). It must enforce the same
-    // wire-byte invariant.
-    const dirty = "https://evil.example/\x1b\\BAD";
-    const dirtyStyle = new Style({ link: dirty });
-    const out = dirtyStyle.render("click", ColorDepth.TRUECOLOR);
     const [open] = osc8Opens(out);
     expect(open).toBeDefined();
     expect(open!.uri).toBe("https://evil.example/\\BAD");

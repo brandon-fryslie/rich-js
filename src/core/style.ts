@@ -8,11 +8,10 @@ import {
   ColorDepth,
   SURFACE_BLACK,
 } from "./color.js";
-import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
-// [LAW:one-way-deps] `core/style` depends only on `core/color` and the leaf
-// `core/osc8` (the link wire grammar). The substrate a translucent colour is
-// flattened over is `SURFACE_BLACK`, defined beside `compositeOver`.
+// [LAW:one-way-deps] `core/style` depends only on `core/color`. The substrate
+// a translucent colour is flattened over is `SURFACE_BLACK`, defined beside
+// `compositeOver`.
 
 // --- Attribute definitions ---
 
@@ -347,12 +346,11 @@ export class Style {
   /**
    * Returns the SGR parameter list this style emits (e.g. `"1;31;48;2;0;0;255"`),
    * or `""` when the style has no SGR contribution. Excludes OSC 8 link bytes —
-   * links are not SGR. The Strip renderer uses this string as the group key for
-   * adjacent-same-style coalescing; the per-segment `render` path wraps the
-   * returned codes in `\x1b[...m`.
+   * links are not SGR. The segment encoder (`segmentsToString`) uses this
+   * string as the group key for adjacent-same-style coalescing and wraps it in
+   * `\x1b[...m`; styled text reaches the wire only through that encoder.
    *
-   * [LAW:one-source-of-truth] One computation of SGR codes — both `render` and
-   * the segment coalescer derive from this.
+   * [LAW:one-source-of-truth] One computation of SGR codes.
    */
   toSgrCodes(colorSystem?: ColorDepth): string {
     if (this.isNull) return "";
@@ -371,24 +369,6 @@ export class Style {
     );
 
     return attrs.join(";");
-  }
-
-  /**
-   * Render text with this style's ANSI escape codes.
-   */
-  render(text: string, colorSystem?: ColorDepth): string {
-    if (text.length === 0) return "";
-    if (this.isNull) return text;
-
-    const codes = this.toSgrCodes(colorSystem);
-    let result = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
-
-    if (this.link) {
-      // [LAW:single-enforcer] One OSC 8 spelling, shared with segmentsToString.
-      result = `${osc8Open(this.link)}${result}${OSC8_CLOSE}`;
-    }
-
-    return result;
   }
 
   /**

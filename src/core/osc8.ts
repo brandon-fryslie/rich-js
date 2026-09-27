@@ -2,9 +2,9 @@
  * The OSC 8 hyperlink wire grammar — which bytes may not appear inside a
  * link, how a link becomes bytes, and how bytes are read back as a link.
  *
- * [LAW:one-source-of-truth] Every producer (`segmentsToString`,
- * `Style.render`) opens a link through `osc8Open` and closes it with
- * `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
+ * [LAW:one-source-of-truth] The producer (`segmentsToString`, the one encoder
+ * every link reaches the wire through) opens a link with `osc8Open` and closes
+ * it with `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
  * test extracting URLs) matches them with `OSC8`; the data-model boundary
  * (RichText) cleans URLs with `stripOscTerminators`. All four read the one
  * terminator set below, so the bytes a sanitizer removes and the bytes a
