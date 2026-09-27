@@ -58,6 +58,7 @@ describe("runInTerminal", () => {
   });
   afterEach(() => {
     vi.unstubAllEnvs();
+    Reflect.deleteProperty(globalThis, "sawStandIn");
   });
 
   it("sends a new Console()'s styled Table to the terminal, truecolor, at its width", async () => {
@@ -103,12 +104,11 @@ describe("runInTerminal", () => {
     expect(globalThis.process).toBe(own);
     expect(process.env).toEqual(env);
     expect(Reflect.get(globalThis, "sawStandIn")).toBe(true);
-    Reflect.deleteProperty(globalThis, "sawStandIn");
   });
 
   it("gives each run its own copy of the terminal's env", async () => {
     const term = terminal(75);
-    await runInTerminal(`process.env.TERM = "dumb";`, term);
+    await runInTerminal(await bundleProgram(`process.env.TERM = "dumb";`), term);
     expect(term.env).toEqual({ TERM: "xterm-256color", COLORTERM: "truecolor" });
   });
 
@@ -117,8 +117,8 @@ describe("runInTerminal", () => {
       .rejects.toThrow(new RangeError("from the example"));
   });
 
-  it("refuses a program that was not bundled", () => {
-    expect(() => runInTerminal(`import { Console } from ${LIBRARY};`, terminal(75)))
-      .toThrow(SyntaxError);
+  it("rejects a program that was not bundled", async () => {
+    await expect(runInTerminal(`import { Console } from ${LIBRARY};`, terminal(75)))
+      .rejects.toThrow(SyntaxError);
   });
 });

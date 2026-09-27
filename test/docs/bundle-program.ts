@@ -24,6 +24,9 @@ export async function bundleProgram(entry: string): Promise<string> {
     configFile: false,
     logLevel: "silent",
     root: REPO_ROOT,
+    // Left alone, a build rewrites `process.env` to `{}` at bundle time, and
+    // the program's env reads never reach the stand-in `runInTerminal` binds.
+    environments: { client: { keepProcessEnv: true } },
     plugins: [
       {
         name: "bundle-program-entry",
