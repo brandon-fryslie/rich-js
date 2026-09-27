@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-161",
-      "ref": "refs/pull/161/merge",
-      "sha": "d40354012159453595377451eb155913635b4104",
-      "timestamp": "2026-09-27T08:46:08.254Z",
-      "commits": [
-        {
-          "sha": "d40354012159453595377451eb155913635b4104",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T08:45:42Z",
-          "message": "Merge 80913150d12d8bf57c546bf0673ea0d04a336c9b into cac5b40d387bb71ab13eb93f586a00563e54283d\n"
-        },
-        {
-          "sha": "80913150d12d8bf57c546bf0673ea0d04a336c9b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T02:45:31-06:00",
-          "message": "fix(render): the set-once destination is readonly, SGR codes need a depth, Live follows an explicit hyperlinks: false\n\n- Console._destination is readonly: set once, now public through `destination`.\n- Style.toSgrCodes takes a required depth; the optional form existed for the\n  removed Style.render, and omitting it silently skipped the downgrade.\n- osc8.ts: the bytes are a function of the destination, not the depth alone.\n- A Live on a console with hyperlinks: false writes no OSC 8 on a terminal.\n"
-        },
-        {
-          "sha": "856c2739c759fc4fc20f8527faeb9d260cbf40be",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T02:39:03-06:00",
-          "message": "refactor(style)!: styled text reaches the wire only through segmentsToString\n\nStyle.render(text, colorSystem?) was a second ANSI encoder beside\nsegmentsToString: it could not express a null colour depth, always emitted\nOSC 8 links whatever the destination took, and nested SGR inside the link\nwhere the serializer nests the link inside SGR. Nothing in src/ called it.\nsegmentToString(new Segment(text, style), destination) is the one encoder,\nand the style byte tests now go through it with the same assertions.\n\nBREAKING CHANGE: Style.render is removed; use\nsegmentToString(new Segment(text, style), destination).\n"
-        },
-        {
-          "sha": "2b39f47331c5c6f528f68e438bae18943940717a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T02:37:35-06:00",
-          "message": "refactor(render)!: the serializer takes where it writes as one Destination\n\nsegmentsToString(segments, destination) and segmentToString(segment,\ndestination) replace the positional colorSystem + hyperlinks pair, so a call\nreads segmentsToString(segs, resolveDestination(\"auto\")) or\n{ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true } instead of a bare\n`true`, and a depth can no longer be paired with a link setting taken from a\ndifferent destination.\n\nConsole, Live, Screen and renderToString hand their destination through\nwhole. renderToString applies its overrides (noColor, hyperlinks) once, where\nit builds the value; Console applies its hyperlinks override once, in its\nconstructor. Console.destination replaces Console.hyperlinks, so Live reads\nthe value its console encodes for rather than two of its fields.\n\nBREAKING CHANGE: segmentsToString and segmentToString take a Destination\nin place of (colorSystem, hyperlinks). Console.hyperlinks is removed; read\nconsole.destination.hyperlinks.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "cac5b40d387bb71ab13eb93f586a00563e54283d",
-      "timestamp": "2026-09-27T08:05:19.422Z",
+      "sha": "293a83e962bc40e2cc8a865ee089fb9f3a36b534",
+      "timestamp": "2026-09-27T08:50:13.656Z",
       "commits": [
         {
-          "sha": "cac5b40d387bb71ab13eb93f586a00563e54283d",
+          "sha": "293a83e962bc40e2cc8a865ee089fb9f3a36b534",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T02:04:51-06:00",
-          "message": "feat(strip)!: the default powerline lead is a notch cut into the first cell (#160)\n\n* feat(strip)!: the default powerline lead is a notch cut into the first cell\n\nPOWERLINE_JOINER_GLYPHS leads with U+E0D6 (inverse right-arrow) instead of\nU+E0B2. Drawn by the existing cap painter (fg = the cell's background, no bg),\nit inks the top-left and bottom-left of the cell and leaves a right-pointing\ntriangle empty, so a coloured run opens notched, as if an arrow before it\npointed in. The notch is the terminal's own background showing through, so it\nmatches under a translucent terminal background; a reverse-video U+E0B0 notch\ndrew visibly darker there. The arrow, divider and tail are unchanged.\n\nBREAKING CHANGE: new PowerlineJoiner() draws U+E0D6 as its lead cap, not U+E0B2.\nPass { ...POWERLINE_JOINER_GLYPHS, lead: \"\" } for the old shape.\n\n* chore(release)!: 0.17.0\n\nThe default powerline lead changed shape, which is breaking for 0.x.\n\n* fix(strip): the notch lead is U+E0D7, not U+E0D6\n\nU+E0D6 is Nerd Fonts ple-right_hard_divider_inverse: beside a coloured cell it\ndraws a left-pointing hole, an arrow pointing out of the run. The notch the\nticket describes, and the name it cites (ple-left_hard_divider_inverse), is\nU+E0D7: an empty triangle based on the cell's left edge, pointing into the run.\nOutlines read from JetBrainsMonoNerdFont-Regular.ttf with fontTools.\n\ndocs/strip.md and the POWERLINE_JOINER_GLYPHS comment describe the shape\ncorrectly and say the lead is a Powerline Extra glyph that classic\npowerline-patched fonts lack; the join() table no longer describes the lead\nas reaching back.\n\n* test(strip): the default-lead comment reads as sentences"
+          "timestamp": "2026-09-27T02:49:47-06:00",
+          "message": "refactor(render)!: the serializer takes where it writes as one Destination (#161)\n\n* refactor(render)!: the serializer takes where it writes as one Destination\n\nsegmentsToString(segments, destination) and segmentToString(segment,\ndestination) replace the positional colorSystem + hyperlinks pair, so a call\nreads segmentsToString(segs, resolveDestination(\"auto\")) or\n{ colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true } instead of a bare\n`true`, and a depth can no longer be paired with a link setting taken from a\ndifferent destination.\n\nConsole, Live, Screen and renderToString hand their destination through\nwhole. renderToString applies its overrides (noColor, hyperlinks) once, where\nit builds the value; Console applies its hyperlinks override once, in its\nconstructor. Console.destination replaces Console.hyperlinks, so Live reads\nthe value its console encodes for rather than two of its fields.\n\nBREAKING CHANGE: segmentsToString and segmentToString take a Destination\nin place of (colorSystem, hyperlinks). Console.hyperlinks is removed; read\nconsole.destination.hyperlinks.\n\n* refactor(style)!: styled text reaches the wire only through segmentsToString\n\nStyle.render(text, colorSystem?) was a second ANSI encoder beside\nsegmentsToString: it could not express a null colour depth, always emitted\nOSC 8 links whatever the destination took, and nested SGR inside the link\nwhere the serializer nests the link inside SGR. Nothing in src/ called it.\nsegmentToString(new Segment(text, style), destination) is the one encoder,\nand the style byte tests now go through it with the same assertions.\n\nBREAKING CHANGE: Style.render is removed; use\nsegmentToString(new Segment(text, style), destination).\n\n* fix(render): the set-once destination is readonly, SGR codes need a depth, Live follows an explicit hyperlinks: false\n\n- Console._destination is readonly: set once, now public through `destination`.\n- Style.toSgrCodes takes a required depth; the optional form existed for the\n  removed Style.render, and omitting it silently skipped the downgrade.\n- osc8.ts: the bytes are a function of the destination, not the depth alone.\n- A Live on a console with hyperlinks: false writes no OSC 8 on a terminal."
         }
       ]
     }
