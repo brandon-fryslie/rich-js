@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-160",
-      "ref": "refs/pull/160/merge",
-      "sha": "04387bd3564a8c8d84283488c39588cdc5ed04cc",
-      "timestamp": "2026-09-27T08:02:41.445Z",
-      "commits": [
-        {
-          "sha": "04387bd3564a8c8d84283488c39588cdc5ed04cc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T08:02:15Z",
-          "message": "Merge abeee48a9513a5086a3f2e8785d5e0e692b50aae into 8791477a07ba5f10d2b3e55efb400b8f63544c20\n"
-        },
-        {
-          "sha": "abeee48a9513a5086a3f2e8785d5e0e692b50aae",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T02:02:10-06:00",
-          "message": "test(strip): the default-lead comment reads as sentences\n"
-        },
-        {
-          "sha": "b883aa8a771b86e24ec8cac843966f9fddd81a8a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:57:40-06:00",
-          "message": "fix(strip): the notch lead is U+E0D7, not U+E0D6\n\nU+E0D6 is Nerd Fonts ple-right_hard_divider_inverse: beside a coloured cell it\ndraws a left-pointing hole, an arrow pointing out of the run. The notch the\nticket describes, and the name it cites (ple-left_hard_divider_inverse), is\nU+E0D7: an empty triangle based on the cell's left edge, pointing into the run.\nOutlines read from JetBrainsMonoNerdFont-Regular.ttf with fontTools.\n\ndocs/strip.md and the POWERLINE_JOINER_GLYPHS comment describe the shape\ncorrectly and say the lead is a Powerline Extra glyph that classic\npowerline-patched fonts lack; the join() table no longer describes the lead\nas reaching back.\n"
-        },
-        {
-          "sha": "007a09ec34b66e973ecce4476a4af1b267d1615a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:47:45-06:00",
-          "message": "chore(release)!: 0.17.0\n\nThe default powerline lead changed shape, which is breaking for 0.x.\n"
-        },
-        {
-          "sha": "3203cecbd0627dd0d2bce4bf13d7a7437d142b1f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:47:42-06:00",
-          "message": "feat(strip)!: the default powerline lead is a notch cut into the first cell\n\nPOWERLINE_JOINER_GLYPHS leads with U+E0D6 (inverse right-arrow) instead of\nU+E0B2. Drawn by the existing cap painter (fg = the cell's background, no bg),\nit inks the top-left and bottom-left of the cell and leaves a right-pointing\ntriangle empty, so a coloured run opens notched, as if an arrow before it\npointed in. The notch is the terminal's own background showing through, so it\nmatches under a translucent terminal background; a reverse-video U+E0B0 notch\ndrew visibly darker there. The arrow, divider and tail are unchanged.\n\nBREAKING CHANGE: new PowerlineJoiner() draws U+E0D6 as its lead cap, not U+E0B2.\nPass { ...POWERLINE_JOINER_GLYPHS, lead: \"\" } for the old shape.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8791477a07ba5f10d2b3e55efb400b8f63544c20",
-      "timestamp": "2026-09-27T07:49:42.170Z",
+      "sha": "cac5b40d387bb71ab13eb93f586a00563e54283d",
+      "timestamp": "2026-09-27T08:05:19.422Z",
       "commits": [
         {
-          "sha": "8791477a07ba5f10d2b3e55efb400b8f63544c20",
+          "sha": "cac5b40d387bb71ab13eb93f586a00563e54283d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T01:48:39-06:00",
-          "message": "fix(render)!: colour depth governs SGR only — hyperlinks are their own fact (#159)\n\n* fix(render)!: colour depth governs SGR only — hyperlinks are their own fact\n\nsegmentsToString/segmentToString take a required `hyperlinks` argument;\nrenderToString gains a `hyperlinks` option (default true). A null colour\nsystem (NO_COLOR, colour depth none) no longer strips OSC 8 links. Console\nand Live emit links exactly when the destination is a terminal, so piped\noutput stays plain.\n\n* chore: 0.17.0\n\n* fix(render): one resolver decides colour depth and hyperlinks together\n\nresolveDestination(spec, detect) → { colorSystem, hyperlinks } replaces the\nthree copies of spec resolution in Console, Screen and renderToString.\nAn explicit depth keeps links (a file sink at truecolor keeps them again);\nunder auto, links follow the terminal probe without NO_COLOR, so TERM=dumb\nand non-TTY output stay linkless while NO_COLOR keeps them.\n\n* fix(color): FORCE_COLOR is a preference too; Console takes a hyperlinks option\n\nFORCE_COLOR=0 no longer drops links on a terminal; forced-on FORCE_COLOR\nstill keeps them on a pipe. ConsoleOptions.hyperlinks mirrors renderToString's\nso a file sink can ask for plain text. resolveColorSystem gets its JSDoc back."
+          "timestamp": "2026-09-27T02:04:51-06:00",
+          "message": "feat(strip)!: the default powerline lead is a notch cut into the first cell (#160)\n\n* feat(strip)!: the default powerline lead is a notch cut into the first cell\n\nPOWERLINE_JOINER_GLYPHS leads with U+E0D6 (inverse right-arrow) instead of\nU+E0B2. Drawn by the existing cap painter (fg = the cell's background, no bg),\nit inks the top-left and bottom-left of the cell and leaves a right-pointing\ntriangle empty, so a coloured run opens notched, as if an arrow before it\npointed in. The notch is the terminal's own background showing through, so it\nmatches under a translucent terminal background; a reverse-video U+E0B0 notch\ndrew visibly darker there. The arrow, divider and tail are unchanged.\n\nBREAKING CHANGE: new PowerlineJoiner() draws U+E0D6 as its lead cap, not U+E0B2.\nPass { ...POWERLINE_JOINER_GLYPHS, lead: \"\" } for the old shape.\n\n* chore(release)!: 0.17.0\n\nThe default powerline lead changed shape, which is breaking for 0.x.\n\n* fix(strip): the notch lead is U+E0D7, not U+E0D6\n\nU+E0D6 is Nerd Fonts ple-right_hard_divider_inverse: beside a coloured cell it\ndraws a left-pointing hole, an arrow pointing out of the run. The notch the\nticket describes, and the name it cites (ple-left_hard_divider_inverse), is\nU+E0D7: an empty triangle based on the cell's left edge, pointing into the run.\nOutlines read from JetBrainsMonoNerdFont-Regular.ttf with fontTools.\n\ndocs/strip.md and the POWERLINE_JOINER_GLYPHS comment describe the shape\ncorrectly and say the lead is a Powerline Extra glyph that classic\npowerline-patched fonts lack; the join() table no longer describes the lead\nas reaching back.\n\n* test(strip): the default-lead comment reads as sentences"
         }
       ]
     }
