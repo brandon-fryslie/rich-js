@@ -5,13 +5,14 @@
  * The list is rebuilt every frame, as a view derived from state is, and handed
  * to the one `Viewport` that persists across frames: the scroll position lives
  * in the viewport, not in the content. The window scrolls only when the cursor
- * reaches its edge, the least distance that keeps the cursor in view.
+ * reaches its edge, the least distance that keeps the cursor in view, and the
+ * scrollbar's thumb follows the offset each render resolves.
  *
  * [LAW:dataflow-not-control-flow] `runDemo` takes a `TerminalHost` as a value;
  * node and browser bootstraps differ only in which host they construct.
  */
 
-import { Console, Live, Panel, RichText, Viewport } from "../../src/index.js";
+import { Console, Live, Panel, RichText, SCROLLBAR, Viewport } from "../../src/index.js";
 import { hostStream, type TerminalHost } from "../../src/host/index.js";
 
 export interface DemoHandle {
@@ -51,7 +52,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
       return { width: cols, height: rows };
     },
   });
-  const viewport = new Viewport(list(0), { rows: 8 });
+  const viewport = new Viewport(list(0), { rows: 8, scrollbar: SCROLLBAR });
   const frameFor = (selected: number): Panel => {
     viewport.content = list(selected);
     viewport.ensureVisible(selected, selected + 1);

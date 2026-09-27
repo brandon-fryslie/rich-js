@@ -43,6 +43,7 @@ import { Tree } from "../../src/renderables/tree.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Padding } from "../../src/renderables/padding.js";
+import { SCROLLBAR, Viewport } from "../../src/renderables/viewport.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -284,6 +285,25 @@ const configurations: readonly Configuration[] = [
       return l;
     },
   },
+  {
+    name: "Viewport",
+    shape: "rectangular",
+    make: () => new Viewport(new RichText("hello world\nsecond line"), { rows: 3 }),
+  },
+  {
+    name: "Viewport with a scrollbar",
+    shape: "rectangular",
+    make: () => {
+      const viewport = new Viewport(new RichText("hello world\nsecond line\nthird"), { scrollbar: SCROLLBAR });
+      viewport.scrollBy(1);
+      return viewport;
+    },
+  },
+  {
+    name: "Viewport wrapping content that ignores its width",
+    shape: "rectangular",
+    make: () => new Viewport(oversized, { scrollbar: SCROLLBAR }),
+  },
 ];
 
 /**
@@ -326,6 +346,7 @@ const noNaturalWidth: ReadonlySet<string> = new Set([
   "Tree with a label that ignores its width",
   "Columns wrapping content that ignores its width",
   "Columns at a declared unbounded width",
+  "Viewport wrapping content that ignores its width",
 ]);
 
 describe("width sweep", () => {

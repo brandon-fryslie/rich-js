@@ -31,6 +31,8 @@ A viewport given a region — a `Layout` pane, or a full-screen `Live` frame —
 
 The content always renders with no height limit, at the width the viewport was given. The number of lines it wraps to is how far the viewport can scroll.
 
+Every row is exactly that width: content that ignores its width is cropped at the viewport's edge, and shorter rows are padded out to it.
+
 ## Scrolling
 
 ```typescript
@@ -61,4 +63,26 @@ function frame(state: State) {
 }
 ```
 
-`npm run viewport` runs this against a list of forty lines.
+## Scrollbar
+
+Pass `scrollbar` to draw one down the right edge. The content renders one cell narrower to make room for it.
+
+```typescript
+import { RichText, SCROLLBAR, Viewport } from "@promptctl/rich-js";
+
+const viewport = new Viewport(new RichText(log), { rows: 5, scrollbar: SCROLLBAR });
+```
+
+The thumb's length is the share of the content in view, and its position is how far the view has scrolled. It touches the top when the first line is showing and the bottom at the last full view. When all the content fits, the thumb fills the track. The thumb is drawn from the offset the render resolves, so moves queued since the last render are already reflected.
+
+`SCROLLBAR` draws a heavy line (`┃`) for the thumb on a light one (`│`) for the track, styled by the theme names `scrollbar.thumb` and `scrollbar.track`. A scrollbar is plain data, so any glyphs and styles will do. The gutter is as wide as the wider glyph:
+
+```typescript
+const blocks = {
+  thumb: { glyph: "█", style: "cyan" },
+  track: { glyph: "░", style: "grey37" },
+};
+new Viewport(new RichText(log), { rows: 10, scrollbar: blocks });
+```
+
+`npm run viewport` runs the selection example above, with a scrollbar, against a list of forty lines.
