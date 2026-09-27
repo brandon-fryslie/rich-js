@@ -34,5 +34,8 @@ strip:
 markup-plugins:
     npm run markup-plugins
 
+viewport:
+    npm run viewport
+
 # OKLCH theme-transposition demo (see oklsh.just)
 mod oklsh
