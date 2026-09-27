@@ -4,15 +4,22 @@
     {
       "version": "pr-160",
       "ref": "refs/pull/160/merge",
-      "sha": "9c833513ba11c9a831e1f43b556ccfde0cb701ce",
-      "timestamp": "2026-09-27T07:58:08.523Z",
+      "sha": "04387bd3564a8c8d84283488c39588cdc5ed04cc",
+      "timestamp": "2026-09-27T08:02:41.445Z",
       "commits": [
         {
-          "sha": "9c833513ba11c9a831e1f43b556ccfde0cb701ce",
+          "sha": "04387bd3564a8c8d84283488c39588cdc5ed04cc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:57:44Z",
-          "message": "Merge b883aa8a771b86e24ec8cac843966f9fddd81a8a into 8791477a07ba5f10d2b3e55efb400b8f63544c20\n"
+          "timestamp": "2026-09-27T08:02:15Z",
+          "message": "Merge abeee48a9513a5086a3f2e8785d5e0e692b50aae into 8791477a07ba5f10d2b3e55efb400b8f63544c20\n"
+        },
+        {
+          "sha": "abeee48a9513a5086a3f2e8785d5e0e692b50aae",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T02:02:10-06:00",
+          "message": "test(strip): the default-lead comment reads as sentences\n"
         },
         {
           "sha": "b883aa8a771b86e24ec8cac843966f9fddd81a8a",
