@@ -352,7 +352,7 @@ export class Style {
    *
    * [LAW:one-source-of-truth] One computation of SGR codes.
    */
-  toSgrCodes(colorSystem?: ColorDepth): string {
+  toSgrCodes(colorSystem: ColorDepth): string {
     if (this.isNull) return "";
 
     const attrs: string[] = [];

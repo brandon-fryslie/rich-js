@@ -22,7 +22,7 @@
  * several pairs, and would highlight piecewise on hover.
  *
  * [LAW:types-are-the-program] The id is a pure function of the URI, so the
- * byte stream stays a pure function of (style, text, colorSystem): no counter,
+ * byte stream stays a pure function of (style, text, destination): no counter,
  * no construction-order dependence. The consequence is deliberate: two spans
  * with the same URI hover as one link wherever they sit on screen, adjacent
  * or not — a click on either does the same thing, so they ARE one link.

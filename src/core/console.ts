@@ -275,7 +275,7 @@ const NO_HIGHLIGHT = new NullHighlighter();
 const PRINT_DATA_BOUNDS = { maxLength: 100, maxDepth: 16, maxString: 1000 } as const;
 
 export class Console {
-  private _destination: Destination;
+  private readonly _destination: Destination;
   // [LAW:one-source-of-truth] Size flows through a single function. Static
   // `width`/`height` options collapse into a closure that returns them; a
   // caller-supplied `getSize` overrides. Every size read in this class goes
