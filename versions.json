@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca",
+      "timestamp": "2026-09-27T13:23:56.043Z",
+      "commits": [
+        {
+          "sha": "ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:23:28-06:00",
+          "message": "fix(host): BrowserTerminalHost returns the carriage before every newline (#171)\n\n* fix(host): BrowserTerminalHost returns the carriage before every newline\n\nxterm.js has no tty in front of it, so a bare newline moved down without\nreturning to column 0: every row a Console wrote started where the last one\nended, and every demo on the docs site drew as a staircase. The host now does\nthe tty's ONLCR translation for strings and bytes. The e2e gate only asked\nwhether a demo drew anything; it now also checks rich-viewport's rows start at\nthe panel's left border, which fails without this fix.\n\n* fix(host): no copy for a byte write without a newline; the harness writes bare newlines; the edge check waits for boot\n\n* docs(host): node's raw mode keeps the tty's newline translation"
+        }
+      ]
+    },
+    {
       "version": "pr-172",
       "ref": "refs/pull/172/merge",
       "sha": "3ea5acefc45983c79f700450903005c477acec3f",
@@ -27,57 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T07:09:04-06:00",
           "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-171",
-      "ref": "refs/pull/171/merge",
-      "sha": "59cdc52a1e23929cab0eda1e9002f007452d7812",
-      "timestamp": "2026-09-27T13:19:17.458Z",
-      "commits": [
-        {
-          "sha": "59cdc52a1e23929cab0eda1e9002f007452d7812",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T13:18:55Z",
-          "message": "Merge 7e7c1de590888b769e388f76d3e426e12247eaa6 into 1bb62e5b5cbc7ad116598c470917742bce11171d\n"
-        },
-        {
-          "sha": "7e7c1de590888b769e388f76d3e426e12247eaa6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:18:51-06:00",
-          "message": "docs(host): node's raw mode keeps the tty's newline translation\n"
-        },
-        {
-          "sha": "dd1a7e7273098426c6032123c330e4ccf1103027",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:10:14-06:00",
-          "message": "fix(host): no copy for a byte write without a newline; the harness writes bare newlines; the edge check waits for boot\n"
-        },
-        {
-          "sha": "89af22a12e75ea3ed06988514ec50471e941eca8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:06:18-06:00",
-          "message": "fix(host): BrowserTerminalHost returns the carriage before every newline\n\nxterm.js has no tty in front of it, so a bare newline moved down without\nreturning to column 0: every row a Console wrote started where the last one\nended, and every demo on the docs site drew as a staircase. The host now does\nthe tty's ONLCR translation for strings and bytes. The e2e gate only asked\nwhether a demo drew anything; it now also checks rich-viewport's rows start at\nthe panel's left border, which fails without this fix.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "1bb62e5b5cbc7ad116598c470917742bce11171d",
-      "timestamp": "2026-09-27T13:09:54.943Z",
-      "commits": [
-        {
-          "sha": "1bb62e5b5cbc7ad116598c470917742bce11171d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:09:22-06:00",
-          "message": "feat(ansi): decode ANSI bytes back into RichText (rich-docs-examples-xuu.9hv) (#169)\n\n* feat(ansi): decode ANSI bytes back into RichText (rich-docs-examples-xuu.9hv)\n\nA port of Rich's AnsiDecoder and Text.from_ansi: `decodeAnsi` for a whole\ncapture, `AnsiDecoder` for a stream read a line at a time. Colours decode to\nthe ColorSpec kind their escape names and are never resolved to RGB, so one\ncaptured run exports correctly under a light theme and a dark one.\n\nTwo departures from Rich, both toward what a terminal shows: the link is\ndecoder state beside the SGR style, so an SGR reset inside a link leaves it\nopen; and a line ends only at \\n, with the text after its last \\r replacing\nwhat came before, while codes before the \\r still apply.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(ansi): a carriage return moves the cursor; every escape shape is dropped (rich-docs-examples-xuu.9hv)\n\n\\r returns to column 0 and later text overwrites, so CRLF and a trailing\n\\r keep their line. A private-marker CSI is not SGR; ECMA-48's\nintermediates-plus-final escapes and an OSC cut off by the line are dropped.\nAttribute on-codes derive from style.ts's ATTRIBUTE_SGR.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(ansi): erase in line, string escapes, underline colour, 24/25 clear both variants (rich-docs-examples-xuu.9hv)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(ansi): a string escape runs to its terminator past a stray ESC; one span per style; 26 is reserved (rich-docs-examples-xuu.9hv)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
