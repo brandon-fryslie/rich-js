@@ -4,15 +4,22 @@
     {
       "version": "pr-162",
       "ref": "refs/pull/162/merge",
-      "sha": "518cb1a2e7f53b5edab788532efa2816d8da035a",
-      "timestamp": "2026-09-27T09:08:30.557Z",
+      "sha": "1f65523d3492ee5e60f201234dbf7666b0724fa1",
+      "timestamp": "2026-09-27T09:14:25.353Z",
       "commits": [
         {
-          "sha": "518cb1a2e7f53b5edab788532efa2816d8da035a",
+          "sha": "1f65523d3492ee5e60f201234dbf7666b0724fa1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T03:07:59-06:00",
-          "message": "Merge 51adc0d1f6c13c0cbfc176f2587e665508d08a1f into 293a83e962bc40e2cc8a865ee089fb9f3a36b534\n"
+          "timestamp": "2026-09-27T09:14:02Z",
+          "message": "Merge cbc61b5b2fc1aa5dd02b954b628ff3b7e35d3a8f into 293a83e962bc40e2cc8a865ee089fb9f3a36b534\n"
+        },
+        {
+          "sha": "cbc61b5b2fc1aa5dd02b954b628ff3b7e35d3a8f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T03:13:57-06:00",
+          "message": "fix(layout): fill only a region; natural height otherwise, and both splits shape\n\nReview of #162: padding to the 24-row fallback made console.print(layout)\nalways 24 rows. A layout now fills only an exact region; under a ceiling or\nno budget each pane takes its declared size or its content's height, which\ndeletes the fallback. Rows parse through cellCount (NaN/negative hold none,\nInfinity is natural), row splits shape their panes too, and shaping fits the\nline count only.\n"
         },
         {
           "sha": "51adc0d1f6c13c0cbfc176f2587e665508d08a1f",
