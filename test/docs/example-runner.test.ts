@@ -111,6 +111,12 @@ describe("one page, one program", { timeout: 30_000 }, () => {
     expect(shown[1]).toContain("null");
   });
 
+  it("decodes a character whose bytes arrive in two writes", async () => {
+    const shown = outputs(await run(fence("process.stdout.write(new Uint8Array([0xe2, 0x94]));\nprocess.stdout.write(new Uint8Array([0x80]));")))[0]!;
+    expect(shown).toContain("─");
+    expect(shown).not.toContain("\uFFFD");
+  });
+
   it("assumes the main barrel's types as well as its values", async () => {
     const shown = outputs(await run(fence("const width = (options: RenderOptions) => options.maxWidth;\nconsole.print(String(typeof width));")))[0]!;
     expect(shown).toContain("function");

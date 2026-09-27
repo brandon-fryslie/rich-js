@@ -22,11 +22,7 @@
  *      encode them twice, as a light and a dark fragment.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
- * page and line: a type error, a program that does not bundle (the page
- * only), a run that outlasts its deadline, a throw from a block not marked `throws`, a
- * `throws` block that returns, a `silent` block that writes, a static block
- * that writes nothing, context that writes, a disallowed escape, an unknown
- * marker.
+ * page, and the line when one line is to blame.
  */
 
 import { build } from "vite";
@@ -192,7 +188,8 @@ export async function bundleExample(source: string): Promise<string> {
 
 /**
  * How long a static example may run. Its point is what it prints, not when;
- * one that waits on something is `live`.
+ * one that waits on something is `live`. This catches a run that waits, not
+ * one that spins: a synchronous loop never yields to the timer.
  */
 const RUN_DEADLINE_MS = 5_000;
 
@@ -204,7 +201,7 @@ async function capture(script: string): Promise<{ stream: string; end: RunEnd }>
   const decoder = new TextDecoder();
   const terminal: SimulatedTerminal = {
     ...TERMINAL,
-    write: (chunk) => chunks.push(typeof chunk === "string" ? chunk : decoder.decode(chunk)),
+    write: (chunk) => chunks.push(typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true })),
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const end = await Promise.race([
@@ -217,6 +214,7 @@ async function capture(script: string): Promise<{ stream: string; end: RunEnd }>
     }),
   ]);
   clearTimeout(timer);
+  chunks.push(decoder.decode());
   return { stream: chunks.join(""), end };
 }
 
