@@ -791,6 +791,10 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "bar.finished": Style.parse("green"),
   "bar.pulse": Style.parse("magenta"),
 
+  // Scrollbar
+  "scrollbar.thumb": NULL_STYLE,
+  "scrollbar.track": Style.parse("grey37"),
+
   // Tree
   "tree": NULL_STYLE,
   "tree.guide": NULL_STYLE,

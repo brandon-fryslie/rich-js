@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { Viewport } from "../../src/renderables/viewport.js";
+import { SCROLLBAR, Viewport } from "../../src/renderables/viewport.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
+import { Style, Theme } from "../../src/core/style.js";
+import { cellLen } from "../../src/core/cells.js";
 import type { Height, Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] What a viewport shows, under the `Height`
@@ -16,6 +18,22 @@ function numbered(n: number): Renderable {
 function shown(viewport: Renderable, height?: Height, maxWidth = 10): string[] {
   const lines = Segment.splitLines(viewport.render({ maxWidth, height }));
   return lines.map((line) => line.map((s) => s.text).join("").trimEnd());
+}
+
+/** Every row exactly as emitted, trailing blanks and all. */
+function rows(viewport: Renderable, height?: Height, maxWidth = 10): string[] {
+  const lines = Segment.splitLines(viewport.render({ maxWidth, height }));
+  return lines.map((line) => line.map((s) => s.text).join(""));
+}
+
+/** The scrollbar column of each row: its last cell. */
+function bar(viewport: Renderable, height?: Height, maxWidth = 10): string {
+  return rows(viewport, height, maxWidth).map((row) => row.slice(-1)).join("");
+}
+
+/** Emits one line `width` cells wide, whatever width it is offered. */
+function wide(width: number): Renderable {
+  return { render: () => [new Segment("x".repeat(width)), Segment.line()] };
 }
 
 const region = (rows: number): Height => ({ rows, exact: true });
@@ -199,9 +217,107 @@ describe("ensureVisible", () => {
   });
 });
 
+describe("the width a viewport shows", () => {
+  it("crops content that ignores its width at the viewport's edge", () => {
+    expect(rows(new Viewport(wide(40), { rows: 2 }), undefined, 6)).toEqual(["xxxxxx", "      "]);
+  });
+
+  it("pads every row, blank ones included, to the width it is given", () => {
+    const widths = rows(new Viewport(numbered(2), { rows: 4 }), undefined, 7).map(cellLen);
+    expect(widths).toEqual([7, 7, 7, 7]);
+  });
+
+  it("crops through a wide character without drawing past the edge", () => {
+    const wideText: Renderable = { render: () => [new Segment("日本語"), Segment.line()] };
+    const [row] = rows(new Viewport(wideText), undefined, 3);
+    expect(cellLen(row!)).toBe(3);
+  });
+});
+
+describe("the scrollbar", () => {
+  it("renders the content one cell narrower and draws the bar in the last column", () => {
+    const viewport = new Viewport(new RichText("aaaa bbbb"), { rows: 2, scrollbar: SCROLLBAR });
+    expect(rows(viewport, undefined, 5)).toEqual(["aaaa┃", "bbbb┃"]);
+  });
+
+  it("fills the track when the content fits", () => {
+    expect(bar(new Viewport(numbered(3), { rows: 4, scrollbar: SCROLLBAR }))).toBe("┃┃┃┃");
+  });
+
+  it("has a thumb as long as the share of the content in view", () => {
+    expect(bar(new Viewport(numbered(20), { rows: 10, scrollbar: SCROLLBAR }))).toBe("┃┃┃┃┃│││││");
+    expect(bar(new Viewport(numbered(40), { rows: 4, scrollbar: SCROLLBAR }))).toBe("┃│││");
+  });
+
+  it("moves the thumb with the offset, top at the first line and bottom at the last full view", () => {
+    const viewport = new Viewport(numbered(20), { rows: 10, scrollbar: SCROLLBAR });
+    const frames = [0, 5, 10].map((line) => {
+      viewport.scrollTo(line);
+      return bar(viewport);
+    });
+    expect(frames).toEqual(["┃┃┃┃┃│││││", "│││┃┃┃┃┃││", "│││││┃┃┃┃┃"]);
+  });
+
+  it("touches an end only when the view has reached that end of the content", () => {
+    const at = (rowsShown: number, lines: number, offset: number): string => {
+      const viewport = new Viewport(numbered(lines), { rows: rowsShown, scrollbar: SCROLLBAR });
+      viewport.scrollTo(offset);
+      return bar(viewport);
+    };
+    // Rounded alone, offset 9 of 10 put the thumb on the bottom with line 19 unseen.
+    expect(at(10, 20, 9)).toBe("││││┃┃┃┃┃│");
+    expect(at(10, 20, 1)).toBe("│┃┃┃┃┃││││");
+    expect(at(4, 40, 1)).toBe("│┃││");
+    expect(at(4, 40, 35)).toBe("││┃│");
+    expect(at(4, 40, 36)).toBe("│││┃");
+  });
+
+    it("reads the offset its render resolves, not the one before it", () => {
+    const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
+    viewport.scrollTo(99);
+    expect(viewport.offset).toBe(0);
+    expect(bar(viewport, region(10))).toBe("│││││┃┃┃┃┃");
+  });
+
+  it("gives the scrollbar the only cell there is, and draws nothing into no width at all", () => {
+    expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 1)).toEqual(["┃", "┃"]);
+    expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 0)).toEqual(["", ""]);
+  });
+
+  it("resolves its styles against the theme it renders for", () => {
+    const theme = new Theme({ "scrollbar.thumb": "red", "scrollbar.track": "blue" });
+    const segments = [...new Viewport(numbered(8), { rows: 4, scrollbar: SCROLLBAR }).render({ maxWidth: 4, theme })];
+    const styleOf = (glyph: string): Style | undefined => segments.find((s) => s.text === glyph)?.style;
+    expect(styleOf("┃")).toEqual(Style.parse("red"));
+    expect(styleOf("│")).toEqual(Style.parse("blue"));
+  });
+
+  it("fills the rest of a narrower glyph's cell in that part's style", () => {
+    const blocks = { thumb: { glyph: "██", style: "" }, track: { glyph: "░", style: "on blue" } };
+    const segments = [...new Viewport(numbered(8), { rows: 2, scrollbar: blocks }).render({ maxWidth: 4 })];
+    const afterTrack = segments[segments.findIndex((s) => s.text === "░") + 1]!;
+    expect(afterTrack.text).toBe(" ");
+    expect(afterTrack.style).toEqual(Style.parse("on blue"));
+  });
+
+    it("takes any glyphs, and its gutter is as wide as the wider", () => {
+    const blocks = { thumb: { glyph: "██", style: "" }, track: { glyph: "░", style: "" } };
+    expect(rows(new Viewport(numbered(8), { rows: 2, scrollbar: blocks }), undefined, 4)).toEqual([
+      "0 ██",
+      "1 ░ ",
+    ]);
+  });
+});
+
 describe("measure", () => {
   it("is its content's width", () => {
     const viewport = new Viewport(new RichText("hello"));
     expect(viewport.measure({ maxWidth: 20 })).toEqual({ minimum: 5, maximum: 5 });
+  });
+
+  it("is its content's width and its gutter's, within the offer", () => {
+    const viewport = new Viewport(new RichText("hello"), { scrollbar: SCROLLBAR });
+    expect(viewport.measure({ maxWidth: 20 })).toEqual({ minimum: 6, maximum: 6 });
+    expect(viewport.measure({ maxWidth: 4 })).toEqual({ minimum: 4, maximum: 4 });
   });
 });
