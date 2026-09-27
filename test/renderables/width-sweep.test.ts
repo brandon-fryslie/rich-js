@@ -294,7 +294,7 @@ const configurations: readonly Configuration[] = [
     name: "Viewport with a scrollbar",
     shape: "rectangular",
     make: () => {
-      const viewport = new Viewport(new RichText("hello world\nsecond line\nthird"), { scrollbar: SCROLLBAR });
+      const viewport = new Viewport(new RichText("hello world\nsecond line\nthird"), { rows: 2, scrollbar: SCROLLBAR });
       viewport.scrollBy(1);
       return viewport;
     },

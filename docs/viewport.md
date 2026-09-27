@@ -73,7 +73,7 @@ import { RichText, SCROLLBAR, Viewport } from "@promptctl/rich-js";
 const viewport = new Viewport(new RichText(log), { rows: 5, scrollbar: SCROLLBAR });
 ```
 
-The thumb's length is the share of the content in view, and its position is how far the view has scrolled. It touches the top when the first line is showing and the bottom at the last full view. When all the content fits, the thumb fills the track. The thumb is drawn from the offset the render resolves, so moves queued since the last render are already reflected.
+The thumb's length is the share of the content in view, and its position is how far the view has scrolled. A gap above or below the thumb always means there is more content in that direction. Wherever the track has room, the thumb also stays off an end until the view reaches it. When all the content fits, the thumb fills the track. The thumb is drawn from the offset the render resolves, so moves queued since the last render are already reflected.
 
 `SCROLLBAR` draws a heavy line (`┃`) for the thumb on a light one (`│`) for the track, styled by the theme names `scrollbar.thumb` and `scrollbar.track`. A scrollbar is plain data, so any glyphs and styles will do. The gutter is as wide as the wider glyph:
 

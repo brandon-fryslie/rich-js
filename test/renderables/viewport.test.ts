@@ -258,14 +258,28 @@ describe("the scrollbar", () => {
     expect(frames).toEqual(["┃┃┃┃┃│││││", "│││┃┃┃┃┃││", "│││││┃┃┃┃┃"]);
   });
 
-  it("reads the offset its render resolves, not the one before it", () => {
+  it("touches an end only when the view has reached that end of the content", () => {
+    const at = (rowsShown: number, lines: number, offset: number): string => {
+      const viewport = new Viewport(numbered(lines), { rows: rowsShown, scrollbar: SCROLLBAR });
+      viewport.scrollTo(offset);
+      return bar(viewport);
+    };
+    // Rounded alone, offset 9 of 10 put the thumb on the bottom with line 19 unseen.
+    expect(at(10, 20, 9)).toBe("││││┃┃┃┃┃│");
+    expect(at(10, 20, 1)).toBe("│┃┃┃┃┃││││");
+    expect(at(4, 40, 1)).toBe("│┃││");
+    expect(at(4, 40, 35)).toBe("││┃│");
+    expect(at(4, 40, 36)).toBe("│││┃");
+  });
+
+    it("reads the offset its render resolves, not the one before it", () => {
     const viewport = new Viewport(numbered(20), { scrollbar: SCROLLBAR });
     viewport.scrollTo(99);
     expect(viewport.offset).toBe(0);
     expect(bar(viewport, region(10))).toBe("│││││┃┃┃┃┃");
   });
 
-  it("lets the content keep the only cell there is, and draws nothing into no width at all", () => {
+  it("gives the scrollbar the only cell there is, and draws nothing into no width at all", () => {
     expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 1)).toEqual(["┃", "┃"]);
     expect(rows(new Viewport(numbered(2), { scrollbar: SCROLLBAR }), undefined, 0)).toEqual(["", ""]);
   });

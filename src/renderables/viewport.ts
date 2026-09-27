@@ -157,15 +157,16 @@ export class Viewport implements Renderable, Measurable {
     // [LAW:no-ambient-temporal-coupling] The thumb is drawn from the offset
     // this render just resolved, not from `offset` as it stood before it.
     const thumb = thumbRows(extent, this._offset);
+    // The content's cells and the gutter's drawn cells sum to the offer: a
+    // gutter wider than the whole offer is drawn cropped to it.
+    const drawn = Math.min(gutter, options.maxWidth);
     const cell = ({ glyph, style }: ScrollbarPart): Segment[] =>
-      Segment.adjustLineLength([new Segment(glyph, getStyle(options, style))], gutter);
+      Segment.adjustLineLength([new Segment(glyph, getStyle(options, style))], drawn);
     const thumbCell = cell(this.scrollbar.thumb);
     const trackCell = cell(this.scrollbar.track);
     for (const [row, line] of shown.entries()) {
-      const bar = row >= thumb.start && row < thumb.end ? thumbCell : trackCell;
-      // A gutter wider than the whole offer is cropped with the row, so the
-      // viewport never draws past the width it was given.
-      yield* Segment.adjustLineLength([...Segment.adjustLineLength(line, contentWidth), ...bar], options.maxWidth);
+      yield* Segment.adjustLineLength(line, contentWidth);
+      yield* row >= thumb.start && row < thumb.end ? thumbCell : trackCell;
       yield Segment.line();
     }
   }
@@ -192,12 +193,19 @@ function gutterWidth({ thumb, track }: Scrollbar): number {
 /**
  * The rows of the track the thumb covers, from `start` up to but not including
  * `end`: its length is the share of the content in view, and its position the
- * share of the scroll travelled, so it touches the top at the first line and
- * the bottom at the last full view. Content that fits fills the track.
+ * share of the scroll travelled. Content that fits fills the track.
+ *
+ * An end of the track means an end of the content. Rounded alone, the position
+ * reached the bottom while lines were still hidden below — at 10 rows of 20
+ * lines, offset 9 rounds onto the last position. So an offset short of an end
+ * is held one row off it, wherever the track has a row between its ends.
  */
 function thumbRows({ rows, lines }: Extent, offset: number): { start: number; end: number } {
   const size = Math.min(rows, Math.max(1, Math.round((rows * rows) / Math.max(lines, rows, 1))));
-  const start = Math.round((offset * (rows - size)) / Math.max(1, lines - rows));
+  const travel = rows - size;
+  const last = Math.max(1, lines - rows);
+  const proportional = Math.round((offset * travel) / last);
+  const start = Math.max(Math.min(proportional, travel - Math.min(last - offset, 1)), Math.min(offset, 1, travel));
   return { start, end: start + size };
 }
 
