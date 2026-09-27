@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-172",
+      "ref": "refs/pull/172/merge",
+      "sha": "86391f23e12ce3510c1fe079133fbb0550dda1cb",
+      "timestamp": "2026-09-27T13:51:33.736Z",
+      "commits": [
+        {
+          "sha": "86391f23e12ce3510c1fe079133fbb0550dda1cb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T13:50:59Z",
+          "message": "Merge ffea1107eddabd4fb189934d42fa846ff3b8b0ae into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
+        },
+        {
+          "sha": "ffea1107eddabd4fb189934d42fa846ff3b8b0ae",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:50:55-06:00",
+          "message": "fix(docs): one bundler for every simulated run; a thrown value shows as Node reports it (rich-docs-examples-xuu.812)\n\nReview of #172 (CI reviewer):\n- test/docs/bundle-program.ts is gone; its unit and e2e callers bundle with\n  bundleExample, so the keepProcessEnv workaround has one home\n- an exampleContext whose code is not indented fails instead of running empty\n- barrel exports are read through resolveAlias\n- `import type { X }` from the main barrel no longer stops the prelude\n  importing X's value\n- a throws block shows Error.prototype.toString, or `Uncaught <value>`, so an\n  empty throw still shows\n- a hyperlink passes the escape check (test)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "8f85fbd36b629efe716b2a29243fbc3fbbc3ef37",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:27:35-06:00",
+          "message": "fix(docs): output ends its HTML block; the run cache follows src/; a non-Error throw has no orphan colon (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "422598f5d3ce0227dc2df6b9c10204871130c4b5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:21:00-06:00",
+          "message": "fix(docs): examples blame the context that threw; silent shows its note alone; ts{2} is TypeScript (rich-docs-examples-xuu.812)\n\nReview of #172:\n- a context throw is reported at the exampleContext, not the first block;\n  splitRecords says whether the context finished\n- the context is the chain's first scope, so it may redeclare console\n- a silent block's note stands in place of output, with no empty fragments\n- VitePress fence attributes ({2}, :line-numbers, [title]) no longer hide a\n  TypeScript fence from every reader\n- a default-plus-named import binds both names, so the prelude does not\n  import the named one again\n- a page runs once per docs:build, not once per VitePress build pass\n- ExampleCompiler keeps parsed files by mtime, as its header claimed\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "c2c8a18717c6701358784060d9ba700ae769a66a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:09:04-06:00",
+          "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-173",
       "ref": "refs/pull/173/merge",
       "sha": "aca85bb905433054e42393fb857e341cc048f396",
@@ -27,42 +70,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-27T07:40:39-06:00",
           "message": "fix(renderables): a string handed to a panel, tree, column or layout draws its markup (rich-panel-gbe)\n\nnew Panel(\"[bold]x[/bold]\") drew the tags literally. Table cells had parsed\nmarkup since their own fix, but panel bodies, tree labels, column items and\nlayout panes each built a RichText from the constructor, which does not.\nThe five copies of \"caller content -> something to lay out\" are now one,\nsrc/renderables/embed.ts, and progress's TextColumn uses it too.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-172",
-      "ref": "refs/pull/172/merge",
-      "sha": "4cd46273ccf101923f35e7a4b781240cda23da57",
-      "timestamp": "2026-09-27T13:28:07.042Z",
-      "commits": [
-        {
-          "sha": "4cd46273ccf101923f35e7a4b781240cda23da57",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T13:27:39Z",
-          "message": "Merge 8f85fbd36b629efe716b2a29243fbc3fbbc3ef37 into ae3f2c453a6b6d07520c7ce40e0ad6c772e290ca\n"
-        },
-        {
-          "sha": "8f85fbd36b629efe716b2a29243fbc3fbbc3ef37",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:27:35-06:00",
-          "message": "fix(docs): output ends its HTML block; the run cache follows src/; a non-Error throw has no orphan colon (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "422598f5d3ce0227dc2df6b9c10204871130c4b5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:21:00-06:00",
-          "message": "fix(docs): examples blame the context that threw; silent shows its note alone; ts{2} is TypeScript (rich-docs-examples-xuu.812)\n\nReview of #172:\n- a context throw is reported at the exampleContext, not the first block;\n  splitRecords says whether the context finished\n- the context is the chain's first scope, so it may redeclare console\n- a silent block's note stands in place of output, with no empty fragments\n- VitePress fence attributes ({2}, :line-numbers, [title]) no longer hide a\n  TypeScript fence from every reader\n- a default-plus-named import binds both names, so the prelude does not\n  import the named one again\n- a page runs once per docs:build, not once per VitePress build pass\n- ExampleCompiler keeps parsed files by mtime, as its header claimed\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "c2c8a18717c6701358784060d9ba700ae769a66a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:09:04-06:00",
-          "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         }
       ]
     },
