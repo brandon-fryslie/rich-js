@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-172",
+      "ref": "refs/pull/172/merge",
+      "sha": "ae8c05785be46b36134e2a8e1f8476b21921aca5",
+      "timestamp": "2026-09-27T13:12:27.118Z",
+      "commits": [
+        {
+          "sha": "ae8c05785be46b36134e2a8e1f8476b21921aca5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:11:46-06:00",
+          "message": "Merge c2c8a18717c6701358784060d9ba700ae769a66a into 1bb62e5b5cbc7ad116598c470917742bce11171d\n"
+        },
+        {
+          "sha": "c2c8a18717c6701358784060d9ba700ae769a66a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T07:09:04-06:00",
+          "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "pr-171",
       "ref": "refs/pull/171/merge",
       "sha": "ba267a9b7b909dafd3952e1c3fa6e1939f2e8ddf",
