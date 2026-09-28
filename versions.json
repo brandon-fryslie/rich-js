@@ -4,15 +4,22 @@
     {
       "version": "pr-182",
       "ref": "refs/pull/182/merge",
-      "sha": "31458094bfcc154e3ad997674674fa18432839c4",
-      "timestamp": "2026-09-28T04:17:55.542Z",
+      "sha": "2933224ee5e090ad4f90248692a8ecea1a5b9b35",
+      "timestamp": "2026-09-28T04:22:29.541Z",
       "commits": [
         {
-          "sha": "31458094bfcc154e3ad997674674fa18432839c4",
+          "sha": "2933224ee5e090ad4f90248692a8ecea1a5b9b35",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:16:53-06:00",
-          "message": "Merge a7a4f07e80a9897229ae23f5c3bdfe35b9c6f604 into 1fdbf6d91e9a032380e9defca42950fee8992e8d\n"
+          "timestamp": "2026-09-28T04:21:31Z",
+          "message": "Merge 8763a01c6f3d86f424708d37c56344f0cf502719 into 1fdbf6d91e9a032380e9defca42950fee8992e8d\n"
+        },
+        {
+          "sha": "8763a01c6f3d86f424708d37c56344f0cf502719",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:21:26-06:00",
+          "message": "docs: font carries the powerline project's notice too; generator pinned to its source and reads every outline before fitting any (rich-docs-examples-xuu.b35)\n"
         },
         {
           "sha": "a7a4f07e80a9897229ae23f5c3bdfe35b9c6f604",
