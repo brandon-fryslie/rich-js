@@ -13,6 +13,7 @@ import {
   ExampleCompiler,
   LIVE_MODULE_PREFIX,
   docsExamplesPlugin,
+  liveScript,
   runPageExamples,
 } from "../../docs/.vitepress/example-runner.js";
 import { PAGE_PARSER, scanFences } from "../../docs/.vitepress/example-markers.js";
@@ -211,13 +212,13 @@ describe("a live block", { timeout: 30_000 }, () => {
     const [shown] = outputs(result.markdown);
     expect(shown).toContain('<span class="rich-example-name">Live</span>');
     expect(shown).toContain(`<RichLive :load="${binding}" />`);
-    expect(await liveOutput(program!.script)).toContain("live");
+    expect(await liveOutput(liveScript(program!))).toContain("live");
   });
 
   it("is its block alone under the page's context, and writes only what the block writes", async () => {
     const context = ["---", "exampleContext: |", '  const who = "context";', "---", ""].join("\n");
     const result = await runPage(context + page(fence('const above = "above";', "ts silent"), fence("console.print(who);", "ts live")));
-    const written = await liveOutput(result.live[0]!.script);
+    const written = await liveOutput(liveScript(result.live[0]!));
     expect(written).toContain("context");
     expect(written).not.toContain("rich-example");
     await expect(run(context + page(fence('const above = "above";', "ts silent"), fence("console.print(above);", "ts live")))).rejects.toThrow(
@@ -244,6 +245,25 @@ describe("a live block", { timeout: 30_000 }, () => {
   it("is not refused for a <script setup> shown in a fence", async () => {
     const result = await runPage(page(fence('<script setup lang="ts">\n</script>', "vue"), fence("console.print(1);", "ts live")));
     expect(result.live).toHaveLength(1);
+  });
+
+  // Each program carries its own code; the library it runs on is bundled once
+  // per set of entry points and shared, so a page of live examples does not
+  // download the library once per example.
+  it("shares one library between blocks importing the same entry points, and keeps it out of each block", async () => {
+    const result = await runPage(page(fence('console.print("one");', "ts live"), fence('console.print("two");', "ts live")));
+    const [one, two] = result.live;
+    expect(one!.library).toBe(two!.library);
+    for (const program of result.live) expect(program.block.length).toBeLessThan(one!.library.script.length / 50);
+    expect(await liveOutput(liveScript(two!))).toContain("two");
+  });
+
+  it("gives a block importing another entry point the library of that entry point", async () => {
+    const widgets = 'import { Checkbox } from "@promptctl/rich-js/widgets";\nconsole.print(typeof Checkbox);';
+    const result = await runPage(page(fence('console.print("main");', "ts live"), fence(widgets, "ts live")));
+    const [main, other] = result.live;
+    expect(main!.library.id).not.toBe(other!.library.id);
+    expect(await liveOutput(liveScript(other!))).toContain("function");
   });
 
   it("shares one module with an identical block", async () => {
@@ -332,9 +352,12 @@ describe("the plugin", () => {
     const plugin = docsExamplesPlugin();
     const transformed = await plugin.transform(fence('console.print("served");', "ts live"), path.join(REPO_ROOT, "docs", "fixture-live.md"));
     const [specifier] = /virtual:rich-live\/[0-9a-f]+/.exec(transformed!.code)!;
-    const resolved = plugin.resolveId(specifier)!;
-    const module = plugin.load(resolved)!;
-    expect(await liveOutput(JSON.parse(module.replace(/^export default /, "").replace(/;$/, "")) as string)).toContain("served");
+    const program = plugin.load(plugin.resolveId(specifier)!)!;
+    // The program imports its library and adds its own code to it.
+    const [, librarySpecifier, block] = /^import library from ("[^"]+");\nexport default library \+ (".*");$/s.exec(program)!;
+    const library = plugin.load(plugin.resolveId(JSON.parse(librarySpecifier!) as string)!)!;
+    const [, script] = /^export default (".*");$/s.exec(library)!;
+    expect(await liveOutput((JSON.parse(script!) as string) + (JSON.parse(block!) as string))).toContain("served");
     expect(plugin.resolveId("./elsewhere.js")).toBeNull();
     expect(() => plugin.load(`\0${LIVE_MODULE_PREFIX}0000`)).toThrow(/no page run produced this live program/);
   });
