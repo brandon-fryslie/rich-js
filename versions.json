@@ -4,15 +4,22 @@
     {
       "version": "pr-174",
       "ref": "refs/pull/174/merge",
-      "sha": "5716d770b5dd4e139c53878d836a1b262457f869",
-      "timestamp": "2026-09-28T00:41:10.718Z",
+      "sha": "9d7169042b3dd8f086ad09c9fd2247fa394e79f5",
+      "timestamp": "2026-09-28T00:47:53.655Z",
       "commits": [
         {
-          "sha": "5716d770b5dd4e139c53878d836a1b262457f869",
+          "sha": "9d7169042b3dd8f086ad09c9fd2247fa394e79f5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T18:40:39-06:00",
-          "message": "Merge 8602fe6288a4b3afe6866ba23a6d2e966c20a1b9 into 64bcfcf2135c0be32e6e1f432fd9e5e6548a8826\n"
+          "timestamp": "2026-09-28T00:47:29Z",
+          "message": "Merge 987d1b38c28fc593ed1a7a34b0a5ed66824905fa into 64bcfcf2135c0be32e6e1f432fd9e5e6548a8826\n"
+        },
+        {
+          "sha": "987d1b38c28fc593ed1a7a34b0a5ed66824905fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T18:47:24-06:00",
+          "message": "fix(docs): one code font for code and output; narrow widths drawn by Panel alone; cards stay inside tips on phones (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "8602fe6288a4b3afe6866ba23a6d2e966c20a1b9",
