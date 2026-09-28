@@ -87,7 +87,7 @@ Some floors are not text on a background. Examples are a selected cell that must
 `drawnColour(colour, drawnAt, substrate?)` is that same rounding on its own, for a floor measured outside `accept`.
 
 ```typescript
-import { ColorDepth, ColorRgba, ensureDrawn, Oklch, Panel } from "@promptctl/rich-js";
+import { ColorDepth, ColorRgba, drawnColour, ensureDrawn, Oklch, Panel } from "@promptctl/rich-js";
 
 // A nested panel that must stay visibly apart from the one around it.
 const outer = new ColorRgba(30, 42, 58);
@@ -97,7 +97,9 @@ const panelOk = ensureDrawn(panel, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
 
 if (panelOk !== undefined) {
   const inner = new Panel(`nested: ${panel.hex} → ${panelOk.hex}`, { style: `on ${panelOk.hex}`, expand: false });
-  console.print(new Panel(inner, { title: `outer: ${outer.hex}`, style: `on ${outer.hex}`, expand: false }));
+  // Both panels drawn as a 256-colour terminal draws them.
+  const outerDrawn = drawnColour(outer, ColorDepth.EIGHT_BIT);
+  console.print(new Panel(inner, { title: `outer: ${outerDrawn.hex}`, style: `on ${outerDrawn.hex}`, expand: false }));
 }
 ```
 

@@ -19,7 +19,8 @@ always.
 ## Construction and sharing
 
 Most applications need one `Console` instance. Create it once, in a module of
-its own that exports it, and import it wherever you need output:
+its own that exports it (`export const console = new Console();`), and import it
+wherever you need output:
 
 ```typescript silent
 import { Console } from "@promptctl/rich-js";
@@ -54,7 +55,7 @@ const attributes = {
   encoding: console.encoding,
   isTerminal: console.isTerminal,
   colorSystem: console.colorSystem === null ? null : ColorDepth[console.colorSystem],
-  "destination.colorSystem": console.destination.colorSystem,
+  "destination.colorSystem": console.destination.colorSystem === null ? null : ColorDepth[console.destination.colorSystem],
   "destination.hyperlinks": console.destination.hyperlinks,
 };
 for (const [name, value] of Object.entries(attributes)) {
@@ -158,7 +159,7 @@ passes for a complete one.
 
 These bounds belong to `print` and `log`, not to the formatter. A `Pretty` you
 construct yourself has no limits unless you pass them, on the grounds that you
-have seen your own data:
+have seen your own data. Here `deepData` is an array nested 20 levels deep:
 
 ```typescript
 console.print(deepData);             // 16 levels, then "[...]"
