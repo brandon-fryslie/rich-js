@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as t,ag as n}from"./chunks/framework.Bd09-Mbj.js";const B=JSON.parse('{"title":"Columns","description":"","frontmatter":{},"headers":[],"relativePath":"columns.md","filePath":"columns.md"}'),h={name:"columns.md"};function e(l,s,p,k,d,r){return a(),t("div",null,[...s[0]||(s[0]=[n("",12)])])}const A=i(h,[["render",e]]);export{B as __pageData,A as default};

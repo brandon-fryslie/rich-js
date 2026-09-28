@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-175",
-      "ref": "refs/pull/175/merge",
-      "sha": "2f15e8e8791a1953dc96ea73771fefef4fb6c5dc",
-      "timestamp": "2026-09-28T01:56:15.941Z",
-      "commits": [
-        {
-          "sha": "2f15e8e8791a1953dc96ea73771fefef4fb6c5dc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T01:55:46Z",
-          "message": "Merge 9f5e92394a3bbfec63ca8b6f7f544f1a35818d3b into 784d206505a713d9ca724f799b3b0c617c6e93fa\n"
-        },
-        {
-          "sha": "9f5e92394a3bbfec63ca8b6f7f544f1a35818d3b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T19:55:42-06:00",
-          "message": "fix(docs): a live program that fails to load leaves no terminal; a batched scroll acts on where the terminal is now (rich-docs-examples-xuu.0bc)\n"
-        },
-        {
-          "sha": "de8c2bbfb1d38888f1ab5d802a27834c13ee79b4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T19:49:23-06:00",
-          "message": "fix(docs): live terminal ends stale runs, cleans up on unmount, surfaces load failures (rich-docs-examples-xuu.0bc)\n\nAddresses /code-review high on #175: a message from an ended worker no\nlonger touches the current run; a terminal still loading when the page is\nleft is disposed once made; an xterm or program load failure is shown and\nretryable; an unhandled rejection ends the program like an uncaught error;\na build-time process.exit is recorded, not thrown into the program; live\nblocks bundle in parallel; row height is re-measured; a <script setup> in\nany fence no longer refuses the page.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "912eebae39dce76847394646ee9bb527d3ec404c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T19:43:09-06:00",
-          "message": "feat(docs): live examples — a program running in an xterm under its code (rich-docs-examples-xuu.0bc)\n\nA `ts live` block is type-checked and bundled as a program of its own and\nserved to its page as a lazily imported module. RichLive runs it in a live\nterminal while it is on screen, from the start on each scroll-in, stopped\non scroll-out; under reduced motion it draws one still frame with a Play\nbutton; it wears the site colour mode's terminal theme.\n\nThe embed (theme/live-terminal.ts) knows nothing of docs pages. Each run is\na Web Worker, so stopping is terminating it, timers included. Bytes and keys\ncross BrowserTerminalHost; xterm loads from the one pin the demo shell now\nalso fills from (examples/_browser-shell/xterm.ts).\n\nThe simulated process gains stdin and exit, so the widgets page's own\nNodeTerminalHost program runs unchanged in the browser. progress.md and\nwidgets.md are fully migrated.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "784d206505a713d9ca724f799b3b0c617c6e93fa",
-      "timestamp": "2026-09-28T00:53:47.517Z",
+      "sha": "c3d939546fd7373598936a1a3021d95e0c6af065",
+      "timestamp": "2026-09-28T01:59:24.791Z",
       "commits": [
         {
-          "sha": "784d206505a713d9ca724f799b3b0c617c6e93fa",
+          "sha": "c3d939546fd7373598936a1a3021d95e0c6af065",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T18:53:14-06:00",
-          "message": "feat(docs): the example widget — code, and the output it produces, as one card (rich-docs-examples-xuu.8fh) (#174)\n\n* feat(docs): the example widget — code, and the output it produces, as one card (rich-docs-examples-xuu.8fh)\n\nEvery example on a migrated page is one element: VitePress's own highlighted\nfence, and under it an output panel whose label strip names where the output\ncame from (\"Output — produced by running the code above\"), then the light and\ndark fragments, CSS picking one per colour mode, or the marker's note. Labels\nand captions are rows of the marker table beside the notes.\n\nThe fragment's font is the one thing a host can now set through its\nall:initial, as the --rich-fragment-font custom property; the widget sets it to\nthe code font at a line height where box drawing joins. The blink keyframes are\nincluded once through VitePress's head, from HTML_FRAGMENT_CSS. The light code\ntheme is one-light, so code and output share the One palette in both modes.\n\npanel.md is migrated: its hand-drawn outputs are gone, and the narrow-widths\ndiagram is now an example that draws it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): one code font for code and output; narrow widths drawn by Panel alone; cards stay inside tips on phones (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(e2e): --rich-fragment-font reaches a fragment's rows through all:initial (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-27T19:58:47-06:00",
+          "message": "feat(docs): live examples — a program running in an xterm under its code (rich-docs-examples-xuu.0bc) (#175)\n\n* feat(docs): live examples — a program running in an xterm under its code (rich-docs-examples-xuu.0bc)\n\nA `ts live` block is type-checked and bundled as a program of its own and\nserved to its page as a lazily imported module. RichLive runs it in a live\nterminal while it is on screen, from the start on each scroll-in, stopped\non scroll-out; under reduced motion it draws one still frame with a Play\nbutton; it wears the site colour mode's terminal theme.\n\nThe embed (theme/live-terminal.ts) knows nothing of docs pages. Each run is\na Web Worker, so stopping is terminating it, timers included. Bytes and keys\ncross BrowserTerminalHost; xterm loads from the one pin the demo shell now\nalso fills from (examples/_browser-shell/xterm.ts).\n\nThe simulated process gains stdin and exit, so the widgets page's own\nNodeTerminalHost program runs unchanged in the browser. progress.md and\nwidgets.md are fully migrated.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): live terminal ends stale runs, cleans up on unmount, surfaces load failures (rich-docs-examples-xuu.0bc)\n\nAddresses /code-review high on #175: a message from an ended worker no\nlonger touches the current run; a terminal still loading when the page is\nleft is disposed once made; an xterm or program load failure is shown and\nretryable; an unhandled rejection ends the program like an uncaught error;\na build-time process.exit is recorded, not thrown into the program; live\nblocks bundle in parallel; row height is re-measured; a <script setup> in\nany fence no longer refuses the page.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): a live program that fails to load leaves no terminal; a batched scroll acts on where the terminal is now (rich-docs-examples-xuu.0bc)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
