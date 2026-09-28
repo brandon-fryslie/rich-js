@@ -11,30 +11,19 @@ import { Console, Tree } from "@promptctl/rich-js";
 
 const console = new Console();
 
-const tree = new Tree(":open_file_folder: [bold]project[/bold]");
+const tree = new Tree("📂 [bold orchid]project[/]");
 
-const src = tree.add(":open_file_folder: src");
-src.add(":page_facing_up: index.ts");
-src.add(":page_facing_up: console.ts");
+const src = tree.add("📂 [bold dodger_blue1]src[/]");
+src.add("📄 [spring_green3]index.ts[/]");
+src.add("📄 [spring_green3]console.ts[/]");
 
-const test = tree.add(":open_file_folder: test");
-test.add(":page_facing_up: console.test.ts");
+const test = tree.add("📂 [bold dodger_blue1]test[/]");
+test.add("📄 [dark_orange]console.test.ts[/]");
 
-tree.add(":page_facing_up: package.json");
-tree.add(":page_facing_up: tsconfig.json");
+tree.add("📄 [deep_sky_blue3]package.json[/]");
+tree.add("📄 [deep_sky_blue3]tsconfig.json[/]");
 
 console.print(tree);
-```
-
-```
-📂 project
-├── 📂 src
-│   ├── 📄 index.ts
-│   └── 📄 console.ts
-├── 📂 test
-│   └── 📄 console.test.ts
-├── 📄 package.json
-└── 📄 tsconfig.json
 ```
 
 ## Labels
@@ -44,42 +33,35 @@ Labels can be plain strings (markup is supported), `RichText` objects, or **any 
 ```typescript
 import { Panel, Table } from "@promptctl/rich-js";
 
-const tree = new Tree("[bold magenta]Servers[/bold magenta]");
+const tree = new Tree("[bold orchid]Servers[/bold orchid]");
 
 // A table as a branch label
 const infoTable = Table.grid();
 infoTable.addColumn();
-infoTable.addColumn({ justify: "right" });
-infoTable.addRow("[cyan]api-1[/cyan]",  "[green]healthy[/green]");
-infoTable.addRow("[cyan]api-2[/cyan]",  "[green]healthy[/green]");
-infoTable.addRow("[cyan]api-3[/cyan]",  "[red]degraded[/red]");
+infoTable.addColumn("", { justify: "right" });
+infoTable.addRow("[deep_sky_blue3]api-1[/deep_sky_blue3]",  "[spring_green3]healthy[/spring_green3]");
+infoTable.addRow("[deep_sky_blue3]api-2[/deep_sky_blue3]",  "[spring_green3]healthy[/spring_green3]");
+infoTable.addRow("[deep_sky_blue3]api-3[/deep_sky_blue3]",  "[deep_pink2]degraded[/deep_pink2]");
 
 tree.add(infoTable);
+
+// A panel as a branch label
+tree.add(new Panel("[dark_orange]2 of 3 healthy[/dark_orange]", { expand: false, borderStyle: "dark_orange" }));
 
 console.print(tree);
 ```
 
 This is the key power — any renderable can be a node label, not just strings.
 
-## Styles
+## Guide style
 
-Apply a style to a subtree and all its descendants:
-
-```typescript
-const tree = new Tree("Root", { style: "bold" });
-const branch = tree.add("Branch", { style: "cyan" });
-branch.add("Leaf");  // inherits "cyan" style
-```
-
-Style the guide lines independently:
+Style the guide lines independently of the labels with `guide_style`:
 
 ```typescript
-const tree = new Tree("Root", { guideStyle: "dim green" });
+const tree = new Tree("[bold]Root[/bold]", { guide_style: "bold dodger_blue1" });
+tree.add("[deep_sky_blue3]Branch one[/deep_sky_blue3]");
+tree.add("[deep_sky_blue3]Branch two[/deep_sky_blue3]");
+tree.add("[spring_green3]Leaf[/spring_green3]");
+
+console.print(tree);
 ```
-
-::: tip Guide style effects
-- `bold` guide style → thicker Unicode line characters (`┣━━`)
-- `underline2` guide style → double-line characters (`╠══`)
-:::
-
-Styles are inherited by sub-trees — a branch's style applies to all descendants unless overridden.

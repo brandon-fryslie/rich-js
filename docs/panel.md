@@ -11,7 +11,7 @@ import { Console, Panel } from "@promptctl/rich-js";
 
 const console = new Console();
 
-console.print(new Panel("[bold]Hello, World![/bold]"));
+console.print(new Panel("[bold orchid]Hello[/bold orchid], [italic dodger_blue1]World[/italic dodger_blue1]!"));
 ```
 
 Any renderable works as panel content — tables, trees, other panels, styled text, etc.
@@ -21,13 +21,13 @@ Any renderable works as panel content — tables, trees, other panels, styled te
 By default a Panel expands to the full terminal width. Use `expand: false` to shrink it to fit the content:
 
 ```typescript
-console.print(new Panel("Short content", { expand: false }));
+console.print(new Panel("[spring_green3]Short content[/spring_green3]", { expand: false }));
 ```
 
 The `Panel.fit()` alternative constructor is equivalent:
 
 ```typescript
-console.print(Panel.fit("Short content"));
+console.print(Panel.fit("[spring_green3]Short content[/spring_green3]"));
 ```
 
 ### Narrow widths
@@ -37,10 +37,13 @@ gets — a one-column terminal, or a `Layout` split that squeezes the panel belo
 its natural size. It gives up its cells in a fixed order: the two frame columns
 first, then a cell of content, then the padding, and only then does content grow
 again. So content stays visible down to width 3, and the padding is what
-disappears on the way there:
+disappears on the way there. Here the four widths sit side by side in [`Columns`](./columns):
 
 ```typescript
-for (const width of [3, 4, 5, 6]) console.print(new Panel("hello", { width }));
+const narrow = [3, 4, 5, 6].map((width) =>
+  new Panel("[bold dark_orange]hello[/bold dark_orange]", { width, borderStyle: "deep_sky_blue3" }),
+);
+console.print(new Columns(narrow));
 ```
 
 Width 3 is the narrowest panel that can show anything: at width 2 the two frame
@@ -60,8 +63,8 @@ Add text to the top or bottom border:
 console.print(new Panel(
   "Panel content here",
   {
-    title:    "[bold]My Panel[/bold]",
-    subtitle: "[dim]footer text[/dim]",
+    title:    "[bold orchid]My Panel[/bold orchid]",
+    subtitle: "[dim italic]footer text[/dim italic]",
   }
 ));
 ```
@@ -75,9 +78,9 @@ Change the box-drawing characters by passing a box constant:
 ```typescript
 import { ROUNDED, HEAVY, DOUBLE } from "@promptctl/rich-js";
 
-console.print(new Panel("Content", { box: ROUNDED }));  // ╭──╮
-console.print(new Panel("Content", { box: HEAVY   }));  // ┏━━┓
-console.print(new Panel("Content", { box: DOUBLE  }));  // ╔══╗
+console.print(new Panel("[dodger_blue1]ROUNDED[/dodger_blue1]", { box: ROUNDED, expand: false }));  // ╭──╮
+console.print(new Panel("[orchid]HEAVY[/orchid]",           { box: HEAVY,   expand: false }));  // ┏━━┓
+console.print(new Panel("[dark_orange]DOUBLE[/dark_orange]",  { box: DOUBLE,  expand: false }));  // ╔══╗
 ```
 
 See [Appendix: Box Styles](./tables#border-styles) for the full list.
@@ -87,18 +90,20 @@ See [Appendix: Box Styles](./tables#border-styles) for the full list.
 Add whitespace between the border and the content:
 
 ```typescript
-console.print(new Panel("Content", { padding: 1 }));      // 1 on all sides
-console.print(new Panel("Content", { padding: [1, 2] })); // top/bottom=1, left/right=2
+console.print(new Panel("[spring_green3]Content[/spring_green3]", { padding: 1, expand: false }));      // 1 on all sides
+console.print(new Panel("[spring_green3]Content[/spring_green3]", { padding: [1, 2], expand: false })); // top/bottom=1, left/right=2
 ```
 
-## Style
+## Border colour
 
-Apply a style to the panel's border and background:
+`borderStyle` colours the frame. The title and subtitle are drawn in it too, unless `titleStyle` or `subtitleStyle` gives them a style of their own:
 
 ```typescript
-console.print(new Panel("Warning!", {
-  style:    "bold red",
-  title:    "⚠ Alert",
-  expand:   false,
+console.print(new Panel("Disk usage is above [bold]90%[/bold]", {
+  title:       "⚠ Alert",
+  subtitle:    "/dev/sda1",
+  borderStyle: "bold red1",
+  titleStyle:  "bold dark_orange",
+  expand:      false,
 }));
 ```
