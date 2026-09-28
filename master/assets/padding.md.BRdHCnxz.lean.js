@@ -1,0 +1,1 @@
+import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.BqXVVaZo.js";const d=JSON.parse('{"title":"Padding","description":"","frontmatter":{},"headers":[],"relativePath":"padding.md","filePath":"padding.md"}'),p={name:"padding.md"};function t(e,s,o,h,r,k){return i(),n("div",null,[...s[0]||(s[0]=[l("",16)])])}const g=a(p,[["render",t]]);export{d as __pageData,g as default};

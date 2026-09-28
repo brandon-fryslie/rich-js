@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-178",
-      "ref": "refs/pull/178/merge",
-      "sha": "7f9af0fa1c7a86e38fa7df0e2d6f4698470550ef",
-      "timestamp": "2026-09-28T03:02:33.276Z",
-      "commits": [
-        {
-          "sha": "7f9af0fa1c7a86e38fa7df0e2d6f4698470550ef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T03:01:09Z",
-          "message": "Merge dece37d4b39259360f3b97111487cd6d2edbf6a1 into e3cca5568120b7547d1200c737b93b207fbca0bd\n"
-        },
-        {
-          "sha": "dece37d4b39259360f3b97111487cd6d2edbf6a1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:01:05-06:00",
-          "message": "docs(tables): the box-style row wraps at 75 columns, and the prose says so (rich-docs-examples-xuu.0o4)\n"
-        },
-        {
-          "sha": "e82e95d22950a74e3053dc94259eab2f94401964",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:55:20-06:00",
-          "message": "docs: the renderable pages show their examples' real output (rich-docs-examples-xuu.0o4)\n\ntables, tree, columns, padding, group, layout, syntax, markdown, pretty, strip\nand viewport come off NOT_YET_MIGRATED: every drawn output block is gone, every\nexample runs and prints in colour, and prose that described output the code does\nnot produce now describes what it does. panel.md's examples gain colour too.\nLibrary bugs the real output exposed are filed, not fixed: rich-tree-sgk,\nrich-tree-736, rich-panel-ech, rich-padding-wee, rich-padding-wv28,\nrich-table-ca0, rich-table-3u2, rich-markdown-thj, rich-markdown-ft8,\nrich-syntax-fh2, rich-pretty-v7b.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e3cca5568120b7547d1200c737b93b207fbca0bd",
-      "timestamp": "2026-09-28T02:38:49.851Z",
+      "sha": "93db2da27f207c7b26ec27dc8a0e7db5fa5d929d",
+      "timestamp": "2026-09-28T03:05:15.769Z",
       "commits": [
         {
-          "sha": "e3cca5568120b7547d1200c737b93b207fbca0bd",
+          "sha": "93db2da27f207c7b26ec27dc8a0e7db5fa5d929d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:38:12-06:00",
-          "message": "fix(docs): read fences with markdown-it, and refuse an example whose card would cut it out of its list, quote or code group (rich-docs-examples-xuu.77u) (#177)\n\n* fix(docs): read fences with markdown-it, and refuse an example whose card would cut it out of its list, quote or code group (rich-docs-examples-xuu.77u)\n\nscanBlocks now asks markdown-it (plus a catch-all ::: container) where each\nfence is and what it sits in; the line scanner could not see a fence indented\nfour spaces into a list item. scriptLine reads the same blocks instead of\nscanning fences a second time.\n\n* fix(docs): the fence scan registers VitePress's containers, reads closure from markdown-it, and numbers lines as it does (rich-docs-examples-xuu.77u)\n\n* fix(docs): frontmatter opens as gray-matter opens it (rich-docs-examples-xuu.77u)"
+          "timestamp": "2026-09-27T21:04:28-06:00",
+          "message": "docs: the renderable pages show their examples' real output (rich-docs-examples-xuu.0o4) (#178)\n\n* docs: the renderable pages show their examples' real output (rich-docs-examples-xuu.0o4)\n\ntables, tree, columns, padding, group, layout, syntax, markdown, pretty, strip\nand viewport come off NOT_YET_MIGRATED: every drawn output block is gone, every\nexample runs and prints in colour, and prose that described output the code does\nnot produce now describes what it does. panel.md's examples gain colour too.\nLibrary bugs the real output exposed are filed, not fixed: rich-tree-sgk,\nrich-tree-736, rich-panel-ech, rich-padding-wee, rich-padding-wv28,\nrich-table-ca0, rich-table-3u2, rich-markdown-thj, rich-markdown-ft8,\nrich-syntax-fh2, rich-pretty-v7b.\n\n* docs(tables): the box-style row wraps at 75 columns, and the prose says so (rich-docs-examples-xuu.0o4)"
         }
       ]
     }
