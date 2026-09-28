@@ -2,102 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-172",
-      "ref": "refs/pull/172/merge",
-      "sha": "31cade87482480f28492b3d218031ebba1b33dea",
-      "timestamp": "2026-09-27T23:26:22.007Z",
-      "commits": [
-        {
-          "sha": "31cade87482480f28492b3d218031ebba1b33dea",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T23:25:55Z",
-          "message": "Merge d0a7551e345805e937533a1772a2eeef12aca1b1 into 457c7569a1df73053a9f6332afbae6be66cf7879\n"
-        },
-        {
-          "sha": "d0a7551e345805e937533a1772a2eeef12aca1b1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T17:25:49-06:00",
-          "message": "fix(docs): a character split across writes decodes whole; the runner header stops enumerating its checks (rich-docs-examples-xuu.812)\n\nByte writes were decoded one chunk at a time, so a multi-byte character\nsplit across two writes became U+FFFD. The header's list of failures had\ndrifted from the checks twice; it now states the one claim, and the\ndeadline says it catches a run that waits, not one that spins.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "c6e5e24cbdc0835fa9cc8b4c92ae7618f9f9c1b8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T17:09:17-06:00",
-          "message": "fix(docs): examples merge imports by export, assume barrel types, and stop on a stalled run (rich-docs-examples-xuu.812)\n\n- An import is now a binding of a local name to an export, so a type and a\n  value import of one export merge from any entry point, not only the main\n  barrel; the barrelType special case is gone.\n- The prelude imports the main barrel's types as well as its values, which\n  is what docs/introduction.md tells readers.\n- A run that has not finished after 5 s fails at the block it waits in.\n- The prelude writes its own sentinel, so a throw there is no longer blamed\n  on the page's exampleContext.\n- The plugin takes its source stamp as an argument; its test no longer\n  rewrites src/index.ts's mtime.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "65af0e3c802854461c95b7f28c3d6d7d7cc4d7de",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T17:09:17-06:00",
-          "message": "fix(docs): the fence scanner reads every CommonMark fence form (rich-docs-examples-xuu.812)\n\nAn indented or tilde fence was invisible to both the runner and the\nsymbol-existence sweep, and prose starting with ```ts``` opened a fence\nthat mispaired every one after it. The sweep now calls scanFences\ndirectly; extractCodeBlocks and CodeBlock were aliases of it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "2a1e43f95f77ca46798cde121a777c2723ef9e54",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T16:58:43-06:00",
-          "message": "fix(docs): a program that does not bundle names its page (rich-docs-examples-xuu.812)\n\nEvery other failure the runner reports is prefixed with the page; a\nbundler rejection (an import that type-checks but ships no JavaScript)\npropagated bare.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "71bcc5e1309f9b2ab9b4f458a496dfdeeefe66ca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T16:42:23-06:00",
-          "message": "fix(docs): a barrel type import meets the name-collision check (rich-docs-examples-xuu.812)\n\nA type-only import of a barrel value was filtered out before the check\nthat two imports may not bind one name differently, so another block\nbinding that name elsewhere silently won. It is now hoisted as the value\nimport it stands for, which dedupes against the same import and collides\nwith any other.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "ef7b716caca20194df405b3ec627db175c78175e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T08:06:56-06:00",
-          "message": "fix(docs): a CRLF page is read like any other; one fewer helper (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "b5d9d4a36b91febb3173327ec669cbbabb80656b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:50:55-06:00",
-          "message": "fix(docs): one bundler for every simulated run; a thrown value shows as Node reports it (rich-docs-examples-xuu.812)\n\nReview of #172 (CI reviewer):\n- test/docs/bundle-program.ts is gone; its unit and e2e callers bundle with\n  bundleExample, so the keepProcessEnv workaround has one home\n- an exampleContext whose code is not indented fails instead of running empty\n- barrel exports are read through resolveAlias\n- `import type { X }` from the main barrel no longer stops the prelude\n  importing X's value\n- a throws block shows Error.prototype.toString, or `Uncaught <value>`, so an\n  empty throw still shows\n- a hyperlink passes the escape check (test)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "27950d95f2e3b89c3e62dedbdb58b8c66c06ae3d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:27:35-06:00",
-          "message": "fix(docs): output ends its HTML block; the run cache follows src/; a non-Error throw has no orphan colon (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "54883c2363fd0a2fef2820656befc2a0985edea1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:21:00-06:00",
-          "message": "fix(docs): examples blame the context that threw; silent shows its note alone; ts{2} is TypeScript (rich-docs-examples-xuu.812)\n\nReview of #172:\n- a context throw is reported at the exampleContext, not the first block;\n  splitRecords says whether the context finished\n- the context is the chain's first scope, so it may redeclare console\n- a silent block's note stands in place of output, with no empty fragments\n- VitePress fence attributes ({2}, :line-numbers, [title]) no longer hide a\n  TypeScript fence from every reader\n- a default-plus-named import binds both names, so the prelude does not\n  import the named one again\n- a page runs once per docs:build, not once per VitePress build pass\n- ExampleCompiler keeps parsed files by mtime, as its header claimed\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "357c7e8a00eab4928e6717af7097fd6457acdd6a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T07:09:04-06:00",
-          "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "457c7569a1df73053a9f6332afbae6be66cf7879",
-      "timestamp": "2026-09-27T14:15:06.232Z",
+      "sha": "64bcfcf2135c0be32e6e1f432fd9e5e6548a8826",
+      "timestamp": "2026-09-28T00:34:23.200Z",
       "commits": [
         {
-          "sha": "457c7569a1df73053a9f6332afbae6be66cf7879",
+          "sha": "64bcfcf2135c0be32e6e1f432fd9e5e6548a8826",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T08:14:38-06:00",
-          "message": "fix(renderables): a string handed to a panel, tree, column or layout draws its markup (rich-panel-gbe) (#173)\n\n* fix(renderables): a string handed to a panel, tree, column or layout draws its markup (rich-panel-gbe)\n\nnew Panel(\"[bold]x[/bold]\") drew the tags literally. Table cells had parsed\nmarkup since their own fix, but panel bodies, tree labels, column items and\nlayout panes each built a RichText from the constructor, which does not.\nThe five copies of \"caller content -> something to lay out\" are now one,\nsrc/renderables/embed.ts, and progress's TextColumn uses it too.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(renderables): panel titles, subtitles and rule titles draw their markup too (rich-panel-gbe)\n\nReview of #173: a panel's title and subtitle and a rule's title are set into\na border line through inlineLabel, which parses markup, keeps a RichText's\nspans, and is cut by cells. Rule takes a RichText title as Rich's does.\nembed.ts no longer claims fidelity to render_str that it lacks; the console's\nmarkup and highlight settings not reaching embedded content is\nrich-markup-3sw. Every site is tested with a RichText as well as a string.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(renderables): a justified RichText label keeps its spaces; only a string is read as markup (rich-panel-gbe)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(renderables): a title with no text draws the plain line, however it is spelled (rich-panel-gbe)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-27T18:33:56-06:00",
+          "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812) (#172)\n\n* feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): examples blame the context that threw; silent shows its note alone; ts{2} is TypeScript (rich-docs-examples-xuu.812)\n\nReview of #172:\n- a context throw is reported at the exampleContext, not the first block;\n  splitRecords says whether the context finished\n- the context is the chain's first scope, so it may redeclare console\n- a silent block's note stands in place of output, with no empty fragments\n- VitePress fence attributes ({2}, :line-numbers, [title]) no longer hide a\n  TypeScript fence from every reader\n- a default-plus-named import binds both names, so the prelude does not\n  import the named one again\n- a page runs once per docs:build, not once per VitePress build pass\n- ExampleCompiler keeps parsed files by mtime, as its header claimed\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): output ends its HTML block; the run cache follows src/; a non-Error throw has no orphan colon (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): one bundler for every simulated run; a thrown value shows as Node reports it (rich-docs-examples-xuu.812)\n\nReview of #172 (CI reviewer):\n- test/docs/bundle-program.ts is gone; its unit and e2e callers bundle with\n  bundleExample, so the keepProcessEnv workaround has one home\n- an exampleContext whose code is not indented fails instead of running empty\n- barrel exports are read through resolveAlias\n- `import type { X }` from the main barrel no longer stops the prelude\n  importing X's value\n- a throws block shows Error.prototype.toString, or `Uncaught <value>`, so an\n  empty throw still shows\n- a hyperlink passes the escape check (test)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): a CRLF page is read like any other; one fewer helper (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): a barrel type import meets the name-collision check (rich-docs-examples-xuu.812)\n\nA type-only import of a barrel value was filtered out before the check\nthat two imports may not bind one name differently, so another block\nbinding that name elsewhere silently won. It is now hoisted as the value\nimport it stands for, which dedupes against the same import and collides\nwith any other.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): a program that does not bundle names its page (rich-docs-examples-xuu.812)\n\nEvery other failure the runner reports is prefixed with the page; a\nbundler rejection (an import that type-checks but ships no JavaScript)\npropagated bare.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): the fence scanner reads every CommonMark fence form (rich-docs-examples-xuu.812)\n\nAn indented or tilde fence was invisible to both the runner and the\nsymbol-existence sweep, and prose starting with ```ts``` opened a fence\nthat mispaired every one after it. The sweep now calls scanFences\ndirectly; extractCodeBlocks and CodeBlock were aliases of it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): examples merge imports by export, assume barrel types, and stop on a stalled run (rich-docs-examples-xuu.812)\n\n- An import is now a binding of a local name to an export, so a type and a\n  value import of one export merge from any entry point, not only the main\n  barrel; the barrelType special case is gone.\n- The prelude imports the main barrel's types as well as its values, which\n  is what docs/introduction.md tells readers.\n- A run that has not finished after 5 s fails at the block it waits in.\n- The prelude writes its own sentinel, so a throw there is no longer blamed\n  on the page's exampleContext.\n- The plugin takes its source stamp as an argument; its test no longer\n  rewrites src/index.ts's mtime.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): a character split across writes decodes whole; the runner header stops enumerating its checks (rich-docs-examples-xuu.812)\n\nByte writes were decoded one chunk at a time, so a multi-byte character\nsplit across two writes became U+FFFD. The header's list of failures had\ndrifted from the checks twice; it now states the one claim, and the\ndeadline says it catches a run that waits, not one that spins.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
