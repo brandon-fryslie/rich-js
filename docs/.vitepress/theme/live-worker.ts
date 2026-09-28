@@ -14,6 +14,7 @@ import type { FromWorker, ToWorker } from "./live-terminal.js";
  */
 interface WorkerScope {
   onmessage: ((event: MessageEvent<ToWorker>) => void) | null;
+  addEventListener(type: "unhandledrejection", listener: (event: PromiseRejectionEvent) => void): void;
   postMessage(message: FromWorker): void;
   close(): void;
 }
@@ -25,6 +26,15 @@ const post = (message: FromWorker): void => scope.postMessage(message);
 function describe(error: unknown): string {
   return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 }
+
+// A rejection nothing handles ends the program as an uncaught error does:
+// rethrown from a task of its own, it reaches the page as the worker's error.
+scope.addEventListener("unhandledrejection", (event) => {
+  event.preventDefault();
+  setTimeout(() => {
+    throw event.reason;
+  }, 0);
+});
 
 // Keys typed before the program subscribed to its stdin have nowhere to go,
 // as on a terminal whose program is not reading yet.

@@ -217,6 +217,11 @@ describe("a live block", { timeout: 30_000 }, () => {
     );
   });
 
+  it("is not refused for a <script setup> shown in a fence", async () => {
+    const result = await runPage(page(fence('<script setup lang="ts">\n</script>', "vue"), fence("console.print(1);", "ts live")));
+    expect(result.live).toHaveLength(1);
+  });
+
   it("shares one module with an identical block", async () => {
     const result = await runPage(page(fence("console.print(1);", "ts live"), fence("console.print(1);", "ts live")));
     expect(result.live).toHaveLength(1);
@@ -234,7 +239,8 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
     // csstype carries types and no JavaScript: it type-checks and cannot be bundled.
     ["an import that type-checks and does not bundle", fence('import * as css from "csstype";\nconsole.print(typeof css);'), /^docs\/fixture\.md: bundling failed: /],
     ["an unknown marker", fence("1;", "ts loud"), /fixture\.md:1: unknown example marker "loud"/],
-    ["a build block that exits", fence("process.exit(2);", "ts silent"), /fixture\.md:1: the example threw Error: calls process\.exit\(2\)/],
+    ["a build block that exits", fence("process.exit(2);", "ts silent"), /docs\/fixture\.md: an example calls process\.exit\(2\)/],
+    ["a throws block that exits", fence("process.exit(1);", "ts throws"), /docs\/fixture\.md: an example calls process\.exit\(1\)/],
     [
       "a live block on a page with its own <script setup>",
       page("<script setup>\nconst n = 1;\n</script>", fence("console.print(1);", "ts live")),

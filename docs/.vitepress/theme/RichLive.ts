@@ -37,44 +37,57 @@ export default defineComponent({
     const state = ref<LiveState>({ kind: "idle" });
     const { isDark } = useData();
     const theme = () => (isDark.value ? EXAMPLE_THEMES.dark : EXAMPLE_THEMES.light);
-    let ready: Promise<{ live: LiveTerminal; script: string }> | undefined;
+    const failure = ref<string | null>(null);
+    let ready: Promise<{ live: LiveTerminal; script: string; unwatch: () => void }> | undefined;
     let observer: IntersectionObserver | undefined;
-    let dispose = (): void => {};
 
-    // The terminal and its program, made the first time either is needed.
-    const terminal = (element: HTMLElement) =>
+    // The terminal and its program, made the first time either is needed. A
+    // failure is shown, and forgotten so the button can try again.
+    const made = (element: HTMLElement) =>
       (ready ??= Promise.all([props.load(), LiveTerminal.create(element, { terminal: EXAMPLE_TERMINAL, theme: theme(), font: font(element) })]).then(
         ([program, live]) => {
           live.onState((next) => (state.value = next));
           const unwatch = watch(isDark, () => live.setTheme(theme()));
-          dispose = () => {
-            unwatch();
-            live.dispose();
-          };
-          return { live, script: program.default };
+          failure.value = null;
+          return { live, script: program.default, unwatch };
+        },
+        (error: unknown) => {
+          ready = undefined;
+          failure.value = `The live terminal could not start: ${error instanceof Error ? error.message : String(error)}`;
+          throw error;
         },
       ));
+    const terminal = (element: HTMLElement, then: (made: { live: LiveTerminal; script: string }) => void) =>
+      void made(element).then(then, () => {});
 
     onMounted(() => {
       const element = screen.value!;
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
       observer = new IntersectionObserver(([entry]) => {
-        if (entry!.isIntersecting) void terminal(element).then(({ live, script }) => live.run(script, reduced ? "still" : "live"));
+        if (entry!.isIntersecting) terminal(element, ({ live, script }) => live.run(script, reduced ? "still" : "live"));
         else void ready?.then(({ live }) => live.stop());
       });
       observer.observe(element);
     });
 
+    // A terminal still being made when the page is left is disposed once made:
+    // its worker must not run on behind a page nobody is reading.
     onBeforeUnmount(() => {
       observer?.disconnect();
-      dispose();
+      void ready?.then(({ live, unwatch }) => {
+        unwatch();
+        live.dispose();
+      }, () => {});
     });
 
-    const run = () => void terminal(screen.value!).then(({ live, script }) => live.run(script, "live"));
+    const run = () => terminal(screen.value!, ({ live, script }) => live.run(script, "live"));
     return () =>
       h("div", { class: "rich-live" }, [
         h("div", { class: "rich-live-screen", ref: screen }),
-        h("div", { class: "rich-live-bar" }, [h("button", { type: "button", class: "rich-live-button", onClick: run }, BUTTON[state.value.kind])]),
+        h("div", { class: "rich-live-bar" }, [
+          ...(failure.value === null ? [] : [h("span", { class: "rich-live-failure", role: "alert" }, failure.value)]),
+          h("button", { type: "button", class: "rich-live-button", onClick: run }, BUTTON[state.value.kind]),
+        ]),
       ]);
   },
 });

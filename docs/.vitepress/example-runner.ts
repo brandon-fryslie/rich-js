@@ -188,17 +188,18 @@ const RUN_DEADLINE_MS = 5_000;
 type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
 
 /** Run `script` in the example terminal: every byte it wrote, and how the run ended. */
-async function capture(script: string): Promise<{ stream: string; end: RunEnd }> {
+async function capture(script: string): Promise<{ stream: string; end: RunEnd; exits: number[] }> {
   const chunks: string[] = [];
+  const exits: number[] = [];
   const decoder = new TextDecoder();
   const terminal: SimulatedTerminal = {
     ...EXAMPLE_TERMINAL,
     write: (chunk) => chunks.push(typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true })),
     // Nobody types at a build.
     onInput: () => {},
-    exit: (code) => {
-      throw new Error(`calls process.exit(${code}), which would end the build; mark it \`node\``);
-    },
+    // Recorded rather than thrown: a throw the program could catch, or one
+    // raised from a timer after the run, would hide the call or crash the build.
+    exit: (code) => exits.push(code),
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const end = await Promise.race([
@@ -212,7 +213,7 @@ async function capture(script: string): Promise<{ stream: string; end: RunEnd }>
   ]);
   clearTimeout(timer);
   chunks.push(decoder.decode());
-  return { stream: chunks.join(""), end };
+  return { stream: chunks.join(""), end, exits };
 }
 
 const SGR = /\x1b\[[0-9;]*m/g;
@@ -332,8 +333,19 @@ async function liveProgram(compiler: ExampleCompiler, page: string, context: Exa
  * Vue takes one per component, and merging into a hand-written one is a
  * second author in a block the page owns.
  */
-function scriptLine(page: string, lines: readonly string[]): number {
-  const clash = lines.findIndex((line) => /^<script\b[^>]*\bsetup\b/.test(line));
+function scriptLine(page: string, markdown: string): number {
+  const lines = markdown.split(/\r?\n/);
+  // A `<script setup>` shown inside a fence, of any language, is code on the
+  // page, not the page's script.
+  let fence: string | null = null;
+  const clash = lines.findIndex((line) => {
+    const run = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (run !== undefined && (fence === null || (run[0] === fence[0] && run.length >= fence.length))) {
+      fence = fence === null ? run : null;
+      return false;
+    }
+    return fence === null && /^<script\b[^>]*\bsetup\b/.test(line);
+  });
   if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example cannot have its own <script setup>`);
   return lines[0] === "---" ? lines.indexOf("---", 1) + 1 : 0;
 }
@@ -346,7 +358,8 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   const program = buildProgram(page, context, chain, compiler.barrelExports());
   compiler.check(program);
   const script = await bundleOrThrow(page, program.source);
-  const { stream, end } = await capture(script);
+  const { stream, end, exits } = await capture(script);
+  if (exits.length > 0) throw new Error(`docs/${page}: an example calls process.exit(${exits[0]}), which would end the build; mark it \`node\``);
   const records = splitRecords(stream);
   if (end.kind !== "finished") {
     const where = stoppedAt(page, context, chain, records.length);
@@ -361,10 +374,9 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
     throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(contextRecord.output.slice(0, 60))}; it may not print`);
   }
   const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
-  const live = new Map<Fence, LiveProgram>();
-  for (const fence of fences.filter((f) => MARKERS[f.marker].run === "browser")) {
-    live.set(fence, await liveProgram(compiler, page, context, fence));
-  }
+  const liveFences = fences.filter((f) => MARKERS[f.marker].run === "browser");
+  const programs = await Promise.all(liveFences.map((fence) => liveProgram(compiler, page, context, fence)));
+  const live = new Map<Fence, LiveProgram>(liveFences.map((fence, i) => [fence, programs[i]!]));
   const binding = (program: LiveProgram): string => `__richLive_${program.id}`;
   const shown = (fence: Fence): Shown => {
     const program = live.get(fence);
@@ -386,12 +398,12 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   // Each live program is a module of its own, imported only when its terminal
   // asks for it: a reader who never scrolls to one never downloads it.
   // Two blocks with the same program share one module and one binding.
-  const programs = [...new Map([...live.values()].map((p) => [p.id, p])).values()];
-  if (programs.length > 0) {
-    const imports = programs.map((p) => `const ${binding(p)} = () => import(${JSON.stringify(LIVE_MODULE_PREFIX + p.id)});`);
-    lines.splice(scriptLine(page, lines), 0, "", "<script setup>", ...imports, "</script>", "");
+  const modules = [...new Map(programs.map((p) => [p.id, p])).values()];
+  if (modules.length > 0) {
+    const imports = modules.map((p) => `const ${binding(p)} = () => import(${JSON.stringify(LIVE_MODULE_PREFIX + p.id)});`);
+    lines.splice(scriptLine(page, markdown), 0, "", "<script setup>", ...imports, "</script>", "");
   }
-  return { markdown: lines.join("\n"), live: programs };
+  return { markdown: lines.join("\n"), live: modules };
 }
 
 /**

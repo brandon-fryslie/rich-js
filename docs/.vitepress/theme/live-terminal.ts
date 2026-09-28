@@ -104,7 +104,13 @@ function loadXterm(): Promise<XtermConstructor> {
     const link = Object.assign(document.createElement("link"), { rel: "stylesheet", crossOrigin: "anonymous", ...XTERM.stylesheet });
     const script = Object.assign(document.createElement("script"), { crossOrigin: "anonymous", ...XTERM.script });
     script.onload = () => resolve((globalThis as unknown as { Terminal: XtermConstructor }).Terminal);
-    script.onerror = () => reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
+    script.onerror = () => {
+      // Forgotten, so the next terminal made tries again rather than reusing a failure.
+      xterm = undefined;
+      link.remove();
+      script.remove();
+      reject(new Error(`xterm.js did not load from ${XTERM.script.src}`));
+    };
     document.head.append(link, script);
   });
   return xterm;
@@ -158,13 +164,13 @@ export class LiveTerminal {
     // sees every row. The height only grows, so a restart does not move the
     // page under the reader.
     const { rows } = options.terminal;
-    const rowHeight = screen.element!.offsetHeight / rows;
     const drawn = (y: number) => screen.buffer.active.getLine(y)?.translateToString(true) !== "";
     let reached = 1;
     const fit = () => {
       const lowest = Array.from({ length: rows }, (_, y) => y).filter(drawn).pop() ?? 0;
       reached = Math.max(reached, lowest + 1, screen.buffer.active.cursorY + 1);
-      clip.style.height = `${reached * rowHeight}px`;
+      // Measured each time: the cell height changes when a web font arrives or the page zooms.
+      clip.style.height = `${(reached * screen.element!.offsetHeight) / rows}px`;
     };
     fit();
     screen.onWriteParsed(fit);
@@ -190,7 +196,10 @@ export class LiveTerminal {
       this.host.write(`\n\x1b[31m${message}\x1b[0m\n`);
       this.end({ kind: "exited", code: 1 });
     };
+    // A message still queued from a run that has since ended belongs to no run.
+    const current = () => this.worker === worker;
     worker.onmessage = ({ data }: MessageEvent<FromWorker>) => {
+      if (!current()) return;
       switch (data.kind) {
         case "output":
           return show(data.chunk);
@@ -210,7 +219,7 @@ export class LiveTerminal {
     // program, as an uncaught exception ends a Node process.
     worker.onerror = (event) => {
       event.preventDefault();
-      failed(event.message);
+      if (current()) failed(event.message);
     };
     this.worker = worker;
     this.post({ kind: "run", script, terminal: this.options.terminal });
