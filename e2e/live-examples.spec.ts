@@ -73,8 +73,7 @@ test("with reduced motion, a progress example shows one still frame until asked 
 
   await scrollTo(live);
   await expect(button(live)).toHaveText("Play", { timeout: 15_000 });
-  // The frame is the screen once the program's body has run: the task done.
-  expect(await percent(live)).toBe(100);
+  await expect.poll(() => percent(live)).not.toBeNaN();
   const still = await rows(live);
   await page.waitForTimeout(500);
   expect(await rows(live)).toBe(still);
@@ -84,6 +83,26 @@ test("with reduced motion, a progress example shows one still frame until asked 
   await expect.poll(() => percent(live)).toBeLessThan(100);
   expect(errors).toEqual([]);
 });
+
+// Each of these is blank if the frame waits for the body: the first loops until
+// stopped, the second waits on an answer, and the third ends back on the main
+// screen with the fullscreen view gone.
+for (const [path, code, drawn] of [
+  ["layout.html", "while (running)", "My App"],
+  ["prompt.html", "What is your name?", "What is your name?"],
+  ["live.html", "the terminal is in fullscreen", "back to the page in"],
+] as const) {
+  test(`with reduced motion, ${path}'s live example under \`${code}\` draws a frame before Play`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const errors = await open(page, path);
+    const live = liveUnder(page, code);
+
+    await scrollTo(live);
+    await expect(button(live)).toHaveText("Play", { timeout: 15_000 });
+    await expect.poll(() => rows(live)).toContain(drawn);
+    expect(errors).toEqual([]);
+  });
+}
 
 test("a program that fails to load says so, and leaves no terminal to stack another on", async ({ page }) => {
   // A live program is its own chunk, named for its content hash.

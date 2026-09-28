@@ -1,7 +1,7 @@
 /**
  * The worker a live terminal runs one program in: it is that program's
  * process. Its first message is the program and its terminal; every later one
- * is a key typed at the terminal. Terminating the worker is how the page stops
+ * is a key typed at the terminal, or a mark it answers at once. Terminating the worker is how the page stops
  * the program. live-terminal.ts owns why a worker.
  */
 import { runInTerminal } from "../simulated-process.js";
@@ -44,6 +44,8 @@ scope.onmessage = ({ data }) => {
   switch (data.kind) {
     case "input":
       return deliver(data.chunk);
+    case "mark":
+      return post({ kind: "mark" });
     case "run":
       return void runInTerminal(data.script, {
         ...data.terminal,
