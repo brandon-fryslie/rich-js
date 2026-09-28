@@ -1,0 +1,1 @@
+import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.DlmCG1fG.js";const c=JSON.parse('{"title":"Panel","description":"","frontmatter":{},"headers":[],"relativePath":"panel.md","filePath":"panel.md"}'),t={name:"panel.md"};function e(p,s,o,h,r,k){return i(),n("div",null,[...s[0]||(s[0]=[l("",30)])])}const y=a(t,[["render",e]]);export{c as __pageData,y as default};

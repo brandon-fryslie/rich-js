@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-177",
+      "ref": "refs/pull/177/merge",
+      "sha": "ad7c07a3b9914f24450f52c8c125b4f5fcd569cc",
+      "timestamp": "2026-09-28T02:22:28.228Z",
+      "commits": [
+        {
+          "sha": "ad7c07a3b9914f24450f52c8c125b4f5fcd569cc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:21:52-06:00",
+          "message": "Merge 0e6cf264d2c843cb45ca82db9e9bf8a5b1cb2c29 into 2aebf26f87dd0f5a2731dcf652950b29883e05ac\n"
+        },
+        {
+          "sha": "0e6cf264d2c843cb45ca82db9e9bf8a5b1cb2c29",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:21:48-06:00",
+          "message": "fix(docs): read fences with markdown-it, and refuse an example whose card would cut it out of its list, quote or code group (rich-docs-examples-xuu.77u)\n\nscanBlocks now asks markdown-it (plus a catch-all ::: container) where each\nfence is and what it sits in; the line scanner could not see a fence indented\nfour spaces into a list item. scriptLine reads the same blocks instead of\nscanning fences a second time.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2aebf26f87dd0f5a2731dcf652950b29883e05ac",
