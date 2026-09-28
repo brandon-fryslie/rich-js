@@ -13,6 +13,7 @@ import {
   ExampleCompiler,
   LIVE_MODULE_PREFIX,
   docsExamplesPlugin,
+  liveLibraryOnce,
   liveScript,
   runPageExamples,
 } from "../../docs/.vitepress/example-runner.js";
@@ -21,7 +22,8 @@ import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 
 const compiler = new ExampleCompiler();
-const runPage = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown);
+const library = liveLibraryOnce();
+const runPage = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown, library);
 const run = async (markdown: string, page = "fixture.md") => (await runPage(markdown, page)).markdown;
 
 /** What a live program writes, run to the end of its body in the example terminal. */
@@ -248,9 +250,9 @@ describe("a live block", { timeout: 30_000 }, () => {
   });
 
   // Each program carries its own code; the library it runs on is bundled once
-  // per set of entry points and shared, so a page of live examples does not
-  // download the library once per example.
-  it("shares one library between blocks importing the same entry points, and keeps it out of each block", async () => {
+  // for the site and shared, so a page of live examples does not download the
+  // library once per example.
+  it("shares one library between blocks, and keeps it out of each block", async () => {
     const result = await runPage(page(fence('console.print("one");', "ts live"), fence('console.print("two");', "ts live")));
     const [one, two] = result.live;
     expect(one!.library).toBe(two!.library);
@@ -258,12 +260,19 @@ describe("a live block", { timeout: 30_000 }, () => {
     expect(await liveOutput(liveScript(two!))).toContain("two");
   });
 
-  it("gives a block importing another entry point the library of that entry point", async () => {
-    const widgets = 'import { Checkbox } from "@promptctl/rich-js/widgets";\nconsole.print(typeof Checkbox);';
+  it("runs a block importing another entry point, or a peer, on the same library", async () => {
+    const widgets = 'import { Checkbox } from "@promptctl/rich-js/widgets";\nimport { observable } from "mobx";\nconsole.print(typeof Checkbox, typeof observable);';
     const result = await runPage(page(fence('console.print("main");', "ts live"), fence(widgets, "ts live")));
     const [main, other] = result.live;
-    expect(main!.library.id).not.toBe(other!.library.id);
-    expect(await liveOutput(liveScript(other!))).toContain("function");
+    expect(main!.library).toBe(other!.library);
+    // One mobx, the library's: the block carries none of its own.
+    expect(other!.block.length).toBeLessThan(2_000);
+    expect(await liveOutput(liveScript(other!))).toContain("function function");
+  });
+
+  it("refuses a block that imports with import(), which a live program cannot run", async () => {
+    const dynamic = 'const { Panel } = await import("@promptctl/rich-js");\nconsole.print(new Panel("x"));';
+    await expect(runPage(page("# t", fence(dynamic, "ts live")))).rejects.toThrow(/fixture\.md:3: a live example imports only with `import` declarations/);
   });
 
   it("shares one module with an identical block", async () => {
