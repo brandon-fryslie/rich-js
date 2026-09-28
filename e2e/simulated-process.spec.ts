@@ -10,9 +10,11 @@
  */
 import { test, expect, type Page } from "@playwright/test";
 import stripAnsi from "strip-ansi";
-import { bundleProgram, repoPath } from "../test/docs/bundle-program.js";
+import { bundleExample } from "../docs/.vitepress/example-runner.js";
+import { REPO_ROOT } from "../test/coverage/extract.js";
+import { resolve } from "node:path";
 
-const LIBRARY = JSON.stringify(repoPath("src/index.ts"));
+const LIBRARY = JSON.stringify(resolve(REPO_ROOT, "src/index.ts"));
 
 interface Run {
   readonly output: readonly string[];
@@ -25,7 +27,7 @@ interface Run {
 // terminal and reports what it wrote and what `process` looked like to the
 // page around it.
 const HARNESS = `
-import { runInTerminal } from ${JSON.stringify(repoPath("docs/.vitepress/simulated-process.ts"))};
+import { runInTerminal } from ${JSON.stringify(resolve(REPO_ROOT, "docs/.vitepress/simulated-process.ts"))};
 globalThis.runExample = async (program) => {
   const output = [];
   const before = typeof process;
@@ -42,8 +44,8 @@ globalThis.runExample = async (program) => {
 
 async function runExample(page: Page, entry: string): Promise<Run> {
   const [harness, program] = await Promise.all([
-    bundleProgram(HARNESS),
-    bundleProgram(`globalThis.during = typeof globalThis.process;\n${entry}`),
+    bundleExample(HARNESS),
+    bundleExample(`globalThis.during = typeof globalThis.process;\n${entry}`),
   ]);
   await page.addScriptTag({ content: harness, type: "module" });
   await page.waitForFunction(() => "runExample" in globalThis);

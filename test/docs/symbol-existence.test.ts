@@ -55,25 +55,24 @@ import {
   resolveAlias,
 } from "../coverage/extract.js";
 import {
-  extractCodeBlocks,
   extractImportedNames,
   extractMemberUses,
-  type CodeBlock,
   type ImportedName,
   type MemberUse,
 } from "./code-blocks.js";
+import { scanFences, type Fence } from "../../docs/.vitepress/example-markers.js";
 import { docsPages } from "./pages.js";
 import { resolveChain, type MemberSet, type SurfaceType } from "./resolve-chain.js";
 
 interface Page {
   readonly slug: string;
-  readonly blocks: readonly CodeBlock[];
+  readonly blocks: readonly Fence[];
 }
 
 function readPages(): Page[] {
   return docsPages().map((page) => ({
     slug: page.slug,
-    blocks: extractCodeBlocks(page.file, readFileSync(page.absolutePath, "utf-8")),
+    blocks: scanFences(page.file, readFileSync(page.absolutePath, "utf-8")),
   }));
 }
 

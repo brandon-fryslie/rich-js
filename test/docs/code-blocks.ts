@@ -46,14 +46,7 @@
  */
 
 import ts from "typescript";
-
-/** A fenced code block, with the page and line a failure should be reported at. */
-export interface CodeBlock {
-  readonly page: string;
-  /** 1-based line of the block's opening fence. */
-  readonly line: number;
-  readonly code: string;
-}
+import type { Fence } from "../../docs/.vitepress/example-markers.js";
 
 /** A name a page imports from one of this package's entry points. */
 export interface ImportedName {
@@ -107,47 +100,6 @@ export interface MemberUse {
 }
 
 
-const FENCE_OPEN = /^```(?:typescript|ts)\s*$/;
-const FENCE_CLOSE = /^```\s*$/;
-
-/**
- * Every TypeScript block on one page, in source order.
- *
- * Both spellings of the info string are accepted because `docs/` uses both —
- * 210 blocks say `typescript` and one says `ts`, and a reader cannot see which
- * a page chose. Matching the site's own renderer is the only defensible rule.
- */
-export function extractCodeBlocks(page: string, markdown: string): CodeBlock[] {
-  const lines = markdown.split("\n");
-  const blocks: CodeBlock[] = [];
-  let openedAt: number | null = null;
-  lines.forEach((line, index) => {
-    const inBlock = openedAt !== null;
-    if (!inBlock && FENCE_OPEN.test(line)) {
-      openedAt = index;
-      return;
-    }
-    if (openedAt !== null && FENCE_CLOSE.test(line)) {
-      blocks.push({
-        page,
-        line: openedAt + 1,
-        code: lines.slice(openedAt + 1, index).join("\n"),
-      });
-      openedAt = null;
-    }
-  });
-  // An unterminated fence would otherwise swallow the rest of the page into a
-  // block nobody checks, shrinking the sweep silently — the failure the
-  // sweep-sanity assertions next door exist to make impossible.
-  // [LAW:no-silent-failure]
-  if (openedAt !== null) {
-    throw new Error(
-      `docs/${page}:${(openedAt as number) + 1} opens a TypeScript fence that is ` +
-        `never closed; everything after it would go unchecked`,
-    );
-  }
-  return blocks;
-}
 
 /**
  * Parse one block on its own.
@@ -156,7 +108,7 @@ export function extractCodeBlocks(page: string, markdown: string): CodeBlock[] {
  * and does not matter here, because the parser recovers and still produces a
  * tree over everything it did understand. Nothing downstream reads diagnostics.
  */
-function parseBlock(block: CodeBlock): ts.SourceFile {
+function parseBlock(block: Fence): ts.SourceFile {
   return ts.createSourceFile(
     `${block.page}:${block.line}.ts`,
     block.code,
@@ -166,7 +118,7 @@ function parseBlock(block: CodeBlock): ts.SourceFile {
 }
 
 /** The 1-based line in the page that a node inside a block sits on. */
-function pageLineOf(block: CodeBlock, source: ts.SourceFile, node: ts.Node): number {
+function pageLineOf(block: Fence, source: ts.SourceFile, node: ts.Node): number {
   const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
   return block.line + 1 + line;
 }
@@ -183,7 +135,7 @@ function pageLineOf(block: CodeBlock, source: ts.SourceFile, node: ts.Node): num
  * of it — the same exclusion the demo-coverage gate makes for the same reason
  * — and a default import names whatever the module chose to call its default.
  */
-export function extractImportedNames(block: CodeBlock): ImportedName[] {
+export function extractImportedNames(block: Fence): ImportedName[] {
   return importedNamesIn(block, parseBlock(block)).map((found) => found.imported);
 }
 
@@ -192,7 +144,7 @@ export function extractImportedNames(block: CodeBlock): ImportedName[] {
  * node so a caller that needs to order imports against other page positions can.
  */
 function importedNamesIn(
-  block: CodeBlock,
+  block: Fence,
   source: ts.SourceFile,
 ): { imported: ImportedName; node: ts.Node }[] {
   const names: { imported: ImportedName; node: ts.Node }[] = [];
@@ -240,7 +192,7 @@ function importedNamesIn(
  * [LAW:effects-at-boundaries]
  */
 export function extractMemberUses(
-  blocks: readonly CodeBlock[],
+  blocks: readonly Fence[],
   ourSpecifiers: ReadonlySet<string>,
 ): MemberUse[] {
   const parsed = blocks.map((block) => ({ block, source: parseBlock(block) }));

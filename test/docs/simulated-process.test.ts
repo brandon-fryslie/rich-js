@@ -11,9 +11,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import stripAnsi from "strip-ansi";
 import { cellLen } from "../../src/index.js";
 import { runInTerminal, type SimulatedTerminal } from "../../docs/.vitepress/simulated-process.js";
-import { bundleProgram, repoPath } from "./bundle-program.js";
+import { bundleExample } from "../../docs/.vitepress/example-runner.js";
+import { REPO_ROOT } from "../coverage/extract.js";
+import { resolve } from "node:path";
 
-const LIBRARY = JSON.stringify(repoPath("src/index.ts"));
+const LIBRARY = JSON.stringify(resolve(REPO_ROOT, "src/index.ts"));
 
 function terminal(columns: number): SimulatedTerminal & { readonly output: string[] } {
   const output: string[] = [];
@@ -63,7 +65,7 @@ describe("runInTerminal", () => {
 
   it("sends a new Console()'s styled Table to the terminal, truecolor, at its width", async () => {
     const term = terminal(75);
-    await runInTerminal(await bundleProgram(TABLE_PROGRAM), term);
+    await runInTerminal(await bundleExample(TABLE_PROGRAM), term);
 
     const written = term.output.join("");
     expect(written).toContain("\x1b[38;2;255;136;0;1mEarth");
@@ -75,14 +77,14 @@ describe("runInTerminal", () => {
 
   it("follows the supplied width, not a width of its own", async () => {
     const term = terminal(52);
-    await runInTerminal(await bundleProgram(TABLE_PROGRAM), term);
+    await runInTerminal(await bundleExample(TABLE_PROGRAM), term);
     const lines = stripAnsi(term.output.join("")).split("\n").filter((line) => line !== "");
     for (const line of lines) expect(cellLen(line)).toBe(52);
   });
 
   it("animates a Progress built with no console into the same terminal", async () => {
     const term = terminal(75);
-    await runInTerminal(await bundleProgram(PROGRESS_PROGRAM), term);
+    await runInTerminal(await bundleExample(PROGRESS_PROGRAM), term);
 
     // Animating is several frames, each redrawn over the last.
     const frames = term.output.filter((chunk) => chunk.includes("Copying"));
@@ -92,7 +94,7 @@ describe("runInTerminal", () => {
   });
 
   it("keeps two overlapping runs in their own terminals", async () => {
-    const [table, progress] = await Promise.all([bundleProgram(TABLE_PROGRAM), bundleProgram(PROGRESS_PROGRAM)]);
+    const [table, progress] = await Promise.all([bundleExample(TABLE_PROGRAM), bundleExample(PROGRESS_PROGRAM)]);
     const wide = terminal(75);
     const narrow = terminal(52);
     await Promise.all([runInTerminal(progress, wide), runInTerminal(table, narrow), runInTerminal(table, wide)]);
@@ -108,7 +110,7 @@ describe("runInTerminal", () => {
   it("leaves the build's own process as it was", async () => {
     const own = globalThis.process;
     const env = { ...process.env };
-    const program = await bundleProgram(`
+    const program = await bundleExample(`
       process.env.LEAKED = "yes";
       globalThis.sawStandIn = process !== globalThis.process;
       ${TABLE_PROGRAM}
@@ -122,7 +124,7 @@ describe("runInTerminal", () => {
 
   it("gives each run its own copy of the terminal's env", async () => {
     const term = terminal(75);
-    await runInTerminal(await bundleProgram(`process.env.TERM = "dumb";`), term);
+    await runInTerminal(await bundleExample(`process.env.TERM = "dumb";`), term);
     expect(term.env).toEqual({ TERM: "xterm-256color", COLORTERM: "truecolor" });
   });
 

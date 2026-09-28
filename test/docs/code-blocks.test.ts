@@ -21,12 +21,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  extractCodeBlocks,
   extractImportedNames,
   extractMemberUses,
-  type CodeBlock,
   type MemberUse,
 } from "./code-blocks.js";
+import { scanFences, type Fence } from "../../docs/.vitepress/example-markers.js";
 
 /**
  * The specifiers a fixture may treat as this package's.
@@ -37,20 +36,20 @@ import {
  */
 const OUR_SPECIFIERS: ReadonlySet<string> = new Set(["@promptctl/rich-js"]);
 
-function blocksOf(markdown: string): CodeBlock[] {
-  return extractCodeBlocks("fixture.md", markdown);
+function blocksOf(markdown: string): Fence[] {
+  return scanFences("fixture.md", markdown);
 }
 
 /**
  * The one block a single-block fixture defines.
  *
- * [LAW:parse-dont-validate] Returning `CodeBlock` rather than the first element
+ * [LAW:parse-dont-validate] Returning `Fence` rather than the first element
  * of an array is what lets the assertions below read the block without asking
  * whether it is there. A fixture that grew a second block, or lost its only
  * one, is a broken fixture and says so here rather than failing later as a
  * confusing assertion on undefined.
  */
-function oneBlockOf(markdown: string): CodeBlock {
+function oneBlockOf(markdown: string): Fence {
   const [block, ...rest] = blocksOf(markdown);
   if (!block || rest.length > 0) {
     throw new Error(`fixture defines ${blocksOf(markdown).length} blocks, expected exactly 1`);
@@ -83,7 +82,7 @@ function signaturesIn(markdown: string): string[] {
   return extractMemberUses(blocksOf(markdown), OUR_SPECIFIERS).map(signature).sort();
 }
 
-describe("extractCodeBlocks", () => {
+describe("scanFences", () => {
   it("takes both spellings of the info string and nothing else", () => {
     const blocks = blocksOf(
       [
@@ -109,6 +108,28 @@ describe("extractCodeBlocks", () => {
     expect(blocks.map((b) => b.code)).toEqual(["const a = 1;", "const b = 2;"]);
   });
 
+  it("reads every CommonMark fence form, and prose that only looks like one as prose", () => {
+    const blocks = blocksOf(
+      [
+        "```ts``` is how a fence opens.",
+        "",
+        "   ```ts",
+        "   const a = 1;",
+        "     const b = 2;",
+        "  ```",
+        "",
+        "~~~ts",
+        "```",
+        "const c = 3;",
+        "~~~",
+      ].join("\n"),
+    );
+    expect(blocks.map((b) => [b.line, b.code])).toEqual([
+      [3, "const a = 1;\n  const b = 2;"],
+      [8, "```\nconst c = 3;"],
+    ]);
+  });
+
   it("reports the line of the opening fence, which failures are anchored to", () => {
     const blocks = blocksOf(["# Title", "", "```typescript", "const a = 1;", "```"].join("\n"));
     expect(blocks.map((b) => b.line)).toEqual([3]);
@@ -118,8 +139,41 @@ describe("extractCodeBlocks", () => {
   // block, shrinking the sweep with no sign that it shrank. [LAW:no-silent-failure]
   it("throws on a fence that is never closed", () => {
     expect(() => blocksOf(["```typescript", "const a = 1;"].join("\n"))).toThrow(
-      /fixture\.md:1 opens a TypeScript fence that is never closed/,
+      /fixture\.md:1 opens a fence that is never closed/,
     );
+  });
+
+  it("counts a block whose fence carries a marker, and names the marker", () => {
+    const blocks = blocksOf(["```ts silent", "const a = 1;", "```", "", "```typescript", "a;", "```"].join("\n"));
+    expect(blocks.map((b) => [b.marker, b.code])).toEqual([["silent", "const a = 1;"], ["static", "a;"]]);
+  });
+
+  // VitePress reads these attributes itself; a parser that took `ts{2}` for
+  // another language would drop the block from every reader without a word.
+  it("reads a TypeScript fence among VitePress's own attributes, marker and all", () => {
+    const blocks = blocksOf(
+      ["```ts{2}", "a;", "```", "```typescript:line-numbers=3 silent", "b;", "```", "```ts [panel.ts] {1} throws", "c;", "```"].join("\n"),
+    );
+    expect(blocks.map((b) => [b.marker, b.code])).toEqual([["static", "a;"], ["silent", "b;"], ["throws", "c;"]]);
+  });
+
+  // Every fence is tracked whatever its language, so an unterminated bash
+  // fence would otherwise swallow the TypeScript below it just the same.
+  it("throws on a fence of any language that is never closed", () => {
+    expect(() => blocksOf(["```bash", "echo hi"].join("\n"))).toThrow(/fixture\.md:1 opens a fence that is never closed/);
+  });
+
+  it("reads a page saved with CRLF line endings", () => {
+    const blocks = blocksOf(["```ts silent", "const a = 1;", "```"].join("\r\n"));
+    expect(blocks.map((b) => [b.marker, b.code, b.line])).toEqual([["silent", "const a = 1;", 1]]);
+  });
+
+  it("throws on an unknown marker, naming the page and line", () => {
+    expect(() => blocksOf(["", "```ts quiet", "a;", "```"].join("\n"))).toThrow(/fixture\.md:2: unknown example marker "quiet"/);
+  });
+
+  it("reads a line inside another language's fence as that fence's content", () => {
+    expect(blocksOf(["```md", "```ts", "a;", "```", "```ts", "b;", "```"].join("\n")).map((b) => b.code)).toEqual(["b;"]);
   });
 });
 

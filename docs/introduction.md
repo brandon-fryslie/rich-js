@@ -64,6 +64,8 @@ console.print("[green]Done![/green]");
 
 The Console auto-detects terminal size, color support, and encoding. See [Console](./console) for the full reference.
 
+The examples in these docs assume that `console` is `new Console()` and that every name they use comes from `@promptctl/rich-js`, so they skip those two lines. Names from the subpath entries, such as `@promptctl/rich-js/widgets`, are always imported explicitly.
+
 ## What comes next
 
 Continue with [Console](./console) to learn the complete output API, or jump to [Styles](./style) to learn how colors and text attributes work.
