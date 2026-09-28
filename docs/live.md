@@ -104,6 +104,7 @@ try {
 } finally {
   live.stop(); // terminal restored
 }
+console.print("[green]:check_mark:[/] back on the main screen, where the page's output was");
 ```
 
 See [Layout](./layout) for structuring complex fullscreen content.

@@ -95,7 +95,7 @@ export default defineConfig({
   },
 
   vite: {
-    // Runs each migrated page's examples and writes their output under them;
+    // Runs each page's examples and writes their output under them;
     // `example-runner.ts`'s header owns why it is a pre-transform.
     plugins: [docsExamplesPlugin()],
   },

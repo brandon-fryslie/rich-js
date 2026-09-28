@@ -407,7 +407,7 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
 }
 
 /**
- * The Vite plugin: every migrated page's examples, run as the page is built,
+ * The Vite plugin: every page's examples, run as the page is built,
  * and the live programs those pages import. Typed by its shape rather than as
  * `vite`'s `Plugin`, because VitePress runs it on the vite it bundles, not on
  * the one `bundleExample` builds with.

@@ -176,6 +176,8 @@ describe("runInTerminal", () => {
       `),
       term,
     );
+    // Keys typed before the program asks have no listener to reach.
+    await vi.waitFor(() => expect(term.output.join("")).toContain("Name?"));
     term.type("Al");
     term.type("\x7f");
     term.type("lice\r");
