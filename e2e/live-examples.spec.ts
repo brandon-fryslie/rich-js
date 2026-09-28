@@ -4,7 +4,8 @@
  * under its code while it is on screen and stops when scrolled away; a reader
  * who asked for reduced motion gets a still frame; a widget example takes keys
  * while its terminal has focus, and the page's own shortcuts work when it does
- * not; a program that fails to load says so and leaves no terminal behind.
+ * not; a prompt is answered by what the reader types; a program that fails
+ * to load says so and leaves no terminal behind.
  * What the terminal shows is read from xterm's rows.
  */
 import { test, expect, type Locator, type Page } from "@playwright/test";
@@ -104,6 +105,21 @@ test("a program that fails to load says so, and leaves no terminal to stack anot
   await expect(failure).toHaveCount(1);
   await page.waitForTimeout(500);
   await expect(live.locator(".xterm")).toHaveCount(0);
+});
+
+test("a prompt example is answered by the line the reader types", async ({ page }) => {
+  const errors = await open(page, "prompt.html");
+  const live = liveUnder(page, "What is your name?");
+
+  await scrollTo(live);
+  await expect.poll(() => rows(live)).toContain("What is your name?");
+  await live.locator(".xterm-screen").click();
+  await page.keyboard.type("Adx");
+  await page.keyboard.press("Backspace");
+  await page.keyboard.type("a");
+  await page.keyboard.press("Enter");
+  await expect.poll(() => rows(live)).toContain("Hello, Ada!");
+  expect(errors).toEqual([]);
 });
 
 test("a widget example takes keys while focused, and the page's shortcuts work when it is not", async ({ page }) => {
