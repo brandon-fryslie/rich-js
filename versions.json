@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-180",
-      "ref": "refs/pull/180/merge",
-      "sha": "4c06a09bbffdbaf207f7c2f619997f91d321e42d",
-      "timestamp": "2026-09-28T03:45:17.781Z",
-      "commits": [
-        {
-          "sha": "4c06a09bbffdbaf207f7c2f619997f91d321e42d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T03:44:28Z",
-          "message": "Merge b5bbefb07e4bded06b5b1d1b0ef344887d6fed37 into 935fc3ba3dc4394559296cb6a59c3ef824817037\n"
-        },
-        {
-          "sha": "b5bbefb07e4bded06b5b1d1b0ef344887d6fed37",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:44:23-06:00",
-          "message": "docs: say what processUser and doWork stand for (rich-docs-examples-xuu.pt4)\n"
-        },
-        {
-          "sha": "ca2539648d5383f4c9d4f6a475b0295300745d12",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:40:55-06:00",
-          "message": "docs: review fixes — enum names in the attribute table, the export shown, deepData described, examples' own names explained, ensureDrawn drawn at 256 colours (rich-docs-examples-xuu.pt4)\n"
-        },
-        {
-          "sha": "bb29b8de492f8ad929e28e4b912c3fa5ffbd5815",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:35:21-06:00",
-          "message": "docs: the text, styling and console pages show their examples' real output (rich-docs-examples-xuu.pt4)\n\nEleven pages come off NOT_YET_MIGRATED: introduction, console, text, markup,\nstyle, highlighting, contrast, transpose, template-bindings, protocol,\ntraceback. Every example runs at build time or carries its marker; no\nhand-drawn output remains.\n\nFolded in: rich-docs-gpe (stylize argument order), rich-docs-0dh (protocol.md\nnow documents Segment-yielding render with yield* delegation; the richConsole\nhook, which nothing reads, is gone), rich-docs-drn (markup.md states which\nbracketed runs are tags, with both surprises in the output).\n\nmarkup.md's doubled-backslash paragraph is removed rather than rewritten to the\nport's behaviour, which is bug rich-markup-nm1.\n\nFiled from the real output: rich-color-dhay, rich-status-o9av,\nrich-table-pyrl, rich-template-bindings-4bgw.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "935fc3ba3dc4394559296cb6a59c3ef824817037",
-      "timestamp": "2026-09-28T03:23:11.294Z",
+      "sha": "ae651e94c0af6140258df9f3e82661ecb66c328a",
+      "timestamp": "2026-09-28T03:47:57.545Z",
       "commits": [
         {
-          "sha": "935fc3ba3dc4394559296cb6a59c3ef824817037",
+          "sha": "ae651e94c0af6140258df9f3e82661ecb66c328a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:22:32-06:00",
-          "message": "fix(themes): every bundled theme draws named colours in its own ANSI table (rich-docs-examples-xuu.8tt) (#179)\n\n* fix(themes): every bundled theme draws named colours in its own ANSI table (rich-docs-examples-xuu.8tt)\n\ndefineTheme gave every TerminalTheme STANDARD_TABLE, so `[blue]` exported\nunder ATOM_ONE_DARK was VGA #000080 on #282c34. Each theme data file now\ncarries a required `ansi` table, taken from the published terminal scheme\nwhose background matches the theme (iTerm2-Color-Schemes), from Rich for\n`default` and `svg-export`, and from Textual's own MONOKAI/ALABASTER\nfallback for the Textual-native themes and cyberpunk, which have none.\n\nAtom One uses \"One Half Dark/Light\": the \"Atom One Light\" port draws cyan\nas the same #3F953A as green.\n\n* fix(themes): textual-ansi keeps VGA, derived once from STANDARD_TABLE; ANSI slots are opaque; EIGHT_BIT 0–15 draws through the theme (rich-docs-examples-xuu.8tt)"
+          "timestamp": "2026-09-27T21:47:03-06:00",
+          "message": "docs: the text, styling and console pages show their examples' real output (rich-docs-examples-xuu.pt4) (#180)\n\n* docs: the text, styling and console pages show their examples' real output (rich-docs-examples-xuu.pt4)\n\nEleven pages come off NOT_YET_MIGRATED: introduction, console, text, markup,\nstyle, highlighting, contrast, transpose, template-bindings, protocol,\ntraceback. Every example runs at build time or carries its marker; no\nhand-drawn output remains.\n\nFolded in: rich-docs-gpe (stylize argument order), rich-docs-0dh (protocol.md\nnow documents Segment-yielding render with yield* delegation; the richConsole\nhook, which nothing reads, is gone), rich-docs-drn (markup.md states which\nbracketed runs are tags, with both surprises in the output).\n\nmarkup.md's doubled-backslash paragraph is removed rather than rewritten to the\nport's behaviour, which is bug rich-markup-nm1.\n\nFiled from the real output: rich-color-dhay, rich-status-o9av,\nrich-table-pyrl, rich-template-bindings-4bgw.\n\n* docs: review fixes — enum names in the attribute table, the export shown, deepData described, examples' own names explained, ensureDrawn drawn at 256 colours (rich-docs-examples-xuu.pt4)\n\n* docs: say what processUser and doWork stand for (rich-docs-examples-xuu.pt4)"
         }
       ]
     }
