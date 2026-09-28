@@ -1,3 +1,4 @@
+/// <reference path="./markdown-it-container.d.ts" />
 /**
  * What a fenced block on a docs page is: the marker vocabulary a TypeScript
  * fence takes, and the one parser that reads fences.
@@ -15,6 +16,9 @@
  * silently dropped that block from the sweep. With one parser, a block is
  * a TypeScript block for every reader or for none.
  */
+
+import MarkdownIt from "markdown-it";
+import container from "markdown-it-container";
 
 /**
  * What happens to a block, and what the reader is told about it.
@@ -85,6 +89,12 @@ const MARKER_BY_WORD: ReadonlyMap<string, Marker> = new Map(
 
 const TYPESCRIPT = new Set(["ts", "typescript"]);
 
+/**
+ * A block a fence can sit in, named as the page writes it: a list item, a
+ * blockquote, or a `:::` container with its info string (`::: tip Placement`).
+ */
+export type Enclosure = "list item" | "blockquote" | `::: ${string}`;
+
 /** A fenced block of any language, where it sits on its page. */
 export interface Block {
   readonly page: string;
@@ -92,6 +102,8 @@ export interface Block {
   readonly line: number;
   /** 1-based line of the closing fence. */
   readonly closeLine: number;
+  /** What the fence sits in, outermost first; empty at the page's top level. */
+  readonly within: readonly Enclosure[];
   /**
    * The language as VitePress's highlighter reads it: lowercased, a `-vue`
    * suffix dropped, `""` for none. A ```` ```TS ```` fence is TypeScript.
@@ -109,54 +121,63 @@ export interface Fence {
   readonly line: number;
   /** 1-based line of the closing fence. */
   readonly closeLine: number;
+  readonly within: readonly Enclosure[];
   readonly marker: Marker;
   readonly code: string;
 }
 
-const FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
+/**
+ * The page's block structure as VitePress parses it: CommonMark with HTML
+ * blocks, and `:::` containers, which VitePress registers by name and this
+ * accepts under any name.
+ *
+ * [LAW:one-source-of-truth] Where a fence is, and what it is inside, is the
+ * parser's answer, not a second one worked out line by line. A line scanner
+ * stood here first and could not see a fence indented four spaces into a list
+ * item, which markdown renders all the same: the runner, the symbol sweep and
+ * the example gate all skipped it, and nothing said so.
+ */
+const PARSER = new MarkdownIt({ html: true }).use(container, "any", { validate: () => true });
+
+const ENCLOSURE: Readonly<Record<string, (info: string) => Enclosure>> = {
+  list_item_open: () => "list item",
+  blockquote_open: () => "blockquote",
+  container_any_open: (info) => `::: ${info.trim()}`,
+};
 
 /**
  * Every fenced block on one page, of any language, in source order.
  *
- * A fence is CommonMark's: up to three spaces of indent, a run of backticks or
- * of tildes, closed by a run of the same character at least as long. An
- * unterminated fence throws, naming the page and line: it would otherwise drop
- * code from every reader at once.
+ * An unterminated fence throws, naming the page and line: markdown closes it at
+ * the end of its container, and everything after would be read as code.
  */
 export function scanBlocks(page: string, markdown: string): Block[] {
-  // A page saved with CRLF endings is read line by line all the same; a `\r`
-  // left on a fence line would stop it matching and hide the page's examples.
   const lines = markdown.split(/\r?\n/);
+  // Frontmatter is VitePress's to read, never markdown; blanked, so every line keeps its number.
+  const close = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
+  const body = lines.map((line, i) => (i <= close ? "" : line)).join("\n");
+  // Every block open around the current token, each an enclosure or not one.
+  const open: (Enclosure | null)[] = [];
   const blocks: Block[] = [];
-  let open: { readonly index: number; readonly indent: number; readonly run: string; readonly info: string } | null = null;
-  lines.forEach((text, index) => {
-    const match = FENCE.exec(text);
-    if (match === null) return;
-    const [, indent, run, info] = match as unknown as [string, string, string, string];
-    if (open === null) {
-      // A backtick fence's info string cannot hold a backtick: "```ts``` is…" is prose.
-      if (run[0] === "`" && info.includes("`")) return;
-      open = { index, indent: indent.length, run, info: info.trim() };
-      return;
+  for (const token of PARSER.parse(body, {})) {
+    if (token.nesting === 1) open.push(ENCLOSURE[token.type]?.(token.info) ?? null);
+    if (token.nesting === -1) open.pop();
+    if (token.type !== "fence") continue;
+    const [start, end] = token.map!;
+    const run = token.markup[0] === "`" ? "`" : "~";
+    if (!new RegExp(`^[\\s>]*\\${run}{${token.markup.length},}\\s*$`).test(lines[end - 1] ?? "") || end - 1 === start) {
+      throw new Error(`docs/${page}:${start + 1} opens a fence that is never closed`);
     }
-    if (run[0] !== open.run[0] || run.length < open.run.length || info.trim() !== "") return;
-    const [, written, attributes] = LANGUAGE.exec(open.info) as unknown as [string, string, string];
-    const outdent = new RegExp(`^ {0,${open.indent}}`);
+    const [, written, attributes] = LANGUAGE.exec(token.info.trim()) as unknown as [string, string, string];
     blocks.push({
       page,
-      line: open.index + 1,
-      closeLine: index + 1,
+      line: start + 1,
+      closeLine: end,
+      within: open.filter((enclosure) => enclosure !== null),
       language: written.replace(/-vue$/, "").toLowerCase(),
       attributes,
-      code: lines
-        .slice(open.index + 1, index)
-        .map((line) => line.replace(outdent, ""))
-        .join("\n"),
+      code: token.content.replace(/\n$/, ""),
     });
-    open = null;
-  });
-  if (open !== null) {
-    throw new Error(`docs/${page}:${(open as { index: number }).index + 1} opens a fence that is never closed`);
   }
   return blocks;
 }
@@ -176,7 +197,7 @@ export function scanFences(page: string, markdown: string): Fence[] {
 export function typescriptFences(blocks: readonly Block[]): Fence[] {
   return blocks
     .filter((block) => TYPESCRIPT.has(block.language))
-    .map(({ page, line, closeLine, attributes, code }) => ({ page, line, closeLine, marker: markerOf(page, line, attributes), code }));
+    .map(({ page, line, closeLine, within, attributes, code }) => ({ page, line, closeLine, within, marker: markerOf(page, line, attributes), code }));
 }
 
 /**

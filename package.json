@@ -98,8 +98,11 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@promptctl/go-template-js": "^0.9.0",
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.5.1",
     "@types/semver": "^7.8.0",
+    "markdown-it": "^14.3.2",
+    "markdown-it-container": "^4.0.0",
     "mobx": "^7.0.3",
     "semver": "^7.8.5",
     "strip-ansi": "^7.2.0",
