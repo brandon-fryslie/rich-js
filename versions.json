@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-181",
+      "ref": "refs/pull/181/merge",
+      "sha": "f5687761cd57e2242e17969d74154162288b3186",
+      "timestamp": "2026-09-28T03:57:55.380Z",
+      "commits": [
+        {
+          "sha": "f5687761cd57e2242e17969d74154162288b3186",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:56:58-06:00",
+          "message": "Merge 4ae7f2c3d8b8044d59e36863103ca3b7d937b03e into ae651e94c0af6140258df9f3e82661ecb66c328a\n"
+        },
+        {
+          "sha": "4ae7f2c3d8b8044d59e36863103ca3b7d937b03e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:56:53-06:00",
+          "message": "docs: live and prompt pages run live, and NOT_YET_MIGRATED is gone (rich-docs-examples-xuu.byg)\n\nThe last two pages migrate: every live.md example is a bounded live demo, and\nevery prompt.md prompt runs live, answered by what the reader types. For that,\nbundleExample resolves node:readline to docs/.vitepress/node-readline.ts, a\ncreateInterface/question over the simulated terminal, so nodeAsk runs\nunchanged in the browser.\n\nWith no page left to migrate, NOT_YET_MIGRATED is deleted along with its gate\nbranch and tests. live.md's \"Redirecting stdout/stderr\" section is removed:\nLiveOptions has no such options.\n\nFiled from the live output: rich-prompt-vo5e, rich-live-sadk.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ae651e94c0af6140258df9f3e82661ecb66c328a",
