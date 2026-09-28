@@ -20,9 +20,10 @@
  *      what its marker promised;
  *   6. decode each block's bytes (`decodeAnsi`, colours kept as emitted) and
  *      encode them twice, as a light and a dark fragment;
- *   7. type-check and bundle each `live` block as a program of its own, which
- *      the page imports as a module when its live terminal
- *      (theme/RichLive.ts) first scrolls into view.
+ *   7. type-check and bundle each `live` block as a program of its own, on
+ *      the one library every live block shares (`LiveLibrary`), which the
+ *      page imports as a module when its live terminal (theme/RichLive.ts)
+ *      first scrolls into view.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -30,7 +31,7 @@
 
 import { build } from "vite";
 import ts from "typescript";
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { ENTRY_BY_SPECIFIER, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions, resolveAlias } from "../../test/coverage/extract.js";
@@ -131,7 +132,23 @@ const READLINE_STAND_IN = path.join(REPO_ROOT, "docs", ".vitepress", "node-readl
  * runs a program under the simulated process bundles it here, the tests of
  * that module included.
  */
-export async function bundleExample(source: string): Promise<string> {
+export function bundleExample(source: string): Promise<string> {
+  return bundle(source, { format: "es" });
+}
+
+/**
+ * How a bundle is written: as a module (`es`), or as a minified script
+ * declaring one variable, `name`, that holds its entry's default export
+ * (`iife`). A module with `packagesExternal` leaves every package the program
+ * imports as an import rather than inlining it.
+ */
+type BundleShape = { readonly format: "es"; readonly packagesExternal?: boolean } | { readonly format: "iife"; readonly name: string };
+
+/** A specifier naming a package, not a file. */
+const isPackage = (id: string): boolean => !id.startsWith(".") && !path.isAbsolute(id);
+
+async function bundle(source: string, shape: BundleShape): Promise<string> {
+  const packagesExternal = shape.format === "es" && shape.packagesExternal === true;
   const result = await build({
     configFile: false,
     logLevel: "silent",
@@ -143,8 +160,9 @@ export async function bundleExample(source: string): Promise<string> {
       {
         name: "rich-docs-example-entry",
         enforce: "pre",
-        resolveId: (id) =>
+        resolveId: (id, importer) =>
           id === PROGRAM_FILE ? id
+          : packagesExternal && importer === PROGRAM_FILE && isPackage(id) ? { id, external: true }
           : id === "node:readline" ? READLINE_STAND_IN
           : ENTRY_BY_SPECIFIER.has(id) ? path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(id)!)
           : null,
@@ -154,13 +172,23 @@ export async function bundleExample(source: string): Promise<string> {
     ],
     build: {
       write: false,
-      minify: false,
-      rolldownOptions: { input: PROGRAM_FILE, output: { format: "es", codeSplitting: false } },
+      // A library is minified, its names kept: a program may print a class's
+      // name, and the library is what every live page downloads.
+      minify: shape.format === "iife",
+      rolldownOptions: {
+        input: PROGRAM_FILE,
+        // An app build drops its entry's exports; a library's default export is its point.
+        preserveEntrySignatures: shape.format === "iife" ? "exports-only" : false,
+        output:
+          shape.format === "es"
+            ? { format: "es", codeSplitting: false }
+            : { format: "iife", name: shape.name, exports: "default", codeSplitting: false, keepNames: true },
+      },
     },
   });
-  if (!("output" in result)) throw new Error("bundleExample: vite returned no single build output");
+  if (!("output" in result)) throw new Error("bundle: vite returned no single build output");
   const chunks = result.output.filter((file) => file.type === "chunk");
-  if (chunks.length !== 1) throw new Error(`bundleExample: expected one chunk, vite produced ${chunks.length}`);
+  if (chunks.length !== 1) throw new Error(`bundle: expected one chunk, vite produced ${chunks.length}`);
   return chunks[0]!.code;
 }
 
@@ -291,13 +319,40 @@ function outputHtml(fence: Fence, shown: Shown): string {
 }
 
 /**
- * A live block's program, bundled: what the page's live terminal runs. Its id
- * is its content's hash, so an edit in `docs:dev` is a new module rather than a
- * stale one the dev server has cached.
+ * The library every live program runs on: each package in
+ * `LIVE_LIBRARY_PACKAGES`, all its exports, bundled as one script that
+ * declares `LIBRARY_BINDING`, keyed by specifier. There is one for the site,
+ * so a reader downloads it once however many live examples they open, and a
+ * package the entry points share (mobx under widgets) is one instance however
+ * a block reaches it. Its id is its content's hash.
+ *
+ * [LAW:one-source-of-truth] It is a script evaluated in the same function
+ * body as the program, not an ES module the program imports, because
+ * simulated-process.ts binds `process` lexically: the library's free
+ * `process` reads reach the stand-in only when its code sits inside that
+ * function. A shared module would read the worker's global `process` instead.
+ */
+export interface LiveLibrary {
+  readonly id: string;
+  readonly script: string;
+}
+
+/**
+ * A live block's program: its own code, bundled with the package's entry
+ * points left out and read from its library, and that library. What the live
+ * terminal runs is `liveScript`, the two joined. Its id is the hash of both,
+ * so an edit in `docs:dev` is a new module rather than a stale one the dev
+ * server has cached.
  */
 export interface LiveProgram {
   readonly id: string;
-  readonly script: string;
+  readonly block: string;
+  readonly library: LiveLibrary;
+}
+
+/** The one script a live program runs as: its library, then its block. */
+export function liveScript(program: LiveProgram): string {
+  return program.library.script + program.block;
 }
 
 /** A page run: its markdown with every example's output written in, and the live programs it loads. */
@@ -309,17 +364,99 @@ export interface PageRun {
 /** The virtual module a live program is served as. */
 export const LIVE_MODULE_PREFIX = "virtual:rich-live/";
 
-async function bundleOrThrow(page: string, source: string): Promise<string> {
-  return bundleExample(source).catch((error: unknown) => {
+/** Where under `LIVE_MODULE_PREFIX` a live library is served. */
+const LIVE_LIBRARY_PATH = "library/";
+
+async function bundleOrThrow(page: string, source: string, shape: BundleShape = { format: "es" }): Promise<string> {
+  return bundle(source, shape).catch((error: unknown) => {
     throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
   });
 }
 
-async function liveProgram(compiler: ExampleCompiler, page: string, context: ExampleContext | null, fence: Fence): Promise<LiveProgram> {
+const hash = (text: string): string => createHash("sha256").update(text).digest("hex").slice(0, 16);
+
+/** The name a live program's library is declared under, in the function body both run in. */
+const LIBRARY_BINDING = "__richLibrary";
+
+/**
+ * What a live block may import: every entry point of this package but the two
+ * that need a Node built-in the worker has no stand-in for (`node:fs`,
+ * `node:util`), and the optional peers the entry points import, which
+ * package.json's `peerDependencies` names.
+ */
+const NO_STAND_IN = new Set(["@promptctl/rich-js/node/save", "@promptctl/rich-js/node/traceback"]);
+const LIVE_LIBRARY_PACKAGES: readonly string[] = [
+  ...[...ENTRY_BY_SPECIFIER.keys()].filter((specifier) => !NO_STAND_IN.has(specifier)),
+  ...Object.keys((JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8")) as { peerDependencies: Record<string, string> }).peerDependencies),
+].sort();
+
+/** Where a live program's library comes from: built once, however many pages ask. */
+export type LibrarySource = () => Promise<LiveLibrary>;
+
+/** A source that builds the library the first time it is asked, from `src/` as it stands then. */
+export function liveLibraryOnce(): LibrarySource {
+  let built: Promise<LiveLibrary> | undefined;
+  return () => (built ??= bundleLiveLibrary());
+}
+
+async function bundleLiveLibrary(): Promise<LiveLibrary> {
+  const entry = [
+    ...LIVE_LIBRARY_PACKAGES.map((specifier, i) => `import * as m${i} from ${JSON.stringify(specifier)};`),
+    `export default { ${LIVE_LIBRARY_PACKAGES.map((specifier, i) => `${JSON.stringify(specifier)}: m${i}`).join(", ")} };`,
+  ].join("\n");
+  const script = await bundle(entry, { format: "iife", name: LIBRARY_BINDING }).catch((error: unknown) => {
+    throw new Error(`the live examples' library did not bundle: ${String(error)}`, { cause: error });
+  });
+  return { id: hash(script), script };
+}
+
+/** Whether `node` is an `import()` or `import.meta`, which a program run as a function body cannot evaluate. */
+const isModuleOnly = (node: ts.Node): boolean =>
+  (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) ||
+  (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword);
+
+/**
+ * A live block's own code: bundled with every package it imports left as an
+ * import, then each import rewritten as a read of the library. The library
+ * holds every export of every package a block may import, so a binding the
+ * block imports is always there.
+ */
+async function liveBlock(page: string, fence: Fence, source: string): Promise<string> {
+  const code = await bundleOrThrow(page, source, { format: "es", packagesExternal: true });
+  const file = ts.createSourceFile("live.js", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const at = `docs/${page}:${fence.line}`;
+  const refuse = (node: ts.Node): void => {
+    if (isModuleOnly(node)) throw new Error(`${at}: a live example imports only with \`import\` declarations, not \`import()\``);
+    ts.forEachChild(node, refuse);
+  };
+  refuse(file);
+  let block = code;
+  for (const statement of [...file.statements].reverse()) {
+    if (ts.isExportDeclaration(statement) || ts.isExportAssignment(statement)) throw new Error(`${at}: a live example cannot export`);
+    if (!ts.isImportDeclaration(statement)) continue;
+    const specifier = (statement.moduleSpecifier as ts.StringLiteral).text;
+    if (!LIVE_LIBRARY_PACKAGES.includes(specifier)) {
+      throw new Error(`${at}: a live example cannot import ${specifier}; it may import ${LIVE_LIBRARY_PACKAGES.join(", ")}`);
+    }
+    const clause = statement.importClause;
+    if (clause?.name !== undefined) throw new Error(`${at}: ${specifier} is imported by default, which the live library does not carry`);
+    const from = `${LIBRARY_BINDING}[${JSON.stringify(specifier)}]`;
+    const bindings = clause?.namedBindings;
+    const key = (name: ts.ModuleExportName): string => (ts.isStringLiteral(name) ? JSON.stringify(name.text) : name.text);
+    const read =
+      bindings === undefined ? ""
+      : ts.isNamespaceImport(bindings) ? `const ${bindings.name.text} = ${from};`
+      : `const { ${bindings.elements.map((e) => (e.propertyName === undefined ? e.name.text : `${key(e.propertyName)}: ${e.name.text}`)).join(", ")} } = ${from};`;
+    block = block.slice(0, statement.getStart(file)) + read + block.slice(statement.getEnd());
+  }
+  return `\n${block}`;
+}
+
+async function liveProgram(compiler: ExampleCompiler, page: string, context: ExampleContext | null, fence: Fence, library: LibrarySource): Promise<LiveProgram> {
   const program = buildLiveProgram(page, context, fence, compiler.barrelExports());
   compiler.check(program);
-  const script = await bundleOrThrow(page, program.source);
-  return { id: createHash("sha256").update(script).digest("hex").slice(0, 16), script };
+  const [block, shared] = await Promise.all([liveBlock(page, fence, program.source), library()]);
+  return { id: hash(shared.id + block), block, library: shared };
 }
 
 /**
@@ -357,7 +494,12 @@ function refuseCutOff(fences: readonly Fence[]): void {
 }
 
 /** `markdown` with each executed or exempt example's output written under its fence. */
-export async function runPageExamples(compiler: ExampleCompiler, page: string, markdown: string): Promise<PageRun> {
+export async function runPageExamples(
+  compiler: ExampleCompiler,
+  page: string,
+  markdown: string,
+  library: LibrarySource = liveLibraryOnce(),
+): Promise<PageRun> {
   const scanned = scanBlocks(page, markdown);
   const fences = typescriptFences(scanned);
   refuseCutOff(fences);
@@ -383,7 +525,7 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   }
   const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
   const liveFences = fences.filter((f) => MARKERS[f.marker].run === "browser");
-  const programs = await Promise.all(liveFences.map((fence) => liveProgram(compiler, page, context, fence)));
+  const programs = await Promise.all(liveFences.map((fence) => liveProgram(compiler, page, context, fence, library)));
   const live = new Map<Fence, LiveProgram>(liveFences.map((fence, i) => [fence, programs[i]!]));
   const binding = (program: LiveProgram): string => `__richLive_${program.id}`;
   const shown = (fence: Fence): Shown => {
@@ -447,8 +589,11 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
   // output is a function of, the page and `src/`, so a build runs a page once
   // and `docs:dev` re-runs it when either is edited.
   const runs = new Map<string, { readonly key: string; readonly result: Promise<PageRun> }>();
-  // Every live program a page run has produced, by id. A page imports only the
-  // ids its own run returned, so one that outlives an edit is never asked for.
+  let library: { readonly source: string | null; readonly get: LibrarySource } = { source: null, get: liveLibraryOnce() };
+  // Every live program and library a page run has produced, as the module
+  // served under its id. A page imports only the ids its own run returned, so
+  // one that outlives an edit is never asked for. A program imports its
+  // library, so the bundler gives a library its programs share one chunk.
   const live = new Map<string, string>();
   return {
     name: "rich-docs-examples",
@@ -457,20 +602,27 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       if (!id.endsWith(".md") || !id.startsWith(docsRoot)) return null;
       const page = path.relative(docsRoot, id);
       if (!scanFences(page, code).length) return null;
-      const key = `${stamp()}\u0000${code}`;
+      const source = stamp();
+      // The live library is a function of `src/` alone: built once per state of it.
+      if (library.source !== source) library = { source, get: liveLibraryOnce() };
+      const key = `${source}\u0000${code}`;
       const last = runs.get(id);
-      const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code);
+      const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code, library.get);
       runs.set(id, { key, result });
       const run = await result;
-      for (const program of run.live) live.set(program.id, program.script);
+      for (const program of run.live) {
+        const library = `${LIVE_LIBRARY_PATH}${program.library.id}`;
+        live.set(library, `export default ${JSON.stringify(program.library.script)};`);
+        live.set(program.id, `import library from ${JSON.stringify(LIVE_MODULE_PREFIX + library)};\nexport default library + ${JSON.stringify(program.block)};`);
+      }
       return { code: run.markdown, map: null };
     },
     resolveId: (id) => (id.startsWith(LIVE_MODULE_PREFIX) ? `\0${id}` : null),
     load(id) {
       if (!id.startsWith(RESOLVED_LIVE_PREFIX)) return null;
-      const script = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
-      if (script === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);
-      return `export default ${JSON.stringify(script)};`;
+      const module = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
+      if (module === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);
+      return module;
     },
   };
 }
