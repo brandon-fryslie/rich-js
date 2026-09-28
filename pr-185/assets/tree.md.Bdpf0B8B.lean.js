@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as l}from"./chunks/framework.BzWGI8-2.js";const c=JSON.parse('{"title":"Tree","description":"","frontmatter":{},"headers":[],"relativePath":"tree.md","filePath":"tree.md"}'),e={name:"tree.md"};function t(p,s,h,k,r,o){return a(),n("div",null,[...s[0]||(s[0]=[l("",12)])])}const y=i(e,[["render",t]]);export{c as __pageData,y as default};

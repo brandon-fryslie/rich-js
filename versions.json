@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-185",
-      "ref": "refs/pull/185/merge",
-      "sha": "76901b2a807afc1a15d5e6d1c3b5c7b6714ef953",
-      "timestamp": "2026-09-28T05:08:24.652Z",
-      "commits": [
-        {
-          "sha": "76901b2a807afc1a15d5e6d1c3b5c7b6714ef953",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T23:07:32-06:00",
-          "message": "Merge a6e062982346b7b0378247cdf12d54734d55caf9 into 441694df49d14436b9f70611ec0a121542db94cd\n"
-        },
-        {
-          "sha": "a6e062982346b7b0378247cdf12d54734d55caf9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T23:07:28-06:00",
-          "message": "docs: one minified live library for the site, every package a block may import in it once; refuse import() in a live block (rich-docs-examples-xuu.zze)\n"
-        },
-        {
-          "sha": "74c7afb1846444089ce78432743a18c51d046a92",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:58:55-06:00",
-          "message": "docs: live examples share one bundled library per set of entry points instead of inlining it per program (rich-docs-examples-xuu.zze)\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "441694df49d14436b9f70611ec0a121542db94cd",
-      "timestamp": "2026-09-28T04:51:00.552Z",
+      "sha": "0f0ce663b2641649bc15e224d3044ee4e724c819",
+      "timestamp": "2026-09-28T05:10:01.692Z",
       "commits": [
         {
-          "sha": "441694df49d14436b9f70611ec0a121542db94cd",
+          "sha": "0f0ce663b2641649bc15e224d3044ee4e724c819",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:50:11-06:00",
-          "message": "docs: example output shrinks to fit a column narrower than its terminal (rich-docs-examples-xuu.2nz) (#184)\n\n* docs: example output shrinks to fit a column narrower than its terminal, instead of scrolling (rich-docs-examples-xuu.2nz)\n\n* docs: fit each output to its own width at a 0.62em cell, and refit a live terminal when its card resizes (rich-docs-examples-xuu.2nz)"
+          "timestamp": "2026-09-27T23:09:19-06:00",
+          "message": "docs: live examples share one bundled library instead of inlining it per program (rich-docs-examples-xuu.zze) (#185)\n\n* docs: live examples share one bundled library per set of entry points instead of inlining it per program (rich-docs-examples-xuu.zze)\n\n* docs: one minified live library for the site, every package a block may import in it once; refuse import() in a live block (rich-docs-examples-xuu.zze)"
         }
       ]
     }
