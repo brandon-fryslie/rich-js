@@ -39,7 +39,19 @@ import { decodeAnsi, osc8Sequences } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
 import type { Segment } from "../../src/index.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
-import { MARKERS, runsAtBuild, scanFences, type BuildMarker, type Fence } from "./example-markers.js";
+import {
+  MARKERS,
+  frontmatterEnd,
+  pageLines,
+  runsAtBuild,
+  scanBlocks,
+  scanFences,
+  typescriptFences,
+  type Block,
+  type BuildMarker,
+  type Enclosure,
+  type Fence,
+} from "./example-markers.js";
 import {
   MAIN_BARREL,
   buildLiveProgram,
@@ -333,26 +345,39 @@ async function liveProgram(compiler: ExampleCompiler, page: string, context: Exa
  * Vue takes one per component, and merging into a hand-written one is a
  * second author in a block the page owns.
  */
-function scriptLine(page: string, markdown: string): number {
-  const lines = markdown.split(/\r?\n/);
+function scriptLine(page: string, markdown: string, blocks: readonly Block[]): number {
+  const lines = pageLines(markdown);
   // A `<script setup>` shown inside a fence, of any language, is code on the
   // page, not the page's script.
-  let fence: string | null = null;
-  const clash = lines.findIndex((line) => {
-    const run = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
-    if (run !== undefined && (fence === null || (run[0] === fence[0] && run.length >= fence.length))) {
-      fence = fence === null ? run : null;
-      return false;
-    }
-    return fence === null && /^<script\b[^>]*\bsetup\b/.test(line);
-  });
+  const clash = lines.findIndex(
+    (line, i) => /^<script\b[^>]*\bsetup\b/.test(line) && !blocks.some((b) => b.line <= i + 1 && i + 1 <= b.closeLine),
+  );
   if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example cannot have its own <script setup>`);
-  return lines[0] === "---" ? lines.indexOf("---", 1) + 1 : 0;
+  return frontmatterEnd(lines) + 1;
+}
+
+/**
+ * Where the card, HTML written at column 0 around its fence, cannot go. A list
+ * item or a blockquote is ended by it; `::: code-group` builds its tabs from
+ * the fences directly inside it; `::: v-pre` keeps Vue from compiling a live
+ * terminal. Every other container reads the card as its own content.
+ */
+const CUTS_OFF: ReadonlySet<Enclosure> = new Set(["list item", "blockquote", "::: code-group", "::: v-pre"]);
+
+function refuseCutOff(fences: readonly Fence[]): void {
+  for (const fence of fences) {
+    const cut = fence.within.find((enclosure) => CUTS_OFF.has(enclosure));
+    if (cut !== undefined) {
+      throw new Error(`docs/${fence.page}:${fence.line}: an example inside a ${cut} cannot carry its output; move it out`);
+    }
+  }
 }
 
 /** `markdown` with each executed or exempt example's output written under its fence. */
 export async function runPageExamples(compiler: ExampleCompiler, page: string, markdown: string): Promise<PageRun> {
-  const fences = scanFences(page, markdown);
+  const scanned = scanBlocks(page, markdown);
+  const fences = typescriptFences(scanned);
+  refuseCutOff(fences);
   const chain = fences.filter(runsAtBuild);
   const context = exampleContext(page, markdown);
   const program = buildProgram(page, context, chain, compiler.barrelExports());
@@ -385,7 +410,7 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
     return printed === null ? { kind: "nothing" } : { kind: "bytes", bytes: printed };
   };
 
-  const lines = markdown.split(/\r?\n/);
+  const lines = pageLines(markdown);
   // The widget: the fence, untouched for VitePress to highlight, and its output
   // beneath, both inside one element the theme draws as a single card. Every
   // piece of HTML stands between blank lines, because markdown's HTML block
@@ -401,7 +426,7 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   const modules = [...new Map(programs.map((p) => [p.id, p])).values()];
   if (modules.length > 0) {
     const imports = modules.map((p) => `const ${binding(p)} = () => import(${JSON.stringify(LIVE_MODULE_PREFIX + p.id)});`);
-    lines.splice(scriptLine(page, markdown), 0, "", "<script setup>", ...imports, "</script>", "");
+    lines.splice(scriptLine(page, markdown, scanned), 0, "", "<script setup>", ...imports, "</script>", "");
   }
   return { markdown: lines.join("\n"), live: modules };
 }

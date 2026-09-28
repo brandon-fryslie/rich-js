@@ -172,6 +172,39 @@ describe("scanFences", () => {
     expect(() => blocksOf(["", "```ts quiet", "a;", "```"].join("\n"))).toThrow(/fixture\.md:2: unknown example marker "quiet"/);
   });
 
+  it("sees a fence indented four spaces into a nested list item, and says what it is in", () => {
+    const blocks = blocksOf(["- outer", "  - inner", "", "    ```ts", "    a;", "    ```"].join("\n"));
+    expect(blocks.map((b) => [b.line, b.closeLine, b.code, b.within])).toEqual([[4, 6, "a;", ["list item", "list item"]]]);
+  });
+
+  it("says a fence is in a blockquote or a ::: container, and nowhere at the top level", () => {
+    const blocks = blocksOf(["> ```ts", "> a;", "> ```", "", "::: tip Placement", "", "```ts", "b;", "```", "", ":::", "", "```ts", "c;", "```"].join("\n"));
+    expect(blocks.map((b) => [b.code, b.within])).toEqual([
+      ["a;", ["blockquote"]],
+      ["b;", ["::: tip"]],
+      ["c;", []],
+    ]);
+  });
+
+  it("reads a `:::` VitePress does not register as prose, as VitePress renders it", () => {
+    expect(blocksOf([":::", "", "```ts", "a;", "```", "", "::: aside", "", "```ts", "b;", "```"].join("\n")).map((b) => b.within)).toEqual([[], []]);
+  });
+
+  it("throws on a fence whose only closer is indented into code, as markdown reads it", () => {
+    expect(() => blocksOf(["```ts", "a;", "    ```"].join("\n"))).toThrow(/fixture\.md:1 opens a fence that is never closed/);
+  });
+
+  it("numbers lines as markdown does, a lone carriage return included", () => {
+    expect(blocksOf(["para", "two", "```ts", "a;", "```"].join("\r").replace("para\r", "para\n")).map((b) => [b.line, b.closeLine])).toEqual([[3, 5]]);
+  });
+
+  it("reads nothing in the frontmatter as a fence, and keeps the page's line numbers", () => {
+    expect(blocksOf(["---", "note: |", "  ```", "---", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
+    // gray-matter opens it on `---` and a language, and closes it at the first line that starts with `---`.
+    expect(blocksOf(["---yaml", "note: |", "  ```", "---", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
+    expect(blocksOf(["---", "note: |", "  ```", "--- ", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
+  });
+
   it("reads a line inside another language's fence as that fence's content", () => {
     expect(blocksOf(["```md", "```ts", "a;", "```", "```ts", "b;", "```"].join("\n")).map((b) => b.code)).toEqual(["b;"]);
   });
