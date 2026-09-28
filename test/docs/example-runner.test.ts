@@ -37,7 +37,7 @@ describe("docs/panel.md", { timeout: 60_000 }, () => {
       expect(html).toMatch(/<div class="rich-example-dark"><pre style="[^"]*background:#282c34/);
     }
     const unwrapped = result
-      .replace(/\n<div class="rich-example" data-marker="\w+">\n\n/g, "")
+      .replace(/\n<div class="rich-example">\n\n/g, "")
       .replace(/\n\n<div class="rich-example-output"[^\n]*<\/div>\n\n<\/div>\n/g, "");
     expect(unwrapped).toBe(PANEL);
   });
@@ -69,7 +69,7 @@ describe("the example widget", { timeout: 30_000 }, () => {
   it("puts the fence and its output in one element, the output labelled with where it came from", async () => {
     const result = await run(`Before.\n${fence("console.print(1);")}\nAfter.`);
     expect(result).toMatch(
-      /^Before\.\n\n<div class="rich-example" data-marker="static">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output" v-pre>[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
+      /^Before\.\n\n<div class="rich-example">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output" v-pre>[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
     );
     const [shown] = outputs(result);
     expect(shown).toContain('<span class="rich-example-name">Output</span><span class="rich-example-caption">produced by running the code above</span>');
@@ -255,8 +255,8 @@ describe("the plugin", () => {
   });
 
   it("passes a page that has not migrated through untouched", async () => {
-    const tables = readFileSync(path.join(REPO_ROOT, "docs", "tables.md"), "utf-8");
-    expect(NOT_YET_MIGRATED.has("tables.md")).toBe(true);
-    expect(await docsExamplesPlugin().transform(tables, path.join(REPO_ROOT, "docs", "tables.md"))).toBeNull();
+    const [unmigrated] = NOT_YET_MIGRATED;
+    const source = readFileSync(path.join(REPO_ROOT, "docs", unmigrated!), "utf-8");
+    expect(await docsExamplesPlugin().transform(source, path.join(REPO_ROOT, "docs", unmigrated!))).toBeNull();
   });
 });

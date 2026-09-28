@@ -314,7 +314,7 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   for (const fence of [...fences].reverse()) {
     if (MARKERS[fence.marker].run === "browser") continue;
     lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown.get(fence) ?? null), "", "</div>", "");
-    lines.splice(fence.line - 1, 0, "", `<div class="rich-example" data-marker="${fence.marker}">`, "");
+    lines.splice(fence.line - 1, 0, "", '<div class="rich-example">', "");
   }
   return lines.join("\n");
 }

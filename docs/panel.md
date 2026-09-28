@@ -40,11 +40,7 @@ again. So content stays visible down to width 3, and the padding is what
 disappears on the way there:
 
 ```typescript
-const widths = [3, 4, 5, 6];
-const table = new Table({ box: null });
-for (const width of widths) table.addColumn(`width ${width}`, { overflow: "fold" });
-table.addRow(...widths.map((width) => new Panel("hello", { width })));
-console.print(table);
+for (const width of [3, 4, 5, 6]) console.print(new Panel("hello", { width }));
 ```
 
 Width 3 is the narrowest panel that can show anything: at width 2 the two frame

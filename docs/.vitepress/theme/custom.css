@@ -73,10 +73,15 @@
   font-size: 0.9rem;
 }
 
-/* ─── Monospace font stack for code ──────────────────────────── */
-.vp-doc code {
-  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace,
+/* ─── Monospace font stack for code ────────────────────────────
+ * One stack, read by code and by generated example output alike. */
+:root {
+  --rich-code-font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace,
     SFMono-Regular, Menlo, monospace;
+}
+
+.vp-doc code {
+  font-family: var(--rich-code-font-family);
 }
 
 /* ─── Example widget: code and the output it produces, one card ─────
@@ -93,8 +98,7 @@
   /* The fragments' rows are drawn in the code font, tight enough that box
    * drawing joins up. `all:initial` shuts every other page rule out of them;
    * this custom property is the one way in (src/core/export-html.ts). */
-  --rich-fragment-font: 0.875em/1.25 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace,
-    SFMono-Regular, Menlo, monospace;
+  --rich-fragment-font: var(--vp-code-font-size) / 1.25 var(--rich-code-font-family);
 }
 
 .vp-doc .rich-example > div[class*='language-'] {
@@ -154,5 +158,12 @@
     border-left: 0;
     border-right: 0;
     border-radius: 0;
+  }
+
+  /* Inside a tip or warning VitePress keeps code blocks within the box. */
+  .vp-doc .custom-block .rich-example {
+    margin: 8px 0;
+    border: 1px solid var(--vp-c-divider);
+    border-radius: 8px;
   }
 }
