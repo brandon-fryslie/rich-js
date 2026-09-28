@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "catppuccin-latte",
   dark: false,
+  // iTerm2-Color-Schemes "Catppuccin Latte"
+  ansi: {
+    black: "#BCC0CC",
+    red: "#D20F39",
+    green: "#40A02B",
+    yellow: "#DF8E1D",
+    blue: "#1E66F5",
+    magenta: "#EA76CB",
+    cyan: "#179299",
+    white: "#5C5F77",
+    brightBlack: "#ACB0BE",
+    brightRed: "#E7103F",
+    brightGreen: "#46B02F",
+    brightYellow: "#E49931",
+    brightBlue: "#3878F6",
+    brightMagenta: "#EF95D7",
+    brightCyan: "#19A1A8",
+    brightWhite: "#6C6F85",
+  },
   vars: {
     "accent": "#FD640B",
     "accent-darken-1": "#E54F00",

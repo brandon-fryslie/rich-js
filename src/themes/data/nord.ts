@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "nord",
   dark: true,
+  // iTerm2-Color-Schemes "Nord"
+  ansi: {
+    black: "#3B4252",
+    red: "#BF616A",
+    green: "#A3BE8C",
+    yellow: "#EBCB8B",
+    blue: "#81A1C1",
+    magenta: "#B48EAD",
+    cyan: "#88C0D0",
+    white: "#E5E9F0",
+    brightBlack: "#596377",
+    brightRed: "#BF616A",
+    brightGreen: "#A3BE8C",
+    brightYellow: "#EBCB8B",
+    brightBlue: "#81A1C1",
+    brightMagenta: "#B48EAD",
+    brightCyan: "#8FBCBB",
+    brightWhite: "#ECEFF4",
+  },
   vars: {
     "accent": "#B48EAD",
     "accent-darken-1": "#9F7A98",

@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "catppuccin-macchiato",
   dark: true,
+  // iTerm2-Color-Schemes "Catppuccin Macchiato"
+  ansi: {
+    black: "#494D64",
+    red: "#ED8796",
+    green: "#A6DA95",
+    yellow: "#EED49F",
+    blue: "#8AADF4",
+    magenta: "#F5BDE6",
+    cyan: "#8BD5CA",
+    white: "#B8C0E0",
+    brightBlack: "#5B6078",
+    brightRed: "#F2A7B2",
+    brightGreen: "#BDE3B0",
+    brightYellow: "#F4E3C1",
+    brightBlue: "#ADC5F7",
+    brightMagenta: "#F493DA",
+    brightCyan: "#A5DED6",
+    brightWhite: "#A5ADCB",
+  },
   vars: {
     "accent": "#F5BDE6",
     "accent-darken-1": "#DFA8D0",

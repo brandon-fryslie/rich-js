@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "rose-pine-moon",
   dark: true,
+  // iTerm2-Color-Schemes "Rose Pine Moon"
+  ansi: {
+    black: "#393552",
+    red: "#EB6F92",
+    green: "#3E8FB0",
+    yellow: "#F6C177",
+    blue: "#9CCFD8",
+    magenta: "#C4A7E7",
+    cyan: "#EA9A97",
+    white: "#E0DEF4",
+    brightBlack: "#6E6A86",
+    brightRed: "#EB6F92",
+    brightGreen: "#3E8FB0",
+    brightYellow: "#F6C177",
+    brightBlue: "#9CCFD8",
+    brightMagenta: "#C4A7E7",
+    brightCyan: "#EA9A97",
+    brightWhite: "#E0DEF4",
+  },
   vars: {
     "accent": "#EA9A97",
     "accent-darken-1": "#D48683",

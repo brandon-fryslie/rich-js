@@ -1,6 +1,7 @@
-import { ColorRgba, parseRgbHex, parseRgbaHex } from "../core/color.js";
+import { ColorRgba, ColorTable, parseRgbHex, parseRgbaHex } from "../core/color.js";
 import { Palette } from "./palette.js";
 import { THEMES, type ThemeName, type ThemePaletteData } from "./data/index.js";
+import { ANSI_SLOTS } from "./data/types.js";
 
 export type { ThemeName };
 
@@ -41,7 +42,7 @@ function isThemeName(name: string): name is ThemeName {
 }
 
 /**
- * The eight base colors every theme must declare. Returned by
+ * The eight base colors every theme must declare, and its ANSI table. Returned by
  * `getThemeBaseColors` for callers (notably `terminalThemes.ts`) that only
  * need the substrate and would otherwise pay the cost of hydrating the
  * full ~150-var palette and polluting the registry cache.
@@ -57,6 +58,7 @@ export interface ThemeBaseColors {
   readonly success: ColorRgba;
   readonly warning: ColorRgba;
   readonly error: ColorRgba;
+  readonly ansi: ColorTable;
 }
 
 /**
@@ -78,6 +80,7 @@ export function getThemeBaseColors(name: ThemeName): ThemeBaseColors {
     success: requireBaseVar(data, "success"),
     warning: requireBaseVar(data, "warning"),
     error: requireBaseVar(data, "error"),
+    ansi: new ColorTable(ANSI_SLOTS.map((slot) => parseHex(data.ansi[slot], data.name, `ansi.${slot}`))),
   };
 }
 

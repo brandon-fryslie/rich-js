@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "solarized-dark",
   dark: true,
+  // iTerm2-Color-Schemes "iTerm2 Solarized Dark"
+  ansi: {
+    black: "#073642",
+    red: "#DC322F",
+    green: "#859900",
+    yellow: "#B58900",
+    blue: "#268BD2",
+    magenta: "#D33682",
+    cyan: "#2AA198",
+    white: "#EEE8D5",
+    brightBlack: "#335E69",
+    brightRed: "#CB4B16",
+    brightGreen: "#586E75",
+    brightYellow: "#657B83",
+    brightBlue: "#839496",
+    brightMagenta: "#6C71C4",
+    brightCyan: "#93A1A1",
+    brightWhite: "#FDF6E3",
+  },
   vars: {
     "accent": "#6C71C4",
     "accent-darken-1": "#575EAF",

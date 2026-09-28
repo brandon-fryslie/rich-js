@@ -759,14 +759,10 @@ export function blendRgb(
  * A terminal theme — surface/foreground baseline, the ANSI 16/256 LUT, and a
  * semantic palette.
  *
- * **`ansiColors` is the canonical ANSI table, not a per-theme override.** All
- * preset themes in this codebase use `STANDARD_TABLE` for `ansiColors`. Theme
- * identity lives entirely in `palette` (primary, accent, text-*, surface, ...);
- * `ColorSpec.parse("red")` is intentionally consistent across themes — same
- * design as Textual itself, which models theming at the truecolor/semantic
- * layer rather than overloading the ANSI 16. Custom callers building bespoke
- * themes that *do* want to retint ANSI 16 are free to pass their own
- * `ColorTable`; that path is supported but not how the built-in presets work.
+ * **`ansiColors` is the theme's own sixteen colours**, the shades a terminal
+ * showing this theme draws `red`, `blue` and the rest in. `ColorSpec.parse("red")`
+ * is ANSI colour 1 under every theme; which red that is, is the theme's to say,
+ * as it is in Rich, where each `TerminalTheme` carries its own table.
  */
 export class TerminalTheme {
   constructor(

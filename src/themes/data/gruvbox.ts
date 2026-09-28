@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "gruvbox",
   dark: true,
+  // iTerm2-Color-Schemes "Gruvbox Dark"
+  ansi: {
+    black: "#282828",
+    red: "#CC241D",
+    green: "#98971A",
+    yellow: "#D79921",
+    blue: "#458588",
+    magenta: "#B16286",
+    cyan: "#689D6A",
+    white: "#A89984",
+    brightBlack: "#928374",
+    brightRed: "#FB4934",
+    brightGreen: "#B8BB26",
+    brightYellow: "#FABD2F",
+    brightBlue: "#83A598",
+    brightMagenta: "#D3869B",
+    brightCyan: "#8EC07C",
+    brightWhite: "#EBDBB2",
+  },
   vars: {
     "accent": "#F9BD2F",
     "accent-darken-1": "#E2A811",
