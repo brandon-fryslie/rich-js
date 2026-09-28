@@ -1,86 +1,4 @@
-const n=`//#region docs/.vitepress/node-readline.ts
-/**
-* \`node:readline\` for a program run under the simulated process: what
-* \`bundleExample\` resolves that specifier to, so \`nodeAsk\` from
-* \`@promptctl/rich-js/node/prompt\` runs unchanged in a live terminal and a
-* prompt on a page is answered by what the reader types.
-*
-* It is \`createInterface\` and \`question\` and nothing else, the part of readline
-* \`nodeAsk\` uses. The line discipline is a terminal's in cooked mode: printable
-* keys are echoed and collected, backspace takes back the last one, and Enter
-* ends the line and hands it over.
-*
-* [LAW:composability] Like the simulated process it reads from, it knows
-* no docs page: the playground and the landing hero run programs through the
-* same bundle.
-*/
-var ENTER = /* @__PURE__ */ new Set(["\\r", "\\n"]);
-var BACKSPACE = /* @__PURE__ */ new Set(["", "\\b"]);
-function createInterface({ input, output }) {
-	const decoder = new TextDecoder();
-	let listening = null;
-	const stop = () => {
-		if (listening !== null) input.off("data", listening);
-		listening = null;
-	};
-	return {
-		question(query, answer) {
-			output.write(query);
-			const typed = [];
-			listening = (chunk) => {
-				for (const key of typeof chunk === "string" ? chunk : decoder.decode(chunk)) {
-					if (ENTER.has(key)) {
-						output.write("\\r\\n");
-						stop();
-						answer(typed.join(""));
-						return;
-					}
-					if (BACKSPACE.has(key)) {
-						if (typed.pop() !== void 0) output.write("\\b \\b");
-					} else if (key >= " ") {
-						typed.push(key);
-						output.write(key);
-					}
-				}
-			};
-			input.on("data", listening);
-		},
-		close: stop
-	};
-}
-//#endregion
-//#region src/node/prompt.ts
-/**
-* node:prompt — readline-backed \`PromptInput\` for use with the prompt
-* renderable in a Node runtime.
-*
-* [LAW:locality-or-seam] \`node:readline\` lives only here, on the node side
-* of the API boundary. The main barrel stays browser-safe; consumers that
-* want interactive prompts in Node opt in by importing \`nodeAsk\` and
-* passing it as the input capability:
-*
-*     import { Prompt } from "@promptctl/rich-js";
-*     import { nodeAsk } from "@promptctl/rich-js/node/prompt";
-*     const answer = await Prompt.ask("What's your name?", nodeAsk);
-*     // or with options:
-*     const choice = await Prompt.ask("Pick one", nodeAsk, { choices: ["a", "b"] });
-*
-* [LAW:single-enforcer] One readline interface per \`nodeAsk\` call —
-* created, asked, closed. No shared \`rl\` across prompts, no listener-leak
-* pitfalls when callers stack prompts in a loop.
-*/
-var nodeAsk = (prompt) => new Promise((resolve) => {
-	const rl = createInterface({
-		input: process.stdin,
-		output: process.stdout
-	});
-	rl.question(prompt, (answer) => {
-		rl.close();
-		resolve(answer);
-	});
-});
-//#endregion
-//#region node_modules/ansi-regex/index.js
+const n=`//#region node_modules/ansi-regex/index.js
 function ansiRegex({ onlyFirst = false } = {}) {
 	return new RegExp(\`(?:\\\\u001B\\\\][\\\\s\\\\S]*?(?:\\\\u0007|\\\\u001B\\\\u005C|\\\\u009C))|[\\\\u001B\\\\u009B][[\\\\]()#;?]*(?:\\\\d{1,4}(?:[;:]\\\\d{0,4})*)?[\\\\dA-PR-TZcf-nq-uy=><~]\`, onlyFirst ? void 0 : "g");
 }
@@ -983,6 +901,17 @@ function cellCount(n) {
 	return n > 0 ? Math.floor(n) : 0;
 }
 /**
+* Pads or crops a string to exactly \`totalWidth\` terminal cells.
+* Invariant: cellLen(setCellSize(text, n)) === n (unless n is 0)
+*/
+function setCellSize(text, totalWidth) {
+	if (totalWidth === 0) return "";
+	const currentWidth = cellLen(text);
+	if (currentWidth === totalWidth) return text;
+	if (currentWidth < totalWidth) return text + " ".repeat(totalWidth - currentWidth);
+	return cropToWidth(text, totalWidth);
+}
+/**
 * Splits text at a cell position. Returns [left, right].
 * When the position falls mid-wide-character, the left side is padded
 * to reach exactly \`position\` cells. The wide char remains in the right side.
@@ -1073,6 +1002,19 @@ function cellStepFrom(text, startCU, cap) {
 function nextCodePoint(s, cu) {
 	if (cu >= s.length) return asCodePoint(s.length);
 	return asCodePoint(cu + (s.codePointAt(cu) > 65535 ? 2 : 1));
+}
+function cropToWidth(text, targetWidth) {
+	let width = 0;
+	let i = 0;
+	for (const char of text) {
+		const charWidth = cellLen(char);
+		if (width + charWidth > targetWidth) break;
+		width += charWidth;
+		i += char.length;
+	}
+	const cropped = text.slice(0, i);
+	const diff = targetWidth - width;
+	return diff > 0 ? cropped + " ".repeat(diff) : cropped;
 }
 //#endregion
 //#region src/themes/palette.ts
@@ -2930,11 +2872,275 @@ function stylesEqual(a, b) {
 	return a.equals(b);
 }
 //#endregion
+//#region src/core/box.ts
+/**
+* Box-drawing character sets for borders and table grids.
+*
+* A style is declared as an 8x4 character grid — one line per row a table can
+* draw, one column per position within that row:
+*
+*     ┌─┬┐   top border
+*     │ ││   header content
+*     ├─┼┤   header separator
+*     │ ││   body content
+*     ├─┼┤   row separator
+*     ├─┼┤   footer separator
+*     │ ││   footer content
+*     └─┴┘   bottom border
+*
+* [LAW:one-source-of-truth] The grid is the shape the reference implementation
+* (Python Rich's \`box.py\`) publishes these glyphs in, so a constant below can
+* be diffed against it character for character. The eighteen named fields this
+* replaced were a second, differently-shaped map of the same territory, and it
+* had drifted: seven of the nineteen constants carried wrong glyphs, and the
+* field named \`mid\` held the reference's line 3 while the reference's \`mid_*\`
+* is line 4 — so reading the reference name-for-name swapped a separator for a
+* content row. Named row fields are gone for that reason; a row is reached by
+* what it is (\`getRow\`, \`getContentChars\`), never by a name that can be
+* mismatched to a line.
+*/
+var GRID_ROWS = 8;
+var GRID_COLUMNS = 4;
+/**
+* A grid a terminal without unicode support can already draw as written.
+*
+* [LAW:one-source-of-truth] Derived from the grid rather than declared per
+* constant the way the reference's \`ascii=True\` is. A \`Box\` is wholly its grid,
+* so the grid already answers this; a second, hand-written answer could
+* disagree with it. It also reaches boxes no constant can speak for —
+* \`safeSubstitute\` builds a fresh \`Box\` from an edited grid, and a flag carried
+* on the shipped constants would say nothing about that one.
+*/
+var ASCII_GRID = /^[\\x00-\\x7F]*$/;
+/** Corners that a legacy Windows terminal cannot draw, and their square kin. */
+var SAFE_SUBSTITUTIONS = {
+	"╭": "┌",
+	"╮": "┐",
+	"╰": "└",
+	"╯": "┘"
+};
+var edgeOf = (row) => ({
+	left: row[0],
+	horizontal: row[1],
+	cross: row[2],
+	right: row[3]
+});
+var contentOf = (row) => ({
+	left: row[0],
+	vertical: row[2],
+	right: row[3]
+});
+var Box = class Box {
+	top;
+	bottom;
+	grid;
+	ascii;
+	headContent;
+	headSeparator;
+	bodyContent;
+	rowSeparator;
+	footSeparator;
+	footContent;
+	/**
+	* [LAW:parse-dont-validate] The one crossing between a grid string and box
+	* glyphs. A \`Box\` cannot exist without eight rows of four characters, so no
+	* consumer below ever re-checks the shape of the data it reads.
+	*/
+	constructor(grid) {
+		const lines = grid.split("\\n");
+		if (lines.length !== GRID_ROWS || lines.some((line) => Array.from(line).length !== GRID_COLUMNS) || lines.some((line) => cellLen(line) !== GRID_COLUMNS)) throw new Error(\`A box grid is \${GRID_ROWS} lines of \${GRID_COLUMNS} single-cell characters; got \${lines.length} line(s) measuring \` + lines.map((line) => \`\${Array.from(line).length}/\${cellLen(line)}\`).join(", ") + " characters/cells");
+		const rows = lines.map((line) => Array.from(line));
+		this.grid = grid;
+		this.ascii = ASCII_GRID.test(grid);
+		this.top = edgeOf(rows[0]);
+		this.headContent = contentOf(rows[1]);
+		this.headSeparator = edgeOf(rows[2]);
+		this.bodyContent = contentOf(rows[3]);
+		this.rowSeparator = edgeOf(rows[4]);
+		this.footSeparator = edgeOf(rows[5]);
+		this.footContent = contentOf(rows[6]);
+		this.bottom = edgeOf(rows[7]);
+	}
+	/**
+	* Renders the top border row for given column widths.
+	*/
+	getTop(widths, style, edge = true) {
+		return this.getEdge(widths, this.top, style, edge);
+	}
+	/**
+	* Renders the separator drawn *above* a row at \`level\` — the head separator
+	* under the header, the row separator between body rows, the foot separator
+	* above the footer.
+	*/
+	getRow(widths, level, style, edge = true) {
+		return this.getEdge(widths, this.getRowChars(level), style, edge);
+	}
+	/**
+	* The verticals that frame a content row at \`level\` — the counterpart to
+	* \`getRow\`, which draws the separator between two such rows.
+	*/
+	getContentChars(level) {
+		switch (level) {
+			case "head": return this.headContent;
+			case "row":
+			case "mid": return this.bodyContent;
+			case "foot": return this.footContent;
+		}
+	}
+	/**
+	* Renders the bottom border row.
+	*/
+	getBottom(widths, style, edge = true) {
+		return this.getEdge(widths, this.bottom, style, edge);
+	}
+	/**
+	* The box to draw with when the platform cannot render this one as written.
+	*
+	* \`asciiOnly\` gives up a box that spends non-ASCII glyphs for \`ASCII\`, and
+	* leaves the four already-ASCII styles as they are — a caller that chose
+	* MARKDOWN or ASCII_DOUBLE_HEAD asked for that frame and it is already
+	* drawable, so answering with \`ASCII\` would trade a frame the terminal
+	* supports for a different one it equally supports. \`safe\` squares off the
+	* rounded corners a legacy Windows terminal draws as blanks.
+	*/
+	substitute(options = {}) {
+		if (options.asciiOnly && !this.ascii) return ASCII;
+		if (options.safe) return this.safeSubstitute();
+		return this;
+	}
+	safeSubstitute() {
+		return new Box(Array.from(this.grid, (char) => SAFE_SUBSTITUTIONS[char] ?? char).join(""));
+	}
+	/**
+	* The nearest box that spends no special glyphs on a header — what a table
+	* with \`showHeader: false\` draws with. A box whose head row already matches
+	* its body is its own answer, so this is the identity for fourteen of the
+	* nineteen shipped styles.
+	*
+	* It stands beside \`substitute\` rather than joining it because the two ask
+	* unrelated questions: \`substitute\` asks what the *platform* can draw, this
+	* asks what the *table* contains. Nothing correlates them, so a caller that
+	* wants both wants both, and a shared options bag would only multiply the
+	* combinations either one has to reason about. [LAW:no-mode-explosion]
+	*
+	* [LAW:types-are-the-program] The relation is keyed on the grid, not on
+	* object identity as the reference's dict is. A \`Box\` is wholly determined by
+	* its grid — that is what the constructor takes and all eight rows derive
+	* from — so two boxes with one grid must answer this alike. Identity keying
+	* would say otherwise the moment a box arrived by any route but the shipped
+	* constant, and \`safeSubstitute\` above builds exactly such a box: a fresh
+	* instance carrying an unchanged grid.
+	*/
+	plainHeaded() {
+		return PLAIN_HEADED_SUBSTITUTIONS.find(([headed]) => headed.grid === this.grid)?.[1] ?? this;
+	}
+	/**
+	* [LAW:dataflow-not-control-flow] Every full-width rule the box can draw is
+	* this one loop; which rule it is arrives as four characters, not a branch.
+	*/
+	getEdge(widths, chars, style, edge) {
+		const segments = [];
+		if (edge) segments.push(new Segment(chars.left, style));
+		for (let i = 0; i < widths.length; i++) {
+			if (i > 0) segments.push(new Segment(chars.cross, style));
+			segments.push(new Segment(chars.horizontal.repeat(widths[i]), style));
+		}
+		if (edge) segments.push(new Segment(chars.right, style));
+		segments.push(Segment.line());
+		return segments;
+	}
+	getRowChars(level) {
+		switch (level) {
+			case "head": return this.headSeparator;
+			case "row": return this.rowSeparator;
+			case "foot": return this.footSeparator;
+			case "mid": return {
+				left: this.bodyContent.left,
+				horizontal: " ",
+				cross: this.bodyContent.vertical,
+				right: this.bodyContent.right
+			};
+		}
+	}
+};
+var ASCII = new Box("+--+\\n| ||\\n|-+|\\n| ||\\n|-+|\\n|-+|\\n| ||\\n+--+");
+var ASCII2 = new Box("+-++\\n| ||\\n+-++\\n| ||\\n+-++\\n+-++\\n| ||\\n+-++");
+var ASCII_DOUBLE_HEAD = new Box("+-++\\n| ||\\n+=++\\n| ||\\n+-++\\n+-++\\n| ||\\n+-++");
+var SQUARE = new Box("┌─┬┐\\n│ ││\\n├─┼┤\\n│ ││\\n├─┼┤\\n├─┼┤\\n│ ││\\n└─┴┘");
+var SQUARE_DOUBLE_HEAD = new Box("┌─┬┐\\n│ ││\\n╞═╪╡\\n│ ││\\n├─┼┤\\n├─┼┤\\n│ ││\\n└─┴┘");
+var MINIMAL = new Box("  ╷ \\n  │ \\n╶─┼╴\\n  │ \\n╶─┼╴\\n╶─┼╴\\n  │ \\n  ╵ ");
+var MINIMAL_HEAVY_HEAD = new Box("  ╷ \\n  │ \\n╺━┿╸\\n  │ \\n╶─┼╴\\n╶─┼╴\\n  │ \\n  ╵ ");
+var MINIMAL_DOUBLE_HEAD = new Box("  ╷ \\n  │ \\n ═╪ \\n  │ \\n ─┼ \\n ─┼ \\n  │ \\n  ╵ ");
+new Box("    \\n    \\n ── \\n    \\n    \\n ── \\n    \\n    ");
+new Box("    \\n    \\n ── \\n    \\n    \\n    \\n    \\n    ");
+new Box("    \\n    \\n ━━ \\n    \\n    \\n ━━ \\n    \\n    ");
+new Box(" ── \\n    \\n ── \\n    \\n ── \\n ── \\n    \\n ── ");
+var ROUNDED = new Box("╭─┬╮\\n│ ││\\n├─┼┤\\n│ ││\\n├─┼┤\\n├─┼┤\\n│ ││\\n╰─┴╯");
+new Box("┏━┳┓\\n┃ ┃┃\\n┣━╋┫\\n┃ ┃┃\\n┣━╋┫\\n┣━╋┫\\n┃ ┃┃\\n┗━┻┛");
+new Box("┏━┯┓\\n┃ │┃\\n┠─┼┨\\n┃ │┃\\n┠─┼┨\\n┠─┼┨\\n┃ │┃\\n┗━┷┛");
+var HEAVY_HEAD = new Box("┏━┳┓\\n┃ ┃┃\\n┡━╇┩\\n│ ││\\n├─┼┤\\n├─┼┤\\n│ ││\\n└─┴┘");
+new Box("╔═╦╗\\n║ ║║\\n╠═╬╣\\n║ ║║\\n╠═╬╣\\n╠═╬╣\\n║ ║║\\n╚═╩╝");
+new Box("╔═╤╗\\n║ │║\\n╟─┼╢\\n║ │║\\n╟─┼╢\\n╟─┼╢\\n║ │║\\n╚═╧╝");
+new Box("    \\n| ||\\n|-||\\n| ||\\n|-||\\n|-||\\n| ||\\n    ");
+/**
+* Boxes whose header glyphs differ from their body's, paired with the kin that
+* draws the same frame without them. Transcribed from the reference's
+* \`PLAIN_HEADED_SUBSTITUTIONS\`; the fourteen styles absent here already draw a
+* plain head, and \`plainHeaded\` returns them unchanged.
+*/
+var PLAIN_HEADED_SUBSTITUTIONS = [
+	[HEAVY_HEAD, SQUARE],
+	[SQUARE_DOUBLE_HEAD, SQUARE],
+	[MINIMAL_HEAVY_HEAD, MINIMAL],
+	[MINIMAL_DOUBLE_HEAD, MINIMAL],
+	[ASCII_DOUBLE_HEAD, ASCII2]
+];
+//#endregion
 //#region src/core/protocol.ts
 /**
 * Rendering protocol interfaces — Renderable, Measurable, RenderOptions.
 * [LAW:one-source-of-truth] These interfaces are the single authority for the rendering contract.
 */
+/**
+* The budget a renderable hands the one child filling its space: its own, less
+* the \`rows\` it draws itself, and of the same kind.
+*/
+function insetHeight(height, rows) {
+	return height && {
+		rows: cellCount(height.rows - rows),
+		exact: height.exact
+	};
+}
+/**
+* The budget a renderable hands each of several children it stacks: its rows,
+* as a ceiling.
+*/
+function stackedHeight(height) {
+	return height && {
+		rows: cellCount(height.rows),
+		exact: false
+	};
+}
+/**
+* The rows a region holds, parsed as a cell count, or \`undefined\` when there
+* is no region to fill: a ceiling, no budget, or a region of \`Infinity\` rows,
+* which names no count — as an unbounded width resolves to a natural one in
+* \`withBoundedWidth\`.
+*/
+function regionRows(height) {
+	return height?.exact && height.rows !== Infinity ? cellCount(height.rows) : void 0;
+}
+/**
+* What came back from a child, held to the region \`height\` names — blank rows
+* padded below, overflow cropped from the bottom — or left at its own height
+* when \`height\` is no region. This is the shaping a region's setter owes.
+*/
+function fitHeight(lines, height) {
+	const rows = regionRows(height) ?? lines.length;
+	const fitted = lines.slice(0, rows);
+	while (fitted.length < rows) fitted.push([]);
+	return fitted;
+}
 /**
 * The style a \`string | Style\` stands for in this render.
 *
@@ -3021,6 +3227,58 @@ function withBoundedWidth(options, self) {
 function isRenderable(obj) {
 	return typeof obj === "object" && obj !== null && "render" in obj && typeof obj.render === "function";
 }
+function isMeasurable(obj) {
+	return typeof obj === "object" && obj !== null && "measure" in obj && typeof obj.measure === "function";
+}
+//#endregion
+//#region src/core/measure.ts
+/**
+* Measurement — min/max cell width calculation for renderables.
+*/
+var Measurement = class Measurement {
+	minimum;
+	maximum;
+	constructor(minimum, maximum) {
+		this.minimum = minimum;
+		this.maximum = maximum;
+	}
+	get span() {
+		return this.maximum - this.minimum;
+	}
+	/**
+	* A range with no cell meaning becomes one with the nearest meaning there is:
+	* negative floors to zero, an inverted pair collapses to its ceiling, and NaN
+	* reads as zero cells the same way \`cellCount\` reads it.
+	*
+	* NaN and Infinity are not treated alike here, and the difference is the whole
+	* point. \`Infinity\` is a maximum a renderable means — \`Table\` reports it when
+	* a column asks for every cell there is, and \`withBoundedWidth\` throws on it
+	* so a caller learns their offer was unanswerable. Flooring it to zero would
+	* turn that loud failure into a table measured at no width at all.
+	*/
+	normalize() {
+		const cells = (n) => Number.isNaN(n) ? 0 : n;
+		const min = Math.max(0, Math.min(cells(this.minimum), cells(this.maximum)));
+		const max = Math.max(0, cells(this.maximum));
+		return new Measurement(min, max);
+	}
+	withMaximum(width) {
+		return new Measurement(Math.min(this.minimum, width), Math.min(this.maximum, width));
+	}
+	withMinimum(width) {
+		const min = Math.max(this.minimum, width);
+		const max = Math.max(this.maximum, min);
+		return new Measurement(min, max);
+	}
+	clamp(minWidth, maxWidth) {
+		return new Measurement(Math.min(Math.max(this.minimum, minWidth), maxWidth), Math.min(Math.max(this.maximum, minWidth), maxWidth));
+	}
+	static get(options, measurable) {
+		if (options.maxWidth < 1) return new Measurement(0, 0);
+		const { minimum, maximum } = measurable.measure(options);
+		return new Measurement(minimum, Math.min(maximum, options.maxWidth)).normalize();
+	}
+};
 //#endregion
 //#region src/core/wrap.ts
 /**
@@ -5704,6 +5962,15 @@ function embeddedText(content) {
 	return text;
 }
 /**
+* Caller content as something an embedding site can render. A non-text
+* \`Renderable\` (a nested \`Panel\` or \`Table\`) passes through: it carries no
+* \`end\` to clear and no markup to parse. Everything else is \`embeddedText\`.
+*/
+function embed(content) {
+	if (!(content instanceof RichText) && typeof content === "object" && content !== null && "render" in content) return content;
+	return embeddedText(content);
+}
+/**
 * Caller content set into a line it shares with other drawing — a panel's
 * title or subtitle in its border, a rule's title — as one line of segments:
 * a space either side, its own styles over \`base\`. The caller cuts it to the
@@ -6074,60 +6341,677 @@ var Console = class {
 	}
 };
 //#endregion
-//#region src/renderables/prompt.ts
+//#region src/renderables/padding.ts
 /**
-* Prompt — interactive prompts for user input.
+* Parses the shapes a caller may write padding in — one number, a vertical/
+* horizontal pair, or all four sides — into the four-sided form every
+* renderable indexes by, flooring each side at zero.
 *
-* [LAW:locality-or-seam] The renderable owns prompt logic (display, choice
-* validation, default fallback, retry loop) — but not where the answer comes
-* from. The input source is a required \`PromptInput\` capability passed at the
-* call site. Node consumers pass \`nodeAsk\` from
-* \`@promptctl/rich-js/node/prompt\`; tests pass a fake; the browser bundle
-* gets the classes without dragging \`node:readline\` into the main barrel.
-*
-* [LAW:types-are-the-program] The \`input: PromptInput\` parameter is
-* positional and required on every \`*.ask()\` static — not an optional in
-* \`PromptOptions\`. The previous shape allowed \`Prompt.ask("name?")\` at the
-* type level and threw at runtime; the new shape makes the missing-capability
-* state unrepresentable to TS callers.
-*
-* A trust-boundary \`typeof === "function"\` check remains because the public
-* API surface is reachable from JS (no compile-time types) and from
-* \`any\`-typed TS callers. The check makes the failure *diagnostic* (points
-* the caller at the node helper), not gatekeep-against-bugs — TS users
-* never see it because the type already forbids the bad state.
+* [LAW:parse-dont-validate] This is the one crossing between the public
+* padding vocabulary and the internal tuple, which is why the floor lives
+* here and nowhere downstream: past this point \`" ".repeat(left)\` is safe in
+* any renderable without asking what the caller passed. A negative side used
+* to reach the renderers, where \`Panel\` drew content rows wider than its own
+* border and \`Table\` threw outright.
 */
-function ask(promptText, input) {
-	if (typeof input !== "function") throw new TypeError("Prompt: \`input\` must be a \`PromptInput\` function. Pass \`nodeAsk\` from \`@promptctl/rich-js/node/prompt\` for Node, or supply a custom \`PromptInput\` for tests/browsers.");
-	return input(renderMarkup(promptText).plain + " ");
+function normalizePadding(padding) {
+	const side = (n) => Number.isFinite(n) ? cellCount(n) : 0;
+	const sides = typeof padding === "number" ? [
+		padding,
+		padding,
+		padding,
+		padding
+	] : padding.length === 2 ? [
+		padding[0],
+		padding[1],
+		padding[0],
+		padding[1]
+	] : padding;
+	return [
+		side(sides[0]),
+		side(sides[1]),
+		side(sides[2]),
+		side(sides[3])
+	];
 }
-var Prompt = class {
-	static async ask(promptText, input, options) {
-		const showDefault = options?.showDefault !== false;
-		const showChoices = options?.showChoices !== false;
-		let display = promptText;
-		if (showChoices && options?.choices) display += \` [\${options.choices.join("/")}]\`;
-		if (showDefault && options?.default !== void 0) display += \` (\${options.default})\`;
-		display += ":";
-		while (true) {
-			const value = (await ask(display, input)).trim();
-			if (value === "" && options?.default !== void 0) return options.default;
-			if (options?.choices) {
-				const caseSensitive = options.caseSensitive !== false;
-				const match = options.choices.find((c) => caseSensitive ? c === value : c.toLowerCase() === value.toLowerCase());
-				if (match) return match;
+//#endregion
+//#region src/renderables/panel.ts
+/**
+* Panel — a bordered box that wraps content, with optional title and subtitle.
+*/
+function layoutPanel(outerWidth, padding) {
+	const [, padRightWanted, , padLeftWanted] = padding;
+	let budget = cellCount(outerWidth);
+	const take = (want) => {
+		const got = Math.min(want, budget);
+		budget -= got;
+		return got;
+	};
+	const left = take(1);
+	const right = take(1);
+	const firstContentCell = take(1);
+	const padLeft = take(padLeftWanted);
+	const padRight = take(padRightWanted);
+	const contentWidth = firstContentCell + budget;
+	return {
+		left,
+		right,
+		padLeft,
+		contentWidth,
+		padRight,
+		spanWidth: padLeft + contentWidth + padRight
+	};
+}
+/**
+* Every cell of a panel that is not content canvas. Read off the geometry
+* rather than recomputed as \`2 + padLeft + padRight\`, because the two differ
+* exactly where this panel is squeezed: a width that cannot afford its right
+* frame column or its padding does not spend cells on them, and a measurement
+* that assumed it did would report a minimum larger than its own maximum.
+*/
+function frameOverhead(geometry) {
+	return geometry.left + geometry.right + geometry.padLeft + geometry.padRight;
+}
+/**
+* The style of text set into a border: its own when one was given, the
+* border's otherwise — the one rule for "what colour is the title text in".
+*/
+function borderTextStyle(options, own, border) {
+	return own === void 0 ? border : getStyle(options, own);
+}
+var Panel = class Panel {
+	renderable;
+	box;
+	title;
+	subtitle;
+	bottomRightAccessory;
+	expand;
+	style;
+	borderStyle;
+	titleStyle;
+	subtitleStyle;
+	width;
+	padding;
+	constructor(content, options) {
+		this.renderable = embed(content);
+		this.box = options?.box ?? ROUNDED;
+		this.title = options?.title;
+		this.subtitle = options?.subtitle;
+		this.bottomRightAccessory = options?.bottomRightAccessory;
+		this.expand = options?.expand !== false;
+		this.style = options?.style ?? NULL_STYLE;
+		this.borderStyle = options?.borderStyle ?? NULL_STYLE;
+		this.titleStyle = options?.titleStyle;
+		this.subtitleStyle = options?.subtitleStyle;
+		this.width = options?.width;
+		this.padding = normalizePadding(options?.padding ?? [
+			0,
+			1,
+			0,
+			1
+		]);
+	}
+	*render(rawOptions) {
+		const options = withBoundedWidth(rawOptions, this);
+		const box = options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box;
+		const borderStyle = getStyle(options, this.borderStyle);
+		const style = getStyle(options, this.style);
+		const border = borderStyle.isNull ? void 0 : borderStyle;
+		const contentStyle = style.isNull ? void 0 : style;
+		const geometry = layoutPanel(this._getPanelWidth(options), this.padding);
+		const [padTop, , padBottom] = this.padding;
+		const contentLines = this._renderContent(options, geometry.contentWidth);
+		yield* this._renderTopBorder(options, box, geometry, border);
+		for (let i = 0; i < padTop; i++) yield* this._renderRow(box, geometry, [], border, contentStyle);
+		for (const line of contentLines) yield* this._renderRow(box, geometry, line, border, contentStyle);
+		for (let i = 0; i < padBottom; i++) yield* this._renderRow(box, geometry, [], border, contentStyle);
+		yield* this._renderBottomBorder(options, box, geometry, border);
+	}
+	/**
+	* The wrapped renderable's lines, laid out on a canvas \`contentWidth\` cells
+	* wide. Below width 3 a panel is all frame and the canvas holds no lines —
+	* but the render still happens, because a \`bottomRightAccessory\` thunk
+	* fires at every width and reads state this render populates.
+	*/
+	_renderContent(options, contentWidth) {
+		const [padTop, , padBottom] = this.padding;
+		const height = insetHeight(options.height, 2 + padTop + padBottom);
+		const innerOptions = {
+			...options,
+			maxWidth: contentWidth,
+			height
+		};
+		const lines = fitHeight(Segment.splitLines([...this.renderable.render(innerOptions)]), height);
+		return contentWidth === 0 ? [] : lines;
+	}
+	/**
+	* One row of the panel body: frame column, span, frame column.
+	*
+	* [LAW:single-enforcer] \`adjustLineLength\` is the one place a width is
+	* decided here, and it runs twice against two different widths. The first
+	* pass crops content that rendered wider than the canvas it was handed (a
+	* \`Table\` at its natural width, say) back to the canvas, so an oversized
+	* child is trimmed rather than allowed to eat the right-hand padding. The
+	* second fills the rest of the span, which is the trailing padding and any
+	* shortfall in one stroke.
+	*/
+	*_renderRow(box, geometry, line, border, contentStyle) {
+		const frame = box.getContentChars("row");
+		yield new Segment(frame.left.repeat(geometry.left), border);
+		const content = Segment.adjustLineLength(line, geometry.contentWidth, contentStyle, false);
+		const span = [new Segment(" ".repeat(geometry.padLeft), contentStyle), ...content];
+		yield* Segment.adjustLineLength(span, geometry.spanWidth, contentStyle);
+		yield new Segment(frame.right.repeat(geometry.right), border);
+		yield Segment.line();
+	}
+	measure(rawOptions) {
+		const options = withCellWidth(rawOptions);
+		const declared = this._declaredWidth;
+		if (declared !== void 0) {
+			const width = Math.min(options.maxWidth, declared);
+			return {
+				minimum: width,
+				maximum: width
+			};
+		}
+		return this._fitRange(options);
+	}
+	/**
+	* The width this panel wants when nothing declared one for it: its content
+	* plus its own frame, both read off the division it will render against.
+	*
+	* [LAW:one-source-of-truth] \`measure\` and \`_getPanelWidth\` ask this same
+	* question, and each used to work it out itself — the same \`layoutPanel\`, the
+	* same \`frameOverhead\`, the same \`Math.min(maxWidth, maximum + overhead)\`,
+	* written twice. That is the pattern \`_declaredWidth\` below was extracted to
+	* stop, left standing for the fit case; changing how overhead is derived in
+	* one copy is all it would take to put \`measure\` and \`render\` back into the
+	* disagreement this epic spent itself closing.
+	*/
+	_fitRange(options) {
+		const geometry = layoutPanel(options.maxWidth, this.padding);
+		const overhead = frameOverhead(geometry);
+		if (isMeasurable(this.renderable)) {
+			const innerOptions = {
+				...options,
+				maxWidth: geometry.contentWidth
+			};
+			const measurement = Measurement.get(innerOptions, this.renderable);
+			const maximum = Math.min(options.maxWidth, measurement.maximum + overhead);
+			return {
+				minimum: Math.min(measurement.minimum + overhead, maximum),
+				maximum
+			};
+		}
+		return {
+			minimum: Math.min(overhead, options.maxWidth),
+			maximum: options.maxWidth
+		};
+	}
+	/**
+	* The width this panel was told to be, as a count of cells.
+	*
+	* [LAW:one-source-of-truth] \`measure\` and \`_getPanelWidth\` answer the same
+	* question about the same field, so they read it from here. Answered
+	* separately, \`measure\` reported nine cells of content while \`render\` drew the
+	* declared twelve, and the parent that divided space from the range got a
+	* panel three cells wider than the share it granted.
+	*/
+	get _declaredWidth() {
+		return this.width === void 0 ? void 0 : cellCount(this.width);
+	}
+	_getPanelWidth(options) {
+		const declared = this._declaredWidth;
+		if (declared !== void 0) return Math.min(declared, options.maxWidth);
+		if (this.expand) return options.maxWidth;
+		return this._fitRange(options).maximum;
+	}
+	*_renderTopBorder(options, box, geometry, border) {
+		const innerBorderWidth = geometry.spanWidth;
+		const titleSeg = borderTextStyle(options, this.titleStyle, border);
+		const title = inlineLabel(this.title, options, titleSeg);
+		const titleWidth = Segment.getLineLength(title);
+		if (titleWidth === 0) {
+			yield new Segment(box.top.left.repeat(geometry.left), border);
+			yield new Segment(box.top.horizontal.repeat(innerBorderWidth), border);
+			yield new Segment(box.top.right.repeat(geometry.right), border);
+			yield Segment.line();
+			return;
+		}
+		yield new Segment(box.top.left.repeat(geometry.left), border);
+		if (titleWidth >= innerBorderWidth) yield* Segment.adjustLineLength(title, innerBorderWidth, titleSeg);
+		else {
+			const leftRuleWidth = Math.floor((innerBorderWidth - titleWidth) / 2);
+			const rightRuleWidth = innerBorderWidth - titleWidth - leftRuleWidth;
+			if (leftRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(leftRuleWidth), border);
+			yield* title;
+			if (rightRuleWidth > 0) yield new Segment(box.top.horizontal.repeat(rightRuleWidth), border);
+		}
+		yield new Segment(box.top.right.repeat(geometry.right), border);
+		yield Segment.line();
+	}
+	*_renderBottomBorder(options, box, geometry, border) {
+		const innerBorderWidth = geometry.spanWidth;
+		const accessory = this._resolveAccessory(this.bottomRightAccessory);
+		const accessoryDisplay = accessory === void 0 ? "" : typeof accessory === "string" ? \` \${accessory} \` : \` \${accessory.plain} \`;
+		const accessoryWidth = cellLen(accessoryDisplay);
+		const accessoryOwn = accessory instanceof RichText ? accessory.resolvedStyle(options) : NULL_STYLE;
+		const accessoryStyle = accessoryOwn.isNull ? border : accessoryOwn;
+		yield new Segment(box.bottom.left.repeat(geometry.left), border);
+		const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
+		const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
+		const subtitle = inlineLabel(this.subtitle, options, subtitleSeg);
+		const subtitleWidth = Segment.getLineLength(subtitle);
+		if (subtitleWidth === 0) {
+			if (centerWidth > 0) yield new Segment(box.bottom.horizontal.repeat(centerWidth), border);
+		} else if (subtitleWidth >= centerWidth) yield* Segment.adjustLineLength(subtitle, centerWidth, subtitleSeg);
+		else {
+			const leftRuleWidth = Math.floor((centerWidth - subtitleWidth) / 2);
+			const rightRuleWidth = centerWidth - subtitleWidth - leftRuleWidth;
+			if (leftRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(leftRuleWidth), border);
+			yield* subtitle;
+			if (rightRuleWidth > 0) yield new Segment(box.bottom.horizontal.repeat(rightRuleWidth), border);
+		}
+		if (accessoryWidth > 0) yield new Segment(accessoryWidth > innerBorderWidth ? setCellSize(accessoryDisplay, asCellCol(innerBorderWidth)) : accessoryDisplay, accessoryStyle);
+		yield new Segment(box.bottom.right.repeat(geometry.right), border);
+		yield Segment.line();
+	}
+	_resolveAccessory(a) {
+		if (a === void 0) return void 0;
+		if (typeof a === "function") return a();
+		return a;
+	}
+	static fit(content, options) {
+		return new Panel(content, {
+			...options,
+			expand: false
+		});
+	}
+};
+//#endregion
+//#region src/renderables/live.ts
+/**
+* Live — animates a portion of the terminal by continuously re-rendering.
+*
+* Two modes:
+* - **Inline** (default): clears and redraws N lines in the current scroll
+*   region. Good for spinners/progress bars below other output.
+* - **Alt-screen** (\`altScreen: true\`): enters the alternate screen buffer
+*   on start, cursor-homes on each refresh (no clear flicker), and restores
+*   the original buffer on stop. The screen is the frame's region, so a
+*   \`Layout\` fills it. Good for full-screen TUI apps.
+*/
+var Live = class {
+	_renderable;
+	_console;
+	_refreshPerSecond;
+	_autoRefresh;
+	_transient;
+	_verticalOverflow;
+	_altScreen;
+	_timer;
+	_lastLineCount;
+	_started;
+	_firstRefresh;
+	constructor(renderable, options) {
+		this._renderable = renderable;
+		this._console = options?.console ?? new Console({ forceTerminal: true });
+		this._refreshPerSecond = options?.refreshPerSecond ?? 4;
+		this._autoRefresh = options?.autoRefresh !== false;
+		this._transient = options?.transient ?? false;
+		this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
+		this._altScreen = options?.altScreen ?? false;
+		this._lastLineCount = 0;
+		this._started = false;
+		this._firstRefresh = true;
+	}
+	get console() {
+		return this._console;
+	}
+	get renderable() {
+		return this._renderable;
+	}
+	start() {
+		if (this._started) return;
+		this._started = true;
+		this._firstRefresh = true;
+		const stream = this._console.file;
+		if (this._altScreen) stream.write("\\x1B[?1049h");
+		this._writeCursorControl(false);
+		if (this._autoRefresh) {
+			const interval = Math.floor(1e3 / this._refreshPerSecond);
+			this._timer = setInterval(() => this.refresh(), interval);
+		}
+	}
+	stop() {
+		if (!this._started) return;
+		this._started = false;
+		if (this._timer) {
+			clearInterval(this._timer);
+			this._timer = void 0;
+		}
+		if (!this._transient) this.refresh();
+		else this._clearLast();
+		this._writeCursorControl(true);
+		if (this._altScreen) this._console.file.write("\\x1B[0m\\x1B[?1049l");
+	}
+	update(renderable, options) {
+		if (renderable !== void 0) this._renderable = renderable;
+		if (options?.refresh) this.refresh();
+	}
+	refresh() {
+		if (!this._renderable) return;
+		if (this._altScreen) {
+			this._console.file.write(this._firstRefresh ? "\\x1B[2J\\x1B[H" : "\\x1B[H");
+			this._firstRefresh = false;
+		} else this._clearLast();
+		const options = this._console.options;
+		const height = {
+			rows: options.height.rows,
+			exact: this._altScreen
+		};
+		const lines = Segment.splitLines(this._renderable.render({
+			...options,
+			height
+		}));
+		const displayLines = fitHeight(this._overflow(lines, height.rows), height);
+		const lead = this._altScreen ? "\\x1B[2K" : "";
+		const destination = this._console.destination;
+		const output = displayLines.map((line) => lead + segmentsToString(line, destination)).join("\\n");
+		this._console.file.write(this._altScreen ? output : output + "\\n");
+		this._lastLineCount = this._altScreen ? 0 : displayLines.length;
+	}
+	_overflow(lines, rows) {
+		if (this._verticalOverflow === "visible" || lines.length <= rows) return lines;
+		const kept = lines.slice(0, rows);
+		if (this._verticalOverflow === "ellipsis" && kept.length > 0) kept[kept.length - 1] = [new Segment("...")];
+		return kept;
+	}
+	_clearLast() {
+		if (this._lastLineCount > 0) {
+			const stream = this._console.file;
+			for (let i = 0; i < this._lastLineCount; i++) stream.write("\\x1B[1A\\x1B[2K");
+			this._lastLineCount = 0;
+		}
+	}
+	_writeCursorControl(show) {
+		this._console.file.write(show ? "\\x1B[?25h" : "\\x1B[?25l");
+	}
+};
+//#endregion
+//#region src/renderables/layout.ts
+/**
+* Layout — divides the screen into rectangular regions.
+*/
+/**
+* A share weight, not a cell count: fractions divide space meaningfully, so
+* this parses where \`cellCount\` would floor. A weight that cannot name a share
+* — negative, NaN, infinite — reads as zero, which already means "this pane
+* does not grow" and is filtered out before any division. That is what makes
+* every ratio reaching \`_distributeSpace\` and \`_rowBudgetFor\` positive.
+*/
+function growthRatio(ratio) {
+	return Number.isFinite(ratio) && ratio > 0 ? ratio : 0;
+}
+/**
+* A pane rendered into a region of \`rows\` and held to exactly that many lines,
+* or — with \`rows\` undefined — rendered under the layout's own budget, as a
+* ceiling, at its natural height.
+*
+* [LAW:single-enforcer] The region's setter shapes it (\`fitHeight\`). Forwarded
+* unshaped, a pane whose content ran short pulled every pane below it up, and
+* one that ran long pushed them down.
+*/
+function paneLines(pane, options, rows) {
+	const height = rows === void 0 ? stackedHeight(options.height) : {
+		rows,
+		exact: true
+	};
+	return fitHeight(Segment.splitLines(pane.render({
+		...options,
+		height
+	})), height);
+}
+var Layout = class {
+	name;
+	visible;
+	_ratio;
+	_size;
+	_minimumSize;
+	_renderable;
+	_children;
+	_splitDirection;
+	constructor(renderable, options) {
+		if (renderable !== void 0) this._renderable = embed(renderable);
+		this.name = options?.name;
+		this.ratio = options?.ratio ?? 1;
+		this.size = options?.size;
+		this.minimumSize = options?.minimumSize ?? 1;
+		this.visible = options?.visible !== false;
+		this._children = [];
+		this._splitDirection = void 0;
+	}
+	/**
+	* The three declared numbers, parsed on assignment rather than at the
+	* constructor. All three are public and a caller reaches them long after
+	* construction — \`layout.getByName("pane")!.ratio = -1\` walked straight past a
+	* constructor-only parse and put a negative weight back into the division that
+	* \`_rowBudgetFor\` and \`_distributeSpace\` are written to trust.
+	*
+	* [LAW:parse-dont-validate] The setter is the border, so the guarantee holds
+	* for the object's whole lifetime and nothing downstream re-checks. \`size\` and
+	* \`minimumSize\` are cell counts; \`ratio\` is a share weight and keeps its
+	* fractions. Absence is preserved rather than parsed: an undefined \`size\`
+	* selects a flex pane, and \`cellCount\` would read it as a declared zero.
+	*/
+	get ratio() {
+		return this._ratio;
+	}
+	set ratio(value) {
+		this._ratio = growthRatio(value);
+	}
+	get size() {
+		return this._size;
+	}
+	set size(value) {
+		this._size = value === void 0 ? void 0 : cellCount(value);
+	}
+	get minimumSize() {
+		return this._minimumSize;
+	}
+	set minimumSize(value) {
+		this._minimumSize = cellCount(value);
+	}
+	get children() {
+		return this._children;
+	}
+	/**
+	* Whether this layout draws \`_renderable\` or its children.
+	*
+	* [LAW:one-source-of-truth] \`render\` and \`_naturalWidth\` must answer this the
+	* same way. Asked separately they did not: \`_naturalWidth\` read it off the
+	* *visible* children, so a layout holding content and a single hidden child
+	* reported that content's width while \`render\` emitted nothing at all, and a
+	* fit-mode \`Panel\` framed twelve cells of air.
+	*/
+	get _isLeaf() {
+		return this._children.length === 0;
+	}
+	splitColumn(...layouts) {
+		this._children = layouts;
+		this._splitDirection = "column";
+	}
+	splitRow(...layouts) {
+		this._children = layouts;
+		this._splitDirection = "row";
+	}
+	update(renderable) {
+		this._renderable = embed(renderable);
+	}
+	getByName(name) {
+		if (this.name === name) return this;
+		for (const child of this._children) {
+			const found = child.getByName(name);
+			if (found) return found;
+		}
+	}
+	*render(rawOptions) {
+		if (!this.visible) return;
+		const options = withBoundedWidth(rawOptions, this);
+		if (this._isLeaf) {
+			if (this._renderable) yield* Segment.cropLines(this._renderable.render(options), options.maxWidth);
+			return;
+		}
+		const visibleChildren = this._children.filter((c) => c.visible);
+		if (visibleChildren.length === 0) return;
+		if (this._splitDirection === "row") yield* this._renderRow(visibleChildren, options);
+		else yield* this._renderColumn(visibleChildren, options);
+	}
+	*_renderColumn(children, options) {
+		const region = regionRows(options.height);
+		const shares = region === void 0 ? children.map((child) => child.size) : this._distributeSpace(children, region);
+		for (let i = 0; i < children.length; i++) for (const line of paneLines(children[i], options, shares[i])) {
+			yield* line;
+			yield Segment.line();
+		}
+	}
+	*_renderRow(children, options) {
+		const widths = this._distributeSpace(children, options.maxWidth);
+		const region = regionRows(options.height);
+		const cells = children.map((child, i) => ({
+			width: widths[i],
+			lines: paneLines(child, {
+				...options,
+				maxWidth: widths[i]
+			}, region)
+		}));
+		yield* Segment.mergeHorizontal(cells);
+	}
+	_distributeSpace(children, totalSpace) {
+		const sizes = new Array(children.length).fill(0);
+		let remaining = totalSpace;
+		const growing = [];
+		for (let i = 0; i < children.length; i++) {
+			const child = children[i];
+			if (child.size !== void 0) sizes[i] = Math.min(child.size, remaining);
+			else if (child.ratio === 0) sizes[i] = Math.min(child.minimumSize, remaining);
+			else {
+				growing.push(i);
 				continue;
 			}
-			return value;
+			remaining -= sizes[i];
 		}
+		if (growing.length > 0 && remaining > 0) {
+			const budget = remaining;
+			const totalRatio = growing.reduce((s, idx) => s + children[idx].ratio, 0);
+			for (const idx of growing) {
+				const child = children[idx];
+				const share = Math.floor(budget * child.ratio / totalRatio);
+				const allocated = Math.min(remaining, Math.max(child.minimumSize, share));
+				sizes[idx] = allocated;
+				remaining -= allocated;
+			}
+		}
+		return sizes;
+	}
+	/**
+	* The width this layout would take if nothing constrained it: its content's
+	* for a leaf, its children's laid out the way the split lays them out.
+	*
+	* A \`size\` counts only across a row, which is the one direction in which it
+	* is a width — down a column the same field is a height, and reading it as a
+	* width there would report a two-line pane as two cells wide.
+	*/
+	_naturalWidth(options) {
+		if (!this.visible) return 0;
+		if (this._isLeaf) {
+			if (this._renderable === void 0) return 0;
+			return isMeasurable(this._renderable) ? Measurement.get(options, this._renderable).maximum : options.maxWidth;
+		}
+		const visible = this._children.filter((c) => c.visible);
+		if (visible.length === 0) return 0;
+		const widths = visible.map((c) => c._naturalWidth(options));
+		if (this._splitDirection === "row") return this._rowBudgetFor(visible, widths);
+		let widest = 0;
+		for (const width of widths) widest = Math.max(widest, width);
+		return widest;
+	}
+	/**
+	* The budget at which \`_distributeSpace\` gives every child of a row at least
+	* the width it wants — the inverse of the ratio rule above, and the reason
+	* this is not the sum of those widths.
+	*
+	* [LAW:one-source-of-truth] A growing child receives \`floor(budget * ratio /
+	* totalRatio)\`, so to receive \`want\` cells it needs the budget to reach
+	* \`want * totalRatio / ratio\`, and one budget serves them all: the row needs
+	* the largest demand, never their total. Summed instead, a 1:1 split of
+	* "left" and "right" reported 9 and then rendered "right" into the 4 cells
+	* that \`floor(9/2)\` actually hands it.
+	*
+	* The panes that do not grow are paid first here for the same reason they
+	* are paid first there — and it is the reason this divides by no zero: a
+	* \`ratio\` of 0 never reaches the division, because a pane that does not grow
+	* demands nothing of a budget for growing.
+	*/
+	_rowBudgetFor(children, widths) {
+		const totalRatio = children.filter((c) => c.size === void 0 && c.ratio !== 0).reduce((sum, c) => sum + c.ratio, 0);
+		let pinned = 0;
+		let budget = 0;
+		for (const [i, child] of children.entries()) if (child.size !== void 0) pinned += child.size;
+		else if (child.ratio === 0) pinned += child.minimumSize;
+		else {
+			const want = Math.max(child.minimumSize, widths[i]);
+			budget = Math.max(budget, Math.ceil(want * totalRatio / child.ratio));
+		}
+		return pinned + budget;
+	}
+	measure(rawOptions) {
+		const parsed = withCellWidth(rawOptions);
+		const maximum = Math.min(this._naturalWidth(parsed), parsed.maxWidth);
+		return {
+			minimum: Math.min(this.minimumSize, maximum),
+			maximum
+		};
 	}
 };
 //#endregion
 //#region docs/__docs-example__.ts
 var console = new Console();
 {
-	const host = await Prompt.ask("Host", nodeAsk, { default: "localhost" });
-	console.print(\`Connecting to [bold cyan]\${host}[/]…\`);
+	const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+	[
+		"lint",
+		"test",
+		"build",
+		"package",
+		"deploy"
+	].map((name) => ({ name }));
+	new Panel("[bold]status[/]");
+	{
+		const layout = new Layout(void 0, { name: "root" });
+		layout.splitColumn(new Layout(new Panel("[bold magenta]deploy[/] [dim]·[/] production", {
+			expand: true,
+			borderStyle: "magenta"
+		}), { size: 3 }), new Layout(void 0, { name: "body" }));
+		const live = new Live(layout, {
+			altScreen: true,
+			console
+		});
+		live.start();
+		try {
+			for (let left = 5; left > 0; left--) {
+				layout.getByName("body").update(new Panel(\`[bold]Fullscreen[/] — back to the page in [yellow]\${left}[/]\`, {
+					expand: true,
+					borderStyle: "cyan"
+				}));
+				live.refresh();
+				await sleep(1e3);
+			}
+		} finally {
+			live.stop();
+		}
+		console.print("[green]:check_mark:[/] back on the main screen, where the page's output was");
+	}
 }
 //#endregion
 `;export{n as default};

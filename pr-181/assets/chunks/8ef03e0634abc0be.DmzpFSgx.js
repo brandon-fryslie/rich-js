@@ -7,17 +7,58 @@ const n=`//#region docs/.vitepress/node-readline.ts
 *
 * It is \`createInterface\` and \`question\` and nothing else, the part of readline
 * \`nodeAsk\` uses. The line discipline is a terminal's in cooked mode: printable
-* keys are echoed and collected, backspace takes back the last one, and Enter
-* ends the line and hands it over.
+* keys are echoed and collected, backspace takes back the last one, an escape
+* sequence (an arrow, Home, Delete) is read whole and ignored, and Enter — \`\\r\`,
+* \`\\n\`, or the two together — ends the line and hands it over.
 *
-* [LAW:composability] Like the simulated process it reads from, it knows
-* no docs page: the playground and the landing hero run programs through the
-* same bundle.
+* Keys typed after that Enter are the next line's, as they would be in the
+* stream a real terminal buffers: they wait on the input for the next question
+* asked of it, \`nodeAsk\`'s next interface included.
+*
+* [LAW:composability] Like the simulated process it reads from, it knows no
+* docs page: the playground and the landing hero run programs through the same
+* bundle.
 */
-var ENTER = /* @__PURE__ */ new Set(["\\r", "\\n"]);
-var BACKSPACE = /* @__PURE__ */ new Set(["", "\\b"]);
+var pending = /* @__PURE__ */ new WeakMap();
+/** A CSI sequence (\`ESC [ … final\`) or a two-key escape (\`ESC x\`), at the start of \`keys\`. */
+var ESCAPE = /^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|[^[])/;
+function step(keys) {
+	const key = String.fromCodePoint(keys.codePointAt(0));
+	if (key === "\\r") return {
+		kind: "enter",
+		length: keys[1] === "\\n" ? 2 : 1
+	};
+	if (key === "\\n") return {
+		kind: "enter",
+		length: 1
+	};
+	if (key === "" || key === "\\b") return {
+		kind: "erase",
+		length: 1
+	};
+	if (key === "\\x1B") {
+		const sequence = ESCAPE.exec(keys);
+		return sequence !== null ? {
+			kind: "skip",
+			length: sequence[0].length
+		} : { kind: "incomplete" };
+	}
+	return key >= " " ? {
+		kind: "type",
+		key,
+		length: key.length
+	} : {
+		kind: "skip",
+		length: key.length
+	};
+}
 function createInterface({ input, output }) {
-	const decoder = new TextDecoder();
+	const buffer = pending.get(input) ?? {
+		keys: "",
+		endedOnReturn: false,
+		decoder: new TextDecoder()
+	};
+	pending.set(input, buffer);
 	let listening = null;
 	const stop = () => {
 		if (listening !== null) input.off("data", listening);
@@ -27,23 +68,34 @@ function createInterface({ input, output }) {
 		question(query, answer) {
 			output.write(query);
 			const typed = [];
-			listening = (chunk) => {
-				for (const key of typeof chunk === "string" ? chunk : decoder.decode(chunk)) {
-					if (ENTER.has(key)) {
+			const consume = () => {
+				while (buffer.keys.length > 0) {
+					const next = step(buffer.keys);
+					if (next.kind === "incomplete") return;
+					const wasReturn = buffer.keys.slice(0, next.length) === "\\r";
+					const secondHalf = buffer.endedOnReturn && buffer.keys.startsWith("\\n");
+					buffer.keys = buffer.keys.slice(next.length);
+					buffer.endedOnReturn = next.kind === "enter" && wasReturn;
+					if (secondHalf) continue;
+					if (next.kind === "enter") {
 						output.write("\\r\\n");
 						stop();
 						answer(typed.join(""));
 						return;
 					}
-					if (BACKSPACE.has(key)) {
-						if (typed.pop() !== void 0) output.write("\\b \\b");
-					} else if (key >= " ") {
-						typed.push(key);
-						output.write(key);
+					if (next.kind === "erase" && typed.pop() !== void 0) output.write("\\b \\b");
+					if (next.kind === "type") {
+						typed.push(next.key);
+						output.write(next.key);
 					}
 				}
 			};
+			listening = (chunk) => {
+				buffer.keys += typeof chunk === "string" ? chunk : buffer.decoder.decode(chunk, { stream: true });
+				consume();
+			};
 			input.on("data", listening);
+			consume();
 		},
 		close: stop
 	};
@@ -6126,21 +6178,8 @@ var Prompt = class {
 //#region docs/__docs-example__.ts
 var console = new Console();
 {
-	const env = await Prompt.ask("Environment", nodeAsk, { choices: [
-		"dev",
-		"staging",
-		"prod"
-	] });
-	const level = await Prompt.ask("Log level", nodeAsk, {
-		choices: [
-			"DEBUG",
-			"INFO",
-			"WARN",
-			"ERROR"
-		],
-		caseSensitive: false
-	});
-	console.print(\`[bold]\${env}[/] at [yellow]\${level}[/]\`);
+	const host = await Prompt.ask("Host", nodeAsk, { default: "localhost" });
+	console.print(\`Connecting to [bold cyan]\${host}[/]…\`);
 }
 //#endregion
 `;export{n as default};

@@ -4,15 +4,22 @@
     {
       "version": "pr-181",
       "ref": "refs/pull/181/merge",
-      "sha": "f5687761cd57e2242e17969d74154162288b3186",
-      "timestamp": "2026-09-28T03:57:55.380Z",
+      "sha": "43d3ef41ee8a8402f9a7bba1f8081cbcc35b3f4c",
+      "timestamp": "2026-09-28T04:06:14.870Z",
       "commits": [
         {
-          "sha": "f5687761cd57e2242e17969d74154162288b3186",
+          "sha": "43d3ef41ee8a8402f9a7bba1f8081cbcc35b3f4c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:56:58-06:00",
-          "message": "Merge 4ae7f2c3d8b8044d59e36863103ca3b7d937b03e into ae651e94c0af6140258df9f3e82661ecb66c328a\n"
+          "timestamp": "2026-09-28T04:05:19Z",
+          "message": "Merge 3648d94a815824bc52ff0a47a9528715982bf914 into ae651e94c0af6140258df9f3e82661ecb66c328a\n"
+        },
+        {
+          "sha": "3648d94a815824bc52ff0a47a9528715982bf914",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:05:14-06:00",
+          "message": "fix(docs): the readline stand-in ignores escape sequences, keeps keys past an Enter, joins a split CRLF and streams UTF-8; lint checks it (rich-docs-examples-xuu.byg)\n"
         },
         {
           "sha": "4ae7f2c3d8b8044d59e36863103ca3b7d937b03e",
