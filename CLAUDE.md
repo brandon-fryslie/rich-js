@@ -43,7 +43,7 @@ That is the only list, and it is now checked. It used to be two hand-copied list
 
 The sidebar is split into one region per top-level nav tab (`guideSidebar`, `advancedSidebar`, Demos). A page belongs in the region whose tab should light up for it — `/protocol` is its own tab, so it lives outside `guideSidebar` and both tabs would highlight at once if it were folded in.
 
-On a page off `NOT_YET_MIGRATED` in `docs/.vitepress/example-runner.ts`, the docs build runs every TypeScript example whose marker says it runs at build time and writes its output under it, so such an example that fails to compile, throws or prints the wrong kind of output fails the build at its page and line. The marker words a fence may carry, and what each does, are `docs/.vitepress/example-markers.ts`.
+On a page off `NOT_YET_MIGRATED` in `docs/.vitepress/example-runner.ts`, the docs build runs every TypeScript example whose marker says it runs at build time and writes its output under it, so such an example that fails to compile, throws or prints the wrong kind of output fails the build at its page and line. The marker words a fence may carry, and what each does, are `docs/.vitepress/example-markers.ts`. A page off that list may carry no hand-drawn output — a bare, `text` or `ansi` fence reads as drawn output, so a block that holds something else names its language — and `test/docs/example-gate.test.ts` fails on one at its line; its header owns why the fence decides and not the contents.
 
 Run `npm run docs:build` before committing any documentation change. It is the dead-link gate and the Vue-interpolation gate; both failures are invisible in the source file and obvious in the build.
 
