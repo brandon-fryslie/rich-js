@@ -4,15 +4,22 @@
     {
       "version": "pr-180",
       "ref": "refs/pull/180/merge",
-      "sha": "b44c4860fd3114c45eafdaecfc00d0e6e6b49525",
-      "timestamp": "2026-09-28T03:36:31.712Z",
+      "sha": "028efc631e127c6cdce6c6b2de36e91c1933d3e2",
+      "timestamp": "2026-09-28T03:41:40.958Z",
       "commits": [
         {
-          "sha": "b44c4860fd3114c45eafdaecfc00d0e6e6b49525",
+          "sha": "028efc631e127c6cdce6c6b2de36e91c1933d3e2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:35:26-06:00",
-          "message": "Merge bb29b8de492f8ad929e28e4b912c3fa5ffbd5815 into 935fc3ba3dc4394559296cb6a59c3ef824817037\n"
+          "timestamp": "2026-09-28T03:41:00Z",
+          "message": "Merge ca2539648d5383f4c9d4f6a475b0295300745d12 into 935fc3ba3dc4394559296cb6a59c3ef824817037\n"
+        },
+        {
+          "sha": "ca2539648d5383f4c9d4f6a475b0295300745d12",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:40:55-06:00",
+          "message": "docs: review fixes — enum names in the attribute table, the export shown, deepData described, examples' own names explained, ensureDrawn drawn at 256 colours (rich-docs-examples-xuu.pt4)\n"
         },
         {
           "sha": "bb29b8de492f8ad929e28e4b912c3fa5ffbd5815",
