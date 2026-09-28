@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-185",
+      "ref": "refs/pull/185/merge",
+      "sha": "9825a6f383dc453ffa4bb0ebcd5245305151207a",
+      "timestamp": "2026-09-28T04:59:53.244Z",
+      "commits": [
+        {
+          "sha": "9825a6f383dc453ffa4bb0ebcd5245305151207a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:58:59-06:00",
+          "message": "Merge 74c7afb1846444089ce78432743a18c51d046a92 into 441694df49d14436b9f70611ec0a121542db94cd\n"
+        },
+        {
+          "sha": "74c7afb1846444089ce78432743a18c51d046a92",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:58:55-06:00",
+          "message": "docs: live examples share one bundled library per set of entry points instead of inlining it per program (rich-docs-examples-xuu.zze)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "441694df49d14436b9f70611ec0a121542db94cd",
