@@ -47,11 +47,22 @@ export type FromWorker =
   | { readonly kind: "settled"; readonly error: string | null };
 
 /**
- * How a run shows its program: `live`, as it runs; or `still`, one frame, the
- * screen as it stands once the program's body has settled, drawn at once and
- * then left alone, for a reader who asked for no motion.
+ * How a run shows its program: `live`, as it runs; or `still`, one frame drawn
+ * at once and then left alone, for a reader who asked for no motion. The frame
+ * is the screen as it stands once the program's body has settled, or
+ * `STILL_AFTER_MS` after the program first drew, whichever comes first, and
+ * the program is ended there.
  */
 export type RunMode = "live" | "still";
+
+/**
+ * How long a still frame waits after the program first draws. Waiting for the
+ * body alone leaves three kinds of example blank: one that loops until
+ * stopped, a prompt waiting on an answer nothing on screen asks for, and one
+ * whose body ends by leaving Live's alt screen or clearing a transient region,
+ * so the screen it settles on no longer shows what the example is about.
+ */
+const STILL_AFTER_MS = 1000;
 
 /** What the terminal is showing. */
 export type LiveState =
@@ -185,19 +196,31 @@ export class LiveTerminal {
     this.stop();
     this.screen.reset();
     const worker = new Worker(new URL("./live-worker.ts", import.meta.url), { type: "module" });
-    // A still frame is drawn in one write once the body settles: until then the
-    // bytes wait here, so no motion reaches the screen.
+    // A still frame is drawn in one write when it freezes: until then the bytes
+    // wait here, so no motion reaches the screen.
     const held: (string | Uint8Array)[] = [];
-    const show = mode === "live" ? (chunk: string | Uint8Array) => this.host.write(chunk) : (chunk: string | Uint8Array) => held.push(chunk);
     const flush = () => held.splice(0).forEach((chunk) => this.host.write(chunk));
+    // A message still queued from a run that has since ended belongs to no run.
+    const current = () => this.worker === worker;
+    const freeze = () => {
+      if (!current()) return;
+      flush();
+      this.end({ kind: "still" });
+    };
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const show =
+      mode === "live"
+        ? (chunk: string | Uint8Array) => this.host.write(chunk)
+        : (chunk: string | Uint8Array) => {
+            held.push(chunk);
+            deadline ??= setTimeout(freeze, STILL_AFTER_MS);
+          };
     const failed = (message: string) => {
       flush();
       // Red, on a line of its own, as a terminal shows a program's crash.
       this.host.write(`\n\x1b[31m${message}\x1b[0m\n`);
       this.end({ kind: "exited", code: 1 });
     };
-    // A message still queued from a run that has since ended belongs to no run.
-    const current = () => this.worker === worker;
     worker.onmessage = ({ data }: MessageEvent<FromWorker>) => {
       if (!current()) return;
       switch (data.kind) {
@@ -208,10 +231,7 @@ export class LiveTerminal {
           return this.end({ kind: "exited", code: data.code });
         case "settled":
           if (data.error !== null) return failed(`Uncaught ${data.error}`);
-          if (mode === "still") {
-            flush();
-            this.end({ kind: "still" });
-          }
+          if (mode === "still") freeze();
           return;
       }
     };
