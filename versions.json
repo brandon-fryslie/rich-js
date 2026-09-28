@@ -4,15 +4,22 @@
     {
       "version": "pr-176",
       "ref": "refs/pull/176/merge",
-      "sha": "20bb53ed896dd4c503ca901729ed7ad35d320ffa",
-      "timestamp": "2026-09-28T02:04:58.670Z",
+      "sha": "c4e17a8268014a58dcdb7116989d1e5f60df58b9",
+      "timestamp": "2026-09-28T02:09:34.875Z",
       "commits": [
         {
-          "sha": "20bb53ed896dd4c503ca901729ed7ad35d320ffa",
+          "sha": "c4e17a8268014a58dcdb7116989d1e5f60df58b9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:04:25-06:00",
-          "message": "Merge 970e8cb11dcd00b55b0ba706d5b809e48a47ab02 into c3d939546fd7373598936a1a3021d95e0c6af065\n"
+          "timestamp": "2026-09-28T02:09:00Z",
+          "message": "Merge e234707eb1b214e206b3e865a3b31cffb594d017 into c3d939546fd7373598936a1a3021d95e0c6af065\n"
+        },
+        {
+          "sha": "e234707eb1b214e206b3e865a3b31cffb594d017",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:08:56-06:00",
+          "message": "fix(docs): the example gate resolves a fence's language as VitePress does, and parses a page once (rich-docs-examples-xuu.wlm)\n"
         },
         {
           "sha": "970e8cb11dcd00b55b0ba706d5b809e48a47ab02",
