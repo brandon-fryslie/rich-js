@@ -16,9 +16,7 @@ import {
   docsExamplesPlugin,
   runPageExamples,
 } from "../../docs/.vitepress/example-runner.js";
-import MarkdownIt from "markdown-it";
-import container from "markdown-it-container";
-import { scanFences } from "../../docs/.vitepress/example-markers.js";
+import { PAGE_PARSER, scanFences } from "../../docs/.vitepress/example-markers.js";
 import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 
@@ -223,14 +221,14 @@ describe("a live block", { timeout: 30_000 }, () => {
     ["list item", ["- Run it:", "", "  ```ts", '  console.print("x");', "  ```"], 3],
     ["blockquote", ["> ```ts", '> console.print("x");', "> ```"], 1],
     ["::: code-group", ["::: code-group", "", "```ts [a.ts]", 'console.print("x");', "```", "", ":::"], 3],
+    ["::: v-pre", ["::: v-pre", "", "```ts live", 'console.print("x");', "```", "", ":::"], 3],
   ])("refuses an example inside a %s, naming its line", async (enclosure, lines, line) => {
     await expect(run(lines.join("\n"))).rejects.toThrow(`docs/fixture.md:${line}: an example inside a ${enclosure} cannot carry its output`);
   });
 
   it("puts the card of an example in a ::: container inside that container", async () => {
     const result = await run(["::: tip Placement", "", fence('console.print("x");'), "", ":::"].join("\n"));
-    const parser = new MarkdownIt({ html: true }).use(container, "any", { validate: () => true });
-    const cards = parser.parse(result, {}).filter((t) => t.type === "html_block" && t.content.includes("rich-example"));
+    const cards = PAGE_PARSER.parse(result, {}).filter((t) => t.type === "html_block" && t.content.includes("rich-example"));
     expect(cards.length).toBeGreaterThan(0);
     expect(cards.map((t) => t.level)).toEqual(cards.map(() => 1));
   });

@@ -28,7 +28,7 @@
  */
 
 import ts from "typescript";
-import type { Fence } from "./example-markers.js";
+import { frontmatterEnd, pageLines, type Fence } from "./example-markers.js";
 
 /** Written after a block completes. */
 export const BLOCK_END = "\u0000rich-example:end\u0000";
@@ -62,8 +62,8 @@ export interface ExampleContext {
  * read as something it is not.
  */
 export function exampleContext(page: string, markdown: string): ExampleContext | null {
-  const lines = markdown.split(/\r?\n/);
-  const end = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
+  const lines = pageLines(markdown);
+  const end = frontmatterEnd(lines);
   const keyAt = lines.slice(0, Math.max(end, 0)).findIndex((line) => /^exampleContext\s*:/.test(line));
   if (keyAt === -1) return null;
   if (!/^exampleContext:\s*\|\s*$/.test(lines[keyAt]!)) {

@@ -181,13 +181,27 @@ describe("scanFences", () => {
     const blocks = blocksOf(["> ```ts", "> a;", "> ```", "", "::: tip Placement", "", "```ts", "b;", "```", "", ":::", "", "```ts", "c;", "```"].join("\n"));
     expect(blocks.map((b) => [b.code, b.within])).toEqual([
       ["a;", ["blockquote"]],
-      ["b;", ["::: tip Placement"]],
+      ["b;", ["::: tip"]],
       ["c;", []],
     ]);
   });
 
+  it("reads a `:::` VitePress does not register as prose, as VitePress renders it", () => {
+    expect(blocksOf([":::", "", "```ts", "a;", "```", "", "::: aside", "", "```ts", "b;", "```"].join("\n")).map((b) => b.within)).toEqual([[], []]);
+  });
+
+  it("throws on a fence whose only closer is indented into code, as markdown reads it", () => {
+    expect(() => blocksOf(["```ts", "a;", "    ```"].join("\n"))).toThrow(/fixture\.md:1 opens a fence that is never closed/);
+  });
+
+  it("numbers lines as markdown does, a lone carriage return included", () => {
+    expect(blocksOf(["para", "two", "```ts", "a;", "```"].join("\r").replace("para\r", "para\n")).map((b) => [b.line, b.closeLine])).toEqual([[3, 5]]);
+  });
+
   it("reads nothing in the frontmatter as a fence, and keeps the page's line numbers", () => {
     expect(blocksOf(["---", "note: |", "  ```", "---", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
+    // gray-matter closes it at the first line that starts with `---`.
+    expect(blocksOf(["---", "note: |", "  ```", "--- ", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
   });
 
   it("reads a line inside another language's fence as that fence's content", () => {

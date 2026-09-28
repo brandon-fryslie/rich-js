@@ -39,7 +39,19 @@ import { decodeAnsi, osc8Sequences } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
 import type { Segment } from "../../src/index.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
-import { MARKERS, runsAtBuild, scanBlocks, scanFences, typescriptFences, type Block, type BuildMarker, type Fence } from "./example-markers.js";
+import {
+  MARKERS,
+  frontmatterEnd,
+  pageLines,
+  runsAtBuild,
+  scanBlocks,
+  scanFences,
+  typescriptFences,
+  type Block,
+  type BuildMarker,
+  type Enclosure,
+  type Fence,
+} from "./example-markers.js";
 import {
   MAIN_BARREL,
   buildLiveProgram,
@@ -334,25 +346,27 @@ async function liveProgram(compiler: ExampleCompiler, page: string, context: Exa
  * second author in a block the page owns.
  */
 function scriptLine(page: string, markdown: string, blocks: readonly Block[]): number {
-  const lines = markdown.split(/\r?\n/);
+  const lines = pageLines(markdown);
   // A `<script setup>` shown inside a fence, of any language, is code on the
   // page, not the page's script.
   const clash = lines.findIndex(
     (line, i) => /^<script\b[^>]*\bsetup\b/.test(line) && !blocks.some((b) => b.line <= i + 1 && i + 1 <= b.closeLine),
   );
   if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example cannot have its own <script setup>`);
-  return lines[0] === "---" ? lines.indexOf("---", 1) + 1 : 0;
+  return frontmatterEnd(lines) + 1;
 }
 
 /**
- * The card is HTML written at column 0 around its fence. A `:::` container
- * reads that as its own content, so the card sits inside it; a list item or a
- * blockquote is ended by it, and `::: code-group` builds its tabs from the
- * fences directly inside it. There the page is refused, naming the line.
+ * Where the card, HTML written at column 0 around its fence, cannot go. A list
+ * item or a blockquote is ended by it; `::: code-group` builds its tabs from
+ * the fences directly inside it; `::: v-pre` keeps Vue from compiling a live
+ * terminal. Every other container reads the card as its own content.
  */
+const CUTS_OFF: ReadonlySet<Enclosure> = new Set(["list item", "blockquote", "::: code-group", "::: v-pre"]);
+
 function refuseCutOff(fences: readonly Fence[]): void {
   for (const fence of fences) {
-    const cut = fence.within.find((enclosure) => !enclosure.startsWith(":::") || enclosure.startsWith("::: code-group"));
+    const cut = fence.within.find((enclosure) => CUTS_OFF.has(enclosure));
     if (cut !== undefined) {
       throw new Error(`docs/${fence.page}:${fence.line}: an example inside a ${cut} cannot carry its output; move it out`);
     }
@@ -396,7 +410,7 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
     return printed === null ? { kind: "nothing" } : { kind: "bytes", bytes: printed };
   };
 
-  const lines = markdown.split(/\r?\n/);
+  const lines = pageLines(markdown);
   // The widget: the fence, untouched for VitePress to highlight, and its output
   // beneath, both inside one element the theme draws as a single card. Every
   // piece of HTML stands between blank lines, because markdown's HTML block

@@ -89,11 +89,11 @@ const MARKER_BY_WORD: ReadonlyMap<string, Marker> = new Map(
 
 const TYPESCRIPT = new Set(["ts", "typescript"]);
 
-/**
- * A block a fence can sit in, named as the page writes it: a list item, a
- * blockquote, or a `:::` container with its info string (`::: tip Placement`).
- */
-export type Enclosure = "list item" | "blockquote" | `::: ${string}`;
+/** The `:::` containers VitePress registers; any other `:::` line is prose. */
+const CONTAINERS = ["tip", "info", "warning", "danger", "details", "raw", "v-pre", "code-group"] as const;
+
+/** A block a fence can sit in: a list item, a blockquote, or one of VitePress's containers. */
+export type Enclosure = "list item" | "blockquote" | `::: ${(typeof CONTAINERS)[number]}`;
 
 /** A fenced block of any language, where it sits on its page. */
 export interface Block {
@@ -128,8 +128,9 @@ export interface Fence {
 
 /**
  * The page's block structure as VitePress parses it: CommonMark with HTML
- * blocks, and `:::` containers, which VitePress registers by name and this
- * accepts under any name.
+ * blocks, and VitePress's containers, each matched on the first word of its
+ * info string as VitePress matches it. Only the block rules run; nothing here
+ * reads inline content.
  *
  * [LAW:one-source-of-truth] Where a fence is, and what it is inside, is the
  * parser's answer, not a second one worked out line by line. A line scanner
@@ -137,13 +138,34 @@ export interface Fence {
  * item, which markdown renders all the same: the runner, the symbol sweep and
  * the example gate all skipped it, and nothing said so.
  */
-const PARSER = new MarkdownIt({ html: true }).use(container, "any", { validate: () => true });
+export const PAGE_PARSER: MarkdownIt = CONTAINERS.reduce(
+  (md, name) => md.use(container, name),
+  new MarkdownIt({ html: true }),
+).use((md) => md.core.ruler.enableOnly(["normalize", "block"]));
 
-const ENCLOSURE: Readonly<Record<string, (info: string) => Enclosure>> = {
-  list_item_open: () => "list item",
-  blockquote_open: () => "blockquote",
-  container_any_open: (info) => `::: ${info.trim()}`,
+const ENCLOSURE: Readonly<Record<string, Enclosure>> = {
+  list_item_open: "list item",
+  blockquote_open: "blockquote",
+  ...Object.fromEntries(CONTAINERS.map((name) => [`container_${name}_open`, `::: ${name}`])),
 };
+
+/**
+ * A page's lines, split where markdown-it splits them: at `\r\n`, `\r` or
+ * `\n`. Every reader that numbers a page's lines numbers them this way, so a
+ * line markdown-it reports is the line every reader means.
+ */
+export function pageLines(markdown: string): string[] {
+  return markdown.split(/\r\n?|\n/);
+}
+
+/**
+ * The index of the line that closes the page's frontmatter, or -1 for a page
+ * with none. As VitePress's gray-matter reads it: opened by a first line of
+ * `---`, closed by the next line that starts with `---`.
+ */
+export function frontmatterEnd(lines: readonly string[]): number {
+  return lines[0] === "---" ? lines.findIndex((line, i) => i > 0 && line.startsWith("---")) : -1;
+}
 
 /**
  * Every fenced block on one page, of any language, in source order.
@@ -152,20 +174,21 @@ const ENCLOSURE: Readonly<Record<string, (info: string) => Enclosure>> = {
  * the end of its container, and everything after would be read as code.
  */
 export function scanBlocks(page: string, markdown: string): Block[] {
-  const lines = markdown.split(/\r?\n/);
+  const lines = pageLines(markdown);
   // Frontmatter is VitePress's to read, never markdown; blanked, so every line keeps its number.
-  const close = lines[0] === "---" ? lines.indexOf("---", 1) : -1;
+  const close = frontmatterEnd(lines);
   const body = lines.map((line, i) => (i <= close ? "" : line)).join("\n");
   // Every block open around the current token, each an enclosure or not one.
   const open: (Enclosure | null)[] = [];
   const blocks: Block[] = [];
-  for (const token of PARSER.parse(body, {})) {
-    if (token.nesting === 1) open.push(ENCLOSURE[token.type]?.(token.info) ?? null);
+  for (const token of PAGE_PARSER.parse(body, {})) {
+    if (token.nesting === 1) open.push(ENCLOSURE[token.type] ?? null);
     if (token.nesting === -1) open.pop();
     if (token.type !== "fence") continue;
     const [start, end] = token.map!;
-    const run = token.markup[0] === "`" ? "`" : "~";
-    if (!new RegExp(`^[\\s>]*\\${run}{${token.markup.length},}\\s*$`).test(lines[end - 1] ?? "") || end - 1 === start) {
+    // markdown-it's own answer: a closed fence spans its content lines plus two fence lines.
+    const code = token.content.replace(/\n$/, "");
+    if ((token.content === "" ? 0 : code.split("\n").length) !== end - start - 2) {
       throw new Error(`docs/${page}:${start + 1} opens a fence that is never closed`);
     }
     const [, written, attributes] = LANGUAGE.exec(token.info.trim()) as unknown as [string, string, string];
@@ -176,7 +199,7 @@ export function scanBlocks(page: string, markdown: string): Block[] {
       within: open.filter((enclosure) => enclosure !== null),
       language: written.replace(/-vue$/, "").toLowerCase(),
       attributes,
-      code: token.content.replace(/\n$/, ""),
+      code,
     });
   }
   return blocks;
