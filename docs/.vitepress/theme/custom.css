@@ -107,8 +107,17 @@
   overflow: hidden;
   /* The fragments' rows are drawn in the code font, tight enough that box
    * drawing joins up. `all:initial` shuts every other page rule out of them;
-   * this custom property is the one way in (src/core/export-html.ts). */
-  --rich-fragment-font: var(--vp-code-font-size) / 1.25 var(--rich-code-font-family);
+   * this custom property is the one way in (src/core/export-html.ts).
+   *
+   * Its size is the code size, or smaller where the card is too narrow for
+   * the example terminal's columns (config.ts sets --rich-example-columns):
+   * a row is that many cells of 0.602em, Menlo's and DejaVu Sans Mono's
+   * advance, plus 1em of padding each side, so the size that fits is the
+   * card's width over that many ems. Below 10px it stops shrinking and the
+   * output scrolls. A live terminal reads the same font, so it fits too. */
+  container-type: inline-size;
+  --rich-fragment-font: clamp(10px, 100cqw / (var(--rich-example-columns) * 0.602 + 2), var(--vp-code-font-size))
+    / 1.25 var(--rich-code-font-family);
 }
 
 .vp-doc .rich-example > div[class*='language-'] {
