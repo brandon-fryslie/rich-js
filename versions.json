@@ -4,15 +4,22 @@
     {
       "version": "pr-175",
       "ref": "refs/pull/175/merge",
-      "sha": "ee3257375c7ce38338c65502f88af15228ec94cf",
-      "timestamp": "2026-09-28T01:49:57.093Z",
+      "sha": "2f15e8e8791a1953dc96ea73771fefef4fb6c5dc",
+      "timestamp": "2026-09-28T01:56:15.941Z",
       "commits": [
         {
-          "sha": "ee3257375c7ce38338c65502f88af15228ec94cf",
+          "sha": "2f15e8e8791a1953dc96ea73771fefef4fb6c5dc",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T01:49:27Z",
-          "message": "Merge de8c2bbfb1d38888f1ab5d802a27834c13ee79b4 into 784d206505a713d9ca724f799b3b0c617c6e93fa\n"
+          "timestamp": "2026-09-28T01:55:46Z",
+          "message": "Merge 9f5e92394a3bbfec63ca8b6f7f544f1a35818d3b into 784d206505a713d9ca724f799b3b0c617c6e93fa\n"
+        },
+        {
+          "sha": "9f5e92394a3bbfec63ca8b6f7f544f1a35818d3b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T19:55:42-06:00",
+          "message": "fix(docs): a live program that fails to load leaves no terminal; a batched scroll acts on where the terminal is now (rich-docs-examples-xuu.0bc)\n"
         },
         {
           "sha": "de8c2bbfb1d38888f1ab5d802a27834c13ee79b4",
