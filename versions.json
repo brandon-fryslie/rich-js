@@ -4,15 +4,22 @@
     {
       "version": "pr-178",
       "ref": "refs/pull/178/merge",
-      "sha": "46b50dad27d5225665c39f4eb5f77a1fafc09a9a",
-      "timestamp": "2026-09-28T02:56:34.423Z",
+      "sha": "7f9af0fa1c7a86e38fa7df0e2d6f4698470550ef",
+      "timestamp": "2026-09-28T03:02:33.276Z",
       "commits": [
         {
-          "sha": "46b50dad27d5225665c39f4eb5f77a1fafc09a9a",
+          "sha": "7f9af0fa1c7a86e38fa7df0e2d6f4698470550ef",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:55:53-06:00",
-          "message": "Merge e82e95d22950a74e3053dc94259eab2f94401964 into e3cca5568120b7547d1200c737b93b207fbca0bd\n"
+          "timestamp": "2026-09-28T03:01:09Z",
+          "message": "Merge dece37d4b39259360f3b97111487cd6d2edbf6a1 into e3cca5568120b7547d1200c737b93b207fbca0bd\n"
+        },
+        {
+          "sha": "dece37d4b39259360f3b97111487cd6d2edbf6a1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:01:05-06:00",
+          "message": "docs(tables): the box-style row wraps at 75 columns, and the prose says so (rich-docs-examples-xuu.0o4)\n"
         },
         {
           "sha": "e82e95d22950a74e3053dc94259eab2f94401964",
