@@ -160,11 +160,12 @@ export function pageLines(markdown: string): string[] {
 
 /**
  * The index of the line that closes the page's frontmatter, or -1 for a page
- * with none. As VitePress's gray-matter reads it: opened by a first line of
- * `---`, closed by the next line that starts with `---`.
+ * with none. As VitePress's gray-matter reads it: opened by a first line that
+ * starts with `---` and no fourth `-`, closed by the next line that starts
+ * with `---`.
  */
 export function frontmatterEnd(lines: readonly string[]): number {
-  return lines[0] === "---" ? lines.findIndex((line, i) => i > 0 && line.startsWith("---")) : -1;
+  return /^---(?!-)/.test(lines[0] ?? "") ? lines.findIndex((line, i) => i > 0 && line.startsWith("---")) : -1;
 }
 
 /**

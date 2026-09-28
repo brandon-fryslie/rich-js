@@ -200,7 +200,8 @@ describe("scanFences", () => {
 
   it("reads nothing in the frontmatter as a fence, and keeps the page's line numbers", () => {
     expect(blocksOf(["---", "note: |", "  ```", "---", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
-    // gray-matter closes it at the first line that starts with `---`.
+    // gray-matter opens it on `---` and a language, and closes it at the first line that starts with `---`.
+    expect(blocksOf(["---yaml", "note: |", "  ```", "---", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
     expect(blocksOf(["---", "note: |", "  ```", "--- ", "```ts", "a;", "```"].join("\n")).map((b) => [b.line, b.code])).toEqual([[5, "a;"]]);
   });
 
