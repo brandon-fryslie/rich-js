@@ -19,7 +19,10 @@
  *   5. cut the captured bytes into per-block output and hold each block to
  *      what its marker promised;
  *   6. decode each block's bytes (`decodeAnsi`, colours kept as emitted) and
- *      encode them twice, as a light and a dark fragment.
+ *      encode them twice, as a light and a dark fragment;
+ *   7. type-check and bundle each `live` block as a program of its own, which
+ *      the page imports as a module when its live terminal
+ *      (theme/RichLive.ts) first scrolls into view.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -28,16 +31,18 @@
 import { build } from "vite";
 import ts from "typescript";
 import { statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { ENTRY_BY_SPECIFIER, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions, resolveAlias } from "../../test/coverage/extract.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
 import { decodeAnsi, osc8Sequences } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
 import type { Segment } from "../../src/index.js";
-import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../../src/themes/terminalThemes.js";
+import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
 import { MARKERS, runsAtBuild, scanFences, type BuildMarker, type Fence } from "./example-markers.js";
 import {
   MAIN_BARREL,
+  buildLiveProgram,
   buildProgram,
   exampleContext,
   splitRecords,
@@ -66,7 +71,6 @@ export const NOT_YET_MIGRATED: ReadonlySet<string> = new Set([
   "markup.md",
   "padding.md",
   "pretty.md",
-  "progress.md",
   "prompt.md",
   "protocol.md",
   "strip.md",
@@ -79,18 +83,7 @@ export const NOT_YET_MIGRATED: ReadonlySet<string> = new Set([
   "traceback.md",
   "tree.md",
   "viewport.md",
-  "widgets.md",
 ]);
-
-/**
- * The terminal every static example runs in. 75 columns is what the docs
- * content column holds in the code font from 1120px to 1920px wide (it dips
- * to 68–72 between 1280px and 1320px, where the aside appears); below that the
- * output scrolls rather than reflows. The environment is exactly this: nothing
- * from the build machine's passes through.
- */
-export const EXAMPLE_COLUMNS = 75;
-const TERMINAL = { columns: EXAMPLE_COLUMNS, rows: 24, isTTY: true, env: { TERM: "xterm-256color", COLORTERM: "truecolor" } };
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
@@ -199,8 +192,13 @@ async function capture(script: string): Promise<{ stream: string; end: RunEnd }>
   const chunks: string[] = [];
   const decoder = new TextDecoder();
   const terminal: SimulatedTerminal = {
-    ...TERMINAL,
+    ...EXAMPLE_TERMINAL,
     write: (chunk) => chunks.push(typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true })),
+    // Nobody types at a build.
+    onInput: () => {},
+    exit: (code) => {
+      throw new Error(`calls process.exit(${code}), which would end the build; mark it \`node\``);
+    },
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const end = await Promise.race([
@@ -254,41 +252,100 @@ function stoppedAt(page: string, context: ExampleContext | null, chain: readonly
 /** Decoded bytes, drawn once per site colour mode. */
 function fragments(bytes: string): { light: string; dark: string } {
   const text = decodeAnsi(bytes, { noWrap: true });
-  const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_COLUMNS, isTerminal: false, encoding: "utf-8", asciiOnly: false })];
-  return { light: encodeHtmlFragment(segments, ATOM_ONE_LIGHT), dark: encodeHtmlFragment(segments, ATOM_ONE_DARK) };
+  const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, encoding: "utf-8", asciiOnly: false })];
+  return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark) };
+}
+
+/**
+ * What a block shows under its code: nothing (its note stands there), the
+ * bytes it printed at build time, or a live terminal running the program the
+ * page's script binds to `binding`.
+ */
+type Shown =
+  | { readonly kind: "nothing" }
+  | { readonly kind: "bytes"; readonly bytes: string }
+  | { readonly kind: "live"; readonly binding: string };
+
+function shownHtml(shown: Shown): string {
+  switch (shown.kind) {
+    case "nothing":
+      return "";
+    case "bytes": {
+      const { light, dark } = fragments(shown.bytes);
+      return `<div class="rich-example-light" v-pre>${light}</div><div class="rich-example-dark" v-pre>${dark}</div>`;
+    }
+    case "live":
+      return `<RichLive :load="${shown.binding}" />`;
+  }
 }
 
 /**
  * What goes under a block. One line of HTML: a blank line inside it would end
  * markdown's HTML block and hand the rest of the fragment to the markdown
  * parser, so each fragment's row breaks are written as `&#10;`, which a `pre`
- * shows the same way. `v-pre` keeps Vue from reading `{{` in output.
+ * shows the same way. `v-pre` on each fragment keeps Vue from reading `{{` in
+ * output; it cannot sit on the whole card, which may hold a component.
  */
-function outputHtml(fence: Fence, bytes: string | null): string {
+function outputHtml(fence: Fence, shown: Shown): string {
   const { label, caption, note } = MARKERS[fence.marker];
-  const shown =
-    bytes === null
-      ? ""
-      : (() => {
-          const { light, dark } = fragments(bytes);
-          return `<div class="rich-example-light">${light}</div><div class="rich-example-dark">${dark}</div>`;
-        })();
   const captionHtml = caption === null ? "" : `<span class="rich-example-caption">${caption}</span>`;
   const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span>${captionHtml}</div>`;
   const noteHtml = note === null ? "" : `<p class="rich-example-note">${note}</p>`;
-  return `<div class="rich-example-output" v-pre>${labelHtml}${noteHtml}${shown}</div>`.replaceAll("\n", "&#10;");
+  return `<div class="rich-example-output">${labelHtml}${noteHtml}${shownHtml(shown)}</div>`.replaceAll("\n", "&#10;");
+}
+
+/**
+ * A live block's program, bundled: what the page's live terminal runs. Its id
+ * is its content's hash, so an edit in `docs:dev` is a new module rather than a
+ * stale one the dev server has cached.
+ */
+export interface LiveProgram {
+  readonly id: string;
+  readonly script: string;
+}
+
+/** A page run: its markdown with every example's output written in, and the live programs it loads. */
+export interface PageRun {
+  readonly markdown: string;
+  readonly live: readonly LiveProgram[];
+}
+
+/** The virtual module a live program is served as. */
+export const LIVE_MODULE_PREFIX = "virtual:rich-live/";
+
+async function bundleOrThrow(page: string, source: string): Promise<string> {
+  return bundleExample(source).catch((error: unknown) => {
+    throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
+  });
+}
+
+async function liveProgram(compiler: ExampleCompiler, page: string, context: ExampleContext | null, fence: Fence): Promise<LiveProgram> {
+  const program = buildLiveProgram(page, context, fence, compiler.barrelExports());
+  compiler.check(program);
+  const script = await bundleOrThrow(page, program.source);
+  return { id: createHash("sha256").update(script).digest("hex").slice(0, 16), script };
+}
+
+/**
+ * Where the page's script goes: straight after its frontmatter, or at the top
+ * of a page with none. A page that already has a `<script setup>` is refused:
+ * Vue takes one per component, and merging into a hand-written one is a
+ * second author in a block the page owns.
+ */
+function scriptLine(page: string, lines: readonly string[]): number {
+  const clash = lines.findIndex((line) => /^<script\b[^>]*\bsetup\b/.test(line));
+  if (clash !== -1) throw new Error(`docs/${page}:${clash + 1}: a page with a live example cannot have its own <script setup>`);
+  return lines[0] === "---" ? lines.indexOf("---", 1) + 1 : 0;
 }
 
 /** `markdown` with each executed or exempt example's output written under its fence. */
-export async function runPageExamples(compiler: ExampleCompiler, page: string, markdown: string): Promise<string> {
+export async function runPageExamples(compiler: ExampleCompiler, page: string, markdown: string): Promise<PageRun> {
   const fences = scanFences(page, markdown);
   const chain = fences.filter(runsAtBuild);
   const context = exampleContext(page, markdown);
   const program = buildProgram(page, context, chain, compiler.barrelExports());
   compiler.check(program);
-  const script = await bundleExample(program.source).catch((error: unknown) => {
-    throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
-  });
+  const script = await bundleOrThrow(page, program.source);
   const { stream, end } = await capture(script);
   const records = splitRecords(stream);
   if (end.kind !== "finished") {
@@ -303,7 +360,18 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   if (contextRecord.output !== "") {
     throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(contextRecord.output.slice(0, 60))}; it may not print`);
   }
-  const shown = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
+  const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
+  const live = new Map<Fence, LiveProgram>();
+  for (const fence of fences.filter((f) => MARKERS[f.marker].run === "browser")) {
+    live.set(fence, await liveProgram(compiler, page, context, fence));
+  }
+  const binding = (program: LiveProgram): string => `__richLive_${program.id}`;
+  const shown = (fence: Fence): Shown => {
+    const program = live.get(fence);
+    if (program !== undefined) return { kind: "live", binding: binding(program) };
+    const printed = bytes.get(fence) ?? null;
+    return printed === null ? { kind: "nothing" } : { kind: "bytes", bytes: printed };
+  };
 
   const lines = markdown.split(/\r?\n/);
   // The widget: the fence, untouched for VitePress to highlight, and its output
@@ -312,22 +380,32 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   // runs to the next blank line: without them the fence would not be parsed as
   // a fence, and prose written straight under it would be swallowed.
   for (const fence of [...fences].reverse()) {
-    if (MARKERS[fence.marker].run === "browser") continue;
-    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown.get(fence) ?? null), "", "</div>", "");
+    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown(fence)), "", "</div>", "");
     lines.splice(fence.line - 1, 0, "", '<div class="rich-example">', "");
   }
-  return lines.join("\n");
+  // Each live program is a module of its own, imported only when its terminal
+  // asks for it: a reader who never scrolls to one never downloads it.
+  // Two blocks with the same program share one module and one binding.
+  const programs = [...new Map([...live.values()].map((p) => [p.id, p])).values()];
+  if (programs.length > 0) {
+    const imports = programs.map((p) => `const ${binding(p)} = () => import(${JSON.stringify(LIVE_MODULE_PREFIX + p.id)});`);
+    lines.splice(scriptLine(page, lines), 0, "", "<script setup>", ...imports, "</script>", "");
+  }
+  return { markdown: lines.join("\n"), live: programs };
 }
 
 /**
- * The Vite plugin: every migrated page's examples, run as the page is built.
- * Typed by its shape rather than as `vite`'s `Plugin`, because VitePress runs
- * it on the vite it bundles, not on the one `bundleExample` builds with.
+ * The Vite plugin: every migrated page's examples, run as the page is built,
+ * and the live programs those pages import. Typed by its shape rather than as
+ * `vite`'s `Plugin`, because VitePress runs it on the vite it bundles, not on
+ * the one `bundleExample` builds with.
  */
 export interface DocsExamplesPlugin {
   readonly name: string;
   readonly enforce: "pre";
   transform(code: string, id: string): Promise<{ code: string; map: null } | null>;
+  resolveId(id: string): string | null;
+  load(id: string): string | null;
 }
 
 /** Every file under `src/` and when it last changed: what a page's output depends on besides the page. */
@@ -337,6 +415,10 @@ function sourceStamp(): string {
     .join("\n");
 }
 
+// Rollup's convention for a module no file backs: the NUL keeps every other
+// plugin from trying to read it off disk.
+const RESOLVED_LIVE_PREFIX = `\0${LIVE_MODULE_PREFIX}`;
+
 export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamplesPlugin {
   const compiler = new ExampleCompiler();
   const docsRoot = path.join(REPO_ROOT, "docs") + path.sep;
@@ -344,7 +426,10 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
   // through this transform. The last run of each page is kept by what its
   // output is a function of, the page and `src/`, so a build runs a page once
   // and `docs:dev` re-runs it when either is edited.
-  const runs = new Map<string, { readonly key: string; readonly result: Promise<string> }>();
+  const runs = new Map<string, { readonly key: string; readonly result: Promise<PageRun> }>();
+  // Every live program a page run has produced, by id. A page imports only the
+  // ids its own run returned, so one that outlives an edit is never asked for.
+  const live = new Map<string, string>();
   return {
     name: "rich-docs-examples",
     enforce: "pre",
@@ -356,7 +441,16 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       const last = runs.get(id);
       const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code);
       runs.set(id, { key, result });
-      return { code: await result, map: null };
+      const run = await result;
+      for (const program of run.live) live.set(program.id, program.script);
+      return { code: run.markdown, map: null };
+    },
+    resolveId: (id) => (id.startsWith(LIVE_MODULE_PREFIX) ? `\0${id}` : null),
+    load(id) {
+      if (!id.startsWith(RESOLVED_LIVE_PREFIX)) return null;
+      const script = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
+      if (script === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);
+      return `export default ${JSON.stringify(script)};`;
     },
   };
 }

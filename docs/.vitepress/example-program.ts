@@ -187,15 +187,49 @@ const THREW_HELPER = [
 const WRITE_END = `process.stdout.write(${JSON.stringify(BLOCK_END)});`;
 
 /**
- * The program that runs `blocks` in order under the page's imports, prelude
- * and context. For the page's chain, `blocks` is its build blocks; for a live
- * example it is that one block.
+ * The page's chain: its build blocks in order under the page's imports,
+ * prelude and context, each part ending in the sentinel `splitRecords` cuts at.
  */
 export function buildProgram(
   page: string,
   context: ExampleContext | null,
   blocks: readonly Fence[],
   barrel: readonly BarrelExport[],
+): ExampleProgram {
+  return compose(page, context, blocks, barrel, { helper: THREW_HELPER, end: WRITE_END });
+}
+
+/**
+ * One live block as a program of its own: the page's imports it and the
+ * context use, the prelude, the context, and that block. It sees no other
+ * block on the page, and writes nothing but what the block does, because its
+ * output goes straight to a terminal a reader is watching.
+ */
+export function buildLiveProgram(
+  page: string,
+  context: ExampleContext | null,
+  block: Fence,
+  barrel: readonly BarrelExport[],
+): ExampleProgram {
+  return compose(page, context, [block], barrel, { helper: "", end: "" });
+}
+
+/**
+ * What a program writes around its parts: the helper a `throws` block reports
+ * through, and the statement ending each part. The chain writes both, so its
+ * one captured stream can be cut per block; a live program writes neither.
+ */
+interface Records {
+  readonly helper: string;
+  readonly end: string;
+}
+
+function compose(
+  page: string,
+  context: ExampleContext | null,
+  blocks: readonly Fence[],
+  barrel: readonly BarrelExport[],
+  records: Records,
 ): ExampleProgram {
   const parts = blocks.map((block) => ({ block, ...splitImports(block.code, block.line + 1) }));
   const contextPart = context === null ? null : { line: context.line, ...splitImports(context.code, context.line) };
@@ -226,22 +260,22 @@ export function buildProgram(
   const prelude = barrel.filter((e) => !bound.has(e.name)).map((e) => (e.typeOnly ? `type ${e.name}` : e.name));
   out.add(`import { ${prelude.join(", ")} } from ${JSON.stringify(MAIN_BARREL)};`, null);
   out.add("const console = new Console();", null);
-  out.add(THREW_HELPER, null);
-  out.add(WRITE_END, null);
+  out.add(records.helper, null);
+  out.add(records.end, null);
   out.add("{", null);
   if (contextPart !== null) out.add(contextPart.body, contextPart.line);
-  out.add(WRITE_END, null);
+  out.add(records.end, null);
 
   let open = 1;
   for (const { block, body } of parts) {
     if (block.marker === "throws") {
       out.add("try {", null);
       out.add(body, block.line + 1);
-      out.add(`${WRITE_END}\n} catch (error) {\n  process.stdout.write(__richExampleThrew(error));\n}`, null);
+      out.add(`${records.end}\n} catch (error) {\n  process.stdout.write(__richExampleThrew(error));\n}`, null);
     } else {
       out.add("{", null);
       out.add(body, block.line + 1);
-      out.add(WRITE_END, null);
+      out.add(records.end, null);
       open += 1;
     }
   }

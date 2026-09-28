@@ -48,7 +48,7 @@ export const MARKERS = {
     outcome: "silent",
     label: "Output",
     caption: RAN,
-    note: "This example prints nothing. It sets up names the examples below it use.",
+    note: "This example prints nothing when it runs.",
   },
   throws: { run: "build", outcome: "throws", label: "Output", caption: `${RAN}, which throws`, note: null },
   live: { run: "browser", label: "Live", caption: "the code above, running in your browser", note: null },
