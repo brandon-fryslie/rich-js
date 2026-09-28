@@ -44,25 +44,16 @@ const drawn = (language: string): boolean => !Object.hasOwn(bundledLanguages, la
  * What is wrong with one page, each finding naming the page and, where there
  * is one, the line.
  *
- * `listed` is whether the page is on `NOT_YET_MIGRATED`. A page off it may
- * carry no drawn output. A page on it must still have something to migrate —
- * a TypeScript fence or drawn output — or the entry is stale, as a
- * `coverage-allowlist.ts` entry is once its export is demonstrated.
+ * No page may carry drawn output: every example shows its real output.
  *
  * An unknown marker word on a TypeScript fence throws from `typescriptFences`,
  * naming the page and line, rather than returning a finding: the build throws
  * on it too, and one reader must not tolerate what the other refuses.
  */
-export function pageFindings(page: string, markdown: string, listed: boolean): string[] {
+export function pageFindings(page: string, markdown: string): string[] {
   const blocks = scanBlocks(page, markdown);
-  const fences = typescriptFences(blocks);
-  const output = blocks.filter((block) => drawn(block.language));
-  if (listed) {
-    return fences.length + output.length === 0
-      ? [`docs/${page}: on NOT_YET_MIGRATED with nothing left to migrate (no TypeScript fence, no drawn output); take it off the list`]
-      : [];
-  }
-  return output.map(
+  typescriptFences(blocks);
+  return blocks.filter((block) => drawn(block.language)).map(
     (block) =>
       `docs/${page}:${block.line}: a ${block.language === "" ? "bare" : `\`${block.language}\``} fence is drawn output; ` +
       "delete it and let the example show its real output, or, if it holds something other than output, name a language Shiki has a grammar for",

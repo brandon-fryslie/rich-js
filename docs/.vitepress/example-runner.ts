@@ -65,16 +65,6 @@ import {
 } from "./example-program.js";
 import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
 
-/**
- * Pages whose fences still render as plain code; the plugin passes them
- * through untouched. Each migration takes its own pages off, and the last one
- * deletes the list.
- */
-export const NOT_YET_MIGRATED: ReadonlySet<string> = new Set([
-  "live.md",
-  "prompt.md",
-]);
-
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
 /**
@@ -132,6 +122,9 @@ export class ExampleCompiler {
   }
 }
 
+/** What a program's `node:readline` is under the simulated process, so `nodeAsk` reads from its terminal. */
+const READLINE_STAND_IN = path.join(REPO_ROOT, "docs", ".vitepress", "node-readline.ts");
+
 /**
  * `source` as the one self-contained script `runInTerminal` takes: every
  * import inlined, this package's entry points resolved to `src/`, and every
@@ -151,7 +144,11 @@ export async function bundleExample(source: string): Promise<string> {
       {
         name: "rich-docs-example-entry",
         enforce: "pre",
-        resolveId: (id) => (id === PROGRAM_FILE ? id : ENTRY_BY_SPECIFIER.has(id) ? path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(id)!) : null),
+        resolveId: (id) =>
+          id === PROGRAM_FILE ? id
+          : id === "node:readline" ? READLINE_STAND_IN
+          : ENTRY_BY_SPECIFIER.has(id) ? path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(id)!)
+          : null,
         load: (id) => (id === PROGRAM_FILE ? source : null),
       },
       tscTransform(REPO_ROOT),
@@ -451,7 +448,7 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
     async transform(code, id) {
       if (!id.endsWith(".md") || !id.startsWith(docsRoot)) return null;
       const page = path.relative(docsRoot, id);
-      if (NOT_YET_MIGRATED.has(page) || !scanFences(page, code).length) return null;
+      if (!scanFences(page, code).length) return null;
       const key = `${stamp()}\u0000${code}`;
       const last = runs.get(id);
       const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code);

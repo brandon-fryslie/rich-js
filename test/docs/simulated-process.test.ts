@@ -164,6 +164,25 @@ describe("runInTerminal", () => {
     expect(term.output).toEqual(["got q at 75x24"]);
   });
 
+  it("answers a nodeAsk prompt with the line typed at the terminal, echoed as it is typed", async () => {
+    const term = terminal(75);
+    const prompt = JSON.stringify(resolve(REPO_ROOT, "src/node/prompt.ts"));
+    const run = runInTerminal(
+      await bundleExample(`
+        import { Console, Prompt } from ${LIBRARY};
+        import { nodeAsk } from ${prompt};
+        const name = await Prompt.ask("Name?", nodeAsk);
+        new Console().print(\`Hello, \${name}!\`);
+      `),
+      term,
+    );
+    term.type("Al");
+    term.type("\x7f");
+    term.type("lice\r");
+    await run;
+    expect(stripAnsi(term.output.join(""))).toBe("Name?: Al\b \blice\r\nHello, Alice!\n");
+  });
+
   it("hands process.exit to the terminal", async () => {
     const term = terminal(75);
     await runInTerminal(await bundleExample("process.exit(3);"), term);

@@ -12,7 +12,6 @@ import { REPO_ROOT } from "../coverage/extract.js";
 import {
   ExampleCompiler,
   LIVE_MODULE_PREFIX,
-  NOT_YET_MIGRATED,
   docsExamplesPlugin,
   runPageExamples,
 } from "../../docs/.vitepress/example-runner.js";
@@ -331,9 +330,7 @@ describe("the plugin", () => {
     expect(() => plugin.load(`\0${LIVE_MODULE_PREFIX}0000`)).toThrow(/no page run produced this live program/);
   });
 
-  it("passes a page that has not migrated through untouched", async () => {
-    const [unmigrated] = NOT_YET_MIGRATED;
-    const source = readFileSync(path.join(REPO_ROOT, "docs", unmigrated!), "utf-8");
-    expect(await docsExamplesPlugin().transform(source, path.join(REPO_ROOT, "docs", unmigrated!))).toBeNull();
+  it("passes a page with no TypeScript example through untouched", async () => {
+    expect(await docsExamplesPlugin().transform("# Prose\n\n```sh\nnpm install\n```\n", path.join(REPO_ROOT, "docs", "fixture-prose.md"))).toBeNull();
   });
 });
