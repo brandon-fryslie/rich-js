@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-180",
+      "ref": "refs/pull/180/merge",
+      "sha": "b44c4860fd3114c45eafdaecfc00d0e6e6b49525",
+      "timestamp": "2026-09-28T03:36:31.712Z",
+      "commits": [
+        {
+          "sha": "b44c4860fd3114c45eafdaecfc00d0e6e6b49525",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:35:26-06:00",
+          "message": "Merge bb29b8de492f8ad929e28e4b912c3fa5ffbd5815 into 935fc3ba3dc4394559296cb6a59c3ef824817037\n"
+        },
+        {
+          "sha": "bb29b8de492f8ad929e28e4b912c3fa5ffbd5815",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:35:21-06:00",
+          "message": "docs: the text, styling and console pages show their examples' real output (rich-docs-examples-xuu.pt4)\n\nEleven pages come off NOT_YET_MIGRATED: introduction, console, text, markup,\nstyle, highlighting, contrast, transpose, template-bindings, protocol,\ntraceback. Every example runs at build time or carries its marker; no\nhand-drawn output remains.\n\nFolded in: rich-docs-gpe (stylize argument order), rich-docs-0dh (protocol.md\nnow documents Segment-yielding render with yield* delegation; the richConsole\nhook, which nothing reads, is gone), rich-docs-drn (markup.md states which\nbracketed runs are tags, with both surprises in the output).\n\nmarkup.md's doubled-backslash paragraph is removed rather than rewritten to the\nport's behaviour, which is bug rich-markup-nm1.\n\nFiled from the real output: rich-color-dhay, rich-status-o9av,\nrich-table-pyrl, rich-template-bindings-4bgw.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "935fc3ba3dc4394559296cb6a59c3ef824817037",
