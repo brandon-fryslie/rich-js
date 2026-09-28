@@ -2,7 +2,6 @@ import { defineConfig } from 'vitepress'
 import { guideSidebar, pageSidebarRegions } from './sidebar.js'
 import { docsExamplesPlugin } from './example-runner.js'
 import { HTML_FRAGMENT_CSS } from '../../src/core/export-html.js'
-import { EXAMPLE_TERMINAL } from './example-terminal.js'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -55,8 +54,6 @@ export default defineConfig({
     ['meta', { property: 'og:description', content: 'Rich text and beautiful formatting in the terminal' }],
     // What a generated example's output needs and an inline style cannot say.
     ['style', {}, HTML_FRAGMENT_CSS],
-    // How wide that output is, for custom.css to fit it to the column.
-    ['style', {}, `:root{--rich-example-columns:${EXAMPLE_TERMINAL.columns}}`],
   ],
 
   themeConfig: {

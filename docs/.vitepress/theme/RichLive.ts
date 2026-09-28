@@ -40,6 +40,7 @@ export default defineComponent({
     const failure = ref<string | null>(null);
     let ready: Promise<{ live: LiveTerminal; script: string; unwatch: () => void }> | undefined;
     let observer: IntersectionObserver | undefined;
+    let resized: ResizeObserver | undefined;
 
     // The program, then its terminal, made the first time either is needed. A
     // terminal is only made for a program that loaded: one made beside a failed
@@ -73,12 +74,17 @@ export default defineComponent({
         else void ready?.then(({ live }) => live.stop());
       });
       observer.observe(element);
+      // The font's size follows the card's width (custom.css), so a terminal
+      // made at one width is refitted when the card is resized.
+      resized = new ResizeObserver(() => void ready?.then(({ live }) => live.setFont(font(element)), () => {}));
+      resized.observe(element);
     });
 
     // A terminal still being made when the page is left is disposed once made:
     // its worker must not run on behind a page nobody is reading.
     onBeforeUnmount(() => {
       observer?.disconnect();
+      resized?.disconnect();
       void ready?.then(({ live, unwatch }) => {
         unwatch();
         live.dispose();

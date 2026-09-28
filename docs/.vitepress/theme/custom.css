@@ -105,19 +105,6 @@
   border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
   overflow: hidden;
-  /* The fragments' rows are drawn in the code font, tight enough that box
-   * drawing joins up. `all:initial` shuts every other page rule out of them;
-   * this custom property is the one way in (src/core/export-html.ts).
-   *
-   * Its size is the code size, or smaller where the card is too narrow for
-   * the example terminal's columns (config.ts sets --rich-example-columns):
-   * a row is that many cells of 0.602em, Menlo's and DejaVu Sans Mono's
-   * advance, plus 1em of padding each side, so the size that fits is the
-   * card's width over that many ems. Below 10px it stops shrinking and the
-   * output scrolls. A live terminal reads the same font, so it fits too. */
-  container-type: inline-size;
-  --rich-fragment-font: clamp(10px, 100cqw / (var(--rich-example-columns) * 0.602 + 2), var(--vp-code-font-size))
-    / 1.25 var(--rich-code-font-family);
 }
 
 .vp-doc .rich-example > div[class*='language-'] {
@@ -128,6 +115,21 @@
 
 .vp-doc .rich-example-output {
   border-top: 1px solid var(--vp-c-divider);
+  /* The fragments' rows are drawn in the code font, tight enough that box
+   * drawing joins up. `all:initial` shuts every other page rule out of them;
+   * this custom property is the one way in (src/core/export-html.ts).
+   *
+   * Its size is the code size, or smaller where the card is too narrow for
+   * the output: example-runner.ts sets --rich-example-columns to how many
+   * cells the output draws. A row is that many cells plus 1em of padding each
+   * side, so the size that fits is the card's width over that many ems. A
+   * cell is budgeted at 0.62em, the widest face in the stack (SF Mono,
+   * 0.618em; Menlo and DejaVu Sans Mono are 0.602em). Below 10px it stops
+   * shrinking and the output scrolls. A live terminal reads the same font
+   * (theme/RichLive.ts refits it when the card is resized). */
+  container-type: inline-size;
+  --rich-fragment-font: clamp(10px, 100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size))
+    / 1.25 var(--rich-code-font-family);
 }
 
 .vp-doc .rich-example-label {

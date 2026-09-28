@@ -10,9 +10,9 @@ import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../../src/themes/terminalThemes.j
 
 /**
  * 75 columns is what the docs content column holds in the code font at 1440px
- * wide. Where the column is narrower the output's font shrinks to fit it
- * (custom.css, `.rich-example`), down to a floor below which it scrolls; it
- * never reflows. The environment is exactly this: nothing from the build
+ * wide. Where the column is narrower an output that wide shrinks its font to
+ * fit (custom.css, `.rich-example-output`), down to a floor below which it
+ * scrolls; it never reflows. The environment is exactly this: nothing from the build
  * machine's or the browser's passes through.
  */
 export const EXAMPLE_TERMINAL = {

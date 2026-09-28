@@ -111,7 +111,7 @@ interface Xterm extends XtermTerminal {
   reset(): void;
   dispose(): void;
   onWriteParsed(handler: () => void): XtermDisposable;
-  options: { theme: Record<string, string> };
+  options: { theme: Record<string, string>; fontFamily: string; fontSize: number; lineHeight: number };
 }
 
 type XtermConstructor = new (options: Record<string, unknown>) => Xterm;
@@ -142,6 +142,7 @@ export class LiveTerminal {
   private state: LiveState = { kind: "idle" };
   private readonly listeners = new Set<(state: LiveState) => void>();
   private readonly host: BrowserTerminalHost;
+  private readonly fit: () => void;
 
   /** A terminal in `element`, once xterm.js has loaded. */
   static async create(element: HTMLElement, options: LiveTerminalOptions): Promise<LiveTerminal> {
@@ -187,14 +188,14 @@ export class LiveTerminal {
     const { rows } = options.terminal;
     const drawn = (y: number) => screen.buffer.active.getLine(y)?.translateToString(true) !== "";
     let reached = 1;
-    const fit = () => {
+    this.fit = () => {
       const lowest = Array.from({ length: rows }, (_, y) => y).filter(drawn).pop() ?? 0;
       reached = Math.max(reached, lowest + 1, screen.buffer.active.cursorY + 1);
       // Measured each time: the cell height changes when a web font arrives or the page zooms.
       clip.style.height = `${(reached * screen.element!.offsetHeight) / rows}px`;
     };
-    fit();
-    screen.onWriteParsed(fit);
+    this.fit();
+    screen.onWriteParsed(this.fit);
     // A key xterm takes as input it also stops, so a page shortcut on the same
     // key (VitePress's `/` and Ctrl+K) never sees it while the terminal has
     // focus; unfocused, every shortcut is the page's.
@@ -265,6 +266,14 @@ export class LiveTerminal {
   stop(): void {
     if (this.worker === null) return;
     this.end({ kind: "stopped" });
+  }
+
+  /** Draw in `font` from now on, as when the page resizes the element the font is read from. */
+  setFont(font: LiveTerminalOptions["font"]): void {
+    const { options } = this.screen;
+    if (options.fontFamily === font.family && options.fontSize === font.size && options.lineHeight === font.lineHeight) return;
+    Object.assign(options, { fontFamily: font.family, fontSize: font.size, lineHeight: font.lineHeight });
+    this.fit();
   }
 
   setTheme(theme: TerminalTheme): void {
