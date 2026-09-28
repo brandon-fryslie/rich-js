@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-179",
+      "ref": "refs/pull/179/merge",
+      "sha": "a97951c04c65de01a35e082ee3345078711005b3",
+      "timestamp": "2026-09-28T03:12:54.583Z",
+      "commits": [
+        {
+          "sha": "a97951c04c65de01a35e082ee3345078711005b3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:12:13-06:00",
+          "message": "Merge 8cf7401ee0629ee012b9927c123e9f21bc8d16ac into 93db2da27f207c7b26ec27dc8a0e7db5fa5d929d\n"
+        },
+        {
+          "sha": "8cf7401ee0629ee012b9927c123e9f21bc8d16ac",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:12:06-06:00",
+          "message": "fix(themes): every bundled theme draws named colours in its own ANSI table (rich-docs-examples-xuu.8tt)\n\ndefineTheme gave every TerminalTheme STANDARD_TABLE, so `[blue]` exported\nunder ATOM_ONE_DARK was VGA #000080 on #282c34. Each theme data file now\ncarries a required `ansi` table, taken from the published terminal scheme\nwhose background matches the theme (iTerm2-Color-Schemes), from Rich for\n`default` and `svg-export`, and from Textual's own MONOKAI/ALABASTER\nfallback for the Textual-native themes and cyberpunk, which have none.\n\nAtom One uses \"One Half Dark/Light\": the \"Atom One Light\" port draws cyan\nas the same #3F953A as green.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "93db2da27f207c7b26ec27dc8a0e7db5fa5d929d",
