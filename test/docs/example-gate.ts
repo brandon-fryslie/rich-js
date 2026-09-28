@@ -7,29 +7,32 @@
  * beside this file owns the sweep over `docs/`.
  *
  * WHAT COUNTS AS DRAWN OUTPUT is decided by the fence, never by its contents.
- * A block Shiki draws as bare text (no language, or `text`, `txt`, `plain`,
- * `plaintext`) or as terminal output (`ansi`) is drawn output. That was
- * measured before it was decided: of the 35 bare fences on the site when this
- * was written, 34 were an example's output typed by hand, and the one that was
- * not — the call sequence in `docs/strip.md` — says nothing about what it
- * holds. Output also hid in `text` (`docs/markup.md` prints a parse error that
- * way), while the other `text` blocks were Go templates. Telling those apart
- * by reading them is the guessing `code-blocks.ts`'s header warns against: a
- * check that invents findings gets correct pages edited to silence it. So a
- * block that is not output names its language, and a language Shiki has no
- * grammar for goes in `markdown.languageAlias`.
+ * A block VitePress shows exactly as typed is drawn output: no language, a
+ * plain-text name (`text`, `txt`, …), `ansi`, or any name Shiki has no grammar
+ * for, which VitePress draws as plain text after a warning. The gate asks the
+ * Shiki VitePress itself resolves, so the two cannot disagree about a name.
+ * That was measured before it was decided: of the 35 bare fences on the site
+ * when this was written, 34 were an example's output typed by hand, and the
+ * one that was not — the call sequence in `docs/strip.md` — says nothing
+ * about what it holds. Output also hid in `text` (`docs/markup.md` prints a
+ * parse error that way), while the other `text` blocks were Go templates.
+ * Telling those apart by reading them is the guessing `code-blocks.ts`'s
+ * header warns against: a check that invents findings gets correct pages
+ * edited to silence it. So a block that is not output names a language Shiki
+ * has a grammar for.
  * [LAW:types-are-the-program] The fence is the declared type; the gate reads
  * the declaration, not a guess at the value.
  *
  * Say the blind spot out loud whenever you cite this gate: drawn output inside
- * a fence that names a code language — printed JSON in a `json` block — is not
- * seen.
+ * a fence that names a grammar — printed JSON in `json`, a session typed into
+ * `console` or `log` — is not seen.
  */
 
-import { scanBlocks, scanFences } from "../../docs/.vitepress/example-markers.js";
+import { bundledLanguages } from "shiki";
+import { scanBlocks, typescriptFences } from "../../docs/.vitepress/example-markers.js";
 
-/** The languages whose blocks are shown exactly as typed: Shiki's plain text, and `ansi`. */
-const DRAWN = new Set(["", "text", "txt", "plain", "plaintext", "ansi"]);
+/** Whether VitePress shows a block of this language exactly as typed: Shiki has no grammar for it. */
+const drawn = (language: string): boolean => !Object.hasOwn(bundledLanguages, language);
 
 /**
  * What is wrong with one page, each finding naming the page and, where there
@@ -40,21 +43,22 @@ const DRAWN = new Set(["", "text", "txt", "plain", "plaintext", "ansi"]);
  * a TypeScript fence or drawn output — or the entry is stale, as a
  * `coverage-allowlist.ts` entry is once its export is demonstrated.
  *
- * An unknown marker word on a TypeScript fence throws from `scanFences`,
+ * An unknown marker word on a TypeScript fence throws from `typescriptFences`,
  * naming the page and line, rather than returning a finding: the build throws
  * on it too, and one reader must not tolerate what the other refuses.
  */
 export function pageFindings(page: string, markdown: string, listed: boolean): string[] {
-  const fences = scanFences(page, markdown);
-  const drawn = scanBlocks(page, markdown).filter((block) => DRAWN.has(block.language));
+  const blocks = scanBlocks(page, markdown);
+  const fences = typescriptFences(blocks);
+  const output = blocks.filter((block) => drawn(block.language));
   if (listed) {
-    return fences.length + drawn.length === 0
+    return fences.length + output.length === 0
       ? [`docs/${page}: on NOT_YET_MIGRATED with nothing left to migrate (no TypeScript fence, no drawn output); take it off the list`]
       : [];
   }
-  return drawn.map(
+  return output.map(
     (block) =>
       `docs/${page}:${block.line}: a ${block.language === "" ? "bare" : `\`${block.language}\``} fence is drawn output; ` +
-      "delete it and let the example show its real output, or, if it holds something other than output, name its language",
+      "delete it and let the example show its real output, or, if it holds something other than output, name a language Shiki has a grammar for",
   );
 }

@@ -92,7 +92,10 @@ export interface Block {
   readonly line: number;
   /** 1-based line of the closing fence. */
   readonly closeLine: number;
-  /** The language as VitePress reads it off the info string, `""` for none. */
+  /**
+   * The language as VitePress's highlighter reads it: lowercased, a `-vue`
+   * suffix dropped, `""` for none. A ```` ```TS ```` fence is TypeScript.
+   */
   readonly language: string;
   /** The rest of the info string: VitePress's own attributes and any marker word. */
   readonly attributes: string;
@@ -137,13 +140,13 @@ export function scanBlocks(page: string, markdown: string): Block[] {
       return;
     }
     if (run[0] !== open.run[0] || run.length < open.run.length || info.trim() !== "") return;
-    const [, language, attributes] = LANGUAGE.exec(open.info) as unknown as [string, string, string];
+    const [, written, attributes] = LANGUAGE.exec(open.info) as unknown as [string, string, string];
     const outdent = new RegExp(`^ {0,${open.indent}}`);
     blocks.push({
       page,
       line: open.index + 1,
       closeLine: index + 1,
-      language,
+      language: written.replace(/-vue$/, "").toLowerCase(),
       attributes,
       code: lines
         .slice(open.index + 1, index)
@@ -166,9 +169,14 @@ export function scanBlocks(page: string, markdown: string): Block[] {
  * word throws, naming the page and line.
  */
 export function scanFences(page: string, markdown: string): Fence[] {
-  return scanBlocks(page, markdown)
+  return typescriptFences(scanBlocks(page, markdown));
+}
+
+/** The TypeScript fences among blocks already scanned. */
+export function typescriptFences(blocks: readonly Block[]): Fence[] {
+  return blocks
     .filter((block) => TYPESCRIPT.has(block.language))
-    .map(({ line, closeLine, attributes, code }) => ({ page, line, closeLine, marker: markerOf(page, line, attributes), code }));
+    .map(({ page, line, closeLine, attributes, code }) => ({ page, line, closeLine, marker: markerOf(page, line, attributes), code }));
 }
 
 /**
