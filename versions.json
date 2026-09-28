@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-183",
+      "ref": "refs/pull/183/merge",
+      "sha": "21c8e504d8342a56fc384066c10739fe93f14a21",
+      "timestamp": "2026-09-28T04:28:57.490Z",
+      "commits": [
+        {
+          "sha": "21c8e504d8342a56fc384066c10739fe93f14a21",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:28:15-06:00",
+          "message": "Merge 813981d76f8f27abbb45f96eb76e72eede3374ec into c15aea4aac0370db219a6464a43185a735b3dde4\n"
+        },
+        {
+          "sha": "813981d76f8f27abbb45f96eb76e72eede3374ec",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:28:10-06:00",
+          "message": "docs: a reduced-motion reader sees a drawn frame for a live example that never settles (rich-docs-examples-xuu.tig)\n\nThe still frame is the screen when the body settles or a second after the\nprogram first draws, whichever is sooner, so a loop, a prompt, and a\nfullscreen run that ends back on the main screen each show a frame.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c15aea4aac0370db219a6464a43185a735b3dde4",
