@@ -34,7 +34,9 @@ export interface TerminalSpec {
 /** What the page sends the worker running a program. */
 export type ToWorker =
   | { readonly kind: "run"; readonly script: string; readonly terminal: TerminalSpec }
-  | { readonly kind: "input"; readonly chunk: string | Uint8Array };
+  | { readonly kind: "input"; readonly chunk: string | Uint8Array }
+  /** Answered with a `mark` at once; see that message. */
+  | { readonly kind: "mark" };
 
 /** What the worker running a program sends the page. */
 export type FromWorker =
@@ -44,7 +46,14 @@ export type FromWorker =
    * The program's body has returned, or thrown, and every job it queued has
    * run. A program with timers or listeners still set runs on after this.
    */
-  | { readonly kind: "settled"; readonly error: string | null };
+  | { readonly kind: "settled"; readonly error: string | null }
+  /**
+   * The answer to a `mark`, sent between two of the program's tasks. Every
+   * output message before it was written before it, and a frame the program
+   * draws in one task (an inline Live erases its last frame and writes the
+   * next in one refresh) is wholly before it or wholly after.
+   */
+  | { readonly kind: "mark" };
 
 /**
  * How a run shows its program: `live`, as it runs; or `still`, one frame drawn
@@ -129,6 +138,7 @@ function loadXterm(): Promise<XtermConstructor> {
 
 export class LiveTerminal {
   private worker: Worker | null = null;
+  private deadline: ReturnType<typeof setTimeout> | undefined;
   private state: LiveState = { kind: "idle" };
   private readonly listeners = new Set<(state: LiveState) => void>();
   private readonly host: BrowserTerminalHost;
@@ -202,18 +212,21 @@ export class LiveTerminal {
     const flush = () => held.splice(0).forEach((chunk) => this.host.write(chunk));
     // A message still queued from a run that has since ended belongs to no run.
     const current = () => this.worker === worker;
+    // The cursor is hidden: the program has ended, and a frame showing one
+    // would invite typing at a prompt nothing is reading any more.
     const freeze = () => {
-      if (!current()) return;
       flush();
+      this.host.write("\x1b[?25l");
       this.end({ kind: "still" });
     };
-    let deadline: ReturnType<typeof setTimeout> | undefined;
+    // The deadline asks the worker for a mark rather than freezing where it
+    // fires, which can fall between two writes of one frame.
     const show =
       mode === "live"
         ? (chunk: string | Uint8Array) => this.host.write(chunk)
         : (chunk: string | Uint8Array) => {
             held.push(chunk);
-            deadline ??= setTimeout(freeze, STILL_AFTER_MS);
+            this.deadline ??= setTimeout(() => this.post({ kind: "mark" }), STILL_AFTER_MS);
           };
     const failed = (message: string) => {
       flush();
@@ -233,6 +246,8 @@ export class LiveTerminal {
           if (data.error !== null) return failed(`Uncaught ${data.error}`);
           if (mode === "still") freeze();
           return;
+        case "mark":
+          return freeze();
       }
     };
     // An error thrown outside the body — in a key handler, a timer — ends the
@@ -273,6 +288,8 @@ export class LiveTerminal {
   }
 
   private end(state: LiveState): void {
+    clearTimeout(this.deadline);
+    this.deadline = undefined;
     this.worker?.terminate();
     this.worker = null;
     this.setState(state);

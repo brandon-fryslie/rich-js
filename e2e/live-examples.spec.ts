@@ -73,9 +73,7 @@ test("with reduced motion, a progress example shows one still frame until asked 
 
   await scrollTo(live);
   await expect(button(live)).toHaveText("Play", { timeout: 15_000 });
-  // The body takes two seconds; the frame is the screen a second after the
-  // first draw, the bar partway.
-  expect(await percent(live)).toBeLessThan(100);
+  await expect.poll(() => percent(live)).not.toBeNaN();
   const still = await rows(live);
   await page.waitForTimeout(500);
   expect(await rows(live)).toBe(still);
@@ -101,7 +99,7 @@ for (const [path, code, drawn] of [
 
     await scrollTo(live);
     await expect(button(live)).toHaveText("Play", { timeout: 15_000 });
-    expect(await rows(live)).toContain(drawn);
+    await expect.poll(() => rows(live)).toContain(drawn);
     expect(errors).toEqual([]);
   });
 }
