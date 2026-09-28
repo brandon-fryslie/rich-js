@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-178",
+      "ref": "refs/pull/178/merge",
+      "sha": "46b50dad27d5225665c39f4eb5f77a1fafc09a9a",
+      "timestamp": "2026-09-28T02:56:34.423Z",
+      "commits": [
+        {
+          "sha": "46b50dad27d5225665c39f4eb5f77a1fafc09a9a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:55:53-06:00",
+          "message": "Merge e82e95d22950a74e3053dc94259eab2f94401964 into e3cca5568120b7547d1200c737b93b207fbca0bd\n"
+        },
+        {
+          "sha": "e82e95d22950a74e3053dc94259eab2f94401964",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:55:20-06:00",
+          "message": "docs: the renderable pages show their examples' real output (rich-docs-examples-xuu.0o4)\n\ntables, tree, columns, padding, group, layout, syntax, markdown, pretty, strip\nand viewport come off NOT_YET_MIGRATED: every drawn output block is gone, every\nexample runs and prints in colour, and prose that described output the code does\nnot produce now describes what it does. panel.md's examples gain colour too.\nLibrary bugs the real output exposed are filed, not fixed: rich-tree-sgk,\nrich-tree-736, rich-panel-ech, rich-padding-wee, rich-padding-wv28,\nrich-table-ca0, rich-table-3u2, rich-markdown-thj, rich-markdown-ft8,\nrich-syntax-fh2, rich-pretty-v7b.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e3cca5568120b7547d1200c737b93b207fbca0bd",
