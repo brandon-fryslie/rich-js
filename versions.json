@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-184",
+      "ref": "refs/pull/184/merge",
+      "sha": "2cadc9f6555e5ec2010d7c4ca2240360a9dc90bc",
+      "timestamp": "2026-09-28T04:40:11.958Z",
+      "commits": [
+        {
+          "sha": "2cadc9f6555e5ec2010d7c4ca2240360a9dc90bc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:39:11-06:00",
+          "message": "Merge d3b0f1d269691df2a110000928824f48a935e94e into e07b8ea65eaab63685bd11d822605df1e5bff0d5\n"
+        },
+        {
+          "sha": "d3b0f1d269691df2a110000928824f48a935e94e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T22:39:06-06:00",
+          "message": "docs: example output shrinks to fit a column narrower than its terminal, instead of scrolling (rich-docs-examples-xuu.2nz)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e07b8ea65eaab63685bd11d822605df1e5bff0d5",
