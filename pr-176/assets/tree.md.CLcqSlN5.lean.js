@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as t}from"./chunks/framework.DfuokjpH.js";const A=JSON.parse('{"title":"Tree","description":"","frontmatter":{},"headers":[],"relativePath":"tree.md","filePath":"tree.md"}'),h={name:"tree.md"};function l(e,s,p,k,d,r){return a(),n("div",null,[...s[0]||(s[0]=[t("",17)])])}const g=i(h,[["render",l]]);export{A as __pageData,g as default};

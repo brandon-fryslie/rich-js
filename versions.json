@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-176",
-      "ref": "refs/pull/176/merge",
-      "sha": "67b2aedbee0c8c3c046a332919d97981598b0c32",
-      "timestamp": "2026-09-28T02:11:54.908Z",
-      "commits": [
-        {
-          "sha": "67b2aedbee0c8c3c046a332919d97981598b0c32",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T02:11:17Z",
-          "message": "Merge 75308fb552e6ff4012f21303a3e1c994ffbaf934 into c3d939546fd7373598936a1a3021d95e0c6af065\n"
-        },
-        {
-          "sha": "75308fb552e6ff4012f21303a3e1c994ffbaf934",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:11:12-06:00",
-          "message": "fix(docs): the example gate asks VitePress's own shiki for its grammars (rich-docs-examples-xuu.wlm)\n"
-        },
-        {
-          "sha": "e234707eb1b214e206b3e865a3b31cffb594d017",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:08:56-06:00",
-          "message": "fix(docs): the example gate resolves a fence's language as VitePress does, and parses a page once (rich-docs-examples-xuu.wlm)\n"
-        },
-        {
-          "sha": "970e8cb11dcd00b55b0ba706d5b809e48a47ab02",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:04:20-06:00",
-          "message": "test(docs): gate every docs example — no hand-drawn output off NOT_YET_MIGRATED, no stale entries on it (rich-docs-examples-xuu.wlm)\n\nscanBlocks is now the one fence parser; scanFences is the TypeScript view of it.\nA fence Shiki draws as bare text or ansi is drawn output: decided by the fence,\nnot its contents. test/docs/example-gate.ts owns why.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c3d939546fd7373598936a1a3021d95e0c6af065",
-      "timestamp": "2026-09-28T01:59:24.791Z",
+      "sha": "2aebf26f87dd0f5a2731dcf652950b29883e05ac",
+      "timestamp": "2026-09-28T02:14:37.950Z",
       "commits": [
         {
-          "sha": "c3d939546fd7373598936a1a3021d95e0c6af065",
+          "sha": "2aebf26f87dd0f5a2731dcf652950b29883e05ac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T19:58:47-06:00",
-          "message": "feat(docs): live examples — a program running in an xterm under its code (rich-docs-examples-xuu.0bc) (#175)\n\n* feat(docs): live examples — a program running in an xterm under its code (rich-docs-examples-xuu.0bc)\n\nA `ts live` block is type-checked and bundled as a program of its own and\nserved to its page as a lazily imported module. RichLive runs it in a live\nterminal while it is on screen, from the start on each scroll-in, stopped\non scroll-out; under reduced motion it draws one still frame with a Play\nbutton; it wears the site colour mode's terminal theme.\n\nThe embed (theme/live-terminal.ts) knows nothing of docs pages. Each run is\na Web Worker, so stopping is terminating it, timers included. Bytes and keys\ncross BrowserTerminalHost; xterm loads from the one pin the demo shell now\nalso fills from (examples/_browser-shell/xterm.ts).\n\nThe simulated process gains stdin and exit, so the widgets page's own\nNodeTerminalHost program runs unchanged in the browser. progress.md and\nwidgets.md are fully migrated.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): live terminal ends stale runs, cleans up on unmount, surfaces load failures (rich-docs-examples-xuu.0bc)\n\nAddresses /code-review high on #175: a message from an ended worker no\nlonger touches the current run; a terminal still loading when the page is\nleft is disposed once made; an xterm or program load failure is shown and\nretryable; an unhandled rejection ends the program like an uncaught error;\na build-time process.exit is recorded, not thrown into the program; live\nblocks bundle in parallel; row height is re-measured; a <script setup> in\nany fence no longer refuses the page.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): a live program that fails to load leaves no terminal; a batched scroll acts on where the terminal is now (rich-docs-examples-xuu.0bc)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-27T20:14:02-06:00",
+          "message": "test(docs): gate every docs example — no hand-drawn output off NOT_YET_MIGRATED, no stale entries on it (rich-docs-examples-xuu.wlm) (#176)\n\n* test(docs): gate every docs example — no hand-drawn output off NOT_YET_MIGRATED, no stale entries on it (rich-docs-examples-xuu.wlm)\n\nscanBlocks is now the one fence parser; scanFences is the TypeScript view of it.\nA fence Shiki draws as bare text or ansi is drawn output: decided by the fence,\nnot its contents. test/docs/example-gate.ts owns why.\n\n* fix(docs): the example gate resolves a fence's language as VitePress does, and parses a page once (rich-docs-examples-xuu.wlm)\n\n* fix(docs): the example gate asks VitePress's own shiki for its grammars (rich-docs-examples-xuu.wlm)"
         }
       ]
     }
