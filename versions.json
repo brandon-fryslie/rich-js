@@ -4,15 +4,22 @@
     {
       "version": "pr-174",
       "ref": "refs/pull/174/merge",
-      "sha": "9d7169042b3dd8f086ad09c9fd2247fa394e79f5",
-      "timestamp": "2026-09-28T00:47:53.655Z",
+      "sha": "e677e2411443b4b7f7b81c175a91c0e0cdec9aef",
+      "timestamp": "2026-09-28T00:51:32.474Z",
       "commits": [
         {
-          "sha": "9d7169042b3dd8f086ad09c9fd2247fa394e79f5",
+          "sha": "e677e2411443b4b7f7b81c175a91c0e0cdec9aef",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T00:47:29Z",
-          "message": "Merge 987d1b38c28fc593ed1a7a34b0a5ed66824905fa into 64bcfcf2135c0be32e6e1f432fd9e5e6548a8826\n"
+          "timestamp": "2026-09-28T00:50:58Z",
+          "message": "Merge 8eb9c2b8ee8f77a41daaae9def38326f060d4546 into 64bcfcf2135c0be32e6e1f432fd9e5e6548a8826\n"
+        },
+        {
+          "sha": "8eb9c2b8ee8f77a41daaae9def38326f060d4546",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T18:49:08-06:00",
+          "message": "test(e2e): --rich-fragment-font reaches a fragment's rows through all:initial (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "987d1b38c28fc593ed1a7a34b0a5ed66824905fa",
