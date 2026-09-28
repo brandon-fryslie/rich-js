@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-175",
+      "ref": "refs/pull/175/merge",
+      "sha": "19fba387e1c6fc070fb544920a07c6e02396468a",
+      "timestamp": "2026-09-28T01:44:00.929Z",
+      "commits": [
+        {
+          "sha": "19fba387e1c6fc070fb544920a07c6e02396468a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T19:43:21-06:00",
+          "message": "Merge 912eebae39dce76847394646ee9bb527d3ec404c into 784d206505a713d9ca724f799b3b0c617c6e93fa\n"
+        },
+        {
+          "sha": "912eebae39dce76847394646ee9bb527d3ec404c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T19:43:09-06:00",
+          "message": "feat(docs): live examples — a program running in an xterm under its code (rich-docs-examples-xuu.0bc)\n\nA `ts live` block is type-checked and bundled as a program of its own and\nserved to its page as a lazily imported module. RichLive runs it in a live\nterminal while it is on screen, from the start on each scroll-in, stopped\non scroll-out; under reduced motion it draws one still frame with a Play\nbutton; it wears the site colour mode's terminal theme.\n\nThe embed (theme/live-terminal.ts) knows nothing of docs pages. Each run is\na Web Worker, so stopping is terminating it, timers included. Bytes and keys\ncross BrowserTerminalHost; xterm loads from the one pin the demo shell now\nalso fills from (examples/_browser-shell/xterm.ts).\n\nThe simulated process gains stdin and exit, so the widgets page's own\nNodeTerminalHost program runs unchanged in the browser. progress.md and\nwidgets.md are fully migrated.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "784d206505a713d9ca724f799b3b0c617c6e93fa",
