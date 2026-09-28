@@ -193,7 +193,7 @@ the rows are in.
 
 ## Border styles
 
-Pass a box constant from the named exports. Five of them, side by side:
+Pass a box constant from the named exports. Five of them, laid out with `Columns` as many to a row as fit:
 
 ```typescript
 import { Columns, ROUNDED, HEAVY, DOUBLE, ASCII, MINIMAL } from "@promptctl/rich-js";
