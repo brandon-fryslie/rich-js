@@ -54,7 +54,7 @@ describe("docs/panel.md", { timeout: 60_000 }, () => {
   });
 
   it("fails naming panel.md and the line of an example that throws", async () => {
-    const edited = PANEL.replace('console.print(Panel.fit("Short content"));', 'throw new Error("edited");');
+    const edited = PANEL.replace(/console\.print\(Panel\.fit\([^\n]*\);/, 'throw new Error("edited");');
     const fenceLine = scanFences("panel.md", edited).find((f) => f.code.includes("edited"))!.line;
     await expect(run(edited, "panel.md")).rejects.toThrow(`docs/panel.md:${fenceLine}: the example threw Error: edited`);
   });

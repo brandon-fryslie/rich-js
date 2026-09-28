@@ -4,20 +4,14 @@
 
 ## Basic usage
 
-Pass a single value to apply equal padding on all four sides:
+Pass a renderable and a single value to apply equal padding on all four sides. `Padding` takes a renderable, not a string, so markup goes through `renderMarkup` first. The background colour is only there to make the padding visible — [Style and expansion](#style-and-expansion) below covers it:
 
 ```typescript
-import { Console, Padding } from "@promptctl/rich-js";
+import { Console, Padding, renderMarkup } from "@promptctl/rich-js";
 
 const console = new Console();
 
-console.print(new Padding("Hello!", 1));
-```
-
-```
-
- Hello!
-
+console.print(new Padding(renderMarkup("[bold]Hello![/bold]"), 1, { style: "white on dark_blue" }));
 ```
 
 ## Granular padding
@@ -25,14 +19,17 @@ console.print(new Padding("Hello!", 1));
 Follows CSS padding conventions:
 
 ```typescript
+const hello = renderMarkup("[bold]Hello![/bold]");
+const shown = { style: "white on dark_blue" };
+
 // Single value — all sides
-new Padding("Hello!", 1)
+console.print(new Padding(hello, 1, shown));
 
 // 2-tuple — [top/bottom, left/right]
-new Padding("Hello!", [1, 4])
+console.print(new Padding(hello, [1, 4], shown));
 
 // 4-tuple — [top, right, bottom, left]
-new Padding("Hello!", [1, 4, 2, 8])
+console.print(new Padding(hello, [1, 4, 2, 8], shown));
 ```
 
 ## Style and expansion
@@ -40,13 +37,13 @@ new Padding("Hello!", [1, 4, 2, 8])
 Apply a background color across the padded area:
 
 ```typescript
-console.print(new Padding("[bold]Important[/bold]", [1, 4], { style: "on dark_blue" }));
+console.print(new Padding(renderMarkup("[bold]Important[/bold]"), [1, 4], { style: "white on dark_red" }));
 ```
 
 Prevent the padding from stretching to the terminal width:
 
 ```typescript
-console.print(new Padding("Tight fit", 1, { expand: false }));
+console.print(new Padding(renderMarkup("Tight fit"), 1, { style: "white on dark_green", expand: false }));
 ```
 
 ## Usage in other renderables
@@ -54,8 +51,15 @@ console.print(new Padding("Tight fit", 1, { expand: false }));
 `Padding` can be placed anywhere a renderable is accepted — for example, as a table cell for visual emphasis:
 
 ```typescript
+const table = new Table({ title: "Team" });
+table.addColumn("Status");
+table.addColumn("Name");
+
 table.addRow(
-  new Padding("[bold green]Active[/bold green]", [0, 2]),
+  new Padding(renderMarkup("[bold spring_green3]Active[/bold spring_green3]"), [0, 2]),
   "Alice",
 );
+table.addRow(renderMarkup("[dark_orange]Away[/dark_orange]"), "Bob");
+
+console.print(table);
 ```

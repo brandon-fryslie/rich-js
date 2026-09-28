@@ -1,30 +1,18 @@
 # Syntax Highlighting
 
-`Syntax` renders source code with language-specific highlighting.
-
-## Loading from a file path
-
-The most practical form — load a file and auto-detect the language from the extension:
-
-```typescript
-import { Console, Syntax } from "@promptctl/rich-js";
-
-const console = new Console();
-
-const syntax = await Syntax.fromPath("src/index.ts");
-console.print(syntax);
-```
+`Syntax` renders source code with highlighting: keywords, literal constants, strings, numbers and comments each get a style of their own. The tokenizer is built in and the same for every language — it knows JavaScript's and Python's keywords, and `//`, `/* */` and `#` comments. The language name is kept on the instance as `syntax.language`.
 
 ## Basic usage
 
 Construct with a code string and a language name:
 
 ```typescript
-const code = `
-function greet(name: string): string {
-  return \`Hello, \${name}!\`;
-}
-`;
+const code = `// Greet someone, a few times over.
+function greet(name: string, times = 3): string {
+  const line = \`Hello, \${name}!\`;
+  if (times <= 0) return "";
+  return new Array(times).fill(line).join(" ");
+}`;
 
 const syntax = new Syntax(code, "typescript");
 console.print(syntax);
@@ -39,32 +27,15 @@ const syntax = new Syntax(code, "typescript", { lineNumbers: true });
 console.print(syntax);
 ```
 
-## Theme
+## Highlighting lines
 
-Choose a highlighting theme:
-
-```typescript
-const syntax = new Syntax(code, "python", { theme: "monokai" });
-```
-
-Two special values use the terminal's own color theme instead of an embedded palette:
+`startLine` sets the number the first line is given, for a snippet cut from the middle of a file. `highlightLines` names lines by those numbers, and draws their numbers bold on a grey ground:
 
 ```typescript
-const syntax = new Syntax(code, "python", { theme: "ansi_dark" });
-const syntax = new Syntax(code, "python", { theme: "ansi_light" });
-```
-
-This ensures the code colors harmonize with whatever color scheme the user has set in their terminal.
-
-## Background color
-
-Override the theme's background:
-
-```typescript
-// Named color, hex, or rgb
-const syntax = new Syntax(code, "python", { backgroundColor: "#1e1e2e" });
-const syntax = new Syntax(code, "python", { backgroundColor: "rgb(30,30,46)" });
-
-// Use the terminal's own background (transparent feel)
-const syntax = new Syntax(code, "python", { backgroundColor: "default" });
+const syntax = new Syntax(code, "typescript", {
+  lineNumbers: true,
+  startLine: 10,
+  highlightLines: new Set([12, 13]),
+});
+console.print(syntax);
 ```

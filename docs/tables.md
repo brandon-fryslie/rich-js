@@ -4,40 +4,37 @@
 
 ## Basic usage
 
-Three steps: construct a table, add columns, add rows, print:
+Four steps: construct a table, add columns, add rows, print:
 
 ```typescript
 import { Console, Table } from "@promptctl/rich-js";
 
 const console = new Console();
 
-const table = new Table({ title: "Star Wars Box Office" });
+const table = new Table({
+  title: "Star Wars Box Office",
+  titleStyle: "bold dark_goldenrod",
+  headerStyle: "bold medium_orchid",
+  borderStyle: "steel_blue",
+});
 
 table.addColumn("Date",              { width: 12 });
 table.addColumn("Title");
 table.addColumn("Production Budget", { justify: "right" });
 table.addColumn("Box Office",        { justify: "right" });
 
-table.addRow("Dec 20, 2019", "Star Wars: The Rise of Skywalker",   "$275,000,000", "$375,126,118");
-table.addRow("May 25, 2018", "[red]Solo[/red]: A Star Wars Story", "$275,000,000", "$393,151,347");
-table.addRow("Dec 15, 2017", "Star Wars Ep. VIII: The Last Jedi",  "$262,000,000", "[bold]$1,332,539,889[/bold]");
+table.addRow("[dim]Dec 20, 2019[/dim]", "[deep_sky_blue3]Star Wars: The Rise of Skywalker[/]",   "[chartreuse4]$275,000,000[/]", "[chartreuse4]$375,126,118[/]");
+table.addRow("[dim]May 25, 2018[/dim]", "[indian_red]Solo[/]: [deep_sky_blue3]A Star Wars Story[/]", "[chartreuse4]$275,000,000[/]", "[chartreuse4]$393,151,347[/]");
+table.addRow("[dim]Dec 15, 2017[/dim]", "[deep_sky_blue3]Star Wars Ep. VIII: The Last Jedi[/]",  "[chartreuse4]$262,000,000[/]", "[bold chartreuse4]$1,332,539,889[/]");
 
 console.print(table);
 ```
 
-```
-                                  Star Wars Box Office
-┏━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
-┃ Date         ┃ Title                            ┃ Production Budget ┃     Box Office ┃
-┡━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
-│ Dec 20, 2019 │ Star Wars: The Rise of Skywalker │      $275,000,000 │   $375,126,118 │
-│ May 25, 2018 │ Solo: A Star Wars Story          │      $275,000,000 │   $393,151,347 │
-│ Dec 15, 2017 │ Star Wars Ep. VIII: The Last     │      $262,000,000 │ $1,332,539,889 │
-│              │ Jedi                             │                   │                │
-└──────────────┴──────────────────────────────────┴───────────────────┴────────────────┘
-```
-
-Columns resize to fit terminal width, wrapping text when needed. Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
+The example terminal is 75 columns wide, narrower than this table wants, so the
+columns shrink to fit. Each gives up width in proportion to its natural width:
+the long titles and the "Production Budget" header wrap onto a second line, and
+the Box Office figures, which cannot wrap, are cut short by their column's
+`overflow` (an ellipsis by default). Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
 
 ## Table options
 
@@ -108,15 +105,27 @@ Cells go out in a fixed order — the two outer border columns, then one content
 cell for each column together with the divider in front of it, then the padding,
 and only then does content grow back toward its natural width. Columns fill from
 the left, and a column the width cannot seat is dropped rather than drawn outside
-the frame:
+the frame. The same three-column table, declared at seven widths and set side
+by side in a grid:
 
-```
-width 2   width 3   width 4   width 5   width 7   width 10     width 13
-┌┐        ┌─┐       ┌──┐      ┌─┬─┐     ┌─┬─┬─┐   ┌──┬──┬──┐   ┌───┬───┬───┐
-││        │A│       │ A│      │A│B│     │A│B│C│   │ A│ B│ C│   │ A │ B │ C │
-├┤        ├─┤       ├──┤      ├─┼─┤     ├─┼─┼─┤   ├──┼──┼──┤   ├───┼───┼───┤
-││        │1│       │ 1│      │1│2│     │1│2│3│   │ 1│ 2│ 3│   │ 1 │ 2 │ 3 │
-└┘        └─┘       └──┘      └─┴─┘     └─┴─┴─┘   └──┴──┴──┘   └───┴───┴───┘
+```typescript
+const abc = (width: number) => {
+  const t = new Table({ width, box: SQUARE, borderStyle: "steel_blue", headerStyle: "bold dark_goldenrod" });
+  t.addColumn("A");
+  t.addColumn("B");
+  t.addColumn("C");
+  t.addRow("[chartreuse4]1[/]", "[chartreuse4]2[/]", "[chartreuse4]3[/]");
+  return t;
+};
+
+const widths = [2, 3, 4, 5, 7, 10, 13];
+const ladder = Table.grid();
+// Each grid column is wide enough for its label and for its table.
+for (const w of widths) ladder.addColumn("", { width: Math.max(w, 8) });
+ladder.addRow(...widths.map((w) => `[dim]width ${w}[/dim]`));
+ladder.addRow(...widths.map(abc));
+
+console.print(ladder);
 ```
 
 Those are the widths at which this table's render lands exactly on the width
@@ -168,8 +177,13 @@ text; what styles a whole row is the table's `headerStyle`, `footerStyle` and
 first and everything else in an options object:
 
 ```typescript
-table.addColumn("Name");
-table.addColumn("Score", { justify: "right" });
+const scores = new Table({ headerStyle: "bold deep_sky_blue3", borderStyle: "deep_sky_blue3" });
+scores.addColumn("Name");
+scores.addColumn("Score", { justify: "right" });
+scores.addRow("Alice", "[bold chartreuse4]98[/]");
+scores.addRow("Bob",   "[dark_goldenrod]87[/]");
+
+console.print(scores);
 ```
 
 Every column option is reachable that way. The exported `Column` class is the same
@@ -179,12 +193,22 @@ the rows are in.
 
 ## Border styles
 
-Pass a box constant from the named exports:
+Pass a box constant from the named exports. Five of them, laid out with `Columns` as many to a row as fit:
 
 ```typescript
-import { ROUNDED, HEAVY, DOUBLE, ASCII, MINIMAL } from "@promptctl/rich-js";
+import { Columns, ROUNDED, HEAVY, DOUBLE, ASCII, MINIMAL } from "@promptctl/rich-js";
 
-const table = new Table({ box: ROUNDED });
+const styles = { ROUNDED, HEAVY, DOUBLE, ASCII, MINIMAL };
+const tables = Object.entries(styles).map(([name, box]) => {
+  const table = new Table({ box, title: `[bold]${name}[/bold]`, borderStyle: "medium_orchid" });
+  table.addColumn("Key");
+  table.addColumn("Value");
+  table.addRow("[deep_sky_blue3]a[/]", "1");
+  table.addRow("[deep_sky_blue3]b[/]", "2");
+  return table;
+});
+
+console.print(new Columns(tables));
 ```
 
 Available styles: `ASCII`, `ASCII2`, `ASCII_DOUBLE_HEAD`, `SQUARE`, `SQUARE_DOUBLE_HEAD`, `MINIMAL`, `MINIMAL_HEAVY_HEAD`, `MINIMAL_DOUBLE_HEAD`, `SIMPLE`, `SIMPLE_HEAD`, `SIMPLE_HEAVY`, `HORIZONTALS`, `ROUNDED`, `HEAVY`, `HEAVY_EDGE`, `HEAVY_HEAD`, `DOUBLE`, `DOUBLE_EDGE`, `MARKDOWN`.
@@ -198,31 +222,55 @@ Five of those styles spend heavier glyphs on the header than on the rest of the 
 By default only the header row gets a separator line. Add lines between all data rows:
 
 ```typescript
-const table = new Table({ showLines: true });
+const lined = new Table({ showLines: true, borderStyle: "chartreuse4" });
+lined.addColumn("Step");
+lined.addColumn("Status");
+lined.addRow("Fetch",   "[chartreuse4]done[/]");
+lined.addRow("Build",   "[chartreuse4]done[/]");
+lined.addRow("Deploy",  "[dark_goldenrod]running[/]");
+
+console.print(lined);
 ```
 
 Insert a line after a specific row:
 
 ```typescript
-table.addRow("Alice", "98", { endSection: true });
-table.addRow("Bob",   "87");
+const podium = new Table({ borderStyle: "dark_goldenrod" });
+podium.addColumn("Player");
+podium.addColumn("Score", { justify: "right" });
+podium.addRow("[bold]Alice[/bold]", "[bold chartreuse4]98[/]", { endSection: true });
+podium.addRow("Bob",   "87");
+podium.addRow("Carol", "81");
+
+console.print(podium);
 ```
 
-Or insert a section break explicitly:
+Or insert a section break explicitly, between one `addRow` and the next:
 
 ```typescript
-table.addSection();
+const standings = new Table({ title: "Standings", borderStyle: "steel_blue" });
+standings.addColumn("Team");
+standings.addColumn("Pts", { justify: "right" });
+standings.addRow("Lions",  "42");
+standings.addRow("Tigers", "39");
+standings.addSection();
+standings.addRow("[indian_red]Bears[/]", "[indian_red]12[/]");
+
+console.print(standings);
 ```
 
 ## Empty tables
 
-An empty table (no columns) prints a blank line. Check before printing if you need different behavior:
+An empty table (no columns) prints a blank line, and a table with columns but no rows prints only its header. Check `rowCount` before printing if you need different behavior:
 
 ```typescript
-if (table.rowCount === 0) {
+const results = new Table();
+results.addColumn("Match");
+
+if (results.rowCount === 0) {
   console.print("[dim]No results.[/dim]");
 } else {
-  console.print(table);
+  console.print(results);
 }
 ```
 
