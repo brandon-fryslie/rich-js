@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-176",
+      "ref": "refs/pull/176/merge",
+      "sha": "20bb53ed896dd4c503ca901729ed7ad35d320ffa",
+      "timestamp": "2026-09-28T02:04:58.670Z",
+      "commits": [
+        {
+          "sha": "20bb53ed896dd4c503ca901729ed7ad35d320ffa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:04:25-06:00",
+          "message": "Merge 970e8cb11dcd00b55b0ba706d5b809e48a47ab02 into c3d939546fd7373598936a1a3021d95e0c6af065\n"
+        },
+        {
+          "sha": "970e8cb11dcd00b55b0ba706d5b809e48a47ab02",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:04:20-06:00",
+          "message": "test(docs): gate every docs example — no hand-drawn output off NOT_YET_MIGRATED, no stale entries on it (rich-docs-examples-xuu.wlm)\n\nscanBlocks is now the one fence parser; scanFences is the TypeScript view of it.\nA fence Shiki draws as bare text or ansi is drawn output: decided by the fence,\nnot its contents. test/docs/example-gate.ts owns why.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c3d939546fd7373598936a1a3021d95e0c6af065",
