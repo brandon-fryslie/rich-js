@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-177",
-      "ref": "refs/pull/177/merge",
-      "sha": "83078bf75ebebac451d3de2a65e6a1b7f6d2db73",
-      "timestamp": "2026-09-28T02:36:24.949Z",
-      "commits": [
-        {
-          "sha": "83078bf75ebebac451d3de2a65e6a1b7f6d2db73",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T02:35:44Z",
-          "message": "Merge 11f60977cd09da10bff6780ed0a8417da6b90330 into 2aebf26f87dd0f5a2731dcf652950b29883e05ac\n"
-        },
-        {
-          "sha": "11f60977cd09da10bff6780ed0a8417da6b90330",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:35:39-06:00",
-          "message": "fix(docs): frontmatter opens as gray-matter opens it (rich-docs-examples-xuu.77u)\n"
-        },
-        {
-          "sha": "12a04b822fe0f9e19f287f70e3892679d1ae23e4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:32:26-06:00",
-          "message": "fix(docs): the fence scan registers VitePress's containers, reads closure from markdown-it, and numbers lines as it does (rich-docs-examples-xuu.77u)\n"
-        },
-        {
-          "sha": "0e6cf264d2c843cb45ca82db9e9bf8a5b1cb2c29",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:21:48-06:00",
-          "message": "fix(docs): read fences with markdown-it, and refuse an example whose card would cut it out of its list, quote or code group (rich-docs-examples-xuu.77u)\n\nscanBlocks now asks markdown-it (plus a catch-all ::: container) where each\nfence is and what it sits in; the line scanner could not see a fence indented\nfour spaces into a list item. scriptLine reads the same blocks instead of\nscanning fences a second time.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2aebf26f87dd0f5a2731dcf652950b29883e05ac",
-      "timestamp": "2026-09-28T02:14:37.950Z",
+      "sha": "e3cca5568120b7547d1200c737b93b207fbca0bd",
+      "timestamp": "2026-09-28T02:38:49.851Z",
       "commits": [
         {
-          "sha": "2aebf26f87dd0f5a2731dcf652950b29883e05ac",
+          "sha": "e3cca5568120b7547d1200c737b93b207fbca0bd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T20:14:02-06:00",
-          "message": "test(docs): gate every docs example — no hand-drawn output off NOT_YET_MIGRATED, no stale entries on it (rich-docs-examples-xuu.wlm) (#176)\n\n* test(docs): gate every docs example — no hand-drawn output off NOT_YET_MIGRATED, no stale entries on it (rich-docs-examples-xuu.wlm)\n\nscanBlocks is now the one fence parser; scanFences is the TypeScript view of it.\nA fence Shiki draws as bare text or ansi is drawn output: decided by the fence,\nnot its contents. test/docs/example-gate.ts owns why.\n\n* fix(docs): the example gate resolves a fence's language as VitePress does, and parses a page once (rich-docs-examples-xuu.wlm)\n\n* fix(docs): the example gate asks VitePress's own shiki for its grammars (rich-docs-examples-xuu.wlm)"
+          "timestamp": "2026-09-27T20:38:12-06:00",
+          "message": "fix(docs): read fences with markdown-it, and refuse an example whose card would cut it out of its list, quote or code group (rich-docs-examples-xuu.77u) (#177)\n\n* fix(docs): read fences with markdown-it, and refuse an example whose card would cut it out of its list, quote or code group (rich-docs-examples-xuu.77u)\n\nscanBlocks now asks markdown-it (plus a catch-all ::: container) where each\nfence is and what it sits in; the line scanner could not see a fence indented\nfour spaces into a list item. scriptLine reads the same blocks instead of\nscanning fences a second time.\n\n* fix(docs): the fence scan registers VitePress's containers, reads closure from markdown-it, and numbers lines as it does (rich-docs-examples-xuu.77u)\n\n* fix(docs): frontmatter opens as gray-matter opens it (rich-docs-examples-xuu.77u)"
         }
       ]
     }
