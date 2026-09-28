@@ -591,7 +591,8 @@ export class ColorSpec {
       case ColorDepth.TRUECOLOR:
         return this.value!;
       case ColorDepth.EIGHT_BIT:
-        return EIGHT_BIT_TABLE.get(this.number!);
+        // Slots 0–15 are the theme's own whatever depth names them, as `fixedValue` says.
+        return this.number! < 16 ? (theme ?? INTERNAL_DEFAULT_THEME).ansiColors.get(this.number!) : EIGHT_BIT_TABLE.get(this.number!);
       case ColorDepth.STANDARD: {
         const t = theme ?? INTERNAL_DEFAULT_THEME;
         return t.ansiColors.get(this.number!);

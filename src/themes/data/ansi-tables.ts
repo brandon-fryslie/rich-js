@@ -1,4 +1,13 @@
-import type { AnsiColorsData } from "./types.js";
+import { STANDARD_TABLE } from "../../core/color.js";
+import { ANSI_SLOTS, type AnsiColorsData } from "./types.js";
+
+/**
+ * The VGA colours a terminal draws with no theme of its own: Rich's
+ * `DEFAULT_TERMINAL_THEME`, and what `textual-ansi` spells its palette in.
+ */
+export const VGA_ANSI = Object.fromEntries(
+  ANSI_SLOTS.map((slot, n) => [slot, STANDARD_TABLE.get(n).hex]),
+) as AnsiColorsData;
 
 /**
  * The ANSI tables Textual draws named colours in for a theme that has no

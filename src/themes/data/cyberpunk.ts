@@ -1,4 +1,4 @@
-import { TEXTUAL_DARK_ANSI } from "./textual-ansi-colors.js";
+import { TEXTUAL_DARK_ANSI } from "./ansi-tables.js";
 import type { ThemePaletteData } from "./types.js";
 
 /**

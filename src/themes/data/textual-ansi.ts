@@ -1,10 +1,10 @@
-import { TEXTUAL_DARK_ANSI } from "./textual-ansi-colors.js";
+import { VGA_ANSI } from "./ansi-tables.js";
 import type { ThemePaletteData } from "./types.js";
 
 const theme: ThemePaletteData = {
   name: "textual-ansi",
   dark: true,
-  ansi: TEXTUAL_DARK_ANSI,
+  ansi: VGA_ANSI,
   vars: {
     "accent": "#0000FF",
     "accent-darken-1": "#0000FF",

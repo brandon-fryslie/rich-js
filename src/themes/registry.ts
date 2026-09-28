@@ -80,7 +80,7 @@ export function getThemeBaseColors(name: ThemeName): ThemeBaseColors {
     success: requireBaseVar(data, "success"),
     warning: requireBaseVar(data, "warning"),
     error: requireBaseVar(data, "error"),
-    ansi: new ColorTable(ANSI_SLOTS.map((slot) => parseHex(data.ansi[slot], data.name, `ansi.${slot}`))),
+    ansi: new ColorTable(ANSI_SLOTS.map((slot) => parseOpaqueHex(data.ansi[slot], data.name, `ansi.${slot}`))),
   };
 }
 
@@ -117,6 +117,17 @@ function hydrate(data: ThemePaletteData): Palette {
 // the untrusted side (authored data files) and the place that has to
 // reject `"0G"`, `""`, `"#GGGGGG"`, etc.
 const HEX_RE = /^[0-9a-fA-F]+$/;
+
+/**
+ * An ANSI slot is a colour a terminal paints, never a blend, so it takes no
+ * alpha: `flattenAlpha` leaves a STANDARD spec alone and would pass one through.
+ */
+function parseOpaqueHex(value: string, theme: string, key: string): ColorRgba {
+  if (!/^#[0-9A-Fa-f]{6}$/.test(value)) {
+    throw new Error(`Theme ${theme}: ${key} has invalid hex ${JSON.stringify(value)} (expected #RRGGBB)`);
+  }
+  return parseRgbHex(value.slice(1));
+}
 
 function parseHex(value: string, theme: string, key: string): ColorRgba {
   const hex = value.startsWith("#") ? value.slice(1) : value;

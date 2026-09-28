@@ -1,27 +1,10 @@
+import { VGA_ANSI } from "./ansi-tables.js";
 import type { ThemePaletteData } from "./types.js";
 
 const theme: ThemePaletteData = {
   name: "default",
   dark: true,
-  // Rich's DEFAULT_TERMINAL_THEME
-  ansi: {
-    black: "#000000",
-    red: "#800000",
-    green: "#008000",
-    yellow: "#808000",
-    blue: "#000080",
-    magenta: "#800080",
-    cyan: "#008080",
-    white: "#C0C0C0",
-    brightBlack: "#808080",
-    brightRed: "#FF0000",
-    brightGreen: "#00FF00",
-    brightYellow: "#FFFF00",
-    brightBlue: "#0000FF",
-    brightMagenta: "#FF00FF",
-    brightCyan: "#00FFFF",
-    brightWhite: "#FFFFFF",
-  },
+  ansi: VGA_ANSI,
   vars: {
     "accent": "#006FB8",
     "accent-darken-1": "#005CA3",

@@ -1,4 +1,4 @@
-import { TEXTUAL_LIGHT_ANSI } from "./textual-ansi-colors.js";
+import { TEXTUAL_LIGHT_ANSI } from "./ansi-tables.js";
 import type { ThemePaletteData } from "./types.js";
 
 const theme: ThemePaletteData = {
