@@ -4,15 +4,22 @@
     {
       "version": "pr-176",
       "ref": "refs/pull/176/merge",
-      "sha": "c4e17a8268014a58dcdb7116989d1e5f60df58b9",
-      "timestamp": "2026-09-28T02:09:34.875Z",
+      "sha": "67b2aedbee0c8c3c046a332919d97981598b0c32",
+      "timestamp": "2026-09-28T02:11:54.908Z",
       "commits": [
         {
-          "sha": "c4e17a8268014a58dcdb7116989d1e5f60df58b9",
+          "sha": "67b2aedbee0c8c3c046a332919d97981598b0c32",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T02:09:00Z",
-          "message": "Merge e234707eb1b214e206b3e865a3b31cffb594d017 into c3d939546fd7373598936a1a3021d95e0c6af065\n"
+          "timestamp": "2026-09-28T02:11:17Z",
+          "message": "Merge 75308fb552e6ff4012f21303a3e1c994ffbaf934 into c3d939546fd7373598936a1a3021d95e0c6af065\n"
+        },
+        {
+          "sha": "75308fb552e6ff4012f21303a3e1c994ffbaf934",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:11:12-06:00",
+          "message": "fix(docs): the example gate asks VitePress's own shiki for its grammars (rich-docs-examples-xuu.wlm)\n"
         },
         {
           "sha": "e234707eb1b214e206b3e865a3b31cffb594d017",
