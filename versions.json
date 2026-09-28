@@ -4,15 +4,22 @@
     {
       "version": "pr-179",
       "ref": "refs/pull/179/merge",
-      "sha": "a97951c04c65de01a35e082ee3345078711005b3",
-      "timestamp": "2026-09-28T03:12:54.583Z",
+      "sha": "471ddff9016938264f47f4b5d23cacaa55ea22bf",
+      "timestamp": "2026-09-28T03:20:20.995Z",
       "commits": [
         {
-          "sha": "a97951c04c65de01a35e082ee3345078711005b3",
+          "sha": "471ddff9016938264f47f4b5d23cacaa55ea22bf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T21:12:13-06:00",
-          "message": "Merge 8cf7401ee0629ee012b9927c123e9f21bc8d16ac into 93db2da27f207c7b26ec27dc8a0e7db5fa5d929d\n"
+          "timestamp": "2026-09-28T03:19:39Z",
+          "message": "Merge e6df3264d321cbf54b14753a4c1e92878abe91aa into 93db2da27f207c7b26ec27dc8a0e7db5fa5d929d\n"
+        },
+        {
+          "sha": "e6df3264d321cbf54b14753a4c1e92878abe91aa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T21:19:34-06:00",
+          "message": "fix(themes): textual-ansi keeps VGA, derived once from STANDARD_TABLE; ANSI slots are opaque; EIGHT_BIT 0–15 draws through the theme (rich-docs-examples-xuu.8tt)\n"
         },
         {
           "sha": "8cf7401ee0629ee012b9927c123e9f21bc8d16ac",
