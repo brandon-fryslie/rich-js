@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-174",
-      "ref": "refs/pull/174/merge",
-      "sha": "e677e2411443b4b7f7b81c175a91c0e0cdec9aef",
-      "timestamp": "2026-09-28T00:51:32.474Z",
-      "commits": [
-        {
-          "sha": "e677e2411443b4b7f7b81c175a91c0e0cdec9aef",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T00:50:58Z",
-          "message": "Merge 8eb9c2b8ee8f77a41daaae9def38326f060d4546 into 64bcfcf2135c0be32e6e1f432fd9e5e6548a8826\n"
-        },
-        {
-          "sha": "8eb9c2b8ee8f77a41daaae9def38326f060d4546",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T18:49:08-06:00",
-          "message": "test(e2e): --rich-fragment-font reaches a fragment's rows through all:initial (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "987d1b38c28fc593ed1a7a34b0a5ed66824905fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T18:47:24-06:00",
-          "message": "fix(docs): one code font for code and output; narrow widths drawn by Panel alone; cards stay inside tips on phones (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "8602fe6288a4b3afe6866ba23a6d2e966c20a1b9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T18:40:34-06:00",
-          "message": "feat(docs): the example widget — code, and the output it produces, as one card (rich-docs-examples-xuu.8fh)\n\nEvery example on a migrated page is one element: VitePress's own highlighted\nfence, and under it an output panel whose label strip names where the output\ncame from (\"Output — produced by running the code above\"), then the light and\ndark fragments, CSS picking one per colour mode, or the marker's note. Labels\nand captions are rows of the marker table beside the notes.\n\nThe fragment's font is the one thing a host can now set through its\nall:initial, as the --rich-fragment-font custom property; the widget sets it to\nthe code font at a line height where box drawing joins. The blink keyframes are\nincluded once through VitePress's head, from HTML_FRAGMENT_CSS. The light code\ntheme is one-light, so code and output share the One palette in both modes.\n\npanel.md is migrated: its hand-drawn outputs are gone, and the narrow-widths\ndiagram is now an example that draws it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "64bcfcf2135c0be32e6e1f432fd9e5e6548a8826",
-      "timestamp": "2026-09-28T00:34:23.200Z",
+      "sha": "784d206505a713d9ca724f799b3b0c617c6e93fa",
+      "timestamp": "2026-09-28T00:53:47.517Z",
       "commits": [
         {
-          "sha": "64bcfcf2135c0be32e6e1f432fd9e5e6548a8826",
+          "sha": "784d206505a713d9ca724f799b3b0c617c6e93fa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T18:33:56-06:00",
-          "message": "feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812) (#172)\n\n* feat(docs): run every migrated page's examples at build time (rich-docs-examples-xuu.812)\n\nA pre-transform Vite plugin builds each page's examples into one program\n(imports hoisted, the barrel-and-console prelude, the page's exampleContext,\nblocks chained in nested scopes), type-checks it under the repo's strict\noptions, bundles it, and runs it once under the simulated process in a 75x24\ntruecolor terminal. Each block's bytes are held to its marker, decoded with\ndecodeAnsi and encoded as a light and a dark fragment under its fence.\nEvery failure fails the build at the page and line.\n\nThe marker vocabulary and the fence parser are one module, which\ntest/docs/code-blocks.ts now reads too, so a marked block stays in the\nsymbol-existence sweep. Every page with a TypeScript fence starts on\nNOT_YET_MIGRATED, so the site is unchanged. tscTransform moved out of\nvitest.config.ts so the bundler compiles src/ the same way.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): examples blame the context that threw; silent shows its note alone; ts{2} is TypeScript (rich-docs-examples-xuu.812)\n\nReview of #172:\n- a context throw is reported at the exampleContext, not the first block;\n  splitRecords says whether the context finished\n- the context is the chain's first scope, so it may redeclare console\n- a silent block's note stands in place of output, with no empty fragments\n- VitePress fence attributes ({2}, :line-numbers, [title]) no longer hide a\n  TypeScript fence from every reader\n- a default-plus-named import binds both names, so the prelude does not\n  import the named one again\n- a page runs once per docs:build, not once per VitePress build pass\n- ExampleCompiler keeps parsed files by mtime, as its header claimed\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): output ends its HTML block; the run cache follows src/; a non-Error throw has no orphan colon (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): one bundler for every simulated run; a thrown value shows as Node reports it (rich-docs-examples-xuu.812)\n\nReview of #172 (CI reviewer):\n- test/docs/bundle-program.ts is gone; its unit and e2e callers bundle with\n  bundleExample, so the keepProcessEnv workaround has one home\n- an exampleContext whose code is not indented fails instead of running empty\n- barrel exports are read through resolveAlias\n- `import type { X }` from the main barrel no longer stops the prelude\n  importing X's value\n- a throws block shows Error.prototype.toString, or `Uncaught <value>`, so an\n  empty throw still shows\n- a hyperlink passes the escape check (test)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): a CRLF page is read like any other; one fewer helper (rich-docs-examples-xuu.812)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): a barrel type import meets the name-collision check (rich-docs-examples-xuu.812)\n\nA type-only import of a barrel value was filtered out before the check\nthat two imports may not bind one name differently, so another block\nbinding that name elsewhere silently won. It is now hoisted as the value\nimport it stands for, which dedupes against the same import and collides\nwith any other.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): a program that does not bundle names its page (rich-docs-examples-xuu.812)\n\nEvery other failure the runner reports is prefixed with the page; a\nbundler rejection (an import that type-checks but ships no JavaScript)\npropagated bare.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): the fence scanner reads every CommonMark fence form (rich-docs-examples-xuu.812)\n\nAn indented or tilde fence was invisible to both the runner and the\nsymbol-existence sweep, and prose starting with ```ts``` opened a fence\nthat mispaired every one after it. The sweep now calls scanFences\ndirectly; extractCodeBlocks and CodeBlock were aliases of it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): examples merge imports by export, assume barrel types, and stop on a stalled run (rich-docs-examples-xuu.812)\n\n- An import is now a binding of a local name to an export, so a type and a\n  value import of one export merge from any entry point, not only the main\n  barrel; the barrelType special case is gone.\n- The prelude imports the main barrel's types as well as its values, which\n  is what docs/introduction.md tells readers.\n- A run that has not finished after 5 s fails at the block it waits in.\n- The prelude writes its own sentinel, so a throw there is no longer blamed\n  on the page's exampleContext.\n- The plugin takes its source stamp as an argument; its test no longer\n  rewrites src/index.ts's mtime.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(docs): a character split across writes decodes whole; the runner header stops enumerating its checks (rich-docs-examples-xuu.812)\n\nByte writes were decoded one chunk at a time, so a multi-byte character\nsplit across two writes became U+FFFD. The header's list of failures had\ndrifted from the checks twice; it now states the one claim, and the\ndeadline says it catches a run that waits, not one that spins.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-27T18:53:14-06:00",
+          "message": "feat(docs): the example widget — code, and the output it produces, as one card (rich-docs-examples-xuu.8fh) (#174)\n\n* feat(docs): the example widget — code, and the output it produces, as one card (rich-docs-examples-xuu.8fh)\n\nEvery example on a migrated page is one element: VitePress's own highlighted\nfence, and under it an output panel whose label strip names where the output\ncame from (\"Output — produced by running the code above\"), then the light and\ndark fragments, CSS picking one per colour mode, or the marker's note. Labels\nand captions are rows of the marker table beside the notes.\n\nThe fragment's font is the one thing a host can now set through its\nall:initial, as the --rich-fragment-font custom property; the widget sets it to\nthe code font at a line height where box drawing joins. The blink keyframes are\nincluded once through VitePress's head, from HTML_FRAGMENT_CSS. The light code\ntheme is one-light, so code and output share the One palette in both modes.\n\npanel.md is migrated: its hand-drawn outputs are gone, and the narrow-widths\ndiagram is now an example that draws it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(docs): one code font for code and output; narrow widths drawn by Panel alone; cards stay inside tips on phones (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(e2e): --rich-fragment-font reaches a fragment's rows through all:initial (rich-docs-examples-xuu.8fh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
