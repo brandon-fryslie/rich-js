@@ -74,10 +74,20 @@
 }
 
 /* ─── Monospace font stack for code ────────────────────────────
- * One stack, read by code and by generated example output alike. */
+ * One stack, read by code and by generated example output alike. Its first
+ * face draws only the Powerline glyphs (scripts/powerline-font.py builds it),
+ * so a Strip's arrows and caps are shapes on a reader with no patched font;
+ * everything else falls through to the faces after it. */
+@font-face {
+  font-family: 'Rich Powerline';
+  src: url('./fonts/rich-powerline.woff2') format('woff2');
+  unicode-range: U+E0A0-E0D7;
+  font-display: block;
+}
+
 :root {
-  --rich-code-font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', ui-monospace,
-    SFMono-Regular, Menlo, monospace;
+  --rich-code-font-family: 'Rich Powerline', 'JetBrains Mono', 'Cascadia Code', 'Fira Code',
+    ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 .vp-doc code {
