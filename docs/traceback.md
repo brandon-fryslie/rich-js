@@ -33,7 +33,7 @@ A rich traceback prints an error as its name and message, followed by one line p
 
 ## Printing a caught exception
 
-Catch an error and print a rich traceback:
+Catch an error and print a rich traceback. Here `processUser(user)` stands for your own code, and it throws:
 
 ```typescript
 import { Traceback } from "@promptctl/rich-js";

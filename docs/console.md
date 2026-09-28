@@ -449,7 +449,7 @@ words — style the whole rule with the `style` option instead.
 
 `Status` displays a spinner animation with a message while work is in progress.
 It is a separate class, not a `Console` method — pass the console it should draw
-on:
+on. `doWork()` stands for your own slow, awaited work:
 
 ```typescript live
 import { Console, Status } from "@promptctl/rich-js";
