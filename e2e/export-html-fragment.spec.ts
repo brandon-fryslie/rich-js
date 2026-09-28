@@ -98,3 +98,15 @@ test("a fragment computes the same in a styled host as in a blank page", async (
   expect(at("pre", "background-color")).toBe(rgb(SOLARIZED_LIGHT.backgroundColor));
   expect(at("run", "color")).toBe(rgb(SOLARIZED_LIGHT.foregroundColor));
 });
+
+test("--rich-fragment-font on an ancestor reaches the rows through all:initial", async ({ page }) => {
+  await page.setContent(HOST.replace('<div id="slot">', '<div id="slot" style="--rich-fragment-font: 14px / 1.25 fantasy">'));
+  await embed(page, FRAGMENT);
+  const fonts = await fragmentStyles(page);
+  const at = (element: string, property: string) => fonts[element]![PROPERTIES.indexOf(property)];
+  for (const element of ["pre", "run"]) {
+    expect(at(element, "font-family")).toBe("fantasy");
+    expect(at(element, "font-size")).toBe("14px");
+    expect(at(element, "line-height")).toBe("17.5px");
+  }
+});
