@@ -14,9 +14,9 @@ import { relativeLuminance, contrastRatio, ColorRgba } from "@promptctl/rich-js"
 const white = new ColorRgba(255, 255, 255);
 const black = new ColorRgba(0, 0, 0);
 
-relativeLuminance(white);        // 1
-contrastRatio(black, white);     // ~21  (the maximum)
-contrastRatio(white, white);     // 1    (the minimum)
+console.print(`luminance of white: ${relativeLuminance(white)}`);
+console.print(`[${black.hex} on ${white.hex}] black on white [/]  ${contrastRatio(black, white)}:1, the maximum`);
+console.print(`[${white.hex} on ${white.hex}] white on white [/]  ${contrastRatio(white, white)}:1, the minimum`);
 ```
 
 `4.5:1` is the WCAG AA threshold for normal text; `3:1` for large text. `contrastRatio` and `relativeLuminance` measure the colours they are given and assume **opaque** inputs — the displayed contrast of a translucent color depends on what it composites over, so flatten first (`c.compositeOver(new ColorRgba(0, 0, 0))` for a terminal cell, which draws translucency over black). The pickers, `contrastFor` and `ensureContrast`, flatten a translucent background themselves, so check their answer against the flattened background too.
@@ -28,8 +28,10 @@ contrastRatio(white, white);     // 1    (the minimum)
 ```typescript
 import { contrastFor, ColorRgba } from "@promptctl/rich-js";
 
-contrastFor(new ColorRgba(240, 240, 240)); // black  → ColorRgba(0,0,0)
-contrastFor(new ColorRgba(30, 30, 30));    // white  → ColorRgba(255,255,255)
+for (const bg of [new ColorRgba(240, 240, 240), new ColorRgba(30, 30, 30)]) {
+  const fg = contrastFor(bg); // black on the light grey, white on the dark one
+  console.print(`[${fg.hex} on ${bg.hex}] text on ${bg.hex} [/]  contrastFor gives ${fg.hex}`);
+}
 ```
 
 ## Making a themed color readable — `ensureContrast`
@@ -43,9 +45,12 @@ const panel = new ColorRgba(20, 30, 70);   // dark blue
 const link  = new ColorRgba(60, 90, 200);  // blue — too low contrast as-is
 
 const readable = ensureContrast(link, panel);   // defaults to AA (4.5:1)
-contrastRatio(readable, panel);                 // >= 4.5
-// `readable` is still blue — same hue, lighter.
+
+console.print(`[${link.hex} on ${panel.hex}] link, as chosen  [/]  ${contrastRatio(link, panel).toFixed(2)}:1`);
+console.print(`[${readable.hex} on ${panel.hex}] link, readable   [/]  ${contrastRatio(readable, panel).toFixed(2)}:1`);
 ```
+
+`readable` is still blue — same hue, lighter.
 
 Key properties:
 
@@ -57,6 +62,7 @@ Key properties:
 ```typescript
 // raise the bar to AAA (7:1)
 const strong = ensureContrast(link, panel, 7);
+console.print(`[${strong.hex} on ${panel.hex}] link, AAA  [/]  ${contrastRatio(strong, panel).toFixed(2)}:1`);
 ```
 
 ### Measured where it is drawn — `drawnAt`
@@ -65,7 +71,10 @@ const strong = ensureContrast(link, panel, 7);
 
 ```typescript
 const drawn = ensureContrast(link, panel, 4.5, ColorDepth.EIGHT_BIT);
+console.print(`[${drawn.hex} on ${panel.hex}] link, for 256 colours  [/]  ${drawn.hex} (truecolor gave ${readable.hex})`);
 ```
+
+Here the truecolor answer still clears 4.5:1 once both colours are rounded to the 256-colour palette, so it comes back unchanged.
 
 A translucent background is measured as drawn, composited over the surface beneath it: a fifth argument, `substrate`, defaulting to black, which is what the terminal writer composites over. A caller choosing text for another surface (an export flattens over its canvas, `exportCanvas(theme).background`) passes that surface; it must be opaque. `contrastFor(bg, substrate)` takes the same surface.
 
@@ -78,14 +87,21 @@ Some floors are not text on a background. Examples are a selected cell that must
 `drawnColour(colour, drawnAt, substrate?)` is that same rounding on its own, for a floor measured outside `accept`.
 
 ```typescript
-import { ColorDepth, ColorRgba, ensureDrawn, Oklch } from "@promptctl/rich-js";
+import { ColorDepth, ColorRgba, ensureDrawn, Oklch, Panel } from "@promptctl/rich-js";
 
 // A nested panel that must stay visibly apart from the one around it.
 const outer = new ColorRgba(30, 42, 58);
 const panelOk = ensureDrawn(panel, ColorDepth.EIGHT_BIT, (candidate, drawn) =>
   Oklch.fromRgba(candidate).deltaE(Oklch.fromRgba(drawn(outer))) >= 0.05,
 );
+
+if (panelOk !== undefined) {
+  const inner = new Panel(`nested: ${panel.hex} → ${panelOk.hex}`, { style: `on ${panelOk.hex}`, expand: false });
+  console.print(new Panel(inner, { title: `outer: ${outer.hex}`, style: `on ${outer.hex}`, expand: false }));
+}
 ```
+
+Rounded to the 256-colour palette, the dark blue lands too close to the outer panel's colour, so the nearest entry that stands apart from it comes back instead.
 
 ## How transposition uses it
 

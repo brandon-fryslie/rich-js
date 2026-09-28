@@ -37,29 +37,15 @@ console.print("[bold magenta]Hello[/bold magenta], [cyan]World![/cyan] :wave:");
 console.print({ name: "Alice", scores: [98, 87, 95] });
 ```
 
-Output:
-
-```
-Hello, World! 👋
-{ name: "Alice", scores: [98, 87, 95] }
-```
-
 ## Using the Console
 
-`Console` is the main entry point. Create one instance and import it wherever you need output:
+`Console` is the main entry point. Create one instance in a module of its own,
+say `console.ts` holding `export const console = new Console();`, and import it
+wherever you need output with `import { console } from "./console.js";`. Every
+call then goes through that one instance:
 
 ```typescript
-// console.ts
-import { Console } from "@promptctl/rich-js";
-
-export const console = new Console();
-```
-
-```typescript
-// elsewhere
-import { console } from "./console.js";
-
-console.print("[green]Done![/green]");
+console.print("[green]:check_mark: Done![/green] [dim]3 files written[/dim]");
 ```
 
 The Console auto-detects terminal size, color support, and encoding. See [Console](./console) for the full reference.

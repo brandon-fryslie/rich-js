@@ -2,7 +2,7 @@
 
 rich-js can hand its entire styling vocabulary to a template engine, so styled text is authored as a template instead of assembled in code. Colors, attributes, and links become ordinary template functions:
 
-```text
+```handlebars
 {{ "deploy paused" | fg (color "warning") | bold }}
 ```
 
@@ -21,12 +21,15 @@ import { createRichTextEngine } from "@promptctl/rich-js/template-bindings";
 const console = new Console();
 const engine = createRichTextEngine();
 
-const template = engine.compile(
-  `{{ "build " | dim }}{{ .status | fg "#4ade80" | bold }}{{ " in 4.1s" | dim }}`,
-);
+const template = engine.compile(`{{- $muted := "dim" -}}
+{{- $ok := "bold green" -}}
+{{ "build " | style $muted }}{{ .build | style $ok }}{{ " in 4.1s" | style $muted }}
+{{ "tests " | style $muted }}{{ .tests | style $ok }}{{ " in 12.8s" | style $muted }}`);
 
-console.print(RichText.fromFragments(template({ status: "passed" })));
+console.print(RichText.fromFragments(template({ build: "passed", tests: "passed" })));
 ```
+
+The two `$` lines at the top name each look once, and `style` applies a named look wherever it is piped, so editing `$ok` recolours both results. [Name a style once](#name-a-style-once-use-it-everywhere) covers the spec grammar.
 
 Evaluating a template produces a `RichText[]` — one fragment per top-level expression, not one concatenated string. `RichText.fromFragments` flattens that list into a single styled `RichText` that flows into `console.print` like any other renderable. The list stays visible because some consumers need it: a toolbar that treats each top-level `link` as an independently clickable cell reads the fragments directly rather than hunting for boundaries in a merged string.
 
@@ -40,7 +43,7 @@ The functions ship in two groups, split by exactly one question — does it need
 
 `createRichTextEngine()` wires up `richTextFuncs()` alone — it cannot supply a palette. Once you want theme colors, build the engine yourself and merge both maps:
 
-```typescript
+```typescript silent
 import { createEngine, type Engine } from "@promptctl/go-template-js";
 import { RichText, GRUVBOX } from "@promptctl/rich-js";
 import { richTextFuncs, paletteFuncs } from "@promptctl/rich-js/template-bindings";
@@ -73,18 +76,22 @@ The getter costs nothing structurally. Function bodies run at evaluate time, so 
 
 Pipe the text through the styling functions, left to right. Every styling function takes its child fragment as its last argument, which is exactly where Go's pipeline puts the piped value:
 
-```text
-{{ "shipped" | fg "#4ade80" | bold }}
-{{ "open the run" | underline | link "https://example.com/run/42" }}
+```typescript
+const piped = engine.compile(`{{ "shipped" | fg "green" | bold }}
+{{ "open the run" | underline | link "https://example.com/run/42" }}`);
+
+console.print(RichText.fromFragments(piped({})));
 ```
 
 `fg` and `bg` are the only two color-applying functions, and they take the color as an argument rather than encoding it in the function name. That is what lets them accept a color computed at render time. The slot takes the full `ColorSpec` vocabulary, which is wider than the hex the color math produces:
 
-```text
-{{ "hex"          | fg "#ff6b6b"          }}
+```typescript
+const slots = engine.compile(`{{ "hex"          | fg "#ff6b6b"          }}
 {{ "rgb triple"   | fg "rgb(255,107,107)" }}
 {{ "palette index"| fg "color(203)"       }}
-{{ "ansi name"    | fg "bright_blue"      }}
+{{ "ansi name"    | fg "bright_blue"      }}`);
+
+console.print(RichText.fromFragments(slots({})));
 ```
 
 The width is deliberate. `#ff6b6b` is a *concrete* color; `bright_blue` and `color(203)` are *symbolic* ones the terminal resolves against its own theme. Only concrete colors can be darkened or blended, which is why the color math below takes hex alone — but both kinds can be painted, so the sinks take the union.
@@ -104,9 +111,9 @@ import { createRichTextEngine } from "@promptctl/rich-js/template-bindings";
 const console = new Console();
 const engine = createRichTextEngine();
 
-const source = `{{- $sha    := "#7c7c7c" -}}
+const source = `{{- $sha    := "yellow" -}}
 {{- $when   := "italic dim" -}}
-{{- $branch := "italic bold on #2d2d2d" -}}
+{{- $branch := "italic bold #ffffff on #3c5ac8" -}}
 {{ "abc1234" | style $sha }}  {{ "2026-05-13 21:42" | style $when }}
 {{ " feat/sunrise " | style $branch }}
 {{ "e8c19d2" | style $sha }}  {{ "2026-05-13 21:38" | style $when }}
@@ -170,7 +177,10 @@ const engine = createEngine<RichText>({
   funcs: { ...richTextFuncs(), ...paletteFuncs(() => GRUVBOX.palette) },
 });
 
-const meter = `{{- define "cell" }}{{ printf " %3d%% " . | bg (ramp . "linear" 0 "#2e7d32" 50 "#f9a825" 100 "#c62828") }}{{ end -}}
+const meter = `{{- define "cell" -}}
+{{- $c := ramp . "linear" 0 "#2e7d32" 50 "#f9a825" 100 "#c62828" -}}
+{{ printf " %3d%% " . | fg (contrastOn $c) | bg $c }}
+{{- end -}}
 {{ template "cell" 0 }}{{ template "cell" 25 }}{{ template "cell" 50 }}{{ template "cell" 75 }}{{ template "cell" 100 }}`;
 
 console.print(RichText.fromFragments(engine.compile(meter)({})));
@@ -221,8 +231,8 @@ const engine = createEngine<RichText>({
 
 const source = `{{- $who := color "primary" -}}
 {{- $topic := color "accent" -}}
-{{ "bmf" | fg $who | bold }} → {{ "rework the demo" | fg $topic }}
-{{ "alice" | fg $who | bold }} → {{ "tighten measure()" | fg $topic }}`;
+{{ " bmf " | fg (contrastOn $who) | bg $who | bold }} → {{ " rework the demo " | fg (contrastOn $topic) | bg $topic }}
+{{ " alice " | fg (contrastOn $who) | bg $who | bold }} → {{ " tighten measure() " | fg (contrastOn $topic) | bg $topic }}`;
 
 const compiled = engine.compile(source);
 console.print(RichText.fromFragments(compiled({})));
@@ -242,7 +252,7 @@ import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/templat
 
 const engine = createRichTextEngine();
 
-const segments = renderTemplate(engine, `{{ .who | fg "#4ade80" }}`, { who: "world" });
+const segments = renderTemplate(engine, `{{ .who | fg "green" | bold }}`, { who: "world" });
 process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\n");
 ```
 
@@ -253,7 +263,7 @@ process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\
 On a parse or evaluation failure it returns a single dim red segment reading `[error: …]`, truncated to 80 characters, which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
 
 ```typescript
-import { segmentsToString } from "@promptctl/rich-js";
+import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
 import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/template-bindings";
 
 const engine = createRichTextEngine();
@@ -262,7 +272,7 @@ const broken = renderTemplate(engine, `{{ no_such_function "x" }}`, {}, {
   errorStyle: "yellow",
 });
 
-process.stdout.write(segmentsToString(broken, { colorSystem: null, hyperlinks: false }) + "\n"); // [error: …]
+process.stdout.write(segmentsToString(broken, resolveDestination("auto")) + "\n");
 ```
 
 `maxWidth` defaults to 400 — wide enough that the downstream line-splitting decides the real width, matching the usual "render wide, fit on output" pipeline.

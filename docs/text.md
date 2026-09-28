@@ -1,17 +1,27 @@
+---
+exampleContext: |
+  const lines = [
+    "\x1b[33mwarning: 2 dependencies are deprecated",
+    "  left-pad@1.3.0",
+    "  request@2.88.2\x1b[0m",
+    "\x1b[1;32m✔\x1b[0m installed 214 packages",
+  ];
+---
+
 # Rich Text
 
 `RichText` is a mutable string-like object where regions can be independently styled. Unlike a plain string, it carries visual intent. Unlike markup, styles are attached programmatically rather than parsed from a syntax. It can be passed anywhere a plain string is accepted — including table cells, panel titles, and tree labels.
 
 ## Applying styles by offset
 
-Apply a style to a character range (start, end). Positions are character indices, not byte offsets:
+Apply a style to a character range with `stylize(style, start, end)`. The style comes first; `start` and `end` are optional and default to the whole text. Positions are character indices, not byte offsets:
 
 ```typescript
-import { RichText, Style } from "@promptctl/rich-js";
+import { RichText } from "@promptctl/rich-js";
 
 const text = new RichText("Hello, World!");
-text.stylize(0, 5, "bold magenta");  // "Hello"
-text.stylize(7, 12, "cyan underline"); // "World"
+text.stylize("bold magenta", 0, 5);   // "Hello"
+text.stylize("cyan underline", 7, 12); // "World"
 
 console.print(text);
 ```
@@ -32,31 +42,38 @@ console.print(text);
 
 ## Assembling from parts
 
-A more concise alternative to repeated `append()` calls — pass a mix of plain strings and `[string, style]` pairs:
+A more concise alternative to repeated `append()` calls — pass one array mixing plain strings and `[string, style]` pairs:
 
 ```typescript
-const text = RichText.assemble(
+const text = RichText.assemble([
   ["Name: ", "bold"],
   ["Alice",  "cyan"],
   " — ",
   ["active", "green"],
-);
+]);
 
 console.print(text);
 ```
 
 ## Highlighting by word or pattern
 
-Apply a style to specific words:
+Apply a style to specific whole words. Matching is case-sensitive unless you pass `{ caseSensitive: false }`:
 
 ```typescript
-text.highlightWords(["ERROR", "WARN"], "bold red");
+const log = new RichText("boot ok\nWARN disk 91% full\nERROR write failed");
+log.highlightWords(["ERROR"], "bold red");
+log.highlightWords(["WARN"], "bold yellow");
+
+console.print(log);
 ```
 
-Apply a style to all matches of a regular expression:
+Apply a style to every match of a regular expression:
 
 ```typescript
-text.highlightRegex(/\d+/, "bold yellow");
+const summary = new RichText("3 passed, 1 failed, 12 skipped in 42 ms");
+summary.highlightRegex(/\d+/, "bold yellow");
+
+console.print(summary);
 ```
 
 ## Text options
@@ -65,11 +82,14 @@ Constructor options control how the text renders in context:
 
 ```typescript
 const text = new RichText("Right-aligned heading", {
+  style:    "bold cyan",
   justify:  "right",    // override default justify for this object
   overflow: "ellipsis", // override default overflow
   noWrap:   true,       // prevent word-wrapping
   tabSize:  4,          // expand tab characters to this many spaces
 });
+
+console.print(text);
 ```
 
 These options take effect wherever the text is rendered — inside a Panel, Table cell, or directly via `print`:
@@ -77,14 +97,8 @@ These options take effect wherever the text is rendered — inside a Panel, Tabl
 ```typescript
 import { Panel } from "@promptctl/rich-js";
 
-const heading = new RichText("Total", { justify: "right" });
-console.print(new Panel(heading));
-```
-
-```
-╭──────────────────────────────────────────────────────────╮
-│                                                    Total │
-╰──────────────────────────────────────────────────────────╯
+const heading = new RichText("Total", { justify: "right", style: "bold green" });
+console.print(new Panel(heading, { borderStyle: "blue" }));
 ```
 
 ## Decoding ANSI output
@@ -92,11 +106,10 @@ console.print(new Panel(heading));
 `decodeAnsi` turns bytes a program has already written, escape codes and all, back into a `RichText`. Use it to show another command's coloured output inside a Panel, or to replay a captured log:
 
 ```typescript
-import { Console, Panel, decodeAnsi } from "@promptctl/rich-js";
+import { Panel, decodeAnsi } from "@promptctl/rich-js";
 
 const captured = "\x1b[1;32m✔\x1b[0m 12 passed  \x1b[31m✘\x1b[0m 1 failed";
 
-const console = new Console();
 console.print(new Panel(decodeAnsi(captured), { title: "npm test" }));
 ```
 

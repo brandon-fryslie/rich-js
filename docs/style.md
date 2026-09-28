@@ -8,14 +8,21 @@ A style definition is a space-separated string of color names and attribute keyw
 
 ### Foreground color
 
-Four forms are supported:
+Four forms are supported. Each line below is drawn in the color its own definition names:
 
 ```typescript
-"magenta"           // named color from the 256-color palette
-"color(5)"          // palette index
-"#af00ff"           // hex
-"rgb(175,0,255)"    // RGB
+const forms: [string, string][] = [
+  ["magenta",        "named color"],
+  ["color(5)",       "color number"],
+  ["#af00ff",        "hex"],
+  ["rgb(175,0,255)", "RGB"],
+];
+for (const [style, meaning] of forms) {
+  console.print(RichText.assemble([[style.padEnd(18), style], meaning]));
+}
 ```
+
+The first two are ANSI magenta, so the terminal's theme picks the shade; the last two are the same exact purple wherever they are drawn.
 
 Hex and RGB give access to the full 16.7 million truecolor range. rich-js automatically downsamples to the nearest available color when the terminal doesn't support truecolor.
 
@@ -24,9 +31,9 @@ Hex and RGB give access to the full 16.7 million truecolor range. rich-js automa
 Prefix any color with `on` to set the background:
 
 ```typescript
-"red on white"
-"#ff0000 on #ffffff"
-"bold cyan on dark_blue"
+for (const style of ["red on white", "#ff0000 on #ffffff", "bold cyan on dark_blue"]) {
+  console.print(` ${style} `, { style, highlight: false });
+}
 ```
 
 `"default"` resets a color to the terminal's own default. `"default on default"` is the terminal's starting state.
@@ -54,8 +61,9 @@ Prefix any color with `on` to set the background:
 All parts are space-separated in any order:
 
 ```typescript
-"blink bold red underline on white"
-"b i #00ff00 on dark_blue"
+for (const style of ["blink bold red underline on white", "b i #00ff00 on dark_blue"]) {
+  console.print(` ${style} `, { style, highlight: false });
+}
 ```
 
 ### Negating attributes
@@ -72,7 +80,7 @@ console.print("[bold]This is bold [not bold]and this is not[/not bold] bold agai
 Include a hyperlink in a style:
 
 ```typescript
-"link https://example.com"
+console.print("The docs live at [bold blue link https://example.com]example.com[/].");
 ```
 
 Link rendering depends on the terminal — most modern terminals support clickable hyperlinks.
@@ -87,6 +95,7 @@ The string definition is parsed into a `Style` object. You can construct one dir
 import { Style } from "@promptctl/rich-js";
 
 const s = new Style({ bold: true, color: "red", bgcolor: "white" });
+console.print(" built from an options object ", { style: s });
 ```
 
 Direct construction is marginally faster than string parsing on the first call. After first use, parsed strings are cached, so the difference disappears.
@@ -95,6 +104,7 @@ Parse explicitly with `Style.parse()`:
 
 ```typescript
 const s = Style.parse("bold red on white");
+console.print(" parsed from a string ", { style: s });
 ```
 
 Combine two styles with addition — the right-hand style wins on conflicts:
@@ -102,7 +112,8 @@ Combine two styles with addition — the right-hand style wins on conflicts:
 ```typescript
 const base = Style.parse("bold");
 const full = base.add(Style.parse("red on white"));
-// Result: bold red on white
+
+console.print(` ${full} `, { style: full }); // bold red on white
 ```
 
 ## Style themes
@@ -193,14 +204,15 @@ receives the `StyleSyntaxError` and the whole style string that failed:
 ```typescript
 import { Console } from "@promptctl/rich-js";
 
+const stderr = new Console({ stderr: true });
+
 const console = new Console({
   onStyleError: (error, style) => {
-    process.stderr.write(`style "${style}": ${error.message}\n`);
+    stderr.print(`style "${style}": ${error.message}`, { markup: false, style: "yellow" });
   },
 });
 
 console.print("[bold rd]typo color[/]");
-// stderr: style "bold rd": Invalid style definition "rd" (did you mean "red"?): ColorParseError: Failed to parse color: "rd"
 ```
 
 The message names only the word that failed, which is why the handler also gets
@@ -219,7 +231,7 @@ silently.
 
 To make invalid styles throw, rethrow from the handler:
 
-```typescript
+```typescript throws
 const console = new Console({
   onStyleError: (error) => {
     throw error;
