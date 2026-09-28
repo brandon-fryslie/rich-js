@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-183",
-      "ref": "refs/pull/183/merge",
-      "sha": "7f99660fe3a0d2b51915f7a87f3d493220f7ac3a",
-      "timestamp": "2026-09-28T04:34:18.976Z",
-      "commits": [
-        {
-          "sha": "7f99660fe3a0d2b51915f7a87f3d493220f7ac3a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T04:33:22Z",
-          "message": "Merge ba1aaa2b6ff3a7351d2f05d279a670892f9e43b3 into c15aea4aac0370db219a6464a43185a735b3dde4\n"
-        },
-        {
-          "sha": "ba1aaa2b6ff3a7351d2f05d279a670892f9e43b3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:33:17-06:00",
-          "message": "docs: a still frame freezes on a mark from the worker, never between two writes of one frame, and hides its cursor (rich-docs-examples-xuu.tig)\n"
-        },
-        {
-          "sha": "813981d76f8f27abbb45f96eb76e72eede3374ec",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:28:10-06:00",
-          "message": "docs: a reduced-motion reader sees a drawn frame for a live example that never settles (rich-docs-examples-xuu.tig)\n\nThe still frame is the screen when the body settles or a second after the\nprogram first draws, whichever is sooner, so a loop, a prompt, and a\nfullscreen run that ends back on the main screen each show a frame.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c15aea4aac0370db219a6464a43185a735b3dde4",
-      "timestamp": "2026-09-28T04:24:06.662Z",
+      "sha": "e07b8ea65eaab63685bd11d822605df1e5bff0d5",
+      "timestamp": "2026-09-28T04:35:18.553Z",
       "commits": [
         {
-          "sha": "c15aea4aac0370db219a6464a43185a735b3dde4",
+          "sha": "e07b8ea65eaab63685bd11d822605df1e5bff0d5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:23:05-06:00",
-          "message": "docs: Powerline and capsule glyphs draw as shapes in example output (rich-docs-examples-xuu.b35) (#182)\n\n* docs: Powerline and capsule glyphs draw as shapes in example output (rich-docs-examples-xuu.b35)\n\nThe docs load a 40-glyph Powerline subset of Nerd Fonts Symbols, first in the\ncode font stack behind a unicode-range, fitted to Menlo's cell so a cap covers\nits segment's background. scripts/powerline-font.py builds it.\n\n* docs: font carries the powerline project's notice too; generator pinned to its source and reads every outline before fitting any (rich-docs-examples-xuu.b35)"
+          "timestamp": "2026-09-27T22:34:26-06:00",
+          "message": "docs: a reduced-motion reader sees a drawn frame for a live example that never settles (rich-docs-examples-xuu.tig) (#183)\n\n* docs: a reduced-motion reader sees a drawn frame for a live example that never settles (rich-docs-examples-xuu.tig)\n\nThe still frame is the screen when the body settles or a second after the\nprogram first draws, whichever is sooner, so a loop, a prompt, and a\nfullscreen run that ends back on the main screen each show a frame.\n\n* docs: a still frame freezes on a mark from the worker, never between two writes of one frame, and hides its cursor (rich-docs-examples-xuu.tig)"
         }
       ]
     }
