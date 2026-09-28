@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-182",
-      "ref": "refs/pull/182/merge",
-      "sha": "2933224ee5e090ad4f90248692a8ecea1a5b9b35",
-      "timestamp": "2026-09-28T04:22:29.541Z",
-      "commits": [
-        {
-          "sha": "2933224ee5e090ad4f90248692a8ecea1a5b9b35",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T04:21:31Z",
-          "message": "Merge 8763a01c6f3d86f424708d37c56344f0cf502719 into 1fdbf6d91e9a032380e9defca42950fee8992e8d\n"
-        },
-        {
-          "sha": "8763a01c6f3d86f424708d37c56344f0cf502719",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:21:26-06:00",
-          "message": "docs: font carries the powerline project's notice too; generator pinned to its source and reads every outline before fitting any (rich-docs-examples-xuu.b35)\n"
-        },
-        {
-          "sha": "a7a4f07e80a9897229ae23f5c3bdfe35b9c6f604",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:16:43-06:00",
-          "message": "docs: Powerline and capsule glyphs draw as shapes in example output (rich-docs-examples-xuu.b35)\n\nThe docs load a 40-glyph Powerline subset of Nerd Fonts Symbols, first in the\ncode font stack behind a unicode-range, fitted to Menlo's cell so a cap covers\nits segment's background. scripts/powerline-font.py builds it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "1fdbf6d91e9a032380e9defca42950fee8992e8d",
-      "timestamp": "2026-09-28T04:10:42.087Z",
+      "sha": "c15aea4aac0370db219a6464a43185a735b3dde4",
+      "timestamp": "2026-09-28T04:24:06.662Z",
       "commits": [
         {
-          "sha": "1fdbf6d91e9a032380e9defca42950fee8992e8d",
+          "sha": "c15aea4aac0370db219a6464a43185a735b3dde4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T22:09:37-06:00",
-          "message": "docs: live and prompt pages run live, and NOT_YET_MIGRATED is gone (rich-docs-examples-xuu.byg) (#181)\n\n* docs: live and prompt pages run live, and NOT_YET_MIGRATED is gone (rich-docs-examples-xuu.byg)\n\nThe last two pages migrate: every live.md example is a bounded live demo, and\nevery prompt.md prompt runs live, answered by what the reader types. For that,\nbundleExample resolves node:readline to docs/.vitepress/node-readline.ts, a\ncreateInterface/question over the simulated terminal, so nodeAsk runs\nunchanged in the browser.\n\nWith no page left to migrate, NOT_YET_MIGRATED is deleted along with its gate\nbranch and tests. live.md's \"Redirecting stdout/stderr\" section is removed:\nLiveOptions has no such options.\n\nFiled from the live output: rich-prompt-vo5e, rich-live-sadk.\n\n* fix(docs): the readline stand-in ignores escape sequences, keeps keys past an Enter, joins a split CRLF and streams UTF-8; lint checks it (rich-docs-examples-xuu.byg)\n\n* fix(docs): a lone Esc in the readline stand-in no longer swallows the next key (rich-docs-examples-xuu.byg)"
+          "timestamp": "2026-09-27T22:23:05-06:00",
+          "message": "docs: Powerline and capsule glyphs draw as shapes in example output (rich-docs-examples-xuu.b35) (#182)\n\n* docs: Powerline and capsule glyphs draw as shapes in example output (rich-docs-examples-xuu.b35)\n\nThe docs load a 40-glyph Powerline subset of Nerd Fonts Symbols, first in the\ncode font stack behind a unicode-range, fitted to Menlo's cell so a cap covers\nits segment's background. scripts/powerline-font.py builds it.\n\n* docs: font carries the powerline project's notice too; generator pinned to its source and reads every outline before fitting any (rich-docs-examples-xuu.b35)"
         }
       ]
     }
