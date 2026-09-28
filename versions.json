@@ -4,15 +4,22 @@
     {
       "version": "pr-177",
       "ref": "refs/pull/177/merge",
-      "sha": "2fa7ce3ef7c055b5e2514260fdcb9ee38602fd2d",
-      "timestamp": "2026-09-28T02:33:03.721Z",
+      "sha": "83078bf75ebebac451d3de2a65e6a1b7f6d2db73",
+      "timestamp": "2026-09-28T02:36:24.949Z",
       "commits": [
         {
-          "sha": "2fa7ce3ef7c055b5e2514260fdcb9ee38602fd2d",
+          "sha": "83078bf75ebebac451d3de2a65e6a1b7f6d2db73",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-28T02:32:30Z",
-          "message": "Merge 12a04b822fe0f9e19f287f70e3892679d1ae23e4 into 2aebf26f87dd0f5a2731dcf652950b29883e05ac\n"
+          "timestamp": "2026-09-28T02:35:44Z",
+          "message": "Merge 11f60977cd09da10bff6780ed0a8417da6b90330 into 2aebf26f87dd0f5a2731dcf652950b29883e05ac\n"
+        },
+        {
+          "sha": "11f60977cd09da10bff6780ed0a8417da6b90330",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T20:35:39-06:00",
+          "message": "fix(docs): frontmatter opens as gray-matter opens it (rich-docs-examples-xuu.77u)\n"
         },
         {
           "sha": "12a04b822fe0f9e19f287f70e3892679d1ae23e4",
