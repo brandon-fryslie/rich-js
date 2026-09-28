@@ -1,11 +1,13 @@
 /**
- * What a TypeScript fence on a docs page is: the marker vocabulary, and the one
- * parser that reads it.
+ * What a fenced block on a docs page is: the marker vocabulary a TypeScript
+ * fence takes, and the one parser that reads fences.
  *
  * A fence's info string is its language and at most one marker word:
  * ```` ```ts ````, ```` ```ts silent ````. Static is the default and has no
  * word, and it may sit among VitePress's own fence attributes. The build-time
- * runner and `test/docs/code-blocks.ts` both read fences through `scanFences`.
+ * runner and `test/docs/code-blocks.ts` read TypeScript through `scanFences`;
+ * the docs-example gate reads every block through `scanBlocks`, which
+ * `scanFences` is built on.
  *
  * [LAW:one-source-of-truth] That sharing is the point. The symbol-existence
  * sweep once matched fences with its own pattern that accepted only a bare
@@ -83,6 +85,23 @@ const MARKER_BY_WORD: ReadonlyMap<string, Marker> = new Map(
 
 const TYPESCRIPT = new Set(["ts", "typescript"]);
 
+/** A fenced block of any language, where it sits on its page. */
+export interface Block {
+  readonly page: string;
+  /** 1-based line of the opening fence. */
+  readonly line: number;
+  /** 1-based line of the closing fence. */
+  readonly closeLine: number;
+  /**
+   * The language as VitePress's highlighter reads it: lowercased, a `-vue`
+   * suffix dropped, `""` for none. A ```` ```TS ```` fence is TypeScript.
+   */
+  readonly language: string;
+  /** The rest of the info string: VitePress's own attributes and any marker word. */
+  readonly attributes: string;
+  readonly code: string;
+}
+
 /** A fenced block of TypeScript, where it sits on its page. */
 export interface Fence {
   readonly page: string;
@@ -97,20 +116,18 @@ export interface Fence {
 const FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 
 /**
- * Every TypeScript fence on one page, in source order.
+ * Every fenced block on one page, of any language, in source order.
  *
- * Every fence is tracked, whatever its language, so a line inside a `bash` or
- * output block is never read as the start of TypeScript. A fence is
- * CommonMark's: up to three spaces of indent, a run of backticks or of tildes,
- * closed by a run of the same character at least as long. An unknown marker word
- * or an unterminated fence throws, naming the page and line: either would
- * otherwise drop code from every reader at once.
+ * A fence is CommonMark's: up to three spaces of indent, a run of backticks or
+ * of tildes, closed by a run of the same character at least as long. An
+ * unterminated fence throws, naming the page and line: it would otherwise drop
+ * code from every reader at once.
  */
-export function scanFences(page: string, markdown: string): Fence[] {
+export function scanBlocks(page: string, markdown: string): Block[] {
   // A page saved with CRLF endings is read line by line all the same; a `\r`
   // left on a fence line would stop it matching and hide the page's examples.
   const lines = markdown.split(/\r?\n/);
-  const fences: Fence[] = [];
+  const blocks: Block[] = [];
   let open: { readonly index: number; readonly indent: number; readonly run: string; readonly info: string } | null = null;
   lines.forEach((text, index) => {
     const match = FENCE.exec(text);
@@ -123,26 +140,43 @@ export function scanFences(page: string, markdown: string): Fence[] {
       return;
     }
     if (run[0] !== open.run[0] || run.length < open.run.length || info.trim() !== "") return;
-    const marker = typescriptMarker(page, open.index + 1, open.info);
+    const [, written, attributes] = LANGUAGE.exec(open.info) as unknown as [string, string, string];
     const outdent = new RegExp(`^ {0,${open.indent}}`);
-    if (marker !== null) {
-      fences.push({
-        page,
-        line: open.index + 1,
-        closeLine: index + 1,
-        marker,
-        code: lines
-          .slice(open.index + 1, index)
-          .map((line) => line.replace(outdent, ""))
-          .join("\n"),
-      });
-    }
+    blocks.push({
+      page,
+      line: open.index + 1,
+      closeLine: index + 1,
+      language: written.replace(/-vue$/, "").toLowerCase(),
+      attributes,
+      code: lines
+        .slice(open.index + 1, index)
+        .map((line) => line.replace(outdent, ""))
+        .join("\n"),
+    });
     open = null;
   });
   if (open !== null) {
     throw new Error(`docs/${page}:${(open as { index: number }).index + 1} opens a fence that is never closed`);
   }
-  return fences;
+  return blocks;
+}
+
+/**
+ * Every TypeScript fence on one page, in source order.
+ *
+ * Read from every block, whatever its language, so a line inside a `bash` or
+ * output block is never read as the start of TypeScript. An unknown marker
+ * word throws, naming the page and line.
+ */
+export function scanFences(page: string, markdown: string): Fence[] {
+  return typescriptFences(scanBlocks(page, markdown));
+}
+
+/** The TypeScript fences among blocks already scanned. */
+export function typescriptFences(blocks: readonly Block[]): Fence[] {
+  return blocks
+    .filter((block) => TYPESCRIPT.has(block.language))
+    .map(({ page, line, closeLine, attributes, code }) => ({ page, line, closeLine, marker: markerOf(page, line, attributes), code }));
 }
 
 /**
@@ -155,10 +189,8 @@ export function scanFences(page: string, markdown: string): Fence[] {
 const VITEPRESS_ATTRIBUTE = /\{[^}]*\}|\[[^\]]*\]|:(?:no-)?line-numbers(?:=\d+)?/g;
 const LANGUAGE = /^([^\s{:[]*)(.*)$/s;
 
-/** The marker of a TypeScript fence's info string, or `null` for another language. */
-function typescriptMarker(page: string, line: number, info: string): Marker | null {
-  const [, language, attributes] = LANGUAGE.exec(info) as unknown as [string, string, string];
-  if (!TYPESCRIPT.has(language)) return null;
+/** The marker a TypeScript fence's attributes name. */
+function markerOf(page: string, line: number, attributes: string): Marker {
   const words = attributes.replace(VITEPRESS_ATTRIBUTE, " ").split(/\s+/).filter((word) => word !== "");
   if (words.length === 0) return "static";
   const marker = words.length === 1 ? MARKER_BY_WORD.get(words[0]!) : undefined;
