@@ -35,9 +35,8 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { ENTRY_BY_SPECIFIER, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions, resolveAlias } from "../../test/coverage/extract.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
-import { decodeAnsi, osc8Sequences } from "../../src/index.js";
+import { Segment, decodeAnsi, osc8Sequences } from "../../src/index.js";
 import { encodeHtmlFragment } from "../../src/core/export-html.js";
-import type { Segment } from "../../src/index.js";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "./example-terminal.js";
 import {
   MARKERS,
@@ -237,11 +236,12 @@ function stoppedAt(page: string, context: ExampleContext | null, chain: readonly
   return failed === undefined ? `docs/${page}` : `docs/${page}:${failed.line}`;
 }
 
-/** Decoded bytes, drawn once per site colour mode. */
-function fragments(bytes: string): { light: string; dark: string } {
+/** Decoded bytes, drawn once per site colour mode, and the cells their widest row takes. */
+function fragments(bytes: string): { light: string; dark: string; columns: number } {
   const text = decodeAnsi(bytes, { noWrap: true });
   const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, encoding: "utf-8", asciiOnly: false })];
-  return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark) };
+  const [columns] = Segment.getShape(Segment.splitLines(segments));
+  return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark), columns };
 }
 
 /**
@@ -254,16 +254,22 @@ type Shown =
   | { readonly kind: "bytes"; readonly bytes: string }
   | { readonly kind: "live"; readonly binding: string };
 
-function shownHtml(shown: Shown): string {
+/**
+ * The output's HTML, and how many columns wide it draws: custom.css shrinks
+ * the output's font where the card is narrower than that. A static output is
+ * as wide as its widest row, so a short one keeps the code size; a live one is
+ * the whole terminal, since what it will draw is not known here.
+ */
+function shownHtml(shown: Shown): { html: string; columns: number | null } {
   switch (shown.kind) {
     case "nothing":
-      return "";
+      return { html: "", columns: null };
     case "bytes": {
-      const { light, dark } = fragments(shown.bytes);
-      return `<div class="rich-example-light" v-pre>${light}</div><div class="rich-example-dark" v-pre>${dark}</div>`;
+      const { light, dark, columns } = fragments(shown.bytes);
+      return { html: `<div class="rich-example-light" v-pre>${light}</div><div class="rich-example-dark" v-pre>${dark}</div>`, columns };
     }
     case "live":
-      return `<RichLive :load="${shown.binding}" />`;
+      return { html: `<RichLive :load="${shown.binding}" />`, columns: EXAMPLE_TERMINAL.columns };
   }
 }
 
@@ -279,7 +285,9 @@ function outputHtml(fence: Fence, shown: Shown): string {
   const captionHtml = caption === null ? "" : `<span class="rich-example-caption">${caption}</span>`;
   const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span>${captionHtml}</div>`;
   const noteHtml = note === null ? "" : `<p class="rich-example-note">${note}</p>`;
-  return `<div class="rich-example-output">${labelHtml}${noteHtml}${shownHtml(shown)}</div>`.replaceAll("\n", "&#10;");
+  const { html, columns } = shownHtml(shown);
+  const style = columns === null ? "" : ` style="--rich-example-columns:${columns}"`;
+  return `<div class="rich-example-output"${style}>${labelHtml}${noteHtml}${html}</div>`.replaceAll("\n", "&#10;");
 }
 
 /**

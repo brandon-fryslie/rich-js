@@ -79,10 +79,19 @@ describe("the example widget", { timeout: 30_000 }, () => {
   it("puts the fence and its output in one element, the output labelled with where it came from", async () => {
     const result = await run(`Before.\n${fence("console.print(1);")}\nAfter.`);
     expect(result).toMatch(
-      /^Before\.\n\n<div class="rich-example">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output">[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
+      /^Before\.\n\n<div class="rich-example">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output"[^>\n]*>[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
     );
     const [shown] = outputs(result);
     expect(shown).toContain('<span class="rich-example-name">Output</span><span class="rich-example-caption">produced by running the code above</span>');
+  });
+
+  // custom.css shrinks an output's font to fit its card by this count, so a
+  // short output keeps the code size however narrow the card.
+  it("says how many columns its output draws: a static one its widest row, a live one the terminal", async () => {
+    const [short] = outputs(await run(fence('console.print("ab\\nabcd");')));
+    expect(short).toMatch(/^<div class="rich-example-output" style="--rich-example-columns:4">/);
+    const [live] = outputs((await runPage(`# t\n\n${fence('console.print("live");', "ts live")}`)).markdown);
+    expect(live).toMatch(new RegExp(`^<div class="rich-example-output" style="--rich-example-columns:${EXAMPLE_TERMINAL.columns}">`));
   });
 });
 
