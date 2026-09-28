@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "svg-export",
   dark: true,
+  // Rich's SVG_EXPORT_THEME
+  ansi: {
+    black: "#4B4E55",
+    red: "#CC555A",
+    green: "#98A84B",
+    yellow: "#D0B344",
+    blue: "#608AB1",
+    magenta: "#98729F",
+    cyan: "#68A0B3",
+    white: "#C5C8C6",
+    brightBlack: "#9A9B99",
+    brightRed: "#FF2627",
+    brightGreen: "#00823D",
+    brightYellow: "#D08442",
+    brightBlue: "#1984E9",
+    brightMagenta: "#FF2C7A",
+    brightCyan: "#398280",
+    brightWhite: "#FDFDC5",
+  },
   vars: {
     "accent": "#56B6C2",
     "accent-darken-1": "#3EA1AD",

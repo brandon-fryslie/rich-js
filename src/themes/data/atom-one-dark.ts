@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "atom-one-dark",
   dark: true,
+  // iTerm2-Color-Schemes "One Half Dark", a terminal port of Atom One
+  ansi: {
+    black: "#282C34",
+    red: "#E06C75",
+    green: "#98C379",
+    yellow: "#E5C07B",
+    blue: "#61AFEF",
+    magenta: "#C678DD",
+    cyan: "#56B6C2",
+    white: "#DCDFE4",
+    brightBlack: "#5D677A",
+    brightRed: "#E06C75",
+    brightGreen: "#98C379",
+    brightYellow: "#E5C07B",
+    brightBlue: "#61AFEF",
+    brightMagenta: "#C678DD",
+    brightCyan: "#56B6C2",
+    brightWhite: "#DCDFE4",
+  },
   vars: {
     "accent": "#A378C2",
     "accent-darken-1": "#8E65AD",

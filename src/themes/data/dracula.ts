@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "dracula",
   dark: true,
+  // iTerm2-Color-Schemes "Dracula"
+  ansi: {
+    black: "#21222C",
+    red: "#FF5555",
+    green: "#50FA7B",
+    yellow: "#F1FA8C",
+    blue: "#BD93F9",
+    magenta: "#FF79C6",
+    cyan: "#8BE9FD",
+    white: "#F8F8F2",
+    brightBlack: "#6272A4",
+    brightRed: "#FF6E6E",
+    brightGreen: "#69FF94",
+    brightYellow: "#FFFFA5",
+    brightBlue: "#D6ACFF",
+    brightMagenta: "#FF92DF",
+    brightCyan: "#A4FFFF",
+    brightWhite: "#FFFFFF",
+  },
   vars: {
     "accent": "#FF79C6",
     "accent-darken-1": "#E864B1",

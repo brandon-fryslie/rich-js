@@ -1,3 +1,4 @@
+import { TEXTUAL_DARK_ANSI } from "./ansi-tables.js";
 import type { ThemePaletteData } from "./types.js";
 
 /**
@@ -17,6 +18,7 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "cyberpunk",
   dark: true,
+  ansi: TEXTUAL_DARK_ANSI,
   vars: {
     // ── Substrate ──────────────────────────────────────────────────────────
     "background":                     "#070714",

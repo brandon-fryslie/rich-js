@@ -16,6 +16,8 @@ import {
 import {
   DEFAULT_TERMINAL_THEME,
   MONOKAI,
+  ATOM_ONE_DARK,
+  ATOM_ONE_LIGHT,
   SVG_EXPORT_THEME,
 } from "../../src/themes/terminalThemes.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
@@ -593,6 +595,18 @@ describe("ColorSpec.getTruecolor()", () => {
     const c = ColorSpec.fromAnsi(1);
     const result = c.getTruecolor(MONOKAI);
     expect(result).toEqual(MONOKAI.ansiColors.get(1));
+  });
+
+  it("a named colour draws in the bundled theme's own shade, not VGA's", () => {
+    const blue = ColorSpec.parse("blue");
+    expect(blue.getTruecolor(ATOM_ONE_DARK).hex).toBe("#61afef");
+    expect(blue.getTruecolor(ATOM_ONE_LIGHT).hex).toBe("#0184bc");
+    expect(ColorSpec.parse("bright_magenta").getTruecolor(ATOM_ONE_LIGHT).hex).toBe("#c678dd");
+  });
+
+  it("an EIGHT_BIT spec on slots 0–15 draws in the theme's table, like the STANDARD one", () => {
+    const eightBitBlue = new ColorSpec("color(4)", ColorDepth.EIGHT_BIT, 4);
+    expect(eightBitBlue.getTruecolor(ATOM_ONE_DARK)).toEqual(ColorSpec.parse("blue").getTruecolor(ATOM_ONE_DARK));
   });
 
   it("DEFAULT foreground uses theme foregroundColor", () => {

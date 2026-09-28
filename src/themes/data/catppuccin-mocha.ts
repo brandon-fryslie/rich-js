@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "catppuccin-mocha",
   dark: true,
+  // iTerm2-Color-Schemes "Catppuccin Mocha"
+  ansi: {
+    black: "#45475A",
+    red: "#F38BA8",
+    green: "#A6E3A1",
+    yellow: "#F9E2AF",
+    blue: "#89B4FA",
+    magenta: "#F5C2E7",
+    cyan: "#94E2D5",
+    white: "#BAC2DE",
+    brightBlack: "#585B70",
+    brightRed: "#F7AEC2",
+    brightGreen: "#C2ECBF",
+    brightYellow: "#FCD682",
+    brightBlue: "#AECCFC",
+    brightMagenta: "#F398DA",
+    brightCyan: "#B1EAE1",
+    brightWhite: "#A6ADC8",
+  },
   vars: {
     "accent": "#F9B387",
     "accent-darken-1": "#E39E73",

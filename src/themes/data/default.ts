@@ -1,8 +1,10 @@
+import { VGA_ANSI } from "./ansi-tables.js";
 import type { ThemePaletteData } from "./types.js";
 
 const theme: ThemePaletteData = {
   name: "default",
   dark: true,
+  ansi: VGA_ANSI,
   vars: {
     "accent": "#006FB8",
     "accent-darken-1": "#005CA3",

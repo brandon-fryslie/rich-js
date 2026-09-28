@@ -11,8 +11,8 @@
  *
  * [LAW:one-source-of-truth] Hex values live in `data/<name>.ts`. This
  * module is a derived view that builds a `TerminalTheme` from each
- * theme's eight base colors via `buildPalette` for the substrate palette
- * and `STANDARD_TABLE` for the ANSI substrate.
+ * theme's eight base colors via `buildPalette` for the substrate palette,
+ * and from the theme's own ANSI table for the sixteen named colours.
  *
  * [LAW:one-type-per-behavior] Every theme has the same shape — name,
  * `dark` flag, full Palette in the registry, `TerminalTheme` constant
@@ -22,17 +22,9 @@
  * [LAW:one-way-deps] `core/color → themes/palette` remains the only edge
  * into themes/. This file imports only sibling theme modules and core
  * color primitives; nothing in `core/` imports back.
- *
- * Note on `ansiColors`: every preset theme uses `STANDARD_TABLE`. Theme
- * identity lives in the semantic `palette`, not in the standard ANSI
- * 16/256 LUT — `ColorSpec.parse("red")` is intentionally canonical across
- * themes, matching Textual's model.
  */
 
-import {
-  STANDARD_TABLE,
-  TerminalTheme,
-} from "../core/color.js";
+import { TerminalTheme } from "../core/color.js";
 import { buildPalette } from "./buildPalette.js";
 import { getThemeBaseColors, type ThemeBaseColors } from "./registry.js";
 
@@ -40,7 +32,7 @@ function defineTheme(d: ThemeBaseColors): TerminalTheme {
   return new TerminalTheme(
     d.bg,
     d.fg,
-    STANDARD_TABLE,
+    d.ansi,
     buildPalette(d.name, d.dark, {
       primary: d.primary,
       secondary: d.secondary,

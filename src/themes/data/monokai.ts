@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "monokai",
   dark: true,
+  // iTerm2-Color-Schemes "Monokai SublimeText"
+  ansi: {
+    black: "#333333",
+    red: "#C4265E",
+    green: "#86B42B",
+    yellow: "#B3B42B",
+    blue: "#6A7EC8",
+    magenta: "#8C6BC8",
+    cyan: "#56ADBC",
+    white: "#E3E3DD",
+    brightBlack: "#666666",
+    brightRed: "#F92672",
+    brightGreen: "#A6E22E",
+    brightYellow: "#E2E22E",
+    brightBlue: "#819AFF",
+    brightMagenta: "#AE81FF",
+    brightCyan: "#66D9EF",
+    brightWhite: "#F8F8F2",
+  },
   vars: {
     "accent": "#66D9EF",
     "accent-darken-1": "#4DC3D9",

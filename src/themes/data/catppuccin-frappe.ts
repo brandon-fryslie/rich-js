@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "catppuccin-frappe",
   dark: true,
+  // iTerm2-Color-Schemes "Catppuccin Frappe"
+  ansi: {
+    black: "#51576D",
+    red: "#E78284",
+    green: "#A6D189",
+    yellow: "#E5C890",
+    blue: "#8CAAEE",
+    magenta: "#F4B8E4",
+    cyan: "#81C8BE",
+    white: "#B5BFE2",
+    brightBlack: "#626880",
+    brightRed: "#EDA0A2",
+    brightGreen: "#B9DBA2",
+    brightYellow: "#ECD7AE",
+    brightBlue: "#ADC2F3",
+    brightMagenta: "#F38ED8",
+    brightCyan: "#98D2CA",
+    brightWhite: "#A5ADCE",
+  },
   vars: {
     "accent": "#F4B8E4",
     "accent-darken-1": "#DEA3CE",

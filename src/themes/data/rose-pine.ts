@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "rose-pine",
   dark: true,
+  // iTerm2-Color-Schemes "Rose Pine"
+  ansi: {
+    black: "#26233A",
+    red: "#EB6F92",
+    green: "#31748F",
+    yellow: "#F6C177",
+    blue: "#9CCFD8",
+    magenta: "#C4A7E7",
+    cyan: "#EBBCBA",
+    white: "#E0DEF4",
+    brightBlack: "#6E6A86",
+    brightRed: "#EB6F92",
+    brightGreen: "#31748F",
+    brightYellow: "#F6C177",
+    brightBlue: "#9CCFD8",
+    brightMagenta: "#C4A7E7",
+    brightCyan: "#EBBCBA",
+    brightWhite: "#E0DEF4",
+  },
   vars: {
     "accent": "#EBBCBA",
     "accent-darken-1": "#D5A7A5",

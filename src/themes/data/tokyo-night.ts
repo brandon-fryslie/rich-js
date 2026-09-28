@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "tokyo-night",
   dark: true,
+  // iTerm2-Color-Schemes "TokyoNight Night"
+  ansi: {
+    black: "#15161E",
+    red: "#F7768E",
+    green: "#9ECE6A",
+    yellow: "#E0AF68",
+    blue: "#7AA2F7",
+    magenta: "#BB9AF7",
+    cyan: "#7DCFFF",
+    white: "#A9B1D6",
+    brightBlack: "#414868",
+    brightRed: "#F7768E",
+    brightGreen: "#9ECE6A",
+    brightYellow: "#E0AF68",
+    brightBlue: "#7AA2F7",
+    brightMagenta: "#BB9AF7",
+    brightCyan: "#7DCFFF",
+    brightWhite: "#C0CAF5",
+  },
   vars: {
     "accent": "#FE9E64",
     "accent-darken-1": "#E78A51",

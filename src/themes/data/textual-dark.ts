@@ -1,8 +1,10 @@
+import { TEXTUAL_DARK_ANSI } from "./ansi-tables.js";
 import type { ThemePaletteData } from "./types.js";
 
 const theme: ThemePaletteData = {
   name: "textual-dark",
   dark: true,
+  ansi: TEXTUAL_DARK_ANSI,
   vars: {
     "accent": "#FEA62B",
     "accent-darken-1": "#E7920D",

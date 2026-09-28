@@ -3,6 +3,25 @@ import type { ThemePaletteData } from "./types.js";
 const theme: ThemePaletteData = {
   name: "flexoki",
   dark: true,
+  // iTerm2-Color-Schemes "Flexoki Dark"
+  ansi: {
+    black: "#100F0F",
+    red: "#D14D41",
+    green: "#879A39",
+    yellow: "#D0A215",
+    blue: "#4385BE",
+    magenta: "#CE5D97",
+    cyan: "#3AA99F",
+    white: "#878580",
+    brightBlack: "#575653",
+    brightRed: "#AF3029",
+    brightGreen: "#66800B",
+    brightYellow: "#AD8301",
+    brightBlue: "#205EA6",
+    brightMagenta: "#A02F6F",
+    brightCyan: "#24837B",
+    brightWhite: "#CECDC3",
+  },
   vars: {
     "accent": "#9B76C8",
     "accent-darken-1": "#8663B3",
