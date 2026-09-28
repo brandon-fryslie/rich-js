@@ -65,7 +65,6 @@ export const NOT_YET_MIGRATED: ReadonlySet<string> = new Set([
   "markdown.md",
   "markup.md",
   "padding.md",
-  "panel.md",
   "pretty.md",
   "progress.md",
   "prompt.md",
@@ -266,7 +265,7 @@ function fragments(bytes: string): { light: string; dark: string } {
  * shows the same way. `v-pre` keeps Vue from reading `{{` in output.
  */
 function outputHtml(fence: Fence, bytes: string | null): string {
-  const note = MARKERS[fence.marker].note;
+  const { label, caption, note } = MARKERS[fence.marker];
   const shown =
     bytes === null
       ? ""
@@ -274,8 +273,10 @@ function outputHtml(fence: Fence, bytes: string | null): string {
           const { light, dark } = fragments(bytes);
           return `<div class="rich-example-light">${light}</div><div class="rich-example-dark">${dark}</div>`;
         })();
+  const captionHtml = caption === null ? "" : `<span class="rich-example-caption">${caption}</span>`;
+  const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span>${captionHtml}</div>`;
   const noteHtml = note === null ? "" : `<p class="rich-example-note">${note}</p>`;
-  return `<div class="rich-example-output" data-marker="${fence.marker}" v-pre>${noteHtml}${shown}</div>`.replaceAll("\n", "&#10;");
+  return `<div class="rich-example-output" v-pre>${labelHtml}${noteHtml}${shown}</div>`.replaceAll("\n", "&#10;");
 }
 
 /** `markdown` with each executed or exempt example's output written under its fence. */
@@ -305,11 +306,15 @@ export async function runPageExamples(compiler: ExampleCompiler, page: string, m
   const shown = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
 
   const lines = markdown.split(/\r?\n/);
+  // The widget: the fence, untouched for VitePress to highlight, and its output
+  // beneath, both inside one element the theme draws as a single card. Every
+  // piece of HTML stands between blank lines, because markdown's HTML block
+  // runs to the next blank line: without them the fence would not be parsed as
+  // a fence, and prose written straight under it would be swallowed.
   for (const fence of [...fences].reverse()) {
     if (MARKERS[fence.marker].run === "browser") continue;
-    // Blank lines on both sides: markdown's HTML block runs to the next blank
-    // line, and would swallow prose written straight under the fence.
-    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown.get(fence) ?? null), "");
+    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown.get(fence) ?? null), "", "</div>", "");
+    lines.splice(fence.line - 1, 0, "", `<div class="rich-example" data-marker="${fence.marker}">`, "");
   }
   return lines.join("\n");
 }

@@ -36,7 +36,10 @@ describe("docs/panel.md", { timeout: 60_000 }, () => {
       expect(html).toMatch(/<div class="rich-example-light"><pre style="[^"]*background:#fafafa/);
       expect(html).toMatch(/<div class="rich-example-dark"><pre style="[^"]*background:#282c34/);
     }
-    expect(result.replace(/\n\n<div class="rich-example-output"[^\n]*<\/div>\n/g, "")).toBe(PANEL);
+    const unwrapped = result
+      .replace(/\n<div class="rich-example" data-marker="\w+">\n\n/g, "")
+      .replace(/\n\n<div class="rich-example-output"[^\n]*<\/div>\n\n<\/div>\n/g, "");
+    expect(unwrapped).toBe(PANEL);
   });
 
   it("fails naming panel.md and the line of an example that throws", async () => {
@@ -56,6 +59,20 @@ describe("docs/panel.md", { timeout: 60_000 }, () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+});
+
+describe("the example widget", { timeout: 30_000 }, () => {
+  // The fence stays a fence for VitePress to highlight; the widget is the
+  // element around it and the output panel under it, each between blank lines
+  // so markdown still parses the fence and the prose after it.
+  it("puts the fence and its output in one element, the output labelled with where it came from", async () => {
+    const result = await run(`Before.\n${fence("console.print(1);")}\nAfter.`);
+    expect(result).toMatch(
+      /^Before\.\n\n<div class="rich-example" data-marker="static">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output" v-pre>[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
+    );
+    const [shown] = outputs(result);
+    expect(shown).toContain('<span class="rich-example-name">Output</span><span class="rich-example-caption">produced by running the code above</span>');
   });
 });
 
@@ -155,8 +172,12 @@ describe("one page, one program", { timeout: 30_000 }, () => {
 
   it("shows the reader the note for a block it does not run, and runs nothing for it", async () => {
     const shown = outputs(await run(page(fence("process.exit(1);", "ts node"), fence("interface X { y(): void }", "ts shape"))));
-    expect(shown[0]).toContain("Not run here: it needs a real Node process");
-    expect(shown[1]).toContain("Not run: this is a shape to implement");
+    expect(shown[0]).toContain("It needs a real Node process");
+    expect(shown[1]).toContain("This is a shape to implement");
+    for (const html of shown) {
+      expect(html).toContain('<span class="rich-example-name">Not run</span>');
+      expect(html).not.toContain("rich-example-caption");
+    }
   });
 
   it("leaves a live block for the live embed", async () => {
@@ -234,7 +255,8 @@ describe("the plugin", () => {
   });
 
   it("passes a page that has not migrated through untouched", async () => {
-    expect(NOT_YET_MIGRATED.has("panel.md")).toBe(true);
-    expect(await docsExamplesPlugin().transform(PANEL, path.join(REPO_ROOT, "docs", "panel.md"))).toBeNull();
+    const tables = readFileSync(path.join(REPO_ROOT, "docs", "tables.md"), "utf-8");
+    expect(NOT_YET_MIGRATED.has("tables.md")).toBe(true);
+    expect(await docsExamplesPlugin().transform(tables, path.join(REPO_ROOT, "docs", "tables.md"))).toBeNull();
   });
 });

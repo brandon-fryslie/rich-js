@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 import { guideSidebar, pageSidebarRegions } from './sidebar.js'
 import { docsExamplesPlugin } from './example-runner.js'
+import { HTML_FRAGMENT_CSS } from '../../src/core/export-html.js'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -51,6 +52,8 @@ export default defineConfig({
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'rich-js' }],
     ['meta', { property: 'og:description', content: 'Rich text and beautiful formatting in the terminal' }],
+    // What a generated example's output needs and an inline style cannot say.
+    ['style', {}, HTML_FRAGMENT_CSS],
   ],
 
   themeConfig: {
@@ -99,7 +102,9 @@ export default defineConfig({
 
   markdown: {
     theme: {
-      light: 'github-light',
+      // One Light beside One Dark Pro: the example output is drawn in the Atom
+      // One terminal themes, so code and output share one palette either way.
+      light: 'one-light',
       dark: 'one-dark-pro',
     },
     lineNumbers: false,
