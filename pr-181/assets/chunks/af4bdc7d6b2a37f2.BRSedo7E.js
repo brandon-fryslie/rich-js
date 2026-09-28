@@ -1,4 +1,144 @@
-const n=`//#region node_modules/ansi-regex/index.js
+const n=`//#region docs/.vitepress/node-readline.ts
+/**
+* \`node:readline\` for a program run under the simulated process: what
+* \`bundleExample\` resolves that specifier to, so \`nodeAsk\` from
+* \`@promptctl/rich-js/node/prompt\` runs unchanged in a live terminal and a
+* prompt on a page is answered by what the reader types.
+*
+* It is \`createInterface\` and \`question\` and nothing else, the part of readline
+* \`nodeAsk\` uses. The line discipline is a terminal's in cooked mode: printable
+* keys are echoed and collected, backspace takes back the last one, an escape
+* sequence (an arrow, Home, Delete) is read whole and ignored, and Enter — \`\\r\`,
+* \`\\n\`, or the two together — ends the line and hands it over.
+*
+* Keys typed after that Enter are the next line's, as they would be in the
+* stream a real terminal buffers: they wait on the input for the next question
+* asked of it, \`nodeAsk\`'s next interface included.
+*
+* [LAW:composability] Like the simulated process it reads from, it knows no
+* docs page: the playground and the landing hero run programs through the same
+* bundle.
+*/
+var pending = /* @__PURE__ */ new WeakMap();
+/** An arrow, Home, Delete and the like: a CSI (\`ESC [ … final\`) or SS3 (\`ESC O x\`) sequence at the start of \`keys\`. */
+var ESCAPE = /^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|O[@-~])/;
+/** The start of one of those sequences, the rest still to arrive. */
+var PARTIAL = /^\\x1b(?:\\[[0-?]*[ -/]*|O)?$/;
+function step(keys) {
+	const key = String.fromCodePoint(keys.codePointAt(0));
+	if (key === "\\r") return {
+		kind: "enter",
+		length: keys[1] === "\\n" ? 2 : 1
+	};
+	if (key === "\\n") return {
+		kind: "enter",
+		length: 1
+	};
+	if (key === "" || key === "\\b") return {
+		kind: "erase",
+		length: 1
+	};
+	if (key === "\\x1B") {
+		const sequence = ESCAPE.exec(keys);
+		if (sequence !== null) return {
+			kind: "skip",
+			length: sequence[0].length
+		};
+		return PARTIAL.test(keys) ? { kind: "incomplete" } : {
+			kind: "skip",
+			length: 1
+		};
+	}
+	return key >= " " ? {
+		kind: "type",
+		key,
+		length: key.length
+	} : {
+		kind: "skip",
+		length: key.length
+	};
+}
+function createInterface({ input, output }) {
+	const buffer = pending.get(input) ?? {
+		keys: "",
+		endedOnReturn: false,
+		decoder: new TextDecoder()
+	};
+	pending.set(input, buffer);
+	let listening = null;
+	const stop = () => {
+		if (listening !== null) input.off("data", listening);
+		listening = null;
+	};
+	return {
+		question(query, answer) {
+			output.write(query);
+			const typed = [];
+			const consume = () => {
+				while (buffer.keys.length > 0) {
+					const next = step(buffer.keys);
+					if (next.kind === "incomplete") return;
+					const wasReturn = buffer.keys.slice(0, next.length) === "\\r";
+					const secondHalf = buffer.endedOnReturn && buffer.keys.startsWith("\\n");
+					buffer.keys = buffer.keys.slice(next.length);
+					buffer.endedOnReturn = next.kind === "enter" && wasReturn;
+					if (secondHalf) continue;
+					if (next.kind === "enter") {
+						output.write("\\r\\n");
+						stop();
+						answer(typed.join(""));
+						return;
+					}
+					if (next.kind === "erase" && typed.pop() !== void 0) output.write("\\b \\b");
+					if (next.kind === "type") {
+						typed.push(next.key);
+						output.write(next.key);
+					}
+				}
+			};
+			listening = (chunk) => {
+				buffer.keys += typeof chunk === "string" ? chunk : buffer.decoder.decode(chunk, { stream: true });
+				consume();
+			};
+			input.on("data", listening);
+			consume();
+		},
+		close: stop
+	};
+}
+//#endregion
+//#region src/node/prompt.ts
+/**
+* node:prompt — readline-backed \`PromptInput\` for use with the prompt
+* renderable in a Node runtime.
+*
+* [LAW:locality-or-seam] \`node:readline\` lives only here, on the node side
+* of the API boundary. The main barrel stays browser-safe; consumers that
+* want interactive prompts in Node opt in by importing \`nodeAsk\` and
+* passing it as the input capability:
+*
+*     import { Prompt } from "@promptctl/rich-js";
+*     import { nodeAsk } from "@promptctl/rich-js/node/prompt";
+*     const answer = await Prompt.ask("What's your name?", nodeAsk);
+*     // or with options:
+*     const choice = await Prompt.ask("Pick one", nodeAsk, { choices: ["a", "b"] });
+*
+* [LAW:single-enforcer] One readline interface per \`nodeAsk\` call —
+* created, asked, closed. No shared \`rl\` across prompts, no listener-leak
+* pitfalls when callers stack prompts in a loop.
+*/
+var nodeAsk = (prompt) => new Promise((resolve) => {
+	const rl = createInterface({
+		input: process.stdin,
+		output: process.stdout
+	});
+	rl.question(prompt, (answer) => {
+		rl.close();
+		resolve(answer);
+	});
+});
+//#endregion
+//#region node_modules/ansi-regex/index.js
 function ansiRegex({ onlyFirst = false } = {}) {
 	return new RegExp(\`(?:\\\\u001B\\\\][\\\\s\\\\S]*?(?:\\\\u0007|\\\\u001B\\\\u005C|\\\\u009C))|[\\\\u001B\\\\u009B][[\\\\]()#;?]*(?:\\\\d{1,4}(?:[;:]\\\\d{0,4})*)?[\\\\dA-PR-TZcf-nq-uy=><~]\`, onlyFirst ? void 0 : "g");
 }
@@ -6019,160 +6159,33 @@ function ask(promptText, input) {
 	if (typeof input !== "function") throw new TypeError("Prompt: \`input\` must be a \`PromptInput\` function. Pass \`nodeAsk\` from \`@promptctl/rich-js/node/prompt\` for Node, or supply a custom \`PromptInput\` for tests/browsers.");
 	return input(renderMarkup(promptText).plain + " ");
 }
-var Confirm = class {
+var Prompt = class {
 	static async ask(promptText, input, options) {
-		const defaultVal = options?.default;
-		const display = \`\${promptText} [\${defaultVal === true ? "Y/n" : defaultVal === false ? "y/N" : "y/n"}]:\`;
+		const showDefault = options?.showDefault !== false;
+		const showChoices = options?.showChoices !== false;
+		let display = promptText;
+		if (showChoices && options?.choices) display += \` [\${options.choices.join("/")}]\`;
+		if (showDefault && options?.default !== void 0) display += \` (\${options.default})\`;
+		display += ":";
 		while (true) {
-			const value = (await ask(display, input)).trim().toLowerCase();
-			if (value === "" && defaultVal !== void 0) return defaultVal;
-			if (value === "y" || value === "yes") return true;
-			if (value === "n" || value === "no") return false;
+			const value = (await ask(display, input)).trim();
+			if (value === "" && options?.default !== void 0) return options.default;
+			if (options?.choices) {
+				const caseSensitive = options.caseSensitive !== false;
+				const match = options.choices.find((c) => caseSensitive ? c === value : c.toLowerCase() === value.toLowerCase());
+				if (match) return match;
+				continue;
+			}
+			return value;
 		}
 	}
 };
 //#endregion
-//#region docs/.vitepress/node-readline.ts
-/**
-* \`node:readline\` for a program run under the simulated process: what
-* \`bundleExample\` resolves that specifier to, so \`nodeAsk\` from
-* \`@promptctl/rich-js/node/prompt\` runs unchanged in a live terminal and a
-* prompt on a page is answered by what the reader types.
-*
-* It is \`createInterface\` and \`question\` and nothing else, the part of readline
-* \`nodeAsk\` uses. The line discipline is a terminal's in cooked mode: printable
-* keys are echoed and collected, backspace takes back the last one, an escape
-* sequence (an arrow, Home, Delete) is read whole and ignored, and Enter — \`\\r\`,
-* \`\\n\`, or the two together — ends the line and hands it over.
-*
-* Keys typed after that Enter are the next line's, as they would be in the
-* stream a real terminal buffers: they wait on the input for the next question
-* asked of it, \`nodeAsk\`'s next interface included.
-*
-* [LAW:composability] Like the simulated process it reads from, it knows no
-* docs page: the playground and the landing hero run programs through the same
-* bundle.
-*/
-var pending = /* @__PURE__ */ new WeakMap();
-/** A CSI sequence (\`ESC [ … final\`) or a two-key escape (\`ESC x\`), at the start of \`keys\`. */
-var ESCAPE = /^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|[^[])/;
-function step(keys) {
-	const key = String.fromCodePoint(keys.codePointAt(0));
-	if (key === "\\r") return {
-		kind: "enter",
-		length: keys[1] === "\\n" ? 2 : 1
-	};
-	if (key === "\\n") return {
-		kind: "enter",
-		length: 1
-	};
-	if (key === "" || key === "\\b") return {
-		kind: "erase",
-		length: 1
-	};
-	if (key === "\\x1B") {
-		const sequence = ESCAPE.exec(keys);
-		return sequence !== null ? {
-			kind: "skip",
-			length: sequence[0].length
-		} : { kind: "incomplete" };
-	}
-	return key >= " " ? {
-		kind: "type",
-		key,
-		length: key.length
-	} : {
-		kind: "skip",
-		length: key.length
-	};
-}
-function createInterface({ input, output }) {
-	const buffer = pending.get(input) ?? {
-		keys: "",
-		endedOnReturn: false,
-		decoder: new TextDecoder()
-	};
-	pending.set(input, buffer);
-	let listening = null;
-	const stop = () => {
-		if (listening !== null) input.off("data", listening);
-		listening = null;
-	};
-	return {
-		question(query, answer) {
-			output.write(query);
-			const typed = [];
-			const consume = () => {
-				while (buffer.keys.length > 0) {
-					const next = step(buffer.keys);
-					if (next.kind === "incomplete") return;
-					const wasReturn = buffer.keys.slice(0, next.length) === "\\r";
-					const secondHalf = buffer.endedOnReturn && buffer.keys.startsWith("\\n");
-					buffer.keys = buffer.keys.slice(next.length);
-					buffer.endedOnReturn = next.kind === "enter" && wasReturn;
-					if (secondHalf) continue;
-					if (next.kind === "enter") {
-						output.write("\\r\\n");
-						stop();
-						answer(typed.join(""));
-						return;
-					}
-					if (next.kind === "erase" && typed.pop() !== void 0) output.write("\\b \\b");
-					if (next.kind === "type") {
-						typed.push(next.key);
-						output.write(next.key);
-					}
-				}
-			};
-			listening = (chunk) => {
-				buffer.keys += typeof chunk === "string" ? chunk : buffer.decoder.decode(chunk, { stream: true });
-				consume();
-			};
-			input.on("data", listening);
-			consume();
-		},
-		close: stop
-	};
-}
-//#endregion
-//#region src/node/prompt.ts
-/**
-* node:prompt — readline-backed \`PromptInput\` for use with the prompt
-* renderable in a Node runtime.
-*
-* [LAW:locality-or-seam] \`node:readline\` lives only here, on the node side
-* of the API boundary. The main barrel stays browser-safe; consumers that
-* want interactive prompts in Node opt in by importing \`nodeAsk\` and
-* passing it as the input capability:
-*
-*     import { Prompt } from "@promptctl/rich-js";
-*     import { nodeAsk } from "@promptctl/rich-js/node/prompt";
-*     const answer = await Prompt.ask("What's your name?", nodeAsk);
-*     // or with options:
-*     const choice = await Prompt.ask("Pick one", nodeAsk, { choices: ["a", "b"] });
-*
-* [LAW:single-enforcer] One readline interface per \`nodeAsk\` call —
-* created, asked, closed. No shared \`rl\` across prompts, no listener-leak
-* pitfalls when callers stack prompts in a loop.
-*/
-var nodeAsk = (prompt) => new Promise((resolve) => {
-	const rl = createInterface({
-		input: process.stdin,
-		output: process.stdout
-	});
-	rl.question(prompt, (answer) => {
-		rl.close();
-		resolve(answer);
-	});
-});
-//#endregion
 //#region docs/__docs-example__.ts
 var console = new Console();
 {
-	const deploy = async () => {
-		console.print("[bold green]:rocket: deployed[/]");
-	};
-	if (await Confirm.ask("Deploy to production?", nodeAsk)) await deploy();
+	const host = await Prompt.ask("Host", nodeAsk, { default: "localhost" });
+	console.print(\`Connecting to [bold cyan]\${host}[/]…\`);
 }
 //#endregion
 `;export{n as default};

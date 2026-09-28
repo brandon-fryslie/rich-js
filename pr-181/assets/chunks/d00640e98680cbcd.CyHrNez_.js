@@ -20,8 +20,10 @@ const n=`//#region docs/.vitepress/node-readline.ts
 * bundle.
 */
 var pending = /* @__PURE__ */ new WeakMap();
-/** A CSI sequence (\`ESC [ … final\`) or a two-key escape (\`ESC x\`), at the start of \`keys\`. */
-var ESCAPE = /^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|[^[])/;
+/** An arrow, Home, Delete and the like: a CSI (\`ESC [ … final\`) or SS3 (\`ESC O x\`) sequence at the start of \`keys\`. */
+var ESCAPE = /^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|O[@-~])/;
+/** The start of one of those sequences, the rest still to arrive. */
+var PARTIAL = /^\\x1b(?:\\[[0-?]*[ -/]*|O)?$/;
 function step(keys) {
 	const key = String.fromCodePoint(keys.codePointAt(0));
 	if (key === "\\r") return {
@@ -38,10 +40,14 @@ function step(keys) {
 	};
 	if (key === "\\x1B") {
 		const sequence = ESCAPE.exec(keys);
-		return sequence !== null ? {
+		if (sequence !== null) return {
 			kind: "skip",
 			length: sequence[0].length
-		} : { kind: "incomplete" };
+		};
+		return PARTIAL.test(keys) ? { kind: "incomplete" } : {
+			kind: "skip",
+			length: 1
+		};
 	}
 	return key >= " " ? {
 		kind: "type",

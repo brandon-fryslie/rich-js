@@ -6019,31 +6019,24 @@ function ask(promptText, input) {
 	if (typeof input !== "function") throw new TypeError("Prompt: \`input\` must be a \`PromptInput\` function. Pass \`nodeAsk\` from \`@promptctl/rich-js/node/prompt\` for Node, or supply a custom \`PromptInput\` for tests/browsers.");
 	return input(renderMarkup(promptText).plain + " ");
 }
-var IntPrompt = class {
+var Prompt = class {
 	static async ask(promptText, input, options) {
 		const showDefault = options?.showDefault !== false;
+		const showChoices = options?.showChoices !== false;
 		let display = promptText;
+		if (showChoices && options?.choices) display += \` [\${options.choices.join("/")}]\`;
 		if (showDefault && options?.default !== void 0) display += \` (\${options.default})\`;
 		display += ":";
 		while (true) {
 			const value = (await ask(display, input)).trim();
 			if (value === "" && options?.default !== void 0) return options.default;
-			const num = parseInt(value, 10);
-			if (!isNaN(num) && String(num) === value) return num;
-		}
-	}
-};
-var FloatPrompt = class {
-	static async ask(promptText, input, options) {
-		const showDefault = options?.showDefault !== false;
-		let display = promptText;
-		if (showDefault && options?.default !== void 0) display += \` (\${options.default})\`;
-		display += ":";
-		while (true) {
-			const value = (await ask(display, input)).trim();
-			if (value === "" && options?.default !== void 0) return options.default;
-			const num = parseFloat(value);
-			if (!isNaN(num)) return num;
+			if (options?.choices) {
+				const caseSensitive = options.caseSensitive !== false;
+				const match = options.choices.find((c) => caseSensitive ? c === value : c.toLowerCase() === value.toLowerCase());
+				if (match) return match;
+				continue;
+			}
+			return value;
 		}
 	}
 };
@@ -6070,8 +6063,10 @@ var FloatPrompt = class {
 * bundle.
 */
 var pending = /* @__PURE__ */ new WeakMap();
-/** A CSI sequence (\`ESC [ … final\`) or a two-key escape (\`ESC x\`), at the start of \`keys\`. */
-var ESCAPE = /^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|[^[])/;
+/** An arrow, Home, Delete and the like: a CSI (\`ESC [ … final\`) or SS3 (\`ESC O x\`) sequence at the start of \`keys\`. */
+var ESCAPE = /^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|O[@-~])/;
+/** The start of one of those sequences, the rest still to arrive. */
+var PARTIAL = /^\\x1b(?:\\[[0-?]*[ -/]*|O)?$/;
 function step(keys) {
 	const key = String.fromCodePoint(keys.codePointAt(0));
 	if (key === "\\r") return {
@@ -6088,10 +6083,14 @@ function step(keys) {
 	};
 	if (key === "\\x1B") {
 		const sequence = ESCAPE.exec(keys);
-		return sequence !== null ? {
+		if (sequence !== null) return {
 			kind: "skip",
 			length: sequence[0].length
-		} : { kind: "incomplete" };
+		};
+		return PARTIAL.test(keys) ? { kind: "incomplete" } : {
+			kind: "skip",
+			length: 1
+		};
 	}
 	return key >= " " ? {
 		kind: "type",
@@ -6185,12 +6184,8 @@ var nodeAsk = (prompt) => new Promise((resolve) => {
 //#region docs/__docs-example__.ts
 var console = new Console();
 {
-	const port = await IntPrompt.ask("Port number", nodeAsk, { default: 3e3 });
-	const threshold = await FloatPrompt.ask("Threshold (0.0–1.0)", nodeAsk);
-	console.print({
-		port,
-		threshold
-	});
+	const name = await Prompt.ask("[bold cyan]What is your name?[/bold cyan]", nodeAsk);
+	console.print(\`Hello, [bold magenta]\${name}[/bold magenta]! :wave:\`);
 }
 //#endregion
 `;export{n as default};
