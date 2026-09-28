@@ -20,27 +20,49 @@
  * `run` says where the block executes: at build time in the page's chain,
  * in the browser in a live terminal, or nowhere. A build block also says what
  * it must do (print, print nothing, or throw), and breaking that fails the
- * build. `note` is the sentence the reader sees in place of output. Only a
- * block that shows no output has one.
+ * build.
+ *
+ * The rest is what the example widget shows under the code. `label` names the
+ * panel; `caption`, beside it, says where its contents came from, which is
+ * what tells a reader the output below is the code above, run. `note` is the
+ * sentence shown in place of output; only a block that shows no output has
+ * one.
  */
 export type MarkerRule =
-  | { readonly run: "build"; readonly outcome: "prints" | "silent" | "throws"; readonly note: string | null }
-  | { readonly run: "browser"; readonly note: null }
-  | { readonly run: "never"; readonly note: string };
+  | {
+      readonly run: "build";
+      readonly outcome: "prints" | "silent" | "throws";
+      readonly label: string;
+      readonly caption: string;
+      readonly note: string | null;
+    }
+  | { readonly run: "browser"; readonly label: string; readonly caption: string; readonly note: null }
+  | { readonly run: "never"; readonly label: string; readonly caption: null; readonly note: string };
+
+const RAN = "produced by running the code above";
 
 export const MARKERS = {
-  static: { run: "build", outcome: "prints", note: null },
+  static: { run: "build", outcome: "prints", label: "Output", caption: RAN, note: null },
   silent: {
     run: "build",
     outcome: "silent",
+    label: "Output",
+    caption: RAN,
     note: "This example prints nothing. It sets up names the examples below it use.",
   },
-  throws: { run: "build", outcome: "throws", note: null },
-  live: { run: "browser", note: null },
-  shape: { run: "never", note: "Not run: this is a shape to implement, not a complete program." },
+  throws: { run: "build", outcome: "throws", label: "Output", caption: `${RAN}, which throws`, note: null },
+  live: { run: "browser", label: "Live", caption: "the code above, running in your browser", note: null },
+  shape: {
+    run: "never",
+    label: "Not run",
+    caption: null,
+    note: "This is a shape to implement, not a complete program.",
+  },
   node: {
     run: "never",
-    note: "Not run here: it needs a real Node process (a file, stdin, or process exit). Run it locally to see it.",
+    label: "Not run",
+    caption: null,
+    note: "It needs a real Node process (a file, stdin, or process exit). Run it locally to see it.",
   },
 } as const satisfies Record<string, MarkerRule>;
 

@@ -143,6 +143,14 @@ describe("encodeHtmlFragment", () => {
     expect(fragment).not.toContain("<style");
   });
 
+  // `all:initial` keeps every host rule out of the rows; a custom property is
+  // the one thing it does not reset, so it is the host's single way to set the
+  // font. Unset, the var() falls back to the browser's default monospace.
+  it("takes its font from --rich-fragment-font, falling back to the default monospace", () => {
+    const style = /^<pre style="([^"]*)">/.exec(encodeHtmlFragment(segments, THEME))![1]!;
+    expect(style.split(";")).toContain("font:var(--rich-fragment-font,medium monospace)");
+  });
+
   it("leaves the blink keyframes to the page, included once by the document", () => {
     expect(encodeHtmlFragment(segments, THEME)).not.toContain("@keyframes");
     expect(encodeHtml(segments, THEME).split(HTML_FRAGMENT_CSS)).toHaveLength(2);

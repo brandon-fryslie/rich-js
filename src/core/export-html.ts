@@ -122,6 +122,13 @@ export const HTML_FRAGMENT_CSS = `@keyframes ${BLINK_KEYFRAMES}{50%{color:transp
  * the host's `pre` rules and inherited typography from reaching the rows, and
  * the two properties `all` does not cover pin the rows left to right.
  *
+ * The one way in is the `--rich-fragment-font` custom property, read as the
+ * `font` shorthand (`14px/1.3 "JetBrains Mono", monospace`). `all` resets no
+ * custom property, so a host sets it on any ancestor to draw the rows in its
+ * own code font; unset, the rows are the browser's default monospace. It must
+ * be a whole shorthand, a size and a family at least: any other value is
+ * invalid when computed, and the rows then inherit the host's font.
+ *
  * A browser draws no line for a newline at either edge of a `pre`: the parser
  * drops the one straight after the open tag, and the one before `</pre>` ends a
  * line without starting another. So the fragment opens with a newline of its
@@ -138,7 +145,7 @@ export function encodeHtmlFragment(segments: Iterable<Segment>, theme?: Terminal
     `background:${canvas.background.hex}`,
     `color:${canvas.foreground.hex}`,
     "padding:1em",
-    "font-family:monospace",
+    "font:var(--rich-fragment-font,medium monospace)",
     "white-space:pre",
     "overflow-x:auto",
   ].join(";");

@@ -14,12 +14,6 @@ const console = new Console();
 console.print(new Panel("[bold]Hello, World![/bold]"));
 ```
 
-```
-╭──────────────────────────────────────────────────────────╮
-│ Hello, World!                                            │
-╰──────────────────────────────────────────────────────────╯
-```
-
 Any renderable works as panel content — tables, trees, other panels, styled text, etc.
 
 ## Sizing
@@ -28,12 +22,6 @@ By default a Panel expands to the full terminal width. Use `expand: false` to sh
 
 ```typescript
 console.print(new Panel("Short content", { expand: false }));
-```
-
-```
-╭───────────────╮
-│ Short content │
-╰───────────────╯
 ```
 
 The `Panel.fit()` alternative constructor is equivalent:
@@ -51,15 +39,8 @@ first, then a cell of content, then the padding, and only then does content grow
 again. So content stays visible down to width 3, and the padding is what
 disappears on the way there:
 
-```
-width 3   width 4    width 5     width 6
-╭─╮       ╭──╮       ╭───╮       ╭────╮
-│h│       │ h│       │ h │       │ he │
-│e│       │ e│       │ e │       │ ll │
-│l│       │ l│       │ l │       │ o  │
-│l│       │ l│       │ l │       ╰────╯
-│o│       │ o│       │ o │
-╰─╯       ╰──╯       ╰───╯
+```typescript
+for (const width of [3, 4, 5, 6]) console.print(new Panel("hello", { width }));
 ```
 
 Width 3 is the narrowest panel that can show anything: at width 2 the two frame
@@ -83,12 +64,6 @@ console.print(new Panel(
     subtitle: "[dim]footer text[/dim]",
   }
 ));
-```
-
-```
-╭─── My Panel ──────────────────────────────────────────────╮
-│ Panel content here                                        │
-╰─────────────────────────────────────────── footer text ──╯
 ```
 
 Both `title` and `subtitle` support markup.
