@@ -1,51 +1,30 @@
 # Renderable Protocol
 
-Any object can opt into rich formatting by implementing a known interface. When `Console` encounters such an object in `print()` or `log()`, it calls the interface instead of converting to a plain string. Use this to build custom terminal components.
+Any object can opt into rich formatting by implementing the `Renderable` interface. When `Console` encounters such an object in `print()` or `log()`, it calls its `render` method instead of converting it to a plain string. Use this to build custom terminal components.
 
-## Simple customization
+## The render protocol
 
-The simplest form: implement a method that returns another renderable. Returning a string causes it to be rendered as markup:
-
-```typescript
-import { Console } from "@promptctl/rich-js";
-import type { Renderable } from "@promptctl/rich-js";
-
-class User {
-  constructor(public name: string, public role: string) {}
-
-  richConsole(): string {
-    return `[bold cyan]${this.name}[/bold cyan] [dim](${this.role})[/dim]`;
-  }
-}
-
-const console = new Console();
-console.print(new User("Alice", "admin"));
-// Alice (admin)   — with color
-```
-
-You can return any renderable, not just strings — a `Table`, `Panel`, `Tree`, etc.
-
-## Full render protocol
-
-The simple form is limited to returning a single object. For multi-part output or width-responsive rendering, implement the full `Renderable` interface:
+A renderable has one method, `render`, which is handed the space it may draw in and yields the `Segment`s that draw it. It rarely builds those segments by hand: to show markup, a `Table`, a `Panel` or any other renderable inside yours, render the child with the options you were given and yield what it yields with `yield*`:
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
-import { Table } from "@promptctl/rich-js";
+import { ROUNDED, Segment, Table, renderMarkup } from "@promptctl/rich-js";
 
 class UserReport implements Renderable {
   constructor(private users: Array<{ name: string; score: number }>) {}
 
-  *render(options: RenderOptions): Iterable<Renderable> {
-    yield `[bold]User Report[/bold] — width: ${options.maxWidth}`;
+  *render(options: RenderOptions): Iterable<Segment> {
+    yield* renderMarkup(`[bold magenta]User Report[/] [dim]width: ${options.maxWidth}[/]`).render(options);
 
-    const table = new Table("Name", "Score");
+    const table = new Table({ box: ROUNDED, borderStyle: "blue" });
+    table.addColumn("Name");
+    table.addColumn("Score", { justify: "right" });
     for (const user of this.users) {
-      table.addRow(user.name, String(user.score));
+      table.addRow(`[cyan]${user.name}`, `[bold green]${user.score}`);
     }
-    yield table;
+    yield* table.render(options);
 
-    yield `[dim]${this.users.length} users total[/dim]`;
+    yield* renderMarkup(`[dim italic]${this.users.length} users total[/]`).render(options);
   }
 }
 
@@ -57,12 +36,12 @@ console.print(new UserReport([
 
 The `render` method:
 - Receives `RenderOptions` with `maxWidth` and other context, including `colorSystem`, the depth the output will be encoded at, for a renderable that decides on the colours the terminal will draw
-- Returns an iterable of renderables — a generator is recommended
-- Can yield strings, tables, panels, other renderables, or `Segment` objects
+- Returns an iterable of `Segment`s — a generator is recommended
+- Draws a child renderable (markup rendered with `renderMarkup`, a `Table`, a `Panel`, another custom renderable) by passing it `options` and yielding its segments with `yield*`
 
 ## Low-level rendering
 
-For complete character-level control, yield `Segment` objects directly — a text string paired with an optional style:
+The segments do not have to come from a child. For complete character-level control, build them yourself — each `Segment` is a text string paired with an optional style:
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
@@ -72,7 +51,7 @@ class Checkerboard implements Renderable {
   constructor(private rows: number, private cols: number) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const dark  = Style.parse("on black");
+    const dark  = Style.parse("on blue");
     const light = Style.parse("on white");
 
     for (let r = 0; r < this.rows; r++) {
@@ -110,7 +89,7 @@ class Health implements Renderable {
 const console = new Console({
   theme: new Theme({ "health.up": "bold green", "health.down": "bold red" }),
 });
-console.print(new Health(true));
+console.print(new Health(true), new Health(false));
 ```
 
 ## Measuring renderables
@@ -118,19 +97,32 @@ console.print(new Health(true));
 Components like `Table` need to know how wide a renderable is before they can compute column widths. If you embed a custom renderable inside a `Table` or `Layout`, it must declare its width range by implementing `Measurable`:
 
 ```typescript
-import type { Measurable, RenderOptions } from "@promptctl/rich-js";
-import { Measurement } from "@promptctl/rich-js";
+import type { Measurable, Renderable, RenderOptions } from "@promptctl/rich-js";
+import { Measurement, Segment, Style, Table } from "@promptctl/rich-js";
 
-class ChessBoard implements Measurable {
-  // A chess board is always exactly 8×2 characters per square
-  measure(options: RenderOptions): Measurement {
+class ChessBoard implements Renderable, Measurable {
+  // Eight squares of two cells each: always exactly 16 cells wide
+  measure(_options: RenderOptions): Measurement {
     return new Measurement(16, 16); // minimum = maximum = 16
   }
 
-  *render(options: RenderOptions) {
-    // ... render 8 columns × 2 chars each
+  *render(_options: RenderOptions): Iterable<Segment> {
+    const light = Style.parse("on yellow");
+    const dark = Style.parse("on red");
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        yield new Segment("  ", (rank + file) % 2 === 0 ? light : dark);
+      }
+      yield Segment.line();
+    }
   }
 }
+
+const games = new Table({ borderStyle: "magenta" });
+games.addColumn("Board");
+games.addColumn("Game");
+games.addRow(new ChessBoard(), "[bold cyan]Opening position[/] [dim]white to move[/]");
+console.print(games);
 ```
 
 `Measurement` takes `(minimum, maximum)`:
@@ -147,6 +139,8 @@ Implement both interfaces together for a fully composable renderable. Each metho
 import type { Renderable, Measurable, RenderOptions } from "@promptctl/rich-js";
 import {
   Measurement,
+  Panel,
+  RichText,
   Segment,
   cellLen,
   withBoundedWidth,
@@ -172,10 +166,18 @@ class MyWidget implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    // render within options.maxWidth cells, and pass `options` — not
-    // `rawOptions` — to anything you render inside yourself
+    // Render within options.maxWidth cells, and pass `options` — not
+    // `rawOptions` — to anything you render inside yourself.
+    yield* new RichText(this.lines.join("\n"), { style: "cyan" }).render(options);
   }
 }
+
+// A panel that fits its content draws its frame at the width `measure` reports.
+console.print(new Panel(new MyWidget(["measured from its content,", "so the frame fits it"]), {
+  expand: false,
+  title: "MyWidget",
+  borderStyle: "green",
+}));
 ```
 
 `withBoundedWidth` belongs at the top of `render` and never at the top of `measure`: it asks `measure` for the natural width, so calling it from there would ask the question with itself.
@@ -215,14 +217,14 @@ Four functions carry the rules, so a renderable that composes children calls the
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
-import { Segment, fitHeight, insetHeight } from "@promptctl/rich-js";
+import { Layout, Panel, Segment, Style, fitHeight, insetHeight } from "@promptctl/rich-js";
 
 // A title row, and a body in the rows it leaves.
 class Titled implements Renderable {
   constructor(private title: string, private body: Renderable) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield new Segment(this.title);
+    yield new Segment(this.title, Style.parse("bold magenta"));
     yield Segment.line();
     const height = insetHeight(options.height, 1);
     const lines = Segment.splitLines(this.body.render({ ...options, height }));
@@ -232,6 +234,16 @@ class Titled implements Renderable {
     }
   }
 }
+
+// Two panels side by side, under a title, in a pane six rows tall.
+const stages = new Layout();
+stages.splitRow(
+  new Layout(new Panel("[green]✓[/] compiled", { borderStyle: "green" })),
+  new Layout(new Panel("[yellow]…[/] testing", { borderStyle: "yellow" })),
+);
+const screen = new Layout();
+screen.splitColumn(new Layout(new Titled("Build", stages), { size: 6 }));
+console.print(screen);
 ```
 
-Forward the budget unchanged and a `Layout` inside `Titled` fills the whole region, one row too tall, and the crop above takes its last row. The doc comment on `Height` in the source is the authority on these rules.
+The pane is a region of six rows: the title takes one, and the panels below it stretch to fill the five that are left. Forward the budget unchanged and a `Layout` inside `Titled` fills the whole region, one row too tall, and the crop above takes its last row. The doc comment on `Height` in the source is the authority on these rules.

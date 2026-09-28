@@ -1,3 +1,10 @@
+---
+exampleContext: |
+  const someColor = new ColorRgba(214, 93, 14);
+  const surface = new ColorRgba(40, 44, 52);
+  const primary = new ColorRgba(97, 175, 239);
+---
+
 # Theme Transposition
 
 Treat a color theme like a piece of music. A melody can be **transposed** to a different key — every note shifts by the same interval, so the tune is preserved but its tonal center moves. rich-js can do the same to a palette: rotate every color by a fixed amount in a perceptually-uniform space and you get the *same theme* in a different key. Transpose all 22 built-in themes and you have effectively unlimited themes that still feel coherent.
@@ -12,12 +19,12 @@ Hue rotation only "feels even" if equal numerical steps look like equal perceptu
 import { Oklch, ColorRgba } from "@promptctl/rich-js";
 
 const blue = Oklch.fromRgba(new ColorRgba(60, 90, 200));
-blue.l; // ~0.51  lightness
-blue.c; // ~0.16  chroma
-blue.h; // ~265   hue degrees
+const { l, c, h } = blue; // lightness, chroma, hue in degrees
+console.print(`lightness ${l.toFixed(2)}  chroma ${c.toFixed(2)}  hue ${h.toFixed(0)}°`);
 
 // ...manipulate, then convert back to sRGB
 const back = blue.toRgba(); // ColorRgba
+console.print(`[on ${back.hex}]        [/] ${back.hex}`);
 ```
 
 `Oklch` is immutable. `toRgba()` is the normalization boundary: it clamps lightness into `[0,1]`, clamps chroma to `≥ 0`, and reduces chroma by bisection to land inside the sRGB gamut — so a vivid hue desaturates near black/white rather than producing an invalid color, with hue preserved wherever the color is chromatic. (At zero chroma, or at the lightness extremes where everything collapses to black/white, hue is moot and pinned to 0.)
@@ -26,7 +33,7 @@ const back = blue.toRgba(); // ColorRgba
 
 A `ThemeKey` is the transform applied to each color. It is **data**, not code:
 
-```typescript
+```typescript shape
 interface ThemeKey {
   hueShift: number;        // degrees to rotate hue
   chromaScale: number;     // multiply chroma: 0 = grayscale, 1 = identity, >1 = more saturated
@@ -40,11 +47,11 @@ Lightness is `L' = clamp01(L * lightnessScale + lightnessShift)`, which makes "i
 ```typescript
 import { IDENTITY, INVERT_LIGHTNESS, isIdentityKey } from "@promptctl/rich-js";
 
-IDENTITY;          // { hueShift: 0, chromaScale: 1, lightnessScale: 1, lightnessShift: 0 }
-INVERT_LIGHTNESS;  // flips L→1-L; turns a dark theme into its light "octave"
+console.print(IDENTITY);
+console.print(INVERT_LIGHTNESS); // flips L→1-L; turns a dark theme into its light "octave"
 
-isIdentityKey(IDENTITY);                       // true
-isIdentityKey({ ...IDENTITY, hueShift: 360 }); // true — a whole turn is a no-op
+console.print(isIdentityKey(IDENTITY));
+console.print(isIdentityKey({ ...IDENTITY, hueShift: 360 })); // a whole turn is a no-op
 ```
 
 Apply a key to a single color with `Oklch.applyKey`:
@@ -53,6 +60,8 @@ Apply a key to a single color with `Oklch.applyKey`:
 const rotated = Oklch.fromRgba(someColor).applyKey({
   hueShift: 120, chromaScale: 1, lightnessScale: 1, lightnessShift: 0,
 }).toRgba();
+
+console.print(`[on ${someColor.hex}]      [/] ${someColor.hex}  →  [on ${rotated.hex}]      [/] ${rotated.hex}`);
 ```
 
 ## Mixing two colours
@@ -67,6 +76,8 @@ When the axes should move by different amounts, `mixAxes` takes one weight per a
 const tint = Oklch.fromRgba(surface)
   .mixAxes(Oklch.fromRgba(primary), { l: 0.2, c: 0.8, h: 1, alpha: 0 })
   .toRgba();
+
+console.print(`[on ${surface.hex}]      [/] surface  [on ${tint.hex}]      [/] tint  [on ${primary.hex}]      [/] primary`);
 ```
 
 `mix(b, t)` is `mixAxes(b, { l: t, c: t, h: t, alpha: t })`. A weak `h` beside a strong `c` keeps the starting colour's hue at high chroma. Only a truly achromatic start adopts the target's hue, so to land on the target's hue from a near-grey, pass `h: 1`.
@@ -91,6 +102,12 @@ const shifted = transposePalette(
 
 // a free light variant of a dark theme
 const light = transposePalette(gruvbox, INVERT_LIGHTNESS, "gruvbox-light");
+
+const roles = ["background", "surface", "primary", "secondary", "accent", "error", "success", "warning"];
+for (const palette of [gruvbox, shifted, light]) {
+  const swatches = roles.map((role) => `[on ${palette.get(role)!.hex}]   [/]`).join("");
+  console.print(`${swatches}  ${palette.name}  dark: ${palette.dark}`);
+}
 ```
 
 The resulting palette's `dark` flag is derived from the **actual lightness of the transposed background** (`background` var's OKLCH `L < 0.5`), not from the key — so it is honest under any transform. A palette with no `background` var throws on the transposing path (the identity fast-path is exempt, since it preserves the source flag verbatim).
@@ -102,10 +119,10 @@ Rotating *every* hue would make a UI lie: an error message must look red, succes
 ```typescript
 import { isAnchored, ANCHORED_ROOTS } from "@promptctl/rich-js";
 
-ANCHORED_ROOTS;                 // a ReadonlySet — at runtime: Set(3) { "error", "success", "warning" }
-isAnchored("error");            // true
-isAnchored("error-darken-1");   // true — variants of an anchored root anchor too
-isAnchored("primary");          // false — decorative, free to rotate
+console.print(ANCHORED_ROOTS);                // a ReadonlySet
+console.print(isAnchored("error"));
+console.print(isAnchored("error-darken-1")); // variants of an anchored root anchor too
+console.print(isAnchored("primary"));        // decorative, free to rotate
 ```
 
 The classification is by hyphen-prefix, so the whole `error-*` / `success-*` / `warning-*` family is covered by the three roots. This is what lets you spin the decorative palette through every key while the status colors stay meaningful.
@@ -122,7 +139,13 @@ const gruvbox = getThemePalette("gruvbox")!;
 // rotate so the theme's `primary` color sits at 200° (a teal), everything else
 // following by the same interval; error/success/warning still hold
 const key = themeKeyForRoot(gruvbox, "primary", 200);
-const teal = transposePalette(gruvbox, key);
+const teal = transposePalette(gruvbox, key, "gruvbox in teal");
+
+console.print(key);
+for (const palette of [gruvbox, teal]) {
+  const swatches = roles.map((role) => `[on ${palette.get(role)!.hex}]   [/]`).join("");
+  console.print(`${swatches}  ${palette.name}`);
+}
 ```
 
 It returns a hue-only key (chroma and lightness untouched) — spread your own chroma/lightness over it if you want those axes too. A non-finite `targetHueDeg`, or a missing `tonicVar`, throws at the boundary with a clear message.

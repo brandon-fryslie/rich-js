@@ -71,19 +71,8 @@ import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
  * deletes the list.
  */
 export const NOT_YET_MIGRATED: ReadonlySet<string> = new Set([
-  "console.md",
-  "contrast.md",
-  "highlighting.md",
-  "introduction.md",
   "live.md",
-  "markup.md",
   "prompt.md",
-  "protocol.md",
-  "style.md",
-  "template-bindings.md",
-  "text.md",
-  "transpose.md",
-  "traceback.md",
 ]);
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");

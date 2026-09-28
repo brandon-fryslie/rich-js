@@ -7,8 +7,8 @@ Automatic highlighting recognizes patterns in text — numbers, strings, boolean
 When you pass a string to `print()` or `log()`, rich-js scans it for common patterns and colors them automatically:
 
 ```typescript
-console.print('name="api", count=42, ok=true, owner=null, id=a3f2c1d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d');
-// "api", 42, true, null and the UUID are each styled
+console.print('name="api", count=42, ok=true, owner=null');
+console.print("id=a3f2c1d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d docs=https://example.com/api");
 ```
 
 The patterns are numbers, quoted strings, `true`/`false`, `null`/`undefined`/`None`, URLs, and UUIDs.
@@ -18,13 +18,16 @@ The patterns are numbers, quoted strings, `true`/`false`, `null`/`undefined`/`No
 Highlighting is on by default. Disable it per call:
 
 ```typescript
-console.print("42 is just a number here", { highlight: false });
+console.print("42 is a number here");
+console.print("42 is just text here", { highlight: false });
 ```
 
 Or globally on the Console — can still be re-enabled per call:
 
 ```typescript
 const console = new Console({ highlight: false });
+
+console.print("42 and /usr/bin");
 
 // Still can enable for a specific call
 console.print("42 and /usr/bin", { highlight: true });

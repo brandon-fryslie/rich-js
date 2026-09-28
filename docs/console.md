@@ -1,3 +1,10 @@
+---
+exampleContext: |
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+  const doWork = () => sleep(3000);
+  const deepData: unknown = Array.from({ length: 20 }).reduce<unknown>((inner) => [inner], "bottom");
+---
+
 # Console
 
 `Console` is the output object: it detects what the terminal supports, owns the
@@ -11,13 +18,14 @@ always.
 
 ## Construction and sharing
 
-Most applications need one `Console` instance. Create it once and import it wherever you need output:
+Most applications need one `Console` instance. Create it once, in a module of
+its own that exports it (`export const console = new Console();`), and import it
+wherever you need output:
 
-```typescript
-// shared/console.ts
+```typescript silent
 import { Console } from "@promptctl/rich-js";
 
-export const console = new Console();
+const console = new Console();
 ```
 
 `Console` auto-detects terminal capabilities on construction. No configuration is required to get started.
@@ -36,6 +44,25 @@ After construction, `Console` exposes information about the terminal:
 | `console.destination` | What output is encoded for: `{ colorSystem, hyperlinks }`, the color depth plus whether OSC 8 links are written, with the constructor options applied — see [Environment variables](#environment-variables) |
 
 `width` and `height` reflect the current terminal size — if the user resizes the window they update automatically.
+
+Here is what a `Console` detects in the terminal these examples run in:
+
+```typescript
+const detected = new Table({ box: ROUNDED, borderStyle: "blue" }).addColumn("Property").addColumn("Value");
+const attributes = {
+  width: console.width,
+  height: console.height,
+  encoding: console.encoding,
+  isTerminal: console.isTerminal,
+  colorSystem: console.colorSystem === null ? null : ColorDepth[console.colorSystem],
+  "destination.colorSystem": console.destination.colorSystem === null ? null : ColorDepth[console.destination.colorSystem],
+  "destination.hyperlinks": console.destination.hyperlinks,
+};
+for (const [name, value] of Object.entries(attributes)) {
+  detected.addRow(`[bold cyan]${name}[/]`, new Pretty(value));
+}
+console.print(detected);
+```
 
 ## Color systems
 
@@ -68,10 +95,26 @@ the enum value:
 ```typescript
 import { Console, ColorDepth } from "@promptctl/rich-js";
 
-const console = new Console({ colorSystem: ColorDepth.WINDOWS });
+const legacy = new Console({ colorSystem: ColorDepth.WINDOWS });
+legacy.print("[on #ff8700]  [/][on #5f00d7]  [/][on #00afaf]  [/] [bold #ff8700]orange[/]");
 ```
 
-Auto-detection picks the best system your terminal supports. Setting a higher system than the terminal supports can produce unreadable output. When you specify a lower color system, colors are automatically downgraded to the nearest available equivalent.
+Auto-detection picks the best system your terminal supports. Setting a higher system than the terminal supports can produce unreadable output. When you specify a lower color system, colors are automatically downgraded to the nearest available equivalent:
+
+```typescript
+const ramp = Array.from({ length: 24 }, (_, i) => {
+  const hex = Math.round((i / 23) * 255).toString(16).padStart(2, "0");
+  return `[on #ff${hex}00] [/]`;
+}).join("");
+
+for (const colorSystem of ["truecolor", "256", "ansi", "none"] as const) {
+  const console = new Console({ colorSystem });
+  console.print(`[bold]${colorSystem.padEnd(10)}[/]${ramp}`);
+}
+```
+
+It is one ramp printed at each depth: the fewer colors a depth has, the fewer
+of its steps survive, and `"none"` drops the color altogether.
 
 ## Printing
 
@@ -87,7 +130,7 @@ console.print("[bold]Hello[/bold], [cyan]World![/cyan]");
 console.print("x =", 42, "y =", 99);
 
 // Any Renderable object
-console.print(new Table().addColumn("Name").addRow("Alice"));
+console.print(new Table().addColumn("Name").addRow("[magenta]Alice[/]"));
 ```
 
 Output is word-wrapped to the terminal width by default.
@@ -99,10 +142,6 @@ kind the markup dialect is applied to. Anything else is data, and is formatted b
 
 ```typescript
 console.print({ status: 200, ok: true });
-```
-
-```
-{ status: 200, ok: true }
 ```
 
 That covers arrays, `Map`s, `Set`s, and nested structures. A value that carries
@@ -120,11 +159,11 @@ passes for a complete one.
 
 These bounds belong to `print` and `log`, not to the formatter. A `Pretty` you
 construct yourself has no limits unless you pass them, on the grounds that you
-have seen your own data:
+have seen your own data. Here `deepData` is an array nested 20 levels deep:
 
 ```typescript
-console.print(bigArray);                      // first 100, then "... +N"
-console.print(new Pretty(bigArray));          // all of it
+console.print(deepData);             // 16 levels, then "[...]"
+console.print(new Pretty(deepData)); // all 20 of them
 ```
 
 A *string argument* is never truncated either — `maxString` applies only to
@@ -141,21 +180,9 @@ neither `sep` nor `end` is placed next to it. Printed renderables therefore stac
 with no blank line between them:
 
 ```typescript
-console.print("before", new Panel("one", { width: 9 }), "after", "that");
-console.print(new Panel("two", { width: 9 }), { end: "" });
+console.print("before", new Panel("[bold]one[/]", { width: 9, borderStyle: "cyan" }), "after", "that");
+console.print(new Panel("[bold]two[/]", { width: 9, borderStyle: "magenta" }), { end: "" });
 console.print("done");
-```
-
-```
-before
-╭───────╮
-│ one   │
-╰───────╯
-after that
-╭───────╮
-│ two   │
-╰───────╯
-done
 ```
 
 The `end: ""` in the second call changes nothing, because that call printed no
@@ -185,7 +212,15 @@ console.print("[bold]Name:[/bold] [cyan]Alice[/cyan] — [green]active[/green]")
 Control text alignment with the `justify` option:
 
 ```typescript
-console.print("Hello!", { justify: "right" });
+console.print("Hello!", { justify: "right", style: "bold magenta" });
+```
+
+A background shows where each mode puts the padding:
+
+```typescript
+for (const justify of ["default", "left", "center", "right"] as const) {
+  console.print(justify, { justify, style: "bold white on blue" });
+}
 ```
 
 | Mode | Behavior |
@@ -208,20 +243,13 @@ too. Each space you typed is a gap of its own, so a double space stays about
 twice as wide as a single one:
 
 ```typescript
-const console = new Console({ width: 42 });
-console.print(
+const narrow = new Console({ width: 42 });
+narrow.print(
   "Rich is a Python library for rich text in the terminal.  " +
     "This port follows https://github.com/Textualize/rich closely, " +
     "down to where the spaces go.",
   { justify: "full" },
 );
-```
-
-```
-Rich is a Python library for rich text  in
-the   terminal.      This   port   follows
-https://github.com/Textualize/rich
-closely, down to where the spaces go.
 ```
 
 The first two lines reach the edge, and the gap after `terminal.` is twice the
@@ -238,30 +266,31 @@ a line that is *still* too wide once wrapping is done, which is only ever a word
 longer than the whole width. The fourth, `"ignore"`, skips wrapping altogether:
 
 ```typescript
-const long = "This is a very long string that exceeds the available width";
-console.print(long, { overflow: "fold" });     // chop a word wider than the line across lines (default)
-console.print(long, { overflow: "crop" });     // cut such a word off at the edge
-console.print(long, { overflow: "ellipsis" }); // cut it off, marking it with …
-console.print(long, { overflow: "ignore" });   // don't wrap; the line is cut at the console width
+const narrow = new Console({ width: 20 });
+const long = "The quick brownfoxjumpsoverthelazydogandmore end";
+
+narrow.rule("fold", { style: "cyan" });
+narrow.print(long, { overflow: "fold" });     // chop a word wider than the line across lines (default)
+narrow.rule("crop", { style: "cyan" });
+narrow.print(long, { overflow: "crop" });     // cut such a word off at the edge
+narrow.rule("ellipsis", { style: "cyan" });
+narrow.print(long, { overflow: "ellipsis" }); // cut it off, marking it with …
+narrow.rule("ignore", { style: "cyan" });
+narrow.print(long, { overflow: "ignore" });   // don't wrap; the line is cut at the console width
 ```
 
 A string of ordinary words wraps identically under the first three — the mode
 is a last resort, not the first thing a long line meets. They part company only
-on a word no break can help: at a width of 20, `"The quick
-brownfoxjumpsoverthelazydogandmore end"` keeps every character under `"fold"`
-and loses the tail of the long word under `"crop"` and `"ellipsis"`.
+on a word no break can help, like the one above: `"fold"` keeps every character
+of it, and `"crop"` and `"ellipsis"` lose its tail.
 
 Under `"ignore"` the line is neither wrapped nor cut by any of those methods. It
 leaves the renderer at its natural width, and the [`crop` flag](#cropping) then
 cuts it at the console width:
 
 ```typescript
-const console = new Console({ width: 12 });
-console.print("aaaa bbbb cccc dddd", { overflow: "ignore" });
-```
-
-```
-aaaa bbbb cc
+const narrow = new Console({ width: 12 });
+narrow.print("[green]aaaa[/] [yellow]bbbb[/] [magenta]cccc[/] [cyan]dddd[/]", { overflow: "ignore" });
 ```
 
 Without `"ignore"`, the same call wraps after `bbbb` and prints two lines. A line
@@ -288,27 +317,20 @@ It matters when something renders wider than the console: a line printed with
 was given. Pass `crop: false` to let those lines through whole:
 
 ```typescript
-const console = new Console({ width: 12 });
-console.print("aaaa bbbb cccc dddd", { overflow: "ignore", crop: false });
-```
-
-```
-aaaa bbbb cccc dddd
+const narrow = new Console({ width: 12 });
+narrow.print("[green]aaaa[/] [yellow]bbbb[/] [magenta]cccc[/] [cyan]dddd[/]", { overflow: "ignore", crop: false });
 ```
 
 A wide character the edge cuts through leaves a space in its place. A CJK glyph
 takes two cells, so at width 11 the sixth glyph straddles the edge:
 
 ```typescript
-const console = new Console({ width: 11 });
-console.print("日本語日本語日本語", { overflow: "ignore" });
+const narrow = new Console({ width: 11 });
+narrow.print("日本語日本語日本語", { overflow: "ignore", style: "black on yellow" });
 ```
 
-```
-日本語日本 
-```
-
-The line is five glyphs and a trailing space, eleven cells in all.
+The line is five glyphs and a trailing space, eleven cells in all; the
+background shows the space.
 
 ### Soft wrapping
 
@@ -317,8 +339,13 @@ past the terminal width instead of folding — the behavior of the built-in
 `console.log`:
 
 ```typescript
-console.print("A very long line...", { softWrap: true });
+const narrow = new Console({ width: 20 });
+const line = "[bold]A very long line[/] that runs on past twenty cells";
+narrow.print(line);
+narrow.print(line, { softWrap: true });
 ```
+
+At a width of 20 the first call wraps the line; the second prints it whole.
 
 It overrides the `crop` flag rather than deferring to it. At width 12,
 `console.print("aaaa bbbb cccc dddd", { softWrap: true, crop: true })` prints
@@ -330,11 +357,8 @@ the whole line.
 `print()` and behaves the same way on each of them:
 
 ```typescript
-console.log("Server started on port 3000");
-// [9:14:41 PM]  Server started on port 3000
-
+console.log("Server started on port [bold cyan]3000[/]");
 console.log("user", 42, "signed in");
-// [9:14:41 PM]  user 42 signed in
 ```
 
 That is the whole method: no location column, and no options parameter of its
@@ -347,7 +371,6 @@ An object carrying none of them is a value to print, and is formatted:
 
 ```typescript
 console.log({ userId: 42, action: "login" });
-// [9:14:41 PM]  { userId: 42, action: "login" }
 ```
 
 An object carrying any of them is taken as options instead — and since one of
@@ -356,8 +379,11 @@ than print:
 
 ```typescript
 console.log("range", { end: "2024" });
-// [9:14:41 PM]  range2024   ← no newline; "2024" became the line terminator
+console.log("the next line");
 ```
+
+There is no newline after `range`: `"2024"` became the line terminator, so the
+next call's timestamp carries on along the same line.
 
 That trap is worth knowing before you log structured data whose field names you
 do not control. `print` sniffs only a trailing object with something before it,
@@ -423,13 +449,13 @@ words — style the whole rule with the `style` option instead.
 
 `Status` displays a spinner animation with a message while work is in progress.
 It is a separate class, not a `Console` method — pass the console it should draw
-on:
+on. `doWork()` stands for your own slow, awaited work:
 
-```typescript
+```typescript live
 import { Console, Status } from "@promptctl/rich-js";
 
 const console = new Console();
-const status = new Status("Processing...", { console });
+const status = new Status("Processing...", { console, spinner: "dots", style: "bold green" });
 
 status.start();
 await doWork();
@@ -446,6 +472,7 @@ A base style applied to all output from this console:
 
 ```typescript
 const console = new Console({ style: "on dark_blue" });
+console.print("Every line this console prints sits on [bold]dark blue[/].");
 ```
 
 ## Input
@@ -454,7 +481,7 @@ const console = new Console({ style: "on dark_blue" });
 `Prompt` family's job, and it takes its input capability as an argument so the
 main barrel never reaches `node:readline`:
 
-```typescript
+```typescript node
 import { Prompt } from "@promptctl/rich-js";
 import { nodeAsk } from "@promptctl/rich-js/node/prompt";
 
@@ -474,25 +501,41 @@ import { Console, Table } from "@promptctl/rich-js";
 const console = new Console({ record: true });
 
 console.print("[bold]Hello![/bold]");
-console.print(new Table().addColumn("Name").addRow("Alice"));
+console.print(new Table().addColumn("Name").addRow("[magenta]Alice[/]"));
 
-const text = console.exportText();       // plain text
-const html = console.exportHtml();       // HTML with inline styles
+const text = console.exportText({ clear: false }); // plain text
+const html = console.exportHtml();                 // HTML with inline styles
+
+const out = new Console();
+out.print(new Panel(new RichText(text), { title: "exportText()", borderStyle: "cyan", width: 30 }));
+const head = /^(?:.*\n){3}/.exec(html)?.[0];
+const hello = /<span[^>]*>Hello!<\/span>/.exec(html)?.[0];
+out.print(new Panel(new RichText(`${head}…\n${hello}\n…`), { title: "exportHtml(), an excerpt", borderStyle: "cyan" }));
 ```
+
+Each export clears the recording unless you pass `{ clear: false }`, which is
+why the first call above passes it: without it, `exportHtml` would have nothing
+left to draw.
 
 `exportHtml` draws the page in a `TerminalTheme`. The theme supplies the page background, the default text colour and the colours ANSI colour names resolve to; with no theme the page is white text on black over the standard ANSI colours.
 
 ```typescript
 import { SOLARIZED_LIGHT } from "@promptctl/rich-js";
 
+console.print("[bold]Hello![/bold] [red]red[/] [blue]blue[/]");
 const html = console.exportHtml({ theme: SOLARIZED_LIGHT });
+
+// The page's colours, and the span that drew "red"
+const page = /body\{.*\}/.exec(html)?.[0];
+const red = /<span[^>]*>red<\/span>/.exec(html)?.[0];
+new Console().print(new RichText(`${page}\n${red}`));
 ```
 
 Every style attribute is written into the page, including reverse, dim, blink, frame and encircle. A link becomes an `<a>` element only when its scheme is on a short allowlist of web, mail and file schemes; any other link, such as `javascript:`, exports as its styled text alone, because an exported page is made to be published.
 
 To persist the exported output to disk, use the node-only helpers from the `node/save` subpath:
 
-```typescript
+```typescript node
 import { saveText, saveHtml } from "@promptctl/rich-js/node/save";
 
 saveText(console, "output.txt");
@@ -515,7 +558,7 @@ errConsole.print("[bold]Error:[/bold] something failed");
 
 Write to any writable stream:
 
-```typescript
+```typescript node
 import { createWriteStream } from "node:fs";
 
 const log = new Console({
@@ -535,20 +578,30 @@ tee — while a capture is active the real target receives nothing:
 ```typescript
 console.beginCapture();
 console.print("[bold]captured[/bold]");
-const output = console.endCapture(); // "captured\n"
+const output = console.endCapture();
+console.print({ output });
 ```
+
+The captured string holds exactly the bytes the terminal would have received,
+escape codes included.
 
 Or bind a console to a stream you own, which is usually the better fit for tests
-because the buffer outlives any single call:
+because the buffer outlives any single call. Anything with a `write` method will
+do, a Node `Writable` included:
 
 ```typescript
-import { Writable } from "node:stream";
-
 const buf: string[] = [];
 const testConsole = new Console({
-  file: new Writable({ write(chunk, _enc, cb) { buf.push(chunk.toString()); cb(); } }),
+  file: { write: (chunk) => buf.push(String(chunk)) },
 });
+
+testConsole.print("[bold]first[/]");
+testConsole.print("[bold]second[/]");
+console.print({ buf });
 ```
+
+The bold is gone: a sink that is not a terminal gets no escape codes (see
+[Terminal detection](#terminal-detection)).
 
 ## Alternate screen
 
@@ -563,6 +616,7 @@ When output is not going to a terminal (e.g. piped to a file), rich-js strips co
 ```typescript
 const colored = new Console({ forceTerminal: true });     // always emit ANSI codes
 const animated = new Console({ forceInteractive: true }); // always show animations
+colored.print("[bold green]colour[/] even when piped");
 ```
 
 ## Environment variables
@@ -600,6 +654,14 @@ const console = new Console({
     env: { FORCE_COLOR: "3" },
     stdout: { isTTY: true, columns: 100, rows: 30, write: (s) => output.push(String(s)) },
   },
+});
+console.print("[bold magenta]hello[/]");
+
+new Console().print({
+  width: console.width,
+  height: console.height,
+  colorSystem: console.colorSystem === null ? null : ColorDepth[console.colorSystem],
+  output,
 });
 ```
 
