@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-174",
+      "ref": "refs/pull/174/merge",
+      "sha": "5716d770b5dd4e139c53878d836a1b262457f869",
+      "timestamp": "2026-09-28T00:41:10.718Z",
+      "commits": [
+        {
+          "sha": "5716d770b5dd4e139c53878d836a1b262457f869",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T18:40:39-06:00",
+          "message": "Merge 8602fe6288a4b3afe6866ba23a6d2e966c20a1b9 into 64bcfcf2135c0be32e6e1f432fd9e5e6548a8826\n"
+        },
+        {
+          "sha": "8602fe6288a4b3afe6866ba23a6d2e966c20a1b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-27T18:40:34-06:00",
+          "message": "feat(docs): the example widget — code, and the output it produces, as one card (rich-docs-examples-xuu.8fh)\n\nEvery example on a migrated page is one element: VitePress's own highlighted\nfence, and under it an output panel whose label strip names where the output\ncame from (\"Output — produced by running the code above\"), then the light and\ndark fragments, CSS picking one per colour mode, or the marker's note. Labels\nand captions are rows of the marker table beside the notes.\n\nThe fragment's font is the one thing a host can now set through its\nall:initial, as the --rich-fragment-font custom property; the widget sets it to\nthe code font at a line height where box drawing joins. The blink keyframes are\nincluded once through VitePress's head, from HTML_FRAGMENT_CSS. The light code\ntheme is one-light, so code and output share the One palette in both modes.\n\npanel.md is migrated: its hand-drawn outputs are gone, and the narrow-widths\ndiagram is now an example that draws it.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "64bcfcf2135c0be32e6e1f432fd9e5e6548a8826",
