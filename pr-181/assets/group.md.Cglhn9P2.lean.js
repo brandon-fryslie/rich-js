@@ -1,1 +1,0 @@
-import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.CI1hJlMM.js";const c=JSON.parse('{"title":"Render Groups","description":"","frontmatter":{},"headers":[],"relativePath":"group.md","filePath":"group.md"}'),t={name:"group.md"};function e(p,s,h,o,r,k){return i(),n("div",null,[...s[0]||(s[0]=[l("",12)])])}const y=a(t,[["render",e]]);export{c as __pageData,y as default};
