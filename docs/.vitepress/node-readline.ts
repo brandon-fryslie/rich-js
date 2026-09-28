@@ -51,8 +51,10 @@ interface Pending {
 // written only by `question`; it dies with its stream.
 const pending = new WeakMap<KeyStream, Pending>();
 
-/** A CSI sequence (`ESC [ … final`) or a two-key escape (`ESC x`), at the start of `keys`. */
-const ESCAPE = /^\x1b(?:\[[0-?]*[ -/]*[@-~]|[^[])/;
+/** An arrow, Home, Delete and the like: a CSI (`ESC [ … final`) or SS3 (`ESC O x`) sequence at the start of `keys`. */
+const ESCAPE = /^\x1b(?:\[[0-?]*[ -/]*[@-~]|O[@-~])/;
+/** The start of one of those sequences, the rest still to arrive. */
+const PARTIAL = /^\x1b(?:\[[0-?]*[ -/]*|O)?$/;
 
 /** One step of the line discipline: what the keys at the front of `keys` do, and how many they are. */
 type Step =
@@ -68,8 +70,10 @@ function step(keys: string): Step {
   if (key === "\n") return { kind: "enter", length: 1 };
   if (key === "\x7f" || key === "\b") return { kind: "erase", length: 1 };
   if (key === "\x1b") {
+    // Anything else after ESC is a lone Esc key, skipped on its own.
     const sequence = ESCAPE.exec(keys);
-    return sequence !== null ? { kind: "skip", length: sequence[0].length } : { kind: "incomplete" };
+    if (sequence !== null) return { kind: "skip", length: sequence[0].length };
+    return PARTIAL.test(keys) ? { kind: "incomplete" } : { kind: "skip", length: 1 };
   }
   return key >= " " ? { kind: "type", key, length: key.length } : { kind: "skip", length: key.length };
 }

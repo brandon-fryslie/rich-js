@@ -49,6 +49,16 @@ describe("node-readline stand-in", () => {
     expect(await answer).toBe("abc");
   });
 
+  it("skips a lone Esc and keeps the key after it, Enter included", async () => {
+    const keys = keyboard();
+    const answer = ask(keys);
+    keys.type("Ad\x1b");
+    keys.type("a");
+    keys.type("\x1b");
+    keys.type("\r");
+    expect(await answer).toBe("Ada");
+  });
+
   it("keeps the keys after an Enter for the next question, asked on a new interface", async () => {
     const keys = keyboard();
     const first = ask(keys);
