@@ -4,7 +4,8 @@
  * under its code while it is on screen and stops when scrolled away; a reader
  * who asked for reduced motion gets a still frame; a widget example takes keys
  * while its terminal has focus, and the page's own shortcuts work when it does
- * not. What the terminal shows is read from xterm's rows.
+ * not; a program that fails to load says so and leaves no terminal behind.
+ * What the terminal shows is read from xterm's rows.
  */
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
@@ -81,6 +82,28 @@ test("with reduced motion, a progress example shows one still frame until asked 
   await expect(button(live)).toHaveText("Restart");
   await expect.poll(() => percent(live)).toBeLessThan(100);
   expect(errors).toEqual([]);
+});
+
+test("a program that fails to load says so, and leaves no terminal to stack another on", async ({ page }) => {
+  // A live program is its own chunk, named for its content hash.
+  await page.route(/\/assets\/chunks\/[0-9a-f]{16}\.[^/]+\.js$/, (route) => route.abort());
+  await open(page, "progress.html");
+  const live = liveUnder(page, 'progress.addTask("Rendering..."');
+  const failure = live.locator(".rich-live-failure");
+
+  await expect
+    .poll(async () => {
+      await live.scrollIntoViewIfNeeded();
+      return failure.count();
+    }, { timeout: 15_000 })
+    .toBe(1);
+  await expect(live.locator(".xterm")).toHaveCount(0);
+
+  // The button tries again, and fails again with nothing left behind.
+  await button(live).click();
+  await expect(failure).toHaveCount(1);
+  await page.waitForTimeout(500);
+  await expect(live.locator(".xterm")).toHaveCount(0);
 });
 
 test("a widget example takes keys while focused, and the page's shortcuts work when it is not", async ({ page }) => {
