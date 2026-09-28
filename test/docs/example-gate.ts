@@ -28,8 +28,14 @@
  * `console` or `log` — is not seen.
  */
 
-import { bundledLanguages } from "shiki";
+import { createRequire } from "node:module";
 import { scanBlocks, typescriptFences } from "../../docs/.vitepress/example-markers.js";
+
+// Resolved from where VitePress sits, not from here: a second shiki hoisted
+// above VitePress's own would answer for a highlighter the site does not use.
+const { bundledLanguages } = (await import(
+  createRequire(import.meta.resolve("vitepress")).resolve("shiki")
+)) as typeof import("shiki");
 
 /** Whether VitePress shows a block of this language exactly as typed: Shiki has no grammar for it. */
 const drawn = (language: string): boolean => !Object.hasOwn(bundledLanguages, language);
