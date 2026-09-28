@@ -17,15 +17,30 @@ import { resolve } from "node:path";
 
 const LIBRARY = JSON.stringify(resolve(REPO_ROOT, "src/index.ts"));
 
-function terminal(columns: number): SimulatedTerminal & { readonly output: string[] } {
+interface TestTerminal extends SimulatedTerminal {
+  readonly output: string[];
+  readonly exits: number[];
+  /** Type at the terminal, once the program has subscribed. */
+  type(chunk: string): void;
+}
+
+function terminal(columns: number): TestTerminal {
   const output: string[] = [];
+  const exits: number[] = [];
+  let deliver: ((chunk: string) => void) | undefined;
   return {
     columns,
     rows: 24,
     isTTY: true,
     env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
     write: (chunk) => output.push(String(chunk)),
+    onInput: (to) => {
+      deliver = to;
+    },
+    exit: (code) => exits.push(code),
     output,
+    exits,
+    type: (chunk) => deliver!(chunk),
   };
 }
 
@@ -131,6 +146,28 @@ describe("runInTerminal", () => {
   it("rejects with the program's own error", async () => {
     await expect(runInTerminal(`throw new RangeError("from the example");`, terminal(75)))
       .rejects.toThrow(new RangeError("from the example"));
+  });
+
+  it("runs a NodeTerminalHost program on the terminal, typed keys arriving as stdin data", async () => {
+    const term = terminal(75);
+    const host = JSON.stringify(resolve(REPO_ROOT, "src/node/terminal-host.ts"));
+    await runInTerminal(
+      await bundleExample(`
+        import { NodeTerminalHost } from ${host};
+        const host = new NodeTerminalHost();
+        host.setRawMode(true);
+        host.onData((chunk) => host.write(\`got \${String(chunk)} at \${host.size().cols}x\${host.size().rows}\`));
+      `),
+      term,
+    );
+    term.type("q");
+    expect(term.output).toEqual(["got q at 75x24"]);
+  });
+
+  it("hands process.exit to the terminal", async () => {
+    const term = terminal(75);
+    await runInTerminal(await bundleExample("process.exit(3);"), term);
+    expect(term.exits).toEqual([3]);
   });
 
   it("rejects a program that was not bundled", async () => {

@@ -30,6 +30,7 @@ import {
 } from "node:fs";
 import { resolve, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { XTERM } from "./examples/_browser-shell/xterm.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const examplesDir = resolve(__dirname, "examples");
@@ -72,10 +73,10 @@ function discoverDemos(): readonly string[] {
 // ---- Staging ---------------------------------------------------------------
 //
 // For each demo, materialise `.vite-demos/<name>/{index.html,mount.ts}` from
-// the templates with `__DEMO_NAME__` / `__DEMO_WIRE__` substituted. The mount
-// imports the compiled wire by *relative* path — uniform across platforms,
-// unlike an absolute path which would become `C:/...` on Windows and reject
-// as a module specifier in most resolvers.
+// the templates with `__DEMO_NAME__` / `__DEMO_WIRE__` and the xterm pin
+// substituted. The mount imports the compiled wire by *relative* path —
+// uniform across platforms, unlike an absolute path which would become
+// `C:/...` on Windows and reject as a module specifier in most resolvers.
 //
 // This is also where the "compiled wire.js exists" build constraint is
 // enforced. Silently excluding demos missing their compiled wire would let
@@ -113,7 +114,12 @@ function stageDemos(demos: readonly string[]): void {
     ).replace(/\\/g, "/");
     writeFileSync(
       resolve(dir, "index.html"),
-      htmlTmpl.replaceAll("__DEMO_NAME__", name),
+      htmlTmpl
+        .replaceAll("__DEMO_NAME__", name)
+        .replaceAll("__XTERM_CSS_HREF__", XTERM.stylesheet.href)
+        .replaceAll("__XTERM_CSS_INTEGRITY__", XTERM.stylesheet.integrity)
+        .replaceAll("__XTERM_JS_SRC__", XTERM.script.src)
+        .replaceAll("__XTERM_JS_INTEGRITY__", XTERM.script.integrity),
     );
     writeFileSync(
       resolve(dir, "mount.ts"),
@@ -179,6 +185,6 @@ export default defineConfig({
   // xterm.js is loaded via CDN in the HTML shell, so the bundles don't need
   // it bundled. The global `Terminal` on `window` is the wire's input.
   // [LAW:locality-or-seam] The xterm.js dependency is anchored at exactly
-  // one boundary (the HTML) so swapping xterm.js versions or replacing it
-  // is a single-file change.
+  // one boundary, examples/_browser-shell/xterm.ts, which the HTML shell is
+  // filled from and the docs' live terminal loads from.
 });

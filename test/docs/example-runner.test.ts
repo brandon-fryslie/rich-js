@@ -11,14 +11,25 @@ import path from "node:path";
 import { REPO_ROOT } from "../coverage/extract.js";
 import {
   ExampleCompiler,
+  LIVE_MODULE_PREFIX,
   NOT_YET_MIGRATED,
   docsExamplesPlugin,
   runPageExamples,
 } from "../../docs/.vitepress/example-runner.js";
 import { scanFences } from "../../docs/.vitepress/example-markers.js";
+import { runInTerminal } from "../../docs/.vitepress/simulated-process.js";
+import { EXAMPLE_TERMINAL } from "../../docs/.vitepress/example-terminal.js";
 
 const compiler = new ExampleCompiler();
-const run = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown);
+const runPage = (markdown: string, page = "fixture.md") => runPageExamples(compiler, page, markdown);
+const run = async (markdown: string, page = "fixture.md") => (await runPage(markdown, page)).markdown;
+
+/** What a live program writes, run to the end of its body in the example terminal. */
+async function liveOutput(script: string): Promise<string> {
+  const output: string[] = [];
+  await runInTerminal(script, { ...EXAMPLE_TERMINAL, write: (chunk) => output.push(String(chunk)), onInput: () => {}, exit: () => {} });
+  return output.join("");
+}
 const PANEL = readFileSync(path.join(REPO_ROOT, "docs", "panel.md"), "utf-8");
 
 const page = (...blocks: string[]) => blocks.join("\n\n");
@@ -33,8 +44,8 @@ describe("docs/panel.md", { timeout: 60_000 }, () => {
     const shown = outputs(result);
     expect(shown).toHaveLength(scanFences("panel.md", PANEL).length);
     for (const html of shown) {
-      expect(html).toMatch(/<div class="rich-example-light"><pre style="[^"]*background:#fafafa/);
-      expect(html).toMatch(/<div class="rich-example-dark"><pre style="[^"]*background:#282c34/);
+      expect(html).toMatch(/<div class="rich-example-light" v-pre><pre style="[^"]*background:#fafafa/);
+      expect(html).toMatch(/<div class="rich-example-dark" v-pre><pre style="[^"]*background:#282c34/);
     }
     const unwrapped = result
       .replace(/\n<div class="rich-example">\n\n/g, "")
@@ -69,7 +80,7 @@ describe("the example widget", { timeout: 30_000 }, () => {
   it("puts the fence and its output in one element, the output labelled with where it came from", async () => {
     const result = await run(`Before.\n${fence("console.print(1);")}\nAfter.`);
     expect(result).toMatch(
-      /^Before\.\n\n<div class="rich-example">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output" v-pre>[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
+      /^Before\.\n\n<div class="rich-example">\n\n```ts\nconsole\.print\(1\);\n```\n\n<div class="rich-example-output">[^\n]*<\/div>\n\n<\/div>\n\nAfter\.$/,
     );
     const [shown] = outputs(result);
     expect(shown).toContain('<span class="rich-example-name">Output</span><span class="rich-example-caption">produced by running the code above</span>');
@@ -157,7 +168,7 @@ describe("one page, one program", { timeout: 30_000 }, () => {
 
   it("shows a silent block's note in place of output", async () => {
     const shown = outputs(await run(page(fence("const a = 1;", "ts silent"), fence("console.print(a);"))))[0]!;
-    expect(shown).toContain("This example prints nothing.");
+    expect(shown).toContain("This example prints nothing when it runs.");
     expect(shown).not.toContain("<pre");
   });
 
@@ -180,9 +191,41 @@ describe("one page, one program", { timeout: 30_000 }, () => {
     }
   });
 
-  it("leaves a live block for the live embed", async () => {
-    const markdown = page(fence("console.print(1);", "ts live"));
-    expect(await run(markdown)).toBe(markdown);
+});
+
+describe("a live block", { timeout: 30_000 }, () => {
+  it("shows a live terminal under its code, loading the block's own program only when asked", async () => {
+    const result = await runPage(`# t\n\n${fence('console.print("live");', "ts live")}`);
+    const [program] = result.live;
+    const binding = `__richLive_${program!.id}`;
+    expect(result.live).toHaveLength(1);
+    expect(result.markdown).toContain(`<script setup>\nconst ${binding} = () => import("${LIVE_MODULE_PREFIX}${program!.id}");\n</script>`);
+    const [shown] = outputs(result.markdown);
+    expect(shown).toContain('<span class="rich-example-name">Live</span>');
+    expect(shown).toContain(`<RichLive :load="${binding}" />`);
+    expect(await liveOutput(program!.script)).toContain("live");
+  });
+
+  it("is its block alone under the page's context, and writes only what the block writes", async () => {
+    const context = ["---", "exampleContext: |", '  const who = "context";', "---", ""].join("\n");
+    const result = await runPage(context + page(fence('const above = "above";', "ts silent"), fence("console.print(who);", "ts live")));
+    const written = await liveOutput(result.live[0]!.script);
+    expect(written).toContain("context");
+    expect(written).not.toContain("rich-example");
+    await expect(run(context + page(fence('const above = "above";', "ts silent"), fence("console.print(above);", "ts live")))).rejects.toThrow(
+      /fixture\.md:\d+: Cannot find name 'above'/,
+    );
+  });
+
+  it("is not refused for a <script setup> shown in a fence", async () => {
+    const result = await runPage(page(fence('<script setup lang="ts">\n</script>', "vue"), fence("console.print(1);", "ts live")));
+    expect(result.live).toHaveLength(1);
+  });
+
+  it("shares one module with an identical block", async () => {
+    const result = await runPage(page(fence("console.print(1);", "ts live"), fence("console.print(1);", "ts live")));
+    expect(result.live).toHaveLength(1);
+    expect(result.markdown.match(/import\(/g)).toHaveLength(1);
   });
 });
 
@@ -196,6 +239,13 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
     // csstype carries types and no JavaScript: it type-checks and cannot be bundled.
     ["an import that type-checks and does not bundle", fence('import * as css from "csstype";\nconsole.print(typeof css);'), /^docs\/fixture\.md: bundling failed: /],
     ["an unknown marker", fence("1;", "ts loud"), /fixture\.md:1: unknown example marker "loud"/],
+    ["a build block that exits", fence("process.exit(2);", "ts silent"), /docs\/fixture\.md: an example calls process\.exit\(2\)/],
+    ["a throws block that exits", fence("process.exit(1);", "ts throws"), /docs\/fixture\.md: an example calls process\.exit\(1\)/],
+    [
+      "a live block on a page with its own <script setup>",
+      page("<script setup>\nconst n = 1;\n</script>", fence("console.print(1);", "ts live")),
+      /fixture\.md:1: a page with a live example cannot have its own <script setup>/,
+    ],
     [
       "an exampleContext whose code is not indented",
       ["---", "exampleContext: |", "const items = [];", "---", fence("console.print(1);")].join("\n"),
@@ -252,6 +302,17 @@ describe("the plugin", () => {
     expect(await plugin.transform(markdown, id)).toEqual(first);
     edits += 1;
     expect(await plugin.transform(markdown, id)).not.toEqual(first);
+  });
+
+  it("serves a page's live programs as the modules its script imports", { timeout: 60_000 }, async () => {
+    const plugin = docsExamplesPlugin();
+    const transformed = await plugin.transform(fence('console.print("served");', "ts live"), path.join(REPO_ROOT, "docs", "fixture-live.md"));
+    const [specifier] = /virtual:rich-live\/[0-9a-f]+/.exec(transformed!.code)!;
+    const resolved = plugin.resolveId(specifier)!;
+    const module = plugin.load(resolved)!;
+    expect(await liveOutput(JSON.parse(module.replace(/^export default /, "").replace(/;$/, "")) as string)).toContain("served");
+    expect(plugin.resolveId("./elsewhere.js")).toBeNull();
+    expect(() => plugin.load(`\0${LIVE_MODULE_PREFIX}0000`)).toThrow(/no page run produced this live program/);
   });
 
   it("passes a page that has not migrated through untouched", async () => {

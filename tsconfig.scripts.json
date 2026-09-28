@@ -24,6 +24,7 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "docs/.vitepress/config.ts",
+    "docs/.vitepress/theme/**/*.ts",
     "docs/demos/**/*.ts",
     "e2e/**/*.ts"
   ]

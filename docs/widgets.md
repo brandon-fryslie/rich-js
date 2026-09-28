@@ -1,3 +1,18 @@
+---
+exampleContext: |
+  import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+  import { Button, DefaultScreen, EventRouter, Slider, StaticItem, TextInput } from "@promptctl/rich-js/widgets";
+  const host = new NodeTerminalHost();
+  const screen = new DefaultScreen({ host });
+  const router = new EventRouter({ screen, host });
+  const save = (): void => {};
+  const closeDialog = (): void => {};
+  const header = new StaticItem({ id: "header", render: () => [] });
+  const nameField = new TextInput({ id: "name" });
+  const saveButton = new Button({ label: "Save" });
+  const status = new StaticItem({ id: "status", render: () => [] });
+---
+
 # Interactive Widgets
 
 Everything else in rich-js draws once and returns. Widgets stay on screen and respond: a button that highlights under the cursor, a text field with a cursor you can move, a dropdown you filter by typing. They are MobX-observable state machines that implement [`Renderable`](/protocol) — you change their state, and the screen redraws itself.
@@ -12,7 +27,7 @@ Two other paths show up in the examples below. `@promptctl/rich-js/host` is the 
 
 This is a complete program. Save it, run it, Tab between the fields, Enter on the button:
 
-```typescript
+```typescript live
 import {
   Button,
   Checkbox,
@@ -87,7 +102,7 @@ Every widget exposes two subscriptions, and both return an unsubscribe function.
 
 `onChange` fires when the value changes — a checkbox toggled, a slider moved, a dropdown selection committed. `onSubmit` fires on user-confirmed activation — Enter or a click on a `Button`, Enter in a single-line `TextInput`.
 
-```typescript
+```typescript silent
 const volume = new Slider({ min: 0, max: 11, value: 5 });
 
 const unsubscribe = volume.onChange((widget) => {
@@ -115,7 +130,7 @@ Any participant claims the key by calling `event.stop()`. Once stopped, the chai
 
 That ordering has a deliberate consequence: Tab traversal runs *after* the focused widget, so a widget suppresses it by claiming Tab itself. `Dropdown` does exactly this while its overlay is open — Tab clears the filter, collapses the list, and keeps focus. Traversal happens on the next Tab, once the widget is collapsed and no longer claims the key.
 
-```typescript
+```typescript silent
 // A global handler that beats the focused widget.
 router.onKey(
   (event) => {
@@ -145,7 +160,7 @@ Mouse events do not use the chain. Subscribe with `router.onMouse(handler)` and 
 
 Pass a placement by mounting `{ widget, placement }` instead of a bare widget:
 
-```typescript
+```typescript silent
 import { FLOW } from "@promptctl/rich-js/widgets";
 
 screen.mount(
@@ -200,7 +215,7 @@ Multiline mode has a set of options for behaving like a textarea:
 
 `charGreedyWrap` breaks wherever the line stops fitting, treating wide characters as atomic:
 
-```ts
+```ts silent
 import { TextInput, charGreedyWrap } from "@promptctl/rich-js/widgets";
 
 const notes = new TextInput({ multiline: true, wrap: charGreedyWrap, maxRows: 6 });
@@ -230,7 +245,7 @@ Left and Right move by `step`, Home and End jump to the ends; all values are cla
 
 Not interactive — it takes no focus and ignores keys — but it participates in mount order and layout like anything else. Use it for headers, labels, and status lines. `render` is either a `Renderable` or a function returning segments; the function form is what you want for a status line that reads observables and repaints when they change.
 
-```typescript
+```typescript silent
 import { Segment, Style } from "@promptctl/rich-js";
 import { StaticItem } from "@promptctl/rich-js/widgets";
 
@@ -246,7 +261,7 @@ Because `render` runs inside the screen's autorun, reading `volume.value` there 
 
 Extend `WidgetBase`. It provides the observable state, focus and hover plumbing, hit-testing, and the `onChange` / `onSubmit` machinery; you supply an `id`, whether the widget is `focusable`, and the three abstract members `handleKey`, `render`, and `measure`. Call the protected `emitChange()` and `emitSubmit()` to fire subscriptions.
 
-```typescript
+```typescript silent
 import { observable, action } from "mobx";
 import { Segment, Style } from "@promptctl/rich-js";
 import type { RenderOptions } from "@promptctl/rich-js";

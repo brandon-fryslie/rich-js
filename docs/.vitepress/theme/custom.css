@@ -151,6 +151,48 @@
   display: block;
 }
 
+/* A live example's terminal (theme/RichLive.ts). Its font is the one static
+ * output is drawn in, read off this element by the component for xterm; its
+ * background is set from the terminal theme, as a fragment's is. */
+.vp-doc .rich-live-screen {
+  box-sizing: border-box;
+  /* One row until the terminal sizes itself to what its program has drawn. */
+  min-height: calc(1lh + 2em);
+  font: var(--rich-fragment-font);
+  padding: 1em;
+  overflow-x: auto;
+}
+
+.vp-doc .rich-live-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 16px;
+  background: var(--vp-c-bg-soft);
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.vp-doc .rich-live-failure {
+  margin-right: auto;
+  font-size: 12px;
+  line-height: 26px;
+  color: var(--vp-c-danger-1);
+}
+
+.vp-doc .rich-live-button {
+  padding: 2px 10px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--vp-c-text-1);
+  background: var(--vp-c-bg);
+}
+
+.vp-doc .rich-live-button:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
 /* Below 640px VitePress runs code blocks edge to edge; the card follows. */
 @media (max-width: 639px) {
   .vp-doc .rich-example {

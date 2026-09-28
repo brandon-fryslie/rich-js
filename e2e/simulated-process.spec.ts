@@ -4,9 +4,9 @@
  * `process`, still has none during the run and after it. The same contract in
  * Node is test/docs/simulated-process.test.ts.
  *
- * The page is blank rather than a docs page: this proves the module, which
- * nothing on the site loads yet. The live embed that will is where the docs
- * pages get their own proof.
+ * The page is blank rather than a docs page: this proves the module alone.
+ * The docs pages' live terminals, which run it in a worker, have their own
+ * proof in e2e/live-examples.spec.ts.
  */
 import { test, expect, type Page } from "@playwright/test";
 import stripAnsi from "strip-ansi";
@@ -37,6 +37,8 @@ globalThis.runExample = async (program) => {
     isTTY: true,
     env: { TERM: "xterm-256color", COLORTERM: "truecolor" },
     write: (chunk) => output.push(String(chunk)),
+    onInput: () => {},
+    exit: () => {},
   });
   return { output, before, during: globalThis.during, after: typeof process };
 };
