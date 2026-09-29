@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-220",
-      "ref": "refs/pull/220/merge",
-      "sha": "13fabbe89c3fd1401ffbcc1ce5181ddf8b302dfd",
-      "timestamp": "2026-09-29T21:30:23.625Z",
-      "commits": [
-        {
-          "sha": "13fabbe89c3fd1401ffbcc1ce5181ddf8b302dfd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T21:29:36Z",
-          "message": "Merge dab035fa06d4fb06fa5b0b4006750abd63b3b9ff into 1e61e1aa0716245a8339f9bde4d84adcf33827b5\n"
-        },
-        {
-          "sha": "dab035fa06d4fb06fa5b0b4006750abd63b3b9ff",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:29:31-06:00",
-          "message": "fix(live): a frame is drawn only while Live holds the terminal (rich-live-vu8)\n\nAfter the auto-refresh timer handed the terminal back, a caller's later\nrefresh() painted onto the main screen and its stop() did nothing to undo\nit. refresh() before start() or after stop() did the same. Now no frame is\ndrawn outside start()/stop(), as in Rich.\n"
-        },
-        {
-          "sha": "4eb9ddf7af3f088ac6dfa1d04f3e2587b95760d0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:22:30-06:00",
-          "message": "fix(live): a frame that throws leaves the terminal usable (rich-live-vu8)\n\nrefresh() rendered after erasing the last frame, so a render that threw\nleft nothing on screen; on the auto-refresh timer the throw escaped with\nstop() never run, leaving the cursor hidden and the alternate screen up.\n\nThe frame is now rendered before any byte is written, and the erase or\ncursor-home goes out in the same write as the new frame. Handing the\nterminal back is one _release(), run by stop() in a finally and by the\ntimer before it rethrows.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "1e61e1aa0716245a8339f9bde4d84adcf33827b5",
-      "timestamp": "2026-09-29T21:20:01.326Z",
+      "sha": "d0f2bcbfea53ad8f1183201e9f3e7f9241029970",
+      "timestamp": "2026-09-29T21:33:32.679Z",
       "commits": [
         {
-          "sha": "1e61e1aa0716245a8339f9bde4d84adcf33827b5",
+          "sha": "d0f2bcbfea53ad8f1183201e9f3e7f9241029970",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:19:11-06:00",
-          "message": "fix(color): out-of-range rgb() channel is a ColorParseError (rich-color-av8) (#219)\n\n* fix(color): out-of-range rgb() channel is a ColorParseError (rich-color-av8)\n\nColorSpec.parse's rgb() branch passed any 1-3 digit channel to the\nColorRgba constructor, which threw RangeError. Both rgb() channels and\ncolor(N) now go through parseByte, which reports the channel by name;\nthe byte range is one predicate shared with the constructor's assert.\n\n* fix(color): parseByte is the only range check and names the key (rich-color-av8)\n\nReview of #219: the {1,3} digit cap was a second, partial range check, so\nrgb(0,1000,0) got the generic parse error; widen to \\d+ and report the\ndigits. The message now names the colour string, and the field is a union.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T15:32:38-06:00",
+          "message": "fix(live): a frame that throws leaves the terminal usable (rich-live-vu8) (#220)\n\n* fix(live): a frame that throws leaves the terminal usable (rich-live-vu8)\n\nrefresh() rendered after erasing the last frame, so a render that threw\nleft nothing on screen; on the auto-refresh timer the throw escaped with\nstop() never run, leaving the cursor hidden and the alternate screen up.\n\nThe frame is now rendered before any byte is written, and the erase or\ncursor-home goes out in the same write as the new frame. Handing the\nterminal back is one _release(), run by stop() in a finally and by the\ntimer before it rethrows.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(live): a frame is drawn only while Live holds the terminal (rich-live-vu8)\n\nAfter the auto-refresh timer handed the terminal back, a caller's later\nrefresh() painted onto the main screen and its stop() did nothing to undo\nit. refresh() before start() or after stop() did the same. Now no frame is\ndrawn outside start()/stop(), as in Rich.\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     },
