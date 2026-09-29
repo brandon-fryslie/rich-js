@@ -56,22 +56,26 @@ function spacing(padding: PaddingDimensions): Spacing {
   };
 }
 
-/** Every slot of the grid for `count` columns, row by row; `undefined` is a slot no item fills. */
-function slotOrder(items: number, count: number, columnFirst: boolean): (number | undefined)[] {
-  const rows = Math.ceil(items / count);
+/**
+ * The item in slot `slot` of the grid for `count` columns, counting row by row;
+ * `undefined` is a slot no item fills. Constant time, so a search that stops at
+ * the first slot that overflows pays for no slot after it.
+ */
+function slotItem(slot: number, items: number, count: number, columnFirst: boolean): number | undefined {
+  const row = Math.floor(slot / count);
+  const col = slot % count;
   // Column-first fills each column top to bottom, and the columns that take one
   // item more than the rest are the leading ones — Rich's `column_lengths`.
-  const lengths = Array.from(
-    { length: count },
-    (_, col) => Math.floor(items / count) + (col < items % count ? 1 : 0),
-  );
-  const starts = lengths.map((_, col) => lengths.slice(0, col).reduce((sum, n) => sum + n, 0));
-  return Array.from({ length: rows * count }, (_, slot) => {
-    const row = Math.floor(slot / count);
-    const col = slot % count;
-    const index = columnFirst ? (row < lengths[col]! ? starts[col]! + row : items) : slot;
-    return index < items ? index : undefined;
-  });
+  const base = Math.floor(items / count);
+  const extra = items % count;
+  const length = base + (col < extra ? 1 : 0);
+  const index = !columnFirst ? slot : row < length ? col * base + Math.min(col, extra) + row : items;
+  return index < items ? index : undefined;
+}
+
+/** How many slots the grid for `count` columns has: every row full, the last one padded. */
+function slotCount(items: number, count: number): number {
+  return Math.ceil(items / count) * count;
 }
 
 /** Columns of these widths side by side, `gap` cells apart. */
@@ -199,27 +203,37 @@ export class Columns implements Renderable, Measurable {
 
     const declared = this._declaredWidth(options);
     const sizes = this.renderables.map((item) => declared ?? this._itemWidth(item, options));
-    const widest = Math.max(...sizes);
+    // A fold, not `Math.max(...sizes)`: spreading one argument per item
+    // overflows the call stack at a few hundred thousand items.
+    const widest = sizes.reduce((w, size) => Math.max(w, size), 0);
     const fits = this.equal ? sizes.map(() => widest) : sizes;
 
-    // One attempt either fits in the offer or names the smaller count to try next.
+    // One attempt either fits in the offer or names the smaller count to try
+    // next. `total` is `gridWidth(widths, gap)`, kept as the widths grow so
+    // that a slot costs the same however many columns came before it.
     const attempt = (columns: number): number => {
       const widths: number[] = [];
-      for (const [slot, index] of slotOrder(count, columns, this.columnFirst).entries()) {
+      let total = 0;
+      for (let slot = 0; slot < slotCount(count, columns); slot++) {
         const col = slot % columns;
-        widths[col] = Math.max(widths[col] ?? 0, index === undefined ? 0 : fits[index]!);
+        const index = slotItem(slot, count, columns, this.columnFirst);
+        const held = widths[col];
+        const width = Math.max(held ?? 0, index === undefined ? 0 : fits[index]!);
+        total += width - (held ?? 0) + (held === undefined && col > 0 ? gap : 0);
+        widths[col] = width;
         // Never zero: no item measures wider than the offer, so the first
         // column alone always fits.
-        if (gridWidth(widths, gap) > maxWidth) return widths.length - 1;
+        if (total > maxWidth) return widths.length - 1;
       }
       return columns;
     };
     let columns = count;
     for (let next = attempt(columns); next < columns; next = attempt(columns)) columns = next;
 
-    const slots = slotOrder(count, columns, this.columnFirst);
-    const rows = Array.from({ length: slots.length / columns }, (_, row) =>
-      slots.slice(row * columns, (row + 1) * columns),
+    const rows = Array.from({ length: slotCount(count, columns) / columns }, (_, row) =>
+      Array.from({ length: columns }, (_, col) =>
+        slotItem(row * columns + col, count, columns, this.columnFirst),
+      ),
     );
     const widths = Array.from({ length: columns }, (_, col) =>
       rows.reduce((w, row) => {

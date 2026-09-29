@@ -281,4 +281,10 @@ describe("Columns", () => {
   it("an item wider than the offer takes one column and ends in an ellipsis", () => {
     expect(collectLines(new Columns(["x".repeat(12), "b"]), { maxWidth: 5 })).toEqual(["xxxx…", "b    "]);
   });
+
+  it("measures a listing of 200,000 items", () => {
+    // Taken as one argument per item, the widest of this many overflows the call stack.
+    const columns = new Columns(Array.from({ length: 200_000 }, () => "a"));
+    expect(columns.measure({ maxWidth: 80 })).toEqual({ minimum: 1, maximum: 79 });
+  });
 });
