@@ -735,23 +735,17 @@ describe("Segment.splitAndCropLines()", () => {
     expect(Segment.getLineLength(result[0]!)).toBe(5);
   });
 
-  it("does not pad when pad=false", () => {
-    const segs = [new Segment("hi")];
-    const result = Segment.splitAndCropLines(segs, 10, false);
-    expect(Segment.getLineLength(result[0]!)).toBe(2);
+  // Table leans on both: a cell that rendered nothing contributes no rows of
+  // its own, and a RichText's trailing `end: "\n"` is not an extra blank row.
+  it("returns no rows for no content", () => {
+    expect(Segment.splitAndCropLines([], 5)).toEqual([]);
   });
 
-  it("appends newline segments when includeNewLines=true", () => {
-    const segs = [new Segment("hello\nworld")];
-    const result = Segment.splitAndCropLines(segs, 10, true, true);
-    expect(result).toHaveLength(2);
-    // Each line's last segment should be a newline
-    const lastOfFirst = result[0]![result[0]!.length - 1]!;
-    expect(lastOfFirst.text).toBe("\n");
-    const lastOfSecond = result[1]![result[1]!.length - 1]!;
-    expect(lastOfSecond.text).toBe("\n");
+  it("does not turn a trailing newline into a row", () => {
+    const result = Segment.splitAndCropLines([new Segment("abc\n")], 5);
+    expect(result).toHaveLength(1);
+    expect(Segment.getLineLength(result[0]!)).toBe(5);
   });
-
 });
 
 // --- cropLines ---

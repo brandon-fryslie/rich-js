@@ -804,10 +804,7 @@ export class Table implements Renderable, Measurable {
         noWrap: col.noWrap,
         height: undefined,
       })];
-      const lines = Segment.splitLines(segs).map((line) =>
-        Segment.adjustLineLength(line, cellWidth),
-      );
-      return lines.length > 0 ? lines : [[new Segment(" ".repeat(cellWidth))]];
+      return Segment.splitAndCropLines(segs, cellWidth);
     });
     const maxLines = cellLines.reduce((most, lines) => Math.max(most, lines.length), 1);
 
