@@ -334,6 +334,83 @@ describe("an implicit close [/] closes a plugin tag like any other", () => {
   });
 });
 
+// A style tag around a plugin pair styles the handler's output and the text
+// either side, as it would plain text. The walk used to parse the text between
+// plugin pairs as separate strings, so every style tag closed at the first
+// pair's boundary and its closing tag then matched nothing (rich-markup-cg6).
+describe("a style tag spans a plugin pair it encloses", () => {
+  function registry(): MarkupRegistry {
+    const r = new MarkupRegistry();
+    r.register("aa", (ctx) => ctx.children);
+    r.register("click", (ctx) => ctx.children);
+    r.register("shout", (ctx) => new RichText(`<${ctx.children.plain}>`, { end: "" }).stylize("red"));
+    return r;
+  }
+  const spans = (markup: string, options: Parameters<typeof renderMarkup>[1] = {}): string[] =>
+    renderMarkup(markup, { registry: registry(), ...options }).spans.map((s) => `${s.start}-${s.end} ${String(s.style)}`);
+  const ansi = (markup: string, r: MarkupRegistry): string =>
+    renderToString(renderMarkup(markup, { registry: r }), { colorSystem: ColorDepth.STANDARD });
+
+  it("covers the text before, the handler's output, and the text after", () => {
+    expect(spans("[bold]x[click]y[/click]z[/bold]")).toEqual(["0-3 bold"]);
+  });
+
+  it("stays open across a plugin pair that [/] closes", () => {
+    expect(spans("[bold]a [aa]b[/] c")).toEqual(["0-5 bold"]);
+    expect(spans("[bold][aa]x[/][/]")).toEqual(["0-1 bold"]);
+  });
+
+  it("lets the handler's own style repaint the enclosing one, as an inner tag would", () => {
+    const plain = new MarkupRegistry();
+    expect(ansi("[blue]x[shout]y[/shout]z[/blue]", registry())).toBe(
+      ansi("[blue]x[red]<y>[/red]z[/blue]", plain),
+    );
+  });
+
+  it("lets markup repaint a base style when a plugin pair is present", () => {
+    expect(spans("[blue]x[/blue][aa]y[/aa]", { baseStyle: "red" })).toEqual([
+      "0-2 red",
+      "0-1 blue",
+      "1-2 red",
+    ]);
+  });
+});
+
+describe("a style tag cannot cross a plugin pair's boundary", () => {
+  function registry(): MarkupRegistry {
+    const r = new MarkupRegistry();
+    r.register("aa", (ctx) => ctx.children);
+    r.register("bb", (ctx) => ctx.children);
+    return r;
+  }
+
+  it("rejects a style opened outside the pair and closed inside it", () => {
+    const markup = "[red on blue][aa]x[/red on blue][/]";
+    const err = rejectionOf(markup, registry());
+    expect(err.reason).toMatch(/^Closing tag \[\/red on blue\] closes \[red on blue\] across the boundary of plugin tag \[aa\]/);
+    expect(err.offset).toBe(markup.indexOf("[/red on blue]"));
+    expect(err.openTags).toEqual(["[red on blue]", "[aa]"]);
+  });
+
+  it("rejects a style opened inside the pair and closed after it", () => {
+    const markup = "[aa][bold]x[/aa]y[/bold]";
+    const err = rejectionOf(markup, registry());
+    expect(err.reason).toMatch(/^Closing tag \[\/bold\] closes \[bold\] across the boundary of plugin tag \[aa\]/);
+    expect(err.offset).toBe(markup.indexOf("[/bold]"));
+    expect(err.openTags).toEqual(["[bold]"]);
+  });
+
+  it("rejects an implicit close that reaches past the pair for a style opened inside it", () => {
+    const err = rejectionOf("[bb][aa][bold]x[/aa][/]", registry());
+    expect(err.reason).toMatch(/^Closing tag \[\/\] closes \[bold\] across the boundary of plugin tag \[aa\]/);
+  });
+
+  it("accepts a style left open inside the pair, which the pair's end closes", () => {
+    const out = renderMarkup("[aa][bold]x[/aa] y", { registry: registry() });
+    expect(out.spans.map((s) => `${s.start}-${s.end} ${String(s.style)}`)).toEqual(["0-1 bold"]);
+  });
+});
+
 // The plugin walk parses the caller's string in slices — around each plugin
 // pair, and inside it — so every offset below is one a slice-relative count
 // would get wrong.
