@@ -1273,27 +1273,33 @@ describe("Console and Live hyperlinks", () => {
 
   // A terminal treats cells as one link when they share the URI AND the id, so
   // a link printed as several OSC 8 runs must repeat one id in every run.
-  const opens = (markup: string, width = 80): Osc8Sequence[] => {
+  // The opens on each printed line, so a test pins which line each run is on.
+  const opensByLine = (markup: string, width = 80): Osc8Sequence[][] => {
     const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", width });
     c.print(markup);
-    return osc8Sequences(captured(chunks)).filter((s) => s.uri !== "");
+    return captured(chunks)
+      .split("\n")
+      .filter((line) => line !== "")
+      .map((line) => osc8Sequences(line).filter((s) => s.uri !== ""));
   };
 
   it("an outer link keeps one id on both sides of a nested link, as Rich's does", () => {
-    // Rich, measured: \e]8;id=8101942;x … \e]8;id=8101944;y … \e]8;id=8101942;x
-    // Its ids are counters, so only their equalities carry over, and they do.
-    const [before, inner, after] = opens("[link=x]a[link=y]b[/link]c[/link]");
-    expect([before?.uri, inner?.uri, after?.uri]).toEqual(["x", "y", "x"]);
+    // Rich 15.0.0 emits x, y, x with the first and last ids equal; its ids are
+    // counters, so only that equality carries over. Reproduce: print the markup
+    // below through `Console(force_terminal=True).capture()` and repr the bytes.
+    const lines = opensByLine("[link=x]a[link=y]b[/link]c[/link]");
+    expect(lines.map((runs) => runs.map((s) => s.uri))).toEqual([["x", "y", "x"]]);
+    const [before, , after] = lines[0]!;
     expect(before!.params).toMatch(/^id=./);
     expect(after!.params).toBe(before!.params);
-    expect(inner!.params).not.toBe(before!.params);
   });
 
   it("a link a wrap splits across lines opens every line with the same id", () => {
-    const runs = opens("[link=https://wrap.example]alpha beta gamma[/link]", 6);
-    expect(runs.length).toBeGreaterThan(1);
-    expect(runs[0]!.params).toMatch(/^id=./);
-    expect(new Set(runs.map((s) => s.params)).size).toBe(1);
+    const lines = opensByLine("[link=https://wrap.example]alpha beta gamma[/link]", 6);
+    expect(lines.map((runs) => runs.length)).toEqual([1, 1, 1]);
+    const [first, ...rest] = lines.flat();
+    expect(first!.params).toMatch(/^id=./);
+    for (const run of rest) expect([run.uri, run.params]).toEqual([first!.uri, first!.params]);
   });
 });
 
