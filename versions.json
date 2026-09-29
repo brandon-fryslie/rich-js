@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-227",
+      "ref": "refs/pull/227/merge",
+      "sha": "25e2d3a509d2f2a3f1fbd73f2f8b023a9748181e",
+      "timestamp": "2026-09-29T22:41:25.319Z",
+      "commits": [
+        {
+          "sha": "25e2d3a509d2f2a3f1fbd73f2f8b023a9748181e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:39:53Z",
+          "message": "Merge 24cbb5c7a3f871d478c95f88efb99a32d2cb1638 into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
+        },
+        {
+          "sha": "24cbb5c7a3f871d478c95f88efb99a32d2cb1638",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:39:46-06:00",
+          "message": "fix(console): log's time is a gutter print draws, cropped and base-styled with its row (rich-console-5k3)\n"
+        },
+        {
+          "sha": "d0e6f0b7dadb2b243d868127da246fb7ec36afa8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:35:29-06:00",
+          "message": "fix(console): log draws print's output in a column beside the time; review fixes (rich-console-5k3)\n\nA container is a block in print, so log split the timestamp from a logged\nobject. log now lays the time out as the reference's LogRender does.\nScalar data joins its text run as one RichText; _shape asks describesItself\ndirectly again; isExpandable returns boolean; docs name the exact rule.\n"
+        },
+        {
+          "sha": "9fbf9e3459508261e5b74e9ccb9012abf78a3847",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:26:40-06:00",
+          "message": "fix(console): print gives a container lines of its own, as Rich does (rich-console-5k3)\n\nA container argument (array, typed array, Map, Set, or an object without its\nown toString — Pretty's `isExpandable`, Rich's `is_expandable`) is now a block\nin `Console.print`, like any renderable: `print(\"a\", { x: 1 }, \"b\")` prints\nthree lines, as Rich fc41075a does. Scalars still join the text run.\n\n`isExpandable` is the one definition of \"container\": `_shape` reads its text\narm from it, so print and Pretty cannot disagree.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-228",
       "ref": "refs/pull/228/merge",
       "sha": "8e8083f295192e3b1a035695c332ff0bb250904f",
@@ -56,35 +92,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:38:06-06:00",
           "message": "fix(renderables): every exported renderable ends its own line or is listed as a fragment (rich-flexstrip-5kf.4cq)\n\nSpinner, Status, Pretty, JSON and a Layout leaf left their last line open,\nso a Group ran what followed onto it; Rich ends all five. test/seam/line-ends.ts\nderives every exported Renderable class and requires an entry saying which\nside of the line it sits on, rendering each to check. ProgressBar, Emoji and\nthe Progress columns are fragments, as in Rich.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-227",
-      "ref": "refs/pull/227/merge",
-      "sha": "4aed32576a558873f94581b92fe8666e8c1cf13c",
-      "timestamp": "2026-09-29T22:36:37.344Z",
-      "commits": [
-        {
-          "sha": "4aed32576a558873f94581b92fe8666e8c1cf13c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:35:34Z",
-          "message": "Merge d0e6f0b7dadb2b243d868127da246fb7ec36afa8 into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
-        },
-        {
-          "sha": "d0e6f0b7dadb2b243d868127da246fb7ec36afa8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:35:29-06:00",
-          "message": "fix(console): log draws print's output in a column beside the time; review fixes (rich-console-5k3)\n\nA container is a block in print, so log split the timestamp from a logged\nobject. log now lays the time out as the reference's LogRender does.\nScalar data joins its text run as one RichText; _shape asks describesItself\ndirectly again; isExpandable returns boolean; docs name the exact rule.\n"
-        },
-        {
-          "sha": "9fbf9e3459508261e5b74e9ccb9012abf78a3847",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:26:40-06:00",
-          "message": "fix(console): print gives a container lines of its own, as Rich does (rich-console-5k3)\n\nA container argument (array, typed array, Map, Set, or an object without its\nown toString — Pretty's `isExpandable`, Rich's `is_expandable`) is now a block\nin `Console.print`, like any renderable: `print(\"a\", { x: 1 }, \"b\")` prints\nthree lines, as Rich fc41075a does. Scalars still join the text run.\n\n`isExpandable` is the one definition of \"container\": `_shape` reads its text\narm from it, so print and Pretty cannot disagree.\n"
         }
       ]
     },
