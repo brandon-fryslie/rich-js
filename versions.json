@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-189",
+      "ref": "refs/pull/189/merge",
+      "sha": "ea539a3884ec4b41d5374df2dbcc4eab7bb922af",
+      "timestamp": "2026-09-29T10:46:00.504Z",
+      "commits": [
+        {
+          "sha": "ea539a3884ec4b41d5374df2dbcc4eab7bb922af",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T04:45:25-06:00",
+          "message": "Merge f723aad506ef0f8109bc9968ad1f12cd123be257 into 2ab454a47e8a85bbe52d6a976853639a5f736674\n"
+        },
+        {
+          "sha": "f723aad506ef0f8109bc9968ad1f12cd123be257",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T04:45:20-06:00",
+          "message": "fix(host): a terminal host carries its environment, so browser demos draw truecolor (rich-demos-5a42)\n\nIn the browser, Console and Screen detected colour from the ambient\n`process`, which is absent there: an unnamed TTY, so 16-colour depth.\n`#fd8019` drew ANSI yellow, palette greens and teals drew grey.\n\n- TerminalHost gains `env`; BrowserTerminalHost states xterm.js's\n  (`xterm-256color`, `COLORTERM=truecolor`), NodeTerminalHost takes\n  `process.env` or an injected map.\n- `hostStream(host)` is replaced by `hostEnvironment(host)`, a whole\n  ConsoleEnvironment: bytes, TTY, live size and colour all come from the\n  host. The demos' `getSize` workarounds for the same fault are gone.\n- Screen detects under \"auto\" from `host.env`.\n\nVerified: every /demos/ page's distinct SGR colours match the same demo in a\ntruecolor pty, dark and light (rich-explore adds magenta for the browser\nfixture's icon.png, a content difference).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2ab454a47e8a85bbe52d6a976853639a5f736674",
