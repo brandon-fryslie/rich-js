@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-222",
-      "ref": "refs/pull/222/merge",
-      "sha": "d5982b13f118bde2b3bbd49330986530b9aa48ea",
-      "timestamp": "2026-09-29T21:50:56.130Z",
-      "commits": [
-        {
-          "sha": "d5982b13f118bde2b3bbd49330986530b9aa48ea",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T21:49:58Z",
-          "message": "Merge 9f8b09e313e5a1221e4167ac789d24d03a634c98 into 5b8b4904721cc6699566e533d3b86d281e3d518e\n"
-        },
-        {
-          "sha": "9f8b09e313e5a1221e4167ac789d24d03a634c98",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:49:53-06:00",
-          "message": "test(embed): pin the unstyled bytes, a single report, and the RichText branch (rich-panel-z93)\n"
-        },
-        {
-          "sha": "2fcf9f95bbf1fd8cba6027d0f3dab926ca69327a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:47:06-06:00",
-          "message": "test(embed): a bad style in any embedded label degrades and reaches onStyleError (rich-panel-z93)\n\nMarkup and RichText spans in panel titles/subtitles landed in #173\n(rich-panel-gbe). The ticket's remaining clause, that a style error there\ndegrades and reaches onStyleError, had no test; this pins it at every\nembed site.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5b8b4904721cc6699566e533d3b86d281e3d518e",
-      "timestamp": "2026-09-29T21:45:36.374Z",
+      "sha": "c209b08f810cb898ada64093f9cf8a53eca876d0",
+      "timestamp": "2026-09-29T21:53:51.748Z",
       "commits": [
         {
-          "sha": "5b8b4904721cc6699566e533d3b86d281e3d518e",
+          "sha": "c209b08f810cb898ada64093f9cf8a53eca876d0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:44:42-06:00",
-          "message": "feat(render): renderToString takes onStyleError (rich-diagnostics-ejn) (#221)\n\n* feat(render): renderToString takes onStyleError (rich-diagnostics-ejn)\n\nrenderToString degraded an unparseable style to unstyled with no way for\nits caller to hear about it or make the render strict. It now takes the\nsame StyleErrorHandler a Console does and hands it to the RenderOptions\nit builds, so both share RenderOptions.onStyleError's contract.\n\n* refactor(render): derive asciiOnly/onStyleError from RenderOptions; strict-mode docs name renderToString (rich-diagnostics-ejn)"
+          "timestamp": "2026-09-29T15:53:01-06:00",
+          "message": "test(embed): a bad style in any embedded label reaches onStyleError (rich-panel-z93) (#222)\n\n* test(embed): a bad style in any embedded label degrades and reaches onStyleError (rich-panel-z93)\n\nMarkup and RichText spans in panel titles/subtitles landed in #173\n(rich-panel-gbe). The ticket's remaining clause, that a style error there\ndegrades and reaches onStyleError, had no test; this pins it at every\nembed site.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(embed): pin the unstyled bytes, a single report, and the RichText branch (rich-panel-z93)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     },
