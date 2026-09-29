@@ -2,31 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-204",
-      "ref": "refs/pull/204/merge",
-      "sha": "e6b037c00abe719c5d917d96be86b8d719c407b2",
-      "timestamp": "2026-09-29T14:11:33.276Z",
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "2e77380e87c70ab491ff8de71965b4ed2ba446b5",
+      "timestamp": "2026-09-29T14:15:01.069Z",
       "commits": [
         {
-          "sha": "e6b037c00abe719c5d917d96be86b8d719c407b2",
+          "sha": "2e77380e87c70ab491ff8de71965b4ed2ba446b5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:10:53Z",
-          "message": "Merge 13a01c2ac3f3a012fa96e1e3114e1d6aee61b4e0 into ea6e75d87583f84b8e69a2fdcc467ddcccac75aa\n"
-        },
-        {
-          "sha": "13a01c2ac3f3a012fa96e1e3114e1d6aee61b4e0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T08:10:47-06:00",
-          "message": "fix(table): an empty column fills in a pass of its own (rich-table-3d3)\n\nReview: the fill as an inflated want skipped a minWidth and split an\nexpanding table's slack evenly. The want is the one cell again; fill is\nthe pass between natural widths and ratio shares, capped by maxWidth,\nand the stretch weighs by the width each column holds.\n"
-        },
-        {
-          "sha": "0bfd0f57d8e1f7275ffd432c97fc070c97dc5470",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:58:03-06:00",
-          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n"
+          "timestamp": "2026-09-29T08:14:05-06:00",
+          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3) (#204)\n\n* fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n\n* fix(table): an empty column fills in a pass of its own (rich-table-3d3)\n\nReview: the fill as an inflated want skipped a minWidth and split an\nexpanding table's slack evenly. The want is the one cell again; fill is\nthe pass between natural widths and ratio shares, capped by maxWidth,\nand the stretch weighs by the width each column holds."
         }
       ]
     },
@@ -71,21 +57,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T08:00:52-06:00",
           "message": "feat(widgets): WidgetApp routes focus and the pointer through the composed tree (rich-runtime-fna.4)\n\nA widget now goes anywhere a renderable goes — a Panel, a Layout pane, a\nTable cell — and still takes focus, keys and clicks. WidgetApp is an App\nwhose view has widgets in it: focus moves in document order among the\nwidgets on the painted frame (RenderOptions.onDraw), overlays are painted\nafter the view below their owner's footprint, and the pointer reaches the\ninnermost widget that drew the cell.\n\nDefaultScreen, Screen, Placement, MountEntry and mount-driven focus\nregistration are deleted; the three demos that used them run on WidgetApp\nwith their layout expressed as Group / Columns / Layout. WidgetBase loses\n`visible` — presence in the view is visibility.\n\nApp now owns pointer reporting: the alternate surface turns it on in\nenter and off in leave, so every exit path hands it back; an inline frame\ngets none, since it does not know its screen row. App gains onPaint, which\nfocus settles on. The router no longer touches raw mode or the mouse.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "ea6e75d87583f84b8e69a2fdcc467ddcccac75aa",
-      "timestamp": "2026-09-29T13:50:44.458Z",
-      "commits": [
-        {
-          "sha": "ea6e75d87583f84b8e69a2fdcc467ddcccac75aa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:49:48-06:00",
-          "message": "fix(table): a ratio that is not positive sizes its column to its content (rich-table-ykj) (#203)\n\n* fix(table): a ratio that is not positive sizes its column to its content (rich-table-ykj)\n\nColumn.share is now the one answer to which columns are elastic; flexible\nasks it as a yes/no and _columnDemands reads it for the weight. A column it\ncalls inflexible sizes to its content beside a ratio column, as the docs\nand the reference say — a ratio: 0 column was weighed at zero and starved\nto one cell, and a column with no ratio took a share of 1.\n\n* fix(table): ratio columns split the leftover in a pass of their own (rich-table-ykj)\n\nA ratio is a proportion and a content column's weight is a count of cells;\nweighed in one pool, ratio: 100 truncated a neighbour the table had room for,\nand flooring the ratio to a cell starved ratio: 0.5 to a single ellipsis. The\nshare is now module-private (columnShare) rather than public surface on Column.\n\n* fix(table): a ratio column bids for its minWidth like content (rich-table-ykj)"
         }
       ]
     }
