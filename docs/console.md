@@ -384,8 +384,8 @@ cut at the width by that method: at width 12,
 
 `log()` puts a timestamp in a column of its own and, beside it, draws what
 `print()` would draw for the same arguments in the width that is left. A
-container therefore starts on the timestamp's line, and every line after the
-first is indented to the column:
+container sits beside the timestamp column rather than below it, and every line
+after the first is indented to the column:
 
 ```typescript
 console.log("Server started on port [bold cyan]3000[/]");

@@ -874,6 +874,25 @@ describe("Console.log()", () => {
       `${pad}done\n`,
     );
   });
+
+  it("keeps every row, time included, inside a console narrower than the time", () => {
+    const { console: c, chunks } = makeConsole({ width: 8, markup: false, highlight: false });
+    c.log("hello world", [1, 2]);
+    const lines = captured(chunks).split("\n").slice(0, -1);
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(8);
+    expect(lines[0]).toMatch(/^\[/);
+  });
+
+  it("gives the time and its column the console's base style", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, colorSystem: "ansi", style: "on blue" });
+    c.log("a", [1]);
+    // Two rows — the time beside `a`, then the column's blank beside `[1]` —
+    // and each opens on the blue background before any of its cells.
+    const rows = captured(chunks).split("\n").slice(0, -1);
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(row).toMatch(/^\x1b\[(?:[0-9;]*;)?44[;m]/);
+  });
 });
 
 // --- Console.rule() ---

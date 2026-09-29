@@ -154,6 +154,13 @@ type PrintBlock =
   | { kind: "text"; items: RichText[] }
   | { kind: "lines"; renderable: Renderable };
 
+// A column drawn left of every line a print draws, given the line's index, and
+// the cells it takes from the width. A plain print has none; `log` puts its
+// time there. The gutter is cropped and given the console's style with the
+// line it starts, so the two reach the terminal as one row.
+type Gutter = { width: number; row(index: number): Segment[] };
+const NO_GUTTER: Gutter = { width: 0, row: () => [] };
+
 // Three of the five justify methods place what a print draws as a block, the
 // way Rich's `print` wraps each renderable in `Align`. The other two leave it
 // where it was drawn: `"default"` asks for no placement, and `"full"` is a way
@@ -461,12 +468,12 @@ export class Console {
   // --- Print ---
 
   print(...args: unknown[]): void {
-    this._writeSegments(this._draw(args, this.options));
+    this._writeSegments(this._draw(args, this.options, NO_GUTTER));
   }
 
   // What `print` writes for `args` at `options.maxWidth`, as segments with their
-  // line breaks. `log` draws through it too, into the column beside its time.
-  private _draw(args: unknown[], options: RenderOptions): Segment[] {
+  // line breaks, each line led by its `gutter` row.
+  private _draw(args: unknown[], options: RenderOptions, gutter: Gutter): Segment[] {
     // Extract options from last arg if it's a PrintOptions
     let opts: PrintOptions = {};
     let items: unknown[];
@@ -576,6 +583,7 @@ export class Console {
     // no justify — is `RichText`'s to apply, so it crosses as it was asked for.
     const renderOpts: RenderOptions = {
       ...options,
+      maxWidth: Math.max(1, options.maxWidth - gutter.width),
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
@@ -586,9 +594,12 @@ export class Console {
     // codes across the newline.
     // [LAW:dataflow-not-control-flow] no style to apply is an empty list, not
     // a skipped step.
-    const styles = [printStyle, this._style].filter((style) => !style.isNull);
-    const styleContent = (segments: Iterable<Segment>): Iterable<Segment> =>
-      styles.reduce((styled, style) => Segment.applyStyle(styled, style), segments);
+    // The gutter is not the print's content, so it takes the console's style
+    // alone, as the reference's `log` styles only its renderables.
+    const styleWith = (styles: Style[]) => (segments: Iterable<Segment>): Iterable<Segment> =>
+      styles.filter((style) => !style.isNull).reduce((styled, style) => Segment.applyStyle(styled, style), segments);
+    const styleContent = styleWith([printStyle, this._style]);
+    const styleGutter = styleWith([this._style]);
 
     // The common default end is "\n" — reuse Segment's cached newline rather
     // than allocating one per print; only a non-default end needs a fresh one.
@@ -618,10 +629,11 @@ export class Console {
     // ends, so it survives recording — otherwise `exportText` and `exportHtml`
     // would join consecutive prints onto a single line. [LAW:single-enforcer]
     const output: Segment[] = [];
+    let row = 0;
     for (const block of blocks) {
       const { lines, closed } = drawBlock(block);
       lines.forEach((line, index) => {
-        output.push(...styleContent(line));
+        output.push(...styleGutter(gutter.row(row++)), ...styleContent(line));
         if (closed || index < lines.length - 1) output.push(Segment.line());
       });
     }
@@ -637,26 +649,16 @@ export class Console {
   }
 
   // The reference's `LogRender`: the time in a column of its own, and beside it
-  // whatever `print` would draw for `args` in the width that is left. A
-  // container is a block in `print`, so it starts on the time's line only
-  // because the column puts it there, and its later lines keep to the column.
+  // whatever `print` would draw for `args` in the width that is left.
   log(...args: unknown[]): void {
     const options = this.options;
     const time = new RichText(`[${new Date().toLocaleTimeString()}] `, { end: "" });
     time.stylize("log.time");
-    const timeWidth = time.cellLength;
-    const drawn = this._draw(args, { ...options, maxWidth: Math.max(1, options.maxWidth - timeWidth) });
-    const closed = drawn.at(-1)?.text.endsWith("\n") ?? false;
-    const lines = Segment.splitLines(drawn);
-    const column = (index: number): Segment[] =>
-      index === 0 ? [...time.render(options)] : [new Segment(" ".repeat(timeWidth))];
-    this._writeSegments(
-      lines.flatMap((line, index, all) => [
-        ...column(index),
-        ...line,
-        ...(closed || index < all.length - 1 ? [Segment.line()] : []),
-      ]),
-    );
+    const width = time.cellLength;
+    // Drawn at its own width, so it is one line however narrow the console.
+    const stamp = [...time.render({ ...options, maxWidth: width })];
+    const blank = [new Segment(" ".repeat(width))];
+    this._writeSegments(this._draw(args, options, { width, row: (index) => (index === 0 ? stamp : blank) }));
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of
