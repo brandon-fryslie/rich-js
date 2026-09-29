@@ -4,15 +4,22 @@
     {
       "version": "pr-223",
       "ref": "refs/pull/223/merge",
-      "sha": "da4680e02e55492e91344a2a2a8efb3b9769782e",
-      "timestamp": "2026-09-29T21:57:23.034Z",
+      "sha": "459af933e86ac0948f10cc0a22036ecfc02ab0db",
+      "timestamp": "2026-09-29T22:00:20.505Z",
       "commits": [
         {
-          "sha": "da4680e02e55492e91344a2a2a8efb3b9769782e",
+          "sha": "459af933e86ac0948f10cc0a22036ecfc02ab0db",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:56:30-06:00",
-          "message": "Merge 5edb850a3d03f30b8b5cfe03ef5becf159b5ffd8 into c209b08f810cb898ada64093f9cf8a53eca876d0\n"
+          "timestamp": "2026-09-29T21:59:33Z",
+          "message": "Merge 9b982704ac2e0a561b67afbe7ab32863d3d7ef6b into c209b08f810cb898ada64093f9cf8a53eca876d0\n"
+        },
+        {
+          "sha": "9b982704ac2e0a561b67afbe7ab32863d3d7ef6b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:59:27-06:00",
+          "message": "test(traceback): pin an awaited call of a function named async (rich-traceback-dbs)\n\nThe comment on parseStack now names only the frame shapes it reads, since\nit does not read every V8 shape. The shapes it misses are rich-traceback-9vcb\nand rich-traceback-4es8.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "5edb850a3d03f30b8b5cfe03ef5becf159b5ffd8",
