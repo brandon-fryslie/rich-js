@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-191",
+      "ref": "refs/pull/191/merge",
+      "sha": "82d9cf7340f690b0ba9d8c4f24519dc53303e50e",
+      "timestamp": "2026-09-29T11:40:03.070Z",
+      "commits": [
+        {
+          "sha": "82d9cf7340f690b0ba9d8c4f24519dc53303e50e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T05:39:13-06:00",
+          "message": "Merge 1a0ab7986ec664db6fad7a9c433c20b8a831afc2 into a7dfd93578a8a1297aceca6c9ee1b5ae0de6a830\n"
+        },
+        {
+          "sha": "1a0ab7986ec664db6fad7a9c433c20b8a831afc2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T05:39:08-06:00",
+          "message": "feat(core): a cell carries where its owner drew it, so a nested widget's position is read off the frame (rich-runtime-fna.1)\n\nThe design answer for the composed runtime, landed as its contract rather\nthan a design document, as rich-viewport-owi.1 did. An origin threaded down\nthe render options cannot exist: Align places each line after rendering it,\nso one widget's rows start at different columns. Position travels up\ninstead: `Anchor` rides on each segment's Style, which every container\nalready preserves, and `Segment.anchorAt` reads any cell of a composed\nframe. test/core/anchor.test.ts proves it through every container.\n\nThe remaining answers are on rich-runtime-fna.2, .3, .4 and\nrich-viewport-owi.5.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a7dfd93578a8a1297aceca6c9ee1b5ae0de6a830",
