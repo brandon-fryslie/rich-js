@@ -4,8 +4,9 @@ import { Panel } from "../../src/renderables/panel.js";
 import { RichText } from "../../src/core/text.js";
 import { MarkupError } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
-import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
+import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, SIMPLE, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
+import { renderToString } from "../../src/core/render.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import type { OverflowMethod, Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -1376,5 +1377,109 @@ describe("Table cells wrap before the overflow method sees them", () => {
       "│ foo │ bar │",
       "└─────┴─────┘",
     ]);
+  });
+});
+
+// --- Table and column styles ---
+
+// Every expected literal here is what Python Rich 9d8f9a3 prints for the same
+// table at width 30, truecolor, verbatim. That renderer closes and reopens the
+// SGR around every segment; `segmentsToString` joins a run of like-styled
+// segments under one pair instead, which draws the same cells. `coalesce`
+// performs exactly that join on the reference's bytes, so what is compared is
+// the reference's output and nothing written by hand.
+describe("Table and Column styles", () => {
+  const coalesce = (ansi: string): string => {
+    const rejoin = /(\x1b\[([\d;]+)m[^\x1b]*)\x1b\[0m\x1b\[\2m/;
+    let out = ansi;
+    while (rejoin.test(out)) out = out.replace(rejoin, "$1");
+    return out;
+  };
+  const draw = (t: Table): string => renderToString(t, { width: 30 });
+
+  it("layers the border style over the table's style, and styles nothing else with it", () => {
+    const t = new Table({ style: "on blue", borderStyle: "red" });
+    t.addColumn("A");
+    t.addRow("x");
+    expect(draw(t)).toBe(coalesce(
+      "\x1b[31;44m┏━━━┓\x1b[0m\n\x1b[31;44m┃\x1b[0m\x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m\x1b[31;44m┃\x1b[0m\n\x1b[31;44m┡━━━┩\x1b[0m\n\x1b[31;44m│\x1b[0m x \x1b[31;44m│\x1b[0m\n\x1b[31;44m└───┘\x1b[0m\n",
+    ));
+  });
+
+  it("draws a table's style on its frame when it names no border style", () => {
+    const t = new Table({ style: "on blue" });
+    t.addColumn("A");
+    t.addRow("x");
+    expect(draw(t)).toBe(coalesce(
+      "\x1b[44m┏━━━┓\x1b[0m\n\x1b[44m┃\x1b[0m\x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m\x1b[44m┃\x1b[0m\n\x1b[44m┡━━━┩\x1b[0m\n\x1b[44m│\x1b[0m x \x1b[44m│\x1b[0m\n\x1b[44m└───┘\x1b[0m\n",
+    ));
+  });
+
+  it("styles a column's header, cells and footer with its own styles over the table's", () => {
+    const t = new Table({ showFooter: true });
+    t.addColumn("A", { style: "on green", headerStyle: "italic", footerStyle: "underline", footer: "f" });
+    t.addColumn("B");
+    t.addRow("x", "y");
+    expect(draw(t)).toBe(coalesce(
+      "┏━━━┳━━━┓\n┃\x1b[1;3m \x1b[0m\x1b[1;3mA\x1b[0m\x1b[1;3m \x1b[0m┃\x1b[1m \x1b[0m\x1b[1mB\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━╇━━━┩\n│\x1b[42m \x1b[0m\x1b[42mx\x1b[0m\x1b[42m \x1b[0m│ y │\n├───┼───┤\n│\x1b[1;4m \x1b[0m\x1b[1;4mf\x1b[0m\x1b[1;4m \x1b[0m│\x1b[1m \x1b[0m\x1b[1m \x1b[0m\x1b[1m \x1b[0m│\n└───┴───┘\n",
+    ));
+  });
+
+  it("layers a row style over the column's cell style, padding included", () => {
+    const t = new Table({ rowStyles: ["on red"] });
+    t.addColumn("A", { style: "bold" });
+    t.addRow("x");
+    expect(draw(t)).toBe(coalesce(
+      "┏━━━┓\n┃\x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━┩\n│\x1b[1;41m \x1b[0m\x1b[1;41mx\x1b[0m\x1b[1;41m \x1b[0m│\n└───┘\n",
+    ));
+  });
+
+  it("fills the lines a short cell runs out of with its column's style", () => {
+    const t = new Table();
+    t.addColumn("A", { style: "on green" });
+    t.addColumn("B", { width: 1 });
+    t.addRow("x", "y z");
+    expect(draw(t)).toBe(coalesce(
+      "┏━━━┳━━━┓\n┃\x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m┃\x1b[1m \x1b[0m\x1b[1mB\x1b[0m\x1b[1m \x1b[0m┃\n┡━━━╇━━━┩\n│\x1b[42m \x1b[0m\x1b[42mx\x1b[0m\x1b[42m \x1b[0m│ y │\n│\x1b[42m   \x1b[0m│ z │\n└───┴───┘\n",
+    ));
+  });
+
+  it("keeps a cell's own markup over the styles it sits on", () => {
+    const t = new Table({ headerStyle: "red", rowStyles: ["italic", ""] });
+    t.addColumn("A", { style: "bold", headerStyle: "on white" });
+    t.addRow("[red]x[/]");
+    t.addRow("y");
+    expect(draw(t)).toBe(coalesce(
+      "┏━━━┓\n┃\x1b[31;47m \x1b[0m\x1b[31;47mA\x1b[0m\x1b[31;47m \x1b[0m┃\n┡━━━┩\n│\x1b[1;3m \x1b[0m\x1b[1;3;31mx\x1b[0m\x1b[1;3m \x1b[0m│\n│\x1b[1m \x1b[0m\x1b[1my\x1b[0m\x1b[1m \x1b[0m│\n└───┘\n",
+    ));
+  });
+
+  it("draws the same table without a box", () => {
+    const t = new Table({ box: null, style: "on blue" });
+    t.addColumn("A", { style: "on green" });
+    t.addRow("x");
+    expect(draw(t)).toBe(coalesce(
+      "\x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m\n\x1b[42m \x1b[0m\x1b[42mx\x1b[0m\x1b[42m \x1b[0m\n",
+    ));
+  });
+
+  it("runs a row's background under a divider drawn in blanks", () => {
+    const t = new Table({ box: SIMPLE, rowStyles: ["on red"] });
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("x", "y");
+    expect(draw(t)).toBe(coalesce(
+      "         \n \x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m \x1b[1m \x1b[0m\x1b[1mB\x1b[0m\x1b[1m \x1b[0m \n ─────── \n \x1b[41m \x1b[0m\x1b[41mx\x1b[0m\x1b[41m \x1b[0m\x1b[41m \x1b[0m\x1b[41m \x1b[0m\x1b[41my\x1b[0m\x1b[41m \x1b[0m \n         \n",
+    ));
+  });
+
+  it("sits a short header on the row's floor, its style filling the lines above", () => {
+    const t = new Table({ headerStyle: "on white" });
+    t.addColumn("A");
+    t.addColumn("p q", { width: 1 });
+    t.addRow("x", "y");
+    expect(draw(t)).toBe(coalesce(
+      "┏━━━┳━━━┓\n┃\x1b[47m   \x1b[0m┃\x1b[47m \x1b[0m\x1b[47mp\x1b[0m\x1b[47m \x1b[0m┃\n┃\x1b[47m \x1b[0m\x1b[47mA\x1b[0m\x1b[47m \x1b[0m┃\x1b[47m \x1b[0m\x1b[47mq\x1b[0m\x1b[47m \x1b[0m┃\n┡━━━╇━━━┩\n│ x │ y │\n└───┴───┘\n",
+    ));
   });
 });

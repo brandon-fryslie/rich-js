@@ -140,6 +140,12 @@ export class Segment {
     style?: Style,
     postStyle?: Style,
   ): Iterable<Segment> {
+    // Applying no style is the identity, so the segments pass through as they
+    // are instead of each being copied into an equal one.
+    if (!style && !postStyle) {
+      yield* segments;
+      return;
+    }
     for (const segment of segments) {
       if (segment.isControl) {
         yield segment;
