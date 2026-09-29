@@ -4,15 +4,22 @@
     {
       "version": "pr-220",
       "ref": "refs/pull/220/merge",
-      "sha": "8453f843030f4d2b61efc2f415b257cc53f233dd",
-      "timestamp": "2026-09-29T21:23:37.131Z",
+      "sha": "13fabbe89c3fd1401ffbcc1ce5181ddf8b302dfd",
+      "timestamp": "2026-09-29T21:30:23.625Z",
       "commits": [
         {
-          "sha": "8453f843030f4d2b61efc2f415b257cc53f233dd",
+          "sha": "13fabbe89c3fd1401ffbcc1ce5181ddf8b302dfd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:22:34-06:00",
-          "message": "Merge 4eb9ddf7af3f088ac6dfa1d04f3e2587b95760d0 into 1e61e1aa0716245a8339f9bde4d84adcf33827b5\n"
+          "timestamp": "2026-09-29T21:29:36Z",
+          "message": "Merge dab035fa06d4fb06fa5b0b4006750abd63b3b9ff into 1e61e1aa0716245a8339f9bde4d84adcf33827b5\n"
+        },
+        {
+          "sha": "dab035fa06d4fb06fa5b0b4006750abd63b3b9ff",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:29:31-06:00",
+          "message": "fix(live): a frame is drawn only while Live holds the terminal (rich-live-vu8)\n\nAfter the auto-refresh timer handed the terminal back, a caller's later\nrefresh() painted onto the main screen and its stop() did nothing to undo\nit. refresh() before start() or after stop() did the same. Now no frame is\ndrawn outside start()/stop(), as in Rich.\n"
         },
         {
           "sha": "4eb9ddf7af3f088ac6dfa1d04f3e2587b95760d0",
