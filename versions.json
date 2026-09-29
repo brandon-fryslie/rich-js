@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-231",
+      "ref": "refs/pull/231/merge",
+      "sha": "2678d46aa103ffaf314424a9f2dd755fe5807c94",
+      "timestamp": "2026-09-29T23:11:16.109Z",
+      "commits": [
+        {
+          "sha": "2678d46aa103ffaf314424a9f2dd755fe5807c94",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:10:27Z",
+          "message": "Merge 35b33aba0246b86bbb490775ea883a22211e36d2 into 3f470212f0ca8caa296b0e3825858f0c9de1cc5e\n"
+        },
+        {
+          "sha": "35b33aba0246b86bbb490775ea883a22211e36d2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:10:22-06:00",
+          "message": "fix(pretty): cut hanging rows in one walk, and drop rows a break alone made (rich-pretty-xms.tmf)\n\nReview (high): splitting per cut rescanned the line (6.4s at 200k chars);\nan empty remainder or a folded word's trailing space became a blank row;\na thrown value's marker was placed from the slot's start column.\n"
+        },
+        {
+          "sha": "bc279d1d866353153144f6770f84bb9f7e8e9f0e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:01:19-06:00",
+          "message": "fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf)\n\nA scalar, a self-describing value, or a marker placed inside a container\nis cut to the width left on its line; its continuation lines, its own\nincluded, hang one indent past its slot. A value whose first word does\nnot fit after its key starts on a hanging line. The root stays unplaced:\nits line is its caller's.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-230",
       "ref": "refs/pull/230/merge",
       "sha": "4d529af2074d3bc4117d33551ed6ba2e9b3d1b31",
@@ -27,28 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T17:00:00-06:00",
           "message": "fix(table): stretch an expanding table by Rich's ratio_distribute (rich-table-d1uy)\n\nAn expanding table handed its leftover cells out by largest remainder over\ncontent widths; Rich 9d8f9a3 uses ratio_distribute over widths that include\npadding, rounding each share up. The two agree on totals and disagree on\nwhich column takes a leftover cell. The stretch now goes through\nratioDistribute (src/renderables/ratio.ts), weighted by padded width.\n\nThe rowless maxWidth 7/3 frame the suite pinned as \"Rich's own output\" was\nnot: Rich prints 24/13 there, which is what this renders.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-231",
-      "ref": "refs/pull/231/merge",
-      "sha": "9f4f54658e7356d1d1e5b68e163e75c826422651",
-      "timestamp": "2026-09-29T23:02:54.755Z",
-      "commits": [
-        {
-          "sha": "9f4f54658e7356d1d1e5b68e163e75c826422651",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:01:24-06:00",
-          "message": "Merge bc279d1d866353153144f6770f84bb9f7e8e9f0e into 3f470212f0ca8caa296b0e3825858f0c9de1cc5e\n"
-        },
-        {
-          "sha": "bc279d1d866353153144f6770f84bb9f7e8e9f0e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:01:19-06:00",
-          "message": "fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf)\n\nA scalar, a self-describing value, or a marker placed inside a container\nis cut to the width left on its line; its continuation lines, its own\nincluded, hang one indent past its slot. A value whose first word does\nnot fit after its key starts on a hanging line. The root stays unplaced:\nits line is its caller's.\n"
         }
       ]
     },
