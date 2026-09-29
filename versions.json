@@ -4,15 +4,22 @@
     {
       "version": "pr-191",
       "ref": "refs/pull/191/merge",
-      "sha": "82d9cf7340f690b0ba9d8c4f24519dc53303e50e",
-      "timestamp": "2026-09-29T11:40:03.070Z",
+      "sha": "68b462c7051e692e4751771ccb315b5492a89137",
+      "timestamp": "2026-09-29T11:53:44.386Z",
       "commits": [
         {
-          "sha": "82d9cf7340f690b0ba9d8c4f24519dc53303e50e",
+          "sha": "68b462c7051e692e4751771ccb315b5492a89137",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T05:39:13-06:00",
-          "message": "Merge 1a0ab7986ec664db6fad7a9c433c20b8a831afc2 into a7dfd93578a8a1297aceca6c9ee1b5ae0de6a830\n"
+          "timestamp": "2026-09-29T11:52:54Z",
+          "message": "Merge df7150aadee1d36648197753cd1f7dcb80274137 into a7dfd93578a8a1297aceca6c9ee1b5ae0de6a830\n"
+        },
+        {
+          "sha": "df7150aadee1d36648197753cd1f7dcb80274137",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T05:52:49-06:00",
+          "message": "fix(core): anchors stay true through wide-glyph cuts and RichText; Style copies share one field list (rich-runtime-fna.1)\n\nReview (high) of #191:\n- splitCells shifts the right half by the cells it gave up (len - cellLen(right)),\n  not leftText's width, which splitText pads when the cut lands mid-glyph.\n- anchorAt answers undefined for a non-cell x (negative, fractional), as it\n  already did for y; it shifts the anchor directly instead of building a Style.\n- RichText admits no anchor (admitStyle): it lays text out anew, so a stamp\n  from the output it came from would name the wrong cell.\n- Style's four hand-copied clones go through one private with(); the\n  optionless constructor branch folds into a default.\n- Anchor is exported from the barrel beside the Style/Segment surface that\n  names it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "1a0ab7986ec664db6fad7a9c433c20b8a831afc2",
