@@ -9,12 +9,22 @@
  *     import { installTraceback } from "@promptctl/rich-js/node/traceback";
  *     installTraceback({ suppress: ["node_modules"] });
  *
- * [LAW:dataflow-not-control-flow] Both crash channels register the same
- * `report` function, unadapted. Neither payload is trusted to be an `Error`:
- * `@types/node` annotates `uncaughtException` with `Error`, but `throw "boom"`
- * delivers the raw string, so the annotation is a claim about the common case
- * rather than a guarantee. `report` takes `unknown` and both channels are
- * literally one code path.
+ * [LAW:dataflow-not-control-flow] Every crash is reported from one channel,
+ * `uncaughtException`. An unhandled rejection is thrown into it rather than
+ * reported beside it, so both kinds of crash are literally one code path. No
+ * payload is trusted to be an `Error`: `@types/node` annotates
+ * `uncaughtException` with `Error`, but `throw "boom"` delivers the raw
+ * string, so the annotation is a claim about the common case rather than a
+ * guarantee. `report` takes `unknown`.
+ *
+ * [LAW:no-ambient-temporal-coupling] The one channel is also what puts the
+ * report after the terminal is handed back. A program holding the alternate
+ * screen restores it on `uncaughtExceptionMonitor` (`NodeTerminalHost.onExit`),
+ * which node emits ahead of every `uncaughtException` listener. Reported
+ * straight from `unhandledRejection`, a crash skips that phase: the report
+ * draws inside the alternate screen and vanishes with it when `exit` restores
+ * the terminal. Node's crash sequence owns the order, not the order in which
+ * `installTraceback` and a host happened to add their listeners.
  */
 
 import { inspect, types } from "node:util";
@@ -73,6 +83,15 @@ function toError(reason: unknown): Error {
 let installed: (reason: unknown) => void = () => {};
 
 /**
+ * An unhandled rejection, raised as the uncaught exception it becomes when
+ * nobody listens — its reason unwrapped, which node's own conversion would
+ * bury in a message for any reason that is not an `Error`.
+ */
+function escalate(reason: unknown): never {
+  throw reason;
+}
+
+/**
  * Register rich tracebacks for uncaught exceptions and unhandled rejections.
  *
  * Calling this more than once replaces the previous handler — the last call
@@ -112,9 +131,9 @@ export function installTraceback(options?: TracebackOptions): void {
   };
 
   process.off("uncaughtException", installed);
-  process.off("unhandledRejection", installed);
+  process.off("unhandledRejection", escalate);
 
   process.on("uncaughtException", report);
-  process.on("unhandledRejection", report);
+  process.on("unhandledRejection", escalate);
   installed = report;
 }

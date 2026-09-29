@@ -78,7 +78,10 @@ export const guideSidebar: SidebarGroup[] = [
   },
   {
     text: 'Interactive',
-    items: [{ text: 'Widgets', link: '/widgets' }],
+    items: [
+      { text: 'Terminal Apps', link: '/app' },
+      { text: 'Widgets', link: '/widgets' },
+    ],
   },
   {
     text: 'Color & Theming',

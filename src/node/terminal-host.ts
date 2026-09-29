@@ -3,7 +3,7 @@
  * process streams.
  *
  * [LAW:locality-or-seam] The `TerminalHost` interface is the seam and lives
- * in `widgets/terminal-host.ts`, importable anywhere. *This* file is one
+ * in `host/terminal-host.ts`, importable anywhere. *This* file is one
  * value satisfying that interface, and it reads `process.stdin` /
  * `process.stdout`, so it is a node subpath:
  *
@@ -30,6 +30,7 @@
 
 import type {
   DataHandler,
+  ExitHandler,
   ResizeHandler,
   TerminalHost,
   TerminalSize,
@@ -59,6 +60,33 @@ interface NodeWritable {
   readonly isTTY?: boolean;
 }
 
+/**
+ * Subset of node's `process` the host hears the program end through and
+ * suspends it with. Tests pass an `EventEmitter` that records `kill`, because
+ * the real one would stop the test runner.
+ */
+interface NodeProcess {
+  readonly pid: number;
+  on(event: string, listener: () => void): unknown;
+  off(event: string, listener: () => void): unknown;
+  once(event: string, listener: () => void): unknown;
+  listenerCount(event: string): number;
+  kill(pid: number, signal: NodeJS.Signals): unknown;
+}
+
+/**
+ * The events a program ends on without anyone having signalled it. `exit`
+ * is every orderly end, `process.exit` included. `uncaughtExceptionMonitor`
+ * is a crash, and node emits it ahead of every `uncaughtException` listener
+ * and ahead of its own report — so a terminal handed back here is handed back
+ * before any crash report prints, `installTraceback`'s included, whatever
+ * order the listeners were added in.
+ */
+const ENDINGS = ["exit", "uncaughtExceptionMonitor"] as const;
+
+/** The signals that end a program from outside while it holds the terminal. */
+const TERMINATIONS = ["SIGINT", "SIGTERM", "SIGHUP"] as const satisfies readonly NodeJS.Signals[];
+
 export interface NodeTerminalHostOptions {
   /**
    * Input stream. Defaults to `process.stdin` so production code does not
@@ -76,6 +104,11 @@ export interface NodeTerminalHostOptions {
    * that ran them.
    */
   env?: NodeJS.ProcessEnv;
+  /**
+   * What the host hears the program end through and suspends it with.
+   * Defaults to `process`; tests pass an emitter that records `kill`.
+   */
+  process?: NodeProcess;
 }
 
 const DEFAULT_COLS = 80;
@@ -84,6 +117,7 @@ const DEFAULT_ROWS = 24;
 export class NodeTerminalHost implements TerminalHost {
   private readonly stdin: NodeReadable;
   private readonly stdout: NodeWritable;
+  private readonly process: NodeProcess;
   readonly env: NodeJS.ProcessEnv;
   private readonly dataHandlers = new Set<DataHandler>();
   private readonly resizeHandlers = new Set<ResizeHandler>();
@@ -95,6 +129,7 @@ export class NodeTerminalHost implements TerminalHost {
     this.stdin = options.stdin ?? (process.stdin as unknown as NodeReadable);
     this.stdout = options.stdout ?? (process.stdout as unknown as NodeWritable);
     this.env = options.env ?? process.env;
+    this.process = options.process ?? process;
   }
 
   get isTTY(): boolean {
@@ -192,6 +227,52 @@ export class NodeTerminalHost implements TerminalHost {
         this.resizeListener = undefined;
       }
     };
+  }
+
+  onExit(handler: ExitHandler): Unsubscribe {
+    const proc = this.process;
+    // [LAW:single-enforcer] Every path detaches every listener before the
+    // handler runs, which is what makes it run once: the second event of a
+    // crash — the monitor, then `exit` — finds nothing left to call.
+    const end = (): void => {
+      detach();
+      handler();
+    };
+    // A signal a program listens for no longer terminates it, so the
+    // listener owes the signal its outcome. Raised again once ours is gone,
+    // it terminates — unless the program listens for it too, in which case
+    // it was never going to, and that listener has already heard it.
+    const terminations = TERMINATIONS.map((signal) => {
+      const listener = (): void => {
+        end();
+        if (proc.listenerCount(signal) === 0) proc.kill(proc.pid, signal);
+      };
+      return { signal, listener };
+    });
+    const detach = (): void => {
+      for (const event of ENDINGS) proc.off(event, end);
+      for (const { signal, listener } of terminations) proc.off(signal, listener);
+    };
+    for (const event of ENDINGS) proc.on(event, end);
+    for (const { signal, listener } of terminations) proc.on(signal, listener);
+    return detach;
+  }
+
+  // The shell's own job control: stopped by the signal Ctrl+Z would have
+  // sent outside raw mode, continued by `fg`.
+  suspend(): Promise<void> {
+    const proc = this.process;
+    return new Promise((resolve) => {
+      // A signal listener does not keep node's loop alive, so a program
+      // waiting on nothing else would exit on `fg` rather than resume. The
+      // timer is the program still being there to continue.
+      const alive = setInterval(() => {}, 2 ** 30);
+      proc.once("SIGCONT", () => {
+        clearInterval(alive);
+        resolve();
+      });
+      proc.kill(proc.pid, "SIGTSTP");
+    });
   }
 
   start(): void {

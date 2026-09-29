@@ -42,6 +42,8 @@ function makeRecordingHost(opts: {
     onResize: () => () => {},
     size: () => size,
     setRawMode: () => {},
+    onExit: () => () => {},
+    suspend: () => Promise.resolve(),
     isTTY: opts.isTTY,
     writesToTerminal: opts.isTTY,
     env: opts.env,
