@@ -113,35 +113,41 @@ test("--rich-fragment-font on an ancestor reaches the rows through all:initial",
   }
 });
 
-// A blinking run, read with whatever animates it held halfway through its first
-// cycle: where the keyframes make the glyph transparent, unless the reader
-// asked for reduced motion. With empty keyframes a browser may run nothing at
-// all, so the run is found by its style, not by an animation.
-const BLINKING = [new Segment("blink", new Style({ blink: true }))];
-
-async function inkAtHalfCycle(page: Page): Promise<string> {
-  return page.evaluate(() => {
+// A blinking run, read with whatever animates it held halfway through its
+// first cycle: the one instant the keyframes make the glyph transparent. With
+// no keyframes a browser runs nothing at all, so the run is found by its
+// style, not by an animation.
+async function inkAtHalfCycle(page: Page, cycleMs: number): Promise<string> {
+  return page.evaluate((half) => {
     const run = document.querySelector('pre span[style*="animation"]');
     if (run === null) throw new Error("no blinking run");
     for (const animation of run.getAnimations()) {
       animation.pause();
-      animation.currentTime = 500;
+      animation.currentTime = half;
     }
     return getComputedStyle(run).color;
-  });
+  }, cycleMs / 2);
 }
 
-for (const [where, load] of [
-  ["a fragment", async (page: Page) => { await page.setContent(BLANK); await embed(page, encodeHtmlFragment(BLINKING, SOLARIZED_LIGHT)); }],
-  ["a document", (page: Page) => page.setContent(encodeHtml(BLINKING, SOLARIZED_LIGHT))],
-] as const) {
-  test(`blink in ${where} blinks, and draws steadily with reduced motion`, async ({ page }) => {
-    await load(page);
-    expect(await inkAtHalfCycle(page)).toBe("rgba(0, 0, 0, 0)");
+const HIDDEN = "rgba(0, 0, 0, 0)";
+const { red, green, blue } = SOLARIZED_LIGHT.foregroundColor;
+const INK = `rgb(${red}, ${green}, ${blue})`;
 
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    await load(page);
-    const { red, green, blue } = SOLARIZED_LIGHT.foregroundColor;
-    expect(await inkAtHalfCycle(page)).toBe(`rgb(${red}, ${green}, ${blue})`);
-  });
+for (const [attribute, cycleMs] of [["blink", 1000], ["blink2", 500]] as const) {
+  const segments = [new Segment(attribute, Style.parse(attribute))];
+  for (const [where, load] of [
+    ["a fragment", async (page: Page) => { await page.setContent(BLANK); await embed(page, encodeHtmlFragment(segments, SOLARIZED_LIGHT)); }],
+    ["a document", (page: Page) => page.setContent(encodeHtml(segments, SOLARIZED_LIGHT))],
+  ] as const) {
+    test(`${attribute} in ${where} blinks, and holds still once the reader asks for reduced motion`, async ({ page }) => {
+      await load(page);
+      expect(await inkAtHalfCycle(page, cycleMs)).toBe(HIDDEN);
+
+      // Asked while the page is open, then on a page loaded after asking.
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      expect(await inkAtHalfCycle(page, cycleMs)).toBe(INK);
+      await load(page);
+      expect(await inkAtHalfCycle(page, cycleMs)).toBe(INK);
+    });
+  }
 }

@@ -100,6 +100,15 @@ describe("encodeHtml runs", () => {
     expect(html(Style.parse("blink"))).toContain("@keyframes rich-blink{50%{color:transparent}}");
   });
 
+  // Moving under reduced motion is a browser behaviour, pinned in
+  // e2e/export-html-fragment.spec.ts; this keeps the one rule that carries it
+  // from losing its gate without a browser in the loop.
+  it("defines the blink keyframes only for a reader who has not asked for reduced motion", () => {
+    expect(HTML_FRAGMENT_CSS).toBe(
+      "@media (prefers-reduced-motion:no-preference){@keyframes rich-blink{50%{color:transparent}}}",
+    );
+  });
+
   it("frames and encircles in the glyph's own colour", () => {
     expect(cssOf(html(Style.parse("frame")))).toBe(`color:${INK.hex};box-shadow:inset 0 0 0 1px currentColor`);
     expect(cssOf(html(Style.parse("encircle")))).toBe(
