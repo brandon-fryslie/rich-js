@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-222",
+      "ref": "refs/pull/222/merge",
+      "sha": "b071dd203d37946f3cdf6d026aa67aeb29491630",
+      "timestamp": "2026-09-29T21:47:59.903Z",
+      "commits": [
+        {
+          "sha": "b071dd203d37946f3cdf6d026aa67aeb29491630",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:47:11-06:00",
+          "message": "Merge 2fcf9f95bbf1fd8cba6027d0f3dab926ca69327a into 5b8b4904721cc6699566e533d3b86d281e3d518e\n"
+        },
+        {
+          "sha": "2fcf9f95bbf1fd8cba6027d0f3dab926ca69327a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:47:06-06:00",
+          "message": "test(embed): a bad style in any embedded label degrades and reaches onStyleError (rich-panel-z93)\n\nMarkup and RichText spans in panel titles/subtitles landed in #173\n(rich-panel-gbe). The ticket's remaining clause, that a style error there\ndegrades and reaches onStyleError, had no test; this pins it at every\nembed site.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5b8b4904721cc6699566e533d3b86d281e3d518e",
