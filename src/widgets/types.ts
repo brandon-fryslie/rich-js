@@ -159,7 +159,6 @@ export interface FocusManager {
   next(): void;
   prev(): void;
   focus(widget: InteractiveWidget): void;
-  blur(): void;
 
   // Dispatch participant — EventRouter registers this as a normal-priority
   // handler so Tab/Shift+Tab participate in the chain like any other key.

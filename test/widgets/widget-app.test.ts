@@ -14,6 +14,8 @@ import { WidgetApp } from "../../src/widgets/widget-app.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { Dropdown } from "../../src/widgets/dropdown.js";
 import { Button } from "../../src/widgets/button.js";
+import { StaticItem } from "../../src/widgets/static-item.js";
+import { Columns } from "../../src/renderables/columns.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Group } from "../../src/renderables/group.js";
@@ -164,6 +166,23 @@ describe("WidgetApp focus", () => {
     await tick();
 
     expect(app.focusManager.current).toBe(b);
+  });
+
+  it("moves in the order columns render, not the order they measure", async () => {
+    const host = scriptedHost({ cols: 12, rows: 4 });
+    const [a, b, c, d] = ["a", "b", "c", "d"].map((id) => new Checkbox({ label: id, id }));
+    // A StaticItem measures by rendering what it wraps. Column-first puts a
+    // and b in the first column, so the rows render a, c then b, d.
+    const item = (box: Checkbox): StaticItem => new StaticItem({ id: `item-${box.id}`, render: box });
+    const view = new Columns([a!, b!, c!, d!].map(item), { columnFirst: true });
+    const app = start(host, () => view);
+    await tick();
+
+    expect(rows(app).slice(0, 2).map((row) => row.trim().replace(/\s+/g, " "))).toEqual([
+      "[ ] a [ ] c",
+      "[ ] b [ ] d",
+    ]);
+    expect(app.focusManager.widgets).toEqual([a, c, b, d]);
   });
 
   it("keeps focus on a widget the frame crops for the moment", async () => {

@@ -170,7 +170,7 @@ describe("DefaultFocusManager", () => {
     });
   });
 
-  describe("focus() / blur()", () => {
+  describe("focus()", () => {
     it("focuses a specific widget", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b");
@@ -213,16 +213,6 @@ describe("DefaultFocusManager", () => {
       expect(fm.current).toBe(a); // unchanged
     });
 
-    it("blurs the current widget", () => {
-      const a = new StubWidget("a");
-      const fm = over(a);
-      fm.settle([a]);
-
-      fm.blur();
-      expect(fm.current).toBeNull();
-      expect(a.focused).toBe(false);
-    });
-
     it("dispatches handleFocus exactly once per focus transition", () => {
       // [LAW:single-enforcer] WidgetBase.focus()/blur() route through
       // handleFocus; FocusManager must not call handleFocus a second time
@@ -239,7 +229,8 @@ describe("DefaultFocusManager", () => {
       }
       const a = new Counting("a");
       const b = new Counting("b");
-      const fm = over(a, b);
+      const shown = [a, b];
+      const fm = new DefaultFocusManager(() => shown);
       fm.settle([a, b]); // focuses a → a.focusCount = 1
 
       expect(a.focusCount).toBe(1);
@@ -251,7 +242,8 @@ describe("DefaultFocusManager", () => {
       expect(b.focusCount).toBe(1);
       expect(b.blurCount).toBe(0);
 
-      fm.blur(); // b blurs once
+      shown.length = 0;
+      fm.settle([]); // nothing drawn: b blurs once
       expect(b.blurCount).toBe(1);
     });
   });
@@ -260,16 +252,19 @@ describe("DefaultFocusManager", () => {
     it("fires on focus transitions", () => {
       const a = new StubWidget("a");
       const b = new StubWidget("b");
-      const fm = over(a, b);
+      const shown = [a, b];
+      const fm = new DefaultFocusManager(() => shown);
       const changes: (InteractiveWidget | null)[] = [];
       fm.onChange((current) => changes.push(current));
 
       fm.settle([a, b]);
       fm.settle([a, b]);
       fm.next();
-      fm.blur();
+      shown.length = 0;
+      fm.settle([]);
 
-      // settle → a, settle again → no change (a stays), next → b, blur → null
+      // settle → a, settle again → no change (a stays), next → b, nothing
+      // drawn → null
       expect(changes).toEqual([a, b, null]);
     });
 

@@ -64,17 +64,6 @@ export class DefaultFocusManager implements FocusManager {
     this.setFocus(widget);
   }
 
-  @action
-  blur(): void {
-    if (!this.currentWidget) return;
-    // [LAW:single-enforcer] WidgetBase.focus()/blur() route through
-    // handleFocus; calling it here as well would dispatch twice and run any
-    // subclass side effect (e.g. Dropdown clearing its filter) twice.
-    this.currentWidget.blur();
-    this.currentWidget = null;
-    this.emitChange();
-  }
-
   /**
    * Put focus where the frame just painted lets it rest: it stays on a widget
    * the view drew (`drawn`) that can take it, and otherwise moves to the first
@@ -94,7 +83,7 @@ export class DefaultFocusManager implements FocusManager {
     if (current && takesFocus(current) && drawn.includes(current)) return;
     const first = this.widgets[0];
     if (first) this.setFocus(first);
-    else this.blur();
+    else this.clear();
   }
 
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe {
@@ -115,11 +104,25 @@ export class DefaultFocusManager implements FocusManager {
 
   // --- Private ---
 
+  // No focus is where `settle` leaves an app with nothing to focus, and only
+  // there: anywhere else the next frame would put focus back on the first
+  // widget, so there is no public way in.
+  @action
+  private clear(): void {
+    if (!this.currentWidget) return;
+    // [LAW:single-enforcer] WidgetBase.focus()/blur() route through
+    // handleFocus; calling it here as well would dispatch twice and run any
+    // subclass side effect (e.g. Dropdown clearing its filter) twice.
+    this.currentWidget.blur();
+    this.currentWidget = null;
+    this.emitChange();
+  }
+
   @action
   private setFocus(widget: InteractiveWidget): void {
     if (this.currentWidget === widget) return;
     // [LAW:single-enforcer] focus()/blur() already dispatch handleFocus —
-    // see blur() for the rationale.
+    // see clear() for the rationale.
     if (this.currentWidget) this.currentWidget.blur();
     this.currentWidget = widget;
     widget.focus();
