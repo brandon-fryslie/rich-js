@@ -2,7 +2,7 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen, cellCount } from "./cells.js";
+import { cellLen, cellCount, cellFit } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
@@ -584,7 +584,8 @@ export class RichText implements Renderable, Measurable {
    *   in the middle.
    *
    * Marker default is `"\u2026"`. Pass `marker: ""` for raw cropping without an
-   * indicator glyph.
+   * indicator glyph. A marker wider than `width` is itself cut to `width`, so
+   * the result is never wider than asked.
    *
    * Spans are preserved through the cut: characters that survive keep their
    * styling; the marker (if any) is inserted as plain text with no span.
@@ -604,14 +605,12 @@ export class RichText implements Renderable, Measurable {
     if (this.cellLength <= width) return this;
 
     const mode = options?.mode ?? "right";
-    const marker = options?.marker ?? "\u2026";
-
-    const markerWidth = cellLen(marker);
-    if (width <= 0) {
-      this.plain = "";
-      return this;
-    }
-    const budget = Math.max(0, width - markerWidth);
+    // [LAW:dataflow-not-control-flow] the marker is fitted to the width as a
+    // value, so width 0 and a marker wider than the width run the same walk
+    // as every other call: what is drawn plus what is kept is `cells` wide.
+    const cells = cellCount(width);
+    const marker = cellFit(options?.marker ?? "\u2026", cells);
+    const budget = cells - cellLen(marker);
 
     if (mode === "right") {
       this._cropRightTo(budget);

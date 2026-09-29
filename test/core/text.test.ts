@@ -645,6 +645,31 @@ describe("RichText.truncate()", () => {
     expect(t.cellLength).toBe(7);
   });
 
+  it("cuts a marker wider than the width down to the width", () => {
+    expect(new RichText("hello world").truncate(1, { marker: ">>" }).plain).toBe(">");
+    expect(new RichText("hello world").truncate(2, { marker: ">>>" }).plain).toBe(">>");
+    expect(new RichText("hello world").truncate(2, { mode: "left", marker: ">>>" }).plain).toBe(">>");
+    expect(new RichText("hello world").truncate(2, { mode: "middle", marker: ">>>" }).plain).toBe(">>");
+  });
+
+  it("a wide marker that cannot fit leaves the width to the text", () => {
+    expect(new RichText("hello world").truncate(1, { marker: "中" }).plain).toBe("h");
+  });
+
+  it("is never wider than the width, for every mode and marker", () => {
+    const modes = ["right", "left", "middle"] as const;
+    const markers = ["", "…", ">>", ">>>", "中", "中>"];
+    for (const mode of modes) {
+      for (const marker of markers) {
+        for (let width = -2; width <= 12; width++) {
+          const t = new RichText("hello 中文 world").truncate(width, { mode, marker });
+          expect(t.cellLength, `${mode} ${JSON.stringify(marker)} ${width}`)
+            .toBeLessThanOrEqual(Math.max(width, 0));
+        }
+      }
+    }
+  });
+
   it("empty marker = raw crop", () => {
     const t = new RichText("hello world");
     t.truncate(5, { mode: "right", marker: "" });
