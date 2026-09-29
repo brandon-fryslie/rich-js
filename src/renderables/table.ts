@@ -305,18 +305,18 @@ function layoutTable(
   );
   // What the shares leave goes to the columns that stretch, by the width each
   // already holds with its padding: its natural width, since nothing is left
-  // over while any column is short, or the cap a fill stopped at. That is the
-  // reference's `ratio_distribute(max_width - table_width, widths)`, rounding
-  // included, so the leftover cells land on the columns Rich gives them to. A
-  // table that does not expand has no column that stretches, and an empty list
-  // takes nothing, which is how it stays narrower than the width it was
-  // offered. The order is the reference's: Rich pads an expanding table only
+  // over while any column is short, or the cap a fill stopped at. The split is
+  // the reference's `ratio_distribute(max_width - table_width, widths)`,
+  // rounding included; the columns it runs over are this port's. A table that
+  // does not expand has no column that stretches, and an empty list takes
+  // nothing, which is how it stays narrower than the width it was offered. The
+  // order is the reference's: Rich pads an expanding table only
   // once `table_width < max_width`, never while it is collapsing a column.
   const held = holding(wanted, filled, shared);
   const stretchers = seatedDemands.flatMap((demand, index) => (demand.stretch ? [index] : []));
   const stretches = ratioDistribute(
     // An unbounded offer is held to `UNBOUNDED`, this model's own infinity, as
-    // `demandCells` holds a want: `Infinity` split by ratio is `Infinity - Infinity`.
+    // `demandCells` holds a want: `Infinity` is not an integer to split.
     Math.min(budget - spent(wanted) - spent(filled) - spent(shared), UNBOUNDED),
     stretchers.map((index) => padLeft + held[index]! + padRight),
   );
