@@ -601,10 +601,10 @@ export class Console {
       const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
       if (align) return { lines: placeBlock(renderable, align, renderOpts), closed: true };
       const drawn = [...renderable.render(renderOpts)];
-      // `splitLines` drops the empty line after a break only when nothing
-      // follows the break, so a text run is closed exactly when its last
-      // segment ends in one.
-      const closed = block.kind === "lines" || drawn.at(-1)?.text.endsWith("\n") === true;
+      // A text run's last segment is always its `end`, yielded even when
+      // empty, and `splitLines` drops the empty line after a final break only
+      // when nothing follows it — so the run is closed exactly when `end` is.
+      const closed = block.kind === "lines" || end.endsWith("\n");
       return { lines: Segment.splitLines(drawn), closed };
     };
 
