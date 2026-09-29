@@ -71,18 +71,18 @@ This bypasses higher-level layout and is only needed for precise character-level
 
 ### Drawing with theme names
 
-`options.theme` is the `Theme` of the console doing the printing. It is absent when nothing supplied one, as in `renderToString`, and then the built-in names apply. A `Segment` takes a `Style` that is already resolved, so a theme name cannot go in one. To draw with a name — a built-in like `repr.number`, or one the user's theme adds — render a `RichText` that carries it, and pass it the options you were given. The options are how the name reaches the theme:
+`options.theme` is the `Theme` of the console doing the printing. It is absent when nothing supplied one, as in `renderToString`, and then the built-in names apply. A `Segment` takes a `Style` that is already resolved, so to draw with a name — a built-in like `repr.number`, or one the user's theme adds — resolve it with `getStyle`, passing it the options you were given. The options are how the name reaches the theme:
 
 ```typescript
 import type { Renderable, RenderOptions } from "@promptctl/rich-js";
-import { Console, RichText, Segment, Theme } from "@promptctl/rich-js";
+import { Console, Segment, Theme, getStyle } from "@promptctl/rich-js";
 
 class Health implements Renderable {
   constructor(private up: boolean) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const style = this.up ? "health.up" : "health.down";
-    yield* new RichText(this.up ? "up" : "down", { style }).render(options);
+    const style = getStyle(options, this.up ? "health.up" : "health.down");
+    yield new Segment(this.up ? "● up" : "● down", style);
   }
 }
 
@@ -91,6 +91,8 @@ const console = new Console({
 });
 console.print(new Health(true), new Health(false));
 ```
+
+`getStyle` also takes a style definition such as `"bold red"`, so a renderable can accept either from its caller the way `Panel`'s `borderStyle` does. A string that is neither a name in the theme nor a definition throws `StyleSyntaxError`. A `RichText` is the forgiving alternative: rendered with your options, it resolves a name the same way and draws one it cannot find as plain text.
 
 ## Measuring renderables
 

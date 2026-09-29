@@ -13,7 +13,8 @@ import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
 import { osc8Sequences, type Osc8Sequence } from "../../src/core/osc8.js";
-import type { Renderable } from "../../src/core/protocol.js";
+import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import { getStyle } from "../../src/index.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Table, type TableOptions } from "../../src/renderables/table.js";
 import { Rule } from "../../src/renderables/rule.js";
@@ -1533,6 +1534,21 @@ describe("Console theme resolution", () => {
     const green = printed(text, { highlight: false, theme: new Theme({ "repr.number": "green" }) });
     expect(red).toBe(printed(new RichText("42", { style: "red" }), { highlight: false }));
     expect(green).toBe(printed(new RichText("42", { style: "green" }), { highlight: false }));
+  });
+
+  // Imported from the package barrel: this is the resolver a consumer's own
+  // renderable reaches for, as Rich hands one `console.get_style`.
+  it("resolves a name for a renderable that yields its own segments", () => {
+    const dot = (style: (options: RenderOptions) => Style): Renderable => ({
+      *render(options) {
+        yield new Segment("●", style(options));
+      },
+    });
+    const theme = new Theme({ "my.dot": "bold magenta" });
+    expect(printed(dot((options) => getStyle(options, "my.dot")), { theme })).toBe(
+      printed(dot(() => Style.parse("bold magenta"))),
+    );
+    expect(() => getStyle({ maxWidth: 1 }, "my.dot")).toThrow(StyleSyntaxError);
   });
 
   it("leaves repr.number unstyled under a theme that inherits nothing", () => {

@@ -161,6 +161,7 @@ export {
   stackedHeight,
   regionRows,
   fitHeight,
+  getStyle,
 } from "./core/protocol.js";
 export type {
   RenderOptions,
