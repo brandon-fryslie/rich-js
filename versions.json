@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-217",
-      "ref": "refs/pull/217/merge",
-      "sha": "0db897241dc2e9aca72fe30e56ab15ec9989bd45",
-      "timestamp": "2026-09-29T20:51:22.635Z",
-      "commits": [
-        {
-          "sha": "0db897241dc2e9aca72fe30e56ab15ec9989bd45",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T20:49:47Z",
-          "message": "Merge 9a6c9ea5bfcfb00ace932a216e6607270153571d into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
-        },
-        {
-          "sha": "9a6c9ea5bfcfb00ace932a216e6607270153571d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:49:32-06:00",
-          "message": "ci(node-floor): install each floor-admitted peer at its locked version (rich-packaging-8b7)\n"
-        },
-        {
-          "sha": "91d5c4ef0ef3416e6d896a623308ec528176fae2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:47:39-06:00",
-          "message": "ci(node-floor): probe the shipped dist, install floor-admitting peers, refuse multi-set ranges (rich-packaging-8b7)\n\nReview (high) fixes:\n- publish.yml's node-floor now probes the gate job's dist artifact, the bytes\n  npm publish ships, instead of a rebuild; provisioning moves to the callers\n- floor.mjs derives the floor and installs each optional peer whose locked\n  engines admit it, so ./widgets (mobx declares no engines) runs at the floor\n- an engines.node of several comparator sets fails instead of being half-probed\n- CLAUDE.md and node-floor.ts state the probe's blind spot, and the\n  node-version-file rule names the computed-floor exception\n"
-        },
-        {
-          "sha": "791e69332133ab1e974e0fac657d637db7bb152e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:41:45-06:00",
-          "message": "Revert \"DO NOT MERGE: call Object.groupBy (Node 21) in Panel.render to prove node-floor goes red (rich-packaging-8b7)\"\n\nThis reverts commit 42f40c8dd9b550dbbc3e4336bfbb391184dc3914.\n"
-        },
-        {
-          "sha": "42f40c8dd9b550dbbc3e4336bfbb391184dc3914",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:38:22-06:00",
-          "message": "DO NOT MERGE: call Object.groupBy (Node 21) in Panel.render to prove node-floor goes red (rich-packaging-8b7)\n"
-        },
-        {
-          "sha": "0fcc392f45ee90913c706b6c5c89521da543ad9d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:38:08-06:00",
-          "message": "ci(node-floor): install the packed tarball on the engines.node floor and render it (rich-packaging-8b7)\n\nThe node-floor gate compares declarations and never runs src/, and every\njob takes its Node from node-version-file, which setup-node resolves to the\nnewest satisfying version. So an API newer than the floor in src/ was caught\nby nobody. .github/actions/node-floor packs the tarball, derives the floor\nfrom engines.node with semver.minVersion, installs into an empty project\nunder engine-strict on that Node, and asserts the render's text. ci.yml runs\nit on every PR; publish.yml gates the publish job on it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "49b777d4389fe87f91772e750793b41ebc51c9d6",
-      "timestamp": "2026-09-29T20:32:02.401Z",
+      "sha": "b16e52cfa6aada335a1bea880dcbaa7980de7ed6",
+      "timestamp": "2026-09-29T20:53:32.903Z",
       "commits": [
         {
-          "sha": "49b777d4389fe87f91772e750793b41ebc51c9d6",
+          "sha": "b16e52cfa6aada335a1bea880dcbaa7980de7ed6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:31:11-06:00",
-          "message": "test(strip): pin edgeStyle's exclusive span end (rich-style-tdn.7ip) (#216)\n\nA span [0, 1) on a 2-column cell must leave the right edge at the base\nstyle. Every earlier span test placed its span where an inclusive end\nagreed; this one fails under `pos <= span.end` and passes under the\nreal predicate.\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T14:52:40-06:00",
+          "message": "ci(node-floor): run the packed tarball on the engines.node floor (rich-packaging-8b7) (#217)\n\n* ci(node-floor): install the packed tarball on the engines.node floor and render it (rich-packaging-8b7)\n\nThe node-floor gate compares declarations and never runs src/, and every\njob takes its Node from node-version-file, which setup-node resolves to the\nnewest satisfying version. So an API newer than the floor in src/ was caught\nby nobody. .github/actions/node-floor packs the tarball, derives the floor\nfrom engines.node with semver.minVersion, installs into an empty project\nunder engine-strict on that Node, and asserts the render's text. ci.yml runs\nit on every PR; publish.yml gates the publish job on it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* DO NOT MERGE: call Object.groupBy (Node 21) in Panel.render to prove node-floor goes red (rich-packaging-8b7)\n\n* Revert \"DO NOT MERGE: call Object.groupBy (Node 21) in Panel.render to prove node-floor goes red (rich-packaging-8b7)\"\n\nThis reverts commit 42f40c8dd9b550dbbc3e4336bfbb391184dc3914.\n\n* ci(node-floor): probe the shipped dist, install floor-admitting peers, refuse multi-set ranges (rich-packaging-8b7)\n\nReview (high) fixes:\n- publish.yml's node-floor now probes the gate job's dist artifact, the bytes\n  npm publish ships, instead of a rebuild; provisioning moves to the callers\n- floor.mjs derives the floor and installs each optional peer whose locked\n  engines admit it, so ./widgets (mobx declares no engines) runs at the floor\n- an engines.node of several comparator sets fails instead of being half-probed\n- CLAUDE.md and node-floor.ts state the probe's blind spot, and the\n  node-version-file rule names the computed-floor exception\n\n* ci(node-floor): install each floor-admitted peer at its locked version (rich-packaging-8b7)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     },
