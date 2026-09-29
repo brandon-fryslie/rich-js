@@ -4,15 +4,22 @@
     {
       "version": "pr-208",
       "ref": "refs/pull/208/merge",
-      "sha": "eea3a6c16084be1b5ed4f699b19a8f788c17392a",
-      "timestamp": "2026-09-29T17:17:56.846Z",
+      "sha": "7739959c6aec389a4110070f2d045088eff31435",
+      "timestamp": "2026-09-29T17:21:44.639Z",
       "commits": [
         {
-          "sha": "eea3a6c16084be1b5ed4f699b19a8f788c17392a",
+          "sha": "7739959c6aec389a4110070f2d045088eff31435",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:16:55Z",
-          "message": "Merge 4ca6723a30ad14b437b37bf39b48ad58d65a172f into f921ed462e35b6194044226d4769a76ee91e9ac8\n"
+          "timestamp": "2026-09-29T17:20:49Z",
+          "message": "Merge 6199e51d89246eee5361ca53204c69e14abcbe96 into f921ed462e35b6194044226d4769a76ee91e9ac8\n"
+        },
+        {
+          "sha": "6199e51d89246eee5361ca53204c69e14abcbe96",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T11:20:43-06:00",
+          "message": "fix(rich-dash): the first tick runs before any input is subscribed (rich-runtime-fna.5)\n"
         },
         {
           "sha": "4ca6723a30ad14b437b37bf39b48ad58d65a172f",
