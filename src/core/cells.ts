@@ -173,24 +173,49 @@ export function chopCells(text: string, maxWidth: CellCol): string[] {
   return lines;
 }
 
+// [LAW:no-shared-mutable-globals] A private memo, written only by `graphemes`.
+let segmenter: Intl.Segmenter | undefined;
+
 /**
- * Returns the largest prefix of `text` whose cell width fits within `cap` cells.
- * No padding — the returned string may be narrower than `cap` when the next
- * character is wide and would overshoot. Never wider than `cap` cells.
+ * The grapheme clusters of `text`, in order: the unit `string-width` measures,
+ * and so the unit `cellLen` of a whole string is the sum of. Summing `cellLen`
+ * over code points instead disagrees with it on every glyph built from several:
+ * `❤️` is 1 + 0 by code point and 2 as a cluster, `👨‍👩‍👧` is 6 and 2, and a cut
+ * between two of its code points leaves half a glyph.
+ */
+export function graphemes(text: string): string[] {
+  segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  return Array.from(segmenter.segment(text), (s) => s.segment);
+}
+
+/**
+ * Returns the largest prefix of `text` whose cell width fits within `cap` cells,
+ * cut between grapheme clusters. No padding — the returned string may be
+ * narrower than `cap` when the next glyph is wide and would overshoot. Never
+ * wider than `cap` cells.
  *
- * When the first character already exceeds `cap` cells, returns "" (the caller
- * must decide whether to force-take the character or skip it).
+ * When the first glyph already exceeds `cap` cells, returns "" (the caller
+ * must decide whether to force-take the glyph or skip it).
  */
 export function cellFit(text: string, cap: CellCol): string {
+  return fitClusters(graphemes(text), cap).join("");
+}
+
+/** `cellFit` from the other end: the largest suffix of `text` within `cap` cells. */
+export function cellFitEnd(text: string, cap: CellCol): string {
+  return fitClusters(graphemes(text).reverse(), cap).reverse().join("");
+}
+
+function fitClusters(clusters: string[], cap: CellCol): string[] {
   let w = 0;
-  let i = 0;
-  for (const ch of text) {
-    const cw = cellLen(ch);
+  let n = 0;
+  for (const cluster of clusters) {
+    const cw = cellLen(cluster);
     if (w + cw > cap) break;
     w += cw;
-    i += ch.length;
+    n++;
   }
-  return text.slice(0, i);
+  return clusters.slice(0, n);
 }
 
 /**

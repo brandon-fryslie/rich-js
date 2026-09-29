@@ -2,7 +2,7 @@
  * RichText — styled text with spans. The primary text type for the library.
  */
 
-import { cellLen, cellCount } from "./cells.js";
+import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, type CellCol } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
@@ -584,7 +584,10 @@ export class RichText implements Renderable, Measurable {
    *   in the middle.
    *
    * Marker default is `"\u2026"`. Pass `marker: ""` for raw cropping without an
-   * indicator glyph.
+   * indicator glyph. A marker wider than `width` is itself cut to the glyphs
+   * that fit, and the text takes whatever cells that leaves — all of them, when
+   * not one glyph of the marker fits — so the result is never wider than asked.
+   * Every cut, marker and text alike, falls between grapheme clusters.
    *
    * Spans are preserved through the cut: characters that survive keep their
    * styling; the marker (if any) is inserted as plain text with no span.
@@ -604,14 +607,12 @@ export class RichText implements Renderable, Measurable {
     if (this.cellLength <= width) return this;
 
     const mode = options?.mode ?? "right";
-    const marker = options?.marker ?? "\u2026";
-
-    const markerWidth = cellLen(marker);
-    if (width <= 0) {
-      this.plain = "";
-      return this;
-    }
-    const budget = Math.max(0, width - markerWidth);
+    // [LAW:dataflow-not-control-flow] the marker is fitted to the width as a
+    // value, so width 0 and a marker wider than the width run the same walk
+    // as every other call: what is drawn plus what is kept is `cells` wide.
+    const cells = cellCount(width);
+    const marker = cellFit(options?.marker ?? "\u2026", cells);
+    const budget = asCellCol(cells - cellLen(marker));
 
     if (mode === "right") {
       this._cropRightTo(budget);
@@ -629,11 +630,11 @@ export class RichText implements Renderable, Measurable {
     }
 
     // middle
-    const leftBudget = Math.floor(budget / 2);
-    const rightBudget = budget - leftBudget;
+    const leftBudget = asCellCol(Math.floor(budget / 2));
+    const rightBudget = asCellCol(budget - leftBudget);
     // Find the char-index ranges to keep from each side.
-    const leftEndCharIdx = this._cellPrefixCharLength(leftBudget);
-    const rightStartCharIdx = this._cellSuffixStartCharIndex(rightBudget);
+    const leftEndCharIdx = cellFit(this._text, leftBudget).length;
+    const rightStartCharIdx = this._text.length - cellFitEnd(this._text, rightBudget).length;
     const leftText = this._text.slice(0, leftEndCharIdx);
     const rightText = this._text.slice(rightStartCharIdx);
     const droppedStart = leftEndCharIdx;
@@ -662,13 +663,12 @@ export class RichText implements Renderable, Measurable {
     return this;
   }
 
-  private _cropRightTo(targetWidth: number): void {
-    const charIdx = this._cellPrefixCharLength(targetWidth);
-    this.plain = this._text.slice(0, charIdx);
+  private _cropRightTo(targetWidth: CellCol): void {
+    this.plain = cellFit(this._text, targetWidth);
   }
 
-  private _cropLeftTo(targetWidth: number): void {
-    const charIdx = this._cellSuffixStartCharIndex(targetWidth);
+  private _cropLeftTo(targetWidth: CellCol): void {
+    const charIdx = this._text.length - cellFitEnd(this._text, targetWidth).length;
     // Shift spans left by charIdx; clip spans that started before.
     const shift = -charIdx;
     this._spans = this._spans
@@ -680,34 +680,6 @@ export class RichText implements Renderable, Measurable {
       })
       .filter((s): s is Span => s !== undefined);
     this._text = this._text.slice(charIdx);
-  }
-
-  /** Number of char-index code units that fit within `targetWidth` cell columns from the left. */
-  private _cellPrefixCharLength(targetWidth: number): number {
-    let width = 0;
-    let charIndex = 0;
-    for (const char of this._text) {
-      const charWidth = cellLen(char);
-      if (width + charWidth > targetWidth) break;
-      width += charWidth;
-      charIndex += char.length;
-    }
-    return charIndex;
-  }
-
-  /** Char-index at which the suffix of `targetWidth` cell columns starts. */
-  private _cellSuffixStartCharIndex(targetWidth: number): number {
-    // Walk from right: accumulate widths of trailing chars until we hit the budget.
-    const chars: string[] = [...this._text];
-    let width = 0;
-    let kept = 0;
-    for (let i = chars.length - 1; i >= 0; i--) {
-      const w = cellLen(chars[i]!);
-      if (width + w > targetWidth) break;
-      width += w;
-      kept += chars[i]!.length;
-    }
-    return this._text.length - kept;
   }
 
   // --- Alignment ---

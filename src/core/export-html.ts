@@ -13,7 +13,7 @@
  * is narrower than the terminal was.
  */
 
-import { cellLen } from "./cells.js";
+import { cellLen, graphemes } from "./cells.js";
 import type { TerminalTheme } from "./color.js";
 import type { Segment } from "./segment.js";
 import { exportCanvas, exportLines, type ExportLook, type ExportRun } from "./export-lines.js";
@@ -100,11 +100,6 @@ const ONE_CELL = /^[\x20-\x7e]*$/;
 const cellBox = (cells: number): readonly string[] =>
   ["display:inline-block", `width:${cells}ch`, "text-align:center", "text-decoration:inherit"];
 
-// [LAW:no-shared-mutable-globals] A private memo, written only by `onGrid`.
-// Made on first use, not at import: a module the main barrel reaches must load
-// in an engine without Intl.Segmenter, which then fails only if it exports.
-let graphemes: Intl.Segmenter | undefined;
-
 /**
  * `text` with each stretch of graphemes wider than one cell in one box as wide
  * as their cells together, and `draw` applied to every stretch of escaped text
@@ -123,8 +118,7 @@ function onGrid(text: string, draw: (escaped: string) => string): string {
     stretch = "";
     wideCells = 0;
   };
-  graphemes ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
-  for (const { segment } of graphemes.segment(text)) {
+  for (const segment of graphemes(text)) {
     const cells = cellLen(segment);
     const wide = cells === 0 ? wideCells > 0 : cells > 1;
     if (wide !== (wideCells > 0)) flush();
