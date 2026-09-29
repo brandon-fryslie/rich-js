@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-230",
+      "ref": "refs/pull/230/merge",
+      "sha": "4d529af2074d3bc4117d33551ed6ba2e9b3d1b31",
+      "timestamp": "2026-09-29T23:09:02.197Z",
+      "commits": [
+        {
+          "sha": "4d529af2074d3bc4117d33551ed6ba2e9b3d1b31",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:08:17Z",
+          "message": "Merge f1ec270c3943d857419c9721702e499575f50ec2 into 3f470212f0ca8caa296b0e3825858f0c9de1cc5e\n"
+        },
+        {
+          "sha": "f1ec270c3943d857419c9721702e499575f50ec2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:08:12-06:00",
+          "message": "fix(ratio): split in exact integers, as Rich's ratio_distribute does (rich-table-d1uy)\n\nA double's ratio * remaining rounds past 2^53, so near MAX_SAFE_INTEGER the\nparts stopped summing to the total — reachable from Table.measure's declared\nbranch at an unbounded offer. The stretch comment no longer claims the\ncolumns it weighs are Rich's.\n"
+        },
+        {
+          "sha": "9bd1bc28dc1e52ae094490b7d82b7f8dfd7bc2fa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:00:00-06:00",
+          "message": "fix(table): stretch an expanding table by Rich's ratio_distribute (rich-table-d1uy)\n\nAn expanding table handed its leftover cells out by largest remainder over\ncontent widths; Rich 9d8f9a3 uses ratio_distribute over widths that include\npadding, rounding each share up. The two agree on totals and disagree on\nwhich column takes a leftover cell. The stretch now goes through\nratioDistribute (src/renderables/ratio.ts), weighted by padded width.\n\nThe rowless maxWidth 7/3 frame the suite pinned as \"Rich's own output\" was\nnot: Rich prints 24/13 there, which is what this renders.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-231",
       "ref": "refs/pull/231/merge",
       "sha": "9f4f54658e7356d1d1e5b68e163e75c826422651",
@@ -20,28 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T17:01:19-06:00",
           "message": "fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf)\n\nA scalar, a self-describing value, or a marker placed inside a container\nis cut to the width left on its line; its continuation lines, its own\nincluded, hang one indent past its slot. A value whose first word does\nnot fit after its key starts on a hanging line. The root stays unplaced:\nits line is its caller's.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-230",
-      "ref": "refs/pull/230/merge",
-      "sha": "a77edbbd44729f9bc79b6b9bd380885797190878",
-      "timestamp": "2026-09-29T23:02:00.103Z",
-      "commits": [
-        {
-          "sha": "a77edbbd44729f9bc79b6b9bd380885797190878",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:00:56Z",
-          "message": "Merge 9bd1bc28dc1e52ae094490b7d82b7f8dfd7bc2fa into 3f470212f0ca8caa296b0e3825858f0c9de1cc5e\n"
-        },
-        {
-          "sha": "9bd1bc28dc1e52ae094490b7d82b7f8dfd7bc2fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:00:00-06:00",
-          "message": "fix(table): stretch an expanding table by Rich's ratio_distribute (rich-table-d1uy)\n\nAn expanding table handed its leftover cells out by largest remainder over\ncontent widths; Rich 9d8f9a3 uses ratio_distribute over widths that include\npadding, rounding each share up. The two agree on totals and disagree on\nwhich column takes a leftover cell. The stretch now goes through\nratioDistribute (src/renderables/ratio.ts), weighted by padded width.\n\nThe rowless maxWidth 7/3 frame the suite pinned as \"Rich's own output\" was\nnot: Rich prints 24/13 there, which is what this renders.\n"
         }
       ]
     },
