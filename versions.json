@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-190",
-      "ref": "refs/pull/190/merge",
-      "sha": "750499a9502364127b8a6299767dd749f4c65d6e",
-      "timestamp": "2026-09-29T11:24:48.071Z",
-      "commits": [
-        {
-          "sha": "750499a9502364127b8a6299767dd749f4c65d6e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:23:59Z",
-          "message": "Merge 333841f070502f4d1b9968100075b391d054e1ab into ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3\n"
-        },
-        {
-          "sha": "333841f070502f4d1b9968100075b391d054e1ab",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T05:23:54-06:00",
-          "message": "fix(examples): review pass — roots stay reachable, panes open per subject, items count at the viewport's width (rich-viewport-owi.6)\n\n- Tree and sidebar keep a line either side of the selection in view, so\n  the root comes back above the first entry once a pane has scrolled.\n- Viewport.contentWidth names the width its content renders at; render\n  and measure use it, and ItemsInView counts lines at it, so a scrollbar\n  no longer desyncs the selection range from the lines shown.\n- ViewportPerSubject (examples/shared) replaces rich-explore's inline\n  previewOf and gives claude-sessions' viewer and results a viewport per\n  session and per query, instead of inheriting the last one's scroll.\n- The first frame renders inside the promise whose cleanup restores the\n  terminal, so a throw there no longer strands raw mode and the alt screen.\n"
-        },
-        {
-          "sha": "286642c336ce2249f97dd325fae4af86e0a81b45",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T05:13:05-06:00",
-          "message": "refactor(examples): every scrolling pane is a Viewport; the hand-rolled clipping is gone (rich-viewport-owi.6)\n\n`examples/shared/window.ts`, its rich-explore re-export, and the inline\nclip-and-centre code in the claude-sessions viewer and global-results panes\nare deleted. The tree, sidebar, viewer, results and preview panes each keep\none Viewport across frames and follow the selection with `ensureVisible`.\n\nBehaviour changes worth knowing:\n- The selection is kept in view by the least scroll, not centred.\n- claude-sessions draws through Live's alt screen, which hands the frame\n  an exact region; its panes no longer compute their own heights.\n- rich-explore's preview scroll lives in its viewport, not AppState; `G`\n  stops at the last full view instead of scrolling into blank rows.\n- The claude-sessions browser/viewer split is now `ratio` 1:3, which shows\n  Layout's dropped-remainder row (rich-layout-xvv).\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3",
-      "timestamp": "2026-09-29T10:57:45.958Z",
+      "sha": "a7dfd93578a8a1297aceca6c9ee1b5ae0de6a830",
+      "timestamp": "2026-09-29T11:27:48.271Z",
       "commits": [
         {
-          "sha": "ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3",
+          "sha": "a7dfd93578a8a1297aceca6c9ee1b5ae0de6a830",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:56:53-06:00",
-          "message": "fix(host): a terminal host carries its environment, so browser demos draw truecolor (rich-demos-5a42) (#189)\n\n* fix(host): a terminal host carries its environment, so browser demos draw truecolor (rich-demos-5a42)\n\nIn the browser, Console and Screen detected colour from the ambient\n`process`, which is absent there: an unnamed TTY, so 16-colour depth.\n`#fd8019` drew ANSI yellow, palette greens and teals drew grey.\n\n- TerminalHost gains `env`; BrowserTerminalHost states xterm.js's\n  (`xterm-256color`, `COLORTERM=truecolor`), NodeTerminalHost takes\n  `process.env` or an injected map.\n- `hostStream(host)` is replaced by `hostEnvironment(host)`, a whole\n  ConsoleEnvironment: bytes, TTY, live size and colour all come from the\n  host. The demos' `getSize` workarounds for the same fault are gone.\n- Screen detects under \"auto\" from `host.env`.\n\nVerified: every /demos/ page's distinct SGR colours match the same demo in a\ntruecolor pty, dark and light (rich-explore adds magenta for the browser\nfixture's icon.png, a content difference).\n\n* fix(host): the host's size wins over an exported COLUMNS; stderr lands on the same host (rich-demos-5a42)\n\nhostEnvironment drops COLUMNS/LINES from the env it hands on, so a node\nhost launched from a shell exporting them still follows resizes, and\nanswers stderr with the same stream. Stale getSize comment in rich-dash\nrewritten; screen tests no longer cast their streams.\n\n* fix(host): a console asks whether the host's output is a terminal, not whether the session is (rich-demos-5a42)\n\nTerminalHost.isTTY means interactive, stdin and stdout both. Colour is\na question about output alone, so the host gains writesToTerminal and\nhostEnvironment and Screen's detection read it: a one-shot demo with\npiped stdin on a terminal stdout draws colour again, as forceTerminal\nused to."
+          "timestamp": "2026-09-29T05:26:54-06:00",
+          "message": "refactor(examples): every scrolling pane is a Viewport; the hand-rolled clipping is gone (rich-viewport-owi.6) (#190)\n\n* refactor(examples): every scrolling pane is a Viewport; the hand-rolled clipping is gone (rich-viewport-owi.6)\n\n`examples/shared/window.ts`, its rich-explore re-export, and the inline\nclip-and-centre code in the claude-sessions viewer and global-results panes\nare deleted. The tree, sidebar, viewer, results and preview panes each keep\none Viewport across frames and follow the selection with `ensureVisible`.\n\nBehaviour changes worth knowing:\n- The selection is kept in view by the least scroll, not centred.\n- claude-sessions draws through Live's alt screen, which hands the frame\n  an exact region; its panes no longer compute their own heights.\n- rich-explore's preview scroll lives in its viewport, not AppState; `G`\n  stops at the last full view instead of scrolling into blank rows.\n- The claude-sessions browser/viewer split is now `ratio` 1:3, which shows\n  Layout's dropped-remainder row (rich-layout-xvv).\n\n* fix(examples): review pass — roots stay reachable, panes open per subject, items count at the viewport's width (rich-viewport-owi.6)\n\n- Tree and sidebar keep a line either side of the selection in view, so\n  the root comes back above the first entry once a pane has scrolled.\n- Viewport.contentWidth names the width its content renders at; render\n  and measure use it, and ItemsInView counts lines at it, so a scrollbar\n  no longer desyncs the selection range from the lines shown.\n- ViewportPerSubject (examples/shared) replaces rich-explore's inline\n  previewOf and gives claude-sessions' viewer and results a viewport per\n  session and per query, instead of inheriting the last one's scroll.\n- The first frame renders inside the promise whose cleanup restores the\n  terminal, so a throw there no longer strands raw mode and the alt screen."
         }
       ]
     }
