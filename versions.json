@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-199",
+      "ref": "refs/pull/199/merge",
+      "sha": "5d62fd5c1362994e4ffbcbcd608ca360faf7fc2a",
+      "timestamp": "2026-09-29T13:06:55.216Z",
+      "commits": [
+        {
+          "sha": "5d62fd5c1362994e4ffbcbcd608ca360faf7fc2a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:05:58-06:00",
+          "message": "Merge eb1e17964a848990e74a24cc45801e4da97488b1 into 09c34e93c05bb98ab33aef129b0a19c2c2b3323e\n"
+        },
+        {
+          "sha": "eb1e17964a848990e74a24cc45801e4da97488b1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:05:48-06:00",
+          "message": "docs(markup): a page for plugin tags — registering, the handler contract, which registry, and why pairs must nest (rich-docs-qi5)\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "09c34e93c05bb98ab33aef129b0a19c2c2b3323e",
