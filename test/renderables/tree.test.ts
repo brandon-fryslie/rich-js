@@ -96,12 +96,12 @@ describe("Tree", () => {
       expect(lines.some((l) => l.includes("Leaf"))).toBe(true);
     });
 
-    it("uses ASCII guides when asciiOnly is true", () => {
-      // [SPEC] asciiOnly: true — Uses +-- for guides
+    it("uses ASCII guides when asciiOnly is true, ending a sibling list with `--", () => {
       const tree = new Tree("Root");
-      tree.add("Child");
+      tree.add("a").add("b");
+      tree.add("c");
       const lines = collectLines(tree, { maxWidth: 40, asciiOnly: true });
-      expect(lines.some((l) => l.includes("+--"))).toBe(true);
+      expect(lines.map((l) => l.trimEnd())).toEqual(["Root", "+-- a", "|   `-- b", "`-- c"]);
     });
 
     it("hides children when expanded is false", () => {
@@ -113,13 +113,13 @@ describe("Tree", () => {
       expect(lines.some((l) => l.includes("Hidden"))).toBe(false);
     });
 
-    it("hides root when hideRoot is true", () => {
-      // [SPEC] hideRoot: true — Root label is hidden; children shown at top level
+    it("hides the root and the column its children hang from when hideRoot is true", () => {
       const tree = new Tree("Root", { hideRoot: true });
-      tree.add("Child");
+      tree.add("a").add("b");
+      tree.add("c");
       const lines = collectLines(tree, { maxWidth: 40 });
-      expect(lines.some((l) => l.includes("Root"))).toBe(false);
-      expect(lines.some((l) => l.includes("Child"))).toBe(true);
+      expect(lines.map((l) => l.trimEnd())).toEqual(["a", "└── b", "c"]);
+      expect(tree.measure({ maxWidth: 40 }).maximum).toBe(5);
     });
 
     it("applies guide_style to guide segments", () => {
@@ -185,13 +185,13 @@ describe("Tree", () => {
 
   it("stacks a node's guide style onto its ancestors' for the guides it opens", () => {
     const tree = new Tree("root", { guide_style: "red" });
-    tree.add("a", { guide_style: "bold" }).add("b");
+    tree.add("a", { guide_style: "italic" }).add("b");
     const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
     const [rail, branch] = lines[2]!;
     expect(rail!.text).toBe("    ");
     expect(rail!.style?.equals(Style.parse("red"))).toBe(true);
     expect(branch!.text).toBe("└── ");
-    expect(branch!.style?.equals(Style.parse("red bold"))).toBe(true);
+    expect(branch!.style?.equals(Style.parse("red italic"))).toBe(true);
   });
 
   // A label taller than one line once printed its later lines at column 0 and

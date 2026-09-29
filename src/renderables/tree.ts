@@ -33,7 +33,7 @@ const UNICODE_GUIDES: GuideGlyphs = {
 
 const ASCII_GUIDES: GuideGlyphs = {
   fork: { first: "+-- ", rest: "|   " },
-  end: { first: "+-- ", rest: "    " },
+  end: { first: "`-- ", rest: "    " },
 };
 
 export interface TreeOptions {
@@ -109,10 +109,20 @@ export class Tree implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    const glyphs = options.asciiOnly ? ASCII_GUIDES : UNICODE_GUIDES;
-    for (const row of this._rows(glyphs, [], !this.hideRoot, [])) {
+    for (const row of this._walk(options)) {
       yield* this._renderRow(options, row);
     }
+  }
+
+  /**
+   * The rows `render` and `measure` both read, entered in exactly one place so
+   * the two cannot start the walk differently. A hidden root takes its own row
+   * and the column its children hang from with it, as Rich does — its children
+   * stand at the left edge, and its guide style still reaches their guides.
+   */
+  private _walk(options: RenderOptions): TreeRow[] {
+    const rows = [...this._rows(options.asciiOnly ? ASCII_GUIDES : UNICODE_GUIDES, [], [])];
+    return this.hideRoot ? rows.slice(1).map((row) => ({ ...row, guides: row.guides.slice(1) })) : rows;
   }
 
   /**
@@ -131,17 +141,16 @@ export class Tree implements Renderable, Measurable {
   private *_rows(
     glyphs: GuideGlyphs,
     guides: readonly Guide[],
-    showLabel: boolean,
     inherited: ReadonlyArray<string | Style>,
   ): Iterable<TreeRow> {
-    if (showLabel) yield { guides, label: this.label };
+    yield { guides, label: this.label };
 
     const children = this.expanded ? this.children : [];
     const styles = [...inherited, this.guideStyle];
     const above = guides.map((guide) => ({ ...guide, first: guide.rest }));
     for (let i = 0; i < children.length; i++) {
       const branch = i === children.length - 1 ? glyphs.end : glyphs.fork;
-      yield* children[i]!._rows(glyphs, [...above, { ...branch, styles }], true, styles);
+      yield* children[i]!._rows(glyphs, [...above, { ...branch, styles }], styles);
     }
   }
 
@@ -199,8 +208,7 @@ export class Tree implements Renderable, Measurable {
     // mode drew a 40-cell frame around nine cells of tree, and an unbounded
     // offer came back unbounded.
     let natural = 0;
-    const glyphs = parsed.asciiOnly ? ASCII_GUIDES : UNICODE_GUIDES;
-    for (const row of this._rows(glyphs, [], !this.hideRoot, [])) {
+    for (const row of this._walk(parsed)) {
       const guideWidth = row.guides.reduce((sum, guide) => sum + cellLen(guide.first), 0);
       natural = Math.max(natural, guideWidth + labelWidth(parsed, row.label));
     }
