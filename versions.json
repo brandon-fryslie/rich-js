@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-229",
+      "ref": "refs/pull/229/merge",
+      "sha": "b5e99925759cde27b8e99ee6a752a7192127822f",
+      "timestamp": "2026-09-29T22:39:39.800Z",
+      "commits": [
+        {
+          "sha": "b5e99925759cde27b8e99ee6a752a7192127822f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:38:16-06:00",
+          "message": "Merge 607423c67ba606272a38eb73369cddd1605e43b8 into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
+        },
+        {
+          "sha": "607423c67ba606272a38eb73369cddd1605e43b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:38:06-06:00",
+          "message": "fix(renderables): every exported renderable ends its own line or is listed as a fragment (rich-flexstrip-5kf.4cq)\n\nSpinner, Status, Pretty, JSON and a Layout leaf left their last line open,\nso a Group ran what followed onto it; Rich ends all five. test/seam/line-ends.ts\nderives every exported Renderable class and requires an entry saying which\nside of the line it sits on, rendering each to check. ProgressBar, Emoji and\nthe Progress columns are fragments, as in Rich.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-228",
       "ref": "refs/pull/228/merge",
       "sha": "b44c9fb3355eea1320171601a56890df5d9dc697",
