@@ -49,9 +49,9 @@ the Box Office figures, which cannot wrap, are cut short by their column's
 
 | Option | Description |
 |---|---|
-| `width` | Largest total width — the table sizes to its content up to this, and never past the width offered ([Narrow widths](#narrow-widths)) |
+| `width` | Total width — the table fills it as [`expand`](#sizing) does, as in Rich, but never wider than the width offered ([Narrow widths](#narrow-widths)) |
 | `minWidth` | Minimum total width |
-| `expand` | Fill the width offered. Every column first gets its natural width, then the cells left over are shared out in proportion to it; a column with a declared `width` keeps that width |
+| `expand` | Fill the width offered. Every column first gets its natural width, then the cells left over are shared out in proportion to it; a column with a declared `width` keeps that width. A declared table `width` implies it |
 
 ### Borders
 
@@ -100,11 +100,13 @@ printed after it.
 
 A declared `width` does not lift that bound. The table's outer width is the
 smaller of its `width` and the width it is offered, and both `render` and
-`measure` read that one number. Inside it the table sizes to its content as it
-would without a `width`, so a declared width is a ceiling rather than a size:
-a table declared at 40 whose content needs nine cells renders nine cells wide,
-and [`expand`](#sizing) is what fills it out to 40. Offered 12 columns, neither
-grows past 12.
+`measure` read that one number. A declared width is a size rather than a
+ceiling: it implies [`expand`](#sizing), as it does in Rich, so a table declared
+at 40 whose content needs nine cells still renders 40 wide and measures 40, and
+a `Panel` fitted round it is sized to match. Offered 12 columns, it renders 12.
+Rich would draw all 40 and let the terminal wrap them. It fills the way `expand`
+does, so a column with its own `width` keeps it: a table whose every column
+declares one is as wide as those columns, not 40, where Rich would stretch them.
 
 Cells go out in a fixed order — the two outer border columns, then one content
 cell for each column together with the divider in front of it, then the padding,
@@ -133,15 +135,15 @@ ladder.addRow(...widths.map(abc));
 console.print(ladder);
 ```
 
-Those are the widths at which this table's render lands exactly on the width
-requested. In between it sits on the previous rung — a padding level is bought
-for every column at once or not at all, so asking for 11 or 12 renders the same
-10 cells as asking for 10.
+Those are the widths at which a new step of that order completes. In between, a
+padding level is bought for every column at once or not at all, so the cells
+it cannot yet buy go to content instead: asked for 11, the table draws the
+10-cell rung with one more cell in its first column.
 
 Width 2 is the narrowest table that keeps its frame; below it the border columns
 are dropped too, and the table renders as bare content. In the other direction a
-table never grows past its natural width — offer it 200 columns and it still
-renders at 13 — unless it is built with [`expand`](#sizing).
+table with no declared width never grows past its natural width — offer it 200
+columns and it still renders at 13 — unless it is built with [`expand`](#sizing).
 
 Because the padding is bought before content grows back, a table between those
 two ladders spends cells on padding while its columns are still truncated. Wide

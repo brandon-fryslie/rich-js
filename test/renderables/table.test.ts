@@ -4,7 +4,7 @@ import { Panel } from "../../src/renderables/panel.js";
 import { RichText } from "../../src/core/text.js";
 import { MarkupError } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
-import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, SIMPLE, Box } from "../../src/core/box.js";
+import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, SIMPLE, SQUARE, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
 import { renderToString } from "../../src/core/render.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
@@ -526,6 +526,70 @@ describe("Table", () => {
         "┌──────────────────────────────────────┐",
         "└──────────────────────────────────────┘",
       ]);
+    });
+  });
+
+  // Every frame here is Python Rich's output for the same table at the same
+  // offer (`Table(width=40, box=box.SQUARE)`, console width 80).
+  describe("a declared width is the table's size, not a ceiling", () => {
+    const declared = (options: TableOptions = {}): Table => {
+      const t = new Table({ width: 40, box: SQUARE, ...options });
+      t.addColumn("A");
+      t.addColumn("B");
+      t.addRow("1", "2");
+      return t;
+    };
+    const FORTY = [
+      "┌───────────────────┬──────────────────┐",
+      "│ A                 │ B                │",
+      "├───────────────────┼──────────────────┤",
+      "│ 1                 │ 2                │",
+      "└───────────────────┴──────────────────┘",
+    ];
+
+    it("renders short content at the declared width", () => {
+      expect(collectLines(declared(), { maxWidth: 80 })).toEqual(FORTY);
+    });
+
+    // The reference's `expand` is `self._expand or self.width is not None`, so
+    // an explicit `expand=False` does not undo it there either.
+    it("is not undone by expand: false", () => {
+      expect(collectLines(declared({ expand: false }), { maxWidth: 80 })).toEqual(FORTY);
+    });
+
+    it("measures the declared width, bounded by the offer", () => {
+      expect(declared().measure({ maxWidth: 80 })).toEqual({ minimum: 9, maximum: 40 });
+      expect(declared().measure({ maxWidth: 20 })).toEqual({ minimum: 9, maximum: 20 });
+    });
+
+    it("renders at the offer when the offer is narrower", () => {
+      expect(collectLines(declared(), { maxWidth: 20 }).map(cellLen)).toEqual(Array<number>(5).fill(20));
+    });
+
+    // Not Rich's frame: Rich stretches declared-width columns to 40, and here a
+    // column's `width` holds under `expand` — the divergence `_columnDemands`
+    // names — so a table of fixed columns is as wide as they are.
+    it("leaves columns that declare their own width at that width", () => {
+      const t = new Table({ width: 40, box: SQUARE });
+      t.addColumn("A", { width: 3 });
+      t.addColumn("B", { width: 3 });
+      t.addRow("1", "2");
+      expect(collectLines(t, { maxWidth: 80 }).map(cellLen)).toEqual(Array<number>(5).fill(13));
+      expect(t.measure({ maxWidth: 80 }).maximum).toBe(13);
+    });
+
+    it("sizes a Panel that fits its content", () => {
+      const lines = collectLines(new Panel(declared(), { expand: false }), { maxWidth: 80 });
+      expect(lines.map(cellLen)).toEqual(Array<number>(lines.length).fill(44));
+    });
+
+    // An unbounded offer leaves nothing to fill, as with `expand`: the table
+    // falls back to its content rather than measuring as infinitely wide.
+    it("falls back to its content when neither width nor offer is finite", () => {
+      expect(declared({ width: Infinity }).measure({ maxWidth: Infinity })).toEqual({
+        minimum: 9,
+        maximum: 9,
+      });
     });
   });
 
