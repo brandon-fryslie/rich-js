@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-205",
+      "ref": "refs/pull/205/merge",
+      "sha": "cd1c47c3766c665b7052230584cc62df92a43d08",
+      "timestamp": "2026-09-29T14:01:56.756Z",
+      "commits": [
+        {
+          "sha": "cd1c47c3766c665b7052230584cc62df92a43d08",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T08:01:14-06:00",
+          "message": "Merge 1ab72cccce337a0d0c8b493b9b35310444a97592 into ea6e75d87583f84b8e69a2fdcc467ddcccac75aa\n"
+        },
+        {
+          "sha": "1ab72cccce337a0d0c8b493b9b35310444a97592",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T08:00:52-06:00",
+          "message": "feat(widgets): WidgetApp routes focus and the pointer through the composed tree (rich-runtime-fna.4)\n\nA widget now goes anywhere a renderable goes — a Panel, a Layout pane, a\nTable cell — and still takes focus, keys and clicks. WidgetApp is an App\nwhose view has widgets in it: focus moves in document order among the\nwidgets on the painted frame (RenderOptions.onDraw), overlays are painted\nafter the view below their owner's footprint, and the pointer reaches the\ninnermost widget that drew the cell.\n\nDefaultScreen, Screen, Placement, MountEntry and mount-driven focus\nregistration are deleted; the three demos that used them run on WidgetApp\nwith their layout expressed as Group / Columns / Layout. WidgetBase loses\n`visible` — presence in the view is visibility.\n\nApp now owns pointer reporting: the alternate surface turns it on in\nenter and off in leave, so every exit path hands it back; an inline frame\ngets none, since it does not know its screen row. App gains onPaint, which\nfocus settles on. The router no longer touches raw mode or the mouse.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ea6e75d87583f84b8e69a2fdcc467ddcccac75aa",
