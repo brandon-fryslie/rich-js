@@ -81,8 +81,10 @@ the Box Office figures, which cannot wrap, are cut short by their column's
 | `titleStyle`, `captionStyle` | Styles for title/caption text |
 | `titleJustify`, `captionJustify` | Alignment of title/caption |
 
-A cell's style covers the whole cell, padding included, so a background fills the
-column rather than sitting behind the text. The styles stack from the outside in:
+A cell's style covers the whole cell, its left and right padding included, so a
+background fills the column rather than sitting behind the text; on a box whose
+column dividers are blank, such as `SIMPLE`, a row's background runs under the
+dividers too. The styles stack from the outside in:
 a header cell takes the table's `headerStyle` and then its column's, a body cell
 its column's `style` and then the row's `rowStyles` entry, and markup in the cell
 text lands on top of both. The table's own `style` reaches the frame only, as in

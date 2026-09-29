@@ -634,12 +634,18 @@ export class Table implements Renderable, Measurable {
       yield* box.getTop(geometry.cellWidths, border, edge);
     }
 
+    // Every style a cell is drawn with, resolved once per render rather than
+    // once per cell, as the reference's `_get_cells` does per column.
+    const headerStyle = getStyle(options, this.headerStyle);
+    const footerStyle = getStyle(options, this.footerStyle);
+    const columnStyles = this._columns.map((c) => getStyle(options, c.style));
+    const stripes = this.rowStyles.map((s) => getStyle(options, s));
+
     // Header row
     if (this.showHeader) {
       const headerCells = this._columns.map((c) => c.header as Renderable);
-      const headerStyles = this._columns.map((c) =>
-        getStyle(options, this.headerStyle).add(getStyle(options, c.headerStyle)));
-      yield* this._renderRow(options, headerCells, headerStyles, geometry, box, "head", border);
+      const headerStyles = this._columns.map((c) => headerStyle.add(getStyle(options, c.headerStyle)));
+      yield* this._renderRow(options, headerCells, headerStyles, NULL_STYLE, geometry, box, "head", border);
 
       // Header separator
       if (box) {
@@ -652,12 +658,10 @@ export class Table implements Renderable, Measurable {
       const row = this._rows[rowIdx]!;
       const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? embeddedText(undefined));
 
-      const rowStyle = getStyle(options, this.rowStyles.length > 0
-        ? this.rowStyles[rowIdx % this.rowStyles.length]!
-        : NULL_STYLE);
-      const cellStyles = this._columns.map((c) => getStyle(options, c.style).add(rowStyle));
+      const rowStyle = stripes[rowIdx % stripes.length] ?? NULL_STYLE;
+      const cellStyles = columnStyles.map((s) => s.add(rowStyle));
 
-      yield* this._renderRow(options, rowCells, cellStyles, geometry, box, "row", border);
+      yield* this._renderRow(options, rowCells, cellStyles, rowStyle, geometry, box, "row", border);
 
       // Row separator
       const showSep = this.showLines || row.endSection;
@@ -672,9 +676,8 @@ export class Table implements Renderable, Measurable {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
       const footerCells = this._columns.map((c) => c.footer as Renderable);
-      const footerStyles = this._columns.map((c) =>
-        getStyle(options, this.footerStyle).add(getStyle(options, c.footerStyle)));
-      yield* this._renderRow(options, footerCells, footerStyles, geometry, box, "foot", border);
+      const footerStyles = this._columns.map((c) => footerStyle.add(getStyle(options, c.footerStyle)));
+      yield* this._renderRow(options, footerCells, footerStyles, NULL_STYLE, geometry, box, "foot", border);
     }
 
     // Bottom border
@@ -906,6 +909,7 @@ export class Table implements Renderable, Measurable {
     options: RenderOptions,
     cells: Renderable[],
     styles: Style[],
+    rowStyle: Style,
     geometry: TableGeometry,
     box: Box | null,
     level: RowLevel,
@@ -916,6 +920,14 @@ export class Table implements Renderable, Measurable {
     // [LAW:dataflow-not-control-flow] Header, body and footer share this path;
     // the level crosses as a value the box answers with glyphs, not a branch.
     const frame = box?.getContentChars(level);
+
+    // A divider drawn in blanks is part of the row's stripe, so it carries the
+    // row's background under the border's own style; one drawn in ink is the
+    // frame's alone. Header and footer rows have no row style, as in the
+    // reference, so their dividers are the border's either way.
+    const divider = frame && (frame.vertical.trim() === ""
+      ? new Segment(frame.vertical, rowStyle.backgroundStyle.add(border))
+      : new Segment(frame.vertical, border));
 
     // Render each cell onto the canvas the geometry gave its column. Columns
     // the width could not seat are absent from `columns` and so are never
@@ -938,6 +950,10 @@ export class Table implements Renderable, Measurable {
       return Segment.splitAndCropLines(segs, cellWidth);
     });
     const maxLines = cellLines.reduce((most, lines) => Math.max(most, lines.length), 1);
+    // How many blank lines stand above each cell's content. A header sits on
+    // the row's floor, so its column labels line up over the data, and every
+    // other row starts at the top — the reference forces both.
+    const drop = cellLines.map((lines) => (level === "head" ? maxLines - lines.length : 0));
 
     for (let lineIdx = 0; lineIdx < maxLines; lineIdx++) {
       if (frame && geometry.edge === 1) {
@@ -945,21 +961,21 @@ export class Table implements Renderable, Measurable {
       }
 
       for (let colIdx = 0; colIdx < columns.length; colIdx++) {
-        if (colIdx > 0 && frame) {
-          yield new Segment(frame.vertical, border);
+        if (colIdx > 0 && divider) {
+          yield divider;
         }
 
         const cellWidth = columns[colIdx]!;
         const style = styles[colIdx]!;
 
-        // A cell that ran out of lines contributes blanks, so every column
-        // spans the same number of rows and the frame stays rectangular.
-        const line = cellLines[colIdx]![lineIdx] ?? [new Segment(" ".repeat(cellWidth))];
+        // A cell with fewer lines than the row contributes blanks, so every
+        // column spans the same number of rows and the frame stays rectangular.
+        const line = cellLines[colIdx]![lineIdx - drop[colIdx]!] ?? [new Segment(" ".repeat(cellWidth))];
 
         // The cell's style is the base its content's own spans layer over, and
-        // it covers the whole cell — padding and blank lines too, as the
-        // reference's does — so a background fills the column rather than
-        // sitting behind the text alone.
+        // it covers the whole cell — its left and right padding and its blank
+        // lines too, as the reference's does — so a background fills the column
+        // rather than sitting behind the text alone.
         yield* Segment.applyStyle(
           [...blank(padLeft), ...line, ...blank(padRight)],
           style.isNull ? undefined : style,

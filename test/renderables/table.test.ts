@@ -4,7 +4,7 @@ import { Panel } from "../../src/renderables/panel.js";
 import { RichText } from "../../src/core/text.js";
 import { MarkupError } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
-import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
+import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, SIMPLE, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
 import { renderToString } from "../../src/core/render.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
@@ -1460,6 +1460,26 @@ describe("Table and Column styles", () => {
     t.addRow("x");
     expect(draw(t)).toBe(coalesce(
       "\x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m\n\x1b[42m \x1b[0m\x1b[42mx\x1b[0m\x1b[42m \x1b[0m\n",
+    ));
+  });
+
+  it("runs a row's background under a divider drawn in blanks", () => {
+    const t = new Table({ box: SIMPLE, rowStyles: ["on red"] });
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("x", "y");
+    expect(draw(t)).toBe(coalesce(
+      "         \n \x1b[1m \x1b[0m\x1b[1mA\x1b[0m\x1b[1m \x1b[0m \x1b[1m \x1b[0m\x1b[1mB\x1b[0m\x1b[1m \x1b[0m \n ─────── \n \x1b[41m \x1b[0m\x1b[41mx\x1b[0m\x1b[41m \x1b[0m\x1b[41m \x1b[0m\x1b[41m \x1b[0m\x1b[41my\x1b[0m\x1b[41m \x1b[0m \n         \n",
+    ));
+  });
+
+  it("sits a short header on the row's floor, its style filling the lines above", () => {
+    const t = new Table({ headerStyle: "on white" });
+    t.addColumn("A");
+    t.addColumn("p q", { width: 1 });
+    t.addRow("x", "y");
+    expect(draw(t)).toBe(coalesce(
+      "┏━━━┳━━━┓\n┃\x1b[47m   \x1b[0m┃\x1b[47m \x1b[0m\x1b[47mp\x1b[0m\x1b[47m \x1b[0m┃\n┃\x1b[47m \x1b[0m\x1b[47mA\x1b[0m\x1b[47m \x1b[0m┃\x1b[47m \x1b[0m\x1b[47mq\x1b[0m\x1b[47m \x1b[0m┃\n┡━━━╇━━━┩\n│ x │ y │\n└───┴───┘\n",
     ));
   });
 });
