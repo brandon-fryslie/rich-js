@@ -21,6 +21,7 @@ export type Action =
   | { type: "search-next" }
   | { type: "search-prev" }
   | { type: "search-exit" }
+  | { type: "suspend" }
   | { type: "quit" }
   | { type: "none" };
 
@@ -61,7 +62,8 @@ const KEYMAP: Record<string, Action> = {
   "N": { type: "search-prev" },
   "\x1b": { type: "search-exit" },
 
-  // Quit
+  // Lifecycle — Ctrl+Z and Ctrl+C are keys in raw mode
+  "\x1a": { type: "suspend" },
   "q": { type: "quit" },
   "\x03": { type: "quit" },
 };

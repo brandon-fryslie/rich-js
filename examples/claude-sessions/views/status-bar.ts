@@ -1,4 +1,4 @@
-import type { Renderable } from "../../../src/index.js";
+import { escapeMarkup, type Renderable } from "../../../src/index.js";
 import type { AppState } from "../state.js";
 import { markup } from "./block-renderers/_common.js";
 
@@ -14,6 +14,7 @@ const SIDEBAR_HINTS: ReadonlyArray<Hint> = [
   { key: "tab", label: "focus" },
   { key: "\\", label: "hide" },
   { key: "S", label: "search all" },
+  { key: "^z", label: "suspend" },
   { key: "q", label: "quit" },
 ];
 
@@ -30,6 +31,7 @@ const VIEWER_HINTS: ReadonlyArray<Hint> = [
   { key: "S", label: "find all" },
   { key: "n/N", label: "next/prev" },
   { key: "tab", label: "focus" },
+  { key: "^z", label: "suspend" },
   { key: "q", label: "quit" },
 ];
 
@@ -52,7 +54,7 @@ export function buildStatusBar(state: AppState): Renderable {
   }
   // Build the entire bar as a single markup string
   const parts = hints.map((h) =>
-    `[bold white on blue]${h.key}[/bold white on blue] [white on blue]${h.label}[/white on blue]`,
+    `[bold white on blue]${escapeMarkup(h.key)}[/bold white on blue] [white on blue]${escapeMarkup(h.label)}[/white on blue]`,
   );
   const src = `[on blue] ${parts.join("  ")} [/on blue]`;
   return markup(src);

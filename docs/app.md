@@ -74,4 +74,4 @@ In raw mode Ctrl+Z reaches the program as a key (`"\x1a"`), not as the signal th
 
 Build the app over a `BrowserTerminalHost` instead — it wraps an [xterm.js](https://xtermjs.org) terminal — and nothing else changes. The page owns the terminal, so in a browser nothing ends the program under the app, and `suspend()` hands the terminal back and takes it again at once.
 
-The `rich-explore` demo is an `App`; it runs from `npm run demo` in node and on this site's [demos page](/demos/) from the same source.
+The `rich-explore`, `rich-dash` and `claude-sessions` demos are each an `App`; each runs in node from its own npm script and on this site's [demos page](/demos/) from the same source.

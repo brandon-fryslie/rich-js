@@ -132,7 +132,6 @@ const FIXTURE_TREE: MemoryTree = {
 
 export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
-  host.start();
   const fs = new MemoryFileSystem(FIXTURE_TREE);
   // run() resolves on a "quit" action — `q` and Ctrl-C both map to quit in
   // keymap.ts, and xterm delivers those keystrokes here just like a terminal

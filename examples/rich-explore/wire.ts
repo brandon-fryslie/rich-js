@@ -135,7 +135,6 @@ const FIXTURE_TREE: MemoryTree = {
 
 export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
-  host.start();
   const fs = new MemoryFileSystem(FIXTURE_TREE);
   // `run()` resolves on a quit action; in the browser `q`/Ctrl-C are still
   // delivered by xterm so the same termination path applies. Page shell
