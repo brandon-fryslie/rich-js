@@ -83,7 +83,7 @@ describe("runInTerminal", () => {
     await runInTerminal(await bundleExample(TABLE_PROGRAM), term);
 
     const written = term.output.join("");
-    expect(written).toContain("\x1b[38;2;255;136;0;1mEarth");
+    expect(written).toContain("\x1b[1;38;2;255;136;0mEarth");
     const lines = stripAnsi(written).split("\n").filter((line) => line !== "");
     expect(lines.length).toBeGreaterThan(4);
     for (const line of lines) expect(cellLen(line)).toBe(75);

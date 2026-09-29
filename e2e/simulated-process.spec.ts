@@ -71,7 +71,7 @@ test("a new Console() prints a styled Table into the page's terminal", async ({ 
   );
 
   const written = run.output.join("");
-  expect(written).toContain("\x1b[38;2;255;136;0;1mEarth");
+  expect(written).toContain("\x1b[1;38;2;255;136;0mEarth");
   const lines = stripAnsi(written).split("\n").filter((line) => line !== "");
   expect(lines.length).toBeGreaterThan(3);
   for (const line of lines) expect(line).toHaveLength(75);
