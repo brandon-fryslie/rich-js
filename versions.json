@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-228",
+      "ref": "refs/pull/228/merge",
+      "sha": "8e8083f295192e3b1a035695c332ff0bb250904f",
+      "timestamp": "2026-09-29T22:40:36.008Z",
+      "commits": [
+        {
+          "sha": "8e8083f295192e3b1a035695c332ff0bb250904f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:39:07Z",
+          "message": "Merge ebdb506811b5a32e7fb2500151137fcffabe3b4f into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
+        },
+        {
+          "sha": "ebdb506811b5a32e7fb2500151137fcffabe3b4f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:39:02-06:00",
+          "message": "fix(release): drop the unreachable npm.cmd branch\n"
+        },
+        {
+          "sha": "547429c4ffb53e7f23d2c4861d86e4df8df42429",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:37:55-06:00",
+          "message": "fix(release): entry-points guard reads npm's pack listing and cannot fail open\n\n- main() runs unconditionally: the argv[1] check exited 0 unchecked through any\n  symlinked path (macOS tmpdir included)\n- what ships is asked of `npm pack --dry-run --json`, not the disk\n- every missing entry point is named, on one stderr channel\n- tests run a byte copy against real fixture packages, pin the prepublishOnly\n  wiring and the repository field; publish.yml and CLAUDE.md name the gate\n"
+        },
+        {
+          "sha": "0bce42ce22959bba1cb095b28a44bdcc9dbf07ad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:32:46-06:00",
+          "message": "fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-229",
       "ref": "refs/pull/229/merge",
       "sha": "b5e99925759cde27b8e99ee6a752a7192127822f",
@@ -20,35 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:38:06-06:00",
           "message": "fix(renderables): every exported renderable ends its own line or is listed as a fragment (rich-flexstrip-5kf.4cq)\n\nSpinner, Status, Pretty, JSON and a Layout leaf left their last line open,\nso a Group ran what followed onto it; Rich ends all five. test/seam/line-ends.ts\nderives every exported Renderable class and requires an entry saying which\nside of the line it sits on, rendering each to check. ProgressBar, Emoji and\nthe Progress columns are fragments, as in Rich.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-228",
-      "ref": "refs/pull/228/merge",
-      "sha": "b44c9fb3355eea1320171601a56890df5d9dc697",
-      "timestamp": "2026-09-29T22:38:45.384Z",
-      "commits": [
-        {
-          "sha": "b44c9fb3355eea1320171601a56890df5d9dc697",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:38:00Z",
-          "message": "Merge 547429c4ffb53e7f23d2c4861d86e4df8df42429 into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
-        },
-        {
-          "sha": "547429c4ffb53e7f23d2c4861d86e4df8df42429",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:37:55-06:00",
-          "message": "fix(release): entry-points guard reads npm's pack listing and cannot fail open\n\n- main() runs unconditionally: the argv[1] check exited 0 unchecked through any\n  symlinked path (macOS tmpdir included)\n- what ships is asked of `npm pack --dry-run --json`, not the disk\n- every missing entry point is named, on one stderr channel\n- tests run a byte copy against real fixture packages, pin the prepublishOnly\n  wiring and the repository field; publish.yml and CLAUDE.md name the gate\n"
-        },
-        {
-          "sha": "0bce42ce22959bba1cb095b28a44bdcc9dbf07ad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:32:46-06:00",
-          "message": "fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n"
         }
       ]
     },
