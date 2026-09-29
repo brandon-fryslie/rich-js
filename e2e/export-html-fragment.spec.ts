@@ -5,9 +5,11 @@
  * fragment and its once-per-page CSS go in, and the fragment computes the same
  * in that host as in a blank page. The fragment's own shape is pinned in
  * test/core/export-html.test.ts; this is the property only a browser can show.
+ * So is the other: blink blinks, and holds still for a reader who asked for
+ * reduced motion.
  */
 import { test, expect, type Page } from "@playwright/test";
-import { encodeHtmlFragment, HTML_FRAGMENT_CSS } from "../src/core/export-html.js";
+import { encodeHtml, encodeHtmlFragment, HTML_FRAGMENT_CSS } from "../src/core/export-html.js";
 import { Segment } from "../src/core/segment.js";
 import { Style } from "../src/core/style.js";
 import { SOLARIZED_LIGHT } from "../src/themes/terminalThemes.js";
@@ -110,3 +112,36 @@ test("--rich-fragment-font on an ancestor reaches the rows through all:initial",
     expect(at(element, "line-height")).toBe("17.5px");
   }
 });
+
+// A blinking run, read with whatever animates it held halfway through its first
+// cycle: where the keyframes make the glyph transparent, unless the reader
+// asked for reduced motion. With empty keyframes a browser may run nothing at
+// all, so the run is found by its style, not by an animation.
+const BLINKING = [new Segment("blink", new Style({ blink: true }))];
+
+async function inkAtHalfCycle(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    const run = document.querySelector('pre span[style*="animation"]');
+    if (run === null) throw new Error("no blinking run");
+    for (const animation of run.getAnimations()) {
+      animation.pause();
+      animation.currentTime = 500;
+    }
+    return getComputedStyle(run).color;
+  });
+}
+
+for (const [where, load] of [
+  ["a fragment", async (page: Page) => { await page.setContent(BLANK); await embed(page, encodeHtmlFragment(BLINKING, SOLARIZED_LIGHT)); }],
+  ["a document", (page: Page) => page.setContent(encodeHtml(BLINKING, SOLARIZED_LIGHT))],
+] as const) {
+  test(`blink in ${where} blinks, and draws steadily with reduced motion`, async ({ page }) => {
+    await load(page);
+    expect(await inkAtHalfCycle(page)).toBe("rgba(0, 0, 0, 0)");
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await load(page);
+    const { red, green, blue } = SOLARIZED_LIGHT.foregroundColor;
+    expect(await inkAtHalfCycle(page)).toBe(`rgb(${red}, ${green}, ${blue})`);
+  });
+}
