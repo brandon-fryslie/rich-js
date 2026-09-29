@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-228",
+      "ref": "refs/pull/228/merge",
+      "sha": "b4d5fb8e3b3d47335148bb27adad50ead2801a53",
+      "timestamp": "2026-09-29T22:33:47.052Z",
+      "commits": [
+        {
+          "sha": "b4d5fb8e3b3d47335148bb27adad50ead2801a53",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:32:52-06:00",
+          "message": "Merge 0bce42ce22959bba1cb095b28a44bdcc9dbf07ad into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
+        },
+        {
+          "sha": "0bce42ce22959bba1cb095b28a44bdcc9dbf07ad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:32:46-06:00",
+          "message": "fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9a426139579b1cfb72fd2d2b824e893767fb249a",
