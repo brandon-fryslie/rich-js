@@ -82,6 +82,26 @@ escaped
 in  \\[red]escaped
 out [red]escaped
 
+backslash-pair
+in  \\\\[red]hi[/red]
+out \\\e[31mhi\e[0m
+
+backslash-triple
+in  \\\\\\[red]hi
+out \\[red]hi
+
+backslash-close
+in  [red]C:\\\\[/red]
+out \e[31mC:\\\e[0m
+
+backslash-no-tag
+in  a\\\\b [1]
+out a\\\\b [1]
+
+escaped-no-tag
+in  \\[1] kept
+out [1] kept
+
 mixed
 in  text [INFO] more [red]x[/red]
 out text [INFO] more \e[31mx\e[0m
