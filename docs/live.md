@@ -133,7 +133,7 @@ console.print(`[bold green]:check_mark: ${jobs.length} jobs done[/]`);
 
 ## Auto-refresh
 
-The default refresh rate is 4 times per second. Tune it with `refreshPerSecond`, or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`:
+The default refresh rate is 4 times per second. Tune it with `refreshPerSecond`, or turn auto-refresh off and draw each frame yourself with `refresh()` — or with `update(newRenderable, { refresh: true })`. A frame is drawn only between `start()` and `stop()`; outside them `refresh()` draws nothing, because the screen is no longer `Live`'s:
 
 ```typescript live
 const counter = new Panel("", { expand: false, borderStyle: "magenta" });
@@ -151,7 +151,7 @@ try {
 
 ## When a frame fails to render
 
-`Live` renders each frame in full before it writes anything, so a renderable whose `render` throws leaves the last good frame on the terminal, and the error goes to whoever called `refresh()`. If the auto-refresh timer is what called it, there is no caller: `Live` stops, shows the cursor and leaves the alternate screen, then lets the error go on uncaught. If the final frame `stop()` draws throws, `stop()` hands the terminal back the same way and then rethrows.
+`Live` renders each frame in full before it writes anything, so a renderable whose `render` throws leaves the last good frame on the terminal, and the error goes to whoever called `refresh()`. The renderable stays installed, so every later frame, the timer's included, fails the same way until `update` replaces it. If the auto-refresh timer is what called it, there is no caller: `Live` stops, shows the cursor and leaves the alternate screen, then lets the error go on uncaught; after that `refresh()` draws nothing and `stop()` has nothing left to do. If the final frame `stop()` draws throws, `stop()` hands the terminal back the same way and then rethrows.
 
 ## Vertical overflow
 

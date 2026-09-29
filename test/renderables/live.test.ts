@@ -59,30 +59,60 @@ describe("Live when a frame's render throws", () => {
     expect(out().slice(before)).toMatch(/^\x1b\[2J\x1b\[H/);
   });
 
-  it("an auto-refresh failure hands the terminal back before the error escapes", () => {
-    vi.useFakeTimers();
-    const { live: display, out } = live({ altScreen: true, refreshPerSecond: 10 });
-    display.start();
-    display.update(broken);
+  // What each mode writes to hand the terminal back.
+  const modes = [
+    ["inline", false, SHOW_CURSOR],
+    ["on the alternate screen", true, SHOW_CURSOR + EXIT_ALT_SCREEN],
+  ] as const;
 
-    expect(() => vi.advanceTimersByTime(100)).toThrow(RenderFailed);
-    expect(out().endsWith(SHOW_CURSOR + EXIT_ALT_SCREEN)).toBe(true);
+  it.each(modes)(
+    "an auto-refresh failure hands the terminal back before the error escapes %s",
+    (_mode, altScreen, handBack) => {
+      vi.useFakeTimers();
+      const { live: display, out } = live({ altScreen, refreshPerSecond: 10 });
+      display.start();
+      display.update(broken);
 
-    // The timer is gone and the display is stopped: nothing more is written.
-    const after = out();
-    vi.advanceTimersByTime(1000);
-    display.stop();
-    expect(out()).toBe(after);
-  });
+      expect(() => vi.advanceTimersByTime(100)).toThrow(RenderFailed);
+      expect(out().endsWith(handBack)).toBe(true);
 
-  it("stop() surfaces a failed final frame and still hands the terminal back", () => {
-    const { live: display, out } = live({ autoRefresh: false, altScreen: true });
-    display.start();
+      // The terminal is no longer this Live's: no timer, no frame, no second hand-back.
+      const after = out();
+      vi.advanceTimersByTime(1000);
+      display.update(new RichText("good"), { refresh: true });
+      display.stop();
+      expect(out()).toBe(after);
+    },
+  );
+
+  it.each(modes)(
+    "stop() surfaces a failed final frame and still hands the terminal back %s",
+    (_mode, altScreen, handBack) => {
+      const { live: display, out } = live({ autoRefresh: false, altScreen });
+      display.start();
+      display.refresh();
+      const drawn = out();
+      display.update(broken);
+
+      expect(() => display.stop()).toThrow(RenderFailed);
+      expect(out()).toBe(drawn + handBack);
+    },
+  );
+});
+
+describe("Live outside start() and stop()", () => {
+  it.each([
+    ["inline", false],
+    ["on the alternate screen", true],
+  ])("draws no frame %s", (_mode, altScreen) => {
+    const { live: display, out } = live({ autoRefresh: false, altScreen });
     display.refresh();
-    const drawn = out();
-    display.update(broken);
+    expect(out()).toBe("");
 
-    expect(() => display.stop()).toThrow(RenderFailed);
-    expect(out()).toBe(drawn + SHOW_CURSOR + EXIT_ALT_SCREEN);
+    display.start();
+    display.stop();
+    const stopped = out();
+    display.refresh();
+    expect(out()).toBe(stopped);
   });
 });

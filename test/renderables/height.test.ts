@@ -35,8 +35,10 @@ function sized(height: number): { console: Console; out: () => string } {
 function frame(renderable: Renderable, height: number, options: LiveOptions): string {
   const { console, out } = sized(height);
   const live = new Live(renderable, { console, autoRefresh: false, ...options });
+  live.start();
+  const before = out().length;
   live.refresh();
-  return out().replace(/^\x1b\[2J\x1b\[H/, "");
+  return out().slice(before).replace(/^\x1b\[2J\x1b\[H/, "");
 }
 
 describe("the Height a renderable receives", () => {
@@ -88,6 +90,7 @@ describe("alt-screen Live frames", () => {
   it("a shorter frame erases every row of the one before it", () => {
     const { console, out } = sized(4);
     const live = new Live(new Probe(4), { console, autoRefresh: false, altScreen: true });
+    live.start();
     live.refresh();
     const before = out().length;
     live.update(new Probe(1), { refresh: true });
@@ -103,8 +106,11 @@ describe("alt-screen Live frames", () => {
       colorSystem: null,
       file: { write: (s: string) => void chunks.push(s) },
     });
-    new Live(new RichText("hi", { end: "" }), { console, autoRefresh: false, altScreen: true }).refresh();
-    expect(chunks.join("").replace(/^\x1b\[2J\x1b\[H/, "").split("\n")).toEqual(["hi", ""].map(erased));
+    const live = new Live(new RichText("hi", { end: "" }), { console, autoRefresh: false, altScreen: true });
+    live.start();
+    const before = chunks.join("").length;
+    live.refresh();
+    expect(chunks.join("").slice(before).replace(/^\x1b\[2J\x1b\[H/, "").split("\n")).toEqual(["hi", ""].map(erased));
   });
 
   it("a transient stop leaves the buffer and erases nothing inside it", () => {

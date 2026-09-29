@@ -115,7 +115,10 @@ export class Live {
   }
 
   refresh(): void {
-    if (!this._renderable) return;
+    // A frame is drawn only while this Live holds the terminal, as in Rich:
+    // before `start()` or after the hand-back it would land on a screen that
+    // belongs to someone else — the main buffer, under the user's own output.
+    if (!this._started || !this._renderable) return;
 
     // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
     // rows and differ only in what those rows are: the alternate screen is a
