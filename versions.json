@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-210",
+      "ref": "refs/pull/210/merge",
+      "sha": "99569053685f512f2ae3aa271f1d99cb06e7de9a",
+      "timestamp": "2026-09-29T18:01:51.011Z",
+      "commits": [
+        {
+          "sha": "99569053685f512f2ae3aa271f1d99cb06e7de9a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:00:57-06:00",
+          "message": "Merge dd57c0accbfd16eeb889d8529294957a6234750c into 2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464\n"
+        },
+        {
+          "sha": "dd57c0accbfd16eeb889d8529294957a6234750c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:00:51-06:00",
+          "message": "feat(console): asciiOnly reaches renderables through Console, renderToString and App (rich-render-nmy)\n\nRenderOptions.asciiOnly was read by Box.substitute and seven renderables and\nset by no public entry point. An ASCII-only terminal is a property of the\noutput device, so the switch lives where the device is configured:\nConsoleOptions, RenderToStringOptions and AppOptions (WidgetApp inherits it).\n\nRenderOptions.encoding and Console.encoding are removed: nothing read them,\nthe value was always \"utf-8\", and it would contradict asciiOnly: true.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464",
