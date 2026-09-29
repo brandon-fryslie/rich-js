@@ -22,7 +22,7 @@
  *      what its marker promised;
  *   6. decode each block's bytes (`decodeAnsi`, colours kept as emitted) and
  *      encode them twice, as a light and a dark fragment;
- *   7. type-check and bundle each `live` block as a program of its own, on
+ *   7. bundle each `live` block's program from step 2 on
  *      the one library every live block shares (`LiveLibrary`), which the
  *      page imports as a module when its live terminal (theme/RichLive.ts)
  *      first scrolls into view.
