@@ -420,6 +420,19 @@ describe("WidgetApp wheel", () => {
     await tick();
     expect([fits.offset, outer.offset]).toEqual([0, 2]);
   });
+
+  it("passes out the notches of one burst that the inner viewport has no room for", async () => {
+    const host = scriptedHost({ cols: 30, rows: 6 });
+    const inner = new Viewport(lines(0, 3), { rows: 2 });
+    const outer = new Viewport(new Group(inner, lines(10, 29)));
+    const app = start(host, () => outer);
+    await tick();
+
+    const top = cellOf(app, "line 0");
+    host.type(wheel("down", top.x, top.y).repeat(3));
+    await tick();
+    expect([inner.offset, outer.offset]).toEqual([2, 1]);
+  });
 });
 
 describe("WidgetApp lifecycle", () => {

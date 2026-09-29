@@ -138,12 +138,13 @@ export class Viewport implements Renderable, Measurable {
   }
 
   /**
-   * Whether `scrollBy(lines)` would move the offset the last render resolved,
-   * against the rows and length that render found. A move queued since is not
-   * counted.
+   * Whether `scrollBy(lines)` would move the viewport from where the moves
+   * queued so far leave it, against the rows and length the last render
+   * found.
    */
   canScrollBy(lines: number): boolean {
-    return clampOffset(this._offset + lines, this._extent) !== this._offset;
+    const offset = this.resolve(this._extent);
+    return clampOffset(offset + lines, this._extent) !== offset;
   }
 
   /**
@@ -171,13 +172,7 @@ export class Viewport implements Renderable, Measurable {
     const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
     this._extent = extent;
-    // [LAW:dataflow-not-control-flow] The resolved offset is re-clamped every
-    // render with or without queued moves: content that shrank since the last
-    // render pulls the offset back with it.
-    this._offset = this._moves.reduce(
-      (offset, move) => clampOffset(move(offset, extent), extent),
-      clampOffset(this._offset, extent),
-    );
+    this._offset = this.resolve(extent);
     this._moves = [];
 
     const shown = fitHeight(lines.slice(this._offset, this._offset + extent.rows), { rows: extent.rows, exact: true });
@@ -203,6 +198,19 @@ export class Viewport implements Renderable, Measurable {
       yield* line;
       yield Segment.line();
     }
+  }
+
+  /**
+   * [LAW:one-source-of-truth] Where the queued moves leave the offset against
+   * `extent`: what a render commits, and what `canScrollBy` asks from.
+   * [LAW:dataflow-not-control-flow] The offset is re-clamped with or without
+   * queued moves: content that shrank since the last render pulls it back.
+   */
+  private resolve(extent: Extent): number {
+    return this._moves.reduce(
+      (offset, move) => clampOffset(move(offset, extent), extent),
+      clampOffset(this._offset, extent),
+    );
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

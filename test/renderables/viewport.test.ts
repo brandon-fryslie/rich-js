@@ -179,7 +179,17 @@ describe("canScrollBy", () => {
     expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([true, false]);
   });
 
-  it("content that fits moves neither way", () => {
+  it("counts the moves queued since the last render", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    shown(viewport);
+    viewport.scrollBy(6);
+    expect(viewport.canScrollBy(1)).toBe(true);
+    viewport.scrollBy(1);
+    expect(viewport.canScrollBy(1)).toBe(false);
+    expect(viewport.canScrollBy(-1)).toBe(true);
+  });
+
+    it("content that fits moves neither way", () => {
     const viewport = new Viewport(numbered(2), { rows: 4 });
     shown(viewport);
     expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([false, false]);
