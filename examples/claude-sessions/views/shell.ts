@@ -1,6 +1,7 @@
-import { Layout } from "../../../src/index.js";
+import { Layout, RichText, Viewport } from "../../../src/index.js";
 import type { Renderable } from "../../../src/index.js";
 import type { AppState } from "../state.js";
+import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";
 import { buildSidebar } from "./sidebar.js";
 import { buildViewer } from "./viewer.js";
 import { buildSearchBar } from "./search-bar.js";
@@ -28,39 +29,45 @@ function buildHeader(state: AppState): Renderable {
   return markup(src);
 }
 
-export function buildShell(state: AppState, termHeight: number): Layout {
-  const headerText = buildHeader(state);
+/**
+ * The viewports a frame is drawn through. They outlive the frame, which is
+ * rebuilt on every key: a scroll position is a viewport's, and a fresh one
+ * would start from the top.
+ */
+export interface SessionsView {
+  readonly sidebar: Viewport;
+  /** Per loaded session: each opens at its top, not at the last one's scroll. */
+  readonly viewer: ViewportPerSubject;
+  /** Per query, the same way. */
+  readonly results: ViewportPerSubject;
+}
 
-  // Vertical budget: header(1) + body + searchBar(1) + footer(1)
-  const headerH = 1;
-  const searchH = 1;
-  const footerH = 1;
-  const bodyH = Math.max(3, termHeight - headerH - searchH - footerH);
+export function sessionsView(): SessionsView {
+  return {
+    sidebar: new Viewport(new RichText("")),
+    viewer: new ViewportPerSubject(),
+    results: new ViewportPerSubject(),
+  };
+}
 
-  // Browser (top) occupies ~25% of body, viewer (bottom) takes the rest.
-  // Both panes reserve 2 rows for Panel borders.
-  const browserPaneH = state.sidebarVisible
-    ? Math.max(5, Math.floor(bodyH / 4))
-    : 0;
-  const viewerPaneH = bodyH - browserPaneH;
-  const browserInnerH = Math.max(1, browserPaneH - 2);
-  const viewerInnerH = Math.max(1, viewerPaneH - 2);
-
+export function buildShell(state: AppState, view: SessionsView): Layout {
   const root = new Layout();
-  const header = new Layout(headerText, { size: headerH, name: "header" });
+  const header = new Layout(buildHeader(state), { size: 1, name: "header" });
   const body = new Layout(undefined, { name: "body", ratio: 1 });
-  const searchBar = new Layout(buildSearchBar(state), { size: searchH, name: "search" });
-  const footer = new Layout(buildStatusBar(state), { size: footerH, name: "footer" });
+  const searchBar = new Layout(buildSearchBar(state), { size: 1, name: "search" });
+  const footer = new Layout(buildStatusBar(state), { size: 1, name: "footer" });
 
+  // The browser (top) takes a quarter of the body and the viewer the rest;
+  // each pane's viewport shows the rows its panel leaves inside the border.
   const viewerPane = new Layout(
-    buildViewer(state, viewerInnerH, state.focus === "viewer"),
+    buildViewer(state, view, state.focus === "viewer"),
     { name: "viewer", ratio: 3 },
   );
 
   if (state.sidebarVisible) {
     const browserPane = new Layout(
-      buildSidebar(state, browserInnerH, state.focus === "sidebar"),
-      { name: "browser", size: browserPaneH },
+      buildSidebar(state, view.sidebar, state.focus === "sidebar"),
+      { name: "browser", ratio: 1, minimumSize: 5 },
     );
     body.splitColumn(browserPane, viewerPane);
   } else {

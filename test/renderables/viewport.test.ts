@@ -244,6 +244,22 @@ describe("the scrollbar", () => {
     expect(bar(new Viewport(numbered(3), { rows: 4, scrollbar: SCROLLBAR }))).toBe("┃┃┃┃");
   });
 
+  it("names the width its content renders at, so lines to keep in view can be counted at it", () => {
+    const offered: number[] = [];
+    const content: Renderable = {
+      render: ({ maxWidth }: RenderOptions) => {
+        offered.push(maxWidth);
+        return [];
+      },
+    };
+    const plain = new Viewport(content, { rows: 1 });
+    const barred = new Viewport(content, { rows: 1, scrollbar: SCROLLBAR });
+    rows(plain, undefined, 7);
+    rows(barred, undefined, 7);
+    expect(offered).toEqual([plain.contentWidth(7), barred.contentWidth(7)]);
+    expect(offered).toEqual([7, 6]);
+  });
+
   it("has a thumb as long as the share of the content in view", () => {
     expect(bar(new Viewport(numbered(20), { rows: 10, scrollbar: SCROLLBAR }))).toBe("┃┃┃┃┃│││││");
     expect(bar(new Viewport(numbered(40), { rows: 4, scrollbar: SCROLLBAR }))).toBe("┃│││");

@@ -9,6 +9,7 @@
  */
 
 import { Console, Live } from "../../src/index.js";
+import type { Viewport } from "../../src/index.js";
 import { hostEnvironment } from "../../src/host/host-environment.js";
 import type { FileSystem } from "../_capabilities/index.js";
 import type { TerminalHost } from "../../src/host/terminal-host.js";
@@ -21,7 +22,7 @@ import {
   type AppState,
 } from "./state.js";
 import { lookup, type Action } from "./keymap.js";
-import { buildShell } from "./views/shell.js";
+import { buildShell, ExploreView } from "./views/shell.js";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -35,34 +36,28 @@ function selectByDelta(state: AppState, delta: number): AppState {
   const nextIdx = clamp(base + delta, 0, visible.length - 1);
   const nextPath = visible[nextIdx]!.entry.path;
   if (nextPath === state.selectedPath) return state;
-  return { ...state, selectedPath: nextPath, previewOffset: 0 };
+  return { ...state, selectedPath: nextPath };
 }
 
 function selectFirst(state: AppState): AppState {
   const visible = visibleNodes(state);
   const first = visible[0];
   if (!first || first.entry.path === state.selectedPath) return state;
-  return { ...state, selectedPath: first.entry.path, previewOffset: 0 };
+  return { ...state, selectedPath: first.entry.path };
 }
 
 function selectLast(state: AppState): AppState {
   const visible = visibleNodes(state);
   const last = visible[visible.length - 1];
   if (!last || last.entry.path === state.selectedPath) return state;
-  return { ...state, selectedPath: last.entry.path, previewOffset: 0 };
+  return { ...state, selectedPath: last.entry.path };
 }
 
-function scrollPreview(state: AppState, delta: number): AppState {
-  const next = Math.max(0, state.previewOffset + delta);
-  return next === state.previewOffset ? state : { ...state, previewOffset: next };
-}
-
-function scrollPreviewToTop(state: AppState): AppState {
-  return state.previewOffset === 0 ? state : { ...state, previewOffset: 0 };
-}
-
-function scrollPreviewToBottom(state: AppState): AppState {
-  return { ...state, previewOffset: 1 << 20 };
+// [LAW:one-source-of-truth] The preview's scroll position is its viewport's:
+// a scroll key moves the viewport and leaves the state as it was.
+function scrolled(state: AppState, move: () => void): AppState {
+  move();
+  return state;
 }
 
 function openSelected(state: AppState): AppState {
@@ -82,16 +77,16 @@ function goUp(state: AppState): AppState {
   return { ...state, selectedPath: parent };
 }
 
-function reduce(state: AppState, action: Action): AppState {
+function reduce(state: AppState, action: Action, preview: Viewport): AppState {
   switch (action.type) {
     case "move":
       return state.focus === "preview"
-        ? scrollPreview(state, action.delta)
+        ? scrolled(state, () => preview.scrollBy(action.delta))
         : selectByDelta(state, action.delta);
     case "move-first":
-      return state.focus === "preview" ? scrollPreviewToTop(state) : selectFirst(state);
+      return state.focus === "preview" ? scrolled(state, () => preview.scrollTo(0)) : selectFirst(state);
     case "move-last":
-      return state.focus === "preview" ? scrollPreviewToBottom(state) : selectLast(state);
+      return state.focus === "preview" ? scrolled(state, () => preview.scrollTo(Infinity)) : selectLast(state);
     case "open":
       return state.focus === "preview" ? state : openSelected(state);
     case "up":
@@ -99,7 +94,7 @@ function reduce(state: AppState, action: Action): AppState {
     case "focus-toggle":
       return { ...state, focus: state.focus === "tree" ? "preview" : "tree" };
     case "coverage":
-      return { ...state, mode: state.mode === "coverage" ? "browse" : "coverage", focus: "preview", previewOffset: 0 };
+      return { ...state, mode: state.mode === "coverage" ? "browse" : "coverage", focus: "preview" };
     case "quit":
     case "none":
       return state;
@@ -137,14 +132,15 @@ export async function run(
   host.setRawMode(true);
   live.start();
 
+  const view = new ExploreView();
   const render = () => {
-    const termHeight = host.size().rows;
-    live.update(buildShell(state, termHeight), { refresh: true });
+    live.update(buildShell(state, view), { refresh: true });
   };
 
-  render();
-
   await new Promise<void>((resolve, reject) => {
+    // The first frame is drawn in here: a throw rejects this promise, and the
+    // cleanup below hands the terminal back.
+    render();
     let unsubscribe: (() => void) | undefined;
     // Hoist the decoder out of the hot path — node delivers Buffer chunks on
     // every keystroke; one shared decoder avoids per-event allocation and
@@ -162,11 +158,8 @@ export async function run(
         return;
       }
       try {
-        const next = reduce(state, action);
-        if (next !== state) {
-          state = next;
-          render();
-        }
+        state = reduce(state, action, view.previewOf(state));
+        render();
       } catch (err) {
         unsubscribe?.();
         reject(err instanceof Error ? err : new Error(String(err)));

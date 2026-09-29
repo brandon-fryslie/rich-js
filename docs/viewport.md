@@ -49,7 +49,7 @@ None of these moves anything straight away. The rows and the content's length ar
 
 ## Keeping a selection in view
 
-`ensureVisible(start, end)` scrolls the least distance that shows lines `start` up to but not including `end`. They are lines of the content as it renders at the viewport's width: an item that wraps spans more than one, so a list whose items are its lines renders each without wrapping (`noWrap`). A range already in view does not move it. A range taller than the viewport shows its first line at the top.
+`ensureVisible(start, end)` scrolls the least distance that shows lines `start` up to but not including `end`. They are lines of the content as it renders at the viewport's width less any scrollbar, which `contentWidth(width)` reports: an item that wraps spans more than one, so a list whose items are its lines renders each without wrapping (`noWrap`). A range already in view does not move it. A range taller than the viewport shows its first line at the top.
 
 ```typescript
 viewport.ensureVisible(selected, selected + 1);
