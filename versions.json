@@ -2,31 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-200",
-      "ref": "refs/pull/200/merge",
-      "sha": "36158e748fefa36c8dddf6aad85357972bb12bae",
-      "timestamp": "2026-09-29T13:25:50.302Z",
+      "version": "pr-201",
+      "ref": "refs/pull/201/merge",
+      "sha": "72fae243ce634d5c0490681e551bc2619bd4d903",
+      "timestamp": "2026-09-29T13:26:43.987Z",
       "commits": [
         {
-          "sha": "36158e748fefa36c8dddf6aad85357972bb12bae",
+          "sha": "72fae243ce634d5c0490681e551bc2619bd4d903",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:25:00Z",
-          "message": "Merge e5986b0752f9764029dcdc33b6a70c278f73d00b into 6c7dc95eac64cbb7c4eb2d54fada294138b926e6\n"
+          "timestamp": "2026-09-29T07:25:53-06:00",
+          "message": "Merge 76a191c7c43a04e6abaf038e78afed91742a70de into 6c7dc95eac64cbb7c4eb2d54fada294138b926e6\n"
         },
         {
-          "sha": "e5986b0752f9764029dcdc33b6a70c278f73d00b",
+          "sha": "76a191c7c43a04e6abaf038e78afed91742a70de",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:24:54-06:00",
-          "message": "test(link): pin exact runs per line, compare (uri, id) pairs, anchor the Rich claim (rich-link-jkh)\n"
-        },
-        {
-          "sha": "87bd0d73088a5034f9dbceb9de70eb1d1ef89138",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:20:28-06:00",
-          "message": "test(link): pin a nested and a wrap-split link as one id per link, end to end (rich-link-jkh)\n\nThe id itself landed in #152; this pins the ticket's end state through\nConsole.print: the outer link repeats its id around a nested one, as\nRich's does, and every line of a wrapped link opens with one id.\n"
+          "timestamp": "2026-09-29T07:25:41-06:00",
+          "message": "test(markup): pin a negated attribute byte for byte against the reference (rich-color-9ga)\n\nThe SGR 22 the ticket measured was already gone: a5ef4b92 (#117) made\nStyle.toSgrCodes write only the attributes that are on. Nothing pinned it.\nnegated-attribute puts [bold red]a[not bold]b[/not bold]c[/] in the\nreference-generated golden, regenerated with the header's own command so\nevery existing case reproduced unchanged. Mutating toSgrCodes to emit 22\nfor a false attribute turns it red.\n\nThe ticket's own [red]..[not bold] shape cannot go in yet: the encoder\nmerges adjacent equal-SGR runs where Rich writes one per segment. Filed\nas rich-render-g5g8.\n"
         }
       ]
     },
