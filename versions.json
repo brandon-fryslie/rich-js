@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-208",
-      "ref": "refs/pull/208/merge",
-      "sha": "7739959c6aec389a4110070f2d045088eff31435",
-      "timestamp": "2026-09-29T17:21:44.639Z",
-      "commits": [
-        {
-          "sha": "7739959c6aec389a4110070f2d045088eff31435",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:20:49Z",
-          "message": "Merge 6199e51d89246eee5361ca53204c69e14abcbe96 into f921ed462e35b6194044226d4769a76ee91e9ac8\n"
-        },
-        {
-          "sha": "6199e51d89246eee5361ca53204c69e14abcbe96",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:20:43-06:00",
-          "message": "fix(rich-dash): the first tick runs before any input is subscribed (rich-runtime-fna.5)\n"
-        },
-        {
-          "sha": "4ca6723a30ad14b437b37bf39b48ad58d65a172f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:16:48-06:00",
-          "message": "fix(examples): stopping a demo stops its app; App.fail ends an app with an error (rich-runtime-fna.5)\n\nReview round (high):\n- App.fail(error) ends the app and rejects run with that error; WidgetApp\n  forwards it. The three demos' captured-failure slots are gone.\n- run() in rich-dash, claude-sessions and rich-explore returns { done, stop },\n  and each browser MountHandle.stop stops the app. rich-dash's clock no\n  longer outlives a stopped mount.\n- claude-sessions repaints only on a change of state, so pointer motion on\n  the alternate screen paints nothing. Its search-typing keymap passes\n  Ctrl+C and Ctrl+Z through.\n- rich-dash no longer quits on a bare ESC, which a split escape sequence\n  also delivers.\n- The rich-dash browser README fixture names run(), not runDemo().\n"
-        },
-        {
-          "sha": "2c753a1e3e48bbf1d4ecdc63f928daa1442b863f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:07:23-06:00",
-          "message": "refactor(examples): rich-dash and claude-sessions run on App; the dashboard runtime is gone (rich-runtime-fna.5)\n\nEvery full-screen demo now takes the terminal through App: none of them\nenters the alternate screen, sets raw mode or tears either down itself.\n\n- rich-dash: DashboardRuntime (Live + setInterval + stop) is deleted. The\n  demo body owns only its clock; App owns the terminal. A widget with no\n  layout cell now fails at startup instead of silently never drawing, and\n  q / Esc / Ctrl+C quit and Ctrl+Z suspends — raw mode made Ctrl+C a key,\n  so the entry's SIGINT/SIGTERM handlers go too.\n- claude-sessions: Live + setRawMode + cleanup replaced by App; Ctrl+Z\n  suspends. The status bar escapes its hint keys, so the `\\` hint no\n  longer swallows its closing tag.\n- The browser wires stop calling host.start(): App starts the host.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f921ed462e35b6194044226d4769a76ee91e9ac8",
-      "timestamp": "2026-09-29T17:01:32.776Z",
+      "sha": "d022f4b8ccbfdfa95a0acec8d58504f005587c69",
+      "timestamp": "2026-09-29T17:24:50.584Z",
       "commits": [
         {
-          "sha": "f921ed462e35b6194044226d4769a76ee91e9ac8",
+          "sha": "d022f4b8ccbfdfa95a0acec8d58504f005587c69",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:00:12-06:00",
-          "message": "feat(widgets): the wheel scrolls the innermost Viewport under the pointer (rich-viewport-owi.5) (#207)\n\n* feat(widgets): the wheel scrolls the innermost Viewport under the pointer (rich-viewport-owi.5)\n\nViewport stamps every cell of its rows, gutter included, with\nSegment.anchorLines, so the composed frame names it under any cell at any\ndepth, around its content's anchors. EventRouter sends a wheel notch to the\ninnermost Viewport on that chain (viewportAt), one line, and asks the source\nfor a frame through the new FrameSource.refresh; WidgetApp.refresh is\nApp.refresh.\n\nThe wheel no longer reaches widgets: WidgetMouseEvent's type is narrowed to\npress, release and motion, so a widget under the pointer cannot hide the\nviewport around it and no widget can handle a wheel twice.\n\n* fix(widgets): the wheel passes over a viewport that cannot move to the one around it (rich-viewport-owi.5)\n\nReview (high) found the innermost viewport kept every notch even when its\ncontent fit or it sat at that end, so an outer viewport was dead under it\nand each notch repainted for nothing. Viewport.canScrollBy answers against\nthe last render's extent; scrollTargetAt takes the innermost that can move.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(viewport): canScrollBy counts the moves queued since the last render (rich-viewport-owi.5)\n\nReview (medium): a burst of notches in one input chunk was judged against\nthe last render's offset, so notches past the inner viewport's end died in\nit instead of passing out. render and canScrollBy now share one resolve().\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* refactor(widgets): the wheel scrolls a Scrollable, and a mouse event narrows on its type (rich-viewport-owi.5)\n\nReview (escalation high): hit.ts picked wheel targets with instanceof Viewport,\nthe first import from src/widgets into src/renderables. The wheel now asks\nthe Scrollable capability in core/protocol, beside Measurable.\nScreenMouseEvent is one member per type, so the router's wheel branch\nnarrows the event and the spread into WidgetMouseEvent needs no restated type.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T11:23:54-06:00",
+          "message": "refactor(examples): rich-dash and claude-sessions run on App; the dashboard runtime is gone (rich-runtime-fna.5) (#208)\n\n* refactor(examples): rich-dash and claude-sessions run on App; the dashboard runtime is gone (rich-runtime-fna.5)\n\nEvery full-screen demo now takes the terminal through App: none of them\nenters the alternate screen, sets raw mode or tears either down itself.\n\n- rich-dash: DashboardRuntime (Live + setInterval + stop) is deleted. The\n  demo body owns only its clock; App owns the terminal. A widget with no\n  layout cell now fails at startup instead of silently never drawing, and\n  q / Esc / Ctrl+C quit and Ctrl+Z suspends — raw mode made Ctrl+C a key,\n  so the entry's SIGINT/SIGTERM handlers go too.\n- claude-sessions: Live + setRawMode + cleanup replaced by App; Ctrl+Z\n  suspends. The status bar escapes its hint keys, so the `\\` hint no\n  longer swallows its closing tag.\n- The browser wires stop calling host.start(): App starts the host.\n\n* fix(examples): stopping a demo stops its app; App.fail ends an app with an error (rich-runtime-fna.5)\n\nReview round (high):\n- App.fail(error) ends the app and rejects run with that error; WidgetApp\n  forwards it. The three demos' captured-failure slots are gone.\n- run() in rich-dash, claude-sessions and rich-explore returns { done, stop },\n  and each browser MountHandle.stop stops the app. rich-dash's clock no\n  longer outlives a stopped mount.\n- claude-sessions repaints only on a change of state, so pointer motion on\n  the alternate screen paints nothing. Its search-typing keymap passes\n  Ctrl+C and Ctrl+Z through.\n- rich-dash no longer quits on a bare ESC, which a split escape sequence\n  also delivers.\n- The rich-dash browser README fixture names run(), not runDemo().\n\n* fix(rich-dash): the first tick runs before any input is subscribed (rich-runtime-fna.5)"
         }
       ]
     },
