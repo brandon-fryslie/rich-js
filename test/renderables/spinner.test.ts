@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { Spinner } from "../../src/renderables/spinner.js";
 import { Segment } from "../../src/core/segment.js";
+import { Group } from "../../src/renderables/group.js";
+import { RichText } from "../../src/core/text.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -54,13 +56,24 @@ describe("Spinner", () => {
   });
 
   describe("rendering", () => {
+    // The reference's Spinner is a `Text`, so it ends its own line and a
+    // `Group` stacks what follows it below rather than beside it.
+    it("stacks below itself in a Group", () => {
+      const group = new Group(new Spinner("dots", "hi"), new RichText("after"));
+      const lines = Segment.splitLines([...group.render({ maxWidth: 80 })]).map((line) =>
+        line.map((segment) => segment.text).join(""),
+      );
+      expect(lines).toEqual(["⠋ hi", "after"]);
+    });
+
     it("renders a single spinner frame without text", () => {
       // [SPEC] No text — Renders a single spinner frame
       const s = new Spinner("dots");
       const text = collectText(s, { maxWidth: 80 });
       expect(text.length).toBeGreaterThan(0);
-      // With no text, the output should be just a frame (which is one of the frames)
-      expect(s.frames).toContain(text);
+      // With no text, the output is one frame, on a line of its own
+      expect(s.frames).toContain(text.slice(0, -1));
+      expect(text.endsWith("\n")).toBe(true);
     });
 
     it("renders spinner frame + text when text is provided", () => {

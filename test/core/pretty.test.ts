@@ -101,9 +101,9 @@ describe("Pretty", () => {
     // accepted: `{ m: Map {`, the entry on its own line, the closing brace back
     // at column 0 and the object's own `}` after it.
     expect(collectText(new Pretty({ m: new Map([["k", "v"]]) }), { maxWidth: 80 }))
-      .toBe('{ m: Map { "k" => "v" } }');
+      .toBe('{ m: Map { "k" => "v" } }\n');
     expect(collectText(new Pretty({ s: new Set([1, 2]) }), { maxWidth: 80 }))
-      .toBe("{ s: Set { 1, 2 } }");
+      .toBe("{ s: Set { 1, 2 } }\n");
   });
 
   it("charges a container's compact try for the key it sits under (rich-pretty-xms)", () => {
@@ -162,7 +162,7 @@ describe("Pretty", () => {
     // The fix must not overcorrect into expanding everything that sits under
     // a key — only what the key's width actually pushes past the budget.
     const text = collectText(new Pretty({ metadata: { active: true } }), { maxWidth: 80 });
-    expect(text).toBe('{ metadata: { active: true } }');
+    expect(text).toBe('{ metadata: { active: true } }\n');
   });
 
   describe("text that is one piece wraps under the key it belongs to (rich-pretty-xms.tmf)", () => {
@@ -376,13 +376,13 @@ describe("Pretty", () => {
     // the kept entries; a cut string is annotated the same way.
     const long = "a".repeat(100);
     expect(collectText(new Pretty(long, { maxString: 10 }), { maxWidth: 80 }))
-      .toBe('"aaaaaaaaaa"+90');
+      .toBe('"aaaaaaaaaa"+90\n');
     expect(collectText(new Pretty({ s: long }, { maxString: 10 }), { maxWidth: 80 }))
-      .toBe('{ s: "aaaaaaaaaa"+90 }');
+      .toBe('{ s: "aaaaaaaaaa"+90 }\n');
   });
 
   it("leaves a string at exactly maxString untouched", () => {
-    expect(collectText(new Pretty("abc", { maxString: 3 }), { maxWidth: 80 })).toBe('"abc"');
+    expect(collectText(new Pretty("abc", { maxString: 3 }), { maxWidth: 80 })).toBe('"abc"\n');
   });
 
   // --- Indent ---
@@ -475,7 +475,7 @@ describe("Pretty", () => {
       const shared = { v: 1 };
       const text = collectText(new Pretty({ a: shared, b: shared }), { maxWidth: 80 });
       expect(text).not.toContain("[Circular]");
-      expect(text).toBe("{ a: { v: 1 }, b: { v: 1 } }");
+      expect(text).toBe("{ a: { v: 1 }, b: { v: 1 } }\n");
     });
   });
 
@@ -483,7 +483,7 @@ describe("Pretty", () => {
     // Its own `toString` would answer a bare "1,2,3" — no brackets, and nothing
     // for the highlighter to colour per element.
     expect(collectText(new Pretty(new Int8Array([1, 2, 3])), { maxWidth: 80 }))
-      .toBe("[1, 2, 3]");
+      .toBe("[1, 2, 3]\n");
   });
 
   it("takes its highlighter from the caller", () => {
@@ -502,9 +502,9 @@ describe("Pretty", () => {
   describe("bounds", () => {
     it("elides past maxDepth, naming the container it stopped in", () => {
       expect(collectText(new Pretty({ a: { b: { c: 1 } } }, { maxDepth: 2 }), { maxWidth: 80 }))
-        .toBe("{ a: { b: {...} } }");
+        .toBe("{ a: { b: {...} } }\n");
       expect(collectText(new Pretty([[[1]]], { maxDepth: 2 }), { maxWidth: 80 }))
-        .toBe("[[[...]]]");
+        .toBe("[[[...]]]\n");
     });
 
     it("says how many entries maxLength dropped from a Map or Set", () => {
@@ -540,9 +540,9 @@ describe("Pretty", () => {
       // after a separator — otherwise a bound of zero leads with the comma it
       // was supposed to follow.
       expect(collectText(new Pretty([1, 2, 3], { maxLength: 0 }), { maxWidth: 80 }))
-        .toBe("[... +3]");
+        .toBe("[... +3]\n");
       expect(collectText(new Pretty({ a: 1, b: 2 }, { maxLength: 0 }), { maxWidth: 80 }))
-        .toBe("{ ... +2 }");
+        .toBe("{ ... +2 }\n");
     });
 
     it("stops pulling a Map or Set at the bound instead of draining it", () => {
@@ -687,13 +687,13 @@ describe("Pretty", () => {
         ownKeys(): string[] { throw new Error("no keys"); },
       });
       expect(collectText(new Pretty(unenumerable), { maxWidth: 80 }))
-        .toBe("[Threw: no keys]");
+        .toBe("[Threw: no keys]\n");
     });
 
     it("names a throwing toString rather than propagating it", () => {
       const hostile = { toString(): string { throw new Error("bad repr"); } };
       expect(collectText(new Pretty(hostile), { maxWidth: 80 }))
-        .toBe("[Threw: bad repr]");
+        .toBe("[Threw: bad repr]\n");
     });
 
     it("renders a throwing element in place, leaving its neighbours readable", () => {
@@ -706,7 +706,7 @@ describe("Pretty", () => {
         configurable: true,
       });
       expect(collectText(new Pretty(arr), { maxWidth: 80 }))
-        .toBe("[1, [Threw: boom], 3]");
+        .toBe("[1, [Threw: boom], 3]\n");
     });
 
     it("keeps a throwing value from hiding the structure around it", () => {

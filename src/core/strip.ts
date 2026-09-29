@@ -97,9 +97,8 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     // under composition: printed alone, Console's own "close whatever the
     // renderable left open" step (console.ts) papered over it, and a `Group`
     // of a Strip and a RichText ran the RichText onto the Strip's line
-    // instead of below it. (Not every renderable follows this — a `Spinner`
-    // or `ProgressBar` is a line *fragment*, not a block; see
-    // rich-flexstrip-5kf.4cq for the open question of formalizing that split.)
+    // instead of below it. `LINE_ENDS` in test/seam/line-ends.ts is the list
+    // of which renderables end their own line and which are fragments.
     yield Segment.line();
   }
 }

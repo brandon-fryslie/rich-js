@@ -30,10 +30,11 @@ class StatusRenderable implements Renderable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* this._spinner.render(options);
+    yield* this._spinner.drawFrame(options);
     const style = getStyle(options, this._style);
     const msgStyle = style.isNull ? undefined : style;
     yield new Segment(` ${this.message}`, msgStyle);
+    yield Segment.line();
   }
 }
 

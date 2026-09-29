@@ -128,7 +128,7 @@ export class SpinnerColumn implements ProgressColumn {
   }
 
   *render(options: RenderOptions, _task?: Task): Iterable<Segment> {
-    yield* this._spinner.render(options);
+    yield* this._spinner.drawFrame(options);
   }
 }
 
