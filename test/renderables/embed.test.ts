@@ -56,6 +56,25 @@ describe("content embedded in a renderable", () => {
     });
   }
 
+  const badlyStyled: [string, () => string | RichText][] = [
+    ["markup", () => "[bold rd]Hello[/]"],
+    ["a RichText span", () => new RichText("He").append("llo", "bold rd")],
+  ];
+
+  for (const [site, build] of sites) {
+    for (const [form, content] of badlyStyled) {
+      it(`draws a style it cannot parse in ${site}, written as ${form}, as plain text, and reports it once`, () => {
+        const heard: string[] = [];
+        const out = renderToString(build(content()), {
+          width: 30,
+          onStyleError: (_error, style) => void heard.push(style),
+        });
+        expect(out).toBe(renderToString(build("Hello"), { width: 30 }));
+        expect(heard).toEqual(["bold rd"]);
+      });
+    }
+  }
+
   it("draws the plain line for a title with no text, however it is spelled", () => {
     const plain = (r: Renderable) => renderToString(r, { width: 12 }).replace(/\x1b\[[0-9;]*m/g, "");
     for (const empty of ["", new RichText(""), "[bold][/bold]"]) {
