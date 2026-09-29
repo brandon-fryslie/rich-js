@@ -111,17 +111,26 @@ describe("encodeHtml runs", () => {
 
   // A browser draws a wide glyph at its fallback font's width, not two cells;
   // the box is what keeps the next column where the console put it.
-  it("boxes each glyph that is not one cell wide to the cells it takes, and leaves one-cell text unboxed", () => {
-    const page = html(Style.parse("bold"), "ab東京c");
-    expect(cssOf(page, "ab")).toBe(`color:${INK.hex};font-weight:bold`);
-    expect(cssOf(page, "東")).toBe(`display:inline-block;width:2ch;text-align:center;color:${INK.hex};font-weight:bold`);
-    expect(cssOf(page, "京")).toBe(cssOf(page, "東"));
-    expect(cssOf(page, "c")).toBe(cssOf(page, "ab"));
+  const BOX = "display:inline-block;width:2ch;text-align:center;text-decoration:inherit";
+  const boxed = (glyph: string) => `<span style="${BOX}">${glyph}</span>`;
+
+  it("boxes each glyph wider than one cell inside its run, leaving the run's paint and lines on the run", () => {
+    const page = html(Style.parse("bold underline on red"), "ab東京c");
+    expect(page).toContain(`>ab${boxed("東")}${boxed("京")}c</span>`);
+    expect(page.match(/font-weight:bold/g)).toHaveLength(1);
   });
 
-  it("measures a glyph as one grapheme, so a joined emoji is one two-cell box", () => {
+  it("boxes a double-underlined wide glyph between the underline and the glyph's own lines", () => {
+    const page = html(Style.parse("underline2 strike"), "東");
+    expect(page).toContain(`<span style="${BOX}"><span style="color:${INK.hex};text-decoration-line:line-through">東</span></span>`);
+  });
+
+  it("measures by grapheme: a joined emoji is one box, a combining mark or tab stays in the text", () => {
     const family = "👨‍👩‍👧";
-    expect(cssOf(html(Style.parse(""), family), family)).toContain("width:2ch");
+    expect(html(Style.parse("bold"), family)).toContain(boxed(family));
+    for (const text of ["e\u0301", "a\tb", "a\u200bb"]) {
+      expect(html(Style.parse("bold"), text)).not.toContain("inline-block");
+    }
   });
 
   it("frames and encircles in the glyph's own colour", () => {
@@ -172,7 +181,7 @@ describe("encodeHtmlFragment", () => {
   // font. Unset, the var() falls back to the browser's default monospace.
   it("takes its font from --rich-fragment-font, falling back to the default monospace", () => {
     const style = /^<pre style="([^"]*)">/.exec(encodeHtmlFragment(segments, THEME))![1]!;
-    expect(style.split(";")).toContain("font:var(--rich-fragment-font,medium monospace)");
+    expect(style.split(";")).toContain("font:var(--rich-fragment-font,medium/1.2 monospace)");
   });
 
   it("leaves the blink keyframes to the page, included once by the document", () => {

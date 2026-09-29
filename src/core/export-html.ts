@@ -86,41 +86,46 @@ const ANCHOR_CSS = "all:unset;cursor:revert;outline:revert";
 const span = (css: readonly string[], content: string): string =>
   `<span style="${escapeAttribute(css.join(";"))}">${content}</span>`;
 
-const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+/** Text of printable ASCII only: one cell a character, nothing to box. */
+const ONE_CELL = /^[\x20-\x7e]*$/;
 
 /**
- * A run's text cut where a glyph is not one cell wide: each such glyph is a
- * piece of its own, boxed to the cells it takes; the one-cell glyphs between
- * them are pieces with no box.
- *
- * A browser draws a wide glyph in whatever fallback font has it, at that
- * font's width, which is rarely two of the monospace font's cells; left to it,
- * everything after a CJK character on a row shifts left of its column. `ch` is
- * one cell of the monospace font, so a box `cells`ch wide holds the column.
+ * A box exactly `cells` of the monospace font wide (`ch` is one of its cells)
+ * for a glyph the browser would otherwise draw at a fallback font's width,
+ * which for a CJK character is rarely two cells: left to it, everything after
+ * the glyph on the row shifts off its column. The box carries no paint, so the
+ * run's background runs through it at the run's own height; an atomic inline
+ * takes no decoration from its ancestors, so it inherits its parent's lines.
  */
-type Piece = { readonly text: string; readonly cells: number | null };
+const cellBox = (cells: number): readonly string[] =>
+  ["display:inline-block", `width:${cells}ch`, "text-align:center", "text-decoration:inherit"];
 
-function cellPieces(text: string): Piece[] {
-  const pieces: Piece[] = [];
+/**
+ * `text` with each grapheme wider than one cell boxed to its cells, and `draw`
+ * applied to every stretch of escaped text inside and between the boxes.
+ * Graphemes, not code points, because `cellLen` measures a joined emoji as one
+ * glyph; a zero-width one stays with its neighbours so it can still combine.
+ */
+function onGrid(text: string, draw: (escaped: string) => string): string {
+  if (ONE_CELL.test(text)) return draw(escapeText(text));
+  const pieces: string[] = [];
   let narrow = "";
-  for (const { segment } of GRAPHEMES.segment(text)) {
+  const flush = () => {
+    if (narrow !== "") pieces.push(draw(escapeText(narrow)));
+    narrow = "";
+  };
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)) {
     const cells = cellLen(segment);
-    if (cells === 1) {
+    if (cells <= 1) {
       narrow += segment;
       continue;
     }
-    if (narrow !== "") pieces.push({ text: narrow, cells: null });
-    narrow = "";
-    pieces.push({ text: segment, cells });
+    flush();
+    pieces.push(span(cellBox(cells), draw(escapeText(segment))));
   }
-  if (narrow !== "") pieces.push({ text: narrow, cells: null });
-  return pieces;
+  flush();
+  return pieces.join("");
 }
-
-// An atomic inline box does not take its ancestors' text decorations, so each
-// wide glyph is drawn as a whole run of its own, paint and lines included.
-const cellBox = (cells: number | null): readonly string[] =>
-  cells === null ? [] : ["display:inline-block", `width:${cells}ch`, "text-align:center"];
 
 /**
  * One run as markup.
@@ -129,18 +134,16 @@ const cellBox = (cells: number | null): readonly string[] =>
  * span with a strike would double the strike too. It gets an outer span of its
  * own instead. That span carries the paint, because a descendant's background
  * may be painted over an ancestor's underline, and the blink, so the underline
- * blinks with the glyph.
+ * blinks with the glyph. A wide glyph's box sits between the two: it inherits
+ * the double underline, and the inner span inside it draws the other lines.
  */
 function runHtml({ text, look }: ExportRun): string {
-  const drawn = cellPieces(text).map(({ text: piece, cells }) => {
-    const glyph = escapeText(piece);
-    return look.underline === "double"
-      ? span(
-        [...cellBox(cells), ...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
-        span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph),
-      )
-      : span([...cellBox(cells), ...paintCss(look), ...glyphCss(look)], glyph);
-  }).join("");
+  const drawn = look.underline === "double"
+    ? span(
+      [...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
+      onGrid(text, (glyph) => span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph)),
+    )
+    : span([...paintCss(look), ...glyphCss(look)], onGrid(text, (glyph) => glyph));
   return look.href === null
     ? drawn
     : `<a href="${escapeAttribute(look.href)}" style="${ANCHOR_CSS}">${drawn}</a>`;
@@ -170,9 +173,12 @@ export const HTML_FRAGMENT_CSS =
  * The one way in is the `--rich-fragment-font` custom property, read as the
  * `font` shorthand (`14px/1.3 "JetBrains Mono", monospace`). `all` resets no
  * custom property, so a host sets it on any ancestor to draw the rows in its
- * own code font; unset, the rows are the browser's default monospace. It must
- * be a whole shorthand, a size and a family at least: any other value is
- * invalid when computed, and the rows then inherit the host's font.
+ * own code font; unset, the rows are the browser's default monospace at a
+ * fixed line height, as a terminal's rows are. A host's value wants one too: at
+ * `normal`, a row holding a glyph from a taller fallback font grows and shifts
+ * every row below it. It must be a whole shorthand, a size and a family at
+ * least: any other value is invalid when computed, and the rows then inherit
+ * the host's font.
  *
  * A browser draws no line for a newline at either edge of a `pre`: the parser
  * drops the one straight after the open tag, and the one before `</pre>` ends a
@@ -190,7 +196,7 @@ export function encodeHtmlFragment(segments: Iterable<Segment>, theme?: Terminal
     `background:${canvas.background.hex}`,
     `color:${canvas.foreground.hex}`,
     "padding:1em",
-    "font:var(--rich-fragment-font,medium monospace)",
+    "font:var(--rich-fragment-font,medium/1.2 monospace)",
     "white-space:pre",
     "overflow-x:auto",
   ].join(";");

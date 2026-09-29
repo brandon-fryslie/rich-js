@@ -152,26 +152,38 @@ for (const [attribute, cycleMs] of [["blink", 1000], ["blink2", 500]] as const) 
   }
 }
 
-test("a column after wide glyphs lines up with the same column after narrow ones", async ({ page }) => {
+test("a column after wide glyphs lines up with the same column after narrow ones, styled or not", async ({ page }) => {
   await page.setContent(BLANK);
+  const painted = Style.parse("underline on blue");
+  const doubled = Style.parse("underline2 strike");
   await embed(page, encodeHtmlFragment(
-    [new Segment("東京|\n"), new Segment("abcd|\n"), new Segment("서울|\n"), new Segment("👨‍👩‍👧xy|\n")],
+    [
+      new Segment("abcd|\n"),
+      new Segment("東京|\n"),
+      new Segment("서울", painted), new Segment("|\n"),
+      new Segment("香港", doubled), new Segment("|\n"),
+      new Segment("👨‍👩‍👧xy|\n"),
+    ],
     SOLARIZED_LIGHT,
   ));
   const bars = await page.evaluate(() => {
     const walker = document.createTreeWalker(document.querySelector("#slot pre")!, NodeFilter.SHOW_TEXT);
-    const xs: number[] = [];
+    const found: { left: number; top: number }[] = [];
     for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
       const text = node.textContent ?? "";
       for (let i = text.indexOf("|"); i !== -1; i = text.indexOf("|", i + 1)) {
         const range = document.createRange();
         range.setStart(node, i);
         range.setEnd(node, i + 1);
-        xs.push(range.getBoundingClientRect().left);
+        const { left, top } = range.getBoundingClientRect();
+        found.push({ left, top });
       }
     }
-    return xs;
+    return found;
   });
-  expect(bars).toHaveLength(4);
-  for (const x of bars) expect(x).toBeCloseTo(bars[1]!, 0);
+  expect(bars).toHaveLength(5);
+  for (const { left } of bars) expect(left).toBeCloseTo(bars[0]!.left, 0);
+  // A box taller than the row's line would push the rows below it apart.
+  const gaps = bars.slice(1).map(({ top }, i) => top - bars[i]!.top);
+  for (const gap of gaps) expect(gap).toBeCloseTo(gaps[0]!, 0);
 });
