@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-218",
-      "ref": "refs/pull/218/merge",
-      "sha": "5bb2f053ba829cd9de278ebe6d1efaff266b73dd",
-      "timestamp": "2026-09-29T21:06:03.534Z",
-      "commits": [
-        {
-          "sha": "5bb2f053ba829cd9de278ebe6d1efaff266b73dd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T21:05:18Z",
-          "message": "Merge 03cddcd653c3813133bfac25484ee30a80ef9d8c into b16e52cfa6aada335a1bea880dcbaa7980de7ed6\n"
-        },
-        {
-          "sha": "03cddcd653c3813133bfac25484ee30a80ef9d8c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:05:13-06:00",
-          "message": "fix(cells): cellFit cuts between grapheme clusters (rich-text-odh)\n\ncellFit summed cellLen per code point, while cellLen measures clusters,\nso a VS16 or ZWJ marker was \"fitted\" wider than the width (❤️ at 1 cell)\nor cut mid-glyph (👨‍👩‍👧 at 4). truncate's own text crops had the same\nwalk. Both now go through graphemes() + fitClusters in cells.ts, and\nexport-html's private segmenter is that same one.\n\nThe remaining per-code-point walkers are rich-cells-1y9d.\n"
-        },
-        {
-          "sha": "1f15b6a16de4f6c813b3449aebd9d677c7b6059d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:55:21-06:00",
-          "message": "fix(text): truncate fits a wider marker to the width (rich-text-odh)\n\ntruncate(width, { marker }) returned the marker whole when it was wider\nthan width, so truncate(1, { marker: \">>\" }) drew two cells. The marker is\nnow cut to the width as a value, and the kept-text budget is what the\nfitted marker leaves; the width <= 0 early return is subsumed.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "b16e52cfa6aada335a1bea880dcbaa7980de7ed6",
-      "timestamp": "2026-09-29T20:53:32.903Z",
+      "sha": "2df67cfc18181fa8fe839b06254f57b72fad4703",
+      "timestamp": "2026-09-29T21:09:30.470Z",
       "commits": [
         {
-          "sha": "b16e52cfa6aada335a1bea880dcbaa7980de7ed6",
+          "sha": "2df67cfc18181fa8fe839b06254f57b72fad4703",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:52:40-06:00",
-          "message": "ci(node-floor): run the packed tarball on the engines.node floor (rich-packaging-8b7) (#217)\n\n* ci(node-floor): install the packed tarball on the engines.node floor and render it (rich-packaging-8b7)\n\nThe node-floor gate compares declarations and never runs src/, and every\njob takes its Node from node-version-file, which setup-node resolves to the\nnewest satisfying version. So an API newer than the floor in src/ was caught\nby nobody. .github/actions/node-floor packs the tarball, derives the floor\nfrom engines.node with semver.minVersion, installs into an empty project\nunder engine-strict on that Node, and asserts the render's text. ci.yml runs\nit on every PR; publish.yml gates the publish job on it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* DO NOT MERGE: call Object.groupBy (Node 21) in Panel.render to prove node-floor goes red (rich-packaging-8b7)\n\n* Revert \"DO NOT MERGE: call Object.groupBy (Node 21) in Panel.render to prove node-floor goes red (rich-packaging-8b7)\"\n\nThis reverts commit 42f40c8dd9b550dbbc3e4336bfbb391184dc3914.\n\n* ci(node-floor): probe the shipped dist, install floor-admitting peers, refuse multi-set ranges (rich-packaging-8b7)\n\nReview (high) fixes:\n- publish.yml's node-floor now probes the gate job's dist artifact, the bytes\n  npm publish ships, instead of a rebuild; provisioning moves to the callers\n- floor.mjs derives the floor and installs each optional peer whose locked\n  engines admit it, so ./widgets (mobx declares no engines) runs at the floor\n- an engines.node of several comparator sets fails instead of being half-probed\n- CLAUDE.md and node-floor.ts state the probe's blind spot, and the\n  node-version-file rule names the computed-floor exception\n\n* ci(node-floor): install each floor-admitted peer at its locked version (rich-packaging-8b7)\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T15:08:29-06:00",
+          "message": "fix(text): truncate fits a wider marker to the width (rich-text-odh) (#218)\n\n* fix(text): truncate fits a wider marker to the width (rich-text-odh)\n\ntruncate(width, { marker }) returned the marker whole when it was wider\nthan width, so truncate(1, { marker: \">>\" }) drew two cells. The marker is\nnow cut to the width as a value, and the kept-text budget is what the\nfitted marker leaves; the width <= 0 early return is subsumed.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(cells): cellFit cuts between grapheme clusters (rich-text-odh)\n\ncellFit summed cellLen per code point, while cellLen measures clusters,\nso a VS16 or ZWJ marker was \"fitted\" wider than the width (❤️ at 1 cell)\nor cut mid-glyph (👨‍👩‍👧 at 4). truncate's own text crops had the same\nwalk. Both now go through graphemes() + fitClusters in cells.ts, and\nexport-html's private segmenter is that same one.\n\nThe remaining per-code-point walkers are rich-cells-1y9d.\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     },
