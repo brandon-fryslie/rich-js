@@ -4,8 +4,12 @@
  * [LAW:dataflow-not-control-flow] Demos do not branch on environment; the
  * `TerminalHost` parameter is the value that differs between node and browser.
  *
- * The widgets are laid out by composition — `Columns` for a row of controls,
- * a `Layout` that keeps the status and log rows at the bottom of the screen.
+ * The widgets are laid out by composition, and nothing tells the app where
+ * they went: they sit in a `Panel` in the left pane of a `Layout` split, the
+ * preview they drive in a `Panel` in the right pane, and the status and log
+ * rows hold the bottom of the screen. `test/examples/rich-config/` (node host)
+ * and `e2e/rich-config.spec.ts` (browser host) drive this demo through that
+ * nesting, key by key and click by click.
  *
  * Press Tab to navigate · Space/Enter to interact.
  */
@@ -63,6 +67,8 @@ export interface DemoHandle {
   stop(): void;
   /** Settles once the demo has stopped and handed the terminal back. */
   readonly done: Promise<void>;
+  /** The rows on screen now, as painted. */
+  readonly frame: readonly (readonly Segment[])[];
 }
 
 const THEMES = [
@@ -97,6 +103,8 @@ class AppState {
 }
 
 const MAX_LOGS = 3;
+// The four toggles fit two to a row, and a slider fits whole.
+const CONTROLS_WIDTH = 44;
 
 class LogBuffer {
   entries: string[] = [];
@@ -182,14 +190,13 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   const headerItem = new StaticItem({ id: "static-header", render: styledLine("rich-js Theme + Widgets Explorer", headerStyle) });
   const subtitleItem = new StaticItem({ id: "static-subtitle", render: styledLine("Tab · Space/Enter · Click · Ctrl-C to exit", dimStyle) });
-  const widgetsHeading = new StaticItem({ id: "static-widgets-heading", render: styledLine("Interactive Widgets", sectionHeadStyle) });
 
   const spacer = (id: string): StaticItem =>
     new StaticItem({ id, render: () => [new Segment(" ")] });
 
   const titlePanelItem = new StaticItem({
     id: "static-title-panel",
-    render: (_options) => {
+    render: (options) => {
       const theme = state.selectedTheme;
       const name = state.selectedName;
       const fg = paletteColor(theme.foregroundColor);
@@ -199,10 +206,9 @@ export function runDemo(host: TerminalHost): DemoHandle {
         box: ROUNDED,
         style: new Style({ color: fg, bgcolor: bg, bold: true }),
         borderStyle: new Style({ color: paletteColor(palette.get("primary")!) }),
-        width: 78,
         padding: 0,
       });
-      return panel.render({ maxWidth: 80 });
+      return panel.render({ maxWidth: options.maxWidth });
     },
   });
 
@@ -215,7 +221,9 @@ export function runDemo(host: TerminalHost): DemoHandle {
       const contrastThreshold = slContrast.value;
       const accentKeys = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
       const segments: Segment[] = [];
-      for (const key of accentKeys) {
+      for (const [i, key] of accentKeys.entries()) {
+        // Two to a row: the preview is half the screen.
+        if (i > 0 && i % 2 === 0) segments.push(new Segment("\n"));
         const c = palette.get(key)!;
         const lum = luminance(c);
         const fgLight = lum > 0.179;
@@ -224,7 +232,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
           bgcolor: ColorSpec.fromRgba(c),
           bold: true,
         });
-        segments.push(new Segment(` ${key.padEnd(9)}`, swatchStyle));
+        segments.push(new Segment(` ${key.padEnd(10)}`, swatchStyle));
         const isOk = lum > contrastThreshold;
         const tagColor = palette.get(isOk ? "success" : "warning")!;
         const tagStyle = new Style({ color: ColorSpec.fromRgba(tagColor) });
@@ -244,10 +252,10 @@ export function runDemo(host: TerminalHost): DemoHandle {
     },
   });
 
-  const PALETTE_ROW_WIDTH = 76;
   const paletteSearchItem = new StaticItem({
     id: "static-palette-search",
-    render: (_options) => {
+    render: (options) => {
+      const rowWidth = options.maxWidth;
       const palette = state.selectedTheme.palette;
       const query = inSearch.value.toLowerCase();
       const all = [...palette.vars.entries()];
@@ -258,7 +266,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
       let shown = 0;
       for (const [key, c] of matches) {
         const chip = ` ${key} `;
-        if (used + chip.length + 1 > PALETTE_ROW_WIDTH) break;
+        if (used + chip.length + 1 > rowWidth) break;
         const fgLight = luminance(c) > 0.179;
         out.push(
           new Segment(chip, new Style({
@@ -273,7 +281,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
       const overflow = matches.length - shown;
       if (overflow > 0) {
         const marker = `+${overflow}`;
-        if (used + marker.length <= PALETTE_ROW_WIDTH) out.push(new Segment(marker, dimStyle));
+        if (used + marker.length <= rowWidth) out.push(new Segment(marker, dimStyle));
       }
       return out;
     },
@@ -322,8 +330,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
       const ansiTable = theme.ansiColors;
       for (let i = 0; i < 16; i++) {
         const c = ansiTable.get(i);
-        const swatchStyle = new Style({ color: ColorSpec.fromRgba(c), bgcolor: ColorSpec.fromRgba(c) });
-        segments.push(new Segment("  ", swatchStyle));
+        if (i === 8) segments.push(new Segment("\n"));
         segments.push(new Segment(`██${String(i).padStart(2, " ")} `, new Style({ color: ColorSpec.fromRgba(c) })));
       }
       return segments;
@@ -346,7 +353,10 @@ export function runDemo(host: TerminalHost): DemoHandle {
     },
   });
 
-  const separatorItem = new StaticItem({ id: "static-separator", render: styledLine("─".repeat(76), dimStyle) });
+  const separatorItem = new StaticItem({
+    id: "static-separator",
+    render: (options) => [new Segment("─".repeat(options.maxWidth), dimStyle)],
+  });
 
   const logItem = new StaticItem({
     id: "static-logs",
@@ -361,23 +371,31 @@ export function runDemo(host: TerminalHost): DemoHandle {
     },
   });
 
-  const body = new Group(
-    headerItem, subtitleItem, spacer("sp-1"), widgetsHeading,
-    new Columns([themeDropdown, inSearch]),
-    spacer("sp-2"),
-    new Columns([cbMuted, cbAnsi, cbProgress, tgDarkOnly]),
-    spacer("sp-3"),
-    new Columns([slContrast, slFill]),
-    spacer("sp-4"),
-    new Columns([btnExport, btnReset, btnDisabled]),
-    spacer("sp-5"),
-    titlePanelItem, spacer("sp-6"), swatchesItem, paletteSearchItem, spacer("sp-7"),
-    progressItem, spacer("sp-8"), ansiItem,
+  const controls = new Panel(
+    new Group(
+      themeDropdown, inSearch, spacer("sp-1"),
+      new Columns([cbMuted, cbAnsi, cbProgress, tgDarkOnly]), spacer("sp-2"),
+      slContrast, slFill, spacer("sp-3"),
+      new Columns([btnExport, btnReset, btnDisabled]),
+    ),
+    { title: "Widgets", box: ROUNDED },
   );
-  // The status, separator and log rows hold the bottom of the screen.
-  const footer = new Group(statusItem, separatorItem, logItem);
+  const preview = new Panel(
+    new Group(
+      titlePanelItem, swatchesItem, paletteSearchItem, spacer("sp-4"),
+      progressItem, spacer("sp-5"), ansiItem,
+    ),
+    { title: "Preview", box: ROUNDED },
+  );
+  const main = new Layout();
+  main.splitRow(new Layout(controls, { size: CONTROLS_WIDTH }), new Layout(preview));
   const view = new Layout();
-  view.splitColumn(new Layout(body), new Layout(footer, { size: MAX_LOGS + 2 }));
+  // The status, separator and log rows hold the bottom of the screen.
+  view.splitColumn(
+    new Layout(new Group(headerItem, subtitleItem), { size: 2 }),
+    main,
+    new Layout(new Group(statusItem, separatorItem, logItem), { size: MAX_LOGS + 2 }),
+  );
 
   const app = new WidgetApp({ host, surface: "alternate", view: () => view });
 
@@ -416,6 +434,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   return {
     stop: () => app.stop(),
+    get frame() { return app.frame; },
     done: app.run().finally(() => {
       disposeFilter();
       disposeTheme();
