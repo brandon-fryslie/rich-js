@@ -130,6 +130,13 @@ The position is counted in the whole string you passed, even when a
 [`MarkupRegistry`](./markup-tags) has handed part of it to a plugin tag's handler, and `openTags`
 then includes the plugin tags around the error.
 
+A handler replaces the text between its tags, so plugin tags nest where style
+tags need not. A style tag may enclose a plugin pair, and then styles the
+handler's output too, or sit wholly inside one; a plugin pair's closing tag
+closes any style tag still open inside it. A style tag that opens on one side
+of a plugin pair and is closed on the other, and a plugin pair that overlaps
+another, are parse errors.
+
 ## Links
 
 Make text a clickable hyperlink (terminal support required):

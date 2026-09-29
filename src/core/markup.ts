@@ -19,7 +19,7 @@
 
 import { cellLen } from "./cells.js";
 import { Style, StyleSyntaxError } from "./style.js";
-import { RichText, Span } from "./text.js";
+import { RichText, Span, stripControlChars } from "./text.js";
 import { emojiReplace } from "./emoji.js";
 
 // --- Tag ---
@@ -353,10 +353,18 @@ interface SliceOrigin {
 }
 
 /**
+ * What the built-in walk reads: a run of the caller's tokens, or a plugin pair
+ * already resolved by its handler, which the walk treats as text.
+ */
+type MarkupPart =
+  | { readonly kind: "markup"; readonly tokens: readonly MarkupToken[] }
+  | { readonly kind: "rendered"; readonly text: RichText };
+
+/**
  * Parses the built-in style dialect — `[bold red]text[/bold red]` — into a
  * `RichText` with styled spans. Module-private on purpose: `renderMarkup` is
- * this module's one crossing, and it delegates straight here the moment a
- * string carries no paired plugin tag.
+ * this module's one crossing, and it hands every slice here once its plugin
+ * pairs are resolved.
  *
  * [LAW:single-enforcer] Exporting this is what let a caller bind to the inner
  * layer, and two of them did — `console.ts` and `prompt.ts` imported it as
@@ -374,7 +382,7 @@ interface SliceOrigin {
  * boundary admits both.
  */
 function render(
-  tokens: readonly MarkupToken[],
+  parts: readonly MarkupPart[],
   origin: SliceOrigin,
   baseStyle?: string | Style,
   options?: RenderOptions,
@@ -384,6 +392,7 @@ function render(
   // Build plain text and track spans
   let plainText = "";
   const spans: Span[] = [];
+  const spliced: { at: number; text: RichText }[] = [];
   const openStack: OpenTag[] = [];
   const unparsable = (reason: string, tag: ParsedTag): MarkupSyntaxError =>
     new MarkupSyntaxError(reason, origin.source, tag.start, [
@@ -391,41 +400,55 @@ function render(
       ...openStack.map((opened) => opened.tag),
     ]);
 
-  for (const token of tokens) {
-    if (!isTag(token)) {
-      // A `\[` in front of a bracket no tag starts at is unescaped here, per
-      // text token, as the reference does; a tag's own escape was settled by
-      // `tokenize` against its backslash run.
-      const text = token.text.replace(/\\\[/g, "[");
-      plainText += doEmoji ? emojiReplace(text) : text;
+  // [LAW:dataflow-not-control-flow] One stack across every part, so a style
+  // tag opened before a plugin pair is still open after it and its span covers
+  // the handler's output like any other run of text (rich-markup-cg6).
+  for (const part of parts) {
+    if (part.kind === "rendered") {
+      spliced.push({ at: plainText.length, text: part.text });
+      plainText += part.text.plain;
       continue;
     }
-    const tag = token;
+    for (const token of part.tokens) {
+      if (!isTag(token)) {
+        // A `\[` in front of a bracket no tag starts at is unescaped here, per
+        // text token, as the reference does; a tag's own escape was settled by
+        // `tokenize` against its backslash run.
+        const text = token.text.replace(/\\\[/g, "[");
+        // Text reaches `plainText` as `RichText` will hold it, so every offset
+        // counted along the way — a span, a splice point — indexes the text it
+        // lands on. Stripped only by the constructor, a control character
+        // shifted every style after it one cell right.
+        plainText += stripControlChars(doEmoji ? emojiReplace(text) : text);
+        continue;
+      }
+      const tag = token;
 
-    if (tag.isImplicitClose) {
-      // [/] — close the most recent open tag
-      if (openStack.length === 0) {
-        throw unparsable(`Closing tag ${tag.fullMatch} has no open tag to close`, tag);
+      if (tag.isImplicitClose) {
+        // [/] — close the most recent open tag
+        if (openStack.length === 0) {
+          throw unparsable(`Closing tag ${tag.fullMatch} has no open tag to close`, tag);
+        }
+        const opened = openStack.pop()!;
+        spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
+      } else if (tag.isClosing) {
+        // [/style] — find and close matching open tag
+        const idx = findLastOpen(openStack, tag.styleName);
+        if (idx === -1) {
+          throw unparsable(`Closing tag ${tag.fullMatch} doesn't match any open tag`, tag);
+        }
+        const opened = openStack[idx]!;
+        spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
+        openStack.splice(idx, 1);
+      } else {
+        // Opening tag
+        openStack.push({
+          tag: tag.fullMatch,
+          styleName: tag.styleName,
+          parameters: tag.parameters,
+          textStart: plainText.length,
+        });
       }
-      const opened = openStack.pop()!;
-      spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
-    } else if (tag.isClosing) {
-      // [/style] — find and close matching open tag
-      const idx = findLastOpen(openStack, tag.styleName);
-      if (idx === -1) {
-        throw unparsable(`Closing tag ${tag.fullMatch} doesn't match any open tag`, tag);
-      }
-      const opened = openStack[idx]!;
-      spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
-      openStack.splice(idx, 1);
-    } else {
-      // Opening tag
-      openStack.push({
-        tag: tag.fullMatch,
-        styleName: tag.styleName,
-        parameters: tag.parameters,
-        textStart: plainText.length,
-      });
     }
   }
 
@@ -469,6 +492,16 @@ function render(
     } else {
       result.stylize(style, span.start, span.end);
     }
+  }
+
+  // A handler's own styles go down last — its base style, then its spans.
+  // Every style span that reaches into a handler's output encloses all of it —
+  // no tag of this walk sits inside a plugin pair — so each of these is the
+  // inner span, and inner repaints outer exactly as the sort above has it for
+  // tags.
+  for (const { at, text } of spliced) {
+    result.stylize(text.style, at, at + text.length);
+    for (const span of text.spans) result.stylize(span.style, at + span.start, at + span.end);
   }
 
   return result;
@@ -529,7 +562,11 @@ function findLastIndex<T>(items: readonly T[], match: (item: T) => boolean): num
 export interface MarkupTagContext {
   /** Parsed `key=value` attributes from the opening tag. */
   attrs: Record<string, string>;
-  /** Inner markup, already parsed (registry-aware) into a `RichText`. */
+  /**
+   * Inner markup, already parsed (registry-aware) into a `RichText`. It carries
+   * no `baseStyle`: that is painted once, under the whole output, so it sits
+   * beneath whatever the handler returns.
+   */
   children: RichText;
   /** Raw inner markup text (between the opening tag's `]` and the closing tag's `[`). */
   raw: string;
@@ -686,10 +723,9 @@ export interface RenderMarkupOptions {
 /**
  * Plugin-aware markup render. Always returns a `RichText`. Built-in style
  * tags become spans; registered plugin tags are resolved by their handler,
- * whose returned `RichText` is appended (text + spans) into the output. The
- * recursion is over markup *slices* — between top-level plugin tag pairs and
- * inside each pair — and every recursion node returns a `RichText`, so the
- * append path is uniform.
+ * whose returned `RichText` stands in the output where its pair stood, under
+ * any style tag that encloses the pair. The recursion is into the inner slice
+ * of each plugin pair, and every recursion node returns a `RichText`.
  */
 export function renderMarkup(
   markup: string,
@@ -704,51 +740,38 @@ function renderSlice(
   options?: RenderMarkupOptions,
 ): RichText {
   const registry = options?.registry ?? globalMarkupRegistry;
-  const baseStyle = options?.baseStyle;
-  const doEmoji = options?.emoji !== false;
-
-  const tags = tokens.filter(isTag);
   // Pair each opening plugin tag with its matching closer up-front, so the
   // splice walk can just iterate top-level pairs in source order with no
   // nested-state book-keeping.
-  const { annotated, topLevel: tagPairs } = pairPluginTags(tags, registry, origin);
-  if (tagPairs.size === 0) {
-    return render(tokens, origin, baseStyle, { emoji: doEmoji });
-  }
+  const { annotated, topLevel: tagPairs } = pairPluginTags(tokens.filter(isTag), registry, origin);
 
-  // [LAW:one-type-per-behavior] Always assemble a single RichText. Fragments
-  // between plugin pairs are parsed by the built-in `render`, plugin pairs
-  // hand their inner slice (recursively) to a handler; both produce RichText,
-  // both get appended into one accumulator.
-  const out = new RichText("");
+  // [LAW:one-type-per-behavior] Each top-level plugin pair is resolved by its
+  // handler, and what it returns takes the pair's place in one built-in walk
+  // over the whole slice. Rendering the text between pairs as separate parses
+  // is what closed every style tag at a plugin boundary (rich-markup-cg6).
+  const parts: MarkupPart[] = [];
   let cursor = 0;
-
   for (const [openIdx, closeIdx] of tagPairs) {
     const open = annotated[openIdx]!;
     const close = annotated[closeIdx]!;
-
-    if (open.start > cursor) {
-      out.append(render(within(tokens, cursor, open.start), origin, baseStyle, { emoji: doEmoji }));
-    }
+    parts.push({ kind: "markup", tokens: within(tokens, cursor, open.start) });
 
     const innerRaw = origin.source.slice(open.end, close.start);
+    // The base style is painted once, under the whole output, by the top of
+    // this recursion. Painted into `children` as well, it came back spliced in
+    // over every tag enclosing the pair.
     const innerRichText = renderSlice(
       within(tokens, open.end, close.start),
       { ...origin, enclosing: [...origin.enclosing, open.fullMatch] },
-      options,
+      { ...options, baseStyle: undefined },
     );
     const handler = registry.get(open.pluginName!)!;
-    out.append(handler({ attrs: open.attrs!, children: innerRichText, raw: innerRaw }));
+    parts.push({ kind: "rendered", text: handler({ attrs: open.attrs!, children: innerRichText, raw: innerRaw }) });
     cursor = close.end;
   }
+  parts.push({ kind: "markup", tokens: within(tokens, cursor, Infinity) });
 
-  const trailing = within(tokens, cursor, Infinity);
-  if (trailing.length > 0) {
-    out.append(render(trailing, origin, baseStyle, { emoji: doEmoji }));
-  }
-
-  if (baseStyle) out.stylize(baseStyle);
-  return out;
+  return render(parts, origin, options?.baseStyle, { emoji: options?.emoji !== false });
 }
 
 interface PluginTag extends ParsedTag {
@@ -763,15 +786,30 @@ function pairPluginTags(
 ): { annotated: PluginTag[]; topLevel: Map<number, number> } {
   // Annotate tags with plugin info, then pair openers with closers. Only
   // top-level pairs are returned; inner pairs will be re-discovered by the
-  // recursive `renderMarkup` call on the inner slice.
+  // recursive `renderSlice` call on the inner slice.
   const annotated: PluginTag[] = tags.map((t) => annotatePluginTag(t, registry));
   // [LAW:one-source-of-truth] `[/]` closes the most recent open tag of *any*
   // kind, so this walk keeps the one stack the built-in dialect keeps, style
   // tags on it too; an implicit close pairs a plugin tag exactly when it is on
   // top. A stack of plugin tags alone cannot say what `[/]` refers to, which is
   // why `[shout]one[/]` used to leave its handler unfired (rich-markup-gfr).
+  //
+  // A pair's end closes everything opened inside it, because that is where the
+  // recursion's slice ends and the built-in walk closes what is left open. The
+  // stack drops them there too, so a later `[/]` means here what it means to
+  // the walk that renders it.
   const stack: number[] = [];
   const pairs = new Map<number, number>();
+  // Each opener's closing tag, whichever tag closed it — its own or a pair's end.
+  const closedAt = new Map<number, number>();
+  // Each tag a pair's end closed, with that pair's opening tag.
+  const closedByPair = new Map<number, number>();
+  // Style tags closed inside a plugin tag they opened outside of, keyed by that
+  // plugin tag — a crossing only once the plugin tag turns out to pair.
+  const crossedInto = new Map<number, { styleOpen: number; close: number }>();
+
+  const isOpener = (t: PluginTag): boolean => !t.isClosing && !t.isImplicitClose;
+  const isPlugin = (idx: number): boolean => annotated[idx]!.pluginName !== undefined;
   const closes = (close: PluginTag) => (openIdx: number): boolean => {
     const open = annotated[openIdx]!;
     if (close.isImplicitClose) return true;
@@ -779,61 +817,82 @@ function pairPluginTags(
       ? open.pluginName === close.pluginName
       : open.pluginName === undefined && closesByName(open, close.styleName);
   };
+  // The tags open at a tag's position, as the built-in walk would report them.
+  const openAt = (caret: number): string[] =>
+    annotated.flatMap((t, k) => (k < caret && isOpener(t) && (closedAt.get(k) ?? Infinity) >= caret ? [t.fullMatch] : []));
+  const crossing = (styleOpen: number, close: number, pairOpen: number): MarkupSyntaxError =>
+    new MarkupSyntaxError(
+      `Closing tag ${annotated[close]!.fullMatch} closes ${annotated[styleOpen]!.fullMatch} ` +
+        `across the boundary of plugin tag ${annotated[pairOpen]!.fullMatch}: ` +
+        `a style tag must open and close on the same side of a plugin pair, ` +
+        `because the handler replaces the text inside it.`,
+      origin.source,
+      annotated[close]!.start,
+      [...origin.enclosing, ...openAt(close)],
+    );
+
   for (let i = 0; i < annotated.length; i++) {
     const t = annotated[i]!;
-    if (!t.isClosing && !t.isImplicitClose) {
+    if (isOpener(t)) {
       stack.push(i);
       continue;
     }
-    // A close matching nothing is the built-in parser's to reject, with the
-    // location it reports; this pass only needs to know what it pairs.
     const j = findLastIndex(stack, closes(t));
-    if (j === -1) continue;
-    const openIdx = stack.splice(j, 1)[0]!;
-    if (annotated[openIdx]!.pluginName !== undefined) pairs.set(openIdx, i);
-  }
-  // Filter pairs to top-level only. A pair that opens inside the current one is
-  // either contained — re-discovered when the recursion renders the outer
-  // pair's inner slice — or overlapping, and only its *closing* position tells
-  // the two apart. Testing the open position alone conflated them and dropped
-  // the overlapping pair, which orphaned its closing tag into the trailing
-  // slice, where the built-in parser blamed the wrong tag for the wrong reason.
-  const topLevel = new Map<number, number>();
-  let outerEnd = -1;
-  let outerOpenIdx = -1;
-  const sortedOpens = [...pairs.keys()].sort((a, b) => a - b);
-  for (const openIdx of sortedOpens) {
-    const closeIdx = pairs.get(openIdx)!;
-    if (annotated[openIdx]!.start < outerEnd) {
-      // [LAW:no-silent-failure] Overlap is unrepresentable here rather than
-      // unimplemented: a handler receives `children` as one contiguous slice,
-      // so a region straddling another pair's closing boundary has nothing to
-      // hand it. A style span may overlap because it annotates; a plugin pair
-      // may not because it replaces.
-      if (annotated[closeIdx]!.end > outerEnd) {
-        const inner = annotated[openIdx]!;
-        const outer = annotated[outerOpenIdx]!;
-        // The caret goes under the outer pair's closing tag, the point where
-        // nesting breaks. This pass sees plugin tags only; of those, a pair is
-        // open there when it opens before that tag and closes at or after it.
-        const caret = annotated[pairs.get(outerOpenIdx)!]!.start;
-        const openAtCaret = sortedOpens
-          .filter((o) => annotated[o]!.start < caret && annotated[pairs.get(o)!]!.start >= caret)
-          .map((o) => annotated[o]!.fullMatch);
-        throw new MarkupSyntaxError(
-          `Plugin tag [${inner.pluginName}] overlaps [${outer.pluginName}]: plugin tags must nest, ` +
-            `because a handler receives one contiguous slice. ` +
-            `Close [/${inner.pluginName}] before [/${outer.pluginName}].`,
-          origin.source,
-          caret,
-          [...origin.enclosing, ...openAtCaret],
-        );
+    if (j === -1) {
+      // [LAW:no-silent-failure] A closer that matches nothing reaches for the
+      // last tag before it that it could name, `[/]` and `[/name]` alike. If a
+      // pair's end closed that tag, the closer reaches across the pair, and
+      // saying so beats the built-in parser's "doesn't match any open tag";
+      // otherwise the built-in parser rejects it, with the location it reports.
+      let target = i - 1;
+      while (target >= 0 && !(isOpener(annotated[target]!) && closes(t)(target))) target--;
+      const pairOpen = closedByPair.get(target);
+      if (pairOpen === undefined) continue;
+      if (t.pluginName === undefined) throw crossing(target, i, pairOpen);
+      // Overlap is unrepresentable rather than unimplemented: a handler receives
+      // `children` as one contiguous slice, so a region straddling another
+      // pair's closing boundary has nothing to hand it. A style span may cross
+      // another style span because it annotates; a plugin pair may not because
+      // it replaces. The caret goes where nesting broke: the outer pair's end.
+      const inner = annotated[target]!;
+      const outer = annotated[pairOpen]!;
+      const caret = closedAt.get(pairOpen)!;
+      throw new MarkupSyntaxError(
+        `Plugin tag [${inner.pluginName}] overlaps [${outer.pluginName}]: plugin tags must nest, ` +
+          `because a handler receives one contiguous slice. ` +
+          `Close [/${inner.pluginName}] before [/${outer.pluginName}].`,
+        origin.source,
+        annotated[caret]!.start,
+        [...origin.enclosing, ...openAt(caret)],
+      );
+    }
+    const openIdx = stack[j]!;
+    if (!isPlugin(openIdx)) {
+      for (const k of stack.slice(j + 1)) {
+        if (isPlugin(k) && !crossedInto.has(k)) crossedInto.set(k, { styleOpen: openIdx, close: i });
       }
+      stack.splice(j, 1);
+      closedAt.set(openIdx, i);
       continue;
     }
-    topLevel.set(openIdx, closeIdx);
-    outerOpenIdx = openIdx;
-    outerEnd = annotated[closeIdx]!.end;
+    const crossed = crossedInto.get(openIdx);
+    if (crossed !== undefined) throw crossing(crossed.styleOpen, crossed.close, openIdx);
+    for (const k of stack.splice(j)) {
+      closedAt.set(k, i);
+      if (k !== openIdx) closedByPair.set(k, openIdx);
+    }
+    pairs.set(openIdx, i);
+  }
+  // Pairs nest, so one is top-level exactly when it opens after the last
+  // top-level pair closed. Decided after the walk and not at each close: a
+  // plugin tag still on the stack there may never pair, and then encloses
+  // nothing.
+  const topLevel = new Map<number, number>();
+  let outerClose = -1;
+  for (const openIdx of [...pairs.keys()].sort((a, b) => a - b)) {
+    if (openIdx < outerClose) continue;
+    outerClose = pairs.get(openIdx)!;
+    topLevel.set(openIdx, outerClose);
   }
   return { annotated, topLevel };
 }
