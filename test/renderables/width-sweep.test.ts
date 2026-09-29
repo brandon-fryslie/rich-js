@@ -130,6 +130,14 @@ const configurations: readonly Configuration[] = [
     }),
   },
   {
+    name: "Table with no cell to measure",
+    shape: "rectangular",
+    make: table({ showHeader: false }, (t) => {
+      t.addColumn("Name");
+      t.addColumn("Qty");
+    }),
+  },
+  {
     name: "Table with an unbounded column demand",
     shape: "rectangular",
     make: table({}, (t) => {
