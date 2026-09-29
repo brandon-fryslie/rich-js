@@ -401,11 +401,13 @@ function render(
     }
   }
 
-  // A handler's own spans go down last. Every style span that reaches into a
-  // handler's output encloses all of it — no tag of this walk sits inside a
-  // plugin pair — so each of these is the inner span, and inner repaints outer
-  // exactly as the sort above has it for tags.
+  // A handler's own styles go down last — its base style, then its spans.
+  // Every style span that reaches into a handler's output encloses all of it —
+  // no tag of this walk sits inside a plugin pair — so each of these is the
+  // inner span, and inner repaints outer exactly as the sort above has it for
+  // tags.
   for (const { at, text } of spliced) {
+    result.stylize(text.style, at, at + text.length);
     for (const span of text.spans) result.stylize(span.style, at + span.start, at + span.end);
   }
 
@@ -662,10 +664,13 @@ function renderSlice(
     parts.push({ kind: "markup", markup: markup.slice(cursor, open.start), origin: offsetBy(origin, cursor) });
 
     const innerRaw = markup.slice(open.end, close.start);
+    // The base style is painted once, under the whole output, by the top of
+    // this recursion. Painted into `children` as well, it came back spliced in
+    // over every tag enclosing the pair.
     const innerRichText = renderSlice(
       innerRaw,
       { ...offsetBy(origin, open.end), enclosing: [...origin.enclosing, open.fullMatch] },
-      options,
+      { ...options, baseStyle: undefined },
     );
     const handler = registry.get(open.pluginName!)!;
     parts.push({ kind: "rendered", text: handler({ attrs: open.attrs!, children: innerRichText, raw: innerRaw }) });
@@ -693,16 +698,31 @@ function pairPluginTags(
 ): { annotated: PluginTag[]; topLevel: Map<number, number> } {
   // Annotate tags with plugin info, then pair openers with closers. Only
   // top-level pairs are returned; inner pairs will be re-discovered by the
-  // recursive `renderMarkup` call on the inner slice.
+  // recursive `renderSlice` call on the inner slice.
   const annotated: PluginTag[] = tags.map((t) => annotatePluginTag(t, registry));
   // [LAW:one-source-of-truth] `[/]` closes the most recent open tag of *any*
   // kind, so this walk keeps the one stack the built-in dialect keeps, style
   // tags on it too; an implicit close pairs a plugin tag exactly when it is on
   // top. A stack of plugin tags alone cannot say what `[/]` refers to, which is
   // why `[shout]one[/]` used to leave its handler unfired (rich-markup-gfr).
+  //
+  // A pair's end closes everything opened inside it, because that is where the
+  // recursion's slice ends and the built-in walk closes what is left open. The
+  // stack drops them there too, so a later `[/]` means here what it means to
+  // the walk that renders it.
   const stack: number[] = [];
-  const pairs = new Map<number, number>();
-  const styleCloses: StyleClose[] = [];
+  const topLevel = new Map<number, number>();
+  // Each opener's closing tag, whichever tag closed it — its own or a pair's end.
+  const closedAt = new Map<number, number>();
+  // Tags a pair's end closed, with that pair: what an explicit closer that
+  // matches nothing on the stack was reaching for.
+  const closedByPair: { idx: number; pairOpen: number }[] = [];
+  // Style tags closed inside a plugin tag they opened outside of, keyed by that
+  // plugin tag — a crossing only once the plugin tag turns out to pair.
+  const crossedInto = new Map<number, { styleOpen: number; close: number }>();
+
+  const isOpener = (t: PluginTag): boolean => !t.isClosing && !t.isImplicitClose;
+  const isPlugin = (idx: number): boolean => annotated[idx]!.pluginName !== undefined;
   const closes = (close: PluginTag) => (openIdx: number): boolean => {
     const open = annotated[openIdx]!;
     if (close.isImplicitClose) return true;
@@ -710,110 +730,73 @@ function pairPluginTags(
       ? open.pluginName === close.pluginName
       : open.pluginName === undefined && closesByName(open, close.styleName);
   };
+  // The tags open at a tag's position, as the built-in walk would report them.
+  const openAt = (caret: number): string[] =>
+    annotated.flatMap((t, k) => (k < caret && isOpener(t) && (closedAt.get(k) ?? Infinity) >= caret ? [t.fullMatch] : []));
+  const crossing = (styleOpen: number, close: number, pairOpen: number): MarkupSyntaxError =>
+    new MarkupSyntaxError(
+      `Closing tag ${annotated[close]!.fullMatch} closes ${annotated[styleOpen]!.fullMatch} ` +
+        `across the boundary of plugin tag ${annotated[pairOpen]!.fullMatch}: ` +
+        `a style tag must open and close on the same side of a plugin pair, ` +
+        `because the handler replaces the text inside it.`,
+      origin.source,
+      origin.base + annotated[close]!.start,
+      [...origin.enclosing, ...openAt(close)],
+    );
+
   for (let i = 0; i < annotated.length; i++) {
     const t = annotated[i]!;
-    if (!t.isClosing && !t.isImplicitClose) {
+    if (isOpener(t)) {
       stack.push(i);
       continue;
     }
-    // A close matching nothing is the built-in parser's to reject, with the
-    // location it reports; this pass only needs to know what it pairs.
     const j = findLastIndex(stack, closes(t));
-    if (j === -1) continue;
-    const openAtClose = stack.map((k) => annotated[k]!.fullMatch);
-    const openIdx = stack.splice(j, 1)[0]!;
-    if (annotated[openIdx]!.pluginName !== undefined) pairs.set(openIdx, i);
-    else styleCloses.push({ openIdx, closeIdx: i, openAtClose });
-  }
-  rejectStyleCrossingPlugin(annotated, pairs, styleCloses, origin);
-  // Filter pairs to top-level only. A pair that opens inside the current one is
-  // either contained — re-discovered when the recursion renders the outer
-  // pair's inner slice — or overlapping, and only its *closing* position tells
-  // the two apart. Testing the open position alone conflated them and dropped
-  // the overlapping pair, which orphaned its closing tag into the trailing
-  // slice, where the built-in parser blamed the wrong tag for the wrong reason.
-  const topLevel = new Map<number, number>();
-  let outerEnd = -1;
-  let outerOpenIdx = -1;
-  const sortedOpens = [...pairs.keys()].sort((a, b) => a - b);
-  for (const openIdx of sortedOpens) {
-    const closeIdx = pairs.get(openIdx)!;
-    if (annotated[openIdx]!.start < outerEnd) {
-      // [LAW:no-silent-failure] Overlap is unrepresentable here rather than
-      // unimplemented: a handler receives `children` as one contiguous slice,
-      // so a region straddling another pair's closing boundary has nothing to
-      // hand it. A style span may overlap because it annotates; a plugin pair
-      // may not because it replaces.
-      if (annotated[closeIdx]!.end > outerEnd) {
-        const inner = annotated[openIdx]!;
-        const outer = annotated[outerOpenIdx]!;
-        // The caret goes under the outer pair's closing tag, the point where
-        // nesting breaks. This pass sees plugin tags only; of those, a pair is
-        // open there when it opens before that tag and closes at or after it.
-        const caret = annotated[pairs.get(outerOpenIdx)!]!.start;
-        const openAtCaret = sortedOpens
-          .filter((o) => annotated[o]!.start < caret && annotated[pairs.get(o)!]!.start >= caret)
-          .map((o) => annotated[o]!.fullMatch);
-        throw new MarkupSyntaxError(
-          `Plugin tag [${inner.pluginName}] overlaps [${outer.pluginName}]: plugin tags must nest, ` +
-            `because a handler receives one contiguous slice. ` +
-            `Close [/${inner.pluginName}] before [/${outer.pluginName}].`,
-          origin.source,
-          origin.base + caret,
-          [...origin.enclosing, ...openAtCaret],
-        );
-      }
-      continue;
-    }
-    topLevel.set(openIdx, closeIdx);
-    outerOpenIdx = openIdx;
-    outerEnd = annotated[closeIdx]!.end;
-  }
-  return { annotated, topLevel };
-}
-
-/** A style tag closed by a tag, with the tags open at that close, as written. */
-interface StyleClose {
-  openIdx: number;
-  closeIdx: number;
-  openAtClose: readonly string[];
-}
-
-/**
- * Rejects a style tag that opens on one side of a plugin pair's boundary and
- * is closed on the other.
- *
- * [LAW:no-silent-failure] A style tag may enclose a plugin pair, and may sit
- * wholly inside one, because either way its span covers whole runs of the
- * output. One that crosses has half its span in text the handler replaces, so
- * it has no span to give; left to the slice parses, it surfaced as a closing
- * tag that "doesn't match any open tag" while the excerpt showed it open.
- * A tag left unclosed crosses nothing: end of input closes it, and inside a
- * plugin pair the end of the pair's own slice is that end.
- */
-function rejectStyleCrossingPlugin(
-  annotated: readonly PluginTag[],
-  pairs: ReadonlyMap<number, number>,
-  styleCloses: readonly StyleClose[],
-  origin: SliceOrigin,
-): void {
-  for (const { openIdx, closeIdx, openAtClose } of styleCloses) {
-    for (const [pluginOpen, pluginClose] of pairs) {
-      const inPair = (idx: number): boolean => pluginOpen < idx && idx < pluginClose;
-      if (inPair(openIdx) === inPair(closeIdx)) continue;
-      const plugin = annotated[pluginOpen]!;
-      const style = annotated[openIdx]!;
-      const close = annotated[closeIdx]!;
+    if (j === -1) {
+      // [LAW:no-silent-failure] A closer that matches nothing is the built-in
+      // parser's to reject — unless a pair's end already closed what it names.
+      // Then it reaches across that pair, and saying so beats the built-in
+      // parser's "doesn't match any open tag" under an excerpt showing it open.
+      const r = t.isImplicitClose ? -1 : findLastIndex(closedByPair, ({ idx }) => closes(t)(idx));
+      if (r === -1) continue;
+      const reached = closedByPair[r]!;
+      if (t.pluginName === undefined) throw crossing(reached.idx, i, reached.pairOpen);
+      // Overlap is unrepresentable rather than unimplemented: a handler receives
+      // `children` as one contiguous slice, so a region straddling another
+      // pair's closing boundary has nothing to hand it. A style span may cross
+      // another style span because it annotates; a plugin pair may not because
+      // it replaces. The caret goes where nesting broke: the outer pair's end.
+      const inner = annotated[reached.idx]!;
+      const outer = annotated[reached.pairOpen]!;
+      const caret = closedAt.get(reached.pairOpen)!;
       throw new MarkupSyntaxError(
-        `Closing tag ${close.fullMatch} closes ${style.fullMatch} across the boundary of plugin tag ${plugin.fullMatch}: ` +
-          `a style tag must open and close on the same side of a plugin pair, ` +
-          `because the handler replaces the text inside it.`,
+        `Plugin tag [${inner.pluginName}] overlaps [${outer.pluginName}]: plugin tags must nest, ` +
+          `because a handler receives one contiguous slice. ` +
+          `Close [/${inner.pluginName}] before [/${outer.pluginName}].`,
         origin.source,
-        origin.base + close.start,
-        [...origin.enclosing, ...openAtClose],
+        origin.base + annotated[caret]!.start,
+        [...origin.enclosing, ...openAt(caret)],
       );
     }
+    const openIdx = stack[j]!;
+    if (!isPlugin(openIdx)) {
+      for (const k of stack.slice(j + 1)) {
+        if (isPlugin(k) && !crossedInto.has(k)) crossedInto.set(k, { styleOpen: openIdx, close: i });
+      }
+      stack.splice(j, 1);
+      closedAt.set(openIdx, i);
+      continue;
+    }
+    const crossed = crossedInto.get(openIdx);
+    if (crossed !== undefined) throw crossing(crossed.styleOpen, crossed.close, openIdx);
+    for (const k of stack.splice(j)) {
+      closedAt.set(k, i);
+      if (k !== openIdx) closedByPair.push({ idx: k, pairOpen: openIdx });
+    }
+    // Pairs nest, so one closes at top level exactly when no plugin tag is
+    // open around it, and top-level pairs close in the order they open.
+    if (!stack.some(isPlugin)) topLevel.set(openIdx, i);
   }
+  return { annotated, topLevel };
 }
 
 function annotatePluginTag(tag: ParsedTag, registry: MarkupRegistry): PluginTag {

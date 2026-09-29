@@ -368,10 +368,18 @@ describe("a style tag spans a plugin pair it encloses", () => {
   });
 
   it("lets markup repaint a base style when a plugin pair is present", () => {
-    expect(spans("[blue]x[/blue][aa]y[/aa]", { baseStyle: "red" })).toEqual([
-      "0-2 red",
-      "0-1 blue",
-      "1-2 red",
+    expect(spans("[blue]x[/blue][aa]y[/aa]", { baseStyle: "red" })).toEqual(["0-2 red", "0-1 blue"]);
+  });
+
+  it("paints the base style under a tag enclosing a pair, not over it", () => {
+    expect(spans("[blue][aa]x[/aa][/blue]", { baseStyle: "red" })).toEqual(["0-1 red", "0-1 blue"]);
+  });
+
+  it("keeps the base style of the RichText a handler returns", () => {
+    const r = new MarkupRegistry();
+    r.register("st", () => new RichText("S", { style: "green", end: "" }));
+    expect(renderMarkup("a[st][/st]", { registry: r }).spans.map((s) => `${s.start}-${s.end} ${String(s.style)}`)).toEqual([
+      "1-2 green",
     ]);
   });
 });
@@ -397,17 +405,25 @@ describe("a style tag cannot cross a plugin pair's boundary", () => {
     const err = rejectionOf(markup, registry());
     expect(err.reason).toMatch(/^Closing tag \[\/bold\] closes \[bold\] across the boundary of plugin tag \[aa\]/);
     expect(err.offset).toBe(markup.indexOf("[/bold]"));
-    expect(err.openTags).toEqual(["[bold]"]);
+    // The pair's end closed [bold]; nothing is open where [/bold] stands.
+    expect(err.openTags).toEqual([]);
   });
 
-  it("rejects an implicit close that reaches past the pair for a style opened inside it", () => {
-    const err = rejectionOf("[bb][aa][bold]x[/aa][/]", registry());
-    expect(err.reason).toMatch(/^Closing tag \[\/\] closes \[bold\] across the boundary of plugin tag \[aa\]/);
-  });
+  const spans = (markup: string): string[] =>
+    renderMarkup(markup, { registry: registry() }).spans.map((s) => `${s.start}-${s.end} ${String(s.style)}`);
 
   it("accepts a style left open inside the pair, which the pair's end closes", () => {
-    const out = renderMarkup("[aa][bold]x[/aa] y", { registry: registry() });
-    expect(out.spans.map((s) => `${s.start}-${s.end} ${String(s.style)}`)).toEqual(["0-1 bold"]);
+    expect(spans("[aa][bold]x[/aa] y")).toEqual(["0-1 bold"]);
+  });
+
+  it("points a later [/] at the tag open outside the pair, not one the pair's end closed", () => {
+    expect(spans("[red][aa][bold]x[/aa]y[/]")).toEqual(["0-2 red", "0-1 bold"]);
+    expect(spans("[bb][aa][bold]x[/aa][/]")).toEqual(["0-1 bold"]);
+  });
+
+  it("names enclosing style tags among those open at an overlap", () => {
+    const err = rejectionOf("[bold][aa][bb]x[/aa][/bb][/bold]", registry());
+    expect(err.openTags).toEqual(["[bold]", "[aa]", "[bb]"]);
   });
 });
 
