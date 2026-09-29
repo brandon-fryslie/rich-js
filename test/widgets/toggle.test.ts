@@ -233,6 +233,13 @@ describe("Toggle", () => {
       expect(changes).toHaveLength(1);
     });
 
+    it("a release dragged off the toggle does not toggle it", () => {
+      const tg = new Toggle({ label: "Go" });
+      tg.handleMouse(mouseDown);
+      tg.handleMouse({ ...mouseUp, over: false });
+      expect(tg.on).toBe(false);
+    });
+
     it("does not toggle on mouse_down alone", () => {
       const tg = new Toggle({ label: "Go" });
       const changes: InteractiveWidget[] = [];

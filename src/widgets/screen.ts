@@ -60,12 +60,12 @@ import type { RenderOptions } from "../core/protocol.js";
 import { DefaultFocusManager } from "./focus-manager.js";
 import { FLOW, hasOverlay } from "./types.js";
 import type {
-  Screen,
+  FrameSource,
   InteractiveWidget,
   FocusManager,
-  MountEntry,
   Placement,
 } from "./types.js";
+import type { WidgetBase } from "./widget-base.js";
 import type { TerminalHost } from "../host/terminal-host.js";
 
 export type ColorSystemSpec =
@@ -102,6 +102,26 @@ interface FrameLayout {
   // the microtask-scheduled draw.
   width: number;
   lines: Segment[][];
+}
+
+// A mount entry is either a bare widget (placement defaults to flow) or a
+// widget paired with an explicit placement. The two-shape input is a
+// convenience; internally Screen normalizes to { widget, placement }.
+// [LAW:types-are-the-program] Only a `WidgetBase` mounts: its `render` is what
+// stamps the cells hit-testing reads, so an `InteractiveWidget` implemented any
+// other way would paint and never receive a click.
+export type MountEntry =
+  | WidgetBase
+  | { widget: WidgetBase; placement: Placement };
+
+export interface Screen extends FrameSource {
+  mount(...entries: MountEntry[]): void;
+  unmount(widget: InteractiveWidget): void;
+
+  start(): void;
+  stop(): void;
+
+  readonly running: boolean;
 }
 
 export class DefaultScreen implements Screen {
@@ -424,7 +444,7 @@ function normalizeEntry(entry: MountEntry): { widget: InteractiveWidget; placeme
     validatePlacement(entry.placement);
     return { widget: entry.widget, placement: entry.placement };
   }
-  return { widget: entry as InteractiveWidget, placement: FLOW };
+  return { widget: entry as WidgetBase, placement: FLOW };
 }
 
 // [LAW:types-are-the-program] mount() is the trust boundary for placements.

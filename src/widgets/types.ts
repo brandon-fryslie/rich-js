@@ -188,25 +188,6 @@ export interface FocusManager {
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe;
 }
 
-// --- Screen ---
-
-// A mount entry is either a bare widget (placement defaults to flow) or a
-// widget paired with an explicit placement. The two-shape input is a
-// convenience; internally Screen normalizes to { widget, placement }.
-export type MountEntry =
-  | InteractiveWidget
-  | { widget: InteractiveWidget; placement: Placement };
-
-export interface Screen extends FrameSource {
-  mount(...entries: MountEntry[]): void;
-  unmount(widget: InteractiveWidget): void;
-
-  start(): void;
-  stop(): void;
-
-  readonly running: boolean;
-}
-
 // What EventRouter routes against: focus for keys, and the frame most
 // recently painted for the pointer (`widgetAt`).
 export interface FrameSource {

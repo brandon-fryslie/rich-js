@@ -126,6 +126,13 @@ describe("DefaultScreen", () => {
     stream = made.stream;
   });
 
+  it("mounts only a WidgetBase, the one kind of widget hit-testing can find", () => {
+    const plain = {} as InteractiveWidget;
+    // @ts-expect-error an InteractiveWidget not built on WidgetBase stamps no cells
+    const mountPlain = (): void => screen.mount(plain);
+    expect(mountPlain).toBeTypeOf("function");
+  });
+
   it("starts not running", () => {
     expect(screen.running).toBe(false);
   });

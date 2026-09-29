@@ -207,6 +207,16 @@ describe("Button", () => {
       expect(submits).toHaveLength(1);
     });
 
+    it("a release dragged off the button cancels the press", () => {
+      const btn = new Button({ label: "Go" });
+      const submits: InteractiveWidget[] = [];
+      btn.onSubmit((w) => submits.push(w));
+      btn.handleMouse(mouseDown);
+      btn.handleMouse({ ...mouseUp, over: false });
+      expect(submits).toHaveLength(0);
+      expect(btn.active).toBe(false);
+    });
+
     it("does not fire onSubmit when disabled (mouse)", () => {
       const btn = new Button({ label: "Go", disabled: true });
       const submits: InteractiveWidget[] = [];

@@ -208,6 +208,13 @@ describe("Checkbox", () => {
       expect(changes).toHaveLength(1);
     });
 
+    it("a release dragged off the checkbox does not toggle it", () => {
+      const cb = new Checkbox({ label: "Go" });
+      cb.handleMouse(mouseDown);
+      cb.handleMouse({ ...mouseUp, over: false });
+      expect(cb.checked).toBe(false);
+    });
+
     it("does not toggle on mouse_down alone", () => {
       const cb = new Checkbox({ label: "Go" });
       const changes: InteractiveWidget[] = [];

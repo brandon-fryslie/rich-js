@@ -99,10 +99,11 @@ export class Button extends WidgetBase {
     if (event.type === "mouse_down") {
       this.active = true;
     }
+    // A release that dragged off the button cancels the press.
     if (event.type === "mouse_up") {
       if (this.active) {
         this.active = false;
-        this.emitSubmit();
+        if (event.over) this.emitSubmit();
       }
     }
   }

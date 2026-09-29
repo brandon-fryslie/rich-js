@@ -51,7 +51,8 @@ import {
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
-import type { InteractiveWidget, MountEntry } from "../../src/widgets/types.js";
+import type { InteractiveWidget } from "../../src/widgets/types.js";
+import type { MountEntry } from "../../src/widgets/screen.js";
 import type { ColorRgba } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 

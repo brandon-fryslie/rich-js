@@ -25,10 +25,8 @@ import {
   KeyEvent,
 } from "../../src/widgets/index.js";
 import type { TerminalHost } from "../../src/host/index.js";
-import type {
-  InteractiveWidget,
-  MountEntry,
-} from "../../src/widgets/types.js";
+import type { InteractiveWidget } from "../../src/widgets/types.js";
+import type { MountEntry } from "../../src/widgets/screen.js";
 import type {
   Renderable,
   RenderOptions,

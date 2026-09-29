@@ -94,7 +94,8 @@ export class Toggle extends WidgetBase {
   @action
   override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
-    if (event.type === "mouse_up") {
+    // A release that dragged off the toggle cancels the press.
+    if (event.type === "mouse_up" && event.over) {
       this.on = !this.on;
       this.emitChange();
     }
