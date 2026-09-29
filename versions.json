@@ -4,15 +4,22 @@
     {
       "version": "pr-215",
       "ref": "refs/pull/215/merge",
-      "sha": "de71c5a97be5d1803d33d61f21e15d900385a851",
-      "timestamp": "2026-09-29T20:18:42.542Z",
+      "sha": "925e276691e51963ebc012329bfb2990e8fb3f81",
+      "timestamp": "2026-09-29T20:23:52.427Z",
       "commits": [
         {
-          "sha": "de71c5a97be5d1803d33d61f21e15d900385a851",
+          "sha": "925e276691e51963ebc012329bfb2990e8fb3f81",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:17:43-06:00",
-          "message": "Merge 706a64d4b985ab90fd34d3c3422a142d86f4b614 into e8837d1099d2f809f88b87febb1dce9b900b5d75\n"
+          "timestamp": "2026-09-29T20:22:59Z",
+          "message": "Merge b48c2f6b06e411860eb47637c16f256edba142f5 into e8837d1099d2f809f88b87febb1dce9b900b5d75\n"
+        },
+        {
+          "sha": "b48c2f6b06e411860eb47637c16f256edba142f5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:22:54-06:00",
+          "message": "fix(demo): the rate sparkline stays inside the pane's rows and width (rich-style-ska)\n\nReview (high): each stacked block now gets as a ceiling the rows left above it,\nand the sparkline honours that ceiling and crops to its width. A sample records\nwhat the tick actually moved, after the clamp to the stage total.\n"
         },
         {
           "sha": "706a64d4b985ab90fd34d3c3422a142d86f4b614",
