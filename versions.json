@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-199",
-      "ref": "refs/pull/199/merge",
-      "sha": "bfbfa05b09067b0f0cf7e0f9f506ec471d69bcf4",
-      "timestamp": "2026-09-29T13:15:38.178Z",
-      "commits": [
-        {
-          "sha": "bfbfa05b09067b0f0cf7e0f9f506ec471d69bcf4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:13:54Z",
-          "message": "Merge 29d4177f38fa0796dc34a49650474d1722e35428 into 09c34e93c05bb98ab33aef129b0a19c2c2b3323e\n"
-        },
-        {
-          "sha": "29d4177f38fa0796dc34a49650474d1722e35428",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:13:49-06:00",
-          "message": "docs(markup-tags): raw content is still parsed, attribute values cannot hold brackets, theme names are not reserved (rich-docs-qi5)\n"
-        },
-        {
-          "sha": "eb1e17964a848990e74a24cc45801e4da97488b1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:05:48-06:00",
-          "message": "docs(markup): a page for plugin tags — registering, the handler contract, which registry, and why pairs must nest (rich-docs-qi5)\n"
-        }
-      ]
-    },
-    {
       "version": "pr-198",
       "ref": "refs/pull/198/merge",
       "sha": "99f0449188f3532d5d6488f808bb45414cadd4a7",
