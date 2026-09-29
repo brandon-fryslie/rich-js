@@ -1340,6 +1340,7 @@ describe("Console and Live hyperlinks", () => {
       console: new Console({ environment: host.environment, ...options }),
       autoRefresh: false,
     });
+    live.start();
     live.refresh();
     return host.stdout.chunks.join("");
   };

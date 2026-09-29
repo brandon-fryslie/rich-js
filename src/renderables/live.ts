@@ -74,28 +74,34 @@ export class Live {
 
     if (this._autoRefresh) {
       const interval = Math.floor(1000 / this._refreshPerSecond);
-      this._timer = setInterval(() => this.refresh(), interval);
+      // No caller is on the stack to run `stop()` for a frame that throws
+      // here, and in Node the throw ends the process — so the terminal is
+      // handed back first, and the error then goes on to wherever an uncaught
+      // one goes.
+      this._timer = setInterval(() => {
+        try {
+          this.refresh();
+        } catch (error) {
+          this._release();
+          throw error;
+        }
+      }, interval);
     }
   }
 
   stop(): void {
     if (!this._started) return;
-    this._started = false;
-
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = undefined;
-    }
-
-    if (!this._transient) {
-      this.refresh();
-    } else {
-      this._clearLast();
-    }
-
-    this._writeCursorControl(true);
-    if (this._altScreen) {
-      this._console.file.write("\x1b[0m\x1b[?1049l"); // reset attrs + exit alt screen
+    // [LAW:no-silent-failure] A final frame that throws still propagates, and
+    // the terminal is handed back on the way out.
+    try {
+      if (this._transient) {
+        this._console.file.write(this._erase());
+        this._lastLineCount = 0;
+      } else {
+        this.refresh();
+      }
+    } finally {
+      this._release();
     }
   }
 
@@ -109,16 +115,10 @@ export class Live {
   }
 
   refresh(): void {
-    if (!this._renderable) return;
-
-    if (this._altScreen) {
-      // Alt-screen mode: cursor home (first refresh clears the buffer)
-      this._console.file.write(this._firstRefresh ? "\x1b[2J\x1b[H" : "\x1b[H");
-      this._firstRefresh = false;
-    } else {
-      // Inline mode: erase previous output
-      this._clearLast();
-    }
+    // A frame is drawn only while this Live holds the terminal, as in Rich:
+    // before `start()` or after the hand-back it would land on a screen that
+    // belongs to someone else — the main buffer, under the user's own output.
+    if (!this._started || !this._renderable) return;
 
     // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
     // rows and differ only in what those rows are: the alternate screen is a
@@ -138,21 +138,28 @@ export class Live {
     // home — so each of its rows is erased before it is drawn, or a shorter
     // frame leaves the last one's rows and line tails showing. The erase comes
     // first because the cursor is then at the row's start; after a row that
-    // fills the width it would take the last cell. An inline frame's rows were
-    // erased by `_clearLast`.
+    // fills the width it would take the last cell. An inline frame's rows are
+    // erased by `_erase`.
     const lead = this._altScreen ? "\x1b[2K" : "";
     const destination = this._console.destination;
     const output = displayLines
       .map((line) => lead + segmentsToString(line, destination))
       .join("\n");
 
-    // Inline, the newline leaves the cursor under the frame, where `_clearLast`
+    // [LAW:effects-at-boundaries] The frame is fully rendered before a byte
+    // reaches the terminal, and whatever takes the last frame away goes out in
+    // the same write as the new one — so a render that throws leaves the last
+    // good frame showing. The first alternate-screen frame clears the buffer
+    // it walked into; after that the cursor only goes home.
+    const replace = this._altScreen ? (this._firstRefresh ? "\x1b[2J\x1b[H" : "\x1b[H") : this._erase();
+    // Inline, the newline leaves the cursor under the frame, where `_erase`
     // counts up from. On the alternate screen the next frame starts from home,
     // and a newline after a full-height frame's last row scrolls its first row
     // off the top.
-    this._console.file.write(this._altScreen ? output : output + "\n");
-    // What `_clearLast` erases: an inline frame's rows. An alternate-screen
-    // frame is erased by leaving the buffer.
+    this._console.file.write(replace + (this._altScreen ? output : output + "\n"));
+    this._firstRefresh = false;
+    // What `_erase` erases: an inline frame's rows. An alternate-screen frame
+    // is erased by leaving the buffer.
     this._lastLineCount = this._altScreen ? 0 : displayLines.length;
   }
 
@@ -167,13 +174,21 @@ export class Live {
     return kept;
   }
 
-  private _clearLast(): void {
-    if (this._lastLineCount > 0) {
-      const stream = this._console.file;
-      for (let i = 0; i < this._lastLineCount; i++) {
-        stream.write("\x1b[1A\x1b[2K");
-      }
-      this._lastLineCount = 0;
+  // Cursor-up and erase-line for each row of the last inline frame.
+  private _erase(): string {
+    return "\x1b[1A\x1b[2K".repeat(this._lastLineCount);
+  }
+
+  // [LAW:single-enforcer] The one way the terminal is handed back — the timer
+  // stopped, the cursor shown, the alternate screen left — whether `stop()`
+  // ran or a frame threw with no caller to run it.
+  private _release(): void {
+    this._started = false;
+    clearInterval(this._timer);
+    this._timer = undefined;
+    this._writeCursorControl(true);
+    if (this._altScreen) {
+      this._console.file.write("\x1b[0m\x1b[?1049l"); // reset attrs + exit alt screen
     }
   }
 
