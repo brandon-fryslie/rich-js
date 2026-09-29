@@ -39,7 +39,7 @@
 import { ColorDepth, resolveDestination } from "./color.js";
 import type { DetectColorOptions, Destination } from "./color.js";
 import type { Segment } from "./segment.js";
-import type { Renderable, RenderOptions } from "./protocol.js";
+import type { Renderable, RenderOptions, StyleErrorHandler } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
 export interface RenderToStringOptions {
@@ -77,6 +77,12 @@ export interface RenderToStringOptions {
    * ASCII characters. Default false.
    */
   asciiOnly?: boolean;
+  /**
+   * Hears each style string the render degrades to unstyled; throw from it
+   * to make the render strict. The contract is `RenderOptions.onStyleError`,
+   * which this is handed to unchanged. Absent, a dropped style passes silently.
+   */
+  onStyleError?: StyleErrorHandler;
 }
 
 const DEFAULT_WIDTH = 80;
@@ -182,6 +188,7 @@ export function renderToString(
     maxWidth: width,
     isTerminal: false,
     asciiOnly: options?.asciiOnly ?? false,
+    onStyleError: options?.onStyleError,
     // [LAW:one-source-of-truth] The depth the segments below are encoded at,
     // so a renderable measures what this very call will draw.
     colorSystem: destination.colorSystem,

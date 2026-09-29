@@ -198,8 +198,9 @@ always throws. That error is a `MarkupSyntaxError`, described under
 
 ### Reporting dropped styles
 
-Pass `onStyleError` to the `Console` to hear about each style it drops. It
-receives the `StyleSyntaxError` and the whole style string that failed:
+Pass `onStyleError` to the `Console` to hear about each style it drops.
+`renderToString` takes the same option. The handler receives the
+`StyleSyntaxError` and the whole style string that failed:
 
 ```typescript
 import { Console } from "@promptctl/rich-js";
@@ -223,9 +224,6 @@ message suggests it. Theme names are never suggested, so `[my.heder]` gets no
 The handler runs each time a style is resolved, not once per distinct string. A
 style used twice is reported twice, and a `Live` display reports it again on
 every refresh, so deduplicate by `style` if you log.
-
-`renderToString` takes no handler. Text rendered through it drops invalid styles
-silently.
 
 ### Failing on invalid styles
 
