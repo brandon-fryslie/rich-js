@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-221",
+      "ref": "refs/pull/221/merge",
+      "sha": "949e55076f99ca2d2466d30410a26ee9650104b2",
+      "timestamp": "2026-09-29T21:37:20.811Z",
+      "commits": [
+        {
+          "sha": "949e55076f99ca2d2466d30410a26ee9650104b2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:36:26-06:00",
+          "message": "Merge 1d1b59f0c14e97ca15e050c86f5f6c1307c93610 into d0f2bcbfea53ad8f1183201e9f3e7f9241029970\n"
+        },
+        {
+          "sha": "1d1b59f0c14e97ca15e050c86f5f6c1307c93610",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:36:21-06:00",
+          "message": "feat(render): renderToString takes onStyleError (rich-diagnostics-ejn)\n\nrenderToString degraded an unparseable style to unstyled with no way for\nits caller to hear about it or make the render strict. It now takes the\nsame StyleErrorHandler a Console does and hands it to the RenderOptions\nit builds, so both share RenderOptions.onStyleError's contract.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d0f2bcbfea53ad8f1183201e9f3e7f9241029970",
