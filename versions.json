@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-215",
-      "ref": "refs/pull/215/merge",
-      "sha": "925e276691e51963ebc012329bfb2990e8fb3f81",
-      "timestamp": "2026-09-29T20:23:52.427Z",
-      "commits": [
-        {
-          "sha": "925e276691e51963ebc012329bfb2990e8fb3f81",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T20:22:59Z",
-          "message": "Merge b48c2f6b06e411860eb47637c16f256edba142f5 into e8837d1099d2f809f88b87febb1dce9b900b5d75\n"
-        },
-        {
-          "sha": "b48c2f6b06e411860eb47637c16f256edba142f5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:22:54-06:00",
-          "message": "fix(demo): the rate sparkline stays inside the pane's rows and width (rich-style-ska)\n\nReview (high): each stacked block now gets as a ceiling the rows left above it,\nand the sparkline honours that ceiling and crops to its width. A sample records\nwhat the tick actually moved, after the clamp to the stage total.\n"
-        },
-        {
-          "sha": "706a64d4b985ab90fd34d3c3422a142d86f4b614",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:17:39-06:00",
-          "message": "feat(protocol): export getStyle for Segment-level renderables (rich-style-ska)\n\nA renderable that yields its own Segments could not draw with a theme\nname: a Segment takes a resolved Style, and the resolver was internal.\ngetStyle(options, name) is now public — Rich's console.get_style, asked\nof the options because the options carry the render's theme.\n\ndocs/protocol.md teaches it in place of the RichText detour, and says\nwhat a missing name does (throws StyleSyntaxError; RichText is the\nforgiving path). rich-dash's build pane demonstrates it with a\nthroughput sparkline drawn in the bars' own bar.complete/bar.back names.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e8837d1099d2f809f88b87febb1dce9b900b5d75",
-      "timestamp": "2026-09-29T20:09:09.212Z",
+      "sha": "f1cc46b8d3b518313e4d88b1a6b79fe9beeefc2e",
+      "timestamp": "2026-09-29T20:28:44.892Z",
       "commits": [
         {
-          "sha": "e8837d1099d2f809f88b87febb1dce9b900b5d75",
+          "sha": "f1cc46b8d3b518313e4d88b1a6b79fe9beeefc2e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:08:16-06:00",
-          "message": "fix(text): noWrap cuts at the width; \"ignore\" is the unbounded line (rich-text-b44) (#214)\n\n* fix(text): noWrap cuts at the width; \"ignore\" is the unbounded line (rich-text-b44)\n\nnoWrap meant an unbounded line, which is Rich's overflow \"ignore\". It now\nmeans Rich's no_wrap: no breaks, and a line too wide is cut at the width\nby the overflow method. \"ignore\" joins the one OverflowMethod type that\nRenderOptions, RichText, PrintOptions and Column share, and RichText\napplies it: no edge, no justify.\n\nConsole stops translating \"ignore\" into noWrap. softWrap sends noWrap and\ndefaults overflow to \"ignore\", so softWrap with a named overflow cuts, as\nRich's does: width 12, \"aaaa bbbb cccc dddd\" with fold prints \"aaaa bbbb cc\".\n\n* fix(text): unbounded callers ask for \"ignore\", not noWrap (rich-text-b44 review)\n\ninlineLabel sized a Panel or Rule title by cellLength, which counts a tab as\nno cells, and leaned on noWrap to leave it uncut; with noWrap cutting, the text\npast a tab was lost. The label now renders under \"ignore\" and the caller cuts.\n\nA table title clears \"ignore\" rather than noWrap: \"ignore\" is now the one way a\ntitle escapes the frame, and noWrap cuts within it, as Rich's no_wrap does.\nThe Tree and Layout wide-glyph tests reach their container's crop through\n\"ignore\", since a noWrap leaf now cuts itself first."
+          "timestamp": "2026-09-29T14:25:55-06:00",
+          "message": "feat(protocol): export getStyle for Segment-level renderables (rich-style-ska) (#215)\n\n* feat(protocol): export getStyle for Segment-level renderables (rich-style-ska)\n\nA renderable that yields its own Segments could not draw with a theme\nname: a Segment takes a resolved Style, and the resolver was internal.\ngetStyle(options, name) is now public — Rich's console.get_style, asked\nof the options because the options carry the render's theme.\n\ndocs/protocol.md teaches it in place of the RichText detour, and says\nwhat a missing name does (throws StyleSyntaxError; RichText is the\nforgiving path). rich-dash's build pane demonstrates it with a\nthroughput sparkline drawn in the bars' own bar.complete/bar.back names.\n\n* fix(demo): the rate sparkline stays inside the pane's rows and width (rich-style-ska)\n\nReview (high): each stacked block now gets as a ceiling the rows left above it,\nand the sparkline honours that ceiling and crops to its width. A sample records\nwhat the tick actually moved, after the clamp to the stage total."
         }
       ]
     },
