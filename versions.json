@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-190",
+      "ref": "refs/pull/190/merge",
+      "sha": "8ad34fd76742997c2295572115c7838bf969b784",
+      "timestamp": "2026-09-29T11:13:59.949Z",
+      "commits": [
+        {
+          "sha": "8ad34fd76742997c2295572115c7838bf969b784",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T05:13:19-06:00",
+          "message": "Merge 286642c336ce2249f97dd325fae4af86e0a81b45 into ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3\n"
+        },
+        {
+          "sha": "286642c336ce2249f97dd325fae4af86e0a81b45",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T05:13:05-06:00",
+          "message": "refactor(examples): every scrolling pane is a Viewport; the hand-rolled clipping is gone (rich-viewport-owi.6)\n\n`examples/shared/window.ts`, its rich-explore re-export, and the inline\nclip-and-centre code in the claude-sessions viewer and global-results panes\nare deleted. The tree, sidebar, viewer, results and preview panes each keep\none Viewport across frames and follow the selection with `ensureVisible`.\n\nBehaviour changes worth knowing:\n- The selection is kept in view by the least scroll, not centred.\n- claude-sessions draws through Live's alt screen, which hands the frame\n  an exact region; its panes no longer compute their own heights.\n- rich-explore's preview scroll lives in its viewport, not AppState; `G`\n  stops at the last full view instead of scrolling into blank rows.\n- The claude-sessions browser/viewer split is now `ratio` 1:3, which shows\n  Layout's dropped-remainder row (rich-layout-xvv).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3",
