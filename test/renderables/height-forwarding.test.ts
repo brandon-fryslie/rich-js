@@ -4,6 +4,7 @@ import { Group } from "../../src/renderables/group.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
@@ -60,6 +61,15 @@ describe("a container stacking several children hands each the rows as a ceiling
   it("Columns", () => {
     const [a, b] = [new Probe(), new Probe()];
     [...new Columns([a, b]).render(region)];
+    expect([...a.seen, ...b.seen]).toEqual([ceiling, ceiling]);
+  });
+
+  it("Table", () => {
+    const [a, b] = [new Probe(), new Probe()];
+    const table = Table.grid();
+    table.addRow(a);
+    table.addRow(b);
+    [...table.render(region)];
     expect([...a.seen, ...b.seen]).toEqual([ceiling, ceiling]);
   });
 
