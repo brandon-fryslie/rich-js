@@ -4,15 +4,22 @@
     {
       "version": "pr-189",
       "ref": "refs/pull/189/merge",
-      "sha": "f5b56babaa6ea6b0dc5b997f3c518fe288e4654f",
-      "timestamp": "2026-09-29T10:51:40.973Z",
+      "sha": "941d07cd0076ef12e651e9689a8edd230b685695",
+      "timestamp": "2026-09-29T10:54:23.019Z",
       "commits": [
         {
-          "sha": "f5b56babaa6ea6b0dc5b997f3c518fe288e4654f",
+          "sha": "941d07cd0076ef12e651e9689a8edd230b685695",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:50:53Z",
-          "message": "Merge d67c85eb2ba71f1fdb10648e6d779bc1b7901d9a into 2ab454a47e8a85bbe52d6a976853639a5f736674\n"
+          "timestamp": "2026-09-29T04:53:42-06:00",
+          "message": "Merge 8acf3204589ab04e2350069afa00000a984f94b9 into 2ab454a47e8a85bbe52d6a976853639a5f736674\n"
+        },
+        {
+          "sha": "8acf3204589ab04e2350069afa00000a984f94b9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T04:53:37-06:00",
+          "message": "fix(host): a console asks whether the host's output is a terminal, not whether the session is (rich-demos-5a42)\n\nTerminalHost.isTTY means interactive, stdin and stdout both. Colour is\na question about output alone, so the host gains writesToTerminal and\nhostEnvironment and Screen's detection read it: a one-shot demo with\npiped stdin on a terminal stdout draws colour again, as forceTerminal\nused to.\n"
         },
         {
           "sha": "d67c85eb2ba71f1fdb10648e6d779bc1b7901d9a",
