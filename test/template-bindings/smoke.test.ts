@@ -53,6 +53,13 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs[0]!.style?.color?.name).toBe("red");
   });
 
+  it("renderTemplate's error segment is one line, led by the error's own summary", () => {
+    const engine = createRichTextEngine();
+    const [seg] = renderTemplate(engine, `{{ fg "nope" "x" }}`);
+    expect(seg!.text).not.toContain("\n");
+    expect(seg!.text.startsWith("[error: error calling fg:")).toBe(true);
+  });
+
   it("renderTemplate accepts a custom error style", () => {
     const engine = createRichTextEngine();
     const segs = renderTemplate(engine, `{{ bogus }}`, {}, { errorStyle: "yellow" });

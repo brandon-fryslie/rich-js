@@ -93,7 +93,8 @@ function colorFunc(argTypes: TemplateFunc["argTypes"], fn: TemplateFunc["fn"]): 
 /**
  * The gate every *numeric* argument crosses, with an optional inclusive range.
  *
- * [LAW:single-enforcer] One check for the whole family. A `"float"` slot admits
+ * [LAW:single-enforcer] One check for every `"float"` slot. An `"int"` slot is
+ * a safe integer by the engine's gate and needs none, but a `"float"` slot admits
  * NaN and Infinity (legitimate IEEE-754 values), which would otherwise surface
  * as `ColorRgba.red must be an integer in [0, 255]; got NaN` — loud, but
  * pointing at a channel the author never wrote. [LAW:no-silent-failure]
@@ -126,10 +127,10 @@ function asAmount(
 // readable at a call site, and the operation is genuinely bidirectional.
 
 const darkenFunc = colorFunc(["string", "int"], ((hex: string, levels: number) =>
-  darken(asColor(hex, "darken"), asAmount(levels, "darken", "levels")).hex) as TemplateFunc["fn"]);
+  darken(asColor(hex, "darken"), levels).hex) as TemplateFunc["fn"]);
 
 const lightenFunc = colorFunc(["string", "int"], ((hex: string, levels: number) =>
-  darken(asColor(hex, "lighten"), -asAmount(levels, "lighten", "levels")).hex) as TemplateFunc["fn"]);
+  darken(asColor(hex, "lighten"), -levels).hex) as TemplateFunc["fn"]);
 
 // --- Blending ---
 //

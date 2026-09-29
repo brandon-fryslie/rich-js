@@ -133,7 +133,10 @@ export function renderTemplate(
       isTerminal: true,
     }));
   } catch (e) {
-    return [new Segment(`[error: ${String(e).slice(0, 80)}]`, safeErrorStyle(options?.errorStyle))];
+    // An engine error's `message` is its one-line summary; `String(e)` adds a
+    // multi-line code frame, which would break this single segment across lines.
+    const summary = e instanceof Error ? e.message : String(e);
+    return [new Segment(`[error: ${summary.slice(0, 80)}]`, safeErrorStyle(options?.errorStyle))];
   }
 }
 

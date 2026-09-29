@@ -370,6 +370,18 @@ describe("error surface", () => {
     );
   });
 
+  // One case per arity declaration site: attributes, colour sinks, `style`, `link`.
+  it.each([
+    [`{{ bold "a" "b" }}`, /bold: want 1 got 2/],
+    [`{{ bold }}`, /bold: want 1 got 0/],
+    [`{{ fg "red" "a" "b" }}`, /fg: want 2 got 3/],
+    [`{{ fg "red" }}`, /fg: want 2 got 1/],
+    [`{{ style "bold" "a" "b" }}`, /style: want 2 got 3/],
+    [`{{ link "https://x.test" "a" "b" }}`, /link: want 2 got 3/],
+  ])("%s is refused at the arity gate", (source, message) => {
+    expect(() => engine.parse(source).evaluate({})).toThrow(message);
+  });
+
   it("a number passed where a fragment is expected fails the liftable gate", () => {
     expect(() => engine.parse(`{{ bold 5 }}`).evaluate({})).toThrowError();
   });
