@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-203",
+      "ref": "refs/pull/203/merge",
+      "sha": "09b8048d0440787a10687c4e2b5503ce18289ba5",
+      "timestamp": "2026-09-29T13:39:23.179Z",
+      "commits": [
+        {
+          "sha": "09b8048d0440787a10687c4e2b5503ce18289ba5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:38:32-06:00",
+          "message": "Merge 432e87fe74f28a335a6b3b3eadd9a3e4497c6070 into d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3\n"
+        },
+        {
+          "sha": "432e87fe74f28a335a6b3b3eadd9a3e4497c6070",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:38:21-06:00",
+          "message": "fix(table): a ratio that is not positive sizes its column to its content (rich-table-ykj)\n\nColumn.share is now the one answer to which columns are elastic; flexible\nasks it as a yes/no and _columnDemands reads it for the weight. A column it\ncalls inflexible sizes to its content beside a ratio column, as the docs\nand the reference say — a ratio: 0 column was weighed at zero and starved\nto one cell, and a column with no ratio took a share of 1.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3",
