@@ -4,15 +4,22 @@
     {
       "version": "pr-189",
       "ref": "refs/pull/189/merge",
-      "sha": "ea539a3884ec4b41d5374df2dbcc4eab7bb922af",
-      "timestamp": "2026-09-29T10:46:00.504Z",
+      "sha": "f5b56babaa6ea6b0dc5b997f3c518fe288e4654f",
+      "timestamp": "2026-09-29T10:51:40.973Z",
       "commits": [
         {
-          "sha": "ea539a3884ec4b41d5374df2dbcc4eab7bb922af",
+          "sha": "f5b56babaa6ea6b0dc5b997f3c518fe288e4654f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:45:25-06:00",
-          "message": "Merge f723aad506ef0f8109bc9968ad1f12cd123be257 into 2ab454a47e8a85bbe52d6a976853639a5f736674\n"
+          "timestamp": "2026-09-29T10:50:53Z",
+          "message": "Merge d67c85eb2ba71f1fdb10648e6d779bc1b7901d9a into 2ab454a47e8a85bbe52d6a976853639a5f736674\n"
+        },
+        {
+          "sha": "d67c85eb2ba71f1fdb10648e6d779bc1b7901d9a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T04:50:49-06:00",
+          "message": "fix(host): the host's size wins over an exported COLUMNS; stderr lands on the same host (rich-demos-5a42)\n\nhostEnvironment drops COLUMNS/LINES from the env it hands on, so a node\nhost launched from a shell exporting them still follows resizes, and\nanswers stderr with the same stream. Stale getSize comment in rich-dash\nrewritten; screen tests no longer cast their streams.\n"
         },
         {
           "sha": "f723aad506ef0f8109bc9968ad1f12cd123be257",
