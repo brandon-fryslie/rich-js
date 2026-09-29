@@ -14,7 +14,7 @@
 
 import { RichText, Style, Table, type Renderable } from "../../../src/index.js";
 import type { SystemInfo } from "../../_capabilities/index.js";
-import { defineWidget } from "../runtime/widget.js";
+import { defineWidget } from "../widget.js";
 
 interface SysinfoState {
   host: string;

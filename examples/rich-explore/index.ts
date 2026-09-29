@@ -14,7 +14,7 @@ import { run } from "./app.js";
 const fs = new NodeFileSystem();
 const startPath = fs.resolve(process.argv[2] ?? process.cwd());
 
-run(new NodeTerminalHost(), fs, startPath).catch((err) => {
+run(new NodeTerminalHost(), fs, startPath).done.catch((err) => {
   process.stderr.write(
     `rich-explore error: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`,
   );

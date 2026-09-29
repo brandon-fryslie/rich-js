@@ -103,6 +103,10 @@ export class WidgetApp implements FrameSource {
     this.app.stop();
   }
 
+  fail(error: unknown): void {
+    this.app.fail(error);
+  }
+
   /**
    * Paint the next frame, as `App.refresh` does. A change to an observable
    * the view read needs none; one no observable carries — a `Viewport`

@@ -479,6 +479,22 @@ describe("WidgetApp lifecycle", () => {
     expect(app.phase).toBe("stopped");
   });
 
+  it("fails run with the error it is failed with, and stops reading input", async () => {
+    const host = scriptedHost({ cols: 20, rows: 3 });
+    const box = new Checkbox({ label: "a", id: "a" });
+    const app = new WidgetApp({ host, surface: "alternate", view: () => box });
+    const fault = new Error("a timer broke");
+    const done = app.run();
+    await tick();
+
+    app.fail(fault);
+    await expect(done).rejects.toBe(fault);
+    host.type(SPACE);
+
+    expect(box.checked).toBe(false);
+    expect(host.raw()).toBe(false);
+  });
+
   it("fails run with the error a view threw, the terminal handed back first", async () => {
     const host = scriptedHost({ cols: 20, rows: 3 });
     const app = new WidgetApp({

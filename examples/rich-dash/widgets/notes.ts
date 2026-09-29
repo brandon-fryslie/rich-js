@@ -17,7 +17,7 @@
 
 import { Markdown, type Renderable } from "../../../src/index.js";
 import type { FileSystem } from "../../_capabilities/index.js";
-import { defineWidget } from "../runtime/widget.js";
+import { defineWidget } from "../widget.js";
 
 interface NotesState {
   readonly body: Renderable;

@@ -2,15 +2,15 @@
  * job — fake build pipeline driving a `Progress` instance.
  *
  * `Progress` is reused as a pure Renderable: we never call `progress.start()`,
- * so its internal Live timer never fires. The dashboard's outer Live drives
+ * so its internal Live timer never fires. The dashboard's `App` drives
  * all painting; this widget just advances task counters in `tick`.
  *
- * [LAW:single-enforcer] One Live owns the screen — the runtime's. We use
+ * [LAW:single-enforcer] The dashboard's `App` owns the screen. We use
  * Progress for its rendering, not its scheduling.
  *
  * Under the bars, a build log shows its newest lines in whatever rows the pane
  * has left. The pane's rows arrive as the `Height` on its render options — the
- * Layout cell's share of the screen Live hands down — so the tail grows and
+ * Layout cell's share of the screen the `App` hands down — so the tail grows and
  * shrinks with the terminal and nothing here knows how tall it is.
  */
 
@@ -30,7 +30,7 @@ import {
   type Renderable,
   type RenderOptions,
 } from "../../../src/index.js";
-import { defineWidget } from "../runtime/widget.js";
+import { defineWidget } from "../widget.js";
 
 interface Stage {
   readonly description: string;

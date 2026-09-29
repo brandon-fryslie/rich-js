@@ -1,6 +1,7 @@
 /**
- * Main loop for claude-sessions. Raw-mode stdin → action → reducer → render.
- * Search-typing mode bypasses the keymap and consumes raw characters directly.
+ * Main loop for claude-sessions: key → action → reducer → render, in an `App`
+ * on the alternate screen. Search-typing mode reads keys through its own
+ * keymap, which passes every key but the lifecycle ones to the query.
  *
  * [LAW:capabilities-over-context] `run` is parameterised on both a
  * `TerminalHost` (where I/O goes) and a `FileSystem` (where session data
@@ -8,10 +9,8 @@
  * capabilities are the values that differ between node and browser entries.
  */
 
-import { Console, Live } from "../../src/index.js";
-import { hostEnvironment } from "../../src/host/host-environment.js";
+import { App, type TerminalHost } from "../../src/host/index.js";
 import type { FileSystem } from "../_capabilities/index.js";
-import type { TerminalHost } from "../../src/host/terminal-host.js";
 import {
   initialState,
   moveSidebar,
@@ -39,7 +38,7 @@ import {
   selectedBlock,
   type AppState,
 } from "./state.js";
-import { lookup, type Action } from "./keymap.js";
+import { lookup, lookupTyping, type Action } from "./keymap.js";
 import { buildShell, sessionsView } from "./views/shell.js";
 
 function isTyping(state: AppState): boolean {
@@ -102,6 +101,9 @@ function reduce(state: AppState, action: Action): AppState {
     case "search-exit":
       if (state.search.mode !== "off") return searchExit(state);
       return { ...state, statusMessage: "(press q to quit)" };
+    case "search-key":
+      return reduceSearchTyping(state, action.key);
+    case "suspend":
     case "quit":
     case "none":
       return state;
@@ -119,75 +121,53 @@ function reduceSearchTyping(state: AppState, chunk: string): AppState {
   return state;
 }
 
-export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
-  // [LAW:single-enforcer] The host is the console's whole environment: where
-  // bytes go, its size (live, through resizes) and the colours it draws.
-  const consoleOut = new Console({
-    environment: hostEnvironment(host),
-  });
-  let state = initialState(fs);
+/** The viewer, running: `done` settles as `App.run` does. */
+export interface Running {
+  readonly done: Promise<void>;
+  stop(): void;
+}
 
+export function run(host: TerminalHost, fs: FileSystem): Running {
   if (!host.isTTY) {
     throw new Error("claude-sessions requires an interactive TTY");
   }
 
-  // Live + altScreen owns the alternate screen and the cursor, and hands the
-  // frame the terminal's height as its region, which the panes divide.
-  // autoRefresh: false — refresh on keypress only.
-  const live = new Live(undefined, {
-    console: consoleOut,
-    altScreen: true,
-    autoRefresh: false,
-    verticalOverflow: "crop",
-  });
+  let state = initialState(fs);
   const view = sessionsView();
+  // The app redraws on a change of state and on resize; each frame is the
+  // shell of the state as it is then.
+  const app = new App({ host, surface: "alternate", view: () => buildShell(state, view) });
 
-  const cleanup = () => {
-    live.stop();
-    host.setRawMode(false);
-    host.stop();
-  };
+  // Hoist the decoder out of the hot path — node delivers Buffer chunks on
+  // every keystroke. `{ stream: true }` keeps a multibyte sequence split
+  // across two chunks whole.
+  const decoder = new TextDecoder();
+  host.onData((chunk) => {
+    const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
+    const action = (isTyping(state) ? lookupTyping : lookup)(text);
+    switch (action.type) {
+      case "quit":
+        app.stop();
+        return;
+      case "suspend":
+        void app.suspend();
+        return;
+    }
+    // [LAW:no-silent-failure] The host calls this handler, so a reducer that
+    // throws here would reach neither `done` nor the terminal's hand-back.
+    let next: AppState;
+    try {
+      next = reduce(state, action);
+    } catch (error) {
+      app.fail(error);
+      return;
+    }
+    // A key that changes nothing — a pointer report among them, on the
+    // alternate screen — paints nothing.
+    if (next === state) return;
+    state = next;
+    app.refresh();
+  });
 
-  host.start();
-  host.setRawMode(true);
-  live.start();
-
-  const render = () => {
-    live.update(buildShell(state, view), { refresh: true });
-  };
-
-  await new Promise<void>((resolve, reject) => {
-    // The first frame is drawn in here: a throw rejects this promise, and the
-    // cleanup below hands the terminal back.
-    render();
-    let unsubscribe: (() => void) | undefined;
-    // Hoist the decoder out of the hot path — node delivers Buffer chunks on
-    // every keystroke; one shared decoder avoids per-event allocation.
-    const decoder = new TextDecoder();
-    const onData = (chunk: Uint8Array | string) => {
-      const text = typeof chunk === "string" ? chunk : decoder.decode(chunk);
-      try {
-        let next: AppState;
-        if (isTyping(state)) {
-          next = reduceSearchTyping(state, text);
-        } else {
-          const action = lookup(text);
-          if (action.type === "quit") {
-            unsubscribe?.();
-            resolve();
-            return;
-          }
-          next = reduce(state, action);
-        }
-        if (next !== state) {
-          state = next;
-          render();
-        }
-      } catch (err) {
-        unsubscribe?.();
-        reject(err instanceof Error ? err : new Error(String(err)));
-      }
-    };
-    unsubscribe = host.onData(onData);
-  }).finally(cleanup);
+  return { done: app.run(), stop: () => app.stop() };
 }

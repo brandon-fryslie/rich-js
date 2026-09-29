@@ -151,7 +151,8 @@ export class App {
 
   /**
    * Take the terminal, paint the first frame, and resolve when the app stops
-   * — or reject with the error a frame threw, the terminal handed back first.
+   * — or reject with the error a frame threw or `fail` was given, the terminal
+   * handed back first.
    * When the program ends under the app, `run` does not settle: nothing after
    * it runs, as nothing after it would have without the app. An app runs once.
    */
@@ -241,6 +242,16 @@ export class App {
     this.end({ kind: "stopped" });
   }
 
+  /**
+   * Hand the terminal back for good; `run` rejects with `error`. For an error
+   * thrown where the app's own code runs outside a frame — a key handler, a
+   * timer — which would otherwise reach neither `run`'s caller nor the
+   * terminal's hand-back.
+   */
+  fail(error: unknown): void {
+    this.end({ kind: "failed", error });
+  }
+
   // --- the terminal ---
 
   private enter(): void {
@@ -310,7 +321,7 @@ export class App {
   }
 }
 
-/** How an app ended: stopped, failed by a frame, or ended by the program. */
+/** How an app ended: stopped, failed, or ended by the program. */
 type Outcome =
   | { readonly kind: "stopped" }
   | { readonly kind: "failed"; readonly error: unknown }

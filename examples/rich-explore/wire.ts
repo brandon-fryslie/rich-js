@@ -135,27 +135,21 @@ const FIXTURE_TREE: MemoryTree = {
 
 export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
-  host.start();
   const fs = new MemoryFileSystem(FIXTURE_TREE);
-  // `run()` resolves on a quit action; in the browser `q`/Ctrl-C are still
+  const explorer = run(host, fs, fs.homeDir());
+  // `done` resolves on a quit action; in the browser `q`/Ctrl-C are still
   // delivered by xterm so the same termination path applies. Page shell
   // does not auto-unmount, so the user sees the post-quit alt-screen
-  // restore and the tab stays open. A reject after mount logs to the
-  // browser console and releases the host so dangling subscribers don't
-  // hang on. We deliberately do not poke the shell's #status — mount.ts
-  // has already set it to "ready" by the time this could fire, and
-  // reaching back into the DOM here would couple wire.ts to shell layout.
-  void run(host, fs, fs.homeDir()).catch((err: unknown) => {
+  // restore and the tab stays open. The app has handed the terminal back
+  // before `done` rejects, so a rejection is only logged. We deliberately do
+  // not poke the shell's #status — mount.ts has already set it to "ready" by
+  // the time this could fire, and reaching back into the DOM here would
+  // couple wire.ts to shell layout.
+  explorer.done.catch((err: unknown) => {
     // eslint-disable-next-line no-console
     console.error("rich-explore: run() rejected after mount", err);
-    host.stop();
   });
-  return {
-    host,
-    stop(): void {
-      host.stop();
-    },
-  };
+  return { host, stop: explorer.stop };
 }
 
 export default mount;

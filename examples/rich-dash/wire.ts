@@ -4,7 +4,7 @@
  * a `MemoryFileSystem` with a small README fixture and a `MemorySystemInfo`
  * holding a snapshot of plausible vitals, then returns the mount handle.
  *
- * [LAW:one-source-of-truth] The same `runDemo` from app.ts powers the node
+ * [LAW:one-source-of-truth] The same `run` from app.ts powers the node
  * and browser entries. No forked code path; only the capability values
  * differ.
  *
@@ -28,7 +28,7 @@ import {
   type MemoryTree,
   type SystemInfoSnapshot,
 } from "../_capabilities/index.js";
-import { runDemo, type DemoHandle } from "./app.js";
+import { run } from "./app.js";
 
 export interface MountHandle {
   readonly host: TerminalHost;
@@ -37,8 +37,8 @@ export interface MountHandle {
 
 const README_MD = `# rich-dash (browser fixture)
 
-A small ticker dashboard demo. The runtime, layout, widgets, and panel
-chrome are identical to the node version — only the capability values are
+A small ticker dashboard demo. The app, layout, widgets, and panel chrome
+are identical to the node version — only the capability values are
 different in-browser.
 
 ## Panels
@@ -53,9 +53,9 @@ different in-browser.
 ## Architecture
 
 \`\`\`
-runDemo(host, { fs, sysinfo, readmePath })
+run(host, { fs, sysinfo, readmePath })
   -> buildWidgets(caps)        // per-widget capabilities
-  -> DashboardRuntime          // one Live, one tick scheduler
+  -> App + one clock           // the terminal, and a tick per frame
   -> Layout + Panels           // pure render of widget state
 \`\`\`
 `;
@@ -87,29 +87,17 @@ const SYSINFO_SNAPSHOT: SystemInfoSnapshot = {
 
 export function mount(terminal: XtermTerminal): MountHandle {
   const host = new BrowserTerminalHost({ terminal });
-  host.start();
   const fs = new MemoryFileSystem(FIXTURE_TREE);
   const sysinfo = new MemorySystemInfo(SYSINFO_SNAPSHOT);
-
-  let demo: DemoHandle | null = null;
-  try {
-    demo = runDemo(host, {
-      fs,
-      sysinfo,
-      readmePath: fs.join(fs.homeDir(), "README.md"),
-    });
-  } catch (err) {
-    host.stop();
-    throw err;
-  }
-
-  return {
-    host,
-    stop(): void {
-      demo?.stop();
-      host.stop();
-    },
-  };
+  const dash = run(host, { fs, sysinfo, readmePath: fs.join(fs.homeDir(), "README.md") });
+  // `done` resolves on a quit key; the page shell does not auto-unmount, so
+  // the user sees the alternate screen handed back and the tab stays open.
+  // The app has handed the terminal back before it rejects.
+  dash.done.catch((err: unknown) => {
+    // eslint-disable-next-line no-console
+    console.error("rich-dash: run() rejected after mount", err);
+  });
+  return { host, stop: dash.stop };
 }
 
 export default mount;

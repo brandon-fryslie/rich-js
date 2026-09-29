@@ -159,6 +159,21 @@ describe("App on the alternate screen", () => {
     expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
   });
 
+  it("hands the terminal back when failed, and run rejects with the error it was given", async () => {
+    const host = scriptedHost();
+    const fault = new Error("a key handler broke");
+    const target = app(host, () => text("hi"));
+    const running = target.run();
+
+    target.fail(fault);
+
+    await expect(running).rejects.toBe(fault);
+    expect(target.phase).toBe("stopped");
+    expect(host.raw()).toBe(false);
+    expect(host.started()).toBe(false);
+    expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
+  });
+
   it("rejects when the first frame throws, with the terminal handed back", async () => {
     const host = scriptedHost();
     const fault = new Error("never drew");

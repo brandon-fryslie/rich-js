@@ -62,6 +62,7 @@ While it runs, the app hides the cursor, switches the terminal to raw mode and, 
 
 - you call `stop()` — `run()` resolves;
 - the view throws while a frame is painted — `run()` rejects with that error;
+- you call `fail(error)` — `run()` rejects with `error`. Code of yours that the app does not call — a key handler, a timer — ends the app this way when it throws, so the error reaches `run()`'s caller with the terminal already handed back;
 - the program ends under the app: `process.exit`, `SIGINT`, `SIGTERM`, `SIGHUP`, an uncaught exception or an unhandled rejection — `run()` does not settle, so no code after it runs while the program ends.
 
 In that last case the program still ends the way it would have without the app. A signal still terminates the process, `process.exit` keeps its exit code, and a crash is still reported — after the terminal is handed back, so the report lands on the normal screen instead of vanishing with the alternate one. That holds for [`installTraceback`](/traceback) whichever you set up first.
@@ -74,4 +75,4 @@ In raw mode Ctrl+Z reaches the program as a key (`"\x1a"`), not as the signal th
 
 Build the app over a `BrowserTerminalHost` instead — it wraps an [xterm.js](https://xtermjs.org) terminal — and nothing else changes. The page owns the terminal, so in a browser nothing ends the program under the app, and `suspend()` hands the terminal back and takes it again at once.
 
-The `rich-explore` demo is an `App`; it runs from `npm run demo` in node and on this site's [demos page](/demos/) from the same source.
+The `rich-explore`, `rich-dash` and `claude-sessions` demos are each an `App`; each runs in node from its own npm script and on this site's [demos page](/demos/) from the same source.

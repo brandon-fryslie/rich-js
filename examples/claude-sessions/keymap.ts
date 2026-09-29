@@ -1,6 +1,6 @@
 /**
- * Data-driven key → action table. Search-typing mode bypasses this lookup
- * and consumes raw characters directly in the app loop.
+ * Data-driven key → action tables: one for browsing, one for typing a search
+ * query, which reads every key as text but the lifecycle ones.
  */
 
 export type Action =
@@ -21,8 +21,16 @@ export type Action =
   | { type: "search-next" }
   | { type: "search-prev" }
   | { type: "search-exit" }
+  | { type: "search-key"; key: string } // typing a query
+  | { type: "suspend" }
   | { type: "quit" }
   | { type: "none" };
+
+// Ctrl+Z and Ctrl+C are keys in raw mode, and act in every mode.
+const LIFECYCLE: Record<string, Action> = {
+  "\x1a": { type: "suspend" },
+  "\x03": { type: "quit" },
+};
 
 const KEYMAP: Record<string, Action> = {
   // Movement
@@ -61,11 +69,14 @@ const KEYMAP: Record<string, Action> = {
   "N": { type: "search-prev" },
   "\x1b": { type: "search-exit" },
 
-  // Quit
   "q": { type: "quit" },
-  "\x03": { type: "quit" },
+  ...LIFECYCLE,
 };
 
 export function lookup(key: string): Action {
   return KEYMAP[key] ?? { type: "none" };
+}
+
+export function lookupTyping(key: string): Action {
+  return LIFECYCLE[key] ?? { type: "search-key", key };
 }
