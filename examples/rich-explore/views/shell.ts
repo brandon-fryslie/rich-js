@@ -1,11 +1,10 @@
 import { Layout, RichText, Viewport } from "../../../src/index.js";
 import type { AppState } from "../state.js";
 import { selectedNode } from "../state.js";
+import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";
 import { buildTreePane } from "./tree-pane.js";
 import { buildPreviewPane } from "./preview-pane.js";
 import { buildStatusBar } from "./status-bar.js";
-
-const blank = (): Viewport => new Viewport(new RichText(""));
 
 /**
  * The viewports a frame is drawn through. They outlive the frame, which is
@@ -13,17 +12,12 @@ const blank = (): Viewport => new Viewport(new RichText(""));
  * would start from the top.
  */
 export class ExploreView {
-  readonly tree = blank();
-  private preview = { shows: "", viewport: blank() };
+  readonly tree = new Viewport(new RichText(""));
+  private readonly preview = new ViewportPerSubject();
 
-  /**
-   * The preview's viewport for what `state` shows in it. Each new thing
-   * previewed gets a new one, so it opens at its top.
-   */
+  /** The preview's viewport for what `state` shows in it. */
   previewOf(state: AppState): Viewport {
-    const shows = `${state.mode}:${state.selectedPath}`;
-    if (shows !== this.preview.shows) this.preview = { shows, viewport: blank() };
-    return this.preview.viewport;
+    return this.preview.of(`${state.mode}:${state.selectedPath}`);
   }
 }
 

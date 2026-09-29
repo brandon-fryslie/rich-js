@@ -138,10 +138,18 @@ export class Viewport implements Renderable, Measurable {
     this._moves.push((offset, { rows }) => Math.min(start, Math.max(offset, end - rows)));
   }
 
+  /**
+   * The width its content renders at, out of `width`: what the scrollbar's
+   * gutter leaves. Lines handed to `ensureVisible` are lines at this width.
+   */
+  contentWidth(width: number): number {
+    return cellCount(width - gutterWidth(this.scrollbar));
+  }
+
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const { height, ...options } = withBoundedWidth(rawOptions, this);
     const gutter = gutterWidth(this.scrollbar);
-    const contentWidth = cellCount(options.maxWidth - gutter);
+    const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
     // [LAW:dataflow-not-control-flow] The resolved offset is re-clamped every
@@ -181,7 +189,7 @@ export class Viewport implements Renderable, Measurable {
     // natural width.
     const options = withCellWidth(rawOptions);
     const gutter = gutterWidth(this.scrollbar);
-    const inner = { ...options, maxWidth: cellCount(options.maxWidth - gutter) };
+    const inner = { ...options, maxWidth: this.contentWidth(options.maxWidth) };
     const content = isMeasurable(this.content)
       ? Measurement.get(inner, this.content)
       : new Measurement(Math.min(1, inner.maxWidth), inner.maxWidth);

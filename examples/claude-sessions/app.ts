@@ -156,9 +156,10 @@ export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
     live.update(buildShell(state, view), { refresh: true });
   };
 
-  render();
-
   await new Promise<void>((resolve, reject) => {
+    // The first frame is drawn in here: a throw rejects this promise, and the
+    // cleanup below hands the terminal back.
+    render();
     let unsubscribe: (() => void) | undefined;
     // Hoist the decoder out of the hot path — node delivers Buffer chunks on
     // every keystroke; one shared decoder avoids per-event allocation.

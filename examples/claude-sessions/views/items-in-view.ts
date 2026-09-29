@@ -4,9 +4,9 @@
  *
  * An item can wrap, so the lines the selected one covers exist only at the
  * width it is drawn at, which a render is handed and a frame builder is not.
- * So the items are drawn here, at this render's width and with no height —
- * the way the viewport draws its content, so these are the lines it scrolls —
- * and the viewport is handed those lines and the selected item's range.
+ * So the items are drawn here, at the width and with no height the viewport
+ * draws its content at — so these are the lines it scrolls — and the viewport
+ * is handed those lines and the selected item's range.
  * [LAW:single-enforcer] Where the window sits is the viewport's call; this
  * only says which lines the selection is.
  *
@@ -37,7 +37,8 @@ export class ItemsInView implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const bounded = withBoundedWidth(rawOptions, this);
-    const { height: _height, ...options } = bounded;
+    const { height: _height, ...rest } = bounded;
+    const options = { ...rest, maxWidth: this.viewport.contentWidth(rest.maxWidth) };
     const drawn = this.items.map((item) => [...Segment.splitLines(item.render(options)), []]);
     const linesIn = (from: number, to: number): number =>
       drawn.slice(from, to).reduce((total, lines) => total + lines.length, 0);

@@ -1,6 +1,7 @@
 import { Layout, RichText, Viewport } from "../../../src/index.js";
 import type { Renderable } from "../../../src/index.js";
 import type { AppState } from "../state.js";
+import { ViewportPerSubject } from "../../shared/viewport-per-subject.js";
 import { buildSidebar } from "./sidebar.js";
 import { buildViewer } from "./viewer.js";
 import { buildSearchBar } from "./search-bar.js";
@@ -35,13 +36,18 @@ function buildHeader(state: AppState): Renderable {
  */
 export interface SessionsView {
   readonly sidebar: Viewport;
-  readonly viewer: Viewport;
-  readonly results: Viewport;
+  /** Per loaded session: each opens at its top, not at the last one's scroll. */
+  readonly viewer: ViewportPerSubject;
+  /** Per query, the same way. */
+  readonly results: ViewportPerSubject;
 }
 
 export function sessionsView(): SessionsView {
-  const blank = (): Viewport => new Viewport(new RichText(""));
-  return { sidebar: blank(), viewer: blank(), results: blank() };
+  return {
+    sidebar: new Viewport(new RichText("")),
+    viewer: new ViewportPerSubject(),
+    results: new ViewportPerSubject(),
+  };
 }
 
 export function buildShell(state: AppState, view: SessionsView): Layout {

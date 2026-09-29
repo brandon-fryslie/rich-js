@@ -32,7 +32,7 @@ export function buildViewer(state: AppState, view: SessionsView, focused: boolea
   // Data-driven swap: when global search results are active, the viewer
   // pane renders the hit list instead of the block list.
   if (state.search.mode === "results-global") {
-    return buildGlobalResults(state, view.results, focused);
+    return buildGlobalResults(state, view.results.of(state.search.query), focused);
   }
 
   const focusPrefix = focused ? "▸ " : "";
@@ -46,7 +46,7 @@ export function buildViewer(state: AppState, view: SessionsView, focused: boolea
     : "";
   const modeTag = state.viewMode === "raw" ? "  [raw]" : "";
   const hiddenTag = state.showHidden ? "  [+hidden]" : "";
-  return new Panel(new ItemsInView(view.viewer, blockItems(state), state.selectedBlockIndex), {
+  return new Panel(new ItemsInView(view.viewer.of(state.loadedSessionPath ?? ""), blockItems(state), state.selectedBlockIndex), {
     title: `${focusPrefix}${sessionName}${blockInfo}${depthTag}${modeTag}${hiddenTag}`,
     borderStyle: focused ? "bold green" : "dim green",
     padding: [0, 1],

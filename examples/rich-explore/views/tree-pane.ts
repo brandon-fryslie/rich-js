@@ -64,7 +64,9 @@ export function buildTreePane(
   const idx = visible.findIndex((n) => n.entry.path === state.selectedPath);
   const selectedLine = 1 + (idx < 0 ? 0 : idx);
   viewport.content = tree;
-  viewport.ensureVisible(selectedLine, selectedLine + 1);
+  // A line either side of the selection stays in view too: the entry next
+  // to it, and above the first entry the root, which names what is listed.
+  viewport.ensureVisible(selectedLine - 1, selectedLine + 2);
   return new Panel(viewport, {
     title: focused ? `▸ Tree (${visible.length})` : `Tree (${visible.length})`,
     borderStyle: focused ? "bold cyan" : "dim cyan",
