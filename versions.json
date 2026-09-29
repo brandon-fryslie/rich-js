@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-215",
+      "ref": "refs/pull/215/merge",
+      "sha": "de71c5a97be5d1803d33d61f21e15d900385a851",
+      "timestamp": "2026-09-29T20:18:42.542Z",
+      "commits": [
+        {
+          "sha": "de71c5a97be5d1803d33d61f21e15d900385a851",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:17:43-06:00",
+          "message": "Merge 706a64d4b985ab90fd34d3c3422a142d86f4b614 into e8837d1099d2f809f88b87febb1dce9b900b5d75\n"
+        },
+        {
+          "sha": "706a64d4b985ab90fd34d3c3422a142d86f4b614",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:17:39-06:00",
+          "message": "feat(protocol): export getStyle for Segment-level renderables (rich-style-ska)\n\nA renderable that yields its own Segments could not draw with a theme\nname: a Segment takes a resolved Style, and the resolver was internal.\ngetStyle(options, name) is now public — Rich's console.get_style, asked\nof the options because the options carry the render's theme.\n\ndocs/protocol.md teaches it in place of the RichText detour, and says\nwhat a missing name does (throws StyleSyntaxError; RichText is the\nforgiving path). rich-dash's build pane demonstrates it with a\nthroughput sparkline drawn in the bars' own bar.complete/bar.back names.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e8837d1099d2f809f88b87febb1dce9b900b5d75",
