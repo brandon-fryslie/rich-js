@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-192",
+      "ref": "refs/pull/192/merge",
+      "sha": "0d980396614e184415294a8ca63eaab06535f852",
+      "timestamp": "2026-09-29T12:26:45.502Z",
+      "commits": [
+        {
+          "sha": "0d980396614e184415294a8ca63eaab06535f852",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:25:53Z",
+          "message": "Merge 7f52e8d0062f20fdeaf9a7ef3f014fd556912a28 into c190bb7db13e9f5f743ff2536168e0581ca16469\n"
+        },
+        {
+          "sha": "7f52e8d0062f20fdeaf9a7ef3f014fd556912a28",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:25:48-06:00",
+          "message": "fix(widgets): a widget owns its rectangle; drags follow the repainted widget; releases know if they landed (rich-runtime-fna.2)\n\n- WidgetBase.render pads every row to the widest and terminates each row,\n  so a click past a short row still hits and a blank last row survives.\n- Captured drags read the widget's origin off the current frame (originOf).\n- WidgetMouseEvent carries `over`; the parser's event is ScreenMouseEvent.\n  Dropdown reads `over` instead of recomputing its own extent.\n- Segment.anchorLines takes firstRow; the overlay pass drops its pad/slice.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "2271ddb8a3c5fdf3d746d816bb2092d04191de4d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:10:46-06:00",
+          "message": "feat(widgets): hit-test the painted frame; widgets get their own coordinates (rich-runtime-fna.2)\n\nWidgetBase.render stamps a subclass's `draw` output with its anchor, so the\nframe a screen paints is its own hit map. `widgetAt(frame, x, y)` names the\ninnermost widget under a cell and the cell's place in that widget's output;\nEventRouter reads it off `FrameSource.frame` and delivers each pointer event\nin the widget's own coordinates, a captured drag relative to the origin its\npress found. `bounds`, `WidgetBounds`, `containsPoint`, the active-overlay\nset and the z-sorted `widgets` getter are gone: z-order is paint order, and\nthe overlay pass stamps overlay row i as the widget's row footprint+i.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-194",
       "ref": "refs/pull/194/merge",
       "sha": "1bad936607bd00dda3074b477e3c20a92d54a058",
@@ -35,28 +64,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T06:20:48-06:00",
           "message": "refactor(segment)!: two bounding primitives, named; Table splits through the one (rich-segment-bpa) (#193)\n\n* refactor(segment): two bounding primitives, named; Table splits through the one (rich-segment-bpa)\n\ncropLines keeps a stream's line structure and bounds it; splitAndCropLines\ndecomposes into rows of exactly the width. segment.ts now says which question\neach answers. Table's hand-rolled splitLines+adjustLineLength is the second\none, so it calls it. splitAndCropLines' pad/includeNewLines/style modes had no\ncaller and are gone.\n\n* review(segment): one blank-cell rule in Table; header places Tree; pin the split's edges (rich-segment-bpa)"
-        }
-      ]
-    },
-    {
-      "version": "pr-192",
-      "ref": "refs/pull/192/merge",
-      "sha": "0cdd9228d037020be198dc31c71010a0f9532d48",
-      "timestamp": "2026-09-29T12:11:40.548Z",
-      "commits": [
-        {
-          "sha": "0cdd9228d037020be198dc31c71010a0f9532d48",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:10:51-06:00",
-          "message": "Merge 2271ddb8a3c5fdf3d746d816bb2092d04191de4d into 2b9c03b80dfde9cad61753945ed33552df5cc41c\n"
-        },
-        {
-          "sha": "2271ddb8a3c5fdf3d746d816bb2092d04191de4d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:10:46-06:00",
-          "message": "feat(widgets): hit-test the painted frame; widgets get their own coordinates (rich-runtime-fna.2)\n\nWidgetBase.render stamps a subclass's `draw` output with its anchor, so the\nframe a screen paints is its own hit map. `widgetAt(frame, x, y)` names the\ninnermost widget under a cell and the cell's place in that widget's output;\nEventRouter reads it off `FrameSource.frame` and delivers each pointer event\nin the widget's own coordinates, a captured drag relative to the origin its\npress found. `bounds`, `WidgetBounds`, `containsPoint`, the active-overlay\nset and the z-sorted `widgets` getter are gone: z-order is paint order, and\nthe overlay pass stamps overlay row i as the widget's row footprint+i.\n"
         }
       ]
     }
