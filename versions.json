@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-232",
+      "ref": "refs/pull/232/merge",
+      "sha": "35891bc8d7ac4c0e2019bd9e65740433cb760544",
+      "timestamp": "2026-09-29T23:27:55.495Z",
+      "commits": [
+        {
+          "sha": "35891bc8d7ac4c0e2019bd9e65740433cb760544",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:27:04-06:00",
+          "message": "Merge fe1c80c2d42d98a5e08f7d7e9b7e272d92e92354 into 088e3d35c166cb6f2d10c905dfb26095be882253\n"
+        },
+        {
+          "sha": "fe1c80c2d42d98a5e08f7d7e9b7e272d92e92354",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:26:59-06:00",
+          "message": "fix(columns): lay out through Table.grid, as Rich's Columns does (rich-columns-i08a)\n\nColumns keeps only its column-count search and hands the cells to a\nTable.grid with collapsePadding and no padEdge; its own spacing, stretch\nand row-separator code is gone. Table gains what that needs, each ported\nfrom Rich's Table:\n\n- collapsePadding and padEdge options, giving per-column and per-row padding\n- padding above and below a cell is drawn (it was ignored)\n- the `maximum or 1` floor, handed back when the table is squeezed\n  (rich-table-r9aq)\n- cells sized by their own measurement, not String(cell) or the whole\n  text's length (rich-table-ca0, rich-table-pyrl)\n- cells handed the table's rows as a ceiling, per the Height contract\n\nA Columns' declared width is each column's natural width rather than a\nTable column width, so expand still stretches it as Rich does.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "088e3d35c166cb6f2d10c905dfb26095be882253",
