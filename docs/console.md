@@ -225,7 +225,7 @@ for (const justify of ["default", "left", "center", "right"] as const) {
 |---|---|
 | `"default"` | Placed at the left with no padding — the line ends where the text does |
 | `"left"` | Placed at the left and padded out to the full width |
-| `"center"` | Padded on both sides to center the line |
+| `"center"` | Padded on both sides to center it |
 | `"right"` | Padded on the left to sit against the right edge |
 | `"full"` | The spaces between words widen until the line reaches the right edge; a paragraph's last line is left as it is |
 

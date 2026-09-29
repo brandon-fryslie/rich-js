@@ -2,7 +2,8 @@
  * place — a renderable's output set down as one block inside a wider width.
  *
  * The block is placed, not its lines. The renderable is measured, drawn at the
- * width it asked for, and every line is padded to the widest, so the block is a
+ * width it asked for and at its own height — a region's height is dropped, as
+ * the reference's `Align` drops it — and every line is padded to the widest, so the block is a
  * rectangle; only then is the rectangle padded to the offered width. A
  * multi-line paragraph keeps its own shape under `"center"` — `hi` over `hello`
  * stays a 5-cell block, centred as one — where padding each line to the full

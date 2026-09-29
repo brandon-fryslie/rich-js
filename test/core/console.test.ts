@@ -764,6 +764,15 @@ describe("Console.print() line ends", () => {
     expect(printed(["a", { end: "" }], [panel()]).out).toBe(`a${PANEL}`);
   });
 
+  // Both against the reference's bytes: placed, the break before the empty
+  // end still leaves an empty line in the block.
+  it("adds no line break to text that ends in its own under end: \"\"", () => {
+    expect(printed(["a\n", { end: "" }], ["b"]).out).toBe("a\nb\n");
+    expect(printed(["a\n", { end: "", justify: "center" }], ["b"]).out).toBe(
+      `${" ".repeat(9)}a${" ".repeat(10)}\n${" ".repeat(20)}\nb\n`,
+    );
+  });
+
   // Not the reference: Python Rich leaves a renderable's unclosed last line
   // open, and the next print runs on after it. Here a renderable occupies whole
   // lines whatever it yields, so the next print — and the export — starts clean.
