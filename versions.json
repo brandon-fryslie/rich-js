@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-211",
+      "ref": "refs/pull/211/merge",
+      "sha": "59c77b9a2adaff694ee93d6a33aac7b238dc90d8",
+      "timestamp": "2026-09-29T18:32:02.921Z",
+      "commits": [
+        {
+          "sha": "59c77b9a2adaff694ee93d6a33aac7b238dc90d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:31:11-06:00",
+          "message": "Merge 519a4a6ac285a3ec138c204b02ed06ce4e8fb0ab into 26b0ffd282ea721e11bb0b8ec786ce9373939e59\n"
+        },
+        {
+          "sha": "519a4a6ac285a3ec138c204b02ed06ce4e8fb0ab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:31:05-06:00",
+          "message": "feat(docs): type-check the shape and node examples, which no gate compiled (rich-docs-jqc)\n\nThe build compiled every block it runs, chain and live, and nothing else:\na `shape` or `node` block could call a constructor with the wrong arguments\nand pass. Each such block is now type-checked as the program of its own a\nlive block is — its imports, the prelude, the page's exampleContext, and the\nblock — so it fails the build at its page and line like any other.\n\ndocs/traceback.md's index.ts fence imported the reader's own files\n(`./crash-reporting.js`, `./server.js`). No page can supply those, and\nTypeScript refuses an ambient declaration of a relative module (TS2436), so\nthere is no context to declare; the fence made no library claim to check.\nIt is now the sentence it was teaching: make that import the entry file's\nfirst.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "26b0ffd282ea721e11bb0b8ec786ce9373939e59",
