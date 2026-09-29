@@ -4,15 +4,22 @@
     {
       "version": "pr-221",
       "ref": "refs/pull/221/merge",
-      "sha": "949e55076f99ca2d2466d30410a26ee9650104b2",
-      "timestamp": "2026-09-29T21:37:20.811Z",
+      "sha": "e2e0911d78c070b1492174701a016416f28f820a",
+      "timestamp": "2026-09-29T21:43:03.999Z",
       "commits": [
         {
-          "sha": "949e55076f99ca2d2466d30410a26ee9650104b2",
+          "sha": "e2e0911d78c070b1492174701a016416f28f820a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:36:26-06:00",
-          "message": "Merge 1d1b59f0c14e97ca15e050c86f5f6c1307c93610 into d0f2bcbfea53ad8f1183201e9f3e7f9241029970\n"
+          "timestamp": "2026-09-29T21:42:09Z",
+          "message": "Merge 08619141468d0975919576dc0f272984a844d8b4 into d0f2bcbfea53ad8f1183201e9f3e7f9241029970\n"
+        },
+        {
+          "sha": "08619141468d0975919576dc0f272984a844d8b4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:42:04-06:00",
+          "message": "refactor(render): derive asciiOnly/onStyleError from RenderOptions; strict-mode docs name renderToString (rich-diagnostics-ejn)\n"
         },
         {
           "sha": "1d1b59f0c14e97ca15e050c86f5f6c1307c93610",
