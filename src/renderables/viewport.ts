@@ -50,6 +50,7 @@ import type {
   Measurable,
   Renderable,
   RenderOptions,
+  Scrollable,
 } from "../core/protocol.js";
 
 /** What a render found: the rows it shows, and the lines of content behind them. */
@@ -100,7 +101,7 @@ export interface ViewportOptions {
   scrollbar?: Scrollbar;
 }
 
-export class Viewport implements Renderable, Measurable {
+export class Viewport implements Renderable, Measurable, Scrollable {
   /**
    * What the viewport shows. Replace it to show new content from the same
    * scroll position — a view rebuilt every frame keeps one `Viewport`.

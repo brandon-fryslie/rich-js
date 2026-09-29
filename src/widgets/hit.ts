@@ -1,10 +1,11 @@
 /**
  * widgetAt — which widget drew a cell of a painted frame, and where in its
- * own output that cell sits; scrollTargetAt — which viewport the wheel over
- * that cell moves.
+ * own output that cell sits; scrollTargetAt — what the wheel over that cell
+ * moves.
  *
- * A widget stamps every cell it draws (`WidgetBase.render`), and a `Viewport`
- * every cell of its rows, around its content's stamps. The stamp rides
+ * A widget stamps every cell it draws (`WidgetBase.render`), and a
+ * `Scrollable` such as `Viewport` every cell it shows, around its content's
+ * stamps. The stamp rides
  * through every container on the cell's `Style`, and the frame a screen paints
  * is therefore its own hit map: nothing lays widgets out a second time to
  * answer "what is under the pointer", so the answer cannot disagree with what
@@ -12,7 +13,8 @@
  */
 
 import { Segment } from "../core/segment.js";
-import { Viewport } from "../renderables/viewport.js";
+import { isScrollable } from "../core/protocol.js";
+import type { Scrollable } from "../core/protocol.js";
 import { WidgetBase } from "./widget-base.js";
 import type { InteractiveWidget } from "./types.js";
 
@@ -40,20 +42,20 @@ export function widgetAt(
 }
 
 /**
- * The innermost `Viewport` that drew the cell at column `x` of row `y` of
+ * The innermost `Scrollable` that drew the cell at column `x` of row `y` of
  * `frame` and that `scrollBy(lines)` would move, or `undefined` when none
  * did. A widget drawn inside it does not hide it: the widget's anchor is
- * nested in the viewport's. One that cannot move that way — its content
- * fits, or it is at that end — passes the wheel to the viewport around it.
+ * nested in its. One that cannot move that way — a viewport whose content
+ * fits, or that is at that end — passes the wheel to the one around it.
  */
 export function scrollTargetAt(
   frame: readonly (readonly Segment[])[],
   x: number,
   y: number,
   lines: number,
-): Viewport | undefined {
+): Scrollable | undefined {
   return innermost(frame, x, y, (owner) =>
-    owner instanceof Viewport && owner.canScrollBy(lines) ? owner : undefined,
+    isScrollable(owner) && owner.canScrollBy(lines) ? owner : undefined,
   )?.owner;
 }
 

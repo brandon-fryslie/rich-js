@@ -572,9 +572,9 @@ export class EventRouter {
     // drag captured. With none, nothing moved and there is nothing to paint.
     if (event.type === "scroll_up" || event.type === "scroll_down") {
       const lines = event.type === "scroll_down" ? 1 : -1;
-      const viewport = scrollTargetAt(frame, event.x, event.y, lines);
-      if (!viewport) return;
-      viewport.scrollBy(lines);
+      const target = scrollTargetAt(frame, event.x, event.y, lines);
+      if (!target) return;
+      target.scrollBy(lines);
       this.source.refresh();
       return;
     }
@@ -591,7 +591,6 @@ export class EventRouter {
       (hit ? { widget: hit.widget, originX: event.x - hit.col, originY: event.y - hit.row } : null);
     target?.widget.handleMouse({
       ...event,
-      type: event.type,
       x: event.x - target.originX,
       y: event.y - target.originY,
       over: drew(frame, target.widget, event.x, event.y),
