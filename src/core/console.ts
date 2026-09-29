@@ -620,7 +620,7 @@ export class Console {
     // Soft wrap turns cropping off whatever `crop` says, because a line it left
     // whole is meant to reach the terminal whole. [LAW:dataflow-not-control-flow]
     // Not cropping is an unbounded width rather than a skipped step — the same
-    // spelling `RichText` uses for `noWrap`.
+    // spelling `RichText` uses for `"ignore"`.
     const cropWidth = !softWrap && (opts.crop ?? true) ? this.width : Infinity;
     this._writeSegments([...Segment.cropLines(output, cropWidth)]);
   }

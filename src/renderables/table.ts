@@ -968,15 +968,15 @@ export class Table implements Renderable, Measurable {
     const titleStyle = style.isNull ? undefined : style;
 
     // The table owns the canvas; the caller's text still says how it meets the
-    // edge. A `RichText`'s own `justify` and `noWrap` outrank the options
+    // edge. A `RichText`'s own `justify` and `overflow` outrank the options
     // `render` is handed, so `titleJustify` would lose to a property the caller
-    // may not know it set, and a `noWrap` title would leave at its natural width
-    // and run straight through the frame. `overflow` stays theirs: every method
-    // cuts within a bound it cannot lift, so none can escape. Cleared on a copy
-    // rather than in place — the caller's text is theirs. [LAW:one-source-of-truth]
+    // may not know it set, and an `"ignore"` title would have no edge and run
+    // straight through the frame. Every other method, and `noWrap`, cuts within
+    // the bound, so those stay theirs. Cleared on a copy rather than in place —
+    // the caller's text is theirs. [LAW:one-source-of-truth]
     const source = text.copy();
     source.justify = undefined;
-    source.noWrap = false;
+    if (source.overflow === "ignore") source.overflow = undefined;
 
     // The table's title style is the *base* the content's own spans layer over,
     // which is what the reference emits: a `[red]` title inside an italic table

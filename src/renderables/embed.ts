@@ -67,11 +67,12 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
  * the plain line, as Rich's do (an empty `Text` is falsy there).
  */
 export function inlineLabel(content: unknown, options: RenderOptions, base: Style | undefined): Segment[] {
-  // The label's own justify would re-justify the padded text within its own
-  // width and move its spaces; where it sits is the caller's to decide.
+  // The label leaves at its natural width, `"ignore"`, because the caller does
+  // the cutting; the label's own overflow method would cut it first, and to a
+  // width no one measured. `"ignore"` also leaves it unjustified, so its spaces
+  // stay where `pad` put them.
   const bare = embeddedText(content);
   const text = bare.plain === "" ? bare : bare.pad(1);
-  text.justify = undefined;
-  const line = text.render({ ...options, maxWidth: text.cellLength, noWrap: true, justify: "left" });
-  return [...Segment.applyStyle(line, base)];
+  text.overflow = "ignore";
+  return [...Segment.applyStyle(text.render(options), base)];
 }

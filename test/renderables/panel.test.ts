@@ -127,6 +127,16 @@ describe("Panel", () => {
     expect(lines[0]).toContain("MyTitle");
   });
 
+  // rich-text-b44 review: the label was sized by `cellLength`, which counts a
+  // tab as no cells, and cut there — the text after the tab was lost.
+  it("keeps a title's text past a tab, whatever its own overflow", () => {
+    for (const title of ["a\tbcd", new RichText("a\tbcd", { overflow: "ellipsis" })]) {
+      const [top] = collectLines(new Panel("x", { title, box: ASCII }), { maxWidth: 30 });
+      expect(top).toContain("bcd");
+      expect(top).not.toContain("\u2026");
+    }
+  });
+
   // Spec: subtitle can be RichText
 
   it("renders RichText subtitle in bottom border", () => {

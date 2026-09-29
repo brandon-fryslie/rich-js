@@ -161,7 +161,7 @@ Configure columns individually:
 | `minWidth`, `maxWidth` | Width constraints |
 | `ratio` | Proportional width allocation; a ratio that is not positive is no ratio, and the column sizes to its content |
 | `noWrap` | Prevent text wrapping in this column |
-| `overflow` | What becomes of a line too long for the column: `"ellipsis"` (default), `"crop"`, `"fold"` |
+| `overflow` | What becomes of a line too long for the column: `"ellipsis"` (default), `"crop"`, `"fold"`, or `"ignore"`, which leaves it whole and unjustified for the table's cell crop to cut |
 | `footer` | Footer cell content — drawn only when the table sets `showFooter` |
 | `headerStyle`, `footerStyle` | Per-column header/footer style — accepted and stored, but not yet applied |
 | `style` | Per-column cell style — accepted and stored, but not yet applied |
