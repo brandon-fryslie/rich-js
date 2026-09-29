@@ -19,7 +19,7 @@
 
 import { cellLen } from "./cells.js";
 import { Style, StyleSyntaxError } from "./style.js";
-import { RichText, Span } from "./text.js";
+import { RichText, Span, stripControlChars } from "./text.js";
 import { emojiReplace } from "./emoji.js";
 
 // --- Tag ---
@@ -297,6 +297,11 @@ function render(
   options?: RenderOptions,
 ): RichText {
   const doEmoji = options?.emoji !== false;
+  // Text reaches `plainText` as `RichText` will hold it, so every offset
+  // counted along the way — a span, a splice point — indexes the text it lands
+  // on. Stripped only by the constructor, a control character shifted every
+  // style after it one cell right.
+  const textOf = (raw: string): string => stripControlChars(unescapeBrackets(doEmoji ? emojiReplace(raw) : raw));
 
   // Build plain text and track spans
   let plainText = "";
@@ -324,7 +329,7 @@ function render(
     for (const tag of parseTags(markup)) {
       // Add text before this tag
       const textBefore = markup.slice(lastEnd, tag.start);
-      plainText += unescapeBrackets(doEmoji ? emojiReplace(textBefore) : textBefore);
+      plainText += textOf(textBefore);
       lastEnd = tag.end;
 
       if (tag.isImplicitClose) {
@@ -356,7 +361,7 @@ function render(
 
     // Add remaining text after last tag
     const trailing = markup.slice(lastEnd);
-    plainText += unescapeBrackets(doEmoji ? emojiReplace(trailing) : trailing);
+    plainText += textOf(trailing);
   }
 
   // Auto-close what is still open, innermost first. The reference pops its
@@ -473,7 +478,11 @@ function unescapeBrackets(text: string): string {
 export interface MarkupTagContext {
   /** Parsed `key=value` attributes from the opening tag. */
   attrs: Record<string, string>;
-  /** Inner markup, already parsed (registry-aware) into a `RichText`. */
+  /**
+   * Inner markup, already parsed (registry-aware) into a `RichText`. It carries
+   * no `baseStyle`: that is painted once, under the whole output, so it sits
+   * beneath whatever the handler returns.
+   */
   children: RichText;
   /** Raw inner markup text (between the opening tag's `]` and the closing tag's `[`). */
   raw: string;
@@ -714,9 +723,8 @@ function pairPluginTags(
   const pairs = new Map<number, number>();
   // Each opener's closing tag, whichever tag closed it — its own or a pair's end.
   const closedAt = new Map<number, number>();
-  // Tags a pair's end closed, with that pair: what an explicit closer that
-  // matches nothing on the stack was reaching for.
-  const closedByPair: { idx: number; pairOpen: number }[] = [];
+  // Each tag a pair's end closed, with that pair's opening tag.
+  const closedByPair = new Map<number, number>();
   // Style tags closed inside a plugin tag they opened outside of, keyed by that
   // plugin tag — a crossing only once the plugin tag turns out to pair.
   const crossedInto = new Map<number, { styleOpen: number; close: number }>();
@@ -752,22 +760,24 @@ function pairPluginTags(
     }
     const j = findLastIndex(stack, closes(t));
     if (j === -1) {
-      // [LAW:no-silent-failure] A closer that matches nothing is the built-in
-      // parser's to reject — unless a pair's end already closed what it names.
-      // Then it reaches across that pair, and saying so beats the built-in
-      // parser's "doesn't match any open tag" under an excerpt showing it open.
-      const r = t.isImplicitClose ? -1 : findLastIndex(closedByPair, ({ idx }) => closes(t)(idx));
-      if (r === -1) continue;
-      const reached = closedByPair[r]!;
-      if (t.pluginName === undefined) throw crossing(reached.idx, i, reached.pairOpen);
+      // [LAW:no-silent-failure] A closer that matches nothing reaches for the
+      // last tag before it that it could name, `[/]` and `[/name]` alike. If a
+      // pair's end closed that tag, the closer reaches across the pair, and
+      // saying so beats the built-in parser's "doesn't match any open tag";
+      // otherwise the built-in parser rejects it, with the location it reports.
+      let target = i - 1;
+      while (target >= 0 && !(isOpener(annotated[target]!) && closes(t)(target))) target--;
+      const pairOpen = closedByPair.get(target);
+      if (pairOpen === undefined) continue;
+      if (t.pluginName === undefined) throw crossing(target, i, pairOpen);
       // Overlap is unrepresentable rather than unimplemented: a handler receives
       // `children` as one contiguous slice, so a region straddling another
       // pair's closing boundary has nothing to hand it. A style span may cross
       // another style span because it annotates; a plugin pair may not because
       // it replaces. The caret goes where nesting broke: the outer pair's end.
-      const inner = annotated[reached.idx]!;
-      const outer = annotated[reached.pairOpen]!;
-      const caret = closedAt.get(reached.pairOpen)!;
+      const inner = annotated[target]!;
+      const outer = annotated[pairOpen]!;
+      const caret = closedAt.get(pairOpen)!;
       throw new MarkupSyntaxError(
         `Plugin tag [${inner.pluginName}] overlaps [${outer.pluginName}]: plugin tags must nest, ` +
           `because a handler receives one contiguous slice. ` +
@@ -790,7 +800,7 @@ function pairPluginTags(
     if (crossed !== undefined) throw crossing(crossed.styleOpen, crossed.close, openIdx);
     for (const k of stack.splice(j)) {
       closedAt.set(k, i);
-      if (k !== openIdx) closedByPair.push({ idx: k, pairOpen: openIdx });
+      if (k !== openIdx) closedByPair.set(k, openIdx);
     }
     pairs.set(openIdx, i);
   }

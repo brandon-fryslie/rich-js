@@ -14,7 +14,7 @@ import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 // [LAW:single-enforcer] Single place where control chars are sanitized
 const CONTROL_CHARS_RE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g;
 
-function stripControlChars(text: string): string {
+export function stripControlChars(text: string): string {
   return text.replace(CONTROL_CHARS_RE, "");
 }
 

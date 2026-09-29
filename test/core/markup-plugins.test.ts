@@ -380,6 +380,10 @@ describe("a style tag spans a plugin pair it encloses", () => {
     expect(spans("[blue][aa]x[/aa][/blue]", { baseStyle: "red" })).toEqual(["0-1 red", "0-1 blue"]);
   });
 
+  it("puts styles on the cells they name when a control character precedes them", () => {
+    expect(spans("a\x07b[shout]cd[/shout][bold]e[/bold]")).toEqual(["6-7 bold", "2-6 red"]);
+  });
+
   it("keeps the base style of the RichText a handler returns", () => {
     const r = new MarkupRegistry();
     r.register("st", () => new RichText("S", { style: "green", end: "" }));
@@ -424,6 +428,16 @@ describe("a style tag cannot cross a plugin pair's boundary", () => {
   it("points a later [/] at the tag open outside the pair, not one the pair's end closed", () => {
     expect(spans("[red][aa][bold]x[/aa]y[/]")).toEqual(["0-2 red", "0-1 bold"]);
     expect(spans("[bb][aa][bold]x[/aa][/]")).toEqual(["0-1 bold"]);
+  });
+
+  it("says the same of the crossing whether it is written [/bold] or [/]", () => {
+    const err = rejectionOf("[aa][bold]x[/aa][/]", registry());
+    expect(err.reason).toMatch(/^Closing tag \[\/\] closes \[bold\] across the boundary of plugin tag \[aa\]/);
+  });
+
+  it("blames a stray closer on no pair when the tag it names last closed properly", () => {
+    const err = rejectionOf("[aa][bold]x[/aa][bold]y[/bold][/bold]", registry());
+    expect(err.reason).toMatch(/^Closing tag \[\/bold\] doesn't match any open tag/);
   });
 
   it("names enclosing style tags among those open at an overlap", () => {
