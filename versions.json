@@ -4,15 +4,22 @@
     {
       "version": "pr-217",
       "ref": "refs/pull/217/merge",
-      "sha": "7a4b3898ddedf7007cf17bcd077c33ef22f4276b",
-      "timestamp": "2026-09-29T20:40:20.494Z",
+      "sha": "f734e0cd395ca889dbf8c52910ac6d887bd30764",
+      "timestamp": "2026-09-29T20:42:44.459Z",
       "commits": [
         {
-          "sha": "7a4b3898ddedf7007cf17bcd077c33ef22f4276b",
+          "sha": "f734e0cd395ca889dbf8c52910ac6d887bd30764",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T20:38:27Z",
-          "message": "Merge 42f40c8dd9b550dbbc3e4336bfbb391184dc3914 into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
+          "timestamp": "2026-09-29T20:41:50Z",
+          "message": "Merge 791e69332133ab1e974e0fac657d637db7bb152e into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
+        },
+        {
+          "sha": "791e69332133ab1e974e0fac657d637db7bb152e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:41:45-06:00",
+          "message": "Revert \"DO NOT MERGE: call Object.groupBy (Node 21) in Panel.render to prove node-floor goes red (rich-packaging-8b7)\"\n\nThis reverts commit 42f40c8dd9b550dbbc3e4336bfbb391184dc3914.\n"
         },
         {
           "sha": "42f40c8dd9b550dbbc3e4336bfbb391184dc3914",
