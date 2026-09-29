@@ -1,0 +1,1 @@
+import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.BQzWB83b.js";const c=JSON.parse('{"title":"Render Groups","description":"","frontmatter":{},"headers":[],"relativePath":"group.md","filePath":"group.md"}'),e={name:"group.md"};function t(p,s,h,o,r,k){return i(),n("div",null,[...s[0]||(s[0]=[l("",12)])])}const y=a(e,[["render",t]]);export{c as __pageData,y as default};

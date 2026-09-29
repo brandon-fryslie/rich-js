@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-213",
+      "ref": "refs/pull/213/merge",
+      "sha": "41058690fb574d40eba55a0fdbd5305f336cd152",
+      "timestamp": "2026-09-29T19:18:29.628Z",
+      "commits": [
+        {
+          "sha": "41058690fb574d40eba55a0fdbd5305f336cd152",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T13:17:02-06:00",
+          "message": "Merge c6b660f5ad0d53f28e07d4a213acf2e9940f829c into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
+        },
+        {
+          "sha": "c6b660f5ad0d53f28e07d4a213acf2e9940f829c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T13:16:57-06:00",
+          "message": "fix(console): justify places what print draws as one block, as Rich's Align does (rich-console-c70)\n\nprint's justify \"left\"/\"center\"/\"right\" now places each block of a print\n(a text run, or any other renderable) as a whole: measured, drawn at that\nwidth, shaped to its widest line, then padded out to the console. Before,\nonly RichText placed itself, line by line, so a Table or Panel was never\nplaced and \"hi\\nhello\" centred each line against the full width.\n\nThe placement is `placeBlock` in the new src/core/place.ts, so console.ts\nreaches it without a third upward edge out of core/. Align is now that\nfunction behind the Renderable interface, and moved from per-line to block\nplacement with it. Under overflow \"ignore\" / softWrap the text itself is not\njustified, matching Rich's Text.wrap; the block is still placed.\n\nPinned against Rich 9d8f9a3 bytes in test/core/console.test.ts. The\nmulti-item text run case is filed separately as rich-console-7yp0.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "89c5105f65e3b6fa34962adb089cb14c76052e3c",
