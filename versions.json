@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-198",
+      "ref": "refs/pull/198/merge",
+      "sha": "a52e1b9cdda1c63d3bdab402c065404ec51aa880",
+      "timestamp": "2026-09-29T13:19:13.362Z",
+      "commits": [
+        {
+          "sha": "a52e1b9cdda1c63d3bdab402c065404ec51aa880",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T13:18:07Z",
+          "message": "Merge 686446cc5a6f7f2583df9e6c0afe31c063dabfbd into aa4ba3f4ea875b9f12b9a06efdf7b23f2aa8837c\n"
+        },
+        {
+          "sha": "686446cc5a6f7f2583df9e6c0afe31c063dabfbd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:17:50-06:00",
+          "message": "docs(host): an inline app starts on the cursor's line, not below it (rich-runtime-fna.3)\n"
+        },
+        {
+          "sha": "aa93bb84beb340876906a52682479e8b49c1c770",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:13:31-06:00",
+          "message": "fix(host): suspend stops the job, signals coexist with signal-exit, a program's end leaves run unsettled (rich-runtime-fna.3)\n\nFrom the /code-review high pass on PR #198:\n\n- NodeTerminalHost.suspend sends SIGTSTP to the process group, as the\n  terminal sends Ctrl+Z, so a launcher (npm run, sh -c) stops with the\n  program and the shell takes the terminal. A signal to one's own group is\n  delivered inside kill, so suspend resolves when the call returns: no\n  SIGCONT wait and no keep-alive timer, and a discarded SIGTSTP (no job\n  control) no longer strands the app suspended.\n- onExit's signal listeners are prepended, so a listener keeping the same\n  raise-only-when-alone rule (signal-exit) finds itself alone and raises\n  the signal instead of both standing down.\n- When the program ends under the app, run() does not settle, so no code\n  after it runs inside a crash's report and exit.\n- An inline frame that blanks rows below it rewinds to its own height.\n- installTraceback raises an unhandled rejection after its other listeners\n  have heard it.\n- rich-explore ends the app with a reducer's error again.\n"
+        },
+        {
+          "sha": "c6061e7e914daa52da9674d618a8706277668a5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:58:35-06:00",
+          "message": "feat(host): App, the runtime that takes the terminal and hands it back on every exit (rich-runtime-fna.3)\n\nApp paints one renderable per frame on an alternate or inline surface,\nrepaints on refresh() and resize, suspends through the host, and undoes the\nalternate screen, hidden cursor and raw mode on stop, a throwing frame, and\nevery way the program can end under it.\n\nTerminalHost gains onExit and suspend. The node host hears exit, SIGINT,\nSIGTERM, SIGHUP and uncaughtExceptionMonitor, keeps each ending's default\noutcome, and suspends by SIGTSTP with a timer holding the loop until SIGCONT.\n\ninstallTraceback now throws unhandled rejections into the uncaught channel,\nso node's monitor phase restores the terminal before every report prints.\n\nrich-explore runs on App, with Ctrl+Z to suspend.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-197",
       "ref": "refs/pull/197/merge",
       "sha": "45b9f5ea97814ef89f2ffa145210d9b2dea86f60",
@@ -48,35 +84,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T06:54:10-06:00",
           "message": "fix(markup): a style tag spans a plugin pair it encloses (rich-markup-cg6)\n\nThe plugin-aware walk rendered the text between plugin pairs as separate\nbuilt-in parses, so every style tag closed at the first pair's boundary and\nits closing tag then matched nothing: '[bold]x[click]y[/click]z[/bold]'\nthrew \"doesn't match any open tag\" with [bold] visibly open. Since gfr let\n[/] close a plugin tag, '[bold][aa]x[/][/]' threw the same way, and an\nunclosed '[bold]pre [aa]x[/aa] post' silently lost bold after the pair.\n\nEach plugin pair's handler output now takes the pair's place in one built-in\nwalk over the slice, so an enclosing style covers it like plain text and the\nhandler's own spans repaint it as an inner tag would. The same change stops\na base style from painting over markup colours whenever a plugin pair is\npresent, which the final whole-output stylize used to do.\n\nA style tag that opens on one side of a plugin pair's boundary and closes on\nthe other has no span to give, since the handler replaces the text inside;\nthe pairing walk now rejects it with an error naming the plugin boundary.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-198",
-      "ref": "refs/pull/198/merge",
-      "sha": "99f0449188f3532d5d6488f808bb45414cadd4a7",
-      "timestamp": "2026-09-29T13:14:35.749Z",
-      "commits": [
-        {
-          "sha": "99f0449188f3532d5d6488f808bb45414cadd4a7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:13:37Z",
-          "message": "Merge aa93bb84beb340876906a52682479e8b49c1c770 into 09c34e93c05bb98ab33aef129b0a19c2c2b3323e\n"
-        },
-        {
-          "sha": "aa93bb84beb340876906a52682479e8b49c1c770",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:13:31-06:00",
-          "message": "fix(host): suspend stops the job, signals coexist with signal-exit, a program's end leaves run unsettled (rich-runtime-fna.3)\n\nFrom the /code-review high pass on PR #198:\n\n- NodeTerminalHost.suspend sends SIGTSTP to the process group, as the\n  terminal sends Ctrl+Z, so a launcher (npm run, sh -c) stops with the\n  program and the shell takes the terminal. A signal to one's own group is\n  delivered inside kill, so suspend resolves when the call returns: no\n  SIGCONT wait and no keep-alive timer, and a discarded SIGTSTP (no job\n  control) no longer strands the app suspended.\n- onExit's signal listeners are prepended, so a listener keeping the same\n  raise-only-when-alone rule (signal-exit) finds itself alone and raises\n  the signal instead of both standing down.\n- When the program ends under the app, run() does not settle, so no code\n  after it runs inside a crash's report and exit.\n- An inline frame that blanks rows below it rewinds to its own height.\n- installTraceback raises an unhandled rejection after its other listeners\n  have heard it.\n- rich-explore ends the app with a reducer's error again.\n"
-        },
-        {
-          "sha": "c6061e7e914daa52da9674d618a8706277668a5f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:58:35-06:00",
-          "message": "feat(host): App, the runtime that takes the terminal and hands it back on every exit (rich-runtime-fna.3)\n\nApp paints one renderable per frame on an alternate or inline surface,\nrepaints on refresh() and resize, suspends through the host, and undoes the\nalternate screen, hidden cursor and raw mode on stop, a throwing frame, and\nevery way the program can end under it.\n\nTerminalHost gains onExit and suspend. The node host hears exit, SIGINT,\nSIGTERM, SIGHUP and uncaughtExceptionMonitor, keeps each ending's default\noutcome, and suspends by SIGTSTP with a timer holding the loop until SIGCONT.\n\ninstallTraceback now throws unhandled rejections into the uncaught channel,\nso node's monitor phase restores the terminal before every report prints.\n\nrich-explore runs on App, with Ctrl+Z to suspend.\n"
         }
       ]
     },
