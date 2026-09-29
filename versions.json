@@ -4,15 +4,22 @@
     {
       "version": "pr-219",
       "ref": "refs/pull/219/merge",
-      "sha": "ba56134b832078069bb2a9622a50a2633c273570",
-      "timestamp": "2026-09-29T21:13:01.153Z",
+      "sha": "97250f4ac042cbfbf32caadc5b51ccb591be93bf",
+      "timestamp": "2026-09-29T21:16:52.040Z",
       "commits": [
         {
-          "sha": "ba56134b832078069bb2a9622a50a2633c273570",
+          "sha": "97250f4ac042cbfbf32caadc5b51ccb591be93bf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:12:09-06:00",
-          "message": "Merge 3dc279b7c3a455a3baa786d0081a5c9c49e0c08e into 2df67cfc18181fa8fe839b06254f57b72fad4703\n"
+          "timestamp": "2026-09-29T21:15:48Z",
+          "message": "Merge 1f1163434992046030705c5794a9c6b3420a54c2 into 2df67cfc18181fa8fe839b06254f57b72fad4703\n"
+        },
+        {
+          "sha": "1f1163434992046030705c5794a9c6b3420a54c2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:15:43-06:00",
+          "message": "fix(color): parseByte is the only range check and names the key (rich-color-av8)\n\nReview of #219: the {1,3} digit cap was a second, partial range check, so\nrgb(0,1000,0) got the generic parse error; widen to \\d+ and report the\ndigits. The message now names the colour string, and the field is a union.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "3dc279b7c3a455a3baa786d0081a5c9c49e0c08e",
