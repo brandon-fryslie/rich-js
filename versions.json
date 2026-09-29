@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-187",
-      "ref": "refs/pull/187/merge",
-      "sha": "5a0c7d0ed8a7e9d2f8f1cc4fd521a3a9ab946e7c",
-      "timestamp": "2026-09-29T10:07:51.886Z",
-      "commits": [
-        {
-          "sha": "5a0c7d0ed8a7e9d2f8f1cc4fd521a3a9ab946e7c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:07:03Z",
-          "message": "Merge 035745a89905eb22e2d7058966ec0124bf696c11 into 71d12c86e45e66401ea99039d382750dc9fd2b7a\n"
-        },
-        {
-          "sha": "035745a89905eb22e2d7058966ec0124bf696c11",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:06:58-06:00",
-          "message": "fix(export-html): box only wide glyphs, unpainted, inside their run; fix the fragment's default line height\n\nA wide glyph's box now carries only its width and inherits its parent's\ndecoration, so the run's background and lines stay the run's and the markup\ngrows by one short span per wide glyph. Zero-width graphemes stay in the text,\nall-ASCII runs skip segmentation, and the segmenter is made on use rather than\nat import. The fragment's fallback font now fixes its line height, so a row\nholding a fallback-font glyph no longer grows.\n"
-        },
-        {
-          "sha": "b775304e6da880770ef342a5105b07ca4ef13067",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T03:57:42-06:00",
-          "message": "fix(export-html): a wide glyph holds its two cells, so columns after CJK text line up (rich-docs-examples-xuu.9lc)\n\ndocs/text.md gains a Wide characters example: a Table of CJK and Hangul\ncity names. Checked in a browser, its column edges drifted up to 24px left on\nrows with wide text, because a browser draws a wide glyph at its fallback\nfont's width, not two cells. encodeHtmlFragment now cuts a run at each\ngrapheme that is not one cell wide and draws it as a run of its own in an\ninline-block exactly that many ch wide.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "71d12c86e45e66401ea99039d382750dc9fd2b7a",
