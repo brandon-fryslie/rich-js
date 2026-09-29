@@ -9,9 +9,10 @@
  * Progress for its rendering, not its scheduling.
  *
  * Under the bars, a sparkline draws how far each tick advanced the build, and
- * a build log shows its newest lines in whatever rows the pane has left. The pane's rows arrive as the `Height` on its render options — the
- * Layout cell's share of the screen the `App` hands down — so the tail grows and
- * shrinks with the terminal and nothing here knows how tall it is.
+ * a build log shows its newest lines in whatever rows the pane has left. The
+ * pane's rows arrive as the `Height` on its render options — the Layout cell's
+ * share of the screen the `App` hands down — so the tail grows and shrinks
+ * with the terminal and nothing here knows how tall it is.
  */
 
 import {
@@ -105,9 +106,10 @@ function tick(state: JobState): JobState {
 
   const stage = state.stages[state.cursor]!;
   const advance = 1 + Math.floor(Math.random() * MAX_ADVANCE);
-  state.rates.push(advance);
-  state.rates.splice(0, state.rates.length - RATES_KEPT);
+  const before = stage.completed;
   stage.completed = Math.min(stage.completed + advance, stage.total);
+  state.rates.push(stage.completed - before);
+  state.rates.splice(0, state.rates.length - RATES_KEPT);
   state.progress.updateTask(stage.taskId, { completed: stage.completed });
   record(state, `${stage.description}: ${stage.completed}/${stage.total}`);
 
@@ -144,9 +146,10 @@ const RATE_LABEL = "rate ";
  * at the right, and the cells no sample has reached yet drawn as empty track.
  *
  * It picks a glyph per cell, so it yields its own segments rather than a text,
- * and it draws them with the names the progress bars above it draw with —
- * `bar.complete` and `bar.back` — resolved by `getStyle` against the theme of
- * the render, so a theme that recolours the bars recolours this too.
+ * and it draws them with the names a running progress bar draws its fill and
+ * track with — `bar.complete` and `bar.back` — resolved by `getStyle` against
+ * the theme of the render, so a theme that recolours those recolours this too.
+ * It is one row, cut to the width and the ceiling it is offered.
  */
 class RateSparkline implements Renderable {
   constructor(private readonly samples: readonly number[]) {}
@@ -156,18 +159,26 @@ class RateSparkline implements Renderable {
     const cells = Math.max(0, Math.min(maxWidth - RATE_LABEL.length, RATES_KEPT));
     const shown = this.samples.slice(this.samples.length - cells);
     const level = (sample: number) => LEVELS[Math.round((sample / MAX_ADVANCE) * (LEVELS.length - 1))];
-    yield new Segment(RATE_LABEL);
-    yield new Segment(LEVELS[0]!.repeat(cells - shown.length), getStyle(options, "bar.back"));
-    yield new Segment(shown.map(level).join(""), getStyle(options, "bar.complete"));
+    const line = Segment.adjustLineLength(
+      [
+        new Segment(RATE_LABEL),
+        new Segment(LEVELS[0]!.repeat(cells - shown.length), getStyle(options, "bar.back")),
+        new Segment(shown.map(level).join(""), getStyle(options, "bar.complete")),
+      ],
+      maxWidth,
+      undefined,
+      false,
+    );
+    for (const row of [line].slice(0, options.height?.rows)) yield* row;
   }
 }
 
 /**
  * The bars and the sparkline, then the log in the rows they leave. The bars
- * and the sparkline are stacked blocks, so each gets the budget as a ceiling;
- * the log is the one child filling the rest, so it gets the budget less the
- * rows above it, and this pane — having set that region — shapes what comes
- * back to it.
+ * and the sparkline are stacked blocks, so each gets as a ceiling the budget
+ * less the rows drawn above it; the log is the one child filling the rest, so
+ * it gets the budget less every row above it, and this pane — having set that
+ * region — shapes what comes back to it.
  */
 class JobPane implements Renderable {
   constructor(
@@ -176,8 +187,14 @@ class JobPane implements Renderable {
   ) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    const above = this.above.flatMap((block) =>
-      Segment.splitLines(block.render({ ...options, height: stackedHeight(options.height) })),
+    const above = this.above.reduce<Segment[][]>(
+      (drawn, block) => [
+        ...drawn,
+        ...Segment.splitLines(
+          block.render({ ...options, height: stackedHeight(insetHeight(options.height, drawn.length)) }),
+        ),
+      ],
+      [],
     );
     const rest = insetHeight(options.height, above.length);
     const log = fitHeight(Segment.splitLines(this.log.render({ ...options, height: rest })), rest);
