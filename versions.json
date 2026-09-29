@@ -4,15 +4,22 @@
     {
       "version": "pr-222",
       "ref": "refs/pull/222/merge",
-      "sha": "b071dd203d37946f3cdf6d026aa67aeb29491630",
-      "timestamp": "2026-09-29T21:47:59.903Z",
+      "sha": "d5982b13f118bde2b3bbd49330986530b9aa48ea",
+      "timestamp": "2026-09-29T21:50:56.130Z",
       "commits": [
         {
-          "sha": "b071dd203d37946f3cdf6d026aa67aeb29491630",
+          "sha": "d5982b13f118bde2b3bbd49330986530b9aa48ea",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:47:11-06:00",
-          "message": "Merge 2fcf9f95bbf1fd8cba6027d0f3dab926ca69327a into 5b8b4904721cc6699566e533d3b86d281e3d518e\n"
+          "timestamp": "2026-09-29T21:49:58Z",
+          "message": "Merge 9f8b09e313e5a1221e4167ac789d24d03a634c98 into 5b8b4904721cc6699566e533d3b86d281e3d518e\n"
+        },
+        {
+          "sha": "9f8b09e313e5a1221e4167ac789d24d03a634c98",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:49:53-06:00",
+          "message": "test(embed): pin the unstyled bytes, a single report, and the RichText branch (rich-panel-z93)\n"
         },
         {
           "sha": "2fcf9f95bbf1fd8cba6027d0f3dab926ca69327a",
