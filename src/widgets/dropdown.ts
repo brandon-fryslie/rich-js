@@ -255,9 +255,8 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // 1 row regardless of `expanded`/`filter`. Option rows live in
     // renderOverlay. Width invariant: maxLabelLen + 4.
     const arrowChar = drawable(options, "▾", "v");
-    // [LAW:one-source-of-truth] render() owns the asciiOnly switch; the
-    // caret character flows into headerText as data rather than headerText
-    // re-reading the option flag. Same arrow / caret resolution path.
+    // [LAW:one-source-of-truth] Both glyphs are resolved here, once, and flow
+    // into headerText as data rather than headerText re-reading the options.
     const caret = this.focused ? drawable(options, "│", "|") : "";
     const maxLabelLen = this.maxLabelLen();
 
