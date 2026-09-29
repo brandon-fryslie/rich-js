@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-204",
+      "ref": "refs/pull/204/merge",
+      "sha": "b73d64cbd85e64515c713d98d09ba6e721b6a316",
+      "timestamp": "2026-09-29T14:04:15.584Z",
+      "commits": [
+        {
+          "sha": "b73d64cbd85e64515c713d98d09ba6e721b6a316",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T08:03:17-06:00",
+          "message": "Merge 0bfd0f57d8e1f7275ffd432c97fc070c97dc5470 into ea6e75d87583f84b8e69a2fdcc467ddcccac75aa\n"
+        },
+        {
+          "sha": "0bfd0f57d8e1f7275ffd432c97fc070c97dc5470",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:58:03-06:00",
+          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-205",
       "ref": "refs/pull/205/merge",
       "sha": "cd1c47c3766c665b7052230584cc62df92a43d08",
@@ -35,28 +57,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T07:49:48-06:00",
           "message": "fix(table): a ratio that is not positive sizes its column to its content (rich-table-ykj) (#203)\n\n* fix(table): a ratio that is not positive sizes its column to its content (rich-table-ykj)\n\nColumn.share is now the one answer to which columns are elastic; flexible\nasks it as a yes/no and _columnDemands reads it for the weight. A column it\ncalls inflexible sizes to its content beside a ratio column, as the docs\nand the reference say — a ratio: 0 column was weighed at zero and starved\nto one cell, and a column with no ratio took a share of 1.\n\n* fix(table): ratio columns split the leftover in a pass of their own (rich-table-ykj)\n\nA ratio is a proportion and a content column's weight is a count of cells;\nweighed in one pool, ratio: 100 truncated a neighbour the table had room for,\nand flooring the ratio to a cell starved ratio: 0.5 to a single ellipsis. The\nshare is now module-private (columnShare) rather than public surface on Column.\n\n* fix(table): a ratio column bids for its minWidth like content (rich-table-ykj)"
-        }
-      ]
-    },
-    {
-      "version": "pr-204",
-      "ref": "refs/pull/204/merge",
-      "sha": "09bf34d5ab64a4dff0ee6ec3b629abe00b512d04",
-      "timestamp": "2026-09-29T13:47:02.995Z",
-      "commits": [
-        {
-          "sha": "09bf34d5ab64a4dff0ee6ec3b629abe00b512d04",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:46:09-06:00",
-          "message": "Merge 84b6e89175347b38149112da8cf303e7392d1290 into d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3\n"
-        },
-        {
-          "sha": "84b6e89175347b38149112da8cf303e7392d1290",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:45:57-06:00",
-          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n\nA rowless table with its header hidden sized each column to zero and drew\na two-cell box; Rich measures a cell-less column Measurement(1, max_width)\nand fills the offer. _widestCell now answers undefined for 'no cells',\ndistinct from 0 for 'cells that draw nothing'. Frames pinned against\nRich's output at 20 and 40 cells, 1 and 2 columns.\n"
         }
       ]
     }
