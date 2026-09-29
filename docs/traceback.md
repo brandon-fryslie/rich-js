@@ -21,7 +21,8 @@ exampleContext: |
       "walk (file:///app/src/tree.mjs:4:11)",
       ...Array.from({ length: depth }, () => "walk (file:///app/src/tree.mjs:5:10)"),
       "file:///app/src/tree.mjs:9:1",
-      "async ModuleJob.run (node:internal/modules/esm/module_job:271:25)",
+      "ModuleJob.run (node:internal/modules/esm/module_job:569:25)",
+      "async node:internal/modules/esm/loader:650:26",
       "async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)",
     ]);
   };

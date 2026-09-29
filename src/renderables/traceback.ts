@@ -29,8 +29,7 @@ export interface TracebackOptions {
 
 interface StackFrame {
   file: string;
-  line: number | undefined;
-  column: number | undefined;
+  line: number;
   function: string | undefined;
   suppressed?: boolean;
 }
@@ -41,16 +40,17 @@ function parseStack(error: Error): StackFrame[] {
   const frames: StackFrame[] = [];
 
   for (const line of lines) {
-    const trimmed = line.trim();
-    // Node.js format: "    at functionName (file:line:column)"
-    // or:            "    at file:line:column"
-    const match = /^\s*at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?/.exec(trimmed);
+    // The two V8 frame shapes located by file:line:column: "at fn (file:…)"
+    // and "at file:…", either one prefixed "async " when the frame is an
+    // awaited call. The marker is not part of any name, so it is read and
+    // dropped; the lookahead keeps "at async (file:…)" — a function named
+    // `async` — a name.
+    const match = /^at\s+(?:async\s+(?!\())?(?:(.+?)\s+\()?(.+?):(\d+):\d+\)?/.exec(line.trim());
     if (match) {
       frames.push({
         function: match[1] || undefined,
         file: match[2]!,
         line: parseInt(match[3]!, 10),
-        column: parseInt(match[4]!, 10),
       });
     }
   }
@@ -128,10 +128,8 @@ export class Traceback implements Renderable {
       yield new Segment(" ");
     }
     yield new Segment(frame.file, pathStyle);
-    if (frame.line !== undefined) {
-      yield new Segment(":");
-      yield new Segment(String(frame.line), lineNoStyle);
-    }
+    yield new Segment(":");
+    yield new Segment(String(frame.line), lineNoStyle);
     yield Segment.line();
   }
 }
