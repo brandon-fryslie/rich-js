@@ -656,13 +656,28 @@ describe("RichText.truncate()", () => {
     expect(new RichText("hello world").truncate(1, { marker: "中" }).plain).toBe("h");
   });
 
+  it("keeps a many-code-point marker whole when it fits, and drops it whole when it does not", () => {
+    for (const mode of ["right", "left", "middle"] as const) {
+      expect(new RichText("hello world").truncate(4, { mode, marker: "👨‍👩‍👧" }).plain).toContain("👨‍👩‍👧");
+      expect(new RichText("hello world").truncate(1, { mode, marker: "❤️" }).plain).toHaveLength(1);
+      expect(new RichText("hello world").truncate(1, { mode, marker: "🇺🇸" }).plain).toHaveLength(1);
+    }
+  });
+
+  it("cuts the text between grapheme clusters", () => {
+    expect(new RichText("a❤️bcdef❤️g").truncate(2, { marker: "" }).plain).toBe("a");
+    expect(new RichText("a❤️bcdef❤️g").truncate(2, { mode: "left", marker: "" }).plain).toBe("g");
+    expect(new RichText("a❤️bcdef❤️g").truncate(3, { mode: "middle", marker: "" }).plain).toBe("ag");
+    expect(new RichText("a❤️bcdef❤️g").truncate(6, { mode: "middle", marker: "" }).plain).toBe("a❤️❤️g");
+  });
+
   it("is never wider than the width, for every mode and marker", () => {
     const modes = ["right", "left", "middle"] as const;
-    const markers = ["", "…", ">>", ">>>", "中", "中>"];
+    const markers = ["", "…", ">>", ">>>", "中", "中>", "❤️", "👨‍👩‍👧", "🇺🇸"];
     for (const mode of modes) {
       for (const marker of markers) {
-        for (let width = -2; width <= 12; width++) {
-          const t = new RichText("hello 中文 world").truncate(width, { mode, marker });
+        for (let width = -2; width <= 16; width++) {
+          const t = new RichText("hello 中文 ❤️ 🇺🇸 world").truncate(width, { mode, marker });
           expect(t.cellLength, `${mode} ${JSON.stringify(marker)} ${width}`)
             .toBeLessThanOrEqual(Math.max(width, 0));
         }

@@ -6,6 +6,9 @@ import {
   splitText,
   chopCells,
   cellStepFrom,
+  cellFit,
+  cellFitEnd,
+  graphemes,
   asCodePoint,
 } from "../../src/core/cells.js";
 
@@ -190,6 +193,31 @@ describe("splitText", () => {
     const [left, right] = splitText("hello", asCellCol(-1));
     expect(left).toBe("");
     expect(right).toBe("hello");
+  });
+});
+
+describe("cellFit / cellFitEnd", () => {
+  // Each of these is one glyph built from several code points, and a sum of
+  // per-code-point widths disagrees with cellLen on every one of them.
+  const clusters = ["❤️", "👨‍👩‍👧", "🇺🇸", "é"];
+
+  it("keeps a cluster that fits whole", () => {
+    for (const c of clusters) {
+      expect(cellFit(`${c}ab`, asCellCol(cellLen(c)))).toBe(c);
+      expect(cellFitEnd(`ab${c}`, asCellCol(cellLen(c)))).toBe(c);
+    }
+  });
+
+  it("never cuts inside a cluster, and is never wider than the cap", () => {
+    const text = `a${clusters.join("b")}c`;
+    for (let cap = 0; cap <= cellLen(text); cap++) {
+      for (const fit of [cellFit(text, asCellCol(cap)), cellFitEnd(text, asCellCol(cap))]) {
+        expect(cellLen(fit), `${cap} ${JSON.stringify(fit)}`).toBeLessThanOrEqual(cap);
+        const whole = graphemes(text);
+        const n = graphemes(fit).length;
+        expect([whole.slice(0, n).join(""), whole.slice(whole.length - n).join("")]).toContain(fit);
+      }
+    }
   });
 });
 
