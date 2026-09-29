@@ -36,15 +36,7 @@ jobs:
       # job proves the package works at the top of its supported range and says
       # nothing about the floor.
       #
-      # Nothing else does either, and this comment claimed otherwise until review
-      # caught it: it called the tarball-under-the-lowest-Node check "a release
-      # step", and `publish.yml` has no such step — its gate job resolves this
-      # same range, and the job that publishes never runs `src/` at all. That
-      # check was run by hand once, on the commit that set the floor, and is
-      # recorded in its PR. Automating it is rich-packaging-8b7.
-      # Read the gap as it is: a floor wrong because `src/` reached for a newer
-      # Node's API is caught by nobody today, and a comment promising a safety
-      # net is worse than the gap, because it stops anyone looking for one.
+      # The bottom is the `node-floor` job below.
       - uses: actions/setup-node@v7
         with:
           node-version-file: package.json
@@ -53,3 +45,13 @@ jobs:
       - run: npm ci
 
       - uses: ./.github/actions/gate
+
+  # The tarball, installed and rendered on the lowest Node `engines.node`
+  # admits. Its own job because the action switches the job's Node; the action
+  # owns the argument.
+  node-floor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/node-floor

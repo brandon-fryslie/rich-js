@@ -90,10 +90,21 @@ jobs:
           path: dist/
           retention-days: 1
 
+  # The same floor check `ci.yml` runs, because a tag can land on a commit CI
+  # never gated. Its own job because the action switches the job's Node.
+  node-floor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/node-floor
+
   # [LAW:effects-at-boundaries] The irreversible step and the credential that
   # authorizes it stand alone, in the smallest job that can perform them.
   publish:
-    needs: gate
+    needs: [gate, node-floor]
     runs-on: ubuntu-latest
     permissions:
       contents: read

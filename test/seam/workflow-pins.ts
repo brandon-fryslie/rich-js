@@ -112,6 +112,15 @@ export const NODE_VERSION_LITERALS: readonly NodeVersionGrant[] = [
       "admit runtimes the job cannot use. The full argument is the comment " +
       "above the literal.",
   },
+  {
+    file: ".github/actions/node-floor/action.yml",
+    value: "${{ steps.floor.outputs.version }}",
+    why:
+      "This step exists to run the lowest Node `engines.node` admits, and " +
+      "`node-version-file` resolves that range to its newest version instead. " +
+      "The value is computed from `engines.node` a step earlier, not typed. The " +
+      "full argument is the comment above it.",
+  },
 ];
 
 export type WorkflowViolation =
