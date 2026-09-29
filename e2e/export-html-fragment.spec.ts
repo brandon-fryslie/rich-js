@@ -14,6 +14,14 @@ import { Segment } from "../src/core/segment.js";
 import { Style } from "../src/core/style.js";
 import { SOLARIZED_LIGHT } from "../src/themes/terminalThemes.js";
 
+// Find-in-page as a script sees it: non-standard, in every engine, and absent
+// from TypeScript's DOM library.
+declare global {
+  interface Window {
+    find(text: string): boolean;
+  }
+}
+
 // Every rule here is one a docs theme plausibly sets, and each would reach the
 // fragment's rows by inheritance or by matching its `pre` or `a`.
 const HOST = `
@@ -151,3 +159,41 @@ for (const [attribute, cycleMs] of [["blink", 1000], ["blink2", 500]] as const) 
     });
   }
 }
+
+test("a column after wide glyphs lines up with the same column after narrow ones, styled or not", async ({ page }) => {
+  await page.setContent(BLANK);
+  const painted = Style.parse("underline on blue");
+  const doubled = Style.parse("underline2 strike");
+  await embed(page, encodeHtmlFragment(
+    [
+      new Segment("abcd|\n"),
+      new Segment("東京|\n"),
+      new Segment("서울", painted), new Segment("|\n"),
+      new Segment("香港", doubled), new Segment("|\n"),
+      new Segment("👨‍👩‍👧xy|\n"),
+    ],
+    SOLARIZED_LIGHT,
+  ));
+  const bars = await page.evaluate(() => {
+    const walker = document.createTreeWalker(document.querySelector("#slot pre")!, NodeFilter.SHOW_TEXT);
+    const found: { left: number; top: number }[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.textContent ?? "";
+      for (let i = text.indexOf("|"); i !== -1; i = text.indexOf("|", i + 1)) {
+        const range = document.createRange();
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        const { left, top } = range.getBoundingClientRect();
+        found.push({ left, top });
+      }
+    }
+    return found;
+  });
+  expect(bars).toHaveLength(5);
+  for (const { left } of bars) expect(left).toBeCloseTo(bars[0]!.left, 0);
+  // A box taller than the row's line would push the rows below it apart.
+  const gaps = bars.slice(1).map(({ top }, i) => top - bars[i]!.top);
+  for (const gap of gaps) expect(gap).toBeCloseTo(gaps[0]!, 0);
+  // Find-in-page does not match across two boxes, so a word is boxed whole.
+  expect(await page.evaluate(() => window.find("東京"))).toBe(true);
+});

@@ -13,6 +13,7 @@
  * is narrower than the terminal was.
  */
 
+import { cellLen } from "./cells.js";
 import type { TerminalTheme } from "./color.js";
 import type { Segment } from "./segment.js";
 import { exportCanvas, exportLines, type ExportLook, type ExportRun } from "./export-lines.js";
@@ -85,6 +86,55 @@ const ANCHOR_CSS = "all:unset;cursor:revert;outline:revert";
 const span = (css: readonly string[], content: string): string =>
   `<span style="${escapeAttribute(css.join(";"))}">${content}</span>`;
 
+/** Text of printable ASCII only: one cell a character, nothing to box. */
+const ONE_CELL = /^[\x20-\x7e]*$/;
+
+/**
+ * A box exactly `cells` of the monospace font wide (`ch` is one of its cells)
+ * for glyphs the browser would otherwise draw at a fallback font's width,
+ * which for a CJK character is rarely two cells: left to it, everything after
+ * them on the row shifts off its column. The box carries no paint, so the
+ * run's background runs through it at the run's own height; an atomic inline
+ * takes no decoration from its ancestors, so it inherits its parent's lines.
+ */
+const cellBox = (cells: number): readonly string[] =>
+  ["display:inline-block", `width:${cells}ch`, "text-align:center", "text-decoration:inherit"];
+
+// [LAW:no-shared-mutable-globals] A private memo, written only by `onGrid`.
+// Made on first use, not at import: a module the main barrel reaches must load
+// in an engine without Intl.Segmenter, which then fails only if it exports.
+let graphemes: Intl.Segmenter | undefined;
+
+/**
+ * `text` with each stretch of graphemes wider than one cell in one box as wide
+ * as their cells together, and `draw` applied to every stretch of escaped text
+ * inside and between the boxes. A stretch, not a glyph apiece, because a
+ * browser's find-in-page does not match across two boxes. Graphemes, not code
+ * points, because `cellLen` measures a joined emoji as one glyph; a zero-width
+ * one joins the stretch before it, so it can still combine.
+ */
+function onGrid(text: string, draw: (escaped: string) => string): string {
+  if (ONE_CELL.test(text)) return draw(escapeText(text));
+  const pieces: string[] = [];
+  let stretch = "";
+  let wideCells = 0;
+  const flush = () => {
+    if (stretch !== "") pieces.push(wideCells === 0 ? draw(escapeText(stretch)) : span(cellBox(wideCells), draw(escapeText(stretch))));
+    stretch = "";
+    wideCells = 0;
+  };
+  graphemes ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  for (const { segment } of graphemes.segment(text)) {
+    const cells = cellLen(segment);
+    const wide = cells === 0 ? wideCells > 0 : cells > 1;
+    if (wide !== (wideCells > 0)) flush();
+    stretch += segment;
+    if (wide) wideCells += cells;
+  }
+  flush();
+  return pieces.join("");
+}
+
 /**
  * One run as markup.
  *
@@ -92,16 +142,16 @@ const span = (css: readonly string[], content: string): string =>
  * span with a strike would double the strike too. It gets an outer span of its
  * own instead. That span carries the paint, because a descendant's background
  * may be painted over an ancestor's underline, and the blink, so the underline
- * blinks with the glyph.
+ * blinks with the glyph. A wide glyph's box sits between the two: it inherits
+ * the double underline, and the inner span inside it draws the other lines.
  */
 function runHtml({ text, look }: ExportRun): string {
-  const glyph = escapeText(text);
   const drawn = look.underline === "double"
     ? span(
       [...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
-      span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph),
+      onGrid(text, (glyph) => span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph)),
     )
-    : span([...paintCss(look), ...glyphCss(look)], glyph);
+    : span([...paintCss(look), ...glyphCss(look)], onGrid(text, (glyph) => glyph));
   return look.href === null
     ? drawn
     : `<a href="${escapeAttribute(look.href)}" style="${ANCHOR_CSS}">${drawn}</a>`;
@@ -131,9 +181,12 @@ export const HTML_FRAGMENT_CSS =
  * The one way in is the `--rich-fragment-font` custom property, read as the
  * `font` shorthand (`14px/1.3 "JetBrains Mono", monospace`). `all` resets no
  * custom property, so a host sets it on any ancestor to draw the rows in its
- * own code font; unset, the rows are the browser's default monospace. It must
- * be a whole shorthand, a size and a family at least: any other value is
- * invalid when computed, and the rows then inherit the host's font.
+ * own code font; unset, the rows are the browser's default monospace at a
+ * fixed line height, as a terminal's rows are. A host's value wants one too: at
+ * `normal`, a row holding a glyph from a taller fallback font grows and shifts
+ * every row below it. It must be a whole shorthand, a size and a family at
+ * least: any other value is invalid when computed, and the rows then inherit
+ * the host's font.
  *
  * A browser draws no line for a newline at either edge of a `pre`: the parser
  * drops the one straight after the open tag, and the one before `</pre>` ends a
@@ -151,7 +204,7 @@ export function encodeHtmlFragment(segments: Iterable<Segment>, theme?: Terminal
     `background:${canvas.background.hex}`,
     `color:${canvas.foreground.hex}`,
     "padding:1em",
-    "font:var(--rich-fragment-font,medium monospace)",
+    "font:var(--rich-fragment-font,medium/1.2 monospace)",
     "white-space:pre",
     "overflow-x:auto",
   ].join(";");

@@ -101,6 +101,25 @@ const heading = new RichText("Total", { justify: "right", style: "bold green" })
 console.print(new Panel(heading, { borderStyle: "blue" }));
 ```
 
+## Wide characters
+
+A CJK character takes two terminal cells, and every width in the library is counted in cells rather than characters. So a column of Japanese, Chinese or Korean text lines up with the columns beside it:
+
+```typescript
+import { Table } from "@promptctl/rich-js";
+
+const cities = new Table({ borderStyle: "steel_blue" });
+cities.addColumn("City");
+cities.addColumn("Local name");
+cities.addColumn("Population", { justify: "right" });
+cities.addRow("Tokyo", "[bold]東京[/]", "14,187,000");
+cities.addRow("Seoul", "[bold]서울특별시[/]", "9,386,000");
+cities.addRow("Hong Kong", "[bold]香港[/]", "7,500,000");
+cities.addRow("Osaka", "[bold]大阪市[/]", "2,752,000");
+
+console.print(cities);
+```
+
 ## Decoding ANSI output
 
 `decodeAnsi` turns bytes a program has already written, escape codes and all, back into a `RichText`. Use it to show another command's coloured output inside a Panel, or to replay a captured log:
