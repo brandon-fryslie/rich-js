@@ -121,6 +121,11 @@ export async function run(
   // (a UTF-8 codepoint split between two onData calls — possible on paste
   // of non-ASCII text — would otherwise decode to U+FFFD).
   const decoder = new TextDecoder();
+  // [LAW:no-silent-failure] A key the reducer throws on ends the app with that
+  // error, as a frame that throws does: the host calls this handler, so a
+  // throw left in it would reach neither `run`'s caller nor the terminal's
+  // hand-back.
+  let failure: { readonly error: unknown } | undefined;
   host.onData((chunk) => {
     const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
     const action = lookup(text);
@@ -132,10 +137,17 @@ export async function run(
         void app.suspend();
         return;
       default:
-        state = reduce(state, action, view.previewOf(state));
+        try {
+          state = reduce(state, action, view.previewOf(state));
+        } catch (error) {
+          failure = { error };
+          app.stop();
+          return;
+        }
         app.refresh();
     }
   });
 
   await app.run();
+  if (failure) throw failure.error;
 }

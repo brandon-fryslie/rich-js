@@ -49,13 +49,13 @@ While it runs, the app hides the cursor, switches the terminal to raw mode and, 
 
 - you call `stop()` — `run()` resolves;
 - the view throws while a frame is painted — `run()` rejects with that error;
-- the program ends under the app: `process.exit`, `SIGINT`, `SIGTERM`, `SIGHUP`, an uncaught exception or an unhandled rejection.
+- the program ends under the app: `process.exit`, `SIGINT`, `SIGTERM`, `SIGHUP`, an uncaught exception or an unhandled rejection — `run()` does not settle, so no code after it runs while the program ends.
 
 In that last case the program still ends the way it would have without the app. A signal still terminates the process, `process.exit` keeps its exit code, and a crash is still reported — after the terminal is handed back, so the report lands on the normal screen instead of vanishing with the alternate one. That holds for [`installTraceback`](/traceback) whichever you set up first.
 
 ## Suspending
 
-In raw mode Ctrl+Z reaches the program as a key (`"\x1a"`), not as the signal that suspends it, so the app decides what it means. `suspend()` hands the terminal back and stops the process the way the shell's job control does. When the user runs `fg`, the app takes the terminal again and repaints; the promise `suspend()` returned resolves then.
+In raw mode Ctrl+Z reaches the program as a key (`"\x1a"`), not as the signal that suspends it, so the app decides what it means. `suspend()` hands the terminal back and stops the process the way the shell's job control does — the whole job, so a launcher such as `npm run` stops with it and the shell gets its prompt back. When the user runs `fg`, the app takes the terminal again and repaints; the promise `suspend()` returned resolves then.
 
 ## The same app in a browser
 

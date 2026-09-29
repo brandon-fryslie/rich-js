@@ -85,10 +85,14 @@ let installed: (reason: unknown) => void = () => {};
 /**
  * An unhandled rejection, raised as the uncaught exception it becomes when
  * nobody listens — its reason unwrapped, which node's own conversion would
- * bury in a message for any reason that is not an `Error`.
+ * bury in a message for any reason that is not an `Error`. Raised once the
+ * rejection's other listeners have heard it: a throw inside the emit would
+ * end it before them.
  */
-function escalate(reason: unknown): never {
-  throw reason;
+function escalate(reason: unknown): void {
+  queueMicrotask(() => {
+    throw reason;
+  });
 }
 
 /**

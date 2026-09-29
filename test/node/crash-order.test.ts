@@ -43,7 +43,9 @@ function runApp(args: string[], drive: (output: string, child: { pid: number }) 
   const child = spawn(
     process.execPath,
     ["--import", join(FIXTURES, "ts-hooks.mjs"), join(FIXTURES, "app-ending.ts"), ...args],
-    { stdio: ["ignore", fd, fd] },
+    // Its own process group: `suspend` stops the whole group, which would
+    // otherwise be the test runner's.
+    { stdio: ["ignore", fd, fd], detached: true },
   );
   closeSync(fd);
   const read = (): string => readFileSync(file, "utf8");
@@ -121,16 +123,12 @@ describe("App in a real node process", { timeout: 30_000 }, () => {
     expectFrameThenRestore(output);
   });
 
-  // Whether the kernel honours SIGTSTP depends on the child's process group
-  // having job control above it, which a CI runner may not give it; the
-  // continue arrives either way, so what is checked is the terminal handed
-  // back before the stop and taken back after it.
-  it("suspending hands the terminal back, and resuming takes it back and repaints", async () => {
-    const { code, output } = await runApp(["suspend"], (sofar, child) => {
-      if (!sofar.includes(ALT_OFF)) return false;
-      process.kill(child.pid, "SIGCONT");
-      return true;
-    });
+  // The child's group has no shell above it, so the kernel discards the
+  // SIGTSTP, as it discards Ctrl+Z's in a job no shell controls: the program
+  // goes on at once. Being stopped and continued is the same return from
+  // `kill`, later, and is checked by hand under a pty.
+  it("suspending hands the terminal back, then takes it back and repaints", async () => {
+    const { code, output } = await runApp(["suspend"]);
 
     expect(code).toBe(0);
     const phases = output.split(ALT_OFF);

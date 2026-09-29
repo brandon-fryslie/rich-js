@@ -68,8 +68,8 @@ interface NodeWritable {
 interface NodeProcess {
   readonly pid: number;
   on(event: string, listener: () => void): unknown;
+  prependListener(event: string, listener: () => void): unknown;
   off(event: string, listener: () => void): unknown;
-  once(event: string, listener: () => void): unknown;
   listenerCount(event: string): number;
   kill(pid: number, signal: NodeJS.Signals): unknown;
 }
@@ -241,7 +241,10 @@ export class NodeTerminalHost implements TerminalHost {
     // A signal a program listens for no longer terminates it, so the
     // listener owes the signal its outcome. Raised again once ours is gone,
     // it terminates — unless the program listens for it too, in which case
-    // it was never going to, and that listener has already heard it.
+    // it was never going to, and that listener hears it next. Ours goes
+    // first and leaves before the rest are called: a listener keeping the
+    // same rule (`signal-exit`'s) then finds itself alone and raises it, where
+    // two that each counted the other would both have stood down.
     const terminations = TERMINATIONS.map((signal) => {
       const listener = (): void => {
         end();
@@ -254,25 +257,22 @@ export class NodeTerminalHost implements TerminalHost {
       for (const { signal, listener } of terminations) proc.off(signal, listener);
     };
     for (const event of ENDINGS) proc.on(event, end);
-    for (const { signal, listener } of terminations) proc.on(signal, listener);
+    for (const { signal, listener } of terminations) proc.prependListener(signal, listener);
     return detach;
   }
 
-  // The shell's own job control: stopped by the signal Ctrl+Z would have
-  // sent outside raw mode, continued by `fg`.
+  // The shell's own job control: the signal Ctrl+Z would have sent outside
+  // raw mode, to the whole foreground job as the terminal sends it — a
+  // launcher (`npm run`, `sh -c`) waiting on this process stops too, so the
+  // shell sees the job stop and takes the terminal. A signal a process sends
+  // its own group is delivered before `kill` returns, so the process is
+  // stopped inside the call and running again when it returns: `fg` has
+  // continued it, or nothing was stopped at all — the kernel discards the
+  // signal in a job no shell controls, as it does Ctrl+Z's. Either way the
+  // terminal is the program's again.
   suspend(): Promise<void> {
-    const proc = this.process;
-    return new Promise((resolve) => {
-      // A signal listener does not keep node's loop alive, so a program
-      // waiting on nothing else would exit on `fg` rather than resume. The
-      // timer is the program still being there to continue.
-      const alive = setInterval(() => {}, 2 ** 30);
-      proc.once("SIGCONT", () => {
-        clearInterval(alive);
-        resolve();
-      });
-      proc.kill(proc.pid, "SIGTSTP");
-    });
+    this.process.kill(0, "SIGTSTP");
+    return Promise.resolve();
   }
 
   start(): void {

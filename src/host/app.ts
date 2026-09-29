@@ -69,9 +69,9 @@ interface SurfaceBytes {
   /** A region the frame fills, or a ceiling it keeps its own height under. */
   readonly exact: boolean;
   readonly enter: string;
-  /** Bytes handing the surface back, the last frame having painted `rows`. */
+  /** Bytes handing the surface back, the last frame `rows` tall. */
   leave(rows: number): string;
-  /** Bytes to the frame's first cell, the last frame having painted `rows`. */
+  /** Bytes to the frame's first cell, the last frame `rows` tall. */
   home(rows: number): string;
   /** The rows this frame paints, so a shorter one overwrites the last. */
   painted(frameRows: number, lastRows: number): number;
@@ -117,7 +117,7 @@ export class App {
 
   private _phase: AppPhase = "idle";
   private _frame: readonly (readonly Segment[])[] = [];
-  // Rows on the terminal the last frame painted — what `home` rewinds.
+  // The last frame's own rows on the terminal — what `home` rewinds.
   private rows = 0;
   private refreshQueued = false;
   private subscriptions: Unsubscribe[] = [];
@@ -142,22 +142,34 @@ export class App {
   /**
    * Take the terminal, paint the first frame, and resolve when the app stops
    * — or reject with the error a frame threw, the terminal handed back first.
-   * An app runs once.
+   * When the program ends under the app, `run` does not settle: nothing after
+   * it runs, as nothing after it would have without the app. An app runs once.
    */
   run(): Promise<void> {
     if (this._phase !== "idle") {
       return Promise.reject(new Error(`App.run: an app runs once, and this one is ${this._phase}`));
     }
     return new Promise<void>((resolve, reject) => {
-      this.settle = (outcome) => (outcome.ok ? resolve() : reject(outcome.error));
+      this.settle = (outcome) => {
+        switch (outcome.kind) {
+          case "stopped":
+            return resolve();
+          case "failed":
+            return reject(outcome.error);
+          // The rest of a crash — its report, then its exit — is still
+          // running, and code resumed after `run` would run inside it.
+          case "ended":
+            return;
+        }
+      };
       this._phase = "running";
       this.host.start();
       this.subscriptions = [
         this.host.onResize(() => this.refresh()),
         // The program is ending under the app — by a signal, a crash, or an
-        // exit the app's own code never saw. Stopping is what hands the
-        // terminal back, and the program then ends as it was going to.
-        this.host.onExit(() => this.stop()),
+        // exit the app's own code never saw. Ending hands the terminal back,
+        // and the program then ends as it was going to.
+        this.host.onExit(() => this.end({ kind: "ended" })),
       ];
       this.enter();
       this.paint();
@@ -202,7 +214,7 @@ export class App {
 
   /** Hand the terminal back for good; `run` resolves. */
   stop(): void {
-    this.end({ ok: true });
+    this.end({ kind: "stopped" });
   }
 
   // --- the terminal ---
@@ -235,7 +247,7 @@ export class App {
     try {
       this.draw();
     } catch (error) {
-      this.end({ ok: false, error });
+      this.end({ kind: "failed", error });
     }
   }
 
@@ -262,10 +274,19 @@ export class App {
     const body = Array.from({ length: painted }, (_, row) =>
       ERASE_LINE + segmentsToString(frame[row] ?? [], destination),
     ).join("\n");
-    this.host.write(this.surface.home(this.rows) + body);
+    // Rows blanked below the frame are not the frame's: the cursor goes back
+    // up to its last row, so the next frame and the program's next line start
+    // from the frame's own height.
+    const blanked = painted - Math.max(frame.length, 1);
+    const back = blanked > 0 ? `\x1b[${blanked}A` : "";
+    this.host.write(this.surface.home(this.rows) + body + back);
     this._frame = frame;
-    this.rows = painted;
+    this.rows = frame.length;
   }
 }
 
-type Outcome = { readonly ok: true } | { readonly ok: false; readonly error: unknown };
+/** How an app ended: stopped, failed by a frame, or ended by the program. */
+type Outcome =
+  | { readonly kind: "stopped" }
+  | { readonly kind: "failed"; readonly error: unknown }
+  | { readonly kind: "ended" };

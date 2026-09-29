@@ -192,14 +192,22 @@ describe("App on the alternate screen", () => {
     expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
   });
 
-  it("hands the terminal back when the program ends under it", async () => {
+  // The rest of the program's end — a crash report, then the exit — is
+  // still running; code after `await run()` must not run inside it.
+  it("hands the terminal back when the program ends under it, and run does not settle", async () => {
     const host = scriptedHost();
     const target = app(host, () => text("hi"));
-    const running = target.run();
+    let settled = false;
+    void target.run().then(
+      () => (settled = true),
+      () => (settled = true),
+    );
 
     host.exit();
+    await tick();
 
-    await expect(running).resolves.toBeUndefined();
+    expect(settled).toBe(false);
+    expect(target.phase).toBe("stopped");
     expect(host.raw()).toBe(false);
     expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
   });
@@ -327,6 +335,32 @@ describe("App inline", () => {
     const home = "\x1b[2A\r";
     expect(second.startsWith(home)).toBe(true);
     expect(stripAnsi(second.slice(home.length)).split("\n")).toEqual(["z", "", ""]);
+  });
+
+  it("after blanking, starts the next frame and the program's next line from its own height", async () => {
+    const host = scriptedHost({ cols: 10, rows: 10 });
+    let body = "a\nb\nc";
+    const target = app(host, () => text(body), "inline");
+    const running = target.run();
+
+    body = "y\nz";
+    target.refresh();
+    await tick();
+    const second = host.output().length;
+    body = "x";
+    target.refresh();
+    await tick();
+    const third = host.output().slice(second);
+    target.stop();
+    await running;
+    const last = host.output().slice(second + third.length);
+
+    // One row up from the second frame's last row to its first, not two.
+    expect(third.startsWith("\x1b[1A\r")).toBe(true);
+    // The row it blanked is left behind, and the program's line follows the
+    // frame's one row.
+    expect(third.endsWith("\x1b[1A")).toBe(true);
+    expect(last.endsWith(CURSOR_ON + "\n")).toBe(true);
   });
 
   it("leaves the frame on the terminal with the cursor below it", async () => {

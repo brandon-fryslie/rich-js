@@ -99,18 +99,27 @@ describe("installTraceback", () => {
   // `uncaughtExceptionMonitor` phase a terminal is handed back in, and draw
   // inside the alternate screen. Thrown into it, it reaches the one report
   // after that phase — test/node/crash-order.test.ts runs that in a real
-  // process; here, what the listener does with the reason.
-  it("throws an unhandled rejection's reason into the uncaught channel, unwrapped", () => {
+  // process; here, what the listener does with the reason, and that it does
+  // so after every other listener has heard the rejection.
+  it("throws an unhandled rejection's reason into the uncaught channel, unwrapped, after its other listeners", () => {
+    const deferred: (() => void)[] = [];
+    vi.stubGlobal("queueMicrotask", (task: () => void) => deferred.push(task));
     installTraceback();
+    const heard: unknown[] = [];
+    process.on("unhandledRejection", (reason) => heard.push(reason));
     const reason = { code: 42 };
 
+    process.emit("unhandledRejection", reason, Promise.resolve());
+    vi.unstubAllGlobals();
+
+    expect(heard).toEqual([reason]);
+    expect(deferred).toHaveLength(1);
     let thrown: unknown;
     try {
-      process.emit("unhandledRejection", reason, Promise.resolve());
+      deferred[0]!();
     } catch (caught) {
       thrown = caught;
     }
-
     expect(thrown).toBe(reason);
     expect(writes).toHaveLength(0);
   });
