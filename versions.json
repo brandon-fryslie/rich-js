@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-216",
-      "ref": "refs/pull/216/merge",
-      "sha": "ff82de6ad34a2e73893368e723e43f0a12779044",
-      "timestamp": "2026-09-29T20:29:33.737Z",
-      "commits": [
-        {
-          "sha": "ff82de6ad34a2e73893368e723e43f0a12779044",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:28:29-06:00",
-          "message": "Merge 6ab754d660e5aed9542c161dec30f1a0dd4d9fe9 into f1cc46b8d3b518313e4d88b1a6b79fe9beeefc2e\n"
-        },
-        {
-          "sha": "6ab754d660e5aed9542c161dec30f1a0dd4d9fe9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:28:25-06:00",
-          "message": "test(strip): pin edgeStyle's exclusive span end (rich-style-tdn.7ip)\n\nA span [0, 1) on a 2-column cell must leave the right edge at the base\nstyle. Every earlier span test placed its span where an inclusive end\nagreed; this one fails under `pos <= span.end` and passes under the\nreal predicate.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f1cc46b8d3b518313e4d88b1a6b79fe9beeefc2e",
-      "timestamp": "2026-09-29T20:28:44.892Z",
+      "sha": "49b777d4389fe87f91772e750793b41ebc51c9d6",
+      "timestamp": "2026-09-29T20:32:02.401Z",
       "commits": [
         {
-          "sha": "f1cc46b8d3b518313e4d88b1a6b79fe9beeefc2e",
+          "sha": "49b777d4389fe87f91772e750793b41ebc51c9d6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:25:55-06:00",
-          "message": "feat(protocol): export getStyle for Segment-level renderables (rich-style-ska) (#215)\n\n* feat(protocol): export getStyle for Segment-level renderables (rich-style-ska)\n\nA renderable that yields its own Segments could not draw with a theme\nname: a Segment takes a resolved Style, and the resolver was internal.\ngetStyle(options, name) is now public — Rich's console.get_style, asked\nof the options because the options carry the render's theme.\n\ndocs/protocol.md teaches it in place of the RichText detour, and says\nwhat a missing name does (throws StyleSyntaxError; RichText is the\nforgiving path). rich-dash's build pane demonstrates it with a\nthroughput sparkline drawn in the bars' own bar.complete/bar.back names.\n\n* fix(demo): the rate sparkline stays inside the pane's rows and width (rich-style-ska)\n\nReview (high): each stacked block now gets as a ceiling the rows left above it,\nand the sparkline honours that ceiling and crops to its width. A sample records\nwhat the tick actually moved, after the clamp to the stage total."
+          "timestamp": "2026-09-29T14:31:11-06:00",
+          "message": "test(strip): pin edgeStyle's exclusive span end (rich-style-tdn.7ip) (#216)\n\nA span [0, 1) on a 2-column cell must leave the right edge at the base\nstyle. Every earlier span test placed its span where an inclusive end\nagreed; this one fails under `pos <= span.end` and passes under the\nreal predicate.\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     },
