@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-204",
+      "ref": "refs/pull/204/merge",
+      "sha": "e6b037c00abe719c5d917d96be86b8d719c407b2",
+      "timestamp": "2026-09-29T14:11:33.276Z",
+      "commits": [
+        {
+          "sha": "e6b037c00abe719c5d917d96be86b8d719c407b2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:10:53Z",
+          "message": "Merge 13a01c2ac3f3a012fa96e1e3114e1d6aee61b4e0 into ea6e75d87583f84b8e69a2fdcc467ddcccac75aa\n"
+        },
+        {
+          "sha": "13a01c2ac3f3a012fa96e1e3114e1d6aee61b4e0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T08:10:47-06:00",
+          "message": "fix(table): an empty column fills in a pass of its own (rich-table-3d3)\n\nReview: the fill as an inflated want skipped a minWidth and split an\nexpanding table's slack evenly. The want is the one cell again; fill is\nthe pass between natural widths and ratio shares, capped by maxWidth,\nand the stretch weighs by the width each column holds.\n"
+        },
+        {
+          "sha": "0bfd0f57d8e1f7275ffd432c97fc070c97dc5470",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:58:03-06:00",
+          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n"
+        }
+      ]
+    },
+    {
       "version": "pr-206",
       "ref": "refs/pull/206/merge",
       "sha": "45f3fab9c74b5151508065b52a825b58d19c5345",
@@ -20,28 +49,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T08:06:24-06:00",
           "message": "fix(table): draw with Table.style and Column's three styles, as the reference does (rich-table-jph)\n\nTable.style is the base the border style layers over; a column's headerStyle and\nfooterStyle layer over the table's, and its style sits under the row's rowStyles\nentry. The cell's style now covers its padding and the blank lines a short cell\nruns out of, which is where the reference puts it. Each case is pinned against\nPython Rich 9d8f9a3's bytes.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-204",
-      "ref": "refs/pull/204/merge",
-      "sha": "b73d64cbd85e64515c713d98d09ba6e721b6a316",
-      "timestamp": "2026-09-29T14:04:15.584Z",
-      "commits": [
-        {
-          "sha": "b73d64cbd85e64515c713d98d09ba6e721b6a316",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T08:03:17-06:00",
-          "message": "Merge 0bfd0f57d8e1f7275ffd432c97fc070c97dc5470 into ea6e75d87583f84b8e69a2fdcc467ddcccac75aa\n"
-        },
-        {
-          "sha": "0bfd0f57d8e1f7275ffd432c97fc070c97dc5470",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:58:03-06:00",
-          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n"
         }
       ]
     },
