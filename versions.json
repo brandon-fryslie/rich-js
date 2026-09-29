@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-209",
-      "ref": "refs/pull/209/merge",
-      "sha": "df0c54f14f23ed0df4cd8ef1ee805983a96b0198",
-      "timestamp": "2026-09-29T17:51:36.849Z",
-      "commits": [
-        {
-          "sha": "df0c54f14f23ed0df4cd8ef1ee805983a96b0198",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:50:44Z",
-          "message": "Merge 773d606bbeeeae48ca31ccb55178f4c9e41f5bf0 into d022f4b8ccbfdfa95a0acec8d58504f005587c69\n"
-        },
-        {
-          "sha": "773d606bbeeeae48ca31ccb55178f4c9e41f5bf0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:50:38-06:00",
-          "message": "fix(examples): rich-config's preview flows to its pane's width; the tests find cells, not code units (rich-runtime-fna.6)\n\nThe swatches, ANSI palette and progress bars were sized for a 100-column\nscreen, so an 80-column terminal cut the preview pane mid-swatch. They now lay\nout through Columns and the pane's maxWidth, like the title panel and palette\nsearch already did.\n\nThe tests' click helpers convert a string index to a cell column with cellLen,\nthe search box is found by what it draws instead of by its offset from the\ndropdown, and clickOn loses its unused rowOffset.\n"
-        },
-        {
-          "sha": "c147ab206e4018ab18c9e7b6888db33bbeed0e92",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:38:40-06:00",
-          "message": "test(examples): rich-config runs full-screen with its widgets in a Panel in a Layout pane, driven by keys and clicks under both hosts (rich-runtime-fna.6)\n\nThe widgets now sit in a \"Widgets\" panel in the left pane of a row split,\nthe preview they drive in a panel beside it. union.test.ts drives the demo\nover NodeTerminalHost and e2e/rich-config.spec.ts drives the same demo in a\nreal xterm.js over BrowserTerminalHost: Tab order through the panel, a key\nto the focused widget, a click toggling a checkbox, a click-focused text\ninput, and a dropdown overlay whose option is picked by a click.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d022f4b8ccbfdfa95a0acec8d58504f005587c69",
-      "timestamp": "2026-09-29T17:24:50.584Z",
+      "sha": "2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464",
+      "timestamp": "2026-09-29T17:53:57.773Z",
       "commits": [
         {
-          "sha": "d022f4b8ccbfdfa95a0acec8d58504f005587c69",
+          "sha": "2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:23:54-06:00",
-          "message": "refactor(examples): rich-dash and claude-sessions run on App; the dashboard runtime is gone (rich-runtime-fna.5) (#208)\n\n* refactor(examples): rich-dash and claude-sessions run on App; the dashboard runtime is gone (rich-runtime-fna.5)\n\nEvery full-screen demo now takes the terminal through App: none of them\nenters the alternate screen, sets raw mode or tears either down itself.\n\n- rich-dash: DashboardRuntime (Live + setInterval + stop) is deleted. The\n  demo body owns only its clock; App owns the terminal. A widget with no\n  layout cell now fails at startup instead of silently never drawing, and\n  q / Esc / Ctrl+C quit and Ctrl+Z suspends — raw mode made Ctrl+C a key,\n  so the entry's SIGINT/SIGTERM handlers go too.\n- claude-sessions: Live + setRawMode + cleanup replaced by App; Ctrl+Z\n  suspends. The status bar escapes its hint keys, so the `\\` hint no\n  longer swallows its closing tag.\n- The browser wires stop calling host.start(): App starts the host.\n\n* fix(examples): stopping a demo stops its app; App.fail ends an app with an error (rich-runtime-fna.5)\n\nReview round (high):\n- App.fail(error) ends the app and rejects run with that error; WidgetApp\n  forwards it. The three demos' captured-failure slots are gone.\n- run() in rich-dash, claude-sessions and rich-explore returns { done, stop },\n  and each browser MountHandle.stop stops the app. rich-dash's clock no\n  longer outlives a stopped mount.\n- claude-sessions repaints only on a change of state, so pointer motion on\n  the alternate screen paints nothing. Its search-typing keymap passes\n  Ctrl+C and Ctrl+Z through.\n- rich-dash no longer quits on a bare ESC, which a split escape sequence\n  also delivers.\n- The rich-dash browser README fixture names run(), not runDemo().\n\n* fix(rich-dash): the first tick runs before any input is subscribed (rich-runtime-fna.5)"
+          "timestamp": "2026-09-29T11:53:02-06:00",
+          "message": "test(examples): rich-config full-screen with widgets in a Panel in a Layout pane, proven under both hosts (rich-runtime-fna.6) (#209)\n\n* test(examples): rich-config runs full-screen with its widgets in a Panel in a Layout pane, driven by keys and clicks under both hosts (rich-runtime-fna.6)\n\nThe widgets now sit in a \"Widgets\" panel in the left pane of a row split,\nthe preview they drive in a panel beside it. union.test.ts drives the demo\nover NodeTerminalHost and e2e/rich-config.spec.ts drives the same demo in a\nreal xterm.js over BrowserTerminalHost: Tab order through the panel, a key\nto the focused widget, a click toggling a checkbox, a click-focused text\ninput, and a dropdown overlay whose option is picked by a click.\n\n* fix(examples): rich-config's preview flows to its pane's width; the tests find cells, not code units (rich-runtime-fna.6)\n\nThe swatches, ANSI palette and progress bars were sized for a 100-column\nscreen, so an 80-column terminal cut the preview pane mid-swatch. They now lay\nout through Columns and the pane's maxWidth, like the title panel and palette\nsearch already did.\n\nThe tests' click helpers convert a string index to a cell column with cellLen,\nthe search box is found by what it draws instead of by its offset from the\ndropdown, and clickOn loses its unused rowOffset."
         }
       ]
     },
