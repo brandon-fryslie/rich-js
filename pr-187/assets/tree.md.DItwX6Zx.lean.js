@@ -1,1 +1,0 @@
-import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.BW5CTVGi.js";const c=JSON.parse('{"title":"Tree","description":"","frontmatter":{},"headers":[],"relativePath":"tree.md","filePath":"tree.md"}'),e={name:"tree.md"};function t(p,s,h,k,o,r){return i(),n("div",null,[...s[0]||(s[0]=[l("",12)])])}const y=a(e,[["render",t]]);export{c as __pageData,y as default};
