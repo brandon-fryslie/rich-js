@@ -16,7 +16,7 @@
  *   z-order: a later overlay covers an earlier one.
  * - A pointer event goes to the innermost widget that drew the cell under it
  *   (`widgetAt`), in that widget's own coordinates; the wheel goes to the
- *   innermost `Viewport` (`viewportAt`).
+ *   innermost `Viewport` that can move (`scrollTargetAt`).
  *
  * [LAW:locality-or-seam] `App` knows nothing of widgets — `host/` depends on
  * `core/` alone — and this reaches it only through the seams it already has:

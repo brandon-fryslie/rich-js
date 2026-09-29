@@ -388,6 +388,38 @@ describe("WidgetApp wheel", () => {
     await tick();
     expect([inner.offset, outer.offset]).toEqual([1, 1]);
   });
+
+  it("passes the wheel out past a viewport that cannot move that way", async () => {
+    const host = scriptedHost({ cols: 30, rows: 6 });
+    const atEnd = new Viewport(lines(0, 3), { rows: 2 });
+    const fits = new Viewport(lines(4, 4));
+    const outer = new Viewport(new Group(atEnd, fits, lines(10, 29)));
+    const app = start(host, () => outer);
+    await tick();
+
+    // Up from the top of the one at its start: nothing moves, the outer is at its start too.
+    const top = cellOf(app, "line 0");
+    host.type(wheel("up", top.x, top.y));
+    await tick();
+    expect([atEnd.offset, outer.offset]).toEqual([0, 0]);
+
+    host.type(wheel("down", top.x, top.y));
+    await tick();
+    host.type(wheel("down", top.x, top.y));
+    await tick();
+    expect([atEnd.offset, outer.offset]).toEqual([2, 0]);
+
+    // At its end, the next notch down goes to the outer.
+    host.type(wheel("down", top.x, top.y));
+    await tick();
+    expect([atEnd.offset, outer.offset]).toEqual([2, 1]);
+
+    // Content that fits never takes the wheel.
+    const fit = cellOf(app, "line 4");
+    host.type(wheel("down", fit.x, fit.y));
+    await tick();
+    expect([fits.offset, outer.offset]).toEqual([0, 2]);
+  });
 });
 
 describe("WidgetApp lifecycle", () => {

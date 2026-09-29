@@ -47,7 +47,7 @@ The panel shows lines 2 to 6: the three calls resolve in order when it renders.
 
 None of these moves anything straight away. The rows and the content's length are only known once the viewport renders, so each call is queued, and the next render resolves the calls in order, clamping after each one. `viewport.offset` is the first line the last render showed.
 
-In a [`WidgetApp`](/widgets), the mouse wheel scrolls a viewport with no code of yours. Each notch moves the innermost viewport under the pointer by one line, however deep in the view it sits and whatever widget it shows under the pointer, and the app paints the result.
+In a [`WidgetApp`](/widgets), the mouse wheel scrolls a viewport with no code of yours. Each notch moves the innermost viewport under the pointer by one line, however deep in the view it sits and whatever widget it shows under the pointer, and the app paints the result. A viewport that cannot move that way — its content fits, or it is already at that end — passes the notch to the viewport around it.
 
 ## Keeping a selection in view
 

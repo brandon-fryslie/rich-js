@@ -1,8 +1,10 @@
 /**
  * widgetAt — which widget drew a cell of a painted frame, and where in its
- * own output that cell sits.
+ * own output that cell sits; scrollTargetAt — which viewport the wheel over
+ * that cell moves.
  *
- * A widget stamps every cell it draws (`WidgetBase.render`), the stamp rides
+ * A widget stamps every cell it draws (`WidgetBase.render`), and a `Viewport`
+ * every cell of its rows, around its content's stamps. The stamp rides
  * through every container on the cell's `Style`, and the frame a screen paints
  * is therefore its own hit map: nothing lays widgets out a second time to
  * answer "what is under the pointer", so the answer cannot disagree with what
@@ -33,39 +35,45 @@ export function widgetAt(
   x: number,
   y: number,
 ): WidgetHit | undefined {
-  const hit = innermost(frame, x, y, (owner) => owner instanceof WidgetBase);
+  const hit = innermost(frame, x, y, (owner) => (owner instanceof WidgetBase ? owner : undefined));
   return hit && { widget: hit.owner, col: hit.col, row: hit.row };
 }
 
 /**
  * The innermost `Viewport` that drew the cell at column `x` of row `y` of
- * `frame`, or `undefined` when none did. A widget drawn inside it does not
- * hide it: the widget's anchor is nested in the viewport's.
+ * `frame` and that `scrollBy(lines)` would move, or `undefined` when none
+ * did. A widget drawn inside it does not hide it: the widget's anchor is
+ * nested in the viewport's. One that cannot move that way — its content
+ * fits, or it is at that end — passes the wheel to the viewport around it.
  */
-export function viewportAt(
+export function scrollTargetAt(
   frame: readonly (readonly Segment[])[],
   x: number,
   y: number,
+  lines: number,
 ): Viewport | undefined {
-  return innermost(frame, x, y, (owner) => owner instanceof Viewport)?.owner;
+  return innermost(frame, x, y, (owner) =>
+    owner instanceof Viewport && owner.canScrollBy(lines) ? owner : undefined,
+  )?.owner;
 }
 
 /**
  * The innermost owner of the cell at column `x` of row `y` of `frame` that
- * `is` accepts, with the cell's place in that owner's output.
+ * `accept` turns into a `T`, with the cell's place in that owner's output.
  *
- * [LAW:parse-dont-validate] An anchor's owner is any object; `is` is where it
- * becomes the kind of owner the caller asked for.
+ * [LAW:parse-dont-validate] An anchor's owner is any object; `accept` is
+ * where it becomes the kind of owner the caller asked for, or nothing.
  */
 function innermost<T extends object>(
   frame: readonly (readonly Segment[])[],
   x: number,
   y: number,
-  is: (owner: object) => owner is T,
+  accept: (owner: object) => T | undefined,
 ): { owner: T; col: number; row: number } | undefined {
   let found: { owner: T; col: number; row: number } | undefined;
   for (let a = Segment.anchorAt(frame, x, y); a; a = a.inner) {
-    if (is(a.owner)) found = { owner: a.owner, col: a.col, row: a.row };
+    const owner = accept(a.owner);
+    if (owner) found = { owner, col: a.col, row: a.row };
   }
   return found;
 }

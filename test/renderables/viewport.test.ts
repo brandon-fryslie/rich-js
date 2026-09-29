@@ -168,6 +168,24 @@ describe("scrolling", () => {
   });
 });
 
+describe("canScrollBy", () => {
+  it("answers against the last render: neither way before one, and not past either end", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([false, false]);
+    shown(viewport);
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([false, true]);
+    viewport.scrollTo(7);
+    shown(viewport);
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([true, false]);
+  });
+
+  it("content that fits moves neither way", () => {
+    const viewport = new Viewport(numbered(2), { rows: 4 });
+    shown(viewport);
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([false, false]);
+  });
+});
+
 describe("ensureVisible", () => {
   it("brings a range below the view into view, at the bottom", () => {
     const viewport = new Viewport(numbered(20), { rows: 4 });

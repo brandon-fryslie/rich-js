@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { PassThrough, Writable } from "stream";
 import { runInAction } from "mobx";
 import { Segment } from "../../src/core/segment.js";
+import { RichText } from "../../src/core/text.js";
+import { Viewport } from "../../src/renderables/viewport.js";
 import type { RenderOptions } from "../../src/index.js";
 import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
@@ -571,6 +573,42 @@ describe("EventRouter — drag capture", () => {
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
     expect(b.mouseEvents).toEqual([]);
     expect(h.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "scroll_up"]);
+  });
+});
+
+describe("EventRouter — the wheel", () => {
+  /** A router over the frame `viewport` paints at the top left, counting the frames it asks for. */
+  function wheelHarness(viewport: Viewport): { router: EventRouter; refreshes: () => number } {
+    const fm = new DefaultFocusManager(() => []);
+    let refreshes = 0;
+    const source: FrameSource = {
+      focusManager: fm,
+      get frame() {
+        return Segment.splitLines(viewport.render({ maxWidth: 10 }));
+      },
+      refresh: () => refreshes++,
+    };
+    const router = new EventRouter({ source, host: makeNodeHost(new PassThrough(), new CapturingStream()) });
+    return { router, refreshes: () => refreshes };
+  }
+
+  it("scrolls the viewport under the pointer and asks for the frame that shows it", () => {
+    const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
+    const h = wheelHarness(viewport);
+    h.router.feed("\x1b[<65;1;1M"); // down, over the viewport
+    expect(h.refreshes()).toBe(1);
+    [...viewport.render({ maxWidth: 10 })];
+    expect(viewport.offset).toBe(1);
+  });
+
+  it("with no viewport under the pointer that can move that way, moves nothing and asks for no frame", () => {
+    const viewport = new Viewport(new RichText("0\n1\n2\n3\n4"), { rows: 2 });
+    const h = wheelHarness(viewport);
+    h.router.feed("\x1b[<64;1;1M"); // up, at the start already
+    h.router.feed("\x1b[<65;1;9M"); // down, below the viewport
+    expect(h.refreshes()).toBe(0);
+    [...viewport.render({ maxWidth: 10 })];
+    expect(viewport.offset).toBe(0);
   });
 });
 

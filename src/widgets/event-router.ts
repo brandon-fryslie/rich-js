@@ -28,7 +28,7 @@ import type {
   KeyHandlerOptions,
   KeyHandlerPriority,
 } from "./types.js";
-import { drew, originOf, viewportAt, widgetAt } from "./hit.js";
+import { drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { TerminalHost } from "../host/terminal-host.js";
@@ -567,12 +567,14 @@ export class EventRouter {
     this.pointer = { x: event.x, y: event.y };
     this.hover(hit?.widget ?? null);
 
-    // The wheel scrolls the innermost viewport under the pointer, a line a
-    // notch, past any widget it shows there and whatever a drag captured.
+    // The wheel scrolls the innermost viewport under the pointer that can
+    // move, a line a notch, past any widget it shows there and whatever a
+    // drag captured. With none, nothing moved and there is nothing to paint.
     if (event.type === "scroll_up" || event.type === "scroll_down") {
-      const viewport = viewportAt(frame, event.x, event.y);
+      const lines = event.type === "scroll_down" ? 1 : -1;
+      const viewport = scrollTargetAt(frame, event.x, event.y, lines);
       if (!viewport) return;
-      viewport.scrollBy(event.type === "scroll_down" ? 1 : -1);
+      viewport.scrollBy(lines);
       this.source.refresh();
       return;
     }

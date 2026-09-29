@@ -28,7 +28,8 @@
  * (`Segment.anchorLines`), around whatever anchors its content drew. So the
  * composed frame names the viewport under any of its cells however deep it is
  * nested, and a cell of a widget inside it names both: that is how the wheel
- * finds the viewport to scroll.
+ * finds the viewport to scroll. `canScrollBy` is how it passes over one that
+ * cannot move that way, to the viewport around it.
  */
 
 import { Segment } from "../core/segment.js";
@@ -108,6 +109,8 @@ export class Viewport implements Renderable, Measurable {
   readonly rows: number | undefined;
   readonly scrollbar: Scrollbar;
   private _offset = 0;
+  // Nothing rendered, nothing shown: no move can take until the first render.
+  private _extent: Extent = { rows: 0, lines: 0 };
   private _moves: Move[] = [];
 
   constructor(content: Renderable, options: ViewportOptions = {}) {
@@ -135,6 +138,15 @@ export class Viewport implements Renderable, Measurable {
   }
 
   /**
+   * Whether `scrollBy(lines)` would move the offset the last render resolved,
+   * against the rows and length that render found. A move queued since is not
+   * counted.
+   */
+  canScrollBy(lines: number): boolean {
+    return clampOffset(this._offset + lines, this._extent) !== this._offset;
+  }
+
+  /**
    * Scroll the least distance that shows lines `start` up to but not
    * including `end` — lines of the content as it renders at the viewport's
    * width, so an item that wraps spans more than one. A range already in view does not move; one taller than
@@ -158,6 +170,7 @@ export class Viewport implements Renderable, Measurable {
     const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
+    this._extent = extent;
     // [LAW:dataflow-not-control-flow] The resolved offset is re-clamped every
     // render with or without queued moves: content that shrank since the last
     // render pulls the offset back with it.
