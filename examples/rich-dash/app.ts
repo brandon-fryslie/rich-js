@@ -22,14 +22,10 @@ export interface DemoHandle {
 }
 
 export function runDemo(host: TerminalHost, caps: DashboardCapabilities): DemoHandle {
-  // [LAW:dataflow-not-control-flow] Width AND height are data flowing from
-  // the host through `getSize`. Console's defaults fall back to
-  // `process.stdout` dimensions, which are 80x24 in the browser (no real
-  // stdout), so layout would clip even when xterm.js is at 100xN. Both
-  // dimensions are load-bearing because `Live.refresh` reads `console.height`
-  // to crop frames — without a live read browser frames would truncate to 24
-  // rows regardless of viewport. (Pattern shared with claude-sessions /
-  // rich-explore.)
+  // [LAW:single-enforcer] The host is the console's whole environment: where
+  // bytes go, its size and the colours it draws. Height is load-bearing for
+  // Live: `Live.refresh` reads `console.height` to crop frames, so it has to
+  // be the host's, live through resizes.
   const consoleOut = new Console({
     environment: hostEnvironment(host),
   });

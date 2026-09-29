@@ -75,7 +75,7 @@ function makeScreen(opts: { stream?: CapturingStream } = {}): {
   // `stream.chunks` instead of going to process.stdout. stdin is unused
   // (Screen never reads input) — process.stdin is fine as a placeholder.
   const host = new NodeTerminalHost({
-    stdout: stream as unknown as NodeJS.WriteStream,
+    stdout: stream,
   });
   const screen = new DefaultScreen({
     host,
@@ -174,7 +174,7 @@ describe("DefaultScreen", () => {
         }
       }
       const host = new NodeTerminalHost({
-        stdout: new CapturingStream() as unknown as NodeJS.WriteStream,
+        stdout: new CapturingStream(),
       });
       const at256 = new DefaultScreen({
         host,
@@ -227,7 +227,7 @@ describe("DefaultScreen", () => {
       const node = (env: NodeJS.ProcessEnv): NodeTerminalHost =>
         new NodeTerminalHost({
           stdin: Object.assign(new PassThrough(), tty),
-          stdout: Object.assign(new CapturingStream(), tty) as unknown as NodeJS.WriteStream,
+          stdout: Object.assign(new CapturingStream(), tty),
           env,
         });
 
@@ -510,7 +510,7 @@ describe("DefaultScreen", () => {
   describe("cursor management", () => {
     it("emits hide-cursor on start when manageCursor is true", () => {
       const stream2 = new CapturingStream();
-      const host2 = new NodeTerminalHost({ stdout: stream2 as unknown as NodeJS.WriteStream });
+      const host2 = new NodeTerminalHost({ stdout: stream2 });
       const s = new DefaultScreen({
         host: host2,
         width: 40,
@@ -524,7 +524,7 @@ describe("DefaultScreen", () => {
 
     it("emits show-cursor on stop when manageCursor is true", () => {
       const stream2 = new CapturingStream();
-      const host2 = new NodeTerminalHost({ stdout: stream2 as unknown as NodeJS.WriteStream });
+      const host2 = new NodeTerminalHost({ stdout: stream2 });
       const s = new DefaultScreen({
         host: host2,
         width: 40,

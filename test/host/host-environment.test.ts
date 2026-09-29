@@ -97,12 +97,24 @@ describe("hostEnvironment", () => {
   });
 
   it("the console's size follows the host through a resize", () => {
-    const host = makeRecordingHost({ env: {}, isTTY: true });
+    // An exported COLUMNS/LINES is a claim about the launching shell, and a
+    // console reads it ahead of the stream; the host's size() has to win.
+    const host = makeRecordingHost({ env: { COLUMNS: "80", LINES: "24" }, isTTY: true });
     const out = new Console({ environment: hostEnvironment(host) });
 
     expect(out.size).toEqual({ width: 80, height: 24 });
     host.resize({ cols: 132, rows: 50 });
     expect(out.size).toEqual({ width: 132, height: 50 });
+  });
+
+  it("a console bound to stderr writes to the same host", () => {
+    const host = makeRecordingHost({ env: { COLORTERM: "truecolor" }, isTTY: true });
+    const out = new Console({ environment: hostEnvironment(host), stderr: true });
+
+    out.print("[#fd8019]warning[/]");
+
+    expect(out.colorSystem).toBe(ColorDepth.TRUECOLOR);
+    expect(host.writes.join("")).toContain("\x1b[38;2;253;128;25mwarning");
   });
 
   it("writes reach the host in order, strings and bytes alike", () => {
