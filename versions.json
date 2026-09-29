@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-228",
+      "ref": "refs/pull/228/merge",
+      "sha": "b44c9fb3355eea1320171601a56890df5d9dc697",
+      "timestamp": "2026-09-29T22:38:45.384Z",
+      "commits": [
+        {
+          "sha": "b44c9fb3355eea1320171601a56890df5d9dc697",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:38:00Z",
+          "message": "Merge 547429c4ffb53e7f23d2c4861d86e4df8df42429 into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
+        },
+        {
+          "sha": "547429c4ffb53e7f23d2c4861d86e4df8df42429",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:37:55-06:00",
+          "message": "fix(release): entry-points guard reads npm's pack listing and cannot fail open\n\n- main() runs unconditionally: the argv[1] check exited 0 unchecked through any\n  symlinked path (macOS tmpdir included)\n- what ships is asked of `npm pack --dry-run --json`, not the disk\n- every missing entry point is named, on one stderr channel\n- tests run a byte copy against real fixture packages, pin the prepublishOnly\n  wiring and the repository field; publish.yml and CLAUDE.md name the gate\n"
+        },
+        {
+          "sha": "0bce42ce22959bba1cb095b28a44bdcc9dbf07ad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:32:46-06:00",
+          "message": "fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-227",
       "ref": "refs/pull/227/merge",
       "sha": "4aed32576a558873f94581b92fe8666e8c1cf13c",
@@ -27,28 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:26:40-06:00",
           "message": "fix(console): print gives a container lines of its own, as Rich does (rich-console-5k3)\n\nA container argument (array, typed array, Map, Set, or an object without its\nown toString — Pretty's `isExpandable`, Rich's `is_expandable`) is now a block\nin `Console.print`, like any renderable: `print(\"a\", { x: 1 }, \"b\")` prints\nthree lines, as Rich fc41075a does. Scalars still join the text run.\n\n`isExpandable` is the one definition of \"container\": `_shape` reads its text\narm from it, so print and Pretty cannot disagree.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-228",
-      "ref": "refs/pull/228/merge",
-      "sha": "b4d5fb8e3b3d47335148bb27adad50ead2801a53",
-      "timestamp": "2026-09-29T22:33:47.052Z",
-      "commits": [
-        {
-          "sha": "b4d5fb8e3b3d47335148bb27adad50ead2801a53",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:32:52-06:00",
-          "message": "Merge 0bce42ce22959bba1cb095b28a44bdcc9dbf07ad into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
-        },
-        {
-          "sha": "0bce42ce22959bba1cb095b28a44bdcc9dbf07ad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:32:46-06:00",
-          "message": "fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n"
         }
       ]
     },
