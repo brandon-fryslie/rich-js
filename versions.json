@@ -4,15 +4,22 @@
     {
       "version": "pr-217",
       "ref": "refs/pull/217/merge",
-      "sha": "b53710d8c09bc0ab0b2b6861a5e9af4b3c5f9ab0",
-      "timestamp": "2026-09-29T20:48:28.838Z",
+      "sha": "b3f881defe235cd6d65aadd87da6876661c742a5",
+      "timestamp": "2026-09-29T20:50:30.457Z",
       "commits": [
         {
-          "sha": "b53710d8c09bc0ab0b2b6861a5e9af4b3c5f9ab0",
+          "sha": "b3f881defe235cd6d65aadd87da6876661c742a5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T20:47:44Z",
-          "message": "Merge 91d5c4ef0ef3416e6d896a623308ec528176fae2 into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
+          "timestamp": "2026-09-29T20:49:39Z",
+          "message": "Merge 9b4603f45344181b910d189d9901f1a6a759564f into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
+        },
+        {
+          "sha": "9b4603f45344181b910d189d9901f1a6a759564f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:49:32-06:00",
+          "message": "ci(node-floor): install each floor-admitted peer at its locked version (rich-packaging-8b7)\n"
         },
         {
           "sha": "91d5c4ef0ef3416e6d896a623308ec528176fae2",
