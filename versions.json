@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "2b7567448de6b63cbab278a754c1ff3d6217dada",
+      "timestamp": "2026-09-29T13:32:40.379Z",
+      "commits": [
+        {
+          "sha": "2b7567448de6b63cbab278a754c1ff3d6217dada",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:31:42-06:00",
+          "message": "test(markup): pin a negated attribute byte for byte against the reference (rich-color-9ga) (#201)\n\n* test(markup): pin a negated attribute byte for byte against the reference (rich-color-9ga)\n\nThe SGR 22 the ticket measured was already gone: a5ef4b92 (#117) made\nStyle.toSgrCodes write only the attributes that are on. Nothing pinned it.\nnegated-attribute puts [bold red]a[not bold]b[/not bold]c[/] in the\nreference-generated golden, regenerated with the header's own command so\nevery existing case reproduced unchanged. Mutating toSgrCodes to emit 22\nfor a false attribute turns it red.\n\nThe ticket's own [red]..[not bold] shape cannot go in yet: the encoder\nmerges adjacent equal-SGR runs where Rich writes one per segment. Filed\nas rich-render-g5g8.\n\n* test(style): pin that a negated attribute writes no SGR parameter (rich-color-9ga)\n\nRows checked against Rich 9d8f9a3 _make_ansi_codes. The markup comment\nnow credits the fix to rich-style-h93 (#117), where it landed."
+        },
+        {
+          "sha": "d336dde439458a82bc94ae88697eecc44d0c6d5f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:25:54-06:00",
+          "message": "test(link): pin nested and wrap-split links as one id per link (rich-link-jkh) (#200)\n\n* test(link): pin a nested and a wrap-split link as one id per link, end to end (rich-link-jkh)\n\nThe id itself landed in #152; this pins the ticket's end state through\nConsole.print: the outer link repeats its id around a nested one, as\nRich's does, and every line of a wrapped link opens with one id.\n\n* test(link): pin exact runs per line, compare (uri, id) pairs, anchor the Rich claim (rich-link-jkh)"
+        }
+      ]
+    },
+    {
       "version": "pr-202",
       "ref": "refs/pull/202/merge",
       "sha": "5c2f18f77961589dd0eab22d37281ffbe134dd4d",
@@ -20,50 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T07:29:59-06:00",
           "message": "fix(table): a NaN column bound is no bound, parsed where it enters the column (rich-table-hge)\n\nA minWidth or maxWidth of NaN reached Math.max/Math.min in _naturalWidth,\npoisoned the natural width, and erased the whole column. The bounds are now\naccessors that hold NaN as undefined, so the guarantee holds for a bound\nassigned after construction too. Infinity stays a real bound. The existing\n'treats NaN column bounds as no bounds' test asserted the collapsed frame;\nit now asserts the content-sized one its name promises.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-201",
-      "ref": "refs/pull/201/merge",
-      "sha": "59cc9cb34a66b8d219e3b118150290af47364c16",
-      "timestamp": "2026-09-29T13:29:22.872Z",
-      "commits": [
-        {
-          "sha": "59cc9cb34a66b8d219e3b118150290af47364c16",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:28:29Z",
-          "message": "Merge da8e93157ab4122bbe92eb1b1a85c833287d14c8 into d336dde439458a82bc94ae88697eecc44d0c6d5f\n"
-        },
-        {
-          "sha": "da8e93157ab4122bbe92eb1b1a85c833287d14c8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:28:24-06:00",
-          "message": "test(style): pin that a negated attribute writes no SGR parameter (rich-color-9ga)\n\nRows checked against Rich 9d8f9a3 _make_ansi_codes. The markup comment\nnow credits the fix to rich-style-h93 (#117), where it landed.\n"
-        },
-        {
-          "sha": "d7f1bc4ac1aeb8100fe49b02ac661e2d2600e18d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:25:41-06:00",
-          "message": "test(markup): pin a negated attribute byte for byte against the reference (rich-color-9ga)\n\nThe SGR 22 the ticket measured was already gone: a5ef4b92 (#117) made\nStyle.toSgrCodes write only the attributes that are on. Nothing pinned it.\nnegated-attribute puts [bold red]a[not bold]b[/not bold]c[/] in the\nreference-generated golden, regenerated with the header's own command so\nevery existing case reproduced unchanged. Mutating toSgrCodes to emit 22\nfor a false attribute turns it red.\n\nThe ticket's own [red]..[not bold] shape cannot go in yet: the encoder\nmerges adjacent equal-SGR runs where Rich writes one per segment. Filed\nas rich-render-g5g8.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "6c7dc95eac64cbb7c4eb2d54fada294138b926e6",
-      "timestamp": "2026-09-29T13:23:48.935Z",
-      "commits": [
-        {
-          "sha": "6c7dc95eac64cbb7c4eb2d54fada294138b926e6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:22:54-06:00",
-          "message": "feat(host): App, the runtime that takes the terminal and hands it back on every exit (rich-runtime-fna.3) (#198)\n\n* feat(host): App, the runtime that takes the terminal and hands it back on every exit (rich-runtime-fna.3)\n\nApp paints one renderable per frame on an alternate or inline surface,\nrepaints on refresh() and resize, suspends through the host, and undoes the\nalternate screen, hidden cursor and raw mode on stop, a throwing frame, and\nevery way the program can end under it.\n\nTerminalHost gains onExit and suspend. The node host hears exit, SIGINT,\nSIGTERM, SIGHUP and uncaughtExceptionMonitor, keeps each ending's default\noutcome, and suspends by SIGTSTP with a timer holding the loop until SIGCONT.\n\ninstallTraceback now throws unhandled rejections into the uncaught channel,\nso node's monitor phase restores the terminal before every report prints.\n\nrich-explore runs on App, with Ctrl+Z to suspend.\n\n* fix(host): suspend stops the job, signals coexist with signal-exit, a program's end leaves run unsettled (rich-runtime-fna.3)\n\nFrom the /code-review high pass on PR #198:\n\n- NodeTerminalHost.suspend sends SIGTSTP to the process group, as the\n  terminal sends Ctrl+Z, so a launcher (npm run, sh -c) stops with the\n  program and the shell takes the terminal. A signal to one's own group is\n  delivered inside kill, so suspend resolves when the call returns: no\n  SIGCONT wait and no keep-alive timer, and a discarded SIGTSTP (no job\n  control) no longer strands the app suspended.\n- onExit's signal listeners are prepended, so a listener keeping the same\n  raise-only-when-alone rule (signal-exit) finds itself alone and raises\n  the signal instead of both standing down.\n- When the program ends under the app, run() does not settle, so no code\n  after it runs inside a crash's report and exit.\n- An inline frame that blanks rows below it rewinds to its own height.\n- installTraceback raises an unhandled rejection after its other listeners\n  have heard it.\n- rich-explore ends the app with a reducer's error again.\n\n* docs(host): an inline app starts on the cursor's line, not below it (rich-runtime-fna.3)"
         }
       ]
     }
