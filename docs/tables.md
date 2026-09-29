@@ -49,7 +49,7 @@ the Box Office figures, which cannot wrap, are cut short by their column's
 
 | Option | Description |
 |---|---|
-| `width` | Total width — the table is this wide whatever its content needs, as in Rich, but never wider than the width offered ([Narrow widths](#narrow-widths)) |
+| `width` | Total width — the table fills it as [`expand`](#sizing) does, as in Rich, but never wider than the width offered ([Narrow widths](#narrow-widths)) |
 | `minWidth` | Minimum total width |
 | `expand` | Fill the width offered. Every column first gets its natural width, then the cells left over are shared out in proportion to it; a column with a declared `width` keeps that width. A declared table `width` implies it |
 
@@ -104,7 +104,9 @@ smaller of its `width` and the width it is offered, and both `render` and
 ceiling: it implies [`expand`](#sizing), as it does in Rich, so a table declared
 at 40 whose content needs nine cells still renders 40 wide and measures 40, and
 a `Panel` fitted round it is sized to match. Offered 12 columns, it renders 12.
-Rich would draw all 40 and let the terminal wrap them.
+Rich would draw all 40 and let the terminal wrap them. It fills the way `expand`
+does, so a column with its own `width` keeps it: a table whose every column
+declares one is as wide as those columns, not 40, where Rich would stretch them.
 
 Cells go out in a fixed order — the two outer border columns, then one content
 cell for each column together with the divider in front of it, then the padding,

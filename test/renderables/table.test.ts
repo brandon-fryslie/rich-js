@@ -562,6 +562,22 @@ describe("Table", () => {
       expect(declared().measure({ maxWidth: 20 })).toEqual({ minimum: 9, maximum: 20 });
     });
 
+    it("renders at the offer when the offer is narrower", () => {
+      expect(collectLines(declared(), { maxWidth: 20 }).map(cellLen)).toEqual(Array<number>(5).fill(20));
+    });
+
+    // Not Rich's frame: Rich stretches declared-width columns to 40, and here a
+    // column's `width` holds under `expand` — the divergence `_columnDemands`
+    // names — so a table of fixed columns is as wide as they are.
+    it("leaves columns that declare their own width at that width", () => {
+      const t = new Table({ width: 40, box: SQUARE });
+      t.addColumn("A", { width: 3 });
+      t.addColumn("B", { width: 3 });
+      t.addRow("1", "2");
+      expect(collectLines(t, { maxWidth: 80 }).map(cellLen)).toEqual(Array<number>(5).fill(13));
+      expect(t.measure({ maxWidth: 80 }).maximum).toBe(13);
+    });
+
     it("sizes a Panel that fits its content", () => {
       const lines = collectLines(new Panel(declared(), { expand: false }), { maxWidth: 80 });
       expect(lines.map(cellLen)).toEqual(Array<number>(lines.length).fill(44));
