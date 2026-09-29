@@ -1,0 +1,1 @@
+import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.C7Fu7h6f.js";const d=JSON.parse('{"title":"Panel","description":"","frontmatter":{},"headers":[],"relativePath":"panel.md","filePath":"panel.md"}'),t={name:"panel.md"};function p(e,s,o,r,h,c){return i(),n("div",null,[...s[0]||(s[0]=[l("",30)])])}const y=a(t,[["render",p]]);export{d as __pageData,y as default};

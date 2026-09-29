@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-227",
+      "ref": "refs/pull/227/merge",
+      "sha": "c00a1b28a76c4ca28082d1318fdac0356207d749",
+      "timestamp": "2026-09-29T22:28:09.237Z",
+      "commits": [
+        {
+          "sha": "c00a1b28a76c4ca28082d1318fdac0356207d749",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:26:46-06:00",
+          "message": "Merge 9fbf9e3459508261e5b74e9ccb9012abf78a3847 into 6f6b550f589a20fba269d28b98fc49aa7e6d6038\n"
+        },
+        {
+          "sha": "9fbf9e3459508261e5b74e9ccb9012abf78a3847",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:26:40-06:00",
+          "message": "fix(console): print gives a container lines of its own, as Rich does (rich-console-5k3)\n\nA container argument (array, typed array, Map, Set, or an object without its\nown toString — Pretty's `isExpandable`, Rich's `is_expandable`) is now a block\nin `Console.print`, like any renderable: `print(\"a\", { x: 1 }, \"b\")` prints\nthree lines, as Rich fc41075a does. Scalars still join the text run.\n\n`isExpandable` is the one definition of \"container\": `_shape` reads its text\narm from it, so print and Pretty cannot disagree.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6f6b550f589a20fba269d28b98fc49aa7e6d6038",
