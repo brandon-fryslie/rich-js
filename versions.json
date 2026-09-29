@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-218",
+      "ref": "refs/pull/218/merge",
+      "sha": "a2d7065e2ff01ce67970b02ea4a305cef2aa8309",
+      "timestamp": "2026-09-29T20:56:25.325Z",
+      "commits": [
+        {
+          "sha": "a2d7065e2ff01ce67970b02ea4a305cef2aa8309",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:55:26-06:00",
+          "message": "Merge 1f15b6a16de4f6c813b3449aebd9d677c7b6059d into b16e52cfa6aada335a1bea880dcbaa7980de7ed6\n"
+        },
+        {
+          "sha": "1f15b6a16de4f6c813b3449aebd9d677c7b6059d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:55:21-06:00",
+          "message": "fix(text): truncate fits a wider marker to the width (rich-text-odh)\n\ntruncate(width, { marker }) returned the marker whole when it was wider\nthan width, so truncate(1, { marker: \">>\" }) drew two cells. The marker is\nnow cut to the width as a value, and the kept-text budget is what the\nfitted marker leaves; the width <= 0 early return is subsumed.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b16e52cfa6aada335a1bea880dcbaa7980de7ed6",
