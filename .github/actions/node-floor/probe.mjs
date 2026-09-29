@@ -17,14 +17,11 @@
  * manifest's `exports`, and which Node this ought to be is `FLOOR_NODE`, which
  * the workflow derives from `engines.node`. Neither is listed here.
  *
- * WHAT THIS CANNOT SEE. A subpath that needs an optional peer cannot be loaded
- * from a default install, and the peers are not installed: their own `engines`
- * are theirs to enforce, and `@promptctl/go-template-js` refuses Node 20.0
- * outright. Such a subpath is reported under `needsPeer` in the record rather
- * than executed, so code behind `./widgets` and `./template-bindings` is not
- * run at the floor. Elsewhere, what executes is every loaded module's top level
- * and whatever the render below reaches; an API newer than the floor inside a
- * function nothing here calls stays unseen.
+ * WHAT THIS CANNOT SEE. An optional peer whose own `engines` excludes the floor
+ * is not installed (`floor.mjs` decides which), so a subpath that needs it is
+ * reported under `needsPeer` in the record rather than executed. What executes
+ * is every loaded module's top level and whatever the render below reaches; an
+ * API newer than the floor inside a function nothing here calls stays unseen.
  */
 
 import { readFileSync } from "node:fs";

@@ -54,4 +54,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # The tarball is built the way every other job builds: on the Node the
+      # version file resolves to. Only the consumer runs on the floor.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
       - uses: ./.github/actions/node-floor
