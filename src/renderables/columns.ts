@@ -19,7 +19,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { cellCount } from "../core/cells.js";
 import { embed } from "./embed.js";
 import { Constrain } from "./constrain.js";
@@ -176,7 +176,10 @@ export class Columns implements Renderable, Measurable {
     const gap = Math.max(left, right);
 
     const declared = this._declaredWidth(options);
-    const sizes = this.renderables.map((item) => declared ?? this._itemWidth(item, options));
+    // An item that cannot measure itself wants the whole offer. Counting it as one
+    // cell instead resolved an unbounded offer to a single column and cropped
+    // forty cells of content down to `"x"` with no error at all.
+    const sizes = this.renderables.map((item) => declared ?? Measurement.get(options, item).maximum);
     // A fold, not `Math.max(...sizes)`: spreading one argument per item
     // overflows the call stack at a few hundred thousand items.
     const widest = sizes.reduce((w, size) => Math.max(w, size), 0);
@@ -213,19 +216,6 @@ export class Columns implements Renderable, Measurable {
     return { columns, rows, widest };
   }
 
-  /**
-   * The widest one item wants to be.
-   *
-   * An item that cannot measure itself wants the offer, which is what `Panel`,
-   * `Padding`, `Layout` and `Tree` all answer for the same case — and under an
-   * unbounded offer that is `Infinity`, so `withBoundedWidth` throws and says
-   * the request was unanswerable. Counting it as one cell instead reported a
-   * natural width of 1, which resolved an unbounded offer to a single column and
-   * cropped forty cells of content down to `"x"` with no error at all.
-   */
-  private _itemWidth(item: Renderable & Partial<Measurable>, options: RenderOptions): number {
-    return isMeasurable(item) ? Measurement.get(options, item).maximum : options.maxWidth;
-  }
 
   /**
    * The declared column width, bounded by the width offered.

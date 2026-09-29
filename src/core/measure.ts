@@ -2,7 +2,7 @@
  * Measurement — min/max cell width calculation for renderables.
  */
 
-import { measuring, type Measurable, type RenderOptions } from "./protocol.js";
+import { isMeasurable, measuring, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
 
 export class Measurement {
   readonly minimum: number;
@@ -55,22 +55,26 @@ export class Measurement {
     );
   }
 
-  // [LAW:single-enforcer] Single entry point for measuring a Measurable
-  static get(options: RenderOptions, measurable: Measurable): Measurement {
+  // [LAW:single-enforcer] Single entry point for measuring a renderable. One
+  // that cannot measure itself asks for the whole offer, as the reference's
+  // `Measurement.get` answers for it — so under an unbounded offer it asks for
+  // `Infinity`, and `withBoundedWidth` refuses rather than guessing a width.
+  static get(options: RenderOptions, renderable: Renderable | Measurable): Measurement {
     if (options.maxWidth < 1) return new Measurement(0, 0);
-    const { minimum, maximum } = measurable.measure(measuring(options));
+    if (!isMeasurable(renderable)) return new Measurement(0, options.maxWidth);
+    const { minimum, maximum } = renderable.measure(measuring(options));
     return new Measurement(minimum, Math.min(maximum, options.maxWidth)).normalize();
   }
 }
 
 export function measureRenderables(
   options: RenderOptions,
-  measurables: Measurable[],
+  renderables: readonly (Renderable | Measurable)[],
 ): Measurement {
-  if (measurables.length === 0) return new Measurement(0, 0);
+  if (renderables.length === 0) return new Measurement(0, 0);
   let minOfAll = 0;
   let maxOfAll = 0;
-  for (const m of measurables) {
+  for (const m of renderables) {
     const measurement = Measurement.get(options, m);
     minOfAll = Math.max(minOfAll, measurement.minimum);
     maxOfAll = Math.max(maxOfAll, measurement.maximum);

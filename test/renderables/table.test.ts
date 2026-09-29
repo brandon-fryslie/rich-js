@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Table, Column, type ColumnOptions, type TableOptions } from "../../src/renderables/table.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Group } from "../../src/renderables/group.js";
 import { RichText } from "../../src/core/text.js";
 import { MarkupError } from "../../src/core/markup.js";
 import { Segment } from "../../src/core/segment.js";
@@ -1612,6 +1613,12 @@ describe("Table sizes and pads cells as Rich does", () => {
       measure: () => ({ minimum: 16, maximum: 16 }),
     };
     expect(lines(grid({ padding: 0 }, board, "b"), 40)).toEqual(["#".repeat(16) + "b"]);
+  });
+
+  it("sizes a Group cell by its widest member, and renders it at an unbounded width", () => {
+    const g = grid({ padding: 0 }, new Group(new RichText("ab"), new RichText("longer")), "x");
+    expect(lines(g, 40)).toEqual(["ab    x", "longer "]);
+    expect(lines(g, Infinity)).toEqual(["ab    x", "longer "]);
   });
 
   it("draws the padding above and below every cell", () => {

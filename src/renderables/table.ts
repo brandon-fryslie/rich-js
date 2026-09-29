@@ -18,7 +18,7 @@ import type {
   OverflowMethod,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle, isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { getStyle, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
 // --- Width division ---
@@ -991,10 +991,7 @@ export class Table implements Renderable, Measurable {
       // [LAW:one-source-of-truth] Measured as the cell measures itself, so a
       // multi-line cell asks for its widest line and a `Panel` for its frame;
       // one that cannot measure itself asks for every cell there is, as in Rich.
-      widest = Math.max(
-        widest ?? 0,
-        isMeasurable(cell) ? Measurement.get(options, cell).maximum : options.maxWidth,
-      );
+      widest = Math.max(widest ?? 0, Measurement.get(options, cell).maximum);
     }
     return widest;
   }

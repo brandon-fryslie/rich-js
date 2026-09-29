@@ -98,3 +98,16 @@ describe("Group", () => {
     });
   });
 });
+
+// Expected values are what Python Rich 9d8f9a3's `Measurement.get` reports.
+describe("Group measures as its widest member", () => {
+  it("takes the widest minimum and the widest maximum of its members", () => {
+    const m = new Group(new RichText("ab"), new RichText("longer")).measure({ maxWidth: 40 });
+    expect([m.minimum, m.maximum]).toEqual([6, 6]);
+  });
+
+  it("asks for the whole offer when a member cannot measure itself", () => {
+    const m = new Group(new RichText("ab"), simpleRenderable("x")).measure({ maxWidth: 40 });
+    expect([m.minimum, m.maximum]).toEqual([2, 40]);
+  });
+});

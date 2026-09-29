@@ -230,6 +230,14 @@ describe("measuring draws nothing", () => {
   });
 });
 
+describe("Measurement.get of a renderable that cannot measure itself", () => {
+  it("asks for the whole offer, as the reference does", () => {
+    const plain = { *render() {} };
+    const m = Measurement.get(opts(40), plain);
+    expect([m.minimum, m.maximum]).toEqual([0, 40]);
+  });
+});
+
 describe("measureRenderables()", () => {
   it("returns (0,0) for empty array", () => {
     const m = measureRenderables(opts(40), []);
