@@ -12,6 +12,7 @@ import { Live } from "../../src/renderables/live.js";
 import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
+import { osc8Sequences, type Osc8Sequence } from "../../src/core/osc8.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Table, type TableOptions } from "../../src/renderables/table.js";
@@ -1268,6 +1269,31 @@ describe("Console and Live hyperlinks", () => {
     const out = refreshed({ TERM: "xterm-256color" }, true, { hyperlinks: false });
     expect(out).toContain("go");
     expect(out).not.toContain(OSC8);
+  });
+
+  // A terminal treats cells as one link when they share the URI AND the id, so
+  // a link printed as several OSC 8 runs must repeat one id in every run.
+  const opens = (markup: string, width = 80): Osc8Sequence[] => {
+    const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", width });
+    c.print(markup);
+    return osc8Sequences(captured(chunks)).filter((s) => s.uri !== "");
+  };
+
+  it("an outer link keeps one id on both sides of a nested link, as Rich's does", () => {
+    // Rich, measured: \e]8;id=8101942;x … \e]8;id=8101944;y … \e]8;id=8101942;x
+    // Its ids are counters, so only their equalities carry over, and they do.
+    const [before, inner, after] = opens("[link=x]a[link=y]b[/link]c[/link]");
+    expect([before?.uri, inner?.uri, after?.uri]).toEqual(["x", "y", "x"]);
+    expect(before!.params).toMatch(/^id=./);
+    expect(after!.params).toBe(before!.params);
+    expect(inner!.params).not.toBe(before!.params);
+  });
+
+  it("a link a wrap splits across lines opens every line with the same id", () => {
+    const runs = opens("[link=https://wrap.example]alpha beta gamma[/link]", 6);
+    expect(runs.length).toBeGreaterThan(1);
+    expect(runs[0]!.params).toMatch(/^id=./);
+    expect(new Set(runs.map((s) => s.params)).size).toBe(1);
   });
 });
 
