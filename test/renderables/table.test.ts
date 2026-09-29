@@ -910,6 +910,40 @@ describe("Table stays inside the width it is given", () => {
     },
   );
 
+  // A ratio is a proportion of the leftover, so scaling every ratio by one
+  // factor changes nothing. Weighed against a content column's width in one
+  // pool, `ratio: 100` cut a 40-cell neighbour to 16 in a 60-cell table.
+  it("lays a content column out the same whatever scale the ratios use", () => {
+    const build = (ratio: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addColumn(undefined, { ratio });
+      t.addRow("0123456789".repeat(4), "R");
+      return t;
+    };
+    const lines = collectLines(build(100), { maxWidth: 60 });
+    expect(lines).toEqual(collectLines(build(1), { maxWidth: 60 }));
+    expect(lines[1]).toContain("0123456789".repeat(4));
+  });
+
+  // Floored to a whole cell, `ratio: 0.5` weighed nothing and collapsed to `…`,
+  // and `ratio: 1.5` against `1` split evenly.
+  it.each([
+    [0.5, 1, 1, 2],
+    [1.5, 1, 3, 2],
+  ])("splits ratios %s : %s as %s : %s", (a, b, scaledA, scaledB) => {
+    const build = (left: number, right: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn(undefined, { ratio: left });
+      t.addColumn(undefined, { ratio: right });
+      t.addRow("a", "b");
+      return t;
+    };
+    expect(collectLines(build(a, b), { maxWidth: 57 })).toEqual(
+      collectLines(build(scaledA, scaledB), { maxWidth: 57 }),
+    );
+  });
+
   it("keeps an infinite ratio from skewing the columns beside it", () => {
     const t = new Table({ box: ASCII, showHeader: false });
     t.addColumn(undefined, { ratio: Infinity });

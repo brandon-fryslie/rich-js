@@ -23,22 +23,26 @@ import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 /**
  * What one column asks of the width division: cells it takes off the top,
  * cells it would use if the table were not squeezed, how hard it pulls when
- * the cells run short, and how hard it pulls on the cells left over once every
- * column has what it wanted.
+ * the cells run short, its share of the cells left once every column has what
+ * it wanted, and how hard it pulls on whatever the shares leave.
  *
  * A declared `width` is a reservation rather than a bid — it is paid before
  * anyone competes, because a column told to be four cells wide is not asking
  * for a proportional share of four. A plain column reserves nothing and both
- * wants and weighs its natural content width. A ratio column wants more than
- * any budget can offer and weighs its ratio, so it absorbs whatever the
- * bounded columns leave behind. `stretch` is zero unless the table expands.
- * Cells are left over only when no column is short, so a stretch can never
- * widen one column while another is still truncated.
+ * wants and weighs its natural content width. A ratio column wants only its
+ * seat and takes its `ratio` of what the bounded columns leave: a pass of its
+ * own, because a ratio is a proportion and a `weight` is a count of cells, and
+ * weighing one against the other let `ratio: 100` truncate a neighbour the
+ * table had room for. `stretch` is zero unless the table expands, and a table
+ * with a ratio column leaves nothing to stretch. Cells are left over only when
+ * no column is short, so neither a share nor a stretch can widen one column
+ * while another is still truncated.
  */
 interface ColumnDemand {
   readonly reserved: number;
   readonly want: number;
   readonly weight: number;
+  readonly ratio: number;
   readonly stretch: number;
 }
 
@@ -236,16 +240,25 @@ function layoutTable(
       weight: demand.weight,
     })),
   );
-  // The unspent part goes to the columns by their stretch. A table that does
-  // not expand stretches nothing, which is how it stays narrower than the width
-  // it was offered. The order is the reference's: Rich pads an expanding table
-  // only once `table_width < max_width`, never while it is collapsing a column.
+  const spent = (granted: readonly number[]): number =>
+    granted.reduce((sum, cells) => sum + cells, 0);
+  // The unspent part goes first to the ratio columns, in proportion.
+  const shared = distribute(
+    budget - spent(wanted),
+    seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.ratio })),
+  );
+  // What the shares leave goes to the columns by their stretch. A table that
+  // does not expand stretches nothing, which is how it stays narrower than the
+  // width it was offered. The order is the reference's: Rich pads an expanding
+  // table only once `table_width < max_width`, never while it is collapsing a
+  // column.
   const stretched = distribute(
-    budget - wanted.reduce((sum, cells) => sum + cells, 0),
+    budget - spent(wanted) - spent(shared),
     seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.stretch })),
   );
   const columns = wanted.map(
-    (cells, index) => seats[index]! + reserved[index]! + cells + stretched[index]!,
+    (cells, index) =>
+      seats[index]! + reserved[index]! + cells + shared[index]! + stretched[index]!,
   );
   const cellWidths = columns.map((width) => padLeft + width + padRight);
 
@@ -279,6 +292,21 @@ export interface ColumnOptions {
   noWrap?: boolean;
   overflow?: "fold" | "crop" | "ellipsis";
 }
+
+/**
+ * The share of the leftover width a column's `ratio` claims: the ratio when it
+ * is positive, else 0 — a zero, negative or NaN ratio claims none, and the
+ * column sizes to its content. A proportion rather than a count of cells, so it
+ * is never floored: `ratio: 0.5` beside `ratio: 1` takes a third, where flooring
+ * it to 0 once starved it to a single `…`. Finite, for the reason `demandCells`
+ * is.
+ *
+ * [LAW:one-source-of-truth] `Column.flexible` is this asked as a yes/no, so the
+ * width division and the public flag cannot disagree about which columns are
+ * elastic.
+ */
+const columnShare = (col: Column): number =>
+  col.ratio !== undefined && col.ratio > 0 ? Math.min(col.ratio, UNBOUNDED) : 0;
 
 export class Column {
   private _header!: RichText;
@@ -346,19 +374,7 @@ export class Column {
   }
 
   get flexible(): boolean {
-    return this.share !== undefined;
-  }
-
-  /**
-   * @internal The ratio this column claims of a table's width, or `undefined`
-   * for a column that claims none — a zero, negative or NaN ratio included.
-   * [LAW:one-source-of-truth] `flexible` is this asked as a yes/no, so the
-   * width path and the public flag cannot disagree about which columns are
-   * elastic: `_columnDemands` once read `ratio ?? 1` itself, weighed a
-   * `ratio: 0` column at zero, and starved it to a single cell.
-   */
-  get share(): number | undefined {
-    return this.ratio !== undefined && this.ratio > 0 ? this.ratio : undefined;
+    return columnShare(this) > 0;
   }
 
   /** @internal */
@@ -642,6 +658,7 @@ export class Table implements Renderable, Measurable {
         reserved: 0,
         want: Math.min(1, demand.want),
         weight: 1,
+        ratio: 0,
         stretch: 0,
       })),
       this.padding,
@@ -710,15 +727,17 @@ export class Table implements Renderable, Measurable {
         // [LAW:single-enforcer] floored where it is parsed, the same rule
         // `normalizePadding` applies to a negative padding side.
         const declared = demandCells(col.width);
-        return { reserved: declared, want: declared, weight: 0, stretch: 0 };
+        return { reserved: declared, want: declared, weight: 0, ratio: 0, stretch: 0 };
       }
-      // A flexible column takes whatever the bounded columns leave, split by
-      // ratio; every other column asks for its natural width, whether or not a
-      // neighbour is flexible. The reference's split is the same:
-      // `fixed_widths = [0 if column.flexible else _range.maximum ...]`.
-      const share = col.share;
-      if (share !== undefined) {
-        return { reserved: 0, want: UNBOUNDED, weight: demandCells(share), stretch: 0 };
+      // A flexible column takes its share of whatever the bounded columns
+      // leave; every other column asks for its natural width, whether or not a
+      // neighbour is flexible. The split is the reference's —
+      // `fixed_widths = [0 if column.flexible else _range.maximum ...]` — with
+      // one divergence: Rich splits by ratio only when the table expands, and
+      // here a ratio is honoured either way.
+      const share = columnShare(col);
+      if (share > 0) {
+        return { reserved: 0, want: 1, weight: 0, ratio: share, stretch: 0 };
       }
       const natural = demandCells(this._naturalWidth(col, index));
       // `expand` is a stretch rather than a larger want: the column still
@@ -734,7 +753,13 @@ export class Table implements Renderable, Measurable {
       // well, so `width: 6` under `expand` renders 21 cells wide — an option
       // quietly meaning something else, the defect rich-justify-0cr exists to
       // remove. A reservation's stretch is zero above.
-      return { reserved: 0, want: natural, weight: natural, stretch: this.expand ? natural : 0 };
+      return {
+        reserved: 0,
+        want: natural,
+        weight: natural,
+        ratio: 0,
+        stretch: this.expand ? natural : 0,
+      };
     });
   }
 
