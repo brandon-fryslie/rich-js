@@ -22,10 +22,9 @@ import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * What one column asks of the width division: cells it takes off the top,
- * cells it would use if the table were not squeezed, the cells its content
- * measures (which is what `measure` reports), how hard it pulls when
+ * cells it would use if the table were not squeezed, how hard it pulls when
  * the cells run short, its share of the cells left once every column has what
- * it wanted, and how hard it pulls on whatever the shares leave.
+ * it wanted, and whether it grows into whatever the shares leave.
  *
  * A declared `width` is a reservation rather than a bid — it is paid before
  * anyone competes, because a column told to be four cells wide is not asking
@@ -34,19 +33,19 @@ import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
  * seat and takes its `ratio` of what the bounded columns leave: a pass of its
  * own, because a ratio is a proportion and a `weight` is a count of cells, and
  * weighing one against the other let `ratio: 100` truncate a neighbour the
- * table had room for. A column with no cell to measure wants the offer on
- * content of one cell. `stretch` is zero unless the table expands, and a table
- * with a ratio column leaves nothing to stretch. Cells are left over only when
+ * table had room for. A column with no cell to measure wants one cell and
+ * `fill`s up to its cap before any share is taken. `stretch` is false unless
+ * the table expands, and a table with a ratio column leaves nothing to stretch. Cells are left over only when
  * no column is short, so neither a share nor a stretch can widen one column
  * while another is still truncated.
  */
 interface ColumnDemand {
   readonly reserved: number;
   readonly want: number;
-  readonly natural: number;
   readonly weight: number;
+  readonly fill: number;
   readonly ratio: number;
-  readonly stretch: number;
+  readonly stretch: boolean;
 }
 
 /** The part of a demand that one round of `distribute` competes on. */
@@ -245,24 +244,43 @@ function layoutTable(
   );
   const spent = (granted: readonly number[]): number =>
     granted.reduce((sum, cells) => sum + cells, 0);
-  // The unspent part goes first to the ratio columns, in proportion.
-  const shared = distribute(
+  const holding = (...passes: ReadonlyArray<readonly number[]>): number[] =>
+    seatedDemands.map((_, index) =>
+      passes.reduce((sum, granted) => sum + granted[index]!, seats[index]! + reserved[index]!),
+    );
+  // The unspent part goes first to the columns with nothing to size to, each
+  // alike, up to its `fill` — the reference's `Measurement(1, max_width)`, a
+  // maximum of the whole offer that no content measured.
+  const afterWant = holding(wanted);
+  const filled = distribute(
     budget - spent(wanted),
+    seatedDemands.map((demand, index) => ({
+      want: Math.max(0, demand.fill - afterWant[index]!),
+      weight: demand.fill > 0 ? 1 : 0,
+    })),
+  );
+  // Then to the ratio columns, in proportion.
+  const shared = distribute(
+    budget - spent(wanted) - spent(filled),
     seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.ratio })),
   );
-  // What the shares leave goes to the columns by their stretch. A table that
-  // does not expand stretches nothing, which is how it stays narrower than the
-  // width it was offered. The order is the reference's: Rich pads an expanding
-  // table only once `table_width < max_width`, never while it is collapsing a
-  // column.
+  // What the shares leave goes to the columns that stretch, by the width each
+  // already holds: its natural width, since nothing is left over while any
+  // column is short, or the cap a fill stopped at. The reference weighs by
+  // width too: `ratio_distribute(max_width - table_width, widths)`, though its
+  // widths count the padding. A table that does not expand stretches nothing,
+  // which is how it stays narrower than the width it was offered. The order is the reference's:
+  // Rich pads an expanding table only once `table_width < max_width`, never
+  // while it is collapsing a column.
+  const held = holding(wanted, filled, shared);
   const stretched = distribute(
-    budget - spent(wanted) - spent(shared),
-    seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.stretch })),
+    budget - spent(wanted) - spent(filled) - spent(shared),
+    seatedDemands.map((demand, index) => ({
+      want: UNBOUNDED,
+      weight: demand.stretch ? held[index]! : 0,
+    })),
   );
-  const columns = wanted.map(
-    (cells, index) =>
-      seats[index]! + reserved[index]! + cells + shared[index]! + stretched[index]!,
-  );
+  const columns = held.map((cells, index) => cells + stretched[index]!);
   const cellWidths = columns.map((width) => padLeft + width + padRight);
 
   return {
@@ -628,13 +646,12 @@ export class Table implements Renderable, Measurable {
    * [LAW:one-source-of-truth] Both ends of the range are widths the geometry
    * actually produced — the maximum from the demands as they stand, the
    * minimum from the same layout with every column asking for a single cell.
-   * Neither end stretches, and each column asks for its `natural` width, not
-   * its `want`: a stretch only spends cells an offer happens to leave over, a
-   * column with no cell wants the offer without its content measuring it, and
-   * a renderable reports the width its content wants rather than the width it
-   * was offered. Letting either in made the table measure `Infinity` against
-   * an unbounded offer, where `withBoundedWidth` needs a natural width to fall
-   * back on — an expanding table, and an empty `Table.grid()`.
+   * Neither end stretches or fills: both only spend cells an offer happens to
+   * leave over, and a renderable reports the width its content wants rather
+   * than the width it was offered. Letting either in made the table measure
+   * `Infinity` against an unbounded offer, where `withBoundedWidth` needs a
+   * natural width to fall back on — an expanding table, and an empty
+   * `Table.grid()`.
    * Neither can exceed the width offered and the tighter request cannot exceed
    * the looser one, so the range cannot invert. Deriving the minimum from raw
    * column and padding counts instead is what used to return
@@ -647,7 +664,7 @@ export class Table implements Renderable, Measurable {
     const demands = this._columnDemands();
     const laidOut = layoutTable(
       outerWidth,
-      demands.map((demand) => ({ ...demand, want: demand.natural, stretch: 0 })),
+      demands.map((demand) => ({ ...demand, fill: 0, stretch: false })),
       this.padding,
       frame,
     ).totalWidth;
@@ -662,10 +679,10 @@ export class Table implements Renderable, Measurable {
       demands.map((demand) => ({
         reserved: 0,
         want: Math.min(1, demand.want),
-        natural: 0,
         weight: 1,
+        fill: 0,
         ratio: 0,
-        stretch: 0,
+        stretch: false,
       })),
       this.padding,
       frame,
@@ -733,7 +750,7 @@ export class Table implements Renderable, Measurable {
         // [LAW:single-enforcer] floored where it is parsed, the same rule
         // `normalizePadding` applies to a negative padding side.
         const declared = demandCells(col.width);
-        return { reserved: declared, want: declared, natural: declared, weight: 0, ratio: 0, stretch: 0 };
+        return { reserved: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
       }
       // A flexible column takes its share of whatever the bounded columns
       // leave; every other column asks for its natural width, whether or not a
@@ -746,7 +763,7 @@ export class Table implements Renderable, Measurable {
       const share = columnShare(col);
       if (share > 0) {
         const floor = Math.max(1, demandCells(col.minWidth ?? 0));
-        return { reserved: 0, want: floor, natural: floor, weight: floor, ratio: share, stretch: 0 };
+        return { reserved: 0, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
       }
       const widest = this._widestCell(col, index);
       const natural = demandCells(this._bounded(col, widest ?? 1));
@@ -754,10 +771,9 @@ export class Table implements Renderable, Measurable {
       // competes for its natural width like any other, and only the cells left
       // once every column has that are shared out. A larger want looks
       // equivalent and is not — it lets a one-cell column claim cells while its
-      // neighbour is still truncated. The stretch is the natural width, so the
+      // neighbour is still truncated. The stretch weighs by width, so the
       // widest column grows most, which is what keeps a `Progress` bar from
-      // getting no more of the slack than its percentage label. The reference
-      // weighs by width too: `ratio_distribute(max_width - table_width, widths)`.
+      // getting no more of the slack than its percentage label.
       //
       // One deliberate divergence: Rich stretches declared-width columns as
       // well, so `width: 6` under `expand` renders 21 cells wide — an option
@@ -766,21 +782,18 @@ export class Table implements Renderable, Measurable {
       //
       // A column with no cell at all — no rows, and neither header nor footer
       // drawn — has nothing to size to, which is not sizing to nothing. The
-      // reference measures it `Measurement(1, max_width)`: content of one cell
-      // that wants the whole offer, so a rowless table fills it. Reading "no
-      // cells" as zero sized it to a two-cell box instead. Its want is the
-      // offer and its `natural` the one cell, so `measure` still reports what
-      // the table holds. Every such column pulls alike, whatever its `maxWidth`
-      // caps it at: weighing by the want made one uncapped column `UNBOUNDED`
-      // times heavier than a neighbour it should split the offer with.
-      const empty = widest === undefined;
+      // reference measures it `Measurement(1, max_width)`: one cell of content,
+      // and a maximum of the whole offer, so a rowless table fills it. Reading
+      // "no cells" as zero sized it to a two-cell box instead. The one cell is
+      // its want, so a `minWidth` is paid like any column's, and the offer is
+      // its `fill`, held to its `maxWidth`.
       return {
         reserved: 0,
-        want: empty ? demandCells(this._bounded(col, UNBOUNDED)) : natural,
-        natural,
-        weight: empty ? 1 : natural,
+        want: natural,
+        weight: natural,
+        fill: widest === undefined ? demandCells(this._bounded(col, UNBOUNDED)) : 0,
         ratio: 0,
-        stretch: this.expand ? natural : 0,
+        stretch: this.expand,
       };
     });
   }

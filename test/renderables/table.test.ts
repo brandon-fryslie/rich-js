@@ -505,6 +505,21 @@ describe("Table", () => {
       ]);
     });
 
+    // The reference pays the floor too, then overruns its 40-cell offer and
+    // crops the right edge off; this is the same floor inside the offer.
+    it("pays its minWidth before the fill", () => {
+      expect(collectLines(rowless([{ minWidth: 30 }, {}]), { maxWidth: 40 })).toEqual([
+        "┌─────────────────────────────────┬────┐",
+        "└─────────────────────────────────┴────┘",
+      ]);
+    });
+
+    it("stretches capped columns by the width each holds, not evenly", () => {
+      expect(
+        collectLines(rowless([{ maxWidth: 7 }, { maxWidth: 3 }], { expand: true }), { maxWidth: 40 }),
+      ).toEqual(["┌─────────────────────────┬────────────┐", "└─────────────────────────┴────────────┘"]);
+    });
+
     it("stretches past its maxWidth when the table expands", () => {
       expect(collectLines(rowless([{ maxWidth: 7 }], { expand: true }), { maxWidth: 40 })).toEqual([
         "┌──────────────────────────────────────┐",
