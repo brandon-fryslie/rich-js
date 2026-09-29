@@ -68,6 +68,10 @@ the Box Office figures, which cannot wrap, are cut short by their column's
 | Option | Description |
 |---|---|
 | `padding` | Padding inside cells — integer, 2-tuple, or 4-tuple (CSS order) |
+| `collapsePadding` | Merge each cell's padding into its neighbour's: a cell's left side gives way to the right side of the cell before it, and a row's bottom to the top of the row after it (default: `false`) |
+| `padEdge` | Pad the sides of the cells that meet the table's edge (default: `true`) |
+
+The padding above and below a cell is blank lines in that cell, so it stands between rows the same way the padding either side stands between columns. With `collapsePadding`, a row keeps `max(0, top - bottom)` of its bottom padding — Rich's arithmetic, so a bottom-only padding separates no rows.
 
 ### Styles
 

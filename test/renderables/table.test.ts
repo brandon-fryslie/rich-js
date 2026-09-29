@@ -1560,3 +1560,89 @@ describe("Table and Column styles", () => {
     ));
   });
 });
+
+// Every expected value in this block is what Python Rich 9d8f9a3 prints for the
+// same call, `Console(width=…).render_lines(…, pad=False)`.
+describe("Table sizes and pads cells as Rich does", () => {
+  const lines = (r: Renderable, maxWidth: number): string[] => collectLines(r, { maxWidth });
+  const grid = (options: TableOptions, ...cells: unknown[]): Table => {
+    const g = Table.grid(options);
+    g.addRow(...cells);
+    return g;
+  };
+
+  it("draws an empty column one cell wide, and weighs it one cell when expanding (rich-table-r9aq)", () => {
+    expect(lines(grid({ padding: 0 }, "a", "", "b"), 10)).toEqual(["a b"]);
+    expect(lines(grid({ padding: 0, expand: true }, "", "aa"), 20)).toEqual(["       aa           "]);
+    expect(lines(grid({ padding: 0, expand: true }, "", ""), 10)).toEqual(["          "]);
+  });
+
+  it("gives an empty column's cell back when the table is squeezed", () => {
+    // Rich re-measures a collapsed table's columns with `maximum or 0`: the
+    // empty column competes for its cell and then draws nothing, so the table
+    // ends narrower than the offer.
+    expect(lines(grid({ padding: [0, 1, 0, 0], padEdge: false }, "aaaa", ""), 5)).toEqual(["aa… "]);
+    expect(lines(grid({ padding: 0 }, "a", "", "b"), 2)).toEqual(["a"]);
+  });
+
+  it("sizes a multi-line cell by its widest line (rich-table-pyrl)", () => {
+    const t = new Table();
+    t.addColumn("A");
+    t.addRow("Opening position\nwhite to move");
+    expect(lines(t, 40)).toEqual([
+      "┏━━━━━━━━━━━━━━━━━━┓",
+      "┃ A                ┃",
+      "┡━━━━━━━━━━━━━━━━━━┩",
+      "│ Opening position │",
+      "│ white to move    │",
+      "└──────────────────┘",
+    ]);
+  });
+
+  it("sizes a cell that draws itself by its own measurement (rich-table-ca0)", () => {
+    expect(lines(grid({ padding: 0 }, new Panel("x", { expand: false }), "b"), 20)).toEqual([
+      "╭───╮b",
+      "│ x │ ",
+      "╰───╯ ",
+    ]);
+    const board: Renderable & { measure: () => { minimum: number; maximum: number } } = {
+      *render() {
+        yield new Segment("#".repeat(16));
+      },
+      measure: () => ({ minimum: 16, maximum: 16 }),
+    };
+    expect(lines(grid({ padding: 0 }, board, "b"), 40)).toEqual(["#".repeat(16) + "b"]);
+  });
+
+  it("draws the padding above and below every cell", () => {
+    const t = new Table({ padding: 1 });
+    t.addColumn("H");
+    t.addRow("a");
+    t.addRow("b");
+    expect(lines(t, 20)).toEqual([
+      "┏━━━┓", "┃   ┃", "┃ H ┃", "┃   ┃", "┡━━━┩",
+      "│   │", "│ a │", "│   │", "│   │", "│ b │", "│   │", "└───┘",
+    ]);
+  });
+
+  it("collapsePadding merges a row's bottom padding into the next row's top", () => {
+    const t = new Table({ padding: [1, 1], collapsePadding: true, showHeader: false });
+    t.addColumn();
+    t.addRow("a");
+    t.addRow("b");
+    expect(lines(t, 20)).toEqual(["┌───┐", "│   │", "│ a │", "│   │", "│ b │", "│   │", "└───┘"]);
+  });
+
+  it("collapsePadding merges a cell's left padding into its neighbour's right, and padEdge: false drops the outer sides", () => {
+    const t = new Table({ padding: [0, 2, 0, 1], collapsePadding: true, padEdge: false });
+    t.addColumn("A");
+    t.addColumn("B");
+    t.addRow("a", "b");
+    expect(lines(t, 20)).toEqual(["┏━━━┳━┓", "┃A  ┃B┃", "┡━━━╇━┩", "│a  │b│", "└───┴─┘"]);
+    const bare = new Table({ padding: [0, 1], padEdge: false, box: null });
+    bare.addColumn("A");
+    bare.addColumn("B");
+    bare.addRow("a", "b");
+    expect(lines(bare, 20)).toEqual(["A  B", "a  b"]);
+  });
+});

@@ -48,10 +48,9 @@ Each string is markup, the same as a string passed to `console.print`.
 | `columnFirst` | Fill columns top-to-bottom before left-to-right (like `ls`) |
 | `padding` | Space around each item, in the same shapes as `Padding` takes; the default is `[0, 1]`. Columns stand as far apart as the wider of the left and right sides. Rows stand `top + max(0, top - bottom)` lines apart — Rich's arithmetic, so a bottom-only padding separates nothing |
 
-Each column is as wide as the widest item in it, so a listing of mostly short names with one long one keeps the short columns narrow. Every option above follows Python Rich's `Columns` byte for byte, with three exceptions:
+Each column is as wide as the widest item in it, so a listing of mostly short names with one long one keeps the short columns narrow. The items are laid out in a `Table.grid` with `collapsePadding` on and `padEdge` off, as Rich lays them out, so everything after the choice of how many columns — widths, gaps, `expand`, the space between rows — is the grid's. Every option above follows Python Rich's `Columns` byte for byte, with two exceptions:
 
 - A declared `width` chooses how many columns to use in the same way as the automatic layout, so it can choose a different number of columns than Rich. Rich divides the offer by the width: it fills the offer with empty columns when there are fewer items than columns, and fails outright when the width is wider than the offer.
-- An empty item gets a column with no width. Rich's grid makes that column one cell wide, and when that extra cell no longer fits, Rich shrinks the other columns to make room.
 - A `Columns` measures as wide as its columns and the gaps between them. Rich's `Columns` does not measure itself, so inside a fitted `Panel` it takes the whole width offered.
 
 The same listing several ways: `columnFirst` reads down each column before moving right, the order `ls` uses; a declared `width` of 22 cells leaves room for three columns instead of four; `padding` of four cells on each side spreads the columns further apart; and `expand` stretches them to the edge of the terminal:

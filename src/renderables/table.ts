@@ -2,7 +2,7 @@
  * Table — tabular data with headers, borders, auto-sizing, and alignment.
  */
 
-import { cellLen, cellCount as cells } from "../core/cells.js";
+import { cellCount as cells } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
@@ -18,7 +18,8 @@ import type {
   OverflowMethod,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { getStyle, isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { Measurement } from "../core/measure.js";
 
 // --- Width division ---
 
@@ -40,6 +41,13 @@ import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
  * the table expands, and a table with a ratio column leaves nothing to stretch. Cells are left over only when
  * no column is short, so neither a share nor a stretch can widen one column
  * while another is still truncated.
+ *
+ * `pad` is the padding the column draws either side of its content, already
+ * reduced by `collapsePadding` and `padEdge`. `floor` is the part of `want`
+ * that is Rich's `_range.maximum or 1`: the one cell a column with nothing at
+ * all to draw is given so it does not vanish. It competes like any other cell,
+ * and a squeezed table hands it back — Rich re-measures a collapsed table's
+ * columns with `maximum or 0`.
  */
 interface ColumnDemand {
   readonly reserved: number;
@@ -48,6 +56,8 @@ interface ColumnDemand {
   readonly fill: number;
   readonly ratio: number;
   readonly stretch: boolean;
+  readonly pad: readonly [left: number, right: number];
+  readonly floor: number;
 }
 
 /** The part of a demand that one round of `distribute` competes on. */
@@ -169,6 +179,23 @@ function exactWeights(weights: readonly number[]): bigint[] {
   return decimals.map(({ mantissa, exponent }) => mantissa * 10n ** BigInt(common - exponent));
 }
 
+/**
+ * The most padding every column can have alike: each side is granted
+ * `min(want, level)`, and `level` is the highest those grants fit `budget` at.
+ * A padding level is bought for every column at once or not at all, so a
+ * budget too small for everyone's padding leaves it uneven by no column.
+ */
+function padLevel(wants: readonly number[], budget: number): number {
+  const sorted = [...wants].sort((a, b) => a - b);
+  let left = budget;
+  for (const [rank, want] of sorted.entries()) {
+    const sharing = sorted.length - rank;
+    if (want * sharing > left) return Math.floor(left / sharing);
+    left -= want;
+  }
+  return sorted.at(-1) ?? 0;
+}
+
 /** The cells a box costs a table, independent of how wide the table is. */
 interface TableFrame {
   /** Width of one inter-column divider: 1 with a box, 0 without. */
@@ -198,8 +225,9 @@ interface TableFrame {
 interface TableGeometry {
   readonly edge: number;
   readonly divider: number;
-  readonly padLeft: number;
-  readonly padRight: number;
+  /** Padding either side of each rendered column's content. */
+  readonly padLeft: readonly number[];
+  readonly padRight: readonly number[];
   /**
    * Content canvas per rendered column. Shorter than the table's column list
    * when the requested width could not seat them all — the columns that did
@@ -219,10 +247,8 @@ interface TableGeometry {
 function layoutTable(
   outerWidth: number,
   demands: readonly ColumnDemand[],
-  padding: readonly [number, number, number, number],
   frame: TableFrame,
 ): TableGeometry {
-  const [, padRightWanted, , padLeftWanted] = padding;
   // Plain `number`, not the `CellCol` `cells` hands back: this budget is spent
   // down by arithmetic, and arithmetic on a branded type produces a number.
   let budget: number = cells(outerWidth);
@@ -252,24 +278,21 @@ function layoutTable(
   }
   const seated = seats.length;
 
-  // Padding is uniform across columns or it is not padding, so it is bought
-  // for every seated column at once and skipped entirely when only some could
-  // afford it.
-  const takePerColumn = (want: number): number => {
-    const per = seated === 0
-      ? 0
-      : Math.min(Math.max(0, want), Math.floor(budget / seated));
-    budget -= per * seated;
-    return per;
+  // Padding is bought one side at a time, to one level across every seated
+  // column (`padLevel`), so no column is padded while another that wants the
+  // same padding goes without.
+  const seatedDemands = demands.slice(0, seated);
+  const takeLevelled = (wants: readonly number[]): number[] => {
+    const level = padLevel(wants, budget);
+    return wants.map((want) => take(Math.min(want, level)));
   };
-  const padLeft = takePerColumn(padLeftWanted);
-  const padRight = takePerColumn(padRightWanted);
+  const padLeft = takeLevelled(seatedDemands.map((demand) => demand.pad[0]));
+  const padRight = takeLevelled(seatedDemands.map((demand) => demand.pad[1]));
 
   // Reservations are paid in column order, each already holding the cell the
   // seating pass gave it. A budget too small to cover them all runs out
   // partway, which costs the trailing columns their width but never costs the
   // table its frame.
-  const seatedDemands = demands.slice(0, seated);
   const reserved = seatedDemands.map((demand, index) => take(demand.reserved - seats[index]!));
 
   // What is left to apportion is the rest of what each column wanted. A table
@@ -318,13 +341,24 @@ function layoutTable(
     // An unbounded offer is held to `UNBOUNDED`, this model's own infinity, as
     // `demandCells` holds a want: `Infinity` is not an integer to split.
     Math.min(budget - spent(wanted) - spent(filled) - spent(shared), UNBOUNDED),
-    stretchers.map((index) => padLeft + held[index]! + padRight),
+    stretchers.map((index) => padLeft[index]! + held[index]! + padRight[index]!),
   );
-  const columns = [...held];
+  // A table that does not fit gives back each column's `floor`: Rich
+  // re-measures a collapsed table's columns at the widths it gave them, and a
+  // column with nothing to draw measures 0 there however many cells the collapse
+  // left it. Those cells go unspent, as they do in Rich.
+  const natural = demands.reduce(
+    (sum, demand) => sum + demand.pad[0] + demand.want + demand.pad[1],
+    frame.edge * 2 + Math.max(0, demands.length - 1) * frame.divider,
+  );
+  const squeezed = natural > outerWidth;
+  const columns = held.map((width, index) =>
+    squeezed ? width - Math.min(width, seatedDemands[index]!.floor) : width,
+  );
   stretchers.forEach((index, slot) => {
     columns[index]! += stretches[slot]!;
   });
-  const cellWidths = columns.map((width) => padLeft + width + padRight);
+  const cellWidths = columns.map((width, index) => padLeft[index]! + width + padRight[index]!);
 
   return {
     edge,
@@ -485,6 +519,8 @@ export interface TableOptions {
   showLines?: boolean;
   showEdge?: boolean;
   padding?: PaddingDimensions;
+  collapsePadding?: boolean;
+  padEdge?: boolean;
   style?: string | Style;
   headerStyle?: string | Style;
   footerStyle?: string | Style;
@@ -510,6 +546,8 @@ export class Table implements Renderable, Measurable {
   readonly showLines: boolean;
   readonly showEdge: boolean;
   readonly padding: [number, number, number, number];
+  readonly collapsePadding: boolean;
+  readonly padEdge: boolean;
   readonly style: string | Style;
   readonly headerStyle: string | Style;
   readonly footerStyle: string | Style;
@@ -539,6 +577,8 @@ export class Table implements Renderable, Measurable {
     this.showLines = options?.showLines ?? false;
     this.showEdge = options?.showEdge !== false;
     this.padding = normalizePadding(options?.padding ?? [0, 1, 0, 1]);
+    this.collapsePadding = options?.collapsePadding ?? false;
+    this.padEdge = options?.padEdge ?? true;
     this.style = options?.style ?? NULL_STYLE;
     this.headerStyle = options?.headerStyle ?? "table.header";
     this.footerStyle = options?.footerStyle ?? "table.footer";
@@ -629,7 +669,8 @@ export class Table implements Renderable, Measurable {
     const border = borderStyle.isNull ? undefined : borderStyle;
 
     // The one division of the width every row below is measured against.
-    const geometry = this._geometry(this._outerWidth(options));
+    const outerWidth = this._outerWidth(options);
+    const geometry = this._geometry(options, outerWidth);
     const edge = geometry.edge === 1;
 
     // Title
@@ -649,11 +690,17 @@ export class Table implements Renderable, Measurable {
     const columnStyles = this._columns.map((c) => getStyle(options, c.style));
     const stripes = this.rowStyles.map((s) => getStyle(options, s));
 
+    // Each row's padding above and below, by where it stands among every row
+    // the table draws, header and footer included, as the reference counts them.
+    const firstBody = this.showHeader ? 1 : 0;
+    const lastRow = firstBody + this._rows.length + (this.showFooter ? 1 : 0) - 1;
+    const rowPadding = (position: number) => this._rowPadding(position === 0, position === lastRow);
+
     // Header row
     if (this.showHeader) {
       const headerCells = this._columns.map((c) => c.header as Renderable);
       const headerStyles = this._columns.map((c) => headerStyle.add(getStyle(options, c.headerStyle)));
-      yield* this._renderRow(options, headerCells, headerStyles, NULL_STYLE, geometry, box, "head", border);
+      yield* this._renderRow(options, headerCells, headerStyles, NULL_STYLE, geometry, rowPadding(0), box, "head", border);
 
       // Header separator
       if (box) {
@@ -669,7 +716,7 @@ export class Table implements Renderable, Measurable {
       const rowStyle = stripes[rowIdx % stripes.length] ?? NULL_STYLE;
       const cellStyles = columnStyles.map((s) => s.add(rowStyle));
 
-      yield* this._renderRow(options, rowCells, cellStyles, rowStyle, geometry, box, "row", border);
+      yield* this._renderRow(options, rowCells, cellStyles, rowStyle, geometry, rowPadding(firstBody + rowIdx), box, "row", border);
 
       // Row separator
       const showSep = this.showLines || row.endSection;
@@ -685,7 +732,7 @@ export class Table implements Renderable, Measurable {
       }
       const footerCells = this._columns.map((c) => c.footer as Renderable);
       const footerStyles = this._columns.map((c) => footerStyle.add(getStyle(options, c.footerStyle)));
-      yield* this._renderRow(options, footerCells, footerStyles, NULL_STYLE, geometry, box, "foot", border);
+      yield* this._renderRow(options, footerCells, footerStyles, NULL_STYLE, geometry, rowPadding(lastRow), box, "foot", border);
     }
 
     // Bottom border
@@ -719,7 +766,7 @@ export class Table implements Renderable, Measurable {
     const options = withCellWidth(rawOptions);
     const outerWidth = this._outerWidth(options);
     const frame = this._frame();
-    const demands = this._columnDemands();
+    const demands = this._columnDemands(options, outerWidth);
     // A declared width is the one stretch a measurement reports, because it is
     // a size the table was given rather than an offer it grew into — the
     // reference measures `self.width` as its maximum, so a `Panel` fitted round
@@ -731,14 +778,13 @@ export class Table implements Renderable, Measurable {
     const declared =
       this.tableWidth === undefined
         ? undefined
-        : layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
+        : layoutTable(outerWidth, demands, frame).totalWidth;
     const laidOut =
       declared !== undefined && declared < UNBOUNDED
         ? declared
         : layoutTable(
             outerWidth,
             demands.map((demand) => ({ ...demand, fill: 0, stretch: false })),
-            this.padding,
             frame,
           ).totalWidth;
     // `UNBOUNDED` is this table's own infinity, so a layout that reached it has
@@ -750,6 +796,7 @@ export class Table implements Renderable, Measurable {
     const tightest = layoutTable(
       outerWidth,
       demands.map((demand) => ({
+        ...demand,
         reserved: 0,
         want: Math.min(1, demand.want),
         weight: 1,
@@ -757,7 +804,6 @@ export class Table implements Renderable, Measurable {
         ratio: 0,
         stretch: false,
       })),
-      this.padding,
       frame,
     ).totalWidth;
     return {
@@ -806,8 +852,8 @@ export class Table implements Renderable, Measurable {
     );
   }
 
-  private _geometry(outerWidth: number): TableGeometry {
-    return layoutTable(outerWidth, this._columnDemands(), this.padding, this._frame());
+  private _geometry(options: RenderOptions, outerWidth: number): TableGeometry {
+    return layoutTable(outerWidth, this._columnDemands(options, outerWidth), this._frame());
   }
 
   /**
@@ -816,59 +862,101 @@ export class Table implements Renderable, Measurable {
    * produce, and `expand` only in its `stretch`. They are resolved once, here, into uniform data, so
    * `layoutTable` runs the same apportionment for every table and no sizing
    * mode gets its own path through the width division.
+   *
+   * Cells are measured against the width left once the frame is paid, as the
+   * reference's `_measure_column` measures them. Padding and the floor are laid
+   * over whichever sizing the column has: they are the same for all three.
    */
-  private _columnDemands(): ColumnDemand[] {
+  private _columnDemands(options: RenderOptions, outerWidth: number): ColumnDemand[] {
+    const frame = this._frame();
+    const inner = {
+      ...options,
+      maxWidth: Math.max(0, outerWidth - frame.edge * 2 - frame.divider * Math.max(0, this._columns.length - 1)),
+    };
     return this._columns.map((col, index) => {
-      if (col.width !== undefined) {
-        // [LAW:single-enforcer] floored where it is parsed, the same rule
-        // `normalizePadding` applies to a negative padding side.
-        const declared = demandCells(col.width);
-        return { reserved: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
-      }
-      // A flexible column takes its share of whatever the bounded columns
-      // leave; every other column asks for its natural width, whether or not a
-      // neighbour is flexible. The split is the reference's —
-      // `fixed_widths = [0 if column.flexible else _range.maximum ...]` — with
-      // one divergence: Rich splits by ratio only when the table expands, and
-      // here a ratio is honoured either way. Its bounded part is its floor —
-      // the reference's `column.min_width or 1` — bid for in cells like any
-      // content column, so a squeezed table still pays a declared `minWidth`.
-      const share = columnShare(col);
-      if (share > 0) {
-        const floor = Math.max(1, demandCells(col.minWidth ?? 0));
-        return { reserved: 0, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
-      }
-      const widest = this._widestCell(col, index);
-      const natural = demandCells(this._bounded(col, widest ?? 1));
-      // `expand` is a stretch rather than a larger want: the column still
-      // competes for its natural width like any other, and only the cells left
-      // once every column has that are shared out. A larger want looks
-      // equivalent and is not — it lets a one-cell column claim cells while its
-      // neighbour is still truncated. The stretch weighs by width, so the
-      // widest column grows most, which is what keeps a `Progress` bar from
-      // getting no more of the slack than its percentage label.
-      //
-      // One deliberate divergence: Rich stretches declared-width columns as
-      // well, so `width: 6` under `expand` renders 21 cells wide — an option
-      // quietly meaning something else, the defect rich-justify-0cr exists to
-      // remove. A reservation's stretch is zero above.
-      //
-      // A column with no cell at all — no rows, and neither header nor footer
-      // drawn — has nothing to size to, which is not sizing to nothing. The
-      // reference measures it `Measurement(1, max_width)`: one cell of content,
-      // and a maximum of the whole offer, so a rowless table fills it. Reading
-      // "no cells" as zero sized it to a two-cell box instead. The one cell is
-      // its want, so a `minWidth` is paid like any column's, and the offer is
-      // its `fill`, held to its `maxWidth`.
-      return {
-        reserved: 0,
-        want: natural,
-        weight: natural,
-        fill: widest === undefined ? demandCells(this._bounded(col, UNBOUNDED)) : 0,
-        ratio: 0,
-        stretch: this.expand,
-      };
+      const pad = this._columnPadding(index);
+      const sizing = this._columnSizing(col, index, inner);
+      const floor = pad[0] + sizing.want + pad[1] === 0 ? 1 : 0;
+      return { ...sizing, want: sizing.want + floor, pad, floor };
     });
+  }
+
+  private _columnSizing(
+    col: Column,
+    index: number,
+    options: RenderOptions,
+  ): Omit<ColumnDemand, "pad" | "floor"> {
+    if (col.width !== undefined) {
+      // [LAW:single-enforcer] floored where it is parsed, the same rule
+      // `normalizePadding` applies to a negative padding side.
+      const declared = demandCells(col.width);
+      return { reserved: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
+    }
+    // A flexible column takes its share of whatever the bounded columns
+    // leave; every other column asks for its natural width, whether or not a
+    // neighbour is flexible. The split is the reference's —
+    // `fixed_widths = [0 if column.flexible else _range.maximum ...]` — with
+    // one divergence: Rich splits by ratio only when the table expands, and
+    // here a ratio is honoured either way. Its bounded part is its floor —
+    // the reference's `column.min_width or 1` — bid for in cells like any
+    // content column, so a squeezed table still pays a declared `minWidth`.
+    const share = columnShare(col);
+    if (share > 0) {
+      const floor = Math.max(1, demandCells(col.minWidth ?? 0));
+      return { reserved: 0, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
+    }
+    const widest = this._widestCell(col, index, options);
+    const natural = demandCells(this._bounded(col, widest ?? 1));
+    // `expand` is a stretch rather than a larger want: the column still
+    // competes for its natural width like any other, and only the cells left
+    // once every column has that are shared out. A larger want looks
+    // equivalent and is not — it lets a one-cell column claim cells while its
+    // neighbour is still truncated. The stretch weighs by width, so the
+    // widest column grows most, which is what keeps a `Progress` bar from
+    // getting no more of the slack than its percentage label.
+    //
+    // One deliberate divergence: Rich stretches declared-width columns as
+    // well, so `width: 6` under `expand` renders 21 cells wide — an option
+    // quietly meaning something else, the defect rich-justify-0cr exists to
+    // remove. A reservation's stretch is zero above.
+    //
+    // A column with no cell at all — no rows, and neither header nor footer
+    // drawn — has nothing to size to, which is not sizing to nothing. The
+    // reference measures it `Measurement(1, max_width)`: one cell of content,
+    // and a maximum of the whole offer, so a rowless table fills it. Reading
+    // "no cells" as zero sized it to a two-cell box instead. The one cell is
+    // its want, so a `minWidth` is paid like any column's, and the offer is
+    // its `fill`, held to its `maxWidth`.
+    return {
+      reserved: 0,
+      want: natural,
+      weight: natural,
+      fill: widest === undefined ? demandCells(this._bounded(col, UNBOUNDED)) : 0,
+      ratio: 0,
+      stretch: this.expand,
+    };
+  }
+
+  /**
+   * The padding either side of column `index`'s content, and above and below
+   * one row of cells: the reference's `get_padding`. `collapsePadding` lets a
+   * cell's left padding and its row's bottom padding merge into the padding
+   * beside and below them; `padEdge: false` drops every side that meets the
+   * table's edge. Each side is the configured padding unless one of those two
+   * reduces it.
+   */
+  private _columnPadding(index: number): readonly [left: number, right: number] {
+    const [, right, , left] = this.padding;
+    const first = index === 0;
+    const last = index === this._columns.length - 1;
+    const collapsed = this.collapsePadding && !first ? Math.max(0, left - right) : left;
+    return [!this.padEdge && first ? 0 : collapsed, !this.padEdge && last ? 0 : right];
+  }
+
+  private _rowPadding(first: boolean, last: boolean): readonly [top: number, bottom: number] {
+    const [top, , bottom] = this.padding;
+    const collapsed = this.collapsePadding && !last ? Math.max(0, top - bottom) : bottom;
+    return [!this.padEdge && first ? 0 : top, !this.padEdge && last ? 0 : collapsed];
   }
 
   /**
@@ -894,21 +982,18 @@ export class Table implements Renderable, Measurable {
    * padding and nothing else — and is not the same answer.
    * [LAW:types-are-the-program]
    */
-  private _widestCell(col: Column, index: number): number | undefined {
+  private _widestCell(col: Column, index: number, options: RenderOptions): number | undefined {
     let widest: number | undefined;
     for (const cell of this._columnCells(col, index)) {
       // The stamped cell, so the width a column asks for is the width its text
       // will occupy — measuring the raw value sized this column to
       // `[red]Solo[/red]`, fifteen cells for four cells of text.
-      // [LAW:one-source-of-truth]
-      //
-      // A cell that draws itself is stringified rather than measured, which is
-      // a pre-existing gap: `_columnDemands` carries no `RenderOptions`, so
-      // `Measurement.get` is not reachable from here. It contributes a wrong
-      // non-zero width, and narrowing that is its own change.
+      // [LAW:one-source-of-truth] Measured as the cell measures itself, so a
+      // multi-line cell asks for its widest line and a `Panel` for its frame;
+      // one that cannot measure itself asks for every cell there is, as in Rich.
       widest = Math.max(
         widest ?? 0,
-        cell instanceof RichText ? cellLen(cell.plain) : cellLen(String(cell)),
+        isMeasurable(cell) ? Measurement.get(options, cell).maximum : options.maxWidth,
       );
     }
     return widest;
@@ -935,6 +1020,7 @@ export class Table implements Renderable, Measurable {
     styles: Style[],
     rowStyle: Style,
     geometry: TableGeometry,
+    [top, bottom]: readonly [number, number],
     box: Box | null,
     level: RowLevel,
     border: Style | undefined,
@@ -960,18 +1046,26 @@ export class Table implements Renderable, Measurable {
       const col = this._columns[index]!;
       const cell = cells[index] ?? embed("");
       // The render's own options with the column's canvas laid over them, so a
-      // cell resolves its style names against the same theme as the table. The
-      // table owns the row's height: a cell inherits none, as the reference's
-      // `height=None` has it.
+      // cell resolves its style names against the same theme as the table. A
+      // table stacks its cells, so each is handed the table's rows as a
+      // ceiling, never a region to fill — the `Height` contract's
+      // `stackedHeight`, where the reference hands a cell `height=None`.
       const segs = [...cell.render({
         ...options,
         maxWidth: cellWidth,
         justify: col.justify,
         overflow: col.overflow,
         noWrap: col.noWrap,
-        height: undefined,
+        height: stackedHeight(options.height),
       })];
-      return Segment.splitAndCropLines(segs, cellWidth);
+      // The padding above and below is part of the cell, as the reference's
+      // `Padding` makes it: blank lines the cell's style covers.
+      const padLine = (): Segment[] => [new Segment(" ".repeat(cellWidth))];
+      return [
+        ...Array.from({ length: top }, padLine),
+        ...Segment.splitAndCropLines(segs, cellWidth),
+        ...Array.from({ length: bottom }, padLine),
+      ];
     });
     const maxLines = cellLines.reduce((most, lines) => Math.max(most, lines.length), 1);
     // How many blank lines stand above each cell's content. A header sits on
@@ -1001,7 +1095,7 @@ export class Table implements Renderable, Measurable {
         // lines too, as the reference's does — so a background fills the column
         // rather than sitting behind the text alone.
         yield* Segment.applyStyle(
-          [...blank(padLeft), ...line, ...blank(padRight)],
+          [...blank(padLeft[colIdx]!), ...line, ...blank(padRight[colIdx]!)],
           style.isNull ? undefined : style,
         );
       }

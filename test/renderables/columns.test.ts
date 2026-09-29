@@ -271,6 +271,12 @@ describe("Columns", () => {
     ]);
   });
 
+  it("expand stretches a declared width like any other", () => {
+    const cols = (): Columns => new Columns(["a", "b", "c", "d"], { width: 3, expand: true });
+    expect(collectLines(cols(), { maxWidth: 16 })).toEqual(["a    b   c   d  "]);
+    expect(collectLines(cols(), { maxWidth: 18 })).toEqual(["a    b    c    d  "]);
+  });
+
   it("never lays out more columns than items, in any mode", () => {
     // Not the reference: Rich divides a declared width into the offer without
     // counting items, and prints `"a   b              "` — three empty columns.
@@ -280,6 +286,16 @@ describe("Columns", () => {
 
   it("an item wider than the offer takes one column and ends in an ellipsis", () => {
     expect(collectLines(new Columns(["x".repeat(12), "b"]), { maxWidth: 5 })).toEqual(["xxxx…", "b    "]);
+  });
+
+  it("gives an empty item a column one cell wide, as the reference's grid does (rich-columns-i08a)", () => {
+    expect(collectLines(new Columns(["a", ""]), { maxWidth: 20 })).toEqual(["a  "]);
+    expect(collectLines(new Columns(["", "a"], { padding: 0, expand: true }), { maxWidth: 9 })).toEqual(["     a   "]);
+    expect(collectLines(new Columns(["", "a", ""], { padding: [0, 2] }), { maxWidth: 20 })).toEqual(["  a   "]);
+    // Where that cell does not fit, the grid shrinks the other columns to make
+    // room and then draws the empty column at no width after all.
+    expect(collectLines(new Columns(["aaaa", ""]), { maxWidth: 5 })).toEqual(["aa… "]);
+    expect(collectLines(new Columns(["a", "", "b"], { padding: 0 }), { maxWidth: 2 })).toEqual(["a"]);
   });
 
   it("measures a listing of 200,000 items", () => {
