@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-226",
+      "ref": "refs/pull/226/merge",
+      "sha": "600cbeddfa078a1242d6932f194d9f93e0646638",
+      "timestamp": "2026-09-29T22:18:36.475Z",
+      "commits": [
+        {
+          "sha": "600cbeddfa078a1242d6932f194d9f93e0646638",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:17:45-06:00",
+          "message": "Merge 19582e7d96333893b1750713ce7de906b87fab11 into afff4e3710707f82437fe96f09ed80fdae46287d\n"
+        },
+        {
+          "sha": "19582e7d96333893b1750713ce7de906b87fab11",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:17:40-06:00",
+          "message": "fix(columns): lay out as Rich's grid, so padding and expand take effect (rich-columns-awe, rich-columns-sf4)\n\n`padding` was never read and `expand` was stored and never read: the gutter\nwas a hard-coded 2 and every layout divided the whole offer among uniform\ncolumns, so there was nothing left for `expand` to do.\n\nColumns now decides what Rich's `Table.grid(collapse_padding, pad_edge=False)`\ndecides: a column count found by Rich's search, each column as wide as its own\nwidest item, a gap of the wider horizontal padding side, rows separated by\n`top + max(0, top - bottom)`, and `expand` spreading the surplus with a port of\n`ratio_distribute`. Items render with a default Column's options (left,\nellipsis). Output is byte-identical to Rich 9d8f9a3 for every case pinned in the\ntests and for the docs listing.\n\nOne departure, where Rich has no sound answer: a declared `width` searches the\ncolumn count the same way instead of `max_width // (width + gap)`, so it never\nlays out empty trailing columns (sf4) and never divides by zero.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-224",
       "ref": "refs/pull/224/merge",
       "sha": "4a2227ab1bc436e383fe6cc357e30c3d14235003",
