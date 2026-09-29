@@ -4,15 +4,22 @@
     {
       "version": "pr-211",
       "ref": "refs/pull/211/merge",
-      "sha": "59c77b9a2adaff694ee93d6a33aac7b238dc90d8",
-      "timestamp": "2026-09-29T18:32:02.921Z",
+      "sha": "cd05129cf088fbc1e15b6831623de7512509fe69",
+      "timestamp": "2026-09-29T18:40:36.870Z",
       "commits": [
         {
-          "sha": "59c77b9a2adaff694ee93d6a33aac7b238dc90d8",
+          "sha": "cd05129cf088fbc1e15b6831623de7512509fe69",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:31:11-06:00",
-          "message": "Merge 519a4a6ac285a3ec138c204b02ed06ce4e8fb0ab into 26b0ffd282ea721e11bb0b8ec786ce9373939e59\n"
+          "timestamp": "2026-09-29T18:39:56Z",
+          "message": "Merge a90e30f206f4b53193bb5a3fae402e379b7a7037 into 26b0ffd282ea721e11bb0b8ec786ce9373939e59\n"
+        },
+        {
+          "sha": "a90e30f206f4b53193bb5a3fae402e379b7a7037",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:39:51-06:00",
+          "message": "refactor(docs): one pass checks every block outside the chain; correct two stale explanations (rich-docs-jqc)\n\nReview fixes from /code-review high on #211.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "519a4a6ac285a3ec138c204b02ed06ce4e8fb0ab",
