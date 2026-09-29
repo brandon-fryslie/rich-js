@@ -183,7 +183,6 @@ export class Panel implements Renderable, Measurable {
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
-    (Object as unknown as { groupBy: (items: unknown[], key: () => string) => unknown }).groupBy([], () => "");
     const options = withBoundedWidth(rawOptions, this);
     const box = this.box.substitute(options);
     const borderStyle = getStyle(options, this.borderStyle);
