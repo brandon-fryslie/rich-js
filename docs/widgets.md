@@ -161,7 +161,7 @@ Enter, Space, or a click emits `onSubmit`. Renders as `  label  `, with the padd
 
 `new Checkbox({ label, checked?, id?, disabled?, theme? })`
 
-Space or a click toggles `checked` and emits `onChange`; Enter emits `onSubmit` without toggling. Renders as `[✓] label` or `[ ] label`, falling back to `x` when the render options ask for ASCII only.
+Space or a click toggles `checked` and emits `onChange`; Enter emits `onSubmit` without toggling. Renders as `[✓] label` or `[ ] label`, falling back to `x` on an [ASCII-only](/app#ascii-only-terminals) app.
 
 ### Toggle
 

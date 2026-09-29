@@ -267,7 +267,7 @@ function stoppedAt(page: string, context: ExampleContext | null, chain: readonly
 /** Decoded bytes, drawn once per site colour mode, and the cells their widest row takes. */
 function fragments(bytes: string): { light: string; dark: string; columns: number } {
   const text = decodeAnsi(bytes, { noWrap: true });
-  const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, encoding: "utf-8", asciiOnly: false })];
+  const segments: Segment[] = [...text.render({ maxWidth: EXAMPLE_TERMINAL.columns, isTerminal: false, asciiOnly: false })];
   const [columns] = Segment.getShape(Segment.splitLines(segments));
   return { light: encodeHtmlFragment(segments, EXAMPLE_THEMES.light), dark: encodeHtmlFragment(segments, EXAMPLE_THEMES.dark), columns };
 }

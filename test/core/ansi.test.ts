@@ -73,7 +73,7 @@ describe("decodeAnsi colours", () => {
         new ColorTable([STANDARD_TABLE.get(0), red, ...Array.from({ length: 14 }, (_, i) => STANDARD_TABLE.get(i + 2))]),
         new Palette("probe", true, new Map()),
       );
-    const segments = [...decodeAnsi("\x1b[31mred").render({ maxWidth: 80, isTerminal: false, encoding: "utf-8", asciiOnly: false })];
+    const segments = [...decodeAnsi("\x1b[31mred").render({ maxWidth: 80, isTerminal: false, asciiOnly: false })];
     const ink = (t: TerminalTheme) => exportLines(segments, t)[0]![0]!.look.foreground;
     expect(ink(theme(new ColorRgba(200, 0, 0)))).toEqual(new ColorRgba(200, 0, 0));
     expect(ink(theme(new ColorRgba(255, 90, 90)))).toEqual(new ColorRgba(255, 90, 90));

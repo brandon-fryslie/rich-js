@@ -66,7 +66,6 @@ describe("Console construction", () => {
   it("constructs with defaults", () => {
     const c = new Console({ width: 80 });
     expect(c.width).toBe(80);
-    expect(c.encoding).toBe("utf-8");
   });
 
   it("respects width override", () => {
@@ -170,11 +169,6 @@ describe("Console auto-detected attributes", () => {
   it(".size returns width and height", () => {
     const c = new Console({ width: 120, height: 50 });
     expect(c.size).toEqual({ width: 120, height: 50 });
-  });
-
-  it(".encoding returns utf-8", () => {
-    const c = new Console({ width: 80 });
-    expect(c.encoding).toBe("utf-8");
   });
 
   it(".isTerminal returns false when writing to a file/stream", () => {
@@ -850,9 +844,20 @@ describe("Console.options", () => {
     expect(c.options.isTerminal).toBe(false);
   });
 
-  it("includes encoding in render options", () => {
-    const c = new Console({ width: 80 });
-    expect(c.options.encoding).toBe("utf-8");
+  // What each renderable draws under the switch is
+  // test/renderables/ascii-only.test.ts; this is only that print carries it.
+  function printFramed(overrides: ConsoleOptions): string {
+    const { console: c, chunks } = makeConsole(overrides);
+    c.print(new Panel("boxed"));
+    return captured(chunks);
+  }
+
+  it("writes only ASCII when asciiOnly is set", () => {
+    expect(printFramed({ asciiOnly: true })).toMatch(/^[\x00-\x7f]*$/);
+  });
+
+  it("draws line-drawing glyphs by default", () => {
+    expect(printFramed({})).toMatch(/[^\x00-\x7f]/);
   });
 });
 

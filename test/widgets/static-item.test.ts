@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import { StaticItem } from "../../src/widgets/static-item.js";
 
-const RENDER = { maxWidth: 80, isTerminal: true, encoding: "utf-8" as const };
+const RENDER = { maxWidth: 80, isTerminal: true };
 
 describe("StaticItem", () => {
   describe("measure", () => {

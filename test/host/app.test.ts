@@ -16,6 +16,7 @@ import { App, type AppOptions } from "../../src/host/app.js";
 import { scriptedHost, type ScriptedHost } from "./scripted-host.js";
 import { RichText } from "../../src/core/text.js";
 import { Layout } from "../../src/renderables/layout.js";
+import { Panel } from "../../src/renderables/panel.js";
 import type { Renderable } from "../../src/core/protocol.js";
 
 // Pointer reporting belongs to the alternate surface: it is switched on with
@@ -238,6 +239,20 @@ describe("App on the alternate screen", () => {
     await first;
 
     await expect(target.run()).rejects.toThrow(/runs once/);
+  });
+});
+
+describe("App on an ASCII-only terminal", () => {
+  it("paints every frame in ASCII when asciiOnly is set", () => {
+    const view = (): Renderable => new Panel("boxed");
+    const ascii = new App({ host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", view, asciiOnly: true });
+    const glyphs = new App({ host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", view });
+
+    void ascii.run();
+    void glyphs.run();
+
+    expect(rows(ascii).join("\n")).toMatch(/^[\x00-\x7f]*$/);
+    expect(rows(glyphs).join("\n")).toMatch(/[^\x00-\x7f]/);
   });
 });
 

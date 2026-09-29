@@ -56,6 +56,10 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 `surface: "inline"` paints downward from the start of the cursor's line, as tall as the frame and no taller than the terminal. That line is the frame's first row, so end anything you print before starting the app with a newline. Each frame overwrites the last one in place. When the app stops, the last frame stays on the terminal and the cursor moves below it. The terminal does not report the pointer: it reports a pointer by its row on the screen, and an inline app does not know which row its frame starts on.
 
+## ASCII-only terminals
+
+`asciiOnly: true` paints every frame for a terminal that draws only ASCII: every glyph the library chooses, from borders to widget marks, is drawn in ASCII. It is the same switch as on a [`Console`](/console#ascii-only-terminals).
+
 ## Every exit hands the terminal back
 
 While it runs, the app hides the cursor, switches the terminal to raw mode and, on the alternate surface, enters the alternate screen and turns on pointer reporting. All of it is undone when:

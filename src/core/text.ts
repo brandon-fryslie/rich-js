@@ -7,7 +7,7 @@ import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./osc8.js";
-import { getStyle, withBoundedWidth } from "./protocol.js";
+import { drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
 
 // Strip control characters except \t and \n
@@ -840,6 +840,8 @@ export class RichText implements Renderable, Measurable {
     // library's spelling of an unbounded width offer — `withBoundedWidth` in
     // protocol.ts parses one on the way in.
     const budget = noWrap ? cellCount(Infinity) : maxWidth;
+    // One cell either way, so the marker's stand-in leaves the cut where it was.
+    const ellipsis = drawable(options, "\u2026", ".");
     const endsWithNewline = text.endsWith("\n");
 
     for (let index = 0; index < logicalLines.length; index += 1) {
@@ -853,7 +855,7 @@ export class RichText implements Renderable, Measurable {
 
       const wrapped = Segment.divide(line, cuts);
       const placed = this._justifyLines(
-        wrapped.map((piece) => [...this._fitLine(piece, budget, overflow)]),
+        wrapped.map((piece) => [...this._fitLine(piece, budget, overflow, ellipsis)]),
         maxWidth,
         base,
         justify,
@@ -1135,6 +1137,7 @@ export class RichText implements Renderable, Measurable {
     line: Segment[],
     maxWidth: number,
     overflow: "fold" | "crop" | "ellipsis",
+    ellipsis: string,
   ): Iterable<Segment> {
     const lineWidth = Segment.getLineLength(line);
     const contentWidth = lineWidth - hangingWhitespace(line);
@@ -1161,7 +1164,7 @@ export class RichText implements Renderable, Measurable {
     // three different kinds of nothing.
     if (overflow === "ellipsis" && maxWidth > 0) {
       yield* Segment.adjustLineLength(line, maxWidth - 1, undefined, false);
-      yield new Segment("\u2026");
+      yield new Segment(ellipsis);
       return;
     }
 

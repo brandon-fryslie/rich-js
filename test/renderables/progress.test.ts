@@ -11,7 +11,6 @@ import type { RenderOptions } from "../../src/core/protocol.js";
 const OPTS: RenderOptions = {
   maxWidth: 80,
   isTerminal: false,
-  encoding: "utf-8",
   asciiOnly: false,
 };
 

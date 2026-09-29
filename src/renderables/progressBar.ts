@@ -9,10 +9,10 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle } from "../core/protocol.js";
+import { drawable, getStyle } from "../core/protocol.js";
 
-const FULL_BLOCK = "━";
-const EMPTY_BLOCK = "━";
+const BAR = "━";
+const ASCII_BAR = "-";
 
 export interface ProgressBarOptions {
   total?: number;
@@ -59,12 +59,13 @@ export class ProgressBar implements Renderable, Measurable {
     const back = getStyle(options, this.style);
     const fillStyle = fill.isNull ? undefined : fill;
     const bgStyle = back.isNull ? undefined : back;
+    const bar = drawable(options, BAR, ASCII_BAR);
 
     if (filledWidth > 0) {
-      yield new Segment(FULL_BLOCK.repeat(filledWidth), fillStyle);
+      yield new Segment(bar.repeat(filledWidth), fillStyle);
     }
     if (emptyWidth > 0) {
-      yield new Segment(EMPTY_BLOCK.repeat(emptyWidth), bgStyle);
+      yield new Segment(bar.repeat(emptyWidth), bgStyle);
     }
   }
 

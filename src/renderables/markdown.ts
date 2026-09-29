@@ -12,7 +12,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle, stackedHeight } from "../core/protocol.js";
+import { drawable, getStyle, stackedHeight } from "../core/protocol.js";
 
 export interface MarkdownOptions {
   codeTheme?: string;
@@ -204,7 +204,7 @@ export class Markdown implements Renderable, Measurable {
         }
 
         case "list_item": {
-          const bullet = token.ordered ? `${token.index}. ` : "  • ";
+          const bullet = token.ordered ? `${token.index}. ` : drawable(options, "  • ", "  * ");
           yield new Segment(bullet);
           const text = applyInlineStyles(token.text);
           yield* text.render({ ...options, maxWidth: options.maxWidth - bullet.length });
@@ -213,7 +213,7 @@ export class Markdown implements Renderable, Measurable {
 
         case "blockquote": {
           const quoteStyle = Style.parse("dim italic");
-          yield new Segment("▎ ", getStyle(options, "markdown.hr"));
+          yield new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
           const text = applyInlineStyles(token.text);
           yield* Segment.applyStyle([...text.render(options)], quoteStyle);
           yield Segment.line();

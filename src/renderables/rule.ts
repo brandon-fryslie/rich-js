@@ -11,7 +11,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle } from "../core/protocol.js";
+import { drawable, getStyle } from "../core/protocol.js";
 import { inlineLabel } from "./embed.js";
 
 export type RuleAlign = "left" | "center" | "right";
@@ -49,7 +49,7 @@ export class Rule implements Renderable, Measurable {
 
   *render(options: RenderOptions): Iterable<Segment> {
     const maxWidth = options.maxWidth;
-    const ruleChar = options.asciiOnly ? ASCII_RULE_CHAR : this.characters;
+    const ruleChar = drawable(options, this.characters, ASCII_RULE_CHAR);
     const style = getStyle(options, this.style);
     const ruleStyle = style.isNull ? undefined : style;
 

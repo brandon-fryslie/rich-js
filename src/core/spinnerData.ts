@@ -8,12 +8,15 @@ export interface SpinnerData {
   readonly interval: number;
 }
 
+/** The spinner an ASCII-only output draws in place of any other. */
+export const LINE_SPINNER: SpinnerData = { frames: ["-", "\\", "|", "/"], interval: 130 };
+
 // [LAW:one-source-of-truth] Single authoritative collection of spinner definitions
 export const SPINNERS: Record<string, SpinnerData> = {
   dots: { frames: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], interval: 80 },
   dots2: { frames: ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"], interval: 80 },
   dots3: { frames: ["⠋", "⠙", "⠚", "⠞", "⠖", "⠦", "⠴", "⠲", "⠳", "⠓"], interval: 80 },
-  line: { frames: ["-", "\\", "|", "/"], interval: 130 },
+  line: LINE_SPINNER,
   line2: { frames: ["⠂", "-", "–", "—", "–", "-"], interval: 100 },
   pipe: { frames: ["┤", "┘", "┴", "└", "├", "┌", "┬", "┐"], interval: 100 },
   simpleDots: { frames: [".  ", ".. ", "...", "   "], interval: 400 },

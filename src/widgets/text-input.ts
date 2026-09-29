@@ -74,7 +74,7 @@ import {
   type CodePoint,
 } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
-import type { RenderOptions } from "../core/protocol.js";
+import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
@@ -232,7 +232,12 @@ export interface TextInputOptions {
 }
 
 const MIN_CONTENT_WIDTH = 8;
+// Each glyph and its ASCII stand-in are one code unit and one cell, so the
+// display string maps 1:1 onto `value` and hit-testing needs no render options.
 const NEWLINE_GLYPH = "↵";
+const ASCII_NEWLINE_GLYPH = "~";
+const MASK_GLYPH = "•";
+const ASCII_MASK_GLYPH = "*";
 
 // Word-character regex used by Alt+B/F and Ctrl+Left/Right. Matches the
 // readline default (alphanumeric + underscore), which is what users typing
@@ -471,7 +476,7 @@ export class TextInput extends WidgetBase {
       // correct code-unit in the underlying value.
       const relX = asCellCol(Math.max(0, event.x - 1) + this._singleLineViewportStart);
       const displayForHitTest = this._password
-        ? "•".repeat(this.value.length)
+        ? MASK_GLYPH.repeat(this.value.length)
         : this.value.indexOf("\n") >= 0
           ? this.value.replace(/\n/g, NEWLINE_GLYPH)
           : this.value;
@@ -818,9 +823,9 @@ export class TextInput extends WidgetBase {
     const rawDisplay = showPlaceholder
       ? this.placeholder
       : this._password
-        ? "•".repeat(this.value.length)
+        ? drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH).repeat(this.value.length)
         : this.value.indexOf("\n") >= 0
-          ? this.value.replace(/\n/g, NEWLINE_GLYPH)
+          ? this.value.replace(/\n/g, drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH))
           : this.value;
 
     // Measure in cell space — cursorPosition is a code-unit index; convert to
@@ -943,13 +948,14 @@ export class TextInput extends WidgetBase {
       const row = visualRows[rowIdx]!;
       if (i > 0) segments.push(new Segment("\n"));
       if (row.isContinuation) {
-        segments.push(new Segment(this._continuationMarker, markerStyle));
+        // An ASCII stand-in as wide as the marker, so the rows keep their geometry.
+        segments.push(new Segment(drawable(options, this._continuationMarker, ">".padEnd(this._markerWidth)), markerStyle));
       }
       let indicator: { ch: string; style: Style } | undefined;
       if (i === 0 && canScrollUp) {
-        indicator = { ch: "▲", style: indicatorStyle };
+        indicator = { ch: drawable(options, "▲", "^"), style: indicatorStyle };
       } else if (i === visibleCount - 1 && canScrollDown) {
-        indicator = { ch: "▼", style: indicatorStyle };
+        indicator = { ch: drawable(options, "▼", "v"), style: indicatorStyle };
       }
       // When a continuation marker was emitted, the row's printable width is
       // reduced by the marker width — the indicator column is still at

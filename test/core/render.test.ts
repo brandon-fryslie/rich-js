@@ -84,6 +84,12 @@ describe("renderToString", () => {
     expect(wideWidth).toBe(60);
   });
 
+  it("draws only ASCII when asciiOnly is set", () => {
+    const panel = new Panel("boxed");
+    expect(renderToString(panel, { asciiOnly: true })).toMatch(/^[\x00-\x7f]*$/);
+    expect(renderToString(panel)).toMatch(/[^\x00-\x7f]/);
+  });
+
   it("defaults to truecolor when colorSystem is omitted", () => {
     const text = new RichText("x", { style: Style.parse("#ff0066"), end: "" });
     const out = renderToString(text);

@@ -574,8 +574,8 @@ export class Table implements Renderable, Measurable {
     // lacking a header should. [LAW:dataflow-not-control-flow] Both run every
     // render and each returns the receiver when it has nothing to change, so
     // the flags arrive as values rather than as branches around a step.
-    const drawable = this.box?.substitute({ asciiOnly: options.asciiOnly });
-    const box = (this.showHeader ? drawable : drawable?.plainHeaded()) ?? null;
+    const frame = this.box?.substitute(options);
+    const box = (this.showHeader ? frame : frame?.plainHeaded()) ?? null;
     const borderStyle = getStyle(options, this.borderStyle);
     const border = borderStyle.isNull ? undefined : borderStyle;
 

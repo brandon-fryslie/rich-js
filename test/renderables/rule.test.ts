@@ -72,6 +72,12 @@ describe("Rule", () => {
     expect(lines[0]).toBe("-----");
   });
 
+  it("keeps characters that are already ASCII when asciiOnly", () => {
+    const rule = new Rule(undefined, { characters: "=" });
+    const lines = collectLines(rule, { maxWidth: 5, asciiOnly: true });
+    expect(lines[0]).toBe("=====");
+  });
+
   it("measurement minimum > 0", () => {
     const rule = new Rule("Title");
     const m = rule.measure({ maxWidth: 40 });
