@@ -170,12 +170,13 @@ for by name.
 
 ### Line ends
 
-`sep` and `end` belong to text. Adjacent strings, `RichText` values and data are
-joined with `sep`, a space by default, and the line they make is ended with
-`end`, a line break by default. Any other renderable takes whole lines of its
-own: text before it ends its line first, text after it starts on a new one, and
-neither `sep` nor `end` is placed next to it. Printed renderables therefore stack
-with no blank line between them:
+`sep` and `end` belong to text. Adjacent strings, `RichText` values and scalar
+data (numbers, booleans, `null`, an object that describes itself) are joined
+with `sep`, a space by default, and the line they make is ended with `end`, a
+line break by default. Any other renderable takes whole lines of its own: text
+before it ends its line first, text after it starts on a new one, and neither
+`sep` nor `end` is placed next to it. Printed renderables therefore stack with no
+blank line between them:
 
 ```typescript
 console.print("before", new Panel("[bold]one[/]", { width: 9, borderStyle: "cyan" }), "after", "that");
@@ -188,6 +189,17 @@ text. A renderable's last line is always ended, even one whose render did not
 end it. Python Rich differs here: it leaves such a line open, and the next print
 carries on along it. A line break at the end of a string is text, so
 `console.print("a\n")` prints `a` and then an empty line.
+
+Data that is a container takes whole lines of its own too, as it does in Python
+Rich: an array or typed array, a `Map`, a `Set`, or any other object that does
+not describe itself, even an empty one. An object describes itself when it has a
+`Symbol.toPrimitive` method or a `toString` method other than
+`Object.prototype.toString`. `Pretty` formats it and may spread it
+across several lines, so it is not joined into a line of text:
+
+```typescript
+console.print("x =", [1, 2], "y =", 99);
+```
 
 ### Style argument
 
@@ -371,8 +383,11 @@ cut at the width by that method: at width 12,
 
 ## Logging
 
-`log()` prefixes a timestamp and then prints, so it takes the same arguments as
-`print()` and behaves the same way on each of them:
+`log()` puts a timestamp in a column of its own and, beside it, draws what
+`print()` would draw for the same arguments in the width that is left. Every
+line after the first is indented to the column, and the row always ends, even
+when `end` would leave a printed line open. Options such as `style` and
+`justify` apply to that content and never to the timestamp:
 
 ```typescript
 console.log("Server started on port [bold cyan]3000[/]");
@@ -381,7 +396,7 @@ console.log("user", 42, "signed in");
 
 That is the whole method: no location column, and no options parameter of its
 own. What happens to a trailing object depends on its keys, because `log()`
-forwards to `print()` and `print()` decides by sniffing for the nine
+reads its arguments as `print()` does, and `print()` decides by sniffing for the nine
 `PrintOptions` names — `style`, `justify`, `markup`, `highlight`, `overflow`,
 `end`, `softWrap`, `crop`, `sep`.
 
@@ -400,8 +415,8 @@ console.log("range", { end: "2024" });
 console.log("the next line");
 ```
 
-There is no newline after `range`: `"2024"` became the line terminator, so the
-next call's timestamp carries on along the same line.
+The object is never printed: `"2024"` became the line terminator, so the row
+reads `range2024`.
 
 That trap is worth knowing before you log structured data whose field names you
 do not control. `print` sniffs only a trailing object with something before it,

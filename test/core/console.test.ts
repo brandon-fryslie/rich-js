@@ -763,8 +763,33 @@ describe("Console.print() line ends", () => {
     expect(printed([panel(), panel(), { sep: "|" }]).out).toBe(PANEL + PANEL);
   });
 
-  it("joins RichText, strings and data as one line", () => {
+  it("joins RichText, strings and scalars as one line", () => {
     expect(printed([new RichText("a"), "b", 1]).out).toBe("a b 1\n");
+  });
+
+  // The line structure is Python Rich fc41075a's for the same call; each value
+  // is spelled as this port's `Pretty` spells it, `{ x: 1 }` for `{'x': 1}`.
+  it("gives a container lines of its own between two strings", () => {
+    expect(printed(["a", { x: 1 }, "b"]).out).toBe("a\n{ x: 1 }\nb\n");
+    expect(printed(["x =", [1, 2], "y =", 99]).out).toBe("x =\n[1, 2]\ny = 99\n");
+    expect(printed(["a", new Map([[1, 2]]), new Set([3]), "b"]).out).toBe("a\nMap { 1 => 2 }\nSet { 3 }\nb\n");
+  });
+
+  it("gives an empty container lines of its own", () => {
+    expect(printed(["a", [], "b"]).out).toBe("a\n[]\nb\n");
+  });
+
+  it("starts an expanded container at the start of a line", () => {
+    const { out } = printed(["a", { k: "vvvv", j: [0, 1, 2] }, "b"]);
+    expect(out).toBe('a\n{\n    k: "vvvv",\n    j: [0, 1, 2]\n}\nb\n');
+  });
+
+  it("does not put sep beside a container", () => {
+    expect(printed([{ x: 1 }, "b", { sep: "-" }]).out).toBe("{ x: 1 }\nb\n");
+  });
+
+  it("keeps an object that describes itself in the line", () => {
+    expect(printed(["a", { toString: () => "T" }, "b"]).out).toBe("a T b\n");
   });
 
   it("uses the print's end, not a RichText argument's own", () => {
@@ -830,6 +855,60 @@ describe("Console.log()", () => {
     expect(output).toContain("Hello");
     // Should contain time-like text (e.g., brackets around time)
     expect(output).toMatch(/\[.*\]/);
+  });
+
+  // The time is a column, as in the reference's `LogRender`: a container is a
+  // block in `print`, and here it sits beside the time rather than below it.
+  it("draws what print would beside the time, in the width that is left", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false });
+    c.log("user", { userId: 42, action: "login" }, "done");
+    const output = captured(chunks);
+    const time = /^\[[^\]]*\] /.exec(output)?.[0] ?? "";
+    const pad = " ".repeat(time.length);
+    expect(output).toBe(
+      `${time}user\n` +
+      `${pad}{\n` +
+      `${pad}    userId: 42,\n` +
+      `${pad}    action: "login"\n` +
+      `${pad}}\n` +
+      `${pad}done\n`,
+    );
+  });
+
+  it("gives up the time's cells before the content's in a console narrower than the time", () => {
+    const { console: c, chunks } = makeConsole({ width: 8, markup: false, highlight: false });
+    c.log("hello");
+    const rows = captured(chunks).split("\n").slice(0, -1);
+    for (const row of rows) expect(row).toHaveLength(8);
+    expect(rows[0]).toMatch(/^\[.{6}h$/);
+    // The content column is one cell wide, and all of the content reaches it.
+    expect(rows.map((row) => row.at(-1)).join("")).toBe("hello");
+  });
+
+  it("closes its row whatever end leaves open, and never splits a row with the column", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false });
+    c.log("a", [1], { end: "" });
+    c.log("b");
+    const [first, second] = captured(chunks).split("\n");
+    expect(first).toMatch(/^\[[^\]]*\] a\[1\]$/);
+    expect(second).toMatch(/^\[[^\]]*\] b$/);
+  });
+
+  it("draws the time on a row of its own when the content draws no lines", () => {
+    const { console: c, chunks } = makeConsole({ width: 40 });
+    const nothing: Renderable = { *render() {} };
+    c.log(nothing);
+    expect(captured(chunks)).toMatch(/^\[[^\]]*\] \n$/);
+  });
+
+  it("gives the time and its column the console's base style", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, colorSystem: "ansi", style: "on blue" });
+    c.log("a", [1]);
+    // Two rows — the time beside `a`, then the column's blank beside `[1]` —
+    // and each opens on the blue background before any of its cells.
+    const rows = captured(chunks).split("\n").slice(0, -1);
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect(row).toMatch(/^\x1b\[(?:[0-9;]*;)?44[;m]/);
   });
 });
 

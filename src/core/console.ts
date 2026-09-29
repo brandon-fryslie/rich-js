@@ -10,7 +10,7 @@ import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
 import { RichText } from "./text.js";
 import { renderMarkup } from "./markup.js";
-import { Pretty } from "./pretty.js";
+import { Pretty, isExpandable } from "./pretty.js";
 import { JSONRenderable, type JSONOptions } from "./json.js";
 import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
@@ -151,8 +151,27 @@ export interface PrintOptions {
 // the discriminator is who ends the lines: a text run is ended by the print's
 // `end`, a renderable's lines are each closed by the print.
 type PrintBlock =
-  | { kind: "text"; items: Array<RichText | Pretty> }
+  | { kind: "text"; items: RichText[] }
   | { kind: "lines"; renderable: Renderable };
+
+// What a print draws, before it is written: its rows, whether the last one is
+// closed, and the width they are cropped at. `print` writes them as they are;
+// `log` sets them in the cell beside its time.
+type Drawn = { rows: Segment[][]; closed: boolean; cropWidth: number };
+
+// Rows as the bytes that reach the terminal. Every row but the last is closed
+// by a line break, and the last one when `closed` says so. Crop last, and crop
+// the line-end with the rest: in the reference `end` is the tail of the printed
+// line, so a line cut at the edge loses it too.
+function emit({ rows, closed, cropWidth }: Drawn): Segment[] {
+  const output = rows.flatMap((row, index) =>
+    closed || index < rows.length - 1 ? [...row, Segment.line()] : row,
+  );
+  return [...Segment.cropLines(output, cropWidth)];
+}
+
+// The time `log` stamps, in a form whose width does not change with the hour.
+const LOG_TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", second: "2-digit" };
 
 // Three of the five justify methods place what a print draws as a block, the
 // way Rich's `print` wraps each renderable in `Align`. The other two leave it
@@ -173,27 +192,22 @@ const PLACED_BY: Record<NonNullable<PrintOptions["justify"]>, Alignment | undefi
 // `justify`, `overflow`, `noWrap` and `tabSize` stay behind, as they do in the
 // reference: the print's options set the whole run.
 class TextRun implements Renderable, Measurable {
+  private readonly text: RichText;
+
   constructor(
-    private readonly items: ReadonlyArray<RichText | Pretty>,
+    items: readonly RichText[],
     private readonly end: Segment,
-  ) {}
+  ) {
+    this.text = items.reduce((joined, item) => joined.append(item), new RichText("", { end: "" }));
+  }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* this.text(options).render(options);
+    yield* this.text.render(options);
     yield this.end;
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.text(options).measure(options);
-  }
-
-  // A `Pretty` lays itself out for the width it is offered, so the run is
-  // joined per call rather than once.
-  private text(options: RenderOptions): RichText {
-    return this.items.reduce<RichText>(
-      (joined, item) => joined.append(item instanceof Pretty ? item.toText(options) : item),
-      new RichText("", { end: "" }),
-    );
+    return this.text.measure(options);
   }
 }
 
@@ -466,6 +480,11 @@ export class Console {
   // --- Print ---
 
   print(...args: unknown[]): void {
+    this._writeSegments(emit(this._draw(args, this.options)));
+  }
+
+  // What `print` draws for `args` at `options.maxWidth`.
+  private _draw(args: unknown[], options: RenderOptions): Drawn {
     // Extract options from last arg if it's a PrintOptions
     let opts: PrintOptions = {};
     let items: unknown[];
@@ -500,18 +519,20 @@ export class Console {
     const printStyle = this._theme.resolve(opts.style ?? NULL_STYLE);
 
     // A print is a column of blocks, and every argument joins one of two kinds.
-    // Text — a string, a `RichText`, or data — runs together: adjacent text
+    // Text — a string, a `RichText`, or a scalar — runs together: adjacent text
     // items are one block, joined by `sep` and ended by `end`. Any other
     // renderable is a block of its own that occupies whole lines, so neither
     // `sep` nor `end` ever touches it. That is the reference's split — `end`
     // belongs to text, not to the print — and it is what lets two printed panels
-    // stack with no blank line between them. The one place the reference cuts
-    // differently is data: it gives a container lines of its own, and here all
-    // data is text. The line is not closed by asking where the cursor sits:
-    // `print("a\n")` is a line and an empty one, here as in the reference and
-    // in every other `print`, and only the kind of the item can tell that
-    // trailing break from a `Panel`'s. A call with nothing to print is one
-    // empty text run, so it still ends the line.
+    // stack with no blank line between them. Data is cut where the reference
+    // cuts it: a container (`isExpandable`) is a block, a scalar is text. A
+    // container is laid out by `Pretty` across as many lines as it needs, and
+    // joined into a run it would start partway along a line and leave its
+    // closing bracket where the next item carries on. The line is not closed by
+    // asking where the cursor sits: `print("a\n")` is a line and an empty one,
+    // here as in the reference and in every other `print`, and only the kind of
+    // the item can tell that trailing break from a `Panel`'s. A call with
+    // nothing to print is one empty text run, so it still ends the line.
     const blocks: PrintBlock[] = items.length === 0 ? [{ kind: "text", items: [] }] : [];
     for (const item of items) {
       // Four arms, and they are the whole domain. A `RichText` is already text;
@@ -519,11 +540,12 @@ export class Console {
       // the line end of a run is the print's. Any other renderable draws itself,
       // as a block. A string is the only kind of argument that can *contain*
       // markup, so it is the only kind the markup dialect is applied to.
-      // Everything else is data, and `Pretty` is the single authority on how a
+      // Everything else is data — a block when it is a container, text when it
+      // is not — and `Pretty` is the single authority on how a
       // JavaScript value displays — `String(value)` was a second, weaker one
       // that answered `[object Object]` for every object and let the markup
       // parser eat it. [LAW:one-source-of-truth]
-      let text: RichText | Pretty;
+      let text: RichText;
       if (item instanceof RichText) {
         const richText = item.copy();
         richText.end = "";
@@ -547,11 +569,18 @@ export class Console {
         // Indent guides are styling too, and travel with the same decision —
         // the console owns what `highlight` means for everything it emits,
         // rather than `Pretty` inferring it back out of the highlighter.
-        text = new Pretty(item, {
+        const pretty = new Pretty(item, {
           ...PRINT_DATA_BOUNDS,
           highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
           indentGuides: doHighlight,
         });
+        // A scalar spells the same at every width, so it joins its run as the
+        // one text it is.
+        if (isExpandable(item)) {
+          blocks.push({ kind: "lines", renderable: pretty });
+          continue;
+        }
+        text = pretty.toText(options);
       }
       const run = blocks.at(-1);
       if (run?.kind === "text") run.items.push(new RichText(sep, { end: "" }), text);
@@ -564,7 +593,7 @@ export class Console {
     // at the width, as Rich's does. What `"ignore"` does to a line — no edge,
     // no justify — is `RichText`'s to apply, so it crosses as it was asked for.
     const renderOpts: RenderOptions = {
-      ...this.options,
+      ...options,
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
@@ -606,33 +635,49 @@ export class Console {
     // Every line end goes through the same writeSegments funnel as the text it
     // ends, so it survives recording — otherwise `exportText` and `exportHtml`
     // would join consecutive prints onto a single line. [LAW:single-enforcer]
+    // A block left open carries on along the next block's first line, so the
+    // rows are read off the joined output rather than counted per block.
     const output: Segment[] = [];
+    let closed = true;
     for (const block of blocks) {
-      const { lines, closed } = drawBlock(block);
-      lines.forEach((line, index) => {
+      const drawn = drawBlock(block);
+      drawn.lines.forEach((line, index) => {
         output.push(...styleContent(line));
-        if (closed || index < lines.length - 1) output.push(Segment.line());
+        if (drawn.closed || index < drawn.lines.length - 1) output.push(Segment.line());
       });
+      closed = drawn.closed;
     }
 
-    // Crop last, and crop the line-end with the rest: in the reference `end` is
-    // the tail of the printed line, so a line cut at the edge loses it too.
     // Soft wrap turns cropping off whatever `crop` says, because a line it left
     // whole is meant to reach the terminal whole. [LAW:dataflow-not-control-flow]
     // Not cropping is an unbounded width rather than a skipped step — the same
     // spelling `RichText` uses for `"ignore"`.
-    const cropWidth = !softWrap && (opts.crop ?? true) ? this.width : Infinity;
-    this._writeSegments([...Segment.cropLines(output, cropWidth)]);
+    const cropWidth = !softWrap && (opts.crop ?? true) ? options.maxWidth : Infinity;
+    return { rows: Segment.splitLines(output), closed, cropWidth };
   }
 
+  // The reference's `LogRender`: a grid row of two cells, the time and beside it
+  // whatever `print` would draw for `args` in the width that is left. A grid row
+  // is at least one line tall and always closed, whatever `end` left open
+  // inside its cell. The time gives up cells before the content does, so a
+  // console narrower than the time still shows every argument. The time takes
+  // the console's style alone, as the reference styles only the renderables.
   log(...args: unknown[]): void {
-    // Simple log implementation — adds timestamp
-    const now = new Date();
-    const time = now.toLocaleTimeString();
-    const timeText = new RichText(`[${time}] `, { end: "" });
-    timeText.stylize("log.time");
-
-    this.print(timeText, ...args);
+    const options = this.options;
+    const time = new RichText(`[${new Date().toLocaleTimeString(undefined, LOG_TIME)}] `, { end: "" });
+    time.stylize("log.time");
+    const width = Math.min(time.cellLength, options.maxWidth - 1);
+    const { rows, cropWidth } = this._draw(args, { ...options, maxWidth: options.maxWidth - width });
+    const [stampLine = []] = Segment.splitLines(time.render({ ...options, maxWidth: time.cellLength }));
+    const styled = (cell: Segment[]): Segment[] => [...Segment.applyStyle(cell, this._style)];
+    const stamp = styled(Segment.adjustLineLength(stampLine, width));
+    const blank = styled([new Segment(" ".repeat(width))]);
+    const grid = Array.from({ length: Math.max(1, rows.length) }, (_, index) => [
+      ...(index === 0 ? stamp : blank),
+      ...(rows[index] ?? []),
+    ]);
+    // The row is the column wider than its cell; an uncropped cell stays so.
+    this._writeSegments(emit({ rows: grid, closed: true, cropWidth: cropWidth + width }));
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

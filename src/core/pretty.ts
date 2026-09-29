@@ -242,6 +242,49 @@ function describesItself(value: object): boolean {
 }
 
 /**
+ * How `Pretty` reads an object: by index, by entry, by member, by key, or as
+ * the text it spells itself. `_shape` lays out each form, and `isExpandable`
+ * asks only which one it is, so the two cannot disagree. [LAW:one-source-of-truth]
+ */
+type Form =
+  | { kind: "indexed"; elements: ArrayLike<unknown> }
+  | { kind: "map"; map: Map<unknown, unknown> }
+  | { kind: "set"; set: Set<unknown> }
+  | { kind: "self" }
+  | { kind: "keys"; record: Record<string, unknown> };
+
+function formOf(value: object): Form {
+  const elements = indexedElements(value);
+  if (elements !== null) return { kind: "indexed", elements };
+  if (value instanceof Map) return { kind: "map", map: value };
+  if (value instanceof Set) return { kind: "set", set: value };
+  // Below the Array/Map/Set arms deliberately: an array also overrides
+  // `toString`, but "1,2,3" is a poorer answer than the structural form.
+  if (describesItself(value)) return { kind: "self" };
+  return { kind: "keys", record: value as Record<string, unknown> };
+}
+
+/**
+ * Whether `Pretty` lays a value out as a container — brackets and positions —
+ * rather than spelling it as one piece of text. Emptiness and the depth cap do
+ * not enter into it; `[]` is still a container that happens to print on one
+ * line. This is Python Rich's `is_expandable`, and `Console.print` reads it to
+ * give a container lines of its own.
+ *
+ * A value whose reflection throws is not one, as in the reference's
+ * `_safe_isinstance`: `Pretty` then formats it as text, and the throw reaches
+ * the output as `threw`'s marker rather than taking the print down.
+ */
+export function isExpandable(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  try {
+    return formOf(value).kind !== "self";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * One value inside a slot, and the literal text that follows it.
  *
  * `read` is deferred rather than a value already in hand because reading is
@@ -434,51 +477,48 @@ export class Pretty implements Renderable, Measurable {
     // keep all but the last few keys where the other arms take none.
     const cap = Math.max(0, Math.min(this.maxLength ?? Infinity, bound));
 
-    const elements = indexedElements(value);
-    if (elements !== null) {
-      return this._container("[", "]", "", elements.length, level, () => {
-        // Positions rather than values: each index is read in its own slot, so
-        // one throwing accessor costs its own slot, not the whole sequence.
-        const shown = Math.min(elements.length, cap);
-        return Array.from({ length: shown }, (_, i): Slot => ({
-          head: "",
-          holes: [{ read: () => elements[i], tail: "" }],
-        }));
-      });
+    const form = formOf(value);
+    switch (form.kind) {
+      case "indexed": {
+        const { elements } = form;
+        return this._container("[", "]", "", elements.length, level, () => {
+          // Positions rather than values: each index is read in its own slot, so
+          // one throwing accessor costs its own slot, not the whole sequence.
+          const shown = Math.min(elements.length, cap);
+          return Array.from({ length: shown }, (_, i): Slot => ({
+            head: "",
+            holes: [{ read: () => elements[i], tail: "" }],
+          }));
+        });
+      }
+      case "map":
+        return this._container("Map {", "}", " ", form.map.size, level, () =>
+          take(form.map.entries(), cap).map(([k, v]): Slot => ({
+            head: "",
+            holes: [{ read: () => k, tail: " => " }, { read: () => v, tail: "" }],
+          })),
+        );
+      case "set":
+        return this._container("Set {", "}", " ", form.set.size, level, () =>
+          take(form.set, cap).map((v): Slot => ({
+            head: "",
+            holes: [{ read: () => v, tail: "" }],
+          })),
+        );
+      case "self":
+        return { kind: "text", text: String(value) };
+      case "keys": {
+        // No self-description, so the keys are the whole story.
+        const { record } = form;
+        const keys = Object.keys(record);
+        return this._container("{", "}", " ", keys.length, level, () =>
+          keys.slice(0, cap).map((k): Slot => ({
+            head: `${k}: `,
+            holes: [{ read: () => record[k], tail: "" }],
+          })),
+        );
+      }
     }
-
-    if (value instanceof Map) {
-      return this._container("Map {", "}", " ", value.size, level, () =>
-        take(value.entries(), cap).map(([k, v]): Slot => ({
-          head: "",
-          holes: [{ read: () => k, tail: " => " }, { read: () => v, tail: "" }],
-        })),
-      );
-    }
-
-    if (value instanceof Set) {
-      return this._container("Set {", "}", " ", value.size, level, () =>
-        take(value, cap).map((v): Slot => ({
-          head: "",
-          holes: [{ read: () => v, tail: "" }],
-        })),
-      );
-    }
-
-    // Objects that answer the display question themselves. Sits below the
-    // Array/Map/Set arms deliberately: an array also overrides `toString`, but
-    // "1,2,3" is a poorer answer than the structural form above.
-    if (describesItself(value)) return { kind: "text", text: String(value) };
-
-    // Plain objects — no self-description, so the keys are the whole story.
-    const obj = value as Record<string, unknown>;
-    const keys = Object.keys(obj);
-    return this._container("{", "}", " ", keys.length, level, () =>
-      keys.slice(0, cap).map((k): Slot => ({
-        head: `${k}: `,
-        holes: [{ read: () => obj[k], tail: "" }],
-      })),
-    );
   }
 
   /** The laid-out form of a value, expanded across lines wherever one line will not do. */
