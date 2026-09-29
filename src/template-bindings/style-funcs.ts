@@ -30,6 +30,7 @@ function attrFunc(style: Style): TemplateFunc {
   return {
     fn: ((child: unknown) => applyStyleToFragment(child, style)) as TemplateFunc["fn"],
     argTypes: ["liftable"],
+    arity: { kind: "exact" },
     returnType: "T",
   };
 }
@@ -65,6 +66,7 @@ function colorSinkFunc(slot: "color" | "bgcolor"): TemplateFunc {
         new Style({ [slot]: ColorSpec.parse(spec) }),
       )) as TemplateFunc["fn"],
     argTypes: ["string", "liftable"],
+    arity: { kind: "exact" },
     returnType: "T",
   };
 }
@@ -122,6 +124,7 @@ const styleSpecFunc: TemplateFunc = {
     return applyStyleToFragment(child, Style.parse(spec));
   }) as TemplateFunc["fn"],
   argTypes: ["string", "liftable"],
+  arity: { kind: "exact" },
   returnType: "T",
 };
 
@@ -149,6 +152,7 @@ const linkFunc: TemplateFunc = {
     return applyStyleToFragment(child, new Style({ link: url }));
   }) as TemplateFunc["fn"],
   argTypes: ["string", "liftable"],
+  arity: { kind: "exact" },
   returnType: "T",
 };
 

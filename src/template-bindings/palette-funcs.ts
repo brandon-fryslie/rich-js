@@ -81,11 +81,6 @@ import { ColorRamp, parseRampEasing, type ColorStop } from "../themes/ramp.js";
  * ramp over palette names follows the theme exactly as `color` does.
  */
 function colorStops(tail: readonly unknown[], palette: Palette): ColorStop[] {
-  if (tail.length === 0) {
-    throw new RangeError(
-      `ramp needs at least one stop after the easing: ramp <value> <easing> <position> <color> …`,
-    );
-  }
   if (tail.length % 2 !== 0) {
     throw new RangeError(
       `ramp's last stop (position ${String(tail[tail.length - 1])}) has no color — ` +
@@ -133,29 +128,21 @@ export function paletteFuncs(getPalette: () => Palette): FuncMap {
   const colorFunc: TemplateFunc = {
     fn: ((ref: string) => resolveColorRef(getPalette(), ref).hex) as TemplateFunc["fn"],
     argTypes: ["string"],
+    arity: { kind: "exact" },
     returnType: "string",
   };
   // `ramp <value> <easing> <position> <color> …` — the argument list is one
   // float/string cycle end to end (value, easing, then each stop's position
   // and color), so the engine's `alternating` gate types every slot; the
-  // pairing and the references are parsed in `colorStops`.
+  // pairing and the references are parsed in `colorStops`. Its minimum is the
+  // value, the easing, and one stop, so the gate refuses a stopless call.
   // [LAW:types-are-the-program]
   const rampFunc: TemplateFunc = {
-    fn: ((...args: unknown[]) => {
-      // The engine's `alternating` gate types each slot but sets no minimum
-      // count, so `{{ ramp }}` and `{{ ramp 65 }}` both reach here: one
-      // check over the whole list, naming what is missing. [LAW:no-silent-failure]
-      if (args.length < 2) {
-        throw new RangeError(
-          `ramp needs a value and an easing before its stops (got ${args.length}): ` +
-            `ramp <value> "linear"|"step" <position> <color> …`,
-        );
-      }
-      const [value, easing, ...tail] = args as [number, string, ...unknown[]];
-      return new ColorRamp(parseRampEasing(easing), colorStops(tail, getPalette())).at(value).hex;
-    }) as TemplateFunc["fn"],
+    fn: ((value: number, easing: string, ...tail: unknown[]) =>
+      new ColorRamp(parseRampEasing(easing), colorStops(tail, getPalette())).at(value)
+        .hex) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
-    argTypePattern: "alternating",
+    arity: { kind: "alternating", minimum: 4 },
     returnType: "string",
   };
   return { color: colorFunc, ramp: rampFunc };
