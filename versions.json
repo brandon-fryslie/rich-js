@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-232",
-      "ref": "refs/pull/232/merge",
-      "sha": "ad90b16670240d90cbe21412c32e12ea02048427",
-      "timestamp": "2026-09-29T23:46:07.225Z",
-      "commits": [
-        {
-          "sha": "ad90b16670240d90cbe21412c32e12ea02048427",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:45:08Z",
-          "message": "Merge ce865045e0f3da4f77722589c6642615fc5bc51e into 088e3d35c166cb6f2d10c905dfb26095be882253\n"
-        },
-        {
-          "sha": "ce865045e0f3da4f77722589c6642615fc5bc51e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:45:03-06:00",
-          "message": "docs(columns): drop the empty-column clause, true of the last column only (rich-columns-i08a)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "337f80ee06e91de2d32cc2093267616715f6698a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:40:49-06:00",
-          "message": "fix(measure): a renderable that cannot measure itself is answered once, in Measurement.get; Group measures as Rich's does (rich-columns-i08a)\n\nReview of #232: a Group cell asked for the whole offer, since Group had no\nmeasure and Table/Columns each carried their own fallback. Measurement.get now\ntakes any renderable and gives the reference's (0, max_width) for one without a\nmeasure; Group measures through measureRenderables, as Rich's does. The other\ncopies of the fallback are rich-measure-29a4.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "fe1c80c2d42d98a5e08f7d7e9b7e272d92e92354",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:26:59-06:00",
-          "message": "fix(columns): lay out through Table.grid, as Rich's Columns does (rich-columns-i08a)\n\nColumns keeps only its column-count search and hands the cells to a\nTable.grid with collapsePadding and no padEdge; its own spacing, stretch\nand row-separator code is gone. Table gains what that needs, each ported\nfrom Rich's Table:\n\n- collapsePadding and padEdge options, giving per-column and per-row padding\n- padding above and below a cell is drawn (it was ignored)\n- the `maximum or 1` floor, handed back when the table is squeezed\n  (rich-table-r9aq)\n- cells sized by their own measurement, not String(cell) or the whole\n  text's length (rich-table-ca0, rich-table-pyrl)\n- cells handed the table's rows as a ceiling, per the Height contract\n\nA Columns' declared width is each column's natural width rather than a\nTable column width, so expand still stretches it as Rich does.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "088e3d35c166cb6f2d10c905dfb26095be882253",
-      "timestamp": "2026-09-29T23:12:40.325Z",
+      "sha": "11afe1fb445ff1637e88bab80e53780d69e2b9f2",
+      "timestamp": "2026-09-29T23:48:43.683Z",
       "commits": [
         {
-          "sha": "088e3d35c166cb6f2d10c905dfb26095be882253",
+          "sha": "11afe1fb445ff1637e88bab80e53780d69e2b9f2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:11:38-06:00",
-          "message": "fix(table): stretch an expanding table by Rich's ratio_distribute (rich-table-d1uy) (#230)\n\n* fix(table): stretch an expanding table by Rich's ratio_distribute (rich-table-d1uy)\n\nAn expanding table handed its leftover cells out by largest remainder over\ncontent widths; Rich 9d8f9a3 uses ratio_distribute over widths that include\npadding, rounding each share up. The two agree on totals and disagree on\nwhich column takes a leftover cell. The stretch now goes through\nratioDistribute (src/renderables/ratio.ts), weighted by padded width.\n\nThe rowless maxWidth 7/3 frame the suite pinned as \"Rich's own output\" was\nnot: Rich prints 24/13 there, which is what this renders.\n\n* fix(ratio): split in exact integers, as Rich's ratio_distribute does (rich-table-d1uy)\n\nA double's ratio * remaining rounds past 2^53, so near MAX_SAFE_INTEGER the\nparts stopped summing to the total — reachable from Table.measure's declared\nbranch at an unbounded offer. The stretch comment no longer claims the\ncolumns it weighs are Rich's."
+          "timestamp": "2026-09-29T17:47:51-06:00",
+          "message": "fix(columns): lay out through Table.grid, as Rich's Columns does (rich-columns-i08a) (#232)\n\n* fix(columns): lay out through Table.grid, as Rich's Columns does (rich-columns-i08a)\n\nColumns keeps only its column-count search and hands the cells to a\nTable.grid with collapsePadding and no padEdge; its own spacing, stretch\nand row-separator code is gone. Table gains what that needs, each ported\nfrom Rich's Table:\n\n- collapsePadding and padEdge options, giving per-column and per-row padding\n- padding above and below a cell is drawn (it was ignored)\n- the `maximum or 1` floor, handed back when the table is squeezed\n  (rich-table-r9aq)\n- cells sized by their own measurement, not String(cell) or the whole\n  text's length (rich-table-ca0, rich-table-pyrl)\n- cells handed the table's rows as a ceiling, per the Height contract\n\nA Columns' declared width is each column's natural width rather than a\nTable column width, so expand still stretches it as Rich does.\n\n* fix(measure): a renderable that cannot measure itself is answered once, in Measurement.get; Group measures as Rich's does (rich-columns-i08a)\n\nReview of #232: a Group cell asked for the whole offer, since Group had no\nmeasure and Table/Columns each carried their own fallback. Measurement.get now\ntakes any renderable and gives the reference's (0, max_width) for one without a\nmeasure; Group measures through measureRenderables, as Rich's does. The other\ncopies of the fallback are rich-measure-29a4.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* docs(columns): drop the empty-column clause, true of the last column only (rich-columns-i08a)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     },
