@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-207",
+      "ref": "refs/pull/207/merge",
+      "sha": "b0ff702f4f4721d0d8c13f78684d3961d37c9307",
+      "timestamp": "2026-09-29T16:40:33.536Z",
+      "commits": [
+        {
+          "sha": "b0ff702f4f4721d0d8c13f78684d3961d37c9307",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T10:39:43-06:00",
+          "message": "Merge 154cbc76aa68f923d30c6ae0202667756fde16f8 into 8d1698c63a99cdfa810c495b3e6cbabf7d38f79d\n"
+        },
+        {
+          "sha": "154cbc76aa68f923d30c6ae0202667756fde16f8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T10:39:36-06:00",
+          "message": "feat(widgets): the wheel scrolls the innermost Viewport under the pointer (rich-viewport-owi.5)\n\nViewport stamps every cell of its rows, gutter included, with\nSegment.anchorLines, so the composed frame names it under any cell at any\ndepth, around its content's anchors. EventRouter sends a wheel notch to the\ninnermost Viewport on that chain (viewportAt), one line, and asks the source\nfor a frame through the new FrameSource.refresh; WidgetApp.refresh is\nApp.refresh.\n\nThe wheel no longer reaches widgets: WidgetMouseEvent's type is narrowed to\npress, release and motion, so a widget under the pointer cannot hide the\nviewport around it and no widget can handle a wheel twice.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8d1698c63a99cdfa810c495b3e6cbabf7d38f79d",
