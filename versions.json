@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-204",
+      "ref": "refs/pull/204/merge",
+      "sha": "09bf34d5ab64a4dff0ee6ec3b629abe00b512d04",
+      "timestamp": "2026-09-29T13:47:02.995Z",
+      "commits": [
+        {
+          "sha": "09bf34d5ab64a4dff0ee6ec3b629abe00b512d04",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:46:09-06:00",
+          "message": "Merge 84b6e89175347b38149112da8cf303e7392d1290 into d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3\n"
+        },
+        {
+          "sha": "84b6e89175347b38149112da8cf303e7392d1290",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:45:57-06:00",
+          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n\nA rowless table with its header hidden sized each column to zero and drew\na two-cell box; Rich measures a cell-less column Measurement(1, max_width)\nand fills the offer. _widestCell now answers undefined for 'no cells',\ndistinct from 0 for 'cells that draw nothing'. Frames pinned against\nRich's output at 20 and 40 cells, 1 and 2 columns.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-203",
       "ref": "refs/pull/203/merge",
       "sha": "e1463ea0023c8af9982b4380838eba0411cca86c",
