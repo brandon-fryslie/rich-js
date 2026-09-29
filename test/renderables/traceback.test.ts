@@ -132,6 +132,22 @@ describe("Traceback", () => {
     ].join("\n"));
   });
 
+  // --- V8 frame shapes ---
+
+  it.each([
+    { frame: "at walk (/a.ts:5:10)", shown: "walk /a.ts:5" },
+    { frame: "at /a.ts:9:1", shown: "/a.ts:9" },
+    { frame: "at async outer (/a.ts:6:26)", shown: "outer /a.ts:6" },
+    { frame: "at async node:internal/modules/esm/loader:650:26", shown: "node:internal/modules/esm/loader:650" },
+    { frame: "at async file:///app/main.mjs:9:7", shown: "file:///app/main.mjs:9" },
+    { frame: "at async (/a.ts:5:29)", shown: "async /a.ts:5" },
+    { frame: "at new Foo (/a.ts:3:1)", shown: "new Foo /a.ts:3" },
+  ])("renders `$frame` as `$shown`", ({ frame, shown }) => {
+    const error = new Error("x");
+    error.stack = `Error: x\n    ${frame}`;
+    expect(collectText(new Traceback(error), { maxWidth: 80 })).toBe(`Error: x\n\n  ${shown}\n`);
+  });
+
   // Installing Traceback as the process-wide crash handler is a node
   // capability and lives behind `node/traceback`; its contract is asserted in
   // test/node/traceback.test.ts.
