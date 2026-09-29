@@ -40,10 +40,11 @@ function parseStack(error: Error): StackFrame[] {
   const frames: StackFrame[] = [];
 
   for (const line of lines) {
-    // V8 frame shapes: "at fn (file:line:column)" and "at file:line:column",
-    // either one prefixed "async " when the frame is an awaited call. The
-    // marker is not part of any name, so it is read and dropped; the lookahead
-    // keeps "at async (file:…)" — a function named `async` — a name.
+    // The two V8 frame shapes located by file:line:column: "at fn (file:…)"
+    // and "at file:…", either one prefixed "async " when the frame is an
+    // awaited call. The marker is not part of any name, so it is read and
+    // dropped; the lookahead keeps "at async (file:…)" — a function named
+    // `async` — a name.
     const match = /^at\s+(?:async\s+(?!\())?(?:(.+?)\s+\()?(.+?):(\d+):\d+\)?/.exec(line.trim());
     if (match) {
       frames.push({

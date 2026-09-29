@@ -141,6 +141,7 @@ describe("Traceback", () => {
     { frame: "at async node:internal/modules/esm/loader:650:26", shown: "node:internal/modules/esm/loader:650" },
     { frame: "at async file:///app/main.mjs:9:7", shown: "file:///app/main.mjs:9" },
     { frame: "at async (/a.ts:5:29)", shown: "async /a.ts:5" },
+    { frame: "at async async (/a.ts:5:29)", shown: "async /a.ts:5" },
     { frame: "at new Foo (/a.ts:3:1)", shown: "new Foo /a.ts:3" },
   ])("renders `$frame` as `$shown`", ({ frame, shown }) => {
     const error = new Error("x");
