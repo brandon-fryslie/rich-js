@@ -42,13 +42,19 @@ Each string is markup, the same as a string passed to `console.print`.
 
 | Option | Description |
 |---|---|
-| `width` | Fixed width for every column, fitting as many columns as that width allows. Offered less than one column, the column renders at the offer — a declared width never makes a line wider than the space given |
-| `equal` | Force all columns to the same width (uses the widest item as the common width) |
-| `expand` | Stretch the column layout to fill the full terminal width |
+| `width` | Fixed width for every column, fitting as many columns as that width allows and never more columns than items. Offered less than one column, the column renders at the offer — a declared width never makes a line wider than the space given |
+| `equal` | Choose the number of columns as if every item were as wide as the widest one. Each column is still only as wide as its own items |
+| `expand` | Stretch the columns to fill the width offered, wider columns taking more of the extra space. Without it, a `Columns` is only as wide as its columns and the gaps between them |
 | `columnFirst` | Fill columns top-to-bottom before left-to-right (like `ls`) |
-| `padding` | Padding between items |
+| `padding` | Space around each item, in the same shapes as `Padding` takes; the default is `[0, 1]`. Columns stand as far apart as the wider of the left and right sides. Rows stand `top + max(0, top - bottom)` lines apart — Rich's arithmetic, so a bottom-only padding separates nothing |
 
-The same listing twice: `columnFirst` reads down each column before moving right, the order `ls` uses, and a declared `width` of 22 cells leaves room for three columns instead of four:
+Each column is as wide as the widest item in it, so a listing of mostly short names with one long one keeps the short columns narrow. Every option above follows Python Rich's `Columns` byte for byte, with three exceptions:
+
+- A declared `width` chooses how many columns to use in the same way as the automatic layout, so it can choose a different number of columns than Rich. Rich divides the offer by the width: it fills the offer with empty columns when there are fewer items than columns, and fails outright when the width is wider than the offer.
+- An empty item gets a column with no width. Rich's grid makes that column one cell wide, and when that extra cell no longer fits, Rich shrinks the other columns to make room.
+- A `Columns` measures as wide as its columns and the gaps between them. Rich's `Columns` does not measure itself, so inside a fitted `Panel` it takes the whole width offered.
+
+The same listing several ways: `columnFirst` reads down each column before moving right, the order `ls` uses; a declared `width` of 22 cells leaves room for three columns instead of four; `padding` of four cells on each side spreads the columns further apart; and `expand` stretches them to the edge of the terminal:
 
 ```typescript
 console.rule("columnFirst: true");
@@ -56,6 +62,12 @@ console.print(new Columns(files, { columnFirst: true }));
 
 console.rule("width: 22");
 console.print(new Columns(files, { width: 22 }));
+
+console.rule("padding: [0, 4]");
+console.print(new Columns(files, { padding: [0, 4] }));
+
+console.rule("expand: true");
+console.print(new Columns(files, { expand: true }));
 ```
 
 ## Content

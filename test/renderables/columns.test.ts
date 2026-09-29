@@ -164,11 +164,14 @@ describe("Columns", () => {
   it("renders a declared width wider than the offer at the offer", () => {
     const cols = (): Columns => new Columns(["aaaaaa", "bbbbbb"], { width: 6 });
     // Laid out at the declared six cells, this emitted six-cell lines into a
-    // three-cell request while `measure` reported three.
-    expect(collectLines(cols(), { maxWidth: 3 })).toEqual(["aaa", "aaa", "bbb", "bbb"]);
+    // three-cell request while `measure` reported three. Python Rich 9d8f9a3
+    // has no answer to compare: it divides the offer by the declared width,
+    // gets zero columns, and raises ZeroDivisionError.
+    expect(collectLines(cols(), { maxWidth: 3 })).toEqual(["aa…", "bb…"]);
     expect(cols().measure({ maxWidth: 3 })).toEqual({ minimum: 1, maximum: 3 });
-    // Offered room, the declared width is what each column gets.
-    expect(collectLines(cols(), { maxWidth: 14 })).toEqual(["aaaaaa  bbbbbb"]);
+    // Offered room, the declared width is what each column gets. Python Rich
+    // 9d8f9a3 prints this line for the same call.
+    expect(collectLines(cols(), { maxWidth: 14 })).toEqual(["aaaaaa bbbbbb"]);
   });
 
   // --- Measurement (columns-behavior.md) ---
@@ -187,5 +190,101 @@ describe("Columns", () => {
   it("does not draw a blank row for a RichText item with an embedded trailing newline", () => {
     const cols = new Columns([new RichText("foo\n"), "bar"]);
     expect(collectLines(cols, { maxWidth: 40 })).toHaveLength(1);
+  });
+
+  // --- The reference's layout (rich-columns-awe, rich-columns-sf4) ---
+  //
+  // Every expected value below that is not marked otherwise is what Python Rich
+  // 9d8f9a3 prints for the same call, `Console(width=…).render_lines(…, pad=False)`.
+
+  const listing = ["alpha", "be", "gamma", "d", "epsilon"];
+
+  it("sizes each column by its own widest item and stops at that width", () => {
+    // Offered 20, the grid is 18 wide: the columns fill nothing they were not
+    // given content for, and `measure` reports exactly the width drawn.
+    const lines = collectLines(new Columns(listing), { maxWidth: 20 });
+    expect(lines).toEqual(["alpha   be gamma d", "epsilon           "]);
+    expect(new Columns(listing).measure({ maxWidth: 20 })).toEqual({ minimum: 1, maximum: 18 });
+    expect(collectLines(new Columns(["a", "b"]), { maxWidth: 20 })).toEqual(["a b"]);
+  });
+
+  it("expand stretches the columns to the offer, weighted by width", () => {
+    expect(collectLines(new Columns(["a", "b"], { expand: true }), { maxWidth: 20 })).toEqual([
+      "a             b     ",
+    ]);
+    expect(collectLines(new Columns(listing, { expand: true }), { maxWidth: 20 })).toEqual([
+      "alpha    be  gamma d",
+      "epsilon             ",
+    ]);
+    // What a Columns asks for is the unstretched grid, as a Table's measure is.
+    expect(new Columns(["a", "b"], { expand: true }).measure({ maxWidth: 20 }).maximum).toBe(3);
+  });
+
+  it("expand renders each item at its stretched column width", () => {
+    const panels = [new Panel("x", { expand: false }), new Panel("yy", { expand: false })];
+    expect(collectLines(new Columns(panels, { expand: true }), { maxWidth: 16 })).toEqual([
+      "╭───╮   ╭────╮  ",
+      "│ x │   │ yy │  ",
+      "╰───╯   ╰────╯  ",
+    ]);
+  });
+
+  it("padding sets the gap between columns to its wider horizontal side", () => {
+    expect(collectLines(new Columns(["a", "b"], { padding: 3 }), { maxWidth: 20 })).toEqual(["a   b"]);
+    expect(collectLines(new Columns(["a", "b"], { padding: [0, 1, 0, 3] }), { maxWidth: 20 })).toEqual([
+      "a   b",
+    ]);
+  });
+
+  it("padding separates rows the way the reference's collapsed grid does", () => {
+    const rows = (padding: [number, number] | [number, number, number, number]): string[] =>
+      collectLines(new Columns(listing, { padding }), { maxWidth: 20 });
+    const blank = " ".repeat(18);
+    expect(rows([1, 1])).toEqual(["alpha   be gamma d", blank, "epsilon           "]);
+    // The top is counted twice and a bottom-only padding separates nothing:
+    // Rich collapses a row's bottom into `top - bottom` and keeps the next top.
+    expect(rows([2, 1, 0, 1])).toEqual(["alpha   be gamma d", blank, blank, blank, blank, "epsilon           "]);
+    expect(rows([0, 1, 2, 1])).toEqual(["alpha   be gamma d", "epsilon           "]);
+  });
+
+  it("columnFirst gives the leading columns the extra items", () => {
+    expect(collectLines(new Columns(["a", "b", "c", "d", "e"], { columnFirst: true }), { maxWidth: 8 })).toEqual([
+      "a c d e",
+      "b      ",
+    ]);
+    expect(collectLines(new Columns(listing, { columnFirst: true }), { maxWidth: 20 })).toEqual([
+      "alpha gamma epsilon",
+      "be    d            ",
+    ]);
+  });
+
+  it("equal counts columns by the widest item and sizes them by their own", () => {
+    expect(collectLines(new Columns(listing, { equal: true }), { maxWidth: 20 })).toEqual([
+      "alpha   be",
+      "gamma   d ",
+      "epsilon   ",
+    ]);
+    expect(collectLines(new Columns(listing, { equal: true, expand: true }), { maxWidth: 20 })).toEqual([
+      "alpha           be  ",
+      "gamma           d   ",
+      "epsilon             ",
+    ]);
+  });
+
+  it("never lays out more columns than items, in any mode", () => {
+    // Not the reference: Rich divides a declared width into the offer without
+    // counting items, and prints `"a   b              "` — three empty columns.
+    expect(collectLines(new Columns(["a", "b"], { width: 3 }), { maxWidth: 20 })).toEqual(["a   b  "]);
+    expect(collectLines(new Columns(["a", "b"], { equal: true }), { maxWidth: 20 })).toEqual(["a b"]);
+  });
+
+  it("an item wider than the offer takes one column and ends in an ellipsis", () => {
+    expect(collectLines(new Columns(["x".repeat(12), "b"]), { maxWidth: 5 })).toEqual(["xxxx…", "b    "]);
+  });
+
+  it("measures a listing of 200,000 items", () => {
+    // Taken as one argument per item, the widest of this many overflows the call stack.
+    const columns = new Columns(Array.from({ length: 200_000 }, () => "a"));
+    expect(columns.measure({ maxWidth: 80 })).toEqual({ minimum: 1, maximum: 79 });
   });
 });
