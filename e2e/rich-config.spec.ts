@@ -8,6 +8,7 @@
  * host; the demo has no path of its own for either.
  */
 import { test, expect, type Page } from "@playwright/test";
+import { cellLen } from "../src/core/cells.js";
 
 // The page shell's terminal (examples/_browser-shell/mount.ts.tmpl).
 const COLS = 100;
@@ -16,7 +17,7 @@ const ROWS = 30;
 /** The terminal's rows as the user reads them. */
 async function screen(page: Page): Promise<string[]> {
   const rows = await page.locator(".xterm-rows > div").allTextContents();
-  return rows.map((row) => row.replace(/ /g, " "));
+  return rows.map((row) => row.replace(/\u00a0/g, " "));
 }
 
 async function shows(page: Page, text: string): Promise<void> {
@@ -24,17 +25,18 @@ async function shows(page: Page, text: string): Promise<void> {
 }
 
 /** Click the cell where `text` first appears on screen, at its first character. */
-async function clickOn(page: Page, text: string, rowOffset = 0): Promise<void> {
+async function clickOn(page: Page, text: string): Promise<void> {
   const rows = await screen(page);
   const y = rows.findIndex((row) => row.includes(text));
   expect(y, `"${text}" is on screen:\n${rows.join("\n")}`).toBeGreaterThanOrEqual(0);
-  const x = rows[y]!.indexOf(text);
+  // A string index counts code units; the terminal counts cells.
+  const x = cellLen(rows[y]!.slice(0, rows[y]!.indexOf(text)));
   const box = await page.locator(".xterm-screen").boundingBox();
   if (box === null) throw new Error("the terminal's screen is not laid out");
   const cell = { width: box.width / COLS, height: box.height / ROWS };
   await page.mouse.click(
     box.x + (x + 0.5) * cell.width,
-    box.y + (y + rowOffset + 0.5) * cell.height,
+    box.y + (y + 0.5) * cell.height,
   );
 }
 

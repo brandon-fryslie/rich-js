@@ -34,6 +34,7 @@ import {
   Panel,
   ProgressBar,
   Columns,
+  RichText,
   Group,
   Layout,
   ROUNDED,
@@ -214,16 +215,14 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   const swatchesItem = new StaticItem({
     id: "static-swatches",
-    render: (_options) => {
+    render: (options) => {
       const theme = state.selectedTheme;
       const palette = theme.palette;
       const showMuted = cbMuted.checked;
       const contrastThreshold = slContrast.value;
       const accentKeys = ["primary", "secondary", "accent", "success", "warning", "error"] as const;
-      const segments: Segment[] = [];
-      for (const [i, key] of accentKeys.entries()) {
-        // Two to a row: the preview is half the screen.
-        if (i > 0 && i % 2 === 0) segments.push(new Segment("\n"));
+      // As many to a row as the pane is wide.
+      return new Columns(accentKeys.map((key) => {
         const c = palette.get(key)!;
         const lum = luminance(c);
         const fgLight = lum > 0.179;
@@ -232,23 +231,22 @@ export function runDemo(host: TerminalHost): DemoHandle {
           bgcolor: ColorSpec.fromRgba(c),
           bold: true,
         });
-        segments.push(new Segment(` ${key.padEnd(10)}`, swatchStyle));
         const isOk = lum > contrastThreshold;
         const tagColor = palette.get(isOk ? "success" : "warning")!;
-        const tagStyle = new Style({ color: ColorSpec.fromRgba(tagColor) });
-        segments.push(new Segment(isOk ? " OK " : "low ", tagStyle));
+        const swatch = RichText.assemble([
+          [` ${key.padEnd(10)}`, swatchStyle],
+          [isOk ? " OK " : "low ", new Style({ color: ColorSpec.fromRgba(tagColor) })],
+        ]);
         if (showMuted) {
           const muted = palette.get(`${key}-muted`)!;
           const mutedFgLight = luminance(muted) > 0.179;
-          const mutedStyle = new Style({
+          swatch.append(" muted ", new Style({
             color: mutedFgLight ? ColorSpec.fromRgb(0, 0, 0) : ColorSpec.fromRgb(200, 200, 200),
             bgcolor: ColorSpec.fromRgba(muted),
-          });
-          segments.push(new Segment(" muted ", mutedStyle));
+          }));
         }
-        segments.push(new Segment(" "));
-      }
-      return segments;
+        return swatch;
+      })).render(options);
     },
   });
 
@@ -289,7 +287,7 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   const progressItem = new StaticItem({
     id: "static-progress",
-    render: (_options) => {
+    render: (options) => {
       if (!cbProgress.checked) return [];
       const theme = state.selectedTheme;
       const palette = theme.palette;
@@ -304,15 +302,15 @@ export function runDemo(host: TerminalHost): DemoHandle {
       for (let i = 0; i < progressData.length; i++) {
         const p = progressData[i]!;
         const labelStyle = new Style({ color: paletteColor(palette.get(p.color)!), bold: true });
-        segments.push(new Segment(` ${p.label.padEnd(10)} `, labelStyle));
+        const label = ` ${p.label.padEnd(10)} `;
+        segments.push(new Segment(label, labelStyle));
         const bar = new ProgressBar({
           total: 100,
           completed: p.pct,
-          width: 30,
           completeStyle: new Style({ bgcolor: paletteColor(palette.get(p.color)!) }),
           style: new Style({ bgcolor: paletteColor(palette.get(`${p.color}-muted`)!) }),
         });
-        for (const seg of bar.render({ maxWidth: 50 })) segments.push(seg);
+        for (const seg of bar.render({ ...options, maxWidth: options.maxWidth - label.length })) segments.push(seg);
         if (i < progressData.length - 1) segments.push(new Segment("\n"));
       }
       return segments;
@@ -321,19 +319,20 @@ export function runDemo(host: TerminalHost): DemoHandle {
 
   const ansiItem = new StaticItem({
     id: "static-ansi",
-    render: (_options) => {
+    render: (options) => {
       if (!cbAnsi.checked) return [];
       const theme = state.selectedTheme;
       const palette = theme.palette;
       const headingStyle = new Style({ color: paletteColor(palette.get("secondary")!), bold: true });
-      const segments: Segment[] = [new Segment("ANSI Palette", headingStyle), new Segment("\n")];
       const ansiTable = theme.ansiColors;
-      for (let i = 0; i < 16; i++) {
-        const c = ansiTable.get(i);
-        if (i === 8) segments.push(new Segment("\n"));
-        segments.push(new Segment(`██${String(i).padStart(2, " ")} `, new Style({ color: ColorSpec.fromRgba(c) })));
-      }
-      return segments;
+      const swatches = Array.from({ length: 16 }, (_, i) => RichText.assemble([
+        ["██", new Style({ color: ColorSpec.fromRgba(ansiTable.get(i)) })],
+        String(i).padStart(2, " "),
+      ]));
+      return [
+        new Segment("ANSI Palette", headingStyle), new Segment("\n"),
+        ...new Columns(swatches).render(options),
+      ];
     },
   });
 

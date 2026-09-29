@@ -16,6 +16,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { PassThrough, Writable } from "stream";
 import { NodeTerminalHost } from "../../../src/node/terminal-host.js";
+import { cellLen } from "../../../src/core/cells.js";
 import { runDemo, type DemoHandle } from "../../../examples/rich-config/app.js";
 
 const ALT_ON = "\x1b[?1049h";
@@ -65,12 +66,14 @@ function screen({ demo }: Session): string[] {
   return demo.frame.map((line) => line.map((segment) => segment.text).join(""));
 }
 
-/** Where `text` first appears on screen. */
-function find(session: Session, text: string): { x: number; y: number } {
+/** The cell where `target` first appears on screen. */
+function find(session: Session, target: string | RegExp): { x: number; y: number } {
   const rows = screen(session);
-  const y = rows.findIndex((row) => row.includes(text));
-  expect(y, `"${text}" is on screen:\n${rows.join("\n")}`).toBeGreaterThanOrEqual(0);
-  return { x: rows[y]!.indexOf(text), y };
+  const at = rows.map((row) => (typeof target === "string" ? row.indexOf(target) : row.search(target)));
+  const y = at.findIndex((i) => i >= 0);
+  expect(y, `${String(target)} is on screen:\n${rows.join("\n")}`).toBeGreaterThanOrEqual(0);
+  // A string index counts code units; the terminal counts cells.
+  return { x: cellLen(rows[y]!.slice(0, at[y])), y };
 }
 
 /** Wait for the frame to show `text` — frames paint a task after a change. */
@@ -151,9 +154,8 @@ describe("rich-config, full-screen, its widgets in a Panel in a Layout pane", ()
   it("types into the text input a click focused", async () => {
     const session = start();
     await shows(session, "palette 29/29");
-    // The search box is the row under the theme dropdown, inside the panel.
-    const dropdown = find(session, "Default ");
-    session.send(click({ x: dropdown.x, y: dropdown.y + 1 }));
+    // Unfocused and empty, the search box draws its brackets and nothing else.
+    session.send(click(find(session, /\[ +\]/)));
     await shows(session, "▸ in-search ");
 
     session.send("err\r");
