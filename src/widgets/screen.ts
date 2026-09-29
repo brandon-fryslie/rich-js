@@ -345,12 +345,8 @@ export class DefaultScreen implements Screen {
       if (!hasOverlay(widget)) continue;
       const overlaySegs = widget.renderOverlay(renderOptions);
       if (overlaySegs === null) continue;
-      // Overlay row i is the widget's row height+i: stamp it below `height`
-      // empty rows standing in for the footprint, then drop them.
-      const overlayRawLines = Segment.anchorLines(
-        [...Array.from({ length: height }, () => []), ...Segment.splitLines(overlaySegs)],
-        widget,
-      ).slice(height);
+      // Overlay row i is the widget's row height+i.
+      const overlayRawLines = Segment.anchorLines(Segment.splitLines(overlaySegs), widget, height);
 
       // [LAW:single-enforcer] Same per-line clip as the base pass.
       const overlayAvailable = Math.max(0, width - x);

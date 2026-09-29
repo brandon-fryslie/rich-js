@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Segment } from "../../src/core/segment.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
@@ -8,8 +9,8 @@ const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: fa
 const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
 const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
 
-const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
-const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
 
 describe("Checkbox", () => {
   it("constructs with defaults", () => {
@@ -47,77 +48,77 @@ describe("Checkbox", () => {
   describe("rendering", () => {
     it("renders unchecked indicator with label", () => {
       const cb = new Checkbox({ label: "Go" });
-      const segments = [...cb.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("[ ] Go");
     });
 
     it("renders checked indicator with label", () => {
       const cb = new Checkbox({ label: "Go", checked: true });
-      const segments = [...cb.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("[✓] Go");
     });
 
     it("renders ASCII fallback when asciiOnly", () => {
       const cb = new Checkbox({ label: "Go", checked: true });
-      const segments = [...cb.render({ maxWidth: 80, asciiOnly: true })];
+      const segments = Segment.splitLines(cb.render({ maxWidth: 80, asciiOnly: true }))[0]!;
       expect(segments[0]!.text).toBe("[x] Go");
     });
 
     it("renders unchecked the same in ASCII and Unicode modes", () => {
       const cb = new Checkbox({ label: "Go" });
-      const unicode = [...cb.render({ maxWidth: 80 })];
-      const ascii = [...cb.render({ maxWidth: 80, asciiOnly: true })];
+      const unicode = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
+      const ascii = Segment.splitLines(cb.render({ maxWidth: 80, asciiOnly: true }))[0]!;
       expect(unicode[0]!.text).toBe(ascii[0]!.text);
     });
 
     it("renders with style (not undefined)", () => {
       const cb = new Checkbox({ label: "Go" });
-      const segments = [...cb.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style).toBeDefined();
     });
 
     it("renders dimmed when disabled", () => {
       const cb = new Checkbox({ label: "Go", disabled: true });
-      const segments = [...cb.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.dim).toBe(true);
     });
 
     it("renders with underline when focused", () => {
       const cb = new Checkbox({ label: "Go" });
       cb.focus();
-      const segments = [...cb.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.underline).toBe(true);
     });
 
     it("renders without underline when not focused", () => {
       const cb = new Checkbox({ label: "Go" });
-      const segments = [...cb.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.underline).toBeFalsy();
     });
 
     it("focus does not change width", () => {
       const cb = new Checkbox({ label: "Go" });
-      const normalSegs = [...cb.render({ maxWidth: 80 })];
+      const normalSegs = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       cb.focus();
-      const focusedSegs = [...cb.render({ maxWidth: 80 })];
+      const focusedSegs = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(normalSegs[0]!.text.length).toBe(focusedSegs[0]!.text.length);
     });
 
     it("toggle does not change width", () => {
       const cb = new Checkbox({ label: "Go" });
-      const uncheckedSegs = [...cb.render({ maxWidth: 80 })];
+      const uncheckedSegs = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       cb.handleKey(spaceEvent());
-      const checkedSegs = [...cb.render({ maxWidth: 80 })];
+      const checkedSegs = Segment.splitLines(cb.render({ maxWidth: 80 }))[0]!;
       expect(uncheckedSegs[0]!.text.length).toBe(checkedSegs[0]!.text.length);
     });
 
     it("checked uses primary palette colour, unchecked uses foreground", () => {
       const checked = new Checkbox({ label: "Go", checked: true });
       const unchecked = new Checkbox({ label: "Go" });
-      const checkedFg = [...checked.render({ maxWidth: 80 })][0]!.style!.color;
-      const uncheckedFg = [...unchecked.render({ maxWidth: 80 })][0]!.style!.color;
+      const checkedFg = Segment.splitLines(checked.render({ maxWidth: 80 }))[0]![0]!.style!.color;
+      const uncheckedFg = Segment.splitLines(unchecked.render({ maxWidth: 80 }))[0]![0]!.style!.color;
       expect(checkedFg).toBeDefined();
       expect(uncheckedFg).toBeDefined();
       expect(checkedFg!.name).not.toBe(uncheckedFg!.name);

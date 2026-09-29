@@ -1,5 +1,5 @@
 /**
- * EventRouter — parses raw stdin into KeyEvent / WidgetMouseEvent values
+ * EventRouter — parses raw stdin into KeyEvent / ScreenMouseEvent values
  * and dispatches them to widgets via the Screen's FocusManager and the frame
  * it last painted.
  *
@@ -22,11 +22,12 @@ import { KeyEvent } from "./types.js";
 import type {
   FrameSource,
   InteractiveWidget,
-  WidgetMouseEvent,
+  ScreenMouseEvent,
   KeyHandlerOptions,
   KeyHandlerPriority,
 } from "./types.js";
-import { widgetAt } from "./hit.js";
+import { drew, originOf, widgetAt } from "./hit.js";
+import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { TerminalHost } from "../host/terminal-host.js";
 
@@ -162,7 +163,7 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 // Result of attempting to consume one event from the head of the buffer.
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyEvent }
-  | { kind: "mouse"; bytes: number; event: WidgetMouseEvent }
+  | { kind: "mouse"; bytes: number; event: ScreenMouseEvent }
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
@@ -187,10 +188,11 @@ export class EventRouter {
   // browser host.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
   // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's
-  // target is recorded, origin included; mouse_move/mouse_up between then and
-  // the next mouse_up route to it unconditionally and relative to that
-  // origin, so a drag past the widget's edge still drives its state (Slider's
-  // _dragging) and reports a column outside it. Cleared on the next mouse_up.
+  // target is recorded; mouse_move/mouse_up between then and the next
+  // mouse_up route to it unconditionally and relative to where it is painted
+  // (`relocate`), so a drag past the widget's edge still drives its state
+  // (Slider's _dragging) and reports a column outside it. Cleared on the next
+  // mouse_up.
   private captured: Target | null = null;
   // The widget the pointer last moved over; the one widget `hovered` is true on.
   private hoveredWidget: InteractiveWidget | null = null;
@@ -199,7 +201,7 @@ export class EventRouter {
   // in priority tiers and stops as soon as some participant calls
   // `event.stop()`. Insertion order is preserved within each tier.
   private readonly keyChain: RegisteredKeyHandler[] = [];
-  private readonly mouseHandlers = new Set<(event: WidgetMouseEvent) => void>();
+  private readonly mouseHandlers = new Set<(event: ScreenMouseEvent) => void>();
 
   constructor(options: EventRouterOptions) {
     this.source = options.screen;
@@ -282,7 +284,7 @@ export class EventRouter {
     };
   }
 
-  onMouse(handler: (event: WidgetMouseEvent) => void): Unsubscribe {
+  onMouse(handler: (event: ScreenMouseEvent) => void): Unsubscribe {
     this.mouseHandlers.add(handler);
     return () => this.mouseHandlers.delete(handler);
   }
@@ -576,10 +578,11 @@ export class EventRouter {
     }
   }
 
-  private dispatchMouse(event: WidgetMouseEvent): void {
+  private dispatchMouse(event: ScreenMouseEvent): void {
     for (const handler of this.mouseHandlers) handler(event);
 
-    const hit = widgetAt(this.source.frame, event.x, event.y);
+    const frame = this.source.frame;
+    const hit = widgetAt(frame, event.x, event.y);
     if (event.type === "mouse_move") this.hover(hit?.widget ?? null);
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the
@@ -591,9 +594,14 @@ export class EventRouter {
     // subtraction.
     const useCapture = event.type === "mouse_move" || event.type === "mouse_up";
     const target: Target | null =
-      (useCapture ? this.captured : null) ??
+      (useCapture && this.captured ? relocate(frame, this.captured) : null) ??
       (hit ? { widget: hit.widget, originX: event.x - hit.col, originY: event.y - hit.row } : null);
-    target?.widget.handleMouse({ ...event, x: event.x - target.originX, y: event.y - target.originY });
+    target?.widget.handleMouse({
+      ...event,
+      x: event.x - target.originX,
+      y: event.y - target.originY,
+      over: drew(frame, target.widget, event.x, event.y),
+    });
 
     if (event.type === "mouse_down") this.captured = target;
     else if (event.type === "mouse_up") this.captured = null;
@@ -611,12 +619,20 @@ export class EventRouter {
 
 // --- Helpers ---
 
+// [LAW:one-source-of-truth] A captured widget's origin is read off the frame
+// just painted, so a drag follows the widget if it moved since the press; one
+// no longer painted is where the press found it.
+function relocate(frame: readonly (readonly Segment[])[], target: Target): Target {
+  const origin = originOf(frame, target.widget);
+  return origin ? { widget: target.widget, originX: origin.x, originY: origin.y } : target;
+}
+
 function decodeMouseFromCb(
   cb: number,
   x: number,
   y: number,
   isPress: boolean,
-): WidgetMouseEvent {
+): ScreenMouseEvent {
   const isMotion = (cb & 32) !== 0;
   const isScroll = (cb & 64) !== 0;
   const button = cb & 3;

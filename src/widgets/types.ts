@@ -59,19 +59,25 @@ export interface KeyHandlerOptions {
 }
 
 // [LAW:one-source-of-truth] Mouse types are exactly what EventRouter emits.
-// `x`/`y` are in the receiving widget's own output: column and row of the
-// cell it drew, or, for a drag it captured, relative to where that press
-// found it — so they fall outside the widget once the pointer leaves it.
 // There is no "click" — clicks are derived by handlers from mouse_down +
 // mouse_up pairs on the same widget. Keeping unreachable values in the
 // union would force every consumer to handle a case that never arrives.
-export interface WidgetMouseEvent {
+// `x`/`y` are the terminal cell under the pointer: what `onMouse` hears.
+export interface ScreenMouseEvent {
   type: "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
   x: number;
   y: number;
   button: number;
   shift: boolean;
   ctrl: boolean;
+}
+
+// The same event as one widget receives it. `x`/`y` are in the widget's own
+// output: column and row of the cell it drew, or, for a drag it captured,
+// relative to where it is painted now — so they fall outside the widget once
+// the pointer leaves it. `over` is whether it drew the cell under the pointer.
+export interface WidgetMouseEvent extends ScreenMouseEvent {
+  over: boolean;
 }
 
 export interface WidgetFocusEvent {

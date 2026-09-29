@@ -10,6 +10,7 @@ import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import type {
   KeyEvent,
   WidgetMouseEvent,
+  ScreenMouseEvent,
   FrameSource,
 } from "../../src/widgets/types.js";
 
@@ -108,7 +109,7 @@ interface Harness {
   widgets: StubWidget[];
   screen: FrameSource;
   keyEvents: KeyEvent[];
-  mouseEvents: WidgetMouseEvent[];
+  mouseEvents: ScreenMouseEvent[];
   setWidgets: (widgets: StubWidget[]) => void;
 }
 
@@ -154,7 +155,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
   });
 
   const keyEvents: KeyEvent[] = [];
-  const mouseEvents: WidgetMouseEvent[] = [];
+  const mouseEvents: ScreenMouseEvent[] = [];
   // High priority: this is an "observe every key" hook for assertions. If
   // it sat at normal priority, FocusManager's Tab handler would stop the
   // event first and the observer would miss Tab events. Note this also
@@ -475,7 +476,7 @@ describe("EventRouter — mouse parsing", () => {
     const h = makeHarness([a]);
     h.router.feed("\x1b[<0;7;4M"); // screen (6, 3)
     expect(a.mouseEvents).toEqual([
-      { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false },
+      { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false, over: true },
     ]);
     // Handlers registered with onMouse still see the screen position.
     expect(h.mouseEvents[0]).toMatchObject({ x: 6, y: 3 });
@@ -538,6 +539,39 @@ describe("EventRouter — drag capture", () => {
       { type: "mouse_down", x: 1, y: 0 },
       { type: "mouse_move", x: 7, y: 1 },
       { type: "mouse_up", x: -2, y: 0 },
+    ]);
+  });
+
+  it("a captured drag follows the widget to where it is painted now", () => {
+    const a = new StubWidget("a");
+    a.place({ x: 3, y: 1, width: 5, height: 1 });
+    const h = makeHarness([a]);
+
+    h.router.feed("\x1b[<0;5;2M"); // press screen (4, 1) → a's column 1
+    a.place({ x: 6, y: 2, width: 5, height: 1 }); // repainted right and down
+    h.router.feed("\x1b[<32;9;3M"); // (8, 2) → a's column 2 where it is now
+    expect(a.mouseEvents.map(({ type, x, y }) => ({ type, x, y }))).toEqual([
+      { type: "mouse_down", x: 1, y: 0 },
+      { type: "mouse_move", x: 2, y: 0 },
+    ]);
+  });
+
+  it("tells a captured widget whether the pointer is over it", () => {
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    a.place({ x: 0, y: 0, width: 5, height: 1 });
+    b.place({ x: 5, y: 0, width: 5, height: 1 });
+    const h = makeHarness([a, b]);
+
+    h.router.feed("\x1b[<0;1;1M");
+    h.router.feed("\x1b[<0;7;1m"); // released on b
+    h.router.feed("\x1b[<0;1;1M");
+    h.router.feed("\x1b[<0;3;1m"); // released on a
+    expect(a.mouseEvents.map(({ type, over }) => ({ type, over }))).toEqual([
+      { type: "mouse_down", over: true },
+      { type: "mouse_up", over: false },
+      { type: "mouse_down", over: true },
+      { type: "mouse_up", over: true },
     ]);
   });
 

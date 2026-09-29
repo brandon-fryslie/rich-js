@@ -41,3 +41,38 @@ export function widgetAt(
   }
   return hit;
 }
+
+/**
+ * Where `widget`'s output starts in `frame` — the cell its own row 0, column
+ * 0 falls on — read off the first cell it drew, or `undefined` when it drew
+ * none.
+ */
+export function originOf(
+  frame: readonly (readonly Segment[])[],
+  widget: InteractiveWidget,
+): { x: number; y: number } | undefined {
+  for (let y = 0; y < frame.length; y++) {
+    let start = 0;
+    for (const segment of frame[y]!) {
+      for (let a = segment.style?.anchor; a; a = a.inner) {
+        if (a.owner === widget) return { x: start - a.col, y: y - a.row };
+      }
+      start += segment.cellLength;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Whether `widget` drew the cell at column `x` of row `y` of `frame`, itself
+ * or through a widget nested in its output.
+ */
+export function drew(
+  frame: readonly (readonly Segment[])[],
+  widget: InteractiveWidget,
+  x: number,
+  y: number,
+): boolean {
+  for (let a = Segment.anchorAt(frame, x, y); a; a = a.inner) if (a.owner === widget) return true;
+  return false;
+}

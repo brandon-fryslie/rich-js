@@ -90,10 +90,12 @@ export class Segment {
   /**
    * `lines`, as drawn by `owner`: every segment stamped with the row and
    * column of its first cell, wrapping whatever anchor it already carried.
-   * Control segments occupy no cell and are left as they are.
+   * Control segments occupy no cell and are left as they are. `firstRow` is
+   * the owner's row that `lines[0]` is, for output that arrives in pieces.
    */
-  static anchorLines(lines: Segment[][], owner: object): Segment[][] {
-    return lines.map((line, row) => {
+  static anchorLines(lines: Segment[][], owner: object, firstRow = 0): Segment[][] {
+    return lines.map((line, i) => {
+      const row = firstRow + i;
       let col = 0;
       return line.map((segment) => {
         if (segment.isControl) return segment;

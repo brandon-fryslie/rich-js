@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Segment } from "../../src/core/segment.js";
 import { Button } from "../../src/widgets/button.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
@@ -9,8 +10,8 @@ const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: fa
 const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
 const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
 
-const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
-const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
 
 describe("Button", () => {
   it("constructs with defaults", () => {
@@ -43,20 +44,20 @@ describe("Button", () => {
   describe("rendering", () => {
     it("renders label with surrounding spaces", () => {
       const btn = new Button({ label: "OK" });
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("  OK  ");
     });
 
     it("renders with style (not undefined)", () => {
       const btn = new Button({ label: "Go" });
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style).toBeDefined();
     });
 
     it("renders dimmed when disabled", () => {
       const btn = new Button({ label: "Go", disabled: true });
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       const style = segments[0]!.style!;
       expect(style.dim).toBe(true);
     });
@@ -64,29 +65,29 @@ describe("Button", () => {
     it("renders brackets when focused", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("[ Go ]");
     });
 
     it("renders spaces (no brackets) when not focused", () => {
       const btn = new Button({ label: "Go" });
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.text).toBe("  Go  ");
     });
 
     it("focus does not change width", () => {
       const btn = new Button({ label: "Go" });
-      const normalSegs = [...btn.render({ maxWidth: 80 })];
+      const normalSegs = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       btn.focus();
-      const focusedSegs = [...btn.render({ maxWidth: 80 })];
+      const focusedSegs = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(normalSegs[0]!.text.length).toBe(focusedSegs[0]!.text.length);
     });
 
     it("renders hover state with lighter background", () => {
       const btn = new Button({ label: "Go" });
       btn.setHovered(true);
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       const style = segments[0]!.style!;
       expect(style.bgcolor).toBeDefined();
       expect(style.bgcolor!.name).not.toBe("#4a4a4a");
@@ -95,7 +96,7 @@ describe("Button", () => {
     it("hover uses the on-${accent} contrast colour as fg, not text-${accent}", () => {
       const btn = new Button({ label: "Go", variant: "primary" });
       btn.setHovered(true);
-      const style = [...btn.render({ maxWidth: 80 })][0]!.style!;
+      const style = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]![0]!.style!;
       // on-primary is pure black or pure white (WCAG contrast).
       const fg = style.color!;
       const isBlack = fg.name === "#000000";
@@ -106,7 +107,7 @@ describe("Button", () => {
     it("renders active state with bold and full accent bg (no fg/bg inversion)", () => {
       const btn = new Button({ label: "Go", variant: "primary" });
       btn.setActive(true);
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       const style = segments[0]!.style!;
       expect(style.bold).toBe(true);
@@ -118,11 +119,11 @@ describe("Button", () => {
     it("active and hover use the same colour pair; bold differentiates them", () => {
       const hover = new Button({ label: "Go", variant: "primary" });
       hover.setHovered(true);
-      const hoverStyle = [...hover.render({ maxWidth: 80 })][0]!.style!;
+      const hoverStyle = Segment.splitLines(hover.render({ maxWidth: 80 }))[0]![0]!.style!;
 
       const active = new Button({ label: "Go", variant: "primary" });
       active.setActive(true);
-      const activeStyle = [...active.render({ maxWidth: 80 })][0]!.style!;
+      const activeStyle = Segment.splitLines(active.render({ maxWidth: 80 }))[0]![0]!.style!;
 
       expect(activeStyle.color!.name).toBe(hoverStyle.color!.name);
       expect(activeStyle.bgcolor!.name).toBe(hoverStyle.bgcolor!.name);
@@ -134,7 +135,7 @@ describe("Button", () => {
       const btn = new Button({ label: "Go" });
       btn.focus();
       btn.setActive(true);
-      const segments = [...btn.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("[ Go ]");
       expect(segments[0]!.style!.bold).toBe(true);

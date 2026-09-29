@@ -26,6 +26,19 @@ class StubWidget extends WidgetBase {
   triggerSubmit(): void { this.emitSubmit(); }
 }
 
+// Draws exactly `text`.
+class TextWidget extends StubWidget {
+  constructor(private readonly text: string) {
+    super();
+  }
+  protected override draw(_options: RenderOptions): Iterable<Segment> {
+    return [new Segment(this.text)];
+  }
+}
+
+const rows = (widget: WidgetBase): string[] =>
+  Segment.splitLines(widget.render({ maxWidth: 80 })).map((line) => line.map((s) => s.text).join(""));
+
 describe("WidgetBase", () => {
   it("implements InteractiveWidget", () => {
     const widget: InteractiveWidget = new StubWidget();
@@ -68,6 +81,18 @@ describe("WidgetBase", () => {
     expect(lines.map((line) => line.map((s) => s.text))).toEqual([["st", "ub"], ["next"]]);
     expect(Segment.anchorAt(lines, 3, 0)).toMatchObject({ owner: widget, row: 0, col: 3 });
     expect(Segment.anchorAt(lines, 2, 1)).toMatchObject({ owner: widget, row: 1, col: 2 });
+  });
+
+  it("keeps a blank last row", () => {
+    expect(rows(new TextWidget("a\n\n"))).toEqual(["a", " "]);
+    expect(rows(new TextWidget("\n"))).toEqual([""]);
+  });
+
+  it("owns its whole rectangle: a short row is padded to the widest", () => {
+    const widget = new TextWidget("long\nab");
+    const lines = Segment.splitLines(widget.render({ maxWidth: 80 }));
+    expect(rows(widget)).toEqual(["long", "ab  "]);
+    expect(Segment.anchorAt(lines, 3, 1)).toMatchObject({ owner: widget, row: 1, col: 3 });
   });
 
   it("fires onChange subscriptions", () => {

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Dropdown } from "../../src/widgets/dropdown.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
-import type { Segment } from "../../src/core/segment.js";
+import { Segment } from "../../src/core/segment.js";
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string): KeyEvent => new KeyEvent({
@@ -36,13 +36,14 @@ const charKey = (ch: string): KeyEvent => new KeyEvent({
   meta: false,
 });
 
-const mouseUpAt = (x: number, y: number): WidgetMouseEvent => ({
+const mouseUpAt = (x: number, y: number, over = true): WidgetMouseEvent => ({
   type: "mouse_up",
   x,
   y,
   button: 0,
   shift: false,
   ctrl: false,
+  over,
 });
 
 const RENDER = { maxWidth: 80 };
@@ -281,7 +282,7 @@ describe("Dropdown", () => {
     it("a release outside the expanded dropdown collapses without change", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
       d.handleKey(enterEvent());
-      d.handleMouse(mouseUpAt(50, 50));
+      d.handleMouse(mouseUpAt(50, 50, false));
       expect(d.expanded).toBe(false);
       expect(d.selectedIndex).toBe(0);
     });
@@ -304,12 +305,14 @@ describe("Dropdown", () => {
   describe("rendering", () => {
     it("render() always emits a single row regardless of expanded", () => {
       const d = new Dropdown({ options: ["a", "b", "c"] });
-      const collapsedText = [...d.render(RENDER)].map((s) => s.text).join("");
-      expect(collapsedText.includes("\n")).toBe(false);
+      const collapsed = Segment.splitLines(d.render(RENDER));
+      expect(collapsed).toHaveLength(1);
+      const collapsedText = collapsed[0]!.map((s) => s.text).join("");
 
       d.handleKey(enterEvent());
-      const expandedText = [...d.render(RENDER)].map((s) => s.text).join("");
-      expect(expandedText.includes("\n")).toBe(false);
+      const expanded = Segment.splitLines(d.render(RENDER));
+      expect(expanded).toHaveLength(1);
+      const expandedText = expanded[0]!.map((s) => s.text).join("");
       // Inline footprint is invariant under expansion.
       expect(expandedText).toBe(collapsedText);
     });
@@ -321,7 +324,7 @@ describe("Dropdown", () => {
 
     it("collapsed shows the selected label and arrow", () => {
       const d = new Dropdown({ options: ["alpha", "beta"], selectedIndex: 1 });
-      const segs = [...d.render(RENDER)];
+      const segs = Segment.splitLines(d.render(RENDER))[0]!;
       const text = segs.map((s) => s.text).join("");
       expect(text).toContain("beta");
       expect(text).toContain("▾");
@@ -329,7 +332,7 @@ describe("Dropdown", () => {
 
     it("ASCII fallback uses 'v' for the arrow", () => {
       const d = new Dropdown({ options: ["alpha"] });
-      const segs = [...d.render({ ...RENDER, asciiOnly: true })];
+      const segs = Segment.splitLines(d.render({ ...RENDER, asciiOnly: true }))[0]!;
       const text = segs.map((s) => s.text).join("");
       expect(text).toContain("v");
       expect(text).not.toContain("▾");
@@ -343,7 +346,7 @@ describe("Dropdown", () => {
       const d = new Dropdown({ options: ["alpha", "beta", "gamma"] });
       d.focus();
       d.handleKey(new KeyEvent({ key: "a", character: "a", shift: false, ctrl: false, meta: false }));
-      const segs = [...d.render({ ...RENDER, asciiOnly: true })];
+      const segs = Segment.splitLines(d.render({ ...RENDER, asciiOnly: true }))[0]!;
       const text = segs.map((s) => s.text).join("");
       expect(text).toContain("|");
       expect(text).not.toContain("│");
@@ -363,14 +366,14 @@ describe("Dropdown", () => {
 
     it("renders dimmed when disabled (collapsed)", () => {
       const d = new Dropdown({ options: ["a"], disabled: true });
-      const segs = [...d.render(RENDER)];
+      const segs = Segment.splitLines(d.render(RENDER))[0]!;
       expect(segs.every((s) => s.style?.dim === true)).toBe(true);
     });
 
     it("focused adds underline to header row", () => {
       const d = new Dropdown({ options: ["a"] });
       d.focus();
-      const segs = [...d.render(RENDER)];
+      const segs = Segment.splitLines(d.render(RENDER))[0]!;
       expect(segs.some((s) => s.style?.underline === true)).toBe(true);
     });
 
@@ -414,7 +417,7 @@ describe("Dropdown", () => {
     const opts = ["alpha", "beta", "gamma", "Alphabet"];
 
     const headerText = (d: Dropdown): string =>
-      [...d.render(RENDER)].map((s) => s.text).join("");
+      Segment.splitLines(d.render(RENDER))[0]!.map((s) => s.text).join("");
 
     it("filteredOptions: empty filter returns all, with canonical idx", () => {
       const d = new Dropdown({ options: opts });

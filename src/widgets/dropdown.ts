@@ -197,15 +197,11 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     if (this.disabled) return;
     if (event.type !== "mouse_up") return;
 
-    // [LAW:one-source-of-truth] The coordinates are this dropdown's own:
-    // row 0 is the header, and the overlay rows continue below it. A release
-    // lands outside them only when a press on the dropdown dragged away.
-    const overlayRows = this.expanded ? Math.max(1, this.filteredOptions.length) : 0;
-    const inside =
-      event.x >= 0 &&
-      event.x < this.width() &&
-      event.y >= 0 &&
-      event.y <= overlayRows;
+    // [LAW:one-source-of-truth] Whether the release is on this dropdown is
+    // read off the frame (`over`), not its own idea of its size; a press on
+    // it that dragged away releases elsewhere. Row 0 is the header, and the
+    // overlay rows continue below it.
+    const inside = event.over;
 
     if (!this.expanded) {
       if (inside) {
@@ -389,13 +385,8 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     return m;
   }
 
-  // The header and every overlay row are this wide.
-  private width(): number {
-    return this.maxLabelLen() + 4;
-  }
-
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.width();
+    const width = this.maxLabelLen() + 4;
     return { minimum: width, maximum: width };
   }
 

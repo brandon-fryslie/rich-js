@@ -2,6 +2,7 @@ export type {
   KeyEventInit,
   KeyHandlerPriority,
   KeyHandlerOptions,
+  ScreenMouseEvent,
   WidgetMouseEvent,
   WidgetFocusEvent,
   InteractiveWidget,

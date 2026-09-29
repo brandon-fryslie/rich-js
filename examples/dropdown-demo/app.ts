@@ -126,7 +126,7 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
 
   // [LAW:types-are-the-program] `dropdowns` keeps the status line's element
   // type honest: it reads `selectedIndex`/`expanded`, which only a Dropdown
-  // has. `allWidgets` is the wider focus/hit-test list and needs no cast.
+  // has. `allWidgets` is the wider list the overlay readout walks and needs no cast.
   const dropdowns: Dropdown[] = [ddShort, ddLong, ddMutating];
   const allWidgets: InteractiveWidget[] = [...dropdowns, keyEcho];
 

@@ -103,9 +103,14 @@ export abstract class WidgetBase implements InteractiveWidget {
   // a hit on any cell names this widget and the cell's place in its output
   // (`widgetAt`). Subclasses draw; none stamps itself. A `RichText` admits no
   // anchor, so stamping has to follow every text layout `draw` does.
+  // Every row is padded to the widest, so the widget owns its whole rectangle
+  // and a click past the end of a short row still reaches it; every row ends
+  // in a newline, so a blank last row survives the next `splitLines`.
   render(options: RenderOptions): Iterable<Segment> {
-    const lines = Segment.anchorLines(Segment.splitLines(this.draw(options)), this);
-    return lines.flatMap((line, row) => (row === 0 ? line : [Segment.line(), ...line]));
+    const drawn = Segment.splitLines(this.draw(options));
+    const [width] = Segment.getShape(drawn);
+    const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width)), this);
+    return lines.flatMap((line) => [...line, Segment.line()]);
   }
 
   protected abstract draw(options: RenderOptions): Iterable<Segment>;

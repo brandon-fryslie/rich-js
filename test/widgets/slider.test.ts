@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Segment } from "../../src/core/segment.js";
 import { Slider } from "../../src/widgets/slider.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
@@ -29,11 +30,12 @@ const mouseAt = (
   button: 0,
   shift: false,
   ctrl: false,
+  over: true,
 });
 
 const RENDER = { maxWidth: 80 };
 const renderText = (s: Slider): string =>
-  [...s.render(RENDER)].map((seg) => seg.text).join("");
+  Segment.splitLines(s.render(RENDER))[0]!.map((seg) => seg.text).join("");
 
 describe("Slider", () => {
   it("constructs with defaults", () => {
@@ -248,7 +250,7 @@ describe("Slider", () => {
 
     it("ASCII fallback uses '-' track and '*' marker", () => {
       const s = new Slider({ value: 50, width: 11 });
-      const text = [...s.render({ ...RENDER, asciiOnly: true })].map((seg) => seg.text).join("");
+      const text = Segment.splitLines(s.render({ ...RENDER, asciiOnly: true }))[0]!.map((seg) => seg.text).join("");
       expect(text).toContain("*");
       expect(text).toContain("-");
       expect(text).not.toContain("●");
@@ -257,14 +259,14 @@ describe("Slider", () => {
 
     it("renders dimmed when disabled", () => {
       const s = new Slider({ value: 50, disabled: true });
-      const segs = [...s.render(RENDER)];
+      const segs = Segment.splitLines(s.render(RENDER))[0]!;
       expect(segs.every((seg) => seg.style?.dim === true)).toBe(true);
     });
 
     it("focused adds underline to all segments", () => {
       const s = new Slider({ value: 50 });
       s.focus();
-      const segs = [...s.render(RENDER)];
+      const segs = Segment.splitLines(s.render(RENDER))[0]!;
       expect(segs.every((seg) => seg.style?.underline === true)).toBe(true);
     });
 

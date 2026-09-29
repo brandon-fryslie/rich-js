@@ -4,6 +4,7 @@ import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Button } from "../../src/widgets/button.js";
 import { Slider } from "../../src/widgets/slider.js";
+import { TextInput } from "../../src/widgets/text-input.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { EventRouter } from "../../src/widgets/event-router.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
@@ -84,6 +85,14 @@ describe("a widget composed inside a Panel inside a Layout split", () => {
     const root = composed(button);
     routerOver(root).feed(press(find(root, "left pane").x, find(root, "left pane").y));
     expect(button.events).toEqual([]);
+  });
+
+  it("a click past the end of a short row of a multiline input reaches it", () => {
+    const input = new TextInput({ value: "long line\nab", multiline: true });
+    const root = composed(input);
+    const ab = find(root, "ab");
+    routerOver(root).feed(press(ab.x + 5, ab.y));
+    expect(input.cursorPosition).toBe(input.value.length);
   });
 
   it("a drag started on a Slider and released past its edge clamps", () => {
