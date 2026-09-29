@@ -151,3 +151,27 @@ for (const [attribute, cycleMs] of [["blink", 1000], ["blink2", 500]] as const) 
     });
   }
 }
+
+test("a column after wide glyphs lines up with the same column after narrow ones", async ({ page }) => {
+  await page.setContent(BLANK);
+  await embed(page, encodeHtmlFragment(
+    [new Segment("東京|\n"), new Segment("abcd|\n"), new Segment("서울|\n"), new Segment("👨‍👩‍👧xy|\n")],
+    SOLARIZED_LIGHT,
+  ));
+  const bars = await page.evaluate(() => {
+    const walker = document.createTreeWalker(document.querySelector("#slot pre")!, NodeFilter.SHOW_TEXT);
+    const xs: number[] = [];
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      const text = node.textContent ?? "";
+      for (let i = text.indexOf("|"); i !== -1; i = text.indexOf("|", i + 1)) {
+        const range = document.createRange();
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        xs.push(range.getBoundingClientRect().left);
+      }
+    }
+    return xs;
+  });
+  expect(bars).toHaveLength(4);
+  for (const x of bars) expect(x).toBeCloseTo(bars[1]!, 0);
+});

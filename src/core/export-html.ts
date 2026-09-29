@@ -13,6 +13,7 @@
  * is narrower than the terminal was.
  */
 
+import { cellLen } from "./cells.js";
 import type { TerminalTheme } from "./color.js";
 import type { Segment } from "./segment.js";
 import { exportCanvas, exportLines, type ExportLook, type ExportRun } from "./export-lines.js";
@@ -85,6 +86,42 @@ const ANCHOR_CSS = "all:unset;cursor:revert;outline:revert";
 const span = (css: readonly string[], content: string): string =>
   `<span style="${escapeAttribute(css.join(";"))}">${content}</span>`;
 
+const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+/**
+ * A run's text cut where a glyph is not one cell wide: each such glyph is a
+ * piece of its own, boxed to the cells it takes; the one-cell glyphs between
+ * them are pieces with no box.
+ *
+ * A browser draws a wide glyph in whatever fallback font has it, at that
+ * font's width, which is rarely two of the monospace font's cells; left to it,
+ * everything after a CJK character on a row shifts left of its column. `ch` is
+ * one cell of the monospace font, so a box `cells`ch wide holds the column.
+ */
+type Piece = { readonly text: string; readonly cells: number | null };
+
+function cellPieces(text: string): Piece[] {
+  const pieces: Piece[] = [];
+  let narrow = "";
+  for (const { segment } of GRAPHEMES.segment(text)) {
+    const cells = cellLen(segment);
+    if (cells === 1) {
+      narrow += segment;
+      continue;
+    }
+    if (narrow !== "") pieces.push({ text: narrow, cells: null });
+    narrow = "";
+    pieces.push({ text: segment, cells });
+  }
+  if (narrow !== "") pieces.push({ text: narrow, cells: null });
+  return pieces;
+}
+
+// An atomic inline box does not take its ancestors' text decorations, so each
+// wide glyph is drawn as a whole run of its own, paint and lines included.
+const cellBox = (cells: number | null): readonly string[] =>
+  cells === null ? [] : ["display:inline-block", `width:${cells}ch`, "text-align:center"];
+
 /**
  * One run as markup.
  *
@@ -95,13 +132,15 @@ const span = (css: readonly string[], content: string): string =>
  * blinks with the glyph.
  */
 function runHtml({ text, look }: ExportRun): string {
-  const glyph = escapeText(text);
-  const drawn = look.underline === "double"
-    ? span(
-      [...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
-      span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph),
-    )
-    : span([...paintCss(look), ...glyphCss(look)], glyph);
+  const drawn = cellPieces(text).map(({ text: piece, cells }) => {
+    const glyph = escapeText(piece);
+    return look.underline === "double"
+      ? span(
+        [...cellBox(cells), ...paintCss(look), "text-decoration-line:underline", "text-decoration-style:double", ...BLINK[look.blink]],
+        span([`color:${look.foreground.hex}`, ...glyphCss(look)], glyph),
+      )
+      : span([...cellBox(cells), ...paintCss(look), ...glyphCss(look)], glyph);
+  }).join("");
   return look.href === null
     ? drawn
     : `<a href="${escapeAttribute(look.href)}" style="${ANCHOR_CSS}">${drawn}</a>`;

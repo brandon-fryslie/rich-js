@@ -109,6 +109,21 @@ describe("encodeHtml runs", () => {
     );
   });
 
+  // A browser draws a wide glyph at its fallback font's width, not two cells;
+  // the box is what keeps the next column where the console put it.
+  it("boxes each glyph that is not one cell wide to the cells it takes, and leaves one-cell text unboxed", () => {
+    const page = html(Style.parse("bold"), "ab東京c");
+    expect(cssOf(page, "ab")).toBe(`color:${INK.hex};font-weight:bold`);
+    expect(cssOf(page, "東")).toBe(`display:inline-block;width:2ch;text-align:center;color:${INK.hex};font-weight:bold`);
+    expect(cssOf(page, "京")).toBe(cssOf(page, "東"));
+    expect(cssOf(page, "c")).toBe(cssOf(page, "ab"));
+  });
+
+  it("measures a glyph as one grapheme, so a joined emoji is one two-cell box", () => {
+    const family = "👨‍👩‍👧";
+    expect(cssOf(html(Style.parse(""), family), family)).toContain("width:2ch");
+  });
+
   it("frames and encircles in the glyph's own colour", () => {
     expect(cssOf(html(Style.parse("frame")))).toBe(`color:${INK.hex};box-shadow:inset 0 0 0 1px currentColor`);
     expect(cssOf(html(Style.parse("encircle")))).toBe(
