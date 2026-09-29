@@ -4,15 +4,22 @@
     {
       "version": "pr-214",
       "ref": "refs/pull/214/merge",
-      "sha": "e4d0082d1270931a66ee7837c001186fcc97f0fb",
-      "timestamp": "2026-09-29T19:59:33.427Z",
+      "sha": "701442aa477f2d0b006d31b233a71542b76a2733",
+      "timestamp": "2026-09-29T20:03:36.478Z",
       "commits": [
         {
-          "sha": "e4d0082d1270931a66ee7837c001186fcc97f0fb",
+          "sha": "701442aa477f2d0b006d31b233a71542b76a2733",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:56:47-06:00",
-          "message": "Merge 9049e6ab97a05380c8ea15fcf6650bed2692195a into 5e0a5251b80d22c134051aa91b04827d23efef09\n"
+          "timestamp": "2026-09-29T20:02:46Z",
+          "message": "Merge 02176c083f07a9a9c5a4e1cfa68b28347f874a2a into 5e0a5251b80d22c134051aa91b04827d23efef09\n"
+        },
+        {
+          "sha": "02176c083f07a9a9c5a4e1cfa68b28347f874a2a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:02:40-06:00",
+          "message": "fix(text): unbounded callers ask for \"ignore\", not noWrap (rich-text-b44 review)\n\ninlineLabel sized a Panel or Rule title by cellLength, which counts a tab as\nno cells, and leaned on noWrap to leave it uncut; with noWrap cutting, the text\npast a tab was lost. The label now renders under \"ignore\" and the caller cuts.\n\nA table title clears \"ignore\" rather than noWrap: \"ignore\" is now the one way a\ntitle escapes the frame, and noWrap cuts within it, as Rich's no_wrap does.\nThe Tree and Layout wide-glyph tests reach their container's crop through\n\"ignore\", since a noWrap leaf now cuts itself first.\n"
         },
         {
           "sha": "9049e6ab97a05380c8ea15fcf6650bed2692195a",
