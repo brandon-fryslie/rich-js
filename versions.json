@@ -4,15 +4,22 @@
     {
       "version": "pr-212",
       "ref": "refs/pull/212/merge",
-      "sha": "cd874f70ab2b28e8145adf951f6f74951f16d807",
-      "timestamp": "2026-09-29T18:53:55.186Z",
+      "sha": "a2acd35f7594f6889c719a29c879ed995cdb4695",
+      "timestamp": "2026-09-29T19:00:01.180Z",
       "commits": [
         {
-          "sha": "cd874f70ab2b28e8145adf951f6f74951f16d807",
+          "sha": "a2acd35f7594f6889c719a29c879ed995cdb4695",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:53:03-06:00",
-          "message": "Merge c3b3331df420088a6c8398fa55faeb620221031e into 0681b1f00c0cea944180e31b19974edfeabde152\n"
+          "timestamp": "2026-09-29T18:59:06Z",
+          "message": "Merge 0146e7906c0baa5676412fb06fb36a33eda4c2b0 into 0681b1f00c0cea944180e31b19974edfeabde152\n"
+        },
+        {
+          "sha": "0146e7906c0baa5676412fb06fb36a33eda4c2b0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:59:00-06:00",
+          "message": "fix(table): read ratio weights as the decimals written, over bidding columns only (rich-table-iq0)\n\nReview of #212: scaling the binary doubles made 0.1 : 0.3 : 1 split unlike\n1 : 3 : 10, since 0.3 is not exactly three 0.1s in binary. exactWeights now\nreads each weight as the decimal it prints as and scales by a power of ten,\nand runs only over the demands that bid, so a closed column cannot throw or\ninflate the common scale.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "c3b3331df420088a6c8398fa55faeb620221031e",
