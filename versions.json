@@ -4,15 +4,22 @@
     {
       "version": "pr-201",
       "ref": "refs/pull/201/merge",
-      "sha": "ddfe437e13676e8e39ef5b42fc73075cce652945",
-      "timestamp": "2026-09-29T13:27:37.505Z",
+      "sha": "59cc9cb34a66b8d219e3b118150290af47364c16",
+      "timestamp": "2026-09-29T13:29:22.872Z",
       "commits": [
         {
-          "sha": "ddfe437e13676e8e39ef5b42fc73075cce652945",
+          "sha": "59cc9cb34a66b8d219e3b118150290af47364c16",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:26:41Z",
-          "message": "Merge d7f1bc4ac1aeb8100fe49b02ac661e2d2600e18d into d336dde439458a82bc94ae88697eecc44d0c6d5f\n"
+          "timestamp": "2026-09-29T13:28:29Z",
+          "message": "Merge da8e93157ab4122bbe92eb1b1a85c833287d14c8 into d336dde439458a82bc94ae88697eecc44d0c6d5f\n"
+        },
+        {
+          "sha": "da8e93157ab4122bbe92eb1b1a85c833287d14c8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:28:24-06:00",
+          "message": "test(style): pin that a negated attribute writes no SGR parameter (rich-color-9ga)\n\nRows checked against Rich 9d8f9a3 _make_ansi_codes. The markup comment\nnow credits the fix to rich-style-h93 (#117), where it landed.\n"
         },
         {
           "sha": "d7f1bc4ac1aeb8100fe49b02ac661e2d2600e18d",
