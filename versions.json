@@ -4,15 +4,22 @@
     {
       "version": "pr-213",
       "ref": "refs/pull/213/merge",
-      "sha": "d365babea8e5edda49f4eb185eea3b330699ac82",
-      "timestamp": "2026-09-29T19:27:59.631Z",
+      "sha": "ccafd9aee0f1025b3dd73c19dd42fb15be15f48f",
+      "timestamp": "2026-09-29T19:36:31.491Z",
       "commits": [
         {
-          "sha": "d365babea8e5edda49f4eb185eea3b330699ac82",
+          "sha": "ccafd9aee0f1025b3dd73c19dd42fb15be15f48f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T19:27:10Z",
-          "message": "Merge 4216b968f32c716275406d0f3fd8c4183993abf5 into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
+          "timestamp": "2026-09-29T19:35:36Z",
+          "message": "Merge 478ce1613bf812b4029392dc9168ad095c415355 into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
+        },
+        {
+          "sha": "478ce1613bf812b4029392dc9168ad095c415355",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T13:35:30-06:00",
+          "message": "fix(console): a print's text items are joined into one text, as Rich's Text.join does (rich-console-c70, rich-console-7yp0)\n\nTextRun measured the run as one string but drew each item on its own,\nso under justify every item was set at the run's width by itself: the\nrun came out wider than measured and was cropped, and sep=\"\\n\" with\njustify=\"right\" regressed against master. Measure and render now read\none joined RichText. Each item's own justify/overflow/noWrap/tabSize\nstays behind, as in the reference; RichText.append now carries the\nappended text's base style, as the reference's append does, so a styled\nitem keeps its style through the join.\n"
         },
         {
           "sha": "4216b968f32c716275406d0f3fd8c4183993abf5",
