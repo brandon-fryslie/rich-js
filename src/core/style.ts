@@ -134,29 +134,7 @@ export class Style {
    */
   readonly anchor: Anchor | undefined;
 
-  constructor(options?: StyleOptions) {
-    if (!options) {
-      this.color = undefined;
-      this.bgcolor = undefined;
-      this.bold = undefined;
-      this.dim = undefined;
-      this.italic = undefined;
-      this.underline = undefined;
-      this.blink = undefined;
-      this.blink2 = undefined;
-      this.reverse = undefined;
-      this.conceal = undefined;
-      this.strike = undefined;
-      this.underline2 = undefined;
-      this.frame = undefined;
-      this.encircle = undefined;
-      this.overline = undefined;
-      this.link = undefined;
-      this.meta = undefined;
-      this.anchor = undefined;
-      return;
-    }
-
+  constructor(options: StyleOptions = {}) {
     this.color = resolveColor(options.color);
     this.bgcolor = resolveColor(options.bgcolor);
     this.bold = options.bold;
@@ -208,100 +186,42 @@ export class Style {
     return new Style({ bgcolor: this.bgcolor });
   }
 
-  get withoutColor(): Style {
-    return new Style({
-      bold: this.bold,
-      dim: this.dim,
-      italic: this.italic,
-      underline: this.underline,
-      blink: this.blink,
-      blink2: this.blink2,
-      reverse: this.reverse,
-      conceal: this.conceal,
-      strike: this.strike,
-      underline2: this.underline2,
-      frame: this.frame,
-      encircle: this.encircle,
-      overline: this.overline,
-      link: this.link,
-      meta: this.meta,
-      anchor: this.anchor,
-    });
+  /**
+   * This style with `overrides` in place of its own fields.
+   *
+   * [LAW:one-source-of-truth] The field list is the class's own fields, so a
+   * field added to `Style` is carried by every copy without being named here.
+   */
+  private with(overrides: StyleOptions): Style {
+    return new Style({ ...this, ...overrides });
   }
+
+  get withoutColor(): Style {
+    return this.with({ color: undefined, bgcolor: undefined });
+  }
+
 
   // [LAW:types-are-the-program] Structural clone helper — pure rearrangement
   // of fields, no policy. Sanitization of the URL is the trust boundary's
   // job (see RichText in text.ts); Style stays a faithful container so
   // callers that have already sanitized are not silently re-mutated.
   withLink(link: string | undefined): Style {
-    return new Style({
-      color: this.color,
-      bgcolor: this.bgcolor,
-      bold: this.bold,
-      dim: this.dim,
-      italic: this.italic,
-      underline: this.underline,
-      blink: this.blink,
-      blink2: this.blink2,
-      reverse: this.reverse,
-      conceal: this.conceal,
-      strike: this.strike,
-      underline2: this.underline2,
-      frame: this.frame,
-      encircle: this.encircle,
-      overline: this.overline,
-      link,
-      meta: this.meta,
-      anchor: this.anchor,
-    });
+    return this.with({ link });
   }
+
 
   clearMetaAndLinks(): Style {
-    return new Style({
-      color: this.color,
-      bgcolor: this.bgcolor,
-      bold: this.bold,
-      dim: this.dim,
-      italic: this.italic,
-      underline: this.underline,
-      blink: this.blink,
-      blink2: this.blink2,
-      reverse: this.reverse,
-      conceal: this.conceal,
-      strike: this.strike,
-      underline2: this.underline2,
-      frame: this.frame,
-      encircle: this.encircle,
-      overline: this.overline,
-      anchor: this.anchor,
-    });
+    return this.with({ link: undefined, meta: undefined });
   }
 
+
   /**
-   * The same look, drawn from the place `anchor` names.
+   * The same look, drawn from the place `anchor` names, or from nowhere.
    */
-  withAnchor(anchor: Anchor): Style {
-    return new Style({
-      color: this.color,
-      bgcolor: this.bgcolor,
-      bold: this.bold,
-      dim: this.dim,
-      italic: this.italic,
-      underline: this.underline,
-      blink: this.blink,
-      blink2: this.blink2,
-      reverse: this.reverse,
-      conceal: this.conceal,
-      strike: this.strike,
-      underline2: this.underline2,
-      frame: this.frame,
-      encircle: this.encircle,
-      overline: this.overline,
-      link: this.link,
-      meta: this.meta,
-      anchor,
-    });
+  withAnchor(anchor: Anchor | undefined): Style {
+    return this.with({ anchor });
   }
+
 
   /**
    * This style on the cell `cells` to the right: its anchor shifted along its

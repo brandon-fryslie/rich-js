@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
+import { RichText } from "../../src/core/text.js";
 import { asCellCol } from "../../src/core/cells.js";
 import type { Anchor } from "../../src/core/anchor.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -169,6 +170,12 @@ describe("cutting an anchored segment", () => {
     expect([right.text, right.style!.anchor!.col]).toEqual(["cd", 4]);
   });
 
+  it("starts a right half the cut went through at the glyph it kept whole", () => {
+    const [left, right] = segment.splitCells(asCellCol(3));
+    expect([left.text, left.style!.anchor!.col]).toEqual(["ab ", 0]);
+    expect([right.text, right.style!.anchor!.col]).toEqual(["漢cd", 2]);
+  });
+
   it("shifts every level of a nested anchor", () => {
     const outer = {};
     const [nested] = Segment.anchorLines([[new Segment(">"), segment]], outer);
@@ -181,6 +188,34 @@ describe("cutting an anchored segment", () => {
     const style = Style.parse("bold");
     const [, right] = new Segment("abcd", style).splitCells(asCellCol(2));
     expect(right.style).toBe(style);
+  });
+});
+
+describe("reading a cell off a frame", () => {
+  const [line] = Segment.anchorLines([[new Segment("ab")]], {});
+
+  it("names no cell left of, right of, or between the frame's cells", () => {
+    expect([-1, 2, 0.5].map((x) => Segment.anchorAt([line!], x, 0))).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+});
+
+describe("a RichText lays its text out anew", () => {
+  it("admits no anchor, so a wrapped line names no cell it no longer holds", () => {
+    const [stamped] = Segment.anchorLines([[new Segment("ab cd", Style.parse("red"))]], {});
+    const text = new RichText("", { end: "" });
+    for (const seg of stamped!) text.append(seg.text, seg.style);
+    const frame = Segment.splitLines(text.render({ maxWidth: 2 }));
+    expect(frame.flat().map((s) => s.style?.anchor)).toEqual(frame.flat().map(() => undefined));
+  });
+
+  it("keeps the rest of the look", () => {
+    const [stamped] = Segment.anchorLines([[new Segment("ab", Style.parse("red"))]], {});
+    const text = new RichText("ab", { style: stamped![0]!.style! });
+    expect(String(text.style)).toBe("red");
   });
 });
 

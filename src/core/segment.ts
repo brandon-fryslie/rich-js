@@ -5,7 +5,7 @@
 
 import { cellLen, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
-import type { Anchor } from "./anchor.js";
+import { shiftAnchor, type Anchor } from "./anchor.js";
 
 // --- ControlType ---
 
@@ -62,8 +62,10 @@ export class Segment {
   /**
    * Splits at a cell position. Returns [left, right].
    *
-   * [LAW:single-enforcer] The right half starts `leftText`'s cells further
-   * into whatever drew it, and its anchor says so; see `./anchor.ts`.
+   * [LAW:single-enforcer] The right half starts as many cells further into
+   * whatever drew it as the left half took from this one, and its anchor says
+   * so; see `./anchor.ts`. That is not `leftText`'s width: a cut through a
+   * wide glyph pads the left half and keeps the whole glyph on the right.
    */
   splitCells(position: CellCol): [Segment, Segment] {
     const len = this.cellLength;
@@ -72,7 +74,7 @@ export class Segment {
     const [leftText, rightText] = splitText(this.text, position);
     return [
       new Segment(leftText, this.style),
-      new Segment(rightText, this.style?.shiftedBy(cellLen(leftText))),
+      new Segment(rightText, this.style?.shiftedBy(len - cellLen(rightText))),
     ];
   }
 
@@ -111,10 +113,14 @@ export class Segment {
    * `undefined` when that cell was drawn by no owner or lies outside the frame.
    */
   static anchorAt(lines: Segment[][], x: number, y: number): Anchor | undefined {
+    if (!Number.isInteger(x) || x < 0) return undefined;
     let start = 0;
     for (const segment of lines[y] ?? []) {
       const end = start + segment.cellLength;
-      if (x < end) return segment.style?.shiftedBy(x - start).anchor;
+      if (x < end) {
+        const anchor = segment.style?.anchor;
+        return anchor && shiftAnchor(anchor, x - start);
+      }
       start = end;
     }
     return undefined;

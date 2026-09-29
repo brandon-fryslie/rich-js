@@ -17,11 +17,13 @@
  * (`Segment.anchorAt`). Containers do nothing, so no container can get it
  * wrong.
  *
- * [LAW:single-enforcer] The one thing that can falsify a stamp is cutting a
- * segment in two, because the right half starts at a later column than the
- * stamp names. `Segment.splitCells` is where a segment is cut, and it shifts
- * the right half's anchor (`shiftAnchor`); a crop that keeps the left half
- * keeps a stamp that is already true.
+ * [LAW:single-enforcer] Two things can falsify a stamp. Cutting a segment in
+ * two starts the right half at a later column than the stamp names:
+ * `Segment.splitCells` is where a segment is cut, and it shifts the right
+ * half's anchor (`shiftAnchor`); a crop that keeps the left half keeps a stamp
+ * that is already true. Laying the text out again moves every cell: a
+ * `RichText` does that, so it admits no anchor (`admitStyle` in `./text.ts`),
+ * and the owner that renders it stamps what it draws.
  */
 
 /**

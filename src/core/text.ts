@@ -73,9 +73,15 @@ function sanitizeStyleLink(style: Style): Style {
  * RichText knows when the name arrives — the reference stores span styles the
  * same way. A string holds no link until it is parsed, so only a `Style` has
  * one to sanitize here.
+ *
+ * [LAW:single-enforcer] Nor does a RichText keep an anchor (`./anchor.ts`). It
+ * lays its text out anew, so a stamp naming where a cell sat in the output it
+ * came from would name the wrong cell once it wraps, slices or overlaps; the
+ * owner that renders the RichText is the one that stamps its cells.
  */
 function admitStyle(style: string | Style): string | Style {
-  return style instanceof Style ? sanitizeStyleLink(style) : style;
+  if (!(style instanceof Style)) return style;
+  return sanitizeStyleLink(style.anchor ? style.withAnchor(undefined) : style);
 }
 
 /** A style that adds nothing: the empty definition, or a null `Style`. */
@@ -371,8 +377,9 @@ export class RichText implements Renderable, Measurable {
    * is admitted as given.
    */
   private _addSpan(start: number, end: number, style: string | Style): void {
-    if (isEmptyStyle(style)) return;
-    this._spans.push(new Span(start, end, admitStyle(style)));
+    const admitted = admitStyle(style);
+    if (isEmptyStyle(admitted)) return;
+    this._spans.push(new Span(start, end, admitted));
   }
 
   stylize(style: string | Style, start?: number, end?: number): this {
