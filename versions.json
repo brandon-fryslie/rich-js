@@ -4,15 +4,22 @@
     {
       "version": "pr-232",
       "ref": "refs/pull/232/merge",
-      "sha": "35891bc8d7ac4c0e2019bd9e65740433cb760544",
-      "timestamp": "2026-09-29T23:27:55.495Z",
+      "sha": "ca7dc5bcb1162f17b966a9ef4b8420dc75121169",
+      "timestamp": "2026-09-29T23:41:46.558Z",
       "commits": [
         {
-          "sha": "35891bc8d7ac4c0e2019bd9e65740433cb760544",
+          "sha": "ca7dc5bcb1162f17b966a9ef4b8420dc75121169",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:27:04-06:00",
-          "message": "Merge fe1c80c2d42d98a5e08f7d7e9b7e272d92e92354 into 088e3d35c166cb6f2d10c905dfb26095be882253\n"
+          "timestamp": "2026-09-29T23:40:53Z",
+          "message": "Merge 337f80ee06e91de2d32cc2093267616715f6698a into 088e3d35c166cb6f2d10c905dfb26095be882253\n"
+        },
+        {
+          "sha": "337f80ee06e91de2d32cc2093267616715f6698a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:40:49-06:00",
+          "message": "fix(measure): a renderable that cannot measure itself is answered once, in Measurement.get; Group measures as Rich's does (rich-columns-i08a)\n\nReview of #232: a Group cell asked for the whole offer, since Group had no\nmeasure and Table/Columns each carried their own fallback. Measurement.get now\ntakes any renderable and gives the reference's (0, max_width) for one without a\nmeasure; Group measures through measureRenderables, as Rich's does. The other\ncopies of the fallback are rich-measure-29a4.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "fe1c80c2d42d98a5e08f7d7e9b7e272d92e92354",
