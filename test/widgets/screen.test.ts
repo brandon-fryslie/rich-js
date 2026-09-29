@@ -9,7 +9,8 @@ import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { DefaultScreen } from "../../src/widgets/screen.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { BrowserTerminalHost, type TerminalHost } from "../../src/host/terminal-host.js";
-import type { KeyEvent } from "../../src/widgets/types.js";
+import { widgetAt } from "../../src/widgets/hit.js";
+import type { InteractiveWidget, KeyEvent } from "../../src/widgets/types.js";
 
 class StubWidget extends WidgetBase {
   constructor(
@@ -32,7 +33,7 @@ class StubWidget extends WidgetBase {
   // wrapped in runInAction. Tests that need reactivity flip an observable
   // (focused) instead.
   handleKey(_event: KeyEvent): void {}
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     const prefix = this.focused ? "*" : " ";
     return [new Segment(`${prefix}${this.text}`)];
   }
@@ -87,6 +88,27 @@ function makeScreen(opts: { stream?: CapturingStream } = {}): {
   return { screen, stream };
 }
 
+// The rectangle of the painted frame whose cells `widget` drew, or null when
+// it drew none — where the screen put it, read the way the router reads it.
+function rectOf(
+  screen: DefaultScreen,
+  widget: InteractiveWidget,
+): { x: number; y: number; width: number; height: number } | null {
+  const cells: { x: number; y: number }[] = [];
+  screen.frame.forEach((line, y) => {
+    const width = line.reduce((n, segment) => n + segment.cellLength, 0);
+    for (let x = 0; x < width; x++) {
+      if (widgetAt(screen.frame, x, y)?.widget === widget) cells.push({ x, y });
+    }
+  });
+  if (cells.length === 0) return null;
+  const xs = cells.map((c) => c.x);
+  const ys = cells.map((c) => c.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x + 1, height: Math.max(...ys) - y + 1 };
+}
+
 // Wait for the next microtask. Screen schedules draws via queueMicrotask, so
 // flushing one tick is enough to drain a single render.
 async function flush(): Promise<void> {
@@ -102,6 +124,13 @@ describe("DefaultScreen", () => {
     const made = makeScreen();
     screen = made.screen;
     stream = made.stream;
+  });
+
+  it("mounts only a WidgetBase, the one kind of widget hit-testing can find", () => {
+    const plain = {} as InteractiveWidget;
+    // @ts-expect-error an InteractiveWidget not built on WidgetBase stamps no cells
+    const mountPlain = (): void => screen.mount(plain);
+    expect(mountPlain).toBeTypeOf("function");
   });
 
   it("starts not running", () => {
@@ -373,21 +402,21 @@ describe("DefaultScreen", () => {
     });
   });
 
-  describe("layout / bounds", () => {
-    it("assigns bounds to each widget at draw time", async () => {
+  describe("layout", () => {
+    it("paints each widget where its placement puts it", async () => {
       const a = new StubWidget("a", "Alpha");
       const b = new StubWidget("b", "Beta");
       screen.mount(a, b);
-      expect(a.bounds).toBeNull();
+      expect(rectOf(screen, a)).toBeNull();
       screen.start();
       await flush();
 
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, a)).toEqual({ x: 0, y: 0, width: 6, height: 1 });
       // "Alpha" with prefix "*" focused → 6 cells → b is at y=1
-      expect(b.bounds).toEqual({ x: 0, y: 1, width: 5, height: 1 });
+      expect(rectOf(screen, b)).toEqual({ x: 0, y: 1, width: 5, height: 1 });
     });
 
-    it("hidden widgets get zero-size bounds", async () => {
+    it("hidden widgets paint nothing and take no rows", async () => {
       const a = new StubWidget("a", "Alpha");
       const b = new StubWidget("b", "Beta");
       screen.mount(a, b);
@@ -396,9 +425,9 @@ describe("DefaultScreen", () => {
       });
       screen.start();
       await flush();
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 0, height: 0 });
+      expect(rectOf(screen, a)).toBeNull();
       // b should now sit at y=0 since a took zero rows.
-      expect(b.bounds).toEqual({ x: 0, y: 0, width: 5, height: 1 });
+      expect(rectOf(screen, b)).toEqual({ x: 0, y: 0, width: 5, height: 1 });
     });
   });
 
@@ -425,7 +454,7 @@ describe("DefaultScreen", () => {
         });
       }
       handleKey(_event: KeyEvent): void {}
-      render(_options: RenderOptions): Iterable<Segment> {
+      protected draw(_options: RenderOptions): Iterable<Segment> {
         return [new Segment(this.inline)];
       }
       renderOverlay(_options: RenderOptions): Iterable<Segment> | null {
@@ -441,23 +470,10 @@ describe("DefaultScreen", () => {
       }
     }
 
-    it("widgets returns mount order while no overlays are active", async () => {
-      // [LAW:one-source-of-truth] When no overlay paints, the z-order has
-      // no overlay-active widgets to lift, so `widgets` equals widgetList.
-      const a = new OverlayStub("a", "header");
-      const b = new StubWidget("b", "Beta");
-      screen.mount(a, b);
-      screen.start();
-      await flush();
-      expect(screen.widgets).toEqual([a, b]);
-    });
-
-    it("widgets puts overlay-active widgets last (visual topmost wins hit-test)", async () => {
-      // Bug shape: A is mounted FIRST and paints an active overlay that
-      // visually covers B's row. Without z-order in `widgets`, EventRouter's
-      // topmostHit iterates reverse mount order and returns B, so clicks on
-      // overlay rows are stolen by B. With the fix, `widgets` exposes A
-      // last so the router returns A.
+    it("an overlay row is its owner's, at the row below its footprint", async () => {
+      // A is mounted FIRST and its overlay covers B's row. Paint order is
+      // z-order: the overlay pass runs last, so the frame names A there and
+      // a click on the overlay reaches A, not B mounted underneath.
       const a = new OverlayStub("a", "AAA");
       const b = new StubWidget("b", "Beta");
       screen.mount(a, b);
@@ -465,45 +481,23 @@ describe("DefaultScreen", () => {
       screen.start();
       await flush();
 
-      expect(screen.widgets).toEqual([b, a]);
-      // Overlay rows are unioned into A's bounds so B's row is inside A.
-      // A occupies y=0 (header) + y=1,y=2 (overlay).
-      expect(a.bounds!.height).toBeGreaterThanOrEqual(3);
+      expect(widgetAt(screen.frame, 0, 0)).toEqual({ widget: a, col: 0, row: 0 });
+      expect(widgetAt(screen.frame, 2, 1)).toEqual({ widget: a, col: 2, row: 1 });
+      expect(widgetAt(screen.frame, 0, 2)).toEqual({ widget: a, col: 0, row: 2 });
     });
 
-    it("collapsing the overlay drops the widget back to mount order", async () => {
-      // [LAW:dataflow-not-control-flow] No branch in the consumer — the
-      // discriminator (whether the overlay produced rows) lives entirely
-      // in the per-frame Set. Toggling expanded triggers a fresh draw,
-      // which rebuilds the set, which rearranges `widgets`.
+    it("collapsing the overlay hands its rows back to what lies beneath", async () => {
       const a = new OverlayStub("a", "AAA");
       const b = new StubWidget("b", "Beta");
       screen.mount(a, b);
       a.setExpanded(true);
       screen.start();
       await flush();
-      expect(screen.widgets).toEqual([b, a]);
+      expect(widgetAt(screen.frame, 0, 1)?.widget).toBe(a);
 
       a.setExpanded(false);
       await flush();
-      expect(screen.widgets).toEqual([a, b]);
-    });
-
-    it("unmounting an overlay-active widget drops it from z-order", async () => {
-      // The active-overlay set is per-frame derivation, but it persists
-      // between draws; unmount must remove the widget so a stale reference
-      // doesn't surface from `widgets` after the next observable read.
-      const a = new OverlayStub("a", "AAA");
-      const b = new StubWidget("b", "Beta");
-      screen.mount(a, b);
-      a.setExpanded(true);
-      screen.start();
-      await flush();
-      expect(screen.widgets).toEqual([b, a]);
-
-      screen.unmount(a);
-      // Before the next draw fires, the getter must already not return `a`.
-      expect(screen.widgets).toEqual([b]);
+      expect(widgetAt(screen.frame, 0, 1)).toEqual({ widget: b, col: 0, row: 0 });
     });
   });
 
@@ -562,8 +556,8 @@ describe("DefaultScreen", () => {
 
       // Same as the existing flow test — bare mount() args still produce
       // the historical single-column layout.
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
-      expect(b.bounds).toEqual({ x: 0, y: 1, width: 5, height: 1 });
+      expect(rectOf(screen, a)).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, b)).toEqual({ x: 0, y: 1, width: 5, height: 1 });
     });
 
     it("inline placement packs widget on the row of its predecessor", async () => {
@@ -574,9 +568,9 @@ describe("DefaultScreen", () => {
       await flush();
 
       // a flows at (0, 0), width 6 (" Alpha" — first widget auto-focuses → "*Alpha").
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, a)).toEqual({ x: 0, y: 0, width: 6, height: 1 });
       // b inlines: x = a.right + 1 cell gap = 7, y = 0.
-      expect(b.bounds).toEqual({ x: 7, y: 0, width: 5, height: 1 });
+      expect(rectOf(screen, b)).toEqual({ x: 7, y: 0, width: 5, height: 1 });
 
       // Both widgets share the row; the rendered line should contain both
       // labels left-to-right with the gap between them.
@@ -596,9 +590,9 @@ describe("DefaultScreen", () => {
       screen.start();
       await flush();
 
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
-      expect(b.bounds).toEqual({ x: 7, y: 0, width: 5, height: 1 });
-      expect(c.bounds).toEqual({ x: 13, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, a)).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, b)).toEqual({ x: 7, y: 0, width: 5, height: 1 });
+      expect(rectOf(screen, c)).toEqual({ x: 13, y: 0, width: 6, height: 1 });
     });
 
     it("a flow placement after inlines starts a new row", async () => {
@@ -613,10 +607,10 @@ describe("DefaultScreen", () => {
       screen.start();
       await flush();
 
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
-      expect(b.bounds).toEqual({ x: 7, y: 0, width: 5, height: 1 });
+      expect(rectOf(screen, a)).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, b)).toEqual({ x: 7, y: 0, width: 5, height: 1 });
       // c flows at y=1 — directly below the inline row.
-      expect(c.bounds).toEqual({ x: 0, y: 1, width: 6, height: 1 });
+      expect(rectOf(screen, c)).toEqual({ x: 0, y: 1, width: 6, height: 1 });
     });
 
     it("rejects fixed placements with negative or non-integer coords", () => {
@@ -643,8 +637,8 @@ describe("DefaultScreen", () => {
       screen.start();
       await flush();
 
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
-      expect(status.bounds).toEqual({ x: 10, y: 5, width: 7, height: 1 });
+      expect(rectOf(screen, a)).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, status)).toEqual({ x: 10, y: 5, width: 7, height: 1 });
 
       // Frame extends to row 5 (the fixed item's y); intermediate rows are
       // padded blanks. The total line count should be 6.
@@ -670,9 +664,9 @@ describe("DefaultScreen", () => {
 
       // a at (0, 0), fixed at (20, 10) — but b still flows at y=1
       // (immediately after a), independent of the fixed item.
-      expect(a.bounds).toEqual({ x: 0, y: 0, width: 6, height: 1 });
-      expect(fixed.bounds).toEqual({ x: 20, y: 10, width: 6, height: 1 });
-      expect(b.bounds).toEqual({ x: 0, y: 1, width: 5, height: 1 });
+      expect(rectOf(screen, a)).toEqual({ x: 0, y: 0, width: 6, height: 1 });
+      expect(rectOf(screen, fixed)).toEqual({ x: 20, y: 10, width: 6, height: 1 });
+      expect(rectOf(screen, b)).toEqual({ x: 0, y: 1, width: 5, height: 1 });
     });
 
     it("fixed placement is hit-testable at its absolute coords", async () => {
@@ -681,12 +675,12 @@ describe("DefaultScreen", () => {
       screen.start();
       await flush();
 
-      // " Fixed" is 6 cells wide; bounds x=12, width=6 → covers cols 12..17.
-      expect(fixed.containsPoint(12, 7)).toBe(true);
-      expect(fixed.containsPoint(17, 7)).toBe(true);
-      expect(fixed.containsPoint(18, 7)).toBe(false);
-      expect(fixed.containsPoint(11, 7)).toBe(false);
-      expect(fixed.containsPoint(15, 6)).toBe(false);
+      // " Fixed" is 6 cells wide at x=12 → covers cols 12..17.
+      expect(widgetAt(screen.frame, 12, 7)).toEqual({ widget: fixed, col: 0, row: 0 });
+      expect(widgetAt(screen.frame, 17, 7)).toEqual({ widget: fixed, col: 5, row: 0 });
+      expect(widgetAt(screen.frame, 18, 7)).toBeUndefined();
+      expect(widgetAt(screen.frame, 11, 7)).toBeUndefined();
+      expect(widgetAt(screen.frame, 15, 6)).toBeUndefined();
     });
   });
 

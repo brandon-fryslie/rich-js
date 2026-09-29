@@ -18,6 +18,7 @@ import {
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
+  widgetAt,
   StaticItem,
 } from "../../src/widgets/index.js";
 import type { TerminalHost } from "../../src/host/index.js";
@@ -50,7 +51,8 @@ import {
   ATOM_ONE_DARK,
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
-import type { InteractiveWidget, MountEntry } from "../../src/widgets/types.js";
+import type { InteractiveWidget } from "../../src/widgets/types.js";
+import type { MountEntry } from "../../src/widgets/screen.js";
 import type { ColorRgba } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -393,14 +395,6 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     { widget: logItem, placement: { kind: "fixed", x: 0, y: LOG_Y } },
   ];
 
-  const focusableAt = (x: number, y: number): InteractiveWidget | null => {
-    for (let i = allWidgets.length - 1; i >= 0; i--) {
-      const widget = allWidgets[i]!;
-      if (widget.containsPoint(x, y)) return widget;
-    }
-    return null;
-  };
-
   let stopped = false;
   let disposeTheme: (() => void) | null = null;
   let disposeFilter: (() => void) | null = null;
@@ -427,8 +421,10 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
 
   router.onMouse((event) => {
     if (event.type !== "mouse_up") return;
-    const hit = focusableAt(event.x, event.y);
-    if (hit) fm.focus(hit);
+    // The frame the screen painted says who drew the cell under the pointer;
+    // focus() ignores a widget that cannot take focus.
+    const hit = widgetAt(screen.frame, event.x, event.y);
+    if (hit) fm.focus(hit.widget);
   });
 
   // [LAW:single-enforcer] Alt-screen state has exactly one restore site

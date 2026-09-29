@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Segment } from "../../src/core/segment.js";
 import { Toggle } from "../../src/widgets/toggle.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
@@ -8,8 +9,8 @@ const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: fa
 const spaceEvent = () => new KeyEvent({ key: "space", character: " ", shift: false, ctrl: false, meta: false });
 const escapeEvent = () => new KeyEvent({ key: "escape", character: "\x1b", shift: false, ctrl: false, meta: false });
 
-const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false };
-const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false };
+const mouseDown: WidgetMouseEvent = { type: "mouse_down", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
+const mouseUp: WidgetMouseEvent = { type: "mouse_up", x: 0, y: 0, button: 0, shift: false, ctrl: false, over: true };
 
 describe("Toggle", () => {
   it("constructs with defaults", () => {
@@ -48,14 +49,14 @@ describe("Toggle", () => {
   describe("rendering", () => {
     it("renders OFF indicator with label", () => {
       const tg = new Toggle({ label: "Go" });
-      const segments = [...tg.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("[OFF] Go");
     });
 
     it("renders ON indicator with label", () => {
       const tg = new Toggle({ label: "Go", on: true });
-      const segments = [...tg.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(segments).toHaveLength(1);
       expect(segments[0]!.text).toBe("[ON]  Go");
     });
@@ -63,57 +64,57 @@ describe("Toggle", () => {
     it("ON and OFF indicators have the same total width", () => {
       const off = new Toggle({ label: "Go" });
       const on = new Toggle({ label: "Go", on: true });
-      const offText = [...off.render({ maxWidth: 80 })][0]!.text;
-      const onText = [...on.render({ maxWidth: 80 })][0]!.text;
+      const offText = Segment.splitLines(off.render({ maxWidth: 80 }))[0]![0]!.text;
+      const onText = Segment.splitLines(on.render({ maxWidth: 80 }))[0]![0]!.text;
       expect(offText.length).toBe(onText.length);
     });
 
     it("renders with style (not undefined)", () => {
       const tg = new Toggle({ label: "Go" });
-      const segments = [...tg.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style).toBeDefined();
     });
 
     it("renders dimmed when disabled", () => {
       const tg = new Toggle({ label: "Go", disabled: true });
-      const segments = [...tg.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.dim).toBe(true);
     });
 
     it("renders with underline when focused", () => {
       const tg = new Toggle({ label: "Go" });
       tg.focus();
-      const segments = [...tg.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.underline).toBe(true);
     });
 
     it("renders without underline when not focused", () => {
       const tg = new Toggle({ label: "Go" });
-      const segments = [...tg.render({ maxWidth: 80 })];
+      const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(segments[0]!.style!.underline).toBeFalsy();
     });
 
     it("focus does not change width", () => {
       const tg = new Toggle({ label: "Go" });
-      const normal = [...tg.render({ maxWidth: 80 })];
+      const normal = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       tg.focus();
-      const focused = [...tg.render({ maxWidth: 80 })];
+      const focused = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(normal[0]!.text.length).toBe(focused[0]!.text.length);
     });
 
     it("toggle does not change width", () => {
       const tg = new Toggle({ label: "Go" });
-      const off = [...tg.render({ maxWidth: 80 })];
+      const off = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       tg.handleKey(spaceEvent());
-      const on = [...tg.render({ maxWidth: 80 })];
+      const on = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
       expect(off[0]!.text.length).toBe(on[0]!.text.length);
     });
 
     it("ON and OFF use different background colours", () => {
       const off = new Toggle({ label: "Go", variant: "primary" });
       const on = new Toggle({ label: "Go", variant: "primary", on: true });
-      const offBg = [...off.render({ maxWidth: 80 })][0]!.style!.bgcolor;
-      const onBg = [...on.render({ maxWidth: 80 })][0]!.style!.bgcolor;
+      const offBg = Segment.splitLines(off.render({ maxWidth: 80 }))[0]![0]!.style!.bgcolor;
+      const onBg = Segment.splitLines(on.render({ maxWidth: 80 }))[0]![0]!.style!.bgcolor;
       expect(offBg).toBeDefined();
       expect(onBg).toBeDefined();
       expect(offBg!.name).not.toBe(onBg!.name);
@@ -121,7 +122,7 @@ describe("Toggle", () => {
 
     it("ON state uses on-${accent} contrast colour as fg, not text-${accent}", () => {
       const on = new Toggle({ label: "Go", variant: "primary", on: true });
-      const fg = [...on.render({ maxWidth: 80 })][0]!.style!.color!;
+      const fg = Segment.splitLines(on.render({ maxWidth: 80 }))[0]![0]!.style!.color!;
       // on-primary is pure black or pure white (WCAG contrast).
       const isBlack = fg.name === "#000000";
       const isWhite = fg.name === "#ffffff";
@@ -131,7 +132,7 @@ describe("Toggle", () => {
     it("ON state's fg differs from its bg (no same-hue clash)", () => {
       for (const variant of ["primary", "success", "warning", "danger"] as const) {
         const on = new Toggle({ label: "Go", variant, on: true });
-        const style = [...on.render({ maxWidth: 80 })][0]!.style!;
+        const style = Segment.splitLines(on.render({ maxWidth: 80 }))[0]![0]!.style!;
         expect(style.color!.name).not.toBe(style.bgcolor!.name);
       }
     });
@@ -140,9 +141,9 @@ describe("Toggle", () => {
       const primary = new Toggle({ label: "Go", variant: "primary", on: true });
       const success = new Toggle({ label: "Go", variant: "success", on: true });
       const danger = new Toggle({ label: "Go", variant: "danger", on: true });
-      const pBg = [...primary.render({ maxWidth: 80 })][0]!.style!.bgcolor;
-      const sBg = [...success.render({ maxWidth: 80 })][0]!.style!.bgcolor;
-      const dBg = [...danger.render({ maxWidth: 80 })][0]!.style!.bgcolor;
+      const pBg = Segment.splitLines(primary.render({ maxWidth: 80 }))[0]![0]!.style!.bgcolor;
+      const sBg = Segment.splitLines(success.render({ maxWidth: 80 }))[0]![0]!.style!.bgcolor;
+      const dBg = Segment.splitLines(danger.render({ maxWidth: 80 }))[0]![0]!.style!.bgcolor;
       expect(pBg!.name).not.toBe(sBg!.name);
       expect(pBg!.name).not.toBe(dBg!.name);
       expect(sBg!.name).not.toBe(dBg!.name);
@@ -232,6 +233,13 @@ describe("Toggle", () => {
       expect(changes).toHaveLength(1);
     });
 
+    it("a release dragged off the toggle does not toggle it", () => {
+      const tg = new Toggle({ label: "Go" });
+      tg.handleMouse(mouseDown);
+      tg.handleMouse({ ...mouseUp, over: false });
+      expect(tg.on).toBe(false);
+    });
+
     it("does not toggle on mouse_down alone", () => {
       const tg = new Toggle({ label: "Go" });
       const changes: InteractiveWidget[] = [];
@@ -295,14 +303,4 @@ describe("Toggle", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const tg = new Toggle({ label: "Go" });
-      expect(tg.containsPoint(0, 0)).toBe(false);
-      tg.bounds = { x: 0, y: 0, width: 8, height: 1 };
-      expect(tg.containsPoint(0, 0)).toBe(true);
-      expect(tg.containsPoint(7, 0)).toBe(true);
-      expect(tg.containsPoint(8, 0)).toBe(false);
-    });
-  });
 });

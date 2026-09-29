@@ -62,7 +62,8 @@ export interface KeyHandlerOptions {
 // There is no "click" — clicks are derived by handlers from mouse_down +
 // mouse_up pairs on the same widget. Keeping unreachable values in the
 // union would force every consumer to handle a case that never arrives.
-export interface WidgetMouseEvent {
+// `x`/`y` are the terminal cell under the pointer: what `onMouse` hears.
+export interface ScreenMouseEvent {
   type: "mouse_down" | "mouse_up" | "mouse_move" | "scroll_up" | "scroll_down";
   x: number;
   y: number;
@@ -71,17 +72,16 @@ export interface WidgetMouseEvent {
   ctrl: boolean;
 }
 
-export interface WidgetFocusEvent {
-  type: "focus" | "blur";
+// The same event as one widget receives it. `x`/`y` are in the widget's own
+// output: column and row of the cell it drew, or, for a drag it captured,
+// relative to where it is painted now — so they fall outside the widget once
+// the pointer leaves it. `over` is whether it drew the cell under the pointer.
+export interface WidgetMouseEvent extends ScreenMouseEvent {
+  over: boolean;
 }
 
-// --- Bounds (set by host during layout) ---
-
-export interface WidgetBounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+export interface WidgetFocusEvent {
+  type: "focus" | "blur";
 }
 
 // --- InteractiveWidget ---
@@ -103,9 +103,6 @@ export interface InteractiveWidget extends Renderable, Measurable {
   disabled: boolean;
   visible: boolean;
 
-  // Geometry — set by host during layout, used for hit-testing
-  bounds: WidgetBounds | null;
-
   // Event handlers
   // [LAW:single-enforcer] handleKey claims a key by calling `event.stop()`.
   // The router walks an ordered priority chain; once stopped, no later
@@ -119,9 +116,6 @@ export interface InteractiveWidget extends Renderable, Measurable {
   blur(): void;
   setDisabled(value: boolean): void;
   setHovered(value: boolean): void;
-
-  // Hit-testing
-  containsPoint(x: number, y: number): boolean;
 
   // Subscriptions
   onChange(handler: (widget: InteractiveWidget) => void): Unsubscribe;
@@ -154,20 +148,14 @@ export const FLOW: Placement = { kind: "flow" };
 // independent. `render()` (Renderable) emits the inline footprint that
 // participates in flow layout — for the Dropdown, just the 1-row header.
 // `renderOverlay()` emits segments painted ON TOP of the frame after
-// base layout, anchored directly below the inline footprint at the same
-// column. Returns null when no overlay is active.
+// base layout, directly below the inline footprint at the same column.
+// Returns null when no overlay is active.
 //
-// The host (Screen / demo render loop) is the single enforcer that runs
-// the overlay pass: it iterates widgets in mount order, calls
-// renderOverlay on those that opt in, paints the segments at
-// (bounds.x, bounds.y + bounds.height), grows widget.bounds to include
-// the overlay area, AND publishes hit-test z-order so EventRouter routes
-// clicks on overlay rows to the overlay owner instead of widgets mounted
-// underneath. Render order = z-order for both paint and hit-test: the
-// overlay pass runs last, so overlay content wins on the screen, and
-// overlay-active widgets sort last in `Screen.widgets`, so the router's
-// topmost-hit returns them ahead of base widgets that happen to be
-// mounted later.
+// The host (Screen) runs the overlay pass last and stamps overlay row i as
+// the widget's row footprint+i, so the widget reads a click on its overlay
+// in the same coordinates as one on its header. Painting last is what makes
+// the overlay topmost: hit-testing reads the painted frame, and whoever
+// painted a cell last owns it.
 export interface OverlayRenderable {
   renderOverlay(options: RenderOptions): Iterable<Segment> | null;
 }
@@ -200,26 +188,9 @@ export interface FocusManager {
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe;
 }
 
-// --- Screen ---
-
-// A mount entry is either a bare widget (placement defaults to flow) or a
-// widget paired with an explicit placement. The two-shape input is a
-// convenience; internally Screen normalizes to { widget, placement }.
-export type MountEntry =
-  | InteractiveWidget
-  | { widget: InteractiveWidget; placement: Placement };
-
-export interface Screen {
-  mount(...entries: MountEntry[]): void;
-  unmount(widget: InteractiveWidget): void;
-
-  start(): void;
-  stop(): void;
-
+// What EventRouter routes against: focus for keys, and the frame most
+// recently painted for the pointer (`widgetAt`).
+export interface FrameSource {
   readonly focusManager: FocusManager;
-  readonly running: boolean;
-  // [LAW:one-source-of-truth] The screen owns the live widget list; the
-  // router and other consumers read it from here for hit-testing / layout
-  // queries.
-  readonly widgets: readonly InteractiveWidget[];
+  readonly frame: readonly (readonly Segment[])[];
 }

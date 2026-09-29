@@ -10,15 +10,24 @@ import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import type {
   KeyEvent,
   WidgetMouseEvent,
-  WidgetBounds,
-  Screen,
-  InteractiveWidget,
+  ScreenMouseEvent,
+  FrameSource,
 } from "../../src/widgets/types.js";
 
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// A widget that fills whatever rectangle the test places it in, one segment
+// per cell, so `paint` can lay its stamped cells onto a frame one by one.
 class StubWidget extends WidgetBase {
   keyEvents: KeyEvent[] = [];
   mouseEvents: WidgetMouseEvent[] = [];
   hoverChanges: boolean[] = [];
+  rect: Rect = { x: 0, y: 0, width: 0, height: 0 };
 
   constructor(
     readonly id: string,
@@ -27,10 +36,8 @@ class StubWidget extends WidgetBase {
     super();
   }
 
-  setBounds(b: WidgetBounds): void {
-    runInAction(() => {
-      this.bounds = b;
-    });
+  place(rect: Rect): void {
+    this.rect = rect;
   }
 
   override setHovered(value: boolean): void {
@@ -48,8 +55,12 @@ class StubWidget extends WidgetBase {
     this.mouseEvents.push(event);
   }
 
-  render(_options: RenderOptions): Iterable<Segment> {
-    return [new Segment(this.id)];
+  protected draw(_options: RenderOptions): Iterable<Segment> {
+    const { width, height } = this.rect;
+    return Array.from({ length: height }, (_, row) => [
+      ...(row > 0 ? [Segment.line()] : []),
+      ...Array.from({ length: width }, () => new Segment("#")),
+    ]).flat();
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
@@ -96,10 +107,29 @@ interface Harness {
   stdout: CapturingStream;
   fm: DefaultFocusManager;
   widgets: StubWidget[];
-  screen: Screen;
+  screen: FrameSource;
   keyEvents: KeyEvent[];
-  mouseEvents: WidgetMouseEvent[];
+  mouseEvents: ScreenMouseEvent[];
   setWidgets: (widgets: StubWidget[]) => void;
+}
+
+// The frame a screen would paint: each visible widget's stamped cells at its
+// rect, in list order, so a later widget paints over an earlier one.
+function paint(widgets: readonly StubWidget[]): Segment[][] {
+  const frame: Segment[][] = [];
+  for (const w of widgets) {
+    if (!w.visible) continue;
+    Segment.splitLines(w.render({ maxWidth: 80 })).forEach((line, row) => {
+      const y = w.rect.y + row;
+      while (frame.length <= y) frame.push([]);
+      const cells = frame[y]!;
+      line.forEach((cell, col) => {
+        while (cells.length <= w.rect.x + col) cells.push(new Segment(" "));
+        cells[w.rect.x + col] = cell;
+      });
+    });
+  }
+  return frame;
 }
 
 function makeHarness(initial: StubWidget[] = []): Harness {
@@ -109,17 +139,12 @@ function makeHarness(initial: StubWidget[] = []): Harness {
   let widgets = initial;
   for (const w of widgets) fm.register(w);
 
-  const screen: Screen = {
-    mount: () => {},
-    unmount: () => {},
-    start: () => {},
-    stop: () => {},
+  const screen: FrameSource = {
     focusManager: fm,
-    running: true,
-    get widgets(): readonly InteractiveWidget[] {
-      return widgets;
+    get frame() {
+      return paint(widgets);
     },
-  } as Screen & { widgets: readonly InteractiveWidget[] };
+  };
 
   const host = makeNodeHost(stdin, stdout);
   const router = new EventRouter({
@@ -130,7 +155,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
   });
 
   const keyEvents: KeyEvent[] = [];
-  const mouseEvents: WidgetMouseEvent[] = [];
+  const mouseEvents: ScreenMouseEvent[] = [];
   // High priority: this is an "observe every key" hook for assertions. If
   // it sat at normal priority, FocusManager's Tab handler would stop the
   // event first and the observer would miss Tab events. Note this also
@@ -395,7 +420,7 @@ describe("EventRouter — tab navigation", () => {
 describe("EventRouter — mouse parsing", () => {
   it("parses SGR press / release", () => {
     const a = new StubWidget("a");
-    a.setBounds({ x: 0, y: 0, width: 10, height: 1 });
+    a.place({ x: 0, y: 0, width: 10, height: 1 });
     const h = makeHarness([a]);
     h.router.feed("\x1b[<0;5;1M"); // press at col 5 (0-based: 4), row 1 (0-based: 0)
     h.router.feed("\x1b[<0;5;1m"); // release
@@ -407,7 +432,7 @@ describe("EventRouter — mouse parsing", () => {
 
   it("parses SGR motion", () => {
     const a = new StubWidget("a");
-    a.setBounds({ x: 0, y: 0, width: 10, height: 1 });
+    a.place({ x: 0, y: 0, width: 10, height: 1 });
     const h = makeHarness([a]);
     // cb=35 = 3 (release-any) + 32 (motion bit) = no-button motion
     h.router.feed("\x1b[<35;3;1M");
@@ -437,17 +462,29 @@ describe("EventRouter — mouse parsing", () => {
   it("dispatches click to the topmost (last) widget under the pointer", () => {
     const lower = new StubWidget("lower");
     const upper = new StubWidget("upper");
-    lower.setBounds({ x: 0, y: 0, width: 10, height: 3 });
-    upper.setBounds({ x: 0, y: 0, width: 10, height: 3 });
+    lower.place({ x: 0, y: 0, width: 10, height: 3 });
+    upper.place({ x: 0, y: 0, width: 10, height: 3 });
     const h = makeHarness([lower, upper]);
     h.router.feed("\x1b[<0;3;2M");
     expect(upper.mouseEvents).toHaveLength(1);
     expect(lower.mouseEvents).toHaveLength(0);
   });
 
+  it("delivers the event in the widget's own coordinates", () => {
+    const a = new StubWidget("a");
+    a.place({ x: 4, y: 2, width: 6, height: 3 });
+    const h = makeHarness([a]);
+    h.router.feed("\x1b[<0;7;4M"); // screen (6, 3)
+    expect(a.mouseEvents).toEqual([
+      { type: "mouse_down", x: 2, y: 1, button: 0, shift: false, ctrl: false, over: true },
+    ]);
+    // Handlers registered with onMouse still see the screen position.
+    expect(h.mouseEvents[0]).toMatchObject({ x: 6, y: 3 });
+  });
+
   it("does not dispatch to invisible widgets", () => {
     const a = new StubWidget("a");
-    a.setBounds({ x: 0, y: 0, width: 10, height: 1 });
+    a.place({ x: 0, y: 0, width: 10, height: 1 });
     runInAction(() => {
       a.visible = false;
     });
@@ -458,15 +495,15 @@ describe("EventRouter — mouse parsing", () => {
 });
 
 describe("EventRouter — drag capture", () => {
-  it("mouse_move outside the original widget's bounds still routes to it after mouse_down", () => {
+  it("mouse_move off the pressed widget still routes to it after mouse_down", () => {
     // A widget that captures the drag (slider, scrollbar, etc.) must keep
-    // receiving mouse_move events even when the pointer leaves its bounds.
+    // receiving mouse_move events even when the pointer leaves it.
     // Without capture, the move would dispatch to the topmost-hit widget at
     // the new position — breaking drag-to-scrub behavior.
     const a = new StubWidget("a");
     const b = new StubWidget("b");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    a.place({ x: 0, y: 0, width: 5, height: 1 });
+    b.place({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
     // Press inside a.
@@ -474,7 +511,7 @@ describe("EventRouter — drag capture", () => {
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
     expect(b.mouseEvents).toHaveLength(0);
 
-    // Move into b's bounds — STILL routes to a because a captured the drag.
+    // Move onto b — STILL routes to a because a captured the drag.
     h.router.feed("\x1b[<32;7;1M");
     expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "mouse_move"]);
     expect(b.mouseEvents.filter((e) => e.type === "mouse_move")).toHaveLength(0);
@@ -488,11 +525,61 @@ describe("EventRouter — drag capture", () => {
     expect(b.mouseEvents.some((e) => e.type === "mouse_move")).toBe(true);
   });
 
+  it("a captured drag keeps the frame of reference its press found", () => {
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    a.place({ x: 3, y: 1, width: 5, height: 1 });
+    b.place({ x: 8, y: 1, width: 5, height: 1 });
+    const h = makeHarness([a, b]);
+
+    h.router.feed("\x1b[<0;5;2M"); // press screen (4, 1) → a's column 1
+    h.router.feed("\x1b[<32;11;3M"); // drag over b and a row down: (10, 2)
+    h.router.feed("\x1b[<0;2;2m"); // release left of a: (1, 1)
+    expect(a.mouseEvents.map(({ type, x, y }) => ({ type, x, y }))).toEqual([
+      { type: "mouse_down", x: 1, y: 0 },
+      { type: "mouse_move", x: 7, y: 1 },
+      { type: "mouse_up", x: -2, y: 0 },
+    ]);
+  });
+
+  it("a captured drag follows the widget to where it is painted now", () => {
+    const a = new StubWidget("a");
+    a.place({ x: 3, y: 1, width: 5, height: 1 });
+    const h = makeHarness([a]);
+
+    h.router.feed("\x1b[<0;5;2M"); // press screen (4, 1) → a's column 1
+    a.place({ x: 6, y: 2, width: 5, height: 1 }); // repainted right and down
+    h.router.feed("\x1b[<32;9;3M"); // (8, 2) → a's column 2 where it is now
+    expect(a.mouseEvents.map(({ type, x, y }) => ({ type, x, y }))).toEqual([
+      { type: "mouse_down", x: 1, y: 0 },
+      { type: "mouse_move", x: 2, y: 0 },
+    ]);
+  });
+
+  it("tells a captured widget whether the pointer is over it", () => {
+    const a = new StubWidget("a");
+    const b = new StubWidget("b");
+    a.place({ x: 0, y: 0, width: 5, height: 1 });
+    b.place({ x: 5, y: 0, width: 5, height: 1 });
+    const h = makeHarness([a, b]);
+
+    h.router.feed("\x1b[<0;1;1M");
+    h.router.feed("\x1b[<0;7;1m"); // released on b
+    h.router.feed("\x1b[<0;1;1M");
+    h.router.feed("\x1b[<0;3;1m"); // released on a
+    expect(a.mouseEvents.map(({ type, over }) => ({ type, over }))).toEqual([
+      { type: "mouse_down", over: true },
+      { type: "mouse_up", over: false },
+      { type: "mouse_down", over: true },
+      { type: "mouse_up", over: true },
+    ]);
+  });
+
   it("scroll events bypass capture (they're not drag-scoped)", () => {
     const a = new StubWidget("a");
     const b = new StubWidget("b");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    a.place({ x: 0, y: 0, width: 5, height: 1 });
+    b.place({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
     // Capture on a.
@@ -506,11 +593,11 @@ describe("EventRouter — drag capture", () => {
 });
 
 describe("EventRouter — hover dispatch", () => {
-  it("sets hovered=true when mouse enters bounds and false when it leaves", () => {
+  it("sets hovered=true when the pointer moves onto a widget and false when it leaves", () => {
     const a = new StubWidget("a");
     const b = new StubWidget("b");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    a.place({ x: 0, y: 0, width: 5, height: 1 });
+    b.place({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
     // Move into a — only a should change to hovered=true
@@ -529,9 +616,19 @@ describe("EventRouter — hover dispatch", () => {
     expect(b.hovered).toBe(false);
   });
 
+  it("stop() clears hover, since the router no longer knows where the pointer is", () => {
+    const a = new StubWidget("a");
+    a.place({ x: 0, y: 0, width: 5, height: 1 });
+    const h = makeHarness([a]);
+    h.router.feed("\x1b[<35;2;1M");
+    expect(a.hovered).toBe(true);
+    h.router.stop();
+    expect(a.hovered).toBe(false);
+  });
+
   it("does not call setHovered when state is unchanged", () => {
     const a = new StubWidget("a");
-    a.setBounds({ x: 0, y: 0, width: 10, height: 1 });
+    a.place({ x: 0, y: 0, width: 10, height: 1 });
     const h = makeHarness([a]);
 
     h.router.feed("\x1b[<35;2;1M");
@@ -549,17 +646,7 @@ describe("EventRouter — start/stop", () => {
     const fm = new DefaultFocusManager();
     const a = new StubWidget("a");
     fm.register(a);
-    const screen: Screen = {
-      mount: () => {},
-      unmount: () => {},
-      start: () => {},
-      stop: () => {},
-      focusManager: fm,
-      running: true,
-      get widgets(): readonly InteractiveWidget[] {
-        return [a];
-      },
-    } as Screen & { widgets: readonly InteractiveWidget[] };
+    const screen: FrameSource = { focusManager: fm, frame: paint([a]) };
 
     const host = makeNodeHost(stdin, stdout);
     const router = new EventRouter({
@@ -583,17 +670,7 @@ describe("EventRouter — start/stop", () => {
     const stdin = new PassThrough();
     const stdout = new CapturingStream();
     const fm = new DefaultFocusManager();
-    const screen: Screen = {
-      mount: () => {},
-      unmount: () => {},
-      start: () => {},
-      stop: () => {},
-      focusManager: fm,
-      running: true,
-      get widgets(): readonly InteractiveWidget[] {
-        return [];
-      },
-    } as Screen & { widgets: readonly InteractiveWidget[] };
+    const screen: FrameSource = { focusManager: fm, frame: paint([]) };
 
     const host = makeNodeHost(stdin, stdout);
     const router = new EventRouter({
@@ -643,8 +720,8 @@ describe("EventRouter — start/stop", () => {
     // session. Leaking it would misroute the first mouse_move after restart.
     const a = new StubWidget("a");
     const b = new StubWidget("b");
-    a.setBounds({ x: 0, y: 0, width: 5, height: 1 });
-    b.setBounds({ x: 5, y: 0, width: 5, height: 1 });
+    a.place({ x: 0, y: 0, width: 5, height: 1 });
+    b.place({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
     // mouse_down on a: opens drag capture.
@@ -656,7 +733,7 @@ describe("EventRouter — start/stop", () => {
     b.mouseEvents.length = 0;
 
     h.router.start();
-    // mouse_move inside b's bounds. With capture cleared, the router
+    // mouse_move over b. With capture cleared, the router
     // hit-tests fresh: b receives the mouse_move (as the topmost-hit
     // widget) and the hover loop flips b.hovered to true. The point of
     // this assertion is that `a` — which held capture in the previous

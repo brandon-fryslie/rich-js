@@ -1,6 +1,7 @@
 /**
- * EventRouter — parses raw stdin into KeyEvent / WidgetMouseEvent values
- * and dispatches them to widgets via the Screen's FocusManager and bounds.
+ * EventRouter — parses raw stdin into KeyEvent / ScreenMouseEvent values
+ * and dispatches them to widgets via the Screen's FocusManager and the frame
+ * it last painted.
  *
  * [LAW:single-enforcer] ANSI escape parsing lives only here — widgets never
  * see raw bytes. One parser, one dispatch surface.
@@ -19,13 +20,14 @@
 
 import { KeyEvent } from "./types.js";
 import type {
-  Screen,
-  FocusManager,
+  FrameSource,
   InteractiveWidget,
-  WidgetMouseEvent,
+  ScreenMouseEvent,
   KeyHandlerOptions,
   KeyHandlerPriority,
 } from "./types.js";
+import { drew, originOf, widgetAt } from "./hit.js";
+import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { TerminalHost } from "../host/terminal-host.js";
 
@@ -35,13 +37,16 @@ interface RegisteredKeyHandler {
   priority: KeyHandlerPriority;
 }
 
-type WidgetSource = {
-  focusManager: FocusManager;
-  getWidgets: () => readonly InteractiveWidget[];
-};
+// Where a pointer event is delivered: the widget, and the screen position of
+// its output's first cell. The widget receives the event minus this origin.
+interface Target {
+  widget: InteractiveWidget;
+  originX: number;
+  originY: number;
+}
 
 export interface EventRouterOptions {
-  screen: Screen | WidgetSource;
+  screen: FrameSource;
   /**
    * The I/O capability the router reads input from and writes
    * mouse-tracking sequences to. Construct a `NodeTerminalHost` for
@@ -158,12 +163,12 @@ function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
 // Result of attempting to consume one event from the head of the buffer.
 type ConsumeResult =
   | { kind: "key"; bytes: number; event: KeyEvent }
-  | { kind: "mouse"; bytes: number; event: WidgetMouseEvent }
+  | { kind: "mouse"; bytes: number; event: ScreenMouseEvent }
   | { kind: "incomplete" } // need more bytes
   | { kind: "skip"; bytes: number }; // unrecognised — drop bytes
 
 export class EventRouter {
-  private readonly source: WidgetSource;
+  private readonly source: FrameSource;
   private readonly host: TerminalHost;
   private readonly manageMouse: boolean;
   private readonly manageRawMode: boolean;
@@ -182,25 +187,24 @@ export class EventRouter {
   // microtasks drain), without forcing a `setImmediate` polyfill on the
   // browser host.
   private escTimer: ReturnType<typeof setTimeout> | undefined;
-  // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's hit
-  // widget is recorded; mouse_move/mouse_up between then and the next
-  // mouse_up route to this widget unconditionally so dragging outside its
-  // bounds still drives state (e.g. Slider's _dragging). Cleared on the
-  // next mouse_up.
-  private capturedWidget: InteractiveWidget | null = null;
+  // [LAW:single-enforcer] Drag capture lives only here. A mouse_down's
+  // target is recorded; mouse_move/mouse_up between then and the next
+  // mouse_up route to it unconditionally and relative to where it is painted
+  // (`relocate`), so a drag past the widget's edge still drives its state
+  // (Slider's _dragging) and reports a column outside it. Cleared on the next
+  // mouse_up.
+  private captured: Target | null = null;
+  // The widget the pointer last moved over; the one widget `hovered` is true on.
+  private hoveredWidget: InteractiveWidget | null = null;
 
   // [LAW:dataflow-not-control-flow] Ordered chain; the dispatcher walks it
   // in priority tiers and stops as soon as some participant calls
   // `event.stop()`. Insertion order is preserved within each tier.
   private readonly keyChain: RegisteredKeyHandler[] = [];
-  private readonly mouseHandlers = new Set<(event: WidgetMouseEvent) => void>();
+  private readonly mouseHandlers = new Set<(event: ScreenMouseEvent) => void>();
 
   constructor(options: EventRouterOptions) {
-    const { screen } = options;
-    this.source = isWidgetSource(screen)
-      ? screen
-      : { focusManager: screen.focusManager, getWidgets: () => screen.widgets };
-
+    this.source = options.screen;
     this.host = options.host;
 
     // [LAW:one-source-of-truth] The host owns the "is this a real
@@ -250,7 +254,8 @@ export class EventRouter {
 
     // [LAW:one-source-of-truth] Per-session state belongs to one session.
     // stop() leaves the router in the same shape a fresh construction
-    // would: empty parse buffer, no captured widget, no pending ESC timer.
+    // would: empty parse buffer, no captured widget, nothing hovered, no
+    // pending ESC timer.
     // All cleanup is outside the `running` guard because feed() can arm
     // escTimer (and grow buffer) even when running is false — without
     // those, a pre-start feed could leave a deferred escape firing into
@@ -261,7 +266,8 @@ export class EventRouter {
       this.escTimer = undefined;
     }
     this.buffer = EMPTY_BYTES;
-    this.capturedWidget = null;
+    this.captured = null;
+    this.hover(null);
   }
 
   // --- External hooks ---
@@ -278,7 +284,7 @@ export class EventRouter {
     };
   }
 
-  onMouse(handler: (event: WidgetMouseEvent) => void): Unsubscribe {
+  onMouse(handler: (event: ScreenMouseEvent) => void): Unsubscribe {
     this.mouseHandlers.add(handler);
     return () => this.mouseHandlers.delete(handler);
   }
@@ -572,48 +578,53 @@ export class EventRouter {
     }
   }
 
-  private dispatchMouse(event: WidgetMouseEvent): void {
+  private dispatchMouse(event: ScreenMouseEvent): void {
     for (const handler of this.mouseHandlers) handler(event);
 
-    const widgets = this.source.getWidgets();
-
-    // Hover tracking: any widget whose hover state changed gets an update
-    // via the canonical setHovered (on WidgetBase). One setter, no fallback.
-    if (event.type === "mouse_move") {
-      for (const w of widgets) {
-        if (!w.visible) continue;
-        const inside = w.containsPoint(event.x, event.y);
-        if (inside !== w.hovered) w.setHovered(inside);
-      }
-    }
+    const frame = this.source.frame;
+    const hit = widgetAt(frame, event.x, event.y);
+    if (event.type === "mouse_move") this.hover(hit?.widget ?? null);
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the
     // capture value and event type pick the target. mouse_down opens a
     // capture, mouse_up closes it, mouse_move in between routes to the
     // captured widget regardless of pointer position. Scroll events
-    // bypass capture (they're not drag-scoped).
-    const useCapture =
-      this.capturedWidget !== null &&
-      (event.type === "mouse_move" || event.type === "mouse_up");
-    const target = useCapture
-      ? this.capturedWidget
-      : topmostHit(widgets, event.x, event.y);
-    if (target) target.handleMouse(event);
+    // bypass capture (they're not drag-scoped). A hit's origin puts the
+    // pressed cell at its own column and row, so every delivery is the same
+    // subtraction.
+    const useCapture = event.type === "mouse_move" || event.type === "mouse_up";
+    const target: Target | null =
+      (useCapture && this.captured ? relocate(frame, this.captured) : null) ??
+      (hit ? { widget: hit.widget, originX: event.x - hit.col, originY: event.y - hit.row } : null);
+    target?.widget.handleMouse({
+      ...event,
+      x: event.x - target.originX,
+      y: event.y - target.originY,
+      over: drew(frame, target.widget, event.x, event.y),
+    });
 
-    if (event.type === "mouse_down") this.capturedWidget = target;
-    else if (event.type === "mouse_up") this.capturedWidget = null;
+    if (event.type === "mouse_down") this.captured = target;
+    else if (event.type === "mouse_up") this.captured = null;
+  }
+
+  // [LAW:single-enforcer] The canonical setter on the widget is the only
+  // writer of `hovered`; this is the only caller, and only on a change.
+  private hover(widget: InteractiveWidget | null): void {
+    if (widget === this.hoveredWidget) return;
+    this.hoveredWidget?.setHovered(false);
+    widget?.setHovered(true);
+    this.hoveredWidget = widget;
   }
 }
 
 // --- Helpers ---
 
-function isWidgetSource(value: unknown): value is WidgetSource {
-  return (
-    !!value &&
-    typeof value === "object" &&
-    "getWidgets" in value &&
-    typeof (value as WidgetSource).getWidgets === "function"
-  );
+// [LAW:one-source-of-truth] A captured widget's origin is read off the frame
+// just painted, so a drag follows the widget if it moved since the press; one
+// no longer painted is where the press found it.
+function relocate(frame: readonly (readonly Segment[])[], target: Target): Target {
+  const origin = originOf(frame, target.widget);
+  return origin ? { widget: target.widget, originX: origin.x, originY: origin.y } : target;
 }
 
 function decodeMouseFromCb(
@@ -621,7 +632,7 @@ function decodeMouseFromCb(
   x: number,
   y: number,
   isPress: boolean,
-): WidgetMouseEvent {
+): ScreenMouseEvent {
   const isMotion = (cb & 32) !== 0;
   const isScroll = (cb & 64) !== 0;
   const button = cb & 3;
@@ -696,17 +707,4 @@ function decodeModifier(mod: number): { shift: boolean; ctrl: boolean; meta: boo
     meta: (bits & 2) !== 0,
     ctrl: (bits & 4) !== 0,
   };
-}
-
-function topmostHit(
-  widgets: readonly InteractiveWidget[],
-  x: number,
-  y: number,
-): InteractiveWidget | null {
-  for (let i = widgets.length - 1; i >= 0; i--) {
-    const w = widgets[i]!;
-    if (!w.visible) continue;
-    if (w.containsPoint(x, y)) return w;
-  }
-  return null;
 }

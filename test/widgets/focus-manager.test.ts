@@ -14,7 +14,7 @@ class StubWidget extends WidgetBase {
   }
 
   handleKey(_event: KeyEvent): void {}
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     return [new Segment(this.id)];
   }
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

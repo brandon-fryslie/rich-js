@@ -3,6 +3,8 @@ import { TextInput, charGreedyWrap, type WrapStrategy, type WrapRow } from "../.
 import { asCodePoint, asCellCol, type CodePoint } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { Segment } from "../../src/core/segment.js";
+import type { RenderOptions } from "../../src/core/protocol.js";
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string, character = ""): KeyEvent => new KeyEvent({
@@ -66,12 +68,17 @@ const mouseDownAt = (x: number): WidgetMouseEvent => ({
   button: 0,
   shift: false,
   ctrl: false,
+  over: true,
 });
 
 const RENDER = { maxWidth: 80 };
 
-const renderText = (input: TextInput): string =>
-  [...input.render(RENDER)].map((s) => s.text).join("");
+// The rows the input draws, one per line.
+const rowsText = (input: TextInput, options: RenderOptions): string =>
+  Segment.splitLines(input.render(options))
+    .map((row) => row.map((s) => s.text).join(""))
+    .join("\n");
+const renderText = (input: TextInput): string => rowsText(input, RENDER);
 
 describe("TextInput", () => {
   it("constructs with defaults", () => {
@@ -104,7 +111,7 @@ describe("TextInput", () => {
       maxRows: 3,
     });
     expect(t.cursorPosition).toBe(0);
-    const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+    const text = rowsText(t, { maxWidth: 20 });
     expect(text).toContain("0");
     expect(text).toContain("1");
     expect(text).toContain("2");
@@ -228,34 +235,25 @@ describe("TextInput", () => {
   });
 
   describe("click-to-position", () => {
-    it("mouse_down sets cursor based on x relative to bounds.x and the leading bracket", () => {
+    it("mouse_down sets cursor based on x past the leading bracket", () => {
       const t = new TextInput({ value: "abcdef" });
-      t.bounds = { x: 5, y: 0, width: 10, height: 1 };
-      // Click at screen-x = 8 → relX = 8 - 5 - 1 = 2
-      t.handleMouse(mouseDownAt(8));
+      // Column 3 of the input is the third value cell: relX = 3 - 1 = 2
+      t.handleMouse(mouseDownAt(3));
       expect(t.cursorPosition).toBe(2);
     });
 
     it("clamps to value.length when click is past the end", () => {
       const t = new TextInput({ value: "abc" });
-      t.bounds = { x: 0, y: 0, width: 10, height: 1 };
       t.handleMouse(mouseDownAt(50));
       expect(t.cursorPosition).toBe(3);
     });
 
     it("clamps to 0 when click is before the content", () => {
       const t = new TextInput({ value: "abc" });
-      t.bounds = { x: 5, y: 0, width: 10, height: 1 };
       t.handleMouse(mouseDownAt(0));
       expect(t.cursorPosition).toBe(0);
     });
 
-    it("ignores mouse_down when bounds is unset", () => {
-      const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodePoint(1);
-      t.handleMouse(mouseDownAt(2));
-      expect(t.cursorPosition).toBe(1);
-    });
   });
 
   describe("submit", () => {
@@ -301,7 +299,6 @@ describe("TextInput", () => {
 
     it("blocks click-to-position", () => {
       const t = new TextInput({ value: "abcdef", disabled: true });
-      t.bounds = { x: 0, y: 0, width: 10, height: 1 };
       t.handleMouse(mouseDownAt(3));
       expect(t.cursorPosition).toBe(6);
     });
@@ -358,7 +355,7 @@ describe("TextInput", () => {
     it("renders one cursor cell when focused", () => {
       const t = new TextInput({ value: "ab" });
       t.focus();
-      const segments = [...t.render(RENDER)];
+      const segments = Segment.splitLines(t.render(RENDER))[0]!;
       // cursor segment uses bgcolor=primary palette colour
       const cursorSeg = segments.find(
         (s) => s.style?.bgcolor !== undefined && s.style?.bgcolor.name !== "#333333",
@@ -369,7 +366,7 @@ describe("TextInput", () => {
 
     it("renders dimmed when disabled", () => {
       const t = new TextInput({ value: "ab", disabled: true });
-      const segments = [...t.render(RENDER)];
+      const segments = Segment.splitLines(t.render(RENDER))[0]!;
       expect(segments.every((s) => s.style?.dim === true)).toBe(true);
     });
 
@@ -644,7 +641,7 @@ describe("TextInput", () => {
 
     it("emits one visual row per logical line when no wrap strategy is set", () => {
       const t = new TextInput({ value: "a\nb\nc", multiline: true });
-      const text = [...t.render(RENDER_NARROW)].map((s) => s.text).join("");
+      const text = rowsText(t, RENDER_NARROW);
       // Three lines joined by \n; no continuation marker.
       expect(text).toBe("a\nb\nc");
     });
@@ -657,7 +654,7 @@ describe("TextInput", () => {
       });
       // firstWidth = 10, continuationWidth = 10 - cellLen("↳ ") = 8
       // → row 0: "abcdefghij" (10), row 1: continuation "klmno" (5)
-      const text = [...t.render(RENDER_NARROW)].map((s) => s.text).join("");
+      const text = rowsText(t, RENDER_NARROW);
       expect(text).toContain("abcdefghij");
       expect(text).toContain("↳ ");
       expect(text).toContain("klmno");
@@ -722,7 +719,7 @@ describe("TextInput", () => {
         maxRows: 2,
       });
       t.cursorPosition = asCodePoint(8);                 // on line 5 ("e")
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       // Should show only lines 4 and 5 ("d" and "e") since maxRows=2 and
       // cursor is on the last line.
       expect(text).toContain("d");
@@ -744,7 +741,7 @@ describe("TextInput", () => {
 
       // Park cursor at last row, render once → viewport scrolls to show 7,8,9.
       t.cursorPosition = asCodePoint(value.length);
-      let text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      let text = rowsText(t, { maxWidth: 20 });
       expect(text).toContain("7");
       expect(text).toContain("8");
       expect(text).toContain("9");
@@ -753,7 +750,7 @@ describe("TextInput", () => {
       // Up once: cursor moves from row 9 to row 8 — still inside viewport
       // (rows 7..9). Viewport must NOT scroll.
       t.handleKey(upEvent());
-      text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      text = rowsText(t, { maxWidth: 20 });
       expect(text).toContain("7");
       expect(text).toContain("8");
       expect(text).toContain("9");
@@ -761,14 +758,14 @@ describe("TextInput", () => {
 
       // Up again: cursor at row 7, still inside viewport. No scroll.
       t.handleKey(upEvent());
-      text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      text = rowsText(t, { maxWidth: 20 });
       expect(text).toContain("7");
       expect(text).toContain("9");
       expect(text).not.toContain("6");
 
       // Up once more: cursor at row 6, now ABOVE viewport → scroll up by one.
       t.handleKey(upEvent());
-      text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      text = rowsText(t, { maxWidth: 20 });
       expect(text).toContain("6");
       expect(text).toContain("7");
       expect(text).toContain("8");
@@ -790,7 +787,7 @@ describe("TextInput", () => {
       // Delete back to a 4-row value.
       t.value = "0\n1\n2\n3";
       t.cursorPosition = asCodePoint(t.value.length);
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       // Total rows = 4, maxRows = 3, cursor at row 3 → viewport should show
       // rows 1..3 (clamped from the stale deeper value). Must not error and
       // must contain the cursor row.
@@ -805,7 +802,7 @@ describe("TextInput", () => {
         multiline: true,
         maxRows: 3,
       });
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).toContain("▼");
     });
@@ -817,7 +814,7 @@ describe("TextInput", () => {
         maxRows: 3,
       });
       t.cursorPosition = asCodePoint(t.value.length);
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       expect(text).toContain("▲");
       expect(text).not.toContain("▼");
     });
@@ -835,21 +832,21 @@ describe("TextInput", () => {
       t.handleKey(upEvent());                  // cursor row 8 → still in viewport
       t.handleKey(upEvent());                  // cursor row 7 → still in viewport
       t.handleKey(upEvent());                  // cursor row 6 → scrolls to 6
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       expect(text).toContain("▲");
       expect(text).toContain("▼");
     });
 
     it("scroll arrows: hidden entirely when content fits within maxRows", () => {
       const t = new TextInput({ value: "0\n1\n2", multiline: true, maxRows: 5 });
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
     });
 
     it("scroll arrows: hidden when maxRows is unset", () => {
       const t = new TextInput({ value: "0\n1\n2\n3\n4", multiline: true });
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
     });
@@ -862,7 +859,7 @@ describe("TextInput", () => {
         scrollIndicator: "indices",
       });
       // First render populates the visual-row cache that the getter reads.
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
       // Cursor defaults to 0 in multiline → row 1 of 10.
@@ -891,7 +888,7 @@ describe("TextInput", () => {
         maxRows: 3,
         scrollIndicator: "none",
       });
-      const text = [...t.render({ maxWidth: 20 })].map((s) => s.text).join("");
+      const text = rowsText(t, { maxWidth: 20 });
       expect(text).not.toContain("▲");
       expect(text).not.toContain("▼");
       expect(t.scrollIndicatorText).toBeUndefined();
@@ -1185,14 +1182,4 @@ describe("TextInput", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const t = new TextInput();
-      expect(t.containsPoint(0, 0)).toBe(false);
-      t.bounds = { x: 0, y: 0, width: 10, height: 1 };
-      expect(t.containsPoint(0, 0)).toBe(true);
-      expect(t.containsPoint(9, 0)).toBe(true);
-      expect(t.containsPoint(10, 0)).toBe(false);
-    });
-  });
 });

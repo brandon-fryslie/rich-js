@@ -99,10 +99,11 @@ export class Button extends WidgetBase {
     if (event.type === "mouse_down") {
       this.active = true;
     }
+    // A release that dragged off the button cancels the press.
     if (event.type === "mouse_up") {
       if (this.active) {
         this.active = false;
-        this.emitSubmit();
+        if (event.over) this.emitSubmit();
       }
     }
   }
@@ -114,7 +115,7 @@ export class Button extends WidgetBase {
 
   // --- Rendering ---
 
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     // [LAW:dataflow-not-control-flow] same segment count and width every state
     const focused = this.focused;
     const left = focused ? "[" : " ";

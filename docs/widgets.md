@@ -86,7 +86,7 @@ The example constructs four objects before a single widget appears, and each one
 
 **`NodeTerminalHost`** is how the runtime reaches a node terminal — nothing in the widget layer itself touches `process`, so the same widget code runs anywhere a host can be built. Reading node's process streams is why it lives on the `node/terminal-host` subpath rather than in the main barrel — the barrel stays browser-safe. It is the seam: swap it for `BrowserTerminalHost` (which wraps an xterm.js terminal and sits on the `host` subpath beside the `TerminalHost` interface itself) and the rest of the program is unchanged. In tests, construct it over `PassThrough` streams — `new NodeTerminalHost({ stdin, stdout })` — and nothing else needs to know.
 
-**`EventRouter`** reads bytes from the host and turns them into `KeyEvent` and `WidgetMouseEvent` values. It parses escape sequences, holds drag capture during a slider drag, and hit-tests mouse coordinates against widget bounds. On `start()` it enables raw mode and mouse tracking; on `stop()` it puts both back.
+**`EventRouter`** reads bytes from the host and turns them into `KeyEvent` and `ScreenMouseEvent` values. It parses escape sequences, finds the widget under the pointer in the frame the screen last painted, and holds drag capture during a slider drag. A widget receives each mouse event as a `WidgetMouseEvent`, in its own coordinates — `x` and `y` are the column and row of the cell in its own output, however deeply a `Panel` or a `Layout` nests it, and `over` says whether it drew that cell. A captured drag is measured from where the widget is painted now, so a slider dragged past its end reads a column beyond its width. On `start()` it enables raw mode and mouse tracking; on `stop()` it puts both back.
 
 **`DefaultFocusManager`** owns which widget has focus and what Tab means. Registering the first focusable, non-disabled widget focuses it, so the example's `TextInput` is focused before the user touches anything.
 
@@ -148,7 +148,7 @@ router.onKey((event) => {
 });
 ```
 
-Mouse events do not use the chain. Subscribe with `router.onMouse(handler)` and your handler runs *first* — before the router hit-tests, updates hover state, and delivers the event to the widget under the cursor. That order makes `onMouse` the place to intercept, which is how an app implements click-to-focus: hit-test yourself with `containsPoint`, call `focusManager.focus(hit)`, and the widget still receives its own event afterwards.
+Mouse events do not use the chain. Subscribe with `router.onMouse(handler)` and your handler runs *first* — before the router hit-tests, updates hover state, and delivers the event to the widget under the cursor. That order makes `onMouse` the place to intercept, which is how an app implements click-to-focus: ask `widgetAt(screen.frame, event.x, event.y)` which widget drew the cell, call `focusManager.focus(hit.widget)`, and the widget still receives its own event afterwards.
 
 ## Layout
 
@@ -173,7 +173,7 @@ screen.mount(
 
 ## The widgets
 
-The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/transpose) whose palette supplies the widget's colors — and all expose the observable state `focused`, `hovered`, `active`, `disabled`, and `visible`, plus `bounds` written by the screen during layout. `StaticItem`, described last, is the exception: it takes none of those.
+The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/transpose) whose palette supplies the widget's colors — and all expose the observable state `focused`, `hovered`, `active`, `disabled`, and `visible`. `StaticItem`, described last, is the exception: it takes none of those.
 
 Omit `id` and you get a generated one, but the two kinds differ in a way that matters if you are writing test selectors. `Button`, `Checkbox`, and `Toggle` slugify their label — `new Button({ label: "Save changes" })` is `button-save-changes`, and it is stable. `Dropdown`, `Slider`, and `TextInput` have no label to work from and fall back to a random suffix (`slider-k3f9x1`), which changes on every construction. Pass an explicit `id` to those three whenever anything downstream needs to name them.
 
@@ -259,7 +259,7 @@ Because `render` runs inside the screen's autorun, reading `volume.value` there 
 
 ## Writing your own widget
 
-Extend `WidgetBase`. It provides the observable state, focus and hover plumbing, hit-testing, and the `onChange` / `onSubmit` machinery; you supply an `id`, whether the widget is `focusable`, and the three abstract members `handleKey`, `render`, and `measure`. Call the protected `emitChange()` and `emitSubmit()` to fire subscriptions.
+Extend `WidgetBase`. It provides the observable state, focus and hover plumbing, hit-testing, and the `onChange` / `onSubmit` machinery; you supply an `id`, whether the widget is `focusable`, and the three abstract members `handleKey`, `draw`, and `measure`. `WidgetBase.render` calls your `draw` and stamps every cell it returns as this widget's, which is how a click anywhere on it finds it. Call the protected `emitChange()` and `emitSubmit()` to fire subscriptions.
 
 ```typescript silent
 import { observable, action } from "mobx";
@@ -283,7 +283,7 @@ class Counter extends WidgetBase {
     }
   }
 
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     return [new Segment(`count: ${this.count}`, new Style({ bold: this.focused }))];
   }
 
@@ -293,15 +293,15 @@ class Counter extends WidgetBase {
 }
 ```
 
-Two rules keep a custom widget composable. Return a stable width from `measure()` where you can — the screen uses it for layout and hit-testing, and a widget whose width changes with its state makes neighbouring `inline` items jump. And never emit cursor-positioning control segments: the host owns the screen, and a widget that moves the cursor corrupts the frame around it.
+Two rules keep a custom widget composable. Return a stable width from `measure()` where you can — the screen uses it for layout, and a widget whose width changes with its state makes neighbouring `inline` items jump. And never emit cursor-positioning control segments: the host owns the screen, and a widget that moves the cursor corrupts the frame around it.
 
 Both decorators are load-bearing. MobX tracks only decorated members, so without `@observable accessor` the counter would change its value, fire `onChange`, and never repaint — the screen's autorun would have no read to react to. And `@action` on the handler is what keeps MobX's strict mode quiet; mutating an observable outside one warns on every keypress. Importing from `"mobx"` adds nothing to what you already installed to get the widget layer running.
 
 ## Overlays
 
-A `Dropdown` expanded over the widgets below it is drawing outside its own footprint, and the mechanism is open to any widget: implement `renderOverlay(options)` alongside `render(options)`.
+A `Dropdown` expanded over the widgets below it is drawing outside its own footprint, and the mechanism is open to any widget: implement `renderOverlay(options)` alongside `draw(options)`.
 
-`render()` emits the inline footprint that participates in flow layout — for the dropdown, just the collapsed header. `renderOverlay()` emits segments painted on top of the finished frame, anchored directly below that footprint at the same column, or returns `null` when nothing is active. The screen runs the overlay pass last, grows the widget's `bounds` to cover the painted area, and sorts overlay-active widgets last for hit-testing, so a click on an overlay row reaches the widget that drew it rather than whatever is mounted underneath.
+`render()` emits the inline footprint that participates in flow layout — for the dropdown, just the collapsed header. `renderOverlay()` emits segments painted on top of the finished frame, anchored directly below that footprint at the same column, or returns `null` when nothing is active. The screen runs the overlay pass last and stamps overlay row *i* as the widget's row *footprint + i*, so the widget reads a click on its overlay in the same coordinates as one on its footprint. Whoever paints a cell last owns it, so a click on an overlay row reaches the widget that drew it rather than whatever is mounted underneath.
 
 ## Hosting widgets elsewhere
 

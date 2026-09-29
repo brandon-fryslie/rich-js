@@ -94,7 +94,8 @@ export class Toggle extends WidgetBase {
   @action
   override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
-    if (event.type === "mouse_up") {
+    // A release that dragged off the toggle cancels the press.
+    if (event.type === "mouse_up" && event.over) {
       this.on = !this.on;
       this.emitChange();
     }
@@ -102,7 +103,7 @@ export class Toggle extends WidgetBase {
 
   // --- Rendering ---
 
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     // Both indicators are exactly 5 cells: "[ON] " and "[OFF]".
     const indicator = this.on ? "[ON] " : "[OFF]";
     const text = `${indicator} ${this.label}`;

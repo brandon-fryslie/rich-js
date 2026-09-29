@@ -197,14 +197,11 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     if (this.disabled) return;
     if (event.type !== "mouse_up") return;
 
-    const b = this.bounds;
-    if (!b) return;
-
-    const inside =
-      event.x >= b.x &&
-      event.x < b.x + b.width &&
-      event.y >= b.y &&
-      event.y < b.y + b.height;
+    // [LAW:one-source-of-truth] Whether the release is on this dropdown is
+    // read off the frame (`over`), not its own idea of its size; a press on
+    // it that dragged away releases elsewhere. Row 0 is the header, and the
+    // overlay rows continue below it.
+    const inside = event.over;
 
     if (!this.expanded) {
       if (inside) {
@@ -221,15 +218,14 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       this.expanded = false;
       return;
     }
-    const rowOffset = event.y - b.y;
-    if (rowOffset === 0) {
+    if (event.y === 0) {
       // Click the header → collapse + clear filter, no selection change.
       this.filter = "";
       this.expanded = false;
       return;
     }
     // [LAW:one-source-of-truth] Filtered position → canonical idx.
-    const picked = this.filteredOptions[rowOffset - 1];
+    const picked = this.filteredOptions[event.y - 1];
     if (picked === undefined) return;
     this.selectedIndex = picked.idx;
     this.filter = "";
@@ -254,7 +250,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
 
   // --- Rendering ---
 
-  render(options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     // Header only — the inline footprint that flow layout sees. Always
     // 1 row regardless of `expanded`/`filter`. Option rows live in
     // renderOverlay. Width invariant: maxLabelLen + 4.

@@ -73,7 +73,8 @@ export class Checkbox extends WidgetBase {
   @action
   override handleMouse(event: WidgetMouseEvent): void {
     if (this.disabled) return;
-    if (event.type === "mouse_up") {
+    // A release that dragged off the checkbox cancels the press.
+    if (event.type === "mouse_up" && event.over) {
       this.checked = !this.checked;
       this.emitChange();
     }
@@ -81,7 +82,7 @@ export class Checkbox extends WidgetBase {
 
   // --- Rendering ---
 
-  render(options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     const indicator = this.checked ? (options.asciiOnly ? "x" : "✓") : " ";
     const text = `[${indicator}] ${this.label}`;
 

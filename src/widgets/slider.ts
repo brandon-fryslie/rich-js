@@ -141,11 +141,11 @@ export class Slider extends WidgetBase {
     this.emitChange();
   }
 
+  // `x` is a column of this slider's own track, and runs outside 0..width
+  // when a drag carries the pointer past either end.
   private setValueFromMouseX(x: number): void {
-    const b = this.bounds;
-    if (!b) return;
     const cellsAvailable = Math.max(1, this.width - 1);
-    const clamped = Math.max(0, Math.min(this.width - 1, x - b.x));
+    const clamped = Math.max(0, Math.min(this.width - 1, x));
     const fraction = clamped / cellsAvailable;
     const next = this.min + fraction * (this.max - this.min);
     this.setValue(next);
@@ -153,7 +153,7 @@ export class Slider extends WidgetBase {
 
   // --- Rendering ---
 
-  render(options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     const trackChar = options.asciiOnly ? "-" : "─";
     const markerChar = options.asciiOnly ? "*" : "●";
     const range = this.max - this.min;

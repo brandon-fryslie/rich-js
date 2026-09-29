@@ -56,7 +56,7 @@ export class StaticItem extends WidgetBase {
   // are already no-ops, so we only need to satisfy the abstract handleKey.
   handleKey(_event: KeyEvent): void {}
 
-  render(options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     return this.renderFn(options);
   }
 

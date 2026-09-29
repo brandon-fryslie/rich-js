@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { Segment } from "../../src/core/segment.js";
 import { Slider } from "../../src/widgets/slider.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
@@ -29,11 +30,12 @@ const mouseAt = (
   button: 0,
   shift: false,
   ctrl: false,
+  over: true,
 });
 
 const RENDER = { maxWidth: 80 };
 const renderText = (s: Slider): string =>
-  [...s.render(RENDER)].map((seg) => seg.text).join("");
+  Segment.splitLines(s.render(RENDER))[0]!.map((seg) => seg.text).join("");
 
 describe("Slider", () => {
   it("constructs with defaults", () => {
@@ -161,22 +163,21 @@ describe("Slider", () => {
   describe("mouse adjustment", () => {
     it("mouse_down jumps value to fractional position", () => {
       const s = new Slider({ value: 0, min: 0, max: 100, step: 1, width: 11 });
-      s.bounds = { x: 0, y: 0, width: 11, height: 1 };
       // x = 5 → fraction = 5/10 = 0.5 → value = 50
       s.handleMouse(mouseAt("mouse_down", 5));
       expect(s.value).toBe(50);
     });
 
-    it("clamps mouse position to track bounds", () => {
-      const s = new Slider({ value: 0, min: 0, max: 100, width: 11 });
-      s.bounds = { x: 0, y: 0, width: 11, height: 1 };
+    it("a column past either end of the track clamps to that end", () => {
+      const s = new Slider({ value: 50, min: 0, max: 100, width: 11 });
       s.handleMouse(mouseAt("mouse_down", 50));
       expect(s.value).toBe(100);
+      s.handleMouse(mouseAt("mouse_move", -7));
+      expect(s.value).toBe(0);
     });
 
     it("mouse_move updates value while dragging", () => {
       const s = new Slider({ value: 0, min: 0, max: 100, width: 11 });
-      s.bounds = { x: 0, y: 0, width: 11, height: 1 };
       s.handleMouse(mouseAt("mouse_down", 0));
       s.handleMouse(mouseAt("mouse_move", 5));
       expect(s.value).toBe(50);
@@ -184,14 +185,12 @@ describe("Slider", () => {
 
     it("mouse_move without prior mouse_down does not change value", () => {
       const s = new Slider({ value: 30, min: 0, max: 100, width: 11 });
-      s.bounds = { x: 0, y: 0, width: 11, height: 1 };
       s.handleMouse(mouseAt("mouse_move", 5));
       expect(s.value).toBe(30);
     });
 
     it("mouse_up after drag fires onSubmit", () => {
       const s = new Slider({ value: 0, min: 0, max: 100, width: 11 });
-      s.bounds = { x: 0, y: 0, width: 11, height: 1 };
       const submits: InteractiveWidget[] = [];
       s.onSubmit((w) => submits.push(w));
       s.handleMouse(mouseAt("mouse_down", 0));
@@ -202,7 +201,6 @@ describe("Slider", () => {
 
     it("mouse_up without preceding mouse_down does NOT fire onSubmit", () => {
       const s = new Slider({ value: 0, width: 11 });
-      s.bounds = { x: 0, y: 0, width: 11, height: 1 };
       const submits: InteractiveWidget[] = [];
       s.onSubmit((w) => submits.push(w));
       s.handleMouse(mouseAt("mouse_up", 5));
@@ -219,7 +217,6 @@ describe("Slider", () => {
 
     it("blocks mouse_down", () => {
       const s = new Slider({ value: 10, width: 11, disabled: true });
-      s.bounds = { x: 0, y: 0, width: 11, height: 1 };
       s.handleMouse(mouseAt("mouse_down", 10));
       expect(s.value).toBe(10);
     });
@@ -253,7 +250,7 @@ describe("Slider", () => {
 
     it("ASCII fallback uses '-' track and '*' marker", () => {
       const s = new Slider({ value: 50, width: 11 });
-      const text = [...s.render({ ...RENDER, asciiOnly: true })].map((seg) => seg.text).join("");
+      const text = Segment.splitLines(s.render({ ...RENDER, asciiOnly: true }))[0]!.map((seg) => seg.text).join("");
       expect(text).toContain("*");
       expect(text).toContain("-");
       expect(text).not.toContain("●");
@@ -262,14 +259,14 @@ describe("Slider", () => {
 
     it("renders dimmed when disabled", () => {
       const s = new Slider({ value: 50, disabled: true });
-      const segs = [...s.render(RENDER)];
+      const segs = Segment.splitLines(s.render(RENDER))[0]!;
       expect(segs.every((seg) => seg.style?.dim === true)).toBe(true);
     });
 
     it("focused adds underline to all segments", () => {
       const s = new Slider({ value: 50 });
       s.focus();
-      const segs = [...s.render(RENDER)];
+      const segs = Segment.splitLines(s.render(RENDER))[0]!;
       expect(segs.every((seg) => seg.style?.underline === true)).toBe(true);
     });
 
@@ -292,14 +289,4 @@ describe("Slider", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const s = new Slider({ width: 10 });
-      expect(s.containsPoint(0, 0)).toBe(false);
-      s.bounds = { x: 0, y: 0, width: 10, height: 1 };
-      expect(s.containsPoint(0, 0)).toBe(true);
-      expect(s.containsPoint(9, 0)).toBe(true);
-      expect(s.containsPoint(10, 0)).toBe(false);
-    });
-  });
 });
