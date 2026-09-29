@@ -4,15 +4,22 @@
     {
       "version": "pr-213",
       "ref": "refs/pull/213/merge",
-      "sha": "41058690fb574d40eba55a0fdbd5305f336cd152",
-      "timestamp": "2026-09-29T19:18:29.628Z",
+      "sha": "d365babea8e5edda49f4eb185eea3b330699ac82",
+      "timestamp": "2026-09-29T19:27:59.631Z",
       "commits": [
         {
-          "sha": "41058690fb574d40eba55a0fdbd5305f336cd152",
+          "sha": "d365babea8e5edda49f4eb185eea3b330699ac82",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:17:02-06:00",
-          "message": "Merge c6b660f5ad0d53f28e07d4a213acf2e9940f829c into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
+          "timestamp": "2026-09-29T19:27:10Z",
+          "message": "Merge 4216b968f32c716275406d0f3fd8c4183993abf5 into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
+        },
+        {
+          "sha": "4216b968f32c716275406d0f3fd8c4183993abf5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T13:27:05-06:00",
+          "message": "fix(console): a text run ending in a break under an empty end gets no extra line (rich-console-c70)\n\nThe unplaced close check read the joined text's last character, which\nskips an empty trailing segment that splitLines does not: print(\"a\\n\",\nend=\"\") drew a blank line Rich does not. Closed is now the last\nsegment ending in a break, which is O(1) and agrees with splitLines by\nconstruction. Also: the justify table's center row names the block,\nand placeBlock says why it drops the region height.\n"
         },
         {
           "sha": "c6b660f5ad0d53f28e07d4a213acf2e9940f829c",
