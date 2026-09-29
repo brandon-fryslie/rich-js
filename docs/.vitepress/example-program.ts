@@ -200,12 +200,13 @@ export function buildProgram(
 }
 
 /**
- * One live block as a program of its own: the page's imports it and the
+ * One block outside the chain as a program of its own: the imports it and the
  * context use, the prelude, the context, and that block. It sees no other
- * block on the page, and writes nothing but what the block does, because its
- * output goes straight to a terminal a reader is watching.
+ * block on the page. A `live` block's program runs in a terminal a reader is
+ * watching, so it writes nothing but what the block does; a block that runs
+ * nowhere is this same program, type-checked and never run.
  */
-export function buildLiveProgram(
+export function buildBlockProgram(
   page: string,
   context: ExampleContext | null,
   block: Fence,
@@ -217,7 +218,7 @@ export function buildLiveProgram(
 /**
  * What a program writes around its parts: the helper a `throws` block reports
  * through, and the statement ending each part. The chain writes both, so its
- * one captured stream can be cut per block; a live program writes neither.
+ * one captured stream can be cut per block; a program of one block writes neither.
  */
 interface Records {
   readonly helper: string;

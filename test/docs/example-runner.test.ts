@@ -202,6 +202,13 @@ describe("one page, one program", { timeout: 30_000 }, () => {
     }
   });
 
+  it("type-checks a block it does not run as its block alone under the page's context", async () => {
+    const context = ["---", "exampleContext: |", '  const items = ["a"];', "---", ""].join("\n");
+    const above = fence('const mine = "static";\nconsole.print(mine);');
+    await run(context + page(above, fence("console.print(items.length);", "ts node")));
+    await expect(run(context + page(above, fence("console.print(mine);", "ts shape")))).rejects.toThrow(/fixture\.md:11: Cannot find name 'mine'/);
+  });
+
 });
 
 describe("a live block", { timeout: 30_000 }, () => {
@@ -292,6 +299,8 @@ describe("a page that breaks its contract fails the build", { timeout: 30_000 },
     // csstype carries types and no JavaScript: it type-checks and cannot be bundled.
     ["an import that type-checks and does not bundle", fence('import * as css from "csstype";\nconsole.print(typeof css);'), /^docs\/fixture\.md: bundling failed: /],
     ["an unknown marker", fence("1;", "ts loud"), /fixture\.md:1: unknown example marker "loud"/],
+    ["a shape block that does not compile, at its page line", page("# t", fence('new Table("Name");', "ts shape")), /fixture\.md:4: Type '"Name"' has no properties in common with type 'TableOptions'/],
+    ["a node block that does not compile, at its page line", page("# t", fence("new Console({ widht: 80 });", "ts node")), /fixture\.md:4: Object literal may only specify known properties/],
     ["a build block that exits", fence("process.exit(2);", "ts silent"), /docs\/fixture\.md: an example calls process\.exit\(2\)/],
     ["a throws block that exits", fence("process.exit(1);", "ts throws"), /docs\/fixture\.md: an example calls process\.exit\(1\)/],
     [

@@ -67,7 +67,7 @@ A crash payload that is not an `Error` — `Promise.reject("nope")`, or `throw 4
 ::: tip Placement
 Statement position does not buy you as much as it looks like it does. ES modules evaluate all of a module's imports before any of its own top-level code, so an `installTraceback()` call at the top of your entry file still runs *after* everything that file imports has finished evaluating — a crash during module evaluation escapes it.
 
-To cover that window too, put the call in its own module and import it first:
+To cover that window too, put the call in its own module:
 
 ```typescript node
 // crash-reporting.ts
@@ -75,11 +75,7 @@ import { installTraceback } from "@promptctl/rich-js/node/traceback";
 installTraceback();
 ```
 
-```typescript node
-// index.ts
-import "./crash-reporting.js";   // evaluated before the imports below
-import { startServer } from "./server.js";
-```
+Then make `import "./crash-reporting.js";` the first import of your entry file. A module's imports evaluate in the order they are written, so every module the entry file imports after it evaluates with the handler installed. The exception is what `crash-reporting.js` itself imports — rich-js and its dependencies — which has already evaluated by then.
 
 Node's `--import ./crash-reporting.js` flag does the same thing from outside the module graph.
 :::

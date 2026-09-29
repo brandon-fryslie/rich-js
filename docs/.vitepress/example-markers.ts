@@ -24,9 +24,10 @@ import container from "markdown-it-container";
  * What happens to a block, and what the reader is told about it.
  *
  * `run` says where the block executes: at build time in the page's chain,
- * in the browser in a live terminal, or nowhere. A build block also says what
- * it must do (print, print nothing, or throw), and breaking that fails the
- * build.
+ * in the browser in a live terminal, or nowhere. Wherever it runs, a block is
+ * type-checked, and one that does not compile fails the build. A build block
+ * also says what it must do (print, print nothing, or throw), and breaking
+ * that fails the build.
  *
  * The rest is what the example widget shows under the code. `label` names the
  * panel; `caption`, beside it, says where its contents came from, which is

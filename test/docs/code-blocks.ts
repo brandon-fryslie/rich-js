@@ -6,30 +6,16 @@
  * strings rather than against the real `docs/` tree.
  * [LAW:effects-at-boundaries] The `.test.ts` beside this file owns the sweep.
  *
- * WHAT THIS DOES NOT DO, and it is the load-bearing decision on this page.
- * It does not compile the blocks. That was measured before it was decided:
- * extracting all 211 blocks and type-checking them one file apiece produces
- * 145 failing files, and reading the first failure on each of the 25 pages
- * shows the great majority are not defects at all. Two genre properties of a
- * documentation page account for them:
+ * It does not compile the blocks; the docs build does. `example-runner.ts`
+ * type-checks every TypeScript fence on every page, under the page's
+ * `exampleContext`, which is how a page that constructs its `Console` five
+ * sections after first using it, or calls a placeholder like `doStep()`,
+ * still compiles. This sweep asks two narrower questions of the same fences
+ * from the unit suite, with no build.
  *
- *   - A page is a running document. `docs/markup.md` writes `console.print(…)`
- *     in its first block and constructs the `Console` five sections later,
- *     because a reader assembling one program does not need the import
- *     repeated. Compiled alone, every such block is undefined-name noise.
- *   - A page elides. `progress.md` calls `doStep()`, `traceback.md` calls
- *     `riskyOperation()`, `columns.md` maps over `items` — placeholders that
- *     stand for the reader's own code and are the clearest way to write the
- *     example.
- *
- * A gate that went green on those would have to tax every future page for its
- * elisions; that is a larger and different piece of work than this one, and
- * pretending otherwise would have bought a green bar with a worse docs site.
- * [LAW:carrying-cost]
- *
- * What survives is exact: a name a page imports from this package either is
+ * Both are exact: a name a page imports from this package either is
  * exported from that entry point or is not, and a member it calls on a class
- * the page itself constructed either exists on that class or does not. Both
+ * the page itself constructed either exists on that class or does not. They
  * are the ghost-symbol failure this gate was built for. The ceiling above them
  * is stated in `symbol-existence.test.ts` and is real — see it before reading
  * a green bar as "this page is true".
