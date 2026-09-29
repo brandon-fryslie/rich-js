@@ -14,6 +14,14 @@ import { Segment } from "../src/core/segment.js";
 import { Style } from "../src/core/style.js";
 import { SOLARIZED_LIGHT } from "../src/themes/terminalThemes.js";
 
+// Find-in-page as a script sees it: non-standard, in every engine, and absent
+// from TypeScript's DOM library.
+declare global {
+  interface Window {
+    find(text: string): boolean;
+  }
+}
+
 // Every rule here is one a docs theme plausibly sets, and each would reach the
 // fragment's rows by inheritance or by matching its `pre` or `a`.
 const HOST = `
@@ -186,4 +194,6 @@ test("a column after wide glyphs lines up with the same column after narrow ones
   // A box taller than the row's line would push the rows below it apart.
   const gaps = bars.slice(1).map(({ top }, i) => top - bars[i]!.top);
   for (const gap of gaps) expect(gap).toBeCloseTo(gaps[0]!, 0);
+  // Find-in-page does not match across two boxes, so a word is boxed whole.
+  expect(await page.evaluate(() => window.find("東京"))).toBe(true);
 });

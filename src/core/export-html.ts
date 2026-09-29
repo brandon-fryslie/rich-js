@@ -91,37 +91,45 @@ const ONE_CELL = /^[\x20-\x7e]*$/;
 
 /**
  * A box exactly `cells` of the monospace font wide (`ch` is one of its cells)
- * for a glyph the browser would otherwise draw at a fallback font's width,
+ * for glyphs the browser would otherwise draw at a fallback font's width,
  * which for a CJK character is rarely two cells: left to it, everything after
- * the glyph on the row shifts off its column. The box carries no paint, so the
+ * them on the row shifts off its column. The box carries no paint, so the
  * run's background runs through it at the run's own height; an atomic inline
  * takes no decoration from its ancestors, so it inherits its parent's lines.
  */
 const cellBox = (cells: number): readonly string[] =>
   ["display:inline-block", `width:${cells}ch`, "text-align:center", "text-decoration:inherit"];
 
+// [LAW:no-shared-mutable-globals] A private memo, written only by `onGrid`.
+// Made on first use, not at import: a module the main barrel reaches must load
+// in an engine without Intl.Segmenter, which then fails only if it exports.
+let graphemes: Intl.Segmenter | undefined;
+
 /**
- * `text` with each grapheme wider than one cell boxed to its cells, and `draw`
- * applied to every stretch of escaped text inside and between the boxes.
- * Graphemes, not code points, because `cellLen` measures a joined emoji as one
- * glyph; a zero-width one stays with its neighbours so it can still combine.
+ * `text` with each stretch of graphemes wider than one cell in one box as wide
+ * as their cells together, and `draw` applied to every stretch of escaped text
+ * inside and between the boxes. A stretch, not a glyph apiece, because a
+ * browser's find-in-page does not match across two boxes. Graphemes, not code
+ * points, because `cellLen` measures a joined emoji as one glyph; a zero-width
+ * one joins the stretch before it, so it can still combine.
  */
 function onGrid(text: string, draw: (escaped: string) => string): string {
   if (ONE_CELL.test(text)) return draw(escapeText(text));
   const pieces: string[] = [];
-  let narrow = "";
+  let stretch = "";
+  let wideCells = 0;
   const flush = () => {
-    if (narrow !== "") pieces.push(draw(escapeText(narrow)));
-    narrow = "";
+    if (stretch !== "") pieces.push(wideCells === 0 ? draw(escapeText(stretch)) : span(cellBox(wideCells), draw(escapeText(stretch))));
+    stretch = "";
+    wideCells = 0;
   };
-  for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)) {
+  graphemes ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  for (const { segment } of graphemes.segment(text)) {
     const cells = cellLen(segment);
-    if (cells <= 1) {
-      narrow += segment;
-      continue;
-    }
-    flush();
-    pieces.push(span(cellBox(cells), draw(escapeText(segment))));
+    const wide = cells === 0 ? wideCells > 0 : cells > 1;
+    if (wide !== (wideCells > 0)) flush();
+    stretch += segment;
+    if (wide) wideCells += cells;
   }
   flush();
   return pieces.join("");

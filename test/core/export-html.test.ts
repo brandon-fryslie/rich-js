@@ -111,23 +111,25 @@ describe("encodeHtml runs", () => {
 
   // A browser draws a wide glyph at its fallback font's width, not two cells;
   // the box is what keeps the next column where the console put it.
-  const BOX = "display:inline-block;width:2ch;text-align:center;text-decoration:inherit";
-  const boxed = (glyph: string) => `<span style="${BOX}">${glyph}</span>`;
+  const box = (cells: number) => `display:inline-block;width:${cells}ch;text-align:center;text-decoration:inherit`;
+  const boxed = (text: string, cells: number) => `<span style="${box(cells)}">${text}</span>`;
 
-  it("boxes each glyph wider than one cell inside its run, leaving the run's paint and lines on the run", () => {
-    const page = html(Style.parse("bold underline on red"), "ab東京c");
-    expect(page).toContain(`>ab${boxed("東")}${boxed("京")}c</span>`);
+  // One box per stretch of wide glyphs, so find-in-page still matches the word.
+  it("boxes each stretch of wide glyphs to their cells inside its run, leaving paint and lines on the run", () => {
+    const page = html(Style.parse("bold underline on red"), "ab東京c大d");
+    expect(page).toContain(`>ab${boxed("東京", 4)}c${boxed("大", 2)}d</span>`);
     expect(page.match(/font-weight:bold/g)).toHaveLength(1);
   });
 
-  it("boxes a double-underlined wide glyph between the underline and the glyph's own lines", () => {
+  it("boxes a double-underlined wide stretch between the underline and the glyph's own lines", () => {
     const page = html(Style.parse("underline2 strike"), "東");
-    expect(page).toContain(`<span style="${BOX}"><span style="color:${INK.hex};text-decoration-line:line-through">東</span></span>`);
+    expect(page).toContain(`<span style="${box(2)}"><span style="color:${INK.hex};text-decoration-line:line-through">東</span></span>`);
   });
 
-  it("measures by grapheme: a joined emoji is one box, a combining mark or tab stays in the text", () => {
+  it("measures by grapheme: a joined emoji is two cells, and a zero-width mark stays with the glyph before it", () => {
     const family = "👨‍👩‍👧";
-    expect(html(Style.parse("bold"), family)).toContain(boxed(family));
+    expect(html(Style.parse("bold"), family)).toContain(boxed(family, 2));
+    expect(html(Style.parse("bold"), "東\u200b京")).toContain(boxed("東\u200b京", 4));
     for (const text of ["e\u0301", "a\tb", "a\u200bb"]) {
       expect(html(Style.parse("bold"), text)).not.toContain("inline-block");
     }
