@@ -42,7 +42,9 @@ import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
-export interface RenderToStringOptions {
+// [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
+// `RenderOptions`' and is not restated here.
+export interface RenderToStringOptions extends Pick<RenderOptions, "asciiOnly" | "onStyleError"> {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
@@ -72,11 +74,6 @@ export interface RenderToStringOptions {
    * (no TTY or TERM=dumb: false). `false` with `colorSystem: null` is plain text.
    */
   hyperlinks?: boolean;
-  /**
-   * The output can draw only ASCII: boxes, rules and tree guides draw with
-   * ASCII characters. Default false.
-   */
-  asciiOnly?: boolean;
 }
 
 const DEFAULT_WIDTH = 80;
@@ -182,6 +179,7 @@ export function renderToString(
     maxWidth: width,
     isTerminal: false,
     asciiOnly: options?.asciiOnly ?? false,
+    onStyleError: options?.onStyleError,
     // [LAW:one-source-of-truth] The depth the segments below are encoded at,
     // so a renderable measures what this very call will draw.
     colorSystem: destination.colorSystem,

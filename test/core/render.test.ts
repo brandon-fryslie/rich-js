@@ -8,6 +8,7 @@ import { Strip, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { renderMarkup } from "../../src/core/markup.js";
 import { osc8Sequences } from "../../src/core/osc8.js";
+import { StyleSyntaxError } from "../../src/core/style.js";
 
 // Every OSC 8 open in `out` as `{ params, uri }` (a close has an empty uri).
 function osc8Opens(out: string): { params: string; uri: string }[] {
@@ -95,6 +96,27 @@ describe("renderToString", () => {
     const out = renderToString(text);
     // Truecolor uses 38;2;r;g;b SGR.
     expect(out).toMatch(/\x1b\[38;2;255;0;102m/);
+  });
+
+  it("reports each style it drops to onStyleError and still renders unstyled", () => {
+    const heard: [StyleSyntaxError, string][] = [];
+    const out = renderToString(new Panel(new RichText("x", { style: "bold rd" })), {
+      colorSystem: null,
+      onStyleError: (error, style) => void heard.push([error, style]),
+    });
+    expect(out).toBe(renderToString(new Panel("x"), { colorSystem: null }));
+    expect(heard).toHaveLength(1);
+    expect(heard[0]![0]).toBeInstanceOf(StyleSyntaxError);
+    expect(heard[0]![1]).toBe("bold rd");
+  });
+
+  it("throws the dropped style's error when onStyleError rethrows", () => {
+    const strict = (error: StyleSyntaxError): never => {
+      throw error;
+    };
+    expect(() => renderToString(new RichText("x", { style: "rd" }), { onStyleError: strict })).toThrow(
+      StyleSyntaxError,
+    );
   });
 });
 

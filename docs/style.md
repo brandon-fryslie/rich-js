@@ -198,8 +198,9 @@ always throws. That error is a `MarkupSyntaxError`, described under
 
 ### Reporting dropped styles
 
-Pass `onStyleError` to the `Console` to hear about each style it drops. It
-receives the `StyleSyntaxError` and the whole style string that failed:
+Pass `onStyleError` to the `Console` to hear about each style it drops.
+`renderToString` takes the same option. The handler receives the
+`StyleSyntaxError` and the whole style string that failed:
 
 ```typescript
 import { Console } from "@promptctl/rich-js";
@@ -224,9 +225,6 @@ The handler runs each time a style is resolved, not once per distinct string. A
 style used twice is reported twice, and a `Live` display reports it again on
 every refresh, so deduplicate by `style` if you log.
 
-`renderToString` takes no handler. Text rendered through it drops invalid styles
-silently.
-
 ### Failing on invalid styles
 
 To make invalid styles throw, rethrow from the handler:
@@ -241,6 +239,6 @@ const console = new Console({
 console.print("[bold rd]typo color[/]"); // throws StyleSyntaxError
 ```
 
-The error leaves `console.print` instead of being dropped. There is no separate
+The error leaves `console.print`, or `renderToString`, instead of being dropped. There is no separate
 strict option, because this handler is the strict mode. Use it in tests and in
 development, so a typo fails at the line that printed it.
