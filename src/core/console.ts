@@ -154,12 +154,24 @@ type PrintBlock =
   | { kind: "text"; items: RichText[] }
   | { kind: "lines"; renderable: Renderable };
 
-// A column drawn left of every line a print draws, given the line's index, and
-// the cells it takes from the width. A plain print has none; `log` puts its
-// time there. The gutter is cropped and given the console's style with the
-// line it starts, so the two reach the terminal as one row.
-type Gutter = { width: number; row(index: number): Segment[] };
-const NO_GUTTER: Gutter = { width: 0, row: () => [] };
+// What a print draws, before it is written: its rows, whether the last one is
+// closed, and the width they are cropped at. `print` writes them as they are;
+// `log` sets them in the cell beside its time.
+type Drawn = { rows: Segment[][]; closed: boolean; cropWidth: number };
+
+// Rows as the bytes that reach the terminal. Every row but the last is closed
+// by a line break, and the last one when `closed` says so. Crop last, and crop
+// the line-end with the rest: in the reference `end` is the tail of the printed
+// line, so a line cut at the edge loses it too.
+function emit({ rows, closed, cropWidth }: Drawn): Segment[] {
+  const output = rows.flatMap((row, index) =>
+    closed || index < rows.length - 1 ? [...row, Segment.line()] : row,
+  );
+  return [...Segment.cropLines(output, cropWidth)];
+}
+
+// The time `log` stamps, in a form whose width does not change with the hour.
+const LOG_TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", second: "2-digit" };
 
 // Three of the five justify methods place what a print draws as a block, the
 // way Rich's `print` wraps each renderable in `Align`. The other two leave it
@@ -468,12 +480,11 @@ export class Console {
   // --- Print ---
 
   print(...args: unknown[]): void {
-    this._writeSegments(this._draw(args, this.options, NO_GUTTER));
+    this._writeSegments(emit(this._draw(args, this.options)));
   }
 
-  // What `print` writes for `args` at `options.maxWidth`, as segments with their
-  // line breaks, each line led by its `gutter` row.
-  private _draw(args: unknown[], options: RenderOptions, gutter: Gutter): Segment[] {
+  // What `print` draws for `args` at `options.maxWidth`.
+  private _draw(args: unknown[], options: RenderOptions): Drawn {
     // Extract options from last arg if it's a PrintOptions
     let opts: PrintOptions = {};
     let items: unknown[];
@@ -583,7 +594,6 @@ export class Console {
     // no justify — is `RichText`'s to apply, so it crosses as it was asked for.
     const renderOpts: RenderOptions = {
       ...options,
-      maxWidth: Math.max(1, options.maxWidth - gutter.width),
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
@@ -594,12 +604,9 @@ export class Console {
     // codes across the newline.
     // [LAW:dataflow-not-control-flow] no style to apply is an empty list, not
     // a skipped step.
-    // The gutter is not the print's content, so it takes the console's style
-    // alone, as the reference's `log` styles only its renderables.
-    const styleWith = (styles: Style[]) => (segments: Iterable<Segment>): Iterable<Segment> =>
-      styles.filter((style) => !style.isNull).reduce((styled, style) => Segment.applyStyle(styled, style), segments);
-    const styleContent = styleWith([printStyle, this._style]);
-    const styleGutter = styleWith([this._style]);
+    const styles = [printStyle, this._style].filter((style) => !style.isNull);
+    const styleContent = (segments: Iterable<Segment>): Iterable<Segment> =>
+      styles.reduce((styled, style) => Segment.applyStyle(styled, style), segments);
 
     // The common default end is "\n" — reuse Segment's cached newline rather
     // than allocating one per print; only a non-default end needs a fresh one.
@@ -628,37 +635,49 @@ export class Console {
     // Every line end goes through the same writeSegments funnel as the text it
     // ends, so it survives recording — otherwise `exportText` and `exportHtml`
     // would join consecutive prints onto a single line. [LAW:single-enforcer]
+    // A block left open carries on along the next block's first line, so the
+    // rows are read off the joined output rather than counted per block.
     const output: Segment[] = [];
-    let row = 0;
+    let closed = true;
     for (const block of blocks) {
-      const { lines, closed } = drawBlock(block);
-      lines.forEach((line, index) => {
-        output.push(...styleGutter(gutter.row(row++)), ...styleContent(line));
-        if (closed || index < lines.length - 1) output.push(Segment.line());
+      const drawn = drawBlock(block);
+      drawn.lines.forEach((line, index) => {
+        output.push(...styleContent(line));
+        if (drawn.closed || index < drawn.lines.length - 1) output.push(Segment.line());
       });
+      closed = drawn.closed;
     }
 
-    // Crop last, and crop the line-end with the rest: in the reference `end` is
-    // the tail of the printed line, so a line cut at the edge loses it too.
     // Soft wrap turns cropping off whatever `crop` says, because a line it left
     // whole is meant to reach the terminal whole. [LAW:dataflow-not-control-flow]
     // Not cropping is an unbounded width rather than a skipped step — the same
     // spelling `RichText` uses for `"ignore"`.
     const cropWidth = !softWrap && (opts.crop ?? true) ? options.maxWidth : Infinity;
-    return [...Segment.cropLines(output, cropWidth)];
+    return { rows: Segment.splitLines(output), closed, cropWidth };
   }
 
-  // The reference's `LogRender`: the time in a column of its own, and beside it
-  // whatever `print` would draw for `args` in the width that is left.
+  // The reference's `LogRender`: a grid row of two cells, the time and beside it
+  // whatever `print` would draw for `args` in the width that is left. A grid row
+  // is at least one line tall and always closed, whatever `end` left open
+  // inside its cell. The time gives up cells before the content does, so a
+  // console narrower than the time still shows every argument. The time takes
+  // the console's style alone, as the reference styles only the renderables.
   log(...args: unknown[]): void {
     const options = this.options;
-    const time = new RichText(`[${new Date().toLocaleTimeString()}] `, { end: "" });
+    const time = new RichText(`[${new Date().toLocaleTimeString(undefined, LOG_TIME)}] `, { end: "" });
     time.stylize("log.time");
-    const width = time.cellLength;
-    // Drawn at its own width, so it is one line however narrow the console.
-    const stamp = [...time.render({ ...options, maxWidth: width })];
-    const blank = [new Segment(" ".repeat(width))];
-    this._writeSegments(this._draw(args, options, { width, row: (index) => (index === 0 ? stamp : blank) }));
+    const width = Math.min(time.cellLength, options.maxWidth - 1);
+    const { rows, cropWidth } = this._draw(args, { ...options, maxWidth: options.maxWidth - width });
+    const [stampLine = []] = Segment.splitLines(time.render({ ...options, maxWidth: time.cellLength }));
+    const styled = (cell: Segment[]): Segment[] => [...Segment.applyStyle(cell, this._style)];
+    const stamp = styled(Segment.adjustLineLength(stampLine, width));
+    const blank = styled([new Segment(" ".repeat(width))]);
+    const grid = Array.from({ length: Math.max(1, rows.length) }, (_, index) => [
+      ...(index === 0 ? stamp : blank),
+      ...(rows[index] ?? []),
+    ]);
+    // The row is the column wider than its cell; an uncropped cell stays so.
+    this._writeSegments(emit({ rows: grid, closed: true, cropWidth: cropWidth + width }));
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

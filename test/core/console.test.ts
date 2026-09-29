@@ -875,13 +875,30 @@ describe("Console.log()", () => {
     );
   });
 
-  it("keeps every row, time included, inside a console narrower than the time", () => {
+  it("gives up the time's cells before the content's in a console narrower than the time", () => {
     const { console: c, chunks } = makeConsole({ width: 8, markup: false, highlight: false });
-    c.log("hello world", [1, 2]);
-    const lines = captured(chunks).split("\n").slice(0, -1);
-    expect(lines.length).toBeGreaterThan(0);
-    for (const line of lines) expect(line.length).toBeLessThanOrEqual(8);
-    expect(lines[0]).toMatch(/^\[/);
+    c.log("hello");
+    const rows = captured(chunks).split("\n").slice(0, -1);
+    for (const row of rows) expect(row).toHaveLength(8);
+    expect(rows[0]).toMatch(/^\[.{6}h$/);
+    // The content column is one cell wide, and all of the content reaches it.
+    expect(rows.map((row) => row.at(-1)).join("")).toBe("hello");
+  });
+
+  it("closes its row whatever end leaves open, and never splits a row with the column", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false });
+    c.log("a", [1], { end: "" });
+    c.log("b");
+    const [first, second] = captured(chunks).split("\n");
+    expect(first).toMatch(/^\[[^\]]*\] a\[1\]$/);
+    expect(second).toMatch(/^\[[^\]]*\] b$/);
+  });
+
+  it("draws the time on a row of its own when the content draws no lines", () => {
+    const { console: c, chunks } = makeConsole({ width: 40 });
+    const nothing: Renderable = { *render() {} };
+    c.log(nothing);
+    expect(captured(chunks)).toMatch(/^\[[^\]]*\] \n$/);
   });
 
   it("gives the time and its column the console's base style", () => {
