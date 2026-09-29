@@ -2,24 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-196",
-      "ref": "refs/pull/196/merge",
-      "sha": "3e3eef2a9492004020169ea90184116e0ff4f627",
-      "timestamp": "2026-09-29T12:38:30.255Z",
+      "version": "pr-197",
+      "ref": "refs/pull/197/merge",
+      "sha": "035f33ef25bfc3c37b9c94fb1b0a59bff7a239e8",
+      "timestamp": "2026-09-29T12:55:13.264Z",
       "commits": [
         {
-          "sha": "3e3eef2a9492004020169ea90184116e0ff4f627",
+          "sha": "035f33ef25bfc3c37b9c94fb1b0a59bff7a239e8",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:37:03Z",
-          "message": "Merge 5496c46d9455828b5cbd0eed1b851d0b348b8262 into 440ffe953943a6f036ccbc7fa31569470a9d42c1\n"
+          "timestamp": "2026-09-29T06:54:21-06:00",
+          "message": "Merge bb5b1dec261ed0ac14bc952dbfb7a9ab76993106 into 0a75deaa82ae81165ffd8ecbcfdb59933a439656\n"
         },
         {
-          "sha": "5496c46d9455828b5cbd0eed1b851d0b348b8262",
+          "sha": "bb5b1dec261ed0ac14bc952dbfb7a9ab76993106",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:35:48-06:00",
-          "message": "fix(markup): an implicit close [/] closes a plugin tag, as it closes any other (rich-markup-gfr)\n\npairPluginTags kept a stack of plugin tags only, so it could not tell what [/]\nreferred to and skipped it: [shout]one[/] fell back to the built-in parser,\nwhich dropped [shout] as an unknown style without a word. The pass now keeps\nthe built-in dialect's full stack, style tags included, and pairs a plugin tag\nwhen [/] pops it. [/name] matching is one predicate shared by both walks.\n"
+          "timestamp": "2026-09-29T06:54:10-06:00",
+          "message": "fix(markup): a style tag spans a plugin pair it encloses (rich-markup-cg6)\n\nThe plugin-aware walk rendered the text between plugin pairs as separate\nbuilt-in parses, so every style tag closed at the first pair's boundary and\nits closing tag then matched nothing: '[bold]x[click]y[/click]z[/bold]'\nthrew \"doesn't match any open tag\" with [bold] visibly open. Since gfr let\n[/] close a plugin tag, '[bold][aa]x[/][/]' threw the same way, and an\nunclosed '[bold]pre [aa]x[/aa] post' silently lost bold after the pair.\n\nEach plugin pair's handler output now takes the pair's place in one built-in\nwalk over the slice, so an enclosing style covers it like plain text and the\nhandler's own spans repaint it as an inner tag would. The same change stops\na base style from painting over markup colours whenever a plugin pair is\npresent, which the final whole-output stylize used to do.\n\nA style tag that opens on one side of a plugin pair's boundary and closes on\nthe other has no span to give, since the handler replaces the text inside;\nthe pairing walk now rejects it with an error naming the plugin boundary.\n"
         }
       ]
     },
