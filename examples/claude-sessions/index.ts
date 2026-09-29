@@ -18,8 +18,8 @@ import { run } from "./app.js";
 // installing from a module imported ahead of them.
 //
 // Because it covers `unhandledRejection` as well as `uncaughtException`,
-// `run`'s promise needs no `.catch` — a rejection is a crash, and crashes are
+// `done` needs no `.catch` — a rejection is a crash, and crashes are
 // this handler's job.
 installTraceback();
 
-void run(new NodeTerminalHost(), new NodeFileSystem());
+void run(new NodeTerminalHost(), new NodeFileSystem()).done;

@@ -99,11 +99,13 @@ function reduce(state: AppState, action: Action, preview: Viewport): AppState {
   }
 }
 
-export async function run(
-  host: TerminalHost,
-  fs: FileSystem,
-  startPath: string,
-): Promise<void> {
+/** The explorer, running: `done` settles as `App.run` does. */
+export interface Running {
+  readonly done: Promise<void>;
+  stop(): void;
+}
+
+export function run(host: TerminalHost, fs: FileSystem, startPath: string): Running {
   if (!host.isTTY) {
     throw new Error("rich-explore requires an interactive TTY");
   }
@@ -121,11 +123,6 @@ export async function run(
   // (a UTF-8 codepoint split between two onData calls — possible on paste
   // of non-ASCII text — would otherwise decode to U+FFFD).
   const decoder = new TextDecoder();
-  // [LAW:no-silent-failure] A key the reducer throws on ends the app with that
-  // error, as a frame that throws does: the host calls this handler, so a
-  // throw left in it would reach neither `run`'s caller nor the terminal's
-  // hand-back.
-  let failure: { readonly error: unknown } | undefined;
   host.onData((chunk) => {
     const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
     const action = lookup(text);
@@ -136,18 +133,19 @@ export async function run(
       case "suspend":
         void app.suspend();
         return;
-      default:
-        try {
-          state = reduce(state, action, view.previewOf(state));
-        } catch (error) {
-          failure = { error };
-          app.stop();
-          return;
-        }
-        app.refresh();
     }
+    // [LAW:no-silent-failure] The host calls this handler, so a reducer that
+    // throws here would reach neither `done` nor the terminal's hand-back.
+    try {
+      state = reduce(state, action, view.previewOf(state));
+    } catch (error) {
+      app.fail(error);
+      return;
+    }
+    // Every key repaints: a scroll moves the preview's viewport and leaves
+    // the state as it was.
+    app.refresh();
   });
 
-  await app.run();
-  if (failure) throw failure.error;
+  return { done: app.run(), stop: () => app.stop() };
 }

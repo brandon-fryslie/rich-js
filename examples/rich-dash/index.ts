@@ -26,7 +26,7 @@ const readmePath =
   [fs.resolve(HERE, "../../README.md"), fs.resolve(HERE, "../../../README.md")]
     .find((p) => fs.exists(p)) ?? fs.resolve(HERE, "../../README.md");
 
-run(new NodeTerminalHost(), { fs, sysinfo: new NodeSystemInfo(), readmePath }).catch((err) => {
+run(new NodeTerminalHost(), { fs, sysinfo: new NodeSystemInfo(), readmePath }).done.catch((err) => {
   process.stderr.write(
     `rich-dash error: ${err instanceof Error ? err.stack ?? err.message : String(err)}\n`,
   );

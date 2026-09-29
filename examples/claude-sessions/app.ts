@@ -1,7 +1,7 @@
 /**
  * Main loop for claude-sessions: key → action → reducer → render, in an `App`
- * on the alternate screen. Search-typing mode bypasses the keymap and
- * consumes raw characters directly.
+ * on the alternate screen. Search-typing mode reads keys through its own
+ * keymap, which passes every key but the lifecycle ones to the query.
  *
  * [LAW:capabilities-over-context] `run` is parameterised on both a
  * `TerminalHost` (where I/O goes) and a `FileSystem` (where session data
@@ -38,7 +38,7 @@ import {
   selectedBlock,
   type AppState,
 } from "./state.js";
-import { lookup, type Action } from "./keymap.js";
+import { lookup, lookupTyping, type Action } from "./keymap.js";
 import { buildShell, sessionsView } from "./views/shell.js";
 
 function isTyping(state: AppState): boolean {
@@ -101,6 +101,8 @@ function reduce(state: AppState, action: Action): AppState {
     case "search-exit":
       if (state.search.mode !== "off") return searchExit(state);
       return { ...state, statusMessage: "(press q to quit)" };
+    case "search-key":
+      return reduceSearchTyping(state, action.key);
     case "suspend":
     case "quit":
     case "none":
@@ -119,40 +121,30 @@ function reduceSearchTyping(state: AppState, chunk: string): AppState {
   return state;
 }
 
-export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
+/** The viewer, running: `done` settles as `App.run` does. */
+export interface Running {
+  readonly done: Promise<void>;
+  stop(): void;
+}
+
+export function run(host: TerminalHost, fs: FileSystem): Running {
   if (!host.isTTY) {
     throw new Error("claude-sessions requires an interactive TTY");
   }
 
   let state = initialState(fs);
   const view = sessionsView();
-  // The app redraws on keypress and resize only; each frame is the shell of
-  // the state as it is then.
+  // The app redraws on a change of state and on resize; each frame is the
+  // shell of the state as it is then.
   const app = new App({ host, surface: "alternate", view: () => buildShell(state, view) });
 
   // Hoist the decoder out of the hot path — node delivers Buffer chunks on
   // every keystroke. `{ stream: true }` keeps a multibyte sequence split
   // across two chunks whole.
   const decoder = new TextDecoder();
-  // [LAW:no-silent-failure] A key the reducer throws on ends the app with that
-  // error, as a frame that throws does: the host calls this handler, so a
-  // throw left in it would reach neither `run`'s caller nor the terminal's
-  // hand-back.
-  let failure: { readonly error: unknown } | undefined;
-  const update = (step: (state: AppState) => AppState): void => {
-    try {
-      state = step(state);
-    } catch (error) {
-      failure = { error };
-      app.stop();
-      return;
-    }
-    app.refresh();
-  };
   host.onData((chunk) => {
     const text = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
-    if (isTyping(state)) return update((s) => reduceSearchTyping(s, text));
-    const action = lookup(text);
+    const action = (isTyping(state) ? lookupTyping : lookup)(text);
     switch (action.type) {
       case "quit":
         app.stop();
@@ -160,11 +152,22 @@ export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
       case "suspend":
         void app.suspend();
         return;
-      default:
-        return update((s) => reduce(s, action));
     }
+    // [LAW:no-silent-failure] The host calls this handler, so a reducer that
+    // throws here would reach neither `done` nor the terminal's hand-back.
+    let next: AppState;
+    try {
+      next = reduce(state, action);
+    } catch (error) {
+      app.fail(error);
+      return;
+    }
+    // A key that changes nothing — a pointer report among them, on the
+    // alternate screen — paints nothing.
+    if (next === state) return;
+    state = next;
+    app.refresh();
   });
 
-  await app.run();
-  if (failure) throw failure.error;
+  return { done: app.run(), stop: () => app.stop() };
 }

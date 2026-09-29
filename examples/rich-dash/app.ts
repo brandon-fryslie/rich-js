@@ -24,9 +24,14 @@ const FPS = 8;
 const KEYS: Readonly<Record<string, "quit" | "suspend">> = {
   q: "quit",
   "\x03": "quit",
-  "\x1b": "quit",
   "\x1a": "suspend",
 };
+
+/** The dashboard, running: `done` settles as `App.run` does. */
+export interface Running {
+  readonly done: Promise<void>;
+  stop(): void;
+}
 
 /** A widget, the Layout cell it draws into, and its state now. */
 interface Pane {
@@ -67,7 +72,7 @@ function inPanel(widget: Widget, body: Renderable): Renderable {
   });
 }
 
-export async function run(host: TerminalHost, caps: DashboardCapabilities): Promise<void> {
+export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
   if (!host.isTTY) {
     throw new Error("rich-dash requires an interactive TTY");
   }
@@ -86,10 +91,6 @@ export async function run(host: TerminalHost, caps: DashboardCapabilities): Prom
     lastTickAt = now;
   };
 
-  // [LAW:no-silent-failure] A widget that throws on a tick ends the app with
-  // that error, as a frame that throws does: the timer calls it, so a throw
-  // left there would reach neither `run`'s caller nor the terminal's hand-back.
-  let failure: { readonly error: unknown } | undefined;
   const decoder = new TextDecoder();
   host.onData((chunk) => {
     const key = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
@@ -108,19 +109,16 @@ export async function run(host: TerminalHost, caps: DashboardCapabilities): Prom
   // app: it starts before the first frame and is cleared on every way `run`
   // settles.
   const clock = setInterval(() => {
+    // [LAW:no-silent-failure] The timer calls `tick`, so a widget that throws
+    // there would reach neither `done` nor the terminal's hand-back.
     try {
       tick();
     } catch (error) {
-      failure = { error };
-      app.stop();
+      app.fail(error);
       return;
     }
     app.refresh();
   }, 1000 / FPS);
-  try {
-    await app.run();
-  } finally {
-    clearInterval(clock);
-  }
-  if (failure) throw failure.error;
+  const done = app.run().finally(() => clearInterval(clock));
+  return { done, stop: () => app.stop() };
 }
