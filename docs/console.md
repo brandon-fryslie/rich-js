@@ -171,7 +171,7 @@ for by name.
 ### Line ends
 
 `sep` and `end` belong to text. Adjacent strings, `RichText` values and scalar
-data (numbers, booleans, `null`, an object with its own `toString`) are joined
+data (numbers, booleans, `null`, an object that describes itself) are joined
 with `sep`, a space by default, and the line they make is ended with `end`, a
 line break by default. Any other renderable takes whole lines of its own: text
 before it ends its line first, text after it starts on a new one, and neither
@@ -191,9 +191,10 @@ carries on along it. A line break at the end of a string is text, so
 `console.print("a\n")` prints `a` and then an empty line.
 
 Data that is a container takes whole lines of its own too, as it does in Python
-Rich: an array, a `Map`, a `Set`, or an object without its own `toString`, even
-an empty one. `Pretty` formats it and may spread it across several lines, so it
-never starts partway along one:
+Rich: an array or typed array, a `Map`, a `Set`, or any other object that does
+not describe itself — one inheriting `Object.prototype.toString` and carrying no
+`Symbol.toPrimitive` — even an empty one. `Pretty` formats it and may spread it
+across several lines, so it is not joined into a line of text:
 
 ```typescript
 console.print("x =", [1, 2], "y =", 99);
@@ -381,8 +382,10 @@ cut at the width by that method: at width 12,
 
 ## Logging
 
-`log()` prefixes a timestamp and then prints, so it takes the same arguments as
-`print()` and behaves the same way on each of them:
+`log()` puts a timestamp in a column of its own and, beside it, draws what
+`print()` would draw for the same arguments in the width that is left. A
+container therefore starts on the timestamp's line, and every line after the
+first is indented to the column:
 
 ```typescript
 console.log("Server started on port [bold cyan]3000[/]");

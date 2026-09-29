@@ -151,7 +151,7 @@ export interface PrintOptions {
 // the discriminator is who ends the lines: a text run is ended by the print's
 // `end`, a renderable's lines are each closed by the print.
 type PrintBlock =
-  | { kind: "text"; items: Array<RichText | Pretty> }
+  | { kind: "text"; items: RichText[] }
   | { kind: "lines"; renderable: Renderable };
 
 // Three of the five justify methods place what a print draws as a block, the
@@ -173,27 +173,22 @@ const PLACED_BY: Record<NonNullable<PrintOptions["justify"]>, Alignment | undefi
 // `justify`, `overflow`, `noWrap` and `tabSize` stay behind, as they do in the
 // reference: the print's options set the whole run.
 class TextRun implements Renderable, Measurable {
+  private readonly text: RichText;
+
   constructor(
-    private readonly items: ReadonlyArray<RichText | Pretty>,
+    items: readonly RichText[],
     private readonly end: Segment,
-  ) {}
+  ) {
+    this.text = items.reduce((joined, item) => joined.append(item), new RichText("", { end: "" }));
+  }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    yield* this.text(options).render(options);
+    yield* this.text.render(options);
     yield this.end;
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.text(options).measure(options);
-  }
-
-  // A `Pretty` lays itself out for the width it is offered, so the run is
-  // joined per call rather than once.
-  private text(options: RenderOptions): RichText {
-    return this.items.reduce<RichText>(
-      (joined, item) => joined.append(item instanceof Pretty ? item.toText(options) : item),
-      new RichText("", { end: "" }),
-    );
+    return this.text.measure(options);
   }
 }
 
@@ -466,6 +461,12 @@ export class Console {
   // --- Print ---
 
   print(...args: unknown[]): void {
+    this._writeSegments(this._draw(args, this.options));
+  }
+
+  // What `print` writes for `args` at `options.maxWidth`, as segments with their
+  // line breaks. `log` draws through it too, into the column beside its time.
+  private _draw(args: unknown[], options: RenderOptions): Segment[] {
     // Extract options from last arg if it's a PrintOptions
     let opts: PrintOptions = {};
     let items: unknown[];
@@ -526,7 +527,7 @@ export class Console {
       // JavaScript value displays — `String(value)` was a second, weaker one
       // that answered `[object Object]` for every object and let the markup
       // parser eat it. [LAW:one-source-of-truth]
-      let text: RichText | Pretty;
+      let text: RichText;
       if (item instanceof RichText) {
         const richText = item.copy();
         richText.end = "";
@@ -555,11 +556,13 @@ export class Console {
           highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
           indentGuides: doHighlight,
         });
+        // A scalar spells the same at every width, so it joins its run as the
+        // one text it is.
         if (isExpandable(item)) {
           blocks.push({ kind: "lines", renderable: pretty });
           continue;
         }
-        text = pretty;
+        text = pretty.toText(options);
       }
       const run = blocks.at(-1);
       if (run?.kind === "text") run.items.push(new RichText(sep, { end: "" }), text);
@@ -572,7 +575,7 @@ export class Console {
     // at the width, as Rich's does. What `"ignore"` does to a line — no edge,
     // no justify — is `RichText`'s to apply, so it crosses as it was asked for.
     const renderOpts: RenderOptions = {
-      ...this.options,
+      ...options,
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,
@@ -629,18 +632,31 @@ export class Console {
     // whole is meant to reach the terminal whole. [LAW:dataflow-not-control-flow]
     // Not cropping is an unbounded width rather than a skipped step — the same
     // spelling `RichText` uses for `"ignore"`.
-    const cropWidth = !softWrap && (opts.crop ?? true) ? this.width : Infinity;
-    this._writeSegments([...Segment.cropLines(output, cropWidth)]);
+    const cropWidth = !softWrap && (opts.crop ?? true) ? options.maxWidth : Infinity;
+    return [...Segment.cropLines(output, cropWidth)];
   }
 
+  // The reference's `LogRender`: the time in a column of its own, and beside it
+  // whatever `print` would draw for `args` in the width that is left. A
+  // container is a block in `print`, so it starts on the time's line only
+  // because the column puts it there, and its later lines keep to the column.
   log(...args: unknown[]): void {
-    // Simple log implementation — adds timestamp
-    const now = new Date();
-    const time = now.toLocaleTimeString();
-    const timeText = new RichText(`[${time}] `, { end: "" });
-    timeText.stylize("log.time");
-
-    this.print(timeText, ...args);
+    const options = this.options;
+    const time = new RichText(`[${new Date().toLocaleTimeString()}] `, { end: "" });
+    time.stylize("log.time");
+    const timeWidth = time.cellLength;
+    const drawn = this._draw(args, { ...options, maxWidth: Math.max(1, options.maxWidth - timeWidth) });
+    const closed = drawn.at(-1)?.text.endsWith("\n") ?? false;
+    const lines = Segment.splitLines(drawn);
+    const column = (index: number): Segment[] =>
+      index === 0 ? [...time.render(options)] : [new Segment(" ".repeat(timeWidth))];
+    this._writeSegments(
+      lines.flatMap((line, index, all) => [
+        ...column(index),
+        ...line,
+        ...(closed || index < all.length - 1 ? [Segment.line()] : []),
+      ]),
+    );
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

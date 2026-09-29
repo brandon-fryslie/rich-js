@@ -856,6 +856,24 @@ describe("Console.log()", () => {
     // Should contain time-like text (e.g., brackets around time)
     expect(output).toMatch(/\[.*\]/);
   });
+
+  // The time is a column, as in the reference's `LogRender`: a container is a
+  // block in `print`, and here it sits beside the time rather than below it.
+  it("draws what print would beside the time, in the width that is left", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false });
+    c.log("user", { userId: 42, action: "login" }, "done");
+    const output = captured(chunks);
+    const time = /^\[[^\]]*\] /.exec(output)?.[0] ?? "";
+    const pad = " ".repeat(time.length);
+    expect(output).toBe(
+      `${time}user\n` +
+      `${pad}{\n` +
+      `${pad}    userId: 42,\n` +
+      `${pad}    action: "login"\n` +
+      `${pad}}\n` +
+      `${pad}done\n`,
+    );
+  });
 });
 
 // --- Console.rule() ---
