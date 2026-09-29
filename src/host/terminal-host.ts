@@ -33,8 +33,8 @@
  * [boundaries: capabilities over context] A `TerminalHost` grants exactly
  * the I/O capabilities the runtime needs: write bytes, read input, query
  * size, observe resize, switch raw mode, read the terminal's environment,
- * lifecycle. It is not an
- * omniscient handle to "the process."
+ * hear the program end, hand the terminal back for a while, lifecycle. It is
+ * not an omniscient handle to "the process."
  */
 
 import type { Unsubscribe } from "../core/subscription.js";
@@ -53,6 +53,7 @@ export interface TerminalSize {
 
 export type DataHandler = (chunk: Uint8Array | string) => void;
 export type ResizeHandler = (size: TerminalSize) => void;
+export type ExitHandler = () => void;
 
 export interface TerminalHost {
   /**
@@ -109,6 +110,22 @@ export interface TerminalHost {
    * share a runtime with, which in a browser is none.
    */
   readonly env: NodeJS.ProcessEnv;
+
+  /**
+   * Run `handler` once, when the program ends by any path this host can
+   * observe, so whoever changed the terminal can hand it back. The program
+   * still ends as it would have without the handler: a signal still
+   * terminates and a crash is still reported.
+   */
+  onExit(handler: ExitHandler): Unsubscribe;
+
+  /**
+   * Hand the terminal to whatever launched the program, and resolve once it
+   * hands it back. Raw mode delivers Ctrl+Z as a key rather than a signal, so
+   * suspending is something a program asks for, and it restores the terminal
+   * before asking.
+   */
+  suspend(): Promise<void>;
 
   /**
    * Begin the host's lifecycle. Implementations attach whatever resources
@@ -228,6 +245,18 @@ export class BrowserTerminalHost implements TerminalHost {
   // hosts. (Mirror: NodeTerminalHost on a non-TTY stream takes the same
   // no-op path via the optional-chain in `applyRawMode`.)
   setRawMode(_raw: boolean): void {}
+
+  // The page owns the terminal's life: a program here ends when the page
+  // does, and nothing is left to restore.
+  onExit(_handler: ExitHandler): Unsubscribe {
+    return () => {};
+  }
+
+  // Nothing launched the program that could take the terminal back, so the
+  // hand-back is immediate.
+  suspend(): Promise<void> {
+    return Promise.resolve();
+  }
 
   // [LAW:single-enforcer] One underlying `terminal.onData` subscription
   // fans out to every host-level handler — the same lazy-attach,

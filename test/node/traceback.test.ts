@@ -95,27 +95,44 @@ describe("installTraceback", () => {
     expect(output).not.toContain("    at ");
   });
 
-  it("renders an unhandled rejection through Traceback", () => {
+  // Reported beside the uncaught channel, a rejection would skip the
+  // `uncaughtExceptionMonitor` phase a terminal is handed back in, and draw
+  // inside the alternate screen. Thrown into it, it reaches the one report
+  // after that phase — test/node/crash-order.test.ts runs that in a real
+  // process; here, what the listener does with the reason, and that it does
+  // so after every other listener has heard the rejection.
+  it("throws an unhandled rejection's reason into the uncaught channel, unwrapped, after its other listeners", () => {
+    const deferred: (() => void)[] = [];
+    vi.stubGlobal("queueMicrotask", (task: () => void) => deferred.push(task));
     installTraceback();
-    const error = new Error("async boom");
+    const heard: unknown[] = [];
+    process.on("unhandledRejection", (reason) => heard.push(reason));
+    const reason = { code: 42 };
 
-    process.emit("unhandledRejection", error, Promise.resolve());
+    process.emit("unhandledRejection", reason, Promise.resolve());
+    vi.unstubAllGlobals();
 
-    const output = reported();
-    expect(output).toContain("Error: async boom");
-    expect(output).toContain("traceback.test.ts");
-    expect(output).not.toContain("    at ");
+    expect(heard).toEqual([reason]);
+    expect(deferred).toHaveLength(1);
+    let thrown: unknown;
+    try {
+      deferred[0]!();
+    } catch (caught) {
+      thrown = caught;
+    }
+    expect(thrown).toBe(reason);
+    expect(writes).toHaveLength(0);
   });
 
-  it("names a non-Error rejection reason and shows no borrowed frames", () => {
+  it("names a non-Error payload and shows no borrowed frames", () => {
     installTraceback();
 
-    process.emit("unhandledRejection", { code: 42 }, Promise.resolve());
+    process.emit("uncaughtException", { code: 42 } as unknown as Error, "uncaughtException");
 
     const output = reported();
     expect(output).toContain("NonError");
     expect(output).toContain("code: 42");
-    // A rejected plain object has no call site; rich-js's own frames would be
+    // A thrown plain object has no call site; rich-js's own frames would be
     // a lie about where the fault is.
     expect(output).not.toContain("src/node/traceback");
   });
@@ -186,9 +203,9 @@ describe("installTraceback", () => {
     installTraceback();
 
     process.emit(
-      "unhandledRejection",
-      { stack: "  at doWork (handmade.ts:99:1)" },
-      Promise.resolve(),
+      "uncaughtException",
+      { stack: "  at doWork (handmade.ts:99:1)" } as unknown as Error,
+      "uncaughtException",
     );
 
     const output = reported();
@@ -206,7 +223,7 @@ describe("installTraceback", () => {
     installTraceback();
 
     process.emit("uncaughtException", new Error("the fault"), "uncaughtException");
-    process.emit("unhandledRejection", new Error("the wake"), Promise.resolve());
+    process.emit("uncaughtException", new Error("the wake"), "unhandledRejection");
 
     expect(writes).toHaveLength(1);
     expect(stripAnsi(writes[0]!.text)).toContain("the fault");

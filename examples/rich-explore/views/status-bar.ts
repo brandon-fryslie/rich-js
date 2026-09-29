@@ -8,6 +8,7 @@ const HINTS: ReadonlyArray<[string, string]> = [
   ["tab", "focus"],
   ["g/G", "top/bot"],
   ["PgUp/Dn", "page"],
+  ["^z", "suspend"],
   ["q/esc", "quit"],
 ];
 
