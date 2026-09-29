@@ -20,8 +20,10 @@ import type { Highlighter } from "./highlighter.js";
 // rather than being restated here; see `rule()`.
 import { Rule, type RuleOptions } from "../renderables/rule.js";
 import { segmentsToString } from "./render.js";
+import { placeBlock, type Alignment } from "./place.js";
 import type {
   Height,
+  Measurable,
   Renderable,
   RenderOptions,
   StyleErrorHandler,
@@ -148,8 +150,42 @@ export interface PrintOptions {
 // the discriminator is who ends the lines: a text run is ended by the print's
 // `end`, a renderable's lines are each closed by the print.
 type PrintBlock =
-  | { kind: "text"; items: Renderable[] }
+  | { kind: "text"; items: Array<RichText | Pretty> }
   | { kind: "lines"; renderable: Renderable };
+
+// Three of the five justify methods place what a print draws as a block, the
+// way Rich's `print` wraps each renderable in `Align`. The other two leave it
+// where it was drawn: `"default"` asks for no placement, and `"full"` is a way
+// of setting a paragraph's words, which only text can do.
+const PLACED_BY: Record<NonNullable<PrintOptions["justify"]>, Alignment | undefined> = {
+  default: undefined,
+  full: undefined,
+  left: "left",
+  center: "center",
+  right: "right",
+};
+
+// A text run as one block: its items drawn side by side, ended by the print's
+// `end`, and measured as the one string they spell, so `justify` can place the
+// run by its widest line.
+class TextRun implements Renderable, Measurable {
+  constructor(
+    private readonly items: ReadonlyArray<RichText | Pretty>,
+    private readonly end: Segment,
+  ) {}
+
+  *render(options: RenderOptions): Iterable<Segment> {
+    for (const item of this.items) yield* item.render(options);
+    yield this.end;
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    const plain = this.items
+      .map((item) => (item instanceof Pretty ? item.toText(options) : item).plain)
+      .join("");
+    return new RichText(plain).measure(options);
+  }
+}
 
 // A host with an environment but no streams — what a browser looks like from
 // here. Frozen so the shared instance cannot be mutated into a fake terminal.
@@ -477,7 +513,7 @@ export class Console {
       // JavaScript value displays — `String(value)` was a second, weaker one
       // that answered `[object Object]` for every object and let the markup
       // parser eat it. [LAW:one-source-of-truth]
-      let text: Renderable;
+      let text: RichText | Pretty;
       if (item instanceof RichText) {
         const richText = item.copy();
         richText.end = "";
@@ -518,42 +554,58 @@ export class Console {
     // render as `noWrap`, and `overflow` carries only the methods a renderable
     // applies. Soft wrap is the same request — the reference defaults it to
     // `"ignore"` — which is why the two arrive at one field.
+    //
+    // An unbounded line has no width to be justified in, so under `"ignore"`
+    // the text is not justified either — the reference's `Text.wrap` skips
+    // `justify` in that arm. Placing the block below still honours it.
+    const ignore = softWrap || opts.overflow === "ignore";
     const renderOpts: RenderOptions = {
       ...this.options,
-      justify: opts.justify === "default" ? undefined : opts.justify,
+      justify: opts.justify === "default" || ignore ? undefined : opts.justify,
       overflow: opts.overflow === "ignore" ? undefined : opts.overflow,
-      noWrap: softWrap || opts.overflow === "ignore",
+      noWrap: ignore,
     };
 
-    // The print style, then the console's base style, over what each block drew
-    // and not over the line ends added below: a styled break carries SGR codes
-    // across the newline.
+    // The print style, then the console's base style, over each line a block
+    // drew and never over the break that ends it: a styled break carries SGR
+    // codes across the newline.
     // [LAW:dataflow-not-control-flow] no style to apply is an empty list, not
     // a skipped step.
     const styles = [printStyle, this._style].filter((style) => !style.isNull);
     const styleContent = (segments: Iterable<Segment>): Iterable<Segment> =>
       styles.reduce((styled, style) => Segment.applyStyle(styled, style), segments);
 
-    // Every line end goes through the same writeSegments funnel as the text it
-    // ends, so it survives recording — otherwise `exportText` and `exportHtml`
-    // would join consecutive prints onto a single line. [LAW:single-enforcer]
     // The common default end is "\n" — reuse Segment's cached newline rather
     // than allocating one per print; only a non-default end needs a fresh one.
     const terminator = end === "\n" ? Segment.line() : new Segment(end);
+    const align = PLACED_BY[opts.justify ?? "default"];
+
+    // Each block as its lines, and whether its last line is closed. A placed
+    // block is closed line by line, as `Align` closes it. Unplaced, a text run
+    // is closed exactly where its content — its `end` included — breaks; any
+    // other block's lines are closed whether or not it closed them itself: a
+    // `Panel` ends in a line break and a bare `Spinner` or `ProgressBar` does
+    // not (they're line fragments, meant to be composed within a line —
+    // rich-flexstrip-5kf.4cq), and both leave the next print at the start of a
+    // line.
+    const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
+      const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
+      if (align) return { lines: placeBlock(renderable, align, renderOpts), closed: true };
+      const drawn = [...renderable.render(renderOpts)];
+      const closed = block.kind === "lines" || drawn.map((segment) => (segment.isControl ? "" : segment.text)).join("").endsWith("\n");
+      return { lines: Segment.splitLines(drawn), closed };
+    };
+
+    // Every line end goes through the same writeSegments funnel as the text it
+    // ends, so it survives recording — otherwise `exportText` and `exportHtml`
+    // would join consecutive prints onto a single line. [LAW:single-enforcer]
     const output: Segment[] = [];
     for (const block of blocks) {
-      if (block.kind === "text") {
-        output.push(...styleContent(block.items.flatMap((item) => [...item.render(renderOpts)])), terminator);
-      } else {
-        // A block's lines are closed whether or not it closed them itself: a
-        // `Panel` ends in a line break and a bare `Spinner` or `ProgressBar`
-        // does not (they're line fragments, meant to be composed within a
-        // line — rich-flexstrip-5kf.4cq), and both leave the next print at
-        // the start of a line.
-        for (const line of Segment.splitLines(block.renderable.render(renderOpts))) {
-          output.push(...styleContent(line), Segment.line());
-        }
-      }
+      const { lines, closed } = drawBlock(block);
+      lines.forEach((line, index) => {
+        output.push(...styleContent(line));
+        if (closed || index < lines.length - 1) output.push(Segment.line());
+      });
     }
 
     // Crop last, and crop the line-end with the rest: in the reference `end` is

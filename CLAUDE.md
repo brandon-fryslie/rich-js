@@ -88,7 +88,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it:
 2   segment
 3   box · protocol · export-lines
 4   measure · emoji · text · strip · render · export-html
-5   markup · highlighter · ansi
+5   markup · highlighter · ansi · place
 6   pretty · json
 7   console                           (orchestrator)
 ```
@@ -127,6 +127,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **export-lines** — recorded segments resolved against a `TerminalTheme` into the rows every exporter draws, and the canvas they are drawn on: `exportLines`, `resolveLook`, `exportCanvas`, `parseHref`. The HTML and SVG exporters are two encodings of this one picture; its module header owns why `reverse`, `dim` and `conceal` are resolved here and not in either format.
 - **export-html** — `encodeHtmlFragment`: recorded segments as one inline-styled `pre` that can sit in a page this library does not own, an encoding of `export-lines` that inspects no `Style`; `encodeHtml` is that fragment in a standalone document. `Console.exportHtml` is the document plus clearing the buffer.
 - **measure** — `Measurement` value type (min/max cell width). `Measurement.get()` is the single enforcer for measuring a `Measurable`.
+- **place** — `placeBlock`: a renderable's output set down as one block in a wider width, the way Rich's `Align` does it — measured, drawn at that width, shaped to its widest line, then padded. `Align` and `Console.print`'s `justify` both place through it; it sits in `core/` so `print` reaches it without an upward edge.
 - **markup** — parses Rich markup strings (`[bold red]text[/]`) into `RichText`.
 - **text** — `RichText`: styled text with `Span[]` annotations. Primary text type for the library; implements `Renderable` and `Measurable`.
 - **pretty** — `Pretty`: a JavaScript value formatted as `RichText`. It lives in `core/` rather than `renderables/`, and the argument for that is in its module header — read it there. Sharing the "implements `Renderable`" trait with `Table` is not what decides the directory; `RichText` implements it too.
