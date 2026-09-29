@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "d3580d7d8fb0f6bad1564bb7ffc58a8599f85c85",
+      "timestamp": "2026-09-29T22:43:19.532Z",
+      "commits": [
+        {
+          "sha": "d3580d7d8fb0f6bad1564bb7ffc58a8599f85c85",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:42:18-06:00",
+          "message": "fix(release): declare repository; refuse a publish missing its entry points (0.18.1) (#228)\n\n* fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n\n* fix(release): entry-points guard reads npm's pack listing and cannot fail open\n\n- main() runs unconditionally: the argv[1] check exited 0 unchecked through any\n  symlinked path (macOS tmpdir included)\n- what ships is asked of `npm pack --dry-run --json`, not the disk\n- every missing entry point is named, on one stderr channel\n- tests run a byte copy against real fixture packages, pin the prepublishOnly\n  wiring and the repository field; publish.yml and CLAUDE.md name the gate\n\n* fix(release): drop the unreachable npm.cmd branch"
+        }
+      ]
+    },
+    {
       "version": "pr-226",
       "ref": "refs/pull/226/merge",
       "sha": "c285f4b30ffc1bc5a3d44b149491e182864a2f63",
@@ -85,21 +100,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:38:06-06:00",
           "message": "fix(renderables): every exported renderable ends its own line or is listed as a fragment (rich-flexstrip-5kf.4cq)\n\nSpinner, Status, Pretty, JSON and a Layout leaf left their last line open,\nso a Group ran what followed onto it; Rich ends all five. test/seam/line-ends.ts\nderives every exported Renderable class and requires an entry saying which\nside of the line it sits on, rendering each to check. ProgressBar, Emoji and\nthe Progress columns are fragments, as in Rich.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "9a426139579b1cfb72fd2d2b824e893767fb249a",
-      "timestamp": "2026-09-29T22:29:07.966Z",
-      "commits": [
-        {
-          "sha": "9a426139579b1cfb72fd2d2b824e893767fb249a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:27:36-06:00",
-          "message": "fix(table): a declared width is the table's size, as in Rich (rich-table-width-5cj) (#225)\n\n* fix(table): a declared width is the table's size, as in Rich (rich-table-width-5cj)\n\nRich's Table.expand is `self._expand or self.width is not None`, and its\nmeasure reports the declared width. Here a declared width was a ceiling, so\nRich code ported over drew narrower tables and a Panel fitted round one sized\nto the content. Width now implies expand and measure reports it, laid out the\nway render lays it out. The bound by the offer and fixed declared-width\ncolumns stay as deliberate divergences.\n\n* fix(table): review — docs name the fixed-column case, measure lays out once per question (rich-table-width-5cj)"
         }
       ]
     }
