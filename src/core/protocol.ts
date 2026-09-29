@@ -192,7 +192,12 @@ export function fitHeight(lines: Segment[][], height: Height | undefined): Segme
 export type StyleErrorHandler = (error: StyleSyntaxError, style: string) => void;
 
 /**
- * The style a `string | Style` stands for in this render.
+ * The style a `string | Style` stands for in this render: a name from the
+ * theme of whatever is drawing, otherwise a style definition. A string that is
+ * neither throws `StyleSyntaxError`. This is how a renderable that yields its
+ * own `Segment`s draws with a theme name, since a `Segment` takes a resolved
+ * `Style`. It is Rich's `console.get_style`, asked of the options because the
+ * options are where the theme travels.
  *
  * [LAW:single-enforcer] Every renderable resolves a style name here, at render
  * time, because only the render knows whose theme it is drawing for. Resolved
