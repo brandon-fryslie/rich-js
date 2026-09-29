@@ -4,15 +4,22 @@
     {
       "version": "pr-213",
       "ref": "refs/pull/213/merge",
-      "sha": "ccafd9aee0f1025b3dd73c19dd42fb15be15f48f",
-      "timestamp": "2026-09-29T19:36:31.491Z",
+      "sha": "7c2ce16a6a85b4ed84b2b8b6b83654a4bc5dd8cd",
+      "timestamp": "2026-09-29T19:46:39.053Z",
       "commits": [
         {
-          "sha": "ccafd9aee0f1025b3dd73c19dd42fb15be15f48f",
+          "sha": "7c2ce16a6a85b4ed84b2b8b6b83654a4bc5dd8cd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T19:35:36Z",
-          "message": "Merge 478ce1613bf812b4029392dc9168ad095c415355 into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
+          "timestamp": "2026-09-29T19:45:47Z",
+          "message": "Merge dea3a58d32dac4f9558952f28fcc0b6aacf5aa20 into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
+        },
+        {
+          "sha": "dea3a58d32dac4f9558952f28fcc0b6aacf5aa20",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T13:45:40-06:00",
+          "message": "refactor(console,text): a run is closed by its end; fromFragments is append (rich-console-c70)\n\nclosed reads the print's own end rather than re-deriving it from the\ndrawn output. RichText.fromFragments hand-copied the base-style lift\nappend now does, and its comment said append did not.\n"
         },
         {
           "sha": "478ce1613bf812b4029392dc9168ad095c415355",
