@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-214",
-      "ref": "refs/pull/214/merge",
-      "sha": "701442aa477f2d0b006d31b233a71542b76a2733",
-      "timestamp": "2026-09-29T20:03:36.478Z",
-      "commits": [
-        {
-          "sha": "701442aa477f2d0b006d31b233a71542b76a2733",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T20:02:46Z",
-          "message": "Merge 02176c083f07a9a9c5a4e1cfa68b28347f874a2a into 5e0a5251b80d22c134051aa91b04827d23efef09\n"
-        },
-        {
-          "sha": "02176c083f07a9a9c5a4e1cfa68b28347f874a2a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:02:40-06:00",
-          "message": "fix(text): unbounded callers ask for \"ignore\", not noWrap (rich-text-b44 review)\n\ninlineLabel sized a Panel or Rule title by cellLength, which counts a tab as\nno cells, and leaned on noWrap to leave it uncut; with noWrap cutting, the text\npast a tab was lost. The label now renders under \"ignore\" and the caller cuts.\n\nA table title clears \"ignore\" rather than noWrap: \"ignore\" is now the one way a\ntitle escapes the frame, and noWrap cuts within it, as Rich's no_wrap does.\nThe Tree and Layout wide-glyph tests reach their container's crop through\n\"ignore\", since a noWrap leaf now cuts itself first.\n"
-        },
-        {
-          "sha": "9049e6ab97a05380c8ea15fcf6650bed2692195a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:56:42-06:00",
-          "message": "fix(text): noWrap cuts at the width; \"ignore\" is the unbounded line (rich-text-b44)\n\nnoWrap meant an unbounded line, which is Rich's overflow \"ignore\". It now\nmeans Rich's no_wrap: no breaks, and a line too wide is cut at the width\nby the overflow method. \"ignore\" joins the one OverflowMethod type that\nRenderOptions, RichText, PrintOptions and Column share, and RichText\napplies it: no edge, no justify.\n\nConsole stops translating \"ignore\" into noWrap. softWrap sends noWrap and\ndefaults overflow to \"ignore\", so softWrap with a named overflow cuts, as\nRich's does: width 12, \"aaaa bbbb cccc dddd\" with fold prints \"aaaa bbbb cc\".\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5e0a5251b80d22c134051aa91b04827d23efef09",
-      "timestamp": "2026-09-29T19:49:41.745Z",
+      "sha": "e8837d1099d2f809f88b87febb1dce9b900b5d75",
+      "timestamp": "2026-09-29T20:09:09.212Z",
       "commits": [
         {
-          "sha": "5e0a5251b80d22c134051aa91b04827d23efef09",
+          "sha": "e8837d1099d2f809f88b87febb1dce9b900b5d75",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:48:47-06:00",
-          "message": "fix(console): justify places what print draws as one block (rich-console-c70) (#213)\n\n* fix(console): justify places what print draws as one block, as Rich's Align does (rich-console-c70)\n\nprint's justify \"left\"/\"center\"/\"right\" now places each block of a print\n(a text run, or any other renderable) as a whole: measured, drawn at that\nwidth, shaped to its widest line, then padded out to the console. Before,\nonly RichText placed itself, line by line, so a Table or Panel was never\nplaced and \"hi\\nhello\" centred each line against the full width.\n\nThe placement is `placeBlock` in the new src/core/place.ts, so console.ts\nreaches it without a third upward edge out of core/. Align is now that\nfunction behind the Renderable interface, and moved from per-line to block\nplacement with it. Under overflow \"ignore\" / softWrap the text itself is not\njustified, matching Rich's Text.wrap; the block is still placed.\n\nPinned against Rich 9d8f9a3 bytes in test/core/console.test.ts. The\nmulti-item text run case is filed separately as rich-console-7yp0.\n\n* fix(console): a text run ending in a break under an empty end gets no extra line (rich-console-c70)\n\nThe unplaced close check read the joined text's last character, which\nskips an empty trailing segment that splitLines does not: print(\"a\\n\",\nend=\"\") drew a blank line Rich does not. Closed is now the last\nsegment ending in a break, which is O(1) and agrees with splitLines by\nconstruction. Also: the justify table's center row names the block,\nand placeBlock says why it drops the region height.\n\n* fix(console): a print's text items are joined into one text, as Rich's Text.join does (rich-console-c70, rich-console-7yp0)\n\nTextRun measured the run as one string but drew each item on its own,\nso under justify every item was set at the run's width by itself: the\nrun came out wider than measured and was cropped, and sep=\"\\n\" with\njustify=\"right\" regressed against master. Measure and render now read\none joined RichText. Each item's own justify/overflow/noWrap/tabSize\nstays behind, as in the reference; RichText.append now carries the\nappended text's base style, as the reference's append does, so a styled\nitem keeps its style through the join.\n\n* refactor(console,text): a run is closed by its end; fromFragments is append (rich-console-c70)\n\nclosed reads the print's own end rather than re-deriving it from the\ndrawn output. RichText.fromFragments hand-copied the base-style lift\nappend now does, and its comment said append did not."
+          "timestamp": "2026-09-29T14:08:16-06:00",
+          "message": "fix(text): noWrap cuts at the width; \"ignore\" is the unbounded line (rich-text-b44) (#214)\n\n* fix(text): noWrap cuts at the width; \"ignore\" is the unbounded line (rich-text-b44)\n\nnoWrap meant an unbounded line, which is Rich's overflow \"ignore\". It now\nmeans Rich's no_wrap: no breaks, and a line too wide is cut at the width\nby the overflow method. \"ignore\" joins the one OverflowMethod type that\nRenderOptions, RichText, PrintOptions and Column share, and RichText\napplies it: no edge, no justify.\n\nConsole stops translating \"ignore\" into noWrap. softWrap sends noWrap and\ndefaults overflow to \"ignore\", so softWrap with a named overflow cuts, as\nRich's does: width 12, \"aaaa bbbb cccc dddd\" with fold prints \"aaaa bbbb cc\".\n\n* fix(text): unbounded callers ask for \"ignore\", not noWrap (rich-text-b44 review)\n\ninlineLabel sized a Panel or Rule title by cellLength, which counts a tab as\nno cells, and leaned on noWrap to leave it uncut; with noWrap cutting, the text\npast a tab was lost. The label now renders under \"ignore\" and the caller cuts.\n\nA table title clears \"ignore\" rather than noWrap: \"ignore\" is now the one way a\ntitle escapes the frame, and noWrap cuts within it, as Rich's no_wrap does.\nThe Tree and Layout wide-glyph tests reach their container's crop through\n\"ignore\", since a noWrap leaf now cuts itself first."
         }
       ]
     },
