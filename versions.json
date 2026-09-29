@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-208",
+      "ref": "refs/pull/208/merge",
+      "sha": "2d4e1d0e0f7a98030a53612051714811dbd5a240",
+      "timestamp": "2026-09-29T17:08:27.021Z",
+      "commits": [
+        {
+          "sha": "2d4e1d0e0f7a98030a53612051714811dbd5a240",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T11:07:28-06:00",
+          "message": "Merge 2c753a1e3e48bbf1d4ecdc63f928daa1442b863f into f921ed462e35b6194044226d4769a76ee91e9ac8\n"
+        },
+        {
+          "sha": "2c753a1e3e48bbf1d4ecdc63f928daa1442b863f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T11:07:23-06:00",
+          "message": "refactor(examples): rich-dash and claude-sessions run on App; the dashboard runtime is gone (rich-runtime-fna.5)\n\nEvery full-screen demo now takes the terminal through App: none of them\nenters the alternate screen, sets raw mode or tears either down itself.\n\n- rich-dash: DashboardRuntime (Live + setInterval + stop) is deleted. The\n  demo body owns only its clock; App owns the terminal. A widget with no\n  layout cell now fails at startup instead of silently never drawing, and\n  q / Esc / Ctrl+C quit and Ctrl+Z suspends — raw mode made Ctrl+C a key,\n  so the entry's SIGINT/SIGTERM handlers go too.\n- claude-sessions: Live + setRawMode + cleanup replaced by App; Ctrl+Z\n  suspends. The status bar escapes its hint keys, so the `\\` hint no\n  longer swallows its closing tag.\n- The browser wires stop calling host.start(): App starts the host.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f921ed462e35b6194044226d4769a76ee91e9ac8",
