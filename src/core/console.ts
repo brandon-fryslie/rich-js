@@ -78,6 +78,13 @@ export interface ConsoleOptions {
    */
   hyperlinks?: boolean;
   /**
+   * The terminal can draw only ASCII: boxes, rules, tree guides and widget
+   * marks draw with ASCII characters instead of line-drawing glyphs. A
+   * property of the output device, so it is set here once and reaches every
+   * renderable this console draws. Default false.
+   */
+  asciiOnly?: boolean;
+  /**
    * Static width (cells). Ignored when `getSize` is provided. Falls back to
    * the `COLUMNS` env var / the bound stream's `columns` / 80.
    */
@@ -296,6 +303,7 @@ export class Console {
   private _highlight: boolean;
   private _theme: Theme;
   private _onStyleError: StyleErrorHandler | undefined;
+  private readonly _asciiOnly: boolean;
   private _highlighter: Highlighter;
   private _recorded: Segment[];
   // [LAW:types-are-the-program] The capture state is carried in the *type*
@@ -336,6 +344,7 @@ export class Console {
     this._highlight = options?.highlight !== false;
     this._highlighter = options?.highlighter ?? new ReprHighlighter();
     this._onStyleError = options?.onStyleError;
+    this._asciiOnly = options?.asciiOnly ?? false;
     this._recorded = [];
     this._capture = null;
   }
@@ -352,10 +361,6 @@ export class Console {
 
   get height(): number {
     return this._getSize().height;
-  }
-
-  get encoding(): string {
-    return "utf-8";
   }
 
   get isTerminal(): boolean {
@@ -405,8 +410,7 @@ export class Console {
       // content keeps its natural height beneath it.
       height: { rows: height, exact: false },
       isTerminal: this.isTerminal,
-      encoding: this.encoding,
-      asciiOnly: false,
+      asciiOnly: this._asciiOnly,
       theme: this._theme,
       onStyleError: this._onStyleError,
       colorSystem: this._destination.colorSystem,

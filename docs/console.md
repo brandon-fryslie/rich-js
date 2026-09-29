@@ -38,7 +38,6 @@ After construction, `Console` exposes information about the terminal:
 |---|---|
 | `console.width` | Terminal columns (live terminal size) |
 | `console.height` | Terminal rows (live terminal size) |
-| `console.encoding` | Output encoding (e.g. `"utf-8"`) |
 | `console.isTerminal` | `true` when writing to a real TTY |
 | `console.colorSystem` | Detected color depth — a `ColorDepth`, or `null` for no color |
 | `console.destination` | What output is encoded for: `{ colorSystem, hyperlinks }`, the color depth plus whether OSC 8 links are written, with the constructor options applied — see [Environment variables](#environment-variables) |
@@ -52,7 +51,6 @@ const detected = new Table({ box: ROUNDED, borderStyle: "blue" }).addColumn("Pro
 const attributes = {
   width: console.width,
   height: console.height,
-  encoding: console.encoding,
   isTerminal: console.isTerminal,
   colorSystem: console.colorSystem === null ? null : ColorDepth[console.colorSystem],
   "destination.colorSystem": console.destination.colorSystem === null ? null : ColorDepth[console.destination.colorSystem],
@@ -618,6 +616,26 @@ const colored = new Console({ forceTerminal: true });     // always emit ANSI co
 const animated = new Console({ forceInteractive: true }); // always show animations
 colored.print("[bold green]colour[/] even when piped");
 ```
+
+## ASCII-only terminals
+
+Some terminals draw only ASCII — a serial console, a Linux virtual console
+without a Unicode font, a log viewer that mangles anything else. Tell the
+console once with `asciiOnly: true`, and everything it draws — panel and table
+borders, rules, tree guides — uses ASCII characters instead of line-drawing
+glyphs:
+
+```typescript
+const ascii = new Console({ asciiOnly: true });
+const tree = new Tree("project");
+tree.add("src");
+ascii.print(new Panel("drawn in ASCII"));
+ascii.print(tree);
+```
+
+It is a property of the terminal, not of any one renderable, so no renderable
+takes an option of its own for it. `renderToString` takes the same
+`asciiOnly` option, and so does an [`App`](./app).
 
 ## Environment variables
 

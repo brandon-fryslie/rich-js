@@ -131,7 +131,6 @@ export function renderTemplate(
     return Array.from(rt.render({
       maxWidth: options?.maxWidth ?? 400,
       isTerminal: true,
-      encoding: "utf-8",
     }));
   } catch (e) {
     return [new Segment(`[error: ${String(e).slice(0, 80)}]`, safeErrorStyle(options?.errorStyle))];

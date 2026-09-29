@@ -23,8 +23,12 @@ export interface RenderOptions {
    */
   height?: Height;
   isTerminal?: boolean;
-  encoding?: string;
   legacyWindows?: boolean;
+  /**
+   * The output can draw only ASCII. A renderable that spends other glyphs —
+   * box lines, tree guides, a check mark — draws its ASCII equivalent
+   * instead. Absent means the output draws any glyph.
+   */
   asciiOnly?: boolean;
   justify?: "left" | "center" | "right" | "full";
   overflow?: "fold" | "crop" | "ellipsis";

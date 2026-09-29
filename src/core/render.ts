@@ -72,6 +72,11 @@ export interface RenderToStringOptions {
    * (no TTY or TERM=dumb: false). `false` with `colorSystem: null` is plain text.
    */
   hyperlinks?: boolean;
+  /**
+   * The output can draw only ASCII: boxes, rules and tree guides draw with
+   * ASCII characters. Default false.
+   */
+  asciiOnly?: boolean;
 }
 
 const DEFAULT_WIDTH = 80;
@@ -176,8 +181,7 @@ export function renderToString(
   const renderOptions: RenderOptions = {
     maxWidth: width,
     isTerminal: false,
-    encoding: "utf-8",
-    asciiOnly: false,
+    asciiOnly: options?.asciiOnly ?? false,
     // [LAW:one-source-of-truth] The depth the segments below are encoded at,
     // so a renderable measures what this very call will draw.
     colorSystem: destination.colorSystem,

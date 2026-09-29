@@ -60,6 +60,11 @@ export interface AppOptions {
    * app's state is drawn from the state as it is at that frame.
    */
   readonly view: () => Renderable;
+  /**
+   * The terminal can draw only ASCII, so every frame draws its boxes, guides
+   * and widget marks with ASCII characters. Default false.
+   */
+  readonly asciiOnly?: boolean;
 }
 
 /**
@@ -137,7 +142,7 @@ export class App {
     this.host = options.host;
     this.surface = SURFACES[options.surface];
     this.view = options.view;
-    this.console = new Console({ environment: hostEnvironment(options.host) });
+    this.console = new Console({ environment: hostEnvironment(options.host), asciiOnly: options.asciiOnly });
   }
 
   get phase(): AppPhase {

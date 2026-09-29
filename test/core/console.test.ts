@@ -66,7 +66,6 @@ describe("Console construction", () => {
   it("constructs with defaults", () => {
     const c = new Console({ width: 80 });
     expect(c.width).toBe(80);
-    expect(c.encoding).toBe("utf-8");
   });
 
   it("respects width override", () => {
@@ -170,11 +169,6 @@ describe("Console auto-detected attributes", () => {
   it(".size returns width and height", () => {
     const c = new Console({ width: 120, height: 50 });
     expect(c.size).toEqual({ width: 120, height: 50 });
-  });
-
-  it(".encoding returns utf-8", () => {
-    const c = new Console({ width: 80 });
-    expect(c.encoding).toBe("utf-8");
   });
 
   it(".isTerminal returns false when writing to a file/stream", () => {
@@ -850,9 +844,25 @@ describe("Console.options", () => {
     expect(c.options.isTerminal).toBe(false);
   });
 
-  it("includes encoding in render options", () => {
-    const c = new Console({ width: 80 });
-    expect(c.options.encoding).toBe("utf-8");
+  // One print of every renderable that spends line-drawing glyphs, so the
+  // switch is proven to reach each of them through the console's options.
+  function printFramed(overrides: ConsoleOptions): string {
+    const { console: c, chunks } = makeConsole(overrides);
+    const tree = new Tree("root");
+    tree.add("leaf");
+    c.print(new Panel("boxed"));
+    c.print(new Table().addColumn("head").addRow("cell"));
+    c.print(new Rule("rule"));
+    c.print(tree);
+    return captured(chunks);
+  }
+
+  it("writes only ASCII when asciiOnly is set", () => {
+    expect(printFramed({ asciiOnly: true })).toMatch(/^[\x00-\x7f]*$/);
+  });
+
+  it("draws line-drawing glyphs by default", () => {
+    expect(printFramed({})).toMatch(/[^\x00-\x7f]/);
   });
 });
 

@@ -48,7 +48,7 @@ call then goes through that one instance:
 console.print("[green]:check_mark: Done![/green] [dim]3 files written[/dim]");
 ```
 
-The Console auto-detects terminal size, color support, and encoding. See [Console](./console) for the full reference.
+The Console auto-detects terminal size and color support. See [Console](./console) for the full reference.
 
 The examples in these docs assume that `console` is `new Console()` and that the library names they use come from `@promptctl/rich-js`, so they skip those two lines. Any other name stands for your own code or data, and the text around the example says what it is. Names from the subpath entries, such as `@promptctl/rich-js/widgets`, are always imported explicitly.
 
