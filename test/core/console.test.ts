@@ -515,6 +515,86 @@ describe("Console.print() justify modes", () => {
   });
 });
 
+// Every expected string here is what Python Rich 9d8f9a3 prints for the same
+// call at the same width, so a failure is a divergence from the reference.
+describe("Console.print() justify places the block", () => {
+  const print = (width: number, ...args: unknown[]): string => {
+    const { console: c, chunks } = makeConsole({ width });
+    c.print(...args);
+    return captured(chunks);
+  };
+
+  // Rich joins a print's text items into one Text before it places it, so the
+  // run is measured and drawn as the one text. Bytes are the reference's.
+  it("places a run of several text items as one text", () => {
+    expect(print(12, "hi", "there", { justify: "center" })).toBe("  hi there  \n");
+    expect(print(12, "hi", 3, "yo", { justify: "center" })).toBe("  hi 3 yo   \n");
+    expect(print(10, "a", "b", { sep: "\n", justify: "right" })).toBe("         a\n         b\n");
+    expect(print(10, "hello", "world", { justify: "center" })).toBe("  hello   \n  world   \n");
+  });
+
+  it("sets a printed RichText by the print's options, not its own", () => {
+    expect(print(12, new RichText("hi", { justify: "right" }))).toBe("hi\n");
+  });
+
+  it("places a renderable that is not text", () => {
+    const table = () => new Table().addColumn("h");
+    expect(print(16, table(), { justify: "center" }))
+      .toBe("     ┏━━━┓      \n     ┃ h ┃      \n     ┡━━━┩      \n     └───┘      \n");
+    expect(print(16, table(), { justify: "right" }))
+      .toBe("           ┏━━━┓\n           ┃ h ┃\n           ┡━━━┩\n           └───┘\n");
+    expect(print(16, table(), { justify: "left" }))
+      .toBe("┏━━━┓           \n┃ h ┃           \n┡━━━┩           \n└───┘           \n");
+    expect(print(16, Panel.fit("hi"), { justify: "center" }))
+      .toBe("     ╭────╮     \n     │ hi │     \n     ╰────╯     \n");
+  });
+
+  it("places a multi-line string by its widest line, each line justified inside it", () => {
+    expect(print(12, "hi\nhello", { justify: "center" })).toBe("    hi      \n   hello    \n");
+    expect(print(12, "hi\nhello", { justify: "right" })).toBe("          hi\n       hello\n");
+    expect(print(12, "hi\nhello", { justify: "left" })).toBe("hi          \nhello       \n");
+  });
+
+  it("does not justify an unbounded line, and still places its block", () => {
+    expect(print(12, "hi\nhello", { overflow: "ignore", justify: "right" }))
+      .toBe("       hi   \n       hello\n");
+    expect(print(12, "hi\nhello", { overflow: "ignore", justify: "center" }))
+      .toBe("   hi       \n   hello    \n");
+    expect(print(12, "hi", { softWrap: true, justify: "right" })).toBe("          hi\n");
+  });
+
+  it("pads a short line to the width of a longer one the edge does not cut", () => {
+    expect(print(12, "short\naaaa bbbb cccc dddd", { overflow: "ignore", crop: false, justify: "left" }))
+      .toBe("short              \naaaa bbbb cccc dddd\n");
+    expect(print(12, "short\naaaa bbbb cccc dddd", { overflow: "ignore", justify: "center" }))
+      .toBe("short       \naaaa bbbb cc\n");
+  });
+
+  it("places each block of a mixed print on its own", () => {
+    expect(print(12, "hi", new Table().addColumn("h"), "yo", { justify: "center" }))
+      .toBe("     hi     \n   ┏━━━┓    \n   ┃ h ┃    \n   ┡━━━┩    \n   └───┘    \n     yo     \n");
+  });
+
+  it("places the line end with the text it ends, and closes the line", () => {
+    expect(print(12, "hi", { justify: "center", end: "!" })).toBe("    hi!     \n");
+    expect(print(12, "hi", { justify: "center", end: "" })).toBe("     hi     \n");
+  });
+
+  it("places a wrapped paragraph that fills the width", () => {
+    expect(print(12, "aaaa bbbb cccc dddd", { justify: "center" })).toBe(" aaaa bbbb  \n cccc dddd  \n");
+  });
+
+  // Rich's cells and styles; the bytes differ only where rich-js writes the
+  // three same-styled runs of a line as one.
+  it("styles the padding with the line and never the break", () => {
+    const { console: c, chunks } = makeConsole({ width: 12, colorSystem: "truecolor" });
+    c.print("hi\nyo", { justify: "center", style: "on blue" });
+    expect(captured(chunks)).toBe(
+      "\x1b[44m     hi     \x1b[0m\n\x1b[44m     yo     \x1b[0m\n",
+    );
+  });
+});
+
 // --- Overflow modes ---
 
 describe("Console.print() overflow modes", () => {
@@ -695,6 +775,15 @@ describe("Console.print() line ends", () => {
 
   it("carries on at the start of a line after text ended with end: \"\"", () => {
     expect(printed(["a", { end: "" }], [panel()]).out).toBe(`a${PANEL}`);
+  });
+
+  // Both against the reference's bytes: placed, the break before the empty
+  // end still leaves an empty line in the block.
+  it("adds no line break to text that ends in its own under end: \"\"", () => {
+    expect(printed(["a\n", { end: "" }], ["b"]).out).toBe("a\nb\n");
+    expect(printed(["a\n", { end: "", justify: "center" }], ["b"]).out).toBe(
+      `${" ".repeat(9)}a${" ".repeat(10)}\n${" ".repeat(20)}\nb\n`,
+    );
   });
 
   // Not the reference: Python Rich leaves a renderable's unclosed last line

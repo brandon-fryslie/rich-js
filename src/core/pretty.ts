@@ -328,6 +328,11 @@ export class Pretty implements Renderable, Measurable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
+    yield* this.toText(options).render(options);
+  }
+
+  /** The value laid out for `options.maxWidth` and highlighted: the text this renders. */
+  toText(options: RenderOptions): RichText {
     const formatted = this._format(this.data, rootFrame(options.maxWidth));
     const text = new RichText(formatted, { end: "" });
     this.highlighter.highlight(text);
@@ -336,7 +341,7 @@ export class Pretty implements Renderable, Measurable {
       this._addIndentGuides(text);
     }
 
-    yield* text.render(options);
+    return text;
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

@@ -78,10 +78,12 @@ console.print(summary);
 
 ## Text options
 
-Constructor options control how the text renders in context:
+Constructor options control how the text lays itself out wherever it is drawn as a renderable of its own — inside a Panel, a Table cell, a Layout:
 
 ```typescript
-const text = new RichText("Right-aligned heading", {
+import { Panel } from "@promptctl/rich-js";
+
+const heading = new RichText("Right-aligned heading", {
   style:    "bold cyan",
   justify:  "right",    // override default justify for this object
   overflow: "ellipsis", // override default overflow
@@ -89,17 +91,10 @@ const text = new RichText("Right-aligned heading", {
   tabSize:  4,          // expand tab characters to this many spaces
 });
 
-console.print(text);
-```
-
-These options take effect wherever the text is rendered — inside a Panel, Table cell, or directly via `print`:
-
-```typescript
-import { Panel } from "@promptctl/rich-js";
-
-const heading = new RichText("Total", { justify: "right", style: "bold green" });
 console.print(new Panel(heading, { borderStyle: "blue" }));
 ```
+
+`print` is the one place they do not apply. The text arguments of a print are joined into one text, and the print's own `justify`, `overflow` and `softWrap` set it, as Rich's `print` does. A `RichText` keeps its style there, and leaves its layout options behind.
 
 ## Wide characters
 

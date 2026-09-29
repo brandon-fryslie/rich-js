@@ -265,7 +265,7 @@ export type {
 // Renderables
 export { Constrain } from "./renderables/constrain.js";
 export { Align } from "./renderables/align.js";
-export type { Alignment } from "./renderables/align.js";
+export type { Alignment } from "./core/place.js";
 export { Padding } from "./renderables/padding.js";
 export type { PaddingDimensions } from "./renderables/padding.js";
 export { Viewport, SCROLLBAR } from "./renderables/viewport.js";

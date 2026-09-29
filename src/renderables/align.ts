@@ -1,5 +1,5 @@
 /**
- * Align — wraps a renderable and aligns its output horizontally.
+ * Align — wraps a renderable and places its output horizontally, as one block.
  */
 
 import { Segment } from "../core/segment.js";
@@ -9,9 +9,8 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { isMeasurable } from "../core/protocol.js";
-
-export type Alignment = "left" | "center" | "right";
+import { isMeasurable, withBoundedWidth } from "../core/protocol.js";
+import { placeBlock, type Alignment } from "../core/place.js";
 
 export class Align implements Renderable, Measurable {
   readonly renderable: Renderable;
@@ -22,29 +21,11 @@ export class Align implements Renderable, Measurable {
     this.align = align;
   }
 
+  // [LAW:one-source-of-truth] `placeBlock` is the placement; `Console.print`'s
+  // `justify` uses the same one.
   *render(options: RenderOptions): Iterable<Segment> {
-    const maxWidth = options.maxWidth;
-    const segments = [...this.renderable.render(options)];
-    const lines = Segment.splitLines(segments);
-
-    for (const line of lines) {
-      const lineWidth = Segment.getLineLength(line);
-      const gap = maxWidth - lineWidth;
-
-      // [LAW:dataflow-not-control-flow] Always compute padding; gap <= 0 produces empty strings
-      const leftPad =
-        this.align === "right"
-          ? gap
-          : this.align === "center"
-            ? Math.floor(gap / 2)
-            : 0;
-
-      if (leftPad > 0) yield new Segment(" ".repeat(leftPad));
+    for (const line of placeBlock(this.renderable, this.align, withBoundedWidth(options, this))) {
       yield* line;
-
-      const rightPad = gap - leftPad;
-      if (rightPad > 0) yield new Segment(" ".repeat(rightPad));
-
       yield Segment.line();
     }
   }

@@ -225,14 +225,28 @@ for (const justify of ["default", "left", "center", "right"] as const) {
 |---|---|
 | `"default"` | Placed at the left with no padding — the line ends where the text does |
 | `"left"` | Placed at the left and padded out to the full width |
-| `"center"` | Padded on both sides to center the line |
+| `"center"` | Padded on both sides to center it |
 | `"right"` | Padded on the left to sit against the right edge |
 | `"full"` | The spaces between words widen until the line reaches the right edge; a paragraph's last line is left as it is |
 
-Alignment applies after wrapping, so a wrapped paragraph is placed line by line.
-`"center"` and `"right"` align on the line's content: a wrap leaves the space
-that preceded it hanging on the line it closed, and counting that padding would
-push every such line half a space off true.
+`"left"`, `"center"` and `"right"` place what you print as one block. Its
+widest line sets the block's width, each shorter line is justified inside that
+width, and then the whole block is padded out to the console. So the two lines
+of `"hi\nhello"` stay together as a 5-cell block. A table or a panel is placed
+the same way:
+
+```typescript
+import { Panel } from "@promptctl/rich-js";
+
+console.print("hi\nhello", { justify: "center", style: "on blue" });
+console.print(Panel.fit("boxed"), { justify: "right" });
+```
+
+`"center"` and `"right"` align on a line's content. When text wraps, the space
+before the break stays at the end of the line it closed, and counting that
+space would put every such line half a cell off true. Under
+`overflow: "ignore"` or `softWrap` a line is not justified at all, because it
+has no width to be justified in. The block is still placed.
 
 `"full"` stretches every line of a paragraph but the last, which stays ragged the
 way it does in a printed book. A paragraph ends wherever the text has a newline.

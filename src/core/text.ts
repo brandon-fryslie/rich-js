@@ -318,6 +318,9 @@ export class RichText implements Renderable, Measurable {
       }
       const offset = this._text.length;
       this._text += content._text;
+      // Its base style becomes a span under its own spans, as the reference's
+      // `append` does, so appended text looks as it did alone.
+      this._addSpan(offset, this._text.length, content._style);
       for (const span of content._spans) {
         this._spans.push(span.move(offset));
       }
@@ -786,9 +789,8 @@ export class RichText implements Renderable, Measurable {
    * `{{ red "x" }}{{ blue "y" }}` evaluates to two fragments — one with
    * wrapping `style = red`, one with `blue` — and consumers that want a
    * single styled string for downstream rendering need both styles
-   * preserved as spans on the concatenated result. The plain `append()`
-   * propagates spans only, so this static does the additional work of
-   * lifting `frag.style` into a span before appending.
+   * preserved as spans on the concatenated result, which is what `append()`
+   * does with each fragment.
    *
    * Empty input → empty `RichText` with `end: ""`. Caller can override
    * `end` (defaults to `""` — the engine-output case rarely wants a
@@ -799,14 +801,7 @@ export class RichText implements Renderable, Measurable {
     options?: { end?: string },
   ): RichText {
     const result = new RichText("", { end: options?.end ?? "" });
-    for (const frag of fragments) {
-      const start = result.length;
-      result.append(frag.plain);
-      result.stylize(frag.style, start, result.length);
-      for (const span of frag.spans) {
-        result.stylize(span.style, start + span.start, start + span.end);
-      }
-    }
+    for (const frag of fragments) result.append(frag);
     return result;
   }
 

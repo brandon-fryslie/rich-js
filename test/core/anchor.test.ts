@@ -85,7 +85,7 @@ const cases: [string, (owner: Owner) => Renderable][] = [
   ["Panel", (o) => new Panel(o)],
   ["Padding", (o) => new Padding(o, [1, 2, 1, 3])],
   ["Group", (o) => new Group(new Owner(["zz"]), o)],
-  ["Align, which places each line after rendering it", (o) => new Align(o, "center")],
+  ["Align, which places the block after rendering it", (o) => new Align(o, "center")],
   ["a Layout row split", (o) => {
     const layout = new Layout();
     layout.splitRow(new Layout("left pane"), new Layout(o));
@@ -124,11 +124,13 @@ describe("a cell's anchor names what its owner drew there, through every contain
     });
   }
 
-  it("Align puts one owner's rows at different columns, and each still names its own", () => {
+  it("Align moves one owner's rows as a block, and each still names its own", () => {
     const owner = new Owner(["abcdef", "ghi"]);
     const found = placements(frameOf(new Align(owner, "center"), { maxWidth: 20 }), owner);
     const startOf = (row: number) => found.find((p) => p.row === row && p.col === 0)!.x;
-    expect(startOf(0)).not.toBe(startOf(1));
+    // The block is 6 wide, so 14 spare cells put its left edge at 7 — for the
+    // short row too, which is padded out inside the block rather than centred.
+    expect([startOf(0), startOf(1)]).toEqual([7, 7]);
   });
 
   it("a Viewport shows the rows its offset selects, named by their rows in the content", () => {

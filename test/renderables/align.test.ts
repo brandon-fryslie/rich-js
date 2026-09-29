@@ -46,6 +46,39 @@ describe("Align", () => {
     expect(lines[0]).toBe("        Hi");
   });
 
+  it("places a multi-line block by its widest line, not each line on its own", () => {
+    const inner: Renderable & Measurable = {
+      *render() {
+        yield new Segment("abcdef\nghi\n");
+      },
+      measure: () => ({ minimum: 6, maximum: 6 }),
+    };
+    expect(collectLines(new Align(inner, "center"), { maxWidth: 12 })).toEqual(["   abcdef   ", "   ghi      "]);
+    expect(collectLines(new Align(inner, "right"), { maxWidth: 12 })).toEqual(["      abcdef", "      ghi   "]);
+  });
+
+  it("draws the content at the width it measures, and places what it drew", () => {
+    const drawnAt: number[] = [];
+    const inner: Renderable & Measurable = {
+      *render(options: RenderOptions) {
+        drawnAt.push(options.maxWidth);
+        yield new Segment("x".repeat(options.maxWidth));
+      },
+      measure: () => ({ minimum: 1, maximum: 4 }),
+    };
+    expect(collectLines(new Align(inner, "center"), { maxWidth: 10 })).toEqual(["   xxxx   "]);
+    expect(drawnAt).toEqual([4]);
+  });
+
+  it("offers content with no measure the whole width and places what it drew", () => {
+    const inner: Renderable = {
+      *render() {
+        yield new Segment("ab\nabcd");
+      },
+    };
+    expect(collectLines(new Align(inner, "right"), { maxWidth: 8 })).toEqual(["    ab  ", "    abcd"]);
+  });
+
   // Spec: Implements Renderable. .render(options) yields Segments.
   it("render yields Segment instances", () => {
     const inner = simpleRenderable("Hi");
