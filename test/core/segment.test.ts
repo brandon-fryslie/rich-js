@@ -734,6 +734,18 @@ describe("Segment.splitAndCropLines()", () => {
     expect(result).toHaveLength(1);
     expect(Segment.getLineLength(result[0]!)).toBe(5);
   });
+
+  // Table leans on both: a cell that rendered nothing contributes no rows of
+  // its own, and a RichText's trailing `end: "\n"` is not an extra blank row.
+  it("returns no rows for no content", () => {
+    expect(Segment.splitAndCropLines([], 5)).toEqual([]);
+  });
+
+  it("does not turn a trailing newline into a row", () => {
+    const result = Segment.splitAndCropLines([new Segment("abc\n")], 5);
+    expect(result).toHaveLength(1);
+    expect(Segment.getLineLength(result[0]!)).toBe(5);
+  });
 });
 
 // --- cropLines ---

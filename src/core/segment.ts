@@ -240,10 +240,11 @@ export class Segment {
   //
   // Two primitives, because containers ask two different questions of content.
   //
-  // `cropLines` — *keep the structure, bound it*. The container passes the
-  // content through as a stream (a `Layout` leaf, a `Tree` label, the console's
-  // crop) and only needs no line to overrun. It never decides how many lines
-  // there are.
+  // `cropLines` — *keep the structure, bound it*. The container needs no line
+  // to overrun and must not pad: a `Layout` leaf and the console's crop pass
+  // the stream on as it is; a `Tree` label splits the cropped stream itself to
+  // hang its guides on each row. The crop never decides how many lines there
+  // are — whoever splits after it owns that.
   //
   // `splitAndCropLines` — *decompose into rows of exactly this width*. The
   // container goes on to compose the rows (a `Table` cell zipped beside its
