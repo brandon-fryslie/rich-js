@@ -4,15 +4,22 @@
     {
       "version": "pr-232",
       "ref": "refs/pull/232/merge",
-      "sha": "ca7dc5bcb1162f17b966a9ef4b8420dc75121169",
-      "timestamp": "2026-09-29T23:41:46.558Z",
+      "sha": "ad90b16670240d90cbe21412c32e12ea02048427",
+      "timestamp": "2026-09-29T23:46:07.225Z",
       "commits": [
         {
-          "sha": "ca7dc5bcb1162f17b966a9ef4b8420dc75121169",
+          "sha": "ad90b16670240d90cbe21412c32e12ea02048427",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:40:53Z",
-          "message": "Merge 337f80ee06e91de2d32cc2093267616715f6698a into 088e3d35c166cb6f2d10c905dfb26095be882253\n"
+          "timestamp": "2026-09-29T23:45:08Z",
+          "message": "Merge ce865045e0f3da4f77722589c6642615fc5bc51e into 088e3d35c166cb6f2d10c905dfb26095be882253\n"
+        },
+        {
+          "sha": "ce865045e0f3da4f77722589c6642615fc5bc51e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:45:03-06:00",
+          "message": "docs(columns): drop the empty-column clause, true of the last column only (rich-columns-i08a)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "337f80ee06e91de2d32cc2093267616715f6698a",
