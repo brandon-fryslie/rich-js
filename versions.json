@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-186",
-      "ref": "refs/pull/186/merge",
-      "sha": "0f706b08c2f68c692601343fad4672f5f449760d",
-      "timestamp": "2026-09-29T09:51:03.138Z",
-      "commits": [
-        {
-          "sha": "0f706b08c2f68c692601343fad4672f5f449760d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T09:50:18Z",
-          "message": "Merge 8c2560b229c6f4e648f80795d4ff0a1f67e7408e into 0f0ce663b2641649bc15e224d3044ee4e724c819\n"
-        },
-        {
-          "sha": "8c2560b229c6f4e648f80795d4ff0a1f67e7408e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T03:50:13-06:00",
-          "message": "fix(export-html): gate the blink keyframes on no-preference instead of emptying them under reduce\n\nOne rule: nothing depends on a later same-named @keyframes winning, and a\nminifier that drops empty rules cannot strip the reduced-motion half. The\nbrowser test now covers blink2 and a preference switched on while the page is\nopen; a unit test pins the gate.\n"
-        },
-        {
-          "sha": "4f2e456dd8fe3faa0dce966623f3e672a33c318c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T03:46:14-06:00",
-          "message": "fix(export-html): blink holds still for a reader who asked for reduced motion (rich-docs-examples-xuu.0hj)\n\nHTML_FRAGMENT_CSS redefines the rich-blink keyframes as empty under\nprefers-reduced-motion: reduce. The blink is an inline animation that no\nstylesheet rule outranks, so emptying the keyframes it names is the one lever\nthe page has. Covers the docs outputs and every encodeHtml document.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0f0ce663b2641649bc15e224d3044ee4e724c819",
-      "timestamp": "2026-09-28T05:10:01.692Z",
+      "sha": "71d12c86e45e66401ea99039d382750dc9fd2b7a",
+      "timestamp": "2026-09-29T09:52:17.476Z",
       "commits": [
         {
-          "sha": "0f0ce663b2641649bc15e224d3044ee4e724c819",
+          "sha": "71d12c86e45e66401ea99039d382750dc9fd2b7a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-27T23:09:19-06:00",
-          "message": "docs: live examples share one bundled library instead of inlining it per program (rich-docs-examples-xuu.zze) (#185)\n\n* docs: live examples share one bundled library per set of entry points instead of inlining it per program (rich-docs-examples-xuu.zze)\n\n* docs: one minified live library for the site, every package a block may import in it once; refuse import() in a live block (rich-docs-examples-xuu.zze)"
+          "timestamp": "2026-09-29T03:51:22-06:00",
+          "message": "fix(export-html): blink holds still under reduced motion (rich-docs-examples-xuu.0hj) (#186)\n\n* fix(export-html): blink holds still for a reader who asked for reduced motion (rich-docs-examples-xuu.0hj)\n\nHTML_FRAGMENT_CSS redefines the rich-blink keyframes as empty under\nprefers-reduced-motion: reduce. The blink is an inline animation that no\nstylesheet rule outranks, so emptying the keyframes it names is the one lever\nthe page has. Covers the docs outputs and every encodeHtml document.\n\n* fix(export-html): gate the blink keyframes on no-preference instead of emptying them under reduce\n\nOne rule: nothing depends on a later same-named @keyframes winning, and a\nminifier that drops empty rules cannot strip the reduced-motion half. The\nbrowser test now covers blink2 and a preference switched on while the page is\nopen; a unit test pins the gate."
         }
       ]
     }
