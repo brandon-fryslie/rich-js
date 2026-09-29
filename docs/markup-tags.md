@@ -33,7 +33,8 @@ a `RichText`. The context has three fields:
 - `raw` is that same markup as it was written, tags and all.
 
 Attributes follow the tag name as `key=value` pairs separated by spaces. A value
-may be bare, or quoted with `"` or `'` when it contains a space. This tag reads
+may be bare, or quoted with `"` or `'` when it contains a space. It cannot
+contain `[` or `]`, quoted or not: the first `]` ends the tag. This tag reads
 one attribute to pick its colours:
 
 ```typescript
@@ -57,8 +58,10 @@ console.print(
 );
 ```
 
-Use `raw` when the tag should show its contents without parsing them. This one
-prints markup source as written, so its brackets reach the output:
+Use `raw` when the tag should show its contents as written rather than styled.
+This one prints markup source, so its brackets reach the output. The contents
+are still parsed into `children` first, so they must be valid markup on their
+own, and a `[/]` inside closes the tag itself:
 
 ```typescript
 tags.register("source", ({ raw }) => new RichText(raw, { style: "cyan" }));
@@ -69,14 +72,16 @@ console.print(renderMarkup("Write [source][bold]hi[/bold][/source] for bold.", {
 ## Choosing a tag name
 
 A tag name is a lowercase ASCII letter followed by letters, digits, `_` or `-`.
-A name that is already a style, such as `red`, `bold` or `link`, cannot be
-registered, so a registered tag never hides a built-in one. `register` throws a
-`MarkupError` for either kind of bad name, because markup could never reach the
-handler:
+A name that already parses as a style, such as `red`, `bold` or `link`, cannot
+be registered, because the tag would stop meaning that style. `register` throws
+a `MarkupError` for a malformed name and for one of these:
 
 ```typescript throws
 tags.register("red", ({ children }) => children);
 ```
+
+A theme's style names, such as `prompt`, are not reserved. Registering one
+makes that tag call your handler instead of applying the theme's style.
 
 ## Your own registry, or the global one
 
@@ -103,7 +108,7 @@ removes a tag, and to parse a string with the built-in tags only, pass an empty
 ## Plugin tags must nest
 
 A plugin tag pair cannot overlap another plugin tag pair. Style tags may overlap
-(see [Multiple and overlapping tags](./markup#multiple-and-overlapping-tags)),
+each other (see [Multiple and overlapping tags](./markup#multiple-and-overlapping-tags)),
 because a style only marks a stretch of text. A plugin tag replaces its stretch
 with what its handler returns, and a handler receives one unbroken stretch as
 `children`, so an overlapping pair has no single stretch to hand it.
