@@ -636,7 +636,7 @@ export class Table implements Renderable, Measurable {
       frame,
     ).totalWidth;
     return {
-      minimum: Math.min(maximum, Math.max(tightest, this.minWidth ?? 0)),
+      minimum: Math.min(maximum, Math.max(tightest, cells(this.minWidth ?? 0))),
       maximum,
     };
   }
@@ -765,9 +765,14 @@ export class Table implements Renderable, Measurable {
         cell instanceof RichText ? cellLen(cell.plain) : cellLen(String(cell)),
       );
     }
-    if (col.minWidth !== undefined) natural = Math.max(natural, col.minWidth);
-    if (col.maxWidth !== undefined) natural = Math.min(natural, col.maxWidth);
-    return natural;
+    // A bound is a count of cells, read by the rule every width is read by:
+    // NaN and a negative are zero cells, so a NaN floor bounds nothing and a
+    // NaN ceiling is a ceiling of zero, as `width: NaN` is. A bare `Math.max`
+    // returns NaN instead, and the column vanishes. [LAW:one-source-of-truth]
+    return Math.min(
+      Math.max(natural, cells(col.minWidth ?? 0)),
+      cells(col.maxWidth ?? Infinity),
+    );
   }
 
   private *_renderRow(
