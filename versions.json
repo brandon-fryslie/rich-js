@@ -4,15 +4,22 @@
     {
       "version": "pr-190",
       "ref": "refs/pull/190/merge",
-      "sha": "8ad34fd76742997c2295572115c7838bf969b784",
-      "timestamp": "2026-09-29T11:13:59.949Z",
+      "sha": "750499a9502364127b8a6299767dd749f4c65d6e",
+      "timestamp": "2026-09-29T11:24:48.071Z",
       "commits": [
         {
-          "sha": "8ad34fd76742997c2295572115c7838bf969b784",
+          "sha": "750499a9502364127b8a6299767dd749f4c65d6e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T05:13:19-06:00",
-          "message": "Merge 286642c336ce2249f97dd325fae4af86e0a81b45 into ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3\n"
+          "timestamp": "2026-09-29T11:23:59Z",
+          "message": "Merge 333841f070502f4d1b9968100075b391d054e1ab into ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3\n"
+        },
+        {
+          "sha": "333841f070502f4d1b9968100075b391d054e1ab",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T05:23:54-06:00",
+          "message": "fix(examples): review pass — roots stay reachable, panes open per subject, items count at the viewport's width (rich-viewport-owi.6)\n\n- Tree and sidebar keep a line either side of the selection in view, so\n  the root comes back above the first entry once a pane has scrolled.\n- Viewport.contentWidth names the width its content renders at; render\n  and measure use it, and ItemsInView counts lines at it, so a scrollbar\n  no longer desyncs the selection range from the lines shown.\n- ViewportPerSubject (examples/shared) replaces rich-explore's inline\n  previewOf and gives claude-sessions' viewer and results a viewport per\n  session and per query, instead of inheriting the last one's scroll.\n- The first frame renders inside the promise whose cleanup restores the\n  terminal, so a throw there no longer strands raw mode and the alt screen.\n"
         },
         {
           "sha": "286642c336ce2249f97dd325fae4af86e0a81b45",
