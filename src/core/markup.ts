@@ -327,9 +327,7 @@ function render(
     if (tag.isImplicitClose) {
       // [/] — close the most recent open tag
       if (openStack.length === 0) {
-        // [/] never closes a plugin tag, so an enclosing plugin tag can be open
-        // here while no style tag is.
-        throw unparsable(`Closing tag ${tag.fullMatch} has no open style tag to close`, tag);
+        throw unparsable(`Closing tag ${tag.fullMatch} has no open tag to close`, tag);
       }
       const opened = openStack.pop()!;
       spans.push(new Span(opened.textStart, plainText.length, openTagStyle(opened)));
@@ -422,18 +420,35 @@ interface OpenTag {
  * which is how the three closing paths could — and did — drift apart on
  * something none of the four copies was about.
  */
-function openTagStyle(opened: OpenTag): string {
+function openTagStyle(opened: StyleTagText): string {
   return opened.parameters !== undefined
     ? `${opened.styleName} ${opened.parameters}`
     : opened.styleName;
 }
 
-function findLastOpen(stack: OpenTag[], name: string): number {
+type StyleTagText = Pick<OpenTag, "styleName" | "parameters">;
+
+/**
+ * Whether `[/name]` closes `opened`.
+ *
+ * [LAW:one-source-of-truth] Two walks ask this: the built-in parser closing a
+ * style, and the plugin pass keeping the same stack so it knows what `[/]`
+ * refers to. If they disagreed on which open tag `[/red on blue]` takes off
+ * the stack, they would disagree about what the next `[/]` closes.
+ */
+function closesByName(opened: StyleTagText, name: string): boolean {
   // Handle "on" in style names for closing: [/red on blue] should match [red on blue]
   const normalized = name.trim();
-  for (let i = stack.length - 1; i >= 0; i--) {
-    const entry = stack[i]!;
-    if (openTagStyle(entry) === normalized || entry.styleName === normalized) return i;
+  return openTagStyle(opened) === normalized || opened.styleName === normalized;
+}
+
+function findLastOpen(stack: OpenTag[], name: string): number {
+  return findLastIndex(stack, (entry) => closesByName(entry, name));
+}
+
+function findLastIndex<T>(items: readonly T[], match: (item: T) => boolean): number {
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (match(items[i]!)) return i;
   }
   return -1;
 }
@@ -692,25 +707,32 @@ function pairPluginTags(
   // top-level pairs are returned; inner pairs will be re-discovered by the
   // recursive `renderMarkup` call on the inner slice.
   const annotated: PluginTag[] = tags.map((t) => annotatePluginTag(t, registry));
+  // [LAW:one-source-of-truth] `[/]` closes the most recent open tag of *any*
+  // kind, so this walk keeps the one stack the built-in dialect keeps, style
+  // tags on it too; an implicit close pairs a plugin tag exactly when it is on
+  // top. A stack of plugin tags alone cannot say what `[/]` refers to, which is
+  // why `[shout]one[/]` used to leave its handler unfired (rich-markup-gfr).
   const stack: number[] = [];
   const pairs = new Map<number, number>();
+  const closes = (close: PluginTag) => (openIdx: number): boolean => {
+    const open = annotated[openIdx]!;
+    if (close.isImplicitClose) return true;
+    return close.pluginName !== undefined
+      ? open.pluginName === close.pluginName
+      : open.pluginName === undefined && closesByName(open, close.styleName);
+  };
   for (let i = 0; i < annotated.length; i++) {
     const t = annotated[i]!;
-    if (!t.pluginName) continue;
-    if (t.isImplicitClose) continue;
-    if (t.isClosing) {
-      // Find matching open in stack.
-      for (let j = stack.length - 1; j >= 0; j--) {
-        const openIdx = stack[j]!;
-        if (annotated[openIdx]!.pluginName === t.pluginName) {
-          pairs.set(openIdx, i);
-          stack.splice(j, 1);
-          break;
-        }
-      }
-    } else {
+    if (!t.isClosing && !t.isImplicitClose) {
       stack.push(i);
+      continue;
     }
+    // A close matching nothing is the built-in parser's to reject, with the
+    // location it reports; this pass only needs to know what it pairs.
+    const j = findLastIndex(stack, closes(t));
+    if (j === -1) continue;
+    const openIdx = stack.splice(j, 1)[0]!;
+    if (annotated[openIdx]!.pluginName !== undefined) pairs.set(openIdx, i);
   }
   // Filter pairs to top-level only. A pair that opens inside the current one is
   // either contained — re-discovered when the recursion renders the outer

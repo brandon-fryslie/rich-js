@@ -156,7 +156,7 @@ describe("markup syntax errors report their location", () => {
   it("locates a closing [/] with nothing open", () => {
     const err = rejectionOf("no tags[/]");
     expect(err).toBeInstanceOf(MarkupError);
-    expect(err.reason).toBe("Closing tag [/] has no open style tag to close");
+    expect(err.reason).toBe("Closing tag [/] has no open tag to close");
     expect(err.markup).toBe("no tags[/]");
     expect([err.offset, err.line, err.column]).toEqual([7, 1, 8]);
     expect(err.openTags).toEqual([]);
