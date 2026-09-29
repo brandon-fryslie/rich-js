@@ -261,8 +261,8 @@ describe("Layout", () => {
 
   // rich-text-5ai code review: only the constructor's string branch built its
   // `RichText` with `end: ""`; a `RichText` passed directly kept its default
-  // `end: "\n"`, which `Segment.cropLines` (unlike table.ts's `splitLines`
-  // path) does not normalize away — a real extra blank row in a fixed-size
+  // `end: "\n"`, which `Segment.cropLines` (unlike `splitAndCropLines`,
+  // which Table uses) does not normalize away — a real extra blank row in a fixed-size
   // pane. Covers both the constructor and `update()`.
   it("does not draw a blank row for a RichText leaf with an embedded trailing newline", () => {
     const layout = new Layout(new RichText("status: ok\n"));

@@ -236,6 +236,22 @@ export class Segment {
     return result;
   }
 
+  // --- Bounding output to a width ---
+  //
+  // Two primitives, because containers ask two different questions of content.
+  //
+  // `cropLines` — *keep the structure, bound it*. The container passes the
+  // content through as a stream (a `Layout` leaf, a `Tree` label, the console's
+  // crop) and only needs no line to overrun. It never decides how many lines
+  // there are.
+  //
+  // `splitAndCropLines` — *decompose into rows of exactly this width*. The
+  // container goes on to compose the rows (a `Table` cell zipped beside its
+  // neighbours), so it needs the two-dimensional shape and every row full.
+  //
+  // The split decides how many lines there are, so it is wrong for the first
+  // question; `cropLines`' header records the two times it was tried there.
+
   /**
    * Crops a renderable's output so no line exceeds `width`, leaving short lines
    * alone and the line structure exactly as it arrived.
@@ -279,6 +295,14 @@ export class Segment {
       const cropped = parts.join("\n");
       yield cropped === segment.text ? segment : new Segment(cropped, segment.style);
     }
+  }
+
+  /**
+   * Splits a renderable's output into rows, each exactly `width` cells:
+   * short rows padded with spaces, long ones cut.
+   */
+  static splitAndCropLines(segments: Iterable<Segment>, width: number): Segment[][] {
+    return Segment.splitLines(segments).map((line) => Segment.adjustLineLength(line, width));
   }
 
   /**
@@ -527,30 +551,6 @@ export class Segment {
       result.push([...blankLine]);
     }
     return result.slice(0, height);
-  }
-
-  /**
-   * Splits segments into lines and adjusts each to exactly `width` cells.
-   */
-  static splitAndCropLines(
-    segments: Iterable<Segment>,
-    width: number,
-    pad = true,
-    includeNewLines = false,
-    style?: Style,
-  ): Segment[][] {
-    const rawLines = Segment.splitLines(segments);
-    const result: Segment[][] = [];
-
-    for (const line of rawLines) {
-      const adjusted = Segment.adjustLineLength(line, width, style, pad);
-      result.push(adjusted);
-      if (includeNewLines) {
-        result[result.length - 1]!.push(Segment.line());
-      }
-    }
-
-    return result;
   }
 }
 

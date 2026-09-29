@@ -734,24 +734,6 @@ describe("Segment.splitAndCropLines()", () => {
     expect(result).toHaveLength(1);
     expect(Segment.getLineLength(result[0]!)).toBe(5);
   });
-
-  it("does not pad when pad=false", () => {
-    const segs = [new Segment("hi")];
-    const result = Segment.splitAndCropLines(segs, 10, false);
-    expect(Segment.getLineLength(result[0]!)).toBe(2);
-  });
-
-  it("appends newline segments when includeNewLines=true", () => {
-    const segs = [new Segment("hello\nworld")];
-    const result = Segment.splitAndCropLines(segs, 10, true, true);
-    expect(result).toHaveLength(2);
-    // Each line's last segment should be a newline
-    const lastOfFirst = result[0]![result[0]!.length - 1]!;
-    expect(lastOfFirst.text).toBe("\n");
-    const lastOfSecond = result[1]![result[1]!.length - 1]!;
-    expect(lastOfSecond.text).toBe("\n");
-  });
-
 });
 
 // --- cropLines ---
