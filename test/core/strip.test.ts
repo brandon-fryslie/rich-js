@@ -436,6 +436,16 @@ describe("edge-aware joiner protocol with varying interior styling", () => {
     expect(r.edgeStyle("right", OPTIONS).bgcolor?.name).toBe("green");
   });
 
+  it("RichText.edgeStyle leaves out a span that ends one column short of the edge", () => {
+    // A span's end is exclusive: [0, 1) covers column 0 alone, so the right
+    // edge — column 1 — is the base style. An inclusive end would paint the
+    // joiner in a colour that is not on the boundary column.
+    const r = new RichText("ab", { style: "white on red", end: "" });
+    r.stylize("on green", 0, 1);
+    expect(r.edgeStyle("left", OPTIONS).bgcolor?.name).toBe("green");
+    expect(r.edgeStyle("right", OPTIONS).bgcolor?.name).toBe("red");
+  });
+
   it("PowerlineJoiner paints the transition using the actual edge bgs", () => {
     const left = new RichText("ab", { style: "white on red", end: "" });
     left.stylize("on yellow", 1, 2); // right edge becomes yellow
