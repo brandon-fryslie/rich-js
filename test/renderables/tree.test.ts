@@ -151,7 +151,7 @@ describe("Tree", () => {
 
   it("leaves a space where a label's row edge cuts through a wide glyph", () => {
     // Python Rich 9d8f9a3 prints these two rows for the same tree at width 9.
-    const label = (): RichText => new RichText("日本語日本語", { noWrap: true });
+    const label = (): RichText => new RichText("日本語日本語", { overflow: "ignore" });
     const tree = new Tree(label());
     tree.add(label());
     expect(collectLines(tree, { maxWidth: 9 })).toEqual(["日本語日 ", "└── 日本 "]);

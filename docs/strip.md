@@ -275,7 +275,7 @@ Options:
 - `gap` — cells inserted on *each* side of the slot between two items, so neighbours sit `2 × gap` cells apart plus whatever the joiner draws (default 0). The gap applies whether or not there is a joiner — `{ gap: 1 }` alone puts two spaces between items.
 - `align` — `"left"` (default), `"center"`, `"right"`, or `"justify"` (distributes spare width across inter-item slots on non-final lines).
 
-If an item is wider than `maxWidth`, it gets its own line and the strip renders it at full width — graceful overflow rather than a hard crash. `console.print(strip)` then [crops](./console#cropping) that line at the console width, as it does every line it prints; pass `{ crop: false }` to keep the item whole.
+If an item is wider than `maxWidth`, it gets its own line, drawn at whatever width the item renders to — graceful overflow rather than a hard crash. A `noWrap` cell cuts itself at `maxWidth` by its `overflow` method. A cell with `overflow: "ignore"` renders at full width, and `console.print(strip)` then [crops](./console#cropping) that line at the console width, as it does every line it prints; pass `{ crop: false }` to keep the item whole.
 
 ## Out of scope
 

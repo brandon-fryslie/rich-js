@@ -254,7 +254,7 @@ describe("Layout", () => {
 
   it("leaves a space where a pane's edge cuts through a wide glyph", () => {
     // Python Rich 9d8f9a3 prints this first row for the same layout at width 9.
-    const pane = new Layout(new RichText("日本語日本語", { noWrap: true }));
+    const pane = new Layout(new RichText("日本語日本語", { overflow: "ignore" }));
     const text = collectText(pane, { maxWidth: 9, height: { rows: 2, exact: true } });
     expect(text.split("\n")[0]).toBe("日本語日 ");
   });

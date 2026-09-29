@@ -7,7 +7,7 @@ import { Segment } from "../../src/core/segment.js";
 import { ASCII, ASCII_DOUBLE_HEAD, MARKDOWN, HEAVY_HEAD, Box } from "../../src/core/box.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { PaddingDimensions } from "../../src/renderables/padding.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import type { OverflowMethod, Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -706,18 +706,16 @@ describe("Table stays inside the width it is given", () => {
   });
 
   /*
-   * A `RichText`'s own `noWrap` beats the options `render` is handed, so a
-   * caller could hand the table a title it had unbounded and the frame had no
-   * say: the title left at its natural width and ran straight through the
-   * corner, 49 cells out of a 20-cell table. The invariant above is what makes
-   * this a bug and not a preference — the table owns its canvas.
+   * A `RichText`'s own `overflow` beats the options `render` is handed, so a
+   * caller could hand the table a title with no edge at all — `"ignore"` — and
+   * the frame had no say: the title left at its natural width and ran straight
+   * through the corner. The invariant above is what makes this a bug and not a
+   * preference — the table owns its canvas.
    */
-  it("stays inside the width when the title and caption carry their own noWrap", () => {
+  it("stays inside the width when the title and caption carry their own \"ignore\"", () => {
     const long = "A title far longer than this table will ever be";
-    const title = new RichText(long);
-    title.noWrap = true;
-    const caption = new RichText(long);
-    caption.noWrap = true;
+    const title = new RichText(long, { overflow: "ignore" });
+    const caption = new RichText(long, { overflow: "ignore" });
     const t = populate(new Table({ box: ASCII, title, caption }));
 
     for (const width of widths) {
@@ -727,28 +725,29 @@ describe("Table stays inside the width it is given", () => {
   });
 
   /*
-   * Where that rule stops. `noWrap` decides whether the line is bounded at all
-   * and the frame is the bound, so the table takes it; `overflow` only decides
-   * how a line meets an edge it cannot move, and every method cuts within the
-   * budget. Clearing it too would overrule a caller for no invariant's sake,
-   * so the caller keeps it — and this is the test that says so, because the
-   * cheap way to fix the bug above is to clear all three and never notice.
+   * Where that rule stops. `"ignore"` lifts the bound, so the table takes it;
+   * every other method, and `noWrap`, only decides how a line meets an edge it
+   * cannot move. Clearing those too would overrule a caller for no invariant's
+   * sake, so the caller keeps them — and this is the test that says so,
+   * because the cheap way to fix the bug above is to clear them all and never
+   * notice.
    */
-  it("leaves a title's own overflow method to the caller", () => {
+  it("leaves a title's own overflow method and noWrap to the caller", () => {
     // Unbreakable, because that is the only text whose overflow method is
     // observable: anything a wrap can resolve is resolved before the method is
     // consulted, and `ellipsis` and `fold` render a wrappable title alike.
     const word = "Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    const titleOf = (overflow?: "fold" | "crop" | "ellipsis") => {
-      const title = new RichText(word);
-      title.overflow = overflow;
+    const titleOf = (title: RichText) => {
       const lines = collectLines(populate(new Table({ box: ASCII, title })), { maxWidth: 20 });
       return lines.slice(0, lines.findIndex((line) => line.startsWith("+")));
     };
+    const overflowed = (overflow?: OverflowMethod) => titleOf(new RichText(word, { overflow }));
 
-    expect(titleOf("ellipsis")).toHaveLength(1);
-    expect(titleOf("ellipsis")[0]!.trim().endsWith("\u2026")).toBe(true);
-    expect(titleOf(undefined).length).toBeGreaterThan(1);
+    expect(overflowed("ellipsis")).toHaveLength(1);
+    expect(overflowed("ellipsis")[0]!.trim().endsWith("\u2026")).toBe(true);
+    expect(overflowed(undefined).length).toBeGreaterThan(1);
+    // A wrappable title under `noWrap` is Rich's `no_wrap`: one line, cut.
+    expect(titleOf(new RichText("A title far longer than this table", { noWrap: true }))).toHaveLength(1);
   });
 
   it("crops a wide-character title by cells, not by code units", () => {

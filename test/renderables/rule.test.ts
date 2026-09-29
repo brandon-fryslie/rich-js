@@ -19,6 +19,12 @@ describe("Rule", () => {
     expect(lines[0]!.length).toBe(10);
   });
 
+  // rich-text-b44 review: the title was cut at its `cellLength`, which counts a
+  // tab as no cells.
+  it("keeps a title's text past a tab", () => {
+    expect(collectLines(new Rule("a\tbcd"), { maxWidth: 30 })[0]).toContain("bcd");
+  });
+
   it("renders with title centered by default", () => {
     const rule = new Rule("Title");
     const lines = collectLines(rule, { maxWidth: 20 });

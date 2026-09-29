@@ -164,6 +164,7 @@ export {
 } from "./core/protocol.js";
 export type {
   RenderOptions,
+  OverflowMethod,
   Height,
   Renderable,
   Measurable,

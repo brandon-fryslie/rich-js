@@ -685,6 +685,15 @@ describe("Console.print() crop and overflow ignore", () => {
       .toBe("aaaa bbbb cc");
   });
 
+  it("soft wrap with a named overflow still cuts the unwrapped line at the width", () => {
+    expect(print(12, "aaaa bbbb cccc dddd", { softWrap: true, overflow: "fold" })).toBe("aaaa bbbb cc\n");
+    expect(print(12, "aaaa bbbb cccc dddd", { softWrap: true, overflow: "ellipsis" })).toBe("aaaa bbbb c…\n");
+  });
+
+  it("soft wrap with a named overflow justifies the line", () => {
+    expect(print(12, "hi", { softWrap: true, overflow: "fold", justify: "right" })).toBe("          hi\n");
+  });
+
   it("soft wrap leaves the line whole even when crop is asked for", () => {
     expect(print(12, "aaaa bbbb cccc dddd", { softWrap: true, crop: true }))
       .toBe("aaaa bbbb cccc dddd\n");
