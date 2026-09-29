@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-195",
+      "ref": "refs/pull/195/merge",
+      "sha": "ae0b8d4c76e437b3b0431b78bd7660ecd4f66226",
+      "timestamp": "2026-09-29T12:30:41.010Z",
+      "commits": [
+        {
+          "sha": "ae0b8d4c76e437b3b0431b78bd7660ecd4f66226",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:29:54-06:00",
+          "message": "Merge 63f8f8db840ef7b7c23ccf765cc9c8abd7981838 into c190bb7db13e9f5f743ff2536168e0581ca16469\n"
+        },
+        {
+          "sha": "63f8f8db840ef7b7c23ccf765cc9c8abd7981838",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:29:46-06:00",
+          "message": "fix(markup): halve the backslash run in front of a tag, as Rich does (rich-markup-nm1)\n\nTAG_RE's \\[ alternative read any backslash-bracket pair as an escape, so\n\\\\[red]hi[/red] lost its opening tag and threw on the close. The parser now\ncaptures the run and halves it like _parse; escape() doubles it like the\nreference's escape. The string is tokenized once and plugin splicing selects\ntokens by position, so a run at a plugin boundary is halved too.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-194",
       "ref": "refs/pull/194/merge",
       "sha": "6acc27a6dc94aab13ef2b6a6ee1568d1354e1804",
