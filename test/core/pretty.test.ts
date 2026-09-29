@@ -219,6 +219,25 @@ describe("Pretty", () => {
       for (const line of lines) expect(cellLen(line)).toBeLessThanOrEqual(20);
     });
 
+    it("leaves no row behind that a break alone made", () => {
+      // A folded word that ends exactly at the width left an empty remainder,
+      // and a folded word's trailing space a row of its own: blank lines, one
+      // inside the string literal.
+      expect(laidOut({ a: ["xxxxxxxxxx", 1] }, 8)).toEqual([
+        "{", "    a: [", '        "xxxxxxxxxx",', "        1", "    ]", "}",
+      ]);
+      expect(laidOut({ k: "a".repeat(40) + " bbb ccc" }, 30)).toEqual([
+        "{", '    k: "' + "a".repeat(22), "        " + "a".repeat(18) + " bbb", '        ccc"', "}",
+      ]);
+    });
+
+    it("lays a value that threw out from where it stands after its key", () => {
+      const value = { a: 1, get zzzzzzzzzzzzzzzz(): never { throw new Error("boom bam bim"); } };
+      expect(laidOut(value, 30)).toEqual([
+        "{", "    a: 1,", "    zzzzzzzzzzzzzzzz: [Threw:", "        boom bam bim]", "}",
+      ]);
+    });
+
     it("leaves the root alone, whose line belongs to whoever prints it", () => {
       expect(laidOut(new Error("root\nsecond"), 8)).toEqual(["Error: root", "second"]);
     });

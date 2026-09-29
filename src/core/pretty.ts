@@ -17,7 +17,7 @@
  * times.
  */
 
-import { asCellCol, cellColToCodeUnitOffset, cellLen } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen, type CellCol } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
@@ -139,32 +139,61 @@ function lineColumn(column: number, text: string): number {
   return lastNewline === -1 ? column + cellLen(text) : cellLen(text.slice(lastNewline + 1));
 }
 
-/** `line` cut into pieces of at most `width` cells, at word boundaries where there are any. */
-function wrapLine(line: string, width: number): string[] {
-  const offsets = [0, ...divideLine(line, asCellCol(width), { fold: true }).map(
-    (cut) => cellColToCodeUnitOffset(line, cut),
-  ), line.length];
-  return offsets.slice(1).map((end, i) => line.slice(offsets[i], end).trimEnd());
+/**
+ * `line` split at each of `cuts`, in one walk over it. Converting each cut to a
+ * code-unit offset on its own rescans the line from the start every time, which
+ * is quadratic in a long enough string.
+ */
+function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
+  const pieces: string[] = [];
+  let start = 0;
+  let offset = 0;
+  let cells = 0;
+  for (const ch of line) {
+    if (pieces.length < cuts.length && cells >= cuts[pieces.length]!) {
+      pieces.push(line.slice(start, offset));
+      start = offset;
+    }
+    cells += cellLen(ch);
+    offset += ch.length;
+  }
+  return [...pieces, line.slice(start)];
 }
 
 /**
- * `line` as rows: the first stays where the line starts, with `room` cells
- * left, and the rest hang with `hangRoom` each.
+ * The rows `line` becomes: the first holds what `stay` code units of it leave
+ * where the line starts, the rest are cut to `hangRoom` cells each.
+ *
+ * Every row but the first begins at a break, so whatever whitespace a break
+ * leaves on either side of it is the break's and not the text's, and a row of
+ * nothing else is no row at all.
+ */
+function rowsOf(line: string, stay: number, hangRoom: number): string[] {
+  const rest = line.slice(stay);
+  const hung = splitAtCells(rest, divideLine(rest, asCellCol(hangRoom), { fold: true }))
+    .map((row) => row.trim())
+    .filter((row) => row !== "");
+  return [line.slice(0, stay).trimEnd(), ...hung];
+}
+
+/**
+ * How many code units of `line` stay where it starts, with `room` cells left
+ * there.
  *
  * What stays is every whole word that fits. When not even the first does,
  * `canHang` says whether a hanging line starts further left than here: if so,
- * all of `line` moves there and the first row is empty; if not, moving would
- * gain nothing, and the first word is folded where it stands.
+ * nothing stays and all of `line` moves there; if not, moving would gain
+ * nothing, and the first word is folded where it stands.
  */
-function startLine(line: string, room: number, hangRoom: number, canHang: boolean): string[] {
-  if (cellLen(line) <= Math.max(0, room)) return [line];
-  const wordCut = divideLine(line, asCellCol(room), { fold: false })[0];
-  const wordEnd = wordCut === undefined ? line.length : cellColToCodeUnitOffset(line, wordCut);
-  const words = line.slice(0, wordEnd).trimEnd();
-  if (cellLen(words) <= room) return [words, ...wrapLine(line.slice(wordEnd), hangRoom)];
-  if (canHang) return ["", ...wrapLine(line, hangRoom)];
-  const piece = wrapLine(line, room)[0]!;
-  return [piece, ...wrapLine(line.slice(piece.length), hangRoom)];
+function stayingLength(line: string, room: number, canHang: boolean): number {
+  if (cellLen(line.trimEnd()) <= room) return line.length;
+  const cut = (fold: boolean): number => {
+    const first = divideLine(line, asCellCol(room), { fold })[0];
+    return first === undefined ? line.length : cellColToCodeUnitOffset(line, first);
+  };
+  const words = cut(false);
+  if (cellLen(line.slice(0, words).trimEnd()) <= room) return words;
+  return canHang ? 0 : cut(true);
 }
 
 /**
@@ -649,12 +678,13 @@ export class Pretty implements Renderable, Measurable {
       // This is the read that costs the least when it fails: neighbours are
       // unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows everything
       // that could be read.
+      const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
+      const here: Frame = { ...at, column: lineColumn(at.column, out), reserve };
       let text: string;
       try {
-        const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
-        text = this._format(hole.read(), { ...at, column: lineColumn(at.column, out), reserve });
+        text = this._format(hole.read(), here);
       } catch (error) {
-        text = this._place(threw(error), at);
+        text = this._place(threw(error), here);
       }
       // A value `_place` moved onto a line of its own leaves the text before it
       // ending the line, and the space that was to separate them goes with it.
@@ -674,8 +704,8 @@ export class Pretty implements Renderable, Measurable {
    * structure a reader of nested data relies on, broken. So every line after the
    * first hangs at `at.hang`, a line of the value's own (`Error`'s message, a
    * multi-line `toString`) as much as a wrapped one, and each is cut to the
-   * width left there. The last line also leaves `at.reserve`, as a container's
-   * compact try does, for the `,` or `" => "` that follows it.
+   * width left there. Every row of the last line also leaves `at.reserve`, as a
+   * container's compact try does, for the `,` or `" => "` that follows it.
    *
    * The first line is where the text already stands. When not even its first
    * word fits there, it starts on a hanging line instead — the only case that
@@ -693,11 +723,9 @@ export class Pretty implements Renderable, Measurable {
     const room = (i: number, column: number): number =>
       at.maxWidth - column - (i === last ? at.reserve : 0);
 
-    const [first, ...wrapped] = startLine(lines[0]!, room(0, at.column), room(0, hang), at.column > hang);
-    const rows = [
-      ...wrapped,
-      ...lines.slice(1).flatMap((line, i) => wrapLine(line, room(i + 1, hang))),
-    ];
+    const [first, ...rows] = lines.flatMap((line, i) => i === 0
+      ? rowsOf(line, stayingLength(line, room(0, at.column), at.column > hang), room(0, hang))
+      : rowsOf(line, stayingLength(line, room(i, hang), false), room(i, hang)));
     return first + rows.map((row) => "\n" + (row === "" ? "" : " ".repeat(hang) + row)).join("");
   }
 
