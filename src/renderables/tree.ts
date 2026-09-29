@@ -15,16 +15,26 @@ import type {
 import { getStyle, isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
-// Guide characters
-const GUIDE_BRANCH = "├── ";
-const GUIDE_LAST = "└── ";
-const GUIDE_VERT = "│   ";
-const GUIDE_SPACE = "    ";
+/**
+ * The glyphs one level of guide is drawn with: the branch on the row of the
+ * child it leads to, and what stands in that column on every row after it —
+ * the child's later label lines and all of its descendants. A child's `rest` is
+ * the rail when siblings follow it and blank when it is the last.
+ */
+interface GuideGlyphs {
+  readonly fork: { readonly first: string; readonly rest: string };
+  readonly end: { readonly first: string; readonly rest: string };
+}
 
-// ASCII fallback
-const GUIDE_BRANCH_ASCII = "+-- ";
-const GUIDE_LAST_ASCII = "+-- ";
-const GUIDE_VERT_ASCII = "|   ";
+const UNICODE_GUIDES: GuideGlyphs = {
+  fork: { first: "├── ", rest: "│   " },
+  end: { first: "└── ", rest: "    " },
+};
+
+const ASCII_GUIDES: GuideGlyphs = {
+  fork: { first: "+-- ", rest: "|   " },
+  end: { first: "`-- ", rest: "    " },
+};
 
 export interface TreeOptions {
   expanded?: boolean;
@@ -33,14 +43,27 @@ export interface TreeOptions {
   style?: string | Style;
 }
 
-/** One emitted row: the guides that lead it, then the label that follows them. */
-interface TreeRow {
-  readonly guides: string[];
+/**
+ * One column of guide on a row. A label taller than one line draws `first`
+ * beside its first line and `rest` beside every line after it; a column an
+ * ancestor opened has already settled, and draws `rest` on both.
+ */
+interface Guide {
+  readonly first: string;
+  readonly rest: string;
   /**
-   * The styles the guides may be drawn in, nearest first, as given. Left
-   * unresolved because `measure` walks the rows too, and a width needs no theme.
+   * The guide styles of every node from the root down to the one whose children
+   * this column joins, outermost first, as given — stacked at render, so a
+   * deeper node's guide style refines its ancestors' rather than replacing
+   * them, as in Rich. Left unresolved because `measure` walks the rows too, and
+   * a width needs no theme.
    */
-  readonly guideStyles: ReadonlyArray<string | Style>;
+  readonly styles: ReadonlyArray<string | Style>;
+}
+
+/** One label and the guides that lead each of its lines. */
+interface TreeRow {
+  readonly guides: readonly Guide[];
   readonly label: Renderable;
 }
 
@@ -86,9 +109,20 @@ export class Tree implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    for (const row of this._rows(options, [], !this.hideRoot)) {
+    for (const row of this._walk(options)) {
       yield* this._renderRow(options, row);
     }
+  }
+
+  /**
+   * The rows `render` and `measure` both read, entered in exactly one place so
+   * the two cannot start the walk differently. A hidden root takes its own row
+   * and the column its children hang from with it, as Rich does — its children
+   * stand at the left edge, and its guide style still reaches their guides.
+   */
+  private _walk(options: RenderOptions): TreeRow[] {
+    const rows = [...this._rows(options.asciiOnly ? ASCII_GUIDES : UNICODE_GUIDES, [], [])];
+    return this.hideRoot ? rows.slice(1).map((row) => ({ ...row, guides: row.guides.slice(1) })) : rows;
   }
 
   /**
@@ -99,50 +133,30 @@ export class Tree implements Renderable, Measurable {
    * `measure` reads each row's width off the same sequence, so the two cannot
    * come to disagree about how many rows there are or how wide the guides on
    * them run — which they would the moment a second walk existed.
+   *
+   * [LAW:dataflow-not-control-flow] Every node, at every depth, is walked by
+   * this one recursion: its children get the columns above it, settled, plus a
+   * branch of their own, so no depth is drawn by a rule of its own.
    */
   private *_rows(
-    options: RenderOptions,
-    prefixes: string[],
-    showLabel: boolean,
+    glyphs: GuideGlyphs,
+    guides: readonly Guide[],
+    inherited: ReadonlyArray<string | Style>,
   ): Iterable<TreeRow> {
-    const ascii = options.asciiOnly ?? false;
+    yield { guides, label: this.label };
 
-    if (showLabel) {
-      yield { guides: prefixes, guideStyles: [this.guideStyle], label: this.label };
-    }
-
-    if (!this.expanded) return;
-
-    for (let i = 0; i < this.children.length; i++) {
-      const child = this.children[i]!;
-      const isLast = i === this.children.length - 1;
-      const branch = ascii
-        ? (isLast ? GUIDE_LAST_ASCII : GUIDE_BRANCH_ASCII)
-        : (isLast ? GUIDE_LAST : GUIDE_BRANCH);
-      const continuation = ascii
-        ? (isLast ? GUIDE_SPACE : GUIDE_VERT_ASCII)
-        : (isLast ? GUIDE_SPACE : GUIDE_VERT);
-
-      // Child label with branch guide
-      yield {
-        guides: [...prefixes, branch],
-        guideStyles: [child.guideStyle, this.guideStyle],
-        label: child.label,
-      };
-
-      // Grandchildren with continuation prefix
-      if (child.expanded && child.children.length > 0) {
-        const grandPrefixes = [...prefixes, continuation];
-        for (let j = 0; j < child.children.length; j++) {
-          yield* child.children[j]!._rows(options, grandPrefixes, true);
-        }
-      }
+    const children = this.expanded ? this.children : [];
+    const styles = [...inherited, this.guideStyle];
+    const above = guides.map((guide) => ({ ...guide, first: guide.rest }));
+    for (let i = 0; i < children.length; i++) {
+      const branch = i === children.length - 1 ? glyphs.end : glyphs.fork;
+      yield* children[i]!._rows(glyphs, [...above, { ...branch, styles }], styles);
     }
   }
 
   /**
-   * One row of the tree: its guides, then its label in whatever width the
-   * guides left.
+   * One row of the tree: its label in whatever width the guides left, each of
+   * the label's lines led by the guides.
    *
    * [LAW:single-enforcer] The row's width is divided in exactly one place, here.
    * Before this, each call site emitted its guides and then handed the label
@@ -153,24 +167,34 @@ export class Tree implements Renderable, Measurable {
    * its share off the division. `options` arrives parsed from `render`.
    *
    * [LAW:single-enforcer] Tree also owns its row boundaries here rather than
-   * depending on label renderables to invent trailing newlines.
+   * depending on label renderables to invent trailing newlines: the label's
+   * output is cut into lines and every line ends where Tree ends it. A label
+   * that emits nothing still holds its row, and one that ends in a newline of
+   * its own does not add a blank one.
    */
   private *_renderRow(
     options: RenderOptions,
     row: TreeRow,
   ): Iterable<Segment> {
-    const guideStyle = row.guideStyles.map((style) => getStyle(options, style)).find((style) => !style.isNull);
-    let left: number = options.maxWidth;
-    for (const text of row.guides) {
-      const piece = cellFit(text, asCellCol(left));
-      if (piece.length > 0) yield new Segment(piece, guideStyle);
-      left -= cellLen(piece);
+    const styles = row.guides.map((guide) => Style.combine(guide.styles.map((style) => getStyle(options, style))));
+    const width = Math.max(0, options.maxWidth - row.guides.reduce((sum, guide) => sum + cellLen(guide.first), 0));
+    // The guides are cropped by `cellFit`; the label is cropped too, so a label
+    // that ignores the width it is handed cannot push the row past the offer the
+    // guides were fitted into.
+    const lines = Segment.splitLines(
+      Segment.cropLines(row.label.render({ ...options, maxWidth: width, height: stackedHeight(options.height) }), width),
+    );
+    if (lines.length === 0) lines.push([]);
+    for (let i = 0; i < lines.length; i++) {
+      let left: number = options.maxWidth;
+      for (let g = 0; g < row.guides.length; g++) {
+        const piece = cellFit(i === 0 ? row.guides[g]!.first : row.guides[g]!.rest, asCellCol(left));
+        if (piece.length > 0) yield new Segment(piece, styles[g]);
+        left -= cellLen(piece);
+      }
+      yield* lines[i]!;
+      yield Segment.line();
     }
-    // The guides above are cropped by `cellFit`; the label was not, so a label
-    // that ignores the width it is handed pushed the row past the offer the
-    // guides had just been fitted into.
-    yield* Segment.cropLines(row.label.render({ ...options, maxWidth: left, height: stackedHeight(options.height) }), left);
-    yield Segment.line();
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
@@ -184,8 +208,8 @@ export class Tree implements Renderable, Measurable {
     // mode drew a 40-cell frame around nine cells of tree, and an unbounded
     // offer came back unbounded.
     let natural = 0;
-    for (const row of this._rows(parsed, [], !this.hideRoot)) {
-      const guideWidth = row.guides.reduce((sum, text) => sum + cellLen(text), 0);
+    for (const row of this._walk(parsed)) {
+      const guideWidth = row.guides.reduce((sum, guide) => sum + cellLen(guide.first), 0);
       natural = Math.max(natural, guideWidth + labelWidth(parsed, row.label));
     }
 
