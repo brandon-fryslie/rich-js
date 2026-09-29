@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "440ffe953943a6f036ccbc7fa31569470a9d42c1",
+      "timestamp": "2026-09-29T12:37:38.671Z",
+      "commits": [
+        {
+          "sha": "440ffe953943a6f036ccbc7fa31569470a9d42c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:36:20-06:00",
+          "message": "feat(widgets): hit-test the painted frame; widgets get their own coordinates (rich-runtime-fna.2) (#192)\n\n* feat(widgets): hit-test the painted frame; widgets get their own coordinates (rich-runtime-fna.2)\n\nWidgetBase.render stamps a subclass's `draw` output with its anchor, so the\nframe a screen paints is its own hit map. `widgetAt(frame, x, y)` names the\ninnermost widget under a cell and the cell's place in that widget's output;\nEventRouter reads it off `FrameSource.frame` and delivers each pointer event\nin the widget's own coordinates, a captured drag relative to the origin its\npress found. `bounds`, `WidgetBounds`, `containsPoint`, the active-overlay\nset and the z-sorted `widgets` getter are gone: z-order is paint order, and\nthe overlay pass stamps overlay row i as the widget's row footprint+i.\n\n* fix(widgets): a widget owns its rectangle; drags follow the repainted widget; releases know if they landed (rich-runtime-fna.2)\n\n- WidgetBase.render pads every row to the widest and terminates each row,\n  so a click past a short row still hits and a blank last row survives.\n- Captured drags read the widget's origin off the current frame (originOf).\n- WidgetMouseEvent carries `over`; the parser's event is ScreenMouseEvent.\n  Dropdown reads `over` instead of recomputing its own extent.\n- Segment.anchorLines takes firstRow; the overlay pass drops its pad/slice.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(widgets): only a WidgetBase mounts; a release dragged off a click widget cancels it (rich-runtime-fna.2)\n\nMountEntry and Screen move to screen.ts so the entry type can name\nWidgetBase without types.ts depending upward on it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-196",
       "ref": "refs/pull/196/merge",
       "sha": "e4560689e3be1cb282bfb8a52679196a09e7527d",
@@ -20,21 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T06:35:48-06:00",
           "message": "fix(markup): an implicit close [/] closes a plugin tag, as it closes any other (rich-markup-gfr)\n\npairPluginTags kept a stack of plugin tags only, so it could not tell what [/]\nreferred to and skipped it: [shout]one[/] fell back to the built-in parser,\nwhich dropped [shout] as an unknown style without a word. The pass now keeps\nthe built-in dialect's full stack, style tags included, and pairs a plugin tag\nwhen [/] pops it. [/name] matching is one predicate shared by both walks.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "525344213d674ee73da0ac243386026163e33b2b",
-      "timestamp": "2026-09-29T12:31:46.686Z",
-      "commits": [
-        {
-          "sha": "525344213d674ee73da0ac243386026163e33b2b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:31:05-06:00",
-          "message": "fix(style): a combined style writes attributes before colours, as Rich does (rich-color-7kv) (#194)\n\n* fix(style): a combined style writes attributes before colours, as Rich does (rich-color-7kv)\n\nStyle.toSgrCodes wrote foreground, background, then attributes; Rich\n9d8f9a3's _make_ansi_codes writes attributes, then foreground, then\nbackground. `[bold red]x[/]` is now `\\e[1;31m`, byte-identical to the\nreference.\n\nThe markup golden gains two reference-generated cases that put\nattributes and colours in one style, and the pinned-divergence test\nthat stood in for them is gone. The two printJson highlight tests now\npin Rich's own bytes instead of a restyled RichText.\n\n* test(style): pin SGR parameter order where it is decided, against Rich's bytes (rich-color-7kv)"
         }
       ]
     },
