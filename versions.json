@@ -4,15 +4,22 @@
     {
       "version": "pr-186",
       "ref": "refs/pull/186/merge",
-      "sha": "c4f44c2d5463832da3e5b600a864938262e49856",
-      "timestamp": "2026-09-29T09:47:07.894Z",
+      "sha": "0f706b08c2f68c692601343fad4672f5f449760d",
+      "timestamp": "2026-09-29T09:51:03.138Z",
       "commits": [
         {
-          "sha": "c4f44c2d5463832da3e5b600a864938262e49856",
+          "sha": "0f706b08c2f68c692601343fad4672f5f449760d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T03:46:18-06:00",
-          "message": "Merge 4f2e456dd8fe3faa0dce966623f3e672a33c318c into 0f0ce663b2641649bc15e224d3044ee4e724c819\n"
+          "timestamp": "2026-09-29T09:50:18Z",
+          "message": "Merge 8c2560b229c6f4e648f80795d4ff0a1f67e7408e into 0f0ce663b2641649bc15e224d3044ee4e724c819\n"
+        },
+        {
+          "sha": "8c2560b229c6f4e648f80795d4ff0a1f67e7408e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T03:50:13-06:00",
+          "message": "fix(export-html): gate the blink keyframes on no-preference instead of emptying them under reduce\n\nOne rule: nothing depends on a later same-named @keyframes winning, and a\nminifier that drops empty rules cannot strip the reduced-motion half. The\nbrowser test now covers blink2 and a preference switched on while the page is\nopen; a unit test pins the gate.\n"
         },
         {
           "sha": "4f2e456dd8fe3faa0dce966623f3e672a33c318c",
