@@ -4,15 +4,22 @@
     {
       "version": "pr-208",
       "ref": "refs/pull/208/merge",
-      "sha": "2d4e1d0e0f7a98030a53612051714811dbd5a240",
-      "timestamp": "2026-09-29T17:08:27.021Z",
+      "sha": "eea3a6c16084be1b5ed4f699b19a8f788c17392a",
+      "timestamp": "2026-09-29T17:17:56.846Z",
       "commits": [
         {
-          "sha": "2d4e1d0e0f7a98030a53612051714811dbd5a240",
+          "sha": "eea3a6c16084be1b5ed4f699b19a8f788c17392a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:07:28-06:00",
-          "message": "Merge 2c753a1e3e48bbf1d4ecdc63f928daa1442b863f into f921ed462e35b6194044226d4769a76ee91e9ac8\n"
+          "timestamp": "2026-09-29T17:16:55Z",
+          "message": "Merge 4ca6723a30ad14b437b37bf39b48ad58d65a172f into f921ed462e35b6194044226d4769a76ee91e9ac8\n"
+        },
+        {
+          "sha": "4ca6723a30ad14b437b37bf39b48ad58d65a172f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T11:16:48-06:00",
+          "message": "fix(examples): stopping a demo stops its app; App.fail ends an app with an error (rich-runtime-fna.5)\n\nReview round (high):\n- App.fail(error) ends the app and rejects run with that error; WidgetApp\n  forwards it. The three demos' captured-failure slots are gone.\n- run() in rich-dash, claude-sessions and rich-explore returns { done, stop },\n  and each browser MountHandle.stop stops the app. rich-dash's clock no\n  longer outlives a stopped mount.\n- claude-sessions repaints only on a change of state, so pointer motion on\n  the alternate screen paints nothing. Its search-typing keymap passes\n  Ctrl+C and Ctrl+Z through.\n- rich-dash no longer quits on a bare ESC, which a split escape sequence\n  also delivers.\n- The rich-dash browser README fixture names run(), not runDemo().\n"
         },
         {
           "sha": "2c753a1e3e48bbf1d4ecdc63f928daa1442b863f",
