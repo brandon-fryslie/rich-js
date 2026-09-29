@@ -117,6 +117,17 @@ console.print(
 );
 ```
 
+A long string, or a value whose own `toString` runs long or over several lines, cannot expand, so it wraps. It breaks between words, and each line after the first starts one indent in from its key rather than at the left edge. A value too long to fit even one word after its key starts on the next line:
+
+```typescript
+console.print(
+  new Pretty({
+    quote: "the quick brown fox jumps over the lazy dog, twice over",
+    err: new Error("not ready\nretry in 30s"),
+  }),
+);
+```
+
 Every container has a one-line form, `Map` and `Set` included, and takes it when the line has room for it:
 
 ```typescript

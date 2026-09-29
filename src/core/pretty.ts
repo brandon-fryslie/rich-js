@@ -17,7 +17,8 @@
  * times.
  */
 
-import { cellLen } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen } from "./cells.js";
+import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
@@ -88,6 +89,14 @@ const reprHighlighter = new ReprHighlighter();
  * or the container's own trailing `,` landed after it — the same failure as
  * the untracked-key bug, mirrored onto the other side of the value.
  *
+ * `hang` is where a continuation line of this value's own text begins — one
+ * indent past the slot it sits in, so a wrapped string or a multi-line
+ * `toString` reads as belonging to its key rather than as the next key.
+ * `null` at the root, and the type is what says the root is different: nothing
+ * precedes it that this formatter wrote, so the line it lands on — and where a
+ * wrap of it belongs — is its caller's. `Console.print` sets a root scalar in
+ * a run of text, where a break chosen here would fall at the wrong column.
+ *
  * `open` holds the objects between the root and here, not every object seen. A
  * value joins on the way down and leaves on the way back up, so a cycle is
  * caught while a DAG — one object reached twice through sibling positions —
@@ -101,6 +110,7 @@ interface Frame {
   readonly maxWidth: number;
   readonly column: number;
   readonly reserve: number;
+  readonly hang: number | null;
   readonly open: WeakSet<object>;
 }
 
@@ -110,6 +120,7 @@ const rootFrame = (maxWidth: number): Frame => ({
   maxWidth,
   column: 0,
   reserve: 0,
+  hang: null,
   open: new WeakSet(),
 });
 
@@ -126,6 +137,34 @@ const rootFrame = (maxWidth: number): Frame => ({
 function lineColumn(column: number, text: string): number {
   const lastNewline = text.lastIndexOf("\n");
   return lastNewline === -1 ? column + cellLen(text) : cellLen(text.slice(lastNewline + 1));
+}
+
+/** `line` cut into pieces of at most `width` cells, at word boundaries where there are any. */
+function wrapLine(line: string, width: number): string[] {
+  const offsets = [0, ...divideLine(line, asCellCol(width), { fold: true }).map(
+    (cut) => cellColToCodeUnitOffset(line, cut),
+  ), line.length];
+  return offsets.slice(1).map((end, i) => line.slice(offsets[i], end).trimEnd());
+}
+
+/**
+ * `line` as rows: the first stays where the line starts, with `room` cells
+ * left, and the rest hang with `hangRoom` each.
+ *
+ * What stays is every whole word that fits. When not even the first does,
+ * `canHang` says whether a hanging line starts further left than here: if so,
+ * all of `line` moves there and the first row is empty; if not, moving would
+ * gain nothing, and the first word is folded where it stands.
+ */
+function startLine(line: string, room: number, hangRoom: number, canHang: boolean): string[] {
+  if (cellLen(line) <= Math.max(0, room)) return [line];
+  const wordCut = divideLine(line, asCellCol(room), { fold: false })[0];
+  const wordEnd = wordCut === undefined ? line.length : cellColToCodeUnitOffset(line, wordCut);
+  const words = line.slice(0, wordEnd).trimEnd();
+  if (cellLen(words) <= room) return [words, ...wrapLine(line.slice(wordEnd), hangRoom)];
+  if (canHang) return ["", ...wrapLine(line, hangRoom)];
+  const piece = wrapLine(line, room)[0]!;
+  return [piece, ...wrapLine(line.slice(piece.length), hangRoom)];
 }
 
 /**
@@ -524,10 +563,10 @@ export class Pretty implements Renderable, Measurable {
   /** The laid-out form of a value, expanded across lines wherever one line will not do. */
   private _format(value: unknown, at: Frame): string {
     const scalar = this._scalar(value);
-    if (scalar !== null) return scalar;
+    if (scalar !== null) return this._place(scalar, at);
 
     const object = value as object;
-    if (at.open.has(object)) return "[Circular]";
+    if (at.open.has(object)) return this._place("[Circular]", at);
     at.open.add(object);
     try {
       return this._formatObject(object, at);
@@ -535,7 +574,7 @@ export class Pretty implements Renderable, Measurable {
       // The container's *shape* would not be read — `Object.keys`, an iterator,
       // `toString`. Nothing can be enumerated, so the whole container degrades;
       // a value that merely would not be read degrades alone, in its own slot.
-      return threw(error);
+      return this._place(threw(error), at);
     } finally {
       at.open.delete(object);
     }
@@ -544,7 +583,7 @@ export class Pretty implements Renderable, Measurable {
   /** The arms for a non-null object, with `value` already on the open path. */
   private _formatObject(value: object, at: Frame): string {
     const shape = this._shape(value, at.level, Infinity);
-    if (shape.kind === "text") return shape.text;
+    if (shape.kind === "text") return this._place(shape.text, at);
 
     if (!this.expandAll) {
       // rich-pretty-xms: budget from `at.column` and `at.reserve`, not from
@@ -571,7 +610,7 @@ export class Pretty implements Renderable, Measurable {
     // below, on the same line as whatever its own last character was — the
     // last slot doesn't. Two frames, not one per slot: `reserve` is the only
     // field that varies, and it only ever takes these two values.
-    const base = { inset: at.inset + 1, level: at.level + 1, maxWidth: at.maxWidth, column: cellLen(innerIndent), open: at.open };
+    const base = { inset: at.inset + 1, level: at.level + 1, maxWidth: at.maxWidth, column: cellLen(innerIndent), hang: cellLen(innerIndent) + this.indent, open: at.open };
     const midFrame: Frame = { ...base, reserve: cellLen(EXPAND_SEPARATOR) };
     const lastFrame: Frame = { ...base, reserve: 0 };
     const lastSlot = shape.slots.length - 1;
@@ -615,11 +654,51 @@ export class Pretty implements Renderable, Measurable {
         const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
         text = this._format(hole.read(), { ...at, column: lineColumn(at.column, out), reserve });
       } catch (error) {
-        text = threw(error);
+        text = this._place(threw(error), at);
       }
-      out += text + hole.tail;
+      // A value `_place` moved onto a line of its own leaves the text before it
+      // ending the line, and the space that was to separate them goes with it.
+      out = (text.startsWith("\n") ? out.trimEnd() : out) + text + hole.tail;
     }
     return out;
+  }
+
+  /**
+   * Text that is one piece — a scalar, a value that spells itself, a marker —
+   * set down at `at.column` on a line this formatter owns.
+   *
+   * A container that will not fit expands; one piece of text has no structure
+   * to expand into, so it wraps, and the wrap is laid out here rather than left
+   * to `RichText`. Left there, it broke at the console's edge and resumed at
+   * column 0 — under the enclosing key, or under nothing — which is the
+   * structure a reader of nested data relies on, broken. So every line after the
+   * first hangs at `at.hang`, a line of the value's own (`Error`'s message, a
+   * multi-line `toString`) as much as a wrapped one, and each is cut to the
+   * width left there. The last line also leaves `at.reserve`, as a container's
+   * compact try does, for the `,` or `" => "` that follows it.
+   *
+   * The first line is where the text already stands. When not even its first
+   * word fits there, it starts on a hanging line instead — the only case that
+   * moves it, and one taken only when that line starts further left and so has
+   * more room; otherwise the word is folded where it stands. A Map value after
+   * a long key is the case: `[1, 2, 3, 10] =>` ends the line and `"v"` hangs
+   * beneath it, where it used to wrap to column 0.
+   */
+  private _place(text: string, at: Frame): string {
+    if (at.hang === null) return text;
+    const hang = at.hang;
+
+    const lines = text.split("\n");
+    const last = lines.length - 1;
+    const room = (i: number, column: number): number =>
+      at.maxWidth - column - (i === last ? at.reserve : 0);
+
+    const [first, ...wrapped] = startLine(lines[0]!, room(0, at.column), room(0, hang), at.column > hang);
+    const rows = [
+      ...wrapped,
+      ...lines.slice(1).flatMap((line, i) => wrapLine(line, room(i + 1, hang))),
+    ];
+    return first + rows.map((row) => "\n" + (row === "" ? "" : " ".repeat(hang) + row)).join("");
   }
 
   /** The one-line form of a value, or `null` when it will not fit `at.budget`. */

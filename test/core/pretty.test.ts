@@ -165,6 +165,65 @@ describe("Pretty", () => {
     expect(text).toBe('{ metadata: { active: true } }');
   });
 
+  describe("text that is one piece wraps under the key it belongs to (rich-pretty-xms.tmf)", () => {
+    const laidOut = (value: unknown, maxWidth: number): string[] =>
+      new Pretty(value, { indentGuides: false }).toText({ maxWidth }).plain.split("\n");
+
+    it("hangs a self-describing value's own lines, and cuts them to the width", () => {
+      // `String(err)` is two lines, the second 60 cells. Emitted verbatim, it
+      // started at column 0 and ran past the width, for `RichText` to wrap back
+      // to column 0 again.
+      const err = new Error("line1\n" + "B".repeat(60));
+      expect(laidOut({ err }, 43)).toEqual([
+        "{",
+        "    err: Error: line1",
+        "        " + "B".repeat(35),
+        "        " + "B".repeat(25),
+        "}",
+      ]);
+    });
+
+    it("starts a value on a hanging line when not even its first word fits after its key", () => {
+      // The Map key fits with its `" => "` charged, which leaves `"v"` one cell
+      // at column 25 of 26.
+      const m = new Map([[[1, 2, 3, 10], "v"]]);
+      expect(laidOut({ m, z: 1 }, 26)).toEqual([
+        "{",
+        "    m: Map {",
+        "        [1, 2, 3, 10] =>",
+        '            "v"',
+        "    },",
+        "    z: 1",
+        "}",
+      ]);
+    });
+
+    it("wraps a long string at its words, leaving room for the comma after it", () => {
+      const s = "lorem ipsum dolor sit amet consectetur adipiscing elit sed do";
+      expect(laidOut({ s, t: 1 }, 30)).toEqual([
+        "{",
+        '    s: "lorem ipsum dolor sit',
+        "        amet consectetur",
+        "        adipiscing elit sed",
+        '        do",',
+        "    t: 1",
+        "}",
+      ]);
+    });
+
+    it("folds a word in place when a hanging line would have no more room", () => {
+      // An array element starts left of where a hanging line would, so moving
+      // it gains nothing: it is cut where it stands.
+      const lines = laidOut(["x".repeat(30)], 20);
+      expect(lines[1]).toBe('    "' + "x".repeat(15));
+      for (const line of lines) expect(cellLen(line)).toBeLessThanOrEqual(20);
+    });
+
+    it("leaves the root alone, whose line belongs to whoever prints it", () => {
+      expect(laidOut(new Error("root\nsecond"), 8)).toEqual(["Error: root", "second"]);
+    });
+  });
+
   // --- Expand All Mode ---
 
   it("expandAll forces expansion of all containers", () => {
