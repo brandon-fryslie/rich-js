@@ -4,15 +4,22 @@
     {
       "version": "pr-193",
       "ref": "refs/pull/193/merge",
-      "sha": "7498bc9c11174912a6f2f4fba8ee5c90a5201efb",
-      "timestamp": "2026-09-29T12:13:15.108Z",
+      "sha": "c5540f34079f82442fe34b2e4a758fb2f36c22ac",
+      "timestamp": "2026-09-29T12:18:28.603Z",
       "commits": [
         {
-          "sha": "7498bc9c11174912a6f2f4fba8ee5c90a5201efb",
+          "sha": "c5540f34079f82442fe34b2e4a758fb2f36c22ac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:12:24-06:00",
-          "message": "Merge f64d665c47c629ddb42e0a00ee595e5cc06dc05a into 2b9c03b80dfde9cad61753945ed33552df5cc41c\n"
+          "timestamp": "2026-09-29T12:17:38Z",
+          "message": "Merge 954ac1bc7981594d7b04ce44d23302772195d8c8 into 2b9c03b80dfde9cad61753945ed33552df5cc41c\n"
+        },
+        {
+          "sha": "954ac1bc7981594d7b04ce44d23302772195d8c8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:17:32-06:00",
+          "message": "review(segment): one blank-cell rule in Table; header places Tree; pin the split's edges (rich-segment-bpa)\n"
         },
         {
           "sha": "f64d665c47c629ddb42e0a00ee595e5cc06dc05a",
