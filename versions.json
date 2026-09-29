@@ -4,15 +4,22 @@
     {
       "version": "pr-218",
       "ref": "refs/pull/218/merge",
-      "sha": "a2d7065e2ff01ce67970b02ea4a305cef2aa8309",
-      "timestamp": "2026-09-29T20:56:25.325Z",
+      "sha": "5bb2f053ba829cd9de278ebe6d1efaff266b73dd",
+      "timestamp": "2026-09-29T21:06:03.534Z",
       "commits": [
         {
-          "sha": "a2d7065e2ff01ce67970b02ea4a305cef2aa8309",
+          "sha": "5bb2f053ba829cd9de278ebe6d1efaff266b73dd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T14:55:26-06:00",
-          "message": "Merge 1f15b6a16de4f6c813b3449aebd9d677c7b6059d into b16e52cfa6aada335a1bea880dcbaa7980de7ed6\n"
+          "timestamp": "2026-09-29T21:05:18Z",
+          "message": "Merge 03cddcd653c3813133bfac25484ee30a80ef9d8c into b16e52cfa6aada335a1bea880dcbaa7980de7ed6\n"
+        },
+        {
+          "sha": "03cddcd653c3813133bfac25484ee30a80ef9d8c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:05:13-06:00",
+          "message": "fix(cells): cellFit cuts between grapheme clusters (rich-text-odh)\n\ncellFit summed cellLen per code point, while cellLen measures clusters,\nso a VS16 or ZWJ marker was \"fitted\" wider than the width (❤️ at 1 cell)\nor cut mid-glyph (👨‍👩‍👧 at 4). truncate's own text crops had the same\nwalk. Both now go through graphemes() + fitClusters in cells.ts, and\nexport-html's private segmenter is that same one.\n\nThe remaining per-code-point walkers are rich-cells-1y9d.\n"
         },
         {
           "sha": "1f15b6a16de4f6c813b3449aebd9d677c7b6059d",
