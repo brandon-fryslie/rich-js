@@ -4,15 +4,22 @@
     {
       "version": "pr-209",
       "ref": "refs/pull/209/merge",
-      "sha": "8cbf097d6bb9233c265caf4842a021382b9751a1",
-      "timestamp": "2026-09-29T17:39:45.423Z",
+      "sha": "df0c54f14f23ed0df4cd8ef1ee805983a96b0198",
+      "timestamp": "2026-09-29T17:51:36.849Z",
       "commits": [
         {
-          "sha": "8cbf097d6bb9233c265caf4842a021382b9751a1",
+          "sha": "df0c54f14f23ed0df4cd8ef1ee805983a96b0198",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:38:52-06:00",
-          "message": "Merge c147ab206e4018ab18c9e7b6888db33bbeed0e92 into d022f4b8ccbfdfa95a0acec8d58504f005587c69\n"
+          "timestamp": "2026-09-29T17:50:44Z",
+          "message": "Merge 773d606bbeeeae48ca31ccb55178f4c9e41f5bf0 into d022f4b8ccbfdfa95a0acec8d58504f005587c69\n"
+        },
+        {
+          "sha": "773d606bbeeeae48ca31ccb55178f4c9e41f5bf0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T11:50:38-06:00",
+          "message": "fix(examples): rich-config's preview flows to its pane's width; the tests find cells, not code units (rich-runtime-fna.6)\n\nThe swatches, ANSI palette and progress bars were sized for a 100-column\nscreen, so an 80-column terminal cut the preview pane mid-swatch. They now lay\nout through Columns and the pane's maxWidth, like the title panel and palette\nsearch already did.\n\nThe tests' click helpers convert a string index to a cell column with cellLen,\nthe search box is found by what it draws instead of by its offset from the\ndropdown, and clickOn loses its unused rowOffset.\n"
         },
         {
           "sha": "c147ab206e4018ab18c9e7b6888db33bbeed0e92",
