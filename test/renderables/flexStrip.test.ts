@@ -6,7 +6,7 @@ import { RichText } from "../../src/core/text.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 
 function cell(text: string, style?: string | Style): RichText {
-  return new RichText(text, { style, end: "", noWrap: true });
+  return new RichText(text, { style, end: "", overflow: "ignore" });
 }
 
 // [LAW:behavior-not-structure] Tests assert what callers observe — packed

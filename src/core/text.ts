@@ -8,7 +8,7 @@ import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
 import { stripOscTerminators } from "./osc8.js";
 import { drawable, getStyle, withBoundedWidth } from "./protocol.js";
-import type { Renderable, Measurable, RenderOptions } from "./protocol.js";
+import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
 
 // Strip control characters except \t and \n
 // [LAW:single-enforcer] Single place where control chars are sanitized
@@ -165,7 +165,7 @@ export class Span {
 export interface RichTextOptions {
   style?: string | Style;
   justify?: "left" | "center" | "right" | "full";
-  overflow?: "fold" | "crop" | "ellipsis";
+  overflow?: OverflowMethod;
   end?: string;
   tabSize?: number;
   noWrap?: boolean;
@@ -176,7 +176,7 @@ export class RichText implements Renderable, Measurable {
   private _spans: Span[];
   private _style: string | Style;
   private _justify: "left" | "center" | "right" | "full" | undefined;
-  private _overflow: "fold" | "crop" | "ellipsis" | undefined;
+  private _overflow: OverflowMethod | undefined;
   private _end: string;
   private _tabSize: number;
   private _noWrap: boolean;
@@ -239,11 +239,11 @@ export class RichText implements Renderable, Measurable {
     this._justify = value;
   }
 
-  get overflow(): "fold" | "crop" | "ellipsis" | undefined {
+  get overflow(): OverflowMethod | undefined {
     return this._overflow;
   }
 
-  set overflow(value: "fold" | "crop" | "ellipsis" | undefined) {
+  set overflow(value: OverflowMethod | undefined) {
     this._overflow = value;
   }
 
@@ -819,22 +819,27 @@ export class RichText implements Renderable, Measurable {
     // which pads — and `" ".repeat(Infinity)` throws.
     const maxWidth = cellCount(withBoundedWidth(options, this).maxWidth);
     const overflow = this._overflow ?? options.overflow ?? "fold";
-    const justify = this._justify ?? options.justify;
     const noWrap = this._noWrap || (options.noWrap ?? false);
 
-    // The width a line is cut to, which is not always the width it is
-    // justified in. `noWrap` means the line is not bounded at all: it leaves at
-    // its natural width and whatever asked for it decides about the overhang —
-    // `Console`'s soft wrap and `FlexStrip`'s too-wide fallback both want the
-    // text intact rather than cropped.
+    // Two widths, and they are the reference's `no_wrap` and `"ignore"` told
+    // apart. `edge` is where a line is cut: gone under `"ignore"`, so the line
+    // leaves at its natural width and whatever drew it decides about the
+    // overhang. `wrapAt` is where a line may break: gone under `noWrap` too,
+    // which keeps one line per line and still cuts it at the edge by the
+    // overflow method — Rich's `Text.wrap` truncates its no-wrap arm.
     //
-    // [LAW:dataflow-not-control-flow] It reaches the pipeline as a width, not
-    // as a step to skip: an unbounded budget has no edge to break at, so
+    // [LAW:dataflow-not-control-flow] Each reaches the pipeline as a width, not
+    // as a step to skip: an unbounded width has no edge to break at, so
     // `divideLine` finds no cuts and `_fitLine` finds nothing past the edge,
     // and every line runs the same three steps. `Infinity` is already this
     // library's spelling of an unbounded width offer — `withBoundedWidth` in
     // protocol.ts parses one on the way in.
-    const budget = noWrap ? cellCount(Infinity) : maxWidth;
+    const edge = overflow === "ignore" ? cellCount(Infinity) : maxWidth;
+    const wrapAt = noWrap ? cellCount(Infinity) : edge;
+    // A line with no edge has no width to be justified in, so under `"ignore"`
+    // it is not justified — the reference's `Text.wrap` returns that arm before
+    // `justify`. `undefined` is the placement that leaves a line as it is.
+    const justify = overflow === "ignore" ? undefined : this._justify ?? options.justify;
     // One cell either way, so the marker's stand-in leaves the cut where it was.
     const ellipsis = drawable(options, "\u2026", ".");
     const endsWithNewline = text.endsWith("\n");
@@ -846,11 +851,11 @@ export class RichText implements Renderable, Measurable {
       // Wrap first, overflow last — the reference's order, and the reason a
       // long sentence grows a table row while an unbreakable word in the same
       // column still ellipsizes.
-      const cuts = divideLine(plainOf(line), budget, { fold: overflow === "fold" });
+      const cuts = divideLine(plainOf(line), wrapAt, { fold: overflow === "fold" });
 
       const wrapped = Segment.divide(line, cuts);
       const placed = this._justifyLines(
-        wrapped.map((piece) => [...this._fitLine(piece, budget, overflow, ellipsis)]),
+        wrapped.map((piece) => [...this._fitLine(piece, edge, overflow, ellipsis)]),
         maxWidth,
         base,
         justify,
@@ -1124,14 +1129,16 @@ export class RichText implements Renderable, Measurable {
    *
    * Everything reaching here already survived wrapping, so the only text still
    * too wide is text no break could help: a word longer than the canvas under
-   * a non-folding overflow method, a glyph wider than the budget, or a canvas
-   * with no cells at all. That is what makes the overflow method a last
-   * resort rather than the first thing a long cell meets.
+   * a non-folding overflow method, a glyph wider than the budget, a canvas
+   * with no cells at all, or a `noWrap` line, which no break was allowed to
+   * help. That is what makes the overflow method a last resort rather than the
+   * first thing a long cell meets. `"fold"` has nothing left to fold here and
+   * cuts as `"crop"` does, as the reference's `truncate` does.
    */
   private *_fitLine(
     line: Segment[],
     maxWidth: number,
-    overflow: "fold" | "crop" | "ellipsis",
+    overflow: OverflowMethod,
     ellipsis: string,
   ): Iterable<Segment> {
     const lineWidth = Segment.getLineLength(line);

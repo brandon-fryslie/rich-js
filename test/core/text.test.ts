@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Span, RichText } from "../../src/core/text.js";
 import { Style, NULL_STYLE } from "../../src/core/style.js";
 import { Segment } from "../../src/core/segment.js";
+import type { RenderOptions } from "../../src/core/protocol.js";
 import { baseStyleOf } from "./base-style.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -941,11 +942,52 @@ describe("RichText.render()", () => {
     });
   });
 
-  it("does not wrap when noWrap is set", () => {
-    const t = new RichText("abcdefghij", { noWrap: true });
-    const segments = collect(t.render({ maxWidth: 5 }));
-    const text = segText(segments);
-    expect(text).toContain("abcdefghij");
+  // noWrap is Rich's `no_wrap`: no line breaks, and a line still too wide is
+  // cut at the width by the overflow method. Each expected value is what Rich
+  // 9d8f9a3's `render_lines` gives for the same text at the same width.
+  describe("noWrap", () => {
+    const lines = (text: RichText, options: Partial<RenderOptions> = {}): string[] =>
+      segText(collect(text.render({ maxWidth: 5, ...options }))).split("\n").filter((l) => l !== "");
+
+    it("cuts a line at the width, folding being a cut once wrapping is off", () => {
+      expect(lines(new RichText("abcdefghij", { noWrap: true }))).toEqual(["abcde"]);
+      expect(lines(new RichText("abcdefghij", { noWrap: true, overflow: "crop" }))).toEqual(["abcde"]);
+    });
+
+    it("marks the cut under ellipsis", () => {
+      expect(lines(new RichText("abcdefghij", { noWrap: true, overflow: "ellipsis" }))).toEqual(["abcd…"]);
+    });
+
+    it("keeps one line per line of text, each cut on its own", () => {
+      expect(lines(new RichText("aaaa bbbb cccc\nxy", { noWrap: true }), { maxWidth: 6 }))
+        .toEqual(["aaaa b", "xy"]);
+    });
+
+    it("still justifies at the width", () => {
+      expect(lines(new RichText("hi", { noWrap: true, justify: "right" }))).toEqual(["   hi"]);
+    });
+
+    it("comes from the render options as well as the text", () => {
+      expect(lines(new RichText("abcdefghij"), { noWrap: true })).toEqual(["abcde"]);
+    });
+  });
+
+  // `"ignore"` is the absence of an edge: the reference's `Text.wrap` returns
+  // the line untouched — not wrapped, not cut, not justified.
+  describe("overflow ignore", () => {
+    const render = (text: RichText): string => segText(collect(text.render({ maxWidth: 5 })));
+
+    it("leaves a line at its natural width", () => {
+      expect(render(new RichText("aaaa bbbb cccc", { overflow: "ignore", end: "" }))).toBe("aaaa bbbb cccc");
+    });
+
+    it("does not justify the line", () => {
+      expect(render(new RichText("hi", { overflow: "ignore", justify: "right", end: "" }))).toBe("hi");
+    });
+
+    it("outranks noWrap, which would cut", () => {
+      expect(render(new RichText("abcdefghij", { overflow: "ignore", noWrap: true, end: "" }))).toBe("abcdefghij");
+    });
   });
 
   it("expands tabs using tabSize", () => {

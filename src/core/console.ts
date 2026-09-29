@@ -24,6 +24,7 @@ import { placeBlock, type Alignment } from "./place.js";
 import type {
   Height,
   Measurable,
+  OverflowMethod,
   Renderable,
   RenderOptions,
   StyleErrorHandler,
@@ -137,7 +138,7 @@ export interface ConsoleOptions {
 export interface PrintOptions {
   style?: string | Style;
   justify?: "default" | "left" | "center" | "right" | "full";
-  overflow?: "fold" | "crop" | "ellipsis" | "ignore";
+  overflow?: OverflowMethod;
   highlight?: boolean;
   markup?: boolean;
   softWrap?: boolean;
@@ -557,22 +558,16 @@ export class Console {
       else blocks.push({ kind: "text", items: [text] });
     }
 
-    // [LAW:parse-dont-validate] `"ignore"` is not a way of cutting a line but
-    // the absence of an edge to cut at: no break, and nothing cut at the width.
-    // That is what `noWrap` already means to `RichText`, so it crosses into the
-    // render as `noWrap`, and `overflow` carries only the methods a renderable
-    // applies. Soft wrap is the same request — the reference defaults it to
-    // `"ignore"` — which is why the two arrive at one field.
-    //
-    // An unbounded line has no width to be justified in, so under `"ignore"`
-    // the text is not justified either — the reference's `Text.wrap` skips
-    // `justify` in that arm. Placing the block below still honours it.
-    const ignore = softWrap || opts.overflow === "ignore";
+    // Soft wrap is the reference's pair of defaults, not a mode of its own: it
+    // stops wrapping, and when no overflow was named it asks for `"ignore"`, so
+    // the line leaves unbounded. A named overflow still cuts the unwrapped line
+    // at the width, as Rich's does. What `"ignore"` does to a line — no edge,
+    // no justify — is `RichText`'s to apply, so it crosses as it was asked for.
     const renderOpts: RenderOptions = {
       ...this.options,
-      justify: opts.justify === "default" || ignore ? undefined : opts.justify,
-      overflow: opts.overflow === "ignore" ? undefined : opts.overflow,
-      noWrap: ignore,
+      justify: opts.justify === "default" ? undefined : opts.justify,
+      overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
+      noWrap: softWrap,
     };
 
     // The print style, then the console's base style, over each line a block

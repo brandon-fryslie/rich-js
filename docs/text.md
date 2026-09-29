@@ -87,7 +87,7 @@ const heading = new RichText("Right-aligned heading", {
   style:    "bold cyan",
   justify:  "right",    // override default justify for this object
   overflow: "ellipsis", // override default overflow
-  noWrap:   true,       // prevent word-wrapping
+  noWrap:   true,       // one line per line; a line too wide is cut by `overflow`
   tabSize:  4,          // expand tab characters to this many spaces
 });
 

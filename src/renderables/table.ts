@@ -14,6 +14,7 @@ import { normalizePadding } from "./padding.js";
 import type {
   Renderable,
   Measurable,
+  OverflowMethod,
   RenderOptions,
 } from "../core/protocol.js";
 import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
@@ -345,7 +346,7 @@ export interface ColumnOptions {
   maxWidth?: number;
   ratio?: number;
   noWrap?: boolean;
-  overflow?: "fold" | "crop" | "ellipsis";
+  overflow?: OverflowMethod;
 }
 
 /**
@@ -375,7 +376,7 @@ export class Column {
   maxWidth: number | undefined;
   ratio: number | undefined;
   noWrap: boolean;
-  overflow: "fold" | "crop" | "ellipsis";
+  overflow: OverflowMethod;
   private _cells: Renderable[];
 
   constructor(options?: ColumnOptions) {

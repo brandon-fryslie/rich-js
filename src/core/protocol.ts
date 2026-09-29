@@ -8,6 +8,18 @@ import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
 import type { ColorDepth } from "./color.js";
 
+/**
+ * What becomes of a line still wider than its width once wrapping is done.
+ * `"fold"` breaks it across lines, `"crop"` cuts it at the edge, `"ellipsis"`
+ * cuts it and marks the cut. `"ignore"` is not a way of cutting: the line has
+ * no edge, so nothing wraps it and nothing cuts it, and it leaves at its
+ * natural width for whatever drew it to crop or not.
+ *
+ * `noWrap` is the other half of Rich's pair and is not `"ignore"`: it stops the
+ * wrapping and leaves the edge, so a line too wide is cut by the method here.
+ */
+export type OverflowMethod = "fold" | "crop" | "ellipsis" | "ignore";
+
 export interface RenderOptions {
   /**
    * The cells this renderable may occupy. A count of cells, so a non-negative
@@ -31,7 +43,7 @@ export interface RenderOptions {
    */
   asciiOnly?: boolean;
   justify?: "left" | "center" | "right" | "full";
-  overflow?: "fold" | "crop" | "ellipsis";
+  overflow?: OverflowMethod;
   noWrap?: boolean;
   highlight?: unknown;
   markup?: unknown;

@@ -245,8 +245,9 @@ console.print(Panel.fit("boxed"), { justify: "right" });
 `"center"` and `"right"` align on a line's content. When text wraps, the space
 before the break stays at the end of the line it closed, and counting that
 space would put every such line half a cell off true. Under
-`overflow: "ignore"` or `softWrap` a line is not justified at all, because it
-has no width to be justified in. The block is still placed.
+`overflow: "ignore"`, which `softWrap` asks for unless you name another
+overflow, a line is not justified at all, because it has no width to be
+justified in. The block is still placed.
 
 `"full"` stretches every line of a paragraph but the last, which stays ragged the
 way it does in a printed book. A paragraph ends wherever the text has a newline.
@@ -362,6 +363,11 @@ At a width of 20 the first call wraps the line; the second prints it whole.
 It overrides the `crop` flag rather than deferring to it. At width 12,
 `console.print("aaaa bbbb cccc dddd", { softWrap: true, crop: true })` prints
 the whole line.
+
+The line runs on because `softWrap` asks for `overflow: "ignore"` when you name
+no overflow of your own. Name one and the line is still not wrapped, but it is
+cut at the width by that method: at width 12,
+`{ softWrap: true, overflow: "ellipsis" }` prints `aaaa bbbb c…`.
 
 ## Logging
 
