@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-226",
+      "ref": "refs/pull/226/merge",
+      "sha": "c285f4b30ffc1bc5a3d44b149491e182864a2f63",
+      "timestamp": "2026-09-29T22:42:22.450Z",
+      "commits": [
+        {
+          "sha": "c285f4b30ffc1bc5a3d44b149491e182864a2f63",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:41:16Z",
+          "message": "Merge 7364cbcce61dcfed33a4d536c7306250ff0d2fee into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
+        },
+        {
+          "sha": "7364cbcce61dcfed33a4d536c7306250ff0d2fee",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:41:12-06:00",
+          "message": "fix(columns): linear layout search, no argument spread, honest departures (rich-columns-awe)\n\nReview (high) on #226:\n- slotItem is constant time and the search keeps a running total, so a\n  listing is laid out in linear time again (20k items: 2.7 s -> 0.1 s).\n- The widest item is a fold; `Math.max(...sizes)` overflowed the stack at\n  200k items, now pinned by a test.\n- docs/columns.md names all three places Columns departs from Rich: the\n  declared-width count, empty items, and measure.\n\nThe zero-width `or 1` floor is not ported here: in Rich it comes from\nTable.grid, which then shrinks columns that overflow. Filed as\nrich-columns-i08a.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        },
+        {
+          "sha": "920362fd0342cd5d6034ab7a2e8a21cd4b368b90",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:17:40-06:00",
+          "message": "fix(columns): lay out as Rich's grid, so padding and expand take effect (rich-columns-awe, rich-columns-sf4)\n\n`padding` was never read and `expand` was stored and never read: the gutter\nwas a hard-coded 2 and every layout divided the whole offer among uniform\ncolumns, so there was nothing left for `expand` to do.\n\nColumns now decides what Rich's `Table.grid(collapse_padding, pad_edge=False)`\ndecides: a column count found by Rich's search, each column as wide as its own\nwidest item, a gap of the wider horizontal padding side, rows separated by\n`top + max(0, top - bottom)`, and `expand` spreading the surplus with a port of\n`ratio_distribute`. Items render with a default Column's options (left,\nellipsis). Output is byte-identical to Rich 9d8f9a3 for every case pinned in the\ntests and for the docs listing.\n\nOne departure, where Rich has no sound answer: a declared `width` searches the\ncolumn count the same way instead of `max_width // (width + gap)`, so it never\nlays out empty trailing columns (sf4) and never divides by zero.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-227",
       "ref": "refs/pull/227/merge",
       "sha": "25e2d3a509d2f2a3f1fbd73f2f8b023a9748181e",
@@ -34,42 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:26:40-06:00",
           "message": "fix(console): print gives a container lines of its own, as Rich does (rich-console-5k3)\n\nA container argument (array, typed array, Map, Set, or an object without its\nown toString — Pretty's `isExpandable`, Rich's `is_expandable`) is now a block\nin `Console.print`, like any renderable: `print(\"a\", { x: 1 }, \"b\")` prints\nthree lines, as Rich fc41075a does. Scalars still join the text run.\n\n`isExpandable` is the one definition of \"container\": `_shape` reads its text\narm from it, so print and Pretty cannot disagree.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-228",
-      "ref": "refs/pull/228/merge",
-      "sha": "8e8083f295192e3b1a035695c332ff0bb250904f",
-      "timestamp": "2026-09-29T22:40:36.008Z",
-      "commits": [
-        {
-          "sha": "8e8083f295192e3b1a035695c332ff0bb250904f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:39:07Z",
-          "message": "Merge ebdb506811b5a32e7fb2500151137fcffabe3b4f into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
-        },
-        {
-          "sha": "ebdb506811b5a32e7fb2500151137fcffabe3b4f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:39:02-06:00",
-          "message": "fix(release): drop the unreachable npm.cmd branch\n"
-        },
-        {
-          "sha": "547429c4ffb53e7f23d2c4861d86e4df8df42429",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:37:55-06:00",
-          "message": "fix(release): entry-points guard reads npm's pack listing and cannot fail open\n\n- main() runs unconditionally: the argv[1] check exited 0 unchecked through any\n  symlinked path (macOS tmpdir included)\n- what ships is asked of `npm pack --dry-run --json`, not the disk\n- every missing entry point is named, on one stderr channel\n- tests run a byte copy against real fixture packages, pin the prepublishOnly\n  wiring and the repository field; publish.yml and CLAUDE.md name the gate\n"
-        },
-        {
-          "sha": "0bce42ce22959bba1cb095b28a44bdcc9dbf07ad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:32:46-06:00",
-          "message": "fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n"
         }
       ]
     },
@@ -107,28 +100,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:27:36-06:00",
           "message": "fix(table): a declared width is the table's size, as in Rich (rich-table-width-5cj) (#225)\n\n* fix(table): a declared width is the table's size, as in Rich (rich-table-width-5cj)\n\nRich's Table.expand is `self._expand or self.width is not None`, and its\nmeasure reports the declared width. Here a declared width was a ceiling, so\nRich code ported over drew narrower tables and a Panel fitted round one sized\nto the content. Width now implies expand and measure reports it, laid out the\nway render lays it out. The bound by the offer and fixed declared-width\ncolumns stay as deliberate divergences.\n\n* fix(table): review — docs name the fixed-column case, measure lays out once per question (rich-table-width-5cj)"
-        }
-      ]
-    },
-    {
-      "version": "pr-226",
-      "ref": "refs/pull/226/merge",
-      "sha": "66dde33e6001e93af01ba6d8e2f504a7615ba7d6",
-      "timestamp": "2026-09-29T22:21:22.882Z",
-      "commits": [
-        {
-          "sha": "66dde33e6001e93af01ba6d8e2f504a7615ba7d6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:20:35Z",
-          "message": "Merge 920362fd0342cd5d6034ab7a2e8a21cd4b368b90 into afff4e3710707f82437fe96f09ed80fdae46287d\n"
-        },
-        {
-          "sha": "920362fd0342cd5d6034ab7a2e8a21cd4b368b90",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:17:40-06:00",
-          "message": "fix(columns): lay out as Rich's grid, so padding and expand take effect (rich-columns-awe, rich-columns-sf4)\n\n`padding` was never read and `expand` was stored and never read: the gutter\nwas a hard-coded 2 and every layout divided the whole offer among uniform\ncolumns, so there was nothing left for `expand` to do.\n\nColumns now decides what Rich's `Table.grid(collapse_padding, pad_edge=False)`\ndecides: a column count found by Rich's search, each column as wide as its own\nwidest item, a gap of the wider horizontal padding side, rows separated by\n`top + max(0, top - bottom)`, and `expand` spreading the surplus with a port of\n`ratio_distribute`. Items render with a default Column's options (left,\nellipsis). Output is byte-identical to Rich 9d8f9a3 for every case pinned in the\ntests and for the docs listing.\n\nOne departure, where Rich has no sound answer: a declared `width` searches the\ncolumn count the same way instead of `max_width // (width + gap)`, so it never\nlays out empty trailing columns (sf4) and never divides by zero.\n"
         }
       ]
     }
