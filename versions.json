@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-230",
+      "ref": "refs/pull/230/merge",
+      "sha": "8e10ec64b18bebe3af2ab85c54c16fa5bdc241c1",
+      "timestamp": "2026-09-29T23:00:55.120Z",
+      "commits": [
+        {
+          "sha": "8e10ec64b18bebe3af2ab85c54c16fa5bdc241c1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:00:04-06:00",
+          "message": "Merge 7fe90e3606409415b8402e54241602e2736ab7d5 into 3f470212f0ca8caa296b0e3825858f0c9de1cc5e\n"
+        },
+        {
+          "sha": "7fe90e3606409415b8402e54241602e2736ab7d5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T17:00:00-06:00",
+          "message": "fix(table): stretch an expanding table by Rich's ratio_distribute (rich-table-d1uy)\n\nAn expanding table handed its leftover cells out by largest remainder over\ncontent widths; Rich 9d8f9a3 uses ratio_distribute over widths that include\npadding, rounding each share up. The two agree on totals and disagree on\nwhich column takes a leftover cell. The stretch now goes through\nratioDistribute (src/renderables/ratio.ts), weighted by padded width.\n\nThe rowless maxWidth 7/3 frame the suite pinned as \"Rich's own output\" was\nnot: Rich prints 24/13 there, which is what this renders.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3f470212f0ca8caa296b0e3825858f0c9de1cc5e",
