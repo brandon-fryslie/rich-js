@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-219",
+      "ref": "refs/pull/219/merge",
+      "sha": "ba56134b832078069bb2a9622a50a2633c273570",
+      "timestamp": "2026-09-29T21:13:01.153Z",
+      "commits": [
+        {
+          "sha": "ba56134b832078069bb2a9622a50a2633c273570",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:12:09-06:00",
+          "message": "Merge 3dc279b7c3a455a3baa786d0081a5c9c49e0c08e into 2df67cfc18181fa8fe839b06254f57b72fad4703\n"
+        },
+        {
+          "sha": "3dc279b7c3a455a3baa786d0081a5c9c49e0c08e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:12:04-06:00",
+          "message": "fix(color): out-of-range rgb() channel is a ColorParseError (rich-color-av8)\n\nColorSpec.parse's rgb() branch passed any 1-3 digit channel to the\nColorRgba constructor, which threw RangeError. Both rgb() channels and\ncolor(N) now go through parseByte, which reports the channel by name;\nthe byte range is one predicate shared with the constructor's assert.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2df67cfc18181fa8fe839b06254f57b72fad4703",
