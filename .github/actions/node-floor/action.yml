@@ -1,0 +1,69 @@
+# The Node floor, run: the packed tarball installed into an empty project under
+# the lowest Node `engines.node` admits, then loaded and rendered by `probe.mjs`.
+#
+# `test/seam/node-floor.test.ts` keeps `engines.node` agreeing with what the
+# install tree declares, and executes nothing. Every other job takes its Node
+# from `node-version-file`, which setup-node resolves to the NEWEST satisfying
+# version, so nothing else ever runs the bottom of the range. This is the check
+# that fails when the code it reaches uses an API the floor does not have. What
+# it reaches is every loaded module's top level and one render, not the whole
+# surface; `probe.mjs`'s header owns what it cannot see.
+#
+# [LAW:single-enforcer] One definition, two callers: `ci.yml` runs it on master
+# and every PR, where the commit that reached for the API is still open for
+# review, and `publish.yml` runs it on the version tag, because a tag can land
+# on a commit CI never gated. This action switches the job's Node, so each
+# caller gives it a job of its own.
+#
+# Provisioning stays with the caller, as it does for `../gate`: checkout,
+# `node_modules` from `npm ci`, and a built `dist/`. The caller owns `dist/`
+# because only the caller knows which build ships. On the release road it is
+# the gate job's artifact, the exact bytes `npm publish` sends.
+#
+# It installs the TARBALL, never the checkout. The repository's devDependencies
+# do not exist for a consumer, and `npm test` under an old Node tests vitest and
+# vite, not the published package.
+
+name: Node floor
+description: >-
+  Pack the caller's dist/, install the tarball on the lowest Node engines.node
+  admits, and assert it loads and renders there.
+
+runs:
+  using: composite
+  steps:
+    - name: Pack the tarball and derive the floor
+      id: floor
+      shell: bash
+      run: |
+        npm pack --pack-destination "$RUNNER_TEMP"
+        node "$GITHUB_ACTION_PATH/floor.mjs"
+
+    # [LAW:one-source-of-truth] The one bare `node-version:` that names a
+    # computed value. `node-version-file` cannot give the floor, because
+    # setup-node resolves a range to its newest version, and that is the whole
+    # reason this action exists. `NODE_VERSION_LITERALS` in
+    # `test/seam/workflow-pins.ts` grants this expression text exactly, so
+    # changing it fails that gate until the grant is reread.
+    - uses: actions/setup-node@v7
+      with:
+        node-version: ${{ steps.floor.outputs.version }}
+
+    # `engine-strict` makes the consumer's npm refuse any package in the install
+    # tree whose `engines` excludes the floor, which is the refusal a real
+    # consumer on this Node would meet. `PEERS` is unquoted on purpose: it is
+    # zero or more space-separated specs.
+    - name: Install the tarball on the floor Node and probe it
+      shell: bash
+      env:
+        FLOOR_NODE: ${{ steps.floor.outputs.version }}
+        PEERS: ${{ steps.floor.outputs.peers }}
+      run: |
+        consumer="$RUNNER_TEMP/consumer"
+        mkdir "$consumer"
+        cp "$GITHUB_ACTION_PATH/probe.mjs" "$consumer/"
+        cd "$consumer"
+        npm init -y > /dev/null
+        printf 'engine-strict=true\n' > .npmrc
+        npm install "$RUNNER_TEMP"/promptctl-rich-js-*.tgz $PEERS
+        node probe.mjs

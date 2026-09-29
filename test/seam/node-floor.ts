@@ -51,11 +51,12 @@
  * green while the package breaks for everyone on 20, because no dependency's
  * manifest changed and nothing here executes a line of `src/`. That half is
  * held by a different kind of evidence entirely — a tarball packed, installed
- * under the lowest admitted Node, imported and rendered — which was done by
- * hand on the commit that set this floor and is recorded in its PR. CI cannot
- * stand in for it: `node-version-file` resolves a range to its *newest*
- * satisfying version, so the CI job exercises the top of the range and never
- * the bottom. `.github/workflows/ci.yml` says so where it configures that step.
+ * under the lowest admitted Node, imported and rendered — which
+ * `.github/actions/node-floor/` does on every PR and every release tag, as far
+ * as module top levels and one render reach; its `probe.mjs` names what that
+ * leaves unseen. The ordinary CI job cannot stand in for it: `node-version-file` resolves a range
+ * to its *newest* satisfying version, so that job exercises the top of the
+ * range and never the bottom.
  */
 
 import semver from "semver";

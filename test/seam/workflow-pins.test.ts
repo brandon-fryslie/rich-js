@@ -46,6 +46,7 @@ describe("the workflows under .github/", () => {
     expect(WORKFLOWS.map((w) => w.path)).toEqual(
       expect.arrayContaining([
         ".github/actions/gate/action.yml",
+        ".github/actions/node-floor/action.yml",
         ".github/workflows/ci.yml",
         ".github/workflows/code-review.yml",
         ".github/workflows/deploy.yml",

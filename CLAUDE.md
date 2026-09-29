@@ -165,7 +165,7 @@ The trap is worse than the browser-safe one above, and it is the same trap for b
 
 The comparison is `semver.subset`, not a check on minimum versions, and that is not incidental. `subset(">=20.19.0", "^20.19.0 || >=22.12.0")` is **false** — 21.x satisfies the first and not the second. A rule comparing minimums calls them equivalent and passes — on exactly the disjoint range shape that caused the bug.
 
-You will be adding a dependency, or a toolchain will announce the Node it wants, and a range will be sitting right there in a file you already have open. Copying it will feel like diligence — *"this is the version our tooling needs, so this is the version we need."* That is the moment. The number you are copying is evidence about your own laptop; the field it goes into is a promise to someone who will never have that package. The counter-argument is real: CI does run `vite` and its Node must satisfy it. Granted, and it dissolves on the mechanism rather than on a division of labour — CI takes its Node from this very field, and setup-node resolves a range to the *newest* version satisfying it, not the oldest; on the old range it took 24.20.0. Widening the floor to `>=20` does not drag CI down to Node 20, so CI only ever exercises the top of the supported range and never the declared floor, which nothing verifies — the gate compares declarations and never runs `src/`. Let the gate compute the published floor, and if `src/` itself genuinely needs a newer Node than any dependency does, say so in the field and in the commit, because this rule deliberately has no allow-list to hide that claim in.
+You will be adding a dependency, or a toolchain will announce the Node it wants, and a range will be sitting right there in a file you already have open. Copying it will feel like diligence — *"this is the version our tooling needs, so this is the version we need."* That is the moment. The number you are copying is evidence about your own laptop; the field it goes into is a promise to someone who will never have that package. The counter-argument is real: CI does run `vite` and its Node must satisfy it. Granted, and it dissolves on the mechanism rather than on a division of labour — CI takes its Node from this very field, and setup-node resolves a range to the *newest* version satisfying it, not the oldest; on the old range it took 24.20.0. Widening the floor to `>=20` does not drag CI down to Node 20, so the main CI job exercises the top of the supported range, and only `.github/actions/node-floor/` — the packed tarball installed and rendered on the lowest Node the field admits — runs the bottom, and only as far as module top levels and one render reach; `probe.mjs` there names what it cannot see. The gate compares declarations and never runs `src/`. Let the gate compute the published floor, and if `src/` itself genuinely needs a newer Node than any dependency does, say so in the field and in the commit, because this rule deliberately has no allow-list to hide that claim in.
 
 Say the blind spot out loud whenever you cite this gate; it is the optional-peers blind spot in another shape. A consumer does not install from our lockfile. They resolve `^8.2.0` themselves and may land on a `string-width` newer than ours, declaring a floor we have never read. This checks the tree *we* resolved. A green run proves something narrower than "the floor is right for everyone" — it proves the floor was not copied from outside the install tree, the failure that actually happened. Treat it as that and no more; a blind spot read as coverage is worse than no guard.
 
@@ -271,8 +271,10 @@ pinned to more than one major anywhere in that tree, and when a bare
 `test/seam/workflow-pins.ts` does not grant. A grant covers one occurrence, is
 keyed on the file and the value, and carries a required `why`; a grant whose
 literal has gone fails too, so the list cannot collect permissions nobody needs.
-Every job that runs `src/` reads its Node with `node-version-file: package.json`,
-the `engines` field the Node-floor section above is about. Which majors are
+Every job that runs `src/` takes its Node from `engines.node`, the field the
+Node-floor section above is about: `node-version-file: package.json` for the top
+of the range, and the one granted expression in `.github/actions/node-floor/`,
+computed from that field, for the bottom. Which majors are
 pinned and which literal is granted belong to the gate — do not restate either
 here.
 
@@ -293,9 +295,10 @@ file and think *"the others can follow later."* Or you will be adding a job and
 type a bare `node-version:` because it is quicker than asking which authority the
 job answers to. That is how drift starts: one file moves, and the rest wait for a
 later nobody schedules. Move every pin of the action in the same
-change. Use `node-version-file` unless the job genuinely does not run `src/`, and
-then add a grant whose `why` says so, with the full argument in a comment above
-the literal in the workflow, where the next person to edit it will read it.
+change. Use `node-version-file` unless the job genuinely does not run `src/`, or
+runs it at a Node computed from `engines.node` as the floor job does, and then add
+a grant whose `why` says so, with the full argument in a comment above the
+literal in the workflow, where the next person to edit it will read it.
 
 Say its blind spot out loud whenever you cite this gate: it checks that the files
 agree with each other, and no more. It cannot say whether the major they agree on

@@ -90,10 +90,40 @@ jobs:
           path: dist/
           retention-days: 1
 
+  # The same floor check `ci.yml` runs, because a tag can land on a commit CI
+  # never gated. Its own job because the action switches the job's Node.
+  #
+  # [LAW:one-source-of-truth] It probes the gate job's `dist` artifact, the one
+  # the publish job ships, not a rebuild of the same commit: a second build is
+  # a second artifact, and only the first reaches the registry. `npm ci` is
+  # here only for `floor.mjs`'s `semver`, and this job holds no `id-token`.
+  node-floor:
+    needs: gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: package.json
+          cache: npm
+
+      - run: npm ci
+
+      - name: Take dist from the gate job
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: ./.github/actions/node-floor
+
   # [LAW:effects-at-boundaries] The irreversible step and the credential that
   # authorizes it stand alone, in the smallest job that can perform them.
   publish:
-    needs: gate
+    needs: [gate, node-floor]
     runs-on: ubuntu-latest
     permissions:
       contents: read

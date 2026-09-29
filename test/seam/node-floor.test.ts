@@ -2,9 +2,9 @@
  * [LAW:verifiable-goals] "This package installs on the Node versions it says it
  * does" was established the way it had to be — `npm pack`, then the tarball
  * installed into an empty project under a Node the old range excluded, and the
- * result imported and rendered. That check ran once, by hand, on the commit
- * that made it true, and it needs a machine to still hold next year. This is
- * that claim, in the form the unit suite can keep.
+ * result imported and rendered. `.github/actions/node-floor/` now runs that
+ * on every PR, at the floor itself. This is the other half of the claim, the
+ * declarations, in the form the unit suite can keep.
  *
  * [LAW:behavior-not-structure] What is asserted is the fact a consumer meets at
  * `npm install`: which Node versions this package turns away. Nothing here
