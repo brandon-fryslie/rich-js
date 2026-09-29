@@ -19,6 +19,7 @@ import { Columns } from "../../src/renderables/columns.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Group } from "../../src/renderables/group.js";
+import { Viewport } from "../../src/renderables/viewport.js";
 import { RichText } from "../../src/core/text.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import type { Segment } from "../../src/core/segment.js";
@@ -32,6 +33,11 @@ const SPACE = " ";
 /** A click as an SGR-reporting terminal sends it: press, then release. */
 function click(x: number, y: number): string {
   return `\x1b[<0;${x + 1};${y + 1}M\x1b[<0;${x + 1};${y + 1}m`;
+}
+
+/** One notch of the wheel, as an SGR-reporting terminal sends it. */
+function wheel(direction: "up" | "down", x: number, y: number): string {
+  return `\x1b[<${direction === "up" ? 64 : 65};${x + 1};${y + 1}M`;
 }
 
 /** The pointer moving, no button held, as an SGR-reporting terminal sends it. */
@@ -322,6 +328,65 @@ describe("WidgetApp pointer", () => {
     host.type(click(3, 2));
 
     expect(heard).toEqual(["mouse_down@3,2", "mouse_up@3,2"]);
+  });
+});
+
+describe("WidgetApp wheel", () => {
+  /** Lines `from` to `to`, one a line, each reading `line <n>`. */
+  function lines(from: number, to: number): Renderable {
+    return new RichText(Array.from({ length: to - from + 1 }, (_, i) => `line ${from + i}`).join("\n"));
+  }
+
+  it("scrolls a viewport in a layout pane, under a widget it shows as under its text", async () => {
+    const host = scriptedHost({ cols: 40, rows: 6 });
+    const box = new Checkbox({ label: "box", id: "box" });
+    const viewport = new Viewport(new Group(lines(0, 0), box, lines(2, 9)));
+    const view = new Layout();
+    view.splitRow(new Layout(text("left pane")), new Layout(new Panel(viewport)));
+    const app = start(host, () => view);
+    await tick();
+    expect(rows(app)[1]).toContain("line 0");
+
+    const at = cellOf(app, "[ ] box");
+    host.type(wheel("down", at.x + 1, at.y));
+    await tick();
+    expect(viewport.offset).toBe(1);
+    expect(rows(app)[1]).toContain("[ ] box");
+    expect(box.checked).toBe(false);
+
+    const text2 = cellOf(app, "line 2");
+    host.type(wheel("down", text2.x, text2.y) + wheel("down", text2.x, text2.y));
+    await tick();
+    expect(viewport.offset).toBe(3);
+    expect(rows(app)[1]).toContain("line 3");
+
+    host.type(wheel("up", text2.x, text2.y));
+    await tick();
+    expect(viewport.offset).toBe(2);
+
+    // The wheel over the other pane has no viewport to scroll.
+    const left = cellOf(app, "left pane");
+    host.type(wheel("down", left.x, left.y));
+    await tick();
+    expect(viewport.offset).toBe(2);
+  });
+
+  it("scrolls the innermost viewport under the pointer, and only it", async () => {
+    const host = scriptedHost({ cols: 30, rows: 6 });
+    const inner = new Viewport(lines(0, 9), { rows: 2 });
+    const outer = new Viewport(new Group(inner, lines(10, 29)));
+    const app = start(host, () => outer);
+    await tick();
+
+    const inInner = cellOf(app, "line 1");
+    host.type(wheel("down", inInner.x, inInner.y));
+    await tick();
+    expect([inner.offset, outer.offset]).toEqual([1, 0]);
+
+    const inOuter = cellOf(app, "line 10");
+    host.type(wheel("down", inOuter.x, inOuter.y));
+    await tick();
+    expect([inner.offset, outer.offset]).toEqual([1, 1]);
   });
 });
 

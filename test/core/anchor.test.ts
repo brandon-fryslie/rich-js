@@ -13,7 +13,7 @@ import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Table } from "../../src/renderables/table.js";
 import { Tree } from "../../src/renderables/tree.js";
-import { Viewport } from "../../src/renderables/viewport.js";
+import { SCROLLBAR, Viewport } from "../../src/renderables/viewport.js";
 
 // [LAW:behavior-not-structure] The contract in src/core/anchor.ts, asserted
 // as what a holder of the composed frame can read off it: every cell an
@@ -138,6 +138,26 @@ describe("a cell's anchor names what its owner drew there, through every contain
     const found = placements(frameOf(viewport, { maxWidth: 10 }), owner);
     expect(new Set(found.map((p) => p.row))).toEqual(new Set([1, 2]));
     expect(found.find((p) => p.row === 1 && p.col === 0)!.y).toBe(0);
+  });
+
+  it("a Viewport names itself under every cell it shows, gutter included, around its content", () => {
+    const owner = new Owner(["abc", "def", "ghi", "jkl"]);
+    const viewport = new Viewport(owner, { rows: 2, scrollbar: SCROLLBAR });
+    viewport.scrollTo(1);
+    const frame = frameOf(new Panel(viewport), { maxWidth: 8 });
+
+    // Inside the panel's border and padding: three cells of content and one
+    // of gutter, from (2, 1) to (5, 2).
+    for (const y of [1, 2]) {
+      for (let x = 2; x <= 5; x++) {
+        const anchor = Segment.anchorAt(frame, x, y)!;
+        expect(anchor.owner).toBe(viewport);
+        expect([anchor.row, anchor.col]).toEqual([y - 1, x - 2]);
+      }
+    }
+    // The content's own anchor rides inside: "def" is its row 1.
+    expect(Segment.anchorAt(frame, 2, 1)!.inner).toMatchObject({ owner, row: 1, col: 0 });
+    expect(Segment.anchorAt(frame, 5, 1)!.inner).toBeUndefined();
   });
 
   it("a crop keeps the cells it keeps, each still true", () => {

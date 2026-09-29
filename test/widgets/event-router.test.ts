@@ -143,6 +143,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     get frame() {
       return paint(widgets);
     },
+    refresh: () => {},
   };
 
   const host = makeNodeHost(stdin, stdout);
@@ -558,20 +559,18 @@ describe("EventRouter — drag capture", () => {
     ]);
   });
 
-  it("scroll events bypass capture (they're not drag-scoped)", () => {
+  it("the wheel reaches no widget, neither the one under it nor one holding a drag", () => {
     const a = new StubWidget("a");
     const b = new StubWidget("b");
     a.place({ x: 0, y: 0, width: 5, height: 1 });
     b.place({ x: 5, y: 0, width: 5, height: 1 });
     const h = makeHarness([a, b]);
 
-    // Capture on a.
-    h.router.feed("\x1b[<0;1;1M");
-
-    // Scroll over b — routes to b (topmost hit), not the captured a.
-    h.router.feed("\x1b[<64;7;1M");
-    expect(b.mouseEvents.some((e) => e.type === "scroll_up")).toBe(true);
-    expect(a.mouseEvents.some((e) => e.type === "scroll_up")).toBe(false);
+    h.router.feed("\x1b[<0;1;1M"); // a captures a drag
+    h.router.feed("\x1b[<64;7;1M"); // the wheel over b
+    expect(a.mouseEvents.map((e) => e.type)).toEqual(["mouse_down"]);
+    expect(b.mouseEvents).toEqual([]);
+    expect(h.mouseEvents.map((e) => e.type)).toEqual(["mouse_down", "scroll_up"]);
   });
 });
 
@@ -629,7 +628,7 @@ describe("EventRouter — start/stop", () => {
     const a = new StubWidget("a");
     const fm = new DefaultFocusManager(() => [a]);
     fm.settle([a]);
-    const source: FrameSource = { focusManager: fm, frame: paint([a]) };
+    const source: FrameSource = { focusManager: fm, frame: paint([a]), refresh: () => {} };
 
     const host = makeNodeHost(stdin, stdout);
     const router = new EventRouter({ source, host });

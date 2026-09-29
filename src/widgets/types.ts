@@ -76,7 +76,10 @@ export interface ScreenMouseEvent {
 // output: column and row of the cell it drew, or, for a drag it captured,
 // relative to where it is painted now — so they fall outside the widget once
 // the pointer leaves it. `over` is whether it drew the cell under the pointer.
+// The wheel is not a widget's: it scrolls the innermost `Viewport` under the
+// pointer, whatever widget that viewport shows there.
 export interface WidgetMouseEvent extends ScreenMouseEvent {
+  type: "mouse_down" | "mouse_up" | "mouse_move";
   over: boolean;
 }
 
@@ -168,8 +171,10 @@ export interface FocusManager {
 }
 
 // What EventRouter routes against: focus for keys, and the frame most
-// recently painted for the pointer (`widgetAt`).
+// recently painted for the pointer (`widgetAt`). `refresh` paints the next
+// frame after a change no observable carries — a `Viewport` the wheel moved.
 export interface FrameSource {
   readonly focusManager: FocusManager;
   readonly frame: readonly (readonly Segment[])[];
+  refresh(): void;
 }

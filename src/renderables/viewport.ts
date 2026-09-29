@@ -23,6 +23,12 @@
  * call order, clamping after every move, against the rows and length that
  * render found. Calling an operation before the first render, or three of them
  * between two renders, is the same code path as calling one.
+ *
+ * Every cell of its rows, gutter included, is stamped as its own
+ * (`Segment.anchorLines`), around whatever anchors its content drew. So the
+ * composed frame names the viewport under any of its cells however deep it is
+ * nested, and a cell of a widget inside it names both: that is how the wheel
+ * finds the viewport to scroll.
  */
 
 import { Segment } from "../core/segment.js";
@@ -176,9 +182,12 @@ export class Viewport implements Renderable, Measurable {
     };
     const thumbCell = cell(this.scrollbar.thumb);
     const trackCell = cell(this.scrollbar.track);
-    for (const [row, line] of shown.entries()) {
-      yield* Segment.adjustLineLength(line, contentWidth);
-      yield* row >= thumb.start && row < thumb.end ? thumbCell : trackCell;
+    const rows = shown.map((line, row) => [
+      ...Segment.adjustLineLength(line, contentWidth),
+      ...(row >= thumb.start && row < thumb.end ? thumbCell : trackCell),
+    ]);
+    for (const line of Segment.anchorLines(rows, this)) {
+      yield* line;
       yield Segment.line();
     }
   }

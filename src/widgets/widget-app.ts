@@ -15,7 +15,8 @@
  *   below their owner's footprint (`OverlayRenderable`). Paint order is the
  *   z-order: a later overlay covers an earlier one.
  * - A pointer event goes to the innermost widget that drew the cell under it
- *   (`widgetAt`), in that widget's own coordinates.
+ *   (`widgetAt`), in that widget's own coordinates; the wheel goes to the
+ *   innermost `Viewport` (`viewportAt`).
  *
  * [LAW:locality-or-seam] `App` knows nothing of widgets — `host/` depends on
  * `core/` alone — and this reaches it only through the seams it already has:
@@ -100,6 +101,15 @@ export class WidgetApp implements FrameSource {
 
   stop(): void {
     this.app.stop();
+  }
+
+  /**
+   * Paint the next frame, as `App.refresh` does. A change to an observable
+   * the view read needs none; one no observable carries — a `Viewport`
+   * scrolled from a key handler — does.
+   */
+  refresh(): void {
+    this.app.refresh();
   }
 
   suspend(): Promise<void> {

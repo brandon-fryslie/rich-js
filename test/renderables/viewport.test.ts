@@ -303,7 +303,9 @@ describe("the scrollbar", () => {
   it("resolves its styles against the theme it renders for", () => {
     const theme = new Theme({ "scrollbar.thumb": "red", "scrollbar.track": "blue" });
     const segments = [...new Viewport(numbered(8), { rows: 4, scrollbar: SCROLLBAR }).render({ maxWidth: 4, theme })];
-    const styleOf = (glyph: string): Style | undefined => segments.find((s) => s.text === glyph)?.style;
+    // The look, not where the cell came from: every cell carries its anchor.
+    const styleOf = (glyph: string): Style | undefined =>
+      segments.find((s) => s.text === glyph)?.style?.withAnchor(undefined);
     expect(styleOf("┃")).toEqual(Style.parse("red"));
     expect(styleOf("│")).toEqual(Style.parse("blue"));
   });
@@ -313,7 +315,7 @@ describe("the scrollbar", () => {
     const segments = [...new Viewport(numbered(8), { rows: 2, scrollbar: blocks }).render({ maxWidth: 4 })];
     const afterTrack = segments[segments.findIndex((s) => s.text === "░") + 1]!;
     expect(afterTrack.text).toBe(" ");
-    expect(afterTrack.style).toEqual(Style.parse("on blue"));
+    expect(afterTrack.style?.withAnchor(undefined)).toEqual(Style.parse("on blue"));
   });
 
     it("takes any glyphs, and its gutter is as wide as the wider", () => {
