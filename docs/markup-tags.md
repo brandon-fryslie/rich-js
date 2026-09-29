@@ -61,7 +61,7 @@ console.print(
 Use `raw` when the tag should show its contents as written rather than styled.
 This one prints markup source, so its brackets reach the output. The contents
 are still parsed into `children` first, so they must be valid markup on their
-own, and a `[/]` inside closes the tag itself:
+own, and a `[/]` that closes nothing opened inside it closes the tag itself:
 
 ```typescript
 tags.register("source", ({ raw }) => new RichText(raw, { style: "cyan" }));
