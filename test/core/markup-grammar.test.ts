@@ -60,6 +60,7 @@
  *         ("nested-colour", "[red]a[blue]b[/blue]c[/red]"),
  *         ("nested-colour-tie", "[red][blue]x[/blue][/red]"),
  *         ("nested-colour-unclosed", "[red][blue]x"),
+ *         ("negated-attribute", "[bold red]a[not bold]b[/not bold]c[/]"),
  *     ]
  *     def esc(s):
  *         return (s.replace("\\", "\\\\").replace("\x1b", "\\e")
@@ -145,6 +146,10 @@
  * where sorting by start is the whole answer, and the `-tie` and `-unclosed`
  * pair both at 0, where the sort has nothing to separate them and only the
  * tie-break decides which colour survives (rich-markup-krk).
+ *
+ * `negated-attribute` overrides too, but it takes an attribute away: `b` must be
+ * red and not bold. The reference writes only the codes that are on, so `b` is
+ * `\e[31m` with no 22 in it. This port used to add one (rich-color-9ga).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -185,6 +190,7 @@ const CASES: readonly (readonly [string, string])[] = [
   ["nested-colour", "[red]a[blue]b[/blue]c[/red]"],
   ["nested-colour-tie", "[red][blue]x[/blue][/red]"],
   ["nested-colour-unclosed", "[red][blue]x"],
+  ["negated-attribute", "[bold red]a[not bold]b[/not bold]c[/]"],
 ];
 
 function esc(value: string): string {
