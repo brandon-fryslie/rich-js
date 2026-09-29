@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-210",
-      "ref": "refs/pull/210/merge",
-      "sha": "a2c7850a0365b8babfbe32c630221ce794d89832",
-      "timestamp": "2026-09-29T18:18:07.731Z",
-      "commits": [
-        {
-          "sha": "a2c7850a0365b8babfbe32c630221ce794d89832",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:17:21Z",
-          "message": "Merge 7cdd6d57327e01161c234e8ac45e91f9c980be0b into 2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464\n"
-        },
-        {
-          "sha": "7cdd6d57327e01161c234e8ac45e91f9c980be0b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:17:16-06:00",
-          "message": "docs(dropdown): the glyph comment names drawable's resolution, not a switch render owns (rich-render-nmy)\n"
-        },
-        {
-          "sha": "890a6958edbb2429463334e5b68f2ebc3c49d7a4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:14:27-06:00",
-          "message": "feat(render)!: every glyph a renderable chooses resolves through drawable (rich-render-nmy)\n\nasciiOnly reached only Panel, Table, Rule, Tree and three widgets; ProgressBar,\nSpinner, Markdown, Syntax, Viewport, TextInput, the Strip joiners and the\noverflow ellipsis ignored it. `drawable` in core/protocol is now the one rule:\na glyph outside ASCII gives way to its stand-in, one already ASCII is kept\n(which also stops Rule discarding a caller's `=`). test/renderables/ascii-only\nrenders every exported renderable under the switch, and needs a row for each.\n\nBREAKING CHANGE: RenderOptions.legacyWindows is removed; nothing read it.\n"
-        },
-        {
-          "sha": "dd57c0accbfd16eeb889d8529294957a6234750c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:00:51-06:00",
-          "message": "feat(console): asciiOnly reaches renderables through Console, renderToString and App (rich-render-nmy)\n\nRenderOptions.asciiOnly was read by Box.substitute and seven renderables and\nset by no public entry point. An ASCII-only terminal is a property of the\noutput device, so the switch lives where the device is configured:\nConsoleOptions, RenderToStringOptions and AppOptions (WidgetApp inherits it).\n\nRenderOptions.encoding and Console.encoding are removed: nothing read them,\nthe value was always \"utf-8\", and it would contradict asciiOnly: true.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464",
-      "timestamp": "2026-09-29T17:53:57.773Z",
+      "sha": "26b0ffd282ea721e11bb0b8ec786ce9373939e59",
+      "timestamp": "2026-09-29T18:21:28.233Z",
       "commits": [
         {
-          "sha": "2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464",
+          "sha": "26b0ffd282ea721e11bb0b8ec786ce9373939e59",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T11:53:02-06:00",
-          "message": "test(examples): rich-config full-screen with widgets in a Panel in a Layout pane, proven under both hosts (rich-runtime-fna.6) (#209)\n\n* test(examples): rich-config runs full-screen with its widgets in a Panel in a Layout pane, driven by keys and clicks under both hosts (rich-runtime-fna.6)\n\nThe widgets now sit in a \"Widgets\" panel in the left pane of a row split,\nthe preview they drive in a panel beside it. union.test.ts drives the demo\nover NodeTerminalHost and e2e/rich-config.spec.ts drives the same demo in a\nreal xterm.js over BrowserTerminalHost: Tab order through the panel, a key\nto the focused widget, a click toggling a checkbox, a click-focused text\ninput, and a dropdown overlay whose option is picked by a click.\n\n* fix(examples): rich-config's preview flows to its pane's width; the tests find cells, not code units (rich-runtime-fna.6)\n\nThe swatches, ANSI palette and progress bars were sized for a 100-column\nscreen, so an 80-column terminal cut the preview pane mid-swatch. They now lay\nout through Columns and the pane's maxWidth, like the title panel and palette\nsearch already did.\n\nThe tests' click helpers convert a string index to a cell column with cellLen,\nthe search box is found by what it draws instead of by its offset from the\ndropdown, and clickOn loses its unused rowOffset."
+          "timestamp": "2026-09-29T12:20:27-06:00",
+          "message": "feat(console): asciiOnly reaches renderables through Console, renderToString and App (rich-render-nmy) (#210)\n\n* feat(console): asciiOnly reaches renderables through Console, renderToString and App (rich-render-nmy)\n\nRenderOptions.asciiOnly was read by Box.substitute and seven renderables and\nset by no public entry point. An ASCII-only terminal is a property of the\noutput device, so the switch lives where the device is configured:\nConsoleOptions, RenderToStringOptions and AppOptions (WidgetApp inherits it).\n\nRenderOptions.encoding and Console.encoding are removed: nothing read them,\nthe value was always \"utf-8\", and it would contradict asciiOnly: true.\n\n* feat(render)!: every glyph a renderable chooses resolves through drawable (rich-render-nmy)\n\nasciiOnly reached only Panel, Table, Rule, Tree and three widgets; ProgressBar,\nSpinner, Markdown, Syntax, Viewport, TextInput, the Strip joiners and the\noverflow ellipsis ignored it. `drawable` in core/protocol is now the one rule:\na glyph outside ASCII gives way to its stand-in, one already ASCII is kept\n(which also stops Rule discarding a caller's `=`). test/renderables/ascii-only\nrenders every exported renderable under the switch, and needs a row for each.\n\nBREAKING CHANGE: RenderOptions.legacyWindows is removed; nothing read it.\n\n* docs(dropdown): the glyph comment names drawable's resolution, not a switch render owns (rich-render-nmy)"
         }
       ]
     },
