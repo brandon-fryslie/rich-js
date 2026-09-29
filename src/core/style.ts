@@ -8,6 +8,7 @@ import {
   ColorDepth,
   SURFACE_BLACK,
 } from "./color.js";
+import { shiftAnchor, type Anchor } from "./anchor.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color`. The substrate
 // a translucent colour is flattened over is `SURFACE_BLACK`, defined beside
@@ -93,6 +94,7 @@ export interface StyleOptions {
   overline?: boolean;
   link?: string;
   meta?: Record<string, unknown>;
+  anchor?: Anchor;
 }
 
 export class StyleSyntaxError extends Error {
@@ -125,29 +127,14 @@ export class Style {
   readonly overline: boolean | undefined;
   readonly link: string | undefined;
   readonly meta: Record<string, unknown> | undefined;
+  /**
+   * Where this style's cells sat in the output of whatever drew them; see
+   * `./anchor.ts`. It draws nothing, and it makes two styles that draw alike
+   * unequal, because they came from different places.
+   */
+  readonly anchor: Anchor | undefined;
 
-  constructor(options?: StyleOptions) {
-    if (!options) {
-      this.color = undefined;
-      this.bgcolor = undefined;
-      this.bold = undefined;
-      this.dim = undefined;
-      this.italic = undefined;
-      this.underline = undefined;
-      this.blink = undefined;
-      this.blink2 = undefined;
-      this.reverse = undefined;
-      this.conceal = undefined;
-      this.strike = undefined;
-      this.underline2 = undefined;
-      this.frame = undefined;
-      this.encircle = undefined;
-      this.overline = undefined;
-      this.link = undefined;
-      this.meta = undefined;
-      return;
-    }
-
+  constructor(options: StyleOptions = {}) {
     this.color = resolveColor(options.color);
     this.bgcolor = resolveColor(options.bgcolor);
     this.bold = options.bold;
@@ -165,6 +152,7 @@ export class Style {
     this.overline = options.overline;
     this.link = options.link;
     this.meta = options.meta;
+    this.anchor = options.anchor;
   }
 
   get isNull(): boolean {
@@ -185,7 +173,8 @@ export class Style {
       this.encircle === undefined &&
       this.overline === undefined &&
       this.link === undefined &&
-      this.meta === undefined
+      this.meta === undefined &&
+      this.anchor === undefined
     );
   }
 
@@ -197,70 +186,49 @@ export class Style {
     return new Style({ bgcolor: this.bgcolor });
   }
 
-  get withoutColor(): Style {
-    return new Style({
-      bold: this.bold,
-      dim: this.dim,
-      italic: this.italic,
-      underline: this.underline,
-      blink: this.blink,
-      blink2: this.blink2,
-      reverse: this.reverse,
-      conceal: this.conceal,
-      strike: this.strike,
-      underline2: this.underline2,
-      frame: this.frame,
-      encircle: this.encircle,
-      overline: this.overline,
-      link: this.link,
-      meta: this.meta,
-    });
+  /**
+   * This style with `overrides` in place of its own fields.
+   *
+   * [LAW:one-source-of-truth] The field list is the class's own fields, so a
+   * field added to `Style` is carried by every copy without being named here.
+   */
+  private with(overrides: StyleOptions): Style {
+    return new Style({ ...this, ...overrides });
   }
+
+  get withoutColor(): Style {
+    return this.with({ color: undefined, bgcolor: undefined });
+  }
+
 
   // [LAW:types-are-the-program] Structural clone helper — pure rearrangement
   // of fields, no policy. Sanitization of the URL is the trust boundary's
   // job (see RichText in text.ts); Style stays a faithful container so
   // callers that have already sanitized are not silently re-mutated.
   withLink(link: string | undefined): Style {
-    return new Style({
-      color: this.color,
-      bgcolor: this.bgcolor,
-      bold: this.bold,
-      dim: this.dim,
-      italic: this.italic,
-      underline: this.underline,
-      blink: this.blink,
-      blink2: this.blink2,
-      reverse: this.reverse,
-      conceal: this.conceal,
-      strike: this.strike,
-      underline2: this.underline2,
-      frame: this.frame,
-      encircle: this.encircle,
-      overline: this.overline,
-      link,
-      meta: this.meta,
-    });
+    return this.with({ link });
   }
 
+
   clearMetaAndLinks(): Style {
-    return new Style({
-      color: this.color,
-      bgcolor: this.bgcolor,
-      bold: this.bold,
-      dim: this.dim,
-      italic: this.italic,
-      underline: this.underline,
-      blink: this.blink,
-      blink2: this.blink2,
-      reverse: this.reverse,
-      conceal: this.conceal,
-      strike: this.strike,
-      underline2: this.underline2,
-      frame: this.frame,
-      encircle: this.encircle,
-      overline: this.overline,
-    });
+    return this.with({ link: undefined, meta: undefined });
+  }
+
+
+  /**
+   * The same look, drawn from the place `anchor` names, or from nowhere.
+   */
+  withAnchor(anchor: Anchor | undefined): Style {
+    return this.with({ anchor });
+  }
+
+
+  /**
+   * This style on the cell `cells` to the right: its anchor shifted along its
+   * row, or the style itself when it has no anchor.
+   */
+  shiftedBy(cells: number): Style {
+    return this.anchor ? this.withAnchor(shiftAnchor(this.anchor, cells)) : this;
   }
 
   /**
@@ -291,6 +259,7 @@ export class Style {
         other.meta && this.meta
           ? { ...this.meta, ...other.meta }
           : other.meta ?? this.meta,
+      anchor: other.anchor ?? this.anchor,
     });
   }
 
@@ -312,7 +281,8 @@ export class Style {
       this.frame === other.frame &&
       this.encircle === other.encircle &&
       this.overline === other.overline &&
-      this.link === other.link
+      this.link === other.link &&
+      anchorsEqual(this.anchor, other.anchor)
     );
   }
 
@@ -844,3 +814,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
  * a renderable sees outside a `Console`, as in `renderToString`.
  */
 export const DEFAULT_THEME = new Theme();
+
+function anchorsEqual(a: Anchor | undefined, b: Anchor | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.owner === b.owner && a.row === b.row && a.col === b.col && anchorsEqual(a.inner, b.inner);
+}

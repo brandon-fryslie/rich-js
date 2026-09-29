@@ -125,6 +125,7 @@ export {
   ControlType,
 } from "./core/segment.js";
 export type { ControlCode } from "./core/segment.js";
+export type { Anchor } from "./core/anchor.js";
 
 export { Box } from "./core/box.js";
 export type { EdgeChars, ContentChars, RowLevel, SubstituteOptions } from "./core/box.js";

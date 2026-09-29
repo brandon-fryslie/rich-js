@@ -5,6 +5,7 @@
 
 import { cellLen, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
+import { shiftAnchor, type Anchor } from "./anchor.js";
 
 // --- ControlType ---
 
@@ -60,6 +61,11 @@ export class Segment {
 
   /**
    * Splits at a cell position. Returns [left, right].
+   *
+   * [LAW:single-enforcer] The right half starts as many cells further into
+   * whatever drew it as the left half took from this one, and its anchor says
+   * so; see `./anchor.ts`. That is not `leftText`'s width: a cut through a
+   * wide glyph pads the left half and keeps the whole glyph on the right.
    */
   splitCells(position: CellCol): [Segment, Segment] {
     const len = this.cellLength;
@@ -68,7 +74,7 @@ export class Segment {
     const [leftText, rightText] = splitText(this.text, position);
     return [
       new Segment(leftText, this.style),
-      new Segment(rightText, this.style),
+      new Segment(rightText, this.style?.shiftedBy(len - cellLen(rightText))),
     ];
   }
 
@@ -80,6 +86,45 @@ export class Segment {
   }
 
   // --- Static transformations ---
+
+  /**
+   * `lines`, as drawn by `owner`: every segment stamped with the row and
+   * column of its first cell, wrapping whatever anchor it already carried.
+   * Control segments occupy no cell and are left as they are.
+   */
+  static anchorLines(lines: Segment[][], owner: object): Segment[][] {
+    return lines.map((line, row) => {
+      let col = 0;
+      return line.map((segment) => {
+        if (segment.isControl) return segment;
+        const style = segment.style ?? Style.null();
+        const anchored = new Segment(
+          segment.text,
+          style.withAnchor({ owner, row, col, inner: style.anchor }),
+        );
+        col += segment.cellLength;
+        return anchored;
+      });
+    });
+  }
+
+  /**
+   * The anchor of the cell at column `x` of row `y` in a composed frame, or
+   * `undefined` when that cell was drawn by no owner or lies outside the frame.
+   */
+  static anchorAt(lines: Segment[][], x: number, y: number): Anchor | undefined {
+    if (!Number.isInteger(x) || x < 0) return undefined;
+    let start = 0;
+    for (const segment of lines[y] ?? []) {
+      const end = start + segment.cellLength;
+      if (x < end) {
+        const anchor = segment.style?.anchor;
+        return anchor && shiftAnchor(anchor, x - start);
+      }
+      start = end;
+    }
+    return undefined;
+  }
 
   /**
    * Yields segments with combined styles.

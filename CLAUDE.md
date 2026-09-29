@@ -83,7 +83,7 @@ non-interactive program needs from the terminal without any of the above
 Build order within `src/core/`. Each tier imports only from tiers above it:
 
 ```
-0   cells · color · osc8 · subscription
+0   anchor · cells · color · osc8 · subscription
 1   oklch · style · wrap
 2   segment
 3   box · protocol · export-lines
@@ -121,6 +121,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.
 - **osc8** — the OSC 8 hyperlink wire grammar, one home: the terminator bytes a URL may not carry (`stripOscTerminators`, used by RichText at its data-model boundary), the producer every link is written through (`osc8Open` — sanitize + a URL-derived `id=` so a split link hovers as one — and `OSC8_CLOSE`), and the reader: `osc8Sequences` (typed scan of rendered bytes) over the `OSC8` pattern (exported for composing into a larger regex).
 - **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.
+- **anchor** — `Anchor`: a cell's row and column in the output of whatever drew it, carried on the cell's `Style` so every container passes it through untouched. `Segment.anchorLines` stamps an owner's output, `Segment.splitCells` keeps a cut half's anchor true, and `Segment.anchorAt` reads any cell of a composed frame. Its module header owns why a position travels up on the frame rather than down the render options.
 - **box** — box-drawing character sets. One `Box` type, many pre-built instances (ASCII, SQUARE, ROUNDED, HEAVY, DOUBLE, …).
 - **protocol** — `Renderable` and `Measurable` interfaces. `Renderable.render(options) → Iterable<Segment>`. `Measurable.measure(options) → {minimum, maximum}`. Single authority for the rendering contract.
 - **export-lines** — recorded segments resolved against a `TerminalTheme` into the rows every exporter draws, and the canvas they are drawn on: `exportLines`, `resolveLook`, `exportCanvas`, `parseHref`. The HTML and SVG exporters are two encodings of this one picture; its module header owns why `reverse`, `dim` and `conceal` are resolved here and not in either format.
