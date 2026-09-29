@@ -228,34 +228,25 @@ describe("TextInput", () => {
   });
 
   describe("click-to-position", () => {
-    it("mouse_down sets cursor based on x relative to bounds.x and the leading bracket", () => {
+    it("mouse_down sets cursor based on x past the leading bracket", () => {
       const t = new TextInput({ value: "abcdef" });
-      t.bounds = { x: 5, y: 0, width: 10, height: 1 };
-      // Click at screen-x = 8 → relX = 8 - 5 - 1 = 2
-      t.handleMouse(mouseDownAt(8));
+      // Column 3 of the input is the third value cell: relX = 3 - 1 = 2
+      t.handleMouse(mouseDownAt(3));
       expect(t.cursorPosition).toBe(2);
     });
 
     it("clamps to value.length when click is past the end", () => {
       const t = new TextInput({ value: "abc" });
-      t.bounds = { x: 0, y: 0, width: 10, height: 1 };
       t.handleMouse(mouseDownAt(50));
       expect(t.cursorPosition).toBe(3);
     });
 
     it("clamps to 0 when click is before the content", () => {
       const t = new TextInput({ value: "abc" });
-      t.bounds = { x: 5, y: 0, width: 10, height: 1 };
       t.handleMouse(mouseDownAt(0));
       expect(t.cursorPosition).toBe(0);
     });
 
-    it("ignores mouse_down when bounds is unset", () => {
-      const t = new TextInput({ value: "abc" });
-      t.cursorPosition = asCodePoint(1);
-      t.handleMouse(mouseDownAt(2));
-      expect(t.cursorPosition).toBe(1);
-    });
   });
 
   describe("submit", () => {
@@ -301,7 +292,6 @@ describe("TextInput", () => {
 
     it("blocks click-to-position", () => {
       const t = new TextInput({ value: "abcdef", disabled: true });
-      t.bounds = { x: 0, y: 0, width: 10, height: 1 };
       t.handleMouse(mouseDownAt(3));
       expect(t.cursorPosition).toBe(6);
     });
@@ -1185,14 +1175,4 @@ describe("TextInput", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const t = new TextInput();
-      expect(t.containsPoint(0, 0)).toBe(false);
-      t.bounds = { x: 0, y: 0, width: 10, height: 1 };
-      expect(t.containsPoint(0, 0)).toBe(true);
-      expect(t.containsPoint(9, 0)).toBe(true);
-      expect(t.containsPoint(10, 0)).toBe(false);
-    });
-  });
 });

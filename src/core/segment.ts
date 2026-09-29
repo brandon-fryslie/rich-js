@@ -112,7 +112,11 @@ export class Segment {
    * The anchor of the cell at column `x` of row `y` in a composed frame, or
    * `undefined` when that cell was drawn by no owner or lies outside the frame.
    */
-  static anchorAt(lines: Segment[][], x: number, y: number): Anchor | undefined {
+  static anchorAt(
+    lines: readonly (readonly Segment[])[],
+    x: number,
+    y: number,
+  ): Anchor | undefined {
     if (!Number.isInteger(x) || x < 0) return undefined;
     let start = 0;
     for (const segment of lines[y] ?? []) {

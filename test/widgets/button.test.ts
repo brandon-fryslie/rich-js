@@ -259,14 +259,4 @@ describe("Button", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const btn = new Button({ label: "Go" });
-      expect(btn.containsPoint(0, 0)).toBe(false);
-      btn.bounds = { x: 0, y: 0, width: 4, height: 1 };
-      expect(btn.containsPoint(0, 0)).toBe(true);
-      expect(btn.containsPoint(3, 0)).toBe(true);
-      expect(btn.containsPoint(4, 0)).toBe(false);
-    });
-  });
 });

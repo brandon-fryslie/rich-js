@@ -81,7 +81,7 @@ export class Checkbox extends WidgetBase {
 
   // --- Rendering ---
 
-  render(options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     const indicator = this.checked ? (options.asciiOnly ? "x" : "✓") : " ";
     const text = `[${indicator}] ${this.label}`;
 

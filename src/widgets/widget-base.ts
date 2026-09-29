@@ -9,14 +9,13 @@
  */
 
 import { observable, action } from "mobx";
-import type { Segment } from "../core/segment.js";
+import { Segment } from "../core/segment.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type {
   InteractiveWidget,
   KeyEvent,
   WidgetMouseEvent,
   WidgetFocusEvent,
-  WidgetBounds,
 } from "./types.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
@@ -29,14 +28,6 @@ export abstract class WidgetBase implements InteractiveWidget {
   @observable accessor active: boolean = false;
   @observable accessor disabled: boolean = false;
   @observable accessor visible: boolean = true;
-  // [LAW:types-are-the-program] Layout output, not reactive state. In
-  // DefaultScreen usage the sole writer is Screen.draw(); custom hosts
-  // (test harnesses, alternative layout loops) also write directly. The
-  // only readers are imperative input handlers (containsPoint,
-  // handleMouse). Modeling as observable adds reactive surface no
-  // consumer uses and creates a strict-mode hazard when draw() runs from
-  // a microtask outside its origin autorun.
-  accessor bounds: WidgetBounds | null = null;
 
   private readonly changeHandlers = new Set<(w: InteractiveWidget) => void>();
   private readonly submitHandlers = new Set<(w: InteractiveWidget) => void>();
@@ -74,21 +65,12 @@ export abstract class WidgetBase implements InteractiveWidget {
   }
 
   // [LAW:single-enforcer] One canonical setter for hover state lives on
-  // the base. EventRouter calls it on every widget whose hit-test result
-  // diverges from `hovered`; widgets that need to react to hover transitions
-  // override handleMouse and read the synthesized `mouse_move`. The router
-  // no longer maintains a "does this widget have setHovered" fallback path.
+  // the base. EventRouter calls it when the pointer moves onto or off this
+  // widget; widgets that need to react to hover transitions override
+  // handleMouse and read the synthesized `mouse_move`.
   @action
   setHovered(value: boolean): void {
     this.hovered = value;
-  }
-
-  // --- Hit-testing ---
-
-  containsPoint(x: number, y: number): boolean {
-    const b = this.bounds;
-    if (!b) return false;
-    return x >= b.x && x < b.x + b.width && y >= b.y && y < b.y + b.height;
   }
 
   // --- Subscriptions ---
@@ -115,8 +97,17 @@ export abstract class WidgetBase implements InteractiveWidget {
     }
   }
 
-  // --- Renderable + Measurable (abstract) ---
+  // --- Renderable + Measurable ---
 
-  abstract render(options: RenderOptions): Iterable<Segment>;
+  // [LAW:single-enforcer] The one place a widget's cells get their anchor, so
+  // a hit on any cell names this widget and the cell's place in its output
+  // (`widgetAt`). Subclasses draw; none stamps itself. A `RichText` admits no
+  // anchor, so stamping has to follow every text layout `draw` does.
+  render(options: RenderOptions): Iterable<Segment> {
+    const lines = Segment.anchorLines(Segment.splitLines(this.draw(options)), this);
+    return lines.flatMap((line, row) => (row === 0 ? line : [Segment.line(), ...line]));
+  }
+
+  protected abstract draw(options: RenderOptions): Iterable<Segment>;
   abstract measure(options: RenderOptions): { minimum: number; maximum: number };
 }

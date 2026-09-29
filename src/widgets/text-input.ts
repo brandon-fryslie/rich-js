@@ -438,16 +438,12 @@ export class TextInput extends WidgetBase {
     if (this.disabled) return;
     if (event.type !== "mouse_down") return;
 
-    const b = this.bounds;
-    if (!b) return;
-
     if (this._multiline) {
       // Multiline has no brackets; rows may have a leading continuation marker.
       // Use event.y to pick the visual row, then project event.x into its content.
       const rows = this._visualRows;
       if (!rows || rows.length === 0) return;
-      const relY = event.y - b.y;
-      const rawRowIdx = this._scrollStart + relY;
+      const rawRowIdx = this._scrollStart + event.y;
       // Clicks on minRows-padded empty rows (beyond the last real row) snap to end.
       if (rawRowIdx >= rows.length) {
         this.cursorPosition = asCodePoint(this.value.length);
@@ -458,7 +454,7 @@ export class TextInput extends WidgetBase {
       const row = rows[rowIdx]!;
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
-      const relX = asCellCol(Math.max(0, event.x - b.x - contentXOff));
+      const relX = asCellCol(Math.max(0, event.x - contentXOff));
       const pos = cellColToCodeUnitOffset(row.content, relX);
       const absPos = row.valueStart + pos;
       const chu = absPos < this.value.length ? this.value.charCodeAt(absPos) : 0;
@@ -473,7 +469,7 @@ export class TextInput extends WidgetBase {
       // display string. Add _singleLineViewportStart (the scroll offset captured
       // by _renderSingleLine) so a click on a scrolled viewport maps to the
       // correct code-unit in the underlying value.
-      const relX = asCellCol(Math.max(0, event.x - b.x - 1) + this._singleLineViewportStart);
+      const relX = asCellCol(Math.max(0, event.x - 1) + this._singleLineViewportStart);
       const displayForHitTest = this._password
         ? "•".repeat(this.value.length)
         : this.value.indexOf("\n") >= 0
@@ -807,7 +803,7 @@ export class TextInput extends WidgetBase {
 
   // --- Rendering ---
 
-  render(options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     if (this._multiline) return this._renderMultiline(options);
     return this._renderSingleLine(options);
   }

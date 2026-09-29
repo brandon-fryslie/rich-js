@@ -17,6 +17,7 @@ import {
   DefaultScreen,
   DefaultFocusManager,
   EventRouter,
+  widgetAt,
   StaticItem,
   WidgetBase,
   FLOW,
@@ -64,7 +65,7 @@ const MUTATION_CYCLE: string[][] = [
 /**
  * A widget the library does not ship, to show what the widget set is built on.
  * `WidgetBase` supplies the whole InteractiveWidget contract except its
- * abstracts — `id`, `focusable`, `handleKey`, `render`, `measure` — so a custom
+ * abstracts — `id`, `focusable`, `handleKey`, `draw`, `measure` — so a custom
  * widget is those, and nothing else: no focus bookkeeping, no hover state, no
  * hit-testing, no change/submit plumbing.
  *
@@ -90,7 +91,7 @@ class KeyEchoWidget extends WidgetBase {
     event.stop();
   }
 
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     const label = this.focused ? "custom widget (focused)" : "custom widget";
     return [
       new Segment(`${label}: `, new Style({ dim: !this.focused })),
@@ -251,13 +252,6 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
 
   // [LAW:single-enforcer] EventRouter owns the chain; the demo only adds a
   // global Ctrl-C handler and the click→focus policy.
-  const focusableAt = (x: number, y: number): InteractiveWidget | null => {
-    for (let i = allWidgets.length - 1; i >= 0; i--) {
-      const widget = allWidgets[i]!;
-      if (widget.containsPoint(x, y)) return widget;
-    }
-    return null;
-  };
 
   // [LAW:types-are-the-program] mutationTimer is initialised to null BEFORE
   // `handle` so `handle.stop()` is structurally safe to call during partial
@@ -292,8 +286,10 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
 
   router.onMouse((event) => {
     if (event.type !== "mouse_up") return;
-    const hit = focusableAt(event.x, event.y);
-    if (hit) fm.focus(hit);
+    // The frame the screen painted says who drew the cell under the pointer;
+    // focus() ignores a widget that cannot take focus.
+    const hit = widgetAt(screen.frame, event.x, event.y);
+    if (hit) fm.focus(hit.widget);
   });
 
   // [LAW:single-enforcer] Alt-screen state has exactly one restore site

@@ -270,14 +270,4 @@ describe("Checkbox", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const cb = new Checkbox({ label: "Go" });
-      expect(cb.containsPoint(0, 0)).toBe(false);
-      cb.bounds = { x: 0, y: 0, width: 6, height: 1 };
-      expect(cb.containsPoint(0, 0)).toBe(true);
-      expect(cb.containsPoint(5, 0)).toBe(true);
-      expect(cb.containsPoint(6, 0)).toBe(false);
-    });
-  });
 });

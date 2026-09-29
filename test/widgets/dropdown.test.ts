@@ -251,9 +251,8 @@ describe("Dropdown", () => {
   });
 
   describe("mouse", () => {
-    it("click inside collapsed bounds expands", () => {
+    it("click on the collapsed header expands", () => {
       const d = new Dropdown({ options: ["a", "b", "c"] });
-      d.bounds = { x: 0, y: 0, width: 8, height: 1 };
       d.handleMouse(mouseUpAt(2, 0));
       expect(d.expanded).toBe(true);
     });
@@ -261,8 +260,7 @@ describe("Dropdown", () => {
     it("click on an option row commits selection and collapses", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
       d.handleKey(enterEvent()); // expand
-      // bounds with header row 0 at y=0, options at y=1..3
-      d.bounds = { x: 0, y: 0, width: 8, height: 4 };
+      // header is row 0, options rows 1..3
       const changes: InteractiveWidget[] = [];
       d.onChange((w) => changes.push(w));
       // click option index 1 (y=2)
@@ -275,16 +273,14 @@ describe("Dropdown", () => {
     it("click on the header row while expanded collapses without change", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
       d.handleKey(enterEvent());
-      d.bounds = { x: 0, y: 0, width: 8, height: 4 };
       d.handleMouse(mouseUpAt(2, 0));
       expect(d.expanded).toBe(false);
       expect(d.selectedIndex).toBe(0);
     });
 
-    it("click outside expanded bounds collapses without change", () => {
+    it("a release outside the expanded dropdown collapses without change", () => {
       const d = new Dropdown({ options: ["a", "b", "c"], selectedIndex: 0 });
       d.handleKey(enterEvent());
-      d.bounds = { x: 0, y: 0, width: 8, height: 4 };
       d.handleMouse(mouseUpAt(50, 50));
       expect(d.expanded).toBe(false);
       expect(d.selectedIndex).toBe(0);
@@ -300,7 +296,6 @@ describe("Dropdown", () => {
 
     it("blocks expansion via click", () => {
       const d = new Dropdown({ options: ["a"], disabled: true });
-      d.bounds = { x: 0, y: 0, width: 8, height: 1 };
       d.handleMouse(mouseUpAt(2, 0));
       expect(d.expanded).toBe(false);
     });
@@ -414,16 +409,6 @@ describe("Dropdown", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const d = new Dropdown({ options: ["a"] });
-      expect(d.containsPoint(0, 0)).toBe(false);
-      d.bounds = { x: 0, y: 0, width: 5, height: 1 };
-      expect(d.containsPoint(0, 0)).toBe(true);
-      expect(d.containsPoint(4, 0)).toBe(true);
-      expect(d.containsPoint(5, 0)).toBe(false);
-    });
-  });
 
   describe("filtering", () => {
     const opts = ["alpha", "beta", "gamma", "Alphabet"];
@@ -555,7 +540,6 @@ describe("Dropdown", () => {
       const d = new Dropdown({ options: opts, selectedIndex: 0 });
       // Filter "lph" → filteredOptions = [alpha(0), Alphabet(3)]
       for (const ch of "lph") d.handleKey(charKey(ch));
-      d.bounds = { x: 0, y: 0, width: 12, height: 3 };
       d.handleMouse(mouseUpAt(2, 2)); // row index 1 → "Alphabet" (canonical idx 3)
       expect(d.selectedIndex).toBe(3);
       expect(d.filter).toBe("");
@@ -565,7 +549,6 @@ describe("Dropdown", () => {
     it("mouse click on header clears filter and collapses without selection change", () => {
       const d = new Dropdown({ options: opts, selectedIndex: 0 });
       d.handleKey(charKey("g"));
-      d.bounds = { x: 0, y: 0, width: 12, height: 2 };
       d.handleMouse(mouseUpAt(2, 0));
       expect(d.expanded).toBe(false);
       expect(d.filter).toBe("");

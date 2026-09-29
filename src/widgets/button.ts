@@ -114,7 +114,7 @@ export class Button extends WidgetBase {
 
   // --- Rendering ---
 
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     // [LAW:dataflow-not-control-flow] same segment count and width every state
     const focused = this.focused;
     const left = focused ? "[" : " ";

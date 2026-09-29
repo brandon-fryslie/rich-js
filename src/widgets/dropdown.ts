@@ -197,14 +197,15 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     if (this.disabled) return;
     if (event.type !== "mouse_up") return;
 
-    const b = this.bounds;
-    if (!b) return;
-
+    // [LAW:one-source-of-truth] The coordinates are this dropdown's own:
+    // row 0 is the header, and the overlay rows continue below it. A release
+    // lands outside them only when a press on the dropdown dragged away.
+    const overlayRows = this.expanded ? Math.max(1, this.filteredOptions.length) : 0;
     const inside =
-      event.x >= b.x &&
-      event.x < b.x + b.width &&
-      event.y >= b.y &&
-      event.y < b.y + b.height;
+      event.x >= 0 &&
+      event.x < this.width() &&
+      event.y >= 0 &&
+      event.y <= overlayRows;
 
     if (!this.expanded) {
       if (inside) {
@@ -221,15 +222,14 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       this.expanded = false;
       return;
     }
-    const rowOffset = event.y - b.y;
-    if (rowOffset === 0) {
+    if (event.y === 0) {
       // Click the header → collapse + clear filter, no selection change.
       this.filter = "";
       this.expanded = false;
       return;
     }
     // [LAW:one-source-of-truth] Filtered position → canonical idx.
-    const picked = this.filteredOptions[rowOffset - 1];
+    const picked = this.filteredOptions[event.y - 1];
     if (picked === undefined) return;
     this.selectedIndex = picked.idx;
     this.filter = "";
@@ -254,7 +254,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
 
   // --- Rendering ---
 
-  render(options: RenderOptions): Iterable<Segment> {
+  protected draw(options: RenderOptions): Iterable<Segment> {
     // Header only — the inline footprint that flow layout sees. Always
     // 1 row regardless of `expanded`/`filter`. Option rows live in
     // renderOverlay. Width invariant: maxLabelLen + 4.
@@ -389,8 +389,13 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     return m;
   }
 
+  // The header and every overlay row are this wide.
+  private width(): number {
+    return this.maxLabelLen() + 4;
+  }
+
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const width = this.maxLabelLen() + 4;
+    const width = this.width();
     return { minimum: width, maximum: width };
   }
 

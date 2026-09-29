@@ -6,9 +6,9 @@
  * with cursor-up + overwrite. Variability lives in the values (which widgets
  * are visible, what they render), never in whether the pipeline runs.
  *
- * [LAW:one-source-of-truth] Layout (widget bounds) is computed here and
- * written to widget.bounds. Mouse hit-testing reads the same bounds — the
- * Screen is the single authority on where each widget is drawn.
+ * [LAW:one-source-of-truth] The frame this screen last painted is its hit
+ * map (`frame`): every widget stamps its own cells, so the router reads who
+ * drew the cell under the pointer straight off the picture the user sees.
  *
  * [LAW:single-enforcer] Cursor management lives in one place: `draw()`
  * tracks `lastLineCount` and emits a single `\x1b[<n>A` to reposition.
@@ -36,9 +36,9 @@
  *            placed at a known coordinate regardless of flow growth.
  *
  * The overlay pass (single enforcer) runs after base layout: any widget
- * implementing OverlayRenderable contributes overlay segments anchored
- * directly below its inline footprint, and Screen unions the overlay
- * area into the widget's bounds for hit-testing.
+ * implementing OverlayRenderable contributes overlay segments painted
+ * directly below its inline footprint and stamped as that widget's rows
+ * below it, so a click on the overlay reaches the widget that drew it.
  *
  * Design alternatives considered:
  *   1. Per-widget Placement (chosen) — smallest type that covers the legal
@@ -65,7 +65,6 @@ import type {
   FocusManager,
   MountEntry,
   Placement,
-  WidgetBounds,
 } from "./types.js";
 import type { TerminalHost } from "../host/terminal-host.js";
 
@@ -103,14 +102,6 @@ interface FrameLayout {
   // the microtask-scheduled draw.
   width: number;
   lines: Segment[][];
-  bounds: { widget: InteractiveWidget; bounds: WidgetBounds }[];
-  // [LAW:single-enforcer] The set of widgets whose overlay produced rows
-  // this frame. Screen is the sole authority on overlay z-order; this set
-  // is the data EventRouter consumes (via the `widgets` accessor) to route
-  // clicks to the visually-topmost widget. Without it, paint z-order and
-  // hit-test z-order diverge — overlays paint on top but clicks fall
-  // through to widgets mounted underneath.
-  activeOverlays: Set<InteractiveWidget>;
 }
 
 export class DefaultScreen implements Screen {
@@ -127,12 +118,9 @@ export class DefaultScreen implements Screen {
   // `widgetList` above already fires reactivity on mount/unmount.
   private readonly placements = new Map<InteractiveWidget, Placement>();
 
-  // [LAW:single-enforcer] Set of widgets whose overlay rendered visible
-  // rows in the most recent frame. Updated by draw() from FrameLayout;
-  // consumed by the `widgets` getter to expose hit-test z-order to
-  // EventRouter. Mount/unmount don't touch this — it's a per-frame
-  // derivation, not mount state.
-  private _activeOverlays: Set<InteractiveWidget> = new Set();
+  // [LAW:one-source-of-truth] What the terminal shows now: written by draw()
+  // as it writes the same lines to the host, and nowhere else.
+  private painted: readonly (readonly Segment[])[] = [];
 
   private _running = false;
   private autorunDispose: IReactionDisposer | undefined;
@@ -165,21 +153,8 @@ export class DefaultScreen implements Screen {
     return this._running;
   }
 
-  // [LAW:types-are-the-program] `widgets` is the *output* of layout: the
-  // list EventRouter uses for hit-testing, in z-order — non-overlay widgets
-  // first (in mount order), overlay-active widgets last. `topmostHit`
-  // iterates this in reverse and returns the first containing widget, so
-  // overlay-active widgets win against anything mounted under them.
-  // [LAW:single-enforcer] Screen is the sole authority on z-order; the
-  // router consumes the result, never derives it itself.
-  get widgets(): readonly InteractiveWidget[] {
-    if (this._activeOverlays.size === 0) return this.widgetList;
-    const base: InteractiveWidget[] = [];
-    const top: InteractiveWidget[] = [];
-    for (const w of this.widgetList) {
-      (this._activeOverlays.has(w) ? top : base).push(w);
-    }
-    return [...base, ...top];
+  get frame(): readonly (readonly Segment[])[] {
+    return this.painted;
   }
 
   // --- Lifecycle ---
@@ -205,10 +180,6 @@ export class DefaultScreen implements Screen {
       this.widgetList = this.widgetList.filter((w) => w !== widget);
       this.placements.delete(widget);
       this.focusManager.unregister(widget);
-      // [LAW:one-source-of-truth] Drop any z-order entry for the removed
-      // widget so a later getter doesn't return a dangling reference.
-      // The next draw will rebuild this from scratch.
-      this._activeOverlays.delete(widget);
     });
   }
 
@@ -243,12 +214,12 @@ export class DefaultScreen implements Screen {
 
     // [LAW:one-source-of-truth] stop() returns the screen to a clean
     // baseline. Without these resets a stopped screen would retain the
-    // last FrameLayout (segments + bounds) — unnecessary memory and a
-    // restart hazard where the first frame after restart could leak the
-    // pre-stop layout. Same idempotent-cleanup pattern as EventRouter.stop.
+    // last FrameLayout — unnecessary memory and a restart hazard where the
+    // first frame after restart could leak the pre-stop layout. Same
+    // idempotent-cleanup pattern as EventRouter.stop.
     this.pendingFrame = null;
     this.renderScheduled = false;
-    this._activeOverlays = new Set();
+    this.painted = [];
 
     if (this.manageCursor) this.host.write("\x1b[?25h");
     if (this.lastLineCount > 0) this.host.write("\n");
@@ -279,11 +250,8 @@ export class DefaultScreen implements Screen {
     };
 
     const lines: Segment[][] = [];
-    const boundsList: { widget: InteractiveWidget; bounds: WidgetBounds }[] = [];
-    // [LAW:single-enforcer] Populated by pass 2 below. Pass 2 is the only
-    // place that decides whether a widget's overlay produced visible rows
-    // this frame — exactly where the z-order discriminator belongs.
-    const activeOverlays = new Set<InteractiveWidget>();
+    // Where pass 1 put each widget's footprint, for pass 2 to paint below.
+    const footprints: { widget: InteractiveWidget; x: number; y: number; height: number }[] = [];
 
     // Layout cursor for flow placement. `cursorY` is the next free row.
     // `lastFlowRow` tracks the most recent flow/inline row so that a
@@ -296,7 +264,7 @@ export class DefaultScreen implements Screen {
     // (Renderable.render). Position is determined by the widget's Placement.
     for (const widget of this.widgetList) {
       // [LAW:dataflow-not-control-flow] Hidden widgets still pass through the
-      // pipeline — their data just produces zero rows and zero-size bounds.
+      // pipeline — their data just produces zero rows.
       // The same operations execute every iteration.
       const visible = widget.visible;
       const segments = visible ? Array.from(widget.render(renderOptions)) : [];
@@ -307,7 +275,7 @@ export class DefaultScreen implements Screen {
       // [LAW:types-are-the-program] Single total switch on the discriminated
       // union: every legal placement gets exactly one branch, the compiler
       // enforces exhaustiveness, and the rest of the pipeline (clip to the
-      // remaining screen width, paint into `lines`, record bounds) is
+      // remaining screen width, paint into `lines`, record the footprint) is
       // identical for every kind. x/y come from the placement; the available
       // width comes from `this.width - x`.
       let x: number;
@@ -338,11 +306,11 @@ export class DefaultScreen implements Screen {
       }
 
       // [LAW:single-enforcer] Clip widget lines to the remaining screen
-      // width here so widget bounds match what actually gets painted. A
+      // width here so the footprint matches what actually gets painted. A
       // renderable that emits more cells than its allotted slot (rogue
       // widget, or an inline placement overflowing the screen edge) would
-      // otherwise compute bounds wider than reality, breaking hit-testing
-      // and the inline rightX that subsequent inline widgets pack against.
+      // otherwise push the inline rightX that subsequent inline widgets pack
+      // against past the screen edge.
       const available = Math.max(0, width - x);
       const widgetLines = available > 0
         ? rawLines.map((line) => Segment.adjustLineLength(line, available, undefined, false))
@@ -362,49 +330,37 @@ export class DefaultScreen implements Screen {
       // Fixed placements never advance the flow cursor — they are
       // independent anchors. paintLines grows the canvas as needed.
 
-      boundsList.push({ widget, bounds: { x, y, width: w, height: h } });
+      footprints.push({ widget, x, y, height: h });
     }
 
     // Pass 2 — overlays. Widgets that implement OverlayRenderable paint
-    // ON TOP of the frame, anchored directly below their inline footprint.
-    // Render order = z-order: the overlay pass runs last, so overlay rows
-    // overwrite anything that was placed below the widget by pass 1.
-    // [LAW:single-enforcer] Overlay placement, bounds-union, AND z-order
-    // for hit-testing all happen here; widgets never draw their own
-    // overlays and the router never re-derives z-order. Each widget that
-    // produces visible overlay rows is added to `activeOverlays` so the
-    // `widgets` getter can surface it as topmost.
-    for (const entry of boundsList) {
-      const widget = entry.widget;
+    // ON TOP of the frame, directly below their inline footprint. Render
+    // order = z-order: the overlay pass runs last, so overlay rows overwrite
+    // anything that was placed below the widget by pass 1, and a click on
+    // one reaches the overlay's owner because it painted that cell last.
+    // [LAW:single-enforcer] Overlay placement and stamping happen here;
+    // widgets never draw their own overlays.
+    for (const { widget, x, y, height } of footprints) {
       if (!widget.visible) continue;
       if (!hasOverlay(widget)) continue;
       const overlaySegs = widget.renderOverlay(renderOptions);
       if (overlaySegs === null) continue;
-      const overlayRawLines = Segment.splitLines(Array.from(overlaySegs));
-      if (overlayRawLines.length === 0) continue;
+      // Overlay row i is the widget's row height+i: stamp it below `height`
+      // empty rows standing in for the footprint, then drop them.
+      const overlayRawLines = Segment.anchorLines(
+        [...Array.from({ length: height }, () => []), ...Segment.splitLines(overlaySegs)],
+        widget,
+      ).slice(height);
 
-      // [LAW:single-enforcer] Same per-line clip as the base pass — bounds
-      // (used for hit-testing the overlay) match the painted output.
-      const overlayAvailable = Math.max(0, width - entry.bounds.x);
+      // [LAW:single-enforcer] Same per-line clip as the base pass.
+      const overlayAvailable = Math.max(0, width - x);
       const overlayLines = overlayAvailable > 0
         ? overlayRawLines.map((line) => Segment.adjustLineLength(line, overlayAvailable, undefined, false))
         : [];
-      if (overlayLines.length === 0) continue;
-
-      const startY = entry.bounds.y + entry.bounds.height;
-      paintLines(lines, overlayLines, entry.bounds.x, startY);
-
-      const [overlayW] = Segment.getShape(overlayLines);
-      entry.bounds = {
-        x: entry.bounds.x,
-        y: entry.bounds.y,
-        width: Math.max(entry.bounds.width, overlayW),
-        height: entry.bounds.height + overlayLines.length,
-      };
-      activeOverlays.add(widget);
+      paintLines(lines, overlayLines, x, y + height);
     }
 
-    return { width, lines, bounds: boundsList, activeOverlays };
+    return { width, lines };
   }
 
   private scheduleRender(): void {
@@ -423,18 +379,18 @@ export class DefaultScreen implements Screen {
     // outside the autorun, or the very first frame before autorun fired).
     const frame = this.pendingFrame ?? this.computeFrame();
     this.pendingFrame = null;
-    const { width, lines, bounds, activeOverlays } = frame;
+    const { width, lines } = frame;
 
-    // [LAW:single-enforcer] Bounds are written here, the only place that
-    // computes layout. `bounds` is a plain field (see widget-base.ts) — no
-    // MobX action required.
-    for (const { widget, bounds: b } of bounds) widget.bounds = b;
-
-    // [LAW:single-enforcer] Hit-test z-order is published by the same
-    // pass that wrote the bounds. The `widgets` getter reads this set to
-    // partition `widgetList` into [base, overlay-active] so EventRouter's
-    // topmostHit sees overlay owners as topmost.
-    this._activeOverlays = activeOverlays;
+    // [LAW:single-enforcer] Clip each line to terminal width so wide
+    // content can't soft-wrap and break the "1 frame row = 1 terminal
+    // row" invariant the redraw loop depends on. Without this, a wrapped
+    // line shifts every later row down by one terminal cell, which
+    // misaligns overlays and leaves wrap-continuation residue when later
+    // frames write narrower content over the same logical row.
+    // Use the frame's captured width, not a re-read of this.width —
+    // see FrameLayout for the rationale.
+    const painted = lines.map((line) => Segment.adjustLineLength(line, width, undefined, false));
+    this.painted = painted;
 
     const newCount = lines.length;
     const drawCount = Math.max(newCount, this.lastLineCount);
@@ -451,19 +407,8 @@ export class DefaultScreen implements Screen {
     buf += "\r";
 
     for (let i = 0; i < drawCount; i++) {
-      const line = lines[i];
-      if (line) {
-        // [LAW:single-enforcer] Clip each line to terminal width so wide
-        // content can't soft-wrap and break the "1 frame row = 1 terminal
-        // row" invariant the redraw loop depends on. Without this, a wrapped
-        // line shifts every later row down by one terminal cell, which
-        // misaligns overlays and leaves wrap-continuation residue when later
-        // frames write narrower content over the same logical row.
-        // Use the frame's captured width, not a re-read of this.width —
-        // see FrameLayout for the rationale.
-        const clipped = Segment.adjustLineLength(line, width, undefined, false);
-        buf += segmentsToString(clipped, this.destination);
-      }
+      const line = painted[i];
+      if (line) buf += segmentsToString(line, this.destination);
       // [LAW:single-enforcer] Erase-to-end-of-line is the single mechanism
       // for overwriting stale content. We do not pre-clear lines.
       buf += "\x1b[K";

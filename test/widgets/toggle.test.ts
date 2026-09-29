@@ -295,14 +295,4 @@ describe("Toggle", () => {
     });
   });
 
-  describe("hit-testing", () => {
-    it("hit-tests against bounds", () => {
-      const tg = new Toggle({ label: "Go" });
-      expect(tg.containsPoint(0, 0)).toBe(false);
-      tg.bounds = { x: 0, y: 0, width: 8, height: 1 };
-      expect(tg.containsPoint(0, 0)).toBe(true);
-      expect(tg.containsPoint(7, 0)).toBe(true);
-      expect(tg.containsPoint(8, 0)).toBe(false);
-    });
-  });
 });

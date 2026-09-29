@@ -14,8 +14,8 @@ class StubWidget extends WidgetBase {
 
   handleKey(_event: KeyEvent): void {}
 
-  render(_options: RenderOptions): Iterable<Segment> {
-    return [new Segment("stub")];
+  protected draw(_options: RenderOptions): Iterable<Segment> {
+    return [new Segment("st"), new Segment("ub\nnext")];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
@@ -36,7 +36,6 @@ describe("WidgetBase", () => {
     expect(widget.active).toBe(false);
     expect(widget.disabled).toBe(false);
     expect(widget.visible).toBe(true);
-    expect(widget.bounds).toBeNull();
   });
 
   it("focuses and blurs", () => {
@@ -63,15 +62,12 @@ describe("WidgetBase", () => {
     expect(widget.disabled).toBe(false);
   });
 
-  it("hit-tests against bounds", () => {
+  it("stamps every cell it draws with its own row and column", () => {
     const widget = new StubWidget();
-    expect(widget.containsPoint(0, 0)).toBe(false);
-
-    widget.bounds = { x: 5, y: 2, width: 10, height: 1 };
-    expect(widget.containsPoint(5, 2)).toBe(true);
-    expect(widget.containsPoint(14, 2)).toBe(true);
-    expect(widget.containsPoint(15, 2)).toBe(false);
-    expect(widget.containsPoint(5, 3)).toBe(false);
+    const lines = Segment.splitLines(widget.render({ maxWidth: 80 }));
+    expect(lines.map((line) => line.map((s) => s.text))).toEqual([["st", "ub"], ["next"]]);
+    expect(Segment.anchorAt(lines, 3, 0)).toMatchObject({ owner: widget, row: 0, col: 3 });
+    expect(Segment.anchorAt(lines, 2, 1)).toMatchObject({ owner: widget, row: 1, col: 2 });
   });
 
   it("fires onChange subscriptions", () => {
@@ -95,13 +91,6 @@ describe("WidgetBase", () => {
 
     widget.triggerSubmit();
     expect(submits).toHaveLength(1);
-  });
-
-  it("renders segments", () => {
-    const widget = new StubWidget();
-    const segments = [...widget.render({ maxWidth: 80 })];
-    expect(segments).toHaveLength(1);
-    expect(segments[0]!.text).toBe("stub");
   });
 
   it("measures width", () => {

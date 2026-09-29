@@ -102,7 +102,7 @@ export class Toggle extends WidgetBase {
 
   // --- Rendering ---
 
-  render(_options: RenderOptions): Iterable<Segment> {
+  protected draw(_options: RenderOptions): Iterable<Segment> {
     // Both indicators are exactly 5 cells: "[ON] " and "[OFF]".
     const indicator = this.on ? "[ON] " : "[OFF]";
     const text = `${indicator} ${this.label}`;

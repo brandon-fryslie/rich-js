@@ -4,11 +4,11 @@ export type {
   KeyHandlerOptions,
   WidgetMouseEvent,
   WidgetFocusEvent,
-  WidgetBounds,
   InteractiveWidget,
   OverlayRenderable,
   FocusManager,
   Screen,
+  FrameSource,
   MountEntry,
   Placement,
 } from "./types.js";
@@ -33,6 +33,8 @@ export type { DropdownOptions } from "./dropdown.js";
 export { Slider } from "./slider.js";
 export type { SliderOptions } from "./slider.js";
 export { EventRouter } from "./event-router.js";
+export { widgetAt } from "./hit.js";
+export type { WidgetHit } from "./hit.js";
 export type { EventRouterOptions } from "./event-router.js";
 
 // The terminal seam is not re-exported here. It lives on the `host` subpath,
