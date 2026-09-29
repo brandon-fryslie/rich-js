@@ -81,53 +81,88 @@ const demandCells = (n: number): number => Math.min(cells(n), UNBOUNDED);
  * `Infinity - 1 === Infinity` — never terminated at all for a `maxWidth` of
  * `Infinity` held open by a ratio column. Capping by want reaches that case in
  * one round.
+ *
+ * The arithmetic is exact. A share's fraction is what decides who gets a
+ * leftover cell, and in floating point two fractions that are equal — 6/14 and
+ * 6/14 for 16 cells over weights 3 and 10 — come out 0.4285714285714284 and
+ * 0.4285714285714288, so the tie went wherever the rounding error pointed.
+ * Every finite double is an integer over a power of two, so the weights are
+ * scaled to one such denominator and everything after is integer division.
  */
 function distribute(total: number, demands: readonly Bid[]): number[] {
   const granted: number[] = demands.map(() => 0);
   let open = demands
     .map((_, index) => index)
     .filter((index) => demands[index]!.weight > 0 && demands[index]!.want > 0);
-  let remaining = Math.max(0, total);
+  const weights = exactWeights(demands.map((demand) => demand.weight));
+  const wants = demands.map((demand) => BigInt(demand.want));
+  // A budget past every open want grants each its want either way, and that
+  // bound is what keeps an unbounded offer — `Infinity` is a legal outer width
+  // — out of integer arithmetic that cannot hold it.
+  const wantSum = open.reduce((sum, index) => sum + wants[index]!, 0n);
+  let remaining = total >= wantSum ? wantSum : BigInt(Math.max(0, total));
 
-  const weightOf = (indices: readonly number[]): number =>
-    indices.reduce((sum, index) => sum + demands[index]!.weight, 0);
+  const weightOf = (indices: readonly number[]): bigint =>
+    indices.reduce((sum, index) => sum + weights[index]!, 0n);
 
-  while (open.length > 0 && remaining > 0) {
+  while (open.length > 0 && remaining > 0n) {
     const weightSum = weightOf(open);
     const capped = open.filter(
-      (index) => (remaining * demands[index]!.weight) / weightSum >= demands[index]!.want,
+      (index) => remaining * weights[index]! >= wants[index]! * weightSum,
     );
     if (capped.length === 0) break;
     for (const index of capped) {
       granted[index] = demands[index]!.want;
-      remaining -= demands[index]!.want;
+      remaining -= wants[index]!;
     }
     open = open.filter((index) => !capped.includes(index));
   }
 
-  if (open.length > 0 && remaining > 0) {
+  if (open.length > 0 && remaining > 0n) {
     const weightSum = weightOf(open);
-    const shares = open.map((index) => (remaining * demands[index]!.weight) / weightSum);
-    const whole = shares.map(Math.floor);
-    let residue = remaining - whole.reduce((sum, cells) => sum + cells, 0);
+    const products = open.map((index) => remaining * weights[index]!);
+    const whole = products.map((product) => product / weightSum);
+    const fraction = products.map((product) => product % weightSum);
+    let residue = remaining - whole.reduce((sum, cells) => sum + cells, 0n);
 
     // The cells the shares left as fractions go to the largest fraction first,
     // ties to the leftmost column, so the total lands exactly on `remaining`.
     const byFraction = open
       .map((_, slot) => slot)
-      .sort((a, b) => shares[b]! - whole[b]! - (shares[a]! - whole[a]!) || a - b);
+      .sort((a, b) => fraction[b]! > fraction[a]! ? 1 : fraction[b]! < fraction[a]! ? -1 : a - b);
     for (const slot of byFraction) {
-      if (residue <= 0) break;
+      if (residue <= 0n) break;
       whole[slot]!++;
       residue--;
     }
 
     open.forEach((index, slot) => {
-      granted[index] = whole[slot]!;
+      granted[index] = Number(whole[slot]!);
     });
   }
 
   return granted;
+}
+
+/**
+ * Weights as integers in one exact proportion: each is scaled by the one power
+ * of two that makes all of them whole. Doubling a double is exact, and one that
+ * is not yet whole is below 2^53, so the loop neither rounds nor overflows. A
+ * weight that is not finite leaves the loop as it came and `BigInt` refuses it
+ * with a RangeError — the loud end of what `demandCells` exists to prevent.
+ */
+function exactWeights(weights: readonly number[]): bigint[] {
+  const scaled = weights.map((weight) => {
+    let mantissa = weight;
+    let exponent = 0;
+    while (Number.isFinite(mantissa) && !Number.isInteger(mantissa)) {
+      mantissa *= 2;
+      exponent++;
+    }
+    return { mantissa: BigInt(mantissa), exponent };
+  });
+  const common = Math.max(0, ...scaled.map(({ exponent }) => exponent));
+  return scaled.map(({ mantissa, exponent }) => mantissa << BigInt(common - exponent));
 }
 
 /** The cells a box costs a table, independent of how wide the table is. */
