@@ -22,7 +22,8 @@ import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 
 /**
  * What one column asks of the width division: cells it takes off the top,
- * cells it would use if the table were not squeezed, how hard it pulls when
+ * cells it would use if the table were not squeezed, the cells its content
+ * measures (which is what `measure` reports), how hard it pulls when
  * the cells run short, its share of the cells left once every column has what
  * it wanted, and how hard it pulls on whatever the shares leave.
  *
@@ -33,7 +34,8 @@ import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
  * seat and takes its `ratio` of what the bounded columns leave: a pass of its
  * own, because a ratio is a proportion and a `weight` is a count of cells, and
  * weighing one against the other let `ratio: 100` truncate a neighbour the
- * table had room for. `stretch` is zero unless the table expands, and a table
+ * table had room for. A column with no cell to measure wants the offer on
+ * content of one cell. `stretch` is zero unless the table expands, and a table
  * with a ratio column leaves nothing to stretch. Cells are left over only when
  * no column is short, so neither a share nor a stretch can widen one column
  * while another is still truncated.
@@ -41,6 +43,7 @@ import { getStyle, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 interface ColumnDemand {
   readonly reserved: number;
   readonly want: number;
+  readonly natural: number;
   readonly weight: number;
   readonly ratio: number;
   readonly stretch: number;
@@ -625,11 +628,13 @@ export class Table implements Renderable, Measurable {
    * [LAW:one-source-of-truth] Both ends of the range are widths the geometry
    * actually produced — the maximum from the demands as they stand, the
    * minimum from the same layout with every column asking for a single cell.
-   * Neither end stretches: a stretch only spends cells an offer happens to
-   * leave over, and a renderable reports the width its content wants rather
-   * than the width it was offered. Letting it in made an expanding table
-   * measure `Infinity` against an unbounded offer, where `withBoundedWidth`
-   * needs a natural width to fall back on.
+   * Neither end stretches, and each column asks for its `natural` width, not
+   * its `want`: a stretch only spends cells an offer happens to leave over, a
+   * column with no cell wants the offer without its content measuring it, and
+   * a renderable reports the width its content wants rather than the width it
+   * was offered. Letting either in made the table measure `Infinity` against
+   * an unbounded offer, where `withBoundedWidth` needs a natural width to fall
+   * back on — an expanding table, and an empty `Table.grid()`.
    * Neither can exceed the width offered and the tighter request cannot exceed
    * the looser one, so the range cannot invert. Deriving the minimum from raw
    * column and padding counts instead is what used to return
@@ -642,7 +647,7 @@ export class Table implements Renderable, Measurable {
     const demands = this._columnDemands();
     const laidOut = layoutTable(
       outerWidth,
-      demands.map((demand) => ({ ...demand, stretch: 0 })),
+      demands.map((demand) => ({ ...demand, want: demand.natural, stretch: 0 })),
       this.padding,
       frame,
     ).totalWidth;
@@ -657,6 +662,7 @@ export class Table implements Renderable, Measurable {
       demands.map((demand) => ({
         reserved: 0,
         want: Math.min(1, demand.want),
+        natural: 0,
         weight: 1,
         ratio: 0,
         stretch: 0,
@@ -727,7 +733,7 @@ export class Table implements Renderable, Measurable {
         // [LAW:single-enforcer] floored where it is parsed, the same rule
         // `normalizePadding` applies to a negative padding side.
         const declared = demandCells(col.width);
-        return { reserved: declared, want: declared, weight: 0, ratio: 0, stretch: 0 };
+        return { reserved: declared, want: declared, natural: declared, weight: 0, ratio: 0, stretch: 0 };
       }
       // A flexible column takes its share of whatever the bounded columns
       // leave; every other column asks for its natural width, whether or not a
@@ -740,9 +746,10 @@ export class Table implements Renderable, Measurable {
       const share = columnShare(col);
       if (share > 0) {
         const floor = Math.max(1, demandCells(col.minWidth ?? 0));
-        return { reserved: 0, want: floor, weight: floor, ratio: share, stretch: 0 };
+        return { reserved: 0, want: floor, natural: floor, weight: floor, ratio: share, stretch: 0 };
       }
-      const natural = demandCells(this._naturalWidth(col, index));
+      const widest = this._widestCell(col, index);
+      const natural = demandCells(this._bounded(col, widest ?? 1));
       // `expand` is a stretch rather than a larger want: the column still
       // competes for its natural width like any other, and only the cells left
       // once every column has that are shared out. A larger want looks
@@ -756,10 +763,22 @@ export class Table implements Renderable, Measurable {
       // well, so `width: 6` under `expand` renders 21 cells wide — an option
       // quietly meaning something else, the defect rich-justify-0cr exists to
       // remove. A reservation's stretch is zero above.
+      //
+      // A column with no cell at all — no rows, and neither header nor footer
+      // drawn — has nothing to size to, which is not sizing to nothing. The
+      // reference measures it `Measurement(1, max_width)`: content of one cell
+      // that wants the whole offer, so a rowless table fills it. Reading "no
+      // cells" as zero sized it to a two-cell box instead. Its want is the
+      // offer and its `natural` the one cell, so `measure` still reports what
+      // the table holds. Every such column pulls alike, whatever its `maxWidth`
+      // caps it at: weighing by the want made one uncapped column `UNBOUNDED`
+      // times heavier than a neighbour it should split the offer with.
+      const empty = widest === undefined;
       return {
         reserved: 0,
-        want: natural,
-        weight: natural,
+        want: empty ? demandCells(this._bounded(col, UNBOUNDED)) : natural,
+        natural,
+        weight: empty ? 1 : natural,
         ratio: 0,
         stretch: this.expand ? natural : 0,
       };
@@ -784,12 +803,13 @@ export class Table implements Renderable, Measurable {
   }
 
   /**
-   * The widest cell in a column, bounded by its own `minWidth`/`maxWidth`.
-   * Zero for a column that draws nothing — a gutter asks for its padding and
-   * nothing else.
+   * The widest cell in a column, or `undefined` when the column has no cell to
+   * measure. Zero is a column whose cells draw nothing — a gutter asks for its
+   * padding and nothing else — and is not the same answer.
+   * [LAW:types-are-the-program]
    */
-  private _naturalWidth(col: Column, index: number): number {
-    let natural = 0;
+  private _widestCell(col: Column, index: number): number | undefined {
+    let widest: number | undefined;
     for (const cell of this._columnCells(col, index)) {
       // The stamped cell, so the width a column asks for is the width its text
       // will occupy — measuring the raw value sized this column to
@@ -800,15 +820,23 @@ export class Table implements Renderable, Measurable {
       // a pre-existing gap: `_columnDemands` carries no `RenderOptions`, so
       // `Measurement.get` is not reachable from here. It contributes a wrong
       // non-zero width, and narrowing that is its own change.
-      natural = Math.max(
-        natural,
+      widest = Math.max(
+        widest ?? 0,
         cell instanceof RichText ? cellLen(cell.plain) : cellLen(String(cell)),
       );
     }
-    // A bound is a count of cells, read by the rule every width is read by:
-    // NaN and a negative are zero cells, so a NaN floor bounds nothing and a
-    // NaN ceiling is a ceiling of zero, as `width: NaN` is. A bare `Math.max`
-    // returns NaN instead, and the column vanishes. [LAW:one-source-of-truth]
+    return widest;
+  }
+
+  /**
+   * A natural width held to the column's own `minWidth`/`maxWidth`.
+   *
+   * A bound is a count of cells, read by the rule every width is read by: NaN
+   * and a negative are zero cells, so a NaN floor bounds nothing and a NaN
+   * ceiling is a ceiling of zero, as `width: NaN` is. A bare `Math.max` returns
+   * NaN instead, and the column vanishes. [LAW:one-source-of-truth]
+   */
+  private _bounded(col: Column, natural: number): number {
     return Math.min(
       Math.max(natural, cells(col.minWidth ?? 0)),
       cells(col.maxWidth ?? Infinity),

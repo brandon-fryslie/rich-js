@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Table, Column } from "../../src/renderables/table.js";
+import { Table, Column, type ColumnOptions, type TableOptions } from "../../src/renderables/table.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { RichText } from "../../src/core/text.js";
 import { MarkupError } from "../../src/core/markup.js";
@@ -433,6 +433,84 @@ describe("Table", () => {
     const lines = collectLines(t, { maxWidth: 40 });
     // Should render header even with no data rows
     expect(lines.some((l) => l.includes("Col"))).toBe(true);
+  });
+
+  // A column with no cell at all has nothing to size to, and the reference
+  // reads that as the whole offer rather than as zero. Every frame below is
+  // Rich's own output for the same table, captured at the same width.
+  describe("a table with no cells to measure fills the offer", () => {
+    const rowless = (columns: readonly ColumnOptions[], options: TableOptions = {}): Table => {
+      const t = new Table({ showHeader: false, ...options });
+      for (const column of columns) t.addColumn("LONGHEADER", column);
+      return t;
+    };
+
+    it.each([
+      [20, 1, ["┌──────────────────┐", "└──────────────────┘"]],
+      [20, 2, ["┌─────────┬────────┐", "└─────────┴────────┘"]],
+      [40, 1, ["┌──────────────────────────────────────┐", "└──────────────────────────────────────┘"]],
+      [40, 2, ["┌───────────────────┬──────────────────┐", "└───────────────────┴──────────────────┘"]],
+    ])("at %i cells with %i column(s)", (width, count, frame) => {
+      const table = rowless(Array.from({ length: count }, () => ({})));
+      expect(collectLines(table, { maxWidth: width })).toEqual(frame);
+    });
+
+    it("still sizes to a header it draws", () => {
+      expect(collectLines(rowless([{}], { showHeader: true }), { maxWidth: 40 })).toEqual([
+        "┏━━━━━━━━━━━━┓",
+        "┃ LONGHEADER ┃",
+        "┡━━━━━━━━━━━━┩",
+        "└────────────┘",
+      ]);
+    });
+
+    it("takes what a declared width leaves", () => {
+      expect(collectLines(rowless([{}, { width: 5 }]), { maxWidth: 40 })).toEqual([
+        "┌──────────────────────────────┬───────┐",
+        "└──────────────────────────────┴───────┘",
+      ]);
+    });
+
+    it("is held to its own maxWidth, and a neighbour takes the rest", () => {
+      expect(collectLines(rowless([{ maxWidth: 7 }, {}]), { maxWidth: 40 })).toEqual([
+        "┌─────────┬────────────────────────────┐",
+        "└─────────┴────────────────────────────┘",
+      ]);
+    });
+
+    // The fill is a stretch on content of one cell, so the table still has a
+    // natural width: a parent measuring it is told what it holds, not handed
+    // back the offer, and an unbounded offer has something to fall back on.
+    it("measures its content, not the offer", () => {
+      expect(rowless([{}, {}]).measure({ maxWidth: 40 })).toEqual({ minimum: 9, maximum: 9 });
+    });
+
+    it("renders at an unbounded offer", () => {
+      expect(collectLines(rowless([{}, {}]), { maxWidth: Infinity })).toEqual([
+        "┌───┬───┐",
+        "└───┴───┘",
+      ]);
+      const grid = Table.grid();
+      grid.addColumn();
+      grid.addColumn();
+      expect(collectLines(grid, { maxWidth: Infinity })).toEqual([]);
+    });
+
+    // The reference's expanding frame at either setting: a ratio is honoured
+    // whether or not the table expands, the divergence `_columnDemands` names.
+    it.each([false, true])("leaves a ratio neighbour its floor (expand: %s)", (expand) => {
+      expect(collectLines(rowless([{ ratio: 1 }, {}], { expand }), { maxWidth: 40 })).toEqual([
+        "┌───┬──────────────────────────────────┐",
+        "└───┴──────────────────────────────────┘",
+      ]);
+    });
+
+    it("stretches past its maxWidth when the table expands", () => {
+      expect(collectLines(rowless([{ maxWidth: 7 }], { expand: true }), { maxWidth: 40 })).toEqual([
+        "┌──────────────────────────────────────┐",
+        "└──────────────────────────────────────┘",
+      ]);
+    });
   });
 
   it("addSection adds separator between rows", () => {

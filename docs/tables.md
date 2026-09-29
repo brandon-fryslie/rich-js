@@ -261,7 +261,7 @@ console.print(standings);
 
 ## Empty tables
 
-An empty table (no columns) prints a blank line, and a table with columns but no rows prints only its header. Check `rowCount` before printing if you need different behavior:
+An empty table (no columns) prints a blank line, and a table with columns but no rows prints only its header. With neither header nor footer drawn, a column has nothing to size to, so it fills the width offered, as Rich's does: an empty frame across the terminal. It still measures as one cell of content, so a parent that sizes to what it holds, like a `Panel` with `expand: false`, stays narrow. Check `rowCount` before printing if you need different behavior:
 
 ```typescript
 const results = new Table();
