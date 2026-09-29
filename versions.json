@@ -2,6 +2,42 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-224",
+      "ref": "refs/pull/224/merge",
+      "sha": "4a2227ab1bc436e383fe6cc357e30c3d14235003",
+      "timestamp": "2026-09-29T22:16:12.325Z",
+      "commits": [
+        {
+          "sha": "4a2227ab1bc436e383fe6cc357e30c3d14235003",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:11:38-06:00",
+          "message": "Merge b07689fb995d79325b783418432bf51953cc42cd into 77b2e5d61934221eaf9dc4015c19971c873eca48\n"
+        },
+        {
+          "sha": "b07689fb995d79325b783418432bf51953cc42cd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:11:31-06:00",
+          "message": "chore(deps): go-template-js 0.10.0; release 0.18.0\n"
+        },
+        {
+          "sha": "f501518265aec3a1230616841f8cdbdc5926b0b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:02:22-06:00",
+          "message": "test(template-bindings): a body's error arrives as the engine's call-site error\n\ngo-template-js reports a function body's error as Go does — error calling\n<name>: <err> — with the body's error as its cause, and refuses a\nfractional integer argument as Go words it.\n"
+        },
+        {
+          "sha": "885efc1a5405530b776700742a1d9f0dccbd21bf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:55:36-06:00",
+          "message": "feat(template-bindings): declare arity on every binding\n\ngo-template-js 0.10.0 requires every TemplateFunc to declare its arity and\nrefuses a wrong argument count at the gate, so the bodies' own count checks\n(ramp's value/easing/stop minimum, asAmount's undefined arm) are deleted.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "afff4e3710707f82437fe96f09ed80fdae46287d",
