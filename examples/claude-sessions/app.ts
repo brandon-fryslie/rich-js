@@ -8,7 +8,7 @@
  * capabilities are the values that differ between node and browser entries.
  */
 
-import { Console } from "../../src/index.js";
+import { Console, Live } from "../../src/index.js";
 import { hostEnvironment } from "../../src/host/host-environment.js";
 import type { FileSystem } from "../_capabilities/index.js";
 import type { TerminalHost } from "../../src/host/terminal-host.js";
@@ -40,7 +40,7 @@ import {
   type AppState,
 } from "./state.js";
 import { lookup, type Action } from "./keymap.js";
-import { buildShell } from "./views/shell.js";
+import { buildShell, sessionsView } from "./views/shell.js";
 
 function isTyping(state: AppState): boolean {
   return state.search.mode === "typing-local" || state.search.mode === "typing-global";
@@ -131,27 +131,32 @@ export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
     throw new Error("claude-sessions requires an interactive TTY");
   }
 
-  host.start();
+  // Live + altScreen owns the alternate screen and the cursor, and hands the
+  // frame the terminal's height as its region, which the panes divide.
+  // autoRefresh: false — refresh on keypress only.
+  const live = new Live(undefined, {
+    console: consoleOut,
+    altScreen: true,
+    autoRefresh: false,
+    verticalOverflow: "crop",
+  });
+  const view = sessionsView();
 
   const cleanup = () => {
+    live.stop();
     host.setRawMode(false);
-    host.write("\x1b[?25h\x1b[0m\x1b[?1049l");
     host.stop();
   };
 
-  host.write("\x1b[?1049h\x1b[?25l");
+  host.start();
   host.setRawMode(true);
+  live.start();
 
-  const render = (initial = false) => {
-    const termHeight = host.size().rows;
-    // On first paint, clear the alt screen. Subsequent frames just
-    // cursor-home and overwrite — Window pads to exact height so there's
-    // no stale content, and no visible flicker.
-    host.write(initial ? "\x1b[2J\x1b[H" : "\x1b[H");
-    consoleOut.print(buildShell(state, termHeight));
+  const render = () => {
+    live.update(buildShell(state, view), { refresh: true });
   };
 
-  render(true);
+  render();
 
   await new Promise<void>((resolve, reject) => {
     let unsubscribe: (() => void) | undefined;

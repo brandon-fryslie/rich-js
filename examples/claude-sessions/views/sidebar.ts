@@ -1,7 +1,6 @@
 import { Panel, Tree, RichText } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import type { Renderable, Viewport } from "../../../src/index.js";
 import type { AppState } from "../state.js";
-import { Window } from "../../shared/window.js";
 
 function fmtSize(n: number): string {
   if (n < 1024) return `${n}B`;
@@ -21,30 +20,25 @@ function fmtMtime(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function buildSidebar(state: AppState, innerHeight: number, focused: boolean): Renderable {
+export function buildSidebar(state: AppState, viewport: Viewport, focused: boolean): Renderable {
   const project = state.projects[state.selectedProjectIndex];
   const rootLabel = new RichText(
     state.sidebarLevel === "project" ? "Projects" : (project?.displayName ?? "?"),
-    { end: "" },
+    { end: "", noWrap: true, overflow: "ellipsis" },
   );
   rootLabel.stylize("bold white");
   const tree = new Tree(rootLabel, { guide_style: "dim" });
-
-  let selectedLine = 1;
-  let totalLines = 1;
 
   if (state.sidebarLevel === "project") {
     state.projects.forEach((p, i) => {
       const isSel = i === state.selectedProjectIndex;
       const label = new RichText(
         `${p.displayName}  (${p.sessions.length})`,
-        { end: "" },
+        { end: "", noWrap: true, overflow: "ellipsis" },
       );
       if (isSel) label.stylize("reverse bold");
       else label.stylize("white");
       tree.add(label);
-      totalLines++;
-      if (isSel) selectedLine = totalLines;
     });
   } else {
     const sessions = project?.sessions ?? [];
@@ -52,25 +46,24 @@ export function buildSidebar(state: AppState, innerHeight: number, focused: bool
       const isSel = i === state.selectedSessionIndex;
       const titleText = s.slug ?? s.fileName.slice(0, 8);
       const meta = `${fmtSize(s.size)} · ${fmtMtime(s.mtime)}`;
-      const label = new RichText(`${titleText}  `, { end: "" });
+      const label = new RichText(`${titleText}  `, { end: "", noWrap: true, overflow: "ellipsis" });
       label.append(meta, "dim");
       if (isSel) label.stylize("reverse bold", 0, titleText.length);
       tree.add(label);
-      totalLines++;
-      if (isSel) selectedLine = totalLines;
     });
   }
 
-  const maxOffset = Math.max(0, totalLines - innerHeight);
-  const desired = selectedLine - Math.floor(innerHeight / 2);
-  const offset = Math.max(0, Math.min(desired, maxOffset));
-
-  const windowed = new Window(tree, innerHeight, offset);
+  // The tree's first line is its root, and each entry is one line under it:
+  // labels end at the pane's edge rather than wrapping, so an entry's index
+  // fixes its line.
+  const selectedLine = 1 + (state.sidebarLevel === "project" ? state.selectedProjectIndex : state.selectedSessionIndex);
+  viewport.content = tree;
+  viewport.ensureVisible(selectedLine, selectedLine + 1);
   const titlePrefix = focused ? "▸ " : "";
   const title = state.sidebarLevel === "project"
     ? `${titlePrefix}Projects (${state.projects.length})`
     : `${titlePrefix}Sessions (${project?.sessions.length ?? 0})`;
-  return new Panel(windowed, {
+  return new Panel(viewport, {
     title,
     borderStyle: focused ? "bold cyan" : "dim cyan",
     padding: [0, 1],

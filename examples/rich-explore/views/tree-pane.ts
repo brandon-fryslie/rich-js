@@ -1,9 +1,8 @@
 import { Tree, Panel, RichText } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import type { Renderable, Viewport } from "../../../src/index.js";
 import type { AppState, NodeData } from "../state.js";
 import { visibleNodes } from "../state.js";
 import type { FileKind } from "../fs/kinds.js";
-import { Window } from "./window.js";
 
 const KIND_STYLE: Record<FileKind, string> = {
   directory: "bold blue",
@@ -22,7 +21,7 @@ function expansionIndicator(node: NodeData): string {
 function buildLabel(node: NodeData, state: AppState): RichText {
   const label = new RichText(
     `${expansionIndicator(node)}${node.entry.name}`,
-    { end: "" },
+    { end: "", noWrap: true, overflow: "ellipsis" },
   );
   if (node.entry.path === state.selectedPath) {
     label.stylize("reverse bold");
@@ -44,11 +43,11 @@ function addNodeToTree(parentTree: Tree, node: NodeData, state: AppState): void 
 
 export function buildTreePane(
   state: AppState,
-  innerHeight: number,
+  viewport: Viewport,
   focused: boolean,
 ): Renderable {
   const root = state.nodes.get(state.rootPath);
-  const rootLabel = new RichText(root?.entry.path ?? state.rootPath, { end: "" });
+  const rootLabel = new RichText(root?.entry.path ?? state.rootPath, { end: "", noWrap: true, overflow: "ellipsis" });
   rootLabel.stylize("bold white");
   const tree = new Tree(rootLabel, { guide_style: "dim" });
 
@@ -60,16 +59,13 @@ export function buildTreePane(
   }
 
   const visible = visibleNodes(state);
-  // Tree rendered layout: line 0 = root label, line 1..N = visible nodes
+  // Tree rendered layout: line 0 = root label, line 1..N = visible nodes.
+  // Every label ends at the pane's edge rather than wrapping, so each is one line.
   const idx = visible.findIndex((n) => n.entry.path === state.selectedPath);
   const selectedLine = 1 + (idx < 0 ? 0 : idx);
-  const totalLines = 1 + visible.length;
-  const maxOffset = Math.max(0, totalLines - innerHeight);
-  const desired = selectedLine - Math.floor(innerHeight / 2);
-  const offset = Math.max(0, Math.min(desired, maxOffset));
-
-  const windowed = new Window(tree, innerHeight, offset);
-  return new Panel(windowed, {
+  viewport.content = tree;
+  viewport.ensureVisible(selectedLine, selectedLine + 1);
+  return new Panel(viewport, {
     title: focused ? `▸ Tree (${visible.length})` : `Tree (${visible.length})`,
     borderStyle: focused ? "bold cyan" : "dim cyan",
     padding: [0, 1],

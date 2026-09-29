@@ -1,5 +1,5 @@
 import { Panel, RichText, Constrain } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import type { Renderable, Viewport } from "../../../src/index.js";
 import type { FileSystem } from "../../_capabilities/index.js";
 import type { Entry } from "../fs/walk.js";
 import type { FileKind } from "../fs/kinds.js";
@@ -11,7 +11,6 @@ import { renderDirectory } from "../renderers/directory.js";
 import { renderBinary } from "../renderers/binary.js";
 import { renderFallback } from "../renderers/fallback.js";
 import { CoverageRenderable } from "../renderers/coverage.js";
-import { Window } from "./window.js";
 
 // Kind → renderer dispatch table. To support a new file type, add a
 // variant to FileKind in fs/kinds.ts, a renderer module, and a row here.
@@ -32,8 +31,7 @@ const RENDERERS: Record<FileKind, RenderFn> = {
 export function buildPreviewPane(
   fs: FileSystem,
   entry: Entry | undefined,
-  innerHeight: number,
-  offset: number,
+  viewport: Viewport,
   focused: boolean,
   mode: Mode = "browse",
 ): Renderable {
@@ -41,12 +39,14 @@ export function buildPreviewPane(
   const baseBorder = focused ? "bold " : "dim ";
 
   const MAX_CONTENT_WIDTH = 120;
-  const wrap = (inner: Renderable, title: string, color: string) =>
-    new Panel(new Window(new Constrain(inner, MAX_CONTENT_WIDTH), innerHeight, offset), {
+  const wrap = (inner: Renderable, title: string, color: string) => {
+    viewport.content = new Constrain(inner, MAX_CONTENT_WIDTH);
+    return new Panel(viewport, {
       title: `${focusPrefix}${title}`,
       borderStyle: baseBorder + color,
       padding: [0, 1],
     });
+  };
 
   // Coverage mode: show the kitchen-sink renderable exercising all exports
   if (mode === "coverage") {

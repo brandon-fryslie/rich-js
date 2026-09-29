@@ -32,7 +32,6 @@ export interface AppState {
   readonly nodes: ReadonlyMap<string, NodeData>;
   readonly selectedPath: string;
   readonly focus: Focus;
-  readonly previewOffset: number;
   readonly mode: Mode;
 }
 
@@ -60,7 +59,6 @@ export function initialState(fs: FileSystem, rootPath: string): AppState {
     nodes: new Map([[rootPath, root]]),
     selectedPath: rootPath,
     focus: "tree",
-    previewOffset: 0,
     mode: "browse",
   };
   const loaded = loadChildren(base, rootPath);
