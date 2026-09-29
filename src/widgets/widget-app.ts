@@ -24,7 +24,6 @@
 
 import { Reaction } from "mobx";
 import { Segment } from "../core/segment.js";
-import { asCellCol, type CellCol } from "../core/cells.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { App, type AppOptions, type AppPhase } from "../host/app.js";
@@ -62,7 +61,13 @@ export class WidgetApp implements FrameSource {
     });
     this.focusManager = this.focus;
     this.router = new EventRouter({ source: this, host: options.host });
-    this.app.onPaint(() => this.focus.settle());
+    this.app.onPaint(() => {
+      this.focus.settle(this.drawn);
+      this.router.framePainted();
+    });
+    // [LAW:single-enforcer] `settle` judges every focus move, so every move
+    // paints — including one onto a widget no frame has read yet.
+    this.focus.onChange(() => this.app.refresh());
   }
 
   get phase(): AppPhase {
@@ -81,8 +86,10 @@ export class WidgetApp implements FrameSource {
   async run(): Promise<void> {
     // App refuses a second run; this one must not end the input of the first.
     if (this.app.phase !== "idle") return this.app.run();
-    const running = this.app.run();
+    // Listening before the app starts, so a first frame that throws — and
+    // stops the host — is not followed by a subscription that restarts it.
     this.router.start();
+    const running = this.app.run();
     try {
       await running;
     } finally {
@@ -123,9 +130,12 @@ export class WidgetApp implements FrameSource {
     // The view, its render and the overlays are all tracked, so an observable
     // any of them reads — a label, `focused`, the state that picks what the
     // view shows — paints the next frame when it changes.
+    // An overlay reports what it draws too: a widget in it is on the frame,
+    // and visiting `drawn` in insertion order paints its overlay in turn.
+    const render = { ...options, onDraw };
     const lines = tracked(this.reaction, () => {
-      const base = Segment.splitLines(view().render({ ...options, onDraw }));
-      for (const widget of drawn) paintOverlay(base, widget, options);
+      const base = Segment.splitLines(view().render(render));
+      for (const widget of drawn) paintOverlay(base, widget, render);
       return base;
     });
     this.drawn = [...drawn];
@@ -183,54 +193,13 @@ function paintOverlay(lines: Segment[][], widget: WidgetBase, options: RenderOpt
 function paintLines(lines: Segment[][], rows: Segment[][], x: number, y: number): void {
   while (lines.length < y + rows.length) lines.push([]);
   rows.forEach((source, i) => {
-    const width = lineCellLength(source);
-    if (width > 0) lines[y + i] = spliceCells(lines[y + i]!, asCellCol(x), width, source);
+    const row = lines[y + i]!;
+    // Padded to `x`, so a row that ends short of the overlay still reaches it.
+    const gap = Math.max(0, x - Segment.getLineLength(row));
+    const [before = [], , after = []] = Segment.divide(
+      [...row, new Segment(" ".repeat(gap))],
+      [x, x + Segment.getLineLength(source)],
+    );
+    lines[y + i] = [...before, ...source, ...after];
   });
-}
-
-function lineCellLength(line: Segment[]): CellCol {
-  let total = 0;
-  for (const s of line) total += s.cellLength;
-  return asCellCol(total);
-}
-
-// Return a new row with cells [start, start+length) replaced by
-// `replacement`. Pads the prefix with spaces if `row` is shorter than
-// `start`. Honors wide characters and styled segments by splitting at cell
-// boundaries.
-function spliceCells(
-  row: Segment[],
-  start: CellCol,
-  length: CellCol,
-  replacement: Segment[],
-): Segment[] {
-  const rowWidth = lineCellLength(row);
-  const padded: Segment[] = row.slice();
-  if (rowWidth < start) {
-    padded.push(new Segment(" ".repeat(start - rowWidth)));
-  }
-
-  const prefix: Segment[] = [];
-  const suffix: Segment[] = [];
-  let cursor = 0;
-  for (const seg of padded) {
-    const segEnd = cursor + seg.cellLength;
-    if (segEnd <= start) {
-      prefix.push(seg);
-    } else if (cursor >= start + length) {
-      suffix.push(seg);
-    } else {
-      if (cursor < start) {
-        const [head] = seg.splitCells(asCellCol(start - cursor));
-        if (head.hasText) prefix.push(head);
-      }
-      if (segEnd > start + length) {
-        const [, tail] = seg.splitCells(asCellCol(start + length - cursor));
-        if (tail.hasText) suffix.push(tail);
-      }
-    }
-    cursor = segEnd;
-  }
-
-  return [...prefix, ...replacement, ...suffix];
 }

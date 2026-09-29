@@ -15,7 +15,7 @@
  * through the app's reaction into a Renderable that calls renderTemplate(value).
  * Nothing in this chain branches on whether the typing happened; the data
  * (value) flows into the next frame every keystroke. The test feeds bytes via
- * stdin (the same path a user types through), waits one microtask per frame,
+ * stdin (the same path a user types through), waits one task per frame,
  * and asserts the stdout output changed in a way that matches the data.
  */
 
@@ -57,9 +57,9 @@ class CapturingStream extends Writable {
   }
 }
 
-async function flush(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
+// A repaint is a task away (`App.refresh`).
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function makeReactiveOutput(input: TextInput, engine: Engine<RichText>): StaticItem {

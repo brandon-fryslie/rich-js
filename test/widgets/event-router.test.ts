@@ -136,7 +136,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
   const stdout = new CapturingStream();
   let widgets = initial;
   const fm = new DefaultFocusManager(() => widgets);
-  fm.settle();
+  fm.settle(widgets);
 
   const source: FrameSource = {
     focusManager: fm,
@@ -170,7 +170,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     mouseEvents,
     setWidgets: (next) => {
       widgets = next;
-      fm.settle();
+      fm.settle(widgets);
     },
   };
 }
@@ -628,7 +628,7 @@ describe("EventRouter — start/stop", () => {
     const stdout = new CapturingStream();
     const a = new StubWidget("a");
     const fm = new DefaultFocusManager(() => [a]);
-    fm.settle();
+    fm.settle([a]);
     const source: FrameSource = { focusManager: fm, frame: paint([a]) };
 
     const host = makeNodeHost(stdin, stdout);

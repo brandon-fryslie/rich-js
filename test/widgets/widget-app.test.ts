@@ -18,7 +18,8 @@ import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Group } from "../../src/renderables/group.js";
 import { RichText } from "../../src/core/text.js";
-import type { Renderable } from "../../src/core/protocol.js";
+import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import type { Segment } from "../../src/core/segment.js";
 import type { AppOptions } from "../../src/host/app.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
 
@@ -29,6 +30,11 @@ const SPACE = " ";
 /** A click as an SGR-reporting terminal sends it: press, then release. */
 function click(x: number, y: number): string {
   return `\x1b[<0;${x + 1};${y + 1}M\x1b[<0;${x + 1};${y + 1}m`;
+}
+
+/** The pointer moving, no button held, as an SGR-reporting terminal sends it. */
+function move(x: number, y: number): string {
+  return `\x1b[<35;${x + 1};${y + 1}M`;
 }
 
 /** Where `text` starts on the frame on screen, as a cell. */
@@ -160,6 +166,38 @@ describe("WidgetApp focus", () => {
     expect(app.focusManager.current).toBe(b);
   });
 
+  it("keeps focus on a widget the frame crops for the moment", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const a = new Checkbox({ label: "a", id: "a" });
+    const b = new Checkbox({ label: "b", id: "b" });
+    const app = start(host, () => new Group(a, text("\n"), b));
+    await tick();
+    host.type(TAB);
+    expect(app.focusManager.current).toBe(b);
+
+    host.resize({ cols: 20, rows: 1 });
+    await tick();
+    expect(rows(app).join("\n")).not.toContain("b");
+    expect(app.focusManager.current).toBe(b);
+
+    host.resize({ cols: 20, rows: 4 });
+    await tick();
+    expect(b.focused).toBe(true);
+  });
+
+  it("moves focus off a widget no frame draws, though nothing had focus", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const never = new Checkbox({ label: "never", id: "never" });
+    const app = start(host, () => text("no widgets"));
+    await tick();
+
+    app.focusManager.focus(never);
+    await tick();
+
+    expect(app.focusManager.current).toBeNull();
+    expect(never.focused).toBe(false);
+  });
+
   it("tells focus listeners when the frame moves focus", async () => {
     const host = scriptedHost({ cols: 20, rows: 4 });
     const a = new Checkbox({ label: "a", id: "a" });
@@ -211,6 +249,47 @@ describe("WidgetApp pointer", () => {
     expect(dropdown.selectedIndex).toBe(1);
     expect(dropdown.expanded).toBe(false);
     expect(rows(app).join("\n")).toContain("below");
+  });
+
+  it("reads hover off each frame, under a pointer that has not moved", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    const box = new Checkbox({ label: "a", id: "a" });
+    const shown = observable.box(true);
+    const app = start(host, () => (shown.get() ? box : text("")));
+    await tick();
+    const at = cellOf(app, "[ ] a");
+    host.type(move(at.x, at.y));
+    expect(box.hovered).toBe(true);
+
+    runInAction(() => shown.set(false));
+    await tick();
+    expect(box.hovered).toBe(false);
+
+    runInAction(() => shown.set(true));
+    await tick();
+    expect(box.hovered).toBe(true);
+  });
+
+  it("gives focus and clicks to a widget drawn in another widget's overlay", async () => {
+    const host = scriptedHost({ cols: 20, rows: 6 });
+    const ok = new Button({ label: "ok", id: "ok" });
+    class WithPopup extends Checkbox {
+      renderOverlay(options: RenderOptions): Iterable<Segment> {
+        return ok.render(options);
+      }
+    }
+    const owner = new WithPopup({ label: "owner", id: "owner" });
+    const app = start(host, () => owner);
+    await tick();
+    let submitted = 0;
+    ok.onSubmit(() => (submitted += 1));
+
+    host.type(TAB);
+    expect(app.focusManager.current).toBe(ok);
+
+    const at = cellOf(app, "ok");
+    host.type(click(at.x, at.y));
+    expect(submitted).toBe(1);
   });
 
   it("hears every pointer event in terminal cells before any widget", async () => {
@@ -283,6 +362,53 @@ describe("WidgetApp lifecycle", () => {
 
     await expect(app.run()).rejects.toThrow("view broke");
     expect(host.raw()).toBe(false);
+  });
+
+  it("still hears keys from a view that asks for a frame on every frame", async () => {
+    const host = scriptedHost({ cols: 20, rows: 3 });
+    // A new widget each frame: focus settles onto each one, and each move
+    // asks for the next frame.
+    const app = new WidgetApp({
+      host,
+      surface: "alternate",
+      view: () => new Checkbox({ label: "a", id: "a" }),
+    });
+    app.onKey((event) => {
+      if (event.ctrl && event.key === "c") app.stop();
+    }, { priority: "high" });
+    const done = app.run();
+    await tick();
+
+    host.type("\x03");
+
+    await expect(done).resolves.toBeUndefined();
+  });
+
+  it("subscribes to no input on a host a failed first frame has stopped", async () => {
+    const script = scriptedHost({ cols: 20, rows: 3 });
+    const calls: string[] = [];
+    const host = {
+      ...script,
+      onData: (handler: Parameters<typeof script.onData>[0]) => {
+        calls.push("onData");
+        return script.onData(handler);
+      },
+      stop: () => {
+        calls.push("stop");
+        script.stop();
+      },
+    };
+    const app = new WidgetApp({
+      host,
+      surface: "alternate",
+      view: () => {
+        throw new Error("view broke");
+      },
+    });
+
+    await expect(app.run()).rejects.toThrow("view broke");
+
+    expect(calls.lastIndexOf("onData")).toBeLessThan(calls.lastIndexOf("stop"));
   });
 
   it("refuses a second run without ending the input of the first", async () => {

@@ -187,13 +187,18 @@ export class App {
   }
 
   /**
-   * Paint a new frame from the view, once, after the current task: every
-   * change made before then lands in the one frame.
+   * Paint a new frame from the view, once, in a later task: every change made
+   * before then lands in the one frame.
+   *
+   * [LAW:no-ambient-temporal-coupling] A task, not a microtask. Input is read
+   * between tasks, so a view whose every frame asks for another still hears
+   * its keys — Ctrl+C included — where a microtask chain would starve them
+   * for as long as it ran.
    */
   refresh(): void {
     if (this.refreshQueued) return;
     this.refreshQueued = true;
-    queueMicrotask(() => {
+    setTimeout(() => {
       this.refreshQueued = false;
       // [LAW:types-are-the-program] Only a running app holds the terminal; a
       // suspended one repaints when it resumes, and a stopped one never does.

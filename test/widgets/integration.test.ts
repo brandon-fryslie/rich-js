@@ -85,9 +85,9 @@ function screenText(app: WidgetApp): string {
   return app.frame.map((line) => line.map((s) => s.text).join("")).join("\n");
 }
 
-async function flush(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
+// A repaint is a task away (`App.refresh`).
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 describe("widget pipeline integration", () => {

@@ -176,7 +176,9 @@ export class EventRouter {
   // (Slider's _dragging) and reports a column outside it. Cleared on the next
   // mouse_up.
   private captured: Target | null = null;
-  // The widget the pointer last moved over; the one widget `hovered` is true on.
+  // Where the terminal last reported the pointer, and the widget under it on
+  // the frame on screen — the one widget `hovered` is true on.
+  private pointer: { readonly x: number; readonly y: number } | null = null;
   private hoveredWidget: InteractiveWidget | null = null;
 
   // [LAW:dataflow-not-control-flow] Ordered chain; the dispatcher walks it
@@ -233,7 +235,20 @@ export class EventRouter {
     }
     this.buffer = EMPTY_BYTES;
     this.captured = null;
+    this.pointer = null;
     this.hover(null);
+  }
+
+  /**
+   * Read hover again off the frame just painted: under a pointer that has not
+   * moved, a widget may have gone, moved, or arrived.
+   *
+   * [LAW:one-source-of-truth] Hover is the widget under the pointer on the
+   * frame on screen, so it is re-read whenever either one changes.
+   */
+  framePainted(): void {
+    const hit = this.pointer && widgetAt(this.source.frame, this.pointer.x, this.pointer.y);
+    this.hover(hit ? hit.widget : null);
   }
 
   // --- External hooks ---
@@ -549,7 +564,8 @@ export class EventRouter {
 
     const frame = this.source.frame;
     const hit = widgetAt(frame, event.x, event.y);
-    if (event.type === "mouse_move") this.hover(hit?.widget ?? null);
+    this.pointer = { x: event.x, y: event.y };
+    this.hover(hit?.widget ?? null);
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the
     // capture value and event type pick the target. mouse_down opens a

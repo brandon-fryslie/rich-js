@@ -33,7 +33,7 @@ export class DefaultFocusManager implements FocusManager {
   }
 
   get widgets(): readonly InteractiveWidget[] {
-    return this.onScreen().filter((w) => w.focusable && !w.disabled);
+    return this.onScreen().filter(takesFocus);
   }
 
   @action
@@ -60,7 +60,7 @@ export class DefaultFocusManager implements FocusManager {
   // it focuses it first, and the frame that shows it keeps it (`settle`).
   @action
   focus(widget: InteractiveWidget): void {
-    if (!widget.focusable || widget.disabled) return;
+    if (!takesFocus(widget)) return;
     this.setFocus(widget);
   }
 
@@ -77,18 +77,22 @@ export class DefaultFocusManager implements FocusManager {
 
   /**
    * Put focus where the frame just painted lets it rest: it stays on a widget
-   * that frame shows and that can take it, and otherwise moves to the first
-   * one that can, or to none.
+   * the view drew (`drawn`) that can take it, and otherwise moves to the first
+   * one on screen that can, or to none.
+   *
+   * Drawn, not on screen: a widget cropped for the moment — the terminal
+   * shrank, a viewport scrolled, an overlay covers it — is still in the view,
+   * and keeps focus and whatever focus holds, like a half-typed filter.
    *
    * [LAW:single-enforcer] The one place focus follows the frame — onto the
    * first widget when the app starts, off a widget that stopped being drawn
    * or was disabled.
    */
   @action
-  settle(): void {
-    const focusable = this.widgets;
-    if (this.currentWidget && focusable.includes(this.currentWidget)) return;
-    const first = focusable[0];
+  settle(drawn: readonly InteractiveWidget[]): void {
+    const current = this.currentWidget;
+    if (current && takesFocus(current) && drawn.includes(current)) return;
+    const first = this.widgets[0];
     if (first) this.setFocus(first);
     else this.blur();
   }
@@ -127,4 +131,8 @@ export class DefaultFocusManager implements FocusManager {
       handler(this.currentWidget);
     }
   }
+}
+
+function takesFocus(widget: InteractiveWidget): boolean {
+  return widget.focusable && !widget.disabled;
 }
