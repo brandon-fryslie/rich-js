@@ -39,10 +39,12 @@
 import { ColorDepth, resolveDestination } from "./color.js";
 import type { DetectColorOptions, Destination } from "./color.js";
 import type { Segment } from "./segment.js";
-import type { Renderable, RenderOptions, StyleErrorHandler } from "./protocol.js";
+import type { Renderable, RenderOptions } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
 
-export interface RenderToStringOptions {
+// [LAW:one-source-of-truth] Handed to the render unchanged, so their contract is
+// `RenderOptions`' and is not restated here.
+export interface RenderToStringOptions extends Pick<RenderOptions, "asciiOnly" | "onStyleError"> {
   /** Cell width to render into. Default 80. */
   width?: number;
   /**
@@ -72,17 +74,6 @@ export interface RenderToStringOptions {
    * (no TTY or TERM=dumb: false). `false` with `colorSystem: null` is plain text.
    */
   hyperlinks?: boolean;
-  /**
-   * The output can draw only ASCII: boxes, rules and tree guides draw with
-   * ASCII characters. Default false.
-   */
-  asciiOnly?: boolean;
-  /**
-   * Hears each style string the render degrades to unstyled; throw from it
-   * to make the render strict. The contract is `RenderOptions.onStyleError`,
-   * which this is handed to unchanged. Absent, a dropped style passes silently.
-   */
-  onStyleError?: StyleErrorHandler;
 }
 
 const DEFAULT_WIDTH = 80;

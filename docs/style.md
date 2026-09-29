@@ -239,6 +239,6 @@ const console = new Console({
 console.print("[bold rd]typo color[/]"); // throws StyleSyntaxError
 ```
 
-The error leaves `console.print` instead of being dropped. There is no separate
+The error leaves `console.print`, or `renderToString`, instead of being dropped. There is no separate
 strict option, because this handler is the strict mode. Use it in tests and in
 development, so a typo fails at the line that printed it.
