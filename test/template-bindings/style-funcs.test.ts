@@ -386,11 +386,13 @@ describe("error surface", () => {
     } catch (err) {
       thrown = err;
     }
-    expect(thrown).toBeInstanceOf(TypeError);
+    // The engine reports the body's error at the call site, as Go does, and
+    // keeps it as the cause.
     expect(thrown).toMatchObject({
       message: expect.stringContaining(`base style "${style}" is not a style definition`),
-      cause: expect.any(StyleSyntaxError),
+      cause: expect.objectContaining({ cause: expect.any(StyleSyntaxError) }),
     });
+    expect((thrown as Error).cause).toBeInstanceOf(TypeError);
   });
 
   it("a scope fragment whose base style is a definition is styled over it", () => {

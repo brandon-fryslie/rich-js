@@ -132,7 +132,9 @@ describe("color math matches the underlying functions", () => {
   });
 
   it("darken's levels are a whole number, as an integer slot requires", () => {
-    expect(() => colorText(`{{ darken "${a}" 1.5 }}`)).toThrow(/darken/);
+    expect(() => colorText(`{{ darken "${a}" 1.5 }}`)).toThrow(
+      expect.objectContaining({ funcName: "darken", message: "expected integer; found 1.5" }),
+    );
   });
 
   it("contrastOn picks the readable pole; readableOn keeps the color itself", () => {
