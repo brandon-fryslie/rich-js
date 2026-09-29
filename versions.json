@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-202",
+      "ref": "refs/pull/202/merge",
+      "sha": "5c2f18f77961589dd0eab22d37281ffbe134dd4d",
+      "timestamp": "2026-09-29T13:31:38.691Z",
+      "commits": [
+        {
+          "sha": "5c2f18f77961589dd0eab22d37281ffbe134dd4d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:30:49-06:00",
+          "message": "Merge a72f4947b4fb4cdd47ff12ea5830cabf269cb7f9 into d336dde439458a82bc94ae88697eecc44d0c6d5f\n"
+        },
+        {
+          "sha": "a72f4947b4fb4cdd47ff12ea5830cabf269cb7f9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:29:59-06:00",
+          "message": "fix(table): a NaN column bound is no bound, parsed where it enters the column (rich-table-hge)\n\nA minWidth or maxWidth of NaN reached Math.max/Math.min in _naturalWidth,\npoisoned the natural width, and erased the whole column. The bounds are now\naccessors that hold NaN as undefined, so the guarantee holds for a bound\nassigned after construction too. Infinity stays a real bound. The existing\n'treats NaN column bounds as no bounds' test asserted the collapsed frame;\nit now asserts the content-sized one its name promises.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-201",
       "ref": "refs/pull/201/merge",
       "sha": "59cc9cb34a66b8d219e3b118150290af47364c16",
