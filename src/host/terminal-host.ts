@@ -90,8 +90,7 @@ export interface TerminalHost {
 
   /**
    * Whether the host is connected to a real interactive terminal — input and
-   * output both. Drives default option values (e.g. `manageCursor`,
-   * `manageRawMode`) in the runtime; non-TTY hosts default those features off.
+   * output both: what an interactive program checks before it starts.
    */
   readonly isTTY: boolean;
 

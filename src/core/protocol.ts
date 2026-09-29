@@ -51,6 +51,15 @@ export interface RenderOptions {
    * the render strict: the error leaves `render`.
    */
   onStyleError?: StyleErrorHandler;
+  /**
+   * Told of each owner that stamps its output (`core/anchor`) as it starts to
+   * render, so the calls arrive in document order: a container's children in
+   * the order it renders them, an owner before the owners nested in it. A
+   * container forwards it by passing its options on, which every container
+   * does. An owner rendered twice is told twice. A render made to measure is
+   * not drawing and is not told (`measuring`).
+   */
+  onDraw?: (owner: object) => void;
 }
 
 /**
@@ -213,6 +222,19 @@ export function withCellWidth(options: RenderOptions): RenderOptions {
  * rather than zero, and saying so names the cause — where `String.repeat` and
  * `new Array` only ever name their own argument.
  */
+/**
+ * `options` as a measurement is asked with. A `measure` that renders to learn
+ * its shape draws nothing on the frame, so it reports no owner to `onDraw` —
+ * one that did would put a widget in document order at the moment a
+ * container measured it, and keep one the frame then cropped away.
+ *
+ * [LAW:single-enforcer] Every measurement starts here: `Measurement.get` and
+ * `withBoundedWidth` ask through it, and each `measure` passes it on.
+ */
+export function measuring(options: RenderOptions): RenderOptions {
+  return { ...options, onDraw: undefined };
+}
+
 export function withBoundedWidth(
   options: RenderOptions,
   self: Measurable,
@@ -220,7 +242,7 @@ export function withBoundedWidth(
   const parsed = withCellWidth(options);
   if (Number.isFinite(parsed.maxWidth)) return parsed;
 
-  const natural = self.measure(parsed).maximum;
+  const natural = self.measure(measuring(parsed)).maximum;
   if (!Number.isFinite(natural)) {
     throw new RangeError(
       "maxWidth is unbounded and this renderable has no natural width to fall " +

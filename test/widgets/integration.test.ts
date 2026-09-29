@@ -1,10 +1,10 @@
 /**
  * End-to-end integration test for the interactive widget pipeline.
  *
- * Drives DefaultScreen + EventRouter with a fake stdin (PassThrough) and
- * a captured stdout (Writable subclass), feeds raw byte sequences, and
- * asserts both widget state transitions and the ANSI output that Screen
- * produced. This is the machine-verifiable acceptance criterion for the
+ * Drives a WidgetApp over a NodeTerminalHost with a fake stdin
+ * (PassThrough) and a captured stdout (Writable subclass), feeds raw byte
+ * sequences, and asserts both widget state transitions and the frame the
+ * app painted. This is the machine-verifiable acceptance criterion for the
  * widget framework: green here means the whole stack agrees end to end.
  *
  * [LAW:verifiable-goals] exit-zero from `npm run test` proves the
@@ -13,9 +13,10 @@
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { PassThrough, Writable } from "stream";
-import { DefaultScreen } from "../../src/widgets/screen.js";
-import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
-import { EventRouter } from "../../src/widgets/event-router.js";
+import stripAnsi from "strip-ansi";
+import { WidgetApp } from "../../src/widgets/widget-app.js";
+import { Group } from "../../src/renderables/group.js";
+import type { Renderable } from "../../src/core/protocol.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { Button } from "../../src/widgets/button.js";
 import { Checkbox } from "../../src/widgets/checkbox.js";
@@ -48,8 +49,7 @@ class CapturingStream extends Writable {
 }
 
 interface Harness {
-  screen: DefaultScreen;
-  router: EventRouter;
+  app: WidgetApp;
   stdout: CapturingStream;
   stdin: PassThrough;
   button: Button;
@@ -58,47 +58,36 @@ interface Harness {
   input: TextInput;
 }
 
-function makeHarness(): Harness {
+function makeApp(view: () => Renderable): { app: WidgetApp; stdout: CapturingStream; stdin: PassThrough } {
   const stdout = new CapturingStream();
   const stdin = new PassThrough();
-  const fm = new DefaultFocusManager();
-
-  // [LAW:single-enforcer] One host wraps the mock streams for both Screen
-  // and EventRouter — same contract production code uses, just satisfied by
-  // PassThrough + CapturingStream instead of process.stdin/stdout.
+  // [LAW:single-enforcer] One host wraps the mock streams for both the
+  // painting and the input — same contract production code uses, just
+  // satisfied by PassThrough + CapturingStream instead of process.stdin/stdout.
   const host = new NodeTerminalHost({
     stdin: stdin as unknown as NodeJS.ReadStream,
     stdout: stdout as unknown as NodeJS.WriteStream,
   });
+  return { app: new WidgetApp({ host, surface: "alternate", view }), stdout, stdin };
+}
 
-  const screen = new DefaultScreen({
-    host,
-    width: 80,
-    colorSystem: null,
-    manageCursor: false,
-    focusManager: fm,
-  });
-
-  const router = new EventRouter({
-    screen,
-    host,
-    manageMouse: false,
-    manageRawMode: false,
-  });
-
+function makeHarness(): Harness {
   const button = new Button({ label: "Save", id: "btn" });
   const checkbox = new Checkbox({ label: "Agree", id: "cb" });
   const toggle = new Toggle({ label: "Sound", id: "tg" });
   const input = new TextInput({ placeholder: "name", id: "in" });
-
-  screen.mount(button, checkbox, toggle, input);
-
-  return { screen, router, stdout, stdin, button, checkbox, toggle, input };
+  const view = new Group(button, checkbox, toggle, input);
+  return { ...makeApp(() => view), button, checkbox, toggle, input };
 }
 
-async function flush(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
+/** The frame on screen, as the user reads it. */
+function screenText(app: WidgetApp): string {
+  return app.frame.map((line) => line.map((s) => s.text).join("")).join("\n");
+}
+
+// A repaint is a task away (`App.refresh`).
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 describe("widget pipeline integration", () => {
@@ -106,26 +95,24 @@ describe("widget pipeline integration", () => {
 
   beforeEach(() => {
     h = makeHarness();
-    h.screen.start();
-    h.router.start();
+    void h.app.run();
   });
 
   afterEach(() => {
-    h.router.stop();
-    h.screen.stop();
+    h.app.stop();
   });
 
   describe("focus navigation via tab", () => {
-    it("first mounted widget auto-focuses", async () => {
+    it("the first widget in the view is focused before any key", async () => {
       await flush();
-      expect(h.screen.focusManager.current).toBe(h.button);
+      expect(h.app.focusManager.current).toBe(h.button);
       expect(h.button.focused).toBe(true);
     });
 
     it("tab byte (0x09) advances focus to the next widget", async () => {
       await flush();
-      h.router.feed(Buffer.from([0x09]));
-      expect(h.screen.focusManager.current).toBe(h.checkbox);
+      h.stdin.write(Buffer.from([0x09]));
+      expect(h.app.focusManager.current).toBe(h.checkbox);
       expect(h.button.focused).toBe(false);
       expect(h.checkbox.focused).toBe(true);
     });
@@ -134,67 +121,63 @@ describe("widget pipeline integration", () => {
       await flush();
       const order = [h.checkbox, h.toggle, h.input, h.button];
       for (const expected of order) {
-        h.router.feed(Buffer.from([0x09]));
-        expect(h.screen.focusManager.current).toBe(expected);
+        h.stdin.write(Buffer.from([0x09]));
+        expect(h.app.focusManager.current).toBe(expected);
       }
     });
 
     it("shift+tab (ESC[Z) moves focus backward", async () => {
       await flush();
-      // Wrap forward to checkbox first, then shift+tab back to button.
-      h.router.feed(Buffer.from([0x09]));
-      expect(h.screen.focusManager.current).toBe(h.checkbox);
-      h.router.feed(Buffer.from([0x1b, 0x5b, 0x5a])); // ESC[Z
-      expect(h.screen.focusManager.current).toBe(h.button);
+      h.stdin.write(Buffer.from([0x09]));
+      expect(h.app.focusManager.current).toBe(h.checkbox);
+      h.stdin.write(Buffer.from([0x1b, 0x5b, 0x5a])); // ESC[Z
+      expect(h.app.focusManager.current).toBe(h.button);
     });
   });
 
   describe("widget interaction via keyboard", () => {
     it("space on Checkbox toggles checked", async () => {
       await flush();
-      // Tab past Button to Checkbox.
-      h.router.feed(Buffer.from([0x09]));
-      expect(h.screen.focusManager.current).toBe(h.checkbox);
-      h.router.feed(Buffer.from([0x20])); // space
+      h.stdin.write(Buffer.from([0x09]));
+      expect(h.app.focusManager.current).toBe(h.checkbox);
+      h.stdin.write(Buffer.from([0x20])); // space
       expect(h.checkbox.checked).toBe(true);
-      h.router.feed(Buffer.from([0x20]));
+      h.stdin.write(Buffer.from([0x20]));
       expect(h.checkbox.checked).toBe(false);
     });
 
     it("space on Toggle flips on", async () => {
       await flush();
-      h.router.feed(Buffer.from([0x09, 0x09])); // tab twice → Toggle
-      expect(h.screen.focusManager.current).toBe(h.toggle);
-      h.router.feed(Buffer.from([0x20]));
+      h.stdin.write(Buffer.from([0x09, 0x09])); // tab twice → Toggle
+      expect(h.app.focusManager.current).toBe(h.toggle);
+      h.stdin.write(Buffer.from([0x20]));
       expect(h.toggle.on).toBe(true);
     });
 
     it("printable bytes typed into focused TextInput accumulate as value", async () => {
       await flush();
-      // Tab thrice → TextInput.
-      h.router.feed(Buffer.from([0x09, 0x09, 0x09]));
-      expect(h.screen.focusManager.current).toBe(h.input);
+      h.stdin.write(Buffer.from([0x09, 0x09, 0x09]));
+      expect(h.app.focusManager.current).toBe(h.input);
 
-      h.router.feed(Buffer.from("hi"));
+      h.stdin.write(Buffer.from("hi"));
       expect(h.input.value).toBe("hi");
       expect(h.input.cursorPosition).toBe(2);
     });
 
     it("backspace (0x7f) removes the char before the cursor", async () => {
       await flush();
-      h.router.feed(Buffer.from([0x09, 0x09, 0x09]));
-      h.router.feed(Buffer.from("abc"));
-      h.router.feed(Buffer.from([0x7f]));
+      h.stdin.write(Buffer.from([0x09, 0x09, 0x09]));
+      h.stdin.write(Buffer.from("abc"));
+      h.stdin.write(Buffer.from([0x7f]));
       expect(h.input.value).toBe("ab");
       expect(h.input.cursorPosition).toBe(2);
     });
 
     it("enter on Button fires onSubmit", async () => {
       await flush();
-      // Button is already focused — first mounted widget.
       const submits: string[] = [];
       h.button.onSubmit((w) => submits.push(w.id));
-      h.router.feed(Buffer.from([0x0d])); // CR
+      h.stdin.write(Buffer.from([0x0d])); // CR
       expect(submits).toEqual(["btn"]);
     });
   });
@@ -203,90 +186,57 @@ describe("widget pipeline integration", () => {
     it("emits a key event with ctrl: true and key: 'c'", async () => {
       await flush();
       const seen: { key: string; ctrl: boolean }[] = [];
-      h.router.onKey((e) => seen.push({ key: e.key, ctrl: e.ctrl }));
-      h.router.feed(Buffer.from([0x03])); // ETX = ctrl+c
+      h.app.onKey((e) => seen.push({ key: e.key, ctrl: e.ctrl }));
+      h.stdin.write(Buffer.from([0x03])); // ETX = ctrl+c
       expect(seen).toContainEqual({ key: "c", ctrl: true });
     });
   });
 
-  describe("Screen ANSI output", () => {
-    it("first frame contains all four widget bodies and emits no cursor-up", async () => {
+  describe("the painted frame", () => {
+    it("shows all four widget bodies", async () => {
       await flush();
-      const out = h.stdout.joined();
-      expect(out).toContain("[ Save ]");
-      expect(out).toContain("[ ] Agree");
-      expect(out).toContain("[OFF] Sound");
-      // Empty TextInput renders as bracket + spaces + bracket; just check brackets exist.
-      expect(out).toMatch(/\[\s+\]/);
-      // No "move cursor up" sequence on the first frame.
-      expect(out).not.toMatch(/\x1b\[\d+A/);
+      const text = screenText(h.app);
+      expect(text).toContain("[ Save ]");
+      expect(text).toContain("[ ] Agree");
+      expect(text).toContain("[OFF] Sound");
+      expect(text).toMatch(/\[\s+\]/);
+      expect(stripAnsi(h.stdout.joined())).toContain("[ ] Agree");
     });
 
-    it("subsequent frame after a state change emits cursor-up + erase-line", async () => {
+    it("checking the checkbox is reflected in the next frame", async () => {
+      await flush();
+      h.stdin.write(Buffer.from([0x09, 0x20]));
+      await flush();
+      expect(screenText(h.app)).toContain("[✓] Agree");
+    });
+
+    it("typing into TextInput updates the rendered cells", async () => {
+      await flush();
+      h.stdin.write(Buffer.from([0x09, 0x09, 0x09]));
+      h.stdin.write(Buffer.from("hi"));
+      await flush();
+      expect(screenText(h.app)).toContain("hi");
+    });
+
+    it("paints one frame for several inputs within one tick", async () => {
       await flush();
       h.stdout.reset();
 
-      // Trigger a re-render by tabbing focus.
-      h.router.feed(Buffer.from([0x09]));
+      h.stdin.write(Buffer.from([0x09, 0x09, 0x09])); // tab x3
       await flush();
 
-      const out = h.stdout.joined();
-      // 4 widgets → 4 lines drawn last frame. Cursor sits on row 4 (no
-      // trailing newline), so rewinding to the top is 3 rows up.
-      expect(out).toMatch(/\x1b\[3A/);
-      // Erase-to-end-of-line on each line.
-      expect(out).toMatch(/\x1b\[K/);
-      // The full-screen-clear pattern is forbidden.
-      expect(out).not.toMatch(/\x1b\[2J/);
-    });
-
-    it("checking the checkbox is reflected in the next frame's text", async () => {
-      await flush();
-
-      // Tab to Checkbox + space.
-      h.router.feed(Buffer.from([0x09, 0x20]));
-      await flush();
-
-      // The latest frame should contain the checked indicator.
-      const out = h.stdout.joined();
-      // Last frame's checkbox text is "[✓] Agree" — appears in the chunk.
-      expect(out).toContain("[✓] Agree");
-    });
-
-    it("typing into TextInput updates the rendered cell content", async () => {
-      await flush();
-
-      // Tab three times → TextInput, type "hi".
-      h.router.feed(Buffer.from([0x09, 0x09, 0x09]));
-      h.router.feed(Buffer.from("hi"));
-      await flush();
-
-      const out = h.stdout.joined();
-      expect(out).toContain("hi");
-    });
-
-    it("debounces multiple inputs within one tick into a single render", async () => {
-      await flush();
-      h.stdout.reset();
-
-      // Three state-changing inputs in the same synchronous tick.
-      h.router.feed(Buffer.from([0x09, 0x09, 0x09])); // tab x3
-      await flush();
-
-      // queueMicrotask coalescing: one frame, not three.
       expect(h.stdout.chunks.length).toBe(1);
     });
   });
 
   describe("theme reactivity", () => {
-    it("setTheme on a mounted widget schedules a new frame", async () => {
-      // [LAW:dataflow-not-control-flow] The theme reference is now
+    it("setTheme on a widget in the view paints a new frame", async () => {
+      // [LAW:dataflow-not-control-flow] The theme reference is
       // @observable.ref + setTheme is @action across all 5 widgets, so a
-      // swap participates in Screen's autorun just like any other reactive
-      // mutation. This test pins that contract — it has broken once
-      // already when _theme was a plain field and went undetected because
-      // the unit tests on widget rendering didn't exercise the Screen
-      // pipeline.
+      // swap participates in the app's reaction like any other mutation.
+      // This pins that contract — it broke once already when _theme was a
+      // plain field and went undetected because the unit tests on widget
+      // rendering didn't exercise the painting pipeline.
       await flush();
       h.stdout.reset();
 
@@ -298,42 +248,18 @@ describe("widget pipeline integration", () => {
   });
 
   describe("hooks fire before focus dispatch", () => {
-    it("router.onKey hooks see events even when no widget is focused", async () => {
-      // Stop and recreate without auto-focus — empty screen.
-      h.router.stop();
-      h.screen.stop();
-
-      const stdout = new CapturingStream();
-      const stdin = new PassThrough();
-      const host = new NodeTerminalHost({
-        stdin: stdin as unknown as NodeJS.ReadStream,
-        stdout: stdout as unknown as NodeJS.WriteStream,
-      });
-      const screen = new DefaultScreen({
-        host,
-        width: 80,
-        colorSystem: null,
-        manageCursor: false,
-        focusManager: new DefaultFocusManager(),
-      });
-      const router = new EventRouter({
-        screen,
-        host,
-        manageMouse: false,
-        manageRawMode: false,
-      });
-
+    it("onKey hooks see keys even when no widget can take focus", async () => {
+      const bare = makeApp(() => new Group());
       const seen: string[] = [];
-      router.onKey((e) => seen.push(e.key));
+      bare.app.onKey((e) => seen.push(e.key));
+      void bare.app.run();
+      await flush();
 
-      screen.start();
-      router.start();
-
-      router.feed(Buffer.from([0x71])); // 'q'
+      bare.stdin.write(Buffer.from([0x71])); // 'q'
+      expect(bare.app.focusManager.current).toBeNull();
       expect(seen).toEqual(["q"]);
 
-      router.stop();
-      screen.stop();
+      bare.app.stop();
     });
   });
 });

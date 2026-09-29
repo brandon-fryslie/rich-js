@@ -213,6 +213,23 @@ describe("Measurement.get()", () => {
 
 // --- measureRenderables ---
 
+describe("measuring draws nothing", () => {
+  it("asks a measure that renders without telling onDraw of any owner", () => {
+    const owner = {};
+    const told: object[] = [];
+    const rendersToMeasure: Measurable = {
+      measure(options) {
+        options.onDraw?.(owner);
+        return { minimum: 1, maximum: 1 };
+      },
+    };
+
+    Measurement.get({ maxWidth: 10, onDraw: (o) => told.push(o) }, rendersToMeasure);
+
+    expect(told).toEqual([]);
+  });
+});
+
 describe("measureRenderables()", () => {
   it("returns (0,0) for empty array", () => {
     const m = measureRenderables(opts(40), []);

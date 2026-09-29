@@ -49,7 +49,7 @@ describe("the src sweep", () => {
     expect(relative).toContain("src/index.ts");
     expect(relative).toContain("src/core/console.ts");
     expect(relative).toContain("src/node/terminal-host.ts");
-    expect(relative).toContain("src/widgets/screen.ts");
+    expect(relative).toContain("src/widgets/widget-app.ts");
     expect(relative.length).toBeGreaterThan(40);
   });
 });

@@ -101,7 +101,6 @@ export interface InteractiveWidget extends Renderable, Measurable {
   hovered: boolean;
   active: boolean;
   disabled: boolean;
-  visible: boolean;
 
   // Event handlers
   // [LAW:single-enforcer] handleKey claims a key by calling `event.stop()`.
@@ -122,36 +121,16 @@ export interface InteractiveWidget extends Renderable, Measurable {
   onSubmit(handler: (widget: InteractiveWidget) => void): Unsubscribe;
 }
 
-// --- Placement ---
-
-// [LAW:types-are-the-program] Placement is the discriminated union of "where
-// does this item go in the frame". Three kinds cover the legal variability:
-//
-//   flow   — vertical stack at x=0; advances the layout cursor
-//   inline — continues the row of the preceding flow/inline item; same y,
-//            x packed after that item's right edge (+ a one-cell gap)
-//   fixed  — absolute (x, y); does not interact with the layout cursor
-//
-// Variability lives in the value (the Placement carried by each mount entry),
-// never in whether the layout pipeline runs. computeFrame switches on `kind`
-// in one place — the single, total switch the type system enforces.
-export type Placement =
-  | { kind: "flow" }
-  | { kind: "inline" }
-  | { kind: "fixed"; x: number; y: number };
-
-export const FLOW: Placement = { kind: "flow" };
-
 // --- Overlay protocol ---
 
 // [LAW:one-source-of-truth] Inline footprint and rendered shape are
-// independent. `render()` (Renderable) emits the inline footprint that
-// participates in flow layout — for the Dropdown, just the 1-row header.
-// `renderOverlay()` emits segments painted ON TOP of the frame after
-// base layout, directly below the inline footprint at the same column.
-// Returns null when no overlay is active.
+// independent. `render()` (Renderable) emits the footprint its container
+// lays out — for the Dropdown, just the 1-row header. `renderOverlay()` emits
+// segments painted ON TOP of the finished frame, directly below the
+// footprint at the column of its first row. Returns null when no overlay is
+// active.
 //
-// The host (Screen) runs the overlay pass last and stamps overlay row i as
+// The runtime (`WidgetApp`) paints overlays last and stamps overlay row i as
 // the widget's row footprint+i, so the widget reads a click on its overlay
 // in the same coordinates as one on its header. Painting last is what makes
 // the overlay topmost: hit-testing reads the painted frame, and whoever
@@ -169,17 +148,17 @@ export function hasOverlay(value: object): value is OverlayRenderable {
 
 // --- FocusManager ---
 
+// Which widget has focus, and what Tab means. The widgets it moves between are
+// the ones on the frame on screen that can take focus, in document order
+// (`RenderOptions.onDraw`): nothing registers with it.
 export interface FocusManager {
   readonly current: InteractiveWidget | null;
+  /** The widgets Tab moves between, in the order it moves. */
   readonly widgets: readonly InteractiveWidget[];
-
-  register(widget: InteractiveWidget): void;
-  unregister(widget: InteractiveWidget): void;
 
   next(): void;
   prev(): void;
   focus(widget: InteractiveWidget): void;
-  blur(): void;
 
   // Dispatch participant — EventRouter registers this as a normal-priority
   // handler so Tab/Shift+Tab participate in the chain like any other key.

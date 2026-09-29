@@ -22,62 +22,100 @@ class StubWidget extends WidgetBase {
   }
 }
 
+/** A focus manager over `shown`, standing for the widgets on the frame. */
+function over(...shown: StubWidget[]): DefaultFocusManager {
+  return new DefaultFocusManager(() => shown);
+}
+
 describe("DefaultFocusManager", () => {
   it("starts with no focused widget", () => {
-    const fm = new DefaultFocusManager();
+    const fm = over();
     expect(fm.current).toBeNull();
     expect(fm.widgets).toHaveLength(0);
   });
 
-  it("auto-focuses first focusable widget on register", () => {
-    const fm = new DefaultFocusManager();
+  it("moves among the widgets on screen that can take focus, in their order", () => {
     const a = new StubWidget("a");
-    fm.register(a);
-    expect(fm.current).toBe(a);
-    expect(a.focused).toBe(true);
-  });
-
-  it("does not auto-focus non-focusable widget", () => {
-    const fm = new DefaultFocusManager();
-    const a = new StubWidget("a", false);
-    fm.register(a);
-    expect(fm.current).toBeNull();
-  });
-
-  it("registers multiple widgets", () => {
-    const fm = new DefaultFocusManager();
-    const a = new StubWidget("a");
-    const b = new StubWidget("b");
+    const b = new StubWidget("b", false);
     const c = new StubWidget("c");
-    fm.register(a);
-    fm.register(b);
-    fm.register(c);
-    expect(fm.widgets).toHaveLength(3);
-    expect(fm.current).toBe(a);
+    c.setDisabled(true);
+    const d = new StubWidget("d");
+    expect(over(a, b, c, d).widgets).toEqual([a, d]);
   });
 
-  it("register is idempotent — duplicate registration is a no-op", () => {
-    // The widget list is a set in spirit. Double-registration would let
-    // next()/prev() cycle through the same widget twice and unregister()
-    // would leave a stale copy behind.
-    const fm = new DefaultFocusManager();
-    const a = new StubWidget("a");
-    fm.register(a);
-    fm.register(a);
-    expect(fm.widgets).toHaveLength(1);
-    expect(fm.widgets[0]).toBe(a);
+  describe("settle()", () => {
+    it("focuses the first widget that can take focus", () => {
+      const a = new StubWidget("a", false);
+      const b = new StubWidget("b");
+      const fm = over(a, b);
+      fm.settle([a, b]);
+      expect(fm.current).toBe(b);
+      expect(b.focused).toBe(true);
+    });
+
+    it("keeps focus on a widget still on screen", () => {
+      const a = new StubWidget("a");
+      const b = new StubWidget("b");
+      const fm = over(a, b);
+      fm.focus(b);
+      fm.settle([a, b]);
+      expect(fm.current).toBe(b);
+    });
+
+    it("moves focus off a widget no longer on screen, to the first", () => {
+      const a = new StubWidget("a");
+      const b = new StubWidget("b");
+      const shown = [a, b];
+      const fm = new DefaultFocusManager(() => shown);
+      fm.focus(b);
+      shown.pop();
+      fm.settle(shown);
+      expect(fm.current).toBe(a);
+      expect(b.focused).toBe(false);
+    });
+
+    it("keeps focus on a widget the view drew that the frame crops off screen", () => {
+      const a = new StubWidget("a");
+      const b = new StubWidget("b");
+      const shown = [a, b];
+      const fm = new DefaultFocusManager(() => shown);
+      fm.focus(b);
+      shown.pop();
+      fm.settle([a, b]);
+      expect(fm.current).toBe(b);
+      expect(b.focused).toBe(true);
+    });
+
+    it("moves focus off a widget that was disabled", () => {
+      const a = new StubWidget("a");
+      const b = new StubWidget("b");
+      const fm = over(a, b);
+      fm.focus(b);
+      b.setDisabled(true);
+      fm.settle([a, b]);
+      expect(fm.current).toBe(a);
+    });
+
+    it("drops focus when nothing on screen can take it", () => {
+      const a = new StubWidget("a");
+      const shown = [a];
+      const fm = new DefaultFocusManager(() => shown);
+      fm.settle(shown);
+      shown.pop();
+      fm.settle(shown);
+      expect(fm.current).toBeNull();
+      expect(a.focused).toBe(false);
+    });
   });
 
   describe("next() / prev()", () => {
     it("cycles forward through focusable widgets", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const c = new StubWidget("c");
-      fm.register(a);
-      fm.register(b);
-      fm.register(c);
+      const fm = over(a, b, c);
 
+      fm.next();
       expect(fm.current).toBe(a);
       fm.next();
       expect(fm.current).toBe(b);
@@ -88,13 +126,11 @@ describe("DefaultFocusManager", () => {
     });
 
     it("cycles backward through focusable widgets", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const c = new StubWidget("c");
-      fm.register(a);
-      fm.register(b);
-      fm.register(c);
+      const fm = over(a, b, c);
+      fm.settle([a, b, c]);
 
       fm.prev();
       expect(fm.current).toBe(c); // wraps to last
@@ -103,13 +139,11 @@ describe("DefaultFocusManager", () => {
     });
 
     it("skips non-focusable widgets", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b", false);
       const c = new StubWidget("c");
-      fm.register(a);
-      fm.register(b);
-      fm.register(c);
+      const fm = over(a, b, c);
+      fm.settle([a, b, c]);
 
       fm.next();
       expect(fm.current).toBe(c); // skipped b
@@ -118,13 +152,11 @@ describe("DefaultFocusManager", () => {
     });
 
     it("skips disabled widgets", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b");
       const c = new StubWidget("c");
-      fm.register(a);
-      fm.register(b);
-      fm.register(c);
+      const fm = over(a, b, c);
+      fm.settle([a, b, c]);
 
       b.setDisabled(true);
       fm.next(); // a -> skip b -> c
@@ -132,21 +164,18 @@ describe("DefaultFocusManager", () => {
     });
 
     it("no-ops when no focusable widgets exist", () => {
-      const fm = new DefaultFocusManager();
-      const a = new StubWidget("a", false);
-      fm.register(a);
+      const fm = over(new StubWidget("a", false));
       fm.next();
       expect(fm.current).toBeNull();
     });
   });
 
-  describe("focus() / blur()", () => {
+  describe("focus()", () => {
     it("focuses a specific widget", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b");
-      fm.register(a);
-      fm.register(b);
+      const fm = over(a, b);
+      fm.settle([a, b]);
 
       fm.focus(b);
       expect(fm.current).toBe(b);
@@ -154,45 +183,34 @@ describe("DefaultFocusManager", () => {
       expect(b.focused).toBe(true);
     });
 
-    it("rejects focus on unregistered widget", () => {
-      const fm = new DefaultFocusManager();
+    it("focuses a widget not yet on screen", () => {
+      // An app about to show a widget focuses it first; the frame that shows
+      // it keeps it (settle).
       const a = new StubWidget("a");
-      // a is not registered
+      const fm = over();
       fm.focus(a);
-      expect(fm.current).toBeNull();
+      expect(fm.current).toBe(a);
     });
 
     it("rejects focus on non-focusable widget", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b", false);
-      fm.register(a);
-      fm.register(b);
+      const fm = over(a, b);
+      fm.settle([a, b]);
 
       fm.focus(b);
       expect(fm.current).toBe(a); // unchanged
     });
 
     it("rejects focus on disabled widget", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b");
-      fm.register(a);
-      fm.register(b);
+      const fm = over(a, b);
+      fm.settle([a, b]);
 
       b.setDisabled(true);
       fm.focus(b);
       expect(fm.current).toBe(a); // unchanged
-    });
-
-    it("blurs the current widget", () => {
-      const fm = new DefaultFocusManager();
-      const a = new StubWidget("a");
-      fm.register(a);
-
-      fm.blur();
-      expect(fm.current).toBeNull();
-      expect(a.focused).toBe(false);
     });
 
     it("dispatches handleFocus exactly once per focus transition", () => {
@@ -209,11 +227,11 @@ describe("DefaultFocusManager", () => {
           else this.blurCount++;
         }
       }
-      const fm = new DefaultFocusManager();
       const a = new Counting("a");
       const b = new Counting("b");
-      fm.register(a); // auto-focuses → a.focusCount = 1
-      fm.register(b);
+      const shown = [a, b];
+      const fm = new DefaultFocusManager(() => shown);
+      fm.settle([a, b]); // focuses a → a.focusCount = 1
 
       expect(a.focusCount).toBe(1);
       expect(a.blurCount).toBe(0);
@@ -224,75 +242,40 @@ describe("DefaultFocusManager", () => {
       expect(b.focusCount).toBe(1);
       expect(b.blurCount).toBe(0);
 
-      fm.blur(); // b blurs once
+      shown.length = 0;
+      fm.settle([]); // nothing drawn: b blurs once
       expect(b.blurCount).toBe(1);
-    });
-  });
-
-  describe("unregister()", () => {
-    it("removes widget from list", () => {
-      const fm = new DefaultFocusManager();
-      const a = new StubWidget("a");
-      const b = new StubWidget("b");
-      fm.register(a);
-      fm.register(b);
-
-      fm.unregister(a);
-      expect(fm.widgets).toHaveLength(1);
-      expect(fm.widgets[0]).toBe(b);
-    });
-
-    it("focuses next focusable widget when current is removed", () => {
-      const fm = new DefaultFocusManager();
-      const a = new StubWidget("a");
-      const b = new StubWidget("b");
-      fm.register(a);
-      fm.register(b);
-
-      expect(fm.current).toBe(a);
-      fm.unregister(a);
-      expect(fm.current).toBe(b);
-      expect(b.focused).toBe(true);
-    });
-
-    it("sets current to null when last widget is removed", () => {
-      const fm = new DefaultFocusManager();
-      const a = new StubWidget("a");
-      fm.register(a);
-
-      fm.unregister(a);
-      expect(fm.current).toBeNull();
     });
   });
 
   describe("onChange", () => {
     it("fires on focus transitions", () => {
-      const fm = new DefaultFocusManager();
       const a = new StubWidget("a");
       const b = new StubWidget("b");
+      const shown = [a, b];
+      const fm = new DefaultFocusManager(() => shown);
       const changes: (InteractiveWidget | null)[] = [];
       fm.onChange((current) => changes.push(current));
 
-      fm.register(a);
-      fm.register(b);
+      fm.settle([a, b]);
+      fm.settle([a, b]);
       fm.next();
-      fm.blur();
+      shown.length = 0;
+      fm.settle([]);
 
-      // register(a) → change to a, register(b) → no change (a stays), next → change to b, blur → change to null
-      expect(changes).toHaveLength(3);
-      expect(changes[0]).toBe(a);
-      expect(changes[1]).toBe(b);
-      expect(changes[2]).toBeNull();
+      // settle → a, settle again → no change (a stays), next → b, nothing
+      // drawn → null
+      expect(changes).toEqual([a, b, null]);
     });
 
     it("unsubscribes correctly", () => {
-      const fm = new DefaultFocusManager();
+      const a = new StubWidget("a");
+      const fm = over(a);
       const changes: (InteractiveWidget | null)[] = [];
       const unsub = fm.onChange((current) => changes.push(current));
 
       unsub();
-      const a = new StubWidget("a");
-      fm.register(a);
+      fm.settle([a]);
       expect(changes).toHaveLength(0);
     });
   });

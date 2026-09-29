@@ -76,3 +76,39 @@ export function drew(
   for (let a = Segment.anchorAt(frame, x, y); a; a = a.inner) if (a.owner === widget) return true;
   return false;
 }
+
+/**
+ * Where `widget`'s footprint sits in `frame`: the cell its row 0, column 0
+ * falls on, and how many of its rows the frame shows down to its lowest — or
+ * `undefined` when the frame does not show its row 0.
+ */
+export function footprintOf(
+  frame: readonly (readonly Segment[])[],
+  widget: InteractiveWidget,
+): { x: number; y: number; rows: number } | undefined {
+  let origin: { x: number; y: number } | undefined;
+  let rows = 0;
+  for (let y = 0; y < frame.length; y++) {
+    let start = 0;
+    for (const segment of frame[y]!) {
+      for (let a = segment.style?.anchor; a; a = a.inner) {
+        if (a.owner !== widget) continue;
+        if (a.row === 0 && !origin) origin = { x: start - a.col, y };
+        rows = Math.max(rows, a.row + 1);
+      }
+      start += segment.cellLength;
+    }
+  }
+  return origin && { ...origin, rows };
+}
+
+/** Every owner that drew a cell of `frame`, at every depth of nesting. */
+export function ownersOn(frame: readonly (readonly Segment[])[]): Set<object> {
+  const owners = new Set<object>();
+  for (const line of frame) {
+    for (const segment of line) {
+      for (let a = segment.style?.anchor; a; a = a.inner) owners.add(a.owner);
+    }
+  }
+  return owners;
+}

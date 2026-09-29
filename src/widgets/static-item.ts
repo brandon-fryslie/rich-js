@@ -1,20 +1,14 @@
 /**
- * StaticItem — a non-focusable, non-interactive Renderable wrapped to fit
- * the InteractiveWidget surface so it can be mounted by Screen alongside
- * real widgets.
+ * StaticItem — a renderable on the widget surface: it takes no focus and
+ * ignores keys, and it stamps its cells like any widget.
  *
- * [LAW:one-type-per-behavior] Screen.mount accepts a uniform array of
- * InteractiveWidget. Static text, panels, swatches, and other display-only
- * Renderables flow through the same pipeline by being expressed as the
- * same type. The differences (no focus, no event handling) are configured
- * via `focusable: false` plus the no-op handlers WidgetBase already
- * provides — there is no second type, no "static vs interactive" branch in
- * Screen's render loop.
+ * [LAW:one-type-per-behavior] Display-only content is a `WidgetBase` with
+ * `focusable: false` and the no-op handlers the base already provides, not a
+ * second type.
  *
- * The wrapped renderable can be a function that re-evaluates each frame
- * (so the host can read MobX observables inside `render` and have Screen
- * re-render reactively) or a plain object that returns the same segments
- * every time.
+ * The wrapped renderable can be a function that re-evaluates each frame — it
+ * reads MobX observables, and the app repaints when they change — or a plain
+ * renderable.
  */
 
 import { Segment } from "../core/segment.js";

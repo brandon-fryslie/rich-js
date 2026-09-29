@@ -1,7 +1,9 @@
 /**
  * EventRouter — parses raw stdin into KeyEvent / ScreenMouseEvent values
- * and dispatches them to widgets via the Screen's FocusManager and the frame
- * it last painted.
+ * and dispatches them to widgets via a FocusManager and the frame on screen.
+ *
+ * It reads the terminal and never sets it up: raw mode and mouse tracking are
+ * the runtime's (`App`), which undoes them on every path out.
  *
  * [LAW:single-enforcer] ANSI escape parsing lives only here — widgets never
  * see raw bytes. One parser, one dispatch surface.
@@ -46,24 +48,9 @@ interface Target {
 }
 
 export interface EventRouterOptions {
-  screen: FrameSource;
-  /**
-   * The I/O capability the router reads input from and writes
-   * mouse-tracking sequences to. Construct a `NodeTerminalHost` for
-   * production node demos; tests pass a host that wraps mock streams.
-   */
+  source: FrameSource;
+  /** The I/O capability the router reads input from. */
   host: TerminalHost;
-  /**
-   * When true (default when the host reports `isTTY`), enable mouse
-   * tracking on `start()` and disable on `stop()`. Disable in tests /
-   * non-TTY environments.
-   */
-  manageMouse?: boolean;
-  /**
-   * When true (default when the host reports `isTTY`), switch the host
-   * into raw mode on `start()` and restore on `stop()`.
-   */
-  manageRawMode?: boolean;
 }
 
 // Single-byte → key name table for the trivial cases.
@@ -133,9 +120,6 @@ const O_BYTE = 0x4f; // O
 const M_UPPER = 0x4d; // M
 const M_LOWER = 0x6d; // m
 
-const MOUSE_TRACK_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
-const MOUSE_TRACK_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
-
 // [LAW:single-enforcer] Shared encode/decode singletons. The parser
 // receives `Uint8Array | string` from the host and walks bytes through
 // its state machine; conversion happens at the two boundaries (string
@@ -170,8 +154,6 @@ type ConsumeResult =
 export class EventRouter {
   private readonly source: FrameSource;
   private readonly host: TerminalHost;
-  private readonly manageMouse: boolean;
-  private readonly manageRawMode: boolean;
 
   // [LAW:types-are-the-program] The parse buffer is `Uint8Array`, not
   // `Buffer` — node's Buffer extends Uint8Array, so Buffer chunks from
@@ -194,7 +176,9 @@ export class EventRouter {
   // (Slider's _dragging) and reports a column outside it. Cleared on the next
   // mouse_up.
   private captured: Target | null = null;
-  // The widget the pointer last moved over; the one widget `hovered` is true on.
+  // Where the terminal last reported the pointer, and the widget under it on
+  // the frame on screen — the one widget `hovered` is true on.
+  private pointer: { readonly x: number; readonly y: number } | null = null;
   private hoveredWidget: InteractiveWidget | null = null;
 
   // [LAW:dataflow-not-control-flow] Ordered chain; the dispatcher walks it
@@ -204,15 +188,8 @@ export class EventRouter {
   private readonly mouseHandlers = new Set<(event: ScreenMouseEvent) => void>();
 
   constructor(options: EventRouterOptions) {
-    this.source = options.screen;
+    this.source = options.source;
     this.host = options.host;
-
-    // [LAW:one-source-of-truth] The host owns the "is this a real
-    // terminal?" question. Both raw-mode and mouse-tracking defaults
-    // derive from the same isTTY — no separate input/output skew.
-    const isTTY = this.host.isTTY;
-    this.manageRawMode = options.manageRawMode ?? isTTY;
-    this.manageMouse = options.manageMouse ?? isTTY;
 
     // [LAW:single-enforcer] FocusManager owns Tab/Shift+Tab traversal —
     // register it as a normal-priority handler so it participates in the
@@ -228,14 +205,8 @@ export class EventRouter {
   start(): void {
     if (this.running) return;
     this.running = true;
-
-    // [LAW:dataflow-not-control-flow] No `if (host.setRawMode)` capability
-    // check — the host absorbs that. Same goes for resume(): subscribing
-    // via host.onData triggers the underlying stream's flow on node, no-ops
-    // on transports that don't have a paused mode.
-    if (this.manageRawMode) this.host.setRawMode(true);
-    if (this.manageMouse) this.host.write(MOUSE_TRACK_ON);
-
+    // Subscribing starts the underlying stream flowing on node, and is all
+    // it takes on a transport with no paused mode.
     this.dataUnsubscribe = this.host.onData((chunk) => this.feed(chunk));
   }
 
@@ -247,9 +218,6 @@ export class EventRouter {
         this.dataUnsubscribe();
         this.dataUnsubscribe = undefined;
       }
-
-      if (this.manageMouse) this.host.write(MOUSE_TRACK_OFF);
-      if (this.manageRawMode) this.host.setRawMode(false);
     }
 
     // [LAW:one-source-of-truth] Per-session state belongs to one session.
@@ -267,7 +235,20 @@ export class EventRouter {
     }
     this.buffer = EMPTY_BYTES;
     this.captured = null;
+    this.pointer = null;
     this.hover(null);
+  }
+
+  /**
+   * Read hover again off the frame just painted: under a pointer that has not
+   * moved, a widget may have gone, moved, or arrived.
+   *
+   * [LAW:one-source-of-truth] Hover is the widget under the pointer on the
+   * frame on screen, so it is re-read whenever either one changes.
+   */
+  framePainted(): void {
+    const hit = this.pointer && widgetAt(this.source.frame, this.pointer.x, this.pointer.y);
+    this.hover(hit ? hit.widget : null);
   }
 
   // --- External hooks ---
@@ -583,7 +564,8 @@ export class EventRouter {
 
     const frame = this.source.frame;
     const hit = widgetAt(frame, event.x, event.y);
-    if (event.type === "mouse_move") this.hover(hit?.widget ?? null);
+    this.pointer = { x: event.x, y: event.y };
+    this.hover(hit?.widget ?? null);
 
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the
     // capture value and event type pick the target. mouse_down opens a

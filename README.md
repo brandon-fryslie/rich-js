@@ -293,45 +293,31 @@ installTraceback();
 Everything above draws once and returns. Widgets stay on screen and respond — a button that highlights under the cursor, a text field with a cursor you can move, a dropdown you filter by typing. They come from the `widgets` subpath and need MobX installed alongside the package (see [Entry points](#entry-points)).
 
 ```typescript
-import { Button, TextInput, DefaultScreen, EventRouter } from "@promptctl/rich-js/widgets";
+import { Group } from "@promptctl/rich-js";
+import { Button, TextInput, WidgetApp } from "@promptctl/rich-js/widgets";
 import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
-
-const host = new NodeTerminalHost();
-const screen = new DefaultScreen({ host });
-const router = new EventRouter({ screen, host });
 
 const name = new TextInput({ placeholder: "your name" });
 const submit = new Button({ label: "Submit", variant: "primary" });
+const form = new Group(name, submit);
 
-const quit = (): void => {
-  router.stop();
-  screen.stop();
-  host.write("\n");
-};
+const app = new WidgetApp({ host: new NodeTerminalHost(), surface: "alternate", view: () => form });
 
-submit.onSubmit(() => {
-  quit();
-  host.write(`hello, ${name.value}\n`);
-  process.exit(0);
-});
+submit.onSubmit(() => app.stop());
 
 // Raw mode swallows Ctrl+C, so the app has to handle it itself.
-router.onKey(
+app.onKey(
   (event) => {
-    if (event.ctrl && event.key === "c") {
-      quit();
-      process.exit(0);
-    }
+    if (event.ctrl && event.key === "c") app.stop();
   },
   { priority: "high" },
 );
 
-screen.mount(name, submit);
-screen.start();
-router.start();
+await app.run();
+console.log(`hello, ${name.value}`);
 ```
 
-`DefaultScreen` builds a focus manager when you don't pass one, so the `TextInput` has focus before the user touches anything and Tab moves between the two widgets. The screen re-renders through a MobX reaction: change a widget's state and the frame redraws itself, with no explicit repaint call anywhere. See [docs/widgets.md](docs/widgets.md) for the full widget set, key dispatch, layout placements, and how to write your own.
+Widgets go anywhere a renderable goes — a `Group`, a `Panel`, a `Layout` pane — and the app finds them on the frame it paints. The `TextInput` has focus before the user touches anything, Tab moves between the two widgets in the order they are drawn, and a change to a widget's state repaints with no explicit call. `app.stop()` — or a crash, or a signal — hands the terminal back. See [docs/widgets.md](docs/widgets.md) for the full widget set, key dispatch, layout, and how to write your own.
 
 </details>
 

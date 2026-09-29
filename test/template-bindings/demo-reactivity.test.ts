@@ -12,10 +12,10 @@
  * test harness can pin without a terminal.
  *
  * [LAW:dataflow-not-control-flow] The demo wires TextInput.value (observable)
- * through Screen's autorun into a Renderable that calls renderTemplate(value).
+ * through the app's reaction into a Renderable that calls renderTemplate(value).
  * Nothing in this chain branches on whether the typing happened; the data
  * (value) flows into the next frame every keystroke. The test feeds bytes via
- * stdin (the same path a user types through), waits one microtask per frame,
+ * stdin (the same path a user types through), waits one task per frame,
  * and asserts the stdout output changed in a way that matches the data.
  */
 
@@ -23,16 +23,15 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { PassThrough, Writable } from "stream";
 import { runInAction } from "mobx";
 import { createEngine, type Engine } from "@promptctl/go-template-js";
-import { DefaultScreen } from "../../src/widgets/screen.js";
-import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
-import { EventRouter } from "../../src/widgets/event-router.js";
+import stripAnsi from "strip-ansi";
+import { WidgetApp } from "../../src/widgets/widget-app.js";
+import { Group } from "../../src/renderables/group.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import { StaticItem } from "../../src/widgets/static-item.js";
 import { TextInput } from "../../src/widgets/text-input.js";
 import { RichText } from "../../src/core/text.js";
 import { richTextFuncs, renderTemplate } from "../../src/template-bindings/index.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
-import { segmentsToString } from "../../src/core/render.js";
 
 class CapturingStream extends Writable {
   chunks: string[] = [];
@@ -58,21 +57,20 @@ class CapturingStream extends Writable {
   }
 }
 
-async function flush(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
+// A repaint is a task away (`App.refresh`).
+function flush(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function makeReactiveOutput(input: TextInput, engine: Engine<RichText>): StaticItem {
   // Exactly the demo's buildRowSegments wire, reduced to the reactive core:
   // a Renderable whose render() reads input.value (observable) and emits the
-  // rendered template segments. Screen's autorun subscribes to value via this
-  // read, so every value change re-fires render.
+  // rendered template segments. The app's reaction subscribes to value via
+  // this read, so every value change paints a frame.
   return new StaticItem({
     id: "out",
     render: (opts: RenderOptions) => {
       const segs = renderTemplate(engine, input.value, {}, { maxWidth: opts.maxWidth });
-      // Render as raw segments — segmentsToString in the harness converts ANSI.
       return segs;
     },
   });
@@ -89,34 +87,20 @@ function makeEngine(): Engine<RichText> {
 describe("template-bindings demo — reactive edit-to-output pipeline", () => {
   let stdout: CapturingStream;
   let stdin: PassThrough;
-  let screen: DefaultScreen;
-  let router: EventRouter;
+  let app: WidgetApp;
   let input: TextInput;
   let engine: Engine<RichText>;
+
+  /** What the terminal was sent since the last reset, as the user reads it. */
+  const painted = (): string => stripAnsi(stdout.joined());
 
   beforeEach(() => {
     stdout = new CapturingStream();
     stdin = new PassThrough();
-    const fm = new DefaultFocusManager();
 
     const host = new NodeTerminalHost({
       stdin: stdin as unknown as NodeJS.ReadStream,
       stdout: stdout as unknown as NodeJS.WriteStream,
-    });
-
-    screen = new DefaultScreen({
-      host,
-      width: 60,
-      colorSystem: null, // strip color codes so assertions check plain text
-      manageCursor: false,
-      focusManager: fm,
-    });
-
-    router = new EventRouter({
-      screen,
-      host,
-      manageMouse: false,
-      manageRawMode: false,
     });
 
     engine = makeEngine();
@@ -127,30 +111,26 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
       multiline: false,
     });
 
-    const out = makeReactiveOutput(input, engine);
-    screen.mount(input, out);
+    const view = new Group(input, makeReactiveOutput(input, engine));
+    app = new WidgetApp({ host, surface: "alternate", view: () => view });
   });
 
   afterEach(() => {
-    router.stop();
-    screen.stop();
+    app.stop();
   });
 
   it("first frame renders the initial template", async () => {
-    screen.start();
-    router.start();
+    void app.run();
     await flush();
     // The template `{{ bold "alpha" }}` produces the literal word "alpha"
-    // when color codes are stripped (the bold style emits ANSI we asked the
-    // screen to skip via colorSystem: null).
-    expect(stdout.joined()).toContain("alpha");
+    // once the bold style's escape codes are stripped.
+    expect(painted()).toContain("alpha");
   });
 
-  it("typing into the focused TextInput changes its value (router → autorun input)", async () => {
-    screen.start();
-    router.start();
+  it("typing into the focused TextInput changes its value (router → reaction input)", async () => {
+    void app.run();
     await flush();
-    // Confirm initial focus is on input (first focusable mounted widget).
+    // Confirm initial focus is on input (first focusable widget in the view).
     expect(input.focused).toBe(true);
 
     // Feed a printable byte through stdin — same path a user types through.
@@ -165,11 +145,10 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
   });
 
   it("editing the template propagates to the rendered output in the next frame", async () => {
-    screen.start();
-    router.start();
+    void app.run();
     await flush();
     // First frame: output contains the rendered initial template.
-    expect(stdout.joined()).toContain("alpha");
+    expect(painted()).toContain("alpha");
 
     // Reset the captured output to isolate the second frame.
     stdout.reset();
@@ -182,7 +161,7 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
     runInAction(() => { input.value = '{{ italic "omega" }}'; });
     await flush();
 
-    const after = stdout.joined();
+    const after = painted();
     expect(after).toContain("omega");
     expect(after).not.toContain("alpha");
   });
@@ -190,18 +169,17 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
   it("a syntactically broken template degrades gracefully without crashing the frame", async () => {
     // [LAW:no-silent-fallbacks] renderTemplate has documented graceful-degrade
     // behavior — a parse error becomes a styled error fragment, NOT a thrown
-    // exception that tears down the autorun. The demo relies on this so users
+    // exception that fails the app. The demo relies on this so users
     // can type half-finished templates without losing the editor.
-    screen.start();
-    router.start();
+    void app.run();
     await flush();
     stdout.reset();
 
     runInAction(() => { input.value = "{{ unterminated"; }); // never closes the action
     await flush();
 
-    // Screen still drew SOMETHING. The frame did not throw.
-    const after = stdout.joined();
+    // The app still drew SOMETHING. The frame did not throw.
+    const after = painted();
     expect(after.length).toBeGreaterThan(0);
     // No raw uncaught error message — the degrade swaps in a styled fragment,
     // not a crash dump.
@@ -213,29 +191,27 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
     // mutations within one tick collapses to one render; one mutation per
     // tick produces one render each. Pin this so future refactors don't
     // silently regress to "render-per-mutation" or "skip-some-mutations."
-    screen.start();
-    router.start();
+    void app.run();
     await flush();
     stdout.reset();
 
     runInAction(() => { input.value = '{{ "one" }}'; });
     await flush();
-    expect(stdout.joined()).toContain("one");
+    expect(painted()).toContain("one");
     stdout.reset();
 
     runInAction(() => { input.value = '{{ "two" }}'; });
     await flush();
-    expect(stdout.joined()).toContain("two");
+    expect(painted()).toContain("two");
     stdout.reset();
 
     runInAction(() => { input.value = '{{ "three" }}'; });
     await flush();
-    expect(stdout.joined()).toContain("three");
+    expect(painted()).toContain("three");
   });
 
   it("debounce: three setValue calls in one tick produce one frame, not three", async () => {
-    screen.start();
-    router.start();
+    void app.run();
     await flush();
     stdout.reset();
 
@@ -244,17 +220,10 @@ describe("template-bindings demo — reactive edit-to-output pipeline", () => {
     runInAction(() => { input.value = '{{ "c" }}'; });
     await flush();
 
-    const after = stdout.joined();
+    const after = painted();
     expect(after).toContain("c");
     // No "a" or "b" should have been painted — they were superseded before
     // the microtask boundary that draws a frame.
-    expect(after).not.toContain("a\n");
-    expect(after).not.toContain("b\n");
+    expect(stdout.chunks).toHaveLength(1);
   });
-
-  // Silence the "unused import" warning when tests skip; segmentsToString is
-  // available for callers who want to introspect color codes when the screen
-  // is constructed with a real color system. Not used in this file's stripped
-  // assertions but kept available alongside the other plumbing imports.
-  void segmentsToString;
 });

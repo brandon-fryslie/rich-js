@@ -172,8 +172,8 @@ describe("outboundEdges", () => {
   });
 
   it("reports re-exports and dynamic imports that leave the layer", () => {
-    expect(scan(`export * from "../widgets/screen.js";`)[0]).toMatchObject({
-      target: "src/widgets/screen.ts",
+    expect(scan(`export * from "../widgets/widget-app.js";`)[0]).toMatchObject({
+      target: "src/widgets/widget-app.ts",
     });
     expect(scan(`const f = () => import("../node/save.js");`)[0]).toMatchObject({
       target: "src/node/save.ts",
@@ -215,7 +215,7 @@ describe("outboundEdges", () => {
       scan(
         `import { Panel } from "../renderables/panel.js";\n` +
           `import { Style } from "./style.js";\n` +
-          `import type { Screen } from "../widgets/screen.js";`,
+          `import type { WidgetApp } from "../widgets/widget-app.js";`,
       ).map((e) => e.line),
     ).toEqual([1, 3]);
   });
@@ -312,7 +312,7 @@ describe("unexercised", () => {
       dir: "src/core",
       sanctioned: [
         ...CORE_LAYER.sanctioned,
-        { from: "src/core/text.ts", to: "src/widgets/screen.ts", why: "invented for this test" },
+        { from: "src/core/text.ts", to: "src/widgets/widget-app.ts", why: "invented for this test" },
       ],
     };
     expect(unexercised(CORE_EDGES, invented).map((s) => s.from)).toEqual(["src/core/text.ts"]);

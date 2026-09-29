@@ -48,7 +48,6 @@ describe("WidgetBase", () => {
     expect(widget.hovered).toBe(false);
     expect(widget.active).toBe(false);
     expect(widget.disabled).toBe(false);
-    expect(widget.visible).toBe(true);
   });
 
   it("focuses and blurs", () => {
@@ -116,6 +115,19 @@ describe("WidgetBase", () => {
 
     widget.triggerSubmit();
     expect(submits).toHaveLength(1);
+  });
+
+  it("reports itself to onDraw before the widgets nested in its output", () => {
+    // Document order — the order focus moves in — is the order these calls arrive.
+    const inner = new TextWidget("in");
+    const outer = new (class extends StubWidget {
+      protected override draw(options: RenderOptions): Iterable<Segment> {
+        return inner.render(options);
+      }
+    })();
+    const heard: object[] = [];
+    [...outer.render({ maxWidth: 80, onDraw: (owner) => heard.push(owner) })];
+    expect(heard).toEqual([outer, inner]);
   });
 
   it("measures width", () => {

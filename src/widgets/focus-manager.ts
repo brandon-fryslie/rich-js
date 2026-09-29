@@ -1,11 +1,11 @@
 /**
- * FocusManager — flat focus cycling over registered widgets.
+ * FocusManager — which widget has focus, over the widgets on the frame.
  * [LAW:one-source-of-truth] single authority for which widget has focus.
  * [LAW:dataflow-not-control-flow] focus transitions are observable state;
  * widgets react to focus/blur events, the manager never skips dispatch.
  */
 
-import { action, observableRef, observableShallow } from "mobx";
+import { action, observableRef } from "mobx";
 import type {
   InteractiveWidget,
   FocusManager,
@@ -14,56 +14,31 @@ import type {
 import type { Unsubscribe } from "../core/subscription.js";
 
 export class DefaultFocusManager implements FocusManager {
-  @observableShallow
-  accessor widgetList: InteractiveWidget[] = [];
-
   @observableRef
   accessor currentWidget: InteractiveWidget | null = null;
 
   private readonly changeHandlers = new Set<(current: InteractiveWidget | null) => void>();
+
+  /**
+   * `onScreen` is the widgets on the frame on screen, in document order.
+   *
+   * [LAW:one-source-of-truth] It is asked every time rather than kept: a list
+   * of the widgets held here would be a second picture of the frame, and
+   * wrong from the next paint.
+   */
+  constructor(private readonly onScreen: () => readonly InteractiveWidget[]) {}
 
   get current(): InteractiveWidget | null {
     return this.currentWidget;
   }
 
   get widgets(): readonly InteractiveWidget[] {
-    return this.widgetList;
-  }
-
-  @action
-  register(widget: InteractiveWidget): void {
-    // [LAW:one-source-of-truth] register is idempotent — the widgetList is
-    // a set in spirit, not a multiset. Without this guard, double-registration
-    // would duplicate the widget so next/prev cycle through it twice and
-    // unregister only removes one copy.
-    if (this.widgetList.includes(widget)) return;
-    this.widgetList = [...this.widgetList, widget];
-    if (!this.currentWidget && widget.focusable && !widget.disabled) {
-      this.setFocus(widget);
-    }
-  }
-
-  @action
-  unregister(widget: InteractiveWidget): void {
-    const idx = this.widgetList.indexOf(widget);
-    if (idx === -1) return;
-    this.widgetList = this.widgetList.filter((w) => w !== widget);
-
-    if (this.currentWidget === widget) {
-      // [LAW:single-enforcer] WidgetBase.focus()/blur() already route through
-      // handleFocus, so calling both would double-dispatch and trigger any
-      // subclass side effect (e.g. Dropdown clearing filter/overlay) twice.
-      widget.blur();
-      const next = this.widgetList.find((w) => w.focusable && !w.disabled) ?? null;
-      if (next) next.focus();
-      this.currentWidget = next;
-      this.emitChange();
-    }
+    return this.onScreen().filter(takesFocus);
   }
 
   @action
   next(): void {
-    const focusable = this.focusableWidgets();
+    const focusable = this.widgets;
     if (focusable.length === 0) return;
 
     const currentIdx = this.currentWidget ? focusable.indexOf(this.currentWidget) : -1;
@@ -73,7 +48,7 @@ export class DefaultFocusManager implements FocusManager {
 
   @action
   prev(): void {
-    const focusable = this.focusableWidgets();
+    const focusable = this.widgets;
     if (focusable.length === 0) return;
 
     const currentIdx = this.currentWidget ? focusable.indexOf(this.currentWidget) : -1;
@@ -81,21 +56,34 @@ export class DefaultFocusManager implements FocusManager {
     this.setFocus(focusable[prevIdx]!);
   }
 
+  // A widget not on screen yet can take focus: an app that is about to show
+  // it focuses it first, and the frame that shows it keeps it (`settle`).
   @action
   focus(widget: InteractiveWidget): void {
-    if (!widget.focusable || widget.disabled) return;
-    if (!this.widgetList.includes(widget)) return;
+    if (!takesFocus(widget)) return;
     this.setFocus(widget);
   }
 
+  /**
+   * Put focus where the frame just painted lets it rest: it stays on a widget
+   * the view drew (`drawn`) that can take it, and otherwise moves to the first
+   * one on screen that can, or to none.
+   *
+   * Drawn, not on screen: a widget cropped for the moment — the terminal
+   * shrank, a viewport scrolled, an overlay covers it — is still in the view,
+   * and keeps focus and whatever focus holds, like a half-typed filter.
+   *
+   * [LAW:single-enforcer] The one place focus follows the frame — onto the
+   * first widget when the app starts, off a widget that stopped being drawn
+   * or was disabled.
+   */
   @action
-  blur(): void {
-    if (!this.currentWidget) return;
-    // [LAW:single-enforcer] blur() already dispatches handleFocus on
-    // WidgetBase — see unregister() for the rationale.
-    this.currentWidget.blur();
-    this.currentWidget = null;
-    this.emitChange();
+  settle(drawn: readonly InteractiveWidget[]): void {
+    const current = this.currentWidget;
+    if (current && takesFocus(current) && drawn.includes(current)) return;
+    const first = this.widgets[0];
+    if (first) this.setFocus(first);
+    else this.clear();
   }
 
   onChange(handler: (current: InteractiveWidget | null) => void): Unsubscribe {
@@ -116,15 +104,25 @@ export class DefaultFocusManager implements FocusManager {
 
   // --- Private ---
 
-  private focusableWidgets(): InteractiveWidget[] {
-    return this.widgetList.filter((w) => w.focusable && !w.disabled);
+  // No focus is where `settle` leaves an app with nothing to focus, and only
+  // there: anywhere else the next frame would put focus back on the first
+  // widget, so there is no public way in.
+  @action
+  private clear(): void {
+    if (!this.currentWidget) return;
+    // [LAW:single-enforcer] WidgetBase.focus()/blur() route through
+    // handleFocus; calling it here as well would dispatch twice and run any
+    // subclass side effect (e.g. Dropdown clearing its filter) twice.
+    this.currentWidget.blur();
+    this.currentWidget = null;
+    this.emitChange();
   }
 
   @action
   private setFocus(widget: InteractiveWidget): void {
     if (this.currentWidget === widget) return;
     // [LAW:single-enforcer] focus()/blur() already dispatch handleFocus —
-    // see unregister() for the rationale.
+    // see clear() for the rationale.
     if (this.currentWidget) this.currentWidget.blur();
     this.currentWidget = widget;
     widget.focus();
@@ -136,4 +134,8 @@ export class DefaultFocusManager implements FocusManager {
       handler(this.currentWidget);
     }
   }
+}
+
+function takesFocus(widget: InteractiveWidget): boolean {
+  return widget.focusable && !widget.disabled;
 }
