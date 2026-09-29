@@ -734,10 +734,13 @@ export class Table implements Renderable, Measurable {
       // neighbour is flexible. The split is the reference's —
       // `fixed_widths = [0 if column.flexible else _range.maximum ...]` — with
       // one divergence: Rich splits by ratio only when the table expands, and
-      // here a ratio is honoured either way.
+      // here a ratio is honoured either way. Its bounded part is its floor —
+      // the reference's `column.min_width or 1` — bid for in cells like any
+      // content column, so a squeezed table still pays a declared `minWidth`.
       const share = columnShare(col);
       if (share > 0) {
-        return { reserved: 0, want: 1, weight: 0, ratio: share, stretch: 0 };
+        const floor = Math.max(1, demandCells(col.minWidth ?? 0));
+        return { reserved: 0, want: floor, weight: floor, ratio: share, stretch: 0 };
       }
       const natural = demandCells(this._naturalWidth(col, index));
       // `expand` is a stretch rather than a larger want: the column still

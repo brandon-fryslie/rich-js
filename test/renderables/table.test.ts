@@ -926,6 +926,22 @@ describe("Table stays inside the width it is given", () => {
     expect(lines[1]).toContain("0123456789".repeat(4));
   });
 
+  // A ratio column's share comes out of the leftover, but its `minWidth` is a
+  // floor it bids for exactly as a content column bids for one: with nothing
+  // left over it was drawn at a single seat, `he…`, under a declared ten.
+  it("bids for a ratio column's minWidth as a content column bids for its own", () => {
+    const build = (ratio: number | undefined): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addColumn(undefined, { ratio, minWidth: 10 });
+      t.addRow("x".repeat(30), "hi");
+      return t;
+    };
+    const lines = collectLines(build(1), { maxWidth: 40 });
+    expect(lines).toEqual(collectLines(build(undefined), { maxWidth: 40 }));
+    expect(lines[1]!.split("|")[2]!.length).toBeGreaterThan(3);
+  });
+
   // Floored to a whole cell, `ratio: 0.5` weighed nothing and collapsed to `…`,
   // and `ratio: 1.5` against `1` split evenly.
   it.each([
