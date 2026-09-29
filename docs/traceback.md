@@ -75,7 +75,7 @@ import { installTraceback } from "@promptctl/rich-js/node/traceback";
 installTraceback();
 ```
 
-Then make `import "./crash-reporting.js";` the first import of your entry file. A module's imports evaluate in the order they are written, so the handler is installed before anything imported after it starts to evaluate.
+Then make `import "./crash-reporting.js";` the first import of your entry file. A module's imports evaluate in the order they are written, so every module the entry file imports after it evaluates with the handler installed. The exception is what `crash-reporting.js` itself imports — rich-js and its dependencies — which has already evaluated by then.
 
 Node's `--import ./crash-reporting.js` flag does the same thing from outside the module graph.
 :::

@@ -14,8 +14,8 @@
  *   1. build the page's program (`example-program.ts`);
  *   2. type-check it under the repo's strict options, reporting the page and
  *      line of the block that caused an error, and type-check each block
- *      that runs nowhere (`shape`, `node`) the same way, as a program of its
- *      own like a live block's;
+ *      outside the chain (`live`, `shape`, `node`) the same way, as a program
+ *      of its own;
  *   3. bundle it, `@promptctl/rich-js` resolved to `src/`;
  *   4. run it once under the simulated process, in one fixed terminal;
  *   5. cut the captured bytes into per-block output and hold each block to
@@ -454,16 +454,7 @@ async function liveBlock(page: string, fence: Fence, source: string): Promise<st
   return `\n${block}`;
 }
 
-async function liveProgram(
-  compiler: ExampleCompiler,
-  page: string,
-  context: ExampleContext | null,
-  fence: Fence,
-  barrel: readonly BarrelExport[],
-  library: LibrarySource,
-): Promise<LiveProgram> {
-  const program = buildBlockProgram(page, context, fence, barrel);
-  compiler.check(program);
+async function liveProgram(page: string, fence: Fence, program: ExampleProgram, library: LibrarySource): Promise<LiveProgram> {
   const [block, shared] = await Promise.all([liveBlock(page, fence, program.source), library()]);
   return { id: hash(shared.id + block), block, library: shared };
 }
@@ -517,10 +508,11 @@ export async function runPageExamples(
   const barrel = compiler.barrelExports();
   const program = buildProgram(page, context, chain, barrel);
   compiler.check(program);
-  // [LAW:single-enforcer] A block that runs nowhere is compiled by the same
-  // check as one that runs, on the program a live block gets: not being run
-  // is no licence to call something that does not exist.
-  for (const fence of fences.filter((f) => MARKERS[f.marker].run === "never")) compiler.check(buildBlockProgram(page, context, fence, barrel));
+  // [LAW:single-enforcer] Every block outside the chain is checked here, each
+  // as a program of its own, whether it runs in the browser or nowhere: not
+  // being run at build time is no licence to call something that does not exist.
+  const alone = new Map<Fence, ExampleProgram>(fences.filter((f) => !runsAtBuild(f)).map((fence) => [fence, buildBlockProgram(page, context, fence, barrel)]));
+  for (const blockProgram of alone.values()) compiler.check(blockProgram);
   const script = await bundleOrThrow(page, program.source);
   const { stream, end, exits } = await capture(script);
   if (exits.length > 0) throw new Error(`docs/${page}: an example calls process.exit(${exits[0]}), which would end the build; mark it \`node\``);
@@ -538,9 +530,9 @@ export async function runPageExamples(
     throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(contextRecord.output.slice(0, 60))}; it may not print`);
   }
   const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
-  const liveFences = fences.filter((f) => MARKERS[f.marker].run === "browser");
-  const programs = await Promise.all(liveFences.map((fence) => liveProgram(compiler, page, context, fence, barrel, library)));
-  const live = new Map<Fence, LiveProgram>(liveFences.map((fence, i) => [fence, programs[i]!]));
+  const liveBlocks = [...alone].filter(([fence]) => MARKERS[fence.marker].run === "browser");
+  const programs = await Promise.all(liveBlocks.map(([fence, blockProgram]) => liveProgram(page, fence, blockProgram, library)));
+  const live = new Map<Fence, LiveProgram>(liveBlocks.map(([fence], i) => [fence, programs[i]!]));
   const binding = (program: LiveProgram): string => `__richLive_${program.id}`;
   const shown = (fence: Fence): Shown => {
     const program = live.get(fence);
