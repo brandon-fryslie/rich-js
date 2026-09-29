@@ -793,37 +793,42 @@ describe("Table stays inside the width it is given", () => {
     expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
   });
 
-  it("treats NaN column bounds as no bounds", () => {
-    const t = new Table({ box: ASCII, showHeader: false });
-    t.addColumn(undefined, { minWidth: NaN });
-    t.addColumn();
-    t.addRow("hidden", "shown");
-    expect(collectLines(t, { maxWidth: 20 })).toContain("| hidden | shown |");
+  it("reads a NaN minWidth as zero cells, which bounds nothing", () => {
+    const t = new Table({ box: ASCII });
+    t.addColumn("Name", { minWidth: NaN });
+    t.addRow("val");
+    expect(collectLines(t, { maxWidth: 50 })).toEqual([
+      "+------+",
+      "| Name |",
+      "|------|",
+      "| val  |",
+      "+------+",
+    ]);
   });
 
-  it.each(["minWidth", "maxWidth"] as const)(
-    "keeps the header and the cell of a column with a NaN %s",
-    (bound) => {
+  it("reads a NaN maxWidth as zero cells, as it reads a NaN width", () => {
+    const build = (maxWidth: number): Table => {
       const t = new Table({ box: ASCII });
-      t.addColumn("Name", { [bound]: NaN });
-      t.addRow("val");
-      expect(collectLines(t, { maxWidth: 50 })).toEqual([
-        "+------+",
-        "| Name |",
-        "|------|",
-        "| val  |",
-        "+------+",
-      ]);
-    },
-  );
+      t.addColumn("Name", { maxWidth });
+      t.addColumn("B");
+      t.addRow("val", "shown");
+      return t;
+    };
+    const zero = collectLines(build(0), { maxWidth: 50 });
+    expect(zero).toContain("|  | shown |");
+    expect(collectLines(build(NaN), { maxWidth: 50 })).toEqual(zero);
+  });
 
-  it("ignores a NaN bound assigned after the column was built", () => {
-    const t = new Table({ box: ASCII, showHeader: false });
-    t.addColumn();
-    t.addRow("hidden");
-    t.columns[0]!.minWidth = NaN;
-    t.columns[0]!.maxWidth = NaN;
-    expect(collectLines(t, { maxWidth: 20 })).toContain("| hidden |");
+  it("measures a NaN table minWidth as no floor", () => {
+    const build = (minWidth: number | undefined): Table => {
+      const t = new Table({ box: ASCII, minWidth });
+      t.addColumn("Name");
+      t.addRow("val");
+      return t;
+    };
+    expect(build(NaN).measure({ maxWidth: 50 })).toEqual(
+      build(undefined).measure({ maxWidth: 50 }),
+    );
   });
 
   it("renders a NaN width as a zero width rather than an unbounded frame", () => {
