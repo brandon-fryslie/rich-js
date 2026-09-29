@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-223",
-      "ref": "refs/pull/223/merge",
-      "sha": "459af933e86ac0948f10cc0a22036ecfc02ab0db",
-      "timestamp": "2026-09-29T22:00:20.505Z",
-      "commits": [
-        {
-          "sha": "459af933e86ac0948f10cc0a22036ecfc02ab0db",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T21:59:33Z",
-          "message": "Merge 9b982704ac2e0a561b67afbe7ab32863d3d7ef6b into c209b08f810cb898ada64093f9cf8a53eca876d0\n"
-        },
-        {
-          "sha": "9b982704ac2e0a561b67afbe7ab32863d3d7ef6b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:59:27-06:00",
-          "message": "test(traceback): pin an awaited call of a function named async (rich-traceback-dbs)\n\nThe comment on parseStack now names only the frame shapes it reads, since\nit does not read every V8 shape. The shapes it misses are rich-traceback-9vcb\nand rich-traceback-4es8.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "5edb850a3d03f30b8b5cfe03ef5becf159b5ffd8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:56:26-06:00",
-          "message": "fix(traceback): drop V8's async marker from frame names (rich-traceback-dbs)\n\n`at async fn (file:l:c)` rendered `async fn`, and `at async file:l:c` folded\nthe marker into the path. The parser now reads the marker and drops it; a\nlookahead keeps `at async (file:l:c)`, a function named `async`, a name.\n\nThe docs Max frames context now carries the tail Node 26 records, so its\nrendered sample shows a nameless async frame.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c209b08f810cb898ada64093f9cf8a53eca876d0",
-      "timestamp": "2026-09-29T21:53:51.748Z",
+      "sha": "77b2e5d61934221eaf9dc4015c19971c873eca48",
+      "timestamp": "2026-09-29T22:03:22.042Z",
       "commits": [
         {
-          "sha": "c209b08f810cb898ada64093f9cf8a53eca876d0",
+          "sha": "77b2e5d61934221eaf9dc4015c19971c873eca48",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:53:01-06:00",
-          "message": "test(embed): a bad style in any embedded label reaches onStyleError (rich-panel-z93) (#222)\n\n* test(embed): a bad style in any embedded label degrades and reaches onStyleError (rich-panel-z93)\n\nMarkup and RichText spans in panel titles/subtitles landed in #173\n(rich-panel-gbe). The ticket's remaining clause, that a style error there\ndegrades and reaches onStyleError, had no test; this pins it at every\nembed site.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(embed): pin the unstyled bytes, a single report, and the RichText branch (rich-panel-z93)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T16:02:28-06:00",
+          "message": "fix(traceback): drop V8's async marker from frame names (rich-traceback-dbs) (#223)\n\n* fix(traceback): drop V8's async marker from frame names (rich-traceback-dbs)\n\n`at async fn (file:l:c)` rendered `async fn`, and `at async file:l:c` folded\nthe marker into the path. The parser now reads the marker and drops it; a\nlookahead keeps `at async (file:l:c)`, a function named `async`, a name.\n\nThe docs Max frames context now carries the tail Node 26 records, so its\nrendered sample shows a nameless async frame.\n\n* test(traceback): pin an awaited call of a function named async (rich-traceback-dbs)\n\nThe comment on parseStack now names only the frame shapes it reads, since\nit does not read every V8 shape. The shapes it misses are rich-traceback-9vcb\nand rich-traceback-4es8.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     },
