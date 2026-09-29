@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-219",
-      "ref": "refs/pull/219/merge",
-      "sha": "97250f4ac042cbfbf32caadc5b51ccb591be93bf",
-      "timestamp": "2026-09-29T21:16:52.040Z",
-      "commits": [
-        {
-          "sha": "97250f4ac042cbfbf32caadc5b51ccb591be93bf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T21:15:48Z",
-          "message": "Merge 1f1163434992046030705c5794a9c6b3420a54c2 into 2df67cfc18181fa8fe839b06254f57b72fad4703\n"
-        },
-        {
-          "sha": "1f1163434992046030705c5794a9c6b3420a54c2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:15:43-06:00",
-          "message": "fix(color): parseByte is the only range check and names the key (rich-color-av8)\n\nReview of #219: the {1,3} digit cap was a second, partial range check, so\nrgb(0,1000,0) got the generic parse error; widen to \\d+ and report the\ndigits. The message now names the colour string, and the field is a union.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "3dc279b7c3a455a3baa786d0081a5c9c49e0c08e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:12:04-06:00",
-          "message": "fix(color): out-of-range rgb() channel is a ColorParseError (rich-color-av8)\n\nColorSpec.parse's rgb() branch passed any 1-3 digit channel to the\nColorRgba constructor, which threw RangeError. Both rgb() channels and\ncolor(N) now go through parseByte, which reports the channel by name;\nthe byte range is one predicate shared with the constructor's assert.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2df67cfc18181fa8fe839b06254f57b72fad4703",
-      "timestamp": "2026-09-29T21:09:30.470Z",
+      "sha": "1e61e1aa0716245a8339f9bde4d84adcf33827b5",
+      "timestamp": "2026-09-29T21:20:01.326Z",
       "commits": [
         {
-          "sha": "2df67cfc18181fa8fe839b06254f57b72fad4703",
+          "sha": "1e61e1aa0716245a8339f9bde4d84adcf33827b5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:08:29-06:00",
-          "message": "fix(text): truncate fits a wider marker to the width (rich-text-odh) (#218)\n\n* fix(text): truncate fits a wider marker to the width (rich-text-odh)\n\ntruncate(width, { marker }) returned the marker whole when it was wider\nthan width, so truncate(1, { marker: \">>\" }) drew two cells. The marker is\nnow cut to the width as a value, and the kept-text budget is what the\nfitted marker leaves; the width <= 0 early return is subsumed.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(cells): cellFit cuts between grapheme clusters (rich-text-odh)\n\ncellFit summed cellLen per code point, while cellLen measures clusters,\nso a VS16 or ZWJ marker was \"fitted\" wider than the width (❤️ at 1 cell)\nor cut mid-glyph (👨‍👩‍👧 at 4). truncate's own text crops had the same\nwalk. Both now go through graphemes() + fitClusters in cells.ts, and\nexport-html's private segmenter is that same one.\n\nThe remaining per-code-point walkers are rich-cells-1y9d.\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T15:19:11-06:00",
+          "message": "fix(color): out-of-range rgb() channel is a ColorParseError (rich-color-av8) (#219)\n\n* fix(color): out-of-range rgb() channel is a ColorParseError (rich-color-av8)\n\nColorSpec.parse's rgb() branch passed any 1-3 digit channel to the\nColorRgba constructor, which threw RangeError. Both rgb() channels and\ncolor(N) now go through parseByte, which reports the channel by name;\nthe byte range is one predicate shared with the constructor's assert.\n\n* fix(color): parseByte is the only range check and names the key (rich-color-av8)\n\nReview of #219: the {1,3} digit cap was a second, partial range check, so\nrgb(0,1000,0) got the generic parse error; widen to \\d+ and report the\ndigits. The message now names the colour string, and the field is a union.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     },
