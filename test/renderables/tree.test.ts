@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { Tree } from "../../src/renderables/tree.js";
 import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
+import { Table } from "../../src/renderables/table.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -153,6 +155,64 @@ describe("Tree", () => {
     const tree = new Tree(label());
     tree.add(label());
     expect(collectLines(tree, { maxWidth: 9 })).toEqual(["日本語日 ", "└── 日本 "]);
+  });
+
+  // Python Rich 9d8f9a3 draws this tree the same way. Rows below the first level
+  // once carried only the continuation rail — `│   b` — and no guide style.
+  it("draws a branch on every row, at every depth, in the guide style", () => {
+    const tree = new Tree("root", { guide_style: "red" });
+    const a = tree.add("a");
+    a.add("b").add("c");
+    a.add("d");
+    tree.add("e");
+    const segments = collectSegments(tree, { maxWidth: 40 });
+    const lines = Segment.splitLines(segments);
+    expect(lines.map((l) => l.map((s) => s.text).join(""))).toEqual([
+      "root",
+      "├── a",
+      "│   ├── b",
+      "│   │   └── c",
+      "│   └── d",
+      "└── e",
+    ]);
+    const red = Style.parse("red");
+    for (const line of lines.slice(1)) {
+      const guides = line.slice(0, -1);
+      expect(guides.length).toBeGreaterThan(0);
+      for (const guide of guides) expect(guide.style?.equals(red)).toBe(true);
+    }
+  });
+
+  it("stacks a node's guide style onto its ancestors' for the guides it opens", () => {
+    const tree = new Tree("root", { guide_style: "red" });
+    tree.add("a", { guide_style: "bold" }).add("b");
+    const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
+    const [rail, branch] = lines[2]!;
+    expect(rail!.text).toBe("    ");
+    expect(rail!.style?.equals(Style.parse("red"))).toBe(true);
+    expect(branch!.text).toBe("└── ");
+    expect(branch!.style?.equals(Style.parse("red bold"))).toBe(true);
+  });
+
+  // A label taller than one line once printed its later lines at column 0 and
+  // then a blank row, because the row's newline followed the label's own.
+  it("leads every line of a multi-line label with the guides, and adds no blank rows", () => {
+    const tree = new Tree("root");
+    const grid = Table.grid();
+    grid.addColumn();
+    grid.addRow("one");
+    grid.addRow("two");
+    grid.addRow("three");
+    tree.add(grid).add("leaf");
+    tree.add("last");
+    expect(collectLines(tree, { maxWidth: 40 }).map((l) => l.trimEnd())).toEqual([
+      "root",
+      "├── one",
+      "│   two",
+      "│   three",
+      "│   └── leaf",
+      "└── last",
+    ]);
   });
 
   describe("measurement", () => {
