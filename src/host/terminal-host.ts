@@ -88,11 +88,18 @@ export interface TerminalHost {
   setRawMode(raw: boolean): void;
 
   /**
-   * Whether the host is connected to a real interactive terminal. Drives
-   * default option values (e.g. `manageCursor`, `manageRawMode`) in the
-   * runtime; non-TTY hosts default those features off.
+   * Whether the host is connected to a real interactive terminal — input and
+   * output both. Drives default option values (e.g. `manageCursor`,
+   * `manageRawMode`) in the runtime; non-TTY hosts default those features off.
    */
   readonly isTTY: boolean;
+
+  /**
+   * Whether the bytes `write` sends land on a terminal, whatever the input
+   * is. Colour detection asks this: a program with piped stdin and a terminal
+   * stdout still draws on a terminal, and `isTTY` would call it plain.
+   */
+  readonly writesToTerminal: boolean;
 
   /**
    * The environment a program running on this terminal sees — `TERM`,
@@ -186,6 +193,10 @@ export class BrowserTerminalHost implements TerminalHost {
   // runtime never branches on the value; this is the only sensible
   // constant for this host.
   get isTTY(): boolean {
+    return true;
+  }
+
+  get writesToTerminal(): boolean {
     return true;
   }
 

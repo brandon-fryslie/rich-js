@@ -98,7 +98,11 @@ export class NodeTerminalHost implements TerminalHost {
   }
 
   get isTTY(): boolean {
-    return !!this.stdin.isTTY && !!this.stdout.isTTY;
+    return !!this.stdin.isTTY && this.writesToTerminal;
+  }
+
+  get writesToTerminal(): boolean {
+    return !!this.stdout.isTTY;
   }
 
   write(data: Uint8Array | string): void {

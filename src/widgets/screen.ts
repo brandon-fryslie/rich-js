@@ -154,12 +154,11 @@ export class DefaultScreen implements Screen {
     this.widthOverride = options.width;
     this.focusManager = options.focusManager ?? new DefaultFocusManager();
 
-    const isTTY = this.host.isTTY;
     this.destination = resolveDestination(
       options.colorSystem === undefined ? "auto" : options.colorSystem,
-      { isTTY, env: this.host.env },
+      { isTTY: this.host.writesToTerminal, env: this.host.env },
     );
-    this.manageCursor = options.manageCursor ?? isTTY;
+    this.manageCursor = options.manageCursor ?? this.host.isTTY;
   }
 
   get running(): boolean {

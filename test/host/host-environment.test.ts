@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { Console } from "../../src/core/console.js";
 import { ColorDepth } from "../../src/core/color.js";
+import { PassThrough } from "node:stream";
 import { hostEnvironment } from "../../src/host/host-environment.js";
+import { NodeTerminalHost } from "../../src/node/terminal-host.js";
 import {
   BrowserTerminalHost,
   type TerminalHost,
@@ -41,6 +43,7 @@ function makeRecordingHost(opts: {
     size: () => size,
     setRawMode: () => {},
     isTTY: opts.isTTY,
+    writesToTerminal: opts.isTTY,
     env: opts.env,
     start: () => {},
     stop: () => {},
@@ -94,6 +97,28 @@ describe("hostEnvironment", () => {
     out.print("[red]plain[/]");
 
     expect(host.writes.join("")).toBe("plain\n");
+  });
+
+  it("piped stdin with a terminal stdout still draws colour", () => {
+    // The console asks whether its output is a terminal. A one-shot demo run
+    // as `echo | npm run strip` is not interactive, but it draws on one.
+    const written: string[] = [];
+    const host = new NodeTerminalHost({
+      stdin: new PassThrough(),
+      stdout: {
+        isTTY: true,
+        write: (chunk) => written.push(String(chunk)),
+        on: () => {},
+        off: () => {},
+      },
+      env: { COLORTERM: "truecolor" },
+    });
+    const out = new Console({ environment: hostEnvironment(host) });
+
+    out.print("[#fd8019]warning[/]");
+
+    expect(host.isTTY).toBe(false);
+    expect(written.join("")).toContain("\x1b[38;2;253;128;25mwarning");
   });
 
   it("the console's size follows the host through a resize", () => {

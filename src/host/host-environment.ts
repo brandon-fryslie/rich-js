@@ -34,8 +34,10 @@ export function hostEnvironment(
     write(chunk: string | Uint8Array): void {
       host.write(chunk);
     },
+    // [LAW:one-source-of-truth] A console asks whether its output is a
+    // terminal, which is the host's `writesToTerminal`, not its `isTTY`.
     get isTTY(): boolean {
-      return host.isTTY;
+      return host.writesToTerminal;
     },
     get columns(): number {
       return host.size().cols;
