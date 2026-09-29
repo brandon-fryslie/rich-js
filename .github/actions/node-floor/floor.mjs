@@ -15,10 +15,11 @@
  *
  * An optional peer goes into the consumer install when the lockfile records it
  * as admitting the floor: a consumer on the floor can install it, so the
- * subpaths behind it are part of what must run there. A peer whose `engines`
- * excludes the floor is left out, and the probe reports its subpaths under
- * `needsPeer`. Which subpath may reach which peer is `test/seam/optional-peers.ts`'s
- * rule, not this file's.
+ * subpaths behind it are part of what must run there. It is installed at the
+ * locked version, so the package installed is the one whose `engines` was
+ * read. A peer whose `engines` excludes the floor is left out, and the probe
+ * reports its subpaths under `needsPeer`. Which subpath may reach which peer is
+ * `test/seam/optional-peers.ts`'s rule, not this file's.
  */
 
 import { appendFileSync, readFileSync } from "node:fs";
@@ -46,9 +47,9 @@ const peers = optionalPeers.map((name) => {
   }
   // A package that declares no `engines` admits every Node; npm reads it the same way.
   const engines = locked.engines?.node;
-  return { name, engines, admitted: engines === undefined || semver.satisfies(floor, engines) };
+  return { name, version: locked.version, engines, admitted: engines === undefined || semver.satisfies(floor, engines) };
 });
-const install = peers.filter((p) => p.admitted).map((p) => `${p.name}@${manifest.peerDependencies[p.name]}`);
+const install = peers.filter((p) => p.admitted).map((p) => `${p.name}@${p.version}`);
 
 // [LAW:nothing-unseen] Which floor was derived, and why each peer is or is not installed.
 console.log(JSON.stringify({ event: "node-floor-plan", engines: manifest.engines.node, floor, peers }));
