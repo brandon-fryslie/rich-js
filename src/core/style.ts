@@ -325,20 +325,17 @@ export class Style {
   toSgrCodes(colorSystem: ColorDepth): string {
     if (this.isNull) return "";
 
-    const attrs: string[] = [];
+    // Attributes, then foreground, then background: Python Rich 9d8f9a3's
+    // `_make_ansi_codes` order, so a byte pinned against the reference holds.
+    // An attribute set false writes nothing, as there. It overrides an
+    // inherited attribute when styles combine, and every styled run is written
+    // after a reset, so no off code is ever needed.
     const drawn = this.drawnColors(colorSystem);
-    if (drawn.color) attrs.push(...drawn.color.getAnsiCodes(true));
-    if (drawn.bgcolor) attrs.push(...drawn.bgcolor.getAnsiCodes(false));
-
-    // An attribute set false writes nothing, as in Python Rich 9d8f9a3's
-    // `_make_ansi_codes`. It overrides an inherited attribute when styles
-    // combine, and every styled run is written after a reset, so no off
-    // code is ever needed.
-    attrs.push(
+    return [
       ...ATTRIBUTE_NAMES.filter((name) => this[name] === true).map((name) => `${ATTRIBUTE_SGR[name]}`),
-    );
-
-    return attrs.join(";");
+      ...(drawn.color?.getAnsiCodes(true) ?? []),
+      ...(drawn.bgcolor?.getAnsiCodes(false) ?? []),
+    ].join(";");
   }
 
   /**

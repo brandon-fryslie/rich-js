@@ -800,35 +800,27 @@ describe("Console.printJson()", () => {
     );
   });
 
-  // Pinned as the theme style Rich gives each token rather than as its bytes:
-  // rich-js orders SGR parameters colour-first (rich-color-7kv), which would
-  // fail a byte pin on every key without saying anything about highlighting.
+  // Pinned against Rich 9d8f9a3's bytes for the same call: `Console(file=buf,
+  // force_terminal=True, color_system="truecolor").print_json(...)`, run from
+  // a checkout the way markup-grammar.test.ts's header runs its golden.
   it("highlights braces, keys and strings with the theme's json styles", () => {
-    const expected = new RichText('{\n  "key": "value"\n}', { end: "" })
-      .stylize("json.brace", 0, 1)
-      .stylize("json.key", 4, 9)
-      .stylize("json.str", 11, 18)
-      .stylize("json.brace", 19, 20);
-    const { console: reference, chunks } = makeConsole({ colorSystem: "truecolor" });
-    reference.print(expected);
-    expect(printJson({ colorSystem: "truecolor" }, '{"key": "value"}')).toBe(captured(chunks));
+    expect(printJson({ colorSystem: "truecolor" }, '{"key": "value"}')).toBe(
+      '\x1b[1m{\x1b[0m\n  \x1b[1;34m"key"\x1b[0m: \x1b[32m"value"\x1b[0m\n\x1b[1m}\x1b[0m\n',
+    );
   });
 
   it("highlights numbers, booleans, null and strings inside arrays with the theme's json styles", () => {
-    const expected = new RichText("", { end: "" })
-      .append("{", "json.brace").append("\n  ")
-      .append('"n"', "json.key").append(": ").append("1.5", "json.number").append(",\n  ")
-      .append('"t"', "json.key").append(": ").append("true", "json.bool_true").append(",\n  ")
-      .append('"f"', "json.key").append(": ").append("false", "json.bool_false").append(",\n  ")
-      .append('"z"', "json.key").append(": ").append("null", "json.null").append(",\n  ")
-      .append('"a"', "json.key").append(": ").append("[", "json.brace").append("\n    ")
-      .append('"s"', "json.str").append("\n  ")
-      .append("]", "json.brace").append("\n")
-      .append("}", "json.brace");
-    const { console: reference, chunks } = makeConsole({ colorSystem: "truecolor" });
-    reference.print(expected);
-    expect(printJson({ colorSystem: "truecolor" }, { n: 1.5, t: true, f: false, z: null, a: ["s"] }))
-      .toBe(captured(chunks));
+    expect(printJson({ colorSystem: "truecolor" }, { n: 1.5, t: true, f: false, z: null, a: ["s"] })).toBe(
+      '\x1b[1m{\x1b[0m\n' +
+        '  \x1b[1;34m"n"\x1b[0m: \x1b[1;36m1.5\x1b[0m,\n' +
+        '  \x1b[1;34m"t"\x1b[0m: \x1b[3;92mtrue\x1b[0m,\n' +
+        '  \x1b[1;34m"f"\x1b[0m: \x1b[3;91mfalse\x1b[0m,\n' +
+        '  \x1b[1;34m"z"\x1b[0m: \x1b[3;35mnull\x1b[0m,\n' +
+        '  \x1b[1;34m"a"\x1b[0m: \x1b[1m[\x1b[0m\n' +
+        '    \x1b[32m"s"\x1b[0m\n' +
+        '  \x1b[1m]\x1b[0m\n' +
+        '\x1b[1m}\x1b[0m\n',
+    );
   });
 
   it("prints plain text when highlight is off", () => {

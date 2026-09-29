@@ -1122,6 +1122,20 @@ describe("Style.normalize", () => {
   });
 });
 
+describe("toSgrCodes parameter order", () => {
+  // Rich 9d8f9a3's `Style.parse(s)._make_ansi_codes(ColorSystem.TRUECOLOR)`
+  // for each string: attributes in SGR-number order, then foreground, then
+  // background. A terminal reads them as a set; a byte pin does not.
+  it.each([
+    ["bold red on blue", "1;31;44"],
+    ["bold on blue", "1;44"],
+    ["underline2 frame encircle overline dim on #102030", "2;21;51;52;53;48;2;16;32;48"],
+    ["bold italic strike #ff8800 on red", "1;3;9;38;2;255;136;0;41"],
+  ])("%s", (spec, codes) => {
+    expect(Style.parse(spec).toSgrCodes(ColorDepth.TRUECOLOR)).toBe(codes);
+  });
+});
+
 describe("toSgrCodes at 256 colours rounds every colour on its own", () => {
   it("a foreground that is a neighbour's background rounds exactly as that background does", () => {
     // A powerline arrow is drawn in the left cell's background: the seam

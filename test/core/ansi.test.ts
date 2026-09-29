@@ -46,7 +46,7 @@ describe("decodeAnsi round trip", () => {
     const bytes = renderToString(sample, { colorSystem: ColorDepth.TRUECOLOR, width: 200 });
     expect(bytes).toContain("38;2;58;123;213");
     expect(bytes).toContain("38;5;200");
-    expect(bytes).toContain("\x1b[31;1m");
+    expect(bytes).toContain("\x1b[1;31m");
   });
 });
 
