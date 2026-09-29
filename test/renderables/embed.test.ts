@@ -56,6 +56,19 @@ describe("content embedded in a renderable", () => {
     });
   }
 
+  for (const [site, build] of sites) {
+    it(`draws a style it cannot parse in ${site} as plain text, and reports it`, () => {
+      const heard: string[] = [];
+      const out = renderToString(build("[bold rd]Hello[/]"), {
+        width: 30,
+        onStyleError: (_error, style) => void heard.push(style),
+      });
+      expect(out).toContain("Hello");
+      expect(out).not.toContain("[bold rd]");
+      expect(heard).toContain("bold rd");
+    });
+  }
+
   it("draws the plain line for a title with no text, however it is spelled", () => {
     const plain = (r: Renderable) => renderToString(r, { width: 12 }).replace(/\x1b\[[0-9;]*m/g, "");
     for (const empty of ["", new RichText(""), "[bold][/bold]"]) {
