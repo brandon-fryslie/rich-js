@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-209",
+      "ref": "refs/pull/209/merge",
+      "sha": "8cbf097d6bb9233c265caf4842a021382b9751a1",
+      "timestamp": "2026-09-29T17:39:45.423Z",
+      "commits": [
+        {
+          "sha": "8cbf097d6bb9233c265caf4842a021382b9751a1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T11:38:52-06:00",
+          "message": "Merge c147ab206e4018ab18c9e7b6888db33bbeed0e92 into d022f4b8ccbfdfa95a0acec8d58504f005587c69\n"
+        },
+        {
+          "sha": "c147ab206e4018ab18c9e7b6888db33bbeed0e92",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T11:38:40-06:00",
+          "message": "test(examples): rich-config runs full-screen with its widgets in a Panel in a Layout pane, driven by keys and clicks under both hosts (rich-runtime-fna.6)\n\nThe widgets now sit in a \"Widgets\" panel in the left pane of a row split,\nthe preview they drive in a panel beside it. union.test.ts drives the demo\nover NodeTerminalHost and e2e/rich-config.spec.ts drives the same demo in a\nreal xterm.js over BrowserTerminalHost: Tab order through the panel, a key\nto the focused widget, a click toggling a checkbox, a click-focused text\ninput, and a dropdown overlay whose option is picked by a click.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d022f4b8ccbfdfa95a0acec8d58504f005587c69",
