@@ -4,15 +4,22 @@
     {
       "version": "pr-207",
       "ref": "refs/pull/207/merge",
-      "sha": "b0ff702f4f4721d0d8c13f78684d3961d37c9307",
-      "timestamp": "2026-09-29T16:40:33.536Z",
+      "sha": "996e04bb106f52e433a5a18b8e4c003a260176af",
+      "timestamp": "2026-09-29T16:49:43.021Z",
       "commits": [
         {
-          "sha": "b0ff702f4f4721d0d8c13f78684d3961d37c9307",
+          "sha": "996e04bb106f52e433a5a18b8e4c003a260176af",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:39:43-06:00",
-          "message": "Merge 154cbc76aa68f923d30c6ae0202667756fde16f8 into 8d1698c63a99cdfa810c495b3e6cbabf7d38f79d\n"
+          "timestamp": "2026-09-29T16:48:51Z",
+          "message": "Merge 5dfed9d399a2d9f2e677ad9eda62a1a8c14c5f90 into 8d1698c63a99cdfa810c495b3e6cbabf7d38f79d\n"
+        },
+        {
+          "sha": "5dfed9d399a2d9f2e677ad9eda62a1a8c14c5f90",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T10:48:46-06:00",
+          "message": "fix(widgets): the wheel passes over a viewport that cannot move to the one around it (rich-viewport-owi.5)\n\nReview (high) found the innermost viewport kept every notch even when its\ncontent fit or it sat at that end, so an outer viewport was dead under it\nand each notch repainted for nothing. Viewport.canScrollBy answers against\nthe last render's extent; scrollTargetAt takes the innermost that can move.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "154cbc76aa68f923d30c6ae0202667756fde16f8",
