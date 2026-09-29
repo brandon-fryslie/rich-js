@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-213",
-      "ref": "refs/pull/213/merge",
-      "sha": "7c2ce16a6a85b4ed84b2b8b6b83654a4bc5dd8cd",
-      "timestamp": "2026-09-29T19:46:39.053Z",
-      "commits": [
-        {
-          "sha": "7c2ce16a6a85b4ed84b2b8b6b83654a4bc5dd8cd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T19:45:47Z",
-          "message": "Merge dea3a58d32dac4f9558952f28fcc0b6aacf5aa20 into 89c5105f65e3b6fa34962adb089cb14c76052e3c\n"
-        },
-        {
-          "sha": "dea3a58d32dac4f9558952f28fcc0b6aacf5aa20",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:45:40-06:00",
-          "message": "refactor(console,text): a run is closed by its end; fromFragments is append (rich-console-c70)\n\nclosed reads the print's own end rather than re-deriving it from the\ndrawn output. RichText.fromFragments hand-copied the base-style lift\nappend now does, and its comment said append did not.\n"
-        },
-        {
-          "sha": "478ce1613bf812b4029392dc9168ad095c415355",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:35:30-06:00",
-          "message": "fix(console): a print's text items are joined into one text, as Rich's Text.join does (rich-console-c70, rich-console-7yp0)\n\nTextRun measured the run as one string but drew each item on its own,\nso under justify every item was set at the run's width by itself: the\nrun came out wider than measured and was cropped, and sep=\"\\n\" with\njustify=\"right\" regressed against master. Measure and render now read\none joined RichText. Each item's own justify/overflow/noWrap/tabSize\nstays behind, as in the reference; RichText.append now carries the\nappended text's base style, as the reference's append does, so a styled\nitem keeps its style through the join.\n"
-        },
-        {
-          "sha": "4216b968f32c716275406d0f3fd8c4183993abf5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:27:05-06:00",
-          "message": "fix(console): a text run ending in a break under an empty end gets no extra line (rich-console-c70)\n\nThe unplaced close check read the joined text's last character, which\nskips an empty trailing segment that splitLines does not: print(\"a\\n\",\nend=\"\") drew a blank line Rich does not. Closed is now the last\nsegment ending in a break, which is O(1) and agrees with splitLines by\nconstruction. Also: the justify table's center row names the block,\nand placeBlock says why it drops the region height.\n"
-        },
-        {
-          "sha": "c6b660f5ad0d53f28e07d4a213acf2e9940f829c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:16:57-06:00",
-          "message": "fix(console): justify places what print draws as one block, as Rich's Align does (rich-console-c70)\n\nprint's justify \"left\"/\"center\"/\"right\" now places each block of a print\n(a text run, or any other renderable) as a whole: measured, drawn at that\nwidth, shaped to its widest line, then padded out to the console. Before,\nonly RichText placed itself, line by line, so a Table or Panel was never\nplaced and \"hi\\nhello\" centred each line against the full width.\n\nThe placement is `placeBlock` in the new src/core/place.ts, so console.ts\nreaches it without a third upward edge out of core/. Align is now that\nfunction behind the Renderable interface, and moved from per-line to block\nplacement with it. Under overflow \"ignore\" / softWrap the text itself is not\njustified, matching Rich's Text.wrap; the block is still placed.\n\nPinned against Rich 9d8f9a3 bytes in test/core/console.test.ts. The\nmulti-item text run case is filed separately as rich-console-7yp0.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "89c5105f65e3b6fa34962adb089cb14c76052e3c",
-      "timestamp": "2026-09-29T19:03:09.125Z",
+      "sha": "5e0a5251b80d22c134051aa91b04827d23efef09",
+      "timestamp": "2026-09-29T19:49:41.745Z",
       "commits": [
         {
-          "sha": "89c5105f65e3b6fa34962adb089cb14c76052e3c",
+          "sha": "5e0a5251b80d22c134051aa91b04827d23efef09",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:02:17-06:00",
-          "message": "fix(table): distribute breaks fractional ties by the leftmost column, exactly (rich-table-iq0) (#212)\n\n* fix(table): distribute breaks fractional ties by the leftmost column, exactly (rich-table-iq0)\n\nThe largest-remainder pass compared share fractions as doubles, so two\nexactly equal remainders (6/14 and 6/14 for 16 cells over 1:3:10) compared\nunequal by rounding error and the spare cell went right. distribute now\nscales the weights to one power-of-two denominator and runs in BigInt, so\nfractions compare exactly; an Infinity budget is bounded by the open wants\nbefore it reaches integer arithmetic.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(table): read ratio weights as the decimals written, over bidding columns only (rich-table-iq0)\n\nReview of #212: scaling the binary doubles made 0.1 : 0.3 : 1 split unlike\n1 : 3 : 10, since 0.3 is not exactly three 0.1s in binary. exactWeights now\nreads each weight as the decimal it prints as and scales by a power of ten,\nand runs only over the demands that bid, so a closed column cannot throw or\ninflate the common scale.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T13:48:47-06:00",
+          "message": "fix(console): justify places what print draws as one block (rich-console-c70) (#213)\n\n* fix(console): justify places what print draws as one block, as Rich's Align does (rich-console-c70)\n\nprint's justify \"left\"/\"center\"/\"right\" now places each block of a print\n(a text run, or any other renderable) as a whole: measured, drawn at that\nwidth, shaped to its widest line, then padded out to the console. Before,\nonly RichText placed itself, line by line, so a Table or Panel was never\nplaced and \"hi\\nhello\" centred each line against the full width.\n\nThe placement is `placeBlock` in the new src/core/place.ts, so console.ts\nreaches it without a third upward edge out of core/. Align is now that\nfunction behind the Renderable interface, and moved from per-line to block\nplacement with it. Under overflow \"ignore\" / softWrap the text itself is not\njustified, matching Rich's Text.wrap; the block is still placed.\n\nPinned against Rich 9d8f9a3 bytes in test/core/console.test.ts. The\nmulti-item text run case is filed separately as rich-console-7yp0.\n\n* fix(console): a text run ending in a break under an empty end gets no extra line (rich-console-c70)\n\nThe unplaced close check read the joined text's last character, which\nskips an empty trailing segment that splitLines does not: print(\"a\\n\",\nend=\"\") drew a blank line Rich does not. Closed is now the last\nsegment ending in a break, which is O(1) and agrees with splitLines by\nconstruction. Also: the justify table's center row names the block,\nand placeBlock says why it drops the region height.\n\n* fix(console): a print's text items are joined into one text, as Rich's Text.join does (rich-console-c70, rich-console-7yp0)\n\nTextRun measured the run as one string but drew each item on its own,\nso under justify every item was set at the run's width by itself: the\nrun came out wider than measured and was cropped, and sep=\"\\n\" with\njustify=\"right\" regressed against master. Measure and render now read\none joined RichText. Each item's own justify/overflow/noWrap/tabSize\nstays behind, as in the reference; RichText.append now carries the\nappended text's base style, as the reference's append does, so a styled\nitem keeps its style through the join.\n\n* refactor(console,text): a run is closed by its end; fromFragments is append (rich-console-c70)\n\nclosed reads the print's own end rather than re-deriving it from the\ndrawn output. RichText.fromFragments hand-copied the base-style lift\nappend now does, and its comment said append did not."
         }
       ]
     },

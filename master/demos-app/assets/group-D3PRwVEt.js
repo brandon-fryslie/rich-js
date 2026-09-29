@@ -1,1 +1,0 @@
-import{R as e}from"./console-CDfwWm_z.js";var t=class{renderables;constructor(...e){this.renderables=e}*render(t){let n={...t,height:e(t.height)};for(let e of this.renderables)yield*e.render(n)}};export{t};
