@@ -1131,6 +1131,10 @@ describe("toSgrCodes parameter order", () => {
     ["bold on blue", "1;44"],
     ["underline2 frame encircle overline dim on #102030", "2;21;51;52;53;48;2;16;32;48"],
     ["bold italic strike #ff8800 on red", "1;3;9;38;2;255;136;0;41"],
+    // An attribute set false writes nothing, not its off code (rich-style-h93).
+    ["not bold red", "31"],
+    ["not bold", ""],
+    ["bold not dim not italic not underline not strike not blink not reverse not conceal not overline", "1"],
   ])("%s", (spec, codes) => {
     expect(Style.parse(spec).toSgrCodes(ColorDepth.TRUECOLOR)).toBe(codes);
   });

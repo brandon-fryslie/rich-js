@@ -149,7 +149,7 @@
  *
  * `negated-attribute` overrides too, but it takes an attribute away: `b` must be
  * red and not bold. The reference writes only the codes that are on, so `b` is
- * `\e[31m` with no 22 in it. This port used to add one (rich-color-9ga).
+ * `\e[31m` with no 22 in it. This port used to add one (rich-style-h93).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
