@@ -127,7 +127,7 @@ try {
 ```
 
 The position is counted in the whole string you passed, even when a
-`MarkupRegistry` has handed part of it to a plugin tag's handler, and `openTags`
+[`MarkupRegistry`](./markup-tags) has handed part of it to a plugin tag's handler, and `openTags`
 then includes the plugin tags around the error.
 
 ## Links
@@ -229,3 +229,8 @@ const text = renderMarkup("[bold red]Hello[/bold red]");
 text.append(", world", "italic cyan");
 console.print(text);
 ```
+
+## Plugin tags
+
+To add tags of your own, such as a `[kbd]` tag that draws a key, register them
+on a `MarkupRegistry`. See [Markup Plugin Tags](./markup-tags).

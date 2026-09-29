@@ -44,6 +44,7 @@ export const guideSidebar: SidebarGroup[] = [
       { text: 'Console', link: '/console' },
       { text: 'Styles', link: '/style' },
       { text: 'Markup', link: '/markup' },
+      { text: 'Markup Plugin Tags', link: '/markup-tags' },
     ],
   },
   {
