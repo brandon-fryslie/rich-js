@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-205",
-      "ref": "refs/pull/205/merge",
-      "sha": "45b65a48c184145cee10e5e96cf61995e83d6deb",
-      "timestamp": "2026-09-29T16:22:10.821Z",
-      "commits": [
-        {
-          "sha": "45b65a48c184145cee10e5e96cf61995e83d6deb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:21:21Z",
-          "message": "Merge 5a447a58d0aebfaefed03e9d384741aa540528f1 into 2e77380e87c70ab491ff8de71965b4ed2ba446b5\n"
-        },
-        {
-          "sha": "5a447a58d0aebfaefed03e9d384741aa540528f1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:21:15-06:00",
-          "message": "fix(widgets): measuring draws nothing, and focus has no public blur the next frame undoes (rich-runtime-fna.4)\n\n- Measurement.get and withBoundedWidth ask measure through measuring(),\n  which drops onDraw: a StaticItem measuring by rendering no longer puts\n  the widget it wraps in document order at measure time.\n- FocusManager.blur is gone from the public surface: settle refocused the\n  first widget on the next frame, so it never stuck. No focus is where\n  settle leaves an app with nothing to focus.\n- StaticItem's header no longer describes the deleted Screen.\n"
-        },
-        {
-          "sha": "5bf09175ee73388f4113f13b8fa6b161dc45a457",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:08:10-06:00",
-          "message": "fix(widgets): focus, hover and input follow the frame through review findings (rich-runtime-fna.4)\n\n- App.refresh paints in a later task, not a microtask: a view that asks for\n  a frame on every frame no longer starves stdin, so Ctrl+C still reaches it.\n- settle keeps focus on a widget the view drew that the frame crops; Tab\n  still moves among widgets on screen. Every focus move repaints, so settle\n  judges a move onto a widget no frame has read.\n- Hover is re-read off each painted frame under the last pointer position.\n- The router subscribes before the app starts, so a first frame that throws\n  is not followed by input re-engaging a stopped host.\n- Overlays render with onDraw, so a widget inside one takes focus and clicks.\n- paintLines uses Segment.getLineLength and Segment.divide in place of\n  hand-rolled copies.\n"
-        },
-        {
-          "sha": "1ab72cccce337a0d0c8b493b9b35310444a97592",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T08:00:52-06:00",
-          "message": "feat(widgets): WidgetApp routes focus and the pointer through the composed tree (rich-runtime-fna.4)\n\nA widget now goes anywhere a renderable goes — a Panel, a Layout pane, a\nTable cell — and still takes focus, keys and clicks. WidgetApp is an App\nwhose view has widgets in it: focus moves in document order among the\nwidgets on the painted frame (RenderOptions.onDraw), overlays are painted\nafter the view below their owner's footprint, and the pointer reaches the\ninnermost widget that drew the cell.\n\nDefaultScreen, Screen, Placement, MountEntry and mount-driven focus\nregistration are deleted; the three demos that used them run on WidgetApp\nwith their layout expressed as Group / Columns / Layout. WidgetBase loses\n`visible` — presence in the view is visibility.\n\nApp now owns pointer reporting: the alternate surface turns it on in\nenter and off in leave, so every exit path hands it back; an inline frame\ngets none, since it does not know its screen row. App gains onPaint, which\nfocus settles on. The router no longer touches raw mode or the mouse.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2e77380e87c70ab491ff8de71965b4ed2ba446b5",
-      "timestamp": "2026-09-29T14:15:01.069Z",
+      "sha": "8d1698c63a99cdfa810c495b3e6cbabf7d38f79d",
+      "timestamp": "2026-09-29T16:25:28.431Z",
       "commits": [
         {
-          "sha": "2e77380e87c70ab491ff8de71965b4ed2ba446b5",
+          "sha": "8d1698c63a99cdfa810c495b3e6cbabf7d38f79d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T08:14:05-06:00",
-          "message": "fix(table): a column with no cells to measure fills the offer (rich-table-3d3) (#204)\n\n* fix(table): a column with no cells to measure fills the offer (rich-table-3d3)\n\n* fix(table): an empty column fills in a pass of its own (rich-table-3d3)\n\nReview: the fill as an inflated want skipped a minWidth and split an\nexpanding table's slack evenly. The want is the one cell again; fill is\nthe pass between natural widths and ratio shares, capped by maxWidth,\nand the stretch weighs by the width each column holds."
+          "timestamp": "2026-09-29T10:24:36-06:00",
+          "message": "feat(widgets): WidgetApp routes focus and the pointer through the composed tree (rich-runtime-fna.4) (#205)\n\n* feat(widgets): WidgetApp routes focus and the pointer through the composed tree (rich-runtime-fna.4)\n\nA widget now goes anywhere a renderable goes — a Panel, a Layout pane, a\nTable cell — and still takes focus, keys and clicks. WidgetApp is an App\nwhose view has widgets in it: focus moves in document order among the\nwidgets on the painted frame (RenderOptions.onDraw), overlays are painted\nafter the view below their owner's footprint, and the pointer reaches the\ninnermost widget that drew the cell.\n\nDefaultScreen, Screen, Placement, MountEntry and mount-driven focus\nregistration are deleted; the three demos that used them run on WidgetApp\nwith their layout expressed as Group / Columns / Layout. WidgetBase loses\n`visible` — presence in the view is visibility.\n\nApp now owns pointer reporting: the alternate surface turns it on in\nenter and off in leave, so every exit path hands it back; an inline frame\ngets none, since it does not know its screen row. App gains onPaint, which\nfocus settles on. The router no longer touches raw mode or the mouse.\n\n* fix(widgets): focus, hover and input follow the frame through review findings (rich-runtime-fna.4)\n\n- App.refresh paints in a later task, not a microtask: a view that asks for\n  a frame on every frame no longer starves stdin, so Ctrl+C still reaches it.\n- settle keeps focus on a widget the view drew that the frame crops; Tab\n  still moves among widgets on screen. Every focus move repaints, so settle\n  judges a move onto a widget no frame has read.\n- Hover is re-read off each painted frame under the last pointer position.\n- The router subscribes before the app starts, so a first frame that throws\n  is not followed by input re-engaging a stopped host.\n- Overlays render with onDraw, so a widget inside one takes focus and clicks.\n- paintLines uses Segment.getLineLength and Segment.divide in place of\n  hand-rolled copies.\n\n* fix(widgets): measuring draws nothing, and focus has no public blur the next frame undoes (rich-runtime-fna.4)\n\n- Measurement.get and withBoundedWidth ask measure through measuring(),\n  which drops onDraw: a StaticItem measuring by rendering no longer puts\n  the widget it wraps in document order at measure time.\n- FocusManager.blur is gone from the public surface: settle refocused the\n  first widget on the next frame, so it never stuck. No focus is where\n  settle leaves an app with nothing to focus.\n- StaticItem's header no longer describes the deleted Screen."
         }
       ]
     },
