@@ -11,6 +11,7 @@ import { RichText } from "../core/text.js";
 import { embed, embeddedText } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
+import { ratioDistribute } from "./ratio.js";
 import type {
   Renderable,
   Measurable,
@@ -303,22 +304,26 @@ function layoutTable(
     seatedDemands.map((demand) => ({ want: UNBOUNDED, weight: demand.ratio })),
   );
   // What the shares leave goes to the columns that stretch, by the width each
-  // already holds: its natural width, since nothing is left over while any
-  // column is short, or the cap a fill stopped at. The reference weighs by
-  // width too: `ratio_distribute(max_width - table_width, widths)`, though its
-  // widths count the padding. A table that does not expand stretches nothing,
-  // which is how it stays narrower than the width it was offered. The order is the reference's:
-  // Rich pads an expanding table only once `table_width < max_width`, never
-  // while it is collapsing a column.
+  // already holds with its padding: its natural width, since nothing is left
+  // over while any column is short, or the cap a fill stopped at. The split is
+  // the reference's `ratio_distribute(max_width - table_width, widths)`,
+  // rounding included; the columns it runs over are this port's. A table that
+  // does not expand has no column that stretches, and an empty list takes
+  // nothing, which is how it stays narrower than the width it was offered. The
+  // order is the reference's: Rich pads an expanding table only
+  // once `table_width < max_width`, never while it is collapsing a column.
   const held = holding(wanted, filled, shared);
-  const stretched = distribute(
-    budget - spent(wanted) - spent(filled) - spent(shared),
-    seatedDemands.map((demand, index) => ({
-      want: UNBOUNDED,
-      weight: demand.stretch ? held[index]! : 0,
-    })),
+  const stretchers = seatedDemands.flatMap((demand, index) => (demand.stretch ? [index] : []));
+  const stretches = ratioDistribute(
+    // An unbounded offer is held to `UNBOUNDED`, this model's own infinity, as
+    // `demandCells` holds a want: `Infinity` is not an integer to split.
+    Math.min(budget - spent(wanted) - spent(filled) - spent(shared), UNBOUNDED),
+    stretchers.map((index) => padLeft + held[index]! + padRight),
   );
-  const columns = held.map((cells, index) => cells + stretched[index]!);
+  const columns = [...held];
+  stretchers.forEach((index, slot) => {
+    columns[index]! += stretches[slot]!;
+  });
   const cellWidths = columns.map((width) => padLeft + width + padRight);
 
   return {

@@ -351,7 +351,9 @@ describe("Table", () => {
 
   it("spreads the slack in proportion to natural content, so the widest column grows most", () => {
     // Every column gets its natural content width (1, 3 and 9), and the 17
-    // cells left over go by those widths: an equal split would give each the same.
+    // cells left over go by those widths with their padding (3, 5 and 11),
+    // each share rounded up as Rich's `ratio_distribute` rounds it. Python Rich
+    // 9d8f9a3 prints this frame for the same table at width 40.
     const t = new Table({ box: ASCII, expand: true });
     t.addColumn("A");
     t.addColumn("Bee");
@@ -359,11 +361,22 @@ describe("Table", () => {
     t.addRow("x", "yy", "zzz");
     expect(collectLines(t, { maxWidth: 40 })).toEqual([
       "+--------------------------------------+",
-      "| A  | Bee     | CCCCCCCCC             |",
-      "|----+---------+-----------------------|",
-      "| x  | yy      | zzz                   |",
+      "| A    | Bee      | CCCCCCCCC          |",
+      "|------+----------+--------------------|",
+      "| x    | yy       | zzz                |",
       "+--------------------------------------+",
     ]);
+  });
+
+  it("hands an expanding grid's leftover cells to the columns Rich gives them to", () => {
+    // Python Rich 9d8f9a3's `Table.grid(expand=True)` at width 20, whose
+    // padding is 0. 17 cells over widths 2 and 1: the first column's share
+    // rounds up to 12, where a largest-remainder split gives 11.
+    const grid = Table.grid({ expand: true, padding: 0 });
+    grid.addColumn();
+    grid.addColumn();
+    grid.addRow("aa", "b");
+    expect(collectLines(grid, { maxWidth: 20 })).toEqual(["aa            b     "]);
   });
 
   it("keeps a declared column width under expand and stretches only the columns that bid", () => {
@@ -518,7 +531,7 @@ describe("Table", () => {
     it("stretches capped columns by the width each holds, not evenly", () => {
       expect(
         collectLines(rowless([{ maxWidth: 7 }, { maxWidth: 3 }], { expand: true }), { maxWidth: 40 }),
-      ).toEqual(["┌─────────────────────────┬────────────┐", "└─────────────────────────┴────────────┘"]);
+      ).toEqual(["┌────────────────────────┬─────────────┐", "└────────────────────────┴─────────────┘"]);
     });
 
     it("stretches past its maxWidth when the table expands", () => {
