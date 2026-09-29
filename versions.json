@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-220",
+      "ref": "refs/pull/220/merge",
+      "sha": "8453f843030f4d2b61efc2f415b257cc53f233dd",
+      "timestamp": "2026-09-29T21:23:37.131Z",
+      "commits": [
+        {
+          "sha": "8453f843030f4d2b61efc2f415b257cc53f233dd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:22:34-06:00",
+          "message": "Merge 4eb9ddf7af3f088ac6dfa1d04f3e2587b95760d0 into 1e61e1aa0716245a8339f9bde4d84adcf33827b5\n"
+        },
+        {
+          "sha": "4eb9ddf7af3f088ac6dfa1d04f3e2587b95760d0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:22:30-06:00",
+          "message": "fix(live): a frame that throws leaves the terminal usable (rich-live-vu8)\n\nrefresh() rendered after erasing the last frame, so a render that threw\nleft nothing on screen; on the auto-refresh timer the throw escaped with\nstop() never run, leaving the cursor hidden and the alternate screen up.\n\nThe frame is now rendered before any byte is written, and the erase or\ncursor-home goes out in the same write as the new frame. Handing the\nterminal back is one _release(), run by stop() in a finally and by the\ntimer before it rethrows.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "1e61e1aa0716245a8339f9bde4d84adcf33827b5",
