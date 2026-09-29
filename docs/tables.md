@@ -73,7 +73,7 @@ the Box Office figures, which cannot wrap, are cut short by their column's
 
 | Option | Description |
 |---|---|
-| `style` | Base style for the whole table — accepted and stored, but not yet applied |
+| `style` | Base style for the frame; `borderStyle` layers over it |
 | `rowStyles` | List of styles applied to alternating rows (zebra stripes) |
 | `headerStyle` | Default style for header cells |
 | `footerStyle` | Default style for footer cells |
@@ -81,9 +81,12 @@ the Box Office figures, which cannot wrap, are cut short by their column's
 | `titleStyle`, `captionStyle` | Styles for title/caption text |
 | `titleJustify`, `captionJustify` | Alignment of title/caption |
 
-Every option in that table reaches the render path except `style`, which a table
-stores and never draws with. Until it is wired, put the style on the content —
-markup in the cell text, or `rowStyles` for a whole row.
+A cell's style covers the whole cell, padding included, so a background fills the
+column rather than sitting behind the text. The styles stack from the outside in:
+a header cell takes the table's `headerStyle` and then its column's, a body cell
+its column's `style` and then the row's `rowStyles` entry, and markup in the cell
+text lands on top of both. The table's own `style` reaches the frame only, as in
+Rich.
 
 ## Narrow widths
 
@@ -163,13 +166,8 @@ Configure columns individually:
 | `noWrap` | Prevent text wrapping in this column |
 | `overflow` | What becomes of a line too long for the column: `"ellipsis"` (default), `"crop"`, `"fold"`, or `"ignore"`, which leaves it whole and unjustified for the table's cell crop to cut |
 | `footer` | Footer cell content — drawn only when the table sets `showFooter` |
-| `headerStyle`, `footerStyle` | Per-column header/footer style — accepted and stored, but not yet applied |
-| `style` | Per-column cell style — accepted and stored, but not yet applied |
-
-The last three are the exception: a column accepts them and holds them, but no cell
-is ever drawn with them. What styles a column's content today is markup in the cell
-text; what styles a whole row is the table's `headerStyle`, `footerStyle` and
-`rowStyles`.
+| `headerStyle`, `footerStyle` | Per-column header/footer style, layered over the table's |
+| `style` | Per-column cell style, under the row's `rowStyles` entry |
 
 ## Adding columns
 

@@ -63,6 +63,9 @@ const UNBOUNDED = Number.MAX_SAFE_INTEGER;
  */
 const demandCells = (n: number): number => Math.min(cells(n), UNBOUNDED);
 
+/** `n` cells of padding, as nothing at all when `n` is zero. */
+const blank = (n: number): Segment[] => (n > 0 ? [new Segment(" ".repeat(n))] : []);
+
 /**
  * Hand out `total` cells across `demands`, weighted, and never past a demand's
  * `want`.
@@ -611,7 +614,10 @@ export class Table implements Renderable, Measurable {
     // the flags arrive as values rather than as branches around a step.
     const frame = this.box?.substitute(options);
     const box = (this.showHeader ? frame : frame?.plainHeaded()) ?? null;
-    const borderStyle = getStyle(options, this.borderStyle);
+    // The table's own `style` is the base its border style layers over, and
+    // that is all it styles: the reference reads it as `table_style` for the
+    // frame and nowhere else, so a cell is untouched by it.
+    const borderStyle = getStyle(options, this.style).add(getStyle(options, this.borderStyle));
     const border = borderStyle.isNull ? undefined : borderStyle;
 
     // The one division of the width every row below is measured against.
@@ -631,7 +637,9 @@ export class Table implements Renderable, Measurable {
     // Header row
     if (this.showHeader) {
       const headerCells = this._columns.map((c) => c.header as Renderable);
-      yield* this._renderRow(options, headerCells, geometry, box, "head", border, this.headerStyle);
+      const headerStyles = this._columns.map((c) =>
+        getStyle(options, this.headerStyle).add(getStyle(options, c.headerStyle)));
+      yield* this._renderRow(options, headerCells, headerStyles, geometry, box, "head", border);
 
       // Header separator
       if (box) {
@@ -644,11 +652,12 @@ export class Table implements Renderable, Measurable {
       const row = this._rows[rowIdx]!;
       const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? embeddedText(undefined));
 
-      const rowStyle = this.rowStyles.length > 0
+      const rowStyle = getStyle(options, this.rowStyles.length > 0
         ? this.rowStyles[rowIdx % this.rowStyles.length]!
-        : NULL_STYLE;
+        : NULL_STYLE);
+      const cellStyles = this._columns.map((c) => getStyle(options, c.style).add(rowStyle));
 
-      yield* this._renderRow(options, rowCells, geometry, box, "row", border, rowStyle);
+      yield* this._renderRow(options, rowCells, cellStyles, geometry, box, "row", border);
 
       // Row separator
       const showSep = this.showLines || row.endSection;
@@ -663,7 +672,9 @@ export class Table implements Renderable, Measurable {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
       const footerCells = this._columns.map((c) => c.footer as Renderable);
-      yield* this._renderRow(options, footerCells, geometry, box, "foot", border, this.footerStyle);
+      const footerStyles = this._columns.map((c) =>
+        getStyle(options, this.footerStyle).add(getStyle(options, c.footerStyle)));
+      yield* this._renderRow(options, footerCells, footerStyles, geometry, box, "foot", border);
     }
 
     // Bottom border
@@ -894,14 +905,13 @@ export class Table implements Renderable, Measurable {
   private *_renderRow(
     options: RenderOptions,
     cells: Renderable[],
+    styles: Style[],
     geometry: TableGeometry,
     box: Box | null,
     level: RowLevel,
     border: Style | undefined,
-    ownStyle: string | Style,
   ): Iterable<Segment> {
     const { padLeft, padRight, columns } = geometry;
-    const rowStyle = getStyle(options, ownStyle);
 
     // [LAW:dataflow-not-control-flow] Header, body and footer share this path;
     // the level crosses as a value the box answers with glyphs, not a branch.
@@ -940,14 +950,20 @@ export class Table implements Renderable, Measurable {
         }
 
         const cellWidth = columns[colIdx]!;
-        if (padLeft > 0) yield new Segment(" ".repeat(padLeft));
+        const style = styles[colIdx]!;
 
         // A cell that ran out of lines contributes blanks, so every column
         // spans the same number of rows and the frame stays rectangular.
         const line = cellLines[colIdx]![lineIdx] ?? [new Segment(" ".repeat(cellWidth))];
-        yield* rowStyle.isNull ? line : Segment.applyStyle(line, rowStyle);
 
-        if (padRight > 0) yield new Segment(" ".repeat(padRight));
+        // The cell's style is the base its content's own spans layer over, and
+        // it covers the whole cell — padding and blank lines too, as the
+        // reference's does — so a background fills the column rather than
+        // sitting behind the text alone.
+        yield* Segment.applyStyle(
+          [...blank(padLeft), ...line, ...blank(padRight)],
+          style.isNull ? undefined : style,
+        );
       }
 
       if (frame && geometry.edge === 1) {
