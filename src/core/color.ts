@@ -8,8 +8,14 @@ function hex2(byte: number): string {
   return byte.toString(16).padStart(2, "0");
 }
 
+// [LAW:one-source-of-truth] The one statement of a colour byte's range: the
+// constructor asserts it and the string parser reports it, from this predicate.
+function isByte(v: number): boolean {
+  return Number.isInteger(v) && v >= 0 && v <= 255;
+}
+
 function assertChannel(name: string, v: number): void {
-  if (!Number.isInteger(v) || v < 0 || v > 255) {
+  if (!isByte(v)) {
     throw new RangeError(
       `ColorRgba.${name} must be an integer in [0, 255]; got ${v}`,
     );
@@ -675,8 +681,8 @@ export class ColorSpec {
 
 const HEX_RE = /^#([0-9a-f]{6})$/;
 const HEX_RGBA_RE = /^#([0-9a-f]{8})$/;
-const RGB_RE = /^rgb\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/;
-const COLOR_NUMBER_RE = /^color\((\d{1,3})\)$/;
+const RGB_RE = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/;
+const COLOR_NUMBER_RE = /^color\((\d+)\)$/;
 
 function parseSingle(key: string): ColorSpec {
   if (key === "default" || key === "") {
@@ -704,24 +710,32 @@ function parseSingle(key: string): ColorSpec {
   // rgb()
   const rgbMatch = RGB_RE.exec(key);
   if (rgbMatch) {
-    const r = parseInt(rgbMatch[1]!, 10);
-    const g = parseInt(rgbMatch[2]!, 10);
-    const b = parseInt(rgbMatch[3]!, 10);
+    const r = parseByte(key, rgbMatch[1]!, "red");
+    const g = parseByte(key, rgbMatch[2]!, "green");
+    const b = parseByte(key, rgbMatch[3]!, "blue");
     return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, new ColorRgba(r, g, b));
   }
 
   // color(N)
   const numMatch = COLOR_NUMBER_RE.exec(key);
   if (numMatch) {
-    const n = parseInt(numMatch[1]!, 10);
-    if (n > 255) {
-      throw new ColorParseError(`ColorSpec number ${n} is out of range (0-255)`);
-    }
+    const n = parseByte(key, numMatch[1]!, "number");
     const type = n < 16 ? ColorDepth.STANDARD : ColorDepth.EIGHT_BIT;
     return new ColorSpec(key, type, n);
   }
 
   throw new ColorParseError(`Failed to parse color: "${key}"`);
+}
+
+// [LAW:single-enforcer] The regexes admit any run of digits and leave the
+// range to this check alone, so every out-of-range byte is a ColorParseError
+// naming the field, never the generic parse failure or the constructor's RangeError.
+function parseByte(key: string, digits: string, field: "red" | "green" | "blue" | "number"): number {
+  const n = parseInt(digits, 10);
+  if (!isByte(n)) {
+    throw new ColorParseError(`ColorSpec "${key}": ${field} ${digits} is out of range (0-255)`);
+  }
+  return n;
 }
 
 // --- Utility functions ---

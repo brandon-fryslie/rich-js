@@ -220,9 +220,20 @@ describe("ColorSpec.parse()", () => {
     expect(() => ColorSpec.parse("not_a_color_at_all")).toThrow(ColorParseError);
   });
 
-  it('throws ColorParseError on "color(256)" (out of range)', () => {
-    expect(() => ColorSpec.parse("color(256)")).toThrow(ColorParseError);
-    expect(() => ColorSpec.parse("color(256)")).toThrow(/out of range/);
+  it.each([
+    ["color(256)", "number 256"],
+    ["color(1000)", "number 1000"],
+    ["rgb(256,0,0)", "red 256"],
+    ["rgb(0,300,0)", "green 300"],
+    ["rgb(0,0,1000)", "blue 1000"],
+  ])("%s is a ColorParseError naming the key and the out-of-range %s", (key, field) => {
+    expect(() => ColorSpec.parse(key)).toThrow(ColorParseError);
+    expect(() => ColorSpec.parse(key)).toThrow(`ColorSpec "${key}": ${field} is out of range (0-255)`);
+  });
+
+  it("parses the top of the byte range", () => {
+    expect(ColorSpec.parse("rgb(255,255,255)").value).toEqual(new ColorRgba(255, 255, 255));
+    expect(ColorSpec.parse("color(255)").number).toBe(255);
   });
 
   it('parses "navy_blue" as extended color name with number 17', () => {
