@@ -56,7 +56,7 @@ describe("reachableSourceModules", () => {
     // through no direct export of it; if the walk stopped early it would be
     // absent, and every rule built on the walk would pass by seeing nothing.
     expect(files).toContain("src/core/segment.ts");
-    expect(files).toContain("src/widgets/screen.ts");
+    expect(files).toContain("src/widgets/widget-app.ts");
     expect(files.length).toBeGreaterThan(50);
   });
 

@@ -4,6 +4,9 @@
  * [LAW:dataflow-not-control-flow] Demos do not branch on environment; the
  * `TerminalHost` parameter is the value that differs between node and browser.
  *
+ * The widgets are laid out by composition — `Columns` for a row of controls,
+ * a `Layout` that keeps the status and log rows at the bottom of the screen.
+ *
  * Press Tab to navigate · Space/Enter to interact.
  */
 
@@ -15,9 +18,7 @@ import {
   TextInput,
   Dropdown,
   Slider,
-  DefaultScreen,
-  DefaultFocusManager,
-  EventRouter,
+  WidgetApp,
   widgetAt,
   StaticItem,
 } from "../../src/widgets/index.js";
@@ -28,6 +29,9 @@ import {
   ColorSpec,
   Panel,
   ProgressBar,
+  Columns,
+  Group,
+  Layout,
   ROUNDED,
   DEFAULT_TERMINAL_THEME,
   asCodePoint,
@@ -52,20 +56,13 @@ import {
   ATOM_ONE_LIGHT,
 } from "../../src/index.js";
 import type { InteractiveWidget } from "../../src/widgets/types.js";
-import type { MountEntry } from "../../src/widgets/screen.js";
 import type { ColorRgba } from "../../src/core/color.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 export interface DemoHandle {
   stop(): void;
-}
-
-export interface RunDemoOptions {
-  /**
-   * Called from inside the demo when the user signals shutdown (e.g. Ctrl-C).
-   * Node bootstrap supplies `process.exit(0)`; the browser bootstrap omits it.
-   */
-  onShutdown?: () => void;
+  /** Settles once the demo has stopped and handed the terminal back. */
+  readonly done: Promise<void>;
 }
 
 const THEMES = [
@@ -110,15 +107,10 @@ class LogBuffer {
   }
 }
 
-export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandle {
+export function runDemo(host: TerminalHost): DemoHandle {
   const state = new AppState();
   const logs = new LogBuffer();
   const log = (msg: string): void => logs.push(msg);
-
-  const TERMINAL_ROWS = host.size().rows;
-  const LOG_Y = Math.max(MAX_LOGS, TERMINAL_ROWS - MAX_LOGS);
-  const SEPARATOR_Y = LOG_Y - 1;
-  const STATUS_Y = LOG_Y - 2;
 
   const btnExport = new Button({ label: "Export", variant: "success", id: "btn-export" });
   const btnReset = new Button({ label: "Reset", variant: "danger", id: "btn-reset" });
@@ -171,10 +163,6 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     themeDropdown, inSearch, cbMuted, cbAnsi, cbProgress, tgDarkOnly,
     slContrast, slFill, btnExport, btnReset, btnDisabled,
   ];
-
-  const fm = new DefaultFocusManager();
-  const screen = new DefaultScreen({ focusManager: fm, host });
-  const router = new EventRouter({ screen, host });
 
   const paletteColor = (c: ColorRgba): ColorSpec => ColorSpec.fromRgba(c);
   const styledLine = (text: string, style: Style): Renderable => ({
@@ -345,7 +333,7 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
   const statusItem = new StaticItem({
     id: "static-status",
     render: (_options) => {
-      const focused = fm.current;
+      const focused = app.focusManager.current;
       const id = focused?.id ?? "none";
       const focusedFlag = focused?.focused ?? false;
       const activeFlag = focused?.active ?? false;
@@ -373,93 +361,64 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     },
   });
 
-  const mountList: MountEntry[] = [
+  const body = new Group(
     headerItem, subtitleItem, spacer("sp-1"), widgetsHeading,
-    themeDropdown, { widget: inSearch, placement: { kind: "inline" } },
+    new Columns([themeDropdown, inSearch]),
     spacer("sp-2"),
-    cbMuted,
-    { widget: cbAnsi, placement: { kind: "inline" } },
-    { widget: cbProgress, placement: { kind: "inline" } },
-    { widget: tgDarkOnly, placement: { kind: "inline" } },
+    new Columns([cbMuted, cbAnsi, cbProgress, tgDarkOnly]),
     spacer("sp-3"),
-    slContrast, { widget: slFill, placement: { kind: "inline" } },
+    new Columns([slContrast, slFill]),
     spacer("sp-4"),
-    btnExport,
-    { widget: btnReset, placement: { kind: "inline" } },
-    { widget: btnDisabled, placement: { kind: "inline" } },
+    new Columns([btnExport, btnReset, btnDisabled]),
     spacer("sp-5"),
     titlePanelItem, spacer("sp-6"), swatchesItem, paletteSearchItem, spacer("sp-7"),
     progressItem, spacer("sp-8"), ansiItem,
-    { widget: statusItem, placement: { kind: "fixed", x: 0, y: STATUS_Y } },
-    { widget: separatorItem, placement: { kind: "fixed", x: 0, y: SEPARATOR_Y } },
-    { widget: logItem, placement: { kind: "fixed", x: 0, y: LOG_Y } },
-  ];
+  );
+  // The status, separator and log rows hold the bottom of the screen.
+  const footer = new Group(statusItem, separatorItem, logItem);
+  const view = new Layout();
+  view.splitColumn(new Layout(body), new Layout(footer, { size: MAX_LOGS + 2 }));
 
-  let stopped = false;
-  let disposeTheme: (() => void) | null = null;
-  let disposeFilter: (() => void) | null = null;
+  const app = new WidgetApp({ host, surface: "alternate", view: () => view });
 
-  const handle: DemoHandle = {
-    stop(): void {
-      if (stopped) return;
-      stopped = true;
-      router.stop();
-      if (disposeTheme) disposeTheme();
-      if (disposeFilter) disposeFilter();
-      screen.stop();
-      host.write("\x1b[?1049l\x1b[1;36mGoodbye!\x1b[0m\n");
-    },
-  };
-
-  router.onKey((event) => {
+  app.onKey((event) => {
     if (event.ctrl && event.key === "c") {
-      handle.stop();
-      options?.onShutdown?.();
+      app.stop();
       event.stop();
     }
   }, { priority: "high" });
 
-  router.onMouse((event) => {
+  app.onMouse((event) => {
     if (event.type !== "mouse_up") return;
-    // The frame the screen painted says who drew the cell under the pointer;
-    // focus() ignores a widget that cannot take focus.
-    const hit = widgetAt(screen.frame, event.x, event.y);
-    if (hit) fm.focus(hit.widget);
+    // The frame on screen says who drew the cell under the pointer; focus()
+    // ignores a widget that cannot take focus.
+    const hit = widgetAt(app.frame, event.x, event.y);
+    if (hit) app.focusManager.focus(hit.widget);
   });
 
-  // [LAW:single-enforcer] Alt-screen state has exactly one restore site
-  // (`handle.stop()`). The startup block below enters the alt-screen and
-  // brings the autoruns/screen/router online; if anything throws inside,
-  // the catch routes through the same `handle.stop()` so the restore
-  // sequence runs and the terminal is never left in the alternate buffer.
-  try {
-    host.write("\x1b[?1049h\x1b[H");
-    screen.mount(...mountList);
-
-    disposeFilter = autorun(() => {
-      const darkOnly = tgDarkOnly.on;
-      const canonicalTheme = THEMES[state.selectedThemeIdx]!;
-      const filtered = THEMES.filter((t) => !darkOnly || t.theme.palette.dark);
-      runInAction(() => {
-        themeDropdown.options = filtered.map((t) => t.name);
-        themeDropdown.selectedIndex = filtered.indexOf(canonicalTheme);
-      });
+  const disposeFilter = autorun(() => {
+    const darkOnly = tgDarkOnly.on;
+    const canonicalTheme = THEMES[state.selectedThemeIdx]!;
+    const filtered = THEMES.filter((t) => !darkOnly || t.theme.palette.dark);
+    runInAction(() => {
+      themeDropdown.options = filtered.map((t) => t.name);
+      themeDropdown.selectedIndex = filtered.indexOf(canonicalTheme);
     });
+  });
 
-    disposeTheme = autorun(() => {
-      const theme = state.selectedTheme;
-      for (const widget of allWidgets) {
-        const setTheme = (widget as { setTheme?: (t: typeof theme) => void }).setTheme;
-        if (typeof setTheme === "function") setTheme.call(widget, theme);
-      }
-    });
+  const disposeTheme = autorun(() => {
+    const theme = state.selectedTheme;
+    for (const widget of allWidgets) {
+      const setTheme = (widget as { setTheme?: (t: typeof theme) => void }).setTheme;
+      if (typeof setTheme === "function") setTheme.call(widget, theme);
+    }
+  });
 
-    screen.start();
-    router.start();
-  } catch (err) {
-    handle.stop();
-    throw err;
-  }
-
-  return handle;
+  return {
+    stop: () => app.stop(),
+    done: app.run().finally(() => {
+      disposeFilter();
+      disposeTheme();
+    }),
+  };
 }

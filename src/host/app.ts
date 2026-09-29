@@ -4,7 +4,8 @@
  * every path out.
  *
  * [LAW:single-enforcer] Every change this runtime makes to the terminal —
- * the alternate screen, the hidden cursor, raw mode — is made by `enter` and
+ * the alternate screen, pointer reporting, the hidden cursor, raw mode — is
+ * made by `enter` and
  * undone by `leave`, and nothing else touches them. Stopping, suspending, an
  * error in a frame and the program ending by a signal or a crash all hand the
  * terminal back through `leave`, so there is one list of what to undo and no
@@ -35,8 +36,11 @@ import type { TerminalHost } from "./terminal-host.js";
 /**
  * Where the frame is painted. `alternate` is the whole terminal, in the
  * alternate screen buffer, so the rows the program printed before it are
- * there again when it stops. `inline` starts at the cursor's line, as tall as the
- * frame, and stays on the terminal when the app stops.
+ * there again when it stops; the terminal reports the pointer on it. `inline`
+ * starts at the cursor's line, as tall as the frame, and stays on the
+ * terminal when the app stops. It gets no pointer events: the terminal
+ * reports a pointer by its row on the screen, and the app does not know
+ * which row of the screen its frame starts on.
  */
 export type Surface = "alternate" | "inline";
 
@@ -77,11 +81,16 @@ interface SurfaceBytes {
   painted(frameRows: number, lastRows: number): number;
 }
 
+// Button presses, motion and the wheel, in the SGR encoding: coordinates as
+// decimal numbers, so a terminal wider than 223 columns still reports them.
+const POINTER_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
+const POINTER_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
+
 const SURFACES: Record<Surface, SurfaceBytes> = {
   alternate: {
     exact: true,
-    enter: "\x1b[?1049h",
-    leave: () => "\x1b[?1049l",
+    enter: "\x1b[?1049h" + POINTER_ON,
+    leave: () => POINTER_OFF + "\x1b[?1049l",
     home: () => "\x1b[H",
     // The frame is every row of the screen, so there is nothing left under it
     // — and after the terminal shrinks, painting the old count would scroll.
@@ -121,6 +130,7 @@ export class App {
   private rows = 0;
   private refreshQueued = false;
   private subscriptions: Unsubscribe[] = [];
+  private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
   private settle: (outcome: Outcome) => void = () => {};
 
   constructor(options: AppOptions) {
@@ -212,6 +222,15 @@ export class App {
     this.paint();
   }
 
+  /**
+   * Hear each frame once it is on screen — what `frame` now returns. A
+   * handler that throws fails the app as a frame that throws does.
+   */
+  onPaint(handler: (frame: readonly (readonly Segment[])[]) => void): Unsubscribe {
+    this.paintHandlers.add(handler);
+    return () => this.paintHandlers.delete(handler);
+  }
+
   /** Hand the terminal back for good; `run` resolves. */
   stop(): void {
     this.end({ kind: "stopped" });
@@ -282,6 +301,7 @@ export class App {
     this.host.write(this.surface.home(this.rows) + body + back);
     this._frame = frame;
     this.rows = frame.length;
+    for (const handler of [...this.paintHandlers]) handler(frame);
   }
 }
 

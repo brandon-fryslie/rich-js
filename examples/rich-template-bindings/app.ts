@@ -6,9 +6,10 @@
  *            cursor tracked in 2D, border turns cyan when focused)
  *   right — live rendered output box, updates on every keystroke
  *
- * TextInputs are always invisible (visible=false, focusable=true).
- * Each combinedItem reads input.value / cursorPosition / focused (all MobX
- * observables) so Screen's autorun re-renders on every change.
+ * Each TextInput is drawn inside its row's Panel, and takes focus and keys
+ * there: WidgetApp finds a widget wherever the view nests it. Each
+ * combinedItem reads input.value / cursorPosition / focused (all MobX
+ * observables), so the app repaints on every change.
  *
  * Ctrl+PageUp / Ctrl+PageDown — navigate sections
  *                  (Ctrl+P / Ctrl+N are reserved for cursor up/down inside
@@ -24,6 +25,7 @@ import {
   Panel,
   Layout,
   Padding,
+  Group,
   Segment,
   type Renderable,
   type RenderOptions,
@@ -33,13 +35,10 @@ import {
   cellFit,
 } from "../../src/index.js";
 import {
-  EventRouter,
-  DefaultScreen,
-  DefaultFocusManager,
+  WidgetApp,
   StaticItem,
   TextInput,
   charGreedyWrap,
-  type MountEntry,
   type WrapStrategy,
   type WrapRow,
 } from "../../src/widgets/index.js";
@@ -69,7 +68,7 @@ import {
   readableOnFunc,
   renderTemplate,
 } from "../../src/template-bindings/index.js";
-import { makeAutoObservable, autorun, runInAction } from "mobx";
+import { makeAutoObservable } from "mobx";
 
 // ─── Engines ───────────────────────────────────────────────────────────────
 //
@@ -343,8 +342,6 @@ function makeDemoRow(label: string, template: string, engine: Engine<RichText>):
     maxRows: 10,
     scrollIndicator: "indices",
   });
-  runInAction(() => { input.visible = false; });
-
   const combinedItem = new StaticItem({
     id: uid("row"),
     render: (opts) => buildRowSegments(input, label, engine, opts),
@@ -356,9 +353,7 @@ function makeDemoRow(label: string, template: string, engine: Engine<RichText>):
 // ─── Section ───────────────────────────────────────────────────────────────
 
 interface Section {
-  rows: DemoRow[];
-  allInteractiveWidgets: (StaticItem | TextInput)[];
-  mountEntries: MountEntry[];
+  view: Renderable;
 }
 
 function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticItem[] = []): Section {
@@ -369,22 +364,13 @@ function makeSection(title: string, rows: DemoRow[], extraVisibleItems: StaticIt
   const headerSpacer  = makeSpacerItem();
   const trailingSpacer = makeSpacerItem();
 
-  const visibleItems: StaticItem[] = [
-    headerItem, headerSpacer,
-    ...rows.flatMap((r) => [r.combinedItem, r.spacer]),
-    ...extraVisibleItems,
-    trailingSpacer,
-  ];
-
   return {
-    rows,
-    allInteractiveWidgets: [...visibleItems, ...rows.map((r) => r.input)],
-    mountEntries: [
+    view: new Group(
       headerItem, headerSpacer,
-      ...rows.flatMap((r): MountEntry[] => [r.combinedItem, r.spacer, r.input]),
+      ...rows.flatMap((r) => [r.combinedItem, r.spacer]),
       ...extraVisibleItems,
       trailingSpacer,
-    ] as MountEntry[],
+    ),
   };
 }
 
@@ -619,99 +605,38 @@ const headerSpacer = makeSpacerItem();
 
 export interface DemoHandle {
   stop(): void;
+  /** Settles once the demo has stopped and handed the terminal back. */
+  readonly done: Promise<void>;
 }
 
-export interface RunDemoOptions {
-  /**
-   * Called from inside the demo when the user signals shutdown (e.g. Ctrl-C).
-   * Node bootstrap supplies `process.exit(0)`; the browser bootstrap omits it.
-   */
-  onShutdown?: () => void;
-}
-
-export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandle {
-  const fm     = new DefaultFocusManager();
-  const screen = new DefaultScreen({ focusManager: fm, host });
-  const router = new EventRouter({ screen, host });
-
-// ─── Mount list ────────────────────────────────────────────────────────────
-
-screen.mount(appTitleItem, navHintItem, headerSpacer, ...SECTIONS.flatMap((s) => s.mountEntries));
-
-// ─── Visibility + focus ────────────────────────────────────────────────────
-
-const disposeVisibility = autorun(() => {
-  const idx = state.sectionIdx;
-  runInAction(() => {
-    SECTIONS.forEach((sec, si) => {
-      const active = si === idx;
-      for (const w of sec.allInteractiveWidgets) {
-        if (w instanceof TextInput) {
-          (w as TextInput).disabled = !active;
-          // TextInputs are always invisible; only disabled changes per section.
-        } else {
-          w.visible = active;
-        }
-      }
-    });
-    const firstInput = SECTIONS[idx]?.rows[0]?.input;
-    if (firstInput) fm.focus(firstInput);
+export function runDemo(host: TerminalHost): DemoHandle {
+  // The section on show is the one the state names; its inputs are the only
+  // ones on the frame, so they are the only ones focus moves among, and
+  // switching sections moves focus to the new section's first.
+  const app = new WidgetApp({
+    host,
+    surface: "alternate",
+    view: () => new Group(appTitleItem, navHintItem, headerSpacer, SECTIONS[state.sectionIdx]!.view),
   });
-});
 
-// ─── Key handling ──────────────────────────────────────────────────────────
+  // Section nav uses Ctrl+PageUp / Ctrl+PageDown rather than Ctrl+P/Ctrl+N —
+  // the latter are readline line-motion bindings that TextInput now consumes
+  // for cursor up/down inside the editable templates. PageUp/PageDown have
+  // no readline meaning, so the two layers don't fight over the same keys.
+  // High-priority: these run BEFORE the focused widget, so a focused
+  // TextInput can't accidentally swallow Ctrl+C or our section-nav chords.
+  // Stopping the event prevents the focused widget from also reacting to
+  // the same press.
+  app.onKey((event) => {
+    if (event.ctrl && event.key === "c") {
+      app.stop();
+      event.stop();
+      return;
+    }
+    const n = SECTIONS.length;
+    if (event.ctrl && event.key === "pageup")        { state.prev(n); event.stop(); }
+    else if (event.ctrl && event.key === "pagedown") { state.next(n); event.stop(); }
+  }, { priority: "high" });
 
-function focusFirst(idx: number): void {
-  const row = SECTIONS[idx]?.rows[0];
-  if (row && !row.input.disabled) fm.focus(row.input);
-}
-
-// Section nav uses Ctrl+PageUp / Ctrl+PageDown rather than Ctrl+P/Ctrl+N —
-// the latter are readline line-motion bindings that TextInput now consumes
-// for cursor up/down inside the editable templates. PageUp/PageDown have
-// no readline meaning, so the two layers don't fight over the same keys.
-// High-priority: these run BEFORE the focused widget, so a focused
-// TextInput can't accidentally swallow Ctrl+C or our section-nav chords.
-// Stopping the event prevents the focused widget from also reacting to
-// the same press.
-const unsubKey = router.onKey((event) => {
-  if (event.ctrl && event.key === "c") {
-    shutdown();
-    options?.onShutdown?.();
-    event.stop();
-    return;
-  }
-  const n = SECTIONS.length;
-  if (event.ctrl && event.key === "pageup")        { state.prev(n); focusFirst(state.sectionIdx); event.stop(); }
-  else if (event.ctrl && event.key === "pagedown") { state.next(n); focusFirst(state.sectionIdx); event.stop(); }
-}, { priority: "high" });
-
-// ─── Lifecycle ─────────────────────────────────────────────────────────────
-
-  let stopped = false;
-  function shutdown(): void {
-    if (stopped) return;
-    stopped = true;
-    unsubKey();
-    disposeVisibility();
-    router.stop();
-    screen.stop();
-    host.write("\x1b[?1049l\x1b[1;36mGoodbye!\x1b[0m\n");
-  }
-
-  // [LAW:single-enforcer] Alt-screen state has exactly one restore site
-  // (`shutdown()`). If `screen.start()` / `router.start()` throws after the
-  // alt-screen entry, the catch routes through the same `shutdown()` so
-  // the restore sequence runs and the terminal is never left in the
-  // alternate buffer.
-  try {
-    host.write("\x1b[?1049h\x1b[H");
-    screen.start();
-    router.start();
-  } catch (err) {
-    shutdown();
-    throw err;
-  }
-
-  return { stop: shutdown };
+  return { stop: () => app.stop(), done: app.run() };
 }

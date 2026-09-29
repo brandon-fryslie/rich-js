@@ -51,6 +51,14 @@ export interface RenderOptions {
    * the render strict: the error leaves `render`.
    */
   onStyleError?: StyleErrorHandler;
+  /**
+   * Told of each owner that stamps its output (`core/anchor`) as it starts to
+   * render, so the calls arrive in document order: a container's children in
+   * the order it renders them, an owner before the owners nested in it. A
+   * container forwards it by passing its options on, which every container
+   * does. An owner rendered twice is told twice.
+   */
+  onDraw?: (owner: object) => void;
 }
 
 /**

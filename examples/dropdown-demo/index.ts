@@ -1,12 +1,8 @@
 /**
- * dropdown-demo — node bootstrap. Constructs `NodeTerminalHost`, runs the
- * shared demo body, and wires SIGINT/SIGTERM into a clean shutdown.
- *
- * [LAW:types-are-the-program] The bootstrap's `onShutdown` callback (passed
- * into `runDemo` and fired from inside the demo on Ctrl-C in raw mode) does
- * NOT reference `demo` — the demo has already torn down its own state
- * before invoking it. Avoiding that reference makes the const-binding
- * order irrelevant to correctness (no TDZ window).
+ * dropdown-demo — node bootstrap. Constructs `NodeTerminalHost` and runs the
+ * shared demo body. The app hands the terminal back on every path out —
+ * Ctrl-C inside the demo, a signal, a crash — so there is nothing to restore
+ * here.
  */
 
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
@@ -18,26 +14,4 @@ if (!host.isTTY) {
   process.exit(1);
 }
 
-host.start();
-
-let demo: ReturnType<typeof runDemo>;
-try {
-  demo = runDemo(host, {
-    onShutdown: () => {
-      host.stop();
-      process.exit(0);
-    },
-  });
-} catch (err) {
-  host.stop();
-  throw err;
-}
-
-const shutdown = (): void => {
-  demo.stop();
-  host.stop();
-  process.exit(0);
-};
-
-process.once("SIGINT", shutdown);
-process.once("SIGTERM", shutdown);
+void runDemo(host).done.then(() => host.write("\x1b[1;36mGoodbye!\x1b[0m\n"));

@@ -1,8 +1,7 @@
 /**
- * rich-template-bindings — node bootstrap.
- *
- * [LAW:types-are-the-program] `onShutdown` does not reference `demo` — the
- * demo has already torn down its own state before invoking it.
+ * rich-template-bindings — node bootstrap. The app hands the terminal back on
+ * every path out — Ctrl-C inside the demo, a signal, a crash — so there is
+ * nothing to restore here.
  */
 
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
@@ -14,26 +13,4 @@ if (!host.isTTY) {
   process.exit(1);
 }
 
-host.start();
-
-let demo: ReturnType<typeof runDemo>;
-try {
-  demo = runDemo(host, {
-    onShutdown: () => {
-      host.stop();
-      process.exit(0);
-    },
-  });
-} catch (err) {
-  host.stop();
-  throw err;
-}
-
-const shutdown = (): void => {
-  demo.stop();
-  host.stop();
-  process.exit(0);
-};
-
-process.once("SIGINT", shutdown);
-process.once("SIGTERM", shutdown);
+void runDemo(host).done.then(() => host.write("\x1b[1;36mGoodbye!\x1b[0m\n"));

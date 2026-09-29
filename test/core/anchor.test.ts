@@ -25,7 +25,8 @@ import { Viewport } from "../../src/renderables/viewport.js";
 class Owner implements Renderable {
   constructor(readonly lines: string[]) {}
 
-  render(_options: RenderOptions): Iterable<Segment> {
+  render(options: RenderOptions): Iterable<Segment> {
+    options.onDraw?.(this);
     const stamped = Segment.anchorLines(this.lines.map((l) => [new Segment(l)]), this);
     return stamped.flatMap((line) => [...line, Segment.line()]);
   }
@@ -80,39 +81,40 @@ const cellsOf = (found: Placement[]): string[] => found.map((p) => `${p.row},${p
 
 const OPTIONS: RenderOptions = { maxWidth: 40, height: { rows: 12, exact: true } };
 
+const cases: [string, (owner: Owner) => Renderable][] = [
+  ["Panel", (o) => new Panel(o)],
+  ["Padding", (o) => new Padding(o, [1, 2, 1, 3])],
+  ["Group", (o) => new Group(new Owner(["zz"]), o)],
+  ["Align, which places each line after rendering it", (o) => new Align(o, "center")],
+  ["a Layout row split", (o) => {
+    const layout = new Layout();
+    layout.splitRow(new Layout("left pane"), new Layout(o));
+    return layout;
+  }],
+  ["a Layout column split", (o) => {
+    const layout = new Layout();
+    layout.splitColumn(new Layout("top", { size: 3 }), new Layout(o));
+    return layout;
+  }],
+  ["a Table cell", (o) => new Table().addColumn("head").addColumn("tail").addRow("x", o)],
+  ["Columns", (o) => new Columns(["first", o])],
+  ["a Tree", (o) => {
+    const tree = new Tree("root");
+    tree.add("sibling");
+    tree.add(o);
+    return tree;
+  }],
+  ["panels in panes in a panel", (o) => {
+    const layout = new Layout();
+    layout.splitRow(
+      new Layout(new Panel("beside")),
+      new Layout(new Panel(new Padding(new Align(o, "right"), 1))),
+    );
+    return new Panel(layout);
+  }],
+];
+
 describe("a cell's anchor names what its owner drew there, through every container", () => {
-  const cases: [string, (owner: Owner) => Renderable][] = [
-    ["Panel", (o) => new Panel(o)],
-    ["Padding", (o) => new Padding(o, [1, 2, 1, 3])],
-    ["Group", (o) => new Group(new Owner(["zz"]), o)],
-    ["Align, which places each line after rendering it", (o) => new Align(o, "center")],
-    ["a Layout row split", (o) => {
-      const layout = new Layout();
-      layout.splitRow(new Layout("left pane"), new Layout(o));
-      return layout;
-    }],
-    ["a Layout column split", (o) => {
-      const layout = new Layout();
-      layout.splitColumn(new Layout("top", { size: 3 }), new Layout(o));
-      return layout;
-    }],
-    ["a Table cell", (o) => new Table().addColumn("head").addColumn("tail").addRow("x", o)],
-    ["Columns", (o) => new Columns(["first", o])],
-    ["a Tree", (o) => {
-      const tree = new Tree("root");
-      tree.add("sibling");
-      tree.add(o);
-      return tree;
-    }],
-    ["panels in panes in a panel", (o) => {
-      const layout = new Layout();
-      layout.splitRow(
-        new Layout(new Panel("beside")),
-        new Layout(new Panel(new Padding(new Align(o, "right"), 1))),
-      );
-      return new Panel(layout);
-    }],
-  ];
 
   for (const [name, wrap] of cases) {
     it(name, () => {
@@ -157,6 +159,19 @@ describe("a cell's anchor names what its owner drew there, through every contain
     expect([anchor.inner!.row, anchor.inner!.col]).toEqual([0, 1]);
     expect(Segment.anchorAt(frame, 1, 0)!.inner).toBeUndefined();
   });
+});
+
+// `RenderOptions.onDraw` is how a runtime learns document order — the order
+// focus moves in — and no container is told about it either.
+describe("an owner is told of as it draws, through every container", () => {
+  for (const [name, wrap] of cases) {
+    it(name, () => {
+      const owner = new Owner(["abcdef", "ghi", "jklmnop"]);
+      const heard: object[] = [];
+      [...wrap(owner).render({ ...OPTIONS, onDraw: (drawn) => heard.push(drawn) })];
+      expect(heard).toContain(owner);
+    });
+  }
 });
 
 describe("cutting an anchored segment", () => {

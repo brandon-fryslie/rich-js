@@ -31,7 +31,12 @@
  * The stand-in is also enough of Node's `process` for a program that reads
  * keys: `stdin` emits what is typed at the terminal as `data`, which is all
  * `NodeTerminalHost` asks of it, so a widget example written against a real
- * TTY runs unchanged in a live terminal on a page.
+ * TTY runs unchanged in a live terminal on a page. And it is enough for one
+ * that runs an `App`, which listens on `process` for the program ending: the
+ * program's own `process.exit` raises `exit` as Node's does, and no signal is
+ * ever raised, because nothing outside the page can send one. `kill` sends
+ * nothing — the suspend it carries goes to a job no shell controls, which
+ * Node's kernel would discard too.
  */
 
 import type { ConsoleEnvironment, ConsoleStream } from "../../src/index.js";
@@ -85,13 +90,22 @@ class Events {
     return this;
   }
 
+  prependListener(event: string, listener: Listener): this {
+    this.listeners.set(event, new Set([listener, ...(this.listeners.get(event) ?? [])]));
+    return this;
+  }
+
+  listenerCount(event: string): number {
+    return this.listeners.get(event)?.size ?? 0;
+  }
+
   off(event: string, listener: Listener): this {
     this.listeners.get(event)?.delete(listener);
     return this;
   }
 
   emit(event: string, ...args: unknown[]): void {
-    for (const listener of this.listeners.get(event) ?? []) (listener as (...a: unknown[]) => void)(...args);
+    for (const listener of [...(this.listeners.get(event) ?? [])]) (listener as (...a: unknown[]) => void)(...args);
   }
 }
 
@@ -140,14 +154,31 @@ class Input extends Events {
 /**
  * What the program sees as `process`: the terminal on both standard streams —
  * a real terminal shows stderr where it shows stdout — its keyboard on stdin,
- * a copy of its environment, and `exit`.
+ * a copy of its environment, the events it ends on, and `exit`.
  */
-export interface SimulatedProcess extends ConsoleEnvironment {
-  readonly env: Record<string, string>;
-  readonly stdin: Input;
+class SimulatedProcess extends Events implements ConsoleEnvironment {
+  readonly pid = 1;
   readonly stdout: Output;
   readonly stderr: Output;
-  exit(code?: number): void;
+
+  constructor(
+    private readonly terminal: SimulatedTerminal,
+    readonly env: Record<string, string>,
+    readonly stdin: Input,
+  ) {
+    super();
+    this.stdout = new Output(terminal);
+    this.stderr = this.stdout;
+  }
+
+  exit(code = 0): void {
+    this.emit("exit", code);
+    this.terminal.exit(code);
+  }
+
+  kill(_pid: number, _signal: string): boolean {
+    return true;
+  }
 }
 
 /**
@@ -159,16 +190,9 @@ export async function runInTerminal(program: string, terminal: SimulatedTerminal
   // "use strict" because the program was written as a module, and a sloppy body
   // would turn an assignment to an undeclared name into a global — a leak.
   const body = new AsyncFunction("process", `"use strict";\n${program}`);
-  const output = new Output(terminal);
   const stdin = new Input(terminal.isTTY);
   terminal.onInput((chunk) => stdin.emit("data", chunk));
-  await body({
-    // [LAW:one-source-of-truth] The env is copied per run: a program that sets
-    // `process.env.X` changes its own run and not the terminal it was handed.
-    env: { ...terminal.env },
-    stdin,
-    stdout: output,
-    stderr: output,
-    exit: (code = 0) => terminal.exit(code),
-  });
+  // [LAW:one-source-of-truth] The env is copied per run: a program that sets
+  // `process.env.X` changes its own run and not the terminal it was handed.
+  await body(new SimulatedProcess(terminal, { ...terminal.env }, stdin));
 }

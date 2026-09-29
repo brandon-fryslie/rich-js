@@ -13,91 +13,19 @@ import { describe, it, expect } from "vitest";
 import stripAnsi from "strip-ansi";
 
 import { App, type AppOptions } from "../../src/host/app.js";
-import type {
-  ResizeHandler,
-  TerminalHost,
-  TerminalSize,
-} from "../../src/host/terminal-host.js";
+import { scriptedHost, type ScriptedHost } from "./scripted-host.js";
 import { RichText } from "../../src/core/text.js";
 import { Layout } from "../../src/renderables/layout.js";
 import type { Renderable } from "../../src/core/protocol.js";
 
-const ALT_ON = "\x1b[?1049h";
-const ALT_OFF = "\x1b[?1049l";
+// Pointer reporting belongs to the alternate surface: it is switched on with
+// the buffer and off before it, so no exit path leaves one without the other.
+const POINTER_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
+const POINTER_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
+const ALT_ON = "\x1b[?1049h" + POINTER_ON;
+const ALT_OFF = POINTER_OFF + "\x1b[?1049l";
 const CURSOR_OFF = "\x1b[?25l";
 const CURSOR_ON = "\x1b[?25h";
-
-interface ScriptedHost extends TerminalHost {
-  /** Everything written, joined. */
-  readonly output: () => string;
-  readonly raw: () => boolean;
-  readonly started: () => boolean;
-  resize(size: TerminalSize): void;
-  exit(): void;
-  /** The pending `suspend()`, resolved by the test as a shell's `fg` would. */
-  resume(): void;
-  readonly suspends: () => number;
-}
-
-function scriptedHost(initial: TerminalSize = { cols: 20, rows: 4 }): ScriptedHost {
-  let size = initial;
-  let raw = false;
-  let started = false;
-  let suspends = 0;
-  let resume: () => void = () => {
-    throw new Error("resume() with no suspend pending");
-  };
-  const writes: string[] = [];
-  const resizeHandlers = new Set<ResizeHandler>();
-  const exitHandlers = new Set<() => void>();
-  return {
-    output: () => writes.join(""),
-    raw: () => raw,
-    started: () => started,
-    suspends: () => suspends,
-    resize(next) {
-      size = next;
-      for (const h of resizeHandlers) h(next);
-    },
-    exit() {
-      for (const h of [...exitHandlers]) h();
-    },
-    resume: () => resume(),
-    write(data) {
-      writes.push(typeof data === "string" ? data : new TextDecoder().decode(data));
-    },
-    onData: () => () => {},
-    onResize(handler) {
-      resizeHandlers.add(handler);
-      return () => resizeHandlers.delete(handler);
-    },
-    onExit(handler) {
-      exitHandlers.add(handler);
-      return () => exitHandlers.delete(handler);
-    },
-    suspend() {
-      suspends += 1;
-      return new Promise<void>((resolve) => {
-        resume = resolve;
-      });
-    },
-    size: () => size,
-    setRawMode(next) {
-      raw = next;
-    },
-    isTTY: true,
-    writesToTerminal: true,
-    env: { TERM: "xterm-256color" },
-    start() {
-      started = true;
-    },
-    stop() {
-      started = false;
-      resizeHandlers.clear();
-      exitHandlers.clear();
-    },
-  };
-}
 
 function text(value: string): Renderable {
   return new RichText(value, { end: "" });
@@ -298,6 +226,37 @@ describe("App on the alternate screen", () => {
   });
 });
 
+describe("App paint listeners", () => {
+  it("hear each frame once it is on screen, as the frame the app now reports", async () => {
+    const host = scriptedHost({ cols: 10, rows: 2 });
+    let label = "one";
+    const target = app(host, () => text(label));
+    const heard: string[][] = [];
+    target.onPaint((frame) => {
+      expect(frame).toBe(target.frame);
+      heard.push(rows(target));
+    });
+
+    void target.run();
+    label = "two";
+    target.refresh();
+    await tick();
+
+    expect(heard).toEqual([["one", ""], ["two", ""]]);
+  });
+
+  it("fail the app when one throws, as a frame that throws does", async () => {
+    const host = scriptedHost();
+    const target = app(host, () => text("x"));
+    target.onPaint(() => {
+      throw new Error("listener broke");
+    });
+
+    await expect(target.run()).rejects.toThrow("listener broke");
+    expect(host.raw()).toBe(false);
+  });
+});
+
 describe("App inline", () => {
   it("keeps the frame's own height under the terminal as a ceiling", () => {
     const host = scriptedHost({ cols: 10, rows: 5 });
@@ -307,6 +266,9 @@ describe("App inline", () => {
 
     expect(rows(target)).toEqual(["one", "two"]);
     expect(host.output()).not.toContain(ALT_ON);
+    // The terminal reports a pointer by its screen row, and an inline frame
+    // does not know which row it starts on.
+    expect(host.output()).not.toContain(POINTER_ON);
   });
 
   it("crops a frame taller than the terminal to the terminal", () => {

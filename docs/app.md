@@ -27,25 +27,38 @@ host.onData((chunk) => {
 await app.run();
 ```
 
-`App` is on the `host` subpath, beside the `TerminalHost` it runs on. It carries no third-party dependency.
+`App` is on the `host` subpath, beside the `TerminalHost` it runs on. It carries no third-party dependency. An app whose view has [widgets](/widgets) in it — fields, buttons, dropdowns that take focus and clicks — is a `WidgetApp`, which is an `App` with that input added.
 
 ## The view is asked for every frame
 
 `view` returns the app's root renderable, and `App` calls it once per frame. Keep your state in variables or a store, and build the view from it: the frame always shows the state as it was when the frame was painted.
 
-`refresh()` asks for a frame. It paints once, after the current task, so several changes made together land in one frame. A resize repaints on its own.
+`refresh()` asks for a frame. It paints once, after the current task, so several changes made together land in one frame. A resize repaints on its own, so a view that reads the terminal's size shows the new one with no handler of yours:
+
+```ts silent
+import { RichText } from "@promptctl/rich-js";
+import { App } from "@promptctl/rich-js/host";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+
+const host = new NodeTerminalHost();
+const app = new App({
+  host,
+  surface: "alternate",
+  view: () => new RichText(`${host.size().cols} × ${host.size().rows}`),
+});
+```
 
 The root renders at the terminal's width, with the terminal's rows as its [height](/protocol). On the alternate screen those rows are a region, so a [`Layout`](/layout) fills the whole screen. No row is drawn wider than the terminal or below its last row.
 
 ## Two surfaces
 
-`surface: "alternate"` paints on the alternate screen buffer, the whole terminal. When the app stops, the terminal shows what it showed before the app started.
+`surface: "alternate"` paints on the alternate screen buffer, the whole terminal, and the terminal reports the pointer — presses, motion and the wheel — as input. When the app stops, the terminal shows what it showed before the app started.
 
-`surface: "inline"` paints downward from the start of the cursor's line, as tall as the frame and no taller than the terminal. That line is the frame's first row, so end anything you print before starting the app with a newline. Each frame overwrites the last one in place. When the app stops, the last frame stays on the terminal and the cursor moves below it.
+`surface: "inline"` paints downward from the start of the cursor's line, as tall as the frame and no taller than the terminal. That line is the frame's first row, so end anything you print before starting the app with a newline. Each frame overwrites the last one in place. When the app stops, the last frame stays on the terminal and the cursor moves below it. The terminal does not report the pointer: it reports a pointer by its row on the screen, and an inline app does not know which row its frame starts on.
 
 ## Every exit hands the terminal back
 
-While it runs, the app hides the cursor, switches the terminal to raw mode and, on the alternate surface, enters the alternate screen. All three are undone when:
+While it runs, the app hides the cursor, switches the terminal to raw mode and, on the alternate surface, enters the alternate screen and turns on pointer reporting. All of it is undone when:
 
 - you call `stop()` — `run()` resolves;
 - the view throws while a frame is painted — `run()` rejects with that error;

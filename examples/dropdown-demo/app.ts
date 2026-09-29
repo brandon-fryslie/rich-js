@@ -6,27 +6,27 @@
  * `NodeTerminalHost`; the browser bootstrap with `BrowserTerminalHost`. The
  * code path here is identical in both — the host is the value that differs.
  *
+ * The widgets are laid out by composition — a `Group` for the body, a
+ * `Layout` that keeps the status rows at the bottom of the screen — and
+ * `WidgetApp` finds them wherever they land.
+ *
  * Keyboard: Tab navigates · Enter/Space opens · printable filters ·
  *           Backspace undoes a filter char · Esc cancels.
  */
 
 import { runInAction, observable, action } from "mobx";
-import { Segment, Style, ColorSpec } from "../../src/index.js";
+import { Segment, Style, ColorSpec, Group, Layout } from "../../src/index.js";
 import {
   Dropdown,
-  DefaultScreen,
-  DefaultFocusManager,
-  EventRouter,
+  WidgetApp,
   widgetAt,
   StaticItem,
   WidgetBase,
-  FLOW,
   hasOverlay,
   KeyEvent,
 } from "../../src/widgets/index.js";
 import type { TerminalHost } from "../../src/host/index.js";
 import type { InteractiveWidget } from "../../src/widgets/types.js";
-import type { MountEntry } from "../../src/widgets/screen.js";
 import type {
   Renderable,
   RenderOptions,
@@ -34,15 +34,8 @@ import type {
 
 export interface DemoHandle {
   stop(): void;
-}
-
-export interface RunDemoOptions {
-  /**
-   * Called when the user signals shutdown from inside the demo (e.g. Ctrl-C)
-   * after demo state has been torn down. The node bootstrap supplies a
-   * `process.exit(0)` here; the browser bootstrap can omit it.
-   */
-  onShutdown?: () => void;
+  /** Settles once the demo has stopped and handed the terminal back. */
+  readonly done: Promise<void>;
 }
 
 const SHORT_OPTIONS = ["Red", "Green", "Blue"];
@@ -68,9 +61,9 @@ const MUTATION_CYCLE: string[][] = [
  * hit-testing, no change/submit plumbing.
  *
  * This one shows the last key it was handed, which makes the KeyEvent contract
- * visible: the router hands the *focused* widget its key, and `event.stop()`
+ * visible: the app hands the *focused* widget its key, and `event.stop()`
  * is how a widget claims one. Space is claimed here; Tab is not, so Tab still
- * reaches the router's focus traversal.
+ * reaches the app's focus traversal.
  */
 class KeyEchoWidget extends WidgetBase {
   readonly id = "key-echo";
@@ -103,7 +96,7 @@ class KeyEchoWidget extends WidgetBase {
   }
 }
 
-export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandle {
+export function runDemo(host: TerminalHost): DemoHandle {
   const ddShort = new Dropdown({
     options: SHORT_OPTIONS,
     selectedIndex: 0,
@@ -127,10 +120,6 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
   // has. `allWidgets` is the wider list the overlay readout walks and needs no cast.
   const dropdowns: Dropdown[] = [ddShort, ddLong, ddMutating];
   const allWidgets: InteractiveWidget[] = [...dropdowns, keyEcho];
-
-  const fm = new DefaultFocusManager();
-  const screen = new DefaultScreen({ focusManager: fm, host });
-  const router = new EventRouter({ screen, host });
 
   const styledLine = (text: string, style: Style): Renderable => ({
     render(_options: RenderOptions): Iterable<Segment> {
@@ -203,9 +192,9 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     render: styledLine("Custom widget — WidgetBase subclass, echoes its keys", sectionStyle),
   });
 
-  // `hasOverlay` is the host's own test for the overlay protocol: a widget
-  // opts in by having `renderOverlay`, and the Screen runs the overlay pass
-  // for exactly those. The Dropdowns paint their expanded list that way; the
+  // `hasOverlay` is the runtime's own test for the overlay protocol: a widget
+  // opts in by having `renderOverlay`, and WidgetApp paints the overlays of
+  // exactly those. The Dropdowns paint their expanded list that way; the
   // custom widget below does not, and the line reports the difference.
   const overlayItem = new StaticItem({
     id: "static-overlay",
@@ -216,11 +205,9 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     ),
   });
 
-  const TERMINAL_ROWS = host.size().rows;
-  const STATUS_Y = Math.max(15, TERMINAL_ROWS - 2);
-  const CHEAT_Y = STATUS_Y + 1;
-
-  const mountList: MountEntry[] = [
+  // The body flows down from the top; the status rows hold the bottom two
+  // rows of the screen, whatever its height.
+  const body = new Group(
     headerItem,
     subtitleItem,
     spacer("sp-1"),
@@ -238,81 +225,46 @@ export function runDemo(host: TerminalHost, options?: RunDemoOptions): DemoHandl
     spacer("sp-4"),
 
     customLabel,
-    // A bare widget in the mount list gets flow placement by default; `FLOW`
-    // is that default written out, so this entry and `customLabel` above it
-    // mount identically. The footer rows below pass a placement that differs.
-    { widget: keyEcho, placement: FLOW },
+    keyEcho,
     overlayItem,
+  );
+  const view = new Layout();
+  view.splitColumn(new Layout(body), new Layout(new Group(statusItem, cheatSheetItem), { size: 2 }));
 
-    { widget: statusItem, placement: { kind: "fixed", x: 0, y: STATUS_Y } },
-    { widget: cheatSheetItem, placement: { kind: "fixed", x: 0, y: CHEAT_Y } },
-  ];
+  const app = new WidgetApp({ host, surface: "alternate", view: () => view });
 
-  // [LAW:single-enforcer] EventRouter owns the chain; the demo only adds a
-  // global Ctrl-C handler and the click→focus policy.
-
-  // [LAW:types-are-the-program] mutationTimer is initialised to null BEFORE
-  // `handle` so `handle.stop()` is structurally safe to call during partial
-  // startup (e.g. when the alt-screen has been entered but setInterval hasn't
-  // yet assigned). The discriminator "timer running?" lives in the value.
-  let mutationTimer: ReturnType<typeof setInterval> | null = null;
-  let stopped = false;
-  const handle: DemoHandle = {
-    stop(): void {
-      if (stopped) return;
-      stopped = true;
-      if (mutationTimer !== null) {
-        clearInterval(mutationTimer);
-        mutationTimer = null;
-      }
-      router.stop();
-      screen.stop();
-      host.write("\x1b[?1049l\x1b[1;36mGoodbye!\x1b[0m\n");
-    },
-  };
-
-  router.onKey(
+  // [LAW:single-enforcer] The app owns the terminal and hands it back on
+  // every path out; the demo only adds a global Ctrl-C handler and the
+  // click→focus policy.
+  app.onKey(
     (event) => {
       if (event.ctrl && event.key === "c") {
-        handle.stop();
-        options?.onShutdown?.();
+        app.stop();
         event.stop();
       }
     },
     { priority: "high" },
   );
 
-  router.onMouse((event) => {
+  app.onMouse((event) => {
     if (event.type !== "mouse_up") return;
-    // The frame the screen painted says who drew the cell under the pointer;
-    // focus() ignores a widget that cannot take focus.
-    const hit = widgetAt(screen.frame, event.x, event.y);
-    if (hit) fm.focus(hit.widget);
+    // The frame on screen says who drew the cell under the pointer; focus()
+    // ignores a widget that cannot take focus.
+    const hit = widgetAt(app.frame, event.x, event.y);
+    if (hit) app.focusManager.focus(hit.widget);
   });
 
-  // [LAW:single-enforcer] Alt-screen state has exactly one restore site
-  // (`handle.stop()`). The startup block below enters the alt-screen and
-  // brings the screen/router online; if anything in here throws, the catch
-  // routes through the same `handle.stop()` so the restore sequence runs
-  // and the terminal is never left in the alternate buffer.
-  try {
-    // Alt-screen buffer — main buffer is restored on stop().
-    host.write("\x1b[?1049h\x1b[H");
-    screen.mount(...mountList);
-    let cycleIdx = 0;
-    mutationTimer = setInterval(() => {
-      cycleIdx = (cycleIdx + 1) % MUTATION_CYCLE.length;
-      runInAction(() => {
-        ddMutating.options = MUTATION_CYCLE[cycleIdx]!;
-        ddMutating.selectedIndex = 0;
-      });
-    }, 3000);
-    screen.start();
-    router.start();
-  } catch (err) {
-    handle.stop();
-    throw err;
-  }
+  let cycleIdx = 0;
+  const mutationTimer = setInterval(() => {
+    cycleIdx = (cycleIdx + 1) % MUTATION_CYCLE.length;
+    runInAction(() => {
+      ddMutating.options = MUTATION_CYCLE[cycleIdx]!;
+      ddMutating.selectedIndex = 0;
+    });
+  }, 3000);
 
-  return handle;
+  return {
+    stop: () => app.stop(),
+    done: app.run().finally(() => clearInterval(mutationTimer)),
+  };
 }

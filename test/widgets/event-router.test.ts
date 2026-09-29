@@ -107,18 +107,17 @@ interface Harness {
   stdout: CapturingStream;
   fm: DefaultFocusManager;
   widgets: StubWidget[];
-  screen: FrameSource;
+  source: FrameSource;
   keyEvents: KeyEvent[];
   mouseEvents: ScreenMouseEvent[];
   setWidgets: (widgets: StubWidget[]) => void;
 }
 
-// The frame a screen would paint: each visible widget's stamped cells at its
-// rect, in list order, so a later widget paints over an earlier one.
+// The frame an app would paint: each widget's stamped cells at its rect, in
+// list order, so a later widget paints over an earlier one.
 function paint(widgets: readonly StubWidget[]): Segment[][] {
   const frame: Segment[][] = [];
   for (const w of widgets) {
-    if (!w.visible) continue;
     Segment.splitLines(w.render({ maxWidth: 80 })).forEach((line, row) => {
       const y = w.rect.y + row;
       while (frame.length <= y) frame.push([]);
@@ -135,11 +134,11 @@ function paint(widgets: readonly StubWidget[]): Segment[][] {
 function makeHarness(initial: StubWidget[] = []): Harness {
   const stdin = new PassThrough();
   const stdout = new CapturingStream();
-  const fm = new DefaultFocusManager();
   let widgets = initial;
-  for (const w of widgets) fm.register(w);
+  const fm = new DefaultFocusManager(() => widgets);
+  fm.settle();
 
-  const screen: FrameSource = {
+  const source: FrameSource = {
     focusManager: fm,
     get frame() {
       return paint(widgets);
@@ -147,12 +146,7 @@ function makeHarness(initial: StubWidget[] = []): Harness {
   };
 
   const host = makeNodeHost(stdin, stdout);
-  const router = new EventRouter({
-    screen,
-    host,
-    manageMouse: false,
-    manageRawMode: false,
-  });
+  const router = new EventRouter({ source, host });
 
   const keyEvents: KeyEvent[] = [];
   const mouseEvents: ScreenMouseEvent[] = [];
@@ -171,12 +165,12 @@ function makeHarness(initial: StubWidget[] = []): Harness {
     stdout,
     fm,
     widgets,
-    screen,
+    source,
     keyEvents,
     mouseEvents,
     setWidgets: (next) => {
       widgets = next;
-      for (const w of next) fm.register(w);
+      fm.settle();
     },
   };
 }
@@ -481,17 +475,6 @@ describe("EventRouter — mouse parsing", () => {
     // Handlers registered with onMouse still see the screen position.
     expect(h.mouseEvents[0]).toMatchObject({ x: 6, y: 3 });
   });
-
-  it("does not dispatch to invisible widgets", () => {
-    const a = new StubWidget("a");
-    a.place({ x: 0, y: 0, width: 10, height: 1 });
-    runInAction(() => {
-      a.visible = false;
-    });
-    const h = makeHarness([a]);
-    h.router.feed("\x1b[<0;3;1M");
-    expect(a.mouseEvents).toHaveLength(0);
-  });
 });
 
 describe("EventRouter — drag capture", () => {
@@ -643,18 +626,13 @@ describe("EventRouter — start/stop", () => {
   it("attaches a data listener on start and detaches on stop", () => {
     const stdin = new PassThrough();
     const stdout = new CapturingStream();
-    const fm = new DefaultFocusManager();
     const a = new StubWidget("a");
-    fm.register(a);
-    const screen: FrameSource = { focusManager: fm, frame: paint([a]) };
+    const fm = new DefaultFocusManager(() => [a]);
+    fm.settle();
+    const source: FrameSource = { focusManager: fm, frame: paint([a]) };
 
     const host = makeNodeHost(stdin, stdout);
-    const router = new EventRouter({
-      screen,
-      host,
-      manageMouse: false,
-      manageRawMode: false,
-    });
+    const router = new EventRouter({ source, host });
 
     router.start();
     expect(stdin.listenerCount("data")).toBe(1);
@@ -666,26 +644,12 @@ describe("EventRouter — start/stop", () => {
     expect(stdin.listenerCount("data")).toBe(0);
   });
 
-  it("writes mouse-tracking sequences when manageMouse is true", () => {
-    const stdin = new PassThrough();
-    const stdout = new CapturingStream();
-    const fm = new DefaultFocusManager();
-    const screen: FrameSource = { focusManager: fm, frame: paint([]) };
-
-    const host = makeNodeHost(stdin, stdout);
-    const router = new EventRouter({
-      screen,
-      host,
-      manageMouse: true,
-      manageRawMode: false,
-    });
-
-    router.start();
-    expect(stdout.joined()).toContain("\x1b[?1006h");
-    expect(stdout.joined()).toContain("\x1b[?1000h");
-    router.stop();
-    expect(stdout.joined()).toContain("\x1b[?1000l");
-    expect(stdout.joined()).toContain("\x1b[?1006l");
+  it("never writes to the terminal — raw mode and pointer reporting are the App's", () => {
+    const h = makeHarness();
+    h.router.start();
+    h.router.feed("x");
+    h.router.stop();
+    expect(h.stdout.joined()).toBe("");
   });
 
   it("is idempotent — repeated start() / stop() are safe", () => {

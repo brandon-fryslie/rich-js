@@ -26,11 +26,11 @@ function composed(widget: InteractiveWidget): Layout {
   return layout;
 }
 
-/** A router reading the frame `root` paints now, as a screen would supply it. */
+/** A router reading the frame `root` paints now, as an app would supply it. */
 function routerOver(root: Layout): EventRouter {
   const frame = (): Segment[][] => Segment.splitLines(root.render(OPTIONS));
   return new EventRouter({
-    screen: { focusManager: new DefaultFocusManager(), get frame() { return frame(); } },
+    source: { focusManager: new DefaultFocusManager(() => []), get frame() { return frame(); } },
     host: new NodeTerminalHost({ stdout: { write: () => true, on: () => {}, off: () => {} } }),
   });
 }
