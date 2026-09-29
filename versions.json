@@ -4,15 +4,22 @@
     {
       "version": "pr-188",
       "ref": "refs/pull/188/merge",
-      "sha": "2f9c602a6b9da1d52c58361299fdd11aa4057c72",
-      "timestamp": "2026-09-29T10:21:59.385Z",
+      "sha": "ce2e7e6c153205e6cf3152bdb9a420d08a6fc86a",
+      "timestamp": "2026-09-29T10:30:26.991Z",
       "commits": [
         {
-          "sha": "2f9c602a6b9da1d52c58361299fdd11aa4057c72",
+          "sha": "ce2e7e6c153205e6cf3152bdb9a420d08a6fc86a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:21:07-06:00",
-          "message": "Merge 8480186889b37959b9ea549ae1d8fe25fb51da6f into d96ef1e3042e6a350ded06164e3d04b863257d37\n"
+          "timestamp": "2026-09-29T10:29:35Z",
+          "message": "Merge 7148f29f48867fa6a1644db713d3f57b9109e43f into d96ef1e3042e6a350ded06164e3d04b863257d37\n"
+        },
+        {
+          "sha": "7148f29f48867fa6a1644db713d3f57b9109e43f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T04:29:29-06:00",
+          "message": "fix(tree): hideRoot drops its children's column; ASCII ends a list with `--; one walk entry (rich-tree-sgk)\n\nReview of PR #188 (high):\n- hideRoot now takes the root row and the column its children hang from, as\n  Rich does (levels[2:]), via the single _walk entry render and measure share.\n- ASCII end glyph is \"`-- \", as in Rich.\n- The stacking test uses italic rather than bold, so it no longer pins the\n  light-glyph/bold-guide divergence ticketed as rich-tree-te3h.\n"
         },
         {
           "sha": "8480186889b37959b9ea549ae1d8fe25fb51da6f",
