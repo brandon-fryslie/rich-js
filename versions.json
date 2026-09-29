@@ -4,15 +4,22 @@
     {
       "version": "pr-217",
       "ref": "refs/pull/217/merge",
-      "sha": "f734e0cd395ca889dbf8c52910ac6d887bd30764",
-      "timestamp": "2026-09-29T20:42:44.459Z",
+      "sha": "b53710d8c09bc0ab0b2b6861a5e9af4b3c5f9ab0",
+      "timestamp": "2026-09-29T20:48:28.838Z",
       "commits": [
         {
-          "sha": "f734e0cd395ca889dbf8c52910ac6d887bd30764",
+          "sha": "b53710d8c09bc0ab0b2b6861a5e9af4b3c5f9ab0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T20:41:50Z",
-          "message": "Merge 791e69332133ab1e974e0fac657d637db7bb152e into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
+          "timestamp": "2026-09-29T20:47:44Z",
+          "message": "Merge 91d5c4ef0ef3416e6d896a623308ec528176fae2 into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
+        },
+        {
+          "sha": "91d5c4ef0ef3416e6d896a623308ec528176fae2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:47:39-06:00",
+          "message": "ci(node-floor): probe the shipped dist, install floor-admitting peers, refuse multi-set ranges (rich-packaging-8b7)\n\nReview (high) fixes:\n- publish.yml's node-floor now probes the gate job's dist artifact, the bytes\n  npm publish ships, instead of a rebuild; provisioning moves to the callers\n- floor.mjs derives the floor and installs each optional peer whose locked\n  engines admit it, so ./widgets (mobx declares no engines) runs at the floor\n- an engines.node of several comparator sets fails instead of being half-probed\n- CLAUDE.md and node-floor.ts state the probe's blind spot, and the\n  node-version-file rule names the computed-floor exception\n"
         },
         {
           "sha": "791e69332133ab1e974e0fac657d637db7bb152e",
