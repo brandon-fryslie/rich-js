@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-193",
+      "ref": "refs/pull/193/merge",
+      "sha": "7498bc9c11174912a6f2f4fba8ee5c90a5201efb",
+      "timestamp": "2026-09-29T12:13:15.108Z",
+      "commits": [
+        {
+          "sha": "7498bc9c11174912a6f2f4fba8ee5c90a5201efb",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:12:24-06:00",
+          "message": "Merge f64d665c47c629ddb42e0a00ee595e5cc06dc05a into 2b9c03b80dfde9cad61753945ed33552df5cc41c\n"
+        },
+        {
+          "sha": "f64d665c47c629ddb42e0a00ee595e5cc06dc05a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:12:19-06:00",
+          "message": "refactor(segment): two bounding primitives, named; Table splits through the one (rich-segment-bpa)\n\ncropLines keeps a stream's line structure and bounds it; splitAndCropLines\ndecomposes into rows of exactly the width. segment.ts now says which question\neach answers. Table's hand-rolled splitLines+adjustLineLength is the second\none, so it calls it. splitAndCropLines' pad/includeNewLines/style modes had no\ncaller and are gone.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-192",
       "ref": "refs/pull/192/merge",
       "sha": "0cdd9228d037020be198dc31c71010a0f9532d48",
