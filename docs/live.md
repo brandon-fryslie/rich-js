@@ -149,6 +149,10 @@ try {
 }
 ```
 
+## When a frame fails to render
+
+`Live` renders each frame in full before it writes anything, so a renderable whose `render` throws leaves the last good frame on the terminal, and the error goes to whoever called `refresh()`. If the auto-refresh timer is what called it, there is no caller: `Live` stops, shows the cursor and leaves the alternate screen, then lets the error go on uncaught. If the final frame `stop()` draws throws, `stop()` hands the terminal back the same way and then rethrows.
+
 ## Vertical overflow
 
 When the renderable is taller than the terminal:
