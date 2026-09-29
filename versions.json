@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-217",
+      "ref": "refs/pull/217/merge",
+      "sha": "612326884e6d911cd86b82d2537272b3bca1d88a",
+      "timestamp": "2026-09-29T20:39:15.480Z",
+      "commits": [
+        {
+          "sha": "612326884e6d911cd86b82d2537272b3bca1d88a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:38:19-06:00",
+          "message": "Merge 0fcc392f45ee90913c706b6c5c89521da543ad9d into 49b777d4389fe87f91772e750793b41ebc51c9d6\n"
+        },
+        {
+          "sha": "0fcc392f45ee90913c706b6c5c89521da543ad9d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:38:08-06:00",
+          "message": "ci(node-floor): install the packed tarball on the engines.node floor and render it (rich-packaging-8b7)\n\nThe node-floor gate compares declarations and never runs src/, and every\njob takes its Node from node-version-file, which setup-node resolves to the\nnewest satisfying version. So an API newer than the floor in src/ was caught\nby nobody. .github/actions/node-floor packs the tarball, derives the floor\nfrom engines.node with semver.minVersion, installs into an empty project\nunder engine-strict on that Node, and asserts the render's text. ci.yml runs\nit on every PR; publish.yml gates the publish job on it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "49b777d4389fe87f91772e750793b41ebc51c9d6",
