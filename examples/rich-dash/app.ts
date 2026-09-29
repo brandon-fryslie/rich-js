@@ -91,6 +91,9 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
     lastTickAt = now;
   };
 
+  // Before anything is subscribed: a widget that throws on its first tick
+  // leaves no listener behind on a host no app ever started.
+  tick();
   const decoder = new TextDecoder();
   host.onData((chunk) => {
     const key = typeof chunk === "string" ? chunk : decoder.decode(chunk, { stream: true });
@@ -104,7 +107,6 @@ export function run(host: TerminalHost, caps: DashboardCapabilities): Running {
     }
   });
 
-  tick();
   // [LAW:no-ambient-temporal-coupling] The clock lives exactly as long as the
   // app: it starts before the first frame and is cleared on every way `run`
   // settles.
