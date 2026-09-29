@@ -303,6 +303,37 @@ describe("plugin pairs must nest", () => {
   });
 });
 
+// `[/]` closes the most recent open tag, whatever kind it is — the built-in
+// dialect's rule, and the one a reader of `[shout]one[/]` expects. It used to
+// skip plugin tags, so that string fell back to the built-in parser, which read
+// `[shout]` as an unknown style and dropped it without a word (rich-markup-gfr).
+describe("an implicit close [/] closes a plugin tag like any other", () => {
+  function twoTags(): MarkupRegistry {
+    const registry = new MarkupRegistry();
+    registry.register("aa", (ctx) => new RichText(`<A>${ctx.children.plain}</A>`, { end: "" }));
+    registry.register("bb", (ctx) => new RichText(`<B>${ctx.children.plain}</B>`, { end: "" }));
+    return registry;
+  }
+  const plain = (markup: string, registry: MarkupRegistry): string =>
+    renderToString(renderMarkup(markup, { registry }), { colorSystem: null });
+
+  it("fires the handler of the plugin tag it closes", () => {
+    expect(plain("[aa]one[/] two", twoTags())).toBe("<A>one</A> two\n");
+  });
+
+  it("closes a style tag opened inside the plugin pair, not the plugin tag", () => {
+    const registry = new MarkupRegistry();
+    registry.register("aa", (ctx) => ctx.children);
+    const styled = (markup: string, r: MarkupRegistry): string =>
+      renderToString(renderMarkup(markup, { registry: r }), { colorSystem: ColorDepth.STANDARD });
+    expect(styled("[aa][bold]x[/]y[/aa]", registry)).toBe(styled("[bold]x[/]y", new MarkupRegistry()));
+  });
+
+  it("closes the innermost of two plugin tags", () => {
+    expect(plain("[aa]x[bb]y[/]z[/]", twoTags())).toBe("<A>x<B>y</B>z</A>\n");
+  });
+});
+
 // The plugin walk parses the caller's string in slices — around each plugin
 // pair, and inside it — so every offset below is one a slice-relative count
 // would get wrong.
@@ -321,11 +352,11 @@ describe("a syntax error inside a plugin-tagged string is located in the caller'
     expect(err.openTags).toEqual([]);
   });
 
-  it("says [/] found no style tag, since the plugin tag around it stays open", () => {
+  it("locates the named close left over once [/] has closed the plugin tag", () => {
     const err = rejectionOf("[aa][/][/aa]", registry());
-    expect(err.reason).toBe("Closing tag [/] has no open style tag to close");
-    expect(err.offset).toBe(4);
-    expect(err.openTags).toEqual(["[aa]"]);
+    expect(err.reason).toBe("Closing tag [/aa] doesn't match any open tag");
+    expect(err.offset).toBe(7);
+    expect(err.openTags).toEqual([]);
   });
 
   it("locates an error nested two plugin pairs deep, naming the enclosing tags", () => {
