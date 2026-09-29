@@ -4,15 +4,22 @@
     {
       "version": "pr-203",
       "ref": "refs/pull/203/merge",
-      "sha": "b2282e5047fe2961cec3cffcd1f2ac2c03049df9",
-      "timestamp": "2026-09-29T13:40:35.213Z",
+      "sha": "e1463ea0023c8af9982b4380838eba0411cca86c",
+      "timestamp": "2026-09-29T13:45:37.771Z",
       "commits": [
         {
-          "sha": "b2282e5047fe2961cec3cffcd1f2ac2c03049df9",
+          "sha": "e1463ea0023c8af9982b4380838eba0411cca86c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:39:43Z",
-          "message": "Merge e83a7729c19bae25301619558e0550e01ea53fe1 into d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3\n"
+          "timestamp": "2026-09-29T13:44:43Z",
+          "message": "Merge 2ab4a877c8f01f5b705c52432571bfdc25527c7c into d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3\n"
+        },
+        {
+          "sha": "2ab4a877c8f01f5b705c52432571bfdc25527c7c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:44:38-06:00",
+          "message": "fix(table): ratio columns split the leftover in a pass of their own (rich-table-ykj)\n\nA ratio is a proportion and a content column's weight is a count of cells;\nweighed in one pool, ratio: 100 truncated a neighbour the table had room for,\nand flooring the ratio to a cell starved ratio: 0.5 to a single ellipsis. The\nshare is now module-private (columnShare) rather than public surface on Column.\n"
         },
         {
           "sha": "e83a7729c19bae25301619558e0550e01ea53fe1",
