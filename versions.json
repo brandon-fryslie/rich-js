@@ -4,15 +4,22 @@
     {
       "version": "pr-205",
       "ref": "refs/pull/205/merge",
-      "sha": "c0c2d06f121b83081959220ca5a7dda0c466d56f",
-      "timestamp": "2026-09-29T16:09:11.377Z",
+      "sha": "45b65a48c184145cee10e5e96cf61995e83d6deb",
+      "timestamp": "2026-09-29T16:22:10.821Z",
       "commits": [
         {
-          "sha": "c0c2d06f121b83081959220ca5a7dda0c466d56f",
+          "sha": "45b65a48c184145cee10e5e96cf61995e83d6deb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:08:16Z",
-          "message": "Merge 5bf09175ee73388f4113f13b8fa6b161dc45a457 into 2e77380e87c70ab491ff8de71965b4ed2ba446b5\n"
+          "timestamp": "2026-09-29T16:21:21Z",
+          "message": "Merge 5a447a58d0aebfaefed03e9d384741aa540528f1 into 2e77380e87c70ab491ff8de71965b4ed2ba446b5\n"
+        },
+        {
+          "sha": "5a447a58d0aebfaefed03e9d384741aa540528f1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T10:21:15-06:00",
+          "message": "fix(widgets): measuring draws nothing, and focus has no public blur the next frame undoes (rich-runtime-fna.4)\n\n- Measurement.get and withBoundedWidth ask measure through measuring(),\n  which drops onDraw: a StaticItem measuring by rendering no longer puts\n  the widget it wraps in document order at measure time.\n- FocusManager.blur is gone from the public surface: settle refocused the\n  first widget on the next frame, so it never stuck. No focus is where\n  settle leaves an app with nothing to focus.\n- StaticItem's header no longer describes the deleted Screen.\n"
         },
         {
           "sha": "5bf09175ee73388f4113f13b8fa6b161dc45a457",
