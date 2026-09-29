@@ -2,42 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-207",
-      "ref": "refs/pull/207/merge",
-      "sha": "6d9e7f7b2202aff0eb344b5da33adcd586b05208",
-      "timestamp": "2026-09-29T16:52:52.384Z",
-      "commits": [
-        {
-          "sha": "6d9e7f7b2202aff0eb344b5da33adcd586b05208",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:52:10Z",
-          "message": "Merge 0ef2910955cae95fe07390a547b318873502acbf into 8d1698c63a99cdfa810c495b3e6cbabf7d38f79d\n"
-        },
-        {
-          "sha": "0ef2910955cae95fe07390a547b318873502acbf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:52:05-06:00",
-          "message": "fix(viewport): canScrollBy counts the moves queued since the last render (rich-viewport-owi.5)\n\nReview (medium): a burst of notches in one input chunk was judged against\nthe last render's offset, so notches past the inner viewport's end died in\nit instead of passing out. render and canScrollBy now share one resolve().\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "5dfed9d399a2d9f2e677ad9eda62a1a8c14c5f90",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:48:46-06:00",
-          "message": "fix(widgets): the wheel passes over a viewport that cannot move to the one around it (rich-viewport-owi.5)\n\nReview (high) found the innermost viewport kept every notch even when its\ncontent fit or it sat at that end, so an outer viewport was dead under it\nand each notch repainted for nothing. Viewport.canScrollBy answers against\nthe last render's extent; scrollTargetAt takes the innermost that can move.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "154cbc76aa68f923d30c6ae0202667756fde16f8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:39:36-06:00",
-          "message": "feat(widgets): the wheel scrolls the innermost Viewport under the pointer (rich-viewport-owi.5)\n\nViewport stamps every cell of its rows, gutter included, with\nSegment.anchorLines, so the composed frame names it under any cell at any\ndepth, around its content's anchors. EventRouter sends a wheel notch to the\ninnermost Viewport on that chain (viewportAt), one line, and asks the source\nfor a frame through the new FrameSource.refresh; WidgetApp.refresh is\nApp.refresh.\n\nThe wheel no longer reaches widgets: WidgetMouseEvent's type is narrowed to\npress, release and motion, so a widget under the pointer cannot hide the\nviewport around it and no widget can handle a wheel twice.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8d1698c63a99cdfa810c495b3e6cbabf7d38f79d",
