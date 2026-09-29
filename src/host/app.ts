@@ -35,7 +35,7 @@ import type { TerminalHost } from "./terminal-host.js";
 /**
  * Where the frame is painted. `alternate` is the whole terminal, in the
  * alternate screen buffer, so the rows the program printed before it are
- * there again when it stops. `inline` is below the cursor, as tall as the
+ * there again when it stops. `inline` starts at the cursor's line, as tall as the
  * frame, and stays on the terminal when the app stops.
  */
 export type Surface = "alternate" | "inline";

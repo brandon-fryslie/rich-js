@@ -41,7 +41,7 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 `surface: "alternate"` paints on the alternate screen buffer, the whole terminal. When the app stops, the terminal shows what it showed before the app started.
 
-`surface: "inline"` paints below the cursor, as tall as the frame and no taller than the terminal. Each frame overwrites the last one in place. When the app stops, the last frame stays on the terminal and the cursor moves below it.
+`surface: "inline"` paints downward from the start of the cursor's line, as tall as the frame and no taller than the terminal. That line is the frame's first row, so end anything you print before starting the app with a newline. Each frame overwrites the last one in place. When the app stops, the last frame stays on the terminal and the cursor moves below it.
 
 ## Every exit hands the terminal back
 
