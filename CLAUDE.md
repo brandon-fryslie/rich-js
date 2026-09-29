@@ -202,6 +202,13 @@ on a laptop. That file's header owns the rest of the argument, including why it
 is JavaScript rather than TypeScript — the publish job has no `node_modules` on
 disk, deliberately, and bare `node` is the only interpreter it can offer.
 
+`scripts/verify-entry-points.mjs` runs on the same hook, after it, and refuses a
+tarball missing any file `package.json` declares as an entry point (`main`,
+`types`, every `exports` target), reading what would ship from `npm pack
+--dry-run --json`, never the disk. 0.18.0 is why: a hand publish from an unbuilt
+checkout shipped no `dist/`. It cannot see whether `dist/` was built from this
+commit.
+
 `test/seam/release-tag.test.ts` builds real repositories pushing to a real bare
 origin in a temp directory and runs the guard against them, so what is checked is
 the contract and not the shape, and no network is involved. Say its blind spot out loud whenever you cite it: that npm still runs
