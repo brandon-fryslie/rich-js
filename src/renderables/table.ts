@@ -346,7 +346,19 @@ export class Column {
   }
 
   get flexible(): boolean {
-    return this.ratio !== undefined && this.ratio > 0;
+    return this.share !== undefined;
+  }
+
+  /**
+   * @internal The ratio this column claims of a table's width, or `undefined`
+   * for a column that claims none — a zero, negative or NaN ratio included.
+   * [LAW:one-source-of-truth] `flexible` is this asked as a yes/no, so the
+   * width path and the public flag cannot disagree about which columns are
+   * elastic: `_columnDemands` once read `ratio ?? 1` itself, weighed a
+   * `ratio: 0` column at zero, and starved it to a single cell.
+   */
+  get share(): number | undefined {
+    return this.ratio !== undefined && this.ratio > 0 ? this.ratio : undefined;
   }
 
   /** @internal */
@@ -693,11 +705,6 @@ export class Table implements Renderable, Measurable {
    * mode gets its own path through the width division.
    */
   private _columnDemands(): ColumnDemand[] {
-    // A ratio on any column makes every non-fixed column elastic: a ratio
-    // expresses a split of the whole width, so a column that declares none
-    // still holds a share of it (1).
-    const elastic = this._columns.some((col) => col.flexible);
-
     return this._columns.map((col, index) => {
       if (col.width !== undefined) {
         // [LAW:single-enforcer] floored where it is parsed, the same rule
@@ -705,8 +712,13 @@ export class Table implements Renderable, Measurable {
         const declared = demandCells(col.width);
         return { reserved: declared, want: declared, weight: 0, stretch: 0 };
       }
-      if (elastic) {
-        return { reserved: 0, want: UNBOUNDED, weight: demandCells(col.ratio ?? 1), stretch: 0 };
+      // A flexible column takes whatever the bounded columns leave, split by
+      // ratio; every other column asks for its natural width, whether or not a
+      // neighbour is flexible. The reference's split is the same:
+      // `fixed_widths = [0 if column.flexible else _range.maximum ...]`.
+      const share = col.share;
+      if (share !== undefined) {
+        return { reserved: 0, want: UNBOUNDED, weight: demandCells(share), stretch: 0 };
       }
       const natural = demandCells(this._naturalWidth(col, index));
       // `expand` is a stretch rather than a larger want: the column still

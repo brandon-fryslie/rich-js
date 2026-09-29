@@ -159,7 +159,7 @@ Configure columns individually:
 | `justify` | Cell alignment: `"left"`, `"center"`, `"right"`, `"full"` |
 | `width` | Fixed column width |
 | `minWidth`, `maxWidth` | Width constraints |
-| `ratio` | Proportional width allocation |
+| `ratio` | Proportional width allocation; a ratio that is not positive is no ratio, and the column sizes to its content |
 | `noWrap` | Prevent text wrapping in this column |
 | `overflow` | What becomes of a line too long for the column: `"ellipsis"` (default), `"crop"`, `"fold"` |
 | `footer` | Footer cell content — drawn only when the table sets `showFooter` |

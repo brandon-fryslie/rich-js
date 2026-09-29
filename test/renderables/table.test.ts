@@ -888,6 +888,28 @@ describe("Table stays inside the width it is given", () => {
     expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
   });
 
+  // `flexible` is the one definition of an elastic column. A column it calls
+  // inflexible sizes to its content even beside a ratio column; the ratio
+  // columns share only what is left. A `ratio: 0` column was once weighed at
+  // zero instead, and collapsed to a single `…` while its one-cell neighbour
+  // stretched to 42.
+  it.each([0, -1, NaN, undefined])(
+    "sizes a column with ratio %s to its content beside a ratio column",
+    (ratio) => {
+      const t = new Table({ box: ASCII });
+      t.addColumn("AAAAAAAAAA", { ratio });
+      t.addColumn("B", { ratio: 1 });
+      t.addRow("1", "2");
+      expect(collectLines(t, { maxWidth: 50 })).toEqual([
+        "+------------------------------------------------+",
+        "| AAAAAAAAAA | B                                 |",
+        "|------------+-----------------------------------|",
+        "| 1          | 2                                 |",
+        "+------------------------------------------------+",
+      ]);
+    },
+  );
+
   it("keeps an infinite ratio from skewing the columns beside it", () => {
     const t = new Table({ box: ASCII, showHeader: false });
     t.addColumn(undefined, { ratio: Infinity });
