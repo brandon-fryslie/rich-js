@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-221",
-      "ref": "refs/pull/221/merge",
-      "sha": "e2e0911d78c070b1492174701a016416f28f820a",
-      "timestamp": "2026-09-29T21:43:03.999Z",
-      "commits": [
-        {
-          "sha": "e2e0911d78c070b1492174701a016416f28f820a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T21:42:09Z",
-          "message": "Merge 08619141468d0975919576dc0f272984a844d8b4 into d0f2bcbfea53ad8f1183201e9f3e7f9241029970\n"
-        },
-        {
-          "sha": "08619141468d0975919576dc0f272984a844d8b4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:42:04-06:00",
-          "message": "refactor(render): derive asciiOnly/onStyleError from RenderOptions; strict-mode docs name renderToString (rich-diagnostics-ejn)\n"
-        },
-        {
-          "sha": "1d1b59f0c14e97ca15e050c86f5f6c1307c93610",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:36:21-06:00",
-          "message": "feat(render): renderToString takes onStyleError (rich-diagnostics-ejn)\n\nrenderToString degraded an unparseable style to unstyled with no way for\nits caller to hear about it or make the render strict. It now takes the\nsame StyleErrorHandler a Console does and hands it to the RenderOptions\nit builds, so both share RenderOptions.onStyleError's contract.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d0f2bcbfea53ad8f1183201e9f3e7f9241029970",
-      "timestamp": "2026-09-29T21:33:32.679Z",
+      "sha": "5b8b4904721cc6699566e533d3b86d281e3d518e",
+      "timestamp": "2026-09-29T21:45:36.374Z",
       "commits": [
         {
-          "sha": "d0f2bcbfea53ad8f1183201e9f3e7f9241029970",
+          "sha": "5b8b4904721cc6699566e533d3b86d281e3d518e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:32:38-06:00",
-          "message": "fix(live): a frame that throws leaves the terminal usable (rich-live-vu8) (#220)\n\n* fix(live): a frame that throws leaves the terminal usable (rich-live-vu8)\n\nrefresh() rendered after erasing the last frame, so a render that threw\nleft nothing on screen; on the auto-refresh timer the throw escaped with\nstop() never run, leaving the cursor hidden and the alternate screen up.\n\nThe frame is now rendered before any byte is written, and the erase or\ncursor-home goes out in the same write as the new frame. Handing the\nterminal back is one _release(), run by stop() in a finally and by the\ntimer before it rethrows.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(live): a frame is drawn only while Live holds the terminal (rich-live-vu8)\n\nAfter the auto-refresh timer handed the terminal back, a caller's later\nrefresh() painted onto the main screen and its stop() did nothing to undo\nit. refresh() before start() or after stop() did the same. Now no frame is\ndrawn outside start()/stop(), as in Rich.\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T15:44:42-06:00",
+          "message": "feat(render): renderToString takes onStyleError (rich-diagnostics-ejn) (#221)\n\n* feat(render): renderToString takes onStyleError (rich-diagnostics-ejn)\n\nrenderToString degraded an unparseable style to unstyled with no way for\nits caller to hear about it or make the render strict. It now takes the\nsame StyleErrorHandler a Console does and hands it to the RenderOptions\nit builds, so both share RenderOptions.onStyleError's contract.\n\n* refactor(render): derive asciiOnly/onStyleError from RenderOptions; strict-mode docs name renderToString (rich-diagnostics-ejn)"
         }
       ]
     },
