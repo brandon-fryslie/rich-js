@@ -798,7 +798,32 @@ describe("Table stays inside the width it is given", () => {
     t.addColumn(undefined, { minWidth: NaN });
     t.addColumn();
     t.addRow("hidden", "shown");
-    expect(collectLines(t, { maxWidth: 20 })).toContain("|  | shown |");
+    expect(collectLines(t, { maxWidth: 20 })).toContain("| hidden | shown |");
+  });
+
+  it.each(["minWidth", "maxWidth"] as const)(
+    "keeps the header and the cell of a column with a NaN %s",
+    (bound) => {
+      const t = new Table({ box: ASCII });
+      t.addColumn("Name", { [bound]: NaN });
+      t.addRow("val");
+      expect(collectLines(t, { maxWidth: 50 })).toEqual([
+        "+------+",
+        "| Name |",
+        "|------|",
+        "| val  |",
+        "+------+",
+      ]);
+    },
+  );
+
+  it("ignores a NaN bound assigned after the column was built", () => {
+    const t = new Table({ box: ASCII, showHeader: false });
+    t.addColumn();
+    t.addRow("hidden");
+    t.columns[0]!.minWidth = NaN;
+    t.columns[0]!.maxWidth = NaN;
+    expect(collectLines(t, { maxWidth: 20 })).toContain("| hidden |");
   });
 
   it("renders a NaN width as a zero width rather than an unbounded frame", () => {

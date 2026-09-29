@@ -288,8 +288,8 @@ export class Column {
   style: string | Style;
   justify: "left" | "center" | "right" | "full";
   width: number | undefined;
-  minWidth: number | undefined;
-  maxWidth: number | undefined;
+  private _minWidth!: number | undefined;
+  private _maxWidth!: number | undefined;
   ratio: number | undefined;
   noWrap: boolean;
   overflow: "fold" | "crop" | "ellipsis";
@@ -343,6 +343,29 @@ export class Column {
 
   set footer(content: string | RichText | undefined) {
     this._footer = embeddedText(content);
+  }
+
+  /**
+   * A NaN bound bounds nothing, so it is held as no bound at all; an infinite
+   * one is a real bound and is kept. [LAW:parse-dont-validate] The setter is the border, as for
+   * `header`: a `minWidth: NaN` — a caller's failed `parseInt` — otherwise
+   * reached `Math.max`/`Math.min` in `_naturalWidth`, which returned NaN and
+   * erased the whole column.
+   */
+  get minWidth(): number | undefined {
+    return this._minWidth;
+  }
+
+  set minWidth(bound: number | undefined) {
+    this._minWidth = Number.isNaN(bound) ? undefined : bound;
+  }
+
+  get maxWidth(): number | undefined {
+    return this._maxWidth;
+  }
+
+  set maxWidth(bound: number | undefined) {
+    this._maxWidth = Number.isNaN(bound) ? undefined : bound;
   }
 
   get flexible(): boolean {
