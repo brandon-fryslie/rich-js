@@ -81,9 +81,8 @@ function main() {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
   const manifest = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
   const required = entryPoints(manifest);
-  const npm = process.platform === "win32" ? "npm.cmd" : "npm";
   const packed = packedPaths(
-    execFileSync(npm, ["pack", "--dry-run", "--json", "--ignore-scripts"], {
+    execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
       cwd: root,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
