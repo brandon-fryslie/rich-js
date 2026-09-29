@@ -23,6 +23,13 @@
  * call order, clamping after every move, against the rows and length that
  * render found. Calling an operation before the first render, or three of them
  * between two renders, is the same code path as calling one.
+ *
+ * Every cell of its rows, gutter included, is stamped as its own
+ * (`Segment.anchorLines`), around whatever anchors its content drew. So the
+ * composed frame names the viewport under any of its cells however deep it is
+ * nested, and a cell of a widget inside it names both: that is how the wheel
+ * finds the viewport to scroll. `canScrollBy` is how it passes over one that
+ * cannot move that way, to the viewport around it.
  */
 
 import { Segment } from "../core/segment.js";
@@ -43,6 +50,7 @@ import type {
   Measurable,
   Renderable,
   RenderOptions,
+  Scrollable,
 } from "../core/protocol.js";
 
 /** What a render found: the rows it shows, and the lines of content behind them. */
@@ -93,7 +101,7 @@ export interface ViewportOptions {
   scrollbar?: Scrollbar;
 }
 
-export class Viewport implements Renderable, Measurable {
+export class Viewport implements Renderable, Measurable, Scrollable {
   /**
    * What the viewport shows. Replace it to show new content from the same
    * scroll position — a view rebuilt every frame keeps one `Viewport`.
@@ -102,6 +110,8 @@ export class Viewport implements Renderable, Measurable {
   readonly rows: number | undefined;
   readonly scrollbar: Scrollbar;
   private _offset = 0;
+  // Nothing rendered, nothing shown: no move can take until the first render.
+  private _extent: Extent = { rows: 0, lines: 0 };
   private _moves: Move[] = [];
 
   constructor(content: Renderable, options: ViewportOptions = {}) {
@@ -129,6 +139,16 @@ export class Viewport implements Renderable, Measurable {
   }
 
   /**
+   * Whether `scrollBy(lines)` would move the viewport from where the moves
+   * queued so far leave it, against the rows and length the last render
+   * found.
+   */
+  canScrollBy(lines: number): boolean {
+    const offset = this.resolve(this._extent);
+    return clampOffset(offset + lines, this._extent) !== offset;
+  }
+
+  /**
    * Scroll the least distance that shows lines `start` up to but not
    * including `end` — lines of the content as it renders at the viewport's
    * width, so an item that wraps spans more than one. A range already in view does not move; one taller than
@@ -152,13 +172,8 @@ export class Viewport implements Renderable, Measurable {
     const contentWidth = this.contentWidth(options.maxWidth);
     const lines = Segment.splitLines(this.content.render({ ...options, maxWidth: contentWidth }));
     const extent: Extent = { rows: viewRows(height, this.rows, lines.length), lines: lines.length };
-    // [LAW:dataflow-not-control-flow] The resolved offset is re-clamped every
-    // render with or without queued moves: content that shrank since the last
-    // render pulls the offset back with it.
-    this._offset = this._moves.reduce(
-      (offset, move) => clampOffset(move(offset, extent), extent),
-      clampOffset(this._offset, extent),
-    );
+    this._extent = extent;
+    this._offset = this.resolve(extent);
     this._moves = [];
 
     const shown = fitHeight(lines.slice(this._offset, this._offset + extent.rows), { rows: extent.rows, exact: true });
@@ -176,11 +191,27 @@ export class Viewport implements Renderable, Measurable {
     };
     const thumbCell = cell(this.scrollbar.thumb);
     const trackCell = cell(this.scrollbar.track);
-    for (const [row, line] of shown.entries()) {
-      yield* Segment.adjustLineLength(line, contentWidth);
-      yield* row >= thumb.start && row < thumb.end ? thumbCell : trackCell;
+    const rows = shown.map((line, row) => [
+      ...Segment.adjustLineLength(line, contentWidth),
+      ...(row >= thumb.start && row < thumb.end ? thumbCell : trackCell),
+    ]);
+    for (const line of Segment.anchorLines(rows, this)) {
+      yield* line;
       yield Segment.line();
     }
+  }
+
+  /**
+   * [LAW:one-source-of-truth] Where the queued moves leave the offset against
+   * `extent`: what a render commits, and what `canScrollBy` asks from.
+   * [LAW:dataflow-not-control-flow] The offset is re-clamped with or without
+   * queued moves: content that shrank since the last render pulls it back.
+   */
+  private resolve(extent: Extent): number {
+    return this._moves.reduce(
+      (offset, move) => clampOffset(move(offset, extent), extent),
+      clampOffset(this._offset, extent),
+    );
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {

@@ -262,6 +262,16 @@ export interface Measurable {
   measure(options: RenderOptions): { minimum: number; maximum: number };
 }
 
+/**
+ * What the wheel scrolls: an owner of anchors on the frame (`./anchor.ts`)
+ * that moves by lines. `canScrollBy` says whether `scrollBy` with the same
+ * `lines` would move it; one that would not passes the wheel outward.
+ */
+export interface Scrollable {
+  canScrollBy(lines: number): boolean;
+  scrollBy(lines: number): void;
+}
+
 export function isRenderable(obj: unknown): obj is Renderable {
   return (
     typeof obj === "object" &&
@@ -277,5 +287,14 @@ export function isMeasurable(obj: unknown): obj is Measurable {
     obj !== null &&
     "measure" in obj &&
     typeof (obj as Measurable).measure === "function"
+  );
+}
+
+export function isScrollable(obj: object): obj is Scrollable {
+  return (
+    "canScrollBy" in obj &&
+    typeof (obj as Scrollable).canScrollBy === "function" &&
+    "scrollBy" in obj &&
+    typeof (obj as Scrollable).scrollBy === "function"
   );
 }

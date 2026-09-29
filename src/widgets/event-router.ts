@@ -28,7 +28,7 @@ import type {
   KeyHandlerOptions,
   KeyHandlerPriority,
 } from "./types.js";
-import { drew, originOf, widgetAt } from "./hit.js";
+import { drew, originOf, scrollTargetAt, widgetAt } from "./hit.js";
 import type { Segment } from "../core/segment.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import type { TerminalHost } from "../host/terminal-host.js";
@@ -567,11 +567,22 @@ export class EventRouter {
     this.pointer = { x: event.x, y: event.y };
     this.hover(hit?.widget ?? null);
 
+    // The wheel scrolls the innermost viewport under the pointer that can
+    // move, a line a notch, past any widget it shows there and whatever a
+    // drag captured. With none, nothing moved and there is nothing to paint.
+    if (event.type === "scroll_up" || event.type === "scroll_down") {
+      const lines = event.type === "scroll_down" ? 1 : -1;
+      const target = scrollTargetAt(frame, event.x, event.y, lines);
+      if (!target) return;
+      target.scrollBy(lines);
+      this.source.refresh();
+      return;
+    }
+
     // [LAW:dataflow-not-control-flow] Same pipeline every event; the
     // capture value and event type pick the target. mouse_down opens a
     // capture, mouse_up closes it, mouse_move in between routes to the
-    // captured widget regardless of pointer position. Scroll events
-    // bypass capture (they're not drag-scoped). A hit's origin puts the
+    // captured widget regardless of pointer position. A hit's origin puts the
     // pressed cell at its own column and row, so every delivery is the same
     // subtraction.
     const useCapture = event.type === "mouse_move" || event.type === "mouse_up";

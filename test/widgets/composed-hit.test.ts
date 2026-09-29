@@ -30,7 +30,7 @@ function composed(widget: InteractiveWidget): Layout {
 function routerOver(root: Layout): EventRouter {
   const frame = (): Segment[][] => Segment.splitLines(root.render(OPTIONS));
   return new EventRouter({
-    source: { focusManager: new DefaultFocusManager(() => []), get frame() { return frame(); } },
+    source: { focusManager: new DefaultFocusManager(() => []), get frame() { return frame(); }, refresh: () => {} },
     host: new NodeTerminalHost({ stdout: { write: () => true, on: () => {}, off: () => {} } }),
   });
 }

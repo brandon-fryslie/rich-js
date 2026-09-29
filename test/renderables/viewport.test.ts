@@ -168,6 +168,34 @@ describe("scrolling", () => {
   });
 });
 
+describe("canScrollBy", () => {
+  it("answers against the last render: neither way before one, and not past either end", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([false, false]);
+    shown(viewport);
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([false, true]);
+    viewport.scrollTo(7);
+    shown(viewport);
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([true, false]);
+  });
+
+  it("counts the moves queued since the last render", () => {
+    const viewport = new Viewport(numbered(10), { rows: 3 });
+    shown(viewport);
+    viewport.scrollBy(6);
+    expect(viewport.canScrollBy(1)).toBe(true);
+    viewport.scrollBy(1);
+    expect(viewport.canScrollBy(1)).toBe(false);
+    expect(viewport.canScrollBy(-1)).toBe(true);
+  });
+
+    it("content that fits moves neither way", () => {
+    const viewport = new Viewport(numbered(2), { rows: 4 });
+    shown(viewport);
+    expect([viewport.canScrollBy(-1), viewport.canScrollBy(1)]).toEqual([false, false]);
+  });
+});
+
 describe("ensureVisible", () => {
   it("brings a range below the view into view, at the bottom", () => {
     const viewport = new Viewport(numbered(20), { rows: 4 });
@@ -303,7 +331,9 @@ describe("the scrollbar", () => {
   it("resolves its styles against the theme it renders for", () => {
     const theme = new Theme({ "scrollbar.thumb": "red", "scrollbar.track": "blue" });
     const segments = [...new Viewport(numbered(8), { rows: 4, scrollbar: SCROLLBAR }).render({ maxWidth: 4, theme })];
-    const styleOf = (glyph: string): Style | undefined => segments.find((s) => s.text === glyph)?.style;
+    // The look, not where the cell came from: every cell carries its anchor.
+    const styleOf = (glyph: string): Style | undefined =>
+      segments.find((s) => s.text === glyph)?.style?.withAnchor(undefined);
     expect(styleOf("┃")).toEqual(Style.parse("red"));
     expect(styleOf("│")).toEqual(Style.parse("blue"));
   });
@@ -313,7 +343,7 @@ describe("the scrollbar", () => {
     const segments = [...new Viewport(numbered(8), { rows: 2, scrollbar: blocks }).render({ maxWidth: 4 })];
     const afterTrack = segments[segments.findIndex((s) => s.text === "░") + 1]!;
     expect(afterTrack.text).toBe(" ");
-    expect(afterTrack.style).toEqual(Style.parse("on blue"));
+    expect(afterTrack.style?.withAnchor(undefined)).toEqual(Style.parse("on blue"));
   });
 
     it("takes any glyphs, and its gutter is as wide as the wider", () => {
