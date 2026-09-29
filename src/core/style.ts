@@ -8,6 +8,7 @@ import {
   ColorDepth,
   SURFACE_BLACK,
 } from "./color.js";
+import { shiftAnchor, type Anchor } from "./anchor.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color`. The substrate
 // a translucent colour is flattened over is `SURFACE_BLACK`, defined beside
@@ -93,6 +94,7 @@ export interface StyleOptions {
   overline?: boolean;
   link?: string;
   meta?: Record<string, unknown>;
+  anchor?: Anchor;
 }
 
 export class StyleSyntaxError extends Error {
@@ -125,6 +127,12 @@ export class Style {
   readonly overline: boolean | undefined;
   readonly link: string | undefined;
   readonly meta: Record<string, unknown> | undefined;
+  /**
+   * Where this style's cells sat in the output of whatever drew them; see
+   * `./anchor.ts`. It draws nothing, and it makes two styles that draw alike
+   * unequal, because they came from different places.
+   */
+  readonly anchor: Anchor | undefined;
 
   constructor(options?: StyleOptions) {
     if (!options) {
@@ -145,6 +153,7 @@ export class Style {
       this.overline = undefined;
       this.link = undefined;
       this.meta = undefined;
+      this.anchor = undefined;
       return;
     }
 
@@ -165,6 +174,7 @@ export class Style {
     this.overline = options.overline;
     this.link = options.link;
     this.meta = options.meta;
+    this.anchor = options.anchor;
   }
 
   get isNull(): boolean {
@@ -185,7 +195,8 @@ export class Style {
       this.encircle === undefined &&
       this.overline === undefined &&
       this.link === undefined &&
-      this.meta === undefined
+      this.meta === undefined &&
+      this.anchor === undefined
     );
   }
 
@@ -214,6 +225,7 @@ export class Style {
       overline: this.overline,
       link: this.link,
       meta: this.meta,
+      anchor: this.anchor,
     });
   }
 
@@ -240,6 +252,7 @@ export class Style {
       overline: this.overline,
       link,
       meta: this.meta,
+      anchor: this.anchor,
     });
   }
 
@@ -260,7 +273,42 @@ export class Style {
       frame: this.frame,
       encircle: this.encircle,
       overline: this.overline,
+      anchor: this.anchor,
     });
+  }
+
+  /**
+   * The same look, drawn from the place `anchor` names.
+   */
+  withAnchor(anchor: Anchor): Style {
+    return new Style({
+      color: this.color,
+      bgcolor: this.bgcolor,
+      bold: this.bold,
+      dim: this.dim,
+      italic: this.italic,
+      underline: this.underline,
+      blink: this.blink,
+      blink2: this.blink2,
+      reverse: this.reverse,
+      conceal: this.conceal,
+      strike: this.strike,
+      underline2: this.underline2,
+      frame: this.frame,
+      encircle: this.encircle,
+      overline: this.overline,
+      link: this.link,
+      meta: this.meta,
+      anchor,
+    });
+  }
+
+  /**
+   * This style on the cell `cells` to the right: its anchor shifted along its
+   * row, or the style itself when it has no anchor.
+   */
+  shiftedBy(cells: number): Style {
+    return this.anchor ? this.withAnchor(shiftAnchor(this.anchor, cells)) : this;
   }
 
   /**
@@ -291,6 +339,7 @@ export class Style {
         other.meta && this.meta
           ? { ...this.meta, ...other.meta }
           : other.meta ?? this.meta,
+      anchor: other.anchor ?? this.anchor,
     });
   }
 
@@ -312,7 +361,8 @@ export class Style {
       this.frame === other.frame &&
       this.encircle === other.encircle &&
       this.overline === other.overline &&
-      this.link === other.link
+      this.link === other.link &&
+      anchorsEqual(this.anchor, other.anchor)
     );
   }
 
@@ -844,3 +894,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
  * a renderable sees outside a `Console`, as in `renderToString`.
  */
 export const DEFAULT_THEME = new Theme();
+
+function anchorsEqual(a: Anchor | undefined, b: Anchor | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.owner === b.owner && a.row === b.row && a.col === b.col && anchorsEqual(a.inner, b.inner);
+}
