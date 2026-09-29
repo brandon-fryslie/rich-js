@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-186",
+      "ref": "refs/pull/186/merge",
+      "sha": "c4f44c2d5463832da3e5b600a864938262e49856",
+      "timestamp": "2026-09-29T09:47:07.894Z",
+      "commits": [
+        {
+          "sha": "c4f44c2d5463832da3e5b600a864938262e49856",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T03:46:18-06:00",
+          "message": "Merge 4f2e456dd8fe3faa0dce966623f3e672a33c318c into 0f0ce663b2641649bc15e224d3044ee4e724c819\n"
+        },
+        {
+          "sha": "4f2e456dd8fe3faa0dce966623f3e672a33c318c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T03:46:14-06:00",
+          "message": "fix(export-html): blink holds still for a reader who asked for reduced motion (rich-docs-examples-xuu.0hj)\n\nHTML_FRAGMENT_CSS redefines the rich-blink keyframes as empty under\nprefers-reduced-motion: reduce. The blink is an inline animation that no\nstylesheet rule outranks, so emptying the keyframes it names is the one lever\nthe page has. Covers the docs outputs and every encodeHtml document.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0f0ce663b2641649bc15e224d3044ee4e724c819",
