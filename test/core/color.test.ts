@@ -225,6 +225,11 @@ describe("ColorSpec.parse()", () => {
     expect(() => ColorSpec.parse("color(256)")).toThrow(/out of range/);
   });
 
+  it("throws ColorParseError naming the channel for an out-of-range rgb() channel", () => {
+    expect(() => ColorSpec.parse("rgb(0,300,0)")).toThrow(ColorParseError);
+    expect(() => ColorSpec.parse("rgb(0,300,0)")).toThrow(/green 300 is out of range/);
+  });
+
   it('parses "navy_blue" as extended color name with number 17', () => {
     const c = ColorSpec.parse("navy_blue");
     expect(c.number).toBe(17);

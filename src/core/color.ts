@@ -8,8 +8,14 @@ function hex2(byte: number): string {
   return byte.toString(16).padStart(2, "0");
 }
 
+// [LAW:one-source-of-truth] The one statement of a colour byte's range: the
+// constructor asserts it and the string parser reports it, from this predicate.
+function isByte(v: number): boolean {
+  return Number.isInteger(v) && v >= 0 && v <= 255;
+}
+
 function assertChannel(name: string, v: number): void {
-  if (!Number.isInteger(v) || v < 0 || v > 255) {
+  if (!isByte(v)) {
     throw new RangeError(
       `ColorRgba.${name} must be an integer in [0, 255]; got ${v}`,
     );
@@ -704,24 +710,31 @@ function parseSingle(key: string): ColorSpec {
   // rgb()
   const rgbMatch = RGB_RE.exec(key);
   if (rgbMatch) {
-    const r = parseInt(rgbMatch[1]!, 10);
-    const g = parseInt(rgbMatch[2]!, 10);
-    const b = parseInt(rgbMatch[3]!, 10);
+    const r = parseByte(rgbMatch[1]!, "red");
+    const g = parseByte(rgbMatch[2]!, "green");
+    const b = parseByte(rgbMatch[3]!, "blue");
     return new ColorSpec(key, ColorDepth.TRUECOLOR, undefined, new ColorRgba(r, g, b));
   }
 
   // color(N)
   const numMatch = COLOR_NUMBER_RE.exec(key);
   if (numMatch) {
-    const n = parseInt(numMatch[1]!, 10);
-    if (n > 255) {
-      throw new ColorParseError(`ColorSpec number ${n} is out of range (0-255)`);
-    }
+    const n = parseByte(numMatch[1]!, "number");
     const type = n < 16 ? ColorDepth.STANDARD : ColorDepth.EIGHT_BIT;
     return new ColorSpec(key, type, n);
   }
 
   throw new ColorParseError(`Failed to parse color: "${key}"`);
+}
+
+// The regexes admit any 1-3 digits; the range is checked here so an
+// out-of-range byte is a ColorParseError, not the constructor's RangeError.
+function parseByte(digits: string, what: string): number {
+  const n = parseInt(digits, 10);
+  if (!isByte(n)) {
+    throw new ColorParseError(`ColorSpec ${what} ${n} is out of range (0-255)`);
+  }
+  return n;
 }
 
 // --- Utility functions ---
