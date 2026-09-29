@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-189",
-      "ref": "refs/pull/189/merge",
-      "sha": "941d07cd0076ef12e651e9689a8edd230b685695",
-      "timestamp": "2026-09-29T10:54:23.019Z",
-      "commits": [
-        {
-          "sha": "941d07cd0076ef12e651e9689a8edd230b685695",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:53:42-06:00",
-          "message": "Merge 8acf3204589ab04e2350069afa00000a984f94b9 into 2ab454a47e8a85bbe52d6a976853639a5f736674\n"
-        },
-        {
-          "sha": "8acf3204589ab04e2350069afa00000a984f94b9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:53:37-06:00",
-          "message": "fix(host): a console asks whether the host's output is a terminal, not whether the session is (rich-demos-5a42)\n\nTerminalHost.isTTY means interactive, stdin and stdout both. Colour is\na question about output alone, so the host gains writesToTerminal and\nhostEnvironment and Screen's detection read it: a one-shot demo with\npiped stdin on a terminal stdout draws colour again, as forceTerminal\nused to.\n"
-        },
-        {
-          "sha": "d67c85eb2ba71f1fdb10648e6d779bc1b7901d9a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:50:49-06:00",
-          "message": "fix(host): the host's size wins over an exported COLUMNS; stderr lands on the same host (rich-demos-5a42)\n\nhostEnvironment drops COLUMNS/LINES from the env it hands on, so a node\nhost launched from a shell exporting them still follows resizes, and\nanswers stderr with the same stream. Stale getSize comment in rich-dash\nrewritten; screen tests no longer cast their streams.\n"
-        },
-        {
-          "sha": "f723aad506ef0f8109bc9968ad1f12cd123be257",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:45:20-06:00",
-          "message": "fix(host): a terminal host carries its environment, so browser demos draw truecolor (rich-demos-5a42)\n\nIn the browser, Console and Screen detected colour from the ambient\n`process`, which is absent there: an unnamed TTY, so 16-colour depth.\n`#fd8019` drew ANSI yellow, palette greens and teals drew grey.\n\n- TerminalHost gains `env`; BrowserTerminalHost states xterm.js's\n  (`xterm-256color`, `COLORTERM=truecolor`), NodeTerminalHost takes\n  `process.env` or an injected map.\n- `hostStream(host)` is replaced by `hostEnvironment(host)`, a whole\n  ConsoleEnvironment: bytes, TTY, live size and colour all come from the\n  host. The demos' `getSize` workarounds for the same fault are gone.\n- Screen detects under \"auto\" from `host.env`.\n\nVerified: every /demos/ page's distinct SGR colours match the same demo in a\ntruecolor pty, dark and light (rich-explore adds magenta for the browser\nfixture's icon.png, a content difference).\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2ab454a47e8a85bbe52d6a976853639a5f736674",
-      "timestamp": "2026-09-29T10:33:34.041Z",
+      "sha": "ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3",
+      "timestamp": "2026-09-29T10:57:45.958Z",
       "commits": [
         {
-          "sha": "2ab454a47e8a85bbe52d6a976853639a5f736674",
+          "sha": "ea1abd70bcb26e059ef1b3a14eadc6f1da5a6fa3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:32:42-06:00",
-          "message": "fix(tree): a branch on every row at every depth; multi-line labels stay behind the guides (rich-tree-sgk) (#188)\n\n* fix(tree): a branch on every row at every depth, and a multi-line label stays behind its guides (rich-tree-sgk)\n\nGrandchildren were walked with only the continuation prefix, so rows below\nthe first level lost their branch glyph and guide style. One recursion now\nwalks every depth; each guide column carries its first-line and continuation\nglyph and the stacked guide styles of the nodes above it, as in Rich.\n\nA label rendering several lines printed its later lines at column 0 and a\nblank row after; the label is now cut into lines and each is led by the\nguides.\n\n* fix(tree): hideRoot drops its children's column; ASCII ends a list with `--; one walk entry (rich-tree-sgk)\n\nReview of PR #188 (high):\n- hideRoot now takes the root row and the column its children hang from, as\n  Rich does (levels[2:]), via the single _walk entry render and measure share.\n- ASCII end glyph is \"`-- \", as in Rich.\n- The stacking test uses italic rather than bold, so it no longer pins the\n  light-glyph/bold-guide divergence ticketed as rich-tree-te3h."
+          "timestamp": "2026-09-29T04:56:53-06:00",
+          "message": "fix(host): a terminal host carries its environment, so browser demos draw truecolor (rich-demos-5a42) (#189)\n\n* fix(host): a terminal host carries its environment, so browser demos draw truecolor (rich-demos-5a42)\n\nIn the browser, Console and Screen detected colour from the ambient\n`process`, which is absent there: an unnamed TTY, so 16-colour depth.\n`#fd8019` drew ANSI yellow, palette greens and teals drew grey.\n\n- TerminalHost gains `env`; BrowserTerminalHost states xterm.js's\n  (`xterm-256color`, `COLORTERM=truecolor`), NodeTerminalHost takes\n  `process.env` or an injected map.\n- `hostStream(host)` is replaced by `hostEnvironment(host)`, a whole\n  ConsoleEnvironment: bytes, TTY, live size and colour all come from the\n  host. The demos' `getSize` workarounds for the same fault are gone.\n- Screen detects under \"auto\" from `host.env`.\n\nVerified: every /demos/ page's distinct SGR colours match the same demo in a\ntruecolor pty, dark and light (rich-explore adds magenta for the browser\nfixture's icon.png, a content difference).\n\n* fix(host): the host's size wins over an exported COLUMNS; stderr lands on the same host (rich-demos-5a42)\n\nhostEnvironment drops COLUMNS/LINES from the env it hands on, so a node\nhost launched from a shell exporting them still follows resizes, and\nanswers stderr with the same stream. Stale getSize comment in rich-dash\nrewritten; screen tests no longer cast their streams.\n\n* fix(host): a console asks whether the host's output is a terminal, not whether the session is (rich-demos-5a42)\n\nTerminalHost.isTTY means interactive, stdin and stdout both. Colour is\na question about output alone, so the host gains writesToTerminal and\nhostEnvironment and Screen's detection read it: a one-shot demo with\npiped stdin on a terminal stdout draws colour again, as forceTerminal\nused to."
         }
       ]
     }
