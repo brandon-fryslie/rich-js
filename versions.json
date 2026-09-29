@@ -2,6 +2,49 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-224",
+      "ref": "refs/pull/224/merge",
+      "sha": "8b647eb1218a00801bcbe03b33396a8ecf4c9a1f",
+      "timestamp": "2026-09-29T22:23:46.170Z",
+      "commits": [
+        {
+          "sha": "8b647eb1218a00801bcbe03b33396a8ecf4c9a1f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:23:07Z",
+          "message": "Merge c5205ffaec0e7fd44772f7c6f3031b2495a0da54 into afff4e3710707f82437fe96f09ed80fdae46287d\n"
+        },
+        {
+          "sha": "c5205ffaec0e7fd44772f7c6f3031b2495a0da54",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:18:54-06:00",
+          "message": "fix(template-bindings): one-line renderTemplate error; drop dead int-slot check; pin style arity\n\nReview of #224: renderTemplate formats an engine error by its one-line\nmessage (String(e) now carries the 0.10 code frame); darken/lighten drop\nthe finite check their int slot already guarantees; docs name the whole-\nnumber level; every style arity declaration site is pinned by a test.\n"
+        },
+        {
+          "sha": "3f394da0e16213086ce76289a540e81deb135056",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:11:31-06:00",
+          "message": "chore(deps): go-template-js 0.10.0; release 0.18.0\n"
+        },
+        {
+          "sha": "c21720f873332451a4643c8c8bd401799fac2dc5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:02:22-06:00",
+          "message": "test(template-bindings): a body's error arrives as the engine's call-site error\n\ngo-template-js reports a function body's error as Go does — error calling\n<name>: <err> — with the body's error as its cause, and refuses a\nfractional integer argument as Go words it.\n"
+        },
+        {
+          "sha": "e01ec78757474069c6321dc87e0e77f96f518f60",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T15:55:36-06:00",
+          "message": "feat(template-bindings): declare arity on every binding\n\ngo-template-js 0.10.0 requires every TemplateFunc to declare its arity and\nrefuses a wrong argument count at the gate, so the bodies' own count checks\n(ramp's value/easing/stop minimum, asAmount's undefined arm) are deleted.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-226",
       "ref": "refs/pull/226/merge",
       "sha": "66dde33e6001e93af01ba6d8e2f504a7615ba7d6",
@@ -20,49 +63,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:17:40-06:00",
           "message": "fix(columns): lay out as Rich's grid, so padding and expand take effect (rich-columns-awe, rich-columns-sf4)\n\n`padding` was never read and `expand` was stored and never read: the gutter\nwas a hard-coded 2 and every layout divided the whole offer among uniform\ncolumns, so there was nothing left for `expand` to do.\n\nColumns now decides what Rich's `Table.grid(collapse_padding, pad_edge=False)`\ndecides: a column count found by Rich's search, each column as wide as its own\nwidest item, a gap of the wider horizontal padding side, rows separated by\n`top + max(0, top - bottom)`, and `expand` spreading the surplus with a port of\n`ratio_distribute`. Items render with a default Column's options (left,\nellipsis). Output is byte-identical to Rich 9d8f9a3 for every case pinned in the\ntests and for the docs listing.\n\nOne departure, where Rich has no sound answer: a declared `width` searches the\ncolumn count the same way instead of `max_width // (width + gap)`, so it never\nlays out empty trailing columns (sf4) and never divides by zero.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-224",
-      "ref": "refs/pull/224/merge",
-      "sha": "1fd886160241b5732cd4354005c2eafd17ab0b9f",
-      "timestamp": "2026-09-29T22:19:48.546Z",
-      "commits": [
-        {
-          "sha": "1fd886160241b5732cd4354005c2eafd17ab0b9f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:18:58-06:00",
-          "message": "Merge fd480cb251467c97dbcdfa4054bde33582d66068 into afff4e3710707f82437fe96f09ed80fdae46287d\n"
-        },
-        {
-          "sha": "fd480cb251467c97dbcdfa4054bde33582d66068",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:18:54-06:00",
-          "message": "fix(template-bindings): one-line renderTemplate error; drop dead int-slot check; pin style arity\n\nReview of #224: renderTemplate formats an engine error by its one-line\nmessage (String(e) now carries the 0.10 code frame); darken/lighten drop\nthe finite check their int slot already guarantees; docs name the whole-\nnumber level; every style arity declaration site is pinned by a test.\n"
-        },
-        {
-          "sha": "b07689fb995d79325b783418432bf51953cc42cd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:11:31-06:00",
-          "message": "chore(deps): go-template-js 0.10.0; release 0.18.0\n"
-        },
-        {
-          "sha": "f501518265aec3a1230616841f8cdbdc5926b0b8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:02:22-06:00",
-          "message": "test(template-bindings): a body's error arrives as the engine's call-site error\n\ngo-template-js reports a function body's error as Go does — error calling\n<name>: <err> — with the body's error as its cause, and refuses a\nfractional integer argument as Go words it.\n"
-        },
-        {
-          "sha": "885efc1a5405530b776700742a1d9f0dccbd21bf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T15:55:36-06:00",
-          "message": "feat(template-bindings): declare arity on every binding\n\ngo-template-js 0.10.0 requires every TemplateFunc to declare its arity and\nrefuses a wrong argument count at the gate, so the bodies' own count checks\n(ramp's value/easing/stop minimum, asAmount's undefined arm) are deleted.\n"
         }
       ]
     },
