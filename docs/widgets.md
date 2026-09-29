@@ -21,7 +21,7 @@ A widget knows nothing about stdin, escape sequences, or the terminal it lives i
 
 Widgets are imported from `@promptctl/rich-js/widgets`, not from the main entry point. They are one of two parts of the library that carry a third-party runtime dependency of their own — MobX here, for the observable state above; `@promptctl/go-template-js` for [template bindings](/template-bindings) — and each gets its own subpath so that dependency stays off the back of a program that only wanted to print a table. MobX is a peer dependency, not a bundled one, so install it alongside this package — `npm install @promptctl/rich-js mobx` — whenever you are using widgets. Without it, importing the subpath fails at import time with `ERR_MODULE_NOT_FOUND`; the main entry point is unaffected.
 
-Two other paths show up in the examples below. `@promptctl/rich-js/host` is the terminal seam — `TerminalHost`, `BrowserTerminalHost`, `hostStream` — which is separate because plenty of non-interactive programs want to write through a host and should not pay for the widget set to do it. Core types (`Segment`, `Style`, `RenderOptions`) still come from `@promptctl/rich-js`.
+Two other paths show up in the examples below. `@promptctl/rich-js/host` is the terminal seam — `TerminalHost`, `BrowserTerminalHost`, `hostEnvironment` — which is separate because plenty of non-interactive programs want to write through a host and should not pay for the widget set to do it. Core types (`Segment`, `Style`, `RenderOptions`) still come from `@promptctl/rich-js`.
 
 ## A running app
 

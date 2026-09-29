@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Writable } from "stream";
+import { PassThrough, Writable } from "stream";
 import { observable, runInAction } from "mobx";
 import { Segment } from "../../src/core/segment.js";
 import { ColorDepth } from "../../src/core/color.js";
@@ -8,6 +8,7 @@ import { WidgetBase } from "../../src/widgets/widget-base.js";
 import { DefaultFocusManager } from "../../src/widgets/focus-manager.js";
 import { DefaultScreen } from "../../src/widgets/screen.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
+import { BrowserTerminalHost, type TerminalHost } from "../../src/host/terminal-host.js";
 import type { KeyEvent } from "../../src/widgets/types.js";
 
 class StubWidget extends WidgetBase {
@@ -74,7 +75,7 @@ function makeScreen(opts: { stream?: CapturingStream } = {}): {
   // `stream.chunks` instead of going to process.stdout. stdin is unused
   // (Screen never reads input) — process.stdin is fine as a placeholder.
   const host = new NodeTerminalHost({
-    stdout: stream as unknown as NodeJS.WriteStream,
+    stdout: stream,
   });
   const screen = new DefaultScreen({
     host,
@@ -173,7 +174,7 @@ describe("DefaultScreen", () => {
         }
       }
       const host = new NodeTerminalHost({
-        stdout: new CapturingStream() as unknown as NodeJS.WriteStream,
+        stdout: new CapturingStream(),
       });
       const at256 = new DefaultScreen({
         host,
@@ -188,6 +189,53 @@ describe("DefaultScreen", () => {
       at256.stop();
       expect(seen.length).toBeGreaterThan(0);
       expect(new Set(seen)).toEqual(new Set([ColorDepth.EIGHT_BIT]));
+    });
+
+    it("under auto, draws at the depth its host's environment names", async () => {
+      // The depth is the host's to state. Read off the ambient `process`
+      // instead, a browser screen on xterm.js saw an unnamed TTY and drew
+      // every colour at 16-colour depth.
+      async function depthSeen(host: TerminalHost): Promise<RenderOptions["colorSystem"]> {
+        const seen: RenderOptions["colorSystem"][] = [];
+        class DepthWidget extends StubWidget {
+          override render(options: RenderOptions): Iterable<Segment> {
+            seen.push(options.colorSystem);
+            return super.render(options);
+          }
+        }
+        const s = new DefaultScreen({
+          host,
+          width: 40,
+          manageCursor: false,
+          focusManager: new DefaultFocusManager(),
+        });
+        s.mount(new DepthWidget("d", "Depth"));
+        s.start();
+        await flush();
+        s.stop();
+        expect(new Set(seen).size).toBe(1);
+        return seen[0];
+      }
+      const xterm = {
+        cols: 80,
+        rows: 24,
+        write: () => {},
+        onData: () => ({ dispose: () => {} }),
+        onResize: () => ({ dispose: () => {} }),
+      };
+      const tty = { isTTY: true };
+      const node = (env: NodeJS.ProcessEnv): NodeTerminalHost =>
+        new NodeTerminalHost({
+          stdin: Object.assign(new PassThrough(), tty),
+          stdout: Object.assign(new CapturingStream(), tty),
+          env,
+        });
+
+      expect(await depthSeen(new BrowserTerminalHost({ terminal: xterm }))).toBe(
+        ColorDepth.TRUECOLOR,
+      );
+      expect(await depthSeen(node({ NO_COLOR: "1" }))).toBeNull();
+      expect(await depthSeen(node({ TERM: "xterm-256color" }))).toBe(ColorDepth.EIGHT_BIT);
     });
 
     it("first frame writes no cursor-up sequence", async () => {
@@ -462,7 +510,7 @@ describe("DefaultScreen", () => {
   describe("cursor management", () => {
     it("emits hide-cursor on start when manageCursor is true", () => {
       const stream2 = new CapturingStream();
-      const host2 = new NodeTerminalHost({ stdout: stream2 as unknown as NodeJS.WriteStream });
+      const host2 = new NodeTerminalHost({ stdout: stream2 });
       const s = new DefaultScreen({
         host: host2,
         width: 40,
@@ -476,7 +524,7 @@ describe("DefaultScreen", () => {
 
     it("emits show-cursor on stop when manageCursor is true", () => {
       const stream2 = new CapturingStream();
-      const host2 = new NodeTerminalHost({ stdout: stream2 as unknown as NodeJS.WriteStream });
+      const host2 = new NodeTerminalHost({ stdout: stream2 });
       const s = new DefaultScreen({
         host: host2,
         width: 40,

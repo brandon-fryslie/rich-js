@@ -9,4 +9,4 @@ export type {
   XtermDisposable,
   XtermResizeEvent,
 } from "./terminal-host.js";
-export { hostStream } from "./host-stream.js";
+export { hostEnvironment } from "./host-environment.js";

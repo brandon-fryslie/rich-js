@@ -70,6 +70,12 @@ export interface NodeTerminalHostOptions {
    * Tests pass a `Writable` mock.
    */
   stdout?: NodeWritable;
+  /**
+   * The environment colour detection reads. Defaults to `process.env`; tests
+   * pass a fixed map so what the host reports does not depend on the shell
+   * that ran them.
+   */
+  env?: NodeJS.ProcessEnv;
 }
 
 const DEFAULT_COLS = 80;
@@ -78,6 +84,7 @@ const DEFAULT_ROWS = 24;
 export class NodeTerminalHost implements TerminalHost {
   private readonly stdin: NodeReadable;
   private readonly stdout: NodeWritable;
+  readonly env: NodeJS.ProcessEnv;
   private readonly dataHandlers = new Set<DataHandler>();
   private readonly resizeHandlers = new Set<ResizeHandler>();
   private dataListener: ((chunk: Buffer | string) => void) | undefined;
@@ -87,10 +94,15 @@ export class NodeTerminalHost implements TerminalHost {
   constructor(options: NodeTerminalHostOptions = {}) {
     this.stdin = options.stdin ?? (process.stdin as unknown as NodeReadable);
     this.stdout = options.stdout ?? (process.stdout as unknown as NodeWritable);
+    this.env = options.env ?? process.env;
   }
 
   get isTTY(): boolean {
-    return !!this.stdin.isTTY && !!this.stdout.isTTY;
+    return !!this.stdin.isTTY && this.writesToTerminal;
+  }
+
+  get writesToTerminal(): boolean {
+    return !!this.stdout.isTTY;
   }
 
   write(data: Uint8Array | string): void {

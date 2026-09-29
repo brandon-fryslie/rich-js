@@ -13,7 +13,7 @@
  */
 
 import { Console, Live, Panel, RichText, SCROLLBAR, Viewport } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/host/index.js";
+import { hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 
 export interface DemoHandle {
   stop(): void;
@@ -45,12 +45,7 @@ function cursorAt(frame: number): number {
 
 export function runDemo(host: TerminalHost): DemoHandle {
   const consoleOut = new Console({
-    forceTerminal: true,
-    file: hostStream(host),
-    getSize: () => {
-      const { cols, rows } = host.size();
-      return { width: cols, height: rows };
-    },
+    environment: hostEnvironment(host),
   });
   const viewport = new Viewport(list(0), { rows: 8, scrollbar: SCROLLBAR });
   const frameFor = (selected: number): Panel => {
