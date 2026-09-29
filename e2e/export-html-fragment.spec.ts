@@ -5,9 +5,11 @@
  * fragment and its once-per-page CSS go in, and the fragment computes the same
  * in that host as in a blank page. The fragment's own shape is pinned in
  * test/core/export-html.test.ts; this is the property only a browser can show.
+ * So is the other: blink blinks, and holds still for a reader who asked for
+ * reduced motion.
  */
 import { test, expect, type Page } from "@playwright/test";
-import { encodeHtmlFragment, HTML_FRAGMENT_CSS } from "../src/core/export-html.js";
+import { encodeHtml, encodeHtmlFragment, HTML_FRAGMENT_CSS } from "../src/core/export-html.js";
 import { Segment } from "../src/core/segment.js";
 import { Style } from "../src/core/style.js";
 import { SOLARIZED_LIGHT } from "../src/themes/terminalThemes.js";
@@ -110,3 +112,42 @@ test("--rich-fragment-font on an ancestor reaches the rows through all:initial",
     expect(at(element, "line-height")).toBe("17.5px");
   }
 });
+
+// A blinking run, read with whatever animates it held halfway through its
+// first cycle: the one instant the keyframes make the glyph transparent. With
+// no keyframes a browser runs nothing at all, so the run is found by its
+// style, not by an animation.
+async function inkAtHalfCycle(page: Page, cycleMs: number): Promise<string> {
+  return page.evaluate((half) => {
+    const run = document.querySelector('pre span[style*="animation"]');
+    if (run === null) throw new Error("no blinking run");
+    for (const animation of run.getAnimations()) {
+      animation.pause();
+      animation.currentTime = half;
+    }
+    return getComputedStyle(run).color;
+  }, cycleMs / 2);
+}
+
+const HIDDEN = "rgba(0, 0, 0, 0)";
+const { red, green, blue } = SOLARIZED_LIGHT.foregroundColor;
+const INK = `rgb(${red}, ${green}, ${blue})`;
+
+for (const [attribute, cycleMs] of [["blink", 1000], ["blink2", 500]] as const) {
+  const segments = [new Segment(attribute, Style.parse(attribute))];
+  for (const [where, load] of [
+    ["a fragment", async (page: Page) => { await page.setContent(BLANK); await embed(page, encodeHtmlFragment(segments, SOLARIZED_LIGHT)); }],
+    ["a document", (page: Page) => page.setContent(encodeHtml(segments, SOLARIZED_LIGHT))],
+  ] as const) {
+    test(`${attribute} in ${where} blinks, and holds still once the reader asks for reduced motion`, async ({ page }) => {
+      await load(page);
+      expect(await inkAtHalfCycle(page, cycleMs)).toBe(HIDDEN);
+
+      // Asked while the page is open, then on a page loaded after asking.
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      expect(await inkAtHalfCycle(page, cycleMs)).toBe(INK);
+      await load(page);
+      expect(await inkAtHalfCycle(page, cycleMs)).toBe(INK);
+    });
+  }
+}

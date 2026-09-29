@@ -110,8 +110,14 @@ function runHtml({ text, look }: ExportRun): string {
 /**
  * The CSS a page includes once, wherever fragments appear: what an inline
  * style cannot say. A fragment that blinks draws steadily without it.
+ *
+ * The keyframes exist only for a reader who has not asked for reduced motion,
+ * so for one who has, the inline `animation` names nothing and the glyph holds
+ * still. One rule, so no second rule's order or survival in a host's CSS
+ * pipeline can bring the blink back.
  */
-export const HTML_FRAGMENT_CSS = `@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent}}`;
+export const HTML_FRAGMENT_CSS =
+  `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{color:transparent}}}`;
 
 /**
  * `segments` under `theme` as one `pre` carrying its canvas, for embedding.

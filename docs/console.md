@@ -531,7 +531,7 @@ const red = /<span[^>]*>red<\/span>/.exec(html)?.[0];
 new Console().print(new RichText(`${page}\n${red}`));
 ```
 
-Every style attribute is written into the page, including reverse, dim, blink, frame and encircle. A link becomes an `<a>` element only when its scheme is on a short allowlist of web, mail and file schemes; any other link, such as `javascript:`, exports as its styled text alone, because an exported page is made to be published.
+Every style attribute is written into the page, including reverse, dim, blink, frame and encircle; blink holds still for a reader whose system asks for reduced motion. A link becomes an `<a>` element only when its scheme is on a short allowlist of web, mail and file schemes; any other link, such as `javascript:`, exports as its styled text alone, because an exported page is made to be published.
 
 To persist the exported output to disk, use the node-only helpers from the `node/save` subpath:
 
