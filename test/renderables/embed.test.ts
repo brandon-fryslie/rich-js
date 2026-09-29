@@ -56,17 +56,23 @@ describe("content embedded in a renderable", () => {
     });
   }
 
+  const badlyStyled: [string, () => string | RichText][] = [
+    ["markup", () => "[bold rd]Hello[/]"],
+    ["a RichText span", () => new RichText("He").append("llo", "bold rd")],
+  ];
+
   for (const [site, build] of sites) {
-    it(`draws a style it cannot parse in ${site} as plain text, and reports it`, () => {
-      const heard: string[] = [];
-      const out = renderToString(build("[bold rd]Hello[/]"), {
-        width: 30,
-        onStyleError: (_error, style) => void heard.push(style),
+    for (const [form, content] of badlyStyled) {
+      it(`draws a style it cannot parse in ${site}, written as ${form}, as plain text, and reports it once`, () => {
+        const heard: string[] = [];
+        const out = renderToString(build(content()), {
+          width: 30,
+          onStyleError: (_error, style) => void heard.push(style),
+        });
+        expect(out).toBe(renderToString(build("Hello"), { width: 30 }));
+        expect(heard).toEqual(["bold rd"]);
       });
-      expect(out).toContain("Hello");
-      expect(out).not.toContain("[bold rd]");
-      expect(heard).toContain("bold rd");
-    });
+    }
   }
 
   it("draws the plain line for a title with no text, however it is spelled", () => {
