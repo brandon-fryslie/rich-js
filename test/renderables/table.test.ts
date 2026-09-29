@@ -1062,6 +1062,25 @@ describe("Table stays inside the width it is given", () => {
     expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
   });
 
+  // 16 cells over 1 : 3 : 10 leave the last two columns an exact 6/14 each,
+  // which floating point reads as 0.4285714285714284 against …288 — so the
+  // spare cell went right, against the stated rule, and could move between two
+  // tables differing only in the scale of their ratios.
+  it.each([
+    [1, 3, 10],
+    [0.5, 1.5, 5],
+    [0.1, 0.3, 1],
+  ])("gives a tied spare cell to the leftmost column, over ratios %s : %s : %s", (...ratios) => {
+    const t = Table.grid({ padding: 0 });
+    for (const ratio of ratios) t.addColumn(undefined, { ratio });
+    t.addRow("a", "b", "c");
+    // Each column is seated on one cell and the ratios share the other 16:
+    // 1 + 2/14, 3 + 6/14 and 11 + 6/14, so the one spare cell goes to the middle.
+    expect(collectLines(t, { maxWidth: 19 })).toEqual([
+      "a" + " ".repeat(1) + "b" + " ".repeat(4) + "c" + " ".repeat(11),
+    ]);
+  });
+
   it("pads a fractional side as its floor, so the frame still closes", () => {
     // A fractional pad reaches `" ".repeat`, which truncates, while the box
     // rows are measured arithmetically: the content row came out 11 cells
