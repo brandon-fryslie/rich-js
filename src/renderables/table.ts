@@ -525,7 +525,10 @@ export class Table implements Renderable, Measurable {
     this.title = titleVal !== undefined ? embeddedText(titleVal) : undefined;
     const captionVal = options?.caption;
     this.caption = captionVal !== undefined ? embeddedText(captionVal) : undefined;
-    this.expand = options?.expand ?? false;
+    // A declared width is the table's size, not a ceiling on it: the
+    // reference's `expand` is `self._expand or self.width is not None`, and a
+    // port that sized to content inside it drew Rich code narrower than Rich.
+    this.expand = (options?.expand ?? false) || options?.width !== undefined;
     this.showHeader = options?.showHeader !== false;
     this.showFooter = options?.showFooter ?? false;
     this.showLines = options?.showLines ?? false;
@@ -695,9 +698,10 @@ export class Table implements Renderable, Measurable {
    * [LAW:one-source-of-truth] Both ends of the range are widths the geometry
    * actually produced — the maximum from the demands as they stand, the
    * minimum from the same layout with every column asking for a single cell.
-   * Neither end stretches or fills: both only spend cells an offer happens to
-   * leave over, and a renderable reports the width its content wants rather
-   * than the width it was offered. Letting either in made the table measure
+   * Neither end stretches or fills into an offer: both only spend cells an
+   * offer happens to leave over, and a renderable reports the width its content
+   * wants rather than the width it was offered. A declared `width` is not an
+   * offer, and the maximum reports it. Letting either in made the table measure
    * `Infinity` against an unbounded offer, where `withBoundedWidth` needs a
    * natural width to fall back on — an expanding table, and an empty
    * `Table.grid()`.
@@ -711,12 +715,24 @@ export class Table implements Renderable, Measurable {
     const outerWidth = this._outerWidth(options);
     const frame = this._frame();
     const demands = this._columnDemands();
-    const laidOut = layoutTable(
+    const natural = layoutTable(
       outerWidth,
       demands.map((demand) => ({ ...demand, fill: 0, stretch: false })),
       this.padding,
       frame,
     ).totalWidth;
+    // A declared width is the one stretch a measurement reports, because it is
+    // a size the table was given rather than an offer it grew into — the
+    // reference measures `self.width` as its maximum, so a `Panel` fitted round
+    // a table declared at 40 is 44 wide there, not the table's content width.
+    // It is laid out exactly as `render` lays it out, so the two cannot report
+    // different widths; a declared width with nothing bounding it
+    // (`width: Infinity` at an unbounded offer) has no size to report and falls
+    // back to the content, as an unbounded `expand` does.
+    const declared = this.tableWidth === undefined
+      ? UNBOUNDED
+      : layoutTable(outerWidth, demands, this.padding, frame).totalWidth;
+    const laidOut = declared < UNBOUNDED ? declared : natural;
     // `UNBOUNDED` is this table's own infinity, so a layout that reached it has
     // no natural width to report — a column asked for every cell there is. Said
     // as the number, it escapes as a width a caller would try to draw:
