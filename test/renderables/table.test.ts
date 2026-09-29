@@ -888,6 +888,78 @@ describe("Table stays inside the width it is given", () => {
     expect(new Set(lines.map(cellLen))).toEqual(new Set([20]));
   });
 
+  // `flexible` is the one definition of an elastic column. A column it calls
+  // inflexible sizes to its content even beside a ratio column; the ratio
+  // columns share only what is left. A `ratio: 0` column was once weighed at
+  // zero instead, and collapsed to a single `…` while its one-cell neighbour
+  // stretched to 42.
+  it.each([0, -1, NaN, undefined])(
+    "sizes a column with ratio %s to its content beside a ratio column",
+    (ratio) => {
+      const t = new Table({ box: ASCII });
+      t.addColumn("AAAAAAAAAA", { ratio });
+      t.addColumn("B", { ratio: 1 });
+      t.addRow("1", "2");
+      expect(collectLines(t, { maxWidth: 50 })).toEqual([
+        "+------------------------------------------------+",
+        "| AAAAAAAAAA | B                                 |",
+        "|------------+-----------------------------------|",
+        "| 1          | 2                                 |",
+        "+------------------------------------------------+",
+      ]);
+    },
+  );
+
+  // A ratio is a proportion of the leftover, so scaling every ratio by one
+  // factor changes nothing. Weighed against a content column's width in one
+  // pool, `ratio: 100` cut a 40-cell neighbour to 16 in a 60-cell table.
+  it("lays a content column out the same whatever scale the ratios use", () => {
+    const build = (ratio: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addColumn(undefined, { ratio });
+      t.addRow("0123456789".repeat(4), "R");
+      return t;
+    };
+    const lines = collectLines(build(100), { maxWidth: 60 });
+    expect(lines).toEqual(collectLines(build(1), { maxWidth: 60 }));
+    expect(lines[1]).toContain("0123456789".repeat(4));
+  });
+
+  // A ratio column's share comes out of the leftover, but its `minWidth` is a
+  // floor it bids for exactly as a content column bids for one: with nothing
+  // left over it was drawn at a single seat, `he…`, under a declared ten.
+  it("bids for a ratio column's minWidth as a content column bids for its own", () => {
+    const build = (ratio: number | undefined): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn();
+      t.addColumn(undefined, { ratio, minWidth: 10 });
+      t.addRow("x".repeat(30), "hi");
+      return t;
+    };
+    const lines = collectLines(build(1), { maxWidth: 40 });
+    expect(lines).toEqual(collectLines(build(undefined), { maxWidth: 40 }));
+    expect(lines[1]!.split("|")[2]!.length).toBeGreaterThan(3);
+  });
+
+  // Floored to a whole cell, `ratio: 0.5` weighed nothing and collapsed to `…`,
+  // and `ratio: 1.5` against `1` split evenly.
+  it.each([
+    [0.5, 1, 1, 2],
+    [1.5, 1, 3, 2],
+  ])("splits ratios %s : %s as %s : %s", (a, b, scaledA, scaledB) => {
+    const build = (left: number, right: number): Table => {
+      const t = new Table({ box: ASCII, showHeader: false });
+      t.addColumn(undefined, { ratio: left });
+      t.addColumn(undefined, { ratio: right });
+      t.addRow("a", "b");
+      return t;
+    };
+    expect(collectLines(build(a, b), { maxWidth: 57 })).toEqual(
+      collectLines(build(scaledA, scaledB), { maxWidth: 57 }),
+    );
+  });
+
   it("keeps an infinite ratio from skewing the columns beside it", () => {
     const t = new Table({ box: ASCII, showHeader: false });
     t.addColumn(undefined, { ratio: Infinity });
