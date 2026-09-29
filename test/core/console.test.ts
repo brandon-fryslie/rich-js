@@ -12,6 +12,7 @@ import { Live } from "../../src/renderables/live.js";
 import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
+import { osc8Sequences, type Osc8Sequence } from "../../src/core/osc8.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Table, type TableOptions } from "../../src/renderables/table.js";
@@ -1268,6 +1269,37 @@ describe("Console and Live hyperlinks", () => {
     const out = refreshed({ TERM: "xterm-256color" }, true, { hyperlinks: false });
     expect(out).toContain("go");
     expect(out).not.toContain(OSC8);
+  });
+
+  // A terminal treats cells as one link when they share the URI AND the id, so
+  // a link printed as several OSC 8 runs must repeat one id in every run.
+  // The opens on each printed line, so a test pins which line each run is on.
+  const opensByLine = (markup: string, width = 80): Osc8Sequence[][] => {
+    const { console: c, chunks } = makeConsole({ colorSystem: "truecolor", width });
+    c.print(markup);
+    return captured(chunks)
+      .split("\n")
+      .filter((line) => line !== "")
+      .map((line) => osc8Sequences(line).filter((s) => s.uri !== ""));
+  };
+
+  it("an outer link keeps one id on both sides of a nested link, as Rich's does", () => {
+    // Rich 15.0.0 emits x, y, x with the first and last ids equal; its ids are
+    // counters, so only that equality carries over. Reproduce: print the markup
+    // below through `Console(force_terminal=True).capture()` and repr the bytes.
+    const lines = opensByLine("[link=x]a[link=y]b[/link]c[/link]");
+    expect(lines.map((runs) => runs.map((s) => s.uri))).toEqual([["x", "y", "x"]]);
+    const [before, , after] = lines[0]!;
+    expect(before!.params).toMatch(/^id=./);
+    expect(after!.params).toBe(before!.params);
+  });
+
+  it("a link a wrap splits across lines opens every line with the same id", () => {
+    const lines = opensByLine("[link=https://wrap.example]alpha beta gamma[/link]", 6);
+    expect(lines.map((runs) => runs.length)).toEqual([1, 1, 1]);
+    const [first, ...rest] = lines.flat();
+    expect(first!.params).toMatch(/^id=./);
+    for (const run of rest) expect([run.uri, run.params]).toEqual([first!.uri, first!.params]);
   });
 });
 
