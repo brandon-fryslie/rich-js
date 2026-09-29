@@ -12,7 +12,7 @@
  */
 
 import { Console } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/host/index.js";
+import { hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 import { buildWidgets, LAYOUT, type DashboardCapabilities } from "./config.js";
 import { buildLayout } from "./layout.js";
 import { DashboardRuntime } from "./runtime/runtime.js";
@@ -31,12 +31,7 @@ export function runDemo(host: TerminalHost, caps: DashboardCapabilities): DemoHa
   // rows regardless of viewport. (Pattern shared with claude-sessions /
   // rich-explore.)
   const consoleOut = new Console({
-    forceTerminal: true,
-    file: hostStream(host),
-    getSize: () => {
-      const { cols, rows } = host.size();
-      return { width: cols, height: rows };
-    },
+    environment: hostEnvironment(host),
   });
 
   const runtime = new DashboardRuntime({

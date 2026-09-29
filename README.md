@@ -24,7 +24,7 @@ Most of the library comes from the package name itself — `Console`, `Table`, `
 |---|---|---|---|
 | `@promptctl/rich-js/widgets` | Button, Checkbox, Toggle, TextInput, Dropdown, Slider, and the screen that mounts them | `mobx` | Carries a third-party runtime dependency of its own — MobX, for widget state |
 | `@promptctl/rich-js/template-bindings` | The styling vocabulary as Go-template functions, so styled text can be authored as a template | `@promptctl/go-template-js` | Carries a third-party runtime dependency of its own — the Go-template engine, for parsing and evaluating the templates |
-| `@promptctl/rich-js/host` | `TerminalHost`, `BrowserTerminalHost`, `hostStream` — the seam between rendering and a terminal | Nothing | A program that just wants to write bytes through a host shouldn't pay for the widget set to do it |
+| `@promptctl/rich-js/host` | `TerminalHost`, `BrowserTerminalHost`, `hostEnvironment` — the seam between rendering and a terminal | Nothing | A program that just wants to write bytes through a host shouldn't pay for the widget set to do it |
 | `@promptctl/rich-js/node/save`, `/node/prompt`, `/node/traceback`, `/node/terminal-host` | File export, readline input, the crash handler, and the node TTY host | Nothing | Each one reads node built-ins, and keeping them off the main entry point is what keeps that entry point browser-safe |
 
 Those two peer dependencies are yours to install — `npm install @promptctl/rich-js` deliberately fetches neither, because a program that prints a table shouldn't acquire a state library or a template engine to do it. Add the ones you need:

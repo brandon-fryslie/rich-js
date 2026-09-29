@@ -98,7 +98,7 @@ import {
   RichText,
   Style,
 } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/host/index.js";
+import { hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 
 import type {
   DetectColorOptions,
@@ -134,8 +134,7 @@ export function runDemo(
   options?: { record?: boolean },
 ): DemoHandle {
   const out = new Console({
-    forceTerminal: true,
-    file: hostStream(host),
+    environment: hostEnvironment(host),
     record: options?.record ?? false,
     width: 120,
   });

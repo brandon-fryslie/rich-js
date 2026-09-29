@@ -9,7 +9,7 @@
  */
 
 import { Console } from "../../src/index.js";
-import { hostStream } from "../../src/host/host-stream.js";
+import { hostEnvironment } from "../../src/host/host-environment.js";
 import type { FileSystem } from "../_capabilities/index.js";
 import type { TerminalHost } from "../../src/host/terminal-host.js";
 import {
@@ -120,23 +120,10 @@ function reduceSearchTyping(state: AppState, chunk: string): AppState {
 }
 
 export async function run(host: TerminalHost, fs: FileSystem): Promise<void> {
-  // [LAW:single-enforcer] Console writes through the host via hostStream so
-  // there is exactly one sink for terminal output. On node the host wraps
-  // process.stdout (identical effective path to the old default); on browser
-  // it wraps xterm.js so the same render calls drive the bundled demo.
-  // [LAW:dataflow-not-control-flow] Size flows from the host through
-  // `getSize`. Console's default `process.stdout.columns` returns 80 in the
-  // browser (process is undefined / shimmed), so layout would render at
-  // 80 cols even though xterm.js is at 100. A live `host.size()` reader
-  // makes render width track the actual terminal in both environments and
-  // on resize, with no env-branching.
+  // [LAW:single-enforcer] The host is the console's whole environment: where
+  // bytes go, its size (live, through resizes) and the colours it draws.
   const consoleOut = new Console({
-    forceTerminal: true,
-    file: hostStream(host),
-    getSize: () => {
-      const { cols, rows } = host.size();
-      return { width: cols, height: rows };
-    },
+    environment: hostEnvironment(host),
   });
   let state = initialState(fs);
 

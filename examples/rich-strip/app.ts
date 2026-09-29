@@ -5,9 +5,10 @@
  * and never branches on environment. Node bootstraps with `NodeTerminalHost`,
  * browser bootstraps with `BrowserTerminalHost`; the demo code path is identical.
  *
- * [LAW:one-source-of-truth] The Console-using demos route their output through
- * `hostStream(host)` so there is exactly one sink the demo writes to — the host.
- * No second path to `process.stdout`.
+ * [LAW:one-source-of-truth] The Console-using demos take their whole
+ * environment from `hostEnvironment(host)`, so the host is the one sink the demo
+ * writes to and the one terminal it asks about size and colour. No second path
+ * to `process`.
  */
 
 import {
@@ -23,7 +24,7 @@ import {
   RichText,
   FlexStrip,
 } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/host/index.js";
+import { hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 
 export interface DemoHandle {
   /** Detach any resources the demo holds. One-shot demos have nothing to do. */
@@ -33,10 +34,7 @@ export interface DemoHandle {
 export function runDemo(host: TerminalHost): DemoHandle {
   const { cols } = host.size();
   const consoleOut = new Console({
-    forceTerminal: true,
-    // [LAW:locality-or-seam] hostStream returns the narrow ConsoleSink shape
-    // (just `.write`) — exactly what Console + Live touch on `_file`.
-    file: hostStream(host),
+    environment: hostEnvironment(host),
     width: cols,
   });
 

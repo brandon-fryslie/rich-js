@@ -9,7 +9,7 @@
  */
 
 import { Console, Live } from "../../src/index.js";
-import { hostStream } from "../../src/host/host-stream.js";
+import { hostEnvironment } from "../../src/host/host-environment.js";
 import type { FileSystem } from "../_capabilities/index.js";
 import type { TerminalHost } from "../../src/host/terminal-host.js";
 import {
@@ -111,23 +111,12 @@ export async function run(
   fs: FileSystem,
   startPath: string,
 ): Promise<void> {
-  // [LAW:single-enforcer] Console writes through the host via hostStream so
-  // there is exactly one sink for terminal output. Node wraps process.stdout;
-  // browser wraps xterm.js — same render path, different backing.
-  // [LAW:dataflow-not-control-flow] Size is data flowing from the host
-  // through `getSize`. Console's defaults fall back to `process.stdout`
-  // dimensions, which are 80×24 in the browser (no real stdout), so layout
-  // would clip even though xterm.js is at 100×N. Both width and height are
-  // load-bearing for Live: `Live.refresh` reads `console.height` to crop
-  // frames, so without the live read browser frames would truncate to 24
-  // rows regardless of the xterm viewport size.
+  // [LAW:single-enforcer] The host is the console's whole environment: where
+  // bytes go, its size and the colours it draws. Height is load-bearing for
+  // Live: `Live.refresh` reads `console.height` to crop frames, so it has to
+  // be the host's, live through resizes.
   const consoleOut = new Console({
-    forceTerminal: true,
-    file: hostStream(host),
-    getSize: () => {
-      const { cols, rows } = host.size();
-      return { width: cols, height: rows };
-    },
+    environment: hostEnvironment(host),
   });
   let state = initialState(fs, startPath);
 

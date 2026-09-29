@@ -33,7 +33,7 @@ import { isRenderable } from "./protocol.js";
 // [LAW:types-are-the-program] The strongest theorem about Console's output
 // sink is "we call .write(chunk) on it." Nothing else. Narrowing to that
 // exact surface lets every structurally-compatible writable (process.stdout,
-// process.stderr, hostStream(host), any test double) be passed without a
+// process.stderr, a terminal host's stream, any test double) be passed without a
 // cast. `NodeJS.WritableStream` over-promised ~30 methods Console never
 // touched, and the lie forced callers wrapping non-stream sinks (e.g. the
 // browser TerminalHost adapter) to launder through `as unknown as`.
@@ -207,8 +207,9 @@ function defaultSink(stream: ConsoleStream | undefined): ConsoleSink {
   if (stream === undefined) {
     throw new Error(
       "Console: no `file` provided and the environment has no stream to " +
-        "write to (e.g. running in a browser). Pass `file: hostStream(host)` " +
-        "or any other ConsoleSink so output has somewhere to go.",
+        "write to (e.g. running in a browser). Pass " +
+        "`environment: hostEnvironment(host)` to write through a terminal " +
+        "host, or a `file` so output has somewhere to go.",
     );
   }
   return stream;

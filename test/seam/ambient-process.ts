@@ -109,10 +109,11 @@ export const HOST_ACCESS: readonly HostAccess[] = [
   },
   {
     file: "src/node/terminal-host.ts",
-    surface: [member("stdin"), member("stdout")],
+    surface: [member("stdin"), member("stdout"), member("env")],
     why:
-      "The node `TerminalHost`'s stream defaults, overridable per instance so " +
-      "tests drive it over `PassThrough`. `EventRouter` switches raw mode " +
+      "The node `TerminalHost`'s stream and environment defaults, overridable " +
+      "per instance so tests drive it over `PassThrough` and a fixed env. The " +
+      "env is what `TerminalHost.env` hands colour detection. `EventRouter` switches raw mode " +
       "through the `TerminalHost` seam, and this is the only implementation " +
       "where that reaches a real TTY — the browser host's is a no-op.",
   },

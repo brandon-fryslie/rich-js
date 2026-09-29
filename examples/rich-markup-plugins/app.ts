@@ -13,7 +13,7 @@ import {
   type MarkupTagContext,
   type MarkupTagHandler,
 } from "../../src/index.js";
-import { hostStream, type TerminalHost } from "../../src/host/index.js";
+import { hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 
 export interface DemoHandle {
   stop(): void;
@@ -22,8 +22,7 @@ export interface DemoHandle {
 export function runDemo(host: TerminalHost): DemoHandle {
   const { cols } = host.size();
   const consoleOut = new Console({
-    forceTerminal: true,
-    file: hostStream(host),
+    environment: hostEnvironment(host),
     width: cols,
   });
 

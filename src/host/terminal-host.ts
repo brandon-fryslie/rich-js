@@ -32,7 +32,8 @@
  *
  * [boundaries: capabilities over context] A `TerminalHost` grants exactly
  * the I/O capabilities the runtime needs: write bytes, read input, query
- * size, observe resize, switch raw mode, lifecycle. It is not an
+ * size, observe resize, switch raw mode, read the terminal's environment,
+ * lifecycle. It is not an
  * omniscient handle to "the process."
  */
 
@@ -92,6 +93,15 @@ export interface TerminalHost {
    * runtime; non-TTY hosts default those features off.
    */
   readonly isTTY: boolean;
+
+  /**
+   * The environment a program running on this terminal sees — `TERM`,
+   * `COLORTERM`, `NO_COLOR` and the rest. Colour detection reads it: what a
+   * terminal can draw is a fact about the host, so it travels with the host
+   * rather than being read off whatever `process` the renderer happens to
+   * share a runtime with, which in a browser is none.
+   */
+  readonly env: NodeJS.ProcessEnv;
 
   /**
    * Begin the host's lifecycle. Implementations attach whatever resources
@@ -155,6 +165,11 @@ export interface BrowserTerminalHostOptions {
   terminal: XtermTerminal;
 }
 
+const XTERM_ENV: NodeJS.ProcessEnv = Object.freeze({
+  TERM: "xterm-256color",
+  COLORTERM: "truecolor",
+});
+
 export class BrowserTerminalHost implements TerminalHost {
   private readonly terminal: XtermTerminal;
   private readonly dataHandlers = new Set<DataHandler>();
@@ -172,6 +187,13 @@ export class BrowserTerminalHost implements TerminalHost {
   // constant for this host.
   get isTTY(): boolean {
     return true;
+  }
+
+  // What xterm.js is, stated the way a terminal states it: it identifies as
+  // `xterm-256color` and draws 24-bit SGR. With no env at all, detection saw
+  // an unnamed TTY and drew every colour at 16-colour depth.
+  get env(): NodeJS.ProcessEnv {
+    return XTERM_ENV;
   }
 
   // [LAW:single-enforcer] xterm.js is a terminal with no tty in front of

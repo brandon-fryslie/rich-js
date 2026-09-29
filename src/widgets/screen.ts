@@ -157,7 +157,7 @@ export class DefaultScreen implements Screen {
     const isTTY = this.host.isTTY;
     this.destination = resolveDestination(
       options.colorSystem === undefined ? "auto" : options.colorSystem,
-      { isTTY },
+      { isTTY, env: this.host.env },
     );
     this.manageCursor = options.manageCursor ?? isTTY;
   }
