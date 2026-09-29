@@ -84,21 +84,20 @@ function asColor(value: string, func: string): ColorRgba {
   return parseHexColor(value);
 }
 
+// [LAW:single-enforcer] Every colour function is fixed-arity, so the engine's
+// arity gate refuses a missing or surplus argument before the body runs.
 function colorFunc(argTypes: TemplateFunc["argTypes"], fn: TemplateFunc["fn"]): TemplateFunc {
-  return { fn, argTypes, returnType: "string" };
+  return { fn, argTypes, arity: { kind: "exact" }, returnType: "string" };
 }
 
 /**
  * The gate every *numeric* argument crosses, with an optional inclusive range.
  *
- * [LAW:single-enforcer] One check for the whole family. The template engine
- * treats a trailing slot as variadic, so an under-supplied call
- * (`{{ darken "#102030" }}`) reaches the body with `undefined` rather than
- * failing at the gate. Without this, that `undefined` propagated into the color
- * math and surfaced as `ColorRgba.red must be an integer in [0, 255]; got NaN`
- * — loud, but pointing at a channel the author never wrote, three layers from
- * the missing argument. An error that does not locate its cause is barely
- * better than a silent one. [LAW:no-silent-failure]
+ * [LAW:single-enforcer] One check for every `"float"` slot. An `"int"` slot is
+ * a safe integer by the engine's gate and needs none, but a `"float"` slot admits
+ * NaN and Infinity (legitimate IEEE-754 values), which would otherwise surface
+ * as `ColorRgba.red must be an integer in [0, 255]; got NaN` — loud, but
+ * pointing at a channel the author never wrote. [LAW:no-silent-failure]
  */
 function asAmount(
   value: number,
@@ -114,8 +113,7 @@ function asAmount(
         ? "a finite number"
         : `within ${range.min}..${range.max} (${range.note})`;
     throw new RangeError(
-      `${func}'s ${param} must be ${bound}, got ${value}` +
-        (value === undefined ? ` — ${func} takes it as its last argument` : ""),
+      `${func}'s ${param} must be ${bound}, got ${value}`,
     );
   }
   return value;
@@ -129,10 +127,10 @@ function asAmount(
 // readable at a call site, and the operation is genuinely bidirectional.
 
 const darkenFunc = colorFunc(["string", "int"], ((hex: string, levels: number) =>
-  darken(asColor(hex, "darken"), asAmount(levels, "darken", "levels")).hex) as TemplateFunc["fn"]);
+  darken(asColor(hex, "darken"), levels).hex) as TemplateFunc["fn"]);
 
 const lightenFunc = colorFunc(["string", "int"], ((hex: string, levels: number) =>
-  darken(asColor(hex, "lighten"), -asAmount(levels, "lighten", "levels")).hex) as TemplateFunc["fn"]);
+  darken(asColor(hex, "lighten"), -levels).hex) as TemplateFunc["fn"]);
 
 // --- Blending ---
 //

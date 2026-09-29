@@ -134,7 +134,7 @@ A color that can be held is a color that can be composed. `color` names one, the
 
 | function | meaning |
 |---|---|
-| `darken c n` / `lighten c n` | slide HSL lightness by `n` 10% levels |
+| `darken c n` / `lighten c n` | slide HSL lightness by `n` 10% levels (`n` a whole number) |
 | `mix a b pct` | blend `a` toward `b` by `pct`% (0 → `a`, 100 → `b`) |
 | `contrastOn bg` | black or white, whichever is readable on `bg` |
 | `readableOn fg bg ratio` | `fg` nudged in OKLCH lightness until it clears `ratio` on `bg`, hue preserved |

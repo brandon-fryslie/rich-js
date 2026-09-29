@@ -123,6 +123,20 @@ describe("color math matches the underlying functions", () => {
     expect(() => colorText(`{{ mix "${a}" "${b}" -1 }}`)).toThrow(/0\.\.100/);
   });
 
+  it("a missing or surplus argument is refused at the gate, naming the function", () => {
+    // [LAW:no-silent-failure] A missing level used to reach the colour math as
+    // undefined; the engine's arity gate now refuses it before the body runs.
+    expect(() => colorText(`{{ darken "${a}" }}`)).toThrow(/darken: want 2 got 1/);
+    expect(() => colorText(`{{ lighten "${a}" 1 2 }}`)).toThrow(/lighten: want 2 got 3/);
+    expect(() => colorText(`{{ mix "${a}" "${b}" }}`)).toThrow(/mix: want 3 got 2/);
+  });
+
+  it("darken's levels are a whole number, as an integer slot requires", () => {
+    expect(() => colorText(`{{ darken "${a}" 1.5 }}`)).toThrow(
+      expect.objectContaining({ funcName: "darken", message: "expected integer; found 1.5" }),
+    );
+  });
+
   it("contrastOn picks the readable pole; readableOn keeps the color itself", () => {
     const dark = "#101010";
     expect(colorText(`{{ contrastOn "${dark}" }}`)).toBe(contrastFor(parseHexColor(dark)).hex);
@@ -305,9 +319,11 @@ describe("ramp — a number becomes a color inside the theme", () => {
 
   it("every malformed call names its own fix", () => {
     // [LAW:no-silent-failure]
-    expect(() => colorText(`{{ ramp }}`)).toThrow(/needs a value and an easing .*\(got 0\)/);
-    expect(() => colorText(`{{ ramp 65 }}`)).toThrow(/needs a value and an easing .*\(got 1\)/);
-    expect(() => colorText(`{{ ramp 65 "linear" }}`)).toThrow(/at least one stop/);
+    // A value, an easing and one stop are the minimum; the engine's arity gate
+    // refuses anything shorter before the body runs.
+    expect(() => colorText(`{{ ramp }}`)).toThrow(/ramp: want at least 4 got 0/);
+    expect(() => colorText(`{{ ramp 65 }}`)).toThrow(/ramp: want at least 4 got 1/);
+    expect(() => colorText(`{{ ramp 65 "linear" }}`)).toThrow(/ramp: want at least 4 got 2/);
     expect(() => colorText(`{{ ramp 65 "linear" 0 "surface" 50 }}`)).toThrow(
       /last stop \(position 50\) has no color/,
     );

@@ -370,6 +370,18 @@ describe("error surface", () => {
     );
   });
 
+  // One case per arity declaration site: attributes, colour sinks, `style`, `link`.
+  it.each([
+    [`{{ bold "a" "b" }}`, /bold: want 1 got 2/],
+    [`{{ bold }}`, /bold: want 1 got 0/],
+    [`{{ fg "red" "a" "b" }}`, /fg: want 2 got 3/],
+    [`{{ fg "red" }}`, /fg: want 2 got 1/],
+    [`{{ style "bold" "a" "b" }}`, /style: want 2 got 3/],
+    [`{{ link "https://x.test" "a" "b" }}`, /link: want 2 got 3/],
+  ])("%s is refused at the arity gate", (source, message) => {
+    expect(() => engine.parse(source).evaluate({})).toThrow(message);
+  });
+
   it("a number passed where a fragment is expected fails the liftable gate", () => {
     expect(() => engine.parse(`{{ bold 5 }}`).evaluate({})).toThrowError();
   });
@@ -386,11 +398,13 @@ describe("error surface", () => {
     } catch (err) {
       thrown = err;
     }
-    expect(thrown).toBeInstanceOf(TypeError);
+    // The engine reports the body's error at the call site, as Go does, and
+    // keeps it as the cause.
     expect(thrown).toMatchObject({
       message: expect.stringContaining(`base style "${style}" is not a style definition`),
-      cause: expect.any(StyleSyntaxError),
+      cause: expect.objectContaining({ cause: expect.any(StyleSyntaxError) }),
     });
+    expect((thrown as Error).cause).toBeInstanceOf(TypeError);
   });
 
   it("a scope fragment whose base style is a definition is styled over it", () => {
