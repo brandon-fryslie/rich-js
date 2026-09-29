@@ -59,6 +59,67 @@ describe("escape()", () => {
     expect(result).toBe("\\[bold]hello\\[/bold]");
   });
 
+  // Each expected value is Python Rich's `escape` on the same input; `escape`
+  // departs from it only where Rich's output does not render back.
+  it.each([
+    ["C:\\dir\\", "C:\\dir\\\\"],
+    ["\\[red]", "\\\\\\[red]"],
+    ["a\\\\[b]", "a\\\\\\\\\\[b]"],
+  ])("escapes %j as Rich does", (input, expected) => {
+    expect(escape(input)).toBe(expected);
+  });
+
+  // Every string over the alphabet that can interact with the grammar, up to
+  // `length` characters.
+  const shortStrings = (length: number): string[] => {
+    const alphabet = ["\\", "[", "]", "/", "a"];
+    let strings = [""];
+    const all: string[] = [];
+    for (let n = 1; n <= length; n++) {
+      strings = strings.flatMap((s) => alphabet.map((c) => s + c));
+      all.push(...strings);
+    }
+    return all;
+  };
+
+  // Each has to come back inside one span, with the author's closing tag still
+  // a tag, and exactly — except a backslash run in front of a tag the text ends
+  // before finishing, which is escaped as the tag the next fragment could
+  // finish, and so renders doubled here.
+  it("renders back every short string spliced between tags", () => {
+    const unfinished = /\\\[(?:[a-z#/@][^[\]]*)?$/;
+    const failures = shortStrings(6).filter((input) => {
+      const t = renderBuiltin(`[bold]${escape(input)}[/bold]`);
+      return t.spans.length !== 1 || (t.plain !== input && !unfinished.test(input));
+    });
+    expect(failures).toEqual([]);
+  });
+
+  it("opens no tag across two escaped fragments joined together", () => {
+    const strings = shortStrings(3);
+    const failures = strings.flatMap((first) =>
+      strings
+        .filter((second) => renderBuiltin(`[bold]${escape(first)}${escape(second)}[/bold]`).spans.length !== 1)
+        .map((second) => [first, second]),
+    );
+    expect(failures).toEqual([]);
+    expect(renderBuiltin(escape("[link=http://evil") + escape("]click")).spans).toEqual([]);
+  });
+
+  // A quadratic scan takes tens of seconds here; a linear one, milliseconds.
+  it("reads a long backslash run in linear time", () => {
+    const run = "\\".repeat(200_000);
+    const began = performance.now();
+    escape(`${run}x`);
+    escape(`${run}[0`);
+    renderBuiltin(`${run}x`);
+    expect(performance.now() - began).toBeLessThan(2000);
+  });
+
+  it("doubles a trailing backslash run that nothing follows, which the grammar cannot avoid", () => {
+    expect(renderBuiltin(escape("C:\\")).plain).toBe("C:\\\\");
+  });
+
   it("leaves plain text unchanged", () => {
     expect(escape("hello world")).toBe("hello world");
   });

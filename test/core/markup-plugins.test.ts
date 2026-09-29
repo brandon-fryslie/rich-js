@@ -35,6 +35,31 @@ describe("MarkupRegistry", () => {
     expect(text).toBe("bar\n");
   });
 
+  // Selecting each pair's tokens by filtering the whole list took 12s here;
+  // selecting them by position takes milliseconds.
+  it("renders many plugin pairs in time proportional to the string", () => {
+    const registry = new MarkupRegistry();
+    registry.register("click", (ctx) => ctx.children);
+    const began = performance.now();
+    const out = renderMarkup("[click]a[/click]".repeat(20_000), { registry });
+    expect(performance.now() - began).toBeLessThan(2000);
+    expect(out.plain).toBe("a".repeat(20_000));
+  });
+
+  it("halves a backslash run on either side of a plugin pair's boundaries", () => {
+    const registry = new MarkupRegistry();
+    let received: MarkupTagContext | null = null;
+    registry.register("click", (ctx) => {
+      received = ctx;
+      return ctx.children;
+    });
+
+    const out = renderMarkup("a\\\\[click]b\\\\[/click]c", { registry });
+    expect(received!.raw).toBe("b\\\\");
+    expect(received!.children.plain).toBe("b\\");
+    expect(out.plain).toBe("a\\b\\c");
+  });
+
   it("splices the handler's Renderable into the output stream where the tag was", () => {
     const registry = new MarkupRegistry();
     registry.register("badge", () => new RichText("[BADGE]", { end: "" }));

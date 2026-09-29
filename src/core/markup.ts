@@ -161,9 +161,32 @@ function excerpt(text: string, index: number): string {
 
 /**
  * Escapes markup characters so they render as literal text.
+ *
+ * [LAW:one-source-of-truth] The inverse of the two ways the parser reads a
+ * backslash run in front of a bracket, over the same `TAG_BODY`: before a tag
+ * the run is halved and an odd one left over escapes it, so the run is doubled
+ * and one added; before any other bracket one `\[` becomes `[`, so one
+ * backslash is added.
+ *
+ * No bracket in the output can open a tag, whatever it is joined to. A bracket
+ * whose tag the text ends before finishing — `[link=x` — is escaped as a tag,
+ * because the next fragment's `]` would finish it; when what follows is instead
+ * the caller's own tag, a backslash run in front of it renders doubled. A
+ * trailing run is doubled for the same reason: `escape("C:\\")` spliced before
+ * `[/bold]` would otherwise escape the closing tag, so at the very end of a
+ * string it renders doubled. The grammar cannot tell those cases apart, and
+ * both choices fail visibly rather than let input open or escape a tag.
+ *
+ * Rich's `escape` escapes only a finished tag and doubles only a trailing run
+ * of one, so input can drop a backslash, escape the closing tag after it, or
+ * open a tag across a join. All three are departures on purpose.
  */
 export function escape(text: string): string {
-  return text.replace(/\[/g, "\\[");
+  return text
+    .replace(ESCAPE_RE, (_, run: string, live: string | undefined) =>
+      live === undefined ? `${run}\\[` : `${run}${run}\\[`,
+    )
+    .replace(TRAILING_RUN_RE, "$&$&");
 }
 
 // --- render ---
@@ -179,10 +202,47 @@ export function escape(text: string): string {
 // every `Console.print` with no error, and it omitted `@` and the punctuation
 // the reference admits, so `[a+b]` stayed literal (rich-markup-sec).
 // `markup-grammar.golden.txt` pins both directions.
-// The leading alternative handles an escaped bracket: \[
-const TAG_RE = /(?:\\\[)|(\[[a-z#/@][^[]*?\])/g;
+//
+// The leading group is the run of backslashes in front of the bracket, which
+// `tokenize` halves as `_parse` does: each pair is one literal backslash, and a
+// leftover odd one escapes the tag. An alternative that consumed any `\[` as an
+// escape could not tell "escaped tag" from "literal backslash, then a live tag",
+// so `\\[red]hi[/red]` lost its opening tag and died on the close
+// (rich-markup-nm1).
+//
+// A run is only ever matched from its first backslash — the lookbehind — which
+// is where a leftmost match starts anyway. Without it, a long run that no
+// bracket follows is re-scanned from every backslash in it: quadratic in the
+// run, on exactly the untrusted text `escape` is for.
+const TAG_BODY = String.raw`[a-z#/@][^[]*?\]`;
+const RUN = String.raw`(?<!\\)(\\*)`;
+const TAG_RE = new RegExp(String.raw`${RUN}(\[${TAG_BODY})`, "g");
+/**
+ * Every bracket and the run in front of it; the empty second group is set when
+ * a tag starts there or could, once more text is joined after the end. It is an
+ * alternation rather than `(…)?` because a quantified group may not match empty.
+ */
+const ESCAPE_RE = new RegExp(String.raw`${RUN}\[(?:(?=${TAG_BODY}|(?:[a-z#/@][^[\]]*)?$)()|)`, "g");
+const TRAILING_RUN_RE = /(?<!\\)\\+$/;
+
+/** Literal text, positioned where the reference's `_parse` positions it. */
+interface TextToken {
+  readonly kind: "text";
+  readonly text: string;
+  readonly start: number;
+}
+
+/**
+ * [LAW:one-source-of-truth] The one reading of a markup string. It is taken
+ * once, over the whole string, and every later pass selects from it by
+ * position; re-reading a slice would lose what came before it — a slice cut at
+ * a tag's bracket still carries the backslash run in front of it, with no tag
+ * left after it to halve that run against.
+ */
+type MarkupToken = TextToken | ParsedTag;
 
 interface ParsedTag {
+  readonly kind: "tag";
   fullMatch: string;
   isClosing: boolean;
   isImplicitClose: boolean;
@@ -192,17 +252,27 @@ interface ParsedTag {
   end: number;
 }
 
-function parseTags(markup: string): ParsedTag[] {
-  const tags: ParsedTag[] = [];
-  const re = new RegExp(TAG_RE.source, TAG_RE.flags);
-  let match: RegExpExecArray | null;
+function tokenize(markup: string): MarkupToken[] {
+  const tokens: MarkupToken[] = [];
+  let position = 0;
 
-  while ((match = re.exec(markup)) !== null) {
-    // Escaped bracket
-    if (match[0] === "\\[") continue;
+  for (const match of markup.matchAll(TAG_RE)) {
+    const run = match[1]!;
+    const captured = match[2]!;
+    let start = match.index;
+    const end = start + match[0].length;
+    if (start > position) tokens.push({ kind: "text", text: markup.slice(position, start), start: position });
+    position = end;
 
-    const captured = match[1];
-    if (!captured) continue;
+    const literal = Math.floor(run.length / 2);
+    if (literal > 0) {
+      tokens.push({ kind: "text", text: "\\".repeat(literal), start });
+      start += literal * 2;
+    }
+    if (run.length % 2 === 1) {
+      tokens.push({ kind: "text", text: captured, start });
+      continue;
+    }
 
     const inner = captured.slice(1, -1); // Remove [ ]
     const isClose = inner.startsWith("/");
@@ -222,18 +292,44 @@ function parseTags(markup: string): ParsedTag[] {
     const isImplicitClose = isClose && styleName === "";
     const isClosing = isClose && !isImplicitClose;
 
-    tags.push({
+    tokens.push({
+      kind: "tag",
       fullMatch: captured,
       isClosing,
       isImplicitClose,
       styleName,
       parameters,
-      start: match.index,
-      end: match.index + match[0].length,
+      start,
+      end,
     });
   }
 
-  return tags;
+  if (position < markup.length) tokens.push({ kind: "text", text: markup.slice(position), start: position });
+  return tokens;
+}
+
+function isTag(token: MarkupToken): token is ParsedTag {
+  return token.kind === "tag";
+}
+
+/**
+ * The tokens that begin in `[from, to)` of the source. `tokenize` emits them in
+ * source order, so this is two binary searches and a slice: a string of many
+ * plugin pairs costs what it holds, not pairs × tokens.
+ */
+function within(tokens: readonly MarkupToken[], from: number, to: number): MarkupToken[] {
+  return tokens.slice(firstAtOrAfter(tokens, from), firstAtOrAfter(tokens, to));
+}
+
+function firstAtOrAfter(tokens: readonly MarkupToken[], offset: number): number {
+  let low = 0;
+  let high = tokens.length;
+  while (low < high) {
+    const mid = (low + high) >>> 1;
+    if (tokens[mid]!.start < offset) low = mid + 1;
+    else high = mid;
+  }
+  return low;
 }
 
 interface RenderOptions {
@@ -241,33 +337,27 @@ interface RenderOptions {
 }
 
 /**
- * Where the slice being parsed sits in the string the caller passed.
+ * What a run of tokens sits inside, in the string the caller passed.
  *
  * [LAW:dataflow-not-control-flow] The plugin-aware walk hands the built-in
- * parser slices, and recurses into the inner slice of each plugin pair, so a
- * tag's offset within its slice is not its offset in the caller's string. Every
- * parse carries its origin — the whole string is simply the slice at base 0
- * with nothing enclosing it — so an error is located the same way at any depth.
+ * parser runs of tokens, and recurses into the run inside each plugin pair.
+ * Every token is positioned in the caller's whole string, so an error is
+ * located the same way at any depth; what a run cannot know on its own is
+ * which plugin tags enclose it.
  */
 interface SliceOrigin {
   /** The whole markup string the caller passed. */
   readonly source: string;
-  /** Offset of the slice within `source`. */
-  readonly base: number;
-  /** Opening plugin tags the slice sits inside, outermost first, as written. */
+  /** Opening plugin tags the run sits inside, outermost first, as written. */
   readonly enclosing: readonly string[];
 }
 
-function wholeString(markup: string): SliceOrigin {
-  return { source: markup, base: 0, enclosing: [] };
-}
-
 /**
- * What the built-in walk reads: a slice of the caller's markup, or a plugin
- * pair already resolved by its handler, which the walk treats as text.
+ * What the built-in walk reads: a run of the caller's tokens, or a plugin pair
+ * already resolved by its handler, which the walk treats as text.
  */
 type MarkupPart =
-  | { readonly kind: "markup"; readonly markup: string; readonly origin: SliceOrigin }
+  | { readonly kind: "markup"; readonly tokens: readonly MarkupToken[] }
   | { readonly kind: "rendered"; readonly text: RichText };
 
 /**
@@ -293,21 +383,22 @@ type MarkupPart =
  */
 function render(
   parts: readonly MarkupPart[],
+  origin: SliceOrigin,
   baseStyle?: string | Style,
   options?: RenderOptions,
 ): RichText {
   const doEmoji = options?.emoji !== false;
-  // Text reaches `plainText` as `RichText` will hold it, so every offset
-  // counted along the way — a span, a splice point — indexes the text it lands
-  // on. Stripped only by the constructor, a control character shifted every
-  // style after it one cell right.
-  const textOf = (raw: string): string => stripControlChars(unescapeBrackets(doEmoji ? emojiReplace(raw) : raw));
 
   // Build plain text and track spans
   let plainText = "";
   const spans: Span[] = [];
   const spliced: { at: number; text: RichText }[] = [];
   const openStack: OpenTag[] = [];
+  const unparsable = (reason: string, tag: ParsedTag): MarkupSyntaxError =>
+    new MarkupSyntaxError(reason, origin.source, tag.start, [
+      ...origin.enclosing,
+      ...openStack.map((opened) => opened.tag),
+    ]);
 
   // [LAW:dataflow-not-control-flow] One stack across every part, so a style
   // tag opened before a plugin pair is still open after it and its span covers
@@ -318,19 +409,20 @@ function render(
       plainText += part.text.plain;
       continue;
     }
-    const { markup, origin } = part;
-    const unparsable = (reason: string, tag: ParsedTag): MarkupSyntaxError =>
-      new MarkupSyntaxError(reason, origin.source, origin.base + tag.start, [
-        ...origin.enclosing,
-        ...openStack.map((opened) => opened.tag),
-      ]);
-
-    let lastEnd = 0;
-    for (const tag of parseTags(markup)) {
-      // Add text before this tag
-      const textBefore = markup.slice(lastEnd, tag.start);
-      plainText += textOf(textBefore);
-      lastEnd = tag.end;
+    for (const token of part.tokens) {
+      if (!isTag(token)) {
+        // A `\[` in front of a bracket no tag starts at is unescaped here, per
+        // text token, as the reference does; a tag's own escape was settled by
+        // `tokenize` against its backslash run.
+        const text = token.text.replace(/\\\[/g, "[");
+        // Text reaches `plainText` as `RichText` will hold it, so every offset
+        // counted along the way — a span, a splice point — indexes the text it
+        // lands on. Stripped only by the constructor, a control character
+        // shifted every style after it one cell right.
+        plainText += stripControlChars(doEmoji ? emojiReplace(text) : text);
+        continue;
+      }
+      const tag = token;
 
       if (tag.isImplicitClose) {
         // [/] — close the most recent open tag
@@ -358,10 +450,6 @@ function render(
         });
       }
     }
-
-    // Add remaining text after last tag
-    const trailing = markup.slice(lastEnd);
-    plainText += textOf(trailing);
   }
 
   // Auto-close what is still open, innermost first. The reference pops its
@@ -467,10 +555,6 @@ function findLastIndex<T>(items: readonly T[], match: (item: T) => boolean): num
     if (match(items[i]!)) return i;
   }
   return -1;
-}
-
-function unescapeBrackets(text: string): string {
-  return text.replace(/\\\[/g, "[");
 }
 
 // --- Plugin registry ---
@@ -647,11 +731,11 @@ export function renderMarkup(
   markup: string,
   options?: RenderMarkupOptions,
 ): RichText {
-  return renderSlice(markup, wholeString(markup), options);
+  return renderSlice(tokenize(markup), { source: markup, enclosing: [] }, options);
 }
 
 function renderSlice(
-  markup: string,
+  tokens: readonly MarkupToken[],
   origin: SliceOrigin,
   options?: RenderMarkupOptions,
 ): RichText {
@@ -659,7 +743,7 @@ function renderSlice(
   // Pair each opening plugin tag with its matching closer up-front, so the
   // splice walk can just iterate top-level pairs in source order with no
   // nested-state book-keeping.
-  const { annotated, topLevel: tagPairs } = pairPluginTags(parseTags(markup), registry, origin);
+  const { annotated, topLevel: tagPairs } = pairPluginTags(tokens.filter(isTag), registry, origin);
 
   // [LAW:one-type-per-behavior] Each top-level plugin pair is resolved by its
   // handler, and what it returns takes the pair's place in one built-in walk
@@ -670,29 +754,24 @@ function renderSlice(
   for (const [openIdx, closeIdx] of tagPairs) {
     const open = annotated[openIdx]!;
     const close = annotated[closeIdx]!;
-    parts.push({ kind: "markup", markup: markup.slice(cursor, open.start), origin: offsetBy(origin, cursor) });
+    parts.push({ kind: "markup", tokens: within(tokens, cursor, open.start) });
 
-    const innerRaw = markup.slice(open.end, close.start);
+    const innerRaw = origin.source.slice(open.end, close.start);
     // The base style is painted once, under the whole output, by the top of
     // this recursion. Painted into `children` as well, it came back spliced in
     // over every tag enclosing the pair.
     const innerRichText = renderSlice(
-      innerRaw,
-      { ...offsetBy(origin, open.end), enclosing: [...origin.enclosing, open.fullMatch] },
+      within(tokens, open.end, close.start),
+      { ...origin, enclosing: [...origin.enclosing, open.fullMatch] },
       { ...options, baseStyle: undefined },
     );
     const handler = registry.get(open.pluginName!)!;
     parts.push({ kind: "rendered", text: handler({ attrs: open.attrs!, children: innerRichText, raw: innerRaw }) });
     cursor = close.end;
   }
-  parts.push({ kind: "markup", markup: markup.slice(cursor), origin: offsetBy(origin, cursor) });
+  parts.push({ kind: "markup", tokens: within(tokens, cursor, Infinity) });
 
-  return render(parts, options?.baseStyle, { emoji: options?.emoji !== false });
-}
-
-/** The origin of a sub-slice starting `offset` into the slice `origin` describes. */
-function offsetBy(origin: SliceOrigin, offset: number): SliceOrigin {
-  return { ...origin, base: origin.base + offset };
+  return render(parts, origin, options?.baseStyle, { emoji: options?.emoji !== false });
 }
 
 interface PluginTag extends ParsedTag {
@@ -748,7 +827,7 @@ function pairPluginTags(
         `a style tag must open and close on the same side of a plugin pair, ` +
         `because the handler replaces the text inside it.`,
       origin.source,
-      origin.base + annotated[close]!.start,
+      annotated[close]!.start,
       [...origin.enclosing, ...openAt(close)],
     );
 
@@ -783,7 +862,7 @@ function pairPluginTags(
           `because a handler receives one contiguous slice. ` +
           `Close [/${inner.pluginName}] before [/${outer.pluginName}].`,
         origin.source,
-        origin.base + annotated[caret]!.start,
+        annotated[caret]!.start,
         [...origin.enclosing, ...openAt(caret)],
       );
     }
