@@ -146,6 +146,16 @@ A backslash before `[` prevents tag interpretation:
 console.print("Use \\[bold] to make text [bold]bold[/bold]");
 ```
 
+The backslashes in front of a tag are read in pairs: each pair is one literal
+backslash, and an odd one left over escapes the tag. So text that ends in a
+backslash can still be followed by a tag:
+
+```typescript
+console.print("[red]C:\\Users\\\\[/red] is the folder, and \\\\\\[red] is literal");
+```
+
+`escapeMarkup()` doubles those runs for you.
+
 ### Escaping user-provided content
 
 ::: warning Injection vulnerability
@@ -164,6 +174,17 @@ console.print(`Hello, [bold]${userInput}[/bold]!`);
 // ✓ Safe — brackets in userInput become literal characters
 console.print(`Hello, [bold]${escapeMarkup(userInput)}[/bold]!`);
 ```
+
+No bracket in escaped text can open a tag, even when two escaped values are
+joined, or the markup around it supplies a `]`. Escaped text followed by a tag
+renders back exactly, backslashes included, with two exceptions where markup
+cannot tell what comes next. Backslashes at the very end of the text are
+doubled on the assumption that a tag follows, so escaped text that ends the
+whole string shows them twice. Backslashes in front of a tag the text ends
+before finishing, as in `\[link=`, are doubled because the next value could
+finish it. Rich's `escape` drops the backslash in `\[0-9]`, lets `ab\\\` escape
+the closing tag after it, and lets `[link=x` and `]` joined open a link;
+`escapeMarkup()` does none of these.
 
 ## Emoji
 
