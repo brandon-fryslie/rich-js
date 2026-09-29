@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-206",
+      "ref": "refs/pull/206/merge",
+      "sha": "c22ce91facce2261f3dc35d391474bbbb8d88cbc",
+      "timestamp": "2026-09-29T22:11:15.682Z",
+      "commits": [
+        {
+          "sha": "c22ce91facce2261f3dc35d391474bbbb8d88cbc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:10:34Z",
+          "message": "Merge 8a70a1b1af3c9d39d53f7817dbd043d12181ec62 into 77b2e5d61934221eaf9dc4015c19971c873eca48\n"
+        },
+        {
+          "sha": "8a70a1b1af3c9d39d53f7817dbd043d12181ec62",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:06:32-06:00",
+          "message": "fix(table): blank dividers carry the row background; headers sit on the row floor; styles resolve once (rich-table-jph)\n"
+        },
+        {
+          "sha": "1427e0d645eea7244f827112803bf6a1ac516a11",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T08:06:24-06:00",
+          "message": "fix(table): draw with Table.style and Column's three styles, as the reference does (rich-table-jph)\n\nTable.style is the base the border style layers over; a column's headerStyle and\nfooterStyle layer over the table's, and its style sits under the row's rowStyles\nentry. The cell's style now covers its padding and the blank lines a short cell\nruns out of, which is where the reference puts it. Each case is pinned against\nPython Rich 9d8f9a3's bytes.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "77b2e5d61934221eaf9dc4015c19971c873eca48",
@@ -13,28 +42,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:02:28-06:00",
           "message": "fix(traceback): drop V8's async marker from frame names (rich-traceback-dbs) (#223)\n\n* fix(traceback): drop V8's async marker from frame names (rich-traceback-dbs)\n\n`at async fn (file:l:c)` rendered `async fn`, and `at async file:l:c` folded\nthe marker into the path. The parser now reads the marker and drops it; a\nlookahead keeps `at async (file:l:c)`, a function named `async`, a name.\n\nThe docs Max frames context now carries the tail Node 26 records, so its\nrendered sample shows a nameless async frame.\n\n* test(traceback): pin an awaited call of a function named async (rich-traceback-dbs)\n\nThe comment on parseStack now names only the frame shapes it reads, since\nit does not read every V8 shape. The shapes it misses are rich-traceback-9vcb\nand rich-traceback-4es8.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
-        }
-      ]
-    },
-    {
-      "version": "pr-206",
-      "ref": "refs/pull/206/merge",
-      "sha": "45f3fab9c74b5151508065b52a825b58d19c5345",
-      "timestamp": "2026-09-29T14:07:35.903Z",
-      "commits": [
-        {
-          "sha": "45f3fab9c74b5151508065b52a825b58d19c5345",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T08:06:40-06:00",
-          "message": "Merge 86c5a3a4953197f90e99bd70b88898f06c4c80fc into ea6e75d87583f84b8e69a2fdcc467ddcccac75aa\n"
-        },
-        {
-          "sha": "86c5a3a4953197f90e99bd70b88898f06c4c80fc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T08:06:24-06:00",
-          "message": "fix(table): draw with Table.style and Column's three styles, as the reference does (rich-table-jph)\n\nTable.style is the base the border style layers over; a column's headerStyle and\nfooterStyle layer over the table's, and its style sits under the row's rowStyles\nentry. The cell's style now covers its padding and the blank lines a short cell\nruns out of, which is where the reference puts it. Each case is pinned against\nPython Rich 9d8f9a3's bytes.\n"
         }
       ]
     }
