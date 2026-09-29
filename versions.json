@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-212",
+      "ref": "refs/pull/212/merge",
+      "sha": "cd874f70ab2b28e8145adf951f6f74951f16d807",
+      "timestamp": "2026-09-29T18:53:55.186Z",
+      "commits": [
+        {
+          "sha": "cd874f70ab2b28e8145adf951f6f74951f16d807",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:53:03-06:00",
+          "message": "Merge c3b3331df420088a6c8398fa55faeb620221031e into 0681b1f00c0cea944180e31b19974edfeabde152\n"
+        },
+        {
+          "sha": "c3b3331df420088a6c8398fa55faeb620221031e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:52:57-06:00",
+          "message": "fix(table): distribute breaks fractional ties by the leftmost column, exactly (rich-table-iq0)\n\nThe largest-remainder pass compared share fractions as doubles, so two\nexactly equal remainders (6/14 and 6/14 for 16 cells over 1:3:10) compared\nunequal by rounding error and the spare cell went right. distribute now\nscales the weights to one power-of-two denominator and runs in BigInt, so\nfractions compare exactly; an Infinity budget is bounded by the open wants\nbefore it reaches integer arithmetic.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0681b1f00c0cea944180e31b19974edfeabde152",
