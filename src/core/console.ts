@@ -165,9 +165,12 @@ const PLACED_BY: Record<NonNullable<PrintOptions["justify"]>, Alignment | undefi
   right: "right",
 };
 
-// A text run as one block: its items drawn side by side, ended by the print's
-// `end`, and measured as the one string they spell, so `justify` can place the
-// run by its widest line.
+// A text run as one block: its items joined into one text, as the reference's
+// `Text.join` joins them, drawn under the print's options and ended by the
+// print's `end`. Measure and render both read that one text, so the width
+// `justify` places the run at is the width it is drawn at. Each item's own
+// `justify`, `overflow`, `noWrap` and `tabSize` stay behind, as they do in the
+// reference: the print's options set the whole run.
 class TextRun implements Renderable, Measurable {
   constructor(
     private readonly items: ReadonlyArray<RichText | Pretty>,
@@ -175,15 +178,21 @@ class TextRun implements Renderable, Measurable {
   ) {}
 
   *render(options: RenderOptions): Iterable<Segment> {
-    for (const item of this.items) yield* item.render(options);
+    yield* this.text(options).render(options);
     yield this.end;
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const plain = this.items
-      .map((item) => (item instanceof Pretty ? item.toText(options) : item).plain)
-      .join("");
-    return new RichText(plain).measure(options);
+    return this.text(options).measure(options);
+  }
+
+  // A `Pretty` lays itself out for the width it is offered, so the run is
+  // joined per call rather than once.
+  private text(options: RenderOptions): RichText {
+    return this.items.reduce<RichText>(
+      (joined, item) => joined.append(item instanceof Pretty ? item.toText(options) : item),
+      new RichText("", { end: "" }),
+    );
   }
 }
 

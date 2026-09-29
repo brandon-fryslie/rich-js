@@ -524,6 +524,19 @@ describe("Console.print() justify places the block", () => {
     return captured(chunks);
   };
 
+  // Rich joins a print's text items into one Text before it places it, so the
+  // run is measured and drawn as the one text. Bytes are the reference's.
+  it("places a run of several text items as one text", () => {
+    expect(print(12, "hi", "there", { justify: "center" })).toBe("  hi there  \n");
+    expect(print(12, "hi", 3, "yo", { justify: "center" })).toBe("  hi 3 yo   \n");
+    expect(print(10, "a", "b", { sep: "\n", justify: "right" })).toBe("         a\n         b\n");
+    expect(print(10, "hello", "world", { justify: "center" })).toBe("  hello   \n  world   \n");
+  });
+
+  it("sets a printed RichText by the print's options, not its own", () => {
+    expect(print(12, new RichText("hi", { justify: "right" }))).toBe("hi\n");
+  });
+
   it("places a renderable that is not text", () => {
     const table = () => new Table().addColumn("h");
     expect(print(16, table(), { justify: "center" }))

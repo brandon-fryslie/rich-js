@@ -259,6 +259,17 @@ describe("RichText.append()", () => {
     expect(a.spans[0]!.start).toBe(5); // remapped
   });
 
+  it("keeps an appended RichText's base style as a span under its own", () => {
+    const a = new RichText("Hello");
+    const b = new RichText(" World", { style: "bold" });
+    b.stylize("italic", 1, 6);
+    a.append(b);
+    expect(a.spans.map((span) => [span.start, span.end, String(span.style)])).toEqual([
+      [5, 11, "bold"],
+      [6, 11, "italic"],
+    ]);
+  });
+
   it("throws when appending RichText with style argument", () => {
     const a = new RichText("Hello");
     const b = new RichText(" World");

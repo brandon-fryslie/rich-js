@@ -318,6 +318,9 @@ export class RichText implements Renderable, Measurable {
       }
       const offset = this._text.length;
       this._text += content._text;
+      // Its base style becomes a span under its own spans, as the reference's
+      // `append` does, so appended text looks as it did alone.
+      this._addSpan(offset, this._text.length, content._style);
       for (const span of content._spans) {
         this._spans.push(span.move(offset));
       }
