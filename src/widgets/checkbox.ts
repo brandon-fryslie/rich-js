@@ -17,7 +17,7 @@ import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
 import { cellLen } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
-import type { RenderOptions } from "../core/protocol.js";
+import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
@@ -83,7 +83,7 @@ export class Checkbox extends WidgetBase {
   // --- Rendering ---
 
   protected draw(options: RenderOptions): Iterable<Segment> {
-    const indicator = this.checked ? (options.asciiOnly ? "x" : "✓") : " ";
+    const indicator = this.checked ? drawable(options, "✓", "x") : " ";
     const text = `[${indicator}] ${this.label}`;
 
     if (this.disabled) {

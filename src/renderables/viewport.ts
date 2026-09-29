@@ -38,6 +38,7 @@ import { cellCount, cellLen } from "../core/cells.js";
 import { NULL_STYLE } from "../core/style.js";
 import type { Style } from "../core/style.js";
 import {
+  drawable,
   fitHeight,
   getStyle,
   isMeasurable,
@@ -189,8 +190,11 @@ export class Viewport implements Renderable, Measurable, Scrollable {
       const resolved = getStyle(options, style);
       return Segment.adjustLineLength([new Segment(glyph, resolved)], drawn, resolved);
     };
-    const thumbCell = cell(this.scrollbar.thumb);
-    const trackCell = cell(this.scrollbar.track);
+    // The gutter keeps the chosen scrollbar's width, so an ASCII stand-in
+    // padded into it leaves the content where `contentWidth` said it would be.
+    const bar = drawable(options, this.scrollbar, asciiScrollbar(this.scrollbar), scrollbarGlyphs);
+    const thumbCell = cell(bar.thumb);
+    const trackCell = cell(bar.track);
     const rows = shown.map((line, row) => [
       ...Segment.adjustLineLength(line, contentWidth),
       ...(row >= thumb.start && row < thumb.end ? thumbCell : trackCell),
@@ -226,6 +230,13 @@ export class Viewport implements Renderable, Measurable, Scrollable {
       : new Measurement(Math.min(1, inner.maxWidth), inner.maxWidth);
     return new Measurement(content.minimum + gutter, content.maximum + gutter).withMaximum(options.maxWidth);
   }
+}
+
+const scrollbarGlyphs = ({ thumb, track }: Scrollbar): string => thumb.glyph + track.glyph;
+
+/** `scrollbar` in its own styles, drawn in ASCII. */
+function asciiScrollbar({ thumb, track }: Scrollbar): Scrollbar {
+  return { thumb: { ...thumb, glyph: "#" }, track: { ...track, glyph: "|" } };
 }
 
 /** The cells a scrollbar's gutter takes from the content: its wider glyph. */

@@ -23,11 +23,11 @@ export interface RenderOptions {
    */
   height?: Height;
   isTerminal?: boolean;
-  legacyWindows?: boolean;
   /**
-   * The output can draw only ASCII. A renderable that spends other glyphs —
-   * box lines, tree guides, a check mark — draws its ASCII equivalent
-   * instead. Absent means the output draws any glyph.
+   * The output can draw only ASCII. Every glyph a renderable chooses — box
+   * lines, tree guides, a check mark — is resolved through `drawable`. Text
+   * the caller hands in is drawn as given. Absent means the output draws any
+   * glyph.
    */
   asciiOnly?: boolean;
   justify?: "left" | "center" | "right" | "full";
@@ -64,6 +64,31 @@ export interface RenderOptions {
    * not drawing and is not told (`measuring`).
    */
   onDraw?: (owner: object) => void;
+}
+
+const ASCII_TEXT = /^[\x00-\x7F]*$/;
+
+/**
+ * `chosen` as this output can draw it: `ascii` in its place when the output is
+ * ASCII-only and `chosen` spends a glyph outside ASCII, otherwise `chosen`
+ * itself. Choosing a glyph that is already ASCII (a rule of `=`, a MARKDOWN box)
+ * picks a frame the terminal can draw, so it is kept. A set of glyphs that must
+ * change together — a box grid, a spinner's frames, a scrollbar — passes
+ * `glyphs` to say which characters it spends, and is replaced whole.
+ *
+ * [LAW:single-enforcer] The one place that decides what `asciiOnly` replaces.
+ * `test/renderables/ascii-only.test.ts` renders every exported renderable to
+ * hold each of them to it.
+ */
+export function drawable(options: { readonly asciiOnly?: boolean }, chosen: string, ascii: string): string;
+export function drawable<T>(options: { readonly asciiOnly?: boolean }, chosen: T, ascii: T, glyphs: (value: T) => string): T;
+export function drawable<T>(
+  options: { readonly asciiOnly?: boolean },
+  chosen: T,
+  ascii: T,
+  glyphs: (value: T) => string = String,
+): T {
+  return options.asciiOnly === true && !ASCII_TEXT.test(glyphs(chosen)) ? ascii : chosen;
 }
 
 /**

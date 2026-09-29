@@ -8,11 +8,7 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 import type { PaddingDimensions } from "./padding.js";
-import type {
-  Renderable,
-  Measurable,
-  RenderOptions,
-} from "../core/protocol.js";
+import { drawable, type Measurable, type Renderable, type RenderOptions } from "../core/protocol.js";
 
 export interface SyntaxOptions {
   lineNumbers?: boolean;
@@ -101,7 +97,7 @@ export class Syntax implements Renderable, Measurable {
           ? Style.parse("bold on grey27")
           : Style.parse("dim");
         yield new Segment(numStr, numStyle);
-        yield new Segment("│ ", Style.parse("dim"));
+        yield new Segment(drawable(options, "│ ", "| "), Style.parse("dim"));
       }
 
       const line = textLines[i]!;

@@ -23,7 +23,7 @@ import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
-import type { RenderOptions } from "../core/protocol.js";
+import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
@@ -154,8 +154,8 @@ export class Slider extends WidgetBase {
   // --- Rendering ---
 
   protected draw(options: RenderOptions): Iterable<Segment> {
-    const trackChar = options.asciiOnly ? "-" : "─";
-    const markerChar = options.asciiOnly ? "*" : "●";
+    const trackChar = drawable(options, "─", "-");
+    const markerChar = drawable(options, "●", "*");
     const range = this.max - this.min;
     const fraction = range === 0 ? 0 : (this.value - this.min) / range;
     const markerIdx = Math.round(fraction * (this.width - 1));

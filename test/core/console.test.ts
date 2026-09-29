@@ -844,16 +844,11 @@ describe("Console.options", () => {
     expect(c.options.isTerminal).toBe(false);
   });
 
-  // One print of every renderable that spends line-drawing glyphs, so the
-  // switch is proven to reach each of them through the console's options.
+  // What each renderable draws under the switch is
+  // test/renderables/ascii-only.test.ts; this is only that print carries it.
   function printFramed(overrides: ConsoleOptions): string {
     const { console: c, chunks } = makeConsole(overrides);
-    const tree = new Tree("root");
-    tree.add("leaf");
     c.print(new Panel("boxed"));
-    c.print(new Table().addColumn("head").addRow("cell"));
-    c.print(new Rule("rule"));
-    c.print(tree);
     return captured(chunks);
   }
 

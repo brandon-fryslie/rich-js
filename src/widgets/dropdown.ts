@@ -29,7 +29,7 @@ import { Style } from "../core/style.js";
 import { ColorSpec } from "../core/color.js";
 import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
-import type { RenderOptions } from "../core/protocol.js";
+import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
 import type {
@@ -254,11 +254,11 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // Header only — the inline footprint that flow layout sees. Always
     // 1 row regardless of `expanded`/`filter`. Option rows live in
     // renderOverlay. Width invariant: maxLabelLen + 4.
-    const arrowChar = options.asciiOnly ? "v" : "▾";
+    const arrowChar = drawable(options, "▾", "v");
     // [LAW:one-source-of-truth] render() owns the asciiOnly switch; the
     // caret character flows into headerText as data rather than headerText
     // re-reading the option flag. Same arrow / caret resolution path.
-    const caret = this.focused ? (options.asciiOnly ? "|" : "│") : "";
+    const caret = this.focused ? drawable(options, "│", "|") : "";
     const maxLabelLen = this.maxLabelLen();
 
     const baseStyle = this.disabled

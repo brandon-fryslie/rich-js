@@ -621,9 +621,10 @@ colored.print("[bold green]colour[/] even when piped");
 
 Some terminals draw only ASCII — a serial console, a Linux virtual console
 without a Unicode font, a log viewer that mangles anything else. Tell the
-console once with `asciiOnly: true`, and everything it draws — panel and table
-borders, rules, tree guides — uses ASCII characters instead of line-drawing
-glyphs:
+console once with `asciiOnly: true`, and every glyph the library chooses is
+drawn in ASCII: panel and table borders, rules, tree guides, spinners, progress
+bars, scrollbars, widget marks, and the `…` that marks cut-off text. Text you
+hand it, emoji included, is drawn as you wrote it.
 
 ```typescript
 const ascii = new Console({ asciiOnly: true });
@@ -632,6 +633,10 @@ tree.add("src");
 ascii.print(new Panel("drawn in ASCII"));
 ascii.print(tree);
 ```
+
+A glyph you chose that is already ASCII stays. A `Rule` of `=` and a table
+boxed in `MARKDOWN` draw as they would anywhere else. Only a glyph outside ASCII
+is replaced.
 
 It is a property of the terminal, not of any one renderable, so no renderable
 takes an option of its own for it. `renderToString` takes the same

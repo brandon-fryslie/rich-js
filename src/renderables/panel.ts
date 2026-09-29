@@ -184,7 +184,7 @@ export class Panel implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    const box = options.asciiOnly ? this.box.substitute({ asciiOnly: true }) : this.box;
+    const box = this.box.substitute(options);
     const borderStyle = getStyle(options, this.borderStyle);
     const style = getStyle(options, this.style);
     const border = borderStyle.isNull ? undefined : borderStyle;

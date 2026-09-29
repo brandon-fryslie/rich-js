@@ -12,7 +12,7 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { getStyle, isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { drawable, getStyle, isMeasurable, stackedHeight, withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 
 /**
@@ -35,6 +35,8 @@ const ASCII_GUIDES: GuideGlyphs = {
   fork: { first: "+-- ", rest: "|   " },
   end: { first: "`-- ", rest: "    " },
 };
+
+const guideGlyphs = ({ fork, end }: GuideGlyphs): string => fork.first + fork.rest + end.first + end.rest;
 
 export interface TreeOptions {
   expanded?: boolean;
@@ -121,7 +123,7 @@ export class Tree implements Renderable, Measurable {
    * stand at the left edge, and its guide style still reaches their guides.
    */
   private _walk(options: RenderOptions): TreeRow[] {
-    const rows = [...this._rows(options.asciiOnly ? ASCII_GUIDES : UNICODE_GUIDES, [], [])];
+    const rows = [...this._rows(drawable(options, UNICODE_GUIDES, ASCII_GUIDES, guideGlyphs), [], [])];
     return this.hideRoot ? rows.slice(1).map((row) => ({ ...row, guides: row.guides.slice(1) })) : rows;
   }
 

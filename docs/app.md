@@ -58,7 +58,7 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 ## ASCII-only terminals
 
-`asciiOnly: true` paints every frame for a terminal that draws only ASCII: borders, guides and widget marks use ASCII characters. It is the same switch as on a [`Console`](/console#ascii-only-terminals).
+`asciiOnly: true` paints every frame for a terminal that draws only ASCII: every glyph the library chooses, from borders to widget marks, is drawn in ASCII. It is the same switch as on a [`Console`](/console#ascii-only-terminals).
 
 ## Every exit hands the terminal back
 

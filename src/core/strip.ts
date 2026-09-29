@@ -30,7 +30,7 @@ import { Segment } from "./segment.js";
 import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, blendRgb } from "./color.js";
 import { Oklch } from "./oklch.js";
-import type { Renderable, RenderOptions } from "./protocol.js";
+import { drawable, type Renderable, type RenderOptions } from "./protocol.js";
 
 // --- StyledRenderable ---
 
@@ -111,20 +111,6 @@ const EMPTY: Renderable = {
     // intentionally empty
   },
 };
-
-class FixedSegment implements Renderable {
-  private readonly _text: string;
-  private readonly _style: Style;
-
-  constructor(text: string, style: Style) {
-    this._text = text;
-    this._style = style;
-  }
-
-  *render(_options: RenderOptions): Iterable<Segment> {
-    yield new Segment(this._text, this._style);
-  }
-}
 
 /** A renderable whose segments are computed from the options it is rendered with. */
 function deferred(emit: (options: RenderOptions) => Iterable<Segment>): Renderable {
@@ -238,17 +224,21 @@ export const POWERLINE_JOINER_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.
   tail: "\ue0b0",
 });
 
+/** The powerline set in ASCII: an arrow for every join, runs begun flat. */
+const ASCII_POWERLINE_GLYPHS: Readonly<PowerlineJoinerOptions> = Object.freeze({
+  glyph: ">",
+  divider: ">",
+  lead: "",
+  tail: ">",
+});
+
+const powerlineGlyphs = ({ glyph, divider, lead, tail }: PowerlineJoinerOptions): string => glyph + divider + lead + tail;
+
 export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  private readonly _glyph: string;
-  private readonly _divider: string;
-  private readonly _lead: string;
-  private readonly _tail: string;
+  private readonly _glyphs: Readonly<PowerlineJoinerOptions>;
 
   constructor(options: PowerlineJoinerOptions = POWERLINE_JOINER_GLYPHS) {
-    this._glyph = options.glyph;
-    this._divider = options.divider;
-    this._lead = options.lead;
-    this._tail = options.tail;
+    this._glyphs = options;
   }
 
   join(left: T | null, right: T | null): Renderable {
@@ -277,11 +267,9 @@ export class PowerlineJoiner<T extends StyledRenderable = StyledRenderable> impl
     // is the only thing that elides the separator, and that is paint logic.
     // "Absent" = no bg OR the terminal default (transparent) — paintableBg folds
     // both to undefined so an explicit `… on default` cannot smuggle a separator.
-    const glyph = this._glyph;
-    const divider = this._divider;
-    const lead = this._lead;
-    const tail = this._tail;
+    const glyphs = this._glyphs;
     return deferred(function* (options) {
+      const { glyph, divider, lead, tail } = drawable(options, glyphs, ASCII_POWERLINE_GLYPHS, powerlineGlyphs);
       const leftEdge = left?.edgeStyle("right", options);
       const leftBg = paintableBg(leftEdge?.bgcolor);
       const rightBg = paintableBg(right?.edgeStyle("left", options).bgcolor);
@@ -314,31 +302,39 @@ export interface CapsuleJoinerOptions {
   separator?: string;
 }
 
+interface Caps {
+  readonly left: string;
+  readonly right: string;
+}
+
+const ASCII_CAPS: Caps = { left: "(", right: ")" };
+const capGlyphs = ({ left, right }: Caps): string => left + right;
+
 export class CapsuleJoiner<T extends StyledRenderable = StyledRenderable> implements Joiner<T> {
-  private readonly _left: string;
-  private readonly _right: string;
+  private readonly _caps: Caps;
   private readonly _separator: string;
 
   constructor(options?: CapsuleJoinerOptions) {
-    this._left = options?.left ?? "";
-    this._right = options?.right ?? "";
+    this._caps = { left: options?.left ?? "", right: options?.right ?? "" };
     this._separator = options?.separator ?? " ";
   }
 
   *_emit(left: T | null, right: T | null, options: RenderOptions): Iterable<Segment> {
+    const caps = drawable(options, this._caps, ASCII_CAPS, capGlyphs);
+    const separator = drawable(options, this._separator, " ");
     if (left === null && right === null) return;
     if (left === null) {
-      yield new Segment(this._left, bgAsFg(right!.edgeStyle("left", options)));
+      yield new Segment(caps.left, bgAsFg(right!.edgeStyle("left", options)));
       return;
     }
     if (right === null) {
-      yield new Segment(this._right, bgAsFg(left.edgeStyle("right", options)));
+      yield new Segment(caps.right, bgAsFg(left.edgeStyle("right", options)));
       return;
     }
     // Middle: close the left capsule, separator (unstyled), open the right.
-    yield new Segment(this._right, bgAsFg(left.edgeStyle("right", options)));
-    if (this._separator.length > 0) yield new Segment(this._separator);
-    yield new Segment(this._left, bgAsFg(right.edgeStyle("left", options)));
+    yield new Segment(caps.right, bgAsFg(left.edgeStyle("right", options)));
+    if (separator.length > 0) yield new Segment(separator);
+    yield new Segment(caps.left, bgAsFg(right.edgeStyle("left", options)));
   }
 
   join(left: T | null, right: T | null): Renderable {
@@ -365,7 +361,9 @@ export class PlainJoiner<T extends StyledRenderable = StyledRenderable> implemen
   join(left: T | null, right: T | null): Renderable {
     // Endpoints are empty — a fixed separator has no natural cap.
     if (left === null || right === null) return EMPTY;
-    return new FixedSegment(this._separator, this._style);
+    const separator = this._separator;
+    const style = this._style;
+    return deferred((options) => [new Segment(drawable(options, separator, " | "), style)]);
   }
 }
 
@@ -403,6 +401,9 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
       if (!lbg || !rbg) return;
       const lTrip = lbg.getTruecolor();
       const rTrip = rbg.getTruecolor();
+      // An ASCII cell carries one sample, the background: the gradient keeps
+      // its colours at half the resolution.
+      const half = drawable(options, HALF_BLOCK, " ");
       const samples = 2 * steps;
       // Midpoint sampling across `2 * steps` half-cell positions: sample j has
       // t = (j + 0.5) / samples. Cell i takes samples 2i (left half) and 2i+1
@@ -412,7 +413,7 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
         const tRight = (2 * i + 1.5) / samples;
         const fg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tLeft));
         const bg = ColorSpec.fromRgba(blendRgb(lTrip, rTrip, tRight));
-        yield new Segment(HALF_BLOCK, new Style({ color: fg, bgcolor: bg }));
+        yield new Segment(half, new Style({ color: fg, bgcolor: bg }));
       }
     });
   }
