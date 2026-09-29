@@ -1069,6 +1069,7 @@ describe("Table stays inside the width it is given", () => {
   it.each([
     [1, 3, 10],
     [0.5, 1.5, 5],
+    [0.1, 0.3, 1],
   ])("gives a tied spare cell to the leftmost column, over ratios %s : %s : %s", (...ratios) => {
     const t = Table.grid({ padding: 0 });
     for (const ratio of ratios) t.addColumn(undefined, { ratio });

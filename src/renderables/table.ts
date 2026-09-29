@@ -86,57 +86,59 @@ const demandCells = (n: number): number => Math.min(cells(n), UNBOUNDED);
  * leftover cell, and in floating point two fractions that are equal — 6/14 and
  * 6/14 for 16 cells over weights 3 and 10 — come out 0.4285714285714284 and
  * 0.4285714285714288, so the tie went wherever the rounding error pointed.
- * Every finite double is an integer over a power of two, so the weights are
- * scaled to one such denominator and everything after is integer division.
+ * The weights are read as whole numbers in one proportion (`exactWeights`) and
+ * everything after is integer division.
  */
 function distribute(total: number, demands: readonly Bid[]): number[] {
   const granted: number[] = demands.map(() => 0);
-  let open = demands
-    .map((_, index) => index)
-    .filter((index) => demands[index]!.weight > 0 && demands[index]!.want > 0);
-  const weights = exactWeights(demands.map((demand) => demand.weight));
-  const wants = demands.map((demand) => BigInt(demand.want));
+  const bidders = demands.flatMap((demand, index) =>
+    demand.weight > 0 && demand.want > 0 ? [{ index, demand }] : [],
+  );
+  const weights = exactWeights(bidders.map(({ demand }) => demand.weight));
+  let open = bidders.map(({ index, demand }, slot) => ({
+    index,
+    want: BigInt(demand.want),
+    weight: weights[slot]!,
+  }));
+  const sum = (values: readonly bigint[]): bigint =>
+    values.reduce((acc, value) => acc + value, 0n);
   // A budget past every open want grants each its want either way, and that
   // bound is what keeps an unbounded offer — `Infinity` is a legal outer width
   // — out of integer arithmetic that cannot hold it.
-  const wantSum = open.reduce((sum, index) => sum + wants[index]!, 0n);
+  const wantSum = sum(open.map(({ want }) => want));
   let remaining = total >= wantSum ? wantSum : BigInt(Math.max(0, total));
 
-  const weightOf = (indices: readonly number[]): bigint =>
-    indices.reduce((sum, index) => sum + weights[index]!, 0n);
-
   while (open.length > 0 && remaining > 0n) {
-    const weightSum = weightOf(open);
-    const capped = open.filter(
-      (index) => remaining * weights[index]! >= wants[index]! * weightSum,
-    );
+    const weightSum = sum(open.map(({ weight }) => weight));
+    const capped = open.filter(({ want, weight }) => remaining * weight >= want * weightSum);
     if (capped.length === 0) break;
-    for (const index of capped) {
-      granted[index] = demands[index]!.want;
-      remaining -= wants[index]!;
+    for (const { index, want } of capped) {
+      granted[index] = Number(want);
+      remaining -= want;
     }
-    open = open.filter((index) => !capped.includes(index));
+    open = open.filter((bid) => !capped.includes(bid));
   }
 
   if (open.length > 0 && remaining > 0n) {
-    const weightSum = weightOf(open);
-    const products = open.map((index) => remaining * weights[index]!);
+    const weightSum = sum(open.map(({ weight }) => weight));
+    const products = open.map(({ weight }) => remaining * weight);
     const whole = products.map((product) => product / weightSum);
     const fraction = products.map((product) => product % weightSum);
-    let residue = remaining - whole.reduce((sum, cells) => sum + cells, 0n);
+    let residue = remaining - sum(whole);
 
     // The cells the shares left as fractions go to the largest fraction first,
     // ties to the leftmost column, so the total lands exactly on `remaining`.
+    // `Number` of a nonzero difference is never 0, so the sign is exact.
     const byFraction = open
       .map((_, slot) => slot)
-      .sort((a, b) => fraction[b]! > fraction[a]! ? 1 : fraction[b]! < fraction[a]! ? -1 : a - b);
+      .sort((a, b) => Number(fraction[b]! - fraction[a]!) || a - b);
     for (const slot of byFraction) {
       if (residue <= 0n) break;
       whole[slot]!++;
       residue--;
     }
 
-    open.forEach((index, slot) => {
+    open.forEach(({ index }, slot) => {
       granted[index] = Number(whole[slot]!);
     });
   }
@@ -145,24 +147,21 @@ function distribute(total: number, demands: readonly Bid[]): number[] {
 }
 
 /**
- * Weights as integers in one exact proportion: each is scaled by the one power
- * of two that makes all of them whole. Doubling a double is exact, and one that
- * is not yet whole is below 2^53, so the loop neither rounds nor overflows. A
- * weight that is not finite leaves the loop as it came and `BigInt` refuses it
- * with a RangeError — the loud end of what `demandCells` exists to prevent.
+ * Weights as integers in one exact proportion. Each is read as the decimal it
+ * prints as — the number its caller wrote, `0.1` rather than the binary double
+ * nearest it — and all are scaled by the one power of ten that makes them
+ * whole, so `0.1 : 0.3 : 1` is exactly `1 : 3 : 10`. A weight that does not
+ * print as a decimal, `Infinity`, is refused by `BigInt` with a SyntaxError —
+ * the loud end of what `demandCells` exists to prevent.
  */
 function exactWeights(weights: readonly number[]): bigint[] {
-  const scaled = weights.map((weight) => {
-    let mantissa = weight;
-    let exponent = 0;
-    while (Number.isFinite(mantissa) && !Number.isInteger(mantissa)) {
-      mantissa *= 2;
-      exponent++;
-    }
-    return { mantissa: BigInt(mantissa), exponent };
+  const decimals = weights.map((weight) => {
+    const [digits = "", power = "0"] = String(weight).split("e");
+    const [whole = "", fraction = ""] = digits.split(".");
+    return { mantissa: BigInt(whole + fraction), exponent: fraction.length - Number(power) };
   });
-  const common = Math.max(0, ...scaled.map(({ exponent }) => exponent));
-  return scaled.map(({ mantissa, exponent }) => mantissa << BigInt(common - exponent));
+  const common = Math.max(...decimals.map(({ exponent }) => exponent));
+  return decimals.map(({ mantissa, exponent }) => mantissa * 10n ** BigInt(common - exponent));
 }
 
 /** The cells a box costs a table, independent of how wide the table is. */
