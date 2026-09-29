@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-194",
+      "ref": "refs/pull/194/merge",
+      "sha": "1bad936607bd00dda3074b477e3c20a92d54a058",
+      "timestamp": "2026-09-29T12:22:36.160Z",
+      "commits": [
+        {
+          "sha": "1bad936607bd00dda3074b477e3c20a92d54a058",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:21:58-06:00",
+          "message": "Merge 62d9dc1fed72c8cb42c51c26e7d1c2d77333027f into c190bb7db13e9f5f743ff2536168e0581ca16469\n"
+        },
+        {
+          "sha": "62d9dc1fed72c8cb42c51c26e7d1c2d77333027f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:21:49-06:00",
+          "message": "fix(style): a combined style writes attributes before colours, as Rich does (rich-color-7kv)\n\nStyle.toSgrCodes wrote foreground, background, then attributes; Rich\n9d8f9a3's _make_ansi_codes writes attributes, then foreground, then\nbackground. `[bold red]x[/]` is now `\\e[1;31m`, byte-identical to the\nreference.\n\nThe markup golden gains two reference-generated cases that put\nattributes and colours in one style, and the pinned-divergence test\nthat stood in for them is gone. The two printJson highlight tests now\npin Rich's own bytes instead of a restyled RichText.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "c190bb7db13e9f5f743ff2536168e0581ca16469",
