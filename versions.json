@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-216",
+      "ref": "refs/pull/216/merge",
+      "sha": "ff82de6ad34a2e73893368e723e43f0a12779044",
+      "timestamp": "2026-09-29T20:29:33.737Z",
+      "commits": [
+        {
+          "sha": "ff82de6ad34a2e73893368e723e43f0a12779044",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:28:29-06:00",
+          "message": "Merge 6ab754d660e5aed9542c161dec30f1a0dd4d9fe9 into f1cc46b8d3b518313e4d88b1a6b79fe9beeefc2e\n"
+        },
+        {
+          "sha": "6ab754d660e5aed9542c161dec30f1a0dd4d9fe9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T14:28:25-06:00",
+          "message": "test(strip): pin edgeStyle's exclusive span end (rich-style-tdn.7ip)\n\nA span [0, 1) on a 2-column cell must leave the right edge at the base\nstyle. Every earlier span test placed its span where an inclusive end\nagreed; this one fails under `pos <= span.end` and passes under the\nreal predicate.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f1cc46b8d3b518313e4d88b1a6b79fe9beeefc2e",
