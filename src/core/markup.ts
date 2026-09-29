@@ -711,7 +711,7 @@ function pairPluginTags(
   // stack drops them there too, so a later `[/]` means here what it means to
   // the walk that renders it.
   const stack: number[] = [];
-  const topLevel = new Map<number, number>();
+  const pairs = new Map<number, number>();
   // Each opener's closing tag, whichever tag closed it — its own or a pair's end.
   const closedAt = new Map<number, number>();
   // Tags a pair's end closed, with that pair: what an explicit closer that
@@ -792,9 +792,18 @@ function pairPluginTags(
       closedAt.set(k, i);
       if (k !== openIdx) closedByPair.push({ idx: k, pairOpen: openIdx });
     }
-    // Pairs nest, so one closes at top level exactly when no plugin tag is
-    // open around it, and top-level pairs close in the order they open.
-    if (!stack.some(isPlugin)) topLevel.set(openIdx, i);
+    pairs.set(openIdx, i);
+  }
+  // Pairs nest, so one is top-level exactly when it opens after the last
+  // top-level pair closed. Decided after the walk and not at each close: a
+  // plugin tag still on the stack there may never pair, and then encloses
+  // nothing.
+  const topLevel = new Map<number, number>();
+  let outerClose = -1;
+  for (const openIdx of [...pairs.keys()].sort((a, b) => a - b)) {
+    if (openIdx < outerClose) continue;
+    outerClose = pairs.get(openIdx)!;
+    topLevel.set(openIdx, outerClose);
   }
   return { annotated, topLevel };
 }

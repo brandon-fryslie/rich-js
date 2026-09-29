@@ -292,6 +292,11 @@ describe("plugin pairs must nest", () => {
     expect(renderToString(out, { colorSystem: null })).toBe("<A>xy</A>\n");
   });
 
+  it("resolves a pair after a plugin tag that never closes", () => {
+    const out = renderMarkup("[bb]x [aa]y[/aa]", { registry: twoTags() });
+    expect(renderToString(out, { colorSystem: null })).toBe("x <A>y</A>\n");
+  });
+
   it("resolves two sequential top-level pairs", () => {
     const out = renderMarkup("[aa]x[/aa] mid [bb]y[/bb]", { registry: twoTags() });
     expect(renderToString(out, { colorSystem: null })).toBe("<A>x</A> mid <B>y</B>\n");
