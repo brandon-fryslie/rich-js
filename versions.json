@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-187",
+      "ref": "refs/pull/187/merge",
+      "sha": "0f80d4a0eb45a4007c9d46a66b9a78aa3cde5259",
+      "timestamp": "2026-09-29T09:58:36.440Z",
+      "commits": [
+        {
+          "sha": "0f80d4a0eb45a4007c9d46a66b9a78aa3cde5259",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T03:57:46-06:00",
+          "message": "Merge b775304e6da880770ef342a5105b07ca4ef13067 into 71d12c86e45e66401ea99039d382750dc9fd2b7a\n"
+        },
+        {
+          "sha": "b775304e6da880770ef342a5105b07ca4ef13067",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T03:57:42-06:00",
+          "message": "fix(export-html): a wide glyph holds its two cells, so columns after CJK text line up (rich-docs-examples-xuu.9lc)\n\ndocs/text.md gains a Wide characters example: a Table of CJK and Hangul\ncity names. Checked in a browser, its column edges drifted up to 24px left on\nrows with wide text, because a browser draws a wide glyph at its fallback\nfont's width, not two cells. encodeHtmlFragment now cuts a run at each\ngrapheme that is not one cell wide and draws it as a run of its own in an\ninline-block exactly that many ch wide.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "71d12c86e45e66401ea99039d382750dc9fd2b7a",
