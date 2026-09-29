@@ -4,15 +4,22 @@
     {
       "version": "pr-211",
       "ref": "refs/pull/211/merge",
-      "sha": "cd05129cf088fbc1e15b6831623de7512509fe69",
-      "timestamp": "2026-09-29T18:40:36.870Z",
+      "sha": "6a8ff4d495070608d0fa38fcb21b668c291a91aa",
+      "timestamp": "2026-09-29T18:43:00.320Z",
       "commits": [
         {
-          "sha": "cd05129cf088fbc1e15b6831623de7512509fe69",
+          "sha": "6a8ff4d495070608d0fa38fcb21b668c291a91aa",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:39:56Z",
-          "message": "Merge a90e30f206f4b53193bb5a3fae402e379b7a7037 into 26b0ffd282ea721e11bb0b8ec786ce9373939e59\n"
+          "timestamp": "2026-09-29T18:42:09Z",
+          "message": "Merge 67854c3304de625d5a8965f28acc0257b2e3a02e into 26b0ffd282ea721e11bb0b8ec786ce9373939e59\n"
+        },
+        {
+          "sha": "67854c3304de625d5a8965f28acc0257b2e3a02e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:42:03-06:00",
+          "message": "docs(runner): step 7 no longer claims live blocks are type-checked twice (rich-docs-jqc)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "a90e30f206f4b53193bb5a3fae402e379b7a7037",
