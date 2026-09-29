@@ -1,7 +1,11 @@
 {
   "name": "@promptctl/rich-js",
-  "version": "0.18.0",
+  "version": "0.18.1",
   "description": "Rich text and beautiful formatting in the terminal — a TypeScript port of Python's Rich",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brandon-fryslie/rich-js"
+  },
   "type": "module",
   "sideEffects": false,
   "main": "dist/index.js",
@@ -53,7 +57,7 @@
     "THIRD-PARTY-NOTICES"
   ],
   "scripts": {
-    "prepublishOnly": "node scripts/verify-release-tag.mjs",
+    "prepublishOnly": "node scripts/verify-release-tag.mjs && node scripts/verify-entry-points.mjs",
     "build": "npm run clean && tsc",
     "test": "vitest run",
     "test:watch": "vitest",
