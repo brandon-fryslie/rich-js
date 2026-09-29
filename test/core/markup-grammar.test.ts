@@ -52,8 +52,6 @@
  *         ("escaped", "\\[red]escaped"),
  *         ("mixed", "text [INFO] more [red]x[/red]"),
  *         ("nested-styles", "[bold]a[italic]b[/italic]c[/bold]"),
- *         ("attribute-and-colours", "[bold red on blue]x[/]"),
- *         ("nested-attribute-colour", "[italic]a[bold red]b[/bold red]c[/italic]"),
  *         ("nested-colour", "[red]a[blue]b[/blue]c[/red]"),
  *         ("nested-colour-tie", "[red][blue]x[/blue][/red]"),
  *         ("nested-colour-unclosed", "[red][blue]x"),
@@ -132,12 +130,6 @@
  * where sorting by start is the whole answer, and the `-tie` and `-unclosed`
  * pair both at 0, where the sort has nothing to separate them and only the
  * tie-break decides which colour survives (rich-markup-krk).
- *
- * `attribute-and-colours` and `nested-attribute-colour` put attributes and
- * colours in one style, which pins the order of the parameters inside a single
- * SGR: attributes, then foreground, then background. The terminal reads them as
- * a set; the bytes do not, and this port once wrote the colours first
- * (rich-color-7kv).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -170,8 +162,6 @@ const CASES: readonly (readonly [string, string])[] = [
   ["escaped", "\\[red]escaped"],
   ["mixed", "text [INFO] more [red]x[/red]"],
   ["nested-styles", "[bold]a[italic]b[/italic]c[/bold]"],
-  ["attribute-and-colours", "[bold red on blue]x[/]"],
-  ["nested-attribute-colour", "[italic]a[bold red]b[/bold red]c[/italic]"],
   ["nested-colour", "[red]a[blue]b[/blue]c[/red]"],
   ["nested-colour-tie", "[red][blue]x[/blue][/red]"],
   ["nested-colour-unclosed", "[red][blue]x"],

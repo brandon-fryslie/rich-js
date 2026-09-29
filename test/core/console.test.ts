@@ -800,7 +800,9 @@ describe("Console.printJson()", () => {
     );
   });
 
-  // Pinned against Rich 9d8f9a3's bytes for the same `print_json` call.
+  // Pinned against Rich 9d8f9a3's bytes for the same call: `Console(file=buf,
+  // force_terminal=True, color_system="truecolor").print_json(...)`, run from
+  // a checkout the way markup-grammar.test.ts's header runs its golden.
   it("highlights braces, keys and strings with the theme's json styles", () => {
     expect(printJson({ colorSystem: "truecolor" }, '{"key": "value"}')).toBe(
       '\x1b[1m{\x1b[0m\n  \x1b[1;34m"key"\x1b[0m: \x1b[32m"value"\x1b[0m\n\x1b[1m}\x1b[0m\n',
