@@ -4,15 +4,22 @@
     {
       "version": "pr-210",
       "ref": "refs/pull/210/merge",
-      "sha": "99569053685f512f2ae3aa271f1d99cb06e7de9a",
-      "timestamp": "2026-09-29T18:01:51.011Z",
+      "sha": "c7e9cbb5ac857108deac8e6ea6240a30b298a7f9",
+      "timestamp": "2026-09-29T18:15:25.863Z",
       "commits": [
         {
-          "sha": "99569053685f512f2ae3aa271f1d99cb06e7de9a",
+          "sha": "c7e9cbb5ac857108deac8e6ea6240a30b298a7f9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:00:57-06:00",
-          "message": "Merge dd57c0accbfd16eeb889d8529294957a6234750c into 2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464\n"
+          "timestamp": "2026-09-29T18:14:32Z",
+          "message": "Merge 890a6958edbb2429463334e5b68f2ebc3c49d7a4 into 2f624ad0783ddbc9f5f62fb5fe8d88be8cc6e464\n"
+        },
+        {
+          "sha": "890a6958edbb2429463334e5b68f2ebc3c49d7a4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T12:14:27-06:00",
+          "message": "feat(render)!: every glyph a renderable chooses resolves through drawable (rich-render-nmy)\n\nasciiOnly reached only Panel, Table, Rule, Tree and three widgets; ProgressBar,\nSpinner, Markdown, Syntax, Viewport, TextInput, the Strip joiners and the\noverflow ellipsis ignored it. `drawable` in core/protocol is now the one rule:\na glyph outside ASCII gives way to its stand-in, one already ASCII is kept\n(which also stops Rule discarding a caller's `=`). test/renderables/ascii-only\nrenders every exported renderable under the switch, and needs a row for each.\n\nBREAKING CHANGE: RenderOptions.legacyWindows is removed; nothing read it.\n"
         },
         {
           "sha": "dd57c0accbfd16eeb889d8529294957a6234750c",
