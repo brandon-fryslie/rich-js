@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "09c34e93c05bb98ab33aef129b0a19c2c2b3323e",
+      "timestamp": "2026-09-29T13:05:11.471Z",
+      "commits": [
+        {
+          "sha": "09c34e93c05bb98ab33aef129b0a19c2c2b3323e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T07:00:43-06:00",
+          "message": "fix(markup): halve the backslash run in front of a tag, as Rich does; escape inverts both parser rules (rich-markup-nm1) (#195)"
+        },
+        {
+          "sha": "0a75deaa82ae81165ffd8ecbcfdb59933a439656",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T06:43:53-06:00",
+          "message": "fix(markup): an implicit close [/] closes a plugin tag, as it closes any other (rich-markup-gfr) (#196)\n\npairPluginTags kept a stack of plugin tags only, so it could not tell what [/]\nreferred to and skipped it: [shout]one[/] fell back to the built-in parser,\nwhich dropped [shout] as an unknown style without a word. The pass now keeps\nthe built-in dialect's full stack, style tags included, and pairs a plugin tag\nwhen [/] pops it. [/name] matching is one predicate shared by both walks."
+        }
+      ]
+    },
+    {
       "version": "pr-198",
       "ref": "refs/pull/198/merge",
       "sha": "e62e020ff89cabc461b1ef4e6e74c3df70e4364d",
@@ -42,21 +64,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T06:54:10-06:00",
           "message": "fix(markup): a style tag spans a plugin pair it encloses (rich-markup-cg6)\n\nThe plugin-aware walk rendered the text between plugin pairs as separate\nbuilt-in parses, so every style tag closed at the first pair's boundary and\nits closing tag then matched nothing: '[bold]x[click]y[/click]z[/bold]'\nthrew \"doesn't match any open tag\" with [bold] visibly open. Since gfr let\n[/] close a plugin tag, '[bold][aa]x[/][/]' threw the same way, and an\nunclosed '[bold]pre [aa]x[/aa] post' silently lost bold after the pair.\n\nEach plugin pair's handler output now takes the pair's place in one built-in\nwalk over the slice, so an enclosing style covers it like plain text and the\nhandler's own spans repaint it as an inner tag would. The same change stops\na base style from painting over markup colours whenever a plugin pair is\npresent, which the final whole-output stylize used to do.\n\nA style tag that opens on one side of a plugin pair's boundary and closes on\nthe other has no span to give, since the handler replaces the text inside;\nthe pairing walk now rejects it with an error naming the plugin boundary.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "440ffe953943a6f036ccbc7fa31569470a9d42c1",
-      "timestamp": "2026-09-29T12:37:38.671Z",
-      "commits": [
-        {
-          "sha": "440ffe953943a6f036ccbc7fa31569470a9d42c1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:36:20-06:00",
-          "message": "feat(widgets): hit-test the painted frame; widgets get their own coordinates (rich-runtime-fna.2) (#192)\n\n* feat(widgets): hit-test the painted frame; widgets get their own coordinates (rich-runtime-fna.2)\n\nWidgetBase.render stamps a subclass's `draw` output with its anchor, so the\nframe a screen paints is its own hit map. `widgetAt(frame, x, y)` names the\ninnermost widget under a cell and the cell's place in that widget's output;\nEventRouter reads it off `FrameSource.frame` and delivers each pointer event\nin the widget's own coordinates, a captured drag relative to the origin its\npress found. `bounds`, `WidgetBounds`, `containsPoint`, the active-overlay\nset and the z-sorted `widgets` getter are gone: z-order is paint order, and\nthe overlay pass stamps overlay row i as the widget's row footprint+i.\n\n* fix(widgets): a widget owns its rectangle; drags follow the repainted widget; releases know if they landed (rich-runtime-fna.2)\n\n- WidgetBase.render pads every row to the widest and terminates each row,\n  so a click past a short row still hits and a blank last row survives.\n- Captured drags read the widget's origin off the current frame (originOf).\n- WidgetMouseEvent carries `over`; the parser's event is ScreenMouseEvent.\n  Dropdown reads `over` instead of recomputing its own extent.\n- Segment.anchorLines takes firstRow; the overlay pass drops its pad/slice.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(widgets): only a WidgetBase mounts; a release dragged off a click widget cancels it (rich-runtime-fna.2)\n\nMountEntry and Screen move to screen.ts so the entry type can name\nWidgetBase without types.ts depending upward on it.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
