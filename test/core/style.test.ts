@@ -265,7 +265,7 @@ describe("Style.parse errors", () => {
     }
     expect(thrown).toBeInstanceOf(StyleSyntaxError);
     expect(thrown).toMatchObject({
-      message: `${failure}: ColorParseError: ColorSpec number 300 is out of range (0-255)`,
+      message: `${failure}: ColorParseError: ColorSpec "color(300)": number 300 is out of range (0-255)`,
       cause: expect.any(ColorParseError),
     });
   });
