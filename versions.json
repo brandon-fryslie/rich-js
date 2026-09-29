@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "71d12c86e45e66401ea99039d382750dc9fd2b7a",
-      "timestamp": "2026-09-29T09:52:17.476Z",
+      "sha": "d96ef1e3042e6a350ded06164e3d04b863257d37",
+      "timestamp": "2026-09-29T10:13:11.757Z",
       "commits": [
         {
-          "sha": "71d12c86e45e66401ea99039d382750dc9fd2b7a",
+          "sha": "d96ef1e3042e6a350ded06164e3d04b863257d37",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T03:51:22-06:00",
-          "message": "fix(export-html): blink holds still under reduced motion (rich-docs-examples-xuu.0hj) (#186)\n\n* fix(export-html): blink holds still for a reader who asked for reduced motion (rich-docs-examples-xuu.0hj)\n\nHTML_FRAGMENT_CSS redefines the rich-blink keyframes as empty under\nprefers-reduced-motion: reduce. The blink is an inline animation that no\nstylesheet rule outranks, so emptying the keyframes it names is the one lever\nthe page has. Covers the docs outputs and every encodeHtml document.\n\n* fix(export-html): gate the blink keyframes on no-preference instead of emptying them under reduce\n\nOne rule: nothing depends on a later same-named @keyframes winning, and a\nminifier that drops empty rules cannot strip the reduced-motion half. The\nbrowser test now covers blink2 and a preference switched on while the page is\nopen; a unit test pins the gate."
+          "timestamp": "2026-09-29T04:11:53-06:00",
+          "message": "fix(export-html): wide glyphs hold two cells; CJK example on the Text page (rich-docs-examples-xuu.9lc) (#187)\n\n* fix(export-html): a wide glyph holds its two cells, so columns after CJK text line up (rich-docs-examples-xuu.9lc)\n\ndocs/text.md gains a Wide characters example: a Table of CJK and Hangul\ncity names. Checked in a browser, its column edges drifted up to 24px left on\nrows with wide text, because a browser draws a wide glyph at its fallback\nfont's width, not two cells. encodeHtmlFragment now cuts a run at each\ngrapheme that is not one cell wide and draws it as a run of its own in an\ninline-block exactly that many ch wide.\n\n* fix(export-html): box only wide glyphs, unpainted, inside their run; fix the fragment's default line height\n\nA wide glyph's box now carries only its width and inherits its parent's\ndecoration, so the run's background and lines stay the run's and the markup\ngrows by one short span per wide glyph. Zero-width graphemes stay in the text,\nall-ASCII runs skip segmentation, and the segmenter is made on use rather than\nat import. The fragment's fallback font now fixes its line height, so a row\nholding a fallback-font glyph no longer grows.\n\n* fix(export-html): one box per stretch of wide glyphs, and one grapheme segmenter\n\nFind-in-page does not match across two inline-blocks, so a CJK word boxed a\nglyph apiece could not be searched; a stretch of wide glyphs now shares one box\nas wide as their cells together, and a zero-width grapheme joins the stretch\nbefore it. The segmenter is made once, on first use."
         }
       ]
     }
