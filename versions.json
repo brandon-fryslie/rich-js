@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-202",
-      "ref": "refs/pull/202/merge",
-      "sha": "4c83c131a5fa50bedbc984e3cd3b184d746cad3b",
-      "timestamp": "2026-09-29T13:35:44.069Z",
-      "commits": [
-        {
-          "sha": "4c83c131a5fa50bedbc984e3cd3b184d746cad3b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T13:34:48Z",
-          "message": "Merge 7c8cfe5ec77fd3850b65141147d1f4117d8f3d05 into 2b7567448de6b63cbab278a754c1ff3d6217dada\n"
-        },
-        {
-          "sha": "7c8cfe5ec77fd3850b65141147d1f4117d8f3d05",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:34:42-06:00",
-          "message": "fix(table): read column and table bounds as cell counts, one rule for every width (rich-table-hge)\n"
-        },
-        {
-          "sha": "a72f4947b4fb4cdd47ff12ea5830cabf269cb7f9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:29:59-06:00",
-          "message": "fix(table): a NaN column bound is no bound, parsed where it enters the column (rich-table-hge)\n\nA minWidth or maxWidth of NaN reached Math.max/Math.min in _naturalWidth,\npoisoned the natural width, and erased the whole column. The bounds are now\naccessors that hold NaN as undefined, so the guarantee holds for a bound\nassigned after construction too. Infinity stays a real bound. The existing\n'treats NaN column bounds as no bounds' test asserted the collapsed frame;\nit now asserts the content-sized one its name promises.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2b7567448de6b63cbab278a754c1ff3d6217dada",
-      "timestamp": "2026-09-29T13:32:40.379Z",
+      "sha": "d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3",
+      "timestamp": "2026-09-29T13:37:57.154Z",
       "commits": [
         {
-          "sha": "2b7567448de6b63cbab278a754c1ff3d6217dada",
+          "sha": "d4ce4794d8ad5eb880fbab17dbd8a4fa19053da3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:31:42-06:00",
-          "message": "test(markup): pin a negated attribute byte for byte against the reference (rich-color-9ga) (#201)\n\n* test(markup): pin a negated attribute byte for byte against the reference (rich-color-9ga)\n\nThe SGR 22 the ticket measured was already gone: a5ef4b92 (#117) made\nStyle.toSgrCodes write only the attributes that are on. Nothing pinned it.\nnegated-attribute puts [bold red]a[not bold]b[/not bold]c[/] in the\nreference-generated golden, regenerated with the header's own command so\nevery existing case reproduced unchanged. Mutating toSgrCodes to emit 22\nfor a false attribute turns it red.\n\nThe ticket's own [red]..[not bold] shape cannot go in yet: the encoder\nmerges adjacent equal-SGR runs where Rich writes one per segment. Filed\nas rich-render-g5g8.\n\n* test(style): pin that a negated attribute writes no SGR parameter (rich-color-9ga)\n\nRows checked against Rich 9d8f9a3 _make_ansi_codes. The markup comment\nnow credits the fix to rich-style-h93 (#117), where it landed."
-        },
-        {
-          "sha": "d336dde439458a82bc94ae88697eecc44d0c6d5f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T07:25:54-06:00",
-          "message": "test(link): pin nested and wrap-split links as one id per link (rich-link-jkh) (#200)\n\n* test(link): pin a nested and a wrap-split link as one id per link, end to end (rich-link-jkh)\n\nThe id itself landed in #152; this pins the ticket's end state through\nConsole.print: the outer link repeats its id around a nested one, as\nRich's does, and every line of a wrapped link opens with one id.\n\n* test(link): pin exact runs per line, compare (uri, id) pairs, anchor the Rich claim (rich-link-jkh)"
+          "timestamp": "2026-09-29T07:37:02-06:00",
+          "message": "fix(table): a NaN column bound is no bound (rich-table-hge) (#202)\n\n* fix(table): a NaN column bound is no bound, parsed where it enters the column (rich-table-hge)\n\nA minWidth or maxWidth of NaN reached Math.max/Math.min in _naturalWidth,\npoisoned the natural width, and erased the whole column. The bounds are now\naccessors that hold NaN as undefined, so the guarantee holds for a bound\nassigned after construction too. Infinity stays a real bound. The existing\n'treats NaN column bounds as no bounds' test asserted the collapsed frame;\nit now asserts the content-sized one its name promises.\n\n* fix(table): read column and table bounds as cell counts, one rule for every width (rich-table-hge)"
         }
       ]
     }
