@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-206",
+      "ref": "refs/pull/206/merge",
+      "sha": "45f3fab9c74b5151508065b52a825b58d19c5345",
+      "timestamp": "2026-09-29T14:07:35.903Z",
+      "commits": [
+        {
+          "sha": "45f3fab9c74b5151508065b52a825b58d19c5345",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T08:06:40-06:00",
+          "message": "Merge 86c5a3a4953197f90e99bd70b88898f06c4c80fc into ea6e75d87583f84b8e69a2fdcc467ddcccac75aa\n"
+        },
+        {
+          "sha": "86c5a3a4953197f90e99bd70b88898f06c4c80fc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T08:06:24-06:00",
+          "message": "fix(table): draw with Table.style and Column's three styles, as the reference does (rich-table-jph)\n\nTable.style is the base the border style layers over; a column's headerStyle and\nfooterStyle layer over the table's, and its style sits under the row's rowStyles\nentry. The cell's style now covers its padding and the blank lines a short cell\nruns out of, which is where the reference puts it. Each case is pinned against\nPython Rich 9d8f9a3's bytes.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-204",
       "ref": "refs/pull/204/merge",
       "sha": "b73d64cbd85e64515c713d98d09ba6e721b6a316",
