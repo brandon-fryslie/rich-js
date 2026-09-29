@@ -763,8 +763,33 @@ describe("Console.print() line ends", () => {
     expect(printed([panel(), panel(), { sep: "|" }]).out).toBe(PANEL + PANEL);
   });
 
-  it("joins RichText, strings and data as one line", () => {
+  it("joins RichText, strings and scalars as one line", () => {
     expect(printed([new RichText("a"), "b", 1]).out).toBe("a b 1\n");
+  });
+
+  // The line structure is Python Rich fc41075a's for the same call; each value
+  // is spelled as this port's `Pretty` spells it, `{ x: 1 }` for `{'x': 1}`.
+  it("gives a container lines of its own between two strings", () => {
+    expect(printed(["a", { x: 1 }, "b"]).out).toBe("a\n{ x: 1 }\nb\n");
+    expect(printed(["x =", [1, 2], "y =", 99]).out).toBe("x =\n[1, 2]\ny = 99\n");
+    expect(printed(["a", new Map([[1, 2]]), new Set([3]), "b"]).out).toBe("a\nMap { 1 => 2 }\nSet { 3 }\nb\n");
+  });
+
+  it("gives an empty container lines of its own", () => {
+    expect(printed(["a", [], "b"]).out).toBe("a\n[]\nb\n");
+  });
+
+  it("starts an expanded container at the start of a line", () => {
+    const { out } = printed(["a", { k: "vvvv", j: [0, 1, 2] }, "b"]);
+    expect(out).toBe('a\n{\n    k: "vvvv",\n    j: [0, 1, 2]\n}\nb\n');
+  });
+
+  it("does not put sep beside a container", () => {
+    expect(printed([{ x: 1 }, "b", { sep: "-" }]).out).toBe("{ x: 1 }\nb\n");
+  });
+
+  it("keeps an object that describes itself in the line", () => {
+    expect(printed(["a", { toString: () => "T" }, "b"]).out).toBe("a T b\n");
   });
 
   it("uses the print's end, not a RichText argument's own", () => {

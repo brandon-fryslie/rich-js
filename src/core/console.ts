@@ -10,7 +10,7 @@ import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
 import { RichText } from "./text.js";
 import { renderMarkup } from "./markup.js";
-import { Pretty } from "./pretty.js";
+import { Pretty, isExpandable } from "./pretty.js";
 import { JSONRenderable, type JSONOptions } from "./json.js";
 import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
@@ -500,18 +500,20 @@ export class Console {
     const printStyle = this._theme.resolve(opts.style ?? NULL_STYLE);
 
     // A print is a column of blocks, and every argument joins one of two kinds.
-    // Text — a string, a `RichText`, or data — runs together: adjacent text
+    // Text — a string, a `RichText`, or a scalar — runs together: adjacent text
     // items are one block, joined by `sep` and ended by `end`. Any other
     // renderable is a block of its own that occupies whole lines, so neither
     // `sep` nor `end` ever touches it. That is the reference's split — `end`
     // belongs to text, not to the print — and it is what lets two printed panels
-    // stack with no blank line between them. The one place the reference cuts
-    // differently is data: it gives a container lines of its own, and here all
-    // data is text. The line is not closed by asking where the cursor sits:
-    // `print("a\n")` is a line and an empty one, here as in the reference and
-    // in every other `print`, and only the kind of the item can tell that
-    // trailing break from a `Panel`'s. A call with nothing to print is one
-    // empty text run, so it still ends the line.
+    // stack with no blank line between them. Data is cut where the reference
+    // cuts it: a container (`isExpandable`) is a block, a scalar is text. A
+    // container is laid out by `Pretty` across as many lines as it needs, and
+    // joined into a run it would start partway along a line and leave its
+    // closing bracket where the next item carries on. The line is not closed by
+    // asking where the cursor sits: `print("a\n")` is a line and an empty one,
+    // here as in the reference and in every other `print`, and only the kind of
+    // the item can tell that trailing break from a `Panel`'s. A call with
+    // nothing to print is one empty text run, so it still ends the line.
     const blocks: PrintBlock[] = items.length === 0 ? [{ kind: "text", items: [] }] : [];
     for (const item of items) {
       // Four arms, and they are the whole domain. A `RichText` is already text;
@@ -519,7 +521,8 @@ export class Console {
       // the line end of a run is the print's. Any other renderable draws itself,
       // as a block. A string is the only kind of argument that can *contain*
       // markup, so it is the only kind the markup dialect is applied to.
-      // Everything else is data, and `Pretty` is the single authority on how a
+      // Everything else is data — a block when it is a container, text when it
+      // is not — and `Pretty` is the single authority on how a
       // JavaScript value displays — `String(value)` was a second, weaker one
       // that answered `[object Object]` for every object and let the markup
       // parser eat it. [LAW:one-source-of-truth]
@@ -547,11 +550,16 @@ export class Console {
         // Indent guides are styling too, and travel with the same decision —
         // the console owns what `highlight` means for everything it emits,
         // rather than `Pretty` inferring it back out of the highlighter.
-        text = new Pretty(item, {
+        const pretty = new Pretty(item, {
           ...PRINT_DATA_BOUNDS,
           highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
           indentGuides: doHighlight,
         });
+        if (isExpandable(item)) {
+          blocks.push({ kind: "lines", renderable: pretty });
+          continue;
+        }
+        text = pretty;
       }
       const run = blocks.at(-1);
       if (run?.kind === "text") run.items.push(new RichText(sep, { end: "" }), text);

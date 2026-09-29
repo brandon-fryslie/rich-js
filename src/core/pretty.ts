@@ -242,6 +242,29 @@ function describesItself(value: object): boolean {
 }
 
 /**
+ * Whether `Pretty` lays a value out as a container — brackets and positions —
+ * rather than spelling it as one piece of text: an array or typed array, a
+ * `Map`, a `Set`, or an object that does not describe itself. Emptiness and
+ * the depth cap do not enter into it; `[]` is still a container that happens to
+ * print on one line. This is Python Rich's `is_expandable`, and `Console.print`
+ * reads it to give a container lines of its own. `_shape` reads it too, for the
+ * one arm that is not a container, so the two cannot disagree about which
+ * values those are. [LAW:one-source-of-truth]
+ *
+ * A value whose reflection throws is not one, as in the reference's
+ * `_safe_isinstance`: `Pretty` then formats it as text, and the throw reaches
+ * the output as `threw`'s marker rather than taking the print down.
+ */
+export function isExpandable(value: unknown): value is object {
+  if (typeof value !== "object" || value === null) return false;
+  try {
+    return indexedElements(value) !== null || value instanceof Map || value instanceof Set || !describesItself(value);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * One value inside a slot, and the literal text that follows it.
  *
  * `read` is deferred rather than a value already in hand because reading is
@@ -465,10 +488,10 @@ export class Pretty implements Renderable, Measurable {
       );
     }
 
-    // Objects that answer the display question themselves. Sits below the
-    // Array/Map/Set arms deliberately: an array also overrides `toString`, but
+    // Objects that answer the display question themselves. `isExpandable` asks
+    // the Array/Map/Set question first: an array also overrides `toString`, but
     // "1,2,3" is a poorer answer than the structural form above.
-    if (describesItself(value)) return { kind: "text", text: String(value) };
+    if (!isExpandable(value)) return { kind: "text", text: String(value) };
 
     // Plain objects — no self-description, so the keys are the whole story.
     const obj = value as Record<string, unknown>;

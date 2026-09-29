@@ -170,12 +170,13 @@ for by name.
 
 ### Line ends
 
-`sep` and `end` belong to text. Adjacent strings, `RichText` values and data are
-joined with `sep`, a space by default, and the line they make is ended with
-`end`, a line break by default. Any other renderable takes whole lines of its
-own: text before it ends its line first, text after it starts on a new one, and
-neither `sep` nor `end` is placed next to it. Printed renderables therefore stack
-with no blank line between them:
+`sep` and `end` belong to text. Adjacent strings, `RichText` values and scalar
+data (numbers, booleans, `null`, an object with its own `toString`) are joined
+with `sep`, a space by default, and the line they make is ended with `end`, a
+line break by default. Any other renderable takes whole lines of its own: text
+before it ends its line first, text after it starts on a new one, and neither
+`sep` nor `end` is placed next to it. Printed renderables therefore stack with no
+blank line between them:
 
 ```typescript
 console.print("before", new Panel("[bold]one[/]", { width: 9, borderStyle: "cyan" }), "after", "that");
@@ -188,6 +189,15 @@ text. A renderable's last line is always ended, even one whose render did not
 end it. Python Rich differs here: it leaves such a line open, and the next print
 carries on along it. A line break at the end of a string is text, so
 `console.print("a\n")` prints `a` and then an empty line.
+
+Data that is a container takes whole lines of its own too, as it does in Python
+Rich: an array, a `Map`, a `Set`, or an object without its own `toString`, even
+an empty one. `Pretty` formats it and may spread it across several lines, so it
+never starts partway along one:
+
+```typescript
+console.print("x =", [1, 2], "y =", 99);
+```
 
 ### Style argument
 
