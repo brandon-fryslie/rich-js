@@ -2,6 +2,21 @@
   "schema": 2,
   "versions": [
     {
+      "version": "master",
+      "ref": "refs/heads/master",
+      "sha": "31b35f33e2658f5f83e190a36756fc5e5e6f1296",
+      "timestamp": "2026-09-29T22:49:25.894Z",
+      "commits": [
+        {
+          "sha": "31b35f33e2658f5f83e190a36756fc5e5e6f1296",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:48:25-06:00",
+          "message": "fix(columns): lay out as Rich's grid, so padding and expand take effect (rich-columns-awe, rich-columns-sf4) (#226)\n\n* fix(columns): lay out as Rich's grid, so padding and expand take effect (rich-columns-awe, rich-columns-sf4)\n\n`padding` was never read and `expand` was stored and never read: the gutter\nwas a hard-coded 2 and every layout divided the whole offer among uniform\ncolumns, so there was nothing left for `expand` to do.\n\nColumns now decides what Rich's `Table.grid(collapse_padding, pad_edge=False)`\ndecides: a column count found by Rich's search, each column as wide as its own\nwidest item, a gap of the wider horizontal padding side, rows separated by\n`top + max(0, top - bottom)`, and `expand` spreading the surplus with a port of\n`ratio_distribute`. Items render with a default Column's options (left,\nellipsis). Output is byte-identical to Rich 9d8f9a3 for every case pinned in the\ntests and for the docs listing.\n\nOne departure, where Rich has no sound answer: a declared `width` searches the\ncolumn count the same way instead of `max_width // (width + gap)`, so it never\nlays out empty trailing columns (sf4) and never divides by zero.\n\n* fix(columns): linear layout search, no argument spread, honest departures (rich-columns-awe)\n\nReview (high) on #226:\n- slotItem is constant time and the search keeps a running total, so a\n  listing is laid out in linear time again (20k items: 2.7 s -> 0.1 s).\n- The widest item is a fold; `Math.max(...sizes)` overflowed the stack at\n  200k items, now pinned by a test.\n- docs/columns.md names all three places Columns departs from Rich: the\n  declared-width count, empty items, and measure.\n\nThe zero-width `or 1` floor is not ported here: in Rich it comes from\nTable.grid, which then shrinks columns that overflow. Filed as\nrich-columns-i08a.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+        }
+      ]
+    },
+    {
       "version": "pr-227",
       "ref": "refs/pull/227/merge",
       "sha": "2a2b32c3f04296478c0fc42c792c31b7ce9fd97c",
@@ -41,21 +56,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T16:26:40-06:00",
           "message": "fix(console): print gives a container lines of its own, as Rich does (rich-console-5k3)\n\nA container argument (array, typed array, Map, Set, or an object without its\nown toString — Pretty's `isExpandable`, Rich's `is_expandable`) is now a block\nin `Console.print`, like any renderable: `print(\"a\", { x: 1 }, \"b\")` prints\nthree lines, as Rich fc41075a does. Scalars still join the text run.\n\n`isExpandable` is the one definition of \"container\": `_shape` reads its text\narm from it, so print and Pretty cannot disagree.\n"
-        }
-      ]
-    },
-    {
-      "version": "master",
-      "ref": "refs/heads/master",
-      "sha": "d3580d7d8fb0f6bad1564bb7ffc58a8599f85c85",
-      "timestamp": "2026-09-29T22:43:19.532Z",
-      "commits": [
-        {
-          "sha": "d3580d7d8fb0f6bad1564bb7ffc58a8599f85c85",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:42:18-06:00",
-          "message": "fix(release): declare repository; refuse a publish missing its entry points (0.18.1) (#228)\n\n* fix(release): declare repository and refuse a publish missing its entry points; release 0.18.1\n\npublish.yml failed E422 because package.json had no repository, so\nprovenance could not verify (rich-release-24l). The laptop fallback then\npublished 0.18.0 with no dist/ (deprecated): prepublishOnly now refuses any\ntree missing a file main/types/exports declares.\n\n* fix(release): entry-points guard reads npm's pack listing and cannot fail open\n\n- main() runs unconditionally: the argv[1] check exited 0 unchecked through any\n  symlinked path (macOS tmpdir included)\n- what ships is asked of `npm pack --dry-run --json`, not the disk\n- every missing entry point is named, on one stderr channel\n- tests run a byte copy against real fixture packages, pin the prepublishOnly\n  wiring and the repository field; publish.yml and CLAUDE.md name the gate\n\n* fix(release): drop the unreachable npm.cmd branch"
         }
       ]
     },
