@@ -4,44 +4,22 @@
     {
       "version": "pr-198",
       "ref": "refs/pull/198/merge",
-      "sha": "367bfd6f2a058401d4aed73262379d55e0e3a12b",
-      "timestamp": "2026-09-29T12:59:32.975Z",
+      "sha": "e62e020ff89cabc461b1ef4e6e74c3df70e4364d",
+      "timestamp": "2026-09-29T13:01:16.048Z",
       "commits": [
         {
-          "sha": "367bfd6f2a058401d4aed73262379d55e0e3a12b",
+          "sha": "e62e020ff89cabc461b1ef4e6e74c3df70e4364d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:58:42-06:00",
-          "message": "Merge cb6707874b0cb21b9e995dd1e5795335ab65930d into 0a75deaa82ae81165ffd8ecbcfdb59933a439656\n"
+          "timestamp": "2026-09-29T13:00:17Z",
+          "message": "Merge c6061e7e914daa52da9674d618a8706277668a5f into 0a75deaa82ae81165ffd8ecbcfdb59933a439656\n"
         },
         {
-          "sha": "cb6707874b0cb21b9e995dd1e5795335ab65930d",
+          "sha": "c6061e7e914daa52da9674d618a8706277668a5f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T06:58:35-06:00",
           "message": "feat(host): App, the runtime that takes the terminal and hands it back on every exit (rich-runtime-fna.3)\n\nApp paints one renderable per frame on an alternate or inline surface,\nrepaints on refresh() and resize, suspends through the host, and undoes the\nalternate screen, hidden cursor and raw mode on stop, a throwing frame, and\nevery way the program can end under it.\n\nTerminalHost gains onExit and suspend. The node host hears exit, SIGINT,\nSIGTERM, SIGHUP and uncaughtExceptionMonitor, keeps each ending's default\noutcome, and suspends by SIGTSTP with a timer holding the loop until SIGCONT.\n\ninstallTraceback now throws unhandled rejections into the uncaught channel,\nso node's monitor phase restores the terminal before every report prints.\n\nrich-explore runs on App, with Ctrl+Z to suspend.\n"
-        }
-      ]
-    },
-    {
-      "version": "pr-195",
-      "ref": "refs/pull/195/merge",
-      "sha": "33a0b1ac6425504bfa9eb5073d52c78a587b8be6",
-      "timestamp": "2026-09-29T12:58:20.356Z",
-      "commits": [
-        {
-          "sha": "33a0b1ac6425504bfa9eb5073d52c78a587b8be6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T12:57:38Z",
-          "message": "Merge 58f135d160e0825d410bfa14c79e5592efa2c4cd into 0a75deaa82ae81165ffd8ecbcfdb59933a439656\n"
-        },
-        {
-          "sha": "58f135d160e0825d410bfa14c79e5592efa2c4cd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T06:55:17-06:00",
-          "message": "fix(markup): halve the backslash run in front of a tag, as Rich does; escape inverts both parser rules (rich-markup-nm1)\n"
         }
       ]
     },
