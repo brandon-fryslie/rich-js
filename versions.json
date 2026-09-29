@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-188",
-      "ref": "refs/pull/188/merge",
-      "sha": "ce2e7e6c153205e6cf3152bdb9a420d08a6fc86a",
-      "timestamp": "2026-09-29T10:30:26.991Z",
-      "commits": [
-        {
-          "sha": "ce2e7e6c153205e6cf3152bdb9a420d08a6fc86a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T10:29:35Z",
-          "message": "Merge 7148f29f48867fa6a1644db713d3f57b9109e43f into d96ef1e3042e6a350ded06164e3d04b863257d37\n"
-        },
-        {
-          "sha": "7148f29f48867fa6a1644db713d3f57b9109e43f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:29:29-06:00",
-          "message": "fix(tree): hideRoot drops its children's column; ASCII ends a list with `--; one walk entry (rich-tree-sgk)\n\nReview of PR #188 (high):\n- hideRoot now takes the root row and the column its children hang from, as\n  Rich does (levels[2:]), via the single _walk entry render and measure share.\n- ASCII end glyph is \"`-- \", as in Rich.\n- The stacking test uses italic rather than bold, so it no longer pins the\n  light-glyph/bold-guide divergence ticketed as rich-tree-te3h.\n"
-        },
-        {
-          "sha": "8480186889b37959b9ea549ae1d8fe25fb51da6f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:21:02-06:00",
-          "message": "fix(tree): a branch on every row at every depth, and a multi-line label stays behind its guides (rich-tree-sgk)\n\nGrandchildren were walked with only the continuation prefix, so rows below\nthe first level lost their branch glyph and guide style. One recursion now\nwalks every depth; each guide column carries its first-line and continuation\nglyph and the stacked guide styles of the nodes above it, as in Rich.\n\nA label rendering several lines printed its later lines at column 0 and a\nblank row after; the label is now cut into lines and each is led by the\nguides.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d96ef1e3042e6a350ded06164e3d04b863257d37",
-      "timestamp": "2026-09-29T10:13:11.757Z",
+      "sha": "2ab454a47e8a85bbe52d6a976853639a5f736674",
+      "timestamp": "2026-09-29T10:33:34.041Z",
       "commits": [
         {
-          "sha": "d96ef1e3042e6a350ded06164e3d04b863257d37",
+          "sha": "2ab454a47e8a85bbe52d6a976853639a5f736674",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T04:11:53-06:00",
-          "message": "fix(export-html): wide glyphs hold two cells; CJK example on the Text page (rich-docs-examples-xuu.9lc) (#187)\n\n* fix(export-html): a wide glyph holds its two cells, so columns after CJK text line up (rich-docs-examples-xuu.9lc)\n\ndocs/text.md gains a Wide characters example: a Table of CJK and Hangul\ncity names. Checked in a browser, its column edges drifted up to 24px left on\nrows with wide text, because a browser draws a wide glyph at its fallback\nfont's width, not two cells. encodeHtmlFragment now cuts a run at each\ngrapheme that is not one cell wide and draws it as a run of its own in an\ninline-block exactly that many ch wide.\n\n* fix(export-html): box only wide glyphs, unpainted, inside their run; fix the fragment's default line height\n\nA wide glyph's box now carries only its width and inherits its parent's\ndecoration, so the run's background and lines stay the run's and the markup\ngrows by one short span per wide glyph. Zero-width graphemes stay in the text,\nall-ASCII runs skip segmentation, and the segmenter is made on use rather than\nat import. The fragment's fallback font now fixes its line height, so a row\nholding a fallback-font glyph no longer grows.\n\n* fix(export-html): one box per stretch of wide glyphs, and one grapheme segmenter\n\nFind-in-page does not match across two inline-blocks, so a CJK word boxed a\nglyph apiece could not be searched; a stretch of wide glyphs now shares one box\nas wide as their cells together, and a zero-width grapheme joins the stretch\nbefore it. The segmenter is made once, on first use."
+          "timestamp": "2026-09-29T04:32:42-06:00",
+          "message": "fix(tree): a branch on every row at every depth; multi-line labels stay behind the guides (rich-tree-sgk) (#188)\n\n* fix(tree): a branch on every row at every depth, and a multi-line label stays behind its guides (rich-tree-sgk)\n\nGrandchildren were walked with only the continuation prefix, so rows below\nthe first level lost their branch glyph and guide style. One recursion now\nwalks every depth; each guide column carries its first-line and continuation\nglyph and the stacked guide styles of the nodes above it, as in Rich.\n\nA label rendering several lines printed its later lines at column 0 and a\nblank row after; the label is now cut into lines and each is led by the\nguides.\n\n* fix(tree): hideRoot drops its children's column; ASCII ends a list with `--; one walk entry (rich-tree-sgk)\n\nReview of PR #188 (high):\n- hideRoot now takes the root row and the column its children hang from, as\n  Rich does (levels[2:]), via the single _walk entry render and measure share.\n- ASCII end glyph is \"`-- \", as in Rich.\n- The stacking test uses italic rather than bold, so it no longer pins the\n  light-glyph/bold-guide divergence ticketed as rich-tree-te3h."
         }
       ]
     }
