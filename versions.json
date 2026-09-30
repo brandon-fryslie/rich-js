@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-266",
+      "ref": "refs/pull/266/merge",
+      "sha": "4946649a18285028b9abcc3da80195436d2a6197",
+      "timestamp": "2026-09-30T17:15:36.156Z",
+      "commits": [
+        {
+          "sha": "4946649a18285028b9abcc3da80195436d2a6197",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:14:23-06:00",
+          "message": "Merge c1e3c5ae45ec70369fd4a2b1dcf686a553857c1b into 840008549a0deec1f0728b905d35f6cfad71a50f\n"
+        },
+        {
+          "sha": "c1e3c5ae45ec70369fd4a2b1dcf686a553857c1b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:14:15-06:00",
+          "message": "fix(color): ColorDepth.WINDOWS draws in the Windows console's sixteen colours (rich-color-dhay)\n\ndowngrade() ranked depths by enum value, and WINDOWS = 4 sits above\nTRUECOLOR = 3, so nothing ever downgraded toward it and a WINDOWS console\nwrote 24-bit SGR. Depths are now ranked by how many colours they name\n(fidelity), and a downgrade to WINDOWS matches a fixed colour against\nWINDOWS_TABLE while an ANSI slot keeps its index, as Rich does.\n\nWINDOWS_TABLE was in console-attribute order (slot 1 navy) while every\nreader of a WINDOWS number — its 30+n SGR, theme.ansiColors — takes it as\nan ANSI index. It is now the Campbell scheme in ANSI order; the old values\nreordered would have been STANDARD_TABLE exactly. colorMath's drawnTable\nmeasures WINDOWS against that table instead of as truecolor.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "840008549a0deec1f0728b905d35f6cfad71a50f",
