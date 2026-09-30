@@ -4,15 +4,22 @@
     {
       "version": "pr-264",
       "ref": "refs/pull/264/merge",
-      "sha": "5b8cf6b83c34bb8a55ed10a9ee46ccc0c160dba6",
-      "timestamp": "2026-09-30T16:51:56.944Z",
+      "sha": "19c99329d69792826323b28a99342b73b55a20c7",
+      "timestamp": "2026-09-30T16:53:16.266Z",
       "commits": [
         {
-          "sha": "5b8cf6b83c34bb8a55ed10a9ee46ccc0c160dba6",
+          "sha": "19c99329d69792826323b28a99342b73b55a20c7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:50:43Z",
-          "message": "Merge ccbdace2aee16bc4cd1bb63cde8a39f7b160a0ee into 9aec2013b58c609efe46bf3d36f4f7b33aead3d1\n"
+          "timestamp": "2026-09-30T16:52:08Z",
+          "message": "Merge 23faa78db2048b715c7ea3a616a45ff33437bca9 into 9aec2013b58c609efe46bf3d36f4f7b33aead3d1\n"
+        },
+        {
+          "sha": "23faa78db2048b715c7ea3a616a45ff33437bca9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T10:52:03-06:00",
+          "message": "docs(contrast): the terminal example imports what it uses (rich-contrast-knmh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "ccbdace2aee16bc4cd1bb63cde8a39f7b160a0ee",
