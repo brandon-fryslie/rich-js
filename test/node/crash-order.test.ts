@@ -19,6 +19,7 @@ import { spawn } from "node:child_process";
 import { mkdtempSync, openSync, closeSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
 
 const FIXTURES = resolve(import.meta.dirname, "fixtures");
@@ -93,7 +94,9 @@ describe("App in a real node process", { timeout: 30_000 }, () => {
     const { output } = await runApp(["reject", "traceback"]);
     const report = output.slice(output.indexOf(ALT_OFF));
 
-    expect(report).toContain("app-ending.ts");
+    // The location is as long as the checkout's path, so it may fold across
+    // lines; all of it is there either way.
+    expect(report.replaceAll("\n", "")).toContain(pathToFileURL(join(FIXTURES, "app-ending.ts")).href);
     expect(report).not.toContain("    at ");
   });
 

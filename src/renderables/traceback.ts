@@ -16,10 +16,9 @@
  * sized and coloured a source-code excerpt this renderer does not produce.
  */
 
-import { Segment } from "../core/segment.js";
-import { Style } from "../core/style.js";
+import type { Segment } from "../core/segment.js";
+import { RichText } from "../core/text.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
-import { getStyle } from "../core/protocol.js";
 
 export interface TracebackOptions {
   suppress?: string[];
@@ -31,7 +30,6 @@ interface StackFrame {
   file: string;
   line: number;
   function: string | undefined;
-  suppressed?: boolean;
 }
 
 function parseStack(error: Error): StackFrame[] {
@@ -69,67 +67,49 @@ export class Traceback implements Renderable {
     this.suppress = options?.suppress ?? [];
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
-    const excTypeStyle = getStyle(options, "traceback.exc_type");
-    const textStyle = getStyle(options, "traceback.text");
+  // [LAW:single-enforcer] The report is one `RichText`, so fitting it to the
+  // width is the one fitting every text in the library gets: a line wider than
+  // the report wraps, and a location wider than the report folds across lines
+  // whole, as Rich's does. Written as bare segments, each line was cropped at
+  // the edge instead, and a frame lost its file and line to a long path.
+  render(options: RenderOptions): Iterable<Segment> {
+    const report = new RichText("", { end: "" });
+    report.append(this.error.name || "Error", "traceback.exc_type");
+    report.append(": ");
+    report.append(this.error.message, "traceback.text");
+    report.append("\n\n");
 
-    // Error type and message
-    const errorName = this.error.name || "Error";
-    const errorMessage = this.error.message || "";
+    // A suppressed frame keeps its place and shows its file and line only: it
+    // is the same frame with no function name to show.
+    const frames = parseStack(this.error).map((frame) =>
+      this.suppress.some((s) => frame.file.includes(s)) ? { ...frame, function: undefined } : frame,
+    );
 
-    yield new Segment(errorName, excTypeStyle);
-    yield new Segment(": ");
-    yield new Segment(errorMessage, textStyle);
-    yield Segment.line();
-    yield Segment.line();
-
-    // Stack frames — suppressed frames show file/line only (not removed)
-    const frames = parseStack(this.error);
-    const filteredFrames = this.suppress.length > 0
-      ? frames.map((f) => ({
-          ...f,
-          suppressed: this.suppress.some((s) => f.file.includes(s)),
-        }))
-      : frames;
-
-    let displayFrames = filteredFrames;
-    if (this.maxFrames > 0 && displayFrames.length > this.maxFrames) {
+    if (this.maxFrames > 0 && frames.length > this.maxFrames) {
       // Spend the budget exactly: the tail takes `maxFrames - head` rather than
       // a second `head`, so an odd budget shows every frame it counts, and it
       // slices from an index because `slice(-0)` is the whole array.
       const head = Math.floor(this.maxFrames / 2);
-      const first = displayFrames.slice(0, head);
-      const last = displayFrames.slice(displayFrames.length - (this.maxFrames - head));
-      const omitted = displayFrames.length - this.maxFrames;
-
-      for (const frame of first) {
-        yield* this._renderFrame(frame, options);
-      }
-      yield new Segment(`  ... ${omitted} frames omitted ...`, textStyle);
-      yield Segment.line();
-      for (const frame of last) {
-        yield* this._renderFrame(frame, options);
-      }
+      const omitted = frames.length - this.maxFrames;
+      for (const frame of frames.slice(0, head)) appendFrame(report, frame);
+      report.append(`  ... ${omitted} frames omitted ...\n`, "traceback.text");
+      for (const frame of frames.slice(frames.length - (this.maxFrames - head))) appendFrame(report, frame);
     } else {
-      for (const frame of displayFrames) {
-        yield* this._renderFrame(frame, options);
-      }
+      for (const frame of frames) appendFrame(report, frame);
     }
-  }
 
-  private *_renderFrame(frame: StackFrame, options: RenderOptions): Iterable<Segment> {
-    const pathStyle = Style.parse("dim");
-    const lineNoStyle = getStyle(options, "traceback.offset");
-
-    yield new Segment("  ");
-    // Spec: suppressed frames show file and line only — no function name
-    if (frame.function && !frame.suppressed) {
-      yield new Segment(frame.function, Style.parse("bold"));
-      yield new Segment(" ");
-    }
-    yield new Segment(frame.file, pathStyle);
-    yield new Segment(":");
-    yield new Segment(String(frame.line), lineNoStyle);
-    yield Segment.line();
+    return report.render(options);
   }
+}
+
+function appendFrame(report: RichText, frame: StackFrame): void {
+  report.append("  ");
+  if (frame.function) {
+    report.append(frame.function, "bold");
+    report.append(" ");
+  }
+  report.append(frame.file, "dim");
+  report.append(":");
+  report.append(String(frame.line), "traceback.offset");
+  report.append("\n");
 }

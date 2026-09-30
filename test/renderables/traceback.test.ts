@@ -132,6 +132,15 @@ describe("Traceback", () => {
     ].join("\n"));
   });
 
+  it("folds a location wider than the report across lines, keeping all of it", () => {
+    const file = `/${"deep/".repeat(20)}app.ts`;
+    const error = new Error("x");
+    error.stack = `Error: x\n    at run (${file}:7:1)`;
+    const lines = collectText(new Traceback(error), { maxWidth: 40 }).split("\n");
+    expect(lines.every((line) => line.length <= 40)).toBe(true);
+    expect(lines.join("")).toContain(`${file}:7`);
+  });
+
   // --- V8 frame shapes ---
 
   it.each([
