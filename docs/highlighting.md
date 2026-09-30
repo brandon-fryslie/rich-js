@@ -33,6 +33,8 @@ console.print("42 and /usr/bin");
 console.print("42 and /usr/bin", { highlight: true });
 ```
 
+A string handed to a `Columns`, a `Layout` pane or a `Rule` title is highlighted the same way, with the console's highlighter and under the same settings. A string in a `Panel`, a `Table` or a `Tree` is drawn unhighlighted, as Rich draws it.
+
 ## Custom highlighters
 
 ### Regex-based highlighter

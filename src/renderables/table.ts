@@ -8,7 +8,7 @@ import { Style, NULL_STYLE } from "../core/style.js";
 import { Box, HEAVY_HEAD } from "../core/box.js";
 import type { RowLevel } from "../core/box.js";
 import { RichText } from "../core/text.js";
-import { embed, embeddedText } from "./embed.js";
+import { EmbeddedText, embed } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import { exactWeights, ratioDistribute } from "./ratio.js";
@@ -389,8 +389,8 @@ const columnShare = (col: Column): number =>
   col.ratio !== undefined && col.ratio > 0 ? Math.min(col.ratio, UNBOUNDED) : 0;
 
 export class Column {
-  private _header!: RichText;
-  private _footer!: RichText;
+  private _header!: EmbeddedText;
+  private _footer!: EmbeddedText;
   headerStyle: string | Style;
   footerStyle: string | Style;
   style: string | Style;
@@ -420,12 +420,11 @@ export class Column {
   }
 
   /**
-   * The two stamped cells, parsed on assignment rather than at the constructor.
+   * The two stamped cells, stamped on assignment rather than at the constructor.
    * `Table.columns` hands out the live column and both fields are public, so a
    * constructor-only stamp held only until the first `columns[0].footer = mine`
-   * — which installed content that had parsed no markup, still carried its
-   * `end`, and was still owned by the caller, into a slot every reader below
-   * assumes `embeddedText` has been through. [LAW:parse-dont-validate] The setter
+   * — which installed content still owned by the caller into a slot every
+   * reader below assumes `EmbeddedText` has been through. [LAW:parse-dont-validate] The setter
    * is the border, so the guarantee holds for the object's whole lifetime and
    * the constructor is one caller of it rather than the one place it is true.
    *
@@ -434,23 +433,23 @@ export class Column {
    * a column always has one and `show_footer` alone decides whether it is
    * drawn. Modelling the absence as `undefined` instead made "no column has a
    * footer" a state the render path could ask about — and it did, skipping the
-   * row a caller had asked for. `embeddedText` already maps nothing onto empty,
+   * row a caller had asked for. `EmbeddedText` already maps nothing onto empty,
    * which is why the setters take `undefined` rather than defaulting around it.
    */
-  get header(): RichText {
+  get header(): Renderable & Measurable {
     return this._header;
   }
 
   set header(content: string | RichText | undefined) {
-    this._header = embeddedText(content);
+    this._header = new EmbeddedText(content);
   }
 
-  get footer(): RichText {
+  get footer(): Renderable & Measurable {
     return this._footer;
   }
 
   set footer(content: string | RichText | undefined) {
-    this._footer = embeddedText(content);
+    this._footer = new EmbeddedText(content);
   }
 
   get flexible(): boolean {
@@ -469,11 +468,6 @@ export class Column {
 
   copy(): Column {
     const col = new Column({
-      // No `.copy()` here: the crossing the constructor routes through copies
-      // a `RichText` already, and a second copy is a second home for that rule.
-      // [LAW:single-enforcer]
-      header: this.header,
-      footer: this.footer,
       justify: this.justify,
       width: this.width,
       minWidth: this.minWidth,
@@ -485,6 +479,9 @@ export class Column {
     col.headerStyle = this.headerStyle;
     col.footerStyle = this.footerStyle;
     col.style = this.style;
+    // Shared, not copied: an `EmbeddedText` owns its content and never changes.
+    col._header = this._header;
+    col._footer = this._footer;
     return col;
   }
 }
@@ -520,8 +517,8 @@ export class Table implements Renderable, Measurable {
   private _columns: Column[];
   private _rows: Array<{ cells: Renderable[]; endSection?: boolean }>;
   readonly box: Box | null;
-  readonly title: RichText | undefined;
-  readonly caption: RichText | undefined;
+  private readonly _title: EmbeddedText | undefined;
+  private readonly _caption: EmbeddedText | undefined;
   readonly expand: boolean;
   readonly showHeader: boolean;
   readonly showFooter: boolean;
@@ -542,14 +539,22 @@ export class Table implements Renderable, Measurable {
   readonly minWidth: number | undefined;
   readonly rowStyles: string[];
 
+  get title(): (Renderable & Measurable) | undefined {
+    return this._title;
+  }
+
+  get caption(): (Renderable & Measurable) | undefined {
+    return this._caption;
+  }
+
   constructor(options?: TableOptions) {
     this._columns = [];
     this._rows = [];
     this.box = options?.box !== undefined ? options.box : HEAVY_HEAD;
     const titleVal = options?.title;
-    this.title = titleVal !== undefined ? embeddedText(titleVal) : undefined;
+    this._title = titleVal !== undefined ? new EmbeddedText(titleVal) : undefined;
     const captionVal = options?.caption;
-    this.caption = captionVal !== undefined ? embeddedText(captionVal) : undefined;
+    this._caption = captionVal !== undefined ? new EmbeddedText(captionVal) : undefined;
     // A declared width is the table's size, not a ceiling on it: the
     // reference's `expand` is `self._expand or self.width is not None`, and a
     // port that sized to content inside it drew Rich code narrower than Rich.
@@ -656,8 +661,8 @@ export class Table implements Renderable, Measurable {
     const edge = geometry.edge === 1;
 
     // Title
-    if (this.title) {
-      yield* this._renderTitle(options, this.title, geometry.totalWidth, this.titleStyle, this.titleJustify);
+    if (this._title) {
+      yield* this._renderTitle(options, this._title, geometry.totalWidth, this.titleStyle, this.titleJustify);
     }
 
     // Top border
@@ -680,7 +685,7 @@ export class Table implements Renderable, Measurable {
 
     // Header row
     if (this.showHeader) {
-      const headerCells = this._columns.map((c) => c.header as Renderable);
+      const headerCells = this._columns.map((c) => c.header);
       const headerStyles = this._columns.map((c) => headerStyle.add(getStyle(options, c.headerStyle)));
       yield* this._renderRow(options, headerCells, headerStyles, NULL_STYLE, geometry, rowPadding(0), box, "head", border);
 
@@ -693,7 +698,7 @@ export class Table implements Renderable, Measurable {
     // Data rows
     for (let rowIdx = 0; rowIdx < this._rows.length; rowIdx++) {
       const row = this._rows[rowIdx]!;
-      const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? embeddedText(undefined));
+      const rowCells = this._columns.map((_, colIdx) => row.cells[colIdx] ?? new EmbeddedText(undefined));
 
       const rowStyle = stripes[rowIdx % stripes.length] ?? NULL_STYLE;
       const cellStyles = columnStyles.map((s) => s.add(rowStyle));
@@ -712,7 +717,7 @@ export class Table implements Renderable, Measurable {
       if (box) {
         yield* box.getRow(geometry.cellWidths, "foot", border, edge);
       }
-      const footerCells = this._columns.map((c) => c.footer as Renderable);
+      const footerCells = this._columns.map((c) => c.footer);
       const footerStyles = this._columns.map((c) => footerStyle.add(getStyle(options, c.footerStyle)));
       yield* this._renderRow(options, footerCells, footerStyles, NULL_STYLE, geometry, rowPadding(lastRow), box, "foot", border);
     }
@@ -723,8 +728,8 @@ export class Table implements Renderable, Measurable {
     }
 
     // Caption
-    if (this.caption) {
-      yield* this._renderTitle(options, this.caption, geometry.totalWidth, this.captionStyle, this.captionJustify);
+    if (this._caption) {
+      yield* this._renderTitle(options, this._caption, geometry.totalWidth, this.captionStyle, this.captionJustify);
     }
   }
 
@@ -954,7 +959,7 @@ export class Table implements Renderable, Measurable {
    */
   private *_columnCells(col: Column, index: number): Iterable<Renderable> {
     if (this.showHeader) yield col.header;
-    for (const row of this._rows) yield row.cells[index] ?? embeddedText(undefined);
+    for (const row of this._rows) yield row.cells[index] ?? new EmbeddedText(undefined);
     if (this.showFooter) yield col.footer;
   }
 
@@ -1029,8 +1034,11 @@ export class Table implements Renderable, Measurable {
       // table stacks its cells, so each is handed the table's rows as a
       // ceiling, never a region to fill — the `Height` contract's
       // `stackedHeight`, where the reference hands a cell `height=None`.
+      // No highlighter: a cell's string is drawn plain, as Rich's column
+      // `highlight=False` draws it.
       const segs = [...cell.render({
         ...options,
+        highlighter: undefined,
         maxWidth: cellWidth,
         justify: col.justify,
         overflow: col.overflow,
@@ -1088,7 +1096,7 @@ export class Table implements Renderable, Measurable {
 
   private *_renderTitle(
     options: RenderOptions,
-    text: RichText,
+    text: EmbeddedText,
     tableWidth: number,
     ownStyle: string | Style,
     justify: "left" | "center" | "right" | "full",
@@ -1101,9 +1109,12 @@ export class Table implements Renderable, Measurable {
     // `render` is handed, so `titleJustify` would lose to a property the caller
     // may not know it set, and an `"ignore"` title would have no edge and run
     // straight through the frame. Every other method, and `noWrap`, cuts within
-    // the bound, so those stay theirs. Cleared on a copy rather than in place —
-    // the caller's text is theirs. [LAW:one-source-of-truth]
-    const source = text.copy();
+    // the bound, so those stay theirs. `text` hands back a copy to clear them
+    // on. [LAW:one-source-of-truth]
+    //
+    // Never highlighted, and markup as the console says: Rich draws a title
+    // and caption through `render_str(highlight=False)`.
+    const source = text.text({ ...options, highlighter: undefined });
     source.justify = undefined;
     if (source.overflow === "ignore") source.overflow = undefined;
 

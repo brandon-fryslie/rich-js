@@ -11,7 +11,7 @@ import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
 import { encodeSvg } from "./export-svg.js";
 import { RichText } from "./text.js";
-import { renderMarkup } from "./markup.js";
+import { renderStr } from "./markup.js";
 import { Pretty, isExpandable } from "./pretty.js";
 import { JSONRenderable, type JSONOptions } from "./json.js";
 import { ReprHighlighter, NullHighlighter } from "./highlighter.js";
@@ -476,6 +476,8 @@ export class Console {
       theme: this._theme,
       onStyleError: this._onStyleError,
       colorSystem: this._destination.colorSystem,
+      markup: this._markup,
+      highlighter: this._highlight ? this._highlighter : undefined,
     };
   }
 
@@ -513,8 +515,13 @@ export class Console {
       items = args;
     }
 
-    const doMarkup = opts.markup ?? this._markup;
-    const doHighlight = opts.highlight ?? this._highlight;
+    // What a string is read as, wherever in this print it lands: an argument,
+    // or a cell or label inside a renderable argument. `print`'s own flags
+    // outrank the console's, as Rich's `options.update` has them.
+    const strings: Pick<RenderOptions, "markup" | "highlighter"> = {
+      markup: opts.markup ?? this._markup,
+      highlighter: (opts.highlight ?? this._highlight) ? this._highlighter : undefined,
+    };
     const sep = opts.sep ?? " ";
     const end = opts.end ?? "\n";
     const softWrap = opts.softWrap ?? false;
@@ -556,12 +563,7 @@ export class Console {
         blocks.push({ kind: "lines", renderable: item });
         continue;
       } else if (typeof item === "string") {
-        const richText = doMarkup ? renderMarkup(item) : new RichText(item);
-        richText.end = "";
-        if (doHighlight) {
-          this._highlighter.highlight(richText);
-        }
-        text = richText;
+        text = renderStr(item, strings);
       } else {
         // The highlighter travels with the value. `highlight` and a custom
         // `highlighter` are console-wide settings, so they have to reach a
@@ -573,8 +575,8 @@ export class Console {
         // rather than `Pretty` inferring it back out of the highlighter.
         const pretty = new Pretty(item, {
           ...PRINT_DATA_BOUNDS,
-          highlighter: doHighlight ? this._highlighter : NO_HIGHLIGHT,
-          indentGuides: doHighlight,
+          highlighter: strings.highlighter ?? NO_HIGHLIGHT,
+          indentGuides: strings.highlighter !== undefined,
         });
         // A scalar spells the same at every width, so it joins its run as the
         // one text it is.
@@ -596,6 +598,7 @@ export class Console {
     // no justify — is `RichText`'s to apply, so it crosses as it was asked for.
     const renderOpts: RenderOptions = {
       ...options,
+      ...strings,
       justify: opts.justify === "default" ? undefined : opts.justify,
       overflow: opts.overflow ?? (softWrap ? "ignore" : undefined),
       noWrap: softWrap,

@@ -4,56 +4,75 @@
  * a rule's title — becomes something that renderable can lay out.
  * [LAW:single-enforcer]
  *
- * Each of those sites used to build its own `RichText` straight from the
- * constructor, which does not parse markup, so `[red]Solo[/red]` reached the
- * terminal with its tags intact. Table cells were fixed on their own first; the
- * rest kept the defect until the rule moved here.
- *
- * Markup is parsed because Rich parses it: every one of these positions
- * reaches the wire through Rich's `render_str`, and a console's markup is on by
- * default. Rich's `render_str` also honours `Console(markup=False)` and runs the
- * console's highlighter; this crossing does neither, because the console's
- * settings do not reach it (rich-markup-3sw).
+ * A string is kept as written and read when it is drawn, through `renderStr`,
+ * under the options it is drawn with. That is where a console's settings
+ * arrive: its `markup` decides whether the string is markup, and its
+ * highlighter highlights it, exactly as they do for a string handed to `print`.
+ * Parsed when the renderable was built, a string was markup under a console
+ * that had turned markup off, never met the console's highlighter, and an
+ * unmatched closing tag threw from a constructor rather than from the render
+ * that would draw it, where Rich's does (rich-markup-3sw).
  *
  * `end` is cleared because embedded text is a fragment rather than a printed
  * line; left at the default `"\n"` it draws a trailing blank row. A `RichText`
- * is copied first, since clearing in place would reach back into the caller's
- * object.
+ * is copied when it is handed over, since the caller still holds it, and again
+ * when it is drawn, since clearing `end` in place would reach into the copy
+ * every later draw reads.
  */
 
-import { renderMarkup } from "../core/markup.js";
+import { renderStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 
 /**
- * Caller content as the text an embedding site lays out, `end` cleared. A
- * string is the only kind of content that can contain markup, so it is the only
- * kind parsed; any other value is its `String` form as written, so an object's
- * `[object Object]` is not eaten as a tag.
+ * Caller content as text an embedding site lays out. A string is the only kind
+ * of content that can contain markup, so it is the only kind whose reading
+ * waits for the options; any other value is its `String` form as written, so an
+ * object's `[object Object]` is not eaten as a tag.
  */
-export function embeddedText(content: unknown): RichText {
-  const text =
-    content instanceof RichText
-      ? content.copy()
-      : typeof content === "string"
-        ? renderMarkup(content)
-        : new RichText(String(content ?? ""));
-  text.end = "";
-  return text;
+export class EmbeddedText implements Renderable, Measurable {
+  // [LAW:types-are-the-program] Two kinds, and the kind is the discriminator: a
+  // string still to be read, or text whose reading is already fixed.
+  private readonly _source: string | RichText;
+
+  constructor(content: unknown) {
+    this._source =
+      typeof content === "string"
+        ? content
+        : content instanceof RichText
+          ? content.copy()
+          : new RichText(String(content ?? ""));
+  }
+
+  /** The text this content draws under `options`, `end` cleared. */
+  text(options: RenderOptions): RichText {
+    if (typeof this._source === "string") return renderStr(this._source, options);
+    const text = this._source.copy();
+    text.end = "";
+    return text;
+  }
+
+  render(options: RenderOptions): Iterable<Segment> {
+    return this.text(options).render(options);
+  }
+
+  measure(options: RenderOptions): { minimum: number; maximum: number } {
+    return this.text(options).measure(options);
+  }
 }
 
 /**
  * Caller content as something an embedding site can render. A non-text
  * `Renderable` (a nested `Panel` or `Table`) passes through: it carries no
- * `end` to clear and no markup to parse. Everything else is `embeddedText`.
+ * `end` to clear and no markup to parse. Everything else is `EmbeddedText`.
  */
 export function embed(content: unknown): Renderable & Partial<Measurable> {
   if (!(content instanceof RichText) && typeof content === "object" && content !== null && "render" in content) {
     return content as Renderable & Partial<Measurable>;
   }
-  return embeddedText(content);
+  return new EmbeddedText(content);
 }
 
 /**
@@ -71,7 +90,7 @@ export function inlineLabel(content: unknown, options: RenderOptions, base: Styl
   // the cutting; the label's own overflow method would cut it first, and to a
   // width no one measured. `"ignore"` also leaves it unjustified, so its spaces
   // stay where `pad` put them.
-  const bare = embeddedText(content);
+  const bare = new EmbeddedText(content).text(options);
   const text = bare.plain === "" ? bare : bare.pad(1);
   text.overflow = "ignore";
   return [...Segment.applyStyle(text.render(options), base)];

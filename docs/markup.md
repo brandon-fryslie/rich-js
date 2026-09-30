@@ -224,6 +224,14 @@ const console = new Console({ markup: false });
 console.print("[bold red]every call prints its brackets[/bold red]");
 ```
 
+Either setting also reaches a string you hand a renderable — a table cell, header, footer, title or caption, a panel's body, a tree label, a `Columns` item, a `Layout` pane, a rule's title. The string is read when it is drawn, so an unmatched closing tag in one fails at `print`, not when the renderable is built. A panel's `title` and `subtitle` are the exception, as in Rich: they are always read as markup.
+
+```typescript
+const console = new Console({ markup: false });
+
+console.print(new Panel("[bold]brackets and all[/bold]"));
+```
+
 ## Converting markup to styled text
 
 Parse markup explicitly into a `RichText` object when you need to manipulate it further before printing:

@@ -6,6 +6,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { cellLen } from "../../src/core/cells.js";
+import { Console, type ConsoleOptions, type PrintOptions } from "../../src/core/console.js";
+import { Highlighter } from "../../src/core/highlighter.js";
 import { renderToString } from "../../src/core/render.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { RichText } from "../../src/core/text.js";
@@ -100,5 +102,114 @@ describe("content embedded in a renderable", () => {
     const lines = renderToString(new Panel("x", { title: "[bold]漢字漢字漢字漢字[/bold]", width: 10 }), { width: 10 }).split("\n");
     const widths = lines.filter((l) => l !== "").map((l) => cellLen(l.replace(/\x1b\[[0-9;]*m/g, "")));
     expect(new Set(widths)).toEqual(new Set([10]));
+  });
+});
+
+/**
+ * A console's own settings decide how a string embedded in a renderable is
+ * read, as Rich's `render_str` has them decide. Which sites highlight is
+ * Rich's per-site choice, pinned here site by site: `Panel`, `Table` and
+ * `Tree` draw their strings plain, and a panel's title and subtitle are markup
+ * whatever the console says.
+ */
+describe("a console's markup and highlight settings, in content embedded in a renderable", () => {
+  const UNDERLINE = "\x1b[4m";
+
+  /** Underlines everything it is handed, so its reach is one escape to find. */
+  class Underliner extends Highlighter {
+    highlight(text: RichText): void {
+      text.stylize("underline");
+    }
+  }
+
+  // Print options are passed only when there are some: a trailing `{}` is data
+  // to `print`, not options, and would be printed.
+  function printed(renderable: Renderable, settings: ConsoleOptions = {}, ...print: [PrintOptions?]): string {
+    const chunks: string[] = [];
+    const file = { write: (data: string) => void chunks.push(data) };
+    const console = new Console({ file, width: 40, colorSystem: "ansi", ...settings });
+    console.print(renderable, ...print);
+    return chunks.join("");
+  }
+
+  function table(slot: "cell" | "header" | "footer" | "title" | "caption") {
+    return (content: string): Renderable => {
+      const t = new Table({
+        showFooter: slot === "footer",
+        ...(slot === "title" ? { title: content } : {}),
+        ...(slot === "caption" ? { caption: content } : {}),
+      });
+      t.addColumn(slot === "header" ? content : "a header wider than any content", slot === "footer" ? { footer: content } : {});
+      t.addRow(slot === "cell" ? content : "x");
+      return t;
+    };
+  }
+
+  const highlighted: [string, (content: string) => Renderable][] = [
+    ["a rule's title", (content) => new Rule(content)],
+    ["a column item", (content) => new Columns([content])],
+    ["a layout pane", (content) => new Layout(content)],
+  ];
+  const plain: [string, (content: string) => Renderable][] = [
+    ["a panel's body", (content) => new Panel(content)],
+    ["a tree label", (content) => new Tree(content)],
+    ["a table cell", table("cell")],
+    ["a table header", table("header")],
+    ["a table footer", table("footer")],
+    ["a table title", table("title")],
+    ["a table caption", table("caption")],
+  ];
+  const alwaysMarkup: [string, (content: string) => Renderable][] = [
+    ["a panel's title", (content) => new Panel("body", { title: content })],
+    ["a panel's subtitle", (content) => new Panel("body", { subtitle: content })],
+  ];
+
+  for (const [site, build] of [...highlighted, ...plain]) {
+    it(`draws the tags in ${site} under a console with markup off`, () => {
+      expect(printed(build("[bold]Hello[/bold]"), { markup: false })).toContain("[bold]Hello[/bold]");
+    });
+
+    it(`draws the tags in ${site} printed with markup off`, () => {
+      expect(printed(build("[bold]Hello[/bold]"), {}, { markup: false })).toContain("[bold]Hello[/bold]");
+    });
+  }
+
+  for (const [site, build] of alwaysMarkup) {
+    it(`reads ${site} as markup under a console with markup off, as Rich's Panel does`, () => {
+      const out = printed(build("[bold]Hello[/bold]"), { markup: false });
+      expect(out).not.toContain("[bold]");
+      expect(out).toContain(`${BOLD}Hello`);
+    });
+  }
+
+  for (const [site, build] of highlighted) {
+    it(`highlights ${site} with the console's highlighter`, () => {
+      expect(printed(build("Hello"), { highlighter: new Underliner() })).toContain(UNDERLINE);
+    });
+
+    it(`does not highlight ${site} under a console with highlight off`, () => {
+      expect(printed(build("Hello"), { highlighter: new Underliner(), highlight: false })).not.toContain(UNDERLINE);
+    });
+
+    it(`does not highlight ${site} printed with highlight off`, () => {
+      expect(printed(build("Hello"), { highlighter: new Underliner() }, { highlight: false })).not.toContain(UNDERLINE);
+    });
+  }
+
+  for (const [site, build] of [...plain, ...alwaysMarkup]) {
+    it(`draws ${site} unhighlighted, as Rich does`, () => {
+      expect(printed(build("Hello"), { highlighter: new Underliner() })).not.toContain(UNDERLINE);
+    });
+  }
+
+  it("repr-highlights column items under a default console, as print does", () => {
+    const cyan = "\x1b[36m1";
+    expect(printed(new Columns(["1", "True"]))).toContain(cyan);
+  });
+
+  it("raises an unmatched closing tag from the print that draws it, not from the constructor", () => {
+    const panel = new Panel("[/bold]");
+    expect(() => printed(panel)).toThrow(/Closing tag/);
+    expect(printed(panel, { markup: false })).toContain("[/bold]");
   });
 });

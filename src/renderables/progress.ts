@@ -5,8 +5,7 @@
 import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
-import { escape as escapeMarkup } from "../core/markup.js";
-import { embeddedText } from "./embed.js";
+import { escape as escapeMarkup, renderStr } from "../core/markup.js";
 import { ProgressBar } from "./progressBar.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
@@ -67,9 +66,10 @@ export class TextColumn implements ProgressColumn {
     // Use a callback so `$&`/`$1`/`$$` in the task description aren't
     // reinterpreted by String.replace as replacement patterns.
     const formatted = this.format.replace(/\{task\.description\}/g, () => description);
-    // [LAW:single-enforcer] A column is a row fragment, the same as any
-    // embedded text.
-    yield* embeddedText(formatted).render(options);
+    // Markup whatever the console says, and never highlighted: Rich's
+    // `TextColumn` reads its format as markup on its own `markup=True` and
+    // highlights only with a highlighter it was given, not the console's.
+    yield* renderStr(formatted, { markup: true }).render(options);
   }
 }
 
