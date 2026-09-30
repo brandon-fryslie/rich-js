@@ -2,35 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-277",
-      "ref": "refs/pull/277/merge",
-      "sha": "ea9c0350a5b3fc367d27fdd655c8253f71a79bdf",
-      "timestamp": "2026-09-30T21:03:19.494Z",
-      "commits": [
-        {
-          "sha": "ea9c0350a5b3fc367d27fdd655c8253f71a79bdf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T21:02:06Z",
-          "message": "Merge 3fa943a9ce6136a33b0e0995f2af35312bc87eb9 into 78b60aa0dcb83e49c0b640c595f24ed586fceb51\n"
-        },
-        {
-          "sha": "3fa943a9ce6136a33b0e0995f2af35312bc87eb9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T15:02:02-06:00",
-          "message": "fix(markup): one output buffer, so an unclosed plugin tag costs a style tag (rich-markup-pyq5)\n\nFolding each unpaired plugin tag's content frame into its parent on close was\nquadratic in nesting depth. The walk now writes into one buffer; a pair takes\nits content off the tail, and an unpaired tag is only a span.\n\nA closer names a tag by style name or by plugin name, and ends a pair only for\n[/] or its plugin's own name, so [aa]x[/aa=x] closes [aa] as a style tag again.\n"
-        },
-        {
-          "sha": "c5d9048a22f3e9aa6f5af04247635f809cc64639",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:51:05-06:00",
-          "message": "refactor(markup): pair plugin tags and style tags in one walk (rich-markup-pyq5)\n\nrenderMarkup read each slice's tags twice: pairPluginTags kept its own copy\nof the open-tag stack to find plugin pairs, crossings and overlaps, and\nrender walked the same tags again to build spans. The two had to agree on\nevery closing rule by hand, and did not.\n\nNow one walk over the whole string holds one stack and one rule for what a\nclosing tag names (namedBy). A plugin tag's content is written into a frame\nof its own; when the tag pairs, the frame is the handler's children, and\nwhen it never does, the frame folds back where it stood and the tag is a\nstyle span over it. The slice recursion, SliceOrigin, MarkupPart, within()\nand the pairing pass are gone.\n\nBehaviour changes, each pinned in markup-plugins.test.ts:\n- Rejections come out in string order: '[/x] [red][aa]x[/red][/aa]' now\n  reports the stray [/x] at column 1, not the crossing at column 16.\n- A style tag's closer cannot reach past an open plugin tag, even one that\n  later turns out never to close. Deciding that at the closer is what makes\n  string order possible; the old rule needed to know whether the plugin tag\n  would pair.\n- '[/]' that reaches past a pair's end to a plugin tag is reported as an\n  overlap of the two plugin tags, not as a style crossing.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "78b60aa0dcb83e49c0b640c595f24ed586fceb51",
