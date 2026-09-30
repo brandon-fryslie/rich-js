@@ -4,15 +4,22 @@
     {
       "version": "pr-242",
       "ref": "refs/pull/242/merge",
-      "sha": "ea32ea5caab324a39bb525077c2ce2af4983d5e4",
-      "timestamp": "2026-09-30T08:27:01.130Z",
+      "sha": "2d6007c5976893522dc0b9efb0afbc24f8c438c5",
+      "timestamp": "2026-09-30T08:34:37.457Z",
       "commits": [
         {
-          "sha": "ea32ea5caab324a39bb525077c2ce2af4983d5e4",
+          "sha": "2d6007c5976893522dc0b9efb0afbc24f8c438c5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:26:01-06:00",
-          "message": "Merge c56174d1c14a9fe545a07bfcd4d0aaef7db54588 into 08a560bf6c9c3d4103cf0124bc6c9ce29fb7c6cd\n"
+          "timestamp": "2026-09-30T08:33:30Z",
+          "message": "Merge 4c333079a6545a262df64b2c4f3b638023b95a71 into 08a560bf6c9c3d4103cf0124bc6c9ce29fb7c6cd\n"
+        },
+        {
+          "sha": "4c333079a6545a262df64b2c4f3b638023b95a71",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T02:33:23-06:00",
+          "message": "fix(export): SVG class prefix covers the rules it scopes; markup drops XML-illegal chars (rich-export-9a1.3)\n\nReview pass (high) on PR #242:\n- The class prefix hashed only title + text, so one recording under two\n  themes inlined on one page shared class names and restyled each other.\n  It now hashes the class rules too; the blink keyframes, identical in every\n  SVG, take one constant name.\n- escapeText/escapeAttribute drop characters XML 1.0 forbids; one of them\n  made the whole SVG unparsable.\n- One FNV-1a (src/core/fnv1a.ts, UTF-8) replaces the UTF-16 copy in\n  export-svg and linkId in osc8.\n- Title centred on the window rect, not offset by the margin.\n"
         },
         {
           "sha": "c56174d1c14a9fe545a07bfcd4d0aaef7db54588",
