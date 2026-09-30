@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-281",
-      "ref": "refs/pull/281/merge",
-      "sha": "6dc5f16cb5260f94894cd849fa3ed0e7aabb9d1c",
-      "timestamp": "2026-09-30T22:26:28.186Z",
-      "commits": [
-        {
-          "sha": "6dc5f16cb5260f94894cd849fa3ed0e7aabb9d1c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T22:25:05Z",
-          "message": "Merge b406acbbcce687169756d470780209b8b5998077 into 232e2a519df79f0cf29636409d81fca68ae1b8cb\n"
-        },
-        {
-          "sha": "b406acbbcce687169756d470780209b8b5998077",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:25:00-06:00",
-          "message": "test: the hang detector's comment names the budgets that really differ (rich-test-suite-umkj)\n"
-        },
-        {
-          "sha": "6eeded0e35f71f6ca25f3994bf150357f6350da1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:24:03-06:00",
-          "message": "test: the hang detector covers hooks too, and names what keeps its own budget (rich-test-suite-umkj)\n\nReview of #281: hookTimeout stayed at vitest's 10s, so the first hook that\nspawns under load would restart the per-file chase. Both timeouts now read\none constant. The comment no longer claims only speed tests set a budget;\nthe vite-build tests' 60s is work longer by nature.\n"
-        },
-        {
-          "sha": "edc99363eac9eb64c67d490268d1828be7bbe96a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:19:34-06:00",
-          "message": "test: one 30s hang detector for the whole suite, not per file (rich-test-suite-umkj)\n\nTests that spawn git, npm, node or a vite build cross vitest's 5s default\nunder a full suite's load, and per-describe allowances only ever covered the\nfile that had last flaked. vitest.config.ts now sets testTimeout once; the\neight 30s describe overrides that copied it are gone. Budgets that differ\n(the 2s termination guards, the 60s-180s builds) stay beside their tests.\n\nThree concurrent full suites, three times: 9 of 9 runs failed on a 5s\ntimeout before (ascii-only), 9 of 9 green after. A never-resolving test\nstill fails, at 30s.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "232e2a519df79f0cf29636409d81fca68ae1b8cb",
-      "timestamp": "2026-09-30T22:07:13.988Z",
+      "sha": "a26b42dd145ab4908eedba6cfa71b3ae6e7b07b4",
+      "timestamp": "2026-09-30T22:28:15.726Z",
       "commits": [
         {
-          "sha": "232e2a519df79f0cf29636409d81fca68ae1b8cb",
+          "sha": "a26b42dd145ab4908eedba6cfa71b3ae6e7b07b4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:06:03-06:00",
-          "message": "test(docs): the simulated-process suite allows a vite build's time under load (rich-tests-lazu) (#280)\n\nMost runInTerminal cases vite-build the library before running it; under a\nfull suite's load the overlapping-runs case crossed vitest's 5s default\n(3 of ~9 full runs on 2026-09-29). The describe now carries the 30s\nallowance example-runner and playground-program already give their builds.\n6 of 6 full npm test runs green after."
+          "timestamp": "2026-09-30T16:27:07-06:00",
+          "message": "test: one 30s hang detector for the whole suite, not per file (rich-test-suite-umkj) (#281)\n\n* test: one 30s hang detector for the whole suite, not per file (rich-test-suite-umkj)\n\nTests that spawn git, npm, node or a vite build cross vitest's 5s default\nunder a full suite's load, and per-describe allowances only ever covered the\nfile that had last flaked. vitest.config.ts now sets testTimeout once; the\neight 30s describe overrides that copied it are gone. Budgets that differ\n(the 2s termination guards, the 60s-180s builds) stay beside their tests.\n\nThree concurrent full suites, three times: 9 of 9 runs failed on a 5s\ntimeout before (ascii-only), 9 of 9 green after. A never-resolving test\nstill fails, at 30s.\n\n* test: the hang detector covers hooks too, and names what keeps its own budget (rich-test-suite-umkj)\n\nReview of #281: hookTimeout stayed at vitest's 10s, so the first hook that\nspawns under load would restart the per-file chase. Both timeouts now read\none constant. The comment no longer claims only speed tests set a budget;\nthe vite-build tests' 60s is work longer by nature.\n\n* test: the hang detector's comment names the budgets that really differ (rich-test-suite-umkj)"
         }
       ]
     }
