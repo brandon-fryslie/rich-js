@@ -4,15 +4,22 @@
     {
       "version": "pr-282",
       "ref": "refs/pull/282/merge",
-      "sha": "45ce4201eca591b2d31508ed5b6fb52754910e73",
-      "timestamp": "2026-09-30T22:34:13.509Z",
+      "sha": "f526efa24bb3a24f3104b275ed3e16f9049799a6",
+      "timestamp": "2026-09-30T22:43:24.343Z",
       "commits": [
         {
-          "sha": "45ce4201eca591b2d31508ed5b6fb52754910e73",
+          "sha": "f526efa24bb3a24f3104b275ed3e16f9049799a6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:33:06-06:00",
-          "message": "Merge 673f919c4330b6a1fd2ea62a31aa882d616c9536 into a26b42dd145ab4908eedba6cfa71b3ae6e7b07b4\n"
+          "timestamp": "2026-09-30T22:42:14Z",
+          "message": "Merge 9f60308998bfe901d20982e87669592243677195 into a26b42dd145ab4908eedba6cfa71b3ae6e7b07b4\n"
+        },
+        {
+          "sha": "9f60308998bfe901d20982e87669592243677195",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:42:09-06:00",
+          "message": "review(table): grid defaults stated once, dead grid options dropped (rich-table-q93f)\n\nColumns' comments and two tests restated Table.grid's collapsePadding/padEdge\ndefaults; the sysinfo demo's padding [0, 1] now draws what the default draws.\nThe docs sentence no longer claims padding right of every column.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "673f919c4330b6a1fd2ea62a31aa882d616c9536",
