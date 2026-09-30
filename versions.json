@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-272",
-      "ref": "refs/pull/272/merge",
-      "sha": "c8ad722ddda65c94cb06247ec1c3650424a59983",
-      "timestamp": "2026-09-30T19:28:41.333Z",
-      "commits": [
-        {
-          "sha": "c8ad722ddda65c94cb06247ec1c3650424a59983",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T19:27:27Z",
-          "message": "Merge cb36d457d6ffba76859510b1362e640870ffffbf into 7d1269e1f067cfaf970db02865817ea7240c0618\n"
-        },
-        {
-          "sha": "cb36d457d6ffba76859510b1362e640870ffffbf",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:27:22-06:00",
-          "message": "test(tree): pin every guide role in heavy and double, and the guide's exact style (rich-tree-te3h)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "be4ab5c33e25da86974d6ba77f22b3173fbd618a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:22:14-06:00",
-          "message": "fix(tree): bold and underline2 guides draw heavy and double lines, without the attribute (rich-tree-te3h)\n\nRich reads each guide column's stacked guide style to pick its glyphs —\nheavy when bold, double when underline2 — and draws the guide with both\nattributes switched off. Tree always drew light glyphs and left bold on.\nA guide now carries its role, and the glyph set is chosen at render from\nthe theme-resolved style; every set is four cells, so measure is unchanged.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "7d1269e1f067cfaf970db02865817ea7240c0618",
-      "timestamp": "2026-09-30T19:15:49.620Z",
+      "sha": "8d2e9b9de3088b068ba1b1e8b8616b694cc1bb4d",
+      "timestamp": "2026-09-30T19:33:27.609Z",
       "commits": [
         {
-          "sha": "7d1269e1f067cfaf970db02865817ea7240c0618",
+          "sha": "8d2e9b9de3088b068ba1b1e8b8616b694cc1bb4d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:14:37-06:00",
-          "message": "fix(syntax): a highlighted line number is readable on a light terminal (rich-syntax-60ii) (#271)\n\n* fix(syntax): a highlighted line number is readable on a light terminal (rich-syntax-60ii)\n\nsyntax.line_number.highlight set a fixed grey27 ground but took its ink\nfrom the terminal theme, so on a light theme the numbers were dark on dark\ngrey (contrast 1.16 under ATOM_ONE_LIGHT). The ink is now grey93, from the\nsame fixed palette, and a test holds both example themes to WCAG 4.5.\n\n* fix(style): every default style that paints a ground is readable on every bundled theme (rich-syntax-60ii)\n\nReview of #271: the per-Syntax contrast test checked one style on two themes.\nThe sweep now lives on DEFAULT_STYLES, where the invariant is, and it caught\nmarkdown.code (cyan on grey11, 3.57:1 on the default theme) -> dark_turquoise.\n16-colour depth is filed as rich-contrast-sqqq."
+          "timestamp": "2026-09-30T13:32:12-06:00",
+          "message": "fix(tree): bold and underline2 guides draw heavy and double lines (rich-tree-te3h) (#272)\n\n* fix(tree): bold and underline2 guides draw heavy and double lines, without the attribute (rich-tree-te3h)\n\nRich reads each guide column's stacked guide style to pick its glyphs —\nheavy when bold, double when underline2 — and draws the guide with both\nattributes switched off. Tree always drew light glyphs and left bold on.\nA guide now carries its role, and the glyph set is chosen at render from\nthe theme-resolved style; every set is four cells, so measure is unchanged.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* test(tree): pin every guide role in heavy and double, and the guide's exact style (rich-tree-te3h)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
