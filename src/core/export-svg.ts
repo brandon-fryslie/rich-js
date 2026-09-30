@@ -18,12 +18,12 @@
  * Nor is how a glyph lands on its cell. The exporter has no font engine and
  * does not know which font the viewer will draw with, so no advance width can
  * be trusted: a CJK character drawn from a fallback font is rarely two cells,
- * and every glyph after it on the row drifts. So every chunk of a run is anchored at its own
- * column and stretched to its own cells with `textLength`, and alignment is
- * guaranteed by the numbers written here rather than by the font. Measured in
- * headless Chromium on `"ab漢字cd😀ef é̂x"`: Rich's `textLength` (cell width ×
- * string length) was off by up to 12px, one `<text>` a run by 3.9px, this
- * chunking by 0.
+ * and every glyph after it on the row drifts. So every chunk of a run is
+ * anchored at its own column and stretched to its own cells with
+ * `textLength`, and alignment is guaranteed by the numbers written here rather
+ * than by the font. Measured in headless Chromium on `"ab漢字cd😀ef é̂x"`:
+ * Rich's `textLength` (cell width × string length) was off by up to 12px, one
+ * `<text>` a run by 3.9px, this chunking by 0.
  *
  * Decorations are rectangles, not CSS `text-decoration`: SVG has no reliable
  * double underline, and one `text-decoration` property cannot hold an
