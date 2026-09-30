@@ -11,13 +11,14 @@
  *
  * [LAW:no-shared-mutable-globals] That resolution is made lexical, never
  * global. `runInTerminal` evaluates the program as the body of a function whose
- * one parameter is named `process`, so every free `process` in the program —
- * the library bundled into it included — binds to the stand-in, while
- * `globalThis.process` is never read, written or replaced. Swapping the global
- * for the length of a run was the alternative, and it loses three ways: a
- * `Progress` example keeps running on timers after the swap is undone, two live
- * examples on one page would each overwrite the other's terminal, and in the
- * Node build the replaced object would be the build's own `process`.
+ * parameters are named `process` and `console`, so every free `process` and
+ * `console` in the program — the library bundled into it included — binds to
+ * the stand-in, while the globals are never read, written or replaced.
+ * Swapping the globals for the length of a run was the alternative, and it
+ * loses three ways: a `Progress` example keeps running on timers after the swap
+ * is undone, two live examples on one page would each overwrite the other's
+ * terminal, and in the Node build the replaced object would be the build's own
+ * `process`.
  *
  * The cost of that choice is the program's shape: it has to be one
  * self-contained script with every import bundled in, and with every
@@ -39,6 +40,7 @@
  * Node's kernel would discard too.
  */
 
+import { formatWithOptions } from "node-inspect-extracted";
 import type { ConsoleEnvironment, ConsoleStream } from "../../src/index.js";
 
 /**
@@ -70,9 +72,8 @@ export interface SimulatedTerminal extends ConsoleStream {
 // The async-function constructor has no global name; it is reached through an
 // async function's prototype.
 const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
-  parameter: string,
-  body: string,
-) => (process: SimulatedProcess) => Promise<void>;
+  ...parametersThenBody: string[]
+) => (process: SimulatedProcess, console: ProgramConsole) => Promise<void>;
 
 type Listener = (...args: never[]) => void;
 
@@ -181,6 +182,38 @@ class SimulatedProcess extends Events implements ConsoleEnvironment {
   }
 }
 
+/** The part of Node's global `console` a program writes with. */
+type ProgramConsole = Readonly<Record<"log" | "info" | "debug" | "warn" | "error", (...args: unknown[]) => void>>;
+
+/** The `FORCE_COLOR` values Node colours at; any other forces colour off. */
+const FORCED_COLOUR: ReadonlySet<string> = new Set(["", "1", "true", "2", "3"]);
+
+/**
+ * What the program sees as `console`: Node's, on the stand-in's streams. Each
+ * call is formatted as Node's `util.format` formats it, by Node's own code
+ * (node-inspect-extracted, 19 KB gzipped — a formatter written here would be a
+ * second copy of Node's, drifting from it), and written with a newline — `log`,
+ * `info` and `debug` to stdout, `warn` and `error` to stderr. A method Node has
+ * and this lacks is not a function here, so a call to it fails loudly rather
+ * than landing somewhere unseen.
+ *
+ * It colours as Node's does, reading the program's env at each call: any
+ * `FORCE_COLOR` decides alone ("", "1", "true", "2" and "3" colour), and
+ * otherwise a TTY colours unless a non-empty `NO_COLOR` or
+ * `NODE_DISABLE_COLORS`, or `TERM=dumb`, says not to. Past those Node looks
+ * the terminal's `TERM` up in a table this does not carry; this takes every
+ * terminal as a colour one.
+ */
+function programConsole(process: SimulatedProcess): ProgramConsole {
+  const { env } = process;
+  const colours = (stream: Output): boolean =>
+    env["FORCE_COLOR"] !== undefined
+      ? FORCED_COLOUR.has(env["FORCE_COLOR"])
+      : stream.isTTY && !env["NO_COLOR"] && !env["NODE_DISABLE_COLORS"] && env["TERM"] !== "dumb";
+  const to = (stream: Output) => (...args: unknown[]) => void stream.write(`${formatWithOptions({ colors: colours(stream) }, ...args)}\n`);
+  return { log: to(process.stdout), info: to(process.stdout), debug: to(process.stdout), warn: to(process.stderr), error: to(process.stderr) };
+}
+
 /**
  * Run a bundled program with `process` bound to a stand-in for `terminal`.
  * Settles when the program's body does. Every failure rejects, one that stops
@@ -189,10 +222,16 @@ class SimulatedProcess extends Events implements ConsoleEnvironment {
 export async function runInTerminal(program: string, terminal: SimulatedTerminal): Promise<void> {
   // "use strict" because the program was written as a module, and a sloppy body
   // would turn an assignment to an undeclared name into a global — a leak.
-  const body = new AsyncFunction("process", `"use strict";\n${program}`);
+  // [LAW:no-shared-mutable-globals] `console` is bound as `process` is, so the
+  // program's free `console` writes to its terminal and not the host's
+  // devtools. The body is a block so that a program declaring its own
+  // `console` — every docs example's `const console = new Console()` — shadows
+  // the parameter instead of redeclaring it, which is a SyntaxError.
+  const body = new AsyncFunction("process", "console", `"use strict"; {\n${program}\n}`);
   const stdin = new Input(terminal.isTTY);
   terminal.onInput((chunk) => stdin.emit("data", chunk));
   // [LAW:one-source-of-truth] The env is copied per run: a program that sets
   // `process.env.X` changes its own run and not the terminal it was handed.
-  await body(new SimulatedProcess(terminal, { ...terminal.env }, stdin));
+  const process = new SimulatedProcess(terminal, { ...terminal.env }, stdin);
+  await body(process, programConsole(process));
 }

@@ -114,6 +114,7 @@
     "markdown-it": "^14.3.2",
     "markdown-it-container": "^4.0.0",
     "mobx": "^7.0.3",
+    "node-inspect-extracted": "^3.3.3",
     "semver": "^7.8.5",
     "strip-ansi": "^7.2.0",
     "sucrase": "^3.35.1",
