@@ -4,15 +4,22 @@
     {
       "version": "pr-259",
       "ref": "refs/pull/259/merge",
-      "sha": "d9c93a3a32834021bb8f76e4cedcc6d48ab92e2c",
-      "timestamp": "2026-09-30T14:57:23.756Z",
+      "sha": "36a3a3e3902bea08930904fd97a60a93fe319e61",
+      "timestamp": "2026-09-30T15:01:30.141Z",
       "commits": [
         {
-          "sha": "d9c93a3a32834021bb8f76e4cedcc6d48ab92e2c",
+          "sha": "36a3a3e3902bea08930904fd97a60a93fe319e61",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:56:15Z",
-          "message": "Merge d6a4be4d93267ec01c26d219d6e9a2d1300edf29 into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
+          "timestamp": "2026-09-30T15:00:21Z",
+          "message": "Merge 513bea9fb10da2622adba3bf3d23be6364f3fa58 into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
+        },
+        {
+          "sha": "513bea9fb10da2622adba3bf3d23be6364f3fa58",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:00:14-06:00",
+          "message": "fix(markdown): a heading is drawn at its natural width (rich-markdown-ft8)\n\nReview round 2 (medium) on #259: placing headings \"left\" padded them to the\nwidth, and markdown.h1's underline ran to the edge. A heading now renders\nwith no placement asked of it, so the print's justify cannot reach it either.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "d6a4be4d93267ec01c26d219d6e9a2d1300edf29",
