@@ -4,15 +4,22 @@
     {
       "version": "pr-244",
       "ref": "refs/pull/244/merge",
-      "sha": "b282290d130e2934ac36d5b1d208c14316e8047b",
-      "timestamp": "2026-09-30T08:57:37.275Z",
+      "sha": "a98c79e21addc35ad42c43afda17bb78fd07b019",
+      "timestamp": "2026-09-30T09:04:27.242Z",
       "commits": [
         {
-          "sha": "b282290d130e2934ac36d5b1d208c14316e8047b",
+          "sha": "a98c79e21addc35ad42c43afda17bb78fd07b019",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:56:28-06:00",
-          "message": "Merge ecba0e2f89a6bb02a0d0fc4aa814f057fd6321f8 into 268b3f33da77e3a35b89ec74385fc1e00eccb721\n"
+          "timestamp": "2026-09-30T09:03:15Z",
+          "message": "Merge 5dff54a5b0ce4534e9dac756e499f57ff759dc0f into 268b3f33da77e3a35b89ec74385fc1e00eccb721\n"
+        },
+        {
+          "sha": "5dff54a5b0ce4534e9dac756e499f57ff759dc0f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:03:11-06:00",
+          "message": "test(export): grid spec checks both edges on a long run; goldens pin combined attributes and a decomposed mark (rich-export-9a1.5)\n\nThe e2e spec read only each grapheme's left edge, which for a wide glyph is\nthe x attribute read back, and a lost textLength failed it by 0.14px. It now\nchecks the right edge too and adds a 30-cell ASCII chunk; both mutations fail\nby ~4px.\n\nThe golden fixture's e-with-two-marks was a precomposed é plus one mark; it is\nnow e + U+0301 + U+0302. A row pins reverse+dim, reverse+conceal and\nunderline2+strike, the pairs resolved together.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "ecba0e2f89a6bb02a0d0fc4aa814f057fd6321f8",
