@@ -5,6 +5,7 @@ import { RichText } from "../../src/core/text.js";
 import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
+import { Panel } from "../../src/renderables/panel.js";
 
 const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
 const EXIT_ALT_SCREEN = "\x1b[?1049l";
@@ -249,5 +250,83 @@ describe("Live inline on a terminal", () => {
     term.console.file.write("after\n");
 
     expect(await term.rows()).toEqual(["before: after"]);
+  });
+});
+
+describe("Printing through live.console", () => {
+  const panel = (): Panel => new Panel("working", { expand: false });
+  const PANEL = ["╭─────────╮", "│ working │", "╰─────────╯"];
+
+  it("lands above the frame, and refreshing keeps it", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(panel(), { console: term.console, autoRefresh: false });
+    display.start();
+    display.console.print("step one complete");
+    display.refresh();
+    display.console.print("step two complete");
+    display.refresh();
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["step one complete", "step two complete", ...PANEL, "after"]);
+  });
+
+  it("lands above the frame for every way the console writes", async () => {
+    const term = terminal(30, 10);
+    const display = new Live(panel(), {
+      console: new Console({
+        width: 30,
+        height: 10,
+        colorSystem: null,
+        hyperlinks: false,
+        file: term.console.file,
+        getDatetime: () => new Date(2026, 8, 30, 12, 0, 0),
+      }),
+      autoRefresh: false,
+    });
+    display.start();
+    display.refresh();
+    display.console.print("one\ntwo");
+    display.console.log("logged");
+    display.console.rule("ruled");
+    display.stop();
+
+    const rows = await term.rows();
+    expect(rows.slice(0, 2)).toEqual(["one", "two"]);
+    expect(rows[2]).toMatch(/^\[12:00:00\] logged/);
+    expect(rows[3]).toContain(" ruled ");
+    expect(rows.slice(4)).toEqual(PANEL);
+  });
+
+  it("goes above the frame's place before the first refresh, and the frame follows it", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(panel(), { console: term.console, autoRefresh: false });
+    display.start();
+    display.console.print("early");
+    display.stop();
+
+    expect(await term.rows()).toEqual(["early", ...PANEL]);
+  });
+
+  it("is written plainly once the Live has stopped", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(panel(), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+    display.stop();
+    display.console.print("after");
+
+    expect(await term.rows()).toEqual([...PANEL, "after"]);
+  });
+
+  it("refuses a second Live on a console one is already running on", () => {
+    const term = terminal(20, 10);
+    const first = new Live(panel(), { console: term.console, autoRefresh: false });
+    const second = new Live(panel(), { console: term.console, autoRefresh: false });
+    first.start();
+    expect(() => second.start()).toThrow(/already/);
+    first.stop();
+    second.start();
+    second.stop();
   });
 });
