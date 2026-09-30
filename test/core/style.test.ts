@@ -7,9 +7,11 @@ import {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "../../src/core/style.js";
-import { ColorSpec, ColorDepth, ColorParseError } from "../../src/core/color.js";
+import { ColorSpec, ColorDepth, ColorParseError, TerminalTheme, contrastRatio } from "../../src/core/color.js";
 import { Segment } from "../../src/core/segment.js";
 import { segmentToString } from "../../src/core/render.js";
+import { exportCanvas, resolveLook } from "../../src/core/export-lines.js";
+import * as terminalThemes from "../../src/themes/terminalThemes.js";
 
 // The bytes `style` draws `text` as, through the one encoder.
 const drawn = (style: Style, text: string, colorSystem = ColorDepth.TRUECOLOR): string =>
@@ -932,6 +934,23 @@ describe("DEFAULT_STYLES", () => {
       expect(DEFAULT_STYLES[name]).toBeDefined();
     }
   });
+
+  // An entry that paints its own ground has fixed one half of the pair, so the
+  // other half must not be left to the terminal theme: WCAG's 4.5 for body text,
+  // on every bundled theme. Measured at full depth; at 16 colours both halves
+  // are the terminal's own slots and this says nothing.
+  const grounded = Object.entries(DEFAULT_STYLES).filter(([, style]) => style.bgcolor);
+  const terminals = Object.entries(terminalThemes).filter(
+    (entry): entry is [string, TerminalTheme] => entry[1] instanceof TerminalTheme,
+  );
+  it.each(grounded.flatMap(([name, style]) => terminals.map(([theme, terminal]) => ({ name, style, theme, terminal }))))(
+    "$name is readable on its own ground under $theme",
+    ({ style, terminal }) => {
+      const look = resolveLook(style, terminal);
+      const ground = look.background === "canvas" ? exportCanvas(terminal).background : look.background;
+      expect(contrastRatio(look.foreground, ground)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
 });
 
 // --- Style.normalize ---

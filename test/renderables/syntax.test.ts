@@ -3,9 +3,6 @@ import { Syntax, type SyntaxLanguage, type SyntaxOptions } from "../../src/rende
 import { Segment } from "../../src/core/segment.js";
 import { DEFAULT_THEME, Theme } from "../../src/core/style.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
-import { contrastRatio } from "../../src/core/color.js";
-import { exportCanvas, resolveLook } from "../../src/core/export-lines.js";
-import { ATOM_ONE_DARK, ATOM_ONE_LIGHT } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
@@ -164,18 +161,6 @@ describe("Syntax", () => {
       ["2", false],
       ["3", true],
     ]);
-  });
-
-  // WCAG's 4.5 for body text: a line number is read, not merely noticed.
-  it.each([
-    ["light", ATOM_ONE_LIGHT],
-    ["dark", ATOM_ONE_DARK],
-  ] as const)("draws a highlighted line's number readably on a %s terminal", (_mode, terminal) => {
-    const s = new Syntax("a\nb", "text", { lineNumbers: true, highlightLines: new Set([2]) });
-    const [number] = [...s.render({ maxWidth: 80 })].filter((seg) => seg.text.trim() === "2");
-    const look = resolveLook(number!.style!, terminal);
-    const ground = look.background === "canvas" ? exportCanvas(terminal).background : look.background;
-    expect(contrastRatio(look.foreground, ground)).toBeGreaterThanOrEqual(4.5);
   });
 
   // --- Tab Size ---

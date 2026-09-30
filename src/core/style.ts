@@ -747,7 +747,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "markdown.h2": Style.parse("bold"),
   "markdown.h3": Style.parse("bold dim"),
   "markdown.h4": Style.parse("bold dim italic"),
-  "markdown.code": Style.parse("cyan on grey11"),
+  // A fixed cyan, not the theme's: `cyan` is dark enough on some themes to
+  // sink into grey11.
+  "markdown.code": Style.parse("dark_turquoise on grey11"),
   "markdown.hr": Style.parse("yellow"),
   "markdown.link": Style.parse("bright_blue"),
   "markdown.link_url": Style.parse("blue"),
