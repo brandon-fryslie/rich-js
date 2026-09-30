@@ -4,15 +4,22 @@
     {
       "version": "pr-266",
       "ref": "refs/pull/266/merge",
-      "sha": "f55cae4f83cff862db363a119c5b8b8d13df839d",
-      "timestamp": "2026-09-30T17:26:59.355Z",
+      "sha": "837b26853f14a4c0ff0f7a67c61562c65e5da502",
+      "timestamp": "2026-09-30T17:29:55.609Z",
       "commits": [
         {
-          "sha": "f55cae4f83cff862db363a119c5b8b8d13df839d",
+          "sha": "837b26853f14a4c0ff0f7a67c61562c65e5da502",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:25:43Z",
-          "message": "Merge bd2ffe973fe213f405088d4b69075d3d021c755e into 840008549a0deec1f0728b905d35f6cfad71a50f\n"
+          "timestamp": "2026-09-30T17:28:10Z",
+          "message": "Merge b51221ca12ba2655a55654059576e76a20356302 into 840008549a0deec1f0728b905d35f6cfad71a50f\n"
+        },
+        {
+          "sha": "b51221ca12ba2655a55654059576e76a20356302",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:28:06-06:00",
+          "message": "fix(color): a blend downgraded to WINDOWS mixes the console's own ends (rich-color-dhay)\n\nperformDowngrade read a ColorBlend's RGB with no theme, so its named ends\ncame from the VGA sixteen and the mix was rounded against WINDOWS_TABLE:\nblend(black,yellow,0.75) wrote green. It now reads the colour as the\nterminal the target depth assumes draws it.\n"
         },
         {
           "sha": "bd2ffe973fe213f405088d4b69075d3d021c755e",
