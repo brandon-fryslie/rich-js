@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-283",
-      "ref": "refs/pull/283/merge",
-      "sha": "18a4bc19619df2d26d64ebfd0975c76e3ddb44ca",
-      "timestamp": "2026-09-30T23:00:20.834Z",
-      "commits": [
-        {
-          "sha": "18a4bc19619df2d26d64ebfd0975c76e3ddb44ca",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T22:59:15Z",
-          "message": "Merge d437393fcf811f5b8f78e5ed67d0c8c71ef38bf2 into 6ae5d81fe630bd8e43c5a5aadd7c8e141fdc779f\n"
-        },
-        {
-          "sha": "d437393fcf811f5b8f78e5ed67d0c8c71ef38bf2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:59:11-06:00",
-          "message": "review(docs): scope the page-not-library rule to missing symbols; floor the fences the build sees (rich-docs-kdeh)\n\nThe error suffix told the author to change the page on every diagnostic,\nincluding a src/ type regression and a Try-it slicer bug; the rule lives in\nExampleCompiler.check's docstring, scoped to symbols the library lacks.\nThe deleted sweep's fence floor is back in the example-gate sweep: the build\npasses a page on which scanFences finds nothing.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "3588f4ddd002d35335c5894186ff15a0678bc800",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:52:30-06:00",
-          "message": "test(docs): the docs build is the one check that pages name real symbols (rich-docs-kdeh)\n\nsymbol-existence.test.ts swept every docs fence for two defects the docs\nbuild already rejects: an import an entry point does not export, and a\nmember a class does not have. example-runner type-checks every TypeScript\nfence, whatever its marker, and fails the build at the page and line.\n[LAW:single-enforcer]\n\nDeleted the sweep and code-blocks.ts / resolve-chain.ts, which only it\nused, with their fixture suites. The two defect classes are now rows in\nexample-runner.test.ts's failure table, and the \"change the page, not\nsrc/\" rule and the three-ways-a-page-lies ceiling live on\nExampleCompiler.check; the compile error's last line points there.\n\nLost: missing-symbol feedback from `npm test` without a build. The docs\nbuild runs on every PR and before every docs commit, so that was a\nsecond, weaker checkpoint for one invariant.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6ae5d81fe630bd8e43c5a5aadd7c8e141fdc779f",
-      "timestamp": "2026-09-30T22:48:19.949Z",
+      "sha": "4d85447ea7d7aba7f12f2b41715982528540e7e1",
+      "timestamp": "2026-09-30T23:01:21.470Z",
       "commits": [
         {
-          "sha": "6ae5d81fe630bd8e43c5a5aadd7c8e141fdc779f",
+          "sha": "4d85447ea7d7aba7f12f2b41715982528540e7e1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:47:14-06:00",
-          "message": "fix(table): a grid pads between its columns, never at its edges (rich-table-q93f) (#282)\n\n* fix(table): a grid pads between its columns, never at its edges (rich-table-q93f)\n\nTable.grid now defaults padEdge to false and collapsePadding to true, as\nRich's grid does, so an expanded grid reaches the right edge and every\nProgress row ends without a trailing pad cell. The padding default stays\n[0, 1, 0, 0] where Rich's is 0. Columns drops the two options it passed\nto get the same shape.\n\nTests pin the docs grid, a plain grid, a two-sided-padding grid and a\nProgress row against Python Rich 9d8f9a3's output for the same calls.\n\n* review(table): grid defaults stated once, dead grid options dropped (rich-table-q93f)\n\nColumns' comments and two tests restated Table.grid's collapsePadding/padEdge\ndefaults; the sysinfo demo's padding [0, 1] now draws what the default draws.\nThe docs sentence no longer claims padding right of every column.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T17:00:26-06:00",
+          "message": "test(docs): the docs build is the one check that pages name real symbols (rich-docs-kdeh) (#283)\n\n* test(docs): the docs build is the one check that pages name real symbols (rich-docs-kdeh)\n\nsymbol-existence.test.ts swept every docs fence for two defects the docs\nbuild already rejects: an import an entry point does not export, and a\nmember a class does not have. example-runner type-checks every TypeScript\nfence, whatever its marker, and fails the build at the page and line.\n[LAW:single-enforcer]\n\nDeleted the sweep and code-blocks.ts / resolve-chain.ts, which only it\nused, with their fixture suites. The two defect classes are now rows in\nexample-runner.test.ts's failure table, and the \"change the page, not\nsrc/\" rule and the three-ways-a-page-lies ceiling live on\nExampleCompiler.check; the compile error's last line points there.\n\nLost: missing-symbol feedback from `npm test` without a build. The docs\nbuild runs on every PR and before every docs commit, so that was a\nsecond, weaker checkpoint for one invariant.\n\n* review(docs): scope the page-not-library rule to missing symbols; floor the fences the build sees (rich-docs-kdeh)\n\nThe error suffix told the author to change the page on every diagnostic,\nincluding a src/ type regression and a Try-it slicer bug; the rule lives in\nExampleCompiler.check's docstring, scoped to symbols the library lacks.\nThe deleted sweep's fence floor is back in the example-gate sweep: the build\npasses a page on which scanFences finds nothing.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
