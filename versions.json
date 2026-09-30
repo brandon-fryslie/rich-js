@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-267",
+      "ref": "refs/pull/267/merge",
+      "sha": "b88998fea890543dc54b95d54ab1fd622c7e005a",
+      "timestamp": "2026-09-30T17:41:56.349Z",
+      "commits": [
+        {
+          "sha": "b88998fea890543dc54b95d54ab1fd622c7e005a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:40:45-06:00",
+          "message": "Merge 31efeeea802070615479526ac80caaa289aebb4d into 8fc9178e2783eea2e17d3d1254c623c21b05b41f\n"
+        },
+        {
+          "sha": "31efeeea802070615479526ac80caaa289aebb4d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:40:40-06:00",
+          "message": "fix(status): a Status message draws its markup (rich-status-o9av)\n\nnew Status(\"[bold]Working[/]\") drew the brackets: StatusRenderable yielded\nthe message as one raw Segment. Status's renderable is now a Spinner whose\nlabel is the message, as Rich's is, and the Spinner's label crosses embed's\nEmbeddedText, so a string is markup under the drawing console, assembled\nwith its frame as Rich's Text.assemble(frame, \" \", text). The label is left\nunhighlighted, as Rich's Text label is.\n\nStatus's `style` is now `spinnerStyle` (Rich's spinner_style, default\nstatus.spinner): the message styles itself with markup, and the rename makes\nthe changed meaning a type error rather than a silent recolour.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8fc9178e2783eea2e17d3d1254c623c21b05b41f",
