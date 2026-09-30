@@ -4,15 +4,22 @@
     {
       "version": "pr-264",
       "ref": "refs/pull/264/merge",
-      "sha": "49b22fa47c264e294248d684b2dd548a5213eb83",
-      "timestamp": "2026-09-30T16:37:38.623Z",
+      "sha": "799d3006a66a0e30205b01bb39d32b8585748159",
+      "timestamp": "2026-09-30T16:42:07.169Z",
       "commits": [
         {
-          "sha": "49b22fa47c264e294248d684b2dd548a5213eb83",
+          "sha": "799d3006a66a0e30205b01bb39d32b8585748159",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:36:24Z",
-          "message": "Merge 2a0932e00c4b616e969b0a30e81eb7ad2686cccb into 9aec2013b58c609efe46bf3d36f4f7b33aead3d1\n"
+          "timestamp": "2026-09-30T16:41:05Z",
+          "message": "Merge faef30447887425a6e338dc9caad0995544aabfc into 9aec2013b58c609efe46bf3d36f4f7b33aead3d1\n"
+        },
+        {
+          "sha": "faef30447887425a6e338dc9caad0995544aabfc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T10:41:00-06:00",
+          "message": "fix(contrast): a TerminalTheme holds exactly the sixteen ANSI colours; translucent text is ranked over its own ground (rich-contrast-knmh, rich-color-qqkm)\n\nReview of PR #264 (medium):\n- At STANDARD an index picked from a terminal's ansiColors is read back from\n  the sixteen-entry writer table, so a 256-entry ansiColors returned\n  undefined typed as ColorRgba. Every reader already indexes the table 0-15\n  and the class doc names it the theme's sixteen; the constructor now\n  refuses anything else, and its header stops calling it a 16/256 LUT.\n- The replacement ranked fg composited over the terminal's drawn ground,\n  which under Rose Pine Dawn turns a translucent navy into lavender. It is\n  the author's colour over the author's ground.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "2a0932e00c4b616e969b0a30e81eb7ad2686cccb",
