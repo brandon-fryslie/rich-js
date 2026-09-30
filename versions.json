@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-268",
-      "ref": "refs/pull/268/merge",
-      "sha": "6b3c5f95f7661aa52e4585ad114e231576127153",
-      "timestamp": "2026-09-30T18:10:41.992Z",
-      "commits": [
-        {
-          "sha": "6b3c5f95f7661aa52e4585ad114e231576127153",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T18:09:31Z",
-          "message": "Merge 500ef6235a4673b6c820cab9c3946886b00036cc into c5e05b6b214291efdc3702e2bb32a351b951e5db\n"
-        },
-        {
-          "sha": "500ef6235a4673b6c820cab9c3946886b00036cc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:09:26-06:00",
-          "message": "docs(console): the fixed clock covers the page's log() examples (rich-console-nz5y)\n"
-        },
-        {
-          "sha": "f28b9bb63b467a7f5d68d40b75a211c079a78fb7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:07:51-06:00",
-          "message": "fix(console): log throws on an invalid clock; log tests pin the clock (rich-console-nz5y)\n\nReview of PR #268: a getDatetime returning an invalid Date printed\n[NaN:NaN:NaN] silently; it now throws a RangeError. The remaining\nConsole.log tests read the wall clock and matched the stamp loosely; they\nnow pass a fixed clock and assert whole rows. The docs say which console\ncarries the fixed clock. Repeated-time blanking is rich-console-4i40.\n"
-        },
-        {
-          "sha": "231103c06fe07fc237b8ba2ebb8b64cbbacd7001",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:02:09-06:00",
-          "message": "feat(console): Console.log reads its time from a getDatetime clock (rich-console-nz5y)\n\nConsole.log stamped each row from `new Date()` formatted in the machine's\nlocale, so a test could not pin a log line and every docs build wrote the\nbuilder's time and locale into docs/console.md.\n\n`ConsoleOptions.getDatetime` is the clock log reads, once per call, as\nRich's `get_datetime`. The stamp is local 24-hour `HH:MM:SS`, what Rich's\n`%X` prints under the C locale a Python program runs in, so one clock\nprints one stamp on every machine. The Logging section's examples pass a\nfixed clock.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "c5e05b6b214291efdc3702e2bb32a351b951e5db",
-      "timestamp": "2026-09-30T17:54:04.382Z",
+      "sha": "77ab1b7f302bf884d94eac7ad6a5419b1a4bf186",
+      "timestamp": "2026-09-30T18:15:45.617Z",
       "commits": [
         {
-          "sha": "c5e05b6b214291efdc3702e2bb32a351b951e5db",
+          "sha": "77ab1b7f302bf884d94eac7ad6a5419b1a4bf186",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:52:54-06:00",
-          "message": "fix(status): a Status message draws its markup (rich-status-o9av) (#267)\n\n* fix(status): a Status message draws its markup (rich-status-o9av)\n\nnew Status(\"[bold]Working[/]\") drew the brackets: StatusRenderable yielded\nthe message as one raw Segment. Status's renderable is now a Spinner whose\nlabel is the message, as Rich's is, and the Spinner's label crosses embed's\nEmbeddedText, so a string is markup under the drawing console, assembled\nwith its frame as Rich's Text.assemble(frame, \" \", text). The label is left\nunhighlighted, as Rich's Text label is.\n\nStatus's `style` is now `spinnerStyle` (Rich's spinner_style, default\nstatus.spinner): the message styles itself with markup, and the rename makes\nthe changed meaning a type error rather than a silent recolour.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(spinner): the frame is never wrapped apart, the fragment is uncut, and the label is one source (rich-status-o9av)\n\nReview of #267: measure's minimum is floored at the widest frame, so a frame\nwith spaces in it is never offered less room than itself; drawFrame leaves\nits fragment at natural width for the composing caller to cut, while render\nwraps the line as Rich's Text does; and the label is held once and read\nthrough EmbeddedText when drawn, so a RichText changed in place draws as\nchanged and the getter is what is drawn.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T12:14:27-06:00",
+          "message": "feat(console): Console.log reads its time from a getDatetime clock (rich-console-nz5y) (#268)\n\n* feat(console): Console.log reads its time from a getDatetime clock (rich-console-nz5y)\n\nConsole.log stamped each row from `new Date()` formatted in the machine's\nlocale, so a test could not pin a log line and every docs build wrote the\nbuilder's time and locale into docs/console.md.\n\n`ConsoleOptions.getDatetime` is the clock log reads, once per call, as\nRich's `get_datetime`. The stamp is local 24-hour `HH:MM:SS`, what Rich's\n`%X` prints under the C locale a Python program runs in, so one clock\nprints one stamp on every machine. The Logging section's examples pass a\nfixed clock.\n\n* fix(console): log throws on an invalid clock; log tests pin the clock (rich-console-nz5y)\n\nReview of PR #268: a getDatetime returning an invalid Date printed\n[NaN:NaN:NaN] silently; it now throws a RangeError. The remaining\nConsole.log tests read the wall clock and matched the stamp loosely; they\nnow pass a fixed clock and assert whole rows. The docs say which console\ncarries the fixed clock. Repeated-time blanking is rich-console-4i40.\n\n* docs(console): the fixed clock covers the page's log() examples (rich-console-nz5y)"
         }
       ]
     }
