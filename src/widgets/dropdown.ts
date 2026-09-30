@@ -26,12 +26,12 @@
 import { observable, action, observableRef, observableShallow } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
+import { ink } from "./ink.js";
 import type {
   KeyEvent,
   WidgetMouseEvent,
@@ -71,7 +71,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
   }
 
   // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render — render() and resolvePalette() read _theme.palette, so the
+  // re-render — render() and renderOverlay() read _theme.palette, so the
   // theme reference must participate in MobX reactivity.
   @observableRef private accessor _theme: TerminalTheme;
 
@@ -263,8 +263,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     const baseStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
       : new Style({
-          color: this.resolvePalette("foreground"),
-          bgcolor: this.resolvePalette("surface"),
+          ...ink(this._theme, "foreground", "surface"),
           underline: this.focused,
         });
 
@@ -323,8 +322,7 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     const style = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
       : new Style({
-          color: this.resolvePalette("foreground"),
-          bgcolor: this.resolvePalette("surface"),
+          ...ink(this._theme, "foreground", "surface"),
           dim: true,
         });
     return [
@@ -355,17 +353,14 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
       : isHighlighted
         ? new Style({
-            color: this.resolvePalette("text-primary"),
-            bgcolor: this.resolvePalette("primary-muted"),
+            ...ink(this._theme, "text-primary", "primary-muted"),
           })
         : isSelected
           ? new Style({
-              color: this.resolvePalette("on-primary"),
-              bgcolor: this.resolvePalette("primary"),
+              ...ink(this._theme, "on-primary", "primary"),
             })
           : new Style({
-              color: this.resolvePalette("foreground"),
-              bgcolor: this.resolvePalette("surface"),
+              ...ink(this._theme, "foreground", "surface"),
             });
 
     return [
@@ -387,13 +382,5 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     const width = this.maxLabelLen() + 4;
     return { minimum: width, maximum: width };
-  }
-
-  // --- Palette resolution ---
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette must contain all keys.
-    return ColorSpec.fromRgba(rgba!);
   }
 }

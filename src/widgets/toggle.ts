@@ -14,12 +14,12 @@
 import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import { cellLen } from "../core/cells.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
+import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 export type ToggleVariant = "default" | "primary" | "success" | "warning" | "danger";
@@ -113,23 +113,14 @@ export class Toggle extends WidgetBase {
     }
 
     const keys = VARIANT_KEYS[this.variant];
-    const fg = this.resolvePalette(this.on ? keys.onFg : keys.offFg);
-    const bg = this.resolvePalette(this.on ? keys.onBg : keys.offBg);
+    const colors = this.on ? ink(this._theme, keys.onFg, keys.onBg) : ink(this._theme, keys.offFg, keys.offBg);
 
-    return [new Segment(text, new Style({ color: fg, bgcolor: bg, underline: this.focused }))];
+    return [new Segment(text, new Style({ ...colors, underline: this.focused }))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     // [LAW:one-source-of-truth] cellLen — see button.ts.
     const width = 5 + 1 + cellLen(this.label);
     return { minimum: width, maximum: width };
-  }
-
-  // --- Palette resolution ---
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette must contain all keys; missing is a construction bug.
-    return ColorSpec.fromRgba(rgba!);
   }
 }

@@ -21,11 +21,11 @@
 import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
+import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 export interface SliderOptions {
@@ -163,13 +163,13 @@ export class Slider extends WidgetBase {
     const baseAttrs = { underline: this.focused };
     const filledStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true, ...baseAttrs })
-      : new Style({ color: this.resolvePalette("primary"), ...baseAttrs });
+      : new Style({ ...ink(this._theme, "primary", "background"), ...baseAttrs });
     const unfilledStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true, ...baseAttrs })
-      : new Style({ color: this.resolvePalette("surface"), ...baseAttrs });
+      : new Style({ ...ink(this._theme, "foreground", "background"), dim: true, ...baseAttrs });
     const markerStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true, bold: true, ...baseAttrs })
-      : new Style({ color: this.resolvePalette("primary"), bold: true, ...baseAttrs });
+      : new Style({ ...ink(this._theme, "primary", "background"), bold: true, ...baseAttrs });
 
     const segments: Segment[] = [];
     if (markerIdx > 0) {
@@ -185,14 +185,6 @@ export class Slider extends WidgetBase {
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     return { minimum: this.width, maximum: this.width };
-  }
-
-  // --- Palette resolution ---
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette must contain all keys.
-    return ColorSpec.fromRgba(rgba!);
   }
 }
 

@@ -59,7 +59,6 @@
 import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import {
   cellLen,
   setCellSize,
@@ -77,6 +76,7 @@ import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
 import { WidgetBase } from "./widget-base.js";
+import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 /**
@@ -849,17 +849,16 @@ export class TextInput extends WidgetBase {
 
     const bracketStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
-      : new Style({ color: this.resolvePalette("foreground") });
+      : new Style(ink(this._theme, "foreground", "background"));
 
     const contentStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
       : showPlaceholder
-        ? new Style({ color: this.resolvePalette("foreground"), dim: true })
-        : this.contentStyleOverride ?? new Style({ color: this.resolvePalette("foreground") });
+        ? new Style({ ...ink(this._theme, "foreground", "background"), dim: true })
+        : this.contentStyleOverride ?? new Style(ink(this._theme, "foreground", "background"));
 
     const cursorStyle = this.cursorStyleOverride ?? new Style({
-      color: this.resolvePalette("on-primary"),
-      bgcolor: this.resolvePalette("primary"),
+      ...ink(this._theme, "on-primary", "primary"),
     });
 
     const segments: Segment[] = [new Segment("[", bracketStyle)];
@@ -921,11 +920,10 @@ export class TextInput extends WidgetBase {
 
     const contentStyle = this.disabled
       ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
-      : this.contentStyleOverride ?? new Style({ color: this.resolvePalette("foreground") });
-    const markerStyle = new Style({ color: this.resolvePalette("foreground"), dim: true });
+      : this.contentStyleOverride ?? new Style(ink(this._theme, "foreground", "background"));
+    const markerStyle = new Style({ ...ink(this._theme, "foreground", "background"), dim: true });
     const cursorStyle = this.cursorStyleOverride ?? new Style({
-      color: this.resolvePalette("on-primary"),
-      bgcolor: this.resolvePalette("primary"),
+      ...ink(this._theme, "on-primary", "primary"),
     });
 
     // Scroll-direction arrows appear in the rightmost cell of the first/last
@@ -939,7 +937,7 @@ export class TextInput extends WidgetBase {
     const canScrollUp = arrowsMode && scrollable && this._scrollStart > 0;
     const canScrollDown =
       arrowsMode && scrollable && this._scrollStart + this._maxRows! < total;
-    const indicatorStyle = this.indicatorStyleOverride ?? new Style({ color: this.resolvePalette("primary") });
+    const indicatorStyle = this.indicatorStyleOverride ?? new Style(ink(this._theme, "primary", "background"));
 
     const segments: Segment[] = [];
     const showCursor = this.focused && !this.disabled;
@@ -1103,13 +1101,5 @@ export class TextInput extends WidgetBase {
     if (rows === null || rows.length <= this._maxRows) return undefined;
     const cursorRow1 = this._cursorVisualRow() + 1;
     return `[${cursorRow1}/${rows.length}]`;
-  }
-
-  // --- Palette resolution ---
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette must contain all keys.
-    return ColorSpec.fromRgba(rgba!);
   }
 }
