@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Console } from "../../src/core/console.js";
 import { ColorDepth } from "../../src/core/color.js";
+import type { Env } from "../../src/core/env.js";
 import { PassThrough } from "node:stream";
 import { hostEnvironment } from "../../src/host/host-environment.js";
 import { NodeTerminalHost } from "../../src/node/terminal-host.js";
@@ -25,7 +26,7 @@ interface RecordingHost extends TerminalHost {
 }
 
 function makeRecordingHost(opts: {
-  env: NodeJS.ProcessEnv;
+  env: Env;
   isTTY: boolean;
 }): RecordingHost {
   let size: TerminalSize = { cols: 80, rows: 24 };

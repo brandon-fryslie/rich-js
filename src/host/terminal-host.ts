@@ -38,6 +38,7 @@
  */
 
 import type { Unsubscribe } from "../core/subscription.js";
+import type { Env } from "../core/env.js";
 
 // [LAW:types-are-the-program] `TerminalSize` is a *snapshot* — a value
 // captured at a point in time, never mutated after construction. The
@@ -108,7 +109,7 @@ export interface TerminalHost {
    * rather than being read off whatever `process` the renderer happens to
    * share a runtime with, which in a browser is none.
    */
-  readonly env: NodeJS.ProcessEnv;
+  readonly env: Env;
 
   /**
    * Run `handler` once, when the program ends by any path this host can
@@ -188,7 +189,7 @@ export interface BrowserTerminalHostOptions {
   terminal: XtermTerminal;
 }
 
-const XTERM_ENV: NodeJS.ProcessEnv = Object.freeze({
+const XTERM_ENV: Env = Object.freeze({
   TERM: "xterm-256color",
   COLORTERM: "truecolor",
 });
@@ -219,7 +220,7 @@ export class BrowserTerminalHost implements TerminalHost {
   // What xterm.js is, stated the way a terminal states it: it identifies as
   // `xterm-256color` and draws 24-bit SGR. With no env at all, detection saw
   // an unnamed TTY and drew every colour at 16-colour depth.
-  get env(): NodeJS.ProcessEnv {
+  get env(): Env {
     return XTERM_ENV;
   }
 

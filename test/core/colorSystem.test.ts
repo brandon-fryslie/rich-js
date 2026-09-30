@@ -5,10 +5,11 @@ import {
   detectColorSystem,
   resolveDestination,
 } from "../../src/core/color.js";
+import type { Env } from "../../src/core/env.js";
 import { renderToString } from "../../src/core/render.js";
 import { RichText } from "../../src/core/text.js";
 
-const EMPTY: NodeJS.ProcessEnv = {};
+const EMPTY: Env = {};
 
 describe("resolveColorSystem (string spec → ColorDepth)", () => {
   it("maps 'truecolor' → TRUECOLOR", () => {
@@ -34,14 +35,14 @@ describe("resolveColorSystem (string spec → ColorDepth)", () => {
   });
 
   it("'auto' delegates to detectColorSystem", () => {
-    const env: NodeJS.ProcessEnv = { COLORTERM: "truecolor" };
+    const env: Env = { COLORTERM: "truecolor" };
     expect(resolveColorSystem("auto", { env, isTTY: true })).toBe(
       ColorDepth.TRUECOLOR,
     );
   });
 
   it("explicit specs ignore env (do not auto-detect)", () => {
-    const env: NodeJS.ProcessEnv = { NO_COLOR: "1" };
+    const env: Env = { NO_COLOR: "1" };
     // Even with NO_COLOR set, explicit "truecolor" overrides — caller is boss.
     expect(resolveColorSystem("truecolor", { env, isTTY: true })).toBe(
       ColorDepth.TRUECOLOR,

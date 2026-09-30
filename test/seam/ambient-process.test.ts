@@ -21,7 +21,7 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT, listTypeScriptFiles, repoRelative } from "../coverage/extract.js";
+import { REPO_ROOT, isBehindNodeAirlock, listTypeScriptFiles, repoRelative } from "../coverage/extract.js";
 import { parseSourceFile } from "./graph.js";
 import {
   HOST_ACCESS,
@@ -109,7 +109,7 @@ describe("the claims that survive under the narrowed ones", () => {
     // is true is where both live: behind `package.json#exports` subpaths a
     // consumer has to name.
     expect(readersOf("stdin")).toEqual(["src/node/prompt.ts", "src/node/terminal-host.ts"]);
-    expect(readersOf("stdin").every((f) => f.startsWith("src/node/"))).toBe(true);
+    expect(readersOf("stdin").every(isBehindNodeAirlock)).toBe(true);
   });
 
   it("keeps every host read out of src/widgets and src/renderables", () => {

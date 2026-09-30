@@ -38,6 +38,7 @@
 
 import { ColorDepth, resolveDestination } from "./color.js";
 import type { DetectColorOptions, Destination } from "./color.js";
+import type { Env } from "./env.js";
 import type { Segment } from "./segment.js";
 import type { Renderable, RenderOptions } from "./protocol.js";
 import { OSC8_CLOSE, osc8Open } from "./osc8.js";
@@ -58,7 +59,7 @@ export interface RenderToStringOptions extends Pick<RenderOptions, "asciiOnly" |
    * Environment to consult when `colorSystem` is `"auto"`. Defaults to
    * `process.env`. Pass an explicit value to keep rendering deterministic.
    */
-  env?: NodeJS.ProcessEnv;
+  env?: Env;
   /**
    * Whether output is going to a TTY when `colorSystem` is `"auto"`. Defaults
    * to `process.stdout?.isTTY`. Pass an explicit value to keep rendering

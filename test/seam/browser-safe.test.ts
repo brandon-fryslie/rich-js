@@ -17,7 +17,7 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT, ENTRY_MODULES } from "../coverage/extract.js";
+import { REPO_ROOT, ENTRY_MODULES, isBehindNodeAirlock } from "../coverage/extract.js";
 import { reachableSourceModules, parseSourceFile, resolveEdge } from "./graph.js";
 import { loadCompilerOptions } from "../coverage/extract.js";
 import {
@@ -34,7 +34,7 @@ import {
  * other entry carries the browser-safe guarantee, and a new one added to
  * `package.json` is covered the moment it lands.
  */
-const BROWSER_SAFE_ENTRIES = ENTRY_MODULES.filter((entry) => !entry.startsWith("src/node/"));
+const BROWSER_SAFE_ENTRIES = ENTRY_MODULES.filter((entry) => !isBehindNodeAirlock(entry));
 
 const REACHED = reachableSourceModules(
   BROWSER_SAFE_ENTRIES.map((entry) => path.join(REPO_ROOT, entry)),
@@ -44,7 +44,7 @@ describe("the browser-safe entry set", () => {
   it("is every public subpath outside the node airlock", () => {
     expect(BROWSER_SAFE_ENTRIES).toContain("src/index.ts");
     expect(BROWSER_SAFE_ENTRIES.length).toBeGreaterThan(1);
-    expect(ENTRY_MODULES.some((entry) => entry.startsWith("src/node/"))).toBe(true);
+    expect(ENTRY_MODULES.some(isBehindNodeAirlock)).toBe(true);
   });
 });
 
@@ -61,7 +61,7 @@ describe("reachableSourceModules", () => {
   });
 
   it("stops at the node airlock", () => {
-    expect(files.filter((f) => f.startsWith("src/node/"))).toEqual([]);
+    expect(files.filter(isBehindNodeAirlock)).toEqual([]);
   });
 
   it("refuses to walk past a relative import it cannot resolve", () => {
