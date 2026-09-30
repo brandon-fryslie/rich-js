@@ -305,7 +305,8 @@ const NO_GUTTER = new Segment("");
 
 /**
  * Each block in `tokens`, every row it draws ended, body text placed by `justify`.
- * A heading is placed left whatever `justify` or `options` say.
+ * A heading is drawn at its natural width whatever `justify` or `options` say,
+ * so its underline stops where its text does.
  */
 function* renderTokens(
   tokens: readonly MdToken[],
@@ -317,7 +318,8 @@ function* renderTokens(
     switch (token.type) {
       case "heading": {
         const style = getStyle(options, `markdown.h${Math.min(token.level, 4)}`);
-        yield* guttered(inline(token.text, settings, "left"), options, NO_GUTTER, NO_GUTTER, style);
+        const unplaced = { ...options, justify: undefined };
+        yield* guttered(inline(token.text, settings, undefined), unplaced, NO_GUTTER, NO_GUTTER, style);
         break;
       }
 

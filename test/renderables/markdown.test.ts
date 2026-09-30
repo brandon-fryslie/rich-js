@@ -245,6 +245,13 @@ describe("Markdown", () => {
     expect(text.split("\n").map((row) => row.trimEnd())).toEqual(["Head", "", "        body", ""]);
   });
 
+  it("draws a heading at its natural width, so its style stops where its text does", () => {
+    for (const justify of [undefined, "left", "full"] as const) {
+      const heading = collectText(new Markdown("# Head\n\nbody", { justify }), { maxWidth: 20, justify }).split("\n")[0];
+      expect(heading).toBe("Head");
+    }
+  });
+
   it("spans a link over exactly its text when the source carries a control character", () => {
     for (const options of [{}, { hyperlinks: false }] satisfies MarkdownOptions[]) {
       const linked = collectSegments(new Markdown("x[a\x01b](https://e.com)", options), { maxWidth: 80 })
