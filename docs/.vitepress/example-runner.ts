@@ -27,8 +27,9 @@
  *      page imports as a module when its live terminal (theme/RichLive.ts)
  *      first scrolls into view;
  *   8. cut each block that runs into a program of its own (example-slice.ts),
- *      type-check it, run it as the playground runs it and hold it to the
- *      block's output, and link it from the block's "Try it".
+ *      type-check it and link it from the block's "Try it"; a block of the
+ *      chain's is also run as the playground runs it and held to the block's
+ *      output.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -229,7 +230,7 @@ type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly
  * example may print a random number; read from the host, either would make two
  * runs of one block differ. A block that draws random numbers after a block
  * above it drew some still differs, since its program starts the sequence
- * afresh, and the gate says so at the block.
+ * afresh, and the gate names that among the causes at the block.
  */
 interface World {
   readonly now: number;
@@ -505,7 +506,9 @@ async function tryItPrints(fence: Fence, standalone: ExampleProgram, record: Blo
     `docs/${fence.page}:${fence.line}: "Try it" opens this block as the program below, which ${ended} ` +
       `where the page's run of the block ${record.ended.kind}, writing ${JSON.stringify(stream.slice(from, from + 60))} ` +
       `where the page shows ${JSON.stringify(record.output.slice(from, from + 60))}. ` +
-      `The block's output depends on a statement above it that the program leaves out (example-slice.ts says which it keeps).\n${standalone.source}`,
+      `The program is the block and what example-slice.ts carries from above it, so the difference is a statement above ` +
+      `the block that it leaves out, one it carries that prints, or random numbers the block draws after a block above it ` +
+      `drew some, which the program draws afresh.\n${standalone.source}`,
     { cause: end.kind === "threw" ? end.error : undefined },
   );
 }
@@ -639,17 +642,26 @@ export async function runPageExamples(
   const context = exampleContext(page, markdown);
   const barrel = compiler.barrelExports();
   const program = buildProgram(page, context, chain, barrel);
-  // Each block's "Try it" program is cut from the program the block ran in.
-  const cut = new Map<Fence, (target: Fence) => ExampleProgram>();
-  const inChain = standalonePrograms(compiler.check(program), program);
-  chain.forEach((fence) => cut.set(fence, inChain));
+  const checked = compiler.check(program);
   // [LAW:single-enforcer] Every block outside the chain is checked here, each
   // as a program of its own, whether it runs in the browser or nowhere: not
   // being run at build time is no licence to call something that does not exist.
   const alone = new Map<Fence, ExampleProgram>(fences.filter((f) => !runsAtBuild(f)).map((fence) => [fence, buildBlockProgram(page, context, fence, barrel)]));
-  for (const [fence, blockProgram] of alone) cut.set(fence, standalonePrograms(compiler.check(blockProgram), blockProgram));
-  const tried = new Map<Fence, ExampleProgram>(fences.filter((fence) => MARKERS[fence.marker].run !== "never").map((fence) => [fence, cut.get(fence)!(fence)]));
-  for (const standalone of tried.values()) compiler.check(standalone);
+  const checkedAlone = new Map([...alone].map(([fence, blockProgram]) => [fence, compiler.check(blockProgram)] as const));
+  // Each "Try it" program is cut from the program its block ran in.
+  const inChain = standalonePrograms(checked, program);
+  const cut = (fence: Fence): ExampleProgram =>
+    runsAtBuild(fence) ? inChain(fence) : standalonePrograms(checkedAlone.get(fence)!, alone.get(fence)!)(fence);
+  const tried = new Map<Fence, ExampleProgram>(fences.filter((fence) => MARKERS[fence.marker].run !== "never").map((fence) => [fence, cut(fence)]));
+  for (const [fence, standalone] of tried) {
+    try {
+      compiler.check(standalone);
+    } catch (error) {
+      throw new Error(`docs/${page}:${fence.line}: "Try it" opens this block as the program below, which does not compile. ${(error as Error).message}\n${standalone.source}`, {
+        cause: error,
+      });
+    }
+  }
   const script = await bundleOrThrow(page, program.source);
   const world = newWorld();
   const { stream, end, exits } = await capture(script, world);

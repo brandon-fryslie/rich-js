@@ -86,7 +86,7 @@ export function exampleContext(page: string, markdown: string): ExampleContext |
  * import binds and the export that name is. Two blocks importing one export
  * merge into one import however each wrote it.
  */
-type Hoisted = Bare | Binding;
+export type Hoisted = Bare | Binding;
 
 interface Bare {
   readonly kind: "bare";
@@ -94,14 +94,18 @@ interface Bare {
   readonly line: number;
 }
 
-interface Binding {
-  readonly kind: "binding";
-  readonly line: number;
+/** One name an import binds: the export it is, and whether only its type is imported. */
+export interface ImportBinding {
   readonly local: string;
   readonly from: string;
   /** The export's name: `default` for a default import, `*` for a namespace. */
   readonly imported: string;
   readonly typeOnly: boolean;
+}
+
+interface Binding extends ImportBinding {
+  readonly kind: "binding";
+  readonly line: number;
 }
 
 /** A name the main barrel exports, and whether it is a type and nothing else. */
@@ -111,7 +115,7 @@ export interface BarrelExport {
 }
 
 /** A block's code split into its imports and the rest, the rest keeping its line count. */
-function splitImports(code: string, firstLine: number): { imports: Hoisted[]; body: string } {
+export function splitImports(code: string, firstLine: number): { imports: Hoisted[]; body: string } {
   const source = ts.createSourceFile("block.ts", code, ts.ScriptTarget.ES2022, true);
   const imports: Hoisted[] = [];
   let body = code;
@@ -127,17 +131,16 @@ function splitImports(code: string, firstLine: number): { imports: Hoisted[]; bo
 
 /** An import declaration as one hoisted import per name it binds; a bare import binds none and is kept whole. */
 function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line: number): Hoisted[] {
+  if (statement.importClause === undefined) return [{ kind: "bare", text: statement.getText(source), line }];
+  return importBindings(statement).map((binding) => ({ kind: "binding", line, ...binding }));
+}
+
+/** The names an import declaration binds, one per name; none for a bare import. */
+export function importBindings(statement: ts.ImportDeclaration): ImportBinding[] {
   const clause = statement.importClause;
-  if (clause === undefined) return [{ kind: "bare", text: statement.getText(source), line }];
+  if (clause === undefined) return [];
   const from = (statement.moduleSpecifier as ts.StringLiteral).text;
-  const binding = (local: string, imported: string, typeOnly: boolean): Binding => ({
-    kind: "binding",
-    line,
-    local,
-    from,
-    imported,
-    typeOnly: clause.isTypeOnly || typeOnly,
-  });
+  const binding = (local: string, imported: string, typeOnly: boolean): ImportBinding => ({ local, from, imported, typeOnly: clause.isTypeOnly || typeOnly });
   const bindings = clause.namedBindings;
   return [
     ...(clause.name === undefined ? [] : [binding(clause.name.text, "default", false)]),
@@ -149,7 +152,7 @@ function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line:
   ];
 }
 
-function importText(binding: Binding): string {
+function importText(binding: ImportBinding): string {
   const type = binding.typeOnly ? "type " : "";
   const from = JSON.stringify(binding.from);
   const { local, imported } = binding;

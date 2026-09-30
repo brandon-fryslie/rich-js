@@ -327,11 +327,27 @@ describe("Try it", { timeout: 30_000 }, () => {
     expect(third!.program).not.toContain('console.print("rows");');
   });
 
-  it("takes from the page's context only the lines the block names", async () => {
-    const context = ["---", "exampleContext: |", '  const used = "u";', '  const unused = "n";', "---", ""].join("\n");
-    const [only] = await tried(await run(context + fence("console.print(used);")));
-    expect(only!.program).toContain('const used = "u";');
-    expect(only!.program).not.toContain("unused");
+  it("carries the page's context whole, a helper's changes included", async () => {
+    const context = ["---", "exampleContext: |", "  const rows: string[] = [];", "  const add = (row: string) => rows.push(row);", '  add("q");', '  const unused = "n";', "---", ""].join("\n");
+    const [only] = await tried(await run(context + fence('console.print(rows.join(","));')));
+    expect(only!.program).toBe(
+      ['import { Console } from "@promptctl/rich-js";', "", "const console = new Console();", "", "const rows: string[] = [];", "const add = (row: string) => rows.push(row);", 'add("q");', 'const unused = "n";', "", 'console.print(rows.join(","));'].join("\n"),
+    );
+  });
+
+  it("opens a scope where the block redeclares a name it carries, as the page does", async () => {
+    const [, second] = await tried(
+      await run(page(fence('const t = "a";\nconst p = new Panel(t);', "ts silent"), fence('const t = "b";\nconst console = new Console({ width: 30 });\nconsole.print(p, t);'))),
+    );
+    expect(second!.program).toBe(
+      ['import { Console, Panel } from "@promptctl/rich-js";', "", 'const t = "a";', "const p = new Panel(t);", "", "{", 'const t = "b";', "const console = new Console({ width: 30 });", "console.print(p, t);", "}"].join("\n"),
+    );
+  });
+
+  it("carries a statement with the comments above it, and not the one trailing the line before it", async () => {
+    const [, second] = await tried(await run(page(fence('const a = "x"; // about a\n// about b\nconst b = "y";', "ts silent"), fence("console.print(b);"))));
+    expect(second!.program).toContain('\n// about b\nconst b = "y";\n');
+    expect(second!.program).not.toContain("about a");
   });
 
   it("opens a live block as its program alone, and gives a block that runs nowhere no link", async () => {
@@ -350,6 +366,21 @@ describe("Try it", { timeout: 30_000 }, () => {
     // The column is added by a statement that declares, which the cut reads as only reading `table`.
     const markdown = page(fence('const table = new Table();\nconst named = table.addColumn("name");', "ts silent"), fence("console.print(table);"));
     await expect(run(markdown)).rejects.toThrow(/fixture\.md:6: "Try it" opens this block as the program below, which completed where the page's run of the block completed/);
+  });
+
+  it("names random numbers among the causes when a block draws after one above it drew", async () => {
+    const markdown = page(fence("console.print(String(Math.random()));"), fence("console.print(String(Math.random()));"));
+    await expect(run(markdown)).rejects.toThrow(/fixture\.md:5: "Try it" [^]*random numbers the block draws after a block above it drew some/);
+  });
+
+  it("fails the build at a block whose program does not compile, saying it is the \"Try it\" program", async () => {
+    // The assertion that narrows `v` names `console`, so the cut reads it as what the block above printed.
+    const markdown = page(
+      fence('const v: unknown = "hi";\nfunction check(value: unknown, _to: Console): asserts value is string {}', "ts silent"),
+      fence("check(v, console);", "ts silent"),
+      fence("console.print(v.toUpperCase());"),
+    );
+    await expect(run(markdown)).rejects.toThrow(/fixture\.md:10: "Try it" opens this block as the program below, which does not compile\. docs example does not compile:\ndocs\/fixture\.md:11: .v. is of type .unknown./);
   });
 });
 

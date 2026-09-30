@@ -5,18 +5,22 @@
  *
  * A page is a running document (example-program.ts): a block sees the prelude,
  * the page's `exampleContext` and every block above it. The playground runs one
- * program with nothing around it, so the block's program carries what the
- * block reads from that document and nothing else:
+ * program with nothing around it, so the block's program carries:
  *   - an import for every name it imports or uses, the prelude's included, so
  *     it names what it touches rather than the whole main barrel. The block's
  *     own import lines join these, in the form the page's program gives them;
- *   - every statement above it that declares something it uses, and every
- *     statement those use in turn, in the order the page has them: the
- *     prelude's `console`, the lines of the context it reads, the declarations
- *     of the blocks above it;
- *   - every statement above it that changes one of those, below.
- * Nothing that only printed is carried, so a block's program prints what the
- * block printed and not what the blocks above it printed.
+ *   - the page's `exampleContext`, whole: it is the setup the page tells a
+ *     reader its examples assume, and it may not print;
+ *   - every statement above it that declares something it or the context
+ *     uses, and every statement those use in turn, in the order the page has
+ *     them: the prelude's `console`, the declarations of the blocks above it;
+ *   - every statement of a block above it that changes one of those, below.
+ * Nothing a block above it printed is carried, so a block's program prints what
+ * the block printed and not what the blocks above it printed.
+ *
+ * The page nests each part in the scope of the one before, so a block may
+ * redeclare any name; its program opens a scope where a part redeclares a
+ * name above it, and only there.
  *
  * [LAW:one-source-of-truth] What a name refers to is TypeScript's answer, read
  * from the checker over the program the page actually runs, so a block that
@@ -24,11 +28,13 @@
  * statements change a value is a reading of their shape, and can miss one, so
  * the runner holds the result to what the page showed: it type-checks the
  * program alone and runs it, and a program that does not print what its block
- * printed fails the build at the block.
+ * printed fails the build at the block. A `live` block's program is not run at
+ * build; it sees only the context, which is carried whole, so no reading of
+ * shape decides it.
  */
 import ts from "typescript";
 import type { Fence } from "./example-markers.js";
-import type { ExampleProgram } from "./example-program.js";
+import { importBindings, splitImports, type ExampleProgram, type ImportBinding } from "./example-program.js";
 
 /** A program the checker has read, and the file in it that is `program`'s source. */
 export interface Checked {
@@ -36,43 +42,16 @@ export interface Checked {
   readonly file: ts.SourceFile;
 }
 
-/** One name an import binds: the export, where it comes from, and whether only its type is used. */
-interface Binding {
-  /** Where the import binding it stands in the program. */
-  readonly at: number;
-  readonly local: string;
-  readonly from: string;
-  /** The export's name: `default` for a default import, `*` for a namespace. */
-  readonly imported: string;
-  readonly typeOnly: boolean;
-}
-
-/** The binding an import declaration node makes, or null for a node that is not one. */
-function bindingOf(node: ts.Node): Binding | null {
-  const clause =
-    ts.isImportSpecifier(node) ? node.parent.parent
-    : ts.isNamespaceImport(node) ? node.parent
-    : ts.isImportClause(node) ? node
-    : null;
-  if (clause === null) return null;
-  const from = (clause.parent.moduleSpecifier as ts.StringLiteral).text;
-  const typeOnly = clause.isTypeOnly || (ts.isImportSpecifier(node) && node.isTypeOnly);
-  const at = node.getStart();
-  if (ts.isImportSpecifier(node)) return { at, local: node.name.text, from, imported: node.propertyName?.text ?? node.name.text, typeOnly };
-  if (ts.isNamespaceImport(node)) return { at, local: node.name.text, from, imported: "*", typeOnly };
-  return { at, local: clause.name!.text, from, imported: "default", typeOnly };
-}
-
 /**
  * The import lines that bind `bindings`: one line per module, in the order the
  * modules were first imported, a default or namespace import on a line of its own.
  */
-function importLines(bindings: readonly Binding[]): string[] {
-  const modules = new Map<string, Binding[]>();
+function importLines(bindings: readonly ImportBinding[]): string[] {
+  const modules = new Map<string, ImportBinding[]>();
   for (const binding of bindings) modules.set(binding.from, [...(modules.get(binding.from) ?? []), binding]);
   return [...modules].flatMap(([from, bound]) => {
     const quoted = JSON.stringify(from);
-    const type = (b: Binding) => (b.typeOnly ? "type " : "");
+    const type = (b: ImportBinding) => (b.typeOnly ? "type " : "");
     const named = bound.filter((b) => b.imported !== "*" && b.imported !== "default");
     return [
       ...bound.filter((b) => b.imported === "default").map((b) => `import ${type(b)}${b.local} from ${quoted};`),
@@ -84,47 +63,23 @@ function importLines(bindings: readonly Binding[]): string[] {
   });
 }
 
-/**
- * A block's code split into its imports and the rest: the names and bare
- * imports it imports, and its other lines, each with the page line it is on.
- */
-function splitBlock(target: Fence): { locals: string[]; bare: string[]; lines: { text: string; line: number }[] } {
-  const file = ts.createSourceFile("block.ts", target.code, ts.ScriptTarget.ES2022, true);
-  const imports = file.statements.filter(ts.isImportDeclaration);
-  const importLines = new Set(
-    imports.flatMap((statement) => {
-      const [from, to] = [statement.getStart(file), statement.end].map((at) => file.getLineAndCharacterOfPosition(at).line);
-      return Array.from({ length: to! - from! + 1 }, (_, i) => from! + i);
-    }),
-  );
-  const lines = target.code
-    .split("\n")
-    .map((text, i) => ({ text, line: target.line + 1 + i }))
-    .filter((_, i) => !importLines.has(i));
-  return {
-    locals: imports.flatMap((statement) => {
-      const clause = statement.importClause;
-      const bindings = clause?.namedBindings;
-      return [
-        ...(clause?.name === undefined ? [] : [clause.name.text]),
-        ...(bindings === undefined ? [] : ts.isNamespaceImport(bindings) ? [bindings.name.text] : bindings.elements.map((e) => e.name.text)),
-      ];
-    }),
-    bare: imports.filter((statement) => statement.importClause === undefined).map((statement) => statement.getText(file)),
-    // The blank lines left where its imports were, before its first line, are not its own.
-    lines: lines.filter((_, i) => lines.slice(0, i + 1).some(({ text }) => text.trim() !== "")),
-  };
+/** The names a statement binds in the scope it sits in: none for one that is not a declaration. */
+function declaredNames(statement: ts.Statement): string[] {
+  const bound = (name: ts.BindingName): string[] =>
+    ts.isIdentifier(name) ? [name.text] : name.elements.flatMap((element) => (ts.isOmittedExpression(element) ? [] : bound(element.name)));
+  if (ts.isVariableStatement(statement)) return statement.declarationList.declarations.flatMap((d) => bound(d.name));
+  const named =
+    ts.isFunctionDeclaration(statement) ||
+    ts.isClassDeclaration(statement) ||
+    ts.isInterfaceDeclaration(statement) ||
+    ts.isTypeAliasDeclaration(statement) ||
+    ts.isEnumDeclaration(statement) ||
+    ts.isModuleDeclaration(statement);
+  return named && statement.name !== undefined ? [statement.name.text] : [];
 }
 
-/** Whether a statement is a declaration, binding a name in the scope it sits in. */
-const declares = (statement: ts.Statement): boolean =>
-  ts.isVariableStatement(statement) ||
-  ts.isFunctionDeclaration(statement) ||
-  ts.isClassDeclaration(statement) ||
-  ts.isInterfaceDeclaration(statement) ||
-  ts.isTypeAliasDeclaration(statement) ||
-  ts.isEnumDeclaration(statement) ||
-  ts.isModuleDeclaration(statement);
+/** Whether a declaration is a name an import binds. */
+const isImportBinding = (node: ts.Node): boolean => ts.isImportSpecifier(node) || ts.isNamespaceImport(node) || ts.isImportClause(node);
 
 /**
  * The program of each block of `program`, the program a page runs, as the
@@ -133,6 +88,11 @@ const declares = (statement: ts.Statement): boolean =>
 export function standalonePrograms(checked: Checked, program: ExampleProgram): (target: Fence) => ExampleProgram {
   const { checker, file } = checked;
   const origin = (node: ts.Node): number | null => program.origins[file.getLineAndCharacterOfPosition(node.getStart(file)).line] ?? null;
+  /** The part of the page a statement belongs to: the prelude, the context or one block. */
+  const partOf = (statement: ts.Statement): Fence | "prelude" | "context" => {
+    const line = origin(statement);
+    return line === null ? "prelude" : (program.blocks.find((b) => line > b.line && line < b.closeLine) ?? "context");
+  };
 
   // The statements a page line or the prelude wrote at the level of a part:
   // the file's own and those in the scopes the program opens, never the
@@ -157,6 +117,13 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     for (let at: ts.Node | undefined = node; at !== undefined; at = at.parent) if (owner.has(at)) return at as ts.Statement;
     return null;
   };
+  const context = statements.filter((s) => partOf(s) === "context");
+
+  // Every name the program's imports bind, as the program binds it, in the
+  // order it binds them: one import per name, a barrel value imported as a
+  // value however a block wrote it.
+  const imported = new Map(file.statements.filter(ts.isImportDeclaration).flatMap(importBindings).map((b) => [b.local, b] as const));
+  const order = [...imported.keys()];
 
   // The class of the prelude's `console`: a statement that names a value of it writes to the terminal.
   const prelude = statements.find(
@@ -169,7 +136,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
   /** What a statement names: the statements declaring it, the imports binding it, and whether it names a console. */
   const read = (statement: ts.Statement) => {
     const declared = new Set<ts.Statement>();
-    const bound: Binding[] = [];
+    const bound: ImportBinding[] = [];
     let writes = false;
     const visit = (node: ts.Node): void => {
       if (ts.isIdentifier(node)) {
@@ -178,9 +145,9 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
           : checker.getSymbolAtLocation(node);
         for (const declaration of symbol?.declarations ?? []) {
           if (declaration.getSourceFile() !== file) continue;
-          const binding = bindingOf(declaration);
-          const at = binding === null ? statementOf(declaration) : null;
-          if (binding !== null) bound.push(binding);
+          // A name that resolves to an import is that import's local name.
+          if (isImportBinding(declaration)) bound.push(imported.get(node.text)!);
+          const at = statementOf(declaration);
           if (at !== null && at !== statement) declared.add(at);
         }
         writes ||= checker.getTypeAtLocation(node).getSymbol() === consoleClass;
@@ -191,36 +158,33 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     return { declared, bound, writes };
   };
   const reading = new Map(statements.map((statement) => [statement, read(statement)]));
-  // Every name the program's imports bind, as the program binds it: one import
-  // per name, a barrel value imported as a value however a block wrote it.
-  const imported = new Map(
-    file.statements.filter(ts.isImportDeclaration).flatMap((statement) => {
-      const clause = statement.importClause;
-      const bindings = clause?.namedBindings;
-      const nodes: ts.Node[] = [
-        ...(clause?.name === undefined ? [] : [clause]),
-        ...(bindings === undefined ? [] : ts.isNamespaceImport(bindings) ? [bindings] : bindings.elements),
-      ];
-      return nodes.map((node) => bindingOf(node)!).map((binding) => [binding.local, binding] as const);
-    }),
-  );
+
+  /** A carried statement's text, with its own comments above it, and the page line the text starts on. */
+  const carried = (statement: ts.Statement): { text: string; line: number | null } => {
+    const start = statement.getStart(file);
+    // The trivia before it opens with the rest of the line before it, which
+    // is that line's, and the blank lines after that are no one's.
+    const comments = file.text
+      .slice(statement.getFullStart(), start)
+      .replace(/^[^\n]*\n?/, "")
+      .replace(/^(?:[ \t]*\n)+/, "");
+    const line = program.origins[file.getLineAndCharacterOfPosition(start - comments.length).line] ?? null;
+    return { text: comments + file.text.slice(start, statement.end), line };
+  };
 
   return (target) => {
-    const inTarget = (statement: ts.Statement) => {
-      const line = origin(statement);
-      return line !== null && line > target.line && line < target.closeLine;
-    };
+    const inTarget = (statement: ts.Statement) => partOf(statement) === target;
     const first = statements.findIndex(inTarget);
-    // [LAW:dataflow-not-control-flow] The block needs every statement declaring
-    // something a needed statement names, and every statement above it that
-    // declares nothing, names something needed and does not write to the
-    // terminal: that is a statement which changes a value the block reads,
-    // `layout.splitColumn(…)` above a block printing `layout`. One that writes is
-    // what an earlier block printed, not what this one needs; one that throws
-    // would end the program; one that declares only reads what it names, and
-    // its name could be the block's own.
-    const needed = new Set(statements.filter(inTarget));
-    const above = statements.slice(0, Math.max(first, 0)).filter((s) => !throwing.has(s) && !declares(s));
+    // [LAW:dataflow-not-control-flow] The block needs its own statements, the
+    // context, every statement declaring something a needed statement names,
+    // and every statement above it that declares nothing, names something
+    // needed and does not write to the terminal: that is a statement which
+    // changes a value the block reads, `layout.splitColumn(…)` above a block
+    // printing `layout`. One that writes is what an earlier block printed, not
+    // what this one needs; one that throws would end the program; one that
+    // declares only reads what it names.
+    const needed = new Set([...context, ...statements.filter(inTarget)]);
+    const above = statements.slice(0, Math.max(first, 0)).filter((s) => !throwing.has(s) && declaredNames(s).length === 0);
     for (let grew = true; grew; ) {
       const before = needed.size;
       for (const statement of [...needed]) reading.get(statement)!.declared.forEach((at) => needed.add(at));
@@ -232,12 +196,31 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     }
     // Every import the block writes, and every one it or a statement it needs
     // names, in the order the page's imports and then the prelude bind them.
-    const own = splitBlock(target);
+    const own = splitImports(target.code, target.line + 1);
     const bindings = new Map(
-      [...[...needed].flatMap((statement) => reading.get(statement)!.bound), ...own.locals.map((local) => imported.get(local)!)]
-        .sort((a, b) => a.at - b.at)
+      [
+        ...[...needed].flatMap((statement) => reading.get(statement)!.bound),
+        ...own.imports.flatMap((imp) => (imp.kind === "binding" ? [imported.get(imp.local)!] : [])),
+      ]
+        .sort((a, b) => order.indexOf(a.local) - order.indexOf(b.local))
         .map((b) => [b.local, b] as const),
     );
+    const body = own.body.split("\n").map((text, i) => ({ text, line: target.line + 1 + i }));
+
+    // The parts it carries, in page order, each with the names it declares,
+    // then the block, less the blank lines left where its imports were before its first line.
+    const parts: { names: string[]; lines: { text: string; line: number | null }[] }[] = [];
+    let part: unknown;
+    for (const statement of statements.filter((s) => needed.has(s) && !inTarget(s))) {
+      if (partOf(statement) !== part) parts.push({ names: [], lines: [] });
+      part = partOf(statement);
+      parts.at(-1)!.names.push(...declaredNames(statement));
+      parts.at(-1)!.lines.push(carried(statement));
+    }
+    parts.push({
+      names: statements.filter(inTarget).flatMap(declaredNames),
+      lines: body.filter((_, i) => body.slice(0, i + 1).some(({ text }) => text.trim() !== "")),
+    });
 
     const out = { lines: [] as string[], origins: [] as (number | null)[] };
     const add = (text: string, line: number | null) =>
@@ -245,23 +228,21 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
         out.lines.push(piece);
         out.origins.push(line === null ? null : line + i);
       });
-    const header = [...own.bare, ...importLines([...bindings.values()])];
-    header.forEach((line) => add(line, null));
-
-    // A part is the prelude, the context or one block; its statements go
-    // together, and a blank line stands between parts, as between blocks on the page.
-    const partOf = (line: number | null) => (line === null ? "prelude" : (program.blocks.find((b) => line > b.line && line < b.closeLine) ?? "context"));
-    let part: unknown = header.length === 0 ? undefined : "imports";
-    for (const statement of statements.filter((s) => needed.has(s) && !inTarget(s))) {
-      // A statement's own comments above it come with it; the blank lines above them do not.
-      const text = file.text.slice(statement.getFullStart(), statement.end).replace(/^(?:[ \t]*\n)+/, "");
-      const line = program.origins[file.getLineAndCharacterOfPosition(statement.end - text.length).line] ?? null;
-      if (part !== undefined && partOf(line) !== part) add("", null);
-      part = partOf(line);
-      add(text, line);
+    [...own.imports.flatMap((imp) => (imp.kind === "bare" ? [imp.text] : [])), ...importLines([...bindings.values()])].forEach((line) => add(line, null));
+    // A blank line stands between parts, as between blocks on the page, and a
+    // part that redeclares a name above it opens the scope the page gives it.
+    const visible = new Set(bindings.keys());
+    let open = 0;
+    for (const { names, lines } of parts) {
+      if (out.lines.length > 0) add("", null);
+      if (names.some((name) => visible.has(name))) {
+        add("{", null);
+        open += 1;
+      }
+      names.forEach((name) => visible.add(name));
+      lines.forEach(({ text, line }) => add(text, line));
     }
-    if (part !== undefined) add("", null);
-    own.lines.forEach(({ text, line }) => add(text, line));
+    if (open > 0) add("}".repeat(open), null);
     return { page: program.page, source: out.lines.join("\n"), origins: out.origins, blocks: [target] };
   };
 }
