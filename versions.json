@@ -4,15 +4,22 @@
     {
       "version": "pr-233",
       "ref": "refs/pull/233/merge",
-      "sha": "24991234f23402d56ff45bc2c252188d8ec41fe0",
-      "timestamp": "2026-09-30T00:47:40.667Z",
+      "sha": "c914e3e318851ec0690fbeab483435357597e50a",
+      "timestamp": "2026-09-30T00:59:18.233Z",
       "commits": [
         {
-          "sha": "24991234f23402d56ff45bc2c252188d8ec41fe0",
+          "sha": "c914e3e318851ec0690fbeab483435357597e50a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:46:48-06:00",
-          "message": "Merge 984de26920d6c7207262efb63a367b3f4f4ff507 into e4dc4663346578a9ef93e67b1663f98eaf63c01d\n"
+          "timestamp": "2026-09-30T00:58:26Z",
+          "message": "Merge 0c4c6fa5960b745e63a22374cf03f31b05846b6a into e4dc4663346578a9ef93e67b1663f98eaf63c01d\n"
+        },
+        {
+          "sha": "0c4c6fa5960b745e63a22374cf03f31b05846b6a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T18:58:21-06:00",
+          "message": "fix(pretty): a wrapped key keeps its colon, and a key's last row starts where it was laid (rich-pretty-xms.0l4)\n\nSlot.join carries a key's ': ' apart from the key, so the key's last row\nreserves room for it rather than folding ':' onto a row of its own.\n_place/_format return Laid { text, inset }: where the last line starts is\nreported by what laid it out, not read back from leading whitespace that\ncan be the value's own.\n"
         },
         {
           "sha": "984de26920d6c7207262efb63a367b3f4f4ff507",
