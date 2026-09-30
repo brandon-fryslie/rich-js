@@ -59,7 +59,7 @@ export interface PrettyOptions {
 const reprHighlighter = new ReprHighlighter();
 
 /**
- * Where a laying-out traversal is: how far the output is indented (`inset`),
+ * Where a laying-out traversal is: the column its line starts at (`inset`),
  * how deep in the data we are (`level`), and how much of the current line is
  * already spoken for (`column`).
  *
@@ -69,14 +69,19 @@ const reprHighlighter = new ReprHighlighter();
  * cap never fired at all. `Probe` is why that cannot recur: the traversal that
  * used to do the resetting has no `inset` to reset.
  *
- * `column` is separate from `inset` for the same reason: `inset` says how deep
- * a value's *own* children would indent if it expands, which is fixed for
- * every hole in a slot. `column` says where its *own* text begins on the line
- * it is placed onto — which a `key: ` prefix or a Map entry's `" => "` moves
- * per hole, without touching `inset`. rich-pretty-xms: a container's compact
- * try used `maxWidth - cellLen(indentStr)` as its budget, which is only the
- * true remaining width when nothing precedes the value on its line — true for
- * an array element, false for `metadata: { ... }`, where the key eats 10 cells
+ * `column` is separate from `inset` for the same reason: `inset` says where
+ * the line a value is placed onto starts, and so where its closer goes and
+ * one indent past which its children go if it expands. `column` says where
+ * its *own* text begins on that line — which a `key: ` prefix or a Map
+ * entry's `" => "` moves per hole, without touching `inset`. A key that wraps
+ * moves `inset` too: the value after it is on the key's last row, which
+ * starts at the key's hang, and children indented from the slot instead
+ * would sit level with the key's own continuation.
+ *
+ * rich-pretty-xms: a container's compact try used
+ * `maxWidth - cellLen(indentStr)` as its budget, which is only the true
+ * remaining width when nothing precedes the value on its line — true for an
+ * array element, false for `metadata: { ... }`, where the key eats 10 cells
  * `indentStr` never counted. Threading the real column through is the fix;
  * deriving a budget from `inset` alone was the bug.
  *
@@ -90,7 +95,7 @@ const reprHighlighter = new ReprHighlighter();
  * the untracked-key bug, mirrored onto the other side of the value.
  *
  * `hang` is where a continuation line of this value's own text begins — one
- * indent past the slot it sits in, so a wrapped string or a multi-line
+ * indent past `inset`, so a wrapped string or a multi-line
  * `toString` reads as belonging to its key rather than as the next key.
  * `null` at the root, and the type is what says the root is different: nothing
  * precedes it that this formatter wrote, so the line it lands on — and where a
@@ -137,6 +142,20 @@ const rootFrame = (maxWidth: number): Frame => ({
 function lineColumn(column: number, text: string): number {
   const lastNewline = text.lastIndexOf("\n");
   return lastNewline === -1 ? column + cellLen(text) : cellLen(text.slice(lastNewline + 1));
+}
+
+/**
+ * Laid-out text, and the column its last line starts at.
+ *
+ * What follows the text on that line — a Map entry's value, the value after a
+ * wrapped key — indents its own children from there. Whatever laid the text
+ * out reports it; it is never read back out of the text, because a multi-line
+ * `toString`'s last line can open with whitespace of its own, and read as
+ * indent, that put the children off the grid the rest of the output is on.
+ */
+interface Laid {
+  readonly text: string;
+  readonly inset: number;
 }
 
 /**
@@ -352,12 +371,17 @@ interface Hole {
 /**
  * One position in a container: literal text, then values with text between.
  *
- * `{ head: "... +3", holes: [] }` is the elision marker — one more position in
- * the sequence rather than a suffix glued on after a separator, so a bound of
- * zero does not lead with the comma it was supposed to follow.
+ * `head` is laid out as one piece: a key, or `"... +3"`, the elision marker —
+ * one more position in the sequence rather than a suffix glued on after a
+ * separator, so a bound of zero does not lead with the comma it was supposed
+ * to follow. `join` ties the head to its first value, `": "` after a key. It
+ * is not part of the head because a wrapped key leaves room for it on its last
+ * row, as a value does for its `tail`; folded in, the `:` was one more
+ * character to cut, and could land on a row of its own.
  */
 interface Slot {
   readonly head: string;
+  readonly join: string;
   readonly holes: readonly Hole[];
 }
 
@@ -397,7 +421,7 @@ const EXPAND_SEPARATOR = SEPARATOR.trimEnd();
 
 /** The marker for positions the bound dropped, or nothing when it dropped none. */
 const elided = (dropped: number): Slot[] =>
-  dropped > 0 ? [{ head: `... +${dropped}`, holes: [] }] : [];
+  dropped > 0 ? [{ head: `... +${dropped}`, join: "", holes: [] }] : [];
 
 
 export class Pretty implements Renderable, Measurable {
@@ -427,7 +451,7 @@ export class Pretty implements Renderable, Measurable {
 
   /** The value laid out for `options.maxWidth` and highlighted: the text this renders. */
   toText(options: RenderOptions): RichText {
-    const formatted = this._format(this.data, rootFrame(options.maxWidth));
+    const formatted = this._format(this.data, rootFrame(options.maxWidth)).text;
     const text = new RichText(formatted, { end: "" });
     this.highlighter.highlight(text);
 
@@ -439,7 +463,7 @@ export class Pretty implements Renderable, Measurable {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const formatted = this._format(this.data, rootFrame(_options.maxWidth));
+    const formatted = this._format(this.data, rootFrame(_options.maxWidth)).text;
     const lines = formatted.split("\n");
     let max = 0;
     for (const line of lines) {
@@ -538,6 +562,7 @@ export class Pretty implements Renderable, Measurable {
           const shown = Math.min(elements.length, cap);
           return Array.from({ length: shown }, (_, i): Slot => ({
             head: "",
+            join: "",
             holes: [{ read: () => elements[i], tail: "" }],
           }));
         });
@@ -546,6 +571,7 @@ export class Pretty implements Renderable, Measurable {
         return this._container("Map {", "}", " ", form.map.size, level, () =>
           take(form.map.entries(), cap).map(([k, v]): Slot => ({
             head: "",
+            join: "",
             holes: [{ read: () => k, tail: " => " }, { read: () => v, tail: "" }],
           })),
         );
@@ -553,6 +579,7 @@ export class Pretty implements Renderable, Measurable {
         return this._container("Set {", "}", " ", form.set.size, level, () =>
           take(form.set, cap).map((v): Slot => ({
             head: "",
+            join: "",
             holes: [{ read: () => v, tail: "" }],
           })),
         );
@@ -564,7 +591,8 @@ export class Pretty implements Renderable, Measurable {
         const keys = Object.keys(record);
         return this._container("{", "}", " ", keys.length, level, () =>
           keys.slice(0, cap).map((k): Slot => ({
-            head: `${k}: `,
+            head: k,
+            join: ": ",
             holes: [{ read: () => record[k], tail: "" }],
           })),
         );
@@ -573,7 +601,7 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /** The laid-out form of a value, expanded across lines wherever one line will not do. */
-  private _format(value: unknown, at: Frame): string {
+  private _format(value: unknown, at: Frame): Laid {
     const scalar = this._scalar(value);
     if (scalar !== null) return this._place(scalar, at);
 
@@ -593,9 +621,16 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /** The arms for a non-null object, with `value` already on the open path. */
-  private _formatObject(value: object, at: Frame): string {
-    const shape = this._shape(value, at.level, Infinity);
-    if (shape.kind === "text") return this._place(shape.text, at);
+  private _formatObject(value: object, from: Frame): Laid {
+    const shape = this._shape(value, from.level, Infinity);
+    if (shape.kind === "text") return this._place(shape.text, from);
+
+    // Chosen before the compact try, because the choice cannot change its
+    // answer where it stands: a line the opener will not fit on cannot hold the
+    // one-line form it starts. One pass at the chosen line, and not a second
+    // call per move — this method runs once per level of the data, and a
+    // thousand levels is within what it is asked to lay out.
+    const { lead, at } = this._opening(from, shape.open);
 
     if (!this.expandAll) {
       // rich-pretty-xms: budget from `at.column` and `at.reserve`, not from
@@ -613,23 +648,57 @@ export class Pretty implements Renderable, Measurable {
         budget: at.maxWidth - at.column - at.reserve,
         open: at.open,
       });
-      if (compact !== null) return compact;
+      if (compact !== null) return { text: lead + compact, inset: at.inset };
     }
 
-    const indentStr = " ".repeat(this.indent * at.inset);
-    const innerIndent = " ".repeat(this.indent * (at.inset + 1));
+    const indentStr = " ".repeat(at.inset);
+    const innerIndent = " ".repeat(at.inset + this.indent);
     // Every non-last slot gets `EXPAND_SEPARATOR` appended right after it
     // below, on the same line as whatever its own last character was — the
     // last slot doesn't. Two frames, not one per slot: `reserve` is the only
     // field that varies, and it only ever takes these two values.
-    const base = { inset: at.inset + 1, level: at.level + 1, maxWidth: at.maxWidth, column: cellLen(innerIndent), hang: cellLen(innerIndent) + this.indent, open: at.open };
+    const base = this._onLine({ ...at, level: at.level + 1, column: cellLen(innerIndent) }, cellLen(innerIndent));
     const midFrame: Frame = { ...base, reserve: cellLen(EXPAND_SEPARATOR) };
     const lastFrame: Frame = { ...base, reserve: 0 };
     const lastSlot = shape.slots.length - 1;
     const parts = shape.slots.map((slot, i) =>
       innerIndent + this._expandSlot(slot, i === lastSlot ? lastFrame : midFrame),
     );
-    return shape.open + "\n" + parts.join(EXPAND_SEPARATOR + "\n") + "\n" + indentStr + shape.close;
+    return {
+      text: lead + shape.open + "\n" + parts.join(EXPAND_SEPARATOR + "\n") + "\n" + indentStr + shape.close,
+      inset: at.inset,
+    };
+  }
+
+  /**
+   * Where a container starts: where it stands, or — when its opener will not
+   * fit after what precedes it on its line and will fit on a hanging line —
+   * that hanging line, with `lead` the break that reaches it.
+   *
+   * This is `_place`'s rule for one-piece text, with `open` as the first word:
+   * a bracket is a literal no cut can shorten, so moving is the only way it
+   * fits. A container moved there is on a line of that indent, its children
+   * and closer included, so it reads as its key's value rather than its key's
+   * sibling. It moves only to fit: past the edge, the hanging line has no more
+   * room than this one.
+   */
+  private _opening(at: Frame, open: string): { lead: string; at: Frame } {
+    const width = cellLen(open);
+    if (at.hang === null || at.column + width <= at.maxWidth || at.hang + width > at.maxWidth) {
+      return { lead: "", at };
+    }
+    return {
+      lead: "\n" + " ".repeat(at.hang),
+      at: { ...this._onLine(at, at.hang), column: at.hang },
+    };
+  }
+
+  /**
+   * `at` on a line that starts at `inset`. The one place a hang is derived: a
+   * line's continuation rows and its children both sit one indent past it.
+   */
+  private _onLine(at: Frame, inset: number): Frame {
+    return { ...at, inset, hang: inset + this.indent };
   }
 
   /**
@@ -645,7 +714,8 @@ export class Pretty implements Renderable, Measurable {
    * of the same fact. `_joinOneLine`'s probe sibling tracks the analogous
    * thing via `budget` shrinking instead, because a probe already discards
    * anything that overruns and so never needs to know where a multi-line
-   * insert's last line ends.
+   * insert's last line ends. Where that line *starts* is the one fact `out`
+   * cannot give back, so it comes from each piece's `Laid.inset` instead.
    *
    * Each hole's `reserve` is its own `tail` plus, only for the slot's last
    * hole, whatever `at.reserve` already asked this whole slot to leave room
@@ -654,7 +724,13 @@ export class Pretty implements Renderable, Measurable {
    * `out` grows past it.
    */
   private _expandSlot(slot: Slot, at: Frame): string {
-    let out = slot.head;
+    // A key is one piece of text, placed like any other: one wider than its
+    // line wraps under its slot rather than running on to column 0. Only a slot
+    // with no values has its `at.reserve` land right after the head; a value
+    // may move below it.
+    const head = this._place(slot.head, { ...at, reserve: cellLen(slot.join) + (slot.holes.length === 0 ? at.reserve : 0) });
+    let out = head.text + slot.join;
+    let inset = head.inset;
     const lastHole = slot.holes.length - 1;
     for (let i = 0; i < slot.holes.length; i++) {
       const hole = slot.holes[i]!;
@@ -662,16 +738,17 @@ export class Pretty implements Renderable, Measurable {
       // unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows everything
       // that could be read.
       const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
-      const here: Frame = { ...at, column: lineColumn(at.column, out), reserve };
-      let text: string;
+      const here: Frame = { ...this._onLine(at, inset), column: lineColumn(at.column, out), reserve };
+      let laid: Laid;
       try {
-        text = this._format(hole.read(), here);
+        laid = this._format(hole.read(), here);
       } catch (error) {
-        text = this._place(threw(error), here);
+        laid = this._place(threw(error), here);
       }
       // A value `_place` moved onto a line of its own leaves the text before it
       // ending the line, and the space that was to separate them goes with it.
-      out = (text.startsWith("\n") ? out.trimEnd() : out) + text + hole.tail;
+      out = (laid.text.startsWith("\n") ? out.trimEnd() : out) + laid.text + hole.tail;
+      inset = laid.inset;
     }
     return out;
   }
@@ -697,8 +774,8 @@ export class Pretty implements Renderable, Measurable {
    * a long key is the case: `[1, 2, 3, 10] =>` ends the line and `"v"` hangs
    * beneath it, where it used to wrap to column 0.
    */
-  private _place(text: string, at: Frame): string {
-    if (at.hang === null) return text;
+  private _place(text: string, at: Frame): Laid {
+    if (at.hang === null) return { text, inset: at.inset };
     // A hanging row needs a cell to stand in. One indent past the slot has none
     // when the value sits one indent from the edge, and a row put there anyway
     // overruns the width and wraps to column 0 — so rows start where the value
@@ -713,7 +790,10 @@ export class Pretty implements Renderable, Measurable {
     const [first, ...rows] = lines.flatMap((line, i) => i === 0
       ? rowsOf(line, stayingLength(line, room(0, at.column), at.column > hang), room(0, hang))
       : rowsOf(line, stayingLength(line, room(i, hang), false), room(i, hang)));
-    return first + rows.map((row) => "\n" + (row === "" ? "" : " ".repeat(hang) + row)).join("");
+    return {
+      text: first + rows.map((row) => "\n" + (row === "" ? "" : " ".repeat(hang) + row)).join(""),
+      inset: rows.length === 0 ? at.inset : hang,
+    };
   }
 
   /** The one-line form of a value, or `null` when it will not fit `at.budget`. */
@@ -765,7 +845,7 @@ export class Pretty implements Renderable, Measurable {
 
   /** One position on one line, or `null` when any value in it will not fit. */
   private _slotOneLine(slot: Slot, at: Probe): string | null {
-    let out = slot.head;
+    let out = slot.head + slot.join;
     for (const hole of slot.holes) {
       const left = at.budget - cellLen(out);
       let text: string | null;
