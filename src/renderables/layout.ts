@@ -20,7 +20,8 @@ import {
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
 import type { CellCol } from "../core/cells.js";
-import { ratioBudget, ratioResolve } from "./ratio.js";
+import { ratioBudget, ratioResolve, shareWeight } from "./ratio.js";
+import type { Weight } from "./ratio.js";
 
 export interface LayoutOptions {
   name?: string;
@@ -28,17 +29,6 @@ export interface LayoutOptions {
   size?: number;
   minimumSize?: number;
   visible?: boolean;
-}
-
-/**
- * A share weight, not a cell count: fractions divide space meaningfully, so
- * this parses where `cellCount` would floor. A weight that cannot name a share
- * — negative, NaN, infinite — reads as zero, which already means "this pane
- * does not grow" and is filtered out before any division. That is what makes
- * every ratio reaching `ratioResolve` and `ratioBudget` positive.
- */
-function growthRatio(ratio: number): number {
-  return Number.isFinite(ratio) && ratio > 0 ? ratio : 0;
 }
 
 /**
@@ -62,7 +52,7 @@ function paneLines(
 export class Layout implements Renderable, Measurable {
   name: string | undefined;
   visible: boolean;
-  private _ratio!: number;
+  private _ratio!: Weight;
   private _size: CellCol | undefined;
   private _minimumSize!: CellCol;
   private _renderable: Renderable | undefined;
@@ -95,12 +85,12 @@ export class Layout implements Renderable, Measurable {
    * fractions. Absence is preserved rather than parsed: an undefined `size`
    * selects a flex pane, and `cellCount` would read it as a declared zero.
    */
-  get ratio(): number {
+  get ratio(): Weight {
     return this._ratio;
   }
 
   set ratio(value: number) {
-    this._ratio = growthRatio(value);
+    this._ratio = shareWeight(value);
   }
 
   get size(): CellCol | undefined {
@@ -258,7 +248,7 @@ export class Layout implements Renderable, Measurable {
     if (visible.length === 0) return 0;
 
     const widths = visible.map((c) => c._naturalWidth(options));
-    if (this._splitDirection === "row") return ratioBudget(visible, widths, options.maxWidth);
+    if (this._splitDirection === "row") return ratioBudget(visible, widths);
 
     // Accumulated, not spread: a column split holds as many children as a caller
     // made, and `Math.max(...widths)` passes one argument per child, so a

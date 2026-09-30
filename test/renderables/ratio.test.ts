@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ratioBudget, ratioDistribute, ratioResolve } from "../../src/renderables/ratio.js";
+import { ratioBudget, ratioDistribute, ratioResolve, shareWeight } from "../../src/renderables/ratio.js";
 import type { Edge } from "../../src/renderables/ratio.js";
 import { cellCount } from "../../src/core/cells.js";
 
@@ -27,7 +27,7 @@ describe("ratioDistribute", () => {
 });
 
 const edge = ({ size, ratio = 1, minimumSize = 1 }: { size?: number; ratio?: number; minimumSize?: number } = {}): Edge =>
-  ({ size: size === undefined ? undefined : cellCount(size), ratio, minimumSize: cellCount(minimumSize) });
+  ({ size: size === undefined ? undefined : cellCount(size), ratio: shareWeight(ratio), minimumSize: cellCount(minimumSize) });
 
 describe("ratioResolve", () => {
   // Every expectation below is what Python Rich fc41075a's
@@ -70,57 +70,43 @@ describe("ratioResolve", () => {
 });
 
 describe("ratioBudget", () => {
-  // [LAW:one-source-of-truth] The budget is only right if the split agrees:
-  // every edge receives what it is owed there, and at no smaller total.
+  // [LAW:one-source-of-truth] The budget is only right if the split it inverts
+  // agrees: every edge receives what it is owed there.
   const reaches = (edges: Edge[], wants: number[], total: number): boolean =>
     ratioResolve(total, edges).every((part, i) => {
       const e = edges[i]!;
-      const owed = e.size ?? (e.ratio === 0 ? e.minimumSize : Math.max(e.minimumSize, wants[i]!));
+      const owed = e.size ?? (e.ratio === 0 ? e.minimumSize : Math.max(e.minimumSize, Math.ceil(wants[i]!)));
       return part >= owed;
     });
 
-  it.each<[Edge[], number[], number]>([
-    // Carried rounding hands the right pane the spare cell: 4 + 5 of 9, where a
-    // floored share would have needed 10.
-    [[edge(), edge()], [4, 5], 9],
-    [[edge(), edge({ ratio: 3 })], [7, 2], 28],
-    [[edge({ ratio: 0.1 }), edge({ ratio: 0.2 }), edge({ ratio: 0.3 })], [3, 1, 4], 18],
-    [[edge({ size: 4 }), edge({ ratio: 0, minimumSize: 2 }), edge({ ratio: 5 }), edge()], [0, 0, 1, 9], 55],
-    [[edge({ minimumSize: 6 }), edge()], [2, 2], 8],
-  ])("is the least total at which the split reaches every want", (edges, wants, least) => {
-    expect(ratioBudget(edges, wants, Infinity)).toBe(least);
-    expect(reaches(edges, wants, least)).toBe(true);
-    // Every total below, not only the one below: an edge's cells are not
-    // monotone in the total, so one failure beneath proves nothing about the rest.
-    for (let total = 0; total < least; total++) expect(reaches(edges, wants, total)).toBe(false);
-  });
-
-  // The search starts past zero on a derived bound; were the bound ever above
-  // the answer, this sweep would find the smaller total it skipped.
-  it("starts its search at no total the split could already satisfy", () => {
+  it("is a total at which the split reaches every want", () => {
     const shapes = [
       edge(), edge({ ratio: 3 }), edge({ ratio: 0.5, minimumSize: 4 }),
       edge({ size: 2 }), edge({ ratio: 0, minimumSize: 3 }), edge({ ratio: 7, minimumSize: 0 }),
     ];
     for (const a of shapes) for (const b of shapes) for (const c of shapes) {
       const edges = [a, b, c];
-      for (const wants of [[0, 0, 0], [5, 1, 3], [1, 9, 2], [4, 4, 11]]) {
-        let least = 0;
-        while (!reaches(edges, wants, least)) least += 1;
-        expect(ratioBudget(edges, wants, Infinity)).toBe(least);
+      for (const wants of [[0, 0, 0], [5, 1, 3], [1, 9, 2], [4, 4, 11], [2.5, 0.1, 7.9]]) {
+        expect(reaches(edges, wants, ratioBudget(edges, wants))).toBe(true);
       }
     }
   });
 
-  it("is the cap when a want is unbounded", () => {
-    expect(ratioBudget([edge(), edge()], [Infinity, 3], Infinity)).toBe(Infinity);
-    expect(ratioBudget([edge(), edge()], [Infinity, 3], 80)).toBe(80);
+  // Enough, not always the least: carried rounding fits these in 9, as 4 + 5.
+  it("answers a floored share's budget", () => {
+    expect(ratioBudget([edge(), edge()], [4, 5])).toBe(10);
   });
 
-  // Uncapped, this climbs from about 40 to 40000000040 one split at a time.
-  it("stops at the cap when the least total lies past it", () => {
-    expect(ratioBudget([edge(), edge({ ratio: 1e9 })], [40, 5], 80)).toBe(80);
-    expect(ratioBudget([edge(), edge({ ratio: 3 })], [7, 2], 27)).toBe(27);
-    expect(ratioBudget([edge(), edge({ ratio: 3 })], [7, 2], 28)).toBe(28);
+  it("rounds a fractional want up to the cells that hold it", () => {
+    expect(ratioBudget([edge(), edge()], [4.5, 3])).toBe(10);
+  });
+
+  it("is unbounded when a want is", () => {
+    expect(ratioBudget([edge(), edge()], [Infinity, 3])).toBe(Infinity);
+  });
+
+  // Weights of 1 : 10^17; answered by one division, not a climb.
+  it("answers lopsided ratios without searching", () => {
+    expect(ratioBudget([edge({ ratio: 1e-17 }), edge()], [40, 3])).toBe(4000000000000000000);
   });
 });

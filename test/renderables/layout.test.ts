@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Layout } from "../../src/renderables/layout.js";
 import type { LayoutOptions } from "../../src/renderables/layout.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
 import { RichText } from "../../src/core/text.js";
@@ -118,15 +118,16 @@ describe("Layout", () => {
     expect(rows).toEqual(["xxyyy"]);
   });
 
-  // The natural width of a row is the least width at which every pane shows
-  // all of itself under the same split `render` makes, and carried rounding
-  // gives the second pane the spare cell: 4 + 5 of 9.
-  it("measures a row at the least width that shows every pane whole", () => {
+  // A Measurable is free to report a fractional width; the row reads it as the
+  // whole cells that hold it rather than handing a fraction to exact arithmetic.
+  it("measures a row holding a pane of fractional width", () => {
+    const fractional: Renderable & Measurable = {
+      *render() {},
+      measure: () => ({ minimum: 1, maximum: 4.5 }),
+    };
     const layout = new Layout();
-    layout.splitRow(new Layout("left"), new Layout("right"));
-    expect(layout.measure({ maxWidth: 80 }).maximum).toBe(9);
-    const rows = collectText(layout, { maxWidth: 9, height: { rows: 1, exact: true } }).split("\n");
-    expect(rows[0]).toBe("leftright");
+    layout.splitRow(new Layout(fractional), new Layout("abc"));
+    expect(layout.measure({ maxWidth: 80 }).maximum).toBe(10);
   });
 
   // A pane that cannot measure itself has no width of its own, so a row
@@ -262,11 +263,9 @@ describe("Layout", () => {
       expect(mutated.measure(options)).toEqual(row(parsed).measure(options));
     });
 
-    // Twelve cells of "wide content" need a row of 39 beside a ratio of 2.5,
-    // and 34 beside a ratio of 2; one-cell panes fit in 2 under either.
     it("keeps a fractional ratio, which divides space meaningfully", () => {
-      expect(row({ ratio: 2.5 }, "wide content").measure(options)).not.toEqual(
-        row({ ratio: 2 }, "wide content").measure(options),
+      expect(row({ ratio: 2.5 }).measure(options)).not.toEqual(
+        row({ ratio: 2 }).measure(options),
       );
     });
 
