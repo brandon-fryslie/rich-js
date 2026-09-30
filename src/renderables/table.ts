@@ -757,7 +757,7 @@ export class Table implements Renderable, Measurable {
   /**
    * [LAW:one-source-of-truth] Both ends of the range are widths the geometry
    * actually produced — the maximum from the demands as they stand, the
-   * minimum from the same layout with every column asking for a single cell.
+   * minimum from the same layout with every column asking for its minimum.
    * Neither end stretches or fills into an offer: both only spend cells an
    * offer happens to leave over, and a renderable reports the width its content
    * wants rather than the width it was offered. A declared `width` is not an
@@ -803,7 +803,9 @@ export class Table implements Renderable, Measurable {
     const maximum = laidOut >= UNBOUNDED ? Infinity : laidOut;
     // The narrowest this table draws without cutting a cell is every column at
     // its own minimum — the reference's sum of `_measure_column` minimums — so a
-    // parent squeezing it still leaves each figure whole.
+    // parent squeezing it still leaves each figure whole. One divergence: a
+    // `noWrap` column's minimum is its whole line, where the reference measures
+    // its longest word and then never narrows it that far when it draws.
     const tightest = layoutTable(
       outerWidth,
       demands.map((demand) => ({ ...demand, want: demand.minimum, fill: 0, ratio: 0, stretch: false })),

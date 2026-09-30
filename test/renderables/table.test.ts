@@ -1496,7 +1496,7 @@ describe("Table cells wrap before the overflow method sees them", () => {
 
   it("reports its column minimums to a parent that squeezes it", () => {
     const inner = pair(["Star Wars Ep. VIII: The Last Jedi", false], ["$1,332,539,889", false]);
-    // The reference's measure: the sum of each column's minimum and padding.
+    // The reference's measure: the sum of each column's longest word and padding.
     expect(inner.measure({ maxWidth: 40 }).minimum).toBe(20);
     const outer = Table.grid();
     outer.addColumn("");
