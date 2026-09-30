@@ -4,15 +4,22 @@
     {
       "version": "pr-277",
       "ref": "refs/pull/277/merge",
-      "sha": "16907554eb26fe93dae01b7273b93193ef71c342",
-      "timestamp": "2026-09-30T20:52:19.595Z",
+      "sha": "ea9c0350a5b3fc367d27fdd655c8253f71a79bdf",
+      "timestamp": "2026-09-30T21:03:19.494Z",
       "commits": [
         {
-          "sha": "16907554eb26fe93dae01b7273b93193ef71c342",
+          "sha": "ea9c0350a5b3fc367d27fdd655c8253f71a79bdf",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:51:10-06:00",
-          "message": "Merge c5d9048a22f3e9aa6f5af04247635f809cc64639 into 78b60aa0dcb83e49c0b640c595f24ed586fceb51\n"
+          "timestamp": "2026-09-30T21:02:06Z",
+          "message": "Merge 3fa943a9ce6136a33b0e0995f2af35312bc87eb9 into 78b60aa0dcb83e49c0b640c595f24ed586fceb51\n"
+        },
+        {
+          "sha": "3fa943a9ce6136a33b0e0995f2af35312bc87eb9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T15:02:02-06:00",
+          "message": "fix(markup): one output buffer, so an unclosed plugin tag costs a style tag (rich-markup-pyq5)\n\nFolding each unpaired plugin tag's content frame into its parent on close was\nquadratic in nesting depth. The walk now writes into one buffer; a pair takes\nits content off the tail, and an unpaired tag is only a span.\n\nA closer names a tag by style name or by plugin name, and ends a pair only for\n[/] or its plugin's own name, so [aa]x[/aa=x] closes [aa] as a style tag again.\n"
         },
         {
           "sha": "c5d9048a22f3e9aa6f5af04247635f809cc64639",
