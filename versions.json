@@ -4,15 +4,22 @@
     {
       "version": "pr-274",
       "ref": "refs/pull/274/merge",
-      "sha": "e6938b85a105472479adf254986d9afb884cb924",
-      "timestamp": "2026-09-30T19:57:35.142Z",
+      "sha": "3af0f6d27d23208071c692329c94a28858218dd6",
+      "timestamp": "2026-09-30T20:03:47.014Z",
       "commits": [
         {
-          "sha": "e6938b85a105472479adf254986d9afb884cb924",
+          "sha": "3af0f6d27d23208071c692329c94a28858218dd6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:55:53-06:00",
-          "message": "Merge dd0b6ee5f1cf39db60e5b6508a158880508b4152 into 9b8a4c414c3d7fdfe641a2874502fef0de20751b\n"
+          "timestamp": "2026-09-30T20:02:35Z",
+          "message": "Merge c792575b6942e16c47905506d96b15cfe920b73a into 9b8a4c414c3d7fdfe641a2874502fef0de20751b\n"
+        },
+        {
+          "sha": "c792575b6942e16c47905506d96b15cfe920b73a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T14:02:31-06:00",
+          "message": "fix(cells): split on grapheme clusters, the unit cellLen measures (rich-segment-cvn6)\n\nsplitText walked code points while cellLen measures grapheme clusters, so\nthe previous commit's overhang arithmetic went negative on any glyph built\nfrom several code points: `new Segment(\"a⚠️b\").splitCells(2)` threw\nRangeError, and so did Console.print wrapping \"warn ⚠️ ok ⚠️ done ⚠️ x\" at\nwidth 6 — a crash master did not have. ZWJ, skin-tone and combining-mark\nglyphs left an orphaned tail on the right half.\n\nsplitCells now takes each half as cellFit/cellFitEnd's whole clusters padded\nto its share of the cells, so neither pad can go negative and the right\nhalf's anchor at `position` holds by construction. splitText's left side is\ncellFit's, which fixes the same mismatch for cropLines, Dropdown and\nTextInput.\n"
         },
         {
           "sha": "dd0b6ee5f1cf39db60e5b6508a158880508b4152",
