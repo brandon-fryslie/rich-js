@@ -43,11 +43,21 @@ export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 // [LAW:one-source-of-truth] How a frame draws — its glyphs, the style names
 // it knows, what happens to a style it cannot resolve, markup and
 // highlighting — is the console's to say, so App takes those options as the
-// console declares them and passes them through. What the host decides, its
-// size, colours and sink, is not among them.
-type DrawOptions = Readonly<
-  Pick<ConsoleOptions, "asciiOnly" | "theme" | "onStyleError" | "markup" | "highlight" | "highlighter">
->;
+// console declares them. This list is both the type and what is copied: the
+// host alone decides the console's size, colours and sink, so no other
+// property of the options object reaches it, whatever the object carries.
+const DRAW_OPTIONS = ["asciiOnly", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
+type DrawOption = (typeof DRAW_OPTIONS)[number];
+type DrawOptions = Readonly<Pick<ConsoleOptions, DrawOption>>;
+
+function drawOptions(options: DrawOptions): Pick<ConsoleOptions, DrawOption> {
+  const picked: Pick<ConsoleOptions, DrawOption> = {};
+  const copy = <K extends DrawOption>(key: K): void => {
+    picked[key] = options[key];
+  };
+  DRAW_OPTIONS.forEach(copy);
+  return picked;
+}
 
 export interface AppOptions extends DrawOptions {
   /** The terminal the app runs on. The app starts and stops it. */
@@ -88,12 +98,11 @@ export class App {
   private settle: (outcome: Outcome) => void = () => {};
 
   constructor(options: AppOptions) {
-    const { host, surface, view, ...draw } = options;
-    this.host = host;
-    this.surface = surface;
-    this.painter = new Painter(surface, (bytes) => this.host.write(bytes));
-    this.view = view;
-    this.console = new Console({ ...draw, environment: hostEnvironment(host) });
+    this.host = options.host;
+    this.surface = options.surface;
+    this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
+    this.view = options.view;
+    this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
   }
 
   get phase(): AppPhase {

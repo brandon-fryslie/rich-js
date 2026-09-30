@@ -289,6 +289,23 @@ describe("App drawing options", () => {
     expect(seen).toMatchObject({ asciiOnly: true, theme, onStyleError, markup: false, highlighter });
   });
 
+  it("carry nothing else to the console, so the host alone sets the frame's size", () => {
+    let seen: RenderOptions | undefined;
+    const view: Renderable = {
+      *render(options: RenderOptions) {
+        seen = options;
+        yield new Segment("up");
+      },
+    };
+    const console = { width: 3, height: 1, colorSystem: null };
+    const options: AppOptions = { ...console, host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", view: () => view };
+
+    void new App(options).run();
+
+    expect(seen?.maxWidth).toBe(12);
+    expect(seen?.colorSystem).not.toBe(null);
+  });
+
   it("resolve a name the theme adds, which without the theme draws plain", () => {
     const health: Renderable = {
       *render(options: RenderOptions) {
