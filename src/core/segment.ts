@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, cellFit, cellFitEnd, splitText, asCellCol, type CellCol } from "./cells.js";
+import { cellLen, cutCells, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 
@@ -61,10 +61,9 @@ export class Segment {
 
   /**
    * Splits at a cell position. Returns [left, right]: the first `position`
-   * cells and the rest, so the two halves are exactly as wide as this one.
-   * A wide glyph the cut goes through leaves a space in each of its two cells,
-   * as the reference's `Segment.split_cells` does — kept whole on either side,
-   * it would make that side a cell wider than the cells it stands for.
+   * cells and the rest, so the two halves are exactly as wide as this one —
+   * `cutCells` blanks a wide glyph the cut goes through rather than keep it
+   * whole on a side it would widen by a cell.
    *
    * [LAW:single-enforcer] The right half starts `position` cells further into
    * whatever drew it, and its anchor says so; see `./anchor.ts`.
@@ -73,13 +72,10 @@ export class Segment {
     const len = this.cellLength;
     if (position >= len) return [this, new Segment("")];
     if (position <= 0) return [new Segment(""), this];
-    // Each half is the whole glyphs that fit its side, padded out to its share
-    // of the cells: a glyph the cut goes through fits neither side.
-    const head = cellFit(this.text, position);
-    const tail = cellFitEnd(this.text, asCellCol(len - position));
+    const [leftText, rightText] = cutCells(this.text, position);
     return [
-      new Segment(head + " ".repeat(position - cellLen(head)), this.style),
-      new Segment(" ".repeat(len - position - cellLen(tail)) + tail, this.style?.shiftedBy(position)),
+      new Segment(leftText, this.style),
+      new Segment(rightText, this.style?.shiftedBy(position)),
     ];
   }
 

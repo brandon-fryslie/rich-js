@@ -136,6 +136,25 @@ export function splitText(
 }
 
 /**
+ * Cuts `text` into exactly `position` cells and the rest, as the reference's
+ * `Segment.split_cells` does: a wide glyph the cut goes through fits neither
+ * side, so it leaves a space in each of its cells, where `splitText` keeps it
+ * whole on the right. Every other character lands on exactly one side.
+ * `position` must fall inside `text`, between 0 and its width.
+ */
+export function cutCells(text: string, position: CellCol): [string, string] {
+  const head = cellFit(text, position);
+  // Cells of the glyph the cut goes through that lie left of it; 0 when the
+  // cut falls between glyphs, and then there is no such glyph.
+  const straddle = position - cellLen(head);
+  const [glyph = ""] = straddle > 0 ? clustersFrom(text, asCodePoint(head.length)) : [];
+  return [
+    head + " ".repeat(straddle),
+    " ".repeat(cellLen(glyph) - straddle) + text.slice(head.length + glyph.length),
+  ];
+}
+
+/**
  * Wraps text into lines of at most `maxWidth` cells, preserving every code
  * point: `chopCells(t, w).join("") === t`. Unlike `splitText` this never pads,
  * so a line ending before a wide glyph is narrower than `maxWidth` rather than
@@ -223,24 +242,25 @@ function* clustersFrom(text: string, start: CodePoint): Generator<string> {
  * must decide whether to force-take the glyph or skip it).
  */
 export function cellFit(text: string, cap: CellCol): string {
-  return fitClusters(clustersFrom(text, asCodePoint(0)), cap).join("");
+  return text.slice(0, fitLength(clustersFrom(text, asCodePoint(0)), cap));
 }
 
 /** `cellFit` from the other end: the largest suffix of `text` within `cap` cells. */
 export function cellFitEnd(text: string, cap: CellCol): string {
-  return fitClusters(graphemes(text).reverse(), cap).reverse().join("");
+  return text.slice(text.length - fitLength(graphemes(text).reverse(), cap));
 }
 
-function fitClusters(clusters: Iterable<string>, cap: CellCol): string[] {
-  const fit: string[] = [];
+/** The code units of the leading `clusters` that fit within `cap` cells. */
+function fitLength(clusters: Iterable<string>, cap: CellCol): number {
   let w = 0;
+  let n = 0;
   for (const cluster of clusters) {
     const cw = cellLen(cluster);
     if (w + cw > cap) break;
     w += cw;
-    fit.push(cluster);
+    n += cluster.length;
   }
-  return fit;
+  return n;
 }
 
 /**
@@ -253,7 +273,7 @@ function fitClusters(clusters: Iterable<string>, cap: CellCol): string[] {
  * grapheme clusters, and every cluster boundary is a code-point boundary.
  */
 export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
-  return asCodePoint(startCU + fitClusters(clustersFrom(text, startCU), cap).join("").length);
+  return asCodePoint(startCU + fitLength(clustersFrom(text, startCU), cap));
 }
 
 /**
@@ -274,29 +294,12 @@ export function cellStepFrom(text: string, startCU: CodePoint, cap: CellCol): Co
 }
 
 /**
- * Returns the largest code-unit offset into `content` whose prefix has
- * cell width ≤ `cellCol`. When `cellCol` falls mid-wide-character the
- * function stops before that character (never advances into it).
- * Clamps to `content.length` if `cellCol` exceeds the string's total
- * cell width.
- *
- * This is the inverse of `cellLen(content.slice(0, codeUnit))` — given a
- * visual column, return the corresponding string index.
- *
- * Returns `CodePoint` because it stops between grapheme clusters, and every
- * cluster boundary is a code-point boundary.
+ * The code-unit offset a visual column falls at: the end of the largest
+ * prefix of `content` within `cellCol` cells, so a column inside a wide glyph
+ * lands before it. The inverse of `cellLen(content.slice(0, offset))`.
  */
 export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): CodePoint {
-  let w = 0;
-  let i = 0;
-  for (const ch of graphemes(content)) {
-    if (w >= cellCol) break;
-    const cw = cellLen(ch);
-    if (w + cw > cellCol) break;
-    w += cw;
-    i += ch.length;
-  }
-  return asCodePoint(i);
+  return cellFitFrom(content, asCodePoint(0), cellCol);
 }
 
 /**

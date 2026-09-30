@@ -190,6 +190,18 @@ describe("Segment.splitCells()", () => {
     }
   });
 
+  it("puts every character on exactly one side, zero-width ones included", () => {
+    for (const text of ["ab\u200Bcd", "hello\u00ADworld", "a\x1b[1mb"]) {
+      const seg = new Segment(text);
+      for (let p = 1; p < seg.cellLength; p++) {
+        const [left, right] = seg.splitCells(asCellCol(p));
+        expect(left.text + right.text, `${JSON.stringify(text)} at ${p}`).toBe(text);
+      }
+    }
+    const [left, right] = new Segment("a\u200B漢b").splitCells(asCellCol(2));
+    expect([left.text, right.text]).toEqual(["a\u200B ", " b"]);
+  });
+
   it("halves are exactly `position` and the rest wide, at every position", () => {
     const seg = new Segment("a⚠️b👨‍👩‍👧c👍🏽漢");
     for (let p = 1; p < seg.cellLength; p++) {
