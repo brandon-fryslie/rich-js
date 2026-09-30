@@ -17,7 +17,7 @@
  * times.
  */
 
-import { asCellCol, cellColToCodeUnitOffset, cellLen, type CellCol } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen, splitAtCells } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
@@ -137,27 +137,6 @@ const rootFrame = (maxWidth: number): Frame => ({
 function lineColumn(column: number, text: string): number {
   const lastNewline = text.lastIndexOf("\n");
   return lastNewline === -1 ? column + cellLen(text) : cellLen(text.slice(lastNewline + 1));
-}
-
-/**
- * `line` split at each of `cuts`, in one walk over it. Converting each cut to a
- * code-unit offset on its own rescans the line from the start every time, which
- * is quadratic in a long enough string.
- */
-function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
-  const pieces: string[] = [];
-  let start = 0;
-  let offset = 0;
-  let cells = 0;
-  for (const ch of line) {
-    if (pieces.length < cuts.length && cells >= cuts[pieces.length]!) {
-      pieces.push(line.slice(start, offset));
-      start = offset;
-    }
-    cells += cellLen(ch);
-    offset += ch.length;
-  }
-  return [...pieces, line.slice(start)];
 }
 
 /**
@@ -716,7 +695,11 @@ export class Pretty implements Renderable, Measurable {
    */
   private _place(text: string, at: Frame): string {
     if (at.hang === null) return text;
-    const hang = at.hang;
+    // A hanging row needs a cell to stand in. One indent past the slot has none
+    // when the value sits one indent from the edge, and a row put there anyway
+    // overruns the width and wraps to column 0 — so rows start where the value
+    // began instead, and the first word folds where it stands.
+    const hang = at.maxWidth - at.hang - at.reserve > 0 ? at.hang : Math.min(at.hang, at.column);
 
     const lines = text.split("\n");
     const last = lines.length - 1;

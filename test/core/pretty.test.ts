@@ -198,6 +198,23 @@ describe("Pretty", () => {
       ]);
     });
 
+    it("hangs under the value itself when one indent past its slot is the edge", () => {
+      // The element starts at column 8 of 12; one indent past it is column 12,
+      // where a hanging row has no cell left and would wrap back to column 0.
+      expect(laidOut([["abcdefghijklmnopqrstu"]], 12)).toEqual([
+        "[",
+        "    [",
+        '        "abc',
+        "        defg",
+        "        hijk",
+        "        lmno",
+        "        pqrs",
+        '        tu"',
+        "    ]",
+        "]",
+      ]);
+    });
+
     it("wraps a long string at its words, leaving room for the comma after it", () => {
       const s = "lorem ipsum dolor sit amet consectetur adipiscing elit sed do";
       expect(laidOut({ s, t: 1 }, 30)).toEqual([
