@@ -1,6 +1,6 @@
 # Syntax Highlighting
 
-`Syntax` renders source code with highlighting: keywords, literal constants, strings, numbers and comments each get a style of their own. The tokenizer is built in, and the language names its grammar: `"javascript"`, `"typescript"`, `"python"`, `"bash"`, or `"text"`, the default, which highlights nothing. Any other name is a type error — map a language this has no grammar for to `"text"`.
+`Syntax` renders source code with highlighting: keywords, literal constants, strings, numbers and comments each get a style of their own. The tokenizer is built in, and the language names its grammar: `"javascript"`, `"typescript"`, `"python"`, `"bash"`, or `"text"`, the default, which highlights nothing. Any other name is a type error, and a name that reaches the constructor anyway is refused there — map a language this has no grammar for to `"text"`.
 
 ## Basic usage
 

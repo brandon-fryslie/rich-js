@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Syntax, type SyntaxOptions } from "../../src/renderables/syntax.js";
+import { Syntax, type SyntaxLanguage, type SyntaxOptions } from "../../src/renderables/syntax.js";
 import { Segment } from "../../src/core/segment.js";
 import { DEFAULT_THEME, Theme } from "../../src/core/style.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -88,6 +88,12 @@ describe("Syntax", () => {
     ]);
   });
 
+  it("does not take a property named like a keyword for one", () => {
+    expect(tokens(new Syntax("m.get(k); n.type; x.set(v)", "typescript"))).toEqual([
+      ["m.get(k); n.type; x.set(v)", "-"],
+    ]);
+  });
+
   it("does not highlight text", () => {
     expect(tokens(new Syntax("return 'x' // 1", "text"))).toEqual([["return 'x' // 1", "-"]]);
   });
@@ -126,6 +132,23 @@ describe("Syntax", () => {
   it("counts a range from startLine", () => {
     const s = new Syntax("a\nb\nc\nd", "text", { lineNumbers: true, startLine: 10, lineRange: [3, 4] });
     expect(collectLines(s, { maxWidth: 80 })).toEqual(["12 │ c", "13 │ d"]);
+  });
+
+  it("highlights a range that starts inside a multi-line string as that string", () => {
+    const s = new Syntax('"""\ndoc if\nend"""\nx = 1', "python", { lineRange: [2, 3] });
+    expect(tokens(s)).toEqual([
+      ["doc if", "syntax.string"],
+      ['end"""', "syntax.string"],
+    ]);
+  });
+
+  it("shows the part of a range inside the code, which may be none", () => {
+    const code = "a\nb\nc";
+    const lines = (lineRange: [number, number]): string[] =>
+      collectLines(new Syntax(code, "text", { lineNumbers: true, lineRange }), { maxWidth: 80 });
+    expect(lines([0, 2])).toEqual(["1 │ a", "2 │ b"]);
+    expect(lines([3, 9])).toEqual(["3 │ c"]);
+    expect(lines([10, 12])).toEqual([]);
   });
 
   // --- Highlight Lines ---
@@ -169,6 +192,22 @@ describe("Syntax", () => {
     ]);
   });
 
+  // --- Width ---
+
+  it("keeps each line's indent whatever justify it is offered", () => {
+    const s = new Syntax("if (x) {\n    y();\n}", "javascript");
+    expect(collectLines(s, { maxWidth: 20, justify: "right" }).map((l) => l.trimEnd())).toEqual([
+      "if (x) {",
+      "    y();",
+      "}",
+    ]);
+  });
+
+  it("draws no row wider than the width, even when the gutter alone is", () => {
+    const s = new Syntax("abcdef", "text", { lineNumbers: true, wordWrap: true });
+    expect(collectLines(s, { maxWidth: 3 }).every((line) => line.length <= 3)).toBe(true);
+  });
+
   // --- Removed options ---
 
   it("accepts no option it would ignore", () => {
@@ -176,10 +215,16 @@ describe("Syntax", () => {
     const theme: SyntaxOptions = { theme: "monokai" };
     // @ts-expect-error wrap a Syntax in Padding to pad it
     const padding: SyntaxOptions = { padding: 1 };
-    // @ts-expect-error a language with no grammar here is a compile error
-    const rust = new Syntax("fn main() {}", "rust");
-    expect([theme, padding, rust]).toHaveLength(3);
+    expect([theme, padding]).toHaveLength(2);
     expect("fromPath" in Syntax).toBe(false);
+  });
+
+  it("refuses a language it has no grammar for, by name, when it is given", () => {
+    // @ts-expect-error a language with no grammar here is a compile error
+    expect(() => new Syntax("fn main() {}", "rust")).toThrow(/no grammar for "rust"/);
+    // A runtime value that gets past the type, as a plain-JS caller's would.
+    const fromFile = "toString" as SyntaxLanguage;
+    expect(() => new Syntax("x", fromFile)).toThrow(/no grammar for "toString"/);
   });
 
   // --- Measurement ---
@@ -187,6 +232,16 @@ describe("Syntax", () => {
   it("measures the lines it shows, gutter included", () => {
     const s = new Syntax("a\n\tbb\n" + "c".repeat(40), "text", { lineNumbers: true, lineRange: [1, 2], tabSize: 2 });
     expect(s.measure({ maxWidth: 80 }).maximum).toBe(4 + 4);
+  });
+
+  it("measures no narrower than its gutter and never min over max", () => {
+    expect(new Syntax("a").measure({ maxWidth: 80 })).toEqual({ minimum: 0, maximum: 1 });
+    expect(new Syntax("abc", "text", { lineNumbers: true }).measure({ maxWidth: 80 })).toEqual({ minimum: 4, maximum: 7 });
+    expect(new Syntax("a").measure({ maxWidth: NaN })).toEqual({ minimum: 0, maximum: 0 });
+  });
+
+  it("measures a file of many lines", () => {
+    expect(new Syntax("\n".repeat(300_000), "text").measure({ maxWidth: 80 }).maximum).toBe(0);
   });
 
   it("measurement is capped by the width offered", () => {
