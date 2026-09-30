@@ -193,8 +193,8 @@ describe("PowerlineJoiner same-bg structural join", () => {
     ).toBe("|");
   });
 
-  it("tells two theme-drawn mixes apart by what they mix, and the default from either", () => {
-    const blend = (to: string) => ColorSpec.blend(ColorSpec.parse("blue"), ColorSpec.parse(to), 0.5, false);
+  it("tells two theme-drawn mixes apart by what they mix, however their ends are spelled", () => {
+    const blend = (to: string, from = "blue") => ColorSpec.blend(ColorSpec.parse(from), ColorSpec.parse(to), 0.5);
     const mid = (a: ColorSpec, b: ColorSpec) =>
       render(
         new Strip(
@@ -203,8 +203,8 @@ describe("PowerlineJoiner same-bg structural join", () => {
         ),
       )[2]!.text;
     expect(mid(blend("red"), blend("red"))).toBe("|");
+    expect(mid(blend("red"), blend("red", "color(4)"))).toBe("|");
     expect(mid(blend("red"), blend("green"))).toBe(">");
-    expect(mid(blend("red"), ColorSpec.default())).toBe(">");
   });
 
   // Two grounds apart in truecolor that a lower depth draws as one colour: the
@@ -437,11 +437,19 @@ describe("GradientJoiner", () => {
     expect(samples.map((c) => c.hex)).toEqual([1, 3, 5, 7].map((k) => blendRgb(blue, red, k / 8).hex));
   });
 
-  it("reads a default neighbour as the theme's background, not its foreground", () => {
+  it("draws nothing beside a default ground, which is no colour to ramp from", () => {
     const strip = new Strip([cell(" a ", "white on default"), cell(" b ", "white on red")], new GradientJoiner({ steps: 1 }));
-    const [row] = exportLines(render(strip), ATOM_ONE_DARK);
-    const red = ATOM_ONE_DARK.ansiColors.get(1);
-    expect(row![1]!.look.foreground.hex).toBe(blendRgb(ATOM_ONE_DARK.backgroundColor, red, 0.25).hex);
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", " b "]);
+  });
+
+  it("ramps between translucent grounds as their cells draw them", () => {
+    const strip = new Strip([cell(" a ", "white on #ffffff80"), cell(" b ", "white on #ff0000")], new GradientJoiner({ steps: 1 }));
+    const [, join] = render(strip);
+    const drawn = join!.style!.drawnColors();
+    const seen = new ColorRgba(255, 255, 255, 128 / 255).compositeOver(new ColorRgba(0, 0, 0));
+    expect([drawn.color!.value!.hex, drawn.bgcolor!.value!.hex]).toEqual(
+      [0.25, 0.75].map((t) => blendRgb(seen, new ColorRgba(255, 0, 0), t).hex),
+    );
   });
 
   it("defaults to steps=4", () => {

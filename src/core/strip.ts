@@ -28,7 +28,7 @@
 
 import { Segment } from "./segment.js";
 import { Style } from "./style.js";
-import { ColorDepth, ColorSpec } from "./color.js";
+import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
 import { drawable, type Renderable, type RenderOptions } from "./protocol.js";
 
@@ -132,11 +132,11 @@ function paintableBg(bg: ColorSpec | undefined): ColorSpec | undefined {
   return bg !== undefined && !bg.isDefault ? bg : undefined;
 }
 
-// A cap or arrow is its cell continuing: that cell's ground as the writer draws
-// it, so a translucent ground is not composited a second time over whatever it
-// enters.
-function drawnGround(bg: ColorSpec): ColorSpec | undefined {
-  return new Style({ bgcolor: bg }).drawnColors().bgcolor;
+// A cap, arrow or gradient is its cell continuing: that cell's ground as the
+// writer draws it (`Style.drawnColors`, onto the terminal's black), so a
+// translucent ground is not composited a second time over whatever it enters.
+function drawnGround(bg: ColorSpec): ColorSpec {
+  return bg.flattenAlpha(SURFACE_BLACK);
 }
 
 // A cap is its glyph in its cell's ground, and "" is a flat end: no glyph, so
@@ -161,11 +161,12 @@ export const SEAM_MIN_DELTA_E = 0.04;
 // encodes: the arrow's colour flattened onto its ground and the ground onto
 // the terminal's black, both downgraded to the depth the render encodes at,
 // so two grounds 256 colours round to one cube entry are the one entry they
-// render as. A colour whose RGB is the terminal theme's own (ANSI 0–15, the
-// default, a mix reaching either) has no value here, so two of them are the
-// same only when they are one expression: the same palette slot — its
-// `number`, never the name or the depth that spells it ("red", "color(1)", an
-// EIGHT_BIT spec on 0–15 are one slot) — or, having no slot, the same name.
+// render as. A colour whose RGB is the terminal theme's own (ANSI 0–15, a
+// blend reaching one) has no value here, so two of them are the same only
+// when they are one expression: the same palette slot — its `number`, never
+// the name or the depth that spells it ("red", "color(1)", an EIGHT_BIT spec
+// on 0–15 are one slot) — or the same blend, whose name spells each end by its
+// slot for the same reason.
 function vanishes(arrow: Style, colorSystem: ColorDepth | null | undefined): boolean {
   // No colour emitted draws nothing to tell apart; measure what was handed.
   const { color, bgcolor } = arrow.drawnColors(colorSystem ?? ColorDepth.TRUECOLOR);
@@ -392,13 +393,15 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
   join(left: T | null, right: T | null): Renderable {
     // [LAW:dataflow-not-control-flow] Endpoints have no opposite anchor to
     // interpolate toward — the data (a missing neighbor) makes the gradient
-    // empty. Same for edges lacking a bgcolor: nothing to blend between.
+    // empty. Same for edges with nothing to paint: nothing to blend between.
     if (left === null || right === null) return EMPTY;
     const steps = this._steps;
     return deferred(function* (options) {
-      const lbg = left.edgeStyle("right", options).bgcolor;
-      const rbg = right.edgeStyle("left", options).bgcolor;
+      const lbg = paintableBg(left.edgeStyle("right", options).bgcolor);
+      const rbg = paintableBg(right.edgeStyle("left", options).bgcolor);
       if (!lbg || !rbg) return;
+      const from = drawnGround(lbg);
+      const to = drawnGround(rbg);
       // An ASCII cell carries one sample, the background: the gradient keeps
       // its colours at half the resolution.
       const half = drawable(options, HALF_BLOCK, " ");
@@ -411,8 +414,8 @@ export class GradientJoiner<T extends StyledRenderable = StyledRenderable> imple
         const tRight = (2 * i + 1.5) / samples;
         // Each sample stays a mix of the two grounds, so a theme that draws
         // `blue` in its own shade draws the ramp from that shade.
-        const fg = ColorSpec.blend(lbg, rbg, tLeft, false);
-        const bg = ColorSpec.blend(lbg, rbg, tRight, false);
+        const fg = ColorSpec.blend(from, to, tLeft);
+        const bg = ColorSpec.blend(from, to, tRight);
         yield new Segment(half, new Style({ color: fg, bgcolor: bg }));
       }
     });

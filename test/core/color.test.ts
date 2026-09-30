@@ -21,6 +21,7 @@ import {
   SVG_EXPORT_THEME,
 } from "../../src/themes/terminalThemes.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
+import { Style } from "../../src/core/style.js";
 
 // ---------------------------------------------------------------------------
 // ColorRgba
@@ -646,45 +647,59 @@ describe("ColorSpec.blend()", () => {
   const red = ColorSpec.parse("red");
 
   it("draws as the mix of the shades a theme draws its ends in", () => {
-    const mixed = ColorSpec.blend(blue, red, 0.25, false);
+    const mixed = ColorSpec.blend(blue, red, 0.25);
     expect(mixed.getTruecolor(ATOM_ONE_DARK)).toEqual(
       blendRgb(ATOM_ONE_DARK.ansiColors.get(4), ATOM_ONE_DARK.ansiColors.get(1), 0.25),
     );
+    expect(mixed.fixedValue).toBeUndefined();
+    expect(mixed.flattenAlpha(new ColorRgba(255, 255, 255))).toBe(mixed);
   });
 
   it("tells a terminal the mix under the standard table, at every depth", () => {
-    const mixed = ColorSpec.blend(blue, red, 0.25, false);
+    const mixed = ColorSpec.blend(blue, red, 0.25);
     const standard = blendRgb(STANDARD_TABLE.get(4), STANDARD_TABLE.get(1), 0.25);
     expect(mixed.getAnsiCodes(false)).toEqual(["48", "2", `${standard.red}`, `${standard.green}`, `${standard.blue}`]);
     expect(mixed.downgrade(ColorDepth.EIGHT_BIT)).toEqual(ColorSpec.fromRgba(standard).downgrade(ColorDepth.EIGHT_BIT));
   });
 
-  it("reads a default end in the role it was made with, whoever draws it", () => {
-    const fromGround = ColorSpec.blend(ColorSpec.default(), red, 0, false);
-    expect(fromGround.getTruecolor(MONOKAI, true)).toEqual(MONOKAI.backgroundColor);
-    expect(ColorSpec.blend(ColorSpec.default(), red, 0, true).getTruecolor(MONOKAI, false)).toEqual(MONOKAI.foregroundColor);
+  it("mixes two fixed colours to a fixed colour", () => {
+    const mixed = ColorSpec.blend(ColorSpec.parse("#000000"), ColorSpec.parse("color(231)"), 0.5);
+    expect(mixed).toEqual(ColorSpec.fromRgba(blendRgb(new ColorRgba(0, 0, 0), new ColorRgba(255, 255, 255), 0.5)));
   });
 
-  it("has a fixed value only when both ends do", () => {
-    const a = ColorSpec.parse("#000000");
-    const b = ColorSpec.parse("#ffffff");
-    expect(ColorSpec.blend(a, b, 0.5, false).fixedValue).toEqual(blendRgb(a.value!, b.value!, 0.5));
-    expect(ColorSpec.blend(a, red, 0.5, false).fixedValue).toBeUndefined();
-  });
-
-  it("flattens each end onto the ground, keeping the mix theme-drawn", () => {
-    const glass = ColorSpec.parse("#ffffff80");
-    const flat = ColorSpec.blend(glass, blue, 0.5, false).flattenAlpha(new ColorRgba(0, 0, 0));
-    expect(flat.getTruecolor(ATOM_ONE_DARK)).toEqual(
-      blendRgb(glass.value!.compositeOver(new ColorRgba(0, 0, 0)), ATOM_ONE_DARK.ansiColors.get(4), 0.5),
-    );
+  it("refuses an end that is no one colour, and a fraction outside [0, 1]", () => {
+    expect(() => ColorSpec.blend(ColorSpec.default(), red, 0.5)).toThrow(ColorParseError);
+    expect(() => ColorSpec.blend(ColorSpec.parse("#ffffff80"), red, 0.5)).toThrow(/translucent/);
+    expect(() => ColorSpec.blend(blue, red, 1.5)).toThrow(ColorParseError);
+    expect(() => ColorSpec.blend(blue, red, NaN)).toThrow(ColorParseError);
   });
 
   it("is named for what it mixes, so two mixes with one standard RGB stay two colours", () => {
     const navy = ColorSpec.parse("#000080");
-    expect(ColorSpec.blend(blue, red, 0.5, false).value).toEqual(ColorSpec.blend(navy, red, 0.5, false).value);
-    expect(ColorSpec.blend(blue, red, 0.5, false).name).not.toBe(ColorSpec.blend(navy, red, 0.5, false).name);
-    expect(ColorSpec.blend(ColorSpec.default(), red, 0.5, false).name).not.toBe(ColorSpec.blend(ColorSpec.default(), red, 0.5, true).name);
+    expect(ColorSpec.blend(blue, red, 0.5).value).toEqual(ColorSpec.blend(navy, red, 0.5).value);
+    expect(ColorSpec.blend(blue, red, 0.5).name).not.toBe(ColorSpec.blend(navy, red, 0.5).name);
+  });
+
+  it("spells each end by what it draws as, so every spelling of one mix is one name", () => {
+    const name = ColorSpec.blend(blue, red, 0.5).name;
+    expect(ColorSpec.blend(ColorSpec.parse("color(4)"), red, 0.5).name).toBe(name);
+    expect(ColorSpec.blend(new ColorSpec("x", ColorDepth.EIGHT_BIT, 4), red, 0.5).name).toBe(name);
+    expect(ColorSpec.blend(ColorSpec.parse("grey50"), red, 0.5).name).toBe(ColorSpec.blend(ColorSpec.parse("gray50"), red, 0.5).name);
+  });
+
+  it("parses back from its name, alone and in a style", () => {
+    const mixed = ColorSpec.blend(ColorSpec.blend(blue, ColorSpec.parse("rgb(1,2,3)"), 0.25), red, 1e-7);
+    expect(ColorSpec.parse(mixed.name).name).toBe(mixed.name);
+    expect(ColorSpec.parse(mixed.name).getTruecolor(ATOM_ONE_DARK)).toEqual(mixed.getTruecolor(ATOM_ONE_DARK));
+    const style = new Style({ color: "white", bgcolor: ColorSpec.blend(blue, red, 0.1875) });
+    expect(Style.parse(style.toString()).equals(style)).toBe(true);
+  });
+
+  it("parses the form as written: any colour at each end, spaces allowed", () => {
+    expect(ColorSpec.parse("blend(Blue, rgb(1, 2, 3), .5)").name).toBe(ColorSpec.blend(blue, ColorSpec.fromRgb(1, 2, 3), 0.5).name);
+    for (const bad of ["blend(blue,red)", "blend(blue,red,0.5,0.5)", "blend(blue,red,)", "blend(blue,red,half)", "blend(nope,red,0.5)"]) {
+      expect(() => ColorSpec.parse(bad), bad).toThrow(ColorParseError);
+    }
   });
 });
 
