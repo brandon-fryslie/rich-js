@@ -851,13 +851,15 @@ describe("Console.print() line ends", () => {
 // --- Console.log() ---
 
 describe("Console.log()", () => {
-  it("adds a timestamp to output", () => {
-    const { console: c, chunks } = makeConsole({ markup: false });
+  // Local 24-hour time whatever the machine's locale, as the reference's `%X`
+  // prints it, read from the console's clock once per call.
+  it("stamps each row with the time its clock reads", () => {
+    let now = new Date(2026, 8, 30, 9, 5, 7);
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, getDatetime: () => now });
     c.log("Hello");
-    const output = captured(chunks);
-    expect(output).toContain("Hello");
-    // Should contain time-like text (e.g., brackets around time)
-    expect(output).toMatch(/\[.*\]/);
+    now = new Date(2026, 8, 30, 21, 45, 0);
+    c.log("again");
+    expect(captured(chunks)).toBe("[09:05:07] Hello\n[21:45:00] again\n");
   });
 
   // The time is a column, as in the reference's `LogRender`: a container is a
