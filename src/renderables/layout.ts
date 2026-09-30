@@ -19,6 +19,7 @@ import {
 } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
+import { ratioBudget, ratioResolve } from "./ratio.js";
 
 export interface LayoutOptions {
   name?: string;
@@ -33,7 +34,7 @@ export interface LayoutOptions {
  * this parses where `cellCount` would floor. A weight that cannot name a share
  * — negative, NaN, infinite — reads as zero, which already means "this pane
  * does not grow" and is filtered out before any division. That is what makes
- * every ratio reaching `_distributeSpace` and `_rowBudgetFor` positive.
+ * every ratio reaching `ratioResolve` and `ratioBudget` positive.
  */
 function growthRatio(ratio: number): number {
   return Number.isFinite(ratio) && ratio > 0 ? ratio : 0;
@@ -85,7 +86,7 @@ export class Layout implements Renderable, Measurable {
    * constructor. All three are public and a caller reaches them long after
    * construction — `layout.getByName("pane")!.ratio = -1` walked straight past a
    * constructor-only parse and put a negative weight back into the division that
-   * `_rowBudgetFor` and `_distributeSpace` are written to trust.
+   * `ratioResolve` and `ratioBudget` are written to trust.
    *
    * [LAW:parse-dont-validate] The setter is the border, so the guarantee holds
    * for the object's whole lifetime and nothing downstream re-checks. `size` and
@@ -203,7 +204,7 @@ export class Layout implements Renderable, Measurable {
     const region = regionRows(options.height);
     const shares = region === undefined
       ? children.map((child) => child.size)
-      : this._distributeSpace(children, region);
+      : ratioResolve(region, children);
 
     for (let i = 0; i < children.length; i++) {
       for (const line of paneLines(children[i]!, options, shares[i])) {
@@ -222,68 +223,13 @@ export class Layout implements Renderable, Measurable {
     // width made every share NaN and the merge threw `Invalid array length`.
     // Every pane stands in the whole region, and with none the merge pads the
     // row to its tallest pane.
-    const widths = this._distributeSpace(children, options.maxWidth);
+    const widths = ratioResolve(options.maxWidth, children);
     const region = regionRows(options.height);
     const cells = children.map((child, i) => ({
       width: widths[i]!,
       lines: paneLines(child, { ...options, maxWidth: widths[i]! }, region),
     }));
     yield* Segment.mergeHorizontal(cells);
-  }
-
-  private _distributeSpace(children: Layout[], totalSpace: number): number[] {
-    const sizes: number[] = new Array(children.length).fill(0);
-    let remaining = totalSpace;
-
-    // Children that do not grow are paid first: a declared `size`, and equally
-    // a `ratio` of 0, which is the caller saying this pane stays at its
-    // `minimumSize`. Left in the ratio pass below, a zero-ratio child divided
-    // by its own ratio and drew its minimum out of a budget the shares had
-    // already spent — three panes of `zzz`/`aaaaa`/`bbbbb` consumed
-    // `3 + 2*floor(T/2)` cells out of `T`, which no `T` satisfies, and the row
-    // only came out right at 16 because the `Math.min(remaining, ...)` below
-    // happened to clip the last share to the right number.
-    const growing: number[] = [];
-    for (let i = 0; i < children.length; i++) {
-      const child = children[i]!;
-      if (child.size !== undefined) {
-        sizes[i] = Math.min(child.size, remaining);
-      } else if (child.ratio === 0) {
-        sizes[i] = Math.min(child.minimumSize, remaining);
-      } else {
-        growing.push(i);
-        continue;
-      }
-      remaining -= sizes[i]!;
-    }
-
-    // Distribute what is left by ratio. Each child's share comes off one
-    // budget and is bounded by what that budget still holds: `minimumSize` is
-    // what a child asks for, `remaining` is what there is to give, and the
-    // second beats the first. Applied without that bound — as
-    // `Math.max(minimumSize, share)` alone — every child claimed its whole
-    // minimum out of a budget that could not cover one of them, so two
-    // children of a Layout asked to fit one cell merged into a two-cell row.
-    if (growing.length > 0 && remaining > 0) {
-      const budget = remaining;
-      // Every ratio in here is positive — `growthRatio` parses the rest to zero
-      // at the constructor and zero is filtered out above — which is what makes
-      // the division safe and `_rowBudgetFor`'s inverse of it finite.
-      const totalRatio = growing.reduce(
-        (s, idx) => s + children[idx]!.ratio,
-        0,
-      );
-
-      for (const idx of growing) {
-        const child = children[idx]!;
-        const share = Math.floor(budget * child.ratio / totalRatio);
-        const allocated = Math.min(remaining, Math.max(child.minimumSize, share));
-        sizes[idx] = allocated;
-        remaining -= allocated;
-      }
-    }
-
-    return sizes;
   }
 
   /**
@@ -311,7 +257,7 @@ export class Layout implements Renderable, Measurable {
     if (visible.length === 0) return 0;
 
     const widths = visible.map((c) => c._naturalWidth(options));
-    if (this._splitDirection === "row") return this._rowBudgetFor(visible, widths);
+    if (this._splitDirection === "row") return ratioBudget(visible, widths);
 
     // Accumulated, not spread: a column split holds as many children as a caller
     // made, and `Math.max(...widths)` passes one argument per child, so a
@@ -320,44 +266,6 @@ export class Layout implements Renderable, Measurable {
     let widest = 0;
     for (const width of widths) widest = Math.max(widest, width);
     return widest;
-  }
-
-  /**
-   * The budget at which `_distributeSpace` gives every child of a row at least
-   * the width it wants — the inverse of the ratio rule above, and the reason
-   * this is not the sum of those widths.
-   *
-   * [LAW:one-source-of-truth] A growing child receives `floor(budget * ratio /
-   * totalRatio)`, so to receive `want` cells it needs the budget to reach
-   * `want * totalRatio / ratio`, and one budget serves them all: the row needs
-   * the largest demand, never their total. Summed instead, a 1:1 split of
-   * "left" and "right" reported 9 and then rendered "right" into the 4 cells
-   * that `floor(9/2)` actually hands it.
-   *
-   * The panes that do not grow are paid first here for the same reason they
-   * are paid first there — and it is the reason this divides by no zero: a
-   * `ratio` of 0 never reaches the division, because a pane that does not grow
-   * demands nothing of a budget for growing.
-   */
-  private _rowBudgetFor(children: Layout[], widths: number[]): number {
-    const growing = children.filter((c) => c.size === undefined && c.ratio !== 0);
-    const totalRatio = growing.reduce((sum, c) => sum + c.ratio, 0);
-
-    let pinned = 0;
-    let budget = 0;
-
-    for (const [i, child] of children.entries()) {
-      if (child.size !== undefined) {
-        pinned += child.size;
-      } else if (child.ratio === 0) {
-        pinned += child.minimumSize;
-      } else {
-        const want = Math.max(child.minimumSize, widths[i]!);
-        budget = Math.max(budget, Math.ceil(want * totalRatio / child.ratio));
-      }
-    }
-
-    return pinned + budget;
   }
 
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
