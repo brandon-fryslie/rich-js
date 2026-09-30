@@ -4,15 +4,22 @@
     {
       "version": "pr-238",
       "ref": "refs/pull/238/merge",
-      "sha": "af2ef426b9f4e53837a8f478afcaacae4e86fec8",
-      "timestamp": "2026-09-30T05:46:08.853Z",
+      "sha": "816c7995d5db723feb0ca18a37f4b552d3681147",
+      "timestamp": "2026-09-30T06:03:47.098Z",
       "commits": [
         {
-          "sha": "af2ef426b9f4e53837a8f478afcaacae4e86fec8",
+          "sha": "816c7995d5db723feb0ca18a37f4b552d3681147",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:45:26-06:00",
-          "message": "Merge aabd9fa39692643d1bb139a1ff3ed4244cab8f32 into 3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8\n"
+          "timestamp": "2026-09-30T06:02:53Z",
+          "message": "Merge b2e261f681d75b53a33189c604187dc5354176ae into 3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8\n"
+        },
+        {
+          "sha": "b2e261f681d75b53a33189c604187dc5354176ae",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T00:02:48-06:00",
+          "message": "fix(docs): the playground's link keeps up, and a failed start retries (rich-playground-afk.npl)\n\nReview (/code-review high) of PR #238:\n- The hash is written once typing pauses: one history write a keystroke is\n  a burst Safari and Firefox refuse and Chrome drops.\n- Edits, followed links and closing are ordered events; an encode or decode\n  that lands after a later event is dropped, replacing the unordered chain.\n- `opened: Opened | null` meant both \"opening\" and \"failed\"; it is a Phase\n  union, and Run opens a playground that failed to, as RichLive's button does.\n- A link failure clears once a write makes the address bar and editor agree.\n- A link followed in the tab runs in the page's motion mode.\n- The start block must be one its page runs to an end (not node/shape/throws).\n- decodeProgram refuses to inflate past MAX_PROGRAM_BYTES; encode refuses the same.\n- aria-keyshortcuts dropped: it named Control+Enter on a Mac, and the kbd\n  in the button's name already says the shortcut.\n"
         },
         {
           "sha": "aabd9fa39692643d1bb139a1ff3ed4244cab8f32",
