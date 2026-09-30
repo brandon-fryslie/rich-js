@@ -1,1 +1,0 @@
-import{_ as a,o as i,c as n,ag as l}from"./chunks/framework.BbE-6GJS.js";const c=JSON.parse('{"title":"Markdown","description":"","frontmatter":{},"headers":[],"relativePath":"markdown.md","filePath":"markdown.md"}'),e={name:"markdown.md"};function t(p,s,h,o,k,r){return i(),n("div",null,[...s[0]||(s[0]=[l("",9)])])}const g=a(e,[["render",t]]);export{c as __pageData,g as default};

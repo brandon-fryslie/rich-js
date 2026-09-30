@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-259",
-      "ref": "refs/pull/259/merge",
-      "sha": "a7a1d20c16fa4206c175749548518cbeff3e4ec4",
-      "timestamp": "2026-09-30T15:07:06.516Z",
-      "commits": [
-        {
-          "sha": "a7a1d20c16fa4206c175749548518cbeff3e4ec4",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T15:06:00Z",
-          "message": "Merge 94f8ab2b9f566882ab5e0a0c6654d216c1d67b8c into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
-        },
-        {
-          "sha": "94f8ab2b9f566882ab5e0a0c6654d216c1d67b8c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:05:55-06:00",
-          "message": "fix(markdown): body text defaults to left, as Rich's Paragraph does (rich-markdown-ft8)\n\nReview round 3 (escalation high) on #259: Rich's Paragraph uses\nmarkdown.justify or \"left\", so an unset justify never inherits the print's.\nThe settings object carries justify once, and the Justify type derives from\nRenderOptions.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "513bea9fb10da2622adba3bf3d23be6364f3fa58",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:00:14-06:00",
-          "message": "fix(markdown): a heading is drawn at its natural width (rich-markdown-ft8)\n\nReview round 2 (medium) on #259: placing headings \"left\" padded them to the\nwidth, and markdown.h1's underline ran to the edge. A heading now renders\nwith no placement asked of it, so the print's justify cannot reach it either.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "d6a4be4d93267ec01c26d219d6e9a2d1300edf29",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:56:09-06:00",
-          "message": "fix(markdown): links span their text, headings stay left, justify has one source (rich-markdown-ft8)\n\nReview round 1 (high) on #259:\n- a link's span starts where its text lands, not at the source length, which\n  control-character stripping can shorten\n- headings are placed left explicitly instead of inheriting the print's justify\n- justify travels once, as the block's placement; InlineSettings holds only\n  inline code style and hyperlinks, and Markdown no longer implements it\n- docs: an unset justify follows the print's\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "ddfa207845c97d735193e0280b5ae1daf5f05761",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:48:12-06:00",
-          "message": "fix(markdown): every option takes effect or is gone (rich-markdown-ft8)\n\n- inlineCodeStyle styles inline code (was hard-coded to markdown.code).\n- hyperlinks: true makes a link's text the link, in markdown.link_url;\n  false draws the text in markdown.link and writes \" (url)\" after it, as\n  Rich does.\n- justify places paragraphs, list items and quoted text; headings keep\n  their own placement. It was declared and never read, same defect.\n- codeTheme is removed: Syntax lost its theme option in #256, colours are\n  console theme names, so there is nothing for it to name.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "55e33b2a298c6f0c5b24efce711f6fd6e66e6876",
-      "timestamp": "2026-09-30T14:43:06.284Z",
+      "sha": "2300745a25c9da6ee9976329c977db9ecd623c34",
+      "timestamp": "2026-09-30T15:10:43.884Z",
       "commits": [
         {
-          "sha": "55e33b2a298c6f0c5b24efce711f6fd6e66e6876",
+          "sha": "2300745a25c9da6ee9976329c977db9ecd623c34",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:42:12-06:00",
-          "message": "fix(table): a shrinking table wraps before it truncates (rich-table-3u2) (#258)\n\n* fix(table): a shrinking table pays every column its minimum before any grows past it (rich-table-3u2)\n\nlayoutTable shared a squeezed table's width by natural width alone, so an\nunbreakable column (a figure, a no-wrap column) was cut with an ellipsis while\na wrappable neighbour kept width it could have wrapped into. Each column now\ncarries its minimum - its longest word, or its whole line under noWrap - and\ndistribute pays every minimum before any width past it.\n\ndocs/tables.md's 75-column Star Wars example now renders byte-identical to\nPython Rich. Deliberate divergence: Rich's widest-first _collapse_widths still\ntruncates a narrow unbreakable column once the widest has narrowed to it; this\nkeeps it whole.\n\n* fix(table): a table's measured minimum is its columns' minimums (rich-table-3u2)\n\nReview pass (high) on PR #258: measure reported one cell per column, so a\nparent squeezed a nested table below its own minimums and cut the figures\nthe shrink now protects. The minimum pass shares spent/holding with the\npasses after it, and the docs name padding and maxWidth as the other ways a\ncolumn is cut. Indented-text minimums filed as rich-text-z3ln.\n\n* docs(table): measure's comments name the minimum it reports and its noWrap divergence (rich-table-3u2)"
+          "timestamp": "2026-09-30T09:09:35-06:00",
+          "message": "fix(markdown): every option takes effect or is gone (rich-markdown-ft8) (#259)\n\n* fix(markdown): every option takes effect or is gone (rich-markdown-ft8)\n\n- inlineCodeStyle styles inline code (was hard-coded to markdown.code).\n- hyperlinks: true makes a link's text the link, in markdown.link_url;\n  false draws the text in markdown.link and writes \" (url)\" after it, as\n  Rich does.\n- justify places paragraphs, list items and quoted text; headings keep\n  their own placement. It was declared and never read, same defect.\n- codeTheme is removed: Syntax lost its theme option in #256, colours are\n  console theme names, so there is nothing for it to name.\n\n* fix(markdown): links span their text, headings stay left, justify has one source (rich-markdown-ft8)\n\nReview round 1 (high) on #259:\n- a link's span starts where its text lands, not at the source length, which\n  control-character stripping can shorten\n- headings are placed left explicitly instead of inheriting the print's justify\n- justify travels once, as the block's placement; InlineSettings holds only\n  inline code style and hyperlinks, and Markdown no longer implements it\n- docs: an unset justify follows the print's\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(markdown): a heading is drawn at its natural width (rich-markdown-ft8)\n\nReview round 2 (medium) on #259: placing headings \"left\" padded them to the\nwidth, and markdown.h1's underline ran to the edge. A heading now renders\nwith no placement asked of it, so the print's justify cannot reach it either.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(markdown): body text defaults to left, as Rich's Paragraph does (rich-markdown-ft8)\n\nReview round 3 (escalation high) on #259: Rich's Paragraph uses\nmarkdown.justify or \"left\", so an unset justify never inherits the print's.\nThe settings object carries justify once, and the Justify type derives from\nRenderOptions.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
