@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-271",
-      "ref": "refs/pull/271/merge",
-      "sha": "b8ae69ed2793b535309ec8e10a624ce4f51eb7b6",
-      "timestamp": "2026-09-30T19:13:49.107Z",
-      "commits": [
-        {
-          "sha": "b8ae69ed2793b535309ec8e10a624ce4f51eb7b6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T19:12:42Z",
-          "message": "Merge 0dcd445a28e36660c948f16f77a7067ea9030aea into 1c1341c84b8811148562683d213d14fc9a9e8936\n"
-        },
-        {
-          "sha": "0dcd445a28e36660c948f16f77a7067ea9030aea",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:12:37-06:00",
-          "message": "fix(style): every default style that paints a ground is readable on every bundled theme (rich-syntax-60ii)\n\nReview of #271: the per-Syntax contrast test checked one style on two themes.\nThe sweep now lives on DEFAULT_STYLES, where the invariant is, and it caught\nmarkdown.code (cyan on grey11, 3.57:1 on the default theme) -> dark_turquoise.\n16-colour depth is filed as rich-contrast-sqqq.\n"
-        },
-        {
-          "sha": "df60586caf8e228fb8db1c54f9e5dd4453142ad0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:05:30-06:00",
-          "message": "fix(syntax): a highlighted line number is readable on a light terminal (rich-syntax-60ii)\n\nsyntax.line_number.highlight set a fixed grey27 ground but took its ink\nfrom the terminal theme, so on a light theme the numbers were dark on dark\ngrey (contrast 1.16 under ATOM_ONE_LIGHT). The ink is now grey93, from the\nsame fixed palette, and a test holds both example themes to WCAG 4.5.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "1c1341c84b8811148562683d213d14fc9a9e8936",
-      "timestamp": "2026-09-30T19:02:28.566Z",
+      "sha": "7d1269e1f067cfaf970db02865817ea7240c0618",
+      "timestamp": "2026-09-30T19:15:49.620Z",
       "commits": [
         {
-          "sha": "1c1341c84b8811148562683d213d14fc9a9e8936",
+          "sha": "7d1269e1f067cfaf970db02865817ea7240c0618",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:01:12-06:00",
-          "message": "fix(live): printing through live.console lands above the frame (rich-live-sadk) (#270)\n\n* fix(live): printing through live.console lands above the frame (rich-live-sadk)\n\nA Console now holds at most one LiveRegion, and every write it makes steps\naround it: the frame is erased, the write lands where it was, and the frame\nis painted again underneath — Rich's render-hook model. Live claims the\nregion from start() to the hand-back; claiming a second on the same console\nthrows instead of corrupting both displays.\n\n* fix(live): a print through live.console reaches the terminal in one write, and keeps a line it stops mid-way (rich-live-sadk)\n\nLiveRegion.around is now text in, bytes out: the console writes the erase,\nthe text and the repainted frame as one chunk. Painter.around ends text that\nstops mid-line before the frame repaints over it. A stale claimLiveRegion\nrelease leaves a newer claim in place. docs/live.md's warning named the\nwrong console.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T13:14:37-06:00",
+          "message": "fix(syntax): a highlighted line number is readable on a light terminal (rich-syntax-60ii) (#271)\n\n* fix(syntax): a highlighted line number is readable on a light terminal (rich-syntax-60ii)\n\nsyntax.line_number.highlight set a fixed grey27 ground but took its ink\nfrom the terminal theme, so on a light theme the numbers were dark on dark\ngrey (contrast 1.16 under ATOM_ONE_LIGHT). The ink is now grey93, from the\nsame fixed palette, and a test holds both example themes to WCAG 4.5.\n\n* fix(style): every default style that paints a ground is readable on every bundled theme (rich-syntax-60ii)\n\nReview of #271: the per-Syntax contrast test checked one style on two themes.\nThe sweep now lives on DEFAULT_STYLES, where the invariant is, and it caught\nmarkdown.code (cyan on grey11, 3.57:1 on the default theme) -> dark_turquoise.\n16-colour depth is filed as rich-contrast-sqqq."
         }
       ]
     }
