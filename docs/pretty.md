@@ -155,7 +155,7 @@ console.print(new Pretty(new Set(["red", "green", "blue"])));
 
 ## Truncating large values
 
-`maxLength` caps how many entries are shown, and the ones it drops are counted in a trailing `... +N` whatever the container. `maxString` cuts strings to that many characters and counts the rest after the closing quote — outside the value, so the count is never mistaken for the string's own content:
+`maxLength` caps how many entries are shown, and the ones it drops are counted in a trailing `... +N` whatever the container. `maxString` cuts strings to that many characters and counts the rest after the closing quote — outside the value, so the count is never mistaken for the string's own content. A character here is a grapheme cluster, one glyph as the reader sees it, so a cut never splits an emoji, a flag or a skin-toned hand; Rich counts code points instead, and can:
 
 ```typescript
 const bigArray = Array.from({ length: 1000 }, (_, i) => i + 1);

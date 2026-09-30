@@ -17,7 +17,7 @@
  * times.
  */
 
-import { asCellCol, cellColToCodeUnitOffset, cellLen, splitAtCells } from "./cells.js";
+import { asCellCol, cellColToCodeUnitOffset, cellLen, graphemes, splitAtCells } from "./cells.js";
 import { divideLine } from "./wrap.js";
 import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
@@ -494,10 +494,16 @@ export class Pretty implements Renderable, Measurable {
         // sits beside the kept entries rather than inside the last one. Inside
         // the quotes it reads as content, and copying it out yields a string
         // the program never held.
-        if (this.maxString === undefined || value.length <= this.maxString) {
-          return JSON.stringify(value);
-        }
-        return JSON.stringify(value.slice(0, this.maxString)) + `+${value.length - this.maxString}`;
+        //
+        // The unit is the grapheme cluster, the glyph a reader counts. A code
+        // unit cut can keep half a surrogate pair, which JSON.stringify prints
+        // as a `\ud83d` escape; a code point cut can keep half a flag or a ZWJ
+        // family. Either way the kept prefix shows something the value never
+        // held, and the dropped count is in a unit nobody can see.
+        if (this.maxString === undefined) return JSON.stringify(value);
+        const clusters = graphemes(value);
+        if (clusters.length <= this.maxString) return JSON.stringify(value);
+        return JSON.stringify(clusters.slice(0, this.maxString).join("")) + `+${clusters.length - this.maxString}`;
       }
       case "number":
       case "bigint":
