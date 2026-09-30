@@ -4,15 +4,22 @@
     {
       "version": "pr-255",
       "ref": "refs/pull/255/merge",
-      "sha": "d625bf46108f579d0b62a1406274344ea6169dc3",
-      "timestamp": "2026-09-30T13:00:48.907Z",
+      "sha": "602fe00cd024497c1145b392fd532190fdab1f73",
+      "timestamp": "2026-09-30T13:03:26.883Z",
       "commits": [
         {
-          "sha": "d625bf46108f579d0b62a1406274344ea6169dc3",
+          "sha": "602fe00cd024497c1145b392fd532190fdab1f73",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:59:41Z",
-          "message": "Merge 35a3bf17d913ffeec2fd4499779d92513bf2a27c into d2cc10e93b4fe71b1c5431bb942f203177a620d2\n"
+          "timestamp": "2026-09-30T13:02:18Z",
+          "message": "Merge 9c6a15a9f8a2213ed6509c0c60a4b6d26ec93cf8 into d2cc10e93b4fe71b1c5431bb942f203177a620d2\n"
+        },
+        {
+          "sha": "9c6a15a9f8a2213ed6509c0c60a4b6d26ec93cf8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T07:02:13-06:00",
+          "message": "fix(widgets): a TextInput pads its rows in the style its value is drawn in (rich-widgets-73e)\n\nReview pass (medium): a caller's contentStyle background was striped by the\ntheme's ground in the padding of short multiline rows.\n"
         },
         {
           "sha": "35a3bf17d913ffeec2fd4499779d92513bf2a27c",
