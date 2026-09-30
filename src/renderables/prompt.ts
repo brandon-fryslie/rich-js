@@ -22,17 +22,21 @@
  */
 
 import { renderMarkup } from "../core/markup.js";
+import { RichText } from "../core/text.js";
 
 // --- Types ---
 
 /**
- * Input capability: receives the rendered prompt string (always with a
- * trailing space appended by the renderable, so implementations should not
- * add their own), resolves with the raw user response. Implementations
- * decide where the input comes from (stdin readline, network, in-memory
- * queue, etc.).
+ * Input capability: receives the prompt to show — styled text, ending in the
+ * `": "` the answer is typed after — and resolves with the raw user response.
+ * Implementations decide where the prompt is drawn and where the input comes
+ * from (stdin readline, network, in-memory queue, etc.).
+ *
+ * [LAW:effects-at-boundaries] The prompt arrives as a `RichText`, not bytes:
+ * which colours a terminal can draw is known only where the terminal is, so
+ * the capability that writes to it is the one that encodes it.
  */
-export type PromptInput = (prompt: string) => Promise<string>;
+export type PromptInput = (prompt: RichText) => Promise<string>;
 
 export interface PromptOptions<T> {
   default?: T;
@@ -44,7 +48,30 @@ export interface PromptOptions<T> {
 
 // --- Base ---
 
-function ask(promptText: string, input: PromptInput): Promise<string> {
+/** A bracketed or parenthesised hint after the question, drawn in its theme style. */
+interface Hint {
+  readonly text: string;
+  readonly style: "prompt.choices" | "prompt.default";
+}
+
+// The prompt as Rich's `make_prompt` draws it: the caller's markup, then each
+// hint appended as plain text — never read as markup, so `[y/n]` is drawn and
+// not parsed as a tag — then the suffix.
+function makePrompt(promptText: string, hints: readonly Hint[]): RichText {
+  const prompt = new RichText("", { style: "prompt", end: "" }).append(renderMarkup(promptText));
+  for (const hint of hints) prompt.append(" ").append(hint.text, hint.style);
+  return prompt.append(": ");
+}
+
+function choicesHint(choices: readonly string[]): Hint {
+  return { text: `[${choices.join("/")}]`, style: "prompt.choices" };
+}
+
+function defaultHint(value: string | number): Hint {
+  return { text: `(${value})`, style: "prompt.default" };
+}
+
+function ask(prompt: RichText, input: PromptInput): Promise<string> {
   // [LAW:single-enforcer] Trust-boundary validation for non-TS callers
   // (JS, or TS with `any` laundering). TS callers can't reach this branch
   // because `PromptInput` is required at every static `.ask`. The message
@@ -57,8 +84,9 @@ function ask(promptText: string, input: PromptInput): Promise<string> {
         "`PromptInput` for tests/browsers.",
     );
   }
-  const rendered = renderMarkup(promptText);
-  return input(rendered.plain + " ");
+  // A copy, because a `RichText` is mutable and the same prompt is asked
+  // again on every retry.
+  return input(prompt.copy());
 }
 
 // --- Prompt ---
@@ -72,14 +100,10 @@ export class Prompt {
     const showDefault = options?.showDefault !== false;
     const showChoices = options?.showChoices !== false;
 
-    let display = promptText;
-    if (showChoices && options?.choices) {
-      display += ` [${options.choices.join("/")}]`;
-    }
-    if (showDefault && options?.default !== undefined) {
-      display += ` (${options.default})`;
-    }
-    display += ":";
+    const display = makePrompt(promptText, [
+      ...(showChoices && options?.choices ? [choicesHint(options.choices)] : []),
+      ...(showDefault && options?.default !== undefined ? [defaultHint(options.default)] : []),
+    ]);
 
     while (true) {
       const answer = await ask(display, input);
@@ -110,11 +134,10 @@ export class IntPrompt {
     options?: PromptOptions<number>,
   ): Promise<number> {
     const showDefault = options?.showDefault !== false;
-    let display = promptText;
-    if (showDefault && options?.default !== undefined) {
-      display += ` (${options.default})`;
-    }
-    display += ":";
+    const display = makePrompt(
+      promptText,
+      showDefault && options?.default !== undefined ? [defaultHint(options.default)] : [],
+    );
 
     while (true) {
       const answer = await ask(display, input);
@@ -137,11 +160,10 @@ export class FloatPrompt {
     options?: PromptOptions<number>,
   ): Promise<number> {
     const showDefault = options?.showDefault !== false;
-    let display = promptText;
-    if (showDefault && options?.default !== undefined) {
-      display += ` (${options.default})`;
-    }
-    display += ":";
+    const display = makePrompt(
+      promptText,
+      showDefault && options?.default !== undefined ? [defaultHint(options.default)] : [],
+    );
 
     while (true) {
       const answer = await ask(display, input);
@@ -164,8 +186,8 @@ export class Confirm {
     options?: PromptOptions<boolean>,
   ): Promise<boolean> {
     const defaultVal = options?.default;
-    const yesNo = defaultVal === true ? "Y/n" : defaultVal === false ? "y/N" : "y/n";
-    const display = `${promptText} [${yesNo}]:`;
+    const yesNo = defaultVal === true ? ["Y", "n"] : defaultVal === false ? ["y", "N"] : ["y", "n"];
+    const display = makePrompt(promptText, [choicesHint(yesNo)]);
 
     while (true) {
       const answer = await ask(display, input);

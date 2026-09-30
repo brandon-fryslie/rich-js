@@ -9,7 +9,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import stripAnsi from "strip-ansi";
-import { cellLen } from "../../src/index.js";
+import { cellLen, Console } from "../../src/index.js";
 import { runInTerminal, type SimulatedTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { bundleExample } from "../../docs/.vitepress/example-runner.js";
 import { REPO_ROOT } from "../../scripts/repo-facts.js";
@@ -232,6 +232,35 @@ describe("runInTerminal", () => {
     term.type("lice\r");
     await run;
     expect(stripAnsi(term.output.join(""))).toBe("Name?: Al\b \blice\r\nHello, Alice!\n");
+  });
+
+  it("draws a nodeAsk prompt in the terminal's colours, its markup, choices and y/n included", async () => {
+    const term = terminal(75);
+    const prompt = JSON.stringify(resolve(REPO_ROOT, "src/node/prompt.ts"));
+    const run = runInTerminal(
+      await bundleExample(`
+        import { Confirm, Prompt } from ${LIBRARY};
+        import { nodeAsk } from ${prompt};
+        await Prompt.ask("[bold cyan]Env[/]", nodeAsk, { choices: ["dev", "prod"] });
+        await Confirm.ask("Ship?", nodeAsk);
+      `),
+      term,
+    );
+    await vi.waitFor(() => expect(stripAnsi(term.output.join(""))).toContain("Env [dev/prod]: "));
+    term.type("dev\r");
+    await vi.waitFor(() => expect(stripAnsi(term.output.join(""))).toContain("Ship? [y/n]: "));
+    term.type("y\r");
+    await run;
+    // Each prompt draws as the same prompt written out in markup and printed on a truecolor terminal.
+    const draw = (markup: string): string => {
+      const chunks: string[] = [];
+      const file = { write: (data: string) => (chunks.push(data), true) } as NodeJS.WritableStream;
+      new Console({ file, colorSystem: "truecolor", forceTerminal: true }).print(markup, { end: "" });
+      return chunks.join("");
+    };
+    expect(term.output.join("")).toBe(
+      `${draw("[bold cyan]Env[/] [bold magenta]\\[dev/prod][/]: ")}dev\r\n${draw("Ship? [bold magenta]\\[y/n][/]: ")}y\r\n`,
+    );
   });
 
   it("hands process.exit to the terminal", async () => {
