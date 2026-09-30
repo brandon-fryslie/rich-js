@@ -276,6 +276,21 @@ describe("WidgetApp pointer", () => {
     expect(rows(app).join("\n")).toContain("below");
   });
 
+  it("paints an overlay over wide glyphs without widening the row beneath it", async () => {
+    const host = scriptedHost({ cols: 20, rows: 4 });
+    class WithPopup extends Checkbox {
+      renderOverlay(options: RenderOptions): Iterable<Segment> {
+        return text("abc").render(options);
+      }
+    }
+    const owner = new WithPopup({ label: "owner", id: "owner" });
+    const app = start(host, () => new Group(owner, text("漢字漢字")));
+    await tick();
+
+    // "abc" ends halfway through the second glyph, which leaves its other half blank.
+    expect(rows(app)[1]).toBe("abc 漢字");
+  });
+
   it("reads hover off each frame, under a pointer that has not moved", async () => {
     const host = scriptedHost({ cols: 20, rows: 4 });
     const box = new Checkbox({ label: "a", id: "a" });

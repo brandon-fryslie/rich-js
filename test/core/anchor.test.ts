@@ -207,10 +207,10 @@ describe("cutting an anchored segment", () => {
     expect([right.text, right.style!.anchor!.col]).toEqual(["cd", 4]);
   });
 
-  it("starts a right half the cut went through at the glyph it kept whole", () => {
+  it("starts a right half the cut went through at the glyph's second cell", () => {
     const [left, right] = segment.splitCells(asCellCol(3));
     expect([left.text, left.style!.anchor!.col]).toEqual(["ab ", 0]);
-    expect([right.text, right.style!.anchor!.col]).toEqual(["漢cd", 2]);
+    expect([right.text, right.style!.anchor!.col]).toEqual([" cd", 3]);
   });
 
   it("shifts every level of a nested anchor", () => {

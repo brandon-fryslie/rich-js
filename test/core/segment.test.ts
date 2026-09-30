@@ -177,6 +177,38 @@ describe("Segment.splitCells()", () => {
     expect(left.cellLength).toBe(2);
     expect(right.cellLength).toBe(2);
   });
+
+  it("leaves a space in each cell of a wide glyph the cut goes through", () => {
+    const [left, right] = new Segment("ab漢cd").splitCells(asCellCol(3));
+    expect([left.text, right.text]).toEqual(["ab ", " cd"]);
+  });
+
+  it("cuts a glyph of several code points as whole, leaving no piece of it on either side", () => {
+    for (const c of ["⚠️", "👨‍👩‍👧", "👍🏽", "字\u0301"]) {
+      const [left, right] = new Segment(`a${c}b`).splitCells(asCellCol(2));
+      expect([left.text, right.text], c).toEqual(["a ", " b"]);
+    }
+  });
+
+  it("puts every character on exactly one side, zero-width ones included", () => {
+    for (const text of ["ab\u200Bcd", "hello\u00ADworld", "a\x1b[1mb"]) {
+      const seg = new Segment(text);
+      for (let p = 1; p < seg.cellLength; p++) {
+        const [left, right] = seg.splitCells(asCellCol(p));
+        expect(left.text + right.text, `${JSON.stringify(text)} at ${p}`).toBe(text);
+      }
+    }
+    const [left, right] = new Segment("a\u200B漢b").splitCells(asCellCol(2));
+    expect([left.text, right.text]).toEqual(["a\u200B ", " b"]);
+  });
+
+  it("halves are exactly `position` and the rest wide, at every position", () => {
+    const seg = new Segment("a⚠️b👨‍👩‍👧c👍🏽漢");
+    for (let p = 1; p < seg.cellLength; p++) {
+      const [left, right] = seg.splitCells(asCellCol(p));
+      expect([left.cellLength, right.cellLength], `at ${p}`).toEqual([p, seg.cellLength - p]);
+    }
+  });
 });
 
 // --- Segment.line() ---
@@ -544,6 +576,11 @@ describe("Segment.removeColor()", () => {
 // --- Segment.divide() ---
 
 describe("Segment.divide()", () => {
+  it("divides a run of glyphs of several code points on their boundaries", () => {
+    const result = Segment.divide([new Segment("⚠️⚠️")], [2, 4]);
+    expect(result.map(texts)).toEqual([["⚠️"], ["⚠️"]]);
+  });
+
   it("returns [segments] when no cuts given", () => {
     const segs = [new Segment("hello")];
     const result = Segment.divide(segs, []);
@@ -573,6 +610,11 @@ describe("Segment.divide()", () => {
     // First section: "abc" + "d", second: "ef"
     expect(Segment.getLineLength(result[0]!)).toBe(4);
     expect(Segment.getLineLength(result[1]!)).toBe(2);
+  });
+
+  it("gives each section exactly its cells when a cut goes through a wide glyph", () => {
+    const result = Segment.divide([new Segment("ab漢cd")], [3, 6]);
+    expect(result.map(texts)).toEqual([["ab "], [" cd"]]);
   });
 
   it("yields an empty section when cut is at position 0", () => {

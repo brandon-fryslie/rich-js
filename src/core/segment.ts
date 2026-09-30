@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, splitText, asCellCol, type CellCol } from "./cells.js";
+import { cellLen, cutCells, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 
@@ -60,21 +60,22 @@ export class Segment {
   }
 
   /**
-   * Splits at a cell position. Returns [left, right].
+   * Splits at a cell position. Returns [left, right]: the first `position`
+   * cells and the rest, so the two halves are exactly as wide as this one —
+   * `cutCells` blanks a wide glyph the cut goes through rather than keep it
+   * whole on a side it would widen by a cell.
    *
-   * [LAW:single-enforcer] The right half starts as many cells further into
-   * whatever drew it as the left half took from this one, and its anchor says
-   * so; see `./anchor.ts`. That is not `leftText`'s width: a cut through a
-   * wide glyph pads the left half and keeps the whole glyph on the right.
+   * [LAW:single-enforcer] The right half starts `position` cells further into
+   * whatever drew it, and its anchor says so; see `./anchor.ts`.
    */
   splitCells(position: CellCol): [Segment, Segment] {
     const len = this.cellLength;
     if (position >= len) return [this, new Segment("")];
     if (position <= 0) return [new Segment(""), this];
-    const [leftText, rightText] = splitText(this.text, position);
+    const [leftText, rightText] = cutCells(this.text, position);
     return [
       new Segment(leftText, this.style),
-      new Segment(rightText, this.style?.shiftedBy(len - cellLen(rightText))),
+      new Segment(rightText, this.style?.shiftedBy(position)),
     ];
   }
 
@@ -445,12 +446,8 @@ export class Segment {
       const section: Segment[] = [];
 
       while (currentSegment && cellOffset + currentSegment.cellLength <= cut) {
-        if (currentSegment.isControl) {
-          section.push(currentSegment);
-        } else {
-          section.push(currentSegment);
-          cellOffset += currentSegment.cellLength;
-        }
+        section.push(currentSegment);
+        cellOffset += currentSegment.cellLength;
         segmentIndex++;
         currentSegment = segments[segmentIndex];
       }

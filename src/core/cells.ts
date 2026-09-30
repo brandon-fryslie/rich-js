@@ -114,40 +114,44 @@ export function setCellSize(text: string, totalWidth: CellCol): string {
   if (currentWidth < totalWidth) {
     return text + " ".repeat(totalWidth - currentWidth);
   }
-  return cropToWidth(text, totalWidth);
+  return splitText(text, totalWidth)[0];
 }
 
 /**
  * Splits text at a cell position. Returns [left, right].
  * When the position falls mid-wide-character, the left side is padded
  * to reach exactly `position` cells. The wide char remains in the right side.
+ *
+ * [LAW:one-source-of-truth] The left side is `cellFit`'s, so the cut falls
+ * between the grapheme clusters `cellLen` measures and never inside one.
  */
 export function splitText(
   text: string,
   position: CellCol,
 ): [string, string] {
   if (position <= 0) return ["", text];
-  const totalWidth = cellLen(text);
-  if (position >= totalWidth) return [text, ""];
+  if (position >= cellLen(text)) return [text, ""];
+  const left = cellFit(text, position);
+  return [left + " ".repeat(position - cellLen(left)), text.slice(left.length)];
+}
 
-  // Walk characters tracking cell width and source char index
-  let width = 0;
-  let charIndex = 0;
-  for (const char of text) {
-    const charWidth = cellLen(char);
-    if (width + charWidth > position) break;
-    width += charWidth;
-    charIndex += char.length;
-  }
-
-  const left = text.slice(0, charIndex);
-  const right = text.slice(charIndex);
-
-  // If we stopped short of position (mid-wide-char), pad left with spaces
-  if (width < position) {
-    return [left + " ".repeat(position - width), right];
-  }
-  return [left, right];
+/**
+ * Cuts `text` into exactly `position` cells and the rest, as the reference's
+ * `Segment.split_cells` does: a wide glyph the cut goes through fits neither
+ * side, so it leaves a space in each of its cells, where `splitText` keeps it
+ * whole on the right. Every other character lands on exactly one side.
+ * `position` must fall inside `text`, between 0 and its width.
+ */
+export function cutCells(text: string, position: CellCol): [string, string] {
+  const head = cellFit(text, position);
+  // Cells of the glyph the cut goes through that lie left of it; 0 when the
+  // cut falls between glyphs, and then there is no such glyph.
+  const straddle = position - cellLen(head);
+  const [glyph = ""] = straddle > 0 ? clustersFrom(text, asCodePoint(head.length)) : [];
+  return [
+    head + " ".repeat(straddle),
+    " ".repeat(cellLen(glyph) - straddle) + text.slice(head.length + glyph.length),
+  ];
 }
 
 /**
@@ -183,7 +187,7 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
   let start = 0;
   let offset = 0;
   let cells = 0;
-  for (const ch of line) {
+  for (const ch of graphemes(line)) {
     if (pieces.length < cuts.length && cells >= cuts[pieces.length]!) {
       pieces.push(line.slice(start, offset));
       start = offset;
@@ -194,8 +198,11 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
   return [...pieces, line.slice(start)];
 }
 
-// [LAW:no-shared-mutable-globals] A private memo, written only by `graphemes`.
+// [LAW:no-shared-mutable-globals] Private memos, written only by `clustersFrom`:
+// the segmenter, and the segmentation of the last string walked, so a caller
+// stepping along one string does not re-segment the whole of it every step.
 let segmenter: Intl.Segmenter | undefined;
+let lastSegmented: { text: string; segments: Intl.Segments } | undefined;
 
 /**
  * The grapheme clusters of `text`, in order: the unit `string-width` measures,
@@ -205,8 +212,24 @@ let segmenter: Intl.Segmenter | undefined;
  * between two of its code points leaves half a glyph.
  */
 export function graphemes(text: string): string[] {
-  segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
-  return Array.from(segmenter.segment(text), (s) => s.segment);
+  return Array.from(clustersFrom(text, asCodePoint(0)));
+}
+
+/**
+ * The clusters of `text` from code unit `start` on, lazily, so a walk that
+ * stops early pays only for the clusters it reads.
+ */
+function* clustersFrom(text: string, start: CodePoint): Generator<string> {
+  if (lastSegmented?.text !== text) {
+    segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
+    lastSegmented = { text, segments: segmenter.segment(text) };
+  }
+  const { segments } = lastSegmented;
+  for (let at = start, s = segments.containing(at); s; s = segments.containing(at)) {
+    const end = s.index + s.segment.length;
+    yield text.slice(at, end);
+    at = asCodePoint(end);
+  }
 }
 
 /**
@@ -219,24 +242,25 @@ export function graphemes(text: string): string[] {
  * must decide whether to force-take the glyph or skip it).
  */
 export function cellFit(text: string, cap: CellCol): string {
-  return fitClusters(graphemes(text), cap).join("");
+  return text.slice(0, fitLength(clustersFrom(text, asCodePoint(0)), cap));
 }
 
 /** `cellFit` from the other end: the largest suffix of `text` within `cap` cells. */
 export function cellFitEnd(text: string, cap: CellCol): string {
-  return fitClusters(graphemes(text).reverse(), cap).reverse().join("");
+  return text.slice(text.length - fitLength(graphemes(text).reverse(), cap));
 }
 
-function fitClusters(clusters: string[], cap: CellCol): string[] {
+/** The code units of the leading `clusters` that fit within `cap` cells. */
+function fitLength(clusters: Iterable<string>, cap: CellCol): number {
   let w = 0;
   let n = 0;
   for (const cluster of clusters) {
     const cw = cellLen(cluster);
     if (w + cw > cap) break;
     w += cw;
-    n++;
+    n += cluster.length;
   }
-  return clusters.slice(0, n);
+  return n;
 }
 
 /**
@@ -245,21 +269,11 @@ function fitClusters(clusters: string[], cap: CellCol): string[] {
  * offset without slicing the tail, avoiding O(N²) allocation when called
  * repeatedly across a long string.
  *
- * [LAW:types-are-the-program] returns CodePoint because for...of always
- * stops on a code-point boundary.
+ * [LAW:types-are-the-program] returns CodePoint because it stops between
+ * grapheme clusters, and every cluster boundary is a code-point boundary.
  */
 export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
-  let w = 0;
-  let i: CodePoint = startCU;
-  while (i < text.length) {
-    const cp = text.codePointAt(i)!;
-    const ch = String.fromCodePoint(cp);
-    const cw = cellLen(ch);
-    if (w + cw > cap) break;
-    w += cw;
-    i = asCodePoint(i + ch.length);
-  }
-  return i;
+  return asCodePoint(startCU + fitLength(clustersFrom(text, startCU), cap));
 }
 
 /**
@@ -275,33 +289,17 @@ export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): Cod
  * `chopCells` did neither and hung.
  */
 export function cellStepFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
-  return asCodePoint(Math.max(cellFitFrom(text, startCU, cap), nextCodePoint(text, startCU)));
+  const [first = ""] = clustersFrom(text, startCU);
+  return asCodePoint(Math.max(cellFitFrom(text, startCU, cap), startCU + first.length));
 }
 
 /**
- * Returns the largest code-unit offset into `content` whose prefix has
- * cell width ≤ `cellCol`. When `cellCol` falls mid-wide-character the
- * function stops before that character (never advances into it).
- * Clamps to `content.length` if `cellCol` exceeds the string's total
- * cell width.
- *
- * This is the inverse of `cellLen(content.slice(0, codeUnit))` — given a
- * visual column, return the corresponding string index.
- *
- * Returns `CodePoint` because `for...of` iteration always stops on a
- * code-point boundary.
+ * The code-unit offset a visual column falls at: the end of the largest
+ * prefix of `content` within `cellCol` cells, so a column inside a wide glyph
+ * lands before it. The inverse of `cellLen(content.slice(0, offset))`.
  */
 export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): CodePoint {
-  let w = 0;
-  let i = 0;
-  for (const ch of content) {
-    if (w >= cellCol) break;
-    const cw = cellLen(ch);
-    if (w + cw > cellCol) break;
-    w += cw;
-    i += ch.length;
-  }
-  return asCodePoint(i);
+  return cellFitFrom(content, asCodePoint(0), cellCol);
 }
 
 /**
@@ -338,20 +336,3 @@ export function prevCodePoint(s: string, cu: CodeUnit): CodePoint {
   return asCodePoint(cu - 1);
 }
 
-// --- internal ---
-
-function cropToWidth(text: string, targetWidth: number): string {
-  let width = 0;
-  let i = 0;
-  // Use the string's code point iterator to handle surrogate pairs
-  for (const char of text) {
-    const charWidth = cellLen(char);
-    if (width + charWidth > targetWidth) break;
-    width += charWidth;
-    i += char.length;
-  }
-  const cropped = text.slice(0, i);
-  // Pad if we couldn't hit the exact width (wide char boundary)
-  const diff = targetWidth - width;
-  return diff > 0 ? cropped + " ".repeat(diff) : cropped;
-}
