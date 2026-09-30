@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-242",
-      "ref": "refs/pull/242/merge",
-      "sha": "2d6007c5976893522dc0b9efb0afbc24f8c438c5",
-      "timestamp": "2026-09-30T08:34:37.457Z",
-      "commits": [
-        {
-          "sha": "2d6007c5976893522dc0b9efb0afbc24f8c438c5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:33:30Z",
-          "message": "Merge 4c333079a6545a262df64b2c4f3b638023b95a71 into 08a560bf6c9c3d4103cf0124bc6c9ce29fb7c6cd\n"
-        },
-        {
-          "sha": "4c333079a6545a262df64b2c4f3b638023b95a71",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:33:23-06:00",
-          "message": "fix(export): SVG class prefix covers the rules it scopes; markup drops XML-illegal chars (rich-export-9a1.3)\n\nReview pass (high) on PR #242:\n- The class prefix hashed only title + text, so one recording under two\n  themes inlined on one page shared class names and restyled each other.\n  It now hashes the class rules too; the blink keyframes, identical in every\n  SVG, take one constant name.\n- escapeText/escapeAttribute drop characters XML 1.0 forbids; one of them\n  made the whole SVG unparsable.\n- One FNV-1a (src/core/fnv1a.ts, UTF-8) replaces the UTF-16 copy in\n  export-svg and linkId in osc8.\n- Title centred on the window rect, not offset by the margin.\n"
-        },
-        {
-          "sha": "c56174d1c14a9fe545a07bfcd4d0aaef7db54588",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:25:55-06:00",
-          "message": "feat(export): Console.exportSvg draws the recording as a terminal window (rich-export-9a1.3)\n\nencodeSvg in src/core/export-svg.ts encodes export-lines' resolved runs as\nan SVG: Rich's chrome and geometry, each chunk of a run anchored at its cell\ncolumn with textLength set to its cells so a fallback font cannot shift the\nrow, decorations as rectangles, one class per look, an FNV-1a id prefix so\nthe same recording exports the same bytes. Markup escaping moves into\nexport-lines so both encoders share one escaper.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "08a560bf6c9c3d4103cf0124bc6c9ce29fb7c6cd",
-      "timestamp": "2026-09-30T08:20:58.185Z",
+      "sha": "8ec00900f518a8f66664c7ae7a26e92921ad8aff",
+      "timestamp": "2026-09-30T08:39:23.051Z",
       "commits": [
         {
-          "sha": "08a560bf6c9c3d4103cf0124bc6c9ce29fb7c6cd",
+          "sha": "8ec00900f518a8f66664c7ae7a26e92921ad8aff",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:19:46-06:00",
-          "message": "feat(docs): the landing page opens on a live rich-js showcase (rich-landing-0mu) (#241)\n\n* feat(docs): the landing page opens on a live rich-js showcase (rich-landing-0mu)\n\nThe hero now runs examples/showcase/showcase.ts in a live terminal under its\ntext and buttons: a full-screen dashboard (Layout, Table, Tree, Progress,\ntruecolor) that loops with no input, holds one full frame under reduced\nmotion, follows the colour mode, and scales its font to fit a phone.\n\nThe showcase is served as `virtual:rich-live/showcase`, bundled onto the\nsame live library the docs' live examples share. Bundling a program onto the\nlibrary now takes an `examples/` file as well as a generated block: an import\nof an entry point becomes a read of the library, and a deep import into src/\nis refused, since it could only be a second copy of library code.\nThe showcase is bundled as the entry itself, because package.json's\n`\"sideEffects\": false` lets a bare import of it be dropped.\n\n* fix(docs): the showcase card holds its width, and live imports resolve through the build (rich-landing-0mu)\n\nReview (high) of PR #241:\n- The card's edge is a ring, not a border, so the card is exactly the width\n  its font was fitted to, and its screen is its terminal's width (columns ×\n  1ch, plus the pixel xterm rounds up) before xterm loads, so it no longer\n  widens on first draw.\n- libraryImport asks the build's resolver which file an import names, instead\n  of re-deriving it with path edits that a directory import slipped past.\n- The files a live program may import are the live library's entry points,\n  one list for the resolver and its refusal message; src/node/save.ts is now\n  refused at resolution with the right list.\n- Spectrum reads its height with regionRows and builds each cell's style\n  from ColorSpec.fromRgb, parsing no colour strings per frame.\n- The \"moves\" e2e waits for a percentage before reading one, so it cannot\n  pass on an absent row.\n\nxterm's rows are taller than the reserved line height: rich-live-terminal-t0rs."
+          "timestamp": "2026-09-30T02:38:17-06:00",
+          "message": "feat(export): Console.exportSvg draws the recording as a terminal window (rich-export-9a1.3) (#242)\n\n* feat(export): Console.exportSvg draws the recording as a terminal window (rich-export-9a1.3)\n\nencodeSvg in src/core/export-svg.ts encodes export-lines' resolved runs as\nan SVG: Rich's chrome and geometry, each chunk of a run anchored at its cell\ncolumn with textLength set to its cells so a fallback font cannot shift the\nrow, decorations as rectangles, one class per look, an FNV-1a id prefix so\nthe same recording exports the same bytes. Markup escaping moves into\nexport-lines so both encoders share one escaper.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(export): SVG class prefix covers the rules it scopes; markup drops XML-illegal chars (rich-export-9a1.3)\n\nReview pass (high) on PR #242:\n- The class prefix hashed only title + text, so one recording under two\n  themes inlined on one page shared class names and restyled each other.\n  It now hashes the class rules too; the blink keyframes, identical in every\n  SVG, take one constant name.\n- escapeText/escapeAttribute drop characters XML 1.0 forbids; one of them\n  made the whole SVG unparsable.\n- One FNV-1a (src/core/fnv1a.ts, UTF-8) replaces the UTF-16 copy in\n  export-svg and linkId in osc8.\n- Title centred on the window rect, not offset by the margin.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
