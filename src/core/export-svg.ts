@@ -249,7 +249,9 @@ export function encodeSvg(segments: Iterable<Segment>, { theme, title, width }: 
   return [
     `<svg class="rich-terminal" viewBox="0 0 ${n(terminalWidth + 2 * MARGIN)} ${n(terminalHeight + 2 * MARGIN)}" xmlns="http://www.w3.org/2000/svg">`,
     `<style>\n${stylesheet}\n</style>`,
-    `<rect fill="${canvas.background.hex}" stroke="rgba(255,255,255,0.35)" stroke-width="1" ` +
+    // [LAW:one-source-of-truth] The frame is the theme's ink at Rich's 35%, not
+    // Rich's fixed white: that white is invisible around a light theme's canvas.
+    `<rect fill="${canvas.background.hex}" stroke="${canvas.foreground.hex}" stroke-opacity="0.35" stroke-width="1" ` +
       `x="${MARGIN}" y="${MARGIN}" width="${n(terminalWidth)}" height="${n(terminalHeight)}" rx="8"/>`,
     `<text class="${id}-title" fill="${canvas.foreground.hex}" text-anchor="middle" ` +
       `x="${n(MARGIN + terminalWidth / 2)}" y="${MARGIN + CHAR_HEIGHT + 6}">${escapeText(title)}</text>`,

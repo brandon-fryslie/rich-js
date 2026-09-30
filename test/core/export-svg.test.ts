@@ -163,15 +163,17 @@ describe("encodeSvg looks", () => {
 });
 
 describe("encodeSvg chrome", () => {
-  it("paints the window in the theme's canvas and titles it in the theme's ink", () => {
+  it("paints the window in the theme's canvas and frames and titles it in the theme's ink", () => {
     const document = encodeSvg([new Segment("x")], { theme: SOLARIZED_LIGHT, title: "Rich", width: 10 });
-    expect(document).toContain(`<rect fill="${SOLARIZED_LIGHT.backgroundColor.hex}" stroke="rgba(255,255,255,0.35)"`);
+    expect(document).toContain(
+      `<rect fill="${SOLARIZED_LIGHT.backgroundColor.hex}" stroke="${SOLARIZED_LIGHT.foregroundColor.hex}" stroke-opacity="0.35"`,
+    );
     expect(document).toMatch(new RegExp(`fill="${SOLARIZED_LIGHT.foregroundColor.hex}" text-anchor="middle"[^>]*>Rich</text>`));
   });
 
   it("centres the title on the window, not on the margin before it", () => {
     const document = styled("none");
-    const window = /<rect fill="[^"]+" stroke="rgba[^"]+" stroke-width="1" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/.exec(document)!;
+    const window = /<rect fill="[^"]+" stroke="[^"]+" stroke-opacity="[^"]+" stroke-width="1" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/.exec(document)!;
     const title = /text-anchor="middle" x="([\d.]+)"/.exec(document)!;
     expect(Number(title[1])).toBe(Number(window[1]) + Number(window[2]) / 2);
   });
@@ -179,7 +181,7 @@ describe("encodeSvg chrome", () => {
   it("falls back to the canvas export-lines resolves runs over", () => {
     const { background, foreground } = exportCanvas();
     const document = encodeSvg([new Segment("x")], { title: "Rich", width: 10 });
-    expect(document).toContain(`<rect fill="${background.hex}" stroke=`);
+    expect(document).toContain(`<rect fill="${background.hex}" stroke="${foreground.hex}"`);
     expect(document).toContain(`fill="${foreground.hex}" text-anchor="middle"`);
   });
 
