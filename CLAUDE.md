@@ -88,7 +88,7 @@ Build order within `src/core/`. Each tier imports only from tiers above it:
 2   segment
 3   box · protocol · export-lines
 4   measure · emoji · text · strip · render · export-html · export-svg
-5   markup · highlighter · ansi · place
+5   markup · highlighter · ansi · place · paint
 6   pretty · json
 7   console                           (orchestrator)
 ```
@@ -131,6 +131,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **export-svg** — `encodeSvg`: recorded segments as a standalone SVG terminal window — Rich's chrome and geometry, every chunk of a run anchored at its cell column and stretched to its cells so no font can drift it, selectable text. An encoding of `export-lines` that inspects no `Style`; `Console.exportSvg` is it plus clearing the buffer. Its module header owns why glyphs are chunked and decorations are rectangles.
 - **measure** — `Measurement` value type (min/max cell width). `Measurement.get()` is the single enforcer for measuring a `Measurable`.
 - **place** — `placeBlock`: a renderable's output set down as one block in a wider width, the way Rich's `Align` does it — measured, drawn at that width, shaped to its widest line, then padded. `Align` and `Console.print`'s `justify` both place through it; it sits in `core/` so `print` reaches it without an upward edge.
+- **paint** — `Painter`: takes a terminal on a `Surface` (`alternate` or `inline`), paints each frame over the last one leaving the cursor on its last row, and hands the terminal back with the cursor on the line under it. `Live` and `App` each hold one, so where the cursor rests between frames, and how many rows the next paint goes back over, have one owner; its module header owns why the cursor rests on the last row and not the line below.
 - **markup** — parses Rich markup strings (`[bold red]text[/]`) into `RichText`.
 - **text** — `RichText`: styled text with `Span[]` annotations. Primary text type for the library; implements `Renderable` and `Measurable`.
 - **pretty** — `Pretty`: a JavaScript value formatted as `RichText`. It lives in `core/` rather than `renderables/`, and the argument for that is in its module header — read it there. Sharing the "implements `Renderable`" trait with `Table` is not what decides the directory; `RichText` implements it too.

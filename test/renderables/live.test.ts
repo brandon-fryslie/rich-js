@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import xterm from "@xterm/headless";
 import { Console } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
+import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 
-const SHOW_CURSOR = "\x1b[?25h";
-const EXIT_ALT_SCREEN = "\x1b[0m\x1b[?1049l";
+const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
+const EXIT_ALT_SCREEN = "\x1b[?1049l";
 
 class RenderFailed extends Error {}
 
@@ -47,21 +49,22 @@ describe("Live when a frame's render throws", () => {
     expect(out()).toBe(drawn);
   });
 
-  it("the alternate screen's first good frame still clears the buffer after a failed one", () => {
-    const { live: display, out } = live({ autoRefresh: false, altScreen: true });
-    display.update(broken);
+  it("the alternate screen's first good frame still covers the screen after a failed one", async () => {
+    const term = terminal(20, 5);
+    const display = new Live(broken, { console: term.console, autoRefresh: false, altScreen: true });
     display.start();
+    term.console.file.write("left\nover");
     expect(() => display.refresh()).toThrow(RenderFailed);
 
     display.update(new RichText("good"));
-    const before = out().length;
     display.refresh();
-    expect(out().slice(before)).toMatch(/^\x1b\[2J\x1b\[H/);
+    expect(await term.rows()).toEqual(["good"]);
   });
 
-  // What each mode writes to hand the terminal back.
+  // What each mode writes to hand the terminal back with a frame on it: inline,
+  // the line under the frame, where the program's next output belongs.
   const modes = [
-    ["inline", false, SHOW_CURSOR],
+    ["inline", false, SHOW_CURSOR + "\n"],
     ["on the alternate screen", true, SHOW_CURSOR + EXIT_ALT_SCREEN],
   ] as const;
 
@@ -71,6 +74,7 @@ describe("Live when a frame's render throws", () => {
       vi.useFakeTimers();
       const { live: display, out } = live({ altScreen, refreshPerSecond: 10 });
       display.start();
+      display.refresh();
       display.update(broken);
 
       expect(() => vi.advanceTimersByTime(100)).toThrow(RenderFailed);
@@ -84,6 +88,16 @@ describe("Live when a frame's render throws", () => {
       expect(out()).toBe(after);
     },
   );
+
+  it("an auto-refresh failure before any frame hands the terminal back with no line under it", () => {
+    vi.useFakeTimers();
+    const { live: display, out } = live({ refreshPerSecond: 10 });
+    display.update(broken);
+    display.start();
+
+    expect(() => vi.advanceTimersByTime(100)).toThrow(RenderFailed);
+    expect(out().endsWith(SHOW_CURSOR)).toBe(true);
+  });
 
   it.each(modes)(
     "stop() surfaces a failed final frame and still hands the terminal back %s",
@@ -114,5 +128,126 @@ describe("Live outside start() and stop()", () => {
     const stopped = out();
     display.refresh();
     expect(out()).toBe(stopped);
+  });
+});
+
+/**
+ * A terminal `cols` by `rows` — xterm's own model of one, so what is asserted
+ * is what a user would see and scroll back through, not the bytes that drew
+ * it — and a console writing to it. `\n` is a newline as a tty's output
+ * processing delivers it, a carriage return included.
+ */
+function terminal(cols: number, rows: number): { console: Console; rows: () => Promise<string[]> } {
+  const term = new xterm.Terminal({ cols, rows, convertEol: true, allowProposedApi: true });
+  let written = Promise.resolve();
+  const write = (data: string): void => {
+    written = written.then(() => new Promise<void>((resolve) => term.write(data, resolve)));
+  };
+  const console = new Console({ width: cols, height: rows, colorSystem: null, hyperlinks: false, file: { write } });
+  // Every line of scrollback and screen, to the last one written.
+  const lines = async (): Promise<string[]> => {
+    await written;
+    const buffer = term.buffer.active;
+    const all = Array.from({ length: buffer.length }, (_, i) => buffer.getLine(i)!.translateToString(true));
+    while (all.length > 0 && all.at(-1) === "") all.pop();
+    return all;
+  };
+  return { console, rows: lines };
+}
+
+function numbered(count: number): RichText {
+  return new RichText(Array.from({ length: count }, (_, i) => `line ${i}`).join("\n"));
+}
+
+describe("Live inline on a terminal", () => {
+  it("refreshes a frame as tall as the terminal in place, with nothing added to scrollback", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(numbered(30), { console: term.console, autoRefresh: false });
+    display.start();
+    for (let i = 0; i < 4; i++) display.refresh();
+    display.stop();
+    term.console.file.write("after\n");
+
+    const kept = Array.from({ length: 9 }, (_, i) => `line ${i}`);
+    expect(await term.rows()).toEqual([...kept, "...", "after"]);
+  });
+
+  it("starts the program's next output on its own line after stop()", async () => {
+    const term = terminal(20, 10);
+    term.console.file.write("before\n");
+    const display = new Live(new RichText("a\nb"), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["before", "a", "b", "after"]);
+  });
+
+  it("blanks the rows a shorter frame leaves, and follows it from its own height", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(new RichText("a\nb\nc"), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+    display.update(new RichText("z"), { refresh: true });
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["z", "after"]);
+  });
+
+  it("leaves nothing behind when transient, and the next output takes the frame's place", async () => {
+    const term = terminal(20, 10);
+    term.console.file.write("before\n");
+    const display = new Live(new RichText("a\nb\nc"), { console: term.console, autoRefresh: false, transient: true });
+    display.start();
+    display.refresh();
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["before", "after"]);
+  });
+
+  it("keeps the frame it handed back when started again", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(new RichText("a\nb\nc"), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+    display.stop();
+    display.update(new RichText("x\ny\nz"));
+    display.start();
+    display.refresh();
+    display.stop();
+
+    expect(await term.rows()).toEqual(["a", "b", "c", "x", "y", "z"]);
+  });
+
+  it("crops a row wider than the terminal, so refreshing does not drift the frame down", async () => {
+    const term = terminal(20, 10);
+    const wide: Renderable = {
+      *render() {
+        yield new Segment("w".repeat(30));
+        yield new Segment("\n");
+        yield new Segment("b");
+      },
+    };
+    const display = new Live(wide, { console: term.console, autoRefresh: false });
+    display.start();
+    for (let i = 0; i < 3; i++) display.refresh();
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["w".repeat(20), "b", "after"]);
+  });
+
+  it("leaves the cursor's line alone when handed back before any frame", async () => {
+    const term = terminal(20, 10);
+    term.console.file.write("before: ");
+    const display = new Live(new RichText("a"), { console: term.console, autoRefresh: false, transient: true });
+    display.start();
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["before: after"]);
   });
 });

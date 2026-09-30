@@ -94,9 +94,11 @@ test("a Progress with no console animates into the page's terminal", async ({ pa
     `,
   );
 
+  // Several frames, each redrawn over the last: back to the frame's first
+  // cell, then its rows erased and drawn again.
   const frames = run.output.filter((chunk) => chunk.includes("Copying"));
   expect(frames.length).toBeGreaterThan(2);
-  expect(run.output.join("")).toMatch(/\x1b\[\d*A/);
+  expect(frames.slice(1).every((chunk) => /^(\x1b\[\d+A)?\r\x1b\[2K/.test(chunk))).toBe(true);
   expect(stripAnsi(frames.at(-1) ?? "")).toContain("100%");
   expect(run.after).toBe("undefined");
 });

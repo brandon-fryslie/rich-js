@@ -103,10 +103,11 @@ describe("runInTerminal", () => {
     const term = terminal(75);
     await runInTerminal(await bundleExample(PROGRESS_PROGRAM), term);
 
-    // Animating is several frames, each redrawn over the last.
+    // Animating is several frames, each redrawn over the last: back to the
+    // frame's first cell, then its rows erased and drawn again.
     const frames = term.output.filter((chunk) => chunk.includes("Copying"));
     expect(frames.length).toBeGreaterThan(2);
-    expect(term.output.join("")).toMatch(/\x1b\[\d*A/);
+    expect(frames.slice(1).every((chunk) => /^(\x1b\[\d+A)?\r\x1b\[2K/.test(chunk))).toBe(true);
     expect(stripAnsi(frames.at(-1) ?? "")).toContain("100%");
   });
 

@@ -12,8 +12,8 @@
  *
  * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentsToString`
  * and is the single way segments become wire bytes. `Console._writeSegments`,
- * `Live.refresh`, `Screen`'s frame paint, `renderToString`, and
- * `segmentToString` all delegate here, so terminal output, live frames, widget
+ * `Painter` (every `Live` and `App` frame), `renderToString`, and
+ * `segmentToString` all delegate here, so terminal output, live and app
  * frames, string export, and single-segment encoding agree by construction.
  *
  * [LAW:one-source-of-truth] What the encoding needs from where it writes
