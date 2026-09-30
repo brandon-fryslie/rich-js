@@ -194,6 +194,12 @@ describe("splitText", () => {
     expect(left).toBe("");
     expect(right).toBe("hello");
   });
+
+  it("never cuts inside a glyph built from several code points", () => {
+    for (const c of ["⚠️", "👨‍👩‍👧", "👍🏽", "字\u0301"]) {
+      expect(splitText(`a${c}b`, asCellCol(2))).toEqual(["a ", `${c}b`]);
+    }
+  });
 });
 
 describe("cellFit / cellFitEnd", () => {

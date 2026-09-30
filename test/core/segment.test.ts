@@ -182,6 +182,21 @@ describe("Segment.splitCells()", () => {
     const [left, right] = new Segment("ab漢cd").splitCells(asCellCol(3));
     expect([left.text, right.text]).toEqual(["ab ", " cd"]);
   });
+
+  it("cuts a glyph of several code points as whole, leaving no piece of it on either side", () => {
+    for (const c of ["⚠️", "👨‍👩‍👧", "👍🏽", "字\u0301"]) {
+      const [left, right] = new Segment(`a${c}b`).splitCells(asCellCol(2));
+      expect([left.text, right.text], c).toEqual(["a ", " b"]);
+    }
+  });
+
+  it("halves are exactly `position` and the rest wide, at every position", () => {
+    const seg = new Segment("a⚠️b👨‍👩‍👧c👍🏽漢");
+    for (let p = 1; p < seg.cellLength; p++) {
+      const [left, right] = seg.splitCells(asCellCol(p));
+      expect([left.cellLength, right.cellLength], `at ${p}`).toEqual([p, seg.cellLength - p]);
+    }
+  });
 });
 
 // --- Segment.line() ---
@@ -549,6 +564,11 @@ describe("Segment.removeColor()", () => {
 // --- Segment.divide() ---
 
 describe("Segment.divide()", () => {
+  it("divides a run of glyphs of several code points on their boundaries", () => {
+    const result = Segment.divide([new Segment("⚠️⚠️")], [2, 4]);
+    expect(result.map(texts)).toEqual([["⚠️"], ["⚠️"]]);
+  });
+
   it("returns [segments] when no cuts given", () => {
     const segs = [new Segment("hello")];
     const result = Segment.divide(segs, []);

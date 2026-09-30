@@ -3,7 +3,7 @@
  * is represented as a Segment: (text, style?, control?).
  */
 
-import { cellLen, splitText, asCellCol, type CellCol } from "./cells.js";
+import { cellLen, cellFit, cellFitEnd, splitText, asCellCol, type CellCol } from "./cells.js";
 import { Style } from "./style.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
 
@@ -73,14 +73,13 @@ export class Segment {
     const len = this.cellLength;
     if (position >= len) return [this, new Segment("")];
     if (position <= 0) return [new Segment(""), this];
-    // `splitText` pads the left half and keeps a cut glyph whole on the right,
-    // so `rest` overhangs the cut by the one cell of that glyph left of it.
-    const [leftText, rest] = splitText(this.text, position);
-    const overhang = cellLen(rest) - (len - position);
-    const rightText = " ".repeat(overhang) + [...rest].slice(overhang).join("");
+    // Each half is the whole glyphs that fit its side, padded out to its share
+    // of the cells: a glyph the cut goes through fits neither side.
+    const head = cellFit(this.text, position);
+    const tail = cellFitEnd(this.text, asCellCol(len - position));
     return [
-      new Segment(leftText, this.style),
-      new Segment(rightText, this.style?.shiftedBy(position)),
+      new Segment(head + " ".repeat(position - cellLen(head)), this.style),
+      new Segment(" ".repeat(len - position - cellLen(tail)) + tail, this.style?.shiftedBy(position)),
     ];
   }
 

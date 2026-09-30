@@ -13,6 +13,7 @@ import { Live } from "../../src/renderables/live.js";
 import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
 import { Segment } from "../../src/core/segment.js";
+import { cellLen } from "../../src/core/cells.js";
 import { osc8Sequences, type Osc8Sequence } from "../../src/core/osc8.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { getStyle } from "../../src/index.js";
@@ -635,6 +636,14 @@ describe("Console.print() soft wrapping", () => {
     c.print(longText, { softWrap: true });
     const output = captured(chunks);
     expect(output).toContain(longText);
+  });
+
+  it("wraps text holding glyphs of several code points, each line within the width", () => {
+    const { console: c, chunks } = makeConsole({ width: 6, markup: false });
+    c.print("warn ⚠️ ok ⚠️ done ⚠️ x");
+    const lines = captured(chunks).split("\n").slice(0, -1);
+    expect(lines.map((l) => cellLen(l)).every((w) => w <= 6), JSON.stringify(lines)).toBe(true);
+    expect(lines.join("").split("⚠️")).toHaveLength(4);
   });
 });
 

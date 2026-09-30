@@ -121,33 +121,18 @@ export function setCellSize(text: string, totalWidth: CellCol): string {
  * Splits text at a cell position. Returns [left, right].
  * When the position falls mid-wide-character, the left side is padded
  * to reach exactly `position` cells. The wide char remains in the right side.
+ *
+ * [LAW:one-source-of-truth] The left side is `cellFit`'s, so the cut falls
+ * between the grapheme clusters `cellLen` measures and never inside one.
  */
 export function splitText(
   text: string,
   position: CellCol,
 ): [string, string] {
   if (position <= 0) return ["", text];
-  const totalWidth = cellLen(text);
-  if (position >= totalWidth) return [text, ""];
-
-  // Walk characters tracking cell width and source char index
-  let width = 0;
-  let charIndex = 0;
-  for (const char of text) {
-    const charWidth = cellLen(char);
-    if (width + charWidth > position) break;
-    width += charWidth;
-    charIndex += char.length;
-  }
-
-  const left = text.slice(0, charIndex);
-  const right = text.slice(charIndex);
-
-  // If we stopped short of position (mid-wide-char), pad left with spaces
-  if (width < position) {
-    return [left + " ".repeat(position - width), right];
-  }
-  return [left, right];
+  if (position >= cellLen(text)) return [text, ""];
+  const left = cellFit(text, position);
+  return [left + " ".repeat(position - cellLen(left)), text.slice(left.length)];
 }
 
 /**
