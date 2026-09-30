@@ -126,6 +126,21 @@ test("a program that fails to load says so, and leaves no terminal to stack anot
   await expect(live.locator(".xterm")).toHaveCount(0);
 });
 
+test("lines printed through live.console stay above the live display", async ({ page }) => {
+  const errors = await open(page, "live.html");
+  const live = liveUnder(page, "live.console.print(");
+
+  await scrollTo(live);
+  await expect.poll(() => rows(live), { timeout: 15_000 }).toContain("deploy complete");
+  const lines = (await rows(live)).split("\n").map((line) => line.trimEnd());
+  const completed = lines.filter((line) => line.endsWith(" complete"));
+  expect(completed.map((line) => line.split(" ").at(-2))).toEqual(["lint", "test", "build", "package", "deploy"]);
+  // One frame, under the last printed line: no border left behind by a refresh.
+  expect(lines.filter((line) => line.startsWith("╭"))).toHaveLength(1);
+  expect(lines.findIndex((line) => line.startsWith("╭"))).toBeGreaterThan(lines.indexOf(completed.at(-1)!));
+  expect(errors).toEqual([]);
+});
+
 test("a prompt example is answered by the line the reader types", async ({ page }) => {
   const errors = await open(page, "prompt.html");
   const live = liveUnder(page, "What is your name?");

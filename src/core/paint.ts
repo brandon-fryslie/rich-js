@@ -85,6 +85,9 @@ const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 const RESET_STYLE = "\x1b[0m";
 
+const fitRows = (frame: Segment[][], screen: Screen): Segment[][] =>
+  frame.map((line) => Segment.adjustLineLength(line, screen.cols, undefined, false));
+
 /**
  * Paints frames on one surface of a terminal, writing through `write`. It
  * holds the last frame's own rows on the terminal — what the next paint goes
@@ -119,7 +122,26 @@ export class Painter {
    * does not go back over. An empty frame erases the last one.
    */
   paint(frame: Segment[][], screen: Screen, destination: Destination): Segment[][] {
-    const rows = frame.map((line) => Segment.adjustLineLength(line, screen.cols, undefined, false));
+    const rows = fitRows(frame, screen);
+    this.write(this.over(rows, screen, destination));
+    return rows;
+  }
+
+  /**
+   * `text` written where the frame stands and `frame` painted again on the
+   * line under it, as one string for the caller to write in the frame's
+   * place — so no terminal ever shows the frame gone. The frame fills whole
+   * lines, so text that stops mid-line is ended before it.
+   */
+  around(text: string, frame: Segment[][], screen: Screen, destination: Destination): string {
+    const erase = this.over([], screen, destination);
+    const ended = text.endsWith("\n") ? text : `${text}\n`;
+    return erase + ended + this.over(fitRows(frame, screen), screen, destination);
+  }
+
+  // The bytes that paint `rows` over the last frame. They go out in one
+  // string, so whatever takes the last frame away arrives with the new one.
+  private over(rows: Segment[][], screen: Screen, destination: Destination): string {
     const painted = this.geometry.painted(rows.length, this.rows, screen.rows);
     const body = Array.from(
       { length: painted },
@@ -130,9 +152,9 @@ export class Painter {
     // from the frame's own height.
     const blanked = painted - Math.max(rows.length, 1);
     const back = blanked > 0 ? `\x1b[${blanked}A` : "";
-    this.write(this.geometry.home(this.rows) + body + back);
+    const bytes = this.geometry.home(this.rows) + body + back;
     this.rows = rows.length;
-    return rows;
+    return bytes;
   }
 
   /**

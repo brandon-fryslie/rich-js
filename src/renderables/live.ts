@@ -12,8 +12,9 @@
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { Painter } from "../core/paint.js";
+import { Painter, type Screen } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
+import type { Unsubscribe } from "../core/subscription.js";
 
 export interface LiveOptions {
   refreshPerSecond?: number;
@@ -36,7 +37,10 @@ export class Live {
   private _verticalOverflow: "crop" | "ellipsis" | "visible";
   private readonly _painter: Painter;
   private _timer: ReturnType<typeof setInterval> | undefined;
-  private _started: boolean;
+  // [LAW:one-source-of-truth] The console's live region, held from `start()`
+  // to the hand-back — which is what "started" means, so there is no separate
+  // flag to disagree with it.
+  private _held: Unsubscribe | null;
 
   constructor(renderable?: Renderable, options?: LiveOptions) {
     this._renderable = renderable;
@@ -48,9 +52,13 @@ export class Live {
     this._painter = new Painter(options?.altScreen ? "alternate" : "inline", (bytes) =>
       this._console.file.write(bytes),
     );
-    this._started = false;
+    this._held = null;
   }
 
+  /**
+   * The console to print through while this Live runs: what it prints lands
+   * above an inline frame. The alternate screen is all frame, and paints over it.
+   */
   get console(): Console {
     return this._console;
   }
@@ -60,9 +68,11 @@ export class Live {
   }
 
   start(): void {
-    if (this._started) return;
-    this._started = true;
-
+    if (this._held !== null) return;
+    // Claimed before a byte is written, so a console another Live is running
+    // on refuses this one with the terminal untouched.
+    const held = this._console.claimLiveRegion({ around: (text) => this._stepAround(text) });
+    this._held = held;
     this._painter.take();
 
     if (this._autoRefresh) {
@@ -75,7 +85,7 @@ export class Live {
         try {
           this.refresh();
         } catch (error) {
-          this._release();
+          this._release(held);
           throw error;
         }
       }, interval);
@@ -83,7 +93,8 @@ export class Live {
   }
 
   stop(): void {
-    if (!this._started) return;
+    const held = this._held;
+    if (held === null) return;
     // [LAW:no-silent-failure] A final frame that throws still propagates, and
     // the terminal is handed back on the way out.
     try {
@@ -93,7 +104,7 @@ export class Live {
         this.refresh();
       }
     } finally {
-      this._release();
+      this._release(held);
     }
   }
 
@@ -110,8 +121,12 @@ export class Live {
     // A frame is drawn only while this Live holds the terminal, as in Rich:
     // before `start()` or after the hand-back it would land on a screen that
     // belongs to someone else — the main buffer, under the user's own output.
-    if (!this._started || !this._renderable) return;
+    if (this._held === null) return;
+    this._paint(this._frame());
+  }
 
+  private _frame(): Segment[][] {
+    if (!this._renderable) return [];
     // [LAW:dataflow-not-control-flow] Both modes render under the terminal's
     // rows and differ only in what those rows are: the alternate screen is a
     // region the frame stands in, and an inline frame keeps its natural height
@@ -120,7 +135,14 @@ export class Live {
     const options = this._console.options;
     const height = this._painter.height(options.height.rows);
     const lines = Segment.splitLines(this._renderable.render({ ...options, height }));
-    this._paint(fitHeight(this._overflow(lines, height.rows), height));
+    return fitHeight(this._overflow(lines, height.rows), height);
+  }
+
+  // What the console writes goes where the frame was, and the frame is painted
+  // again under it, as Rich's render hook does — in the bytes the console
+  // writes, so a render that throws writes nothing.
+  private _stepAround(text: string): string {
+    return this._painter.around(text, this._frame(), this._screen(), this._console.destination);
   }
 
   // [LAW:effects-at-boundaries] The frame is fully rendered before a byte
@@ -128,8 +150,12 @@ export class Live {
   // the same write as the new one — so a render that throws leaves the last
   // good frame showing.
   private _paint(frame: Segment[][]): void {
+    this._painter.paint(frame, this._screen(), this._console.destination);
+  }
+
+  private _screen(): Screen {
     const { height, maxWidth } = this._console.options;
-    this._painter.paint(frame, { rows: height.rows, cols: maxWidth }, this._console.destination);
+    return { rows: height.rows, cols: maxWidth };
   }
 
   // Lines past `rows`: dropped, with the last kept row replaced by an ellipsis,
@@ -146,8 +172,9 @@ export class Live {
   // [LAW:single-enforcer] The one way the terminal is handed back — the timer
   // stopped, the cursor shown, the alternate screen left — whether `stop()`
   // ran or a frame threw with no caller to run it.
-  private _release(): void {
-    this._started = false;
+  private _release(held: Unsubscribe): void {
+    held();
+    this._held = null;
     clearInterval(this._timer);
     this._timer = undefined;
     this._painter.handBack();

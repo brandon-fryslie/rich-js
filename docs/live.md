@@ -182,7 +182,7 @@ try {
 
 ## Print and log during live display
 
-Output printed to the live display's internal console appears above the live area without disrupting it:
+Output printed through `live.console` — the console the live display draws on — appears above the live area without disrupting it:
 
 ```typescript live
 const progress = new Panel("[yellow]working…[/]", { expand: false });
@@ -199,8 +199,8 @@ try {
 }
 ```
 
-::: warning Don't use the outer console
-Printing directly to an outer console while a live display is active will break the display. Always use `live.console` for output that should appear above the live area.
+::: warning Print through the console the Live draws on
+Only `live.console` steps around the frame. Anything else that writes to the same terminal while the display runs — another `Console`, or `process.stdout.write` — lands on the frame, and the next refresh erases it.
 :::
 
 Pass a custom Console to control where above-display output goes:
@@ -214,9 +214,9 @@ const live = new Live(renderable, { console: myConsole });
 
 ## One Live owns the terminal
 
-Only one `Live` may be running at a time. Starting a second one while the first is still going corrupts both displays.
+Only one `Live` may be running at a time. Starting a second one on the same console while the first is still going throws; starting it on another console that writes to the same terminal corrupts both displays.
 
-Each `Live` remembers how many lines it drew last and, on every refresh, moves that many lines up from wherever the cursor currently sits and paints the new frame over them. It has no idea another `Live` wrote anything. So the second display's lines sit inside the region the first one is about to erase, and the first one redraws its own content on top of them. What you see is one display's content, twice.
+Each `Live` remembers how many lines it drew last and, on every refresh, moves that many lines up from wherever the cursor currently sits and paints the new frame over them. It has no idea a `Live` on another console wrote anything. So the second display's lines sit inside the region the first one is about to erase, and the first one redraws its own content on top of them. What you see is one display's content, twice.
 
 To show several renderables in one live region, put them in a `Group` and wrap that in a single `Live`:
 

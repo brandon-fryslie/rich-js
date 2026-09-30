@@ -261,6 +261,7 @@ export type {
   ConsoleSink,
   ConsoleStream,
   ConsoleEnvironment,
+  LiveRegion,
   PrintOptions,
 } from "./core/console.js";
 export type { Env } from "./core/env.js";
