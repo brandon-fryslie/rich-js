@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-251",
+      "ref": "refs/pull/251/merge",
+      "sha": "a797d5f39f36a7d368f23d0ed163883708744a0f",
+      "timestamp": "2026-09-30T11:00:36.241Z",
+      "commits": [
+        {
+          "sha": "a797d5f39f36a7d368f23d0ed163883708744a0f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:59:33-06:00",
+          "message": "Merge 5c89000d3ea5fd3dccbc3c2c9b1750da715af14b into f3f02b9ef585c437577d4bcb6e1ed4f42a926619\n"
+        },
+        {
+          "sha": "5c89000d3ea5fd3dccbc3c2c9b1750da715af14b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:59:29-06:00",
+          "message": "fix(demos): themes-and-color-studio opens on its first line and fits the demo terminal (rich-demos-c3k)\n\nThe browser wire scrolls xterm to the top once xterm has parsed everything\nthe tour printed; the Console takes its width from the host instead of a\nhardcoded 120, which xterm re-wrapped mid-word in its 100 columns.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "f3f02b9ef585c437577d4bcb6e1ed4f42a926619",
