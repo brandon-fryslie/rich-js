@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-233",
-      "ref": "refs/pull/233/merge",
-      "sha": "c914e3e318851ec0690fbeab483435357597e50a",
-      "timestamp": "2026-09-30T00:59:18.233Z",
-      "commits": [
-        {
-          "sha": "c914e3e318851ec0690fbeab483435357597e50a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:58:26Z",
-          "message": "Merge 0c4c6fa5960b745e63a22374cf03f31b05846b6a into e4dc4663346578a9ef93e67b1663f98eaf63c01d\n"
-        },
-        {
-          "sha": "0c4c6fa5960b745e63a22374cf03f31b05846b6a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:58:21-06:00",
-          "message": "fix(pretty): a wrapped key keeps its colon, and a key's last row starts where it was laid (rich-pretty-xms.0l4)\n\nSlot.join carries a key's ': ' apart from the key, so the key's last row\nreserves room for it rather than folding ':' onto a row of its own.\n_place/_format return Laid { text, inset }: where the last line starts is\nreported by what laid it out, not read back from leading whitespace that\ncan be the value's own.\n"
-        },
-        {
-          "sha": "984de26920d6c7207262efb63a367b3f4f4ff507",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:46:43-06:00",
-          "message": "fix(pretty): a container whose opener will not fit after its key, and a key wider than its line, hang under the key (rich-pretty-xms.0l4)\n\nA container starts on its key's hanging line when its opener does not fit\nafter the key and does fit there, then lays out from that line. An object key\nis placed like any one-piece text, so a key wider than its line wraps under\nits slot instead of running to column 0. A value after a wrapped key is on the\nkey's last row, and a container there indents its entries from that row.\n\n`Frame.inset` is now the column the value's line starts at rather than a depth\ncount, so a line that starts on a hanging row is representable; `_onLine` is\nthe one place a hang is derived from it. Rich wraps the opener to column 0.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "e4dc4663346578a9ef93e67b1663f98eaf63c01d",
-      "timestamp": "2026-09-30T00:34:26.324Z",
+      "sha": "9e26f9f798534f09dacc422e4b4e95984446c8fd",
+      "timestamp": "2026-09-30T01:02:04.388Z",
       "commits": [
         {
-          "sha": "e4dc4663346578a9ef93e67b1663f98eaf63c01d",
+          "sha": "9e26f9f798534f09dacc422e4b4e95984446c8fd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:33:36-06:00",
-          "message": "fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf) (#231)\n\n* fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf)\n\nA scalar, a self-describing value, or a marker placed inside a container\nis cut to the width left on its line; its continuation lines, its own\nincluded, hang one indent past its slot. A value whose first word does\nnot fit after its key starts on a hanging line. The root stays unplaced:\nits line is its caller's.\n\n* fix(pretty): cut hanging rows in one walk, and drop rows a break alone made (rich-pretty-xms.tmf)\n\nReview (high): splitting per cut rescanned the line (6.4s at 200k chars);\nan empty remainder or a folded word's trailing space became a blank row;\na thrown value's marker was placed from the slot's start column.\n\n* fix(pretty): hang under the value when one indent past its slot is the edge (rich-pretty-xms.tmf)\n\nA value one indent from the right edge hung its rows at a column with no\ncell left, so divideLine gave no cuts and the row overran the width and\nwrapped to column 0. Rows now start where the value began there.\n\nsplitAtCells moves to cells.ts beside the other cell walkers, so the\ngrapheme fix in rich-cells-1y9d finds it with them.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(pretty): wrapped rows keep their line's indent; docs example shows the wrap (rich-pretty-xms.tmf)\n\nA later line of a multi-line toString lost its own leading indent on the\nrows it wrapped into. rowsOf now sets each hung row in by the indent its\nline opened with.\n\nThe docs example fit on one line at the docs terminal's 75 columns, so it\nshowed none of the wrapping its paragraph described. It now wraps a quote,\nmoves a path below its key, and says when that move happens.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T19:01:12-06:00",
+          "message": "fix(pretty): a container's opener and an overlong key hang under the key (rich-pretty-xms.0l4) (#233)\n\n* fix(pretty): a container whose opener will not fit after its key, and a key wider than its line, hang under the key (rich-pretty-xms.0l4)\n\nA container starts on its key's hanging line when its opener does not fit\nafter the key and does fit there, then lays out from that line. An object key\nis placed like any one-piece text, so a key wider than its line wraps under\nits slot instead of running to column 0. A value after a wrapped key is on the\nkey's last row, and a container there indents its entries from that row.\n\n`Frame.inset` is now the column the value's line starts at rather than a depth\ncount, so a line that starts on a hanging row is representable; `_onLine` is\nthe one place a hang is derived from it. Rich wraps the opener to column 0.\n\n* fix(pretty): a wrapped key keeps its colon, and a key's last row starts where it was laid (rich-pretty-xms.0l4)\n\nSlot.join carries a key's ': ' apart from the key, so the key's last row\nreserves room for it rather than folding ':' onto a row of its own.\n_place/_format return Laid { text, inset }: where the last line starts is\nreported by what laid it out, not read back from leading whitespace that\ncan be the value's own."
         }
       ]
     },
