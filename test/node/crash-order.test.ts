@@ -76,7 +76,7 @@ function expectFrameThenRestore(output: string): void {
   expect(count(output, ALT_OFF)).toBe(1);
 }
 
-describe("App in a real node process", { timeout: 30_000 }, () => {
+describe("App in a real node process", () => {
   it.each([
     ["throw", "", "thrown after the first frame"],
     ["throw", "traceback", "thrown after the first frame"],
