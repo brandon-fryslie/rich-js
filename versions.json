@@ -4,15 +4,22 @@
     {
       "version": "pr-263",
       "ref": "refs/pull/263/merge",
-      "sha": "b112e7fdec7298b537d6b072fdbd5571010878b1",
-      "timestamp": "2026-09-30T16:02:13.634Z",
+      "sha": "3ba49c03b5d0d3d743b918dc12e8dd81d1d856e2",
+      "timestamp": "2026-09-30T16:15:33.114Z",
       "commits": [
         {
-          "sha": "b112e7fdec7298b537d6b072fdbd5571010878b1",
+          "sha": "3ba49c03b5d0d3d743b918dc12e8dd81d1d856e2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:01:04-06:00",
-          "message": "Merge cc1ffc5e78d78d94f003138d8a40555c47739b93 into 50cb99e654bb14fccb8727c02929ddc1fb318c76\n"
+          "timestamp": "2026-09-30T16:14:20Z",
+          "message": "Merge 6e9407538886d00c06a6ea964f75997edf499b30 into 50cb99e654bb14fccb8727c02929ddc1fb318c76\n"
+        },
+        {
+          "sha": "6e9407538886d00c06a6ea964f75997edf499b30",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T10:14:15-06:00",
+          "message": "fix(color): a blend is a colour ColorSpec.parse reads back, named by what its ends draw (rich-strip-hxet)\n\nReview of #263: ColorBlend's name was not parseable, so Style.toString no\nlonger round-tripped, and it spelled ends as written, so vanishes told\nblue- and color(4)-mixes apart. blend(a,b,t) is now a colour form, its name\ncanonical (slot or hex per end). Ends are opaque and never default:\nGradientJoiner ramps between drawn grounds and treats default as nothing to\npaint, as PowerlineJoiner does, which drops the flattenAlpha override and\nthe fg/bg role.\n"
         },
         {
           "sha": "cc1ffc5e78d78d94f003138d8a40555c47739b93",
