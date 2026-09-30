@@ -18,8 +18,9 @@ import { tscTransform } from "./scripts/tsc-transform.js";
 // that spawn git, npm, node or a vite build pass in 1–3s alone and cross
 // vitest's 5s default under a full suite's load, and the per-file allowances
 // that chased them missed each new file until it flaked. A hang still fails, at
-// 30s. Work that is longer than that by nature — a vite build of the library, a
-// complexity guard that must finish in 2s — states its own budget beside it.
+// 30s. A test whose work is a different size by nature — a whole docs page run
+// through the examples plugin, a complexity guard that must finish in 2s —
+// states its own budget beside it.
 const HANG_MS = 30_000;
 
 export default defineConfig({
