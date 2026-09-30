@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ccede526c5da927026e4a22d16a6f542485b6667",
-      "timestamp": "2026-09-30T09:08:47.915Z",
+      "sha": "ae92b54b31a13b3baaba134bbc57103da7eed53b",
+      "timestamp": "2026-09-30T09:17:35.443Z",
       "commits": [
         {
-          "sha": "ccede526c5da927026e4a22d16a6f542485b6667",
+          "sha": "ae92b54b31a13b3baaba134bbc57103da7eed53b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:07:43-06:00",
-          "message": "test(export): golden exports under two themes, SVG glyphs on the cell grid (rich-export-9a1.5) (#244)\n\n* test(export): golden HTML and SVG exports under two themes, and SVG glyphs on the cell grid in Chromium (rich-export-9a1.5)\n\nThe fixture's attribute rows come from ATTRIBUTE_NAMES, so an attribute\nadded to Style changes the goldens instead of being skipped. Deleting the\nhandling of any ExportLook field in either exporter fails a golden; the\nPlaywright spec fails when textLength is dropped.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* test(export): grid spec checks both edges on a long run; goldens pin combined attributes and a decomposed mark (rich-export-9a1.5)\n\nThe e2e spec read only each grapheme's left edge, which for a wide glyph is\nthe x attribute read back, and a lost textLength failed it by 0.14px. It now\nchecks the right edge too and adds a 30-cell ASCII chunk; both mutations fail\nby ~4px.\n\nThe golden fixture's e-with-two-marks was a precomposed é plus one mark; it is\nnow e + U+0301 + U+0302. A row pins reverse+dim, reverse+conceal and\nunderline2+strike, the pairs resolved together.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T03:16:04-06:00",
+          "message": "docs(export): document SVG export (rich-export-9a1.6) (#245)\n\n* docs(export): exportSvg, saveSvg and SVG_EXPORT_THEME in the console guide and README (rich-export-9a1.6)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* docs(export): save example keeps the recording for each file; README points at the guide (rich-export-9a1.6)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
