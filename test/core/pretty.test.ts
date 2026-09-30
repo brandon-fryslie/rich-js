@@ -261,6 +261,54 @@ describe("Pretty", () => {
       ]);
     });
 
+    it("starts a container on a hanging line when its opener does not fit after its key (rich-pretty-xms.0l4)", () => {
+      // `    someLongKeyName: Set {` is 26 cells at width 25: the opener used to
+      // stay after the key and wrap `{` back to column 0.
+      const set = new Set([1, 2, 3, 4, 5]);
+      expect(laidOut({ someLongKeyName: set, z: 1 }, 25)).toEqual([
+        "{",
+        "    someLongKeyName:",
+        "        Set {",
+        "            1,",
+        "            2,",
+        "            3,",
+        "            4,",
+        "            5",
+        "        },",
+        "    z: 1",
+        "}",
+      ]);
+      // Once there it is a value like any other, so it takes one line if it fits.
+      expect(laidOut({ someLongKeyName: new Set([1, 2]) }, 22)).toEqual([
+        "{", "    someLongKeyName:", "        Set { 1, 2 }", "}",
+      ]);
+    });
+
+    it("leaves an opener after its key when a hanging line would not fit it either", () => {
+      // Column 8 and the hanging column 8 are the same line start, so moving gains nothing.
+      expect(laidOut({ kk: new Map([[1, 2]]) }, 12)[1]).toBe("    kk: Map {");
+    });
+
+    it("wraps a key wider than its line under its slot (rich-pretty-xms.0l4)", () => {
+      expect(laidOut({ ["k".repeat(30)]: 1 }, 20)).toEqual([
+        "{", "    " + "k".repeat(16), "        " + "k".repeat(12), "        kk: 1", "}",
+      ]);
+      expect(laidOut({ "a\nb": 1 }, 40)).toEqual(["{", "    a", "        b: 1", "}"]);
+    });
+
+    it("indents a container after a wrapped key from the key's last line", () => {
+      // Indented from the slot instead, the entries sat level with `kk: Map {`.
+      expect(laidOut({ ["k".repeat(24)]: new Map([["alpha", 1], ["beta", 2]]) }, 26)).toEqual([
+        "{",
+        "    " + "k".repeat(22),
+        "        kk: Map {",
+        '            "alpha" => 1,',
+        '            "beta" => 2',
+        "        }",
+        "}",
+      ]);
+    });
+
     it("lays a value that threw out from where it stands after its key", () => {
       const value = { a: 1, get zzzzzzzzzzzzzzzz(): never { throw new Error("boom bam bim"); } };
       expect(laidOut(value, 30)).toEqual([

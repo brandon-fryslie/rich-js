@@ -129,6 +129,22 @@ console.print(
 );
 ```
 
+A key is wrapped the same way when it is wider than its line. A container starts on that indented line when its opening bracket will not fit after its key, and lays out from there. A container that follows a wrapped key indents its entries from the key's last line:
+
+```typescript
+const report = "/reports/2026/q3/summary.pdf";
+
+console.print(
+  new Pretty({
+    [`${report}?page=1`]: new Map<string, unknown>([["status", 200], ["bytes", 48213]]),
+    [`${report}?page=2&retry=true&cache=refill`]: new Map<string, unknown>([
+      ["status", 404],
+      ["retry", "in 30s"],
+    ]),
+  }),
+);
+```
+
 Every container has a one-line form, `Map` and `Set` included, and takes it when the line has room for it:
 
 ```typescript
