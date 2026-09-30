@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-258",
+      "ref": "refs/pull/258/merge",
+      "sha": "6a4964d6f80eadb903426c5f4e4ccbd15a5a86f1",
+      "timestamp": "2026-09-30T14:29:06.708Z",
+      "commits": [
+        {
+          "sha": "6a4964d6f80eadb903426c5f4e4ccbd15a5a86f1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:28:17-06:00",
+          "message": "Merge 98981f1c69691a5734558e2bc5b2820aeefea55e into d3bdf5a98614436595f579f8046997e3d9639185\n"
+        },
+        {
+          "sha": "98981f1c69691a5734558e2bc5b2820aeefea55e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:28:12-06:00",
+          "message": "fix(table): a shrinking table pays every column its minimum before any grows past it (rich-table-3u2)\n\nlayoutTable shared a squeezed table's width by natural width alone, so an\nunbreakable column (a figure, a no-wrap column) was cut with an ellipsis while\na wrappable neighbour kept width it could have wrapped into. Each column now\ncarries its minimum - its longest word, or its whole line under noWrap - and\ndistribute pays every minimum before any width past it.\n\ndocs/tables.md's 75-column Star Wars example now renders byte-identical to\nPython Rich. Deliberate divergence: Rich's widest-first _collapse_widths still\ntruncates a narrow unbreakable column once the widest has narrowed to it; this\nkeeps it whole.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d3bdf5a98614436595f579f8046997e3d9639185",
