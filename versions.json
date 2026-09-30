@@ -4,15 +4,22 @@
     {
       "version": "pr-269",
       "ref": "refs/pull/269/merge",
-      "sha": "d66f2f80318d9ce488516dd433ad0ae6b8cfec1f",
-      "timestamp": "2026-09-30T18:26:01.167Z",
+      "sha": "3e615385e6efbba1cde261c9a77d8e1b5c7d49ac",
+      "timestamp": "2026-09-30T18:36:23.481Z",
       "commits": [
         {
-          "sha": "d66f2f80318d9ce488516dd433ad0ae6b8cfec1f",
+          "sha": "3e615385e6efbba1cde261c9a77d8e1b5c7d49ac",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:24:54-06:00",
-          "message": "Merge cc404ccf3d0a6020e17bcb56ec664084d59b0bfd into 77ab1b7f302bf884d94eac7ad6a5419b1a4bf186\n"
+          "timestamp": "2026-09-30T12:35:15-06:00",
+          "message": "Merge 01548c6f387be11ace6d298e290acab0ac4ac63e into 77ab1b7f302bf884d94eac7ad6a5419b1a4bf186\n"
+        },
+        {
+          "sha": "01548c6f387be11ace6d298e290acab0ac4ac63e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T12:35:11-06:00",
+          "message": "fix(prompt): nodeAsk hands readline one unbroken line; prompt tests compare without the repr highlighter (rich-prompt-vo5e)\n\nReview (high) fixes on PR #269.\n"
         },
         {
           "sha": "cc404ccf3d0a6020e17bcb56ec664084d59b0bfd",
