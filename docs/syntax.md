@@ -29,7 +29,7 @@ console.print(syntax);
 
 ## Highlighting lines
 
-`startLine` sets the number the first line is given, for a snippet cut from the middle of a file. `highlightLines` names lines by those numbers, and draws their numbers bold on a grey ground:
+`startLine` sets the number the first line is given, for a snippet cut from the middle of a file. `highlightLines` names lines by those numbers, and draws their numbers in the `syntax.line_number.highlight` style, bold `grey93` on `grey27`:
 
 ```typescript
 const syntax = new Syntax(code, "typescript", {

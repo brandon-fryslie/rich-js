@@ -738,14 +738,18 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "syntax.number": Style.parse("cyan"),
   "syntax.comment": Style.parse("dim italic"),
   "syntax.line_number": Style.parse("dim"),
-  "syntax.line_number.highlight": Style.parse("bold on grey27"),
+  // Ink and ground both from the fixed 256-colour greys: the terminal theme's
+  // own foreground is dark on a light theme and would vanish on grey27.
+  "syntax.line_number.highlight": Style.parse("bold grey93 on grey27"),
 
   // Markdown
   "markdown.h1": Style.parse("bold underline"),
   "markdown.h2": Style.parse("bold"),
   "markdown.h3": Style.parse("bold dim"),
   "markdown.h4": Style.parse("bold dim italic"),
-  "markdown.code": Style.parse("cyan on grey11"),
+  // A fixed cyan, not the theme's: `cyan` is dark enough on some themes to
+  // sink into grey11.
+  "markdown.code": Style.parse("dark_turquoise on grey11"),
   "markdown.hr": Style.parse("yellow"),
   "markdown.link": Style.parse("bright_blue"),
   "markdown.link_url": Style.parse("blue"),
