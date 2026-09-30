@@ -16,10 +16,28 @@ import type {
 import { drawable, getStyle, stackedHeight } from "../core/protocol.js";
 
 export interface MarkdownOptions {
-  codeTheme?: string;
+  /** The style of `inline code`: a theme name or a style definition. Default `markdown.code`. */
   inlineCodeStyle?: string | Style;
+  /**
+   * Whether a link's text is the link. `false` writes the URL after the text
+   * in parentheses, for a reader who cannot click it. Default `true`.
+   */
   hyperlinks?: boolean;
-  justify?: "left" | "center" | "right" | "full";
+  /** How body text — paragraphs, list items, quotes — is placed in its width. Default `"left"`; headings keep their own. */
+  justify?: Justify;
+}
+
+type Justify = NonNullable<RenderOptions["justify"]>;
+
+/** What the options say about inline text, which every block's text is drawn with. */
+interface InlineSettings {
+  readonly inlineCodeStyle: string | Style;
+  readonly hyperlinks: boolean;
+}
+
+/** What the options say about every block: its inline text, and where body text sits. */
+interface BlockSettings extends InlineSettings {
+  readonly justify: Justify;
 }
 
 // Simple markdown token types
@@ -198,8 +216,8 @@ function tokenize(markdown: string): MdToken[] {
   return tokens;
 }
 
-function applyInlineStyles(text: string): RichText {
-  const result = new RichText("", { end: "" });
+function applyInlineStyles(text: string, settings: InlineSettings, justify: Justify | undefined): RichText {
+  const result = new RichText("", { end: "", justify });
 
   // Process inline patterns
   const inlineRe = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
@@ -220,10 +238,21 @@ function applyInlineStyles(text: string): RichText {
       result.append(match[3], "italic");
     } else if (match[4]) {
       // Inline code: `text`
-      result.append(match[4], "markdown.code");
+      result.append(match[4], settings.inlineCodeStyle);
     } else if (match[5] && match[6]) {
-      // Link: [text](url)
-      result.append(match[5], new Style({ link: match[6] }));
+      // Link: [text](url). As Rich draws it: without hyperlinks the URL is
+      // written out, and it is still the link, for a terminal that can click it.
+      // The link spans from where the linked text starts in `result`, which
+      // `append` may have shortened by stripping control characters.
+      const link = new Style({ link: match[6] });
+      if (settings.hyperlinks) {
+        const start = result.length;
+        result.append(match[5], "markdown.link_url").stylize(link, start);
+      } else {
+        result.append(match[5], "markdown.link").append(" (");
+        const start = result.length;
+        result.append(match[6], "markdown.link_url").stylize(link, start).append(")");
+      }
     }
 
     lastIdx = match.index + match[0].length;
@@ -267,27 +296,36 @@ function* guttered(
  * too, so `splitLines` counts it even when the text is empty, and an empty
  * item still draws its bullet.
  */
-function inline(text: string): (options: RenderOptions) => Iterable<Segment> {
+function inline(
+  text: string,
+  settings: InlineSettings,
+  justify: Justify | undefined,
+): (options: RenderOptions) => Iterable<Segment> {
   return function* (options) {
-    yield* applyInlineStyles(text).render(options);
+    yield* applyInlineStyles(text, settings, justify).render(options);
     yield Segment.line();
   };
 }
 
 const NO_GUTTER = new Segment("");
 
-/** Each block in `tokens`, every row it draws ended. */
-function* renderTokens(tokens: readonly MdToken[], options: RenderOptions): Iterable<Segment> {
+/**
+ * Each block in `tokens`, every row it draws ended, body text placed by
+ * `settings.justify`. A heading is drawn at its natural width whatever
+ * `settings` or `options` say, so its underline stops where its text does.
+ */
+function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   for (const token of tokens) {
     switch (token.type) {
       case "heading": {
         const style = getStyle(options, `markdown.h${Math.min(token.level, 4)}`);
-        yield* guttered(inline(token.text), options, NO_GUTTER, NO_GUTTER, style);
+        const unplaced = { ...options, justify: undefined };
+        yield* guttered(inline(token.text, settings, undefined), unplaced, NO_GUTTER, NO_GUTTER, style);
         break;
       }
 
       case "paragraph": {
-        yield* guttered(inline(token.text), options, NO_GUTTER, NO_GUTTER);
+        yield* guttered(inline(token.text, settings, settings.justify), options, NO_GUTTER, NO_GUTTER);
         break;
       }
 
@@ -310,13 +348,13 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions): Iter
       case "list_item": {
         const bullet = " ".repeat(token.indent) + (token.ordered ? `${token.index}. ` : drawable(options, "  • ", "  * "));
         const hang = new Segment(" ".repeat(cellLen(bullet)));
-        yield* guttered(inline(token.text), options, new Segment(bullet), hang);
+        yield* guttered(inline(token.text, settings, settings.justify), options, new Segment(bullet), hang);
         break;
       }
 
       case "blockquote": {
         const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
-        const body = (inner: RenderOptions) => renderTokens(token.children, inner);
+        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
         yield* guttered(body, options, bar, bar, Style.parse("dim italic"));
         break;
       }
@@ -332,17 +370,19 @@ export class Markdown implements Renderable, Measurable {
   readonly markdown: string;
   readonly inlineCodeStyle: string | Style;
   readonly hyperlinks: boolean;
+  readonly justify: Justify;
 
   constructor(markdown: string, options?: MarkdownOptions) {
     this.markdown = markdown;
     this.inlineCodeStyle = options?.inlineCodeStyle ?? "markdown.code";
     this.hyperlinks = options?.hyperlinks !== false;
+    this.justify = options?.justify ?? "left";
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    yield* renderTokens(tokenize(this.markdown), options);
+    yield* renderTokens(tokenize(this.markdown), options, this);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
