@@ -4,6 +4,7 @@ import { asCodePoint, asCellCol, type CodePoint } from "../../src/core/cells.js"
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
 import { ColorSpec } from "../../src/core/color.js";
 import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
@@ -373,6 +374,13 @@ describe("TextInput", () => {
       const t = new TextInput({ value: "ab", disabled: true });
       const segments = Segment.splitLines(t.render(RENDER))[0]!;
       expect(segments.map((s) => s.style?.color)).toEqual(segments.map(() => MUTED));
+    });
+
+    it("pads a short multiline row in the caller's contentStyle", () => {
+      const contentStyle = new Style({ bgcolor: "blue" });
+      const t = new TextInput({ value: "ab\nlonger line", multiline: true, contentStyle });
+      const firstRow = Segment.splitLines(t.render(RENDER))[0]!;
+      expect(firstRow.map((s) => s.style?.bgcolor)).toEqual(firstRow.map(() => contentStyle.bgcolor));
     });
 
     it("emits the same total width focused vs unfocused", () => {

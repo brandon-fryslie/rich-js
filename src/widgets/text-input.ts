@@ -803,6 +803,14 @@ export class TextInput extends ThemedWidget {
 
   // --- Rendering ---
 
+  // [LAW:one-source-of-truth] The style a value is drawn in is also what a
+  // short row is padded with, so a caller's `contentStyle` fills the row.
+  protected override get ground(): Style {
+    return this.disabled
+      ? new Style(this.disabledInk)
+      : this.contentStyleOverride ?? super.ground;
+  }
+
   protected draw(options: RenderOptions): Iterable<Segment> {
     if (this._multiline) return this._renderMultiline(options);
     return this._renderSingleLine(options);
@@ -846,11 +854,9 @@ export class TextInput extends ThemedWidget {
       ? new Style(this.disabledInk)
       : new Style(ink(this.theme, "foreground", "background"));
 
-    const contentStyle = this.disabled
-      ? new Style(this.disabledInk)
-      : showPlaceholder
-        ? new Style({ ...ink(this.theme, "foreground", "background"), dim: true })
-        : this.contentStyleOverride ?? new Style(ink(this.theme, "foreground", "background"));
+    const contentStyle = showPlaceholder && !this.disabled
+      ? new Style({ ...ink(this.theme, "foreground", "background"), dim: true })
+      : this.ground;
 
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
 
@@ -911,9 +917,7 @@ export class TextInput extends ThemedWidget {
       padRows = this._minRows - total;
     }
 
-    const contentStyle = this.disabled
-      ? new Style(this.disabledInk)
-      : this.contentStyleOverride ?? new Style(ink(this.theme, "foreground", "background"));
+    const contentStyle = this.ground;
     const markerStyle = new Style({ ...ink(this.theme, "foreground", "background"), dim: true });
     const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
 
