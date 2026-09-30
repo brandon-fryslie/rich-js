@@ -260,7 +260,7 @@ process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\
 `segmentsToString` returns finished ANSI. `console.print` treats its argument as *content*: it strips the escape bytes and highlights what's left, so the escape sequences arrive as visible text. Write the string to the stream directly, or skip `segmentsToString` and print the `RichText` instead.
 :::
 
-On a parse or evaluation failure it returns a single dim red segment reading `[error: …]`, truncated to 80 characters, which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
+On a parse or evaluation failure it returns a single dim red segment reading `[error: …]` — one line, drawn to the same `maxWidth` as a successful render and ending in `…` where the message had to be cut — which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
 
 ```typescript
 import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
@@ -268,8 +268,9 @@ import { createRichTextEngine, renderTemplate } from "@promptctl/rich-js/templat
 
 const engine = createRichTextEngine();
 
-const broken = renderTemplate(engine, `{{ no_such_function "x" }}`, {}, {
+const broken = renderTemplate(engine, `{{ darken "primary" 2 }}`, {}, {
   errorStyle: "yellow",
+  maxWidth: process.stdout.columns,
 });
 
 process.stdout.write(segmentsToString(broken, resolveDestination("auto")) + "\n");

@@ -133,11 +133,23 @@ export function renderTemplate(
       isTerminal: true,
     }));
   } catch (e) {
-    // An engine error's `message` is its one-line summary; `String(e)` adds a
-    // multi-line code frame, which would break this single segment across lines.
-    const summary = e instanceof Error ? e.message : String(e);
-    return [new Segment(`[error: ${summary.slice(0, 80)}]`, safeErrorStyle(options?.errorStyle))];
+    return [new Segment(errorLine(e, options?.maxWidth ?? 400), safeErrorStyle(options?.errorStyle))];
   }
+}
+
+/**
+ * A caught error as the one line `renderTemplate` promises. The summary is the
+ * error's `message` — `String(e)` on an engine error appends a multi-line code
+ * frame — and even a `message` can break lines (`bad escape sequence \⏎`), so
+ * every line break folds to a space.
+ *
+ * [LAW:one-source-of-truth] The line fits the same `maxWidth` the success path
+ * draws at, not a width of its own, and a cut ends in an ellipsis so it never
+ * reads as the whole message.
+ */
+function errorLine(e: unknown, maxWidth: number): string {
+  const summary = (e instanceof Error ? e.message : String(e)).replace(/\s*[\r\n]\s*/g, " ");
+  return new RichText(`[error: ${summary}]`).truncate(maxWidth).plain;
 }
 
 // [LAW:single-enforcer] The error-path Style must not itself throw, or
