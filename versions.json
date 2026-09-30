@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-237",
+      "ref": "refs/pull/237/merge",
+      "sha": "19361a1ba151427a881be20192cd47b4fd76de3e",
+      "timestamp": "2026-09-30T05:07:22.003Z",
+      "commits": [
+        {
+          "sha": "19361a1ba151427a881be20192cd47b4fd76de3e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:06:41-06:00",
+          "message": "Merge 9a0d02e7b4f29cd320c67c64586998092d5da11f into 5c6dd14ec0eaa22c49cec0fb1f41a6b2b6d559d2\n"
+        },
+        {
+          "sha": "9a0d02e7b4f29cd320c67c64586998092d5da11f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:06:37-06:00",
+          "message": "feat(docs): run visitor TypeScript in a sandboxed frame against a terminal (rich-playground-afk.9c4)\n\nThe playground's runner: a visitor's TypeScript becomes the script a live\nterminal runs (theme/playground-program.ts), and every live terminal now runs\nits program in a worker inside a frame sandboxed to an opaque origin.\n\n- Types are stripped by Sucrase, chosen by weight on the page (minified,\n  gzip -9): Sucrase 48 KB, typescript 1.0 MB, esbuild-wasm 3.7 MB. It keeps\n  every line where it was, so an error's stack names the visitor's own line\n  through a //# sourceURL.\n- Imports by published name read the live library the docs' live examples\n  already share (widgets and template-bindings with their optional peers).\n- The worker's script is served as text (virtual:rich-live/runtime), since an\n  opaque-origin frame can start a worker only from a script it holds. The\n  worker reports every failure itself, with the error's stack.\n- Stopping a run removes its frame, which ends a loop that never yields.\n\nVerified in Chromium (e2e/playground-program.spec.ts): coloured Table,\nanimating Progress, Button on Enter, syntax and thrown errors at their lines,\na spinning program stopped with the page responsive and its worker gone, and\nno document or origin inside the program. The docs' live examples pass\nunchanged under the sandbox (e2e/live-examples.spec.ts).\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5c6dd14ec0eaa22c49cec0fb1f41a6b2b6d559d2",
