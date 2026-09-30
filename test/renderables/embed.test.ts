@@ -151,7 +151,7 @@ describe("a console's markup and highlight settings, in content embedded in a re
     ["a rule's title", (content) => new Rule(content)],
     ["a column item", (content) => new Columns([content])],
     ["a layout pane", (content) => new Layout(content)],
-  ["a padding's body", (content) => new Padding(content, 1)],
+    ["a padding's body", (content) => new Padding(content, 1)],
   ];
   const plain: [string, (content: string) => Renderable][] = [
     ["a panel's body", (content) => new Panel(content)],
