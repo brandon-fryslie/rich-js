@@ -83,11 +83,11 @@ non-interactive program needs from the terminal without any of the above
 Build order within `src/core/`. Each tier imports only from tiers above it:
 
 ```
-0   anchor · cells · color · env · osc8 · subscription
-1   oklch · style · wrap
+0   anchor · cells · color · env · fnv1a · subscription
+1   oklch · osc8 · style · wrap
 2   segment
 3   box · protocol · export-lines
-4   measure · emoji · text · strip · render · export-html
+4   measure · emoji · text · strip · render · export-html · export-svg
 5   markup · highlighter · ansi · place
 6   pretty · json
 7   console                           (orchestrator)
@@ -119,14 +119,16 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **oklch** — perceptually-uniform polar colour space. sRGB ↔ OKLab ↔ OKLCH, reversible but for the final 0–255 quantization. This is where equal numeric deltas mean equal perceptual deltas, which is what transposition needs.
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.
+- **fnv1a** — `fnv1a`: FNV-1a over a string's UTF-8 bytes, as hex. The one hash behind every identifier the library derives from what it names — an OSC 8 link id, an SVG export's class prefix.
 - **osc8** — the OSC 8 hyperlink wire grammar, one home: the terminator bytes a URL may not carry (`stripOscTerminators`, used by RichText at its data-model boundary), the producer every link is written through (`osc8Open` — sanitize + a URL-derived `id=` so a split link hovers as one — and `OSC8_CLOSE`), and the reader: `osc8Sequences` (typed scan of rendered bytes) over the `OSC8` pattern (exported for composing into a larger regex).
 - **env** — `Env`, the environment map every public signature names instead of `NodeJS.ProcessEnv`, which a project without `@types/node` cannot resolve. `test/seam/browser-types.test.ts` type-checks every non-`node/` entry's emitted declarations with no Node types loaded, the type-level twin of the browser-safe gate below.
 - **subscription** — `Unsubscribe`, the return type of every `on…()` in the library. It sits this low because `host/` and `widgets/` both need it and neither may depend on the other.
 - **anchor** — `Anchor`: a cell's row and column in the output of whatever drew it, carried on the cell's `Style` so every container passes it through untouched. `Segment.anchorLines` stamps an owner's output, `Segment.splitCells` keeps a cut half's anchor true, and `Segment.anchorAt` reads any cell of a composed frame. Its module header owns why a position travels up on the frame rather than down the render options.
 - **box** — box-drawing character sets. One `Box` type, many pre-built instances (ASCII, SQUARE, ROUNDED, HEAVY, DOUBLE, …).
 - **protocol** — `Renderable` and `Measurable` interfaces. `Renderable.render(options) → Iterable<Segment>`. `Measurable.measure(options) → {minimum, maximum}`. Single authority for the rendering contract.
-- **export-lines** — recorded segments resolved against a `TerminalTheme` into the rows every exporter draws, and the canvas they are drawn on: `exportLines`, `resolveLook`, `exportCanvas`, `parseHref`. The HTML and SVG exporters are two encodings of this one picture; its module header owns why `reverse`, `dim` and `conceal` are resolved here and not in either format.
+- **export-lines** — recorded segments resolved against a `TerminalTheme` into the rows every exporter draws, and the canvas they are drawn on: `exportLines`, `resolveLook`, `exportCanvas`, `parseHref`, and the markup escaping both formats share. The HTML and SVG exporters are two encodings of this one picture; its module header owns why `reverse`, `dim` and `conceal` are resolved here and not in either format.
 - **export-html** — `encodeHtmlFragment`: recorded segments as one inline-styled `pre` that can sit in a page this library does not own, an encoding of `export-lines` that inspects no `Style`; `encodeHtml` is that fragment in a standalone document. `Console.exportHtml` is the document plus clearing the buffer.
+- **export-svg** — `encodeSvg`: recorded segments as a standalone SVG terminal window — Rich's chrome and geometry, every chunk of a run anchored at its cell column and stretched to its cells so no font can drift it, selectable text. An encoding of `export-lines` that inspects no `Style`; `Console.exportSvg` is it plus clearing the buffer. Its module header owns why glyphs are chunked and decorations are rectangles.
 - **measure** — `Measurement` value type (min/max cell width). `Measurement.get()` is the single enforcer for measuring a `Measurable`.
 - **place** — `placeBlock`: a renderable's output set down as one block in a wider width, the way Rich's `Align` does it — measured, drawn at that width, shaped to its widest line, then padded. `Align` and `Console.print`'s `justify` both place through it; it sits in `core/` so `print` reaches it without an upward edge.
 - **markup** — parses Rich markup strings (`[bold red]text[/]`) into `RichText`.
