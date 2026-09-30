@@ -148,8 +148,24 @@ describe("Markdown", () => {
     expect(rows("one  \ntwo\\\nthree\nfour", 80)).toEqual(["one", "two", "three four", ""]);
   });
 
-  it("joins a quote across a bare > line without leaking the marker", () => {
-    expect(rows("> a\n>\n>b", 80)).toEqual(["▎ a b", ""]);
+  it("keeps a quote's paragraph break at a bare > line without leaking the marker", () => {
+    expect(rows("> a\n>\n>b", 80)).toEqual(["▎ a", "▎", "▎ b", ""]);
+  });
+
+  it("keeps a list inside a quote on rows of its own", () => {
+    expect(rows("> - a\n> - b\n> soft\n>\n> para two", 80)).toEqual(["▎ - a", "▎ - b soft", "▎", "▎ para two", ""]);
+  });
+
+  it("leaves a list item's wrapped line that starts with a number other than 1 in the item", () => {
+    expect(rows("- item\n  2024. That year", 80)).toEqual(["  • item 2024. That year", ""]);
+  });
+
+  it("starts a sibling item at the marker's own column whatever it counts from", () => {
+    expect(rows("1. a\n2. b", 80)).toEqual(["1. a", "2. b", ""]);
+  });
+
+  it("draws an empty item's bullet and an empty quote's bar", () => {
+    expect(rows("1.  \n2. x\n\n>", 80)).toEqual(["1.", "2. x", "", "▎", ""]);
   });
 
   it("reads CRLF line endings as line endings", () => {

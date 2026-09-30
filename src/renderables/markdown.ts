@@ -63,6 +63,18 @@ function endsParagraph(line: string): boolean {
   return numbered ? parseInt(numbered[2]!, 10) === 1 : opensBlock(line) || SETEXT.test(line);
 }
 
+/**
+ * Whether `line` ends a list item whose marker sits at column `indent`:
+ * `opensBlock`, except that a numbered line indented past the marker is the
+ * item's own text, read as `endsParagraph` reads it, unless it counts from 1.
+ */
+function endsItem(indent: number): (line: string) => boolean {
+  return (line) => {
+    const numbered = NUMBERED.exec(line);
+    return numbered ? columns(numbered[1]!) <= indent || parseInt(numbered[2]!, 10) === 1 : opensBlock(line);
+  };
+}
+
 /** The columns a run of leading whitespace spans, a tab reaching the next stop of 4 as CommonMark counts it. */
 function columns(indent: string): number {
   return [...indent].reduce((col, ch) => (ch === "\t" ? col + 4 - (col % 4) : col + 1), 0);
@@ -76,10 +88,12 @@ const NO_MARKER = /(?!)/;
  * up to a blank or a line that opens another block — and the index of the
  * line that ended it. A line carrying `marker` continues the block rather than
  * opening one, with the marker cut off: that is how a quote's `> ` lines stay
- * one quote. `ends` says which unmarked lines open another block. Soft-broken
- * lines are joined by one space, as a Markdown renderer reflows them, with
- * their own indentation dropped; a line ending in two spaces or a backslash
- * breaks hard, and its break is kept.
+ * one quote. `ends` says which lines open another block. Soft-broken lines
+ * are joined by one space, as a Markdown renderer reflows them, with their own
+ * indentation dropped. A line starts a row of its own when the line before it
+ * breaks hard (two trailing spaces or a backslash), or when, inside a marker,
+ * it or the line before it is blank, or it opens a block: that keeps a quote's
+ * paragraphs and lists apart.
  */
 function continuation(
   first: string,
@@ -96,15 +110,14 @@ function continuation(
     if (line.trim() === "" || (!own && ends(line))) break;
     parts.push(line.replace(marker, ""));
   }
-  const kept = parts.filter((part) => part.trim() !== "");
-  const text = kept
-    .map((part, n) =>
-      n === kept.length - 1
-        ? part.trim()
-        : HARD_BREAK.test(part)
-          ? `${part.replace(HARD_BREAK, "").trim()}\n`
-          : `${part.trim()} `,
-    )
+  const text = parts
+    .map((part, n) => {
+      const words = (n === parts.length - 1 ? part : part.replace(HARD_BREAK, "")).trim();
+      if (n === 0) return words;
+      const prev = parts[n - 1]!;
+      const ownRow = HARD_BREAK.test(prev) || prev.trim() === "" || part.trim() === "" || ends(part);
+      return (ownRow ? "\n" : " ") + words;
+    })
     .join("");
   return { text, next: i };
 }
@@ -167,12 +180,13 @@ function tokenize(markdown: string): MdToken[] {
     const listMatch = BULLET.exec(line) ?? NUMBERED.exec(line);
     if (listMatch) {
       const ordered = NUMBERED.test(line);
-      const { text, next } = continuation(listMatch[3]!, lines, i, NO_MARKER, opensBlock);
+      const indent = columns(listMatch[1]!);
+      const { text, next } = continuation(listMatch[3]!, lines, i, NO_MARKER, endsItem(indent));
       tokens.push({
         type: "list_item",
         ordered,
         index: ordered ? parseInt(listMatch[2]!, 10) : 0,
-        indent: columns(listMatch[1]!),
+        indent,
         text,
       });
       i = next;
@@ -234,7 +248,8 @@ function applyInlineStyles(text: string): RichText {
 
 /**
  * `text` wrapped in what is left of the width beside a gutter, one row per
- * wrapped line, each ended. The first row's gutter is `first` and every later
+ * wrapped line, each ended — an empty text is one empty row, so an empty
+ * item still draws its bullet. The first row's gutter is `first` and every later
  * row's is `rest`, so a list item's text hangs clear of its bullet and a
  * quote's bar runs its full height. A block with no gutter passes two empty
  * segments: every wrapped block is laid out the same way. The text keeps at
@@ -249,7 +264,9 @@ function* guttered(
   style?: Style,
 ): Iterable<Segment> {
   const width = Math.max(1, options.maxWidth - cellLen(first.text));
-  const rows = Segment.splitLines(Segment.applyStyle([...text.render({ ...options, maxWidth: width })], style));
+  // Terminated, so `splitLines` counts the last row even when it is empty.
+  const rendered = Segment.applyStyle([...text.render({ ...options, maxWidth: width })], style);
+  const rows = Segment.splitLines([...rendered, Segment.line()]);
   for (const [row, line] of rows.entries()) {
     yield row === 0 ? first : rest;
     yield* line;
