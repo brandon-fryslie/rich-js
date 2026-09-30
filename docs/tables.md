@@ -35,8 +35,9 @@ columns shrink to fit. Every column first keeps its minimum — its longest word
 or its whole line if it has `noWrap` — and only the width past that is shared
 out in proportion to natural width, so the long titles wrap onto a second line
 while the Box Office figures, which have no break in them, stay whole. A column
-is cut short by its `overflow` (an ellipsis by default) only when the minimums
-alone do not fit. Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
+is cut short by its `overflow` (an ellipsis by default) only when the table is
+too narrow for every column's minimum and padding, or when its `maxWidth` is
+narrower than a word. Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
 
 ## Table options
 

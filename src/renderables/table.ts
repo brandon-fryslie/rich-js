@@ -290,7 +290,11 @@ function layoutTable(
   // What is left to apportion is the rest of what each column wanted: its
   // minimum first, for every column, and only then the width past it. A table
   // whose columns all fit leaves this budget partly unspent.
+  const spent = (granted: readonly number[]): number =>
+    granted.reduce((sum, width) => sum + width, 0);
   const base = seatedDemands.map((_, index) => seats[index]! + reserved[index]!);
+  const holding = (...passes: ReadonlyArray<readonly number[]>): number[] =>
+    base.map((start, index) => passes.reduce((sum, granted) => sum + granted[index]!, start));
   const needed = distribute(
     budget,
     seatedDemands.map((demand, index) => ({
@@ -298,20 +302,15 @@ function layoutTable(
       weight: demand.weight,
     })),
   );
+  const afterNeeded = holding(needed);
   const beyond = distribute(
-    budget - needed.reduce((sum, cells) => sum + cells, 0),
+    budget - spent(needed),
     seatedDemands.map((demand, index) => ({
-      want: Math.max(0, demand.want - base[index]! - needed[index]!),
+      want: Math.max(0, demand.want - afterNeeded[index]!),
       weight: demand.weight,
     })),
   );
-  const wanted = needed.map((cells, index) => cells + beyond[index]!);
-  const spent = (granted: readonly number[]): number =>
-    granted.reduce((sum, cells) => sum + cells, 0);
-  const holding = (...passes: ReadonlyArray<readonly number[]>): number[] =>
-    seatedDemands.map((_, index) =>
-      passes.reduce((sum, granted) => sum + granted[index]!, seats[index]! + reserved[index]!),
-    );
+  const wanted = needed.map((width, index) => width + beyond[index]!);
   // The unspent part goes first to the columns with nothing to size to, each
   // alike, up to its `fill` — the reference's `Measurement(1, max_width)`, a
   // maximum of the whole offer that no content measured.
@@ -802,18 +801,12 @@ export class Table implements Renderable, Measurable {
     // `minWidth: Infinity` measured 18014398509481988 and rendered
     // `RangeError: Invalid string length` out of the top border.
     const maximum = laidOut >= UNBOUNDED ? Infinity : laidOut;
+    // The narrowest this table draws without cutting a cell is every column at
+    // its own minimum — the reference's sum of `_measure_column` minimums — so a
+    // parent squeezing it still leaves each figure whole.
     const tightest = layoutTable(
       outerWidth,
-      demands.map((demand) => ({
-        ...demand,
-        reserved: 0,
-        minimum: Math.min(1, demand.want),
-        want: Math.min(1, demand.want),
-        weight: 1,
-        fill: 0,
-        ratio: 0,
-        stretch: false,
-      })),
+      demands.map((demand) => ({ ...demand, want: demand.minimum, fill: 0, ratio: 0, stretch: false })),
       frame,
     ).totalWidth;
     return {
