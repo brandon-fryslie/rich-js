@@ -192,10 +192,11 @@ function paintOverlay(lines: Segment[][], widget: WidgetBase, options: RenderOpt
   if (!hasOverlay(widget)) return;
   const at = footprintOf(lines, widget);
   if (!at) return;
-  // An overlay floats over the frame; no region holds it.
-  const overlay = widget.renderOverlay({ ...options, height: undefined });
-  if (overlay === null) return;
+  // An overlay floats over the frame; no region holds it, and the cells right
+  // of its column are all it can reach.
   const width = Math.max(0, options.maxWidth - at.x);
+  const overlay = widget.renderOverlay({ ...options, maxWidth: width, height: undefined });
+  if (overlay === null) return;
   const rows = Segment.anchorLines(Segment.splitLines(Segment.cropLines(overlay, width)), widget, at.rows);
   paintLines(lines, rows, at.x, at.y + at.rows);
 }

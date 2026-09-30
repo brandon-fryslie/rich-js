@@ -291,6 +291,21 @@ describe("WidgetApp pointer", () => {
     expect(rows(app)[1]).toBe("abc 漢字");
   });
 
+  it("offers an overlay the cells right of its column, not the frame's width", async () => {
+    const host = scriptedHost({ cols: 10, rows: 5 });
+    class WithPopup extends Checkbox {
+      renderOverlay(options: RenderOptions): Iterable<Segment> {
+        return text("abcd efgh ijkl").render(options);
+      }
+    }
+    const app = start(host, () => new Panel(new WithPopup({ label: "o", id: "owner" })));
+    await tick();
+
+    // Eight cells are left right of the panel's border and padding, so the
+    // overlay wraps at eight rather than being cut there.
+    expect(rows(app).slice(2)).toEqual(["│ abcd   │", "│ efgh   │", "╰─ijkl───╯"]);
+  });
+
   it("stops an overlay that ignores its offer at the screen edge, row for row", async () => {
     const host = scriptedHost({ cols: 10, rows: 5 });
     class WithPopup extends Checkbox {
