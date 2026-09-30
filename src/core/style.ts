@@ -731,6 +731,15 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "json.number": Style.parse("bold not italic cyan"),
   "json.str": Style.parse("not bold not italic green"),
 
+  // Syntax
+  "syntax.keyword": Style.parse("bold magenta"),
+  "syntax.constant": Style.parse("italic bright_magenta"),
+  "syntax.string": Style.parse("green"),
+  "syntax.number": Style.parse("cyan"),
+  "syntax.comment": Style.parse("dim italic"),
+  "syntax.line_number": Style.parse("dim"),
+  "syntax.line_number.highlight": Style.parse("bold on grey27"),
+
   // Markdown
   "markdown.h1": Style.parse("bold underline"),
   "markdown.h2": Style.parse("bold"),

@@ -33,6 +33,7 @@ import {
 } from "../../src/renderables/progress.js";
 import { Markdown } from "../../src/renderables/markdown.js";
 import { Traceback } from "../../src/renderables/traceback.js";
+import { Syntax } from "../../src/renderables/syntax.js";
 import { SVG_EXPORT_THEME } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
@@ -1696,6 +1697,13 @@ describe("Console theme resolution", () => {
     { label: "Markdown heading", name: "markdown.h1", make: () => new Markdown("# Title") },
     { label: "Markdown inline code", name: "markdown.code", make: () => new Markdown("run `ls`") },
     { label: "Traceback", name: "traceback.exc_type", make: () => new Traceback(new Error("boom")) },
+    { label: "Syntax keyword", name: "syntax.keyword", make: () => new Syntax("return", "javascript") },
+    { label: "Syntax line number", name: "syntax.line_number", make: () => new Syntax("x", "text", { lineNumbers: true }) },
+    {
+      label: "Syntax highlighted line number",
+      name: "syntax.line_number.highlight",
+      make: () => new Syntax("x", "text", { lineNumbers: true, highlightLines: new Set([1]) }),
+    },
   ];
 
   /** Two truecolor foregrounds and the SGR parameters each is written as. */

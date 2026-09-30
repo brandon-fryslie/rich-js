@@ -311,7 +311,7 @@ export type { PromptInput, PromptOptions } from "./renderables/prompt.js";
 export { Traceback } from "./renderables/traceback.js";
 export type { TracebackOptions } from "./renderables/traceback.js";
 export { Syntax } from "./renderables/syntax.js";
-export type { SyntaxOptions } from "./renderables/syntax.js";
+export type { SyntaxLanguage, SyntaxOptions } from "./renderables/syntax.js";
 export { Markdown } from "./renderables/markdown.js";
 export type { MarkdownOptions } from "./renderables/markdown.js";
 export { Layout } from "./renderables/layout.js";
