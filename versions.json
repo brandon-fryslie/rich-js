@@ -4,15 +4,22 @@
     {
       "version": "pr-231",
       "ref": "refs/pull/231/merge",
-      "sha": "306c8b815d297ecabd3affdd2929506523aa73c1",
-      "timestamp": "2026-09-30T00:16:09.482Z",
+      "sha": "249167f27fd048daf98554ad98a9691603ec5876",
+      "timestamp": "2026-09-30T00:29:16.849Z",
       "commits": [
         {
-          "sha": "306c8b815d297ecabd3affdd2929506523aa73c1",
+          "sha": "249167f27fd048daf98554ad98a9691603ec5876",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:15:24Z",
-          "message": "Merge e85ec5c3a40b14f0bd3e957442a6aff4fd1267a1 into 11afe1fb445ff1637e88bab80e53780d69e2b9f2\n"
+          "timestamp": "2026-09-30T00:28:27Z",
+          "message": "Merge b9def8eb92b41ed4e9450333194d050558f64a99 into 11afe1fb445ff1637e88bab80e53780d69e2b9f2\n"
+        },
+        {
+          "sha": "b9def8eb92b41ed4e9450333194d050558f64a99",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T18:22:34-06:00",
+          "message": "fix(pretty): hang under the value when one indent past its slot is the edge (rich-pretty-xms.tmf)\n\nA value one indent from the right edge hung its rows at a column with no\ncell left, so divideLine gave no cuts and the row overran the width and\nwrapped to column 0. Rows now start where the value began there.\n\nsplitAtCells moves to cells.ts beside the other cell walkers, so the\ngrapheme fix in rich-cells-1y9d finds it with them.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "e85ec5c3a40b14f0bd3e957442a6aff4fd1267a1",
