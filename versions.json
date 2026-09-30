@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-258",
-      "ref": "refs/pull/258/merge",
-      "sha": "b2a24f6e2d5bfcd1365b41996b6446599099309d",
-      "timestamp": "2026-09-30T14:38:02.806Z",
-      "commits": [
-        {
-          "sha": "b2a24f6e2d5bfcd1365b41996b6446599099309d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:36:52Z",
-          "message": "Merge a9321e02571e7fb295bbab3cceed714d3a055dee into d3bdf5a98614436595f579f8046997e3d9639185\n"
-        },
-        {
-          "sha": "a9321e02571e7fb295bbab3cceed714d3a055dee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:36:47-06:00",
-          "message": "docs(table): measure's comments name the minimum it reports and its noWrap divergence (rich-table-3u2)\n"
-        },
-        {
-          "sha": "8d7a826bae3f68450fad6381f178addbe068bdf3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:34:56-06:00",
-          "message": "fix(table): a table's measured minimum is its columns' minimums (rich-table-3u2)\n\nReview pass (high) on PR #258: measure reported one cell per column, so a\nparent squeezed a nested table below its own minimums and cut the figures\nthe shrink now protects. The minimum pass shares spent/holding with the\npasses after it, and the docs name padding and maxWidth as the other ways a\ncolumn is cut. Indented-text minimums filed as rich-text-z3ln.\n"
-        },
-        {
-          "sha": "98981f1c69691a5734558e2bc5b2820aeefea55e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:28:12-06:00",
-          "message": "fix(table): a shrinking table pays every column its minimum before any grows past it (rich-table-3u2)\n\nlayoutTable shared a squeezed table's width by natural width alone, so an\nunbreakable column (a figure, a no-wrap column) was cut with an ellipsis while\na wrappable neighbour kept width it could have wrapped into. Each column now\ncarries its minimum - its longest word, or its whole line under noWrap - and\ndistribute pays every minimum before any width past it.\n\ndocs/tables.md's 75-column Star Wars example now renders byte-identical to\nPython Rich. Deliberate divergence: Rich's widest-first _collapse_widths still\ntruncates a narrow unbreakable column once the widest has narrowed to it; this\nkeeps it whole.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d3bdf5a98614436595f579f8046997e3d9639185",
-      "timestamp": "2026-09-30T14:23:43.479Z",
+      "sha": "55e33b2a298c6f0c5b24efce711f6fd6e66e6876",
+      "timestamp": "2026-09-30T14:43:06.284Z",
       "commits": [
         {
-          "sha": "d3bdf5a98614436595f579f8046997e3d9639185",
+          "sha": "55e33b2a298c6f0c5b24efce711f6fd6e66e6876",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:22:43-06:00",
-          "message": "fix(pretty): indent guides draw a │ at each level (rich-pretty-v7b) (#257)\n\n* fix(pretty): indent guides draw a │ at each level (rich-pretty-v7b)\n\nThe guide was a space styled with a foreground colour, which draws nothing.\nIt is now Rich's with_indent_guides: a │ (| when ASCII-only) in the first\ncell of each whole indent, styled repr.indent, swapped in cell for cell so\nthe highlighter's spans stay put.\n\nConsole.print formats data with guides off, as Rich's print does. Tying\nguides to highlight only went unnoticed while they were invisible.\n\n* fix(pretty): guides stand in the structure's margin, off by default (rich-pretty-v7b)\n\nThe formatter records each line's margin where it starts the line, and\nguides are drawn there rather than read back out of the whitespace, so a\nwrapped string or a toString's own indent gets no guide inside it. Off by\ndefault and never on an ASCII-only console, as in Rich; blank rows carry\nthe guide; indent: 0 no longer throws.\n\nAddresses /code-review high on PR #257.\n\n* fix(pretty): every margin is written, so a guide never takes a continued line's text (rich-pretty-v7b)\n\nA row that looks empty can still be continued by a separator, a Map's\narrow or a key's value; its margin is now spaces like any other, and the\nASCII-only choice goes through drawable.\n\nAddresses /code-review medium on PR #257.\n\n* fix(pretty): a hanging row's guides are its slot's; margins always written (rich-pretty-v7b)\n\nFrame carries the slot's margin, so a value after a wrapped key gets its\nslot's guides and a hanging row can no longer start left of it (the\nnegative repeat). Every margin is written and a line with nothing past it\nis cleared in the one final pass, so blank rows keep no trailing spaces.\nAn ASCII-only console gets no guide spans at all; the trailing-space trim\nscans back instead of backtracking.\n\nNot taken: copying margins per level (toText at 1000 levels 520ms vs\nmaster's 435ms; the render around it is ~40s either way).\n\nAddresses the step-12 /code-review high on PR #257.\n\n* test(pretty): the thousand-level render runs at default options again (rich-pretty-v7b)\n\nWith guides on, each line is a thousand words for the render to wrap, which\ntimed out in CI (191s vs master's ~5s); guides are off by default now, and\nthe test's claim is about the default."
+          "timestamp": "2026-09-30T08:42:12-06:00",
+          "message": "fix(table): a shrinking table wraps before it truncates (rich-table-3u2) (#258)\n\n* fix(table): a shrinking table pays every column its minimum before any grows past it (rich-table-3u2)\n\nlayoutTable shared a squeezed table's width by natural width alone, so an\nunbreakable column (a figure, a no-wrap column) was cut with an ellipsis while\na wrappable neighbour kept width it could have wrapped into. Each column now\ncarries its minimum - its longest word, or its whole line under noWrap - and\ndistribute pays every minimum before any width past it.\n\ndocs/tables.md's 75-column Star Wars example now renders byte-identical to\nPython Rich. Deliberate divergence: Rich's widest-first _collapse_widths still\ntruncates a narrow unbreakable column once the widest has narrowed to it; this\nkeeps it whole.\n\n* fix(table): a table's measured minimum is its columns' minimums (rich-table-3u2)\n\nReview pass (high) on PR #258: measure reported one cell per column, so a\nparent squeezed a nested table below its own minimums and cut the figures\nthe shrink now protects. The minimum pass shares spent/holding with the\npasses after it, and the docs name padding and maxWidth as the other ways a\ncolumn is cut. Indented-text minimums filed as rich-text-z3ln.\n\n* docs(table): measure's comments name the minimum it reports and its noWrap divergence (rich-table-3u2)"
         }
       ]
     }
