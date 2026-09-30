@@ -4,15 +4,22 @@
     {
       "version": "pr-257",
       "ref": "refs/pull/257/merge",
-      "sha": "836e6ba2ab8c7ffb1dbec7f93069dde3aab4a958",
-      "timestamp": "2026-09-30T13:55:09.573Z",
+      "sha": "a5b1cb34f7f0b4e7198009c66f61498975906965",
+      "timestamp": "2026-09-30T14:00:35.288Z",
       "commits": [
         {
-          "sha": "836e6ba2ab8c7ffb1dbec7f93069dde3aab4a958",
+          "sha": "a5b1cb34f7f0b4e7198009c66f61498975906965",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:53:58Z",
-          "message": "Merge 2cc83d3cb8acb087217393e1e6d14a9c7f72269b into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+          "timestamp": "2026-09-30T13:59:37Z",
+          "message": "Merge e817063d3c3531c62124f5045363737f5e9fc828 into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+        },
+        {
+          "sha": "e817063d3c3531c62124f5045363737f5e9fc828",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T07:59:31-06:00",
+          "message": "fix(pretty): every margin is written, so a guide never takes a continued line's text (rich-pretty-v7b)\n\nA row that looks empty can still be continued by a separator, a Map's\narrow or a key's value; its margin is now spaces like any other, and the\nASCII-only choice goes through drawable.\n\nAddresses /code-review medium on PR #257.\n"
         },
         {
           "sha": "2cc83d3cb8acb087217393e1e6d14a9c7f72269b",
