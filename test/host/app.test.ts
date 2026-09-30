@@ -17,7 +17,9 @@ import { scriptedHost, type ScriptedHost } from "./scripted-host.js";
 import { RichText } from "../../src/core/text.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
-import type { Renderable } from "../../src/core/protocol.js";
+import { getStyle, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { Segment } from "../../src/core/segment.js";
+import { Style, Theme } from "../../src/core/style.js";
 
 // Pointer reporting belongs to the alternate surface: it is switched on with
 // the buffer and off before it, so no exit path leaves one without the other.
@@ -255,6 +257,36 @@ describe("App on an ASCII-only terminal", () => {
 
     expect(rows(ascii).join("\n")).toMatch(/^[\x00-\x7f]*$/);
     expect(rows(glyphs).join("\n")).toMatch(/[^\x00-\x7f]/);
+  });
+});
+
+describe("App with a theme", () => {
+  const theme = new Theme({ "health.up": "bold green" });
+  const upStyle = (target: App): Style | undefined => target.frame[0]?.find((s) => s.text.includes("up"))?.style;
+
+  it("resolves a name the theme adds in every frame's render options", () => {
+    const health: Renderable = {
+      *render(options: RenderOptions) {
+        yield new Segment("up", getStyle(options, "health.up"));
+      },
+    };
+    const target = new App({ host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", view: () => health, theme });
+
+    void target.run();
+
+    expect(upStyle(target)?.equals(Style.parse("bold green"))).toBe(true);
+  });
+
+  it("styles a RichText by the theme's name, which without the theme draws plain", () => {
+    const view = (): Renderable => new RichText("up", { style: "health.up", end: "" });
+    const themed = new App({ host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", view, theme });
+    const plain = new App({ host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", view });
+
+    void themed.run();
+    void plain.run();
+
+    expect(upStyle(themed)?.bold).toBe(true);
+    expect(upStyle(plain)?.bold).toBeUndefined();
   });
 });
 

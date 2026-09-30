@@ -27,6 +27,7 @@
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
+import type { Theme } from "../core/style.js";
 import { Painter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
@@ -54,6 +55,11 @@ export interface AppOptions {
    * and widget marks with ASCII characters. Default false.
    */
   readonly asciiOnly?: boolean;
+  /**
+   * The style names every frame resolves against, as on a `Console`. Default
+   * the built-in names only.
+   */
+  readonly theme?: Theme;
 }
 
 // Button presses, motion and the wheel, in the SGR encoding: coordinates as
@@ -88,7 +94,11 @@ export class App {
     this.surface = options.surface;
     this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;
-    this.console = new Console({ environment: hostEnvironment(options.host), asciiOnly: options.asciiOnly });
+    this.console = new Console({
+      environment: hostEnvironment(options.host),
+      asciiOnly: options.asciiOnly,
+      theme: options.theme,
+    });
   }
 
   get phase(): AppPhase {

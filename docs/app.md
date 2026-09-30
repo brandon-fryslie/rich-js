@@ -60,6 +60,25 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 `asciiOnly: true` paints every frame for a terminal that draws only ASCII: every glyph the library chooses, from borders to widget marks, is drawn in ASCII. It is the same switch as on a [`Console`](/console#ascii-only-terminals).
 
+## Themes
+
+`theme` is the [`Theme`](/protocol#drawing-with-theme-names) every frame resolves style names against, as on a `Console`. Without one, a frame knows only the built-in names: a `RichText` styled with a name your theme adds draws plain, and `getStyle` throws for it.
+
+```ts silent
+import { RichText, Theme } from "@promptctl/rich-js";
+import { App } from "@promptctl/rich-js/host";
+import { NodeTerminalHost } from "@promptctl/rich-js/node/terminal-host";
+
+const app = new App({
+  host: new NodeTerminalHost(),
+  surface: "inline",
+  theme: new Theme({ "health.up": "bold green" }),
+  view: () => new RichText("● up", { style: "health.up" }),
+});
+```
+
+A `WidgetApp` takes the same option.
+
 ## Every exit hands the terminal back
 
 While it runs, the app hides the cursor, switches the terminal to raw mode and, on the alternate surface, enters the alternate screen and turns on pointer reporting. All of it is undone when:
