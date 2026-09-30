@@ -4,15 +4,22 @@
     {
       "version": "pr-239",
       "ref": "refs/pull/239/merge",
-      "sha": "1c3d5ec5ccc79646ac5701cac692be1f886fed2e",
-      "timestamp": "2026-09-30T06:48:41.953Z",
+      "sha": "7327f190fa617d7f45cb37252556fef11d199fee",
+      "timestamp": "2026-09-30T06:56:35.259Z",
       "commits": [
         {
-          "sha": "1c3d5ec5ccc79646ac5701cac692be1f886fed2e",
+          "sha": "7327f190fa617d7f45cb37252556fef11d199fee",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:47:29Z",
-          "message": "Merge 891a900cd7d44e41de2a61eb64207df9562a7ffa into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
+          "timestamp": "2026-09-30T06:55:22Z",
+          "message": "Merge 82b45058d20c2e94e2592cfbe768c0efdd682847 into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
+        },
+        {
+          "sha": "82b45058d20c2e94e2592cfbe768c0efdd682847",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T00:55:17-06:00",
+          "message": "fix(docs): a throws block's Try it program must throw what the page shows (rich-playground-afk.4kh)\n\nReview (medium) of PR #239: the gate compared only how a run ended, so a\nprogram throwing a different error passed. Both lines now come from one\nfunction, thrownLine, whose source the page program's helper embeds.\nThe console test matches values of the prelude console's type, not the class.\n"
         },
         {
           "sha": "891a900cd7d44e41de2a61eb64207df9562a7ffa",
