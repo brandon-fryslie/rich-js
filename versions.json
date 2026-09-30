@@ -2,11 +2,26 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-275",
-      "ref": "refs/heads/master",
-      "sha": "d66baa0a14f74dea4a3ca5566bce6f7cb15ad594",
-      "timestamp": "2026-09-30T20:32:26.893Z",
-      "commits": []
+      "version": "pr-276",
+      "ref": "refs/pull/276/merge",
+      "sha": "ae70d143a63273ea0361d59384585bf70a29130a",
+      "timestamp": "2026-09-30T20:34:15.764Z",
+      "commits": [
+        {
+          "sha": "ae70d143a63273ea0361d59384585bf70a29130a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T14:33:06-06:00",
+          "message": "Merge 2c3cb1f0c99e85b1adf61d0f00543718e980911f into d66baa0a14f74dea4a3ca5566bce6f7cb15ad594\n"
+        },
+        {
+          "sha": "2c3cb1f0c99e85b1adf61d0f00543718e980911f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T14:33:01-06:00",
+          "message": "test(markup): a handler's own style repaints the base style, once (rich-markup-zzc7)\n\nThe ordering bug was fixed by rich-markup-cg6 (#197), which paints the base\nstyle once in the single render walk; this pins it. Fails against d10dd296e^.\n"
+        }
+      ]
     },
     {
       "version": "master",
