@@ -164,6 +164,8 @@ console.print(new Pretty(bigArray, { maxLength: 10 }));
 console.print(new Pretty({ bio: "Field biologist. ".repeat(20) }, { maxString: 24 }));
 ```
 
+A character is a grapheme cluster of the string's value, so a cut never splits an emoji, a flag or a skin-toned hand; Rich counts code points instead, and can. The count is taken before escaping, so a newline is one character though it prints as `\n`.
+
 ## Nesting inside another renderable
 
 `Pretty` implements both `Renderable` and `Measurable`, so it goes anywhere a renderable goes — a `Panel`, a table cell, a `Group`:
