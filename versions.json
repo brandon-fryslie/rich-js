@@ -4,15 +4,22 @@
     {
       "version": "pr-246",
       "ref": "refs/pull/246/merge",
-      "sha": "c776c8d5afd34aef407cb1c4c0d1fba13311f92e",
-      "timestamp": "2026-09-30T09:19:51.109Z",
+      "sha": "ab61172d23d53f4ae9e7b748f8e93aa0baae6b76",
+      "timestamp": "2026-09-30T09:23:18.061Z",
       "commits": [
         {
-          "sha": "c776c8d5afd34aef407cb1c4c0d1fba13311f92e",
+          "sha": "ab61172d23d53f4ae9e7b748f8e93aa0baae6b76",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:18:41-06:00",
-          "message": "Merge e24b565fa5ec3f219ca336349f8e763b6802f7e8 into ae92b54b31a13b3baaba134bbc57103da7eed53b\n"
+          "timestamp": "2026-09-30T09:22:10Z",
+          "message": "Merge 7285dc13cab16c63e298630c63bc0be52f6ab917 into ae92b54b31a13b3baaba134bbc57103da7eed53b\n"
+        },
+        {
+          "sha": "7285dc13cab16c63e298630c63bc0be52f6ab917",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:22:05-06:00",
+          "message": "fix(export): SVG frame is one opaque colour, blended from the theme (rich-export-9a1.f98)\n\nReview (high): a translucent stroke broke export-lines' rule that no exporter\ndraws a translucent colour, and its outer half took the host page's colour.\nThe frame is now the ink blended 35% into the canvas with blendRgb; over\nblack that is #595959, what Rich's white-at-35% composites to. The departure\nfrom Rich moves into the module header; tests assert the frame shows on a\nlight canvas and matches Rich's on black, not the attribute string.\n"
         },
         {
           "sha": "e24b565fa5ec3f219ca336349f8e763b6802f7e8",
