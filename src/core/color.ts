@@ -601,17 +601,17 @@ export class ColorSpec {
         return this.value!;
       case ColorDepth.EIGHT_BIT:
         // Slots 0–15 are the theme's own whatever depth names them, as `fixedValue` says.
-        return this.number! < 16 ? (theme ?? INTERNAL_DEFAULT_THEME).ansiColors.get(this.number!) : EIGHT_BIT_TABLE.get(this.number!);
+        return this.number! < 16 ? resolveTerminal(theme).ansiColors.get(this.number!) : EIGHT_BIT_TABLE.get(this.number!);
       case ColorDepth.STANDARD: {
-        const t = theme ?? INTERNAL_DEFAULT_THEME;
+        const t = resolveTerminal(theme);
         return t.ansiColors.get(this.number!);
       }
       case ColorDepth.DEFAULT: {
-        const t = theme ?? INTERNAL_DEFAULT_THEME;
+        const t = resolveTerminal(theme);
         return foreground ? t.foregroundColor : t.backgroundColor;
       }
       case ColorDepth.WINDOWS: {
-        const t = theme ?? INTERNAL_DEFAULT_THEME;
+        const t = resolveTerminal(theme);
         return t.ansiColors.get(this.number!);
       }
     }
@@ -983,6 +983,14 @@ const INTERNAL_DEFAULT_THEME = new TerminalTheme(
   STANDARD_TABLE,
   new Palette("default", true, new Map()),
 );
+
+/**
+ * The terminal a colour is drawn by: `theme`, or the VGA sixteen when a caller
+ * names none. Every "no theme given" in the library resolves here.
+ */
+export function resolveTerminal(theme?: TerminalTheme): TerminalTheme {
+  return theme ?? INTERNAL_DEFAULT_THEME;
+}
 
 // --- ANSI ColorSpec Names ---
 // [LAW:one-source-of-truth] Single canonical mapping from name → palette index

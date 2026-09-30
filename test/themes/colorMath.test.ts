@@ -356,6 +356,18 @@ describe("ensureContrast drawn at ansi", () => {
     expect(contrastRatio(shown(chosen), shown(bg))).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("a replacement is the readable index the terminal draws nearest the author's colour", () => {
+    const { ROSE_PINE_DAWN } = terminalThemes;
+    const shown = shownIn(ROSE_PINE_DAWN);
+    // Dawn draws black light, so the text must be dark: the slide toward white
+    // the truecolor ground asks for is the wrong way here, and the pick is
+    // ranked on the colour the author chose. Its dark entries include
+    // green #286983 (a teal) and white #575279 (a dusk violet).
+    const onBlack = (fg: ColorRgba) => shown(ensureContrast(fg, black, 4.5, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN)).hex;
+    expect(onBlack(new ColorRgba(0x33, 0x00, 0xff))).toBe("#575279");
+    expect(onBlack(new ColorRgba(0x33, 0x66, 0x33))).toBe("#286983");
+  });
+
   it("under every bundled terminal, text clears the floor as drawn, or no index of that terminal can", () => {
     const failures: string[] = [];
     let misread = 0;

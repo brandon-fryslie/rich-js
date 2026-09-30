@@ -7,6 +7,7 @@ import {
   blendRgb,
   contrastRatio,
   relativeLuminance,
+  resolveTerminal,
   SURFACE_BLACK,
   type TerminalTheme,
 } from "../core/color.js";
@@ -158,7 +159,7 @@ const CONTRAST_ITERS = 20;
  * each index in its own theme's colour, so the ratio is measured on
  * `terminal`'s sixteen: a theme whose black is light and white dark (Rosé Pine
  * Dawn) turns the nominal table's sides over. A replacement is the colour the
- * writer emits as the nearest index that clears the floor as `terminal`
+ * writer emits as the index nearest `fg` that clears the floor as `terminal`
  * draws it. Truecolor draws the colour chosen.
  *
  * [LAW:single-enforcer] The one place "is this text readable, and if not fix
@@ -181,9 +182,9 @@ export function ensureContrast(
   // draws from; every table is measured the same way.
   const table = drawnTable(drawnAt, terminal);
   if (table === undefined) return chosen;
-  const drawnBg = drawnColour(ground, drawnAt, substrate, terminal);
-  if (contrastRatio(drawnColour(chosen, drawnAt, substrate, terminal), drawnBg) >= minRatio) return chosen;
-  return table.written.get(table.shown.matchReadable(chosen, drawnBg, minRatio));
+  const shownBg = shownAs(table, ground);
+  if (contrastRatio(shownAs(table, chosen), shownBg) >= minRatio) return chosen;
+  return table.written.get(table.shown.matchReadable(fg.compositeOver(shownBg), shownBg, minRatio));
 }
 
 /**
@@ -212,11 +213,11 @@ export function ensureDrawn(
   // opaque colour is what is returned — never a translucent one a different
   // ground would composite into a colour `accept` never saw.
   const opaque = drawnBackground(chosen, substrate);
-  const drawn = (c: ColorRgba): ColorRgba => drawnColour(c, drawnAt, substrate, terminal);
+  const table = drawnTable(drawnAt, terminal);
+  const drawn = (c: ColorRgba): ColorRgba => shownAs(table, drawnBackground(c, substrate));
   if (accept(drawn(opaque), drawn)) return opaque;
   // [LAW:dataflow-not-control-flow] Truecolor draws from no table, so it has
   // no candidates: a refusal there is `undefined` like any exhausted search.
-  const table = drawnTable(drawnAt, terminal);
   const index = table?.shown.matchWhere(opaque, (entry) => accept(entry, drawn));
   return index === undefined ? undefined : table!.written.get(index);
 }
@@ -234,8 +235,11 @@ export function drawnColour(
   substrate: ColorRgba = SURFACE_BLACK,
   terminal?: TerminalTheme,
 ): ColorRgba {
-  const opaque = drawnBackground(colour, substrate);
-  const table = drawnTable(drawnAt, terminal);
+  return shownAs(drawnTable(drawnAt, terminal), drawnBackground(colour, substrate));
+}
+
+/** An opaque colour as the terminal shows it: its written index, in `shown`'s colour. */
+function shownAs(table: DrawnTable | undefined, opaque: ColorRgba): ColorRgba {
   return table === undefined ? opaque : table.shown.get(table.written.match(opaque));
 }
 
@@ -278,21 +282,24 @@ interface DrawnTable {
  * The table the terminal draws from at `drawnAt`. The 256-colour cube and
  * grey ramp are fixed by xterm, so the colour written is the colour shown.
  * ANSI 0–15 are the terminal theme's own: the writer still picks the index by
- * the nominal table, and the terminal shows `terminal`'s colour there. With no
- * `terminal` named that is the VGA sixteen, which the nominal table is and
- * `DEFAULT_TERMINAL_THEME` draws — the same terminal `ColorSpec.getTruecolor`
- * assumes when it is given no theme. Truecolor draws the chosen colour itself.
+ * the nominal table, and the terminal shows `terminal`'s colour there.
+ * Truecolor draws the chosen colour itself, as do the depths no table stands
+ * behind.
  */
 function drawnTable(drawnAt: ColorDepth, terminal: TerminalTheme | undefined): DrawnTable | undefined {
-  return DRAWN_FROM[drawnAt]?.(terminal?.ansiColors ?? STANDARD_TABLE);
+  switch (drawnAt) {
+    case ColorDepth.EIGHT_BIT:
+      return EIGHT_BIT_DRAWN;
+    case ColorDepth.STANDARD:
+      return { written: STANDARD_TABLE, shown: resolveTerminal(terminal).ansiColors };
+    case ColorDepth.TRUECOLOR:
+    case ColorDepth.DEFAULT:
+    case ColorDepth.WINDOWS:
+      return undefined;
+  }
 }
 
 const EIGHT_BIT_DRAWN: DrawnTable = { written: EIGHT_BIT_DOWNGRADE_TABLE, shown: EIGHT_BIT_DOWNGRADE_TABLE };
-
-const DRAWN_FROM: Partial<Record<ColorDepth, (ansi: ColorTable) => DrawnTable>> = {
-  [ColorDepth.EIGHT_BIT]: () => EIGHT_BIT_DRAWN,
-  [ColorDepth.STANDARD]: (ansi) => ({ written: STANDARD_TABLE, shown: ansi }),
-};
 
 function ensureTruecolorContrast(
   fg: ColorRgba,

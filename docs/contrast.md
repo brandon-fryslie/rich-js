@@ -97,7 +97,7 @@ for (const terminal of [undefined, ROSE_PINE_DAWN]) {
 
 Both lines are drawn as a Rosé Pine Dawn terminal draws them. Measured in VGA, navy on white clears the floor and stands, and that terminal draws it teal on dusk; measured in the terminal's own colours it is replaced.
 
-In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given — see [Template Bindings](/template-bindings).
+In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given, and at `STANDARD` in the VGA colours: it takes no terminal — see [Template Bindings](/template-bindings).
 
 ### A floor that is not text — `ensureDrawn`
 
