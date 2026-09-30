@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-256",
-      "ref": "refs/pull/256/merge",
-      "sha": "7bbd5929e1b7c8f520e5431d47d6cdb9b482ef8d",
-      "timestamp": "2026-09-30T13:23:32.006Z",
-      "commits": [
-        {
-          "sha": "7bbd5929e1b7c8f520e5431d47d6cdb9b482ef8d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:22:28Z",
-          "message": "Merge abd6f4fced844fd41dcf58ec467024edefcf8b2f into 622393165b844b4ea0cd2a83dc6197e10d415e16\n"
-        },
-        {
-          "sha": "abd6f4fced844fd41dcf58ec467024edefcf8b2f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:22:23-06:00",
-          "message": "fix(syntax): tokenize the whole code, bound every row to the width (rich-syntax-fh2)\n\nReview of #256: a lineRange starting inside a multi-line string tokenized\nas code; an unknown runtime language crashed at render; measure spread\nevery line into Math.max and reported min over max; justify realigned\neach line; a gutter wider than the offer overflowed it; property names\nlike .get/.type drew as keywords.\n"
-        },
-        {
-          "sha": "9658d6ae1b6abc4026e8a60863b03fb67d1c6d1a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:12:47-06:00",
-          "message": "fix(syntax): every option takes effect or is gone (rich-syntax-fh2)\n\n- language picks a grammar (javascript, typescript, python, bash, text);\n  SyntaxLanguage is the union, so a name with no grammar is a type error.\n  One left-to-right scan, so a // in a string or a keyword in a comment\n  is not highlighted.\n- colours are syntax.* names in the console Theme; the ignored `theme`\n  option is removed.\n- wordWrap wraps (continuation rows unnumbered) or crops; before, wrapped\n  pieces were joined back onto one overflowing line.\n- lineRange keeps each line's number from the whole code.\n- padding and Syntax.fromPath (always threw) are removed.\n- empty lines are kept; measure reads the same shown lines as render.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "622393165b844b4ea0cd2a83dc6197e10d415e16",
-      "timestamp": "2026-09-30T13:07:07.594Z",
+      "sha": "269bb905ddd86ca223005a6d94b65e23ec63809b",
+      "timestamp": "2026-09-30T13:28:19.543Z",
       "commits": [
         {
-          "sha": "622393165b844b4ea0cd2a83dc6197e10d415e16",
+          "sha": "269bb905ddd86ca223005a6d94b65e23ec63809b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:06:11-06:00",
-          "message": "fix(widgets): every widget cell takes its background from the theme (rich-widgets-73e) (#255)\n\n* fix(widgets): every widget cell takes its background from the theme (rich-widgets-73e)\n\nCheckbox, Slider and TextInput drew palette foregrounds over whatever the\nterminal showed, so the dark default palette's white text vanished in a light\nterminal. Every cell now takes both colours from the one palette through\nsrc/widgets/ink.ts, which replaces six copies of resolvePalette and has no\nforeground-only form. The slider's unfilled track moves from `surface` (1.1:1\non the palette's own background) to dimmed `foreground`.\n\ntest/widgets/terminal-contrast.test.ts renders each widget state without a\ntheme and requires 3:1 glyph contrast on two dark and two light terminals.\n\n* fix(widgets): padding and disabled cells take the palette ground too (rich-widgets-73e)\n\nReview pass (high): a multiline TextInput's padding and blank rows, and every\ndisabled state, still let the terminal's background through. The theme moves\nonto ThemedWidget, whose ground pads every row; StaticItem keeps no ground.\nDisabled cells draw in foreground-muted on background. Accent glyphs on the\nbackground use text-primary. The contrast test now checks the ground under\nevery cell, disabled states included.\n\n* fix(widgets): a TextInput pads its rows in the style its value is drawn in (rich-widgets-73e)\n\nReview pass (medium): a caller's contentStyle background was striped by the\ntheme's ground in the padding of short multiline rows."
+          "timestamp": "2026-09-30T07:27:14-06:00",
+          "message": "fix(syntax): every option takes effect or is gone (rich-syntax-fh2) (#256)\n\n* fix(syntax): every option takes effect or is gone (rich-syntax-fh2)\n\n- language picks a grammar (javascript, typescript, python, bash, text);\n  SyntaxLanguage is the union, so a name with no grammar is a type error.\n  One left-to-right scan, so a // in a string or a keyword in a comment\n  is not highlighted.\n- colours are syntax.* names in the console Theme; the ignored `theme`\n  option is removed.\n- wordWrap wraps (continuation rows unnumbered) or crops; before, wrapped\n  pieces were joined back onto one overflowing line.\n- lineRange keeps each line's number from the whole code.\n- padding and Syntax.fromPath (always threw) are removed.\n- empty lines are kept; measure reads the same shown lines as render.\n\n* fix(syntax): tokenize the whole code, bound every row to the width (rich-syntax-fh2)\n\nReview of #256: a lineRange starting inside a multi-line string tokenized\nas code; an unknown runtime language crashed at render; measure spread\nevery line into Math.max and reported min over max; justify realigned\neach line; a gutter wider than the offer overflowed it; property names\nlike .get/.type drew as keywords."
         }
       ]
     }
