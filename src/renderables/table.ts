@@ -819,6 +819,12 @@ export class Table implements Renderable, Measurable {
 
   // --- Static ---
 
+  /**
+   * A table with no frame and no header, padded between its columns and never
+   * at its edges, so an expanded grid reaches both sides of its width. The
+   * reference's `grid` defaults, but for `padding`: Rich's is 0, which runs
+   * adjacent columns together, and this port's is one cell to the right.
+   */
   static grid(options?: Omit<TableOptions, "box" | "showHeader" | "showEdge">): Table {
     return new Table({
       ...options,
@@ -826,6 +832,8 @@ export class Table implements Renderable, Measurable {
       showHeader: false,
       showEdge: false,
       padding: options?.padding ?? [0, 1, 0, 0],
+      collapsePadding: options?.collapsePadding ?? true,
+      padEdge: options?.padEdge ?? false,
     });
   }
 
