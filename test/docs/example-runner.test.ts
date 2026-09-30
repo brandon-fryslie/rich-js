@@ -442,6 +442,10 @@ describe("a page that breaks its contract fails the build", () => {
     ["an unknown marker", fence("1;", "ts loud"), /fixture\.md:1: unknown example marker "loud"/],
     ["a shape block that does not compile, at its page line", page("# t", fence('new Table("Name");', "ts shape")), /fixture\.md:4: Type '"Name"' has no properties in common with type 'TableOptions'/],
     ["a node block that does not compile, at its page line", page("# t", fence("new Console({ widht: 80 });", "ts node")), /fixture\.md:4: Object literal may only specify known properties/],
+    // The two ways a page names a symbol the library does not have.
+    ["an import its entry point does not export", fence('import { RenderGroup } from "@promptctl/rich-js";\nconsole.print(new RenderGroup());'), /fixture\.md:2: Module '"@promptctl\/rich-js"' has no exported member 'RenderGroup'/],
+    ["an import from a subpath, in a block that runs nowhere", fence('import { RichHandler } from "@promptctl/rich-js/node/traceback";\nnew RichHandler();', "ts shape"), /fixture\.md:2: Module '"@promptctl\/rich-js\/node\/traceback"' has no exported member 'RichHandler'/],
+    ["a member its class does not have", fence('console.status("working");'), /fixture\.md:2: Property 'status' does not exist on type 'Console'/],
     ["a build block that exits", fence("process.exit(2);", "ts silent"), /docs\/fixture\.md: an example calls process\.exit\(2\)/],
     ["a throws block that exits", fence("process.exit(1);", "ts throws"), /docs\/fixture\.md: an example calls process\.exit\(1\)/],
     [

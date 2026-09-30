@@ -18,6 +18,14 @@ describe("docs/", () => {
   it.each(docsPages().map((p) => [p.file, p.absolutePath] as const))("%s", (file, absolutePath) => {
     expect(pageFindings(file, readFileSync(absolutePath, "utf-8"))).toEqual([]);
   });
+
+  // The docs build type-checks what `scanFences` finds and passes a page on
+  // which it finds nothing, so a parser that stops seeing fences leaves the
+  // build green with nothing checked. This floor is what notices.
+  it("yields the TypeScript fences the build type-checks", () => {
+    const fences = docsPages().flatMap((p) => scanFences(p.file, readFileSync(p.absolutePath, "utf-8")));
+    expect(fences.length).toBeGreaterThanOrEqual(150);
+  });
 });
 
 describe("a page", () => {

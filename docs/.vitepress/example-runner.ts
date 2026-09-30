@@ -122,7 +122,33 @@ export class ExampleCompiler {
       .sort((a, b) => (a.name < b.name ? -1 : 1));
   }
 
-  /** Type-check `program`, throwing every error at the page line it came from; the checker's reading of it. */
+  /**
+   * Type-check `program`, throwing every error at the page line it came from; the checker's reading of it.
+   *
+   * [LAW:single-enforcer] This is where the docs are held to the library's
+   * surface: an import an entry point does not export, or a member a class does
+   * not have, fails here. The failures it exists for all shipped once, looking
+   * like working code: `RenderGroup` for `Group`, a `richReprAuto` decorator for
+   * a protocol never built, `console.status` / `console.pager` transliterated
+   * from Python Rich's `Console`.
+   *
+   * When it fails on a symbol the library lacks, change the page, never
+   * `src/`. The code is the truth and the
+   * page a claim about it, so a symbol a page names and the library lacks is a
+   * false page, not a missing feature; implementing it to clear the build lets
+   * an unreviewed sentence set the roadmap. `docs/logging.md` documented a
+   * `RichHandler` end to end across five snippets, and the resolution was to
+   * delete the page. A symbol genuinely wanted is filed on its own merits.
+   *
+   * A clean compile is the weakest of the three ways a page lies. It catches
+   * a symbol that does not exist. It cannot catch one that exists and does
+   * something else — `docs/strip.md` taught `end: ""` as what makes a
+   * `RichText` an inline cell, and it is inert — nor a true statement about one
+   * code path stretched over the surface, like `docs/console.md` saying "any
+   * other string throws" of `colorSystem` while `"vscode"` maps to truecolor.
+   * Both live in sentences, and finding them means reading every branch a
+   * claim of "any", "all", "never" or "only" depends on.
+   */
   check(program: ExampleProgram): Checked {
     const compiled = this.compile(program.source);
     const file = compiled.getSourceFile(PROGRAM_FILE)!;

@@ -6,14 +6,13 @@
  * A fence's info string is its language and at most one marker word:
  * ```` ```ts ````, ```` ```ts silent ````. Static is the default and has no
  * word, and it may sit among VitePress's own fence attributes. The build-time
- * runner and `test/docs/code-blocks.ts` read TypeScript through `scanFences`;
- * the docs-example gate reads every block through `scanBlocks`, which
- * `scanFences` is built on.
+ * runner reads TypeScript through `scanFences`; the docs-example gate reads
+ * every block through `scanBlocks`, which `scanFences` is built on.
  *
- * [LAW:one-source-of-truth] That sharing is the point. The symbol-existence
- * sweep once matched fences with its own pattern that accepted only a bare
+ * [LAW:one-source-of-truth] That sharing is the point. A sweep of the pages
+ * once matched fences with its own pattern that accepted only a bare
  * `typescript` or `ts`, so the first marker added to a page would have
- * silently dropped that block from the sweep. With one parser, a block is
+ * silently dropped that block from it. With one parser, a block is
  * a TypeScript block for every reader or for none.
  */
 
@@ -136,8 +135,8 @@ export interface Fence {
  * [LAW:one-source-of-truth] Where a fence is, and what it is inside, is the
  * parser's answer, not a second one worked out line by line. A line scanner
  * stood here first and could not see a fence indented four spaces into a list
- * item, which markdown renders all the same: the runner, the symbol sweep and
- * the example gate all skipped it, and nothing said so.
+ * item, which markdown renders all the same: every reader of the page skipped
+ * it, and nothing said so.
  */
 export const PAGE_PARSER: MarkdownIt = CONTAINERS.reduce(
   (md, name) => md.use(container, name),

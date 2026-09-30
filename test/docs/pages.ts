@@ -2,8 +2,8 @@
  * Which files under `docs/` are pages — the one answer both docs suites read.
  *
  * `page-reachability.test.ts` asks it to compare the pages on disk against the
- * sidebar; `symbol-existence.test.ts` asks it so it can read every page's code
- * blocks. They used to ask separately, and both asked
+ * sidebar; `example-gate.test.ts` asks it so it can read every page's blocks.
+ * Two suites once asked separately, and both asked
  * `readdirSync(DOCS_ROOT)` without recursion, so a page in a subdirectory was
  * absent from both sets — not excluded, invisible. Nothing said so, and the
  * bar stayed green because the thing that was skipped was also the thing that
