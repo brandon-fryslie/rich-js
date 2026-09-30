@@ -4,15 +4,22 @@
     {
       "version": "pr-262",
       "ref": "refs/pull/262/merge",
-      "sha": "8c02fa002b7f844b34ef24afb8507f6b6a541a21",
-      "timestamp": "2026-09-30T15:44:46.258Z",
+      "sha": "1b4458cb578e97f500bd1a0194c96c5054e5e66d",
+      "timestamp": "2026-09-30T15:50:46.698Z",
       "commits": [
         {
-          "sha": "8c02fa002b7f844b34ef24afb8507f6b6a541a21",
+          "sha": "1b4458cb578e97f500bd1a0194c96c5054e5e66d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:43:40-06:00",
-          "message": "Merge 15c90cc57c8c0e39c451bca3276b82c5b017bb57 into 308b201548d5573029aa4fdb9b9602c42f27596a\n"
+          "timestamp": "2026-09-30T15:49:39Z",
+          "message": "Merge d531662c9de91b6cfaaffaccb01b80af7ff0875d into 308b201548d5573029aa4fdb9b9602c42f27596a\n"
+        },
+        {
+          "sha": "d531662c9de91b6cfaaffaccb01b80af7ff0875d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:49:34-06:00",
+          "message": "test(padding): a markup string under expand:false narrows to its drawn text (rich-padding-wv28)\n\nReview pass (high): pins Padding's measure of a string body; fixes a\nrow's indentation in the embed-sites table.\n"
         },
         {
           "sha": "15c90cc57c8c0e39c451bca3276b82c5b017bb57",
