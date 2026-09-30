@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-244",
+      "ref": "refs/pull/244/merge",
+      "sha": "b282290d130e2934ac36d5b1d208c14316e8047b",
+      "timestamp": "2026-09-30T08:57:37.275Z",
+      "commits": [
+        {
+          "sha": "b282290d130e2934ac36d5b1d208c14316e8047b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T02:56:28-06:00",
+          "message": "Merge ecba0e2f89a6bb02a0d0fc4aa814f057fd6321f8 into 268b3f33da77e3a35b89ec74385fc1e00eccb721\n"
+        },
+        {
+          "sha": "ecba0e2f89a6bb02a0d0fc4aa814f057fd6321f8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T02:56:24-06:00",
+          "message": "test(export): golden HTML and SVG exports under two themes, and SVG glyphs on the cell grid in Chromium (rich-export-9a1.5)\n\nThe fixture's attribute rows come from ATTRIBUTE_NAMES, so an attribute\nadded to Style changes the goldens instead of being skipped. Deleting the\nhandling of any ExportLook field in either exporter fails a golden; the\nPlaywright spec fails when textLength is dropped.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "268b3f33da77e3a35b89ec74385fc1e00eccb721",
