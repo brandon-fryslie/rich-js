@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-283",
+      "ref": "refs/pull/283/merge",
+      "sha": "1169de34ae5b6918e35b69760a765bfbe0d33d42",
+      "timestamp": "2026-09-30T22:53:28.914Z",
+      "commits": [
+        {
+          "sha": "1169de34ae5b6918e35b69760a765bfbe0d33d42",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:52:35-06:00",
+          "message": "Merge 3588f4ddd002d35335c5894186ff15a0678bc800 into 6ae5d81fe630bd8e43c5a5aadd7c8e141fdc779f\n"
+        },
+        {
+          "sha": "3588f4ddd002d35335c5894186ff15a0678bc800",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:52:30-06:00",
+          "message": "test(docs): the docs build is the one check that pages name real symbols (rich-docs-kdeh)\n\nsymbol-existence.test.ts swept every docs fence for two defects the docs\nbuild already rejects: an import an entry point does not export, and a\nmember a class does not have. example-runner type-checks every TypeScript\nfence, whatever its marker, and fails the build at the page and line.\n[LAW:single-enforcer]\n\nDeleted the sweep and code-blocks.ts / resolve-chain.ts, which only it\nused, with their fixture suites. The two defect classes are now rows in\nexample-runner.test.ts's failure table, and the \"change the page, not\nsrc/\" rule and the three-ways-a-page-lies ceiling live on\nExampleCompiler.check; the compile error's last line points there.\n\nLost: missing-symbol feedback from `npm test` without a build. The docs\nbuild runs on every PR and before every docs commit, so that was a\nsecond, weaker checkpoint for one invariant.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6ae5d81fe630bd8e43c5a5aadd7c8e141fdc779f",
