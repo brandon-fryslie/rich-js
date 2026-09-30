@@ -171,8 +171,14 @@ export class Layout implements Renderable, Measurable {
       // given is the one thing a layout may never emit — in a row split it
       // overwrites the pane beside it. The row path already crops each share,
       // so this is the same rule at the one place that skipped it.
+      // Every line ended, as the split paths below end theirs: embedding
+      // cleared the content's own `end`, and a leaf stacked in a `Group` is
+      // still a region of lines.
       if (this._renderable) {
-        yield* Segment.cropLines(this._renderable.render(options), options.maxWidth);
+        for (const line of Segment.splitLines(Segment.cropLines(this._renderable.render(options), options.maxWidth))) {
+          yield* line;
+          yield Segment.line();
+        }
       }
       return;
     }

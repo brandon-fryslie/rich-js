@@ -43,8 +43,13 @@ interface Task {
 
 // --- Progress Columns ---
 
-export interface ProgressColumn extends Renderable {
-  render(options: RenderOptions, task?: Task): Iterable<Segment>;
+/**
+ * One cell of a `Progress` row, drawn for the task on that row. Not a
+ * `Renderable`: a column has nothing to draw without a task, as the
+ * reference's `ProgressColumn` is a callable of one.
+ */
+export interface ProgressColumn {
+  render(options: RenderOptions, task: Task): Iterable<Segment>;
 }
 
 export class TextColumn implements ProgressColumn {
@@ -54,11 +59,11 @@ export class TextColumn implements ProgressColumn {
     this.format = format ?? "{task.description}";
   }
 
-  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
+  *render(options: RenderOptions, task: Task): Iterable<Segment> {
     // [LAW:single-enforcer] Format strings flow through the markup parser so
     // tags like `[progress.description]` become Style spans, not literal text.
     // Task descriptions are escaped first to prevent injection of stray tags.
-    const description = escapeMarkup(task?.description ?? "");
+    const description = escapeMarkup(task.description);
     // Use a callback so `$&`/`$1`/`$$` in the task description aren't
     // reinterpreted by String.replace as replacement patterns.
     const formatted = this.format.replace(/\{task\.description\}/g, () => description);
@@ -75,10 +80,10 @@ export class BarColumn implements ProgressColumn {
     this.barWidth = barWidth ?? 40;
   }
 
-  *render(_options: RenderOptions, task?: Task): Iterable<Segment> {
+  *render(_options: RenderOptions, task: Task): Iterable<Segment> {
     const bar = new ProgressBar({
-      total: task?.total ?? 100,
-      completed: task?.completed ?? 0,
+      total: task.total ?? 100,
+      completed: task.completed,
       width: this.barWidth,
     });
     yield* bar.render(_options);
@@ -86,8 +91,8 @@ export class BarColumn implements ProgressColumn {
 }
 
 export class TaskProgressColumn implements ProgressColumn {
-  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
-    const percent = task && task.total
+  *render(options: RenderOptions, task: Task): Iterable<Segment> {
+    const percent = task.total
       ? Math.min(100, Math.round((task.completed / task.total) * 100))
       : 0;
     yield new Segment(`${percent}%`, getStyle(options, "progress.percentage"));
@@ -95,9 +100,9 @@ export class TaskProgressColumn implements ProgressColumn {
 }
 
 export class TimeRemainingColumn implements ProgressColumn {
-  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
+  *render(options: RenderOptions, task: Task): Iterable<Segment> {
     const style = getStyle(options, "progress.remaining");
-    if (!task || !task.total || !task.started || task.completed <= 0) {
+    if (!task.total || !task.started || task.completed <= 0) {
       yield new Segment("-:--:--", style);
       return;
     }
@@ -109,9 +114,9 @@ export class TimeRemainingColumn implements ProgressColumn {
 }
 
 export class TimeElapsedColumn implements ProgressColumn {
-  *render(options: RenderOptions, task?: Task): Iterable<Segment> {
+  *render(options: RenderOptions, task: Task): Iterable<Segment> {
     const style = getStyle(options, "progress.elapsed");
-    if (!task || !task.started) {
+    if (!task.started) {
       yield new Segment("0:00:00", style);
       return;
     }
@@ -127,16 +132,14 @@ export class SpinnerColumn implements ProgressColumn {
     this._spinner = new Spinner(spinnerName);
   }
 
-  *render(options: RenderOptions, _task?: Task): Iterable<Segment> {
-    yield* this._spinner.render(options);
+  *render(options: RenderOptions, _task: Task): Iterable<Segment> {
+    yield* this._spinner.drawFrame(options);
   }
 }
 
 export class MofNCompleteColumn implements ProgressColumn {
-  *render(_options: RenderOptions, task?: Task): Iterable<Segment> {
-    const completed = task?.completed ?? 0;
-    const total = task?.total ?? "?";
-    yield new Segment(`${completed}/${total}`);
+  *render(_options: RenderOptions, task: Task): Iterable<Segment> {
+    yield new Segment(`${task.completed}/${task.total ?? "?"}`);
   }
 }
 

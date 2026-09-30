@@ -446,7 +446,10 @@ export class Pretty implements Renderable, Measurable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
+    // `toText` has no `end`, for callers that set it inside a line; rendered,
+    // a `Pretty` is a block of its own, as the reference's is.
     yield* this.toText(options).render(options);
+    yield Segment.line();
   }
 
   /** The value laid out for `options.maxWidth` and highlighted: the text this renders. */

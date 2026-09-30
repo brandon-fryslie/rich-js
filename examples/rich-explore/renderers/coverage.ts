@@ -97,11 +97,13 @@ export class CoverageRenderable implements Renderable {
 
     // ── 2. ProgressBar (standalone) ──────────────────────────────────
     items.push(new Rule("ProgressBar", { style: "bold cyan" }));
+    // A ProgressBar is a line fragment, so each sits in a grid row beside its
+    // label rather than in a Group, which would run the next row onto it.
+    const bars = Table.grid().addColumn().addColumn();
     for (const pct of [25, 50, 75, 100]) {
-      const bar = new ProgressBar({ total: 100, completed: pct, width: 30 });
-      const label = new RichText(`${pct}%: `, { end: "" });
-      items.push(new Group(label, bar));
+      bars.addRow(`${pct}%:`, new ProgressBar({ total: 100, completed: pct, width: 30 }));
     }
+    items.push(bars);
 
     // ── 3. Columns ───────────────────────────────────────────────────
     items.push(new Rule("Columns", { style: "bold cyan" }));

@@ -617,10 +617,9 @@ export class Console {
     // block is closed line by line, as `Align` closes it. Unplaced, a text run
     // is closed exactly where its content — its `end` included — breaks; any
     // other block's lines are closed whether or not it closed them itself: a
-    // `Panel` ends in a line break and a bare `Spinner` or `ProgressBar` does
-    // not (they're line fragments, meant to be composed within a line —
-    // rich-flexstrip-5kf.4cq), and both leave the next print at the start of a
-    // line.
+    // `Panel` ends in a line break and a bare `ProgressBar` does not (a line
+    // fragment — test/seam/line-ends.ts), and both leave the next print at the
+    // start of a line.
     const drawBlock = (block: PrintBlock): { lines: Segment[][]; closed: boolean } => {
       const renderable = block.kind === "text" ? new TextRun(block.items, terminator) : block.renderable;
       if (align) return { lines: placeBlock(renderable, align, renderOpts), closed: true };

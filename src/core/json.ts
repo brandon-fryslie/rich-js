@@ -59,7 +59,7 @@ export class JSONRenderable implements Renderable, Measurable {
       : undefined;
 
     const jsonStr = JSON.stringify(data, replacer, indent);
-    const text = new RichText(jsonStr, { end: "" });
+    const text = new RichText(jsonStr);
 
     if (doHighlight) {
       highlighter.highlight(text);

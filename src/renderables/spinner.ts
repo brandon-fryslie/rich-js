@@ -71,7 +71,14 @@ export class Spinner implements Renderable, Measurable {
     return drawable(options, this._data, LINE_SPINNER, spinnerGlyphs).frames;
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
+  /**
+   * The spinner's current frame and its text, with no line end: the
+   * fragment a caller composes inside a line of its own — a `Progress` cell,
+   * a `Status` message. `render` is this line, ended, because a `Spinner`
+   * printed or stacked in a `Group` is a line of its own, as the reference's
+   * `Text` is.
+   */
+  *drawFrame(options: RenderOptions): Iterable<Segment> {
     const frames = this._drawnFrames(options);
     const frame = frames[this._advance() % frames.length]!;
     const style = getStyle(options, this.style);
@@ -80,6 +87,11 @@ export class Spinner implements Renderable, Measurable {
     if (this.text) {
       yield new Segment(` ${this.text}`);
     }
+  }
+
+  *render(options: RenderOptions): Iterable<Segment> {
+    yield* this.drawFrame(options);
+    yield Segment.line();
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
