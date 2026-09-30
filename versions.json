@@ -4,15 +4,22 @@
     {
       "version": "pr-281",
       "ref": "refs/pull/281/merge",
-      "sha": "d4b91ef66ae549156353aebe46e3a655eaa20ac3",
-      "timestamp": "2026-09-30T22:25:13.763Z",
+      "sha": "6dc5f16cb5260f94894cd849fa3ed0e7aabb9d1c",
+      "timestamp": "2026-09-30T22:26:28.186Z",
       "commits": [
         {
-          "sha": "d4b91ef66ae549156353aebe46e3a655eaa20ac3",
+          "sha": "6dc5f16cb5260f94894cd849fa3ed0e7aabb9d1c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T22:24:08Z",
-          "message": "Merge 6eeded0e35f71f6ca25f3994bf150357f6350da1 into 232e2a519df79f0cf29636409d81fca68ae1b8cb\n"
+          "timestamp": "2026-09-30T22:25:05Z",
+          "message": "Merge b406acbbcce687169756d470780209b8b5998077 into 232e2a519df79f0cf29636409d81fca68ae1b8cb\n"
+        },
+        {
+          "sha": "b406acbbcce687169756d470780209b8b5998077",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:25:00-06:00",
+          "message": "test: the hang detector's comment names the budgets that really differ (rich-test-suite-umkj)\n"
         },
         {
           "sha": "6eeded0e35f71f6ca25f3994bf150357f6350da1",
