@@ -279,6 +279,8 @@ export enum ColorDepth {
 /**
  * How many colours a depth can name, as a rank. WINDOWS is a sixteen-colour
  * depth whose enum value sits above TRUECOLOR, so the enum's order is not this.
+ * STANDARD and WINDOWS share a rank: the same sixteen slots, drawn by
+ * different terminals, so each converts to the other by keeping the slot.
  */
 function fidelity(depth: ColorDepth): number {
   switch (depth) {
@@ -600,7 +602,7 @@ export class ColorSpec {
    */
   downgrade(targetSystem: ColorDepth): ColorSpec {
     if (this.type === ColorDepth.DEFAULT) return this;
-    if (fidelity(this.type) <= fidelity(targetSystem)) return this;
+    if (this.type === targetSystem || fidelity(this.type) < fidelity(targetSystem)) return this;
 
     const cached = this.downgradeCache.get(targetSystem);
     if (cached) return cached;
@@ -619,18 +621,13 @@ export class ColorSpec {
         return this.value!;
       case ColorDepth.EIGHT_BIT:
         // Slots 0–15 are the theme's own whatever depth names them, as `fixedValue` says.
-        return this.number! < 16 ? resolveTerminal(theme).ansiColors.get(this.number!) : EIGHT_BIT_TABLE.get(this.number!);
-      case ColorDepth.STANDARD: {
-        const t = resolveTerminal(theme);
-        return t.ansiColors.get(this.number!);
-      }
+        return this.number! < 16 ? resolveTerminal(theme, this.type).ansiColors.get(this.number!) : EIGHT_BIT_TABLE.get(this.number!);
+      case ColorDepth.STANDARD:
+      case ColorDepth.WINDOWS:
+        return resolveTerminal(theme, this.type).ansiColors.get(this.number!);
       case ColorDepth.DEFAULT: {
-        const t = resolveTerminal(theme);
+        const t = resolveTerminal(theme, this.type);
         return foreground ? t.foregroundColor : t.backgroundColor;
-      }
-      case ColorDepth.WINDOWS: {
-        const t = resolveTerminal(theme);
-        return t.ansiColors.get(this.number!);
       }
     }
   }
@@ -698,23 +695,14 @@ export class ColorSpec {
     const triplet = this.getTruecolor();
 
     switch (targetSystem) {
-      case ColorDepth.EIGHT_BIT: {
-        const index = EIGHT_BIT_DOWNGRADE_TABLE.match(triplet);
-        return ColorSpec.fromAnsi(index);
-      }
-      case ColorDepth.STANDARD: {
-        const index = STANDARD_TABLE.match(triplet);
-        return new ColorSpec(
-          `color(${index})`,
-          ColorDepth.STANDARD,
-          index,
-        );
-      }
+      case ColorDepth.EIGHT_BIT:
+        return ColorSpec.fromAnsi(downgradeTable(targetSystem).match(triplet));
+      case ColorDepth.STANDARD:
       case ColorDepth.WINDOWS: {
-        // An ANSI slot is already one of the console's sixteen; only a fixed
-        // colour is matched against its palette, as Rich does.
-        const index = this.number !== undefined && this.number < 16 ? this.number : WINDOWS_TABLE.match(triplet);
-        return new ColorSpec(`color(${index})`, ColorDepth.WINDOWS, index);
+        // An ANSI slot is already one of the sixteen either depth writes; only
+        // a fixed colour is matched against the depth's table, as Rich does.
+        const index = this.number !== undefined && this.number < 16 ? this.number : downgradeTable(targetSystem).match(triplet);
+        return new ColorSpec(`color(${index})`, targetSystem, index);
       }
       case ColorDepth.TRUECOLOR:
         return this;
@@ -1001,9 +989,10 @@ export const WINDOWS_TABLE = new ColorTable(buildWindowsTable());
 // `themes/`. Keeping them out of `core/color.ts` makes the dependency strictly
 // `themes/* -> core/color`, with no runtime back-edge.
 //
-// `getTruecolor()` retains a fallback for callers that omit `theme`. The
-// fallback uses STANDARD_TABLE + black/white + an empty Palette — sufficient
-// for STANDARD/DEFAULT/WINDOWS lookups, which never read `palette`.
+// `getTruecolor()` retains a fallback for callers that omit `theme`: the
+// terminal a colour's depth assumes, built from that depth's own sixteen with
+// an empty Palette — sufficient for the lookups it serves, which never read
+// `palette`.
 //
 // Runtime-importing `Palette` from `themes/palette.ts` is safe: that module
 // only `import type`s from `core/color.ts`, so there is no runtime cycle.
@@ -1017,14 +1006,40 @@ const INTERNAL_DEFAULT_THEME = new TerminalTheme(
   new Palette("default", true, new Map()),
 );
 
+/** The Windows console in its default Campbell scheme: a WINDOWS colour's terminal. */
+const WINDOWS_CONSOLE_THEME = new TerminalTheme(
+  WINDOWS_TABLE.get(0),
+  WINDOWS_TABLE.get(7),
+  WINDOWS_TABLE,
+  new Palette("windows", true, new Map()),
+);
+
 /**
- * The terminal a colour is drawn by: `theme`, or the VGA sixteen when a caller
- * names none — for `ColorSpec.getTruecolor` and the contrast measurement that
- * reads it. (Widgets fall back to `DEFAULT_TERMINAL_THEME`, which carries a
+ * The terminal a colour at `depth` is drawn by: `theme`, or when a caller names
+ * none, the one the depth assumes — the Windows console at WINDOWS, the VGA
+ * sixteen otherwise — for `ColorSpec.getTruecolor` and the contrast measurement
+ * that reads it. (Widgets fall back to `DEFAULT_TERMINAL_THEME`, which carries a
  * palette this does not.)
  */
-export function resolveTerminal(theme?: TerminalTheme): TerminalTheme {
-  return theme ?? INTERNAL_DEFAULT_THEME;
+export function resolveTerminal(theme: TerminalTheme | undefined, depth: ColorDepth): TerminalTheme {
+  return theme ?? (depth === ColorDepth.WINDOWS ? WINDOWS_CONSOLE_THEME : INTERNAL_DEFAULT_THEME);
+}
+
+/**
+ * The table a downgrade to `depth` rounds a fixed colour against.
+ * [LAW:one-source-of-truth] `ColorSpec.downgrade` picks the index a colour is
+ * written as from it, and colorMath hands back its entries as colours the
+ * writer rounds to those same indices.
+ */
+export function downgradeTable(depth: ColorDepth.EIGHT_BIT | ColorDepth.STANDARD | ColorDepth.WINDOWS): ColorTable {
+  switch (depth) {
+    case ColorDepth.EIGHT_BIT:
+      return EIGHT_BIT_DOWNGRADE_TABLE;
+    case ColorDepth.STANDARD:
+      return STANDARD_TABLE;
+    case ColorDepth.WINDOWS:
+      return WINDOWS_TABLE;
+  }
 }
 
 // --- ANSI ColorSpec Names ---

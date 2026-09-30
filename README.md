@@ -342,7 +342,7 @@ console.print(new Greeting());
 
 ```typescript
 const console = new Console({
-  colorSystem: "truecolor", // null | "auto" | "standard" | "256" | "truecolor" | "windows"
+  colorSystem: "truecolor", // null | "auto" | "none" | "ansi" | "256" | "truecolor"
   width: 120,               // override terminal width
   stderr: true,             // write to stderr
   record: true,             // record output for export

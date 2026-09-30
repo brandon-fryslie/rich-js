@@ -307,9 +307,9 @@ export function runDemo(
       blurb(
         "ColorSpec wraps a value at a given ColorDepth (TRUECOLOR / EIGHT_BIT / " +
           "STANDARD / DEFAULT / WINDOWS) and emits ANSI SGR codes. " +
-          "`ColorSpec.downgrade` quantizes truecolor into STANDARD_TABLE and " +
-          "EIGHT_BIT_TABLE; WINDOWS_TABLE is a public LUT for the Windows " +
-          "console palette but is a detection target, not a downgrade target.",
+          "`ColorSpec.downgrade` quantizes truecolor into EIGHT_BIT_TABLE, " +
+          "STANDARD_TABLE, or WINDOWS_TABLE — the Windows console's own " +
+          "sixteen, which nothing detects: only `ColorDepth.WINDOWS` picks it.",
       ),
     );
     out.print(blank());

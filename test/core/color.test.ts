@@ -569,11 +569,17 @@ describe("ColorSpec.downgrade()", () => {
     expect(downgraded.number!).toBeLessThanOrEqual(255);
   });
 
-  it("WINDOWS and STANDARD are the same sixteen slots: neither downgrades to the other", () => {
+  it("WINDOWS and STANDARD are the same sixteen slots: each becomes the other in the same slot", () => {
     const win = new ColorSpec("color(12)", ColorDepth.WINDOWS, 12);
     const std = ColorSpec.fromAnsi(12);
-    expect(win.downgrade(ColorDepth.STANDARD)).toBe(win);
-    expect(std.downgrade(ColorDepth.WINDOWS)).toBe(std);
+    expect([win.downgrade(ColorDepth.STANDARD).type, win.downgrade(ColorDepth.STANDARD).number]).toEqual([ColorDepth.STANDARD, 12]);
+    expect([std.downgrade(ColorDepth.WINDOWS).type, std.downgrade(ColorDepth.WINDOWS).number]).toEqual([ColorDepth.WINDOWS, 12]);
+  });
+
+  it("with no theme named, a colour drawn at WINDOWS reads as the console's own colour", () => {
+    expect(ColorSpec.parse("red").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(WINDOWS_TABLE.get(1));
+    expect(ColorSpec.parse("#0037da").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(new ColorRgba(0, 55, 218));
+    expect(ColorSpec.parse("red").getTruecolor()).toEqual(STANDARD_TABLE.get(1));
   });
 
   it("a WINDOWS colour is drawn at every richer depth as itself", () => {

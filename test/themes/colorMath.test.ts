@@ -416,6 +416,15 @@ describe("ensureContrast drawn at WINDOWS", () => {
     }
     expect(failures).toEqual([]);
   });
+
+  it("with no terminal named, the floor holds in the colours the console draws", () => {
+    // Measured in the VGA sixteen, grey on navy passed at 4:1; the console
+    // draws that pair at 1.81:1.
+    const shown = (c: ColorRgba) => WINDOWS_TABLE.get(WINDOWS_TABLE.match(c));
+    const bg = new ColorRgba(0, 55, 218);
+    const chosen = ensureContrast(new ColorRgba(118, 118, 118), bg, 3, ColorDepth.WINDOWS);
+    expect(contrastRatio(shown(chosen), shown(bg))).toBeGreaterThanOrEqual(3);
+  });
 });
 
 describe("ensureDrawn", () => {

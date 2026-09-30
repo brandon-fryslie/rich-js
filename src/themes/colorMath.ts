@@ -3,11 +3,9 @@ import {
   ColorRgba,
   ColorSpec,
   ColorTable,
-  EIGHT_BIT_DOWNGRADE_TABLE,
-  STANDARD_TABLE,
-  WINDOWS_TABLE,
   blendRgb,
   contrastRatio,
+  downgradeTable,
   relativeLuminance,
   resolveTerminal,
   SURFACE_BLACK,
@@ -297,14 +295,13 @@ interface DrawnTable {
  * behind.
  */
 function drawnTable(drawnAt: ColorDepth, terminal: TerminalTheme | undefined): DrawnTable | undefined {
-  const drawnBy = resolveTerminal(terminal);
+  const drawnBy = resolveTerminal(terminal, drawnAt);
   switch (drawnAt) {
     case ColorDepth.EIGHT_BIT:
-      return { depth: drawnAt, terminal: drawnBy, written: EIGHT_BIT_DOWNGRADE_TABLE, shown: EIGHT_BIT_DOWNGRADE_TABLE };
+      return { depth: drawnAt, terminal: drawnBy, written: downgradeTable(drawnAt), shown: downgradeTable(drawnAt) };
     case ColorDepth.STANDARD:
-      return { depth: drawnAt, terminal: drawnBy, written: STANDARD_TABLE, shown: drawnBy.ansiColors };
     case ColorDepth.WINDOWS:
-      return { depth: drawnAt, terminal: drawnBy, written: WINDOWS_TABLE, shown: drawnBy.ansiColors };
+      return { depth: drawnAt, terminal: drawnBy, written: downgradeTable(drawnAt), shown: drawnBy.ansiColors };
     case ColorDepth.TRUECOLOR:
     case ColorDepth.DEFAULT:
       return undefined;
