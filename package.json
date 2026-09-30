@@ -100,6 +100,12 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
+    "@lezer/highlight": "^1.2.5",
     "@playwright/test": "^1.63.0",
     "@promptctl/go-template-js": "^0.10.0",
     "@types/markdown-it": "^14.2.0",

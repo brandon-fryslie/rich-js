@@ -16,7 +16,7 @@
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from "vue";
 import { useData } from "vitepress";
 import { EXAMPLE_TERMINAL, EXAMPLE_THEMES } from "../example-terminal.js";
-import { LiveTerminal, type LiveState } from "./live-terminal.js";
+import { LiveTerminal, elementFont, type LiveState } from "./live-terminal.js";
 
 /** What the button does, said for each state the terminal can be in. */
 const BUTTON: Record<LiveState["kind"], string> = {
@@ -53,7 +53,7 @@ export default defineComponent({
             runtime: runtime.default,
             terminal: EXAMPLE_TERMINAL,
             theme: theme(),
-            font: font(element),
+            font: elementFont(element),
           });
           live.onState((next) => (state.value = next));
           const unwatch = watch(isDark, () => live.setTheme(theme()));
@@ -80,7 +80,7 @@ export default defineComponent({
       observer.observe(element);
       // The font's size follows the card's width (custom.css), so a terminal
       // made at one width is refitted when the card is resized.
-      resized = new ResizeObserver(() => void ready?.then(({ live }) => live.setFont(font(element)), () => {}));
+      resized = new ResizeObserver(() => void ready?.then(({ live }) => live.setFont(elementFont(element)), () => {}));
       resized.observe(element);
     });
 
@@ -106,13 +106,3 @@ export default defineComponent({
       ]);
   },
 });
-
-/**
- * The font static output is drawn in: custom.css gives the screen element the
- * same `--rich-fragment-font`, and xterm takes it as numbers.
- */
-function font(element: HTMLElement): { family: string; size: number; lineHeight: number } {
-  const style = getComputedStyle(element);
-  const size = parseFloat(style.fontSize);
-  return { family: style.fontFamily, size, lineHeight: parseFloat(style.lineHeight) / size };
-}

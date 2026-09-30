@@ -63,6 +63,7 @@ export default defineConfig({
       { text: 'Guide', link: '/introduction', activeMatch: guideActiveMatch },
       { text: 'Demos', link: '/demos/', activeMatch: '^/demos' },
       { text: 'Protocol', link: '/protocol' },
+      { text: 'Playground', link: '/playground' },
     ],
 
     // [LAW:one-source-of-truth] The page-backed regions arrive composed, from

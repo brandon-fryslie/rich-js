@@ -117,8 +117,19 @@ export const advancedSidebar: SidebarGroup[] = [
   },
 ]
 
+// The Playground is its own nav tab too, and the same argument keeps it out
+// of `guideSidebar`. Its page runs full width, without the sidebar; this entry
+// is what reaches it from every other page.
+export const playgroundSidebar: SidebarGroup[] = [
+  {
+    text: 'Experiment',
+    items: [{ text: 'Playground', link: '/playground' }],
+  },
+]
+
 /** Every page-backed sidebar region, in the order the sidebar shows them. */
 export const pageSidebarRegions: readonly SidebarGroup[] = [
   ...guideSidebar,
   ...advancedSidebar,
+  ...playgroundSidebar,
 ]

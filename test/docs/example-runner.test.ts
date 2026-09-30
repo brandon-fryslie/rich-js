@@ -13,10 +13,13 @@ import {
   ExampleCompiler,
   LIVE_MODULE_PREFIX,
   LIVE_RUNTIME_MODULE,
+  PLAYGROUND_MODULE,
+  PLAYGROUND_START_PAGE,
   type LoadContext,
   docsExamplesPlugin,
   liveLibraryOnce,
   liveScript,
+  playgroundStart,
   runPageExamples,
 } from "../../docs/.vitepress/example-runner.js";
 import { PAGE_PARSER, scanFences } from "../../docs/.vitepress/example-markers.js";
@@ -398,6 +401,31 @@ describe("the plugin", () => {
     expect(() => new Function(script)).not.toThrow();
     // …and it does something: a bundle can drop a module it was only told to import.
     expect(script).toMatch(/onmessage/);
+  });
+
+  it("serves the playground the start page's first block, running on the live examples' own library", { timeout: 60_000 }, async () => {
+    const plugin = docsExamplesPlugin();
+    const context: LoadContext = { addWatchFile: () => {} };
+    const watched: string[] = [];
+    const module = (await plugin.load.call({ addWatchFile: (file) => watched.push(file) }, plugin.resolveId(PLAYGROUND_MODULE)!))!;
+    const [, librarySpecifier, start] = /^import library from ("[^"]+");\nexport \{ library \};\nexport const start = (".*");$/s.exec(module)!;
+    const startPage = path.join(REPO_ROOT, "docs", PLAYGROUND_START_PAGE);
+    expect(JSON.parse(start!)).toBe(scanFences(PLAYGROUND_START_PAGE, readFileSync(startPage, "utf-8"))[0]!.code);
+    // The playground is no page this plugin transforms, so `docs:dev` learns it is stale only from these.
+    expect(watched).toContain(startPage);
+    expect(watched).toContain(path.join(REPO_ROOT, "src", "index.ts"));
+    // One library for the site: a live example's program imports the very module the playground does.
+    const transformed = await plugin.transform(fence('console.print("served");', "ts live"), path.join(REPO_ROOT, "docs", "fixture-live.md"));
+    const [specifier] = /virtual:rich-live\/[0-9a-f]+/.exec(transformed!.code)!;
+    const program = (await plugin.load.call(context, plugin.resolveId(specifier)!))!;
+    expect(program.startsWith(`import library from ${librarySpecifier!};`)).toBe(true);
+    expect(await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!)).toMatch(/^export default "/);
+  });
+
+  it("refuses a start block that is not a program on its own, at its line", { timeout: 60_000 }, () => {
+    // `console` here is the page prelude's Console, which the playground does not give a block.
+    const markdown = page("# Start", fence('console.print("[bold]hi[/]");'));
+    expect(() => playgroundStart(compiler, markdown)).toThrow(new RegExp(`docs/${PLAYGROUND_START_PAGE}:4: Property 'print' does not exist`));
   });
 
   it("passes a page with no TypeScript example through untouched", async () => {
