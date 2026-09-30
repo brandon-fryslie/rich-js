@@ -4,15 +4,22 @@
     {
       "version": "pr-252",
       "ref": "refs/pull/252/merge",
-      "sha": "12e668b6a93dfefdc7e76bbd354573c39c88f946",
-      "timestamp": "2026-09-30T11:41:58.255Z",
+      "sha": "bba5988101d76851c8dea314cc7994fde5285c90",
+      "timestamp": "2026-09-30T11:48:02.828Z",
       "commits": [
         {
-          "sha": "12e668b6a93dfefdc7e76bbd354573c39c88f946",
+          "sha": "bba5988101d76851c8dea314cc7994fde5285c90",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:40:13Z",
-          "message": "Merge 9366744392ba82ee1dbc88c1975937e279359e9f into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
+          "timestamp": "2026-09-30T11:46:54Z",
+          "message": "Merge 3c1780b0e315542cbf426776458a8f6aa9e13d65 into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
+        },
+        {
+          "sha": "3c1780b0e315542cbf426776458a8f6aa9e13d65",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:46:49-06:00",
+          "message": "fix(markdown): a blockquote holds blocks of its own (rich-demos-b19)\n\nReview of #252: a quote's lines, markers cut off, are tokenized as Markdown\nof their own and drawn beside the bar, so a fence, a list or a paragraph\nbreak inside one keeps its shape, and a lazy line continues only the\nparagraph open inside it. The quote-only row rules in continuation go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "9366744392ba82ee1dbc88c1975937e279359e9f",
