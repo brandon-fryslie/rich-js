@@ -374,6 +374,7 @@ describe("a style tag spans a plugin pair it encloses", () => {
     r.register("aa", (ctx) => ctx.children);
     r.register("click", (ctx) => ctx.children);
     r.register("shout", (ctx) => new RichText(`<${ctx.children.plain}>`, { end: "" }).stylize("red"));
+    r.register("tint", () => new RichText("S", { style: "green", end: "" }));
     return r;
   }
   const spans = (markup: string, options: Parameters<typeof renderMarkup>[1] = {}): string[] =>
@@ -399,6 +400,13 @@ describe("a style tag spans a plugin pair it encloses", () => {
 
   it("lets markup repaint a base style when a plugin pair is present", () => {
     expect(spans("[blue]x[/blue][aa]y[/aa]", { baseStyle: "red" })).toEqual(["0-2 red", "0-1 blue"]);
+  });
+
+  it("lets a handler's own style repaint the base style, once, as a style tag does", () => {
+    expect(spans("[shout]x[/shout]", { baseStyle: "blue" })).toEqual(["0-3 blue", "0-3 red"]);
+    expect(spans("[red]<x>[/red]", { baseStyle: "blue" })).toEqual(["0-3 blue", "0-3 red"]);
+    expect(spans("[tint][/tint]", { baseStyle: "blue" })).toEqual(["0-1 blue", "0-1 green"]);
+    expect(spans("[green]S[/green]", { baseStyle: "blue" })).toEqual(["0-1 blue", "0-1 green"]);
   });
 
   it("paints the base style under a tag enclosing a pair, not over it", () => {
