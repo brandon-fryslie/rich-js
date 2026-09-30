@@ -4,15 +4,22 @@
     {
       "version": "pr-239",
       "ref": "refs/pull/239/merge",
-      "sha": "7327f190fa617d7f45cb37252556fef11d199fee",
-      "timestamp": "2026-09-30T06:56:35.259Z",
+      "sha": "8e7b4d576fc822879124e02c79946b4309181ea0",
+      "timestamp": "2026-09-30T07:07:48.346Z",
       "commits": [
         {
-          "sha": "7327f190fa617d7f45cb37252556fef11d199fee",
+          "sha": "8e7b4d576fc822879124e02c79946b4309181ea0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:55:22Z",
-          "message": "Merge 82b45058d20c2e94e2592cfbe768c0efdd682847 into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
+          "timestamp": "2026-09-30T07:06:42Z",
+          "message": "Merge d94f29e4fdc2d7901c2eacc47e4892c6a8d31917 into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
+        },
+        {
+          "sha": "d94f29e4fdc2d7901c2eacc47e4892c6a8d31917",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T01:06:37-06:00",
+          "message": "fix(docs): one import printer, a thrown line from source text, a callable Date (rich-playground-afk.4kh)\n\nReview (escalation high) of PR #239:\n- thrownLine evaluates THROWN_LINE, the text the program embeds, rather\n  than pasting a compiled function's toString into the program\n- the Date shadow is a Proxy, so Date() returns a string as a host's does\n- a Try it program carries every bare import the page ran by its block's end\n- example-slice uses example-program's importLines and SourceBuilder\n- a non-chain block's checker is not kept past its cut\n"
         },
         {
           "sha": "82b45058d20c2e94e2592cfbe768c0efdd682847",
