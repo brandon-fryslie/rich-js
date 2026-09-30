@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-266",
-      "ref": "refs/pull/266/merge",
-      "sha": "837b26853f14a4c0ff0f7a67c61562c65e5da502",
-      "timestamp": "2026-09-30T17:29:55.609Z",
-      "commits": [
-        {
-          "sha": "837b26853f14a4c0ff0f7a67c61562c65e5da502",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:28:10Z",
-          "message": "Merge b51221ca12ba2655a55654059576e76a20356302 into 840008549a0deec1f0728b905d35f6cfad71a50f\n"
-        },
-        {
-          "sha": "b51221ca12ba2655a55654059576e76a20356302",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:28:06-06:00",
-          "message": "fix(color): a blend downgraded to WINDOWS mixes the console's own ends (rich-color-dhay)\n\nperformDowngrade read a ColorBlend's RGB with no theme, so its named ends\ncame from the VGA sixteen and the mix was rounded against WINDOWS_TABLE:\nblend(black,yellow,0.75) wrote green. It now reads the colour as the\nterminal the target depth assumes draws it.\n"
-        },
-        {
-          "sha": "bd2ffe973fe213f405088d4b69075d3d021c755e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:25:38-06:00",
-          "message": "fix(color): a WINDOWS colour with no theme named is drawn in the console's own sixteen (rich-color-dhay)\n\nReview of #266: at WINDOWS the writer picked slots by WINDOWS_TABLE but\ngetTruecolor and colorMath's drawnTable still fell back to the VGA sixteen,\nso ensureContrast(#767676 on #0037da, 3) accepted a pair the console draws\nat 1.81:1. resolveTerminal now takes the depth, and a WINDOWS colour with no\ntheme is drawn by the Windows console (Campbell); STANDARD and WINDOWS\nconvert to each other by keeping the slot, as Rich does, so a colour drawn\nat WINDOWS reads as the console's colour whichever depth spelled it.\n\ndowngradeTable(depth) is the one table downgrade rounds against and the one\ncolorMath hands entries back from, replacing a second copy of that mapping.\n\nStale text: the colour-studio blurb called WINDOWS \"not a downgrade target\";\nthe README listed \"standard\"/\"windows\" colorSystem strings that throw.\n\nNot taken: renaming a slot-kept colour to Rich's original name. Numbered\nspecs are compared by number (strip's vanishes reads name only when number\nis absent) and the STANDARD downgrade already names by slot.\n"
-        },
-        {
-          "sha": "c1e3c5ae45ec70369fd4a2b1dcf686a553857c1b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:14:15-06:00",
-          "message": "fix(color): ColorDepth.WINDOWS draws in the Windows console's sixteen colours (rich-color-dhay)\n\ndowngrade() ranked depths by enum value, and WINDOWS = 4 sits above\nTRUECOLOR = 3, so nothing ever downgraded toward it and a WINDOWS console\nwrote 24-bit SGR. Depths are now ranked by how many colours they name\n(fidelity), and a downgrade to WINDOWS matches a fixed colour against\nWINDOWS_TABLE while an ANSI slot keeps its index, as Rich does.\n\nWINDOWS_TABLE was in console-attribute order (slot 1 navy) while every\nreader of a WINDOWS number — its 30+n SGR, theme.ansiColors — takes it as\nan ANSI index. It is now the Campbell scheme in ANSI order; the old values\nreordered would have been STANDARD_TABLE exactly. colorMath's drawnTable\nmeasures WINDOWS against that table instead of as truecolor.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "840008549a0deec1f0728b905d35f6cfad71a50f",
-      "timestamp": "2026-09-30T17:10:03.458Z",
+      "sha": "8fc9178e2783eea2e17d3d1254c623c21b05b41f",
+      "timestamp": "2026-09-30T17:34:22.668Z",
       "commits": [
         {
-          "sha": "840008549a0deec1f0728b905d35f6cfad71a50f",
+          "sha": "8fc9178e2783eea2e17d3d1254c623c21b05b41f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:08:48-06:00",
-          "message": "fix(template-bindings): renderTemplate's error segment is one line fitted to maxWidth (rich-template-bindings-4bgw) (#265)\n\n* fix(template-bindings): renderTemplate's error segment is one line fitted to maxWidth (rich-template-bindings-4bgw)\n\nThe caught error's message folds every line break to a space — an engine\nmessage can carry one (`bad escape sequence \\⏎`) — and the line is cut by\nRichText.truncate at the same maxWidth the success path draws at, ending in\nan ellipsis. The fixed 80-UTF-16-unit slice cut long messages mid-word and\ndropped the fix hint (`wrap it: darken (color \"primary\") …`) with no mark.\n\nThe docs example now shows a long error fitted to the page's terminal.\n\n* fix(template-bindings): error line folds every non-space whitespace; maxWidth is one value (rich-template-bindings-4bgw)\n\nReview (high) on #265: a tab in the engine's message was counted as 0 cells\nand drawn up to 8, so the fitted line could overflow maxWidth. The JSDoc and\ndocs now say the error line is fitted to maxWidth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T11:33:13-06:00",
+          "message": "fix(color): ColorDepth.WINDOWS draws in the Windows console's sixteen colours (rich-color-dhay) (#266)\n\n* fix(color): ColorDepth.WINDOWS draws in the Windows console's sixteen colours (rich-color-dhay)\n\ndowngrade() ranked depths by enum value, and WINDOWS = 4 sits above\nTRUECOLOR = 3, so nothing ever downgraded toward it and a WINDOWS console\nwrote 24-bit SGR. Depths are now ranked by how many colours they name\n(fidelity), and a downgrade to WINDOWS matches a fixed colour against\nWINDOWS_TABLE while an ANSI slot keeps its index, as Rich does.\n\nWINDOWS_TABLE was in console-attribute order (slot 1 navy) while every\nreader of a WINDOWS number — its 30+n SGR, theme.ansiColors — takes it as\nan ANSI index. It is now the Campbell scheme in ANSI order; the old values\nreordered would have been STANDARD_TABLE exactly. colorMath's drawnTable\nmeasures WINDOWS against that table instead of as truecolor.\n\n* fix(color): a WINDOWS colour with no theme named is drawn in the console's own sixteen (rich-color-dhay)\n\nReview of #266: at WINDOWS the writer picked slots by WINDOWS_TABLE but\ngetTruecolor and colorMath's drawnTable still fell back to the VGA sixteen,\nso ensureContrast(#767676 on #0037da, 3) accepted a pair the console draws\nat 1.81:1. resolveTerminal now takes the depth, and a WINDOWS colour with no\ntheme is drawn by the Windows console (Campbell); STANDARD and WINDOWS\nconvert to each other by keeping the slot, as Rich does, so a colour drawn\nat WINDOWS reads as the console's colour whichever depth spelled it.\n\ndowngradeTable(depth) is the one table downgrade rounds against and the one\ncolorMath hands entries back from, replacing a second copy of that mapping.\n\nStale text: the colour-studio blurb called WINDOWS \"not a downgrade target\";\nthe README listed \"standard\"/\"windows\" colorSystem strings that throw.\n\nNot taken: renaming a slot-kept colour to Rich's original name. Numbered\nspecs are compared by number (strip's vanishes reads name only when number\nis absent) and the STANDARD downgrade already names by slot.\n\n* fix(color): a blend downgraded to WINDOWS mixes the console's own ends (rich-color-dhay)\n\nperformDowngrade read a ColorBlend's RGB with no theme, so its named ends\ncame from the VGA sixteen and the mix was rounded against WINDOWS_TABLE:\nblend(black,yellow,0.75) wrote green. It now reads the colour as the\nterminal the target depth assumes draws it."
         }
       ]
     }
