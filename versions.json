@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-246",
+      "ref": "refs/pull/246/merge",
+      "sha": "c776c8d5afd34aef407cb1c4c0d1fba13311f92e",
+      "timestamp": "2026-09-30T09:19:51.109Z",
+      "commits": [
+        {
+          "sha": "c776c8d5afd34aef407cb1c4c0d1fba13311f92e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:18:41-06:00",
+          "message": "Merge e24b565fa5ec3f219ca336349f8e763b6802f7e8 into ae92b54b31a13b3baaba134bbc57103da7eed53b\n"
+        },
+        {
+          "sha": "e24b565fa5ec3f219ca336349f8e763b6802f7e8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:18:36-06:00",
+          "message": "fix(export): SVG window frame takes the theme's ink (rich-export-9a1.f98)\n\nThe frame stroke was Rich's fixed rgba(255,255,255,0.35), the one colour in\nthe export that ignored the TerminalTheme; around SOLARIZED_LIGHT's #fdf6e3\ncanvas it has no visible edge. It is now the theme foreground at Rich's 35%\nopacity, which under the default theme (#ffffff ink) draws exactly what Rich\ndraws.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ae92b54b31a13b3baaba134bbc57103da7eed53b",
