@@ -4,15 +4,22 @@
     {
       "version": "pr-259",
       "ref": "refs/pull/259/merge",
-      "sha": "36a3a3e3902bea08930904fd97a60a93fe319e61",
-      "timestamp": "2026-09-30T15:01:30.141Z",
+      "sha": "a7a1d20c16fa4206c175749548518cbeff3e4ec4",
+      "timestamp": "2026-09-30T15:07:06.516Z",
       "commits": [
         {
-          "sha": "36a3a3e3902bea08930904fd97a60a93fe319e61",
+          "sha": "a7a1d20c16fa4206c175749548518cbeff3e4ec4",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T15:00:21Z",
-          "message": "Merge 513bea9fb10da2622adba3bf3d23be6364f3fa58 into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
+          "timestamp": "2026-09-30T15:06:00Z",
+          "message": "Merge 94f8ab2b9f566882ab5e0a0c6654d216c1d67b8c into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
+        },
+        {
+          "sha": "94f8ab2b9f566882ab5e0a0c6654d216c1d67b8c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:05:55-06:00",
+          "message": "fix(markdown): body text defaults to left, as Rich's Paragraph does (rich-markdown-ft8)\n\nReview round 3 (escalation high) on #259: Rich's Paragraph uses\nmarkdown.justify or \"left\", so an unset justify never inherits the print's.\nThe settings object carries justify once, and the Justify type derives from\nRenderOptions.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "513bea9fb10da2622adba3bf3d23be6364f3fa58",
