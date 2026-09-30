@@ -125,13 +125,13 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
   const imported = new Map(file.statements.filter(ts.isImportDeclaration).flatMap(importBindings).map((b) => [b.local, b] as const));
   const order = [...imported.keys()];
 
-  // The class of the prelude's `console`: a statement that names a value of it writes to the terminal.
+  // The type of the prelude's `console`: a statement that names a value of it writes to the terminal.
   const prelude = statements.find(
     (s): s is ts.VariableStatement =>
       origin(s) === null && ts.isVariableStatement(s) && s.declarationList.declarations.some((d) => d.name.getText(file) === "console"),
   );
-  const consoleClass = prelude === undefined ? undefined : checker.getTypeAtLocation(prelude.declarationList.declarations[0]!.name).getSymbol();
-  if (consoleClass === undefined) throw new Error(`docs/${program.page}: the program has no prelude console to cut a block's program from`);
+  const consoleType = prelude === undefined ? undefined : checker.getTypeAtLocation(prelude.declarationList.declarations[0]!.name);
+  if (consoleType === undefined) throw new Error(`docs/${program.page}: the program has no prelude console to cut a block's program from`);
 
   /** What a statement names: the statements declaring it, the imports binding it, and whether it names a console. */
   const read = (statement: ts.Statement) => {
@@ -150,7 +150,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
           const at = statementOf(declaration);
           if (at !== null && at !== statement) declared.add(at);
         }
-        writes ||= checker.getTypeAtLocation(node).getSymbol() === consoleClass;
+        writes ||= checker.getTypeAtLocation(node) === consoleType;
       }
       ts.forEachChild(node, visit);
     };
@@ -181,8 +181,9 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     // needed and does not write to the terminal: that is a statement which
     // changes a value the block reads, `layout.splitColumn(…)` above a block
     // printing `layout`. One that writes is what an earlier block printed, not
-    // what this one needs; one that throws would end the program; one that
-    // declares only reads what it names.
+    // what this one needs; one that throws would end the program. One that
+    // declares is taken to read what it names and change none of it, which
+    // `const col = layout.splitColumn(…)` is the miss of, and the gate's.
     const needed = new Set([...context, ...statements.filter(inTarget)]);
     const above = statements.slice(0, Math.max(first, 0)).filter((s) => !throwing.has(s) && declaredNames(s).length === 0);
     for (let grew = true; grew; ) {

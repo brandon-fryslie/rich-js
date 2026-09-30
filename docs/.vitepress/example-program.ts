@@ -180,11 +180,16 @@ class SourceBuilder {
  * `Name: message` (just `Name` when the message is empty), anything else as
  * `Uncaught` and the value, a string quoted so `throw ""` still shows.
  */
+export function thrownLine(error: unknown): string {
+  return error instanceof Error ? Error.prototype.toString.call(error) : `Uncaught ${typeof error === "string" ? JSON.stringify(error) : String(error)}`;
+}
+
+// [LAW:one-source-of-truth] The program reports a throw through `thrownLine`'s
+// own source, so the line a page shows and the line the runner reads off a run
+// (a "Try it" program's) are one function's.
 const THREW_HELPER = [
   "const __richExampleThrew = (error: unknown): string =>",
-  `  ${JSON.stringify(BLOCK_THREW)} +`,
-  "  JSON.stringify(error instanceof Error ? Error.prototype.toString.call(error) : `Uncaught ${typeof error === \"string\" ? JSON.stringify(error) : String(error)}`) +",
-  `  ${JSON.stringify(THREW_CLOSE)};`,
+  `  ${JSON.stringify(BLOCK_THREW)} + JSON.stringify((${thrownLine.toString()})(error)) + ${JSON.stringify(THREW_CLOSE)};`,
 ].join("\n");
 
 const WRITE_END = `process.stdout.write(${JSON.stringify(BLOCK_END)});`;

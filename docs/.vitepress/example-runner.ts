@@ -65,6 +65,7 @@ import {
   buildProgram,
   exampleContext,
   splitRecords,
+  thrownLine,
   type BarrelExport,
   type BlockRecord,
   type ExampleContext,
@@ -498,13 +499,15 @@ function playgroundHref(page: string): string {
  */
 async function tryItPrints(fence: Fence, standalone: ExampleProgram, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
   const { stream, end, exits } = await capture(playgroundScript(standalone.source, shared.script), world);
-  const ended = end.kind === "finished" ? "completed" : end.kind;
-  if (exits.length === 0 && ended === record.ended.kind && stream === record.output) return;
+  // How each ended, a throw by the line the page shows for it.
+  const ended = end.kind === "finished" ? "completed" : end.kind === "threw" ? `threw ${thrownLine(end.error)}` : end.kind;
+  const expected = record.ended.kind === "threw" ? `threw ${record.ended.line}` : record.ended.kind;
+  if (exits.length === 0 && ended === expected && stream === record.output) return;
   let from = 0;
   while (from < stream.length && stream[from] === record.output[from]) from += 1;
   throw new Error(
     `docs/${fence.page}:${fence.line}: "Try it" opens this block as the program below, which ${ended} ` +
-      `where the page's run of the block ${record.ended.kind}, writing ${JSON.stringify(stream.slice(from, from + 60))} ` +
+      `where the page's run of the block ${expected}, writing ${JSON.stringify(stream.slice(from, from + 60))} ` +
       `where the page shows ${JSON.stringify(record.output.slice(from, from + 60))}. ` +
       `The program is the block and what example-slice.ts carries from above it, so the difference is a statement above ` +
       `the block that it leaves out, one it carries that prints, or random numbers the block draws after a block above it ` +

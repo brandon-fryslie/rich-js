@@ -368,6 +368,15 @@ describe("Try it", { timeout: 30_000 }, () => {
     await expect(run(markdown)).rejects.toThrow(/fixture\.md:6: "Try it" opens this block as the program below, which completed where the page's run of the block completed/);
   });
 
+  it("fails the build at a throws block whose program throws something else", async () => {
+    // Declaring, the call that sets the columns is read as only reading `table`, so the program throws before its row is refused.
+    const markdown = page(
+      fence('const table = new Table();\nconst cols = [table.addColumn("a")];', "ts silent"),
+      fence('if (table.columns.length === 0) throw new Error("no columns");\nthrow new RangeError("too many cells");', "ts throws"),
+    );
+    await expect(run(markdown)).rejects.toThrow(/fixture\.md:6: "Try it" [^]*which threw Error: no columns where the page's run of the block threw RangeError: too many cells/);
+  });
+
   it("names random numbers among the causes when a block draws after one above it drew", async () => {
     const markdown = page(fence("console.print(String(Math.random()));"), fence("console.print(String(Math.random()));"));
     await expect(run(markdown)).rejects.toThrow(/fixture\.md:5: "Try it" [^]*random numbers the block draws after a block above it drew some/);
