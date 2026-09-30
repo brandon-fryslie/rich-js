@@ -136,6 +136,35 @@ describe("Markdown", () => {
     expect(out).toEqual(["  • first item", "    continues", "    here and", "    runs on", "", "after the gap", ""]);
   });
 
+  it("leaves a wrapped line that starts with a number other than 1 in its paragraph", () => {
+    expect(rows("the total was\n2024. That year", 80)).toEqual(["the total was 2024. That year", ""]);
+  });
+
+  it("reads a paragraph underlined with = or - as a heading, not a rule", () => {
+    expect(rows("Title\n===\nSub\n---\nbody", 80)).toEqual(["Title", "Sub", "body", ""]);
+  });
+
+  it("keeps a hard line break, from two trailing spaces or a backslash", () => {
+    expect(rows("one  \ntwo\\\nthree\nfour", 80)).toEqual(["one", "two", "three four", ""]);
+  });
+
+  it("joins a quote across a bare > line without leaking the marker", () => {
+    expect(rows("> a\n>\n>b", 80)).toEqual(["▎ a b", ""]);
+  });
+
+  it("reads CRLF line endings as line endings", () => {
+    expect(rows("# Title\r\n- item\r\n- next", 80)).toEqual(["Title", "  • item", "  • next", ""]);
+  });
+
+  it("indents a tab-nested item by the columns the tab spans, never a raw tab", () => {
+    const out = rows("- parent\n\t- child text", 20);
+    expect(out).toEqual(["  • parent", "      • child text", ""]);
+  });
+
+  it("keeps an item's text when its gutter is as wide as the width", () => {
+    expect(rows("- hi", 3)).toEqual(["  • h", "    i", ""]);
+  });
+
   // --- Options ---
 
   it("accepts inlineCodeStyle option as string", () => {

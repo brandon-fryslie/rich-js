@@ -28,25 +28,44 @@ type MdToken =
   | { type: "paragraph"; text: string }
   | { type: "code_block"; language: string; code: string }
   | { type: "hr" }
-  | { type: "list_item"; ordered: boolean; index: number; indent: string; text: string }
+  | { type: "list_item"; ordered: boolean; index: number; indent: number; text: string }
   | { type: "blockquote"; text: string }
   | { type: "blank" };
 
 const HEADING = /^(#{1,6})\s+(.+)$/;
 const RULE = /^(?:---+|===+|\*\*\*+)$/;
+const SETEXT = /^ {0,3}(=+|-+)[ \t]*$/;
 const FENCE = /^```(\w*)/;
-const QUOTE = /^> /;
+const QUOTE = /^> ?/;
 const BULLET = /^(\s*)([*\-+])\s+(.+)$/;
 const NUMBERED = /^(\s*)(\d+)\.\s+(.+)$/;
+const HARD_BREAK = /(?: {2,}|\\)$/;
+const BLOCK_STARTS = [HEADING, FENCE, QUOTE, BULLET, NUMBERED];
 
 /**
- * Whether `line` opens a block of its own. It is what ends a paragraph, a
- * list item or a quote: every line up to the next blank or the next block
- * start belongs to the one before it. A hard-wrapped source line is a soft
+ * Whether `line` opens a block of its own. It is what ends a list item or a
+ * quote, and with `endsParagraph`'s two readings a paragraph: every line up to
+ * the next blank or the next block start belongs to the one before it. A hard-wrapped source line is a soft
  * break, not a block, so the source's own line breaks never reach the screen.
  */
 function opensBlock(line: string): boolean {
-  return [HEADING, FENCE, QUOTE, BULLET, NUMBERED].some((re) => re.test(line)) || RULE.test(line.trim());
+  return BLOCK_STARTS.some((re) => re.test(line)) || RULE.test(line.trim());
+}
+
+/**
+ * Whether `line` ends a paragraph: `opensBlock`, read as CommonMark reads it
+ * under a paragraph. A numbered item interrupts one only when it counts from
+ * 1, so prose wrapped onto "2024. That year" stays prose, and a line of `=` or
+ * `-` is the paragraph's heading underline.
+ */
+function endsParagraph(line: string): boolean {
+  const numbered = NUMBERED.exec(line);
+  return numbered ? parseInt(numbered[2]!, 10) === 1 : opensBlock(line) || SETEXT.test(line);
+}
+
+/** The columns a run of leading whitespace spans, a tab reaching the next stop of 4 as CommonMark counts it. */
+function columns(indent: string): number {
+  return [...indent].reduce((col, ch) => (ch === "\t" ? col + 4 - (col % 4) : col + 1), 0);
 }
 
 /** A marker no line carries: the block has no marker of its own to continue on. */
@@ -57,28 +76,41 @@ const NO_MARKER = /(?!)/;
  * up to a blank or a line that opens another block — and the index of the
  * line that ended it. A line carrying `marker` continues the block rather than
  * opening one, with the marker cut off: that is how a quote's `> ` lines stay
- * one quote. Soft-broken lines are joined by one space, as a Markdown renderer
- * reflows them, with their own indentation dropped.
+ * one quote. `ends` says which unmarked lines open another block. Soft-broken
+ * lines are joined by one space, as a Markdown renderer reflows them, with
+ * their own indentation dropped; a line ending in two spaces or a backslash
+ * breaks hard, and its break is kept.
  */
 function continuation(
   first: string,
   lines: readonly string[],
   start: number,
   marker: RegExp,
+  ends: (line: string) => boolean,
 ): { text: string; next: number } {
   const parts = [first];
   let i = start + 1;
   for (; i < lines.length; i++) {
     const line = lines[i]!;
     const own = marker.test(line);
-    if (line.trim() === "" || (!own && opensBlock(line))) break;
+    if (line.trim() === "" || (!own && ends(line))) break;
     parts.push(line.replace(marker, ""));
   }
-  return { text: parts.map((part) => part.trim()).join(" "), next: i };
+  const kept = parts.filter((part) => part.trim() !== "");
+  const text = kept
+    .map((part, n) =>
+      n === kept.length - 1
+        ? part.trim()
+        : HARD_BREAK.test(part)
+          ? `${part.replace(HARD_BREAK, "").trim()}\n`
+          : `${part.trim()} `,
+    )
+    .join("");
+  return { text, next: i };
 }
 
 function tokenize(markdown: string): MdToken[] {
-  const lines = markdown.split("\n");
+  const lines = markdown.split(/\r?\n/);
   const tokens: MdToken[] = [];
   let i = 0;
 
@@ -122,35 +154,40 @@ function tokenize(markdown: string): MdToken[] {
       continue;
     }
 
-    // Blockquote: its `> ` lines, and any unmarked line that lazily continues them
+    // Blockquote: its `>` lines, and any unmarked line that lazily continues them
     if (QUOTE.test(line)) {
-      const { text, next } = continuation(line.replace(QUOTE, ""), lines, i, QUOTE);
+      const { text, next } = continuation(line.replace(QUOTE, ""), lines, i, QUOTE, opensBlock);
       tokens.push({ type: "blockquote", text });
       i = next;
       continue;
     }
 
     // List item: the marker line and every line continuing it. Its leading
-    // whitespace is its nesting, kept so a nested item sits under its parent.
+    // whitespace is its nesting, kept as columns so a nested item sits under its parent.
     const listMatch = BULLET.exec(line) ?? NUMBERED.exec(line);
     if (listMatch) {
       const ordered = NUMBERED.test(line);
-      const { text, next } = continuation(listMatch[3]!, lines, i, NO_MARKER);
+      const { text, next } = continuation(listMatch[3]!, lines, i, NO_MARKER, opensBlock);
       tokens.push({
         type: "list_item",
         ordered,
         index: ordered ? parseInt(listMatch[2]!, 10) : 0,
-        indent: listMatch[1]!,
+        indent: columns(listMatch[1]!),
         text,
       });
       i = next;
       continue;
     }
 
-    // Paragraph
-    const { text, next } = continuation(line, lines, i, NO_MARKER);
-    tokens.push({ type: "paragraph", text });
-    i = next;
+    // Paragraph, or a setext heading when a line of `=` or `-` underlines it
+    const { text, next } = continuation(line, lines, i, NO_MARKER, endsParagraph);
+    const underline = SETEXT.exec(lines[next] ?? "");
+    tokens.push(
+      underline
+        ? { type: "heading", level: underline[1]!.startsWith("=") ? 1 : 2, text }
+        : { type: "paragraph", text },
+    );
+    i = underline ? next + 1 : next;
   }
 
   return tokens;
@@ -200,7 +237,9 @@ function applyInlineStyles(text: string): RichText {
  * wrapped line, each ended. The first row's gutter is `first` and every later
  * row's is `rest`, so a list item's text hangs clear of its bullet and a
  * quote's bar runs its full height. A block with no gutter passes two empty
- * segments: every wrapped block is laid out the same way.
+ * segments: every wrapped block is laid out the same way. The text keeps at
+ * least one column however wide the gutter, so a row may overrun its width
+ * but no gutter swallows the text it introduces.
  */
 function* guttered(
   text: RichText,
@@ -209,7 +248,7 @@ function* guttered(
   rest: Segment,
   style?: Style,
 ): Iterable<Segment> {
-  const width = options.maxWidth - cellLen(first.text);
+  const width = Math.max(1, options.maxWidth - cellLen(first.text));
   const rows = Segment.splitLines(Segment.applyStyle([...text.render({ ...options, maxWidth: width })], style));
   for (const [row, line] of rows.entries()) {
     yield row === 0 ? first : rest;
@@ -266,7 +305,7 @@ export class Markdown implements Renderable, Measurable {
         }
 
         case "list_item": {
-          const bullet = token.indent + (token.ordered ? `${token.index}. ` : drawable(options, "  • ", "  * "));
+          const bullet = " ".repeat(token.indent) + (token.ordered ? `${token.index}. ` : drawable(options, "  • ", "  * "));
           const hang = new Segment(" ".repeat(cellLen(bullet)));
           yield* guttered(applyInlineStyles(token.text), options, new Segment(bullet), hang);
           break;
