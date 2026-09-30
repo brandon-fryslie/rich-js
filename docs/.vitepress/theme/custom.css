@@ -201,7 +201,7 @@
   overflow-x: auto;
 }
 
-.vp-doc .rich-live-bar {
+.rich-live-bar {
   display: flex;
   justify-content: flex-end;
   padding: 4px 16px;
@@ -234,6 +234,36 @@
 .rich-live-button:disabled {
   opacity: 0.5;
   pointer-events: none;
+}
+
+/* The landing page's hero terminal (theme/RichShowcase.ts): a card under the
+ * hero's text, as wide as its terminal and no wider than the page. Its font is
+ * sized as an example's output is, from the columns the terminal has, but with
+ * no floor: a showcase is looked at whole, not read row by row, and a floor
+ * would leave it scrolling sideways at phone width. Its screen holds every row
+ * from the start, so the page does not move when the program first draws. */
+.rich-showcase {
+  container-type: inline-size;
+  box-sizing: border-box;
+  max-width: calc(1152px + 2 * 24px);
+  margin: 0 auto;
+  padding: 0 24px 48px;
+  --rich-fragment-font: min(100cqw / (var(--rich-example-columns) * 0.62 + 2), var(--vp-code-font-size)) / 1.25
+    var(--rich-code-font-family);
+}
+
+.rich-showcase .rich-live {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--vp-shadow-3);
+}
+
+.rich-showcase .rich-live-screen {
+  min-height: calc(var(--rich-example-rows) * 1lh + 2em);
 }
 
 /* The playground (theme/RichPlayground.ts): a bar, then the editor beside the
