@@ -173,6 +173,27 @@ export function chopCells(text: string, maxWidth: CellCol): string[] {
   return lines;
 }
 
+/**
+ * `line` split at each of `cuts`, in one walk over it. Converting each cut to a
+ * code-unit offset on its own rescans the line from the start every time, which
+ * is quadratic in a long enough string.
+ */
+export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
+  const pieces: string[] = [];
+  let start = 0;
+  let offset = 0;
+  let cells = 0;
+  for (const ch of line) {
+    if (pieces.length < cuts.length && cells >= cuts[pieces.length]!) {
+      pieces.push(line.slice(start, offset));
+      start = offset;
+    }
+    cells += cellLen(ch);
+    offset += ch.length;
+  }
+  return [...pieces, line.slice(start)];
+}
+
 // [LAW:no-shared-mutable-globals] A private memo, written only by `graphemes`.
 let segmenter: Intl.Segmenter | undefined;
 

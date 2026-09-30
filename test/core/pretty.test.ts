@@ -165,6 +165,114 @@ describe("Pretty", () => {
     expect(text).toBe('{ metadata: { active: true } }');
   });
 
+  describe("text that is one piece wraps under the key it belongs to (rich-pretty-xms.tmf)", () => {
+    const laidOut = (value: unknown, maxWidth: number): string[] =>
+      new Pretty(value, { indentGuides: false }).toText({ maxWidth }).plain.split("\n");
+
+    it("hangs a self-describing value's own lines, and cuts them to the width", () => {
+      // `String(err)` is two lines, the second 60 cells. Emitted verbatim, it
+      // started at column 0 and ran past the width, for `RichText` to wrap back
+      // to column 0 again.
+      const err = new Error("line1\n" + "B".repeat(60));
+      expect(laidOut({ err }, 43)).toEqual([
+        "{",
+        "    err: Error: line1",
+        "        " + "B".repeat(35),
+        "        " + "B".repeat(25),
+        "}",
+      ]);
+    });
+
+    it("starts a value on a hanging line when not even its first word fits after its key", () => {
+      // The Map key fits with its `" => "` charged, which leaves `"v"` one cell
+      // at column 25 of 26.
+      const m = new Map([[[1, 2, 3, 10], "v"]]);
+      expect(laidOut({ m, z: 1 }, 26)).toEqual([
+        "{",
+        "    m: Map {",
+        "        [1, 2, 3, 10] =>",
+        '            "v"',
+        "    },",
+        "    z: 1",
+        "}",
+      ]);
+    });
+
+    it("keeps a line's own indent on the rows it wraps into", () => {
+      const value = { toString: () => "head\n    indented line that is long enough to wrap" };
+      expect(laidOut({ a: value }, 24)).toEqual([
+        "{",
+        "    a: head",
+        "            indented",
+        "            line that is",
+        "            long enough",
+        "            to wrap",
+        "}",
+      ]);
+    });
+
+    it("hangs under the value itself when one indent past its slot is the edge", () => {
+      // The element starts at column 8 of 12; one indent past it is column 12,
+      // where a hanging row has no cell left and would wrap back to column 0.
+      expect(laidOut([["abcdefghijklmnopqrstu"]], 12)).toEqual([
+        "[",
+        "    [",
+        '        "abc',
+        "        defg",
+        "        hijk",
+        "        lmno",
+        "        pqrs",
+        '        tu"',
+        "    ]",
+        "]",
+      ]);
+    });
+
+    it("wraps a long string at its words, leaving room for the comma after it", () => {
+      const s = "lorem ipsum dolor sit amet consectetur adipiscing elit sed do";
+      expect(laidOut({ s, t: 1 }, 30)).toEqual([
+        "{",
+        '    s: "lorem ipsum dolor sit',
+        "        amet consectetur",
+        "        adipiscing elit sed",
+        '        do",',
+        "    t: 1",
+        "}",
+      ]);
+    });
+
+    it("folds a word in place when a hanging line would have no more room", () => {
+      // An array element starts left of where a hanging line would, so moving
+      // it gains nothing: it is cut where it stands.
+      const lines = laidOut(["x".repeat(30)], 20);
+      expect(lines[1]).toBe('    "' + "x".repeat(15));
+      for (const line of lines) expect(cellLen(line)).toBeLessThanOrEqual(20);
+    });
+
+    it("leaves no row behind that a break alone made", () => {
+      // A folded word that ends exactly at the width left an empty remainder,
+      // and a folded word's trailing space a row of its own: blank lines, one
+      // inside the string literal.
+      expect(laidOut({ a: ["xxxxxxxxxx", 1] }, 8)).toEqual([
+        "{", "    a: [", '        "xxxxxxxxxx",', "        1", "    ]", "}",
+      ]);
+      expect(laidOut({ k: "a".repeat(40) + " bbb ccc" }, 30)).toEqual([
+        "{", '    k: "' + "a".repeat(22), "        " + "a".repeat(18) + " bbb", '        ccc"', "}",
+      ]);
+    });
+
+    it("lays a value that threw out from where it stands after its key", () => {
+      const value = { a: 1, get zzzzzzzzzzzzzzzz(): never { throw new Error("boom bam bim"); } };
+      expect(laidOut(value, 30)).toEqual([
+        "{", "    a: 1,", "    zzzzzzzzzzzzzzzz: [Threw:", "        boom bam bim]", "}",
+      ]);
+    });
+
+    it("leaves the root alone, whose line belongs to whoever prints it", () => {
+      expect(laidOut(new Error("root\nsecond"), 8)).toEqual(["Error: root", "second"]);
+    });
+  });
+
   // --- Expand All Mode ---
 
   it("expandAll forces expansion of all containers", () => {
