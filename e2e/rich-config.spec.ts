@@ -9,10 +9,7 @@
  */
 import { test, expect, type Page } from "@playwright/test";
 import { cellLen } from "../src/core/cells.js";
-
-// The page shell's terminal (examples/_browser-shell/mount.ts.tmpl).
-const COLS = 100;
-const ROWS = 30;
+import { DEMO_TERMINAL } from "../examples/_browser-shell/demo-terminal.js";
 
 /** The terminal's rows as the user reads them. */
 async function screen(page: Page): Promise<string[]> {
@@ -33,7 +30,7 @@ async function clickOn(page: Page, text: string): Promise<void> {
   const x = cellLen(rows[y]!.slice(0, rows[y]!.indexOf(text)));
   const box = await page.locator(".xterm-screen").boundingBox();
   if (box === null) throw new Error("the terminal's screen is not laid out");
-  const cell = { width: box.width / COLS, height: box.height / ROWS };
+  const cell = { width: box.width / DEMO_TERMINAL.cols, height: box.height / DEMO_TERMINAL.rows };
   await page.mouse.click(
     box.x + (x + 0.5) * cell.width,
     box.y + (y + 0.5) * cell.height,

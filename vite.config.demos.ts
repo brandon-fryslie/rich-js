@@ -31,6 +31,7 @@ import {
 import { resolve, relative, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { XTERM } from "./examples/_browser-shell/xterm.js";
+import { DEMO_TERMINAL } from "./examples/_browser-shell/demo-terminal.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const examplesDir = resolve(__dirname, "examples");
@@ -128,7 +129,10 @@ function stageDemos(demos: readonly string[]): void {
     );
     writeFileSync(
       resolve(dir, "mount.ts"),
-      mountTmpl.replaceAll("__DEMO_WIRE__", wirePath),
+      mountTmpl
+        .replaceAll("__DEMO_WIRE__", wirePath)
+        .replaceAll("__DEMO_COLS__", String(DEMO_TERMINAL.cols))
+        .replaceAll("__DEMO_ROWS__", String(DEMO_TERMINAL.rows)),
     );
   }
 

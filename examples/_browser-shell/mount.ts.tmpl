@@ -12,9 +12,10 @@
  *
  * [LAW:types-are-the-program] The `Terminal` global declared here is the
  * minimum surface every wire's `mount(terminal: XtermTerminal)` expects:
- * cols/rows, write, onData, onResize, plus the DOM-mount helpers we call
- * locally (open, focus). Declaring the full shape lets TypeScript match
- * structurally — no `as unknown as` cast needed at the boundary.
+ * cols/rows, write, onData, onResize, plus what we call locally: the
+ * DOM-mount helpers (open, focus), write's parsed-callback and scrollToTop.
+ * Declaring the full shape lets TypeScript match structurally — no
+ * `as unknown as` cast needed at the boundary.
  */
 import mount from "__DEMO_WIRE__";
 
@@ -25,7 +26,8 @@ interface XtermDisposable {
 declare const Terminal: new (opts: Record<string, unknown>) => {
   readonly cols: number;
   readonly rows: number;
-  write(data: Uint8Array | string): void;
+  write(data: Uint8Array | string, callback?: () => void): void;
+  scrollToTop(): void;
   onData(handler: (data: string) => void): XtermDisposable;
   onResize(handler: (size: { cols: number; rows: number }) => void): XtermDisposable;
   open(el: HTMLElement): void;
@@ -54,8 +56,8 @@ const setStatus = (msg: string, cls?: string): void => {
 try {
   const termEl = requireEl<HTMLDivElement>("term");
   const term = new Terminal({
-    cols: 100,
-    rows: 30,
+    cols: __DEMO_COLS__,
+    rows: __DEMO_ROWS__,
     cursorBlink: true,
     theme: { background: "#1e1e1e" },
     // The docs' code font stack, which the shell gives #term: xterm takes a
@@ -67,6 +69,13 @@ try {
   // No cast: the local `Terminal` instance shape matches the wire's
   // `XtermTerminal` parameter type structurally.
   const handle = mount(term);
+  // A printed demo writes many screens at once, and a terminal's viewport
+  // follows the last row written; a reader starts at the first. Where the
+  // demo drew nothing off screen there is no scrollback, and this is a no-op.
+  // [LAW:no-ambient-temporal-coupling] xterm parses writes in order, so this
+  // callback runs once every row the demo wrote while mounting is in the
+  // buffer — the ordering is xterm's, not a timer's.
+  term.write("", () => term.scrollToTop());
   (window as unknown as { __handle: unknown }).__handle = handle;
   setStatus("ready · first frame rendered", "ok");
 } catch (err) {

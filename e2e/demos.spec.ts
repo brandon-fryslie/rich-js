@@ -134,3 +134,20 @@ test("a demo's Powerline glyphs draw in the Powerline face: rich-strip", async (
     })
     .toContainEqual(expect.objectContaining({ web: true }));
 });
+
+// A printed demo writes many screens at once, and a terminal's viewport follows
+// the last row written — so a visitor landed on the end of the tour and never
+// saw where it starts. The first row on screen has to be the first row printed.
+// The shell owns this for every demo; these two print more rows than it has.
+// `first` matches the whole first row: rich-strip's first label recurs further
+// down, and a row that merely contains it would pass scrolled to the bottom.
+for (const { demo, first } of [
+  { demo: "themes-and-color-studio", first: /^themes-and-color-studio\b/ },
+  { demo: "rich-strip", first: /^PowerlineJoiner\s*$/ },
+]) {
+  test(`a printed demo opens on its first line: ${demo}`, async ({ page }) => {
+    await page.goto(`demos-app/${demo}/`);
+    await expect(page.locator("#status")).toContainText("ready");
+    await expect(page.locator(".xterm-rows > div").first()).toHaveText(first);
+  });
+}
