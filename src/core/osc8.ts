@@ -16,10 +16,10 @@
  * The `id=` parameter is what makes one link hover as one link. A terminal
  * treats cells as the same hyperlink when they share BOTH the URI and the id
  * (the OSC 8 spec, and VTE / iTerm2 / kitty / WezTerm alike); without an id,
- * each open sequence is its own link. The coalescer can only share one OSC 8
- * pair across a run of identical SGR, so a link whose text changes style
- * mid-span — a bold glyph beside plain text, a padded cell — is emitted as
- * several pairs, and would highlight piecewise on hover.
+ * each open sequence is its own link. The encoder writes one OSC 8 pair per
+ * segment, as the reference does, so a link whose text spans several segments
+ * — a bold glyph beside plain text, a padded cell — is emitted as several
+ * pairs, and would highlight piecewise on hover.
  *
  * [LAW:types-are-the-program] The id is a pure function of the URI, so the
  * byte stream stays a pure function of (style, text, destination): no counter,

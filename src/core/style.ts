@@ -316,8 +316,7 @@ export class Style {
   /**
    * Returns the SGR parameter list this style emits (e.g. `"1;31;48;2;0;0;255"`),
    * or `""` when the style has no SGR contribution. Excludes OSC 8 link bytes —
-   * links are not SGR. The segment encoder (`segmentsToString`) uses this
-   * string as the group key for adjacent-same-style coalescing and wraps it in
+   * links are not SGR. The segment encoder (`segmentToString`) wraps it in
    * `\x1b[...m`; styled text reaches the wire only through that encoder.
    *
    * [LAW:one-source-of-truth] One computation of SGR codes.

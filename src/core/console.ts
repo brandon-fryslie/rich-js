@@ -795,10 +795,8 @@ export class Console {
   // --- Internal ---
 
   // [LAW:single-enforcer] One encode call per write batch routes through the
-  // same `segmentsToString` tree-coalescer used by `renderToString`. Adjacent
-  // same-style segments share one SGR open/close pair on the wire instead of
-  // one pair per segment. Recording captures every non-control segment for
-  // replay regardless of how the bytes coalesce.
+  // same `segmentsToString` used by `renderToString`. Recording captures every
+  // non-control segment for replay.
   private _writeSegments(segments: Segment[]): void {
     if (this._record) {
       for (const segment of segments) {

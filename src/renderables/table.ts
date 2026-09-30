@@ -1058,6 +1058,7 @@ export class Table implements Renderable, Measurable {
     // Render each cell onto the canvas the geometry gave its column. Columns
     // the width could not seat are absent from `columns` and so are never
     // rendered at all.
+    const paddedWidths = columns.map((cellWidth, index) => padLeft[index]! + cellWidth + padRight[index]!);
     const cellLines: Segment[][][] = columns.map((cellWidth, index) => {
       const col = this._columns[index]!;
       const cell = cells[index] ?? embed("");
@@ -1077,12 +1078,15 @@ export class Table implements Renderable, Measurable {
         noWrap: col.noWrap,
         height: stackedHeight(options.height),
       })];
-      // The padding above and below is part of the cell, as the reference's
-      // `Padding` makes it: blank lines the cell's style covers.
-      const padLine = (): Segment[] => [new Segment(" ".repeat(cellWidth))];
+      // The padding on every side is part of the cell, as the reference's
+      // `Padding` makes it: a content line sits between its left and right
+      // blanks, and a line above or below is one blank the cell's width.
+      const left = blank(padLeft[index]!);
+      const right = blank(padRight[index]!);
+      const padLine = (): Segment[] => blank(paddedWidths[index]!);
       return [
         ...Array.from({ length: top }, padLine),
-        ...Segment.splitAndCropLines(segs, cellWidth),
+        ...Segment.splitAndCropLines(segs, cellWidth).map((line) => [...left, ...line, ...right]),
         ...Array.from({ length: bottom }, padLine),
       ];
     });
@@ -1102,21 +1106,17 @@ export class Table implements Renderable, Measurable {
           yield divider;
         }
 
-        const cellWidth = columns[colIdx]!;
         const style = styles[colIdx]!;
 
         // A cell with fewer lines than the row contributes blanks, so every
         // column spans the same number of rows and the frame stays rectangular.
-        const line = cellLines[colIdx]![lineIdx - drop[colIdx]!] ?? [new Segment(" ".repeat(cellWidth))];
+        const line = cellLines[colIdx]![lineIdx - drop[colIdx]!] ?? blank(paddedWidths[colIdx]!);
 
         // The cell's style is the base its content's own spans layer over, and
-        // it covers the whole cell — its left and right padding and its blank
-        // lines too, as the reference's does — so a background fills the column
-        // rather than sitting behind the text alone.
-        yield* Segment.applyStyle(
-          [...blank(padLeft[colIdx]!), ...line, ...blank(padRight[colIdx]!)],
-          style.isNull ? undefined : style,
-        );
+        // it covers the whole cell — its padding and its blank lines too, as
+        // the reference's does — so a background fills the column rather than
+        // sitting behind the text alone.
+        yield* Segment.applyStyle(line, style.isNull ? undefined : style);
       }
 
       if (frame && geometry.edge === 1) {

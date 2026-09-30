@@ -594,8 +594,9 @@ describe("Console.print() justify places the block", () => {
   it("styles the padding with the line and never the break", () => {
     const { console: c, chunks } = makeConsole({ width: 12, colorSystem: "truecolor" });
     c.print("hi\nyo", { justify: "center", style: "on blue" });
+    // Python Rich 9d8f9a3's bytes for the same call.
     expect(captured(chunks)).toBe(
-      "\x1b[44m     hi     \x1b[0m\n\x1b[44m     yo     \x1b[0m\n",
+      "\x1b[44m     \x1b[0m\x1b[44mhi\x1b[0m\x1b[44m     \x1b[0m\n\x1b[44m     \x1b[0m\x1b[44myo\x1b[0m\x1b[44m     \x1b[0m\n",
     );
   });
 });

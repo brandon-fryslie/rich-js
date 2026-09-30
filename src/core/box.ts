@@ -226,7 +226,9 @@ export class Box {
 
   /**
    * [LAW:dataflow-not-control-flow] Every full-width rule the box can draw is
-   * this one loop; which rule it is arrives as four characters, not a branch.
+   * this one join; which rule it is arrives as four characters, not a branch.
+   * The rule is one segment, as the reference's `get_top` is one string, so
+   * its bytes are one styled run.
    */
   private getEdge(
     widths: readonly number[],
@@ -234,15 +236,9 @@ export class Box {
     style: Style | undefined,
     edge: boolean,
   ): Segment[] {
-    const segments: Segment[] = [];
-    if (edge) segments.push(new Segment(chars.left, style));
-    for (let i = 0; i < widths.length; i++) {
-      if (i > 0) segments.push(new Segment(chars.cross, style));
-      segments.push(new Segment(chars.horizontal.repeat(widths[i]!), style));
-    }
-    if (edge) segments.push(new Segment(chars.right, style));
-    segments.push(Segment.line());
-    return segments;
+    const inner = widths.map((width) => chars.horizontal.repeat(width)).join(chars.cross);
+    const rule = edge ? chars.left + inner + chars.right : inner;
+    return [new Segment(rule, style), Segment.line()];
   }
 
   private getRowChars(level: RowLevel): EdgeChars {
