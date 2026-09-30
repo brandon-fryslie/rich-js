@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-248",
+      "ref": "refs/pull/248/merge",
+      "sha": "5f3454db4f9a54ab3f46bc0227882cde58586989",
+      "timestamp": "2026-09-30T10:07:55.577Z",
+      "commits": [
+        {
+          "sha": "5f3454db4f9a54ab3f46bc0227882cde58586989",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:06:54-06:00",
+          "message": "Merge a59ce49daec71365b1ddc8ec6fe9ef439d4338ad into 9bfe1d1ff8f779367b2ac22876bb7d61bf927f28\n"
+        },
+        {
+          "sha": "a59ce49daec71365b1ddc8ec6fe9ef439d4338ad",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:06:49-06:00",
+          "message": "fix(live): paint inline frames through App's painter, cursor on the last row (rich-live-4rh)\n\nAn inline Live wrote a newline after its frame's last row. On a frame as\ntall as the terminal that newline scrolled the screen, and the next erase\ncould not reach the frame's first row, so every refresh left it in\nscrollback. App already painted correctly with the cursor resting on the\nlast row. The painter now lives in core/paint.ts and both paint through it\n(rich-live-4vwq); the newline under the frame is written once, on hand-back.\n\nLive's tests now drive @xterm/headless (new devDependency) and assert the\nscreen and scrollback a user would see.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9bfe1d1ff8f779367b2ac22876bb7d61bf927f28",
