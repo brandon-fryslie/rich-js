@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-259",
+      "ref": "refs/pull/259/merge",
+      "sha": "6cfd7bdb34506f2eba6188e7df5389f91998127b",
+      "timestamp": "2026-09-30T14:49:28.850Z",
+      "commits": [
+        {
+          "sha": "6cfd7bdb34506f2eba6188e7df5389f91998127b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:48:17-06:00",
+          "message": "Merge ddfa207845c97d735193e0280b5ae1daf5f05761 into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
+        },
+        {
+          "sha": "ddfa207845c97d735193e0280b5ae1daf5f05761",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:48:12-06:00",
+          "message": "fix(markdown): every option takes effect or is gone (rich-markdown-ft8)\n\n- inlineCodeStyle styles inline code (was hard-coded to markdown.code).\n- hyperlinks: true makes a link's text the link, in markdown.link_url;\n  false draws the text in markdown.link and writes \" (url)\" after it, as\n  Rich does.\n- justify places paragraphs, list items and quoted text; headings keep\n  their own placement. It was declared and never read, same defect.\n- codeTheme is removed: Syntax lost its theme option in #256, colours are\n  console theme names, so there is nothing for it to name.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "55e33b2a298c6f0c5b24efce711f6fd6e66e6876",
