@@ -4,15 +4,22 @@
     {
       "version": "pr-279",
       "ref": "refs/pull/279/merge",
-      "sha": "d610ae41e781b1c24ac54523516c1b49c2432d4d",
-      "timestamp": "2026-09-30T21:41:15.384Z",
+      "sha": "a4d09cb58921ca542281c0934c61a2b4897b0ced",
+      "timestamp": "2026-09-30T21:52:01.675Z",
       "commits": [
         {
-          "sha": "d610ae41e781b1c24ac54523516c1b49c2432d4d",
+          "sha": "a4d09cb58921ca542281c0934c61a2b4897b0ced",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T15:40:04-06:00",
-          "message": "Merge da94a63c298801c5010e588f9be5f537623f882b into 3b88b27469bac835f2df42327f7807154583c626\n"
+          "timestamp": "2026-09-30T21:50:50Z",
+          "message": "Merge cce182323d6a86c55e47f3356b03445bf7eb49af into 3b88b27469bac835f2df42327f7807154583c626\n"
+        },
+        {
+          "sha": "cce182323d6a86c55e47f3356b03445bf7eb49af",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T15:50:34-06:00",
+          "message": "fix(traceback): a wrapped frame continues under itself; a non-string message is reported, not thrown (rich-traceback-igzo)\n\nReview (high) of #279: the frame list is a block set two cells in, divided\nby Padding's layoutPadding, so a location that wraps stays under its frame\ninstead of landing at column 0. toError's gate also requires name and message\nto be strings, so a native error with message = undefined reaches the report\nas a NonError instead of throwing inside the crash handler. The crash-order\nassertion decodes ANSI before rejoining a fold.\n"
         },
         {
           "sha": "da94a63c298801c5010e588f9be5f537623f882b",
