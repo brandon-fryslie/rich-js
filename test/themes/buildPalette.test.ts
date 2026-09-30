@@ -30,6 +30,15 @@ describe("buildPalette", () => {
     expect(p.get("error")).toEqual(TEST_BASE.error);
   });
 
+  it("draws a translucent base colour onto the background before deriving from it", () => {
+    // 10% black on white is a pale grey, which wants black text; over the
+    // terminal's black it would be black and want white.
+    const white = new ColorRgba(255, 255, 255);
+    const p = buildPalette("light", false, { ...TEST_BASE, background: white, primary: new ColorRgba(0, 0, 0, 0.1) });
+    expect(p.get("primary")).toEqual(new ColorRgba(230, 230, 230));
+    expect(p.get("on-primary")).toEqual(new ColorRgba(0, 0, 0));
+  });
+
   it("includes background and foreground", () => {
     const p = buildPalette("test", true, TEST_BASE);
     expect(p.get("background")).toEqual(TEST_BASE.background);

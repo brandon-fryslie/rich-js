@@ -19,7 +19,11 @@ import type { ColorRgba } from "../core/color.js";
  * background that was: the SGR writer would composite it over the terminal's
  * black, an export over its canvas, and the two would draw different colours.
  * So it is drawn onto `background` here, once, and the writer, the exporters
- * and the contrast choosers all read the colour the theme meant.
+ * and the contrast choosers all read the colour it has there. On any other
+ * surface it keeps that colour: the tint does not follow what is under it.
+ *
+ * @throws RangeError when `background` is translucent, or when a colour is
+ * translucent and there is no `background` to draw it on.
  */
 export class Palette {
   readonly name: string;
@@ -38,17 +42,15 @@ export class Palette {
     // defensive copy: ReadonlyMap is a compile-time aliasing constraint, not a
     // runtime one.
     const background = vars.get("background");
-    const draw = background === undefined ? requireOpaque(name) : drawnOn(background);
-    this.vars = new Map([...vars].map(([key, colour]) => [key, draw(key, colour)]));
+    const draw: (colour: ColorRgba, key: string) => ColorRgba =
+      background === undefined ? opaqueOnly(name) : drawnOn(name, background);
+    this.vars = new Map([...vars].map(([key, colour]) => [key, draw(colour, key)]));
   }
 
   get(key: string): ColorRgba | undefined {
     return this.vars.get(key);
   }
 }
-
-/** Draws one of a palette's colours: `(variable name, colour) → opaque colour`. */
-export type DrawPaletteColour = (key: string, colour: ColorRgba) => ColorRgba;
 
 /**
  * A palette colour as it is drawn: composited onto the palette's own
@@ -57,18 +59,18 @@ export type DrawPaletteColour = (key: string, colour: ColorRgba) => ColorRgba;
  * colour means; `buildPalette` draws its base colours through it before
  * deriving from them.
  */
-export function drawnOn(background: ColorRgba): DrawPaletteColour {
+export function drawnOn(name: string, background: ColorRgba): (colour: ColorRgba) => ColorRgba {
   if (background.alpha !== 1) {
     throw new RangeError(
-      `a palette background is the surface its translucent colours are drawn on, so it must be opaque; got ${background.hex}`,
+      `palette ${JSON.stringify(name)}: background is the surface its translucent colours are drawn on, so it must be opaque; got ${background.hex}`,
     );
   }
-  return (_key, colour) => colour.compositeOver(background);
+  return (colour) => colour.compositeOver(background);
 }
 
 // A palette with no background has nothing to draw a translucent colour on.
-function requireOpaque(name: string): DrawPaletteColour {
-  return (key, colour) => {
+function opaqueOnly(name: string): (colour: ColorRgba, key: string) => ColorRgba {
+  return (colour, key) => {
     if (colour.alpha !== 1) {
       throw new RangeError(
         `palette ${JSON.stringify(name)}: ${key} is translucent (${colour.hex}) but the palette has no "background" to draw it on`,

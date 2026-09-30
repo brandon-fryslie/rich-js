@@ -49,16 +49,16 @@ const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "
  * as and every derived entry is opaque.
  */
 export function buildPalette(name: string, dark: boolean, given: BaseColors): Palette {
-  const draw = drawnOn(given.background);
+  const draw = drawnOn(name, given.background);
   const base: BaseColors = {
-    primary: draw("primary", given.primary),
-    secondary: draw("secondary", given.secondary),
-    accent: draw("accent", given.accent),
-    success: draw("success", given.success),
-    warning: draw("warning", given.warning),
-    error: draw("error", given.error),
+    primary: draw(given.primary),
+    secondary: draw(given.secondary),
+    accent: draw(given.accent),
+    success: draw(given.success),
+    warning: draw(given.warning),
+    error: draw(given.error),
     background: given.background,
-    foreground: draw("foreground", given.foreground),
+    foreground: draw(given.foreground),
   };
   const vars = new Map<string, ColorRgba>();
 

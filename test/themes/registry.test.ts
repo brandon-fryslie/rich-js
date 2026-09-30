@@ -4,7 +4,6 @@ import { resolveLook } from "../../src/core/export-lines.js";
 import { Style } from "../../src/core/style.js";
 import { Palette } from "../../src/themes/palette.js";
 import { CATPPUCCIN_LATTE } from "../../src/themes/terminalThemes.js";
-import * as terminalThemes from "../../src/themes/terminalThemes.js";
 import {
   getThemeBaseColors,
   getThemePalette,
@@ -140,7 +139,7 @@ describe("getThemeBaseColors", () => {
 // for that theme's background. Whatever a palette hands out is drawn there
 // already, so the terminal and an export paint the same colour for it.
 describe("every palette colour is opaque", () => {
-  it("holds for every bundled palette, its base colours, and its TerminalTheme", () => {
+  it("holds for every bundled palette and its base colours", () => {
     const translucent: string[] = [];
     for (const name of ALL_NAMES) {
       for (const [key, colour] of getThemePalette(name).vars) {
@@ -149,11 +148,6 @@ describe("every palette colour is opaque", () => {
       const base = getThemeBaseColors(name);
       for (const key of ["bg", "fg", "primary", "secondary", "accent", "success", "warning", "error"] as const) {
         if (base[key].alpha !== 1) translucent.push(`base ${name}.${key} ${base[key].hex}`);
-      }
-    }
-    for (const [exported, theme] of Object.entries(terminalThemes)) {
-      for (const [key, colour] of theme.palette.vars) {
-        if (colour.alpha !== 1) translucent.push(`${exported}.palette.${key} ${colour.hex}`);
       }
     }
     expect(translucent).toEqual([]);

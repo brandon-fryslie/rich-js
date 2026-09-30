@@ -72,8 +72,8 @@ export function getThemeBaseColors(name: ThemeName): ThemeBaseColors {
   const bg = requireBaseVar(data, "background");
   // The colours `getThemePalette(name)` hands out for the same names: drawn on
   // the theme's own background, as a Palette draws every colour it holds.
-  const draw = drawnOn(bg);
-  const base = (key: string): ColorRgba => draw(key, requireBaseVar(data, key));
+  const draw = drawnOn(data.name, bg);
+  const base = (key: string): ColorRgba => draw(requireBaseVar(data, key));
   return {
     name: data.name,
     dark: data.dark,
