@@ -4,15 +4,22 @@
     {
       "version": "pr-253",
       "ref": "refs/pull/253/merge",
-      "sha": "f3f4e41c0cd4909060ade975e5c4c480e94ee800",
-      "timestamp": "2026-09-30T11:56:49.518Z",
+      "sha": "7761b89bf62878a62e4419a3eb045189a9b9ca52",
+      "timestamp": "2026-09-30T12:03:51.065Z",
       "commits": [
         {
-          "sha": "f3f4e41c0cd4909060ade975e5c4c480e94ee800",
+          "sha": "7761b89bf62878a62e4419a3eb045189a9b9ca52",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:55:42-06:00",
-          "message": "Merge f5650ea81e405c06266c78c1d52ca7d4203354d9 into 2c62ec9330dd145ef6fd85c07020d6126ec44f48\n"
+          "timestamp": "2026-09-30T12:02:45Z",
+          "message": "Merge ce0de215e7aedaf1c7b82d70bf345c3d398faf05 into 2c62ec9330dd145ef6fd85c07020d6126ec44f48\n"
+        },
+        {
+          "sha": "ce0de215e7aedaf1c7b82d70bf345c3d398faf05",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T06:02:40-06:00",
+          "message": "refactor(repo-facts): path helpers join the repo facts; a gate keeps test/ out of non-test code (rich-repo-facts-hss)\n\nReview pass (high) on PR #253:\n- repoRelative, isPathInside, isUnderSrc and isBehindNodeAirlock move to\n  scripts/repo-facts.ts, so the seam gates no longer import the coverage\n  verifier for repo layout.\n- test/seam/test-imports.test.ts fails when any .ts under src/, docs/,\n  scripts/ or examples/ imports a module under test/.\n- example-runner reads peerDependencies from PACKAGE_MANIFEST instead of\n  parsing package.json a second time.\n- resolveAlias no longer swallows a throw from getAliasedSymbol.\n- tsconfig.scripts.json includes scripts/**/*.ts directly.\n"
         },
         {
           "sha": "f5650ea81e405c06266c78c1d52ca7d4203354d9",
