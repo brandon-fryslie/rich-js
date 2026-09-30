@@ -239,6 +239,22 @@ describe("Markdown", () => {
     ]);
   });
 
+  it("follows the justify it is rendered with when none is given, and still leaves headings left", () => {
+    const md = new Markdown("# Head\n\nbody");
+    const text = collectText(md, { maxWidth: 12, justify: "right" });
+    expect(text.split("\n").map((row) => row.trimEnd())).toEqual(["Head", "", "        body", ""]);
+  });
+
+  it("spans a link over exactly its text when the source carries a control character", () => {
+    for (const options of [{}, { hyperlinks: false }] satisfies MarkdownOptions[]) {
+      const linked = collectSegments(new Markdown("x[a\x01b](https://e.com)", options), { maxWidth: 80 })
+        .filter((s) => s.style?.link === "https://e.com")
+        .map((s) => s.text)
+        .join("");
+      expect(linked).toBe(options.hyperlinks === false ? "https://e.com" : "ab");
+    }
+  });
+
   // --- Measurement ---
 
   it("measurement returns valid values", () => {

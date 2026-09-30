@@ -23,15 +23,19 @@ export interface MarkdownOptions {
    * in parentheses, for a reader who cannot click it. Default `true`.
    */
   hyperlinks?: boolean;
-  /** How body text — paragraphs, list items, quotes — is placed in its width. Headings keep their own. */
+  /**
+   * How body text — paragraphs, list items, quotes — is placed in its width.
+   * Unset, it follows the justify it is rendered with. Headings are always left.
+   */
   justify?: "left" | "center" | "right" | "full";
 }
 
-/** What the options say about the text inside blocks, which every block's text is drawn with. */
+type Justify = MarkdownOptions["justify"];
+
+/** What the options say about inline text, which every block's text is drawn with. */
 interface InlineSettings {
   readonly inlineCodeStyle: string | Style;
   readonly hyperlinks: boolean;
-  readonly justify: MarkdownOptions["justify"];
 }
 
 // Simple markdown token types
@@ -210,7 +214,7 @@ function tokenize(markdown: string): MdToken[] {
   return tokens;
 }
 
-function applyInlineStyles(text: string, settings: InlineSettings, justify: MarkdownOptions["justify"]): RichText {
+function applyInlineStyles(text: string, settings: InlineSettings, justify: Justify): RichText {
   const result = new RichText("", { end: "", justify });
 
   // Process inline patterns
@@ -236,13 +240,16 @@ function applyInlineStyles(text: string, settings: InlineSettings, justify: Mark
     } else if (match[5] && match[6]) {
       // Link: [text](url). As Rich draws it: without hyperlinks the URL is
       // written out, and it is still the link, for a terminal that can click it.
+      // The link spans from where the linked text starts in `result`, which
+      // `append` may have shortened by stripping control characters.
       const link = new Style({ link: match[6] });
       if (settings.hyperlinks) {
-        result.append(match[5], "markdown.link_url").stylize(link, -match[5].length);
+        const start = result.length;
+        result.append(match[5], "markdown.link_url").stylize(link, start);
       } else {
         result.append(match[5], "markdown.link").append(" (");
-        result.append(match[6], "markdown.link_url").stylize(link, -match[6].length);
-        result.append(")");
+        const start = result.length;
+        result.append(match[6], "markdown.link_url").stylize(link, start).append(")");
       }
     }
 
@@ -287,11 +294,7 @@ function* guttered(
  * too, so `splitLines` counts it even when the text is empty, and an empty
  * item still draws its bullet.
  */
-function inline(
-  text: string,
-  settings: InlineSettings,
-  justify: MarkdownOptions["justify"],
-): (options: RenderOptions) => Iterable<Segment> {
+function inline(text: string, settings: InlineSettings, justify: Justify): (options: RenderOptions) => Iterable<Segment> {
   return function* (options) {
     yield* applyInlineStyles(text, settings, justify).render(options);
     yield Segment.line();
@@ -300,18 +303,26 @@ function inline(
 
 const NO_GUTTER = new Segment("");
 
-/** Each block in `tokens`, every row it draws ended. */
-function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: InlineSettings): Iterable<Segment> {
+/**
+ * Each block in `tokens`, every row it draws ended, body text placed by `justify`.
+ * A heading is placed left whatever `justify` or `options` say.
+ */
+function* renderTokens(
+  tokens: readonly MdToken[],
+  options: RenderOptions,
+  settings: InlineSettings,
+  justify: Justify,
+): Iterable<Segment> {
   for (const token of tokens) {
     switch (token.type) {
       case "heading": {
         const style = getStyle(options, `markdown.h${Math.min(token.level, 4)}`);
-        yield* guttered(inline(token.text, settings, undefined), options, NO_GUTTER, NO_GUTTER, style);
+        yield* guttered(inline(token.text, settings, "left"), options, NO_GUTTER, NO_GUTTER, style);
         break;
       }
 
       case "paragraph": {
-        yield* guttered(inline(token.text, settings, settings.justify), options, NO_GUTTER, NO_GUTTER);
+        yield* guttered(inline(token.text, settings, justify), options, NO_GUTTER, NO_GUTTER);
         break;
       }
 
@@ -334,13 +345,13 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
       case "list_item": {
         const bullet = " ".repeat(token.indent) + (token.ordered ? `${token.index}. ` : drawable(options, "  • ", "  * "));
         const hang = new Segment(" ".repeat(cellLen(bullet)));
-        yield* guttered(inline(token.text, settings, settings.justify), options, new Segment(bullet), hang);
+        yield* guttered(inline(token.text, settings, justify), options, new Segment(bullet), hang);
         break;
       }
 
       case "blockquote": {
         const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
-        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
+        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings, justify);
         yield* guttered(body, options, bar, bar, Style.parse("dim italic"));
         break;
       }
@@ -352,11 +363,11 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
   }
 }
 
-export class Markdown implements Renderable, Measurable, InlineSettings {
+export class Markdown implements Renderable, Measurable {
   readonly markdown: string;
   readonly inlineCodeStyle: string | Style;
   readonly hyperlinks: boolean;
-  readonly justify: MarkdownOptions["justify"];
+  readonly justify: Justify;
 
   constructor(markdown: string, options?: MarkdownOptions) {
     this.markdown = markdown;
@@ -368,7 +379,7 @@ export class Markdown implements Renderable, Measurable, InlineSettings {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    yield* renderTokens(tokenize(this.markdown), options, this);
+    yield* renderTokens(tokenize(this.markdown), options, this, this.justify);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
