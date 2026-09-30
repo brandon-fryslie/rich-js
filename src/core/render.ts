@@ -10,30 +10,36 @@
  * an explicit `ColorDepth` enum / non-`"auto"` spec, or supply `env` and
  * `isTTY` in the options so detection does not consult ambient process state.
  *
- * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentsToString`
- * and is the single way segments become wire bytes. `Console._writeSegments`,
- * `Painter` (every `Live` and `App` frame), `renderToString`, and
- * `segmentToString` all delegate here, so terminal output, live and app
- * frames, string export, and single-segment encoding agree by construction.
+ * [LAW:single-enforcer] The Segment-to-ANSI conversion lives in `segmentToString`
+ * and is the single way a segment becomes wire bytes. `segmentsToString` is
+ * that encoding joined, and `Console._writeSegments`, `Painter` (every `Live`
+ * and `App` frame) and `renderToString` all go through it, so terminal output,
+ * live and app frames and string export agree by construction.
  *
  * [LAW:one-source-of-truth] What the encoding needs from where it writes
  * arrives as one `Destination` value. Each caller resolves its destination
  * once — spec, detection, and its own overrides — and hands it through whole,
  * so a depth is never paired with a link setting taken from somewhere else.
  *
- * [LAW:dataflow-not-control-flow] The same pipeline runs every render: collect
- * non-control non-empty pieces, partition by SGR-codes (SGR-runs), partition
- * each run by link (link-runs), emit one SGR open/close per run with link
- * open/close pairs sitting inside. Colour and hyperlinks are two facts about
- * the destination: `colorSystem === null` empties every piece's SGR-codes, and
- * `hyperlinks === false` empties every piece's link. A colour depth never
- * removes a link — a hyperlink is not a colour, and a NO_COLOR terminal still
- * follows OSC 8.
+ * Every segment is written alone, exactly as Python Rich 9d8f9a3 writes it
+ * (`Console._render_buffer` calls `Style.render` per segment): its SGR codes
+ * open, its text, a reset, and an OSC 8 pair around all three when it carries
+ * a link. Two adjacent segments with equal codes are two runs, not one. That
+ * costs a reset and a reopen the terminal draws identically, and it is what
+ * lets a fixture generated from the reference hold any sequence of segments,
+ * rather than only those in which no two neighbours happen to share a style
+ * (rich-render-g5g8). The price of that is that where a renderable cuts its
+ * segments is now in the bytes, so a renderable pinned against the reference
+ * has to cut where the reference cuts, as `Box`'s rules and `Table`'s blank
+ * cell lines do. A link split across segments still hovers as one link,
+ * because every pair it becomes carries the id `osc8Open` derives from the URL.
  *
- * [LAW:types-are-the-program] Adjacent same-style segments share an SGR wrap
- * because the SGR-codes string is the same group key for both — the
- * partitioning shape (data) encodes the byte structure; the emit walk is a
- * mechanical fold over it.
+ * Colour and hyperlinks are two facts about the destination:
+ * `colorSystem === null` empties every segment's SGR codes, and
+ * `hyperlinks === false` drops every segment's link. A colour depth never
+ * removes a link — a hyperlink is not a colour, and a NO_COLOR terminal still
+ * follows OSC 8. This is where the port departs from the reference, whose
+ * `Style.render` returns bare text for a null colour system.
  */
 
 import { ColorDepth, resolveDestination } from "./color.js";
@@ -79,76 +85,27 @@ export interface RenderToStringOptions extends Pick<RenderOptions, "asciiOnly" |
 
 const DEFAULT_WIDTH = 80;
 
-interface Piece {
-  readonly text: string;
-  readonly sgrCodes: string;
-  readonly link: string | undefined;
-}
-
-function segmentToPiece(segment: Segment, destination: Destination): Piece | undefined {
-  if (segment.isControl) return undefined;
-  if (segment.text.length === 0) return undefined;
-  const style = segment.style;
-  if (!style || style.isNull) {
-    return { text: segment.text, sgrCodes: "", link: undefined };
-  }
-  // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
-  // their own fact. Coupling them let a colour setting delete every control.
-  return {
-    text: segment.text,
-    sgrCodes: destination.colorSystem === null ? "" : style.toSgrCodes(destination.colorSystem),
-    link: destination.hyperlinks ? style.link : undefined,
-  };
-}
-
 /**
- * Encodes a single segment as ANSI bytes for `destination`. Equivalent to
- * `segmentsToString([segment], destination)` — same SGR / OSC 8 layout.
+ * Encodes one segment as ANSI bytes for `destination`: the reference's
+ * `Style.render` for that segment, and nothing for a control segment.
  */
 export function segmentToString(segment: Segment, destination: Destination): string {
-  return segmentsToString([segment], destination);
+  if (segment.isControl) return "";
+  const { text, style } = segment;
+  // As the reference's `if not text` and `if style:` — no pair around nothing.
+  if (text.length === 0 || style === undefined) return text;
+  // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
+  // their own fact. Coupling them let a colour setting delete every control.
+  const codes = destination.colorSystem === null ? "" : style.toSgrCodes(destination.colorSystem);
+  const styled = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
+  const link = destination.hyperlinks ? style.link : undefined;
+  return link === undefined ? styled : `${osc8Open(link)}${styled}${OSC8_CLOSE}`;
 }
 
-/**
- * Encodes a sequence of segments as ANSI bytes for `destination`, coalescing
- * adjacent same-SGR segments under a single SGR open/close pair, with OSC 8
- * link pairs nested inside per same-link sub-run.
- */
+/** Encodes a sequence of segments as ANSI bytes for `destination`, one segment at a time. */
 export function segmentsToString(segments: Iterable<Segment>, destination: Destination): string {
-  const pieces: Piece[] = [];
-  for (const s of segments) {
-    const p = segmentToPiece(s, destination);
-    if (p) pieces.push(p);
-  }
-  if (pieces.length === 0) return "";
-
-  // [LAW:dataflow-not-control-flow] One linear chunk accumulator for the
-  // entire output; SGR / OSC 8 boundaries and piece texts all push into it
-  // in order. No per-link-run intermediate string, no quadratic `+=` chains.
   const parts: string[] = [];
-  let i = 0;
-  while (i < pieces.length) {
-    const sgr = pieces[i]!.sgrCodes;
-    let j = i + 1;
-    while (j < pieces.length && pieces[j]!.sgrCodes === sgr) j++;
-    if (sgr.length > 0) parts.push(`\x1b[${sgr}m`);
-    let k = i;
-    while (k < j) {
-      const link = pieces[k]!.link;
-      let l = k + 1;
-      while (l < j && pieces[l]!.link === link) l++;
-      if (link) {
-        parts.push(osc8Open(link));
-        for (let m = k; m < l; m++) parts.push(pieces[m]!.text);
-        parts.push(OSC8_CLOSE);
-      } else {
-        for (let m = k; m < l; m++) parts.push(pieces[m]!.text);
-      }
-      k = l;
-    }
-    if (sgr.length > 0) parts.push("\x1b[0m");
-    i = j;
-  }
+  for (const segment of segments) parts.push(segmentToString(segment, destination));
   return parts.join("");
 }
 

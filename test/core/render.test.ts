@@ -3,11 +3,11 @@ import { renderToString, segmentsToString, segmentToString } from "../../src/cor
 import { ColorDepth } from "../../src/core/color.js";
 import { RichText } from "../../src/core/text.js";
 import { Style } from "../../src/core/style.js";
-import { Segment } from "../../src/core/segment.js";
-import { Strip, PowerlineJoiner, PlainJoiner } from "../../src/core/strip.js";
+import { Segment, ControlType } from "../../src/core/segment.js";
+import { Strip, PowerlineJoiner } from "../../src/core/strip.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { renderMarkup } from "../../src/core/markup.js";
-import { osc8Sequences } from "../../src/core/osc8.js";
+import { OSC8_CLOSE, osc8Open, osc8Sequences } from "../../src/core/osc8.js";
 import { StyleSyntaxError } from "../../src/core/style.js";
 
 // Every OSC 8 open in `out` as `{ params, uri }` (a close has an empty uri).
@@ -120,77 +120,32 @@ describe("renderToString", () => {
   });
 });
 
-// [LAW:behavior-not-structure] The tree-coalescer's contract is byte-level:
-// adjacent same-style cells share one SGR open/close pair, OSC 8 link pairs
-// sit inside that pair, and the count of SGR transitions equals the number of
-// distinct adjacent-style runs — not the segment count.
-describe("segmentsToString coalescing", () => {
+// [LAW:behavior-not-structure] The encoder's contract is byte-level and is the
+// reference's: Python Rich 9d8f9a3 writes every segment through its own
+// `Style.render`, so each segment is its own SGR run, and a link's OSC 8 pair
+// wraps that run.
+describe("segmentsToString", () => {
   const STYLE = Style.parse("white on red");
+  const TRUECOLOR = { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true } as const;
 
-  function countSgrOpens(out: string): number {
-    return [...out.matchAll(/\x1b\[(?!0m)[0-9;]+m/g)].length;
-  }
-  function countSgrResets(out: string): number {
-    return [...out.matchAll(/\x1b\[0m/g)].length;
-  }
-
-  it("coalesces three adjacent same-style segments into one SGR open/close pair", () => {
-    const segs = [
-      new Segment(" a ", STYLE),
-      new Segment(" b ", STYLE),
-      new Segment(" c ", STYLE),
-    ];
-    const out = segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
-    expect(countSgrOpens(out)).toBe(1);
-    expect(countSgrResets(out)).toBe(1);
-    // Run contents land between the open and the reset, in source order.
-    expect(out).toMatch(/\x1b\[[0-9;]+m a  b  c \x1b\[0m/);
+  it("writes each segment as its own run, even beside one with the same style", () => {
+    const segs = [new Segment(" a ", STYLE), new Segment(" b ", STYLE), new Segment(" c ", STYLE)];
+    expect(segmentsToString(segs, TRUECOLOR)).toBe(
+      "\x1b[37;41m a \x1b[0m\x1b[37;41m b \x1b[0m\x1b[37;41m c \x1b[0m",
+    );
   });
 
-  it("emits one SGR transition between two distinct-style runs (not four)", () => {
-    const RED = Style.parse("white on red");
-    const BLUE = Style.parse("white on blue");
-    const segs = [
-      new Segment(" a ", RED),
-      new Segment(" b ", RED),
-      new Segment(" c ", BLUE),
-      new Segment(" d ", BLUE),
-    ];
-    const out = segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
-    expect(countSgrOpens(out)).toBe(2);
-    expect(countSgrResets(out)).toBe(2);
+  it("wraps a linked segment's run in its OSC 8 pair", () => {
+    const url = "https://a.example";
+    const linked = new Style({ color: STYLE.color, bgcolor: STYLE.bgcolor, link: url });
+    expect(segmentsToString([new Segment(" a ", linked)], TRUECOLOR)).toBe(
+      `${osc8Open(url)}\x1b[37;41m a \x1b[0m${OSC8_CLOSE}`,
+    );
   });
 
-  it("nests OSC 8 link pairs inside the shared SGR wrap when adjacent same-style cells link to different URLs", () => {
-    const linkA = new Style({ color: STYLE.color, bgcolor: STYLE.bgcolor, link: "https://a.example" });
-    const linkB = new Style({ color: STYLE.color, bgcolor: STYLE.bgcolor, link: "https://b.example" });
-    const segs = [
-      new Segment(" a ", linkA),
-      new Segment(" b ", linkB),
-    ];
-    const out = segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
-    // One SGR wrap (same non-link style), two OSC 8 pairs (different links).
-    expect(countSgrOpens(out)).toBe(1);
-    expect(countSgrResets(out)).toBe(1);
-    expect(osc8Opens(out)).toHaveLength(2);
-    // OSC 8 open appears AFTER the SGR open; OSC 8 close BEFORE the SGR reset.
-    const sgrOpen = out.indexOf("\x1b[");
-    const sgrReset = out.lastIndexOf("\x1b[0m");
-    const firstOsc8 = out.indexOf("\x1b]8;");
-    const lastOsc8 = out.lastIndexOf("\x1b]8;");
-    expect(firstOsc8).toBeGreaterThan(sgrOpen);
-    expect(lastOsc8).toBeLessThan(sgrReset);
-  });
-
-  it("emits one shared OSC 8 pair when adjacent same-style cells link to the same URL", () => {
-    const linked = new Style({ color: STYLE.color, bgcolor: STYLE.bgcolor, link: "https://same.example" });
-    const segs = [
-      new Segment(" a ", linked),
-      new Segment(" b ", linked),
-    ];
-    const out = segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
-    expect(countSgrOpens(out)).toBe(1);
-    expect(osc8Opens(out)).toHaveLength(1);
+  it("writes nothing for an empty or control segment, and bare text for an unstyled one", () => {
+    const segs = [new Segment("", STYLE), new Segment("\x07", undefined, [[ControlType.BELL]]), new Segment("plain")];
+    expect(segmentsToString(segs, TRUECOLOR)).toBe("plain");
   });
 
   it("emits no SGR wraps when colorSystem is null even for adjacent styled segments", () => {
@@ -205,7 +160,7 @@ describe("segmentsToString coalescing", () => {
     const linked = new Style({ link: "https://example.com", color: "red" });
     const segs = [new Segment("click me", linked)];
     const out = segmentsToString(segs, { colorSystem: null, hyperlinks: true });
-    expect(countSgrOpens(out)).toBe(0);
+    expect(out).not.toMatch(/\x1b\[[0-9;]*m/);
     expect(osc8Opens(out)).toHaveLength(1);
     expect(out).toBe(segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true }).replace(/\x1b\[[0-9;]*m/g, ""));
   });
@@ -232,37 +187,6 @@ describe("segmentsToString coalescing", () => {
     );
   });
 
-  it("renders a 3-cell same-style Strip with an empty joiner as one SGR open/close pair", () => {
-    // PlainJoiner with separator="" emits an empty-text segment between cells
-    // (filtered by the coalescer) and EMPTY at endpoints. With same-style
-    // cells the three text pieces become one SGR run on the wire.
-    const strip = new Strip(
-      [
-        new RichText(" a ", { style: STYLE, end: "" }),
-        new RichText(" b ", { style: STYLE, end: "" }),
-        new RichText(" c ", { style: STYLE, end: "" }),
-      ],
-      new PlainJoiner({ separator: "" }),
-    );
-    const out = renderToString(strip, { colorSystem: ColorDepth.TRUECOLOR });
-    expect(countSgrOpens(out)).toBe(1);
-    expect(countSgrResets(out)).toBe(1);
-    expect(out).toMatch(/\x1b\[[0-9;]+m a  b  c \x1b\[0m/);
-  });
-
-  it("avoids the legacy N-pairs-per-cell layout (regression bar)", () => {
-    // Pre-coalescer behavior: 3 cells → 3 SGR open/close pairs. The new floor
-    // is 1. A future regression that goes back to per-segment encoding would
-    // push this back to 3.
-    const segs = [
-      new Segment(" a ", STYLE),
-      new Segment(" b ", STYLE),
-      new Segment(" c ", STYLE),
-    ];
-    const out = segmentsToString(segs, { colorSystem: ColorDepth.TRUECOLOR, hyperlinks: true });
-    expect(countSgrOpens(out)).toBeLessThan(3);
-  });
-
   // [LAW:types-are-the-program] segmentsToString must be a pure function of
   // (segments, colorSystem). Two pipeline runs over independently-constructed
   // Style instances for the same link URL must emit byte-identical OSC 8 —
@@ -287,9 +211,8 @@ describe("segmentsToString coalescing", () => {
 
   // [LAW:behavior-not-structure] The hover contract: a terminal treats cells
   // as one hyperlink when they share the URI AND the id. A link whose text
-  // changes style mid-span cannot share one OSC 8 pair (the pair nests inside
-  // an SGR run), so every pair it becomes must carry the same id — or the
-  // span highlights in pieces.
+  // spans several segments is several OSC 8 pairs, one per segment, so every
+  // pair it becomes must carry the same id — or the span highlights in pieces.
   it("gives every OSC 8 pair of one link the same id when its text spans two SGR runs", () => {
     const url = "https://split.example";
     const segs = [

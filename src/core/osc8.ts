@@ -2,7 +2,7 @@
  * The OSC 8 hyperlink wire grammar — which bytes may not appear inside a
  * link, how a link becomes bytes, and how bytes are read back as a link.
  *
- * [LAW:one-source-of-truth] The producer (`segmentsToString`, the one encoder
+ * [LAW:one-source-of-truth] The producer (`segmentToString`, the one encoder
  * every link reaches the wire through) opens a link with `osc8Open` and closes
  * it with `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
  * test extracting URLs) matches them with `OSC8`; the data-model boundary
@@ -16,10 +16,10 @@
  * The `id=` parameter is what makes one link hover as one link. A terminal
  * treats cells as the same hyperlink when they share BOTH the URI and the id
  * (the OSC 8 spec, and VTE / iTerm2 / kitty / WezTerm alike); without an id,
- * each open sequence is its own link. The coalescer can only share one OSC 8
- * pair across a run of identical SGR, so a link whose text changes style
- * mid-span — a bold glyph beside plain text, a padded cell — is emitted as
- * several pairs, and would highlight piecewise on hover.
+ * each open sequence is its own link. The encoder writes one OSC 8 pair per
+ * segment, as the reference does, so a link whose text spans several segments
+ * — a bold glyph beside plain text, a padded cell — is emitted as several
+ * pairs, and would highlight piecewise on hover.
  *
  * [LAW:types-are-the-program] The id is a pure function of the URI, so the
  * byte stream stays a pure function of (style, text, destination): no counter,

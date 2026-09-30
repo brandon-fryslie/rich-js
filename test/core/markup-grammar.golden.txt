@@ -125,3 +125,11 @@ out \e[34mx\e[0m
 negated-attribute
 in  [bold red]a[not bold]b[/not bold]c[/]
 out \e[1;31ma\e[0m\e[31mb\e[0m\e[1;31mc\e[0m
+
+negated-absent
+in  [red]a[not bold]b[/not bold]c[/red]
+out \e[31ma\e[0m\e[31mb\e[0m\e[31mc\e[0m
+
+adjacent-equal
+in  [red]a[/red][red]b[/red]
+out \e[31ma\e[0m\e[31mb\e[0m

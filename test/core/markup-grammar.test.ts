@@ -61,6 +61,8 @@
  *         ("nested-colour-tie", "[red][blue]x[/blue][/red]"),
  *         ("nested-colour-unclosed", "[red][blue]x"),
  *         ("negated-attribute", "[bold red]a[not bold]b[/not bold]c[/]"),
+ *         ("negated-absent", "[red]a[not bold]b[/not bold]c[/red]"),
+ *         ("adjacent-equal", "[red]a[/red][red]b[/red]"),
  *     ]
  *     def esc(s):
  *         return (s.replace("\\", "\\\\").replace("\x1b", "\\e")
@@ -150,6 +152,12 @@
  * `negated-attribute` overrides too, but it takes an attribute away: `b` must be
  * red and not bold. The reference writes only the codes that are on, so `b` is
  * `\e[31m` with no 22 in it. This port used to add one (rich-style-h93).
+ *
+ * `negated-absent` takes away an attribute nothing turned on, so `b` draws
+ * exactly as its neighbours do, and `adjacent-equal` is two spans that meet
+ * with one style. Both pin that equal neighbours stay separate runs: the
+ * reference writes every segment under its own codes, and this port once
+ * joined them (rich-render-g5g8).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -191,6 +199,8 @@ const CASES: readonly (readonly [string, string])[] = [
   ["nested-colour-tie", "[red][blue]x[/blue][/red]"],
   ["nested-colour-unclosed", "[red][blue]x"],
   ["negated-attribute", "[bold red]a[not bold]b[/not bold]c[/]"],
+  ["negated-absent", "[red]a[not bold]b[/not bold]c[/red]"],
+  ["adjacent-equal", "[red]a[/red][red]b[/red]"],
 ];
 
 function esc(value: string): string {
