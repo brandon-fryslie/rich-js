@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-280",
-      "ref": "refs/pull/280/merge",
-      "sha": "716891e220ea6a903a389ad3a0c984c96f420669",
-      "timestamp": "2026-09-30T22:02:20.016Z",
-      "commits": [
-        {
-          "sha": "716891e220ea6a903a389ad3a0c984c96f420669",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:01:09-06:00",
-          "message": "Merge 7f0ce1fdbb17875653e62dad87b444ced9b5b346 into cd2eab1a9685053c66c4ccf5dd00a3a269b39451\n"
-        },
-        {
-          "sha": "7f0ce1fdbb17875653e62dad87b444ced9b5b346",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:01:03-06:00",
-          "message": "test(docs): the simulated-process suite allows a vite build's time under load (rich-tests-lazu)\n\nMost runInTerminal cases vite-build the library before running it; under a\nfull suite's load the overlapping-runs case crossed vitest's 5s default\n(3 of ~9 full runs on 2026-09-29). The describe now carries the 30s\nallowance example-runner and playground-program already give their builds.\n6 of 6 full npm test runs green after.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "cd2eab1a9685053c66c4ccf5dd00a3a269b39451",
-      "timestamp": "2026-09-30T21:55:25.198Z",
+      "sha": "232e2a519df79f0cf29636409d81fca68ae1b8cb",
+      "timestamp": "2026-09-30T22:07:13.988Z",
       "commits": [
         {
-          "sha": "cd2eab1a9685053c66c4ccf5dd00a3a269b39451",
+          "sha": "232e2a519df79f0cf29636409d81fca68ae1b8cb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T15:54:24-06:00",
-          "message": "fix(traceback): a location wider than the report folds instead of cropping (rich-traceback-igzo) (#279)\n\n* fix(traceback): a location wider than the report folds instead of cropping (rich-traceback-igzo)\n\nTraceback wrote bare segments, so Console cropped each line at the edge and\na frame under a long checkout path lost its file name and line number. The\nreport is now one RichText, fitted to the width the way every text is: long\nlines wrap and an unbreakable location folds, as Rich's does.\n\ncrash-order's assertion now checks the fixture's full URL with line folds\nremoved, so it holds at any checkout path length.\n\n* fix(traceback): a wrapped frame continues under itself; a non-string message is reported, not thrown (rich-traceback-igzo)\n\nReview (high) of #279: the frame list is a block set two cells in, divided\nby Padding's layoutPadding, so a location that wraps stays under its frame\ninstead of landing at column 0. toError's gate also requires name and message\nto be strings, so a native error with message = undefined reaches the report\nas a NonError instead of throwing inside the crash handler. The crash-order\nassertion decodes ANSI before rejoining a fold."
+          "timestamp": "2026-09-30T16:06:03-06:00",
+          "message": "test(docs): the simulated-process suite allows a vite build's time under load (rich-tests-lazu) (#280)\n\nMost runInTerminal cases vite-build the library before running it; under a\nfull suite's load the overlapping-runs case crossed vitest's 5s default\n(3 of ~9 full runs on 2026-09-29). The describe now carries the 30s\nallowance example-runner and playground-program already give their builds.\n6 of 6 full npm test runs green after."
         }
       ]
     }
