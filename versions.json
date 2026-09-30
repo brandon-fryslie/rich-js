@@ -4,15 +4,22 @@
     {
       "version": "pr-268",
       "ref": "refs/pull/268/merge",
-      "sha": "5343b867f9f44ecb35a39f2c330baa349fb2915c",
-      "timestamp": "2026-09-30T18:03:45.788Z",
+      "sha": "6ad3339b753840eb36161aa68b7f567b7f5e4cc9",
+      "timestamp": "2026-09-30T18:09:10.466Z",
       "commits": [
         {
-          "sha": "5343b867f9f44ecb35a39f2c330baa349fb2915c",
+          "sha": "6ad3339b753840eb36161aa68b7f567b7f5e4cc9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:02:14-06:00",
-          "message": "Merge 231103c06fe07fc237b8ba2ebb8b64cbbacd7001 into c5e05b6b214291efdc3702e2bb32a351b951e5db\n"
+          "timestamp": "2026-09-30T18:07:56Z",
+          "message": "Merge f28b9bb63b467a7f5d68d40b75a211c079a78fb7 into c5e05b6b214291efdc3702e2bb32a351b951e5db\n"
+        },
+        {
+          "sha": "f28b9bb63b467a7f5d68d40b75a211c079a78fb7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T12:07:51-06:00",
+          "message": "fix(console): log throws on an invalid clock; log tests pin the clock (rich-console-nz5y)\n\nReview of PR #268: a getDatetime returning an invalid Date printed\n[NaN:NaN:NaN] silently; it now throws a RangeError. The remaining\nConsole.log tests read the wall clock and matched the stamp loosely; they\nnow pass a fixed clock and assert whole rows. The docs say which console\ncarries the fixed clock. Repeated-time blanking is rich-console-4i40.\n"
         },
         {
           "sha": "231103c06fe07fc237b8ba2ebb8b64cbbacd7001",
