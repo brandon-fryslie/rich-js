@@ -2195,13 +2195,14 @@ var { inspect, format, formatWithOptions, stripVTControlCharacters, stylizeWithC
 *
 * [LAW:no-shared-mutable-globals] That resolution is made lexical, never
 * global. \`runInTerminal\` evaluates the program as the body of a function whose
-* one parameter is named \`process\`, so every free \`process\` in the program —
-* the library bundled into it included — binds to the stand-in, while
-* \`globalThis.process\` is never read, written or replaced. Swapping the global
-* for the length of a run was the alternative, and it loses three ways: a
-* \`Progress\` example keeps running on timers after the swap is undone, two live
-* examples on one page would each overwrite the other's terminal, and in the
-* Node build the replaced object would be the build's own \`process\`.
+* parameters are named \`process\` and \`console\`, so every free \`process\` and
+* \`console\` in the program — the library bundled into it included — binds to
+* the stand-in, while the globals are never read, written or replaced.
+* Swapping the globals for the length of a run was the alternative, and it
+* loses three ways: a \`Progress\` example keeps running on timers after the swap
+* is undone, two live examples on one page would each overwrite the other's
+* terminal, and in the Node build the replaced object would be the build's own
+* \`process\`.
 *
 * The cost of that choice is the program's shape: it has to be one
 * self-contained script with every import bundled in, and with every
@@ -2317,16 +2318,34 @@ var SimulatedProcess = class extends Events {
 		return true;
 	}
 };
+/** The \`FORCE_COLOR\` values Node colours at; any other forces colour off. */
+var FORCED_COLOUR = /* @__PURE__ */ new Set([
+	"",
+	"1",
+	"true",
+	"2",
+	"3"
+]);
 /**
 * What the program sees as \`console\`: Node's, on the stand-in's streams. Each
 * call is formatted as Node's \`util.format\` formats it, by Node's own code
-* (node-inspect-extracted), coloured when the stream is a TTY as Node's is, and
-* written with a newline — \`log\`, \`info\` and \`debug\` to stdout, \`warn\` and
-* \`error\` to stderr. A method Node has and this lacks is not a function here,
-* so a call to it fails loudly rather than landing somewhere unseen.
+* (node-inspect-extracted, 19 KB gzipped — a formatter written here would be a
+* second copy of Node's, drifting from it), and written with a newline — \`log\`,
+* \`info\` and \`debug\` to stdout, \`warn\` and \`error\` to stderr. A method Node has
+* and this lacks is not a function here, so a call to it fails loudly rather
+* than landing somewhere unseen.
+*
+* It colours as Node's does, reading the program's env at each call: any
+* \`FORCE_COLOR\` decides alone ("", "1", "true", "2" and "3" colour), and
+* otherwise a TTY colours unless a non-empty \`NO_COLOR\` or
+* \`NODE_DISABLE_COLORS\`, or \`TERM=dumb\`, says not to. Past those Node looks
+* the terminal's \`TERM\` up in a table this does not carry; this takes every
+* terminal as a colour one.
 */
 function programConsole(process) {
-	const to = (stream) => (...args) => void stream.write(\`\${formatWithOptions({ colors: stream.isTTY }, ...args)}\\n\`);
+	const { env } = process;
+	const colours = (stream) => env["FORCE_COLOR"] !== void 0 ? FORCED_COLOUR.has(env["FORCE_COLOR"]) : stream.isTTY && !env["NO_COLOR"] && !env["NODE_DISABLE_COLORS"] && env["TERM"] !== "dumb";
+	const to = (stream) => (...args) => void stream.write(\`\${formatWithOptions({ colors: colours(stream) }, ...args)}\\n\`);
 	return {
 		log: to(process.stdout),
 		info: to(process.stdout),

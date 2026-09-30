@@ -4,15 +4,22 @@
     {
       "version": "pr-240",
       "ref": "refs/pull/240/merge",
-      "sha": "b90c249fa0818c6a096534b79597b5b974a04bed",
-      "timestamp": "2026-09-30T07:28:39.500Z",
+      "sha": "ef7ffee11b18efea3984b6c5fc46fe08205285f1",
+      "timestamp": "2026-09-30T07:40:13.122Z",
       "commits": [
         {
-          "sha": "b90c249fa0818c6a096534b79597b5b974a04bed",
+          "sha": "ef7ffee11b18efea3984b6c5fc46fe08205285f1",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T01:27:33-06:00",
-          "message": "Merge 963bd02a68d326e5882e2f6ea53b6cc8c2afb1c9 into 0b901ceeff65c2f9521a5d70942aa7da145f0f72\n"
+          "timestamp": "2026-09-30T07:37:25Z",
+          "message": "Merge f22ee499d0d03a0edc7fd1ab03a6ac825b57afc6 into 0b901ceeff65c2f9521a5d70942aa7da145f0f72\n"
+        },
+        {
+          "sha": "f22ee499d0d03a0edc7fd1ab03a6ac825b57afc6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T01:36:58-06:00",
+          "message": "fix(docs): the program's console colours by Node's env rules (rich-playground-afk.6dm)\n\nReview (high): colour came from isTTY alone, so NO_COLOR, FORCE_COLOR and\nTERM=dumb were ignored; each table row is what Node 26 printed on a pty and\na pipe. The module header now names the console parameter, the formatter's\nweight is recorded where it was chosen, and the host-leak check spies on all\nfive methods and restores them in afterEach.\n"
         },
         {
           "sha": "963bd02a68d326e5882e2f6ea53b6cc8c2afb1c9",
