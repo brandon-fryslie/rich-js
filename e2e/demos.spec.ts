@@ -115,20 +115,22 @@ test("a demo's rows start at the left edge: rich-viewport", async ({ page }) => 
 test("a demo's Powerline glyphs draw in the Powerline face: rich-strip", async ({ page }) => {
   await page.goto("demos-app/rich-strip/");
   await expect(page.locator("#status")).toContainText("ready");
-  const arrow = page.locator(".xterm-rows span", { hasText: "" }).first();
+  const arrow = page.locator(".xterm-rows span", { hasText: "\uE0B0" }).first();
   await expect(arrow).toBeAttached();
-  await arrow.evaluate((span) => span.setAttribute("data-powerline-probe", ""));
   const cdp = await page.context().newCDPSession(page);
-  const { root } = await cdp.send("DOM.getDocument", { depth: 0 });
+  await cdp.send("DOM.enable");
   await cdp.send("CSS.enable");
-  const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-powerline-probe]" });
-  // The face loads when a glyph in its range first needs it, so poll. Chromium
-  // names a face by the family inside the font file, not the CSS alias, and
-  // rich-powerline.woff2 keeps the name of the font it was cut from.
+  // The face loads when a glyph in its range first needs it, so poll — and
+  // find the span afresh each time, since xterm replaces a row's spans when it
+  // repaints it. The shell's only web font is the Powerline face, so a web
+  // font drawing this span is that face.
   await expect
     .poll(async () => {
+      await arrow.evaluate((span) => span.setAttribute("data-powerline-probe", ""));
+      const { root } = await cdp.send("DOM.getDocument", { depth: 0 });
+      const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-powerline-probe]" });
       const { fonts } = await cdp.send("CSS.getPlatformFontsForNode", { nodeId });
-      return fonts.map((font) => `${font.familyName}${font.isCustomFont ? " (web font)" : ""}`);
+      return fonts.map((font) => ({ family: font.familyName, web: font.isCustomFont }));
     })
-    .toContain("Symbols Nerd Font Mono (web font)");
+    .toContainEqual(expect.objectContaining({ web: true }));
 });

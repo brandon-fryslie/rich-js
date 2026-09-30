@@ -18,8 +18,8 @@ background is the height of the row's own font, not of this one. Under any
 other code font the fit is approximate: the site does not choose the reader's
 font, so no one fit is exact for every reader.
 
-custom.css names this face first in the code font stack with a matching
-unicode-range, so a browser fetches it only for a page that draws one of these
+docs/.vitepress/theme/code-font.css names this face first in the code font
+stack with a matching unicode-range, for the docs and the demo terminals alike, so a browser fetches it only for a page that draws one of these
 glyphs, and draws every other character in the reader's own code font.
 """
 
