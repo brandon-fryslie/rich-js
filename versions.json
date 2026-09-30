@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-271",
+      "ref": "refs/pull/271/merge",
+      "sha": "4aca6b2e9d2fad6d1340769ed476d006e8070427",
+      "timestamp": "2026-09-30T19:06:36.351Z",
+      "commits": [
+        {
+          "sha": "4aca6b2e9d2fad6d1340769ed476d006e8070427",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:05:35-06:00",
+          "message": "Merge df60586caf8e228fb8db1c54f9e5dd4453142ad0 into 1c1341c84b8811148562683d213d14fc9a9e8936\n"
+        },
+        {
+          "sha": "df60586caf8e228fb8db1c54f9e5dd4453142ad0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:05:30-06:00",
+          "message": "fix(syntax): a highlighted line number is readable on a light terminal (rich-syntax-60ii)\n\nsyntax.line_number.highlight set a fixed grey27 ground but took its ink\nfrom the terminal theme, so on a light theme the numbers were dark on dark\ngrey (contrast 1.16 under ATOM_ONE_LIGHT). The ink is now grey93, from the\nsame fixed palette, and a test holds both example themes to WCAG 4.5.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "1c1341c84b8811148562683d213d14fc9a9e8936",
