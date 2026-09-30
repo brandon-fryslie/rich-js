@@ -4,15 +4,22 @@
     {
       "version": "pr-274",
       "ref": "refs/pull/274/merge",
-      "sha": "3af0f6d27d23208071c692329c94a28858218dd6",
-      "timestamp": "2026-09-30T20:03:47.014Z",
+      "sha": "868ee2c2ee6d4b65a63eadfa1f768e3675631bc2",
+      "timestamp": "2026-09-30T20:08:56.434Z",
       "commits": [
         {
-          "sha": "3af0f6d27d23208071c692329c94a28858218dd6",
+          "sha": "868ee2c2ee6d4b65a63eadfa1f768e3675631bc2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T20:02:35Z",
-          "message": "Merge c792575b6942e16c47905506d96b15cfe920b73a into 9b8a4c414c3d7fdfe641a2874502fef0de20751b\n"
+          "timestamp": "2026-09-30T20:08:05Z",
+          "message": "Merge 49570053722e3f17d05370309c096022202f9407 into 9b8a4c414c3d7fdfe641a2874502fef0de20751b\n"
+        },
+        {
+          "sha": "49570053722e3f17d05370309c096022202f9407",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T14:08:00-06:00",
+          "message": "fix(cells): every cell walk steps by grapheme cluster (rich-segment-cvn6)\n\ncellFitFrom, cellStepFrom, splitAtCells and cellColToCodeUnitOffset still\nwalked code points, so chopCells counted 👍🏽 as 4 cells and 👨‍👩‍👧 as 6. Its\ncuts drifted into the next wide glyph, and splitCells now blanks a glyph a\ncut goes through, so fold dropped text: \"👍🏽a漢\" at width 2 printed\n[\"👍🏽\", \"a \", \" \"], losing 漢.\n\nAll of them now walk clustersFrom, which steps one memoized segmentation with\nSegments.containing so a caller stepping along one string stays linear\n(chopCells on 1M chars: 107ms; slicing the tail per step took 5s).\ncropToWidth was splitText's left side and is gone; setCellSize crops through\nsplitText.\n"
         },
         {
           "sha": "c792575b6942e16c47905506d96b15cfe920b73a",
