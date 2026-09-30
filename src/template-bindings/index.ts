@@ -99,9 +99,9 @@ export function createRichTextEngine(): Engine<RichText> {
  *   `RichText.fromFragments` so every fragment's wrapping style survives.
  * - Renders to a `Segment[]` at the requested `maxWidth`.
  * - Wraps the whole flow in a try/catch — on parse/evaluate failure,
- *   emits a single dim styled `[error: <message>]` segment the caller can
- *   drop into their layout. No bespoke fallback wiring required at every
- *   call site.
+ *   emits a single dim styled `[error: <message>]` segment, one line fitted
+ *   to `maxWidth`, the caller can drop into their layout. No bespoke
+ *   fallback wiring required at every call site.
  *
  * [LAW:single-enforcer] One place owns "render a template to segments,
  * degrade gracefully on errors" — every consumer that wants this exact
@@ -116,7 +116,9 @@ export function createRichTextEngine(): Engine<RichText> {
  *
  * @param maxWidth defaults to 400 — large enough that downstream `splitLines`
  * / `adjustLineLength` clipping decides actual width, matching the typical
- * "render wide, fit on output" pipeline.
+ * "render wide, fit on output" pipeline. The error line is fitted to it too,
+ * so only a caller that passes the width it draws at sees a cut error end in
+ * `…` rather than be cropped by whatever draws it.
  * @param errorStyle is a `Style.parse` spec (default `"red dim"`).
  */
 export function renderTemplate(
@@ -125,30 +127,30 @@ export function renderTemplate(
   scope: unknown = {},
   options?: { maxWidth?: number; errorStyle?: string },
 ): Segment[] {
+  const maxWidth = options?.maxWidth ?? 400;
   try {
     const frags = engine.compile(source)(scope);
     const rt = RichText.fromFragments(frags);
-    return Array.from(rt.render({
-      maxWidth: options?.maxWidth ?? 400,
-      isTerminal: true,
-    }));
+    return Array.from(rt.render({ maxWidth, isTerminal: true }));
   } catch (e) {
-    return [new Segment(errorLine(e, options?.maxWidth ?? 400), safeErrorStyle(options?.errorStyle))];
+    return [new Segment(errorLine(e, maxWidth), safeErrorStyle(options?.errorStyle))];
   }
 }
 
 /**
  * A caught error as the one line `renderTemplate` promises. The summary is the
  * error's `message` — `String(e)` on an engine error appends a multi-line code
- * frame — and even a `message` can break lines (`bad escape sequence \⏎`), so
- * every line break folds to a space.
+ * frame — and even a `message` can carry the character it is complaining about
+ * (`bad escape sequence \⏎`). Any whitespace that is not a plain space — a line
+ * break, a tab the terminal would draw wider than the one cell it is counted
+ * as — folds, with the spaces around it, to one space.
  *
  * [LAW:one-source-of-truth] The line fits the same `maxWidth` the success path
  * draws at, not a width of its own, and a cut ends in an ellipsis so it never
  * reads as the whole message.
  */
 function errorLine(e: unknown, maxWidth: number): string {
-  const summary = (e instanceof Error ? e.message : String(e)).replace(/\s*[\r\n]\s*/g, " ");
+  const summary = (e instanceof Error ? e.message : String(e)).replace(/\s*[^\S ]\s*/g, " ");
   return new RichText(`[error: ${summary}]`).truncate(maxWidth).plain;
 }
 

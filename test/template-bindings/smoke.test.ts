@@ -66,6 +66,12 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(segs.map((s) => s.text)).toEqual(["[error: bad escape sequence \\ ]"]);
   });
 
+  it("renderTemplate folds a tab inside the error's own message, which the terminal would draw wider than it is counted", () => {
+    const engine = createRichTextEngine();
+    const segs = renderTemplate(engine, `{{ "a\\\tb" }}`);
+    expect(segs.map((s) => s.text)).toEqual(["[error: bad escape sequence \\ ]"]);
+  });
+
   it("renderTemplate's error line is whole within maxWidth and marks a cut with an ellipsis", () => {
     const engine = createRichTextEngine();
     const source = `{{ darken "primary" 2 }}`;

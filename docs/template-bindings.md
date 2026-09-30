@@ -260,7 +260,7 @@ process.stdout.write(segmentsToString(segments, resolveDestination("auto")) + "\
 `segmentsToString` returns finished ANSI. `console.print` treats its argument as *content*: it strips the escape bytes and highlights what's left, so the escape sequences arrive as visible text. Write the string to the stream directly, or skip `segmentsToString` and print the `RichText` instead.
 :::
 
-On a parse or evaluation failure it returns a single dim red segment reading `[error: …]` — one line, drawn to the same `maxWidth` as a successful render and ending in `…` where the message had to be cut — which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
+On a parse or evaluation failure it returns a single segment reading `[error: …]`, dim red unless `errorStyle` says otherwise — one line, drawn to the same `maxWidth` as a successful render and ending in `…` where the message had to be cut — which a caller can drop into their layout unchanged. Even a malformed `errorStyle` cannot break that promise — an unparseable spec falls back to the built-in style rather than propagating the failure it was supposed to report.
 
 ```typescript
 import { segmentsToString, resolveDestination } from "@promptctl/rich-js";
@@ -276,6 +276,6 @@ const broken = renderTemplate(engine, `{{ darken "primary" 2 }}`, {}, {
 process.stdout.write(segmentsToString(broken, resolveDestination("auto")) + "\n");
 ```
 
-`maxWidth` defaults to 400 — wide enough that the downstream line-splitting decides the real width, matching the usual "render wide, fit on output" pipeline.
+`maxWidth` defaults to 400 — wide enough that the downstream line-splitting decides the real width, matching the usual "render wide, fit on output" pipeline. The error line is fitted to that same width, so pass the width you draw at if a cut error should end in `…` rather than be cropped by whatever draws it.
 
 Reach past `renderTemplate` when you want custom error handling, access to the intermediate `RichText`, or a template compiled once and evaluated many times. Call `engine.compile` yourself and flatten with `RichText.fromFragments`; the helper is sugar for one shape, not a replacement for the compile-once pattern.
