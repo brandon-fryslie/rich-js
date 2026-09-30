@@ -4,15 +4,22 @@
     {
       "version": "pr-238",
       "ref": "refs/pull/238/merge",
-      "sha": "816c7995d5db723feb0ca18a37f4b552d3681147",
-      "timestamp": "2026-09-30T06:03:47.098Z",
+      "sha": "1d3303caf0f40406cc7c098155beb712df090e0c",
+      "timestamp": "2026-09-30T06:07:05.678Z",
       "commits": [
         {
-          "sha": "816c7995d5db723feb0ca18a37f4b552d3681147",
+          "sha": "1d3303caf0f40406cc7c098155beb712df090e0c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:02:53Z",
-          "message": "Merge b2e261f681d75b53a33189c604187dc5354176ae into 3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8\n"
+          "timestamp": "2026-09-30T06:06:25Z",
+          "message": "Merge 5e60e20437dd3de742c7f38df3ae005bd4295d78 into 3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8\n"
+        },
+        {
+          "sha": "5e60e20437dd3de742c7f38df3ae005bd4295d78",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T00:06:21-06:00",
+          "message": "fix(docs): a link the browser refuses to write is reported, not thrown (rich-playground-afk.npl)\n\n/code-review medium: replaceState ran in the success arm of then(ok, err), so\na browser's refusal (URL length cap) escaped as an unhandled rejection.\n"
         },
         {
           "sha": "b2e261f681d75b53a33189c604187dc5354176ae",
