@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-260",
-      "ref": "refs/pull/260/merge",
-      "sha": "856fe075e7be246e6cfcb607ed78731d8ed92281",
-      "timestamp": "2026-09-30T15:14:28.819Z",
-      "commits": [
-        {
-          "sha": "856fe075e7be246e6cfcb607ed78731d8ed92281",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:13:22-06:00",
-          "message": "Merge a40b14fa5373aaaa5abc6275842ecd6f19b0bf7f into 2300745a25c9da6ee9976329c977db9ecd623c34\n"
-        },
-        {
-          "sha": "a40b14fa5373aaaa5abc6275842ecd6f19b0bf7f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:13:17-06:00",
-          "message": "fix(tree): a node's style draws its row and every row beneath it (rich-tree-736)\n\nTree stored `style` and never read it. The walk now stacks each node's\nstyle the way it already stacked guide styles; the label is drawn over it,\nso its own markup still wins, and only its background reaches the guides,\nas in Rich. docs/tree.md gets its style example back.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2300745a25c9da6ee9976329c977db9ecd623c34",
