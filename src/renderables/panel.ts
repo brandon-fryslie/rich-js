@@ -139,6 +139,15 @@ function frameOverhead(geometry: PanelGeometry): number {
 }
 
 /**
+ * How a title or subtitle string is read: always as markup and never
+ * highlighted, whatever the console says, because Rich's `Panel` reads its
+ * title with `Text.from_markup` rather than through the console.
+ */
+function borderLabel(options: RenderOptions): RenderOptions {
+  return { ...options, markup: true, highlighter: undefined };
+}
+
+/**
  * The style of text set into a border: its own when one was given, the
  * border's otherwise — the one rule for "what colour is the title text in".
  */
@@ -230,7 +239,9 @@ export class Panel implements Renderable, Measurable {
     // its frame down a pane and keeps its bottom border inside one.
     const [padTop, , padBottom] = this.padding;
     const height = insetHeight(options.height, 2 + padTop + padBottom);
-    const innerOptions: RenderOptions = { ...options, maxWidth: contentWidth, height };
+    // No highlighter: what the panel holds is drawn plain, as Rich's `Panel`
+    // hands its body `highlight=False`.
+    const innerOptions: RenderOptions = { ...options, highlighter: undefined, maxWidth: contentWidth, height };
     const lines = fitHeight(
       Segment.splitLines([...this.renderable.render(innerOptions)]),
       height,
@@ -346,7 +357,7 @@ export class Panel implements Renderable, Measurable {
   ): Iterable<Segment> {
     const innerBorderWidth = geometry.spanWidth;
     const titleSeg = borderTextStyle(options, this.titleStyle, border);
-    const title = inlineLabel(this.title, options, titleSeg);
+    const title = inlineLabel(this.title, borderLabel(options), titleSeg);
     const titleWidth = Segment.getLineLength(title);
 
     if (titleWidth === 0) {
@@ -407,7 +418,7 @@ export class Panel implements Renderable, Measurable {
     const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
 
     const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
-    const subtitle = inlineLabel(this.subtitle, options, subtitleSeg);
+    const subtitle = inlineLabel(this.subtitle, borderLabel(options), subtitleSeg);
     const subtitleWidth = Segment.getLineLength(subtitle);
 
     if (subtitleWidth === 0) {

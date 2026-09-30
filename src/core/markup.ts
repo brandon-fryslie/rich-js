@@ -21,6 +21,7 @@ import { cellLen } from "./cells.js";
 import { Style, StyleSyntaxError } from "./style.js";
 import { RichText, Span, stripControlChars } from "./text.js";
 import { emojiReplace } from "./emoji.js";
+import type { RenderOptions as DrawOptions } from "./protocol.js";
 
 // --- Tag ---
 
@@ -732,6 +733,30 @@ export function renderMarkup(
   options?: RenderMarkupOptions,
 ): RichText {
   return renderSlice(tokenize(markup), { source: markup, enclosing: [] }, options);
+}
+
+/**
+ * A string as the text it draws, before any highlighting: read as markup
+ * unless `markup` is false, its emoji codes replaced either way, as Rich's
+ * `render_str` reads one. The text is a fragment, so its `end` is empty.
+ * [LAW:single-enforcer]
+ */
+export function readStr(source: string, markup: boolean): RichText {
+  const text = markup ? renderMarkup(source) : new RichText(emojiReplace(source));
+  text.end = "";
+  return text;
+}
+
+/**
+ * A string as the text it draws, the way Rich's `render_str` makes one: read
+ * by `readStr` under `markup`, then highlighted by `highlighter` if there is
+ * one. `print` and every renderable that is handed a string both draw it this
+ * way, so a console's settings mean the same thing wherever the string lands.
+ */
+export function renderStr(source: string, settings: Pick<DrawOptions, "markup" | "highlighter">): RichText {
+  const text = readStr(source, settings.markup !== false);
+  settings.highlighter?.highlight(text);
+  return text;
 }
 
 function renderSlice(

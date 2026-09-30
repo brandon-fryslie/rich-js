@@ -21,7 +21,7 @@ import type {
 } from "../core/protocol.js";
 import { withBoundedWidth, withCellWidth } from "../core/protocol.js";
 import { cellCount } from "../core/cells.js";
-import { embed } from "./embed.js";
+import { EmbeddedText, embed } from "./embed.js";
 import { Constrain } from "./constrain.js";
 import { Table } from "./table.js";
 
@@ -145,8 +145,12 @@ export class Columns implements Renderable, Measurable {
       grid.addColumn(undefined, { minWidth: declared, maxWidth: declared });
     }
     const cap = this.equal ? widest : undefined;
+    // A string item is read here, under the options Columns is drawn with,
+    // before the grid gets it: Rich's `Columns` reads its strings through
+    // `render_str`, so they are highlighted where a table cell's are not.
+    const items = this.renderables.map((item) => (item instanceof EmbeddedText ? item.text(options) : item));
     for (const row of rows) {
-      grid.addRow(...row.map((index) => (index === undefined ? "" : new Constrain(this.renderables[index]!, cap))));
+      grid.addRow(...row.map((index) => (index === undefined ? "" : new Constrain(items[index]!, cap))));
     }
     return grid;
   }

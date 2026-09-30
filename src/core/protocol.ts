@@ -7,6 +7,11 @@ import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
 import type { ColorDepth } from "./color.js";
+// [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
+// type-only. A render option that highlights the text being rendered, when
+// `RichText` is itself rendered under these options, is a recursion in the
+// domain; any type that broke the loop would say less than `Highlighter` does.
+import type { Highlighter } from "./highlighter.js";
 
 /**
  * What becomes of a line still wider than its width once wrapping is done.
@@ -45,8 +50,20 @@ export interface RenderOptions {
   justify?: "left" | "center" | "right" | "full";
   overflow?: OverflowMethod;
   noWrap?: boolean;
-  highlight?: unknown;
-  markup?: unknown;
+  /**
+   * Whether a string handed to a renderable — a cell, a label, a pane — is
+   * read as markup when it is drawn. Absent, it is, as a `Console`'s is unless
+   * told otherwise. A `Console` passes its own setting, and `print`'s.
+   */
+  markup?: boolean;
+  /**
+   * What highlights a string handed to a renderable when it is drawn. Absent,
+   * nothing does. A `Console` passes its highlighter while its `highlight` is
+   * on; a renderable that draws its strings plain, as Rich's `Panel`, `Table`
+   * and `Tree` do by default, clears it for what it renders — Rich's
+   * `options.update(highlight=False)`.
+   */
+  highlighter?: Highlighter;
   /**
    * The depth the output will be encoded at, `null` when it carries no colour.
    * A renderable choosing between two ways of drawing something — the strip's

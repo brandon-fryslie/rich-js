@@ -663,19 +663,19 @@ describe("Column", () => {
   it("copy creates independent instance", () => {
     const col = new Column({ header: "Test", justify: "right" });
     const copy = col.copy();
-    expect(copy.header.plain).toBe("Test");
     expect(copy.justify).toBe("right");
 
-    // `copy` hands its own header straight back to the constructor and lets the
-    // crossing there do the copying, so this is what says the copy still happens.
-    col.header.append("!");
-    expect(copy.header.plain).toBe("Test");
+    // Reassigning the original's header leaves the copy's alone.
+    col.header = "Other";
+    const drawn = [...copy.header.render({ maxWidth: 10 })].map((s) => s.text).join("");
+    expect(drawn).toBe("Test");
   });
 });
 
 describe("A column's header and footer are stamped on assignment, not just at construction", () => {
-  // `embeddedText` is the one crossing where caller content becomes table
-  // content, and it promises three things: markup is parsed, `end` is cleared
+  // `embed` is the one crossing where caller content becomes table
+  // content, and it promises three things: a string is read as markup when it
+  // is drawn, `end` is cleared
   // (a cell is a fragment, not a line), and a `RichText` is copied so the
   // caller no longer holds the table's cell. `Table.columns` hands out the live
   // column, so those promises have to survive an assignment made long after the
@@ -711,7 +711,7 @@ describe("A column's header and footer are stamped on assignment, not just at co
   it.each(positions)("clears the `end` of a RichText assigned to %s", (position) => {
     const t = tableWithSlack();
     t.columns[0]![position] = new RichText("Mine", { end: "!!" });
-    expect(t.columns[0]![position].end).toBe("");
+    expect([...t.columns[0]![position].render({ maxWidth: 30 })].map((s) => s.text).join("")).toBe("Mine");
   });
 
   it.each(positions)("parses the markup of a string assigned to %s", (position) => {
@@ -725,7 +725,7 @@ describe("A column's header and footer are stamped on assignment, not just at co
   it.each(positions)("reads an undefined assigned to %s as the empty cell", (position) => {
     const t = tableWithSlack();
     t.columns[0]![position] = undefined;
-    expect(t.columns[0]![position].plain).toBe("");
+    expect([...t.columns[0]![position].render({ maxWidth: 30 })].map((s) => s.text).join("")).toBe("");
   });
 });
 
@@ -1378,19 +1378,25 @@ describe("Table markup", () => {
   });
 
   // The same five positions and the same argument as above: one rule, one
-  // assertion, five values. Rich raises this `MarkupError` from all five too,
-  // but at print time, because it stores the raw string — parsing at the border
-  // moves the throw to the call that supplies it without inventing one. That is
-  // a stated divergence, so each position that carries it is pinned; none of
-  // these render, which is what makes them a claim about *when*.
-  it.each([
-    ["a title", () => new Table({ title: "[/bad]" })],
-    ["a caption", () => new Table({ caption: "[/bad]" })],
+  // assertion, five values. A string is read when it is drawn, under the
+  // options it is drawn with, so Rich's `MarkupError` comes from the render, as
+  // Rich's does — and a render with markup off draws the tag as text.
+  const malformed: Array<[string, () => Table]> = [
+    ["a title", () => new Table({ title: "[/bad]" }).addColumn("Header")],
+    ["a caption", () => new Table({ caption: "[/bad]" }).addColumn("Header")],
     ["a header", () => new Table().addColumn("[/bad]")],
-    ["a footer", () => new Table().addColumn("H", { footer: "[/bad]" })],
+    ["a footer", () => new Table({ showFooter: true }).addColumn("H", { footer: "[/bad]" })],
     ["a cell", () => new Table().addColumn("H").addRow("[/bad]")],
-  ])("raises %s's malformed markup from the call that supplies it", (_, build) => {
-    expect(build).toThrow(MarkupError);
+  ];
+
+  it.each(malformed)("raises %s's malformed markup from the render that draws it", (_, build) => {
+    const t = build();
+    expect(() => [...t.render({ maxWidth: 40 })]).toThrow(MarkupError);
+  });
+
+  it.each(malformed)("draws %s's malformed markup as text when markup is off", (_, build) => {
+    const plain = [...build().render({ maxWidth: 40, markup: false })].map((s) => s.text).join("");
+    expect(plain).toContain("[/bad]");
   });
 
   it("adds no column when a later cell in the same row throws", () => {
@@ -1398,7 +1404,8 @@ describe("Table markup", () => {
     // with valid data must not find a phantom column from the failed attempt.
     const t = new Table();
     t.addColumn("H");
-    expect(() => t.addRow("ok", "[/bad]")).toThrow(MarkupError);
+    const unprintable = { toString(): string { throw new Error("unprintable"); } };
+    expect(() => t.addRow("ok", unprintable)).toThrow("unprintable");
     expect(t.columns.length).toBe(1);
   });
 });
@@ -1440,7 +1447,7 @@ describe("Table cells wrap before the overflow method sees them", () => {
 
   // rich-text-5ai code review: a `RichText` cell reached the wire through
   // the embedding crossing's passthrough arm (it implements `render`), which
-  // skipped `embeddedText`'s `end` clearing — its default `end: "\n"` then drew a
+  // skipped `EmbeddedText`'s `end` clearing — its default `end: "\n"` then drew a
   // genuine extra blank row under the real one, once `RichText.render`
   // started honoring `end` for non-empty text.
   it("does not draw a blank row for a RichText cell with an embedded trailing newline", () => {
