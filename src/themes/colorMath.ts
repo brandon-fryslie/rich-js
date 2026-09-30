@@ -276,7 +276,7 @@ function ensureTruecolorContrast(
   minRatio: number,
 ): ColorRgba {
   // Flatten translucency so the guarantee holds for the displayed color, not
-  // the raw bytes (e.g. a "#FFFFFF60" text-disabled over a light surface).
+  // the raw bytes (e.g. a hand-written "#FFFFFF60" over a light surface).
   const opaqueFg = fg.compositeOver(bg);
   if (contrastRatio(opaqueFg, bg) >= minRatio) return opaqueFg;
 
