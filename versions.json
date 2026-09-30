@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-247",
-      "ref": "refs/pull/247/merge",
-      "sha": "d4624b607f08057c8e636b64f921120716dfb511",
-      "timestamp": "2026-09-30T09:54:19.590Z",
-      "commits": [
-        {
-          "sha": "d4624b607f08057c8e636b64f921120716dfb511",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:53:14Z",
-          "message": "Merge 3749efec2958cdf48e59dbf0ef3f8e8375b71451 into 4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7\n"
-        },
-        {
-          "sha": "3749efec2958cdf48e59dbf0ef3f8e8375b71451",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:53:09-06:00",
-          "message": "fix(layout): closed-form row budget, Weight-typed edges (rich-layout-xvv)\n\nReview round 3 (escalation high): the exact-least budget search kept breeding\nfailures — BigInt on a fractional Measurable width, a `total += 1` that stalls\npast 2^53, cost linear in ratio spread. ratioBudget is the closed-form\nfloor-share inverse again: O(n), no loop, fractional wants rounded up,\nunbounded wants unbounded. It can overshoot the least width by the carried\nspare cells (\"left\"|\"right\" 10, fits 9); ratio.ts documents that trade.\n\nEdge.ratio is a `Weight`, parsed by `shareWeight` (was Layout's growthRatio),\nand ratioResolve lists the ratio-0 departure from Rich (`edge.ratio or 1`).\n"
-        },
-        {
-          "sha": "cd45c0711b12b29fc132cc513e2e37e1e0ff4059",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:47:29-06:00",
-          "message": "fix(layout): cap the row budget search at the offer (rich-layout-xvv)\n\nReview round 2 (medium): ratioBudget stepped one split per cell from its\nlower bound, so 1:1e6 ratios took 529ms and 1:1e9 hung. It now stops at the\nwidth on offer, which measure clamps to anyway, so a search costs at most one\nsplit per cell of the width it returns.\n"
-        },
-        {
-          "sha": "1367dd1e90fee070c13e77de504dabef4d5f065e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:43:37-06:00",
-          "message": "fix(layout): exact least row budget, linear re-share, cell-count edges (rich-layout-xvv)\n\nReview round 1 (high):\n- ratioBudget is now the least total at which ratioResolve reaches every want,\n  searched from a derived lower bound and checked against the split itself;\n  the floor-inverse overshot by a cell under carried rounding (\"left\"|\"right\"\n  measured 10, fits 9).\n- An unbounded want returns Infinity before any BigInt conversion, restoring\n  withBoundedWidth's error for a row holding an unmeasurable pane.\n- The re-share keeps its weight sum as a running total: 2000 panes 3.8s -> 15ms.\n- Edge.size/minimumSize are CellCol; Layout's getters return the parsed brand.\n- ratioResolve documents size 0 as a departure from Rich (`edge.size or None`).\n"
-        },
-        {
-          "sha": "62763a6b3d8871044c2da1223c6bf66225228110",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:33:47-06:00",
-          "message": "fix(layout): ratio split hands out every cell, as Rich's ratio_resolve does (rich-layout-xvv)\n\nLayout floored each growing pane's share and dropped what the floors left,\nso a 1:1 split of 5 rows drew 2 + 2 and padded a blank fifth row. The split\nis now ratioResolve in renderables/ratio.ts, a port of Rich's ratio_resolve:\nfixed sizes first, a pane under its minimum paid it and the rest re-shared,\nfractions carried rightward so the parts sum to the region. Exact arithmetic\nover decimal-read weights (exactWeights, moved from table.ts and shared), so\n0.1:0.2:0.3 of 6 is 1,2,3. The port keeps its one departure: nothing is paid\npast the total. ratioBudget, the measure-side inverse, sits beside it.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7",
-      "timestamp": "2026-09-30T09:27:30.412Z",
+      "sha": "9bfe1d1ff8f779367b2ac22876bb7d61bf927f28",
+      "timestamp": "2026-09-30T09:57:53.910Z",
       "commits": [
         {
-          "sha": "4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7",
+          "sha": "9bfe1d1ff8f779367b2ac22876bb7d61bf927f28",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:26:24-06:00",
-          "message": "fix(export): SVG window frame takes the theme's ink (rich-export-9a1.f98) (#246)\n\n* fix(export): SVG window frame takes the theme's ink (rich-export-9a1.f98)\n\nThe frame stroke was Rich's fixed rgba(255,255,255,0.35), the one colour in\nthe export that ignored the TerminalTheme; around SOLARIZED_LIGHT's #fdf6e3\ncanvas it has no visible edge. It is now the theme foreground at Rich's 35%\nopacity, which under the default theme (#ffffff ink) draws exactly what Rich\ndraws.\n\n* fix(export): SVG frame is one opaque colour, blended from the theme (rich-export-9a1.f98)\n\nReview (high): a translucent stroke broke export-lines' rule that no exporter\ndraws a translucent colour, and its outer half took the host page's colour.\nThe frame is now the ink blended 35% into the canvas with blendRgb; over\nblack that is #595959, what Rich's white-at-35% composites to. The departure\nfrom Rich moves into the module header; tests assert the frame shows on a\nlight canvas and matches Rich's on black, not the attribute string.\n\n* docs(export): rewrap export-svg header (rich-export-9a1.f98)"
+          "timestamp": "2026-09-30T03:56:55-06:00",
+          "message": "fix(layout): ratio split hands out every cell (rich-layout-xvv) (#247)\n\n* fix(layout): ratio split hands out every cell, as Rich's ratio_resolve does (rich-layout-xvv)\n\nLayout floored each growing pane's share and dropped what the floors left,\nso a 1:1 split of 5 rows drew 2 + 2 and padded a blank fifth row. The split\nis now ratioResolve in renderables/ratio.ts, a port of Rich's ratio_resolve:\nfixed sizes first, a pane under its minimum paid it and the rest re-shared,\nfractions carried rightward so the parts sum to the region. Exact arithmetic\nover decimal-read weights (exactWeights, moved from table.ts and shared), so\n0.1:0.2:0.3 of 6 is 1,2,3. The port keeps its one departure: nothing is paid\npast the total. ratioBudget, the measure-side inverse, sits beside it.\n\n* fix(layout): exact least row budget, linear re-share, cell-count edges (rich-layout-xvv)\n\nReview round 1 (high):\n- ratioBudget is now the least total at which ratioResolve reaches every want,\n  searched from a derived lower bound and checked against the split itself;\n  the floor-inverse overshot by a cell under carried rounding (\"left\"|\"right\"\n  measured 10, fits 9).\n- An unbounded want returns Infinity before any BigInt conversion, restoring\n  withBoundedWidth's error for a row holding an unmeasurable pane.\n- The re-share keeps its weight sum as a running total: 2000 panes 3.8s -> 15ms.\n- Edge.size/minimumSize are CellCol; Layout's getters return the parsed brand.\n- ratioResolve documents size 0 as a departure from Rich (`edge.size or None`).\n\n* fix(layout): cap the row budget search at the offer (rich-layout-xvv)\n\nReview round 2 (medium): ratioBudget stepped one split per cell from its\nlower bound, so 1:1e6 ratios took 529ms and 1:1e9 hung. It now stops at the\nwidth on offer, which measure clamps to anyway, so a search costs at most one\nsplit per cell of the width it returns.\n\n* fix(layout): closed-form row budget, Weight-typed edges (rich-layout-xvv)\n\nReview round 3 (escalation high): the exact-least budget search kept breeding\nfailures — BigInt on a fractional Measurable width, a `total += 1` that stalls\npast 2^53, cost linear in ratio spread. ratioBudget is the closed-form\nfloor-share inverse again: O(n), no loop, fractional wants rounded up,\nunbounded wants unbounded. It can overshoot the least width by the carried\nspare cells (\"left\"|\"right\" 10, fits 9); ratio.ts documents that trade.\n\nEdge.ratio is a `Weight`, parsed by `shareWeight` (was Layout's growthRatio),\nand ratioResolve lists the ratio-0 departure from Rich (`edge.ratio or 1`)."
         }
       ]
     }
