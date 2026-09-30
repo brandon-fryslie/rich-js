@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-236",
+      "ref": "refs/pull/236/merge",
+      "sha": "ce67aaef96667f6d704cf9dba0b3d7d213c406b3",
+      "timestamp": "2026-09-30T04:40:13.309Z",
+      "commits": [
+        {
+          "sha": "ce67aaef96667f6d704cf9dba0b3d7d213c406b3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:39:20-06:00",
+          "message": "Merge 6aec5028a48fb9878ad0d3b297d3c255c211c94e into 6a22776a4fe0312f3b62b199d324635ddc0305fb\n"
+        },
+        {
+          "sha": "6aec5028a48fb9878ad0d3b297d3c255c211c94e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:39:15-06:00",
+          "message": "fix(types): public declarations name no Node types (rich-types-42o)\n\n`ConsoleEnvironment.env`, `DetectColorOptions.env`, `RenderToStringOptions.env`\nand `TerminalHost.env` were typed `NodeJS.ProcessEnv`, which the emitted .d.ts\ncarried verbatim; a project with no @types/node and skipLibCheck off failed on\nthem with `Cannot find namespace 'NodeJS'`. They now share `Env` (src/core/env.ts),\na read-only map from string to optional string that `process.env` satisfies\nwithout a cast.\n\ntest/seam/browser-types.test.ts emits the declarations into a temp node_modules\nand type-checks every non-node/ entry by its published specifier with\n`types: []`; it fails with the five original errors on the old source.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "6a22776a4fe0312f3b62b199d324635ddc0305fb",
