@@ -4,15 +4,22 @@
     {
       "version": "pr-265",
       "ref": "refs/pull/265/merge",
-      "sha": "f13513440e04081ea49a406a345baf28235e1280",
-      "timestamp": "2026-09-30T17:03:50.522Z",
+      "sha": "ed8aaa92cb06de43c2ff8a2b8c6ef109d8fbe5a9",
+      "timestamp": "2026-09-30T17:08:50.652Z",
       "commits": [
         {
-          "sha": "f13513440e04081ea49a406a345baf28235e1280",
+          "sha": "ed8aaa92cb06de43c2ff8a2b8c6ef109d8fbe5a9",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:02:40-06:00",
-          "message": "Merge e25f18b065569700da4546e0eba77658ad2ce9a2 into 409d3def96e013e7e0925e5a1a645a23b2f5cb54\n"
+          "timestamp": "2026-09-30T17:07:54Z",
+          "message": "Merge c354348c6a349b8f1ca61bdc50887c50ab6be409 into 409d3def96e013e7e0925e5a1a645a23b2f5cb54\n"
+        },
+        {
+          "sha": "c354348c6a349b8f1ca61bdc50887c50ab6be409",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:07:48-06:00",
+          "message": "fix(template-bindings): error line folds every non-space whitespace; maxWidth is one value (rich-template-bindings-4bgw)\n\nReview (high) on #265: a tab in the engine's message was counted as 0 cells\nand drawn up to 8, so the fitted line could overflow maxWidth. The JSDoc and\ndocs now say the error line is fitted to maxWidth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "e25f18b065569700da4546e0eba77658ad2ce9a2",
