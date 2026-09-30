@@ -9,11 +9,17 @@
  * is and which theme it wears, and hand those in; this owns the terminal and
  * the one program running in it.
  *
- * [LAW:effects-at-boundaries] The program runs in a Web Worker, one per run.
- * Stopping it is terminating the worker, so a stopped `Progress` leaves no
- * timer behind, and two terminals on one page cannot reach each other's
- * programs. The alternative, running in the page, can start a program but never
- * stop one: nothing outside a program can cancel the timers it set.
+ * [LAW:effects-at-boundaries] The program runs in a Web Worker, one per run,
+ * made inside a hidden frame sandboxed to an opaque origin. The worker is what
+ * makes a program stoppable: removing the frame ends it, so a stopped
+ * `Progress` leaves no timer behind and a loop that never yields takes nothing
+ * from the page. The alternative, running in the page, can start a program but
+ * never stop one: nothing outside a program can cancel the timers it set. The
+ * frame is what keeps the program off the site: a worker the page made itself
+ * would share the site's origin, its storage and its credentials, which a
+ * program a visitor pasted into the playground must not reach. A program in
+ * the frame has no origin of its own to share, and nothing to reach but the
+ * one message port the page gave it.
  *
  * [LAW:single-enforcer] Bytes and keys cross between the worker and xterm
  * through `BrowserTerminalHost`, the library's own host for an xterm terminal,
@@ -43,10 +49,15 @@ export type FromWorker =
   | { readonly kind: "output"; readonly chunk: string | Uint8Array }
   | { readonly kind: "exit"; readonly code: number }
   /**
-   * The program's body has returned, or thrown, and every job it queued has
-   * run. A program with timers or listeners still set runs on after this.
+   * The program's body has returned and every job it queued has run. A
+   * program with timers or listeners still set runs on after this.
    */
-  | { readonly kind: "settled"; readonly error: string | null }
+  | { readonly kind: "settled" }
+  /**
+   * The program failed: its body threw, or something it set running did. The
+   * report is what a terminal shows for it, as Node reports an uncaught error.
+   */
+  | { readonly kind: "crashed"; readonly report: string }
   /**
    * The answer to a `mark`, sent between two of the program's tasks. Every
    * output message before it was written before it, and a frame the program
@@ -82,6 +93,8 @@ export type LiveState =
   | { readonly kind: "exited"; readonly code: number };
 
 export interface LiveTerminalOptions {
+  /** The worker's script, the default export of `LIVE_RUNTIME_MODULE` (example-runner.ts). */
+  readonly runtime: string;
   readonly terminal: TerminalSpec;
   readonly theme: TerminalTheme;
   readonly font: { readonly family: string; readonly size: number; readonly lineHeight: number };
@@ -136,8 +149,76 @@ function loadXterm(): Promise<XtermConstructor> {
   return xterm;
 }
 
+/** One run's frame and its worker, as the page sees them. */
+interface Sandbox {
+  post(message: ToWorker): void;
+  /** Remove the frame, which ends its worker and whatever the worker was running. */
+  end(): void;
+}
+
+/**
+ * A hidden frame in `parent`, sandboxed to an opaque origin, running `runtime`
+ * as a worker whose every message reaches `receive`. The page and the worker
+ * talk over one message port, and messages posted before the frame has loaded
+ * wait in that port.
+ */
+function sandbox(parent: HTMLElement, runtime: string, receive: (message: FromWorker) => void): Sandbox {
+  const frame = Object.assign(document.createElement("iframe"), { srcdoc: `<script>(${relay})()</script>` });
+  // Hidden by its own style, which no stylesheet overrides: VitePress styles
+  // every iframe `display: block`, which undoes the `hidden` attribute and
+  // leaves an invisible frame over the terminal taking its clicks.
+  frame.style.display = "none";
+  // Scripts, and nothing else: no same origin, no forms, no popups, no navigating the page.
+  frame.sandbox.add("allow-scripts");
+  const { port1, port2 } = new MessageChannel();
+  port1.onmessage = ({ data }: MessageEvent<FromWorker>) => receive(data);
+  // An opaque origin cannot be named, so the target is "*"; the runtime is no secret.
+  frame.addEventListener("load", () => frame.contentWindow!.postMessage(runtime, "*", [port2]), { once: true });
+  parent.append(frame);
+  return {
+    post: (message) => port1.postMessage(message),
+    end: () => {
+      port1.close();
+      frame.remove();
+    },
+  };
+}
+
+/**
+ * The frame's one script, written into it as source: it may use nothing but
+ * its own names and the frame's globals. It starts the worker from the text
+ * of its first message and joins the worker to the port that came with it.
+ */
+function relay(): void {
+  addEventListener(
+    "message",
+    ({ data, ports }: MessageEvent<string>) => {
+      const port = ports[0]!;
+      const crashed = (report: string) => port.postMessage({ kind: "crashed", report } satisfies FromWorker);
+      // [LAW:no-silent-failure] An engine that refuses this frame a worker
+      // throws here, where only the port can carry it to the page.
+      try {
+        const worker = new Worker(URL.createObjectURL(new Blob([data], { type: "text/javascript" })));
+        port.onmessage = (event) => worker.postMessage(event.data);
+        worker.onmessage = (event) => port.postMessage(event.data);
+        // live-worker.ts reports every failure of a program itself. What reaches
+        // here is the worker failing before it could: a script that threw reads
+        // "Uncaught …", and one that never loaded fires a bare `Event`, whatever
+        // lib.dom's `ErrorEvent` says.
+        worker.onerror = (event: ErrorEvent | Event) => {
+          event.preventDefault();
+          crashed(event instanceof ErrorEvent ? event.message : "The live terminal's worker did not load.");
+        };
+      } catch (error) {
+        crashed(`The live terminal's worker did not start: ${String(error)}`);
+      }
+    },
+    { once: true },
+  );
+}
+
 export class LiveTerminal {
-  private worker: Worker | null = null;
+  private sandbox: Sandbox | null = null;
   private deadline: ReturnType<typeof setTimeout> | undefined;
   private state: LiveState = { kind: "idle" };
   private readonly listeners = new Set<(state: LiveState) => void>();
@@ -206,13 +287,12 @@ export class LiveTerminal {
   run(script: string, mode: RunMode): void {
     this.stop();
     this.screen.reset();
-    const worker = new Worker(new URL("./live-worker.ts", import.meta.url), { type: "module" });
     // A still frame is drawn in one write when it freezes: until then the bytes
     // wait here, so no motion reaches the screen.
     const held: (string | Uint8Array)[] = [];
     const flush = () => held.splice(0).forEach((chunk) => this.host.write(chunk));
     // A message still queued from a run that has since ended belongs to no run.
-    const current = () => this.worker === worker;
+    const current = () => this.sandbox === run;
     // The cursor is hidden: the program has ended, and a frame showing one
     // would invite typing at a prompt nothing is reading any more.
     const freeze = () => {
@@ -229,13 +309,7 @@ export class LiveTerminal {
             held.push(chunk);
             this.deadline ??= setTimeout(() => this.post({ kind: "mark" }), STILL_AFTER_MS);
           };
-    const failed = (message: string) => {
-      flush();
-      // Red, on a line of its own, as a terminal shows a program's crash.
-      this.host.write(`\n\x1b[31m${message}\x1b[0m\n`);
-      this.end({ kind: "exited", code: 1 });
-    };
-    worker.onmessage = ({ data }: MessageEvent<FromWorker>) => {
+    const run = sandbox(this.element, this.options.runtime, (data) => {
       if (!current()) return;
       switch (data.kind) {
         case "output":
@@ -244,27 +318,26 @@ export class LiveTerminal {
           flush();
           return this.end({ kind: "exited", code: data.code });
         case "settled":
-          if (data.error !== null) return failed(`Uncaught ${data.error}`);
           if (mode === "still") freeze();
           return;
+        // A failure ends the program, as an uncaught exception ends a Node
+        // process, and is shown red, on lines of its own.
+        case "crashed":
+          flush();
+          this.host.write(`\n\x1b[31m${data.report}\x1b[0m\n`);
+          return this.end({ kind: "exited", code: 1 });
         case "mark":
           return freeze();
       }
-    };
-    // An error thrown outside the body — in a key handler, a timer — ends the
-    // program, as an uncaught exception ends a Node process.
-    worker.onerror = (event) => {
-      event.preventDefault();
-      if (current()) failed(event.message);
-    };
-    this.worker = worker;
+    });
+    this.sandbox = run;
     this.post({ kind: "run", script, terminal: this.options.terminal });
     this.setState({ kind: "running" });
   }
 
   /** End the running program, if one runs; what it drew stays on screen. */
   stop(): void {
-    if (this.worker === null) return;
+    if (this.sandbox === null) return;
     this.end({ kind: "stopped" });
   }
 
@@ -293,14 +366,14 @@ export class LiveTerminal {
   }
 
   private post(message: ToWorker): void {
-    this.worker?.postMessage(message);
+    this.sandbox?.post(message);
   }
 
   private end(state: LiveState): void {
     clearTimeout(this.deadline);
     this.deadline = undefined;
-    this.worker?.terminate();
-    this.worker = null;
+    this.sandbox?.end();
+    this.sandbox = null;
     this.setState(state);
   }
 

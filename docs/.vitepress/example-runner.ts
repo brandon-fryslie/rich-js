@@ -66,6 +66,7 @@ import {
   type ExampleProgram,
 } from "./example-program.js";
 import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
+import { LIBRARY_BINDING } from "./live-library.js";
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
@@ -135,7 +136,7 @@ const READLINE_STAND_IN = path.join(REPO_ROOT, "docs", ".vitepress", "node-readl
  * that module included.
  */
 export function bundleExample(source: string): Promise<string> {
-  return bundle(source, { format: "es" });
+  return bundle(source, { format: "es" }).then(({ code }) => code);
 }
 
 /**
@@ -149,7 +150,13 @@ type BundleShape = { readonly format: "es"; readonly packagesExternal?: boolean 
 /** A specifier naming a package, not a file. */
 const isPackage = (id: string): boolean => !id.startsWith(".") && !path.isAbsolute(id);
 
-async function bundle(source: string, shape: BundleShape): Promise<string> {
+/** A bundle's one chunk, and every module that went into it besides the source it was given. */
+interface Bundled {
+  readonly code: string;
+  readonly modules: readonly string[];
+}
+
+async function bundle(source: string, shape: BundleShape): Promise<Bundled> {
   const packagesExternal = shape.format === "es" && shape.packagesExternal === true;
   const result = await build({
     configFile: false,
@@ -191,7 +198,7 @@ async function bundle(source: string, shape: BundleShape): Promise<string> {
   if (!("output" in result)) throw new Error("bundle: vite returned no single build output");
   const chunks = result.output.filter((file) => file.type === "chunk");
   if (chunks.length !== 1) throw new Error(`bundle: expected one chunk, vite produced ${chunks.length}`);
-  return chunks[0]!.code;
+  return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== PROGRAM_FILE) };
 }
 
 /**
@@ -369,16 +376,32 @@ export const LIVE_MODULE_PREFIX = "virtual:rich-live/";
 /** Where under `LIVE_MODULE_PREFIX` a live library is served. */
 const LIVE_LIBRARY_PATH = "library/";
 
+/**
+ * The module whose default export is the script a live program's worker runs:
+ * theme/live-worker.ts and everything it imports, bundled as one classic
+ * script. The page hands that text to the sandboxed frame a program runs in,
+ * because a frame with an opaque origin can start a worker only from a script
+ * it holds, never from a URL on the site. theme/live-terminal.ts owns why the
+ * frame.
+ */
+export const LIVE_RUNTIME_MODULE = `${LIVE_MODULE_PREFIX}runtime`;
+
+const LIVE_WORKER = path.join(REPO_ROOT, "docs", ".vitepress", "theme", "live-worker.ts");
+
+/** The script `LIVE_RUNTIME_MODULE` exports, as it stands on disk now, and the files it was built from. */
+export function bundleLiveRuntime(): Promise<Bundled> {
+  return bundle(`import { serve } from ${JSON.stringify(LIVE_WORKER)};\nserve();`, { format: "es" }).catch((error: unknown) => {
+    throw new Error(`the live terminal's worker did not bundle: ${String(error)}`, { cause: error });
+  });
+}
+
 async function bundleOrThrow(page: string, source: string, shape: BundleShape = { format: "es" }): Promise<string> {
-  return bundle(source, shape).catch((error: unknown) => {
+  return bundle(source, shape).then(({ code }) => code, (error: unknown) => {
     throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
   });
 }
 
 const hash = (text: string): string => createHash("sha256").update(text).digest("hex").slice(0, 16);
-
-/** The name a live program's library is declared under, in the function body both run in. */
-const LIBRARY_BINDING = "__richLibrary";
 
 /**
  * What a live block may import: every entry point of this package but the two
@@ -406,7 +429,7 @@ async function bundleLiveLibrary(): Promise<LiveLibrary> {
     ...LIVE_LIBRARY_PACKAGES.map((specifier, i) => `import * as m${i} from ${JSON.stringify(specifier)};`),
     `export default { ${LIVE_LIBRARY_PACKAGES.map((specifier, i) => `${JSON.stringify(specifier)}: m${i}`).join(", ")} };`,
   ].join("\n");
-  const script = await bundle(entry, { format: "iife", name: LIBRARY_BINDING }).catch((error: unknown) => {
+  const { code: script } = await bundle(entry, { format: "iife", name: LIBRARY_BINDING }).catch((error: unknown) => {
     throw new Error(`the live examples' library did not bundle: ${String(error)}`, { cause: error });
   });
   return { id: hash(script), script };
@@ -573,7 +596,12 @@ export interface DocsExamplesPlugin {
   readonly enforce: "pre";
   transform(code: string, id: string): Promise<{ code: string; map: null } | null>;
   resolveId(id: string): string | null;
-  load(id: string): string | null;
+  load(this: LoadContext, id: string): Promise<string | null>;
+}
+
+/** The part of a plugin's context `load` uses: Vite reloads a module when a file it names changes. */
+export interface LoadContext {
+  addWatchFile(file: string): void;
 }
 
 /** Every file under `src/` and when it last changed: what a page's output depends on besides the page. */
@@ -624,8 +652,15 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       return { code: run.markdown, map: null };
     },
     resolveId: (id) => (id.startsWith(LIVE_MODULE_PREFIX) ? `\0${id}` : null),
-    load(id) {
+    async load(id) {
       if (!id.startsWith(RESOLVED_LIVE_PREFIX)) return null;
+      if (id === `\0${LIVE_RUNTIME_MODULE}`) {
+        // No page imports its files, so only these watches tell `docs:dev`
+        // that an edit to one makes this module stale.
+        const runtime = await bundleLiveRuntime();
+        runtime.modules.forEach((file) => this.addWatchFile(file));
+        return `export default ${JSON.stringify(runtime.code)};`;
+      }
       const module = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
       if (module === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);
       return module;

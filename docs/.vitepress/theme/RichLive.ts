@@ -10,8 +10,8 @@
  * the theme of the site's colour mode, as static output does.
  *
  * The page gives it `load`, which imports the program the example runner
- * bundled from the block above; nothing is fetched until the terminal first
- * scrolls into view.
+ * bundled from the block above; that program, and the worker it runs in, are
+ * fetched only when the terminal first scrolls into view.
  */
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from "vue";
 import { useData } from "vitepress";
@@ -47,10 +47,14 @@ export default defineComponent({
     // load would stay in the card, and the next try would stack another on it.
     // A failure is shown, and forgotten so the button can try again.
     const made = (element: HTMLElement) =>
-      (ready ??= props
-        .load()
-        .then(async (program) => {
-          const live = await LiveTerminal.create(element, { terminal: EXAMPLE_TERMINAL, theme: theme(), font: font(element) });
+      (ready ??= Promise.all([props.load(), import("virtual:rich-live/runtime")])
+        .then(async ([program, runtime]) => {
+          const live = await LiveTerminal.create(element, {
+            runtime: runtime.default,
+            terminal: EXAMPLE_TERMINAL,
+            theme: theme(),
+            font: font(element),
+          });
           live.onState((next) => (state.value = next));
           const unwatch = watch(isDark, () => live.setTheme(theme()));
           failure.value = null;

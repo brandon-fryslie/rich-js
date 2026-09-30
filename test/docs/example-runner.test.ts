@@ -12,6 +12,8 @@ import { REPO_ROOT } from "../coverage/extract.js";
 import {
   ExampleCompiler,
   LIVE_MODULE_PREFIX,
+  LIVE_RUNTIME_MODULE,
+  type LoadContext,
   docsExamplesPlugin,
   liveLibraryOnce,
   liveScript,
@@ -370,14 +372,32 @@ describe("the plugin", () => {
     const plugin = docsExamplesPlugin();
     const transformed = await plugin.transform(fence('console.print("served");', "ts live"), path.join(REPO_ROOT, "docs", "fixture-live.md"));
     const [specifier] = /virtual:rich-live\/[0-9a-f]+/.exec(transformed!.code)!;
-    const program = plugin.load(plugin.resolveId(specifier)!)!;
+    // Vite's context, for a module that depends on no file.
+    const context: LoadContext = { addWatchFile: () => {} };
+    const program = (await plugin.load.call(context, plugin.resolveId(specifier)!))!;
     // The program imports its library and adds its own code to it.
     const [, librarySpecifier, block] = /^import library from ("[^"]+");\nexport default library \+ (".*");$/s.exec(program)!;
-    const library = plugin.load(plugin.resolveId(JSON.parse(librarySpecifier!) as string)!)!;
+    const library = (await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!))!;
     const [, script] = /^export default (".*");$/s.exec(library)!;
     expect(await liveOutput((JSON.parse(script!) as string) + (JSON.parse(block!) as string))).toContain("served");
     expect(plugin.resolveId("./elsewhere.js")).toBeNull();
-    expect(() => plugin.load(`\0${LIVE_MODULE_PREFIX}0000`)).toThrow(/no page run produced this live program/);
+    await expect(plugin.load.call(context, `\0${LIVE_MODULE_PREFIX}0000`)).rejects.toThrow(/no page run produced this live program/);
+  });
+
+  it("serves the live terminal's worker as one classic script, with no page run needed", { timeout: 60_000 }, async () => {
+    const plugin = docsExamplesPlugin();
+    const watched: string[] = [];
+    const module = (await plugin.load.call({ addWatchFile: (file) => watched.push(file) }, plugin.resolveId(LIVE_RUNTIME_MODULE)!))!;
+    // No page imports the worker's files, so `docs:dev` learns an edit made it stale only from these.
+    expect(watched).toContain(path.join(REPO_ROOT, "docs", ".vitepress", "theme", "live-worker.ts"));
+    expect(watched).toContain(path.join(REPO_ROOT, "docs", ".vitepress", "simulated-process.ts"));
+    const [, runtime] = /^export default (".*");$/s.exec(module)!;
+    // A frame starts the worker from this text as a classic script, which
+    // cannot parse an `import`, an `export` or an `import.meta`.
+    const script = JSON.parse(runtime!) as string;
+    expect(() => new Function(script)).not.toThrow();
+    // …and it does something: a bundle can drop a module it was only told to import.
+    expect(script).toMatch(/onmessage/);
   });
 
   it("passes a page with no TypeScript example through untouched", async () => {
