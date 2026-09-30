@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-257",
-      "ref": "refs/pull/257/merge",
-      "sha": "d3b8c70b0947de5fef378607f0d7f273e2f02bf7",
-      "timestamp": "2026-09-30T14:18:01.636Z",
-      "commits": [
-        {
-          "sha": "d3b8c70b0947de5fef378607f0d7f273e2f02bf7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:17:04Z",
-          "message": "Merge f33b6888364bb1a51d3b046d12e09d97c737b93f into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
-        },
-        {
-          "sha": "f33b6888364bb1a51d3b046d12e09d97c737b93f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:16:59-06:00",
-          "message": "test(pretty): the thousand-level render runs at default options again (rich-pretty-v7b)\n\nWith guides on, each line is a thousand words for the render to wrap, which\ntimed out in CI (191s vs master's ~5s); guides are off by default now, and\nthe test's claim is about the default.\n"
-        },
-        {
-          "sha": "6a6e5952a24a08656e59fd20c456745bb93f7b72",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:11:12-06:00",
-          "message": "fix(pretty): a hanging row's guides are its slot's; margins always written (rich-pretty-v7b)\n\nFrame carries the slot's margin, so a value after a wrapped key gets its\nslot's guides and a hanging row can no longer start left of it (the\nnegative repeat). Every margin is written and a line with nothing past it\nis cleared in the one final pass, so blank rows keep no trailing spaces.\nAn ASCII-only console gets no guide spans at all; the trailing-space trim\nscans back instead of backtracking.\n\nNot taken: copying margins per level (toText at 1000 levels 520ms vs\nmaster's 435ms; the render around it is ~40s either way).\n\nAddresses the step-12 /code-review high on PR #257.\n"
-        },
-        {
-          "sha": "e817063d3c3531c62124f5045363737f5e9fc828",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:59:31-06:00",
-          "message": "fix(pretty): every margin is written, so a guide never takes a continued line's text (rich-pretty-v7b)\n\nA row that looks empty can still be continued by a separator, a Map's\narrow or a key's value; its margin is now spaces like any other, and the\nASCII-only choice goes through drawable.\n\nAddresses /code-review medium on PR #257.\n"
-        },
-        {
-          "sha": "2cc83d3cb8acb087217393e1e6d14a9c7f72269b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:53:53-06:00",
-          "message": "fix(pretty): guides stand in the structure's margin, off by default (rich-pretty-v7b)\n\nThe formatter records each line's margin where it starts the line, and\nguides are drawn there rather than read back out of the whitespace, so a\nwrapped string or a toString's own indent gets no guide inside it. Off by\ndefault and never on an ASCII-only console, as in Rich; blank rows carry\nthe guide; indent: 0 no longer throws.\n\nAddresses /code-review high on PR #257.\n"
-        },
-        {
-          "sha": "15a2b0cc7b58f1059bba382606d71b1c0615fb4a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:34:08-06:00",
-          "message": "fix(pretty): indent guides draw a │ at each level (rich-pretty-v7b)\n\nThe guide was a space styled with a foreground colour, which draws nothing.\nIt is now Rich's with_indent_guides: a │ (| when ASCII-only) in the first\ncell of each whole indent, styled repr.indent, swapped in cell for cell so\nthe highlighter's spans stay put.\n\nConsole.print formats data with guides off, as Rich's print does. Tying\nguides to highlight only went unnoticed while they were invisible.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "269bb905ddd86ca223005a6d94b65e23ec63809b",
-      "timestamp": "2026-09-30T13:28:19.543Z",
+      "sha": "d3bdf5a98614436595f579f8046997e3d9639185",
+      "timestamp": "2026-09-30T14:23:43.479Z",
       "commits": [
         {
-          "sha": "269bb905ddd86ca223005a6d94b65e23ec63809b",
+          "sha": "d3bdf5a98614436595f579f8046997e3d9639185",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:27:14-06:00",
-          "message": "fix(syntax): every option takes effect or is gone (rich-syntax-fh2) (#256)\n\n* fix(syntax): every option takes effect or is gone (rich-syntax-fh2)\n\n- language picks a grammar (javascript, typescript, python, bash, text);\n  SyntaxLanguage is the union, so a name with no grammar is a type error.\n  One left-to-right scan, so a // in a string or a keyword in a comment\n  is not highlighted.\n- colours are syntax.* names in the console Theme; the ignored `theme`\n  option is removed.\n- wordWrap wraps (continuation rows unnumbered) or crops; before, wrapped\n  pieces were joined back onto one overflowing line.\n- lineRange keeps each line's number from the whole code.\n- padding and Syntax.fromPath (always threw) are removed.\n- empty lines are kept; measure reads the same shown lines as render.\n\n* fix(syntax): tokenize the whole code, bound every row to the width (rich-syntax-fh2)\n\nReview of #256: a lineRange starting inside a multi-line string tokenized\nas code; an unknown runtime language crashed at render; measure spread\nevery line into Math.max and reported min over max; justify realigned\neach line; a gutter wider than the offer overflowed it; property names\nlike .get/.type drew as keywords."
+          "timestamp": "2026-09-30T08:22:43-06:00",
+          "message": "fix(pretty): indent guides draw a │ at each level (rich-pretty-v7b) (#257)\n\n* fix(pretty): indent guides draw a │ at each level (rich-pretty-v7b)\n\nThe guide was a space styled with a foreground colour, which draws nothing.\nIt is now Rich's with_indent_guides: a │ (| when ASCII-only) in the first\ncell of each whole indent, styled repr.indent, swapped in cell for cell so\nthe highlighter's spans stay put.\n\nConsole.print formats data with guides off, as Rich's print does. Tying\nguides to highlight only went unnoticed while they were invisible.\n\n* fix(pretty): guides stand in the structure's margin, off by default (rich-pretty-v7b)\n\nThe formatter records each line's margin where it starts the line, and\nguides are drawn there rather than read back out of the whitespace, so a\nwrapped string or a toString's own indent gets no guide inside it. Off by\ndefault and never on an ASCII-only console, as in Rich; blank rows carry\nthe guide; indent: 0 no longer throws.\n\nAddresses /code-review high on PR #257.\n\n* fix(pretty): every margin is written, so a guide never takes a continued line's text (rich-pretty-v7b)\n\nA row that looks empty can still be continued by a separator, a Map's\narrow or a key's value; its margin is now spaces like any other, and the\nASCII-only choice goes through drawable.\n\nAddresses /code-review medium on PR #257.\n\n* fix(pretty): a hanging row's guides are its slot's; margins always written (rich-pretty-v7b)\n\nFrame carries the slot's margin, so a value after a wrapped key gets its\nslot's guides and a hanging row can no longer start left of it (the\nnegative repeat). Every margin is written and a line with nothing past it\nis cleared in the one final pass, so blank rows keep no trailing spaces.\nAn ASCII-only console gets no guide spans at all; the trailing-space trim\nscans back instead of backtracking.\n\nNot taken: copying margins per level (toText at 1000 levels 520ms vs\nmaster's 435ms; the render around it is ~40s either way).\n\nAddresses the step-12 /code-review high on PR #257.\n\n* test(pretty): the thousand-level render runs at default options again (rich-pretty-v7b)\n\nWith guides on, each line is a thousand words for the render to wrap, which\ntimed out in CI (191s vs master's ~5s); guides are off by default now, and\nthe test's claim is about the default."
         }
       ]
     }
