@@ -68,7 +68,9 @@ for (let i = 0; i < 10; i++) {
 progress.stop();
 `;
 
-describe("runInTerminal", () => {
+// Most of these vite-build the library first, which a full suite's load can
+// push past vitest's 5s default.
+describe("runInTerminal", { timeout: 30_000 }, () => {
   beforeEach(() => {
     vi.stubEnv("NO_COLOR", "1");
     vi.stubEnv("FORCE_COLOR", "0");
