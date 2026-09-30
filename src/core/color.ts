@@ -496,8 +496,9 @@ export class ColorSpec {
    * any alpha is flattened, so a translucent value is drawn composited over
    * its ground (`flattenAlpha`) and should be measured that way: a
    * truecolor value, or a 256-colour cube or grey-ramp entry (xterm fixes
-   * indices 16–255, and `fromAnsi` types only those as EIGHT_BIT). ANSI 0–15
-   * and the default colour are the terminal theme's own, so they have none.
+   * indices 16–255, and `fromAnsi` types only those as EIGHT_BIT). ANSI 0–15,
+   * the default colour and a blend reaching either are the terminal theme's
+   * own, so they have none.
    */
   get fixedValue(): ColorRgba | undefined {
     switch (this.type) {
@@ -636,6 +637,30 @@ export class ColorSpec {
   }
 
   /**
+   * The colour `t` of the way from `from` to `to`: what `blend(from,to,t)`
+   * parses to. Two fixed colours mix to a fixed colour. A mix reaching a
+   * theme's own colour stays a mix until it is drawn, so whatever theme draws
+   * an end draws the mix from it: exported under a theme whose `blue` is
+   * #61afef, a mix with `blue` starts from #61afef. A terminal is told its RGB
+   * under the standard table, the only one a render has.
+   *
+   * Each end is one opaque colour: `default` is no colour to mix, and a
+   * translucent end has no one shade until it is laid on a ground.
+   */
+  static blend(from: ColorSpec, to: ColorSpec, t: number): ColorSpec {
+    for (const end of [from, to]) {
+      if (end.isDefault) throw new ColorParseError(`A blend cannot mix "default", which is no colour`);
+      if (end.value !== undefined && end.value.alpha < 1) {
+        throw new ColorParseError(`A blend's ends are opaque; "${end.name}" is translucent`);
+      }
+    }
+    if (!(t >= 0 && t <= 1)) throw new ColorParseError(`A blend's fraction is in [0, 1]; got ${t}`);
+    const a = from.fixedValue;
+    const b = to.fixedValue;
+    return a !== undefined && b !== undefined ? ColorSpec.fromRgba(blendRgb(a, b, t)) : new ColorBlend(from, to, t);
+  }
+
+  /**
    * Parse a color string. Cached — identical strings return the same instance.
    */
   static parse(colorString: string): ColorSpec {
@@ -679,12 +704,48 @@ export class ColorSpec {
   }
 }
 
+function mix(from: ColorSpec, to: ColorSpec, t: number, theme?: TerminalTheme): ColorRgba {
+  return blendRgb(from.getTruecolor(theme), to.getTruecolor(theme), t);
+}
+
+// How a blend spells an end: by what it draws as, so every spelling of one
+// colour ("blue", "color(4)", an EIGHT_BIT 4) gives the blend one name.
+function blendTerm(end: ColorSpec): string {
+  return end.fixedValue?.hex ?? (end.number !== undefined ? `color(${end.number})` : end.name);
+}
+
+/**
+ * `ColorSpec.blend` with an end the theme draws. A terminal is told it as a
+ * truecolor value, so it is one, and `value` is what it is told; a theme is
+ * asked of its two ends instead. Its name is what `ColorSpec.parse` reads back.
+ */
+class ColorBlend extends ColorSpec {
+  constructor(
+    private readonly from: ColorSpec,
+    private readonly to: ColorSpec,
+    private readonly t: number,
+  ) {
+    super(`blend(${blendTerm(from)},${blendTerm(to)},${t})`, ColorDepth.TRUECOLOR, undefined, mix(from, to, t));
+  }
+
+  override get fixedValue(): undefined {
+    return undefined;
+  }
+
+  override getTruecolor(theme?: TerminalTheme): ColorRgba {
+    return mix(this.from, this.to, this.t, theme);
+  }
+}
+
 // --- Parsing internals ---
 
 const HEX_RE = /^#([0-9a-f]{6})$/;
 const HEX_RGBA_RE = /^#([0-9a-f]{8})$/;
 const RGB_RE = /^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/;
 const COLOR_NUMBER_RE = /^color\((\d+)\)$/;
+const BLEND_RE = /^blend\((.*)\)$/;
+// A decimal as `String(number)` spells one, exponent included; `blend` owns its range.
+const FRACTION_RE = /^\s*(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?\s*$/;
 
 function parseSingle(key: string): ColorSpec {
   if (key === "default" || key === "") {
@@ -726,7 +787,37 @@ function parseSingle(key: string): ColorSpec {
     return new ColorSpec(key, type, n);
   }
 
+  // blend(a,b,t)
+  const blendMatch = BLEND_RE.exec(key);
+  if (blendMatch) {
+    const terms = blendTerms(blendMatch[1]!);
+    const fraction = terms[2] ?? "";
+    if (terms.length !== 3 || !FRACTION_RE.test(fraction)) {
+      throw new ColorParseError(`ColorSpec "${key}": a blend is blend(<color>,<color>,<fraction>)`);
+    }
+    return ColorSpec.blend(ColorSpec.parse(terms[0]!), ColorSpec.parse(terms[1]!), Number(fraction));
+  }
+
   throw new ColorParseError(`Failed to parse color: "${key}"`);
+}
+
+// A blend's terms, split at the commas outside parentheses so an `rgb(…)` or a
+// nested `blend(…)` stays one term.
+function blendTerms(inner: string): string[] {
+  const terms: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < inner.length; i++) {
+    const c = inner[i];
+    if (c === "(") depth++;
+    else if (c === ")") depth--;
+    else if (c === "," && depth === 0) {
+      terms.push(inner.slice(start, i));
+      start = i + 1;
+    }
+  }
+  terms.push(inner.slice(start));
+  return terms;
 }
 
 // [LAW:single-enforcer] The regexes admit any run of digits and leave the

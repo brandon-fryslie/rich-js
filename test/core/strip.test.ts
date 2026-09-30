@@ -12,7 +12,9 @@ import { Style, Theme } from "../../src/core/style.js";
 import { RichText } from "../../src/core/text.js";
 import type { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
-import { ColorDepth, ColorSpec } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec, blendRgb } from "../../src/core/color.js";
+import { exportLines } from "../../src/core/export-lines.js";
+import { ATOM_ONE_DARK } from "../../src/themes/terminalThemes.js";
 import { Oklch } from "../../src/core/oklch.js";
 import { renderToString } from "../../src/core/render.js";
 
@@ -189,6 +191,20 @@ describe("PowerlineJoiner same-bg structural join", () => {
     expect(
       render(new Strip([cell(" a ", slot), cell(" b ", "white on red")], new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" })))[2]!.text,
     ).toBe("|");
+  });
+
+  it("tells two theme-drawn mixes apart by what they mix, however their ends are spelled", () => {
+    const blend = (to: string, from = "blue") => ColorSpec.blend(ColorSpec.parse(from), ColorSpec.parse(to), 0.5);
+    const mid = (a: ColorSpec, b: ColorSpec) =>
+      render(
+        new Strip(
+          [cell(" a ", new Style({ color: "white", bgcolor: a })), cell(" b ", new Style({ color: "white", bgcolor: b }))],
+          new PowerlineJoiner({ glyph: ">", divider: "|", lead: "<", tail: ">" }),
+        ),
+      )[2]!.text;
+    expect(mid(blend("red"), blend("red"))).toBe("|");
+    expect(mid(blend("red"), blend("red", "color(4)"))).toBe("|");
+    expect(mid(blend("red"), blend("green"))).toBe(">");
   });
 
   // Two grounds apart in truecolor that a lower depth draws as one colour: the
@@ -408,6 +424,32 @@ describe("GradientJoiner", () => {
     const noBg = cell(" x ", "white");
     const strip = new Strip([FF0000, noBg], new GradientJoiner({ steps: 2 }));
     expect(render(strip).map((s) => s.text)).toEqual([" a ", " x "]);
+  });
+
+  it("ramps between the shades a theme draws its named neighbours in, in export", () => {
+    const strip = new Strip([cell(" a ", "white on blue"), cell(" b ", "white on red")], new GradientJoiner({ steps: 2 }));
+    const [row] = exportLines(render(strip), ATOM_ONE_DARK);
+    const grounds = row!.map((run) => run.look.background as ColorRgba);
+    const blue = ATOM_ONE_DARK.ansiColors.get(4);
+    const red = ATOM_ONE_DARK.ansiColors.get(1);
+    expect([grounds[0]!.hex, grounds.at(-1)!.hex]).toEqual(["#61afef", "#e06c75"]);
+    const samples = row!.slice(1, -1).flatMap((run) => [run.look.foreground, run.look.background as ColorRgba]);
+    expect(samples.map((c) => c.hex)).toEqual([1, 3, 5, 7].map((k) => blendRgb(blue, red, k / 8).hex));
+  });
+
+  it("draws nothing beside a default ground, which is no colour to ramp from", () => {
+    const strip = new Strip([cell(" a ", "white on default"), cell(" b ", "white on red")], new GradientJoiner({ steps: 1 }));
+    expect(render(strip).map((s) => s.text)).toEqual([" a ", " b "]);
+  });
+
+  it("ramps between translucent grounds as their cells draw them", () => {
+    const strip = new Strip([cell(" a ", "white on #ffffff80"), cell(" b ", "white on #ff0000")], new GradientJoiner({ steps: 1 }));
+    const [, join] = render(strip);
+    const drawn = join!.style!.drawnColors();
+    const seen = new ColorRgba(255, 255, 255, 128 / 255).compositeOver(new ColorRgba(0, 0, 0));
+    expect([drawn.color!.value!.hex, drawn.bgcolor!.value!.hex]).toEqual(
+      [0.25, 0.75].map((t) => blendRgb(seen, new ColorRgba(255, 0, 0), t).hex),
+    );
   });
 
   it("defaults to steps=4", () => {

@@ -8,21 +8,22 @@ A style definition is a space-separated string of color names and attribute keyw
 
 ### Foreground color
 
-Four forms are supported. Each line below is drawn in the color its own definition names:
+Five forms are supported. Each line below is drawn in the color its own definition names:
 
 ```typescript
 const forms: [string, string][] = [
-  ["magenta",        "named color"],
-  ["color(5)",       "color number"],
-  ["#af00ff",        "hex"],
-  ["rgb(175,0,255)", "RGB"],
+  ["magenta",                    "named color"],
+  ["color(5)",                   "color number"],
+  ["#af00ff",                    "hex"],
+  ["rgb(175,0,255)",             "RGB"],
+  ["blend(magenta,#af00ff,0.5)", "mix"],
 ];
 for (const [style, meaning] of forms) {
-  console.print(RichText.assemble([[style.padEnd(18), style], meaning]));
+  console.print(RichText.assemble([[style.padEnd(28), style], meaning]));
 }
 ```
 
-The first two are ANSI magenta, so the terminal's theme picks the shade; the last two are the same exact purple wherever they are drawn.
+The first two are ANSI magenta, so the terminal's theme picks the shade; the next two are the same exact purple wherever they are drawn. `blend(a,b,t)` is the colour `t` of the way from `a` to `b`, for any two colours but `default`. A mix reaching a theme's own colour takes that theme's shade: exported under a theme, it is mixed from the theme's `magenta`, while a live terminal is sent the mix of the standard `magenta`.
 
 Hex and RGB give access to the full 16.7 million truecolor range. rich-js automatically downsamples to the nearest available color when the terminal doesn't support truecolor.
 
