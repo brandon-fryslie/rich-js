@@ -4,15 +4,22 @@
     {
       "version": "pr-272",
       "ref": "refs/pull/272/merge",
-      "sha": "73641810472d102901545d8e84d9bf12ce03446f",
-      "timestamp": "2026-09-30T19:23:29.951Z",
+      "sha": "c8ad722ddda65c94cb06247ec1c3650424a59983",
+      "timestamp": "2026-09-30T19:28:41.333Z",
       "commits": [
         {
-          "sha": "73641810472d102901545d8e84d9bf12ce03446f",
+          "sha": "c8ad722ddda65c94cb06247ec1c3650424a59983",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:22:19-06:00",
-          "message": "Merge be4ab5c33e25da86974d6ba77f22b3173fbd618a into 7d1269e1f067cfaf970db02865817ea7240c0618\n"
+          "timestamp": "2026-09-30T19:27:27Z",
+          "message": "Merge cb36d457d6ffba76859510b1362e640870ffffbf into 7d1269e1f067cfaf970db02865817ea7240c0618\n"
+        },
+        {
+          "sha": "cb36d457d6ffba76859510b1362e640870ffffbf",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:27:22-06:00",
+          "message": "test(tree): pin every guide role in heavy and double, and the guide's exact style (rich-tree-te3h)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "be4ab5c33e25da86974d6ba77f22b3173fbd618a",
