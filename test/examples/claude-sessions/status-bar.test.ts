@@ -5,15 +5,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { Console } from "../../../src/index.js";
+import { renderToString } from "../../../src/index.js";
 import { MemoryFileSystem } from "../../../examples/_capabilities/memory-file-system.js";
 import { initialState, type AppState } from "../../../examples/claude-sessions/state.js";
 import { buildStatusBar } from "../../../examples/claude-sessions/views/status-bar.js";
 
 function footer(state: AppState): string {
-  const console = new Console({ width: 200, record: true, colorSystem: null });
-  console.print(buildStatusBar(state));
-  return console.exportText().trimEnd();
+  return renderToString(buildStatusBar(state), { width: 200, colorSystem: null }).trimEnd();
 }
 
 const base = initialState(
