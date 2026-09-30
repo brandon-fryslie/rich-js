@@ -4,15 +4,22 @@
     {
       "version": "pr-259",
       "ref": "refs/pull/259/merge",
-      "sha": "6cfd7bdb34506f2eba6188e7df5389f91998127b",
-      "timestamp": "2026-09-30T14:49:28.850Z",
+      "sha": "d9c93a3a32834021bb8f76e4cedcc6d48ab92e2c",
+      "timestamp": "2026-09-30T14:57:23.756Z",
       "commits": [
         {
-          "sha": "6cfd7bdb34506f2eba6188e7df5389f91998127b",
+          "sha": "d9c93a3a32834021bb8f76e4cedcc6d48ab92e2c",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:48:17-06:00",
-          "message": "Merge ddfa207845c97d735193e0280b5ae1daf5f05761 into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
+          "timestamp": "2026-09-30T14:56:15Z",
+          "message": "Merge d6a4be4d93267ec01c26d219d6e9a2d1300edf29 into 55e33b2a298c6f0c5b24efce711f6fd6e66e6876\n"
+        },
+        {
+          "sha": "d6a4be4d93267ec01c26d219d6e9a2d1300edf29",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:56:09-06:00",
+          "message": "fix(markdown): links span their text, headings stay left, justify has one source (rich-markdown-ft8)\n\nReview round 1 (high) on #259:\n- a link's span starts where its text lands, not at the source length, which\n  control-character stripping can shorten\n- headings are placed left explicitly instead of inheriting the print's justify\n- justify travels once, as the block's placement; InlineSettings holds only\n  inline code style and hyperlinks, and Markdown no longer implements it\n- docs: an unset justify follows the print's\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "ddfa207845c97d735193e0280b5ae1daf5f05761",
