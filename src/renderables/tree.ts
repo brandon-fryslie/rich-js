@@ -16,27 +16,40 @@ import { drawable, getStyle, isMeasurable, stackedHeight, withBoundedWidth, with
 import { Measurement } from "../core/measure.js";
 
 /**
- * The glyphs one level of guide is drawn with: the branch on the row of the
- * child it leads to, and what stands in that column on every row after it —
- * the child's later label lines and all of its descendants. A child's `rest` is
- * the rail when siblings follow it and blank when it is the last.
+ * What one column of guide draws on one row: a branch to the child on this row
+ * (`fork` when siblings follow it, `end` when it is the last), the rail an open
+ * sibling list keeps (`continue`), or nothing (`space`).
  */
-interface GuideGlyphs {
-  readonly fork: { readonly first: string; readonly rest: string };
-  readonly end: { readonly first: string; readonly rest: string };
+type GuideRole = "fork" | "end" | "continue" | "space";
+
+/** The glyph each role is drawn with, in one weight of line. */
+type GuideGlyphs = Readonly<Record<GuideRole, string>>;
+
+/** Every glyph of every set is this wide, so a row's guides are as wide however they are drawn. */
+const GUIDE_CELLS = 4;
+
+const LIGHT_GUIDES: GuideGlyphs = { fork: "├── ", end: "└── ", continue: "│   ", space: "    " };
+const HEAVY_GUIDES: GuideGlyphs = { fork: "┣━━ ", end: "┗━━ ", continue: "┃   ", space: "    " };
+const DOUBLE_GUIDES: GuideGlyphs = { fork: "╠══ ", end: "╚══ ", continue: "║   ", space: "    " };
+const ASCII_GUIDES: GuideGlyphs = { fork: "+-- ", end: "`-- ", continue: "|   ", space: "    " };
+
+/**
+ * The guide attributes a glyph set stands for, switched off on the guide itself
+ * as Rich's `remove_guide_styles` does: a bold guide is drawn heavy, not bold.
+ */
+const REMOVE_GUIDE_STYLES = new Style({ bold: false, underline2: false });
+
+const guideGlyphs = (glyphs: GuideGlyphs): string => Object.values(glyphs).join("");
+
+/**
+ * The glyphs a column of guide is drawn with, read off its resolved guide style
+ * as Rich does: heavy when bold, double when underline2, light otherwise — and
+ * ASCII whenever the terminal cannot draw the chosen set.
+ */
+function glyphsFor(options: RenderOptions, style: Style): GuideGlyphs {
+  const weight = style.bold === true ? HEAVY_GUIDES : style.underline2 === true ? DOUBLE_GUIDES : LIGHT_GUIDES;
+  return drawable(options, weight, ASCII_GUIDES, guideGlyphs);
 }
-
-const UNICODE_GUIDES: GuideGlyphs = {
-  fork: { first: "├── ", rest: "│   " },
-  end: { first: "└── ", rest: "    " },
-};
-
-const ASCII_GUIDES: GuideGlyphs = {
-  fork: { first: "+-- ", rest: "|   " },
-  end: { first: "`-- ", rest: "    " },
-};
-
-const guideGlyphs = ({ fork, end }: GuideGlyphs): string => fork.first + fork.rest + end.first + end.rest;
 
 export interface TreeOptions {
   expanded?: boolean;
@@ -51,14 +64,14 @@ export interface TreeOptions {
  * ancestor opened has already settled, and draws `rest` on both.
  */
 interface Guide {
-  readonly first: string;
-  readonly rest: string;
+  readonly first: GuideRole;
+  readonly rest: GuideRole;
   /**
    * The guide styles of every node from the root down to the one whose children
    * this column joins, outermost first, as given — stacked at render, so a
    * deeper node's guide style refines its ancestors' rather than replacing
-   * them, as in Rich. Left unresolved because `measure` walks the rows too, and
-   * a width needs no theme.
+   * them, as in Rich. Left unresolved, with the glyphs it picks, because
+   * `measure` walks the rows too, and a width needs no theme.
    */
   readonly styles: ReadonlyArray<string | Style>;
 }
@@ -117,7 +130,7 @@ export class Tree implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    for (const row of this._walk(options)) {
+    for (const row of this._walk()) {
       yield* this._renderRow(options, row);
     }
   }
@@ -128,8 +141,8 @@ export class Tree implements Renderable, Measurable {
    * and the column its children hang from with it, as Rich does — its children
    * stand at the left edge, and its guide style still reaches their guides.
    */
-  private _walk(options: RenderOptions): TreeRow[] {
-    const rows = [...this._rows(drawable(options, UNICODE_GUIDES, ASCII_GUIDES, guideGlyphs), [], [], [])];
+  private _walk(): TreeRow[] {
+    const rows = [...this._rows([], [], [])];
     return this.hideRoot ? rows.slice(1).map((row) => ({ ...row, guides: row.guides.slice(1) })) : rows;
   }
 
@@ -149,7 +162,6 @@ export class Tree implements Renderable, Measurable {
    * on the stack its ancestors built.
    */
   private *_rows(
-    glyphs: GuideGlyphs,
     guides: readonly Guide[],
     inheritedGuideStyles: ReadonlyArray<string | Style>,
     inheritedStyles: ReadonlyArray<string | Style>,
@@ -161,8 +173,10 @@ export class Tree implements Renderable, Measurable {
     const guideStyles = [...inheritedGuideStyles, this.guideStyle];
     const above = guides.map((guide) => ({ ...guide, first: guide.rest }));
     for (let i = 0; i < children.length; i++) {
-      const branch = i === children.length - 1 ? glyphs.end : glyphs.fork;
-      yield* children[i]!._rows(glyphs, [...above, { ...branch, styles: guideStyles }], guideStyles, styles);
+      const branch: Guide = i === children.length - 1
+        ? { first: "end", rest: "space", styles: guideStyles }
+        : { first: "fork", rest: "continue", styles: guideStyles };
+      yield* children[i]!._rows([...above, branch], guideStyles, styles);
     }
   }
 
@@ -196,8 +210,14 @@ export class Tree implements Renderable, Measurable {
     const resolve = (styles: ReadonlyArray<string | Style>): Style =>
       Style.combine(styles.map((style) => getStyle(options, style)));
     const style = resolve(row.styles);
-    const styles = row.guides.map((guide) => style.backgroundStyle.add(resolve(guide.styles)));
-    const width = Math.max(0, options.maxWidth - row.guides.reduce((sum, guide) => sum + cellLen(guide.first), 0));
+    const drawn = row.guides.map((guide) => {
+      const guideStyle = resolve(guide.styles);
+      return {
+        glyphs: glyphsFor(options, guideStyle),
+        style: style.backgroundStyle.add(guideStyle).add(REMOVE_GUIDE_STYLES),
+      };
+    });
+    const width = Math.max(0, options.maxWidth - row.guides.length * GUIDE_CELLS);
     // The guides are cropped by `cellFit`; the label is cropped too, so a label
     // that ignores the width it is handed cannot push the row past the offer the
     // guides were fitted into. No highlighter: a label is drawn plain, as
@@ -208,8 +228,9 @@ export class Tree implements Renderable, Measurable {
     for (let i = 0; i < lines.length; i++) {
       let left: number = options.maxWidth;
       for (let g = 0; g < row.guides.length; g++) {
-        const piece = cellFit(i === 0 ? row.guides[g]!.first : row.guides[g]!.rest, asCellCol(left));
-        if (piece.length > 0) yield new Segment(piece, styles[g]);
+        const { glyphs, style: guideStyle } = drawn[g]!;
+        const piece = cellFit(glyphs[i === 0 ? row.guides[g]!.first : row.guides[g]!.rest], asCellCol(left));
+        if (piece.length > 0) yield new Segment(piece, guideStyle);
         left -= cellLen(piece);
       }
       yield* lines[i]!;
@@ -228,9 +249,8 @@ export class Tree implements Renderable, Measurable {
     // mode drew a 40-cell frame around nine cells of tree, and an unbounded
     // offer came back unbounded.
     let natural = 0;
-    for (const row of this._walk(parsed)) {
-      const guideWidth = row.guides.reduce((sum, guide) => sum + cellLen(guide.first), 0);
-      natural = Math.max(natural, guideWidth + labelWidth(parsed, row.label));
+    for (const row of this._walk()) {
+      natural = Math.max(natural, row.guides.length * GUIDE_CELLS + labelWidth(parsed, row.label));
     }
 
     const maximum = Math.min(natural, ceiling);

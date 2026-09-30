@@ -127,10 +127,8 @@ describe("Tree", () => {
       const tree = new Tree("Root", { guide_style: "bold green" });
       tree.add("Child");
       const segs = collectSegments(tree, { maxWidth: 40 });
-      // Guide segments (├── or └──) should have a non-null style
-      const guideSegs = segs.filter(
-        (s) => s.text.includes("\u251c") || s.text.includes("\u2514"),
-      );
+      // A bold guide draws heavy (┗━━), so the guide segment is found by that glyph.
+      const guideSegs = segs.filter((s) => s.text.includes("┗"));
       expect(guideSegs.length).toBeGreaterThan(0);
       expect(guideSegs.some((s) => s.style !== undefined)).toBe(true);
     });
@@ -175,7 +173,7 @@ describe("Tree", () => {
       "│   └── d",
       "└── e",
     ]);
-    const red = Style.parse("red");
+    const red = Style.parse("not bold not underline2 red");
     for (const line of lines.slice(1)) {
       const guides = line.slice(0, -1);
       expect(guides.length).toBeGreaterThan(0);
@@ -189,9 +187,34 @@ describe("Tree", () => {
     const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
     const [rail, branch] = lines[2]!;
     expect(rail!.text).toBe("    ");
-    expect(rail!.style?.equals(Style.parse("red"))).toBe(true);
+    expect(rail!.style?.equals(Style.parse("not bold not underline2 red"))).toBe(true);
     expect(branch!.text).toBe("└── ");
-    expect(branch!.style?.equals(Style.parse("red italic"))).toBe(true);
+    expect(branch!.style?.equals(Style.parse("not bold not underline2 red italic"))).toBe(true);
+  });
+
+  // Python Rich 9d8f9a3 prints `    ┗━━ b` and `    ╚══ b` for these trees, every
+  // guide `not bold not underline2 red`: the attribute picks the glyphs and is
+  // taken off the guide. Once these drew light glyphs in bold.
+  it.each([
+    ["bold", "┗━━ "],
+    ["underline2", "╚══ "],
+  ])("draws a %s guide with its glyph set, and without the attribute", (weight, branch) => {
+    const tree = new Tree("root", { guide_style: "red" });
+    tree.add("a", { guide_style: weight }).add("b");
+    const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
+    expect(lines.map((line) => line.map((s) => s.text).join(""))).toEqual(["root", "└── a", `    ${branch}b`]);
+    const guide = Style.parse("not bold not underline2 red");
+    for (const line of lines.slice(1)) {
+      for (const segment of line.slice(0, -1)) expect(segment.style?.equals(guide)).toBe(true);
+    }
+    expect(tree.measure({ maxWidth: 40 }).maximum).toBe(9);
+  });
+
+  it("draws a bold guide in ASCII when the terminal cannot draw heavy lines", () => {
+    const tree = new Tree("root", { guide_style: "bold" });
+    tree.add("a");
+    tree.add("b");
+    expect(collectLines(tree, { maxWidth: 40, asciiOnly: true }).map((l) => l.trimEnd())).toEqual(["root", "+-- a", "`-- b"]);
   });
 
   // `style` was stored and never read: `add("a", { style: "cyan" })` printed an
@@ -225,7 +248,7 @@ describe("Tree", () => {
     const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
     const guides = [lines[2]!.slice(0, 2), lines[3]!.slice(0, 2)];
     expect(guides.map((line) => line.map((guide) => guide.text))).toEqual([["│   ", "└── "], ["│   ", "    "]]);
-    for (const guide of guides.flat()) expect(guide.style?.equals(Style.parse("red on blue"))).toBe(true);
+    for (const guide of guides.flat()) expect(guide.style?.equals(Style.parse("not bold not underline2 red on blue"))).toBe(true);
   });
 
   it("carries a hidden root's style to the children standing in its place", () => {
