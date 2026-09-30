@@ -401,6 +401,11 @@ describe("a style tag spans a plugin pair it encloses", () => {
     expect(spans("[blue]x[/blue][aa]y[/aa]", { baseStyle: "red" })).toEqual(["0-2 red", "0-1 blue"]);
   });
 
+  it("lets a handler's own style repaint the base style, once, as a style tag does", () => {
+    expect(spans("[shout]x[/shout]", { baseStyle: "blue" })).toEqual(["0-3 blue", "0-3 red"]);
+    expect(spans("[red]<x>[/red]", { baseStyle: "blue" })).toEqual(["0-3 blue", "0-3 red"]);
+  });
+
   it("paints the base style under a tag enclosing a pair, not over it", () => {
     expect(spans("[blue][aa]x[/aa][/blue]", { baseStyle: "red" })).toEqual(["0-1 red", "0-1 blue"]);
   });
