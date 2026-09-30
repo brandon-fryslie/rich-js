@@ -18,5 +18,12 @@ export default defineConfig({
   test: {
     include: ["test/**/*.{test,spec}.{ts,tsx,js,jsx}"],
     exclude: ["node_modules", "dist", "dist-demo", "e2e"],
+    // [LAW:single-enforcer] A test's timeout is a hang detector, not a speed
+    // budget, so it has one home. Tests that spawn git, npm, node or a vite
+    // build pass in 1–3s alone and cross vitest's 5s default under a full
+    // suite's load, and the per-file allowances that chased them missed each
+    // new file until it flaked. A hang still fails, at 30s. A test asserting
+    // speed states its own budget beside the work it times.
+    testTimeout: 30_000,
   },
 });

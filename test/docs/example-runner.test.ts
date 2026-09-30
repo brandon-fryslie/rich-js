@@ -83,7 +83,7 @@ describe("docs/panel.md", { timeout: 60_000 }, () => {
   });
 });
 
-describe("the example widget", { timeout: 30_000 }, () => {
+describe("the example widget", () => {
   // The fence stays a fence for VitePress to highlight; the widget is the
   // element around it and the output panel under it, each between blank lines
   // so markdown still parses the fence and the prose after it.
@@ -106,7 +106,7 @@ describe("the example widget", { timeout: 30_000 }, () => {
   });
 });
 
-describe("one page, one program", { timeout: 30_000 }, () => {
+describe("one page, one program", () => {
   it("assumes console and the main barrel, and lets a block redeclare console", async () => {
     const result = await run(
       page(fence('console.print(new Rule("one"));'), fence("const console = new Console({ width: 20 });\nconsole.print(new Rule());")),
@@ -219,7 +219,7 @@ describe("one page, one program", { timeout: 30_000 }, () => {
 
 });
 
-describe("a live block", { timeout: 30_000 }, () => {
+describe("a live block", () => {
   it("shows a live terminal under its code, loading the block's own program only when asked", async () => {
     const result = await runPage(`# t\n\n${fence('console.print("live");', "ts live")}`);
     const [program] = result.live;
@@ -311,7 +311,7 @@ async function tried(markdown: string): Promise<{ href: string; program: string 
   return Promise.all(links.map(async ([, href, hash]) => ({ href: href!, program: await decodeProgram(hash!) })));
 }
 
-describe("Try it", { timeout: 30_000 }, () => {
+describe("Try it", () => {
   it("opens every block that runs as the block, under what it names from above it", async () => {
     const result = await run(page(fence('const title = "shared";\nconsole.print("first");'), fence("console.print(title);")));
     const [first, second] = await tried(result);
@@ -409,7 +409,7 @@ describe("Try it", { timeout: 30_000 }, () => {
   });
 });
 
-describe("a page run's time and random numbers", { timeout: 30_000 }, () => {
+describe("a page run's time and random numbers", () => {
   /** What an output shows, as text: its light fragment without the markup. */
   const text = (html: string) => /<div class="rich-example-light" v-pre>(.*?)<\/div>/.exec(html)![1]!.replace(/<[^>]*>/g, "").replaceAll("&#10;", "").trim();
 
@@ -430,7 +430,7 @@ describe("a page run's time and random numbers", { timeout: 30_000 }, () => {
   });
 });
 
-describe("a page that breaks its contract fails the build", { timeout: 30_000 }, () => {
+describe("a page that breaks its contract fails the build", () => {
   const failures: [string, string, RegExp][] = [
     ["a type error, at its page line", page("# t", fence('const n: number = "x";')), /fixture\.md:4: Type 'string' is not assignable/],
     ["a silent block that writes", fence('console.print("x");', "ts silent"), /fixture\.md:1: marked `silent` but wrote/],
