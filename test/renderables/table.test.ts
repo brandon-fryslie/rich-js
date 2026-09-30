@@ -1485,7 +1485,7 @@ describe("Table cells wrap before the overflow method sees them", () => {
   // rich-table-3u2: every column is paid its minimum — its longest word, or its
   // whole line under `noWrap` — before any is paid past it.
   const pair = (left: [string, boolean], right: [string, boolean]): Table => {
-    const g = Table.grid({ padding: [0, 1, 0, 0], padEdge: false });
+    const g = Table.grid({ padding: [0, 1, 0, 0] });
     g.addColumn("", { noWrap: left[1] });
     g.addColumn("", { noWrap: right[1] });
     g.addRow(left[0], right[0]);
@@ -1644,7 +1644,7 @@ describe("Table sizes and pads cells as Rich does", () => {
     // Rich re-measures a collapsed table's columns with `maximum or 0`: the
     // empty column competes for its cell and then draws nothing, so the table
     // ends narrower than the offer.
-    expect(lines(grid({ padding: [0, 1, 0, 0], padEdge: false }, "aaaa", ""), 5)).toEqual(["aa… "]);
+    expect(lines(grid({ padding: [0, 1, 0, 0] }, "aaaa", ""), 5)).toEqual(["aa… "]);
     expect(lines(grid({ padding: 0 }, "a", "", "b"), 2)).toEqual(["a"]);
   });
 

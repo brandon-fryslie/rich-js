@@ -64,7 +64,7 @@ function row(label: string, value: string): [RichText, RichText] {
 }
 
 function renderState(state: SysinfoState): Renderable {
-  const table = Table.grid({ padding: [0, 1] });
+  const table = Table.grid();
   table.addColumn();
   table.addColumn();
   table.addRow(...row("host", state.host));

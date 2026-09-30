@@ -309,4 +309,4 @@ grid.addRow("[bold]Left side[/bold]", "[dim]Right side[/dim]");
 console.print(grid);
 ```
 
-`Table.grid()` uses the same `Table` class with different defaults: no borders, no header, one cell of padding to the right of each column, `collapsePadding` on and `padEdge` off, so the padding falls between columns and never at the grid's edges. No separate type.
+`Table.grid()` uses the same `Table` class with different defaults: no borders, no header, and one cell of padding between columns but none at the grid's edges (`padding: [0, 1, 0, 0]`, `collapsePadding` on, `padEdge` off). No separate type.

@@ -4,8 +4,7 @@
  * A port of Rich's `Columns`. What it decides is how many columns, and which
  * item goes in which cell. Everything after that — how wide each column is, how
  * far apart, what `expand` does, how rows are separated — is the grid's: the
- * items are laid out as a `Table.grid` with `collapsePadding` and no
- * `padEdge`, as the reference lays them out.
+ * items are laid out as a `Table.grid`, as the reference lays them out.
  * [LAW:one-source-of-truth] A second copy of that geometry here is how the two
  * drifted: an empty item's column was drawn with no width where the grid draws one cell.
  */
@@ -121,7 +120,7 @@ export class Columns implements Renderable, Measurable {
 
   /**
    * The items at the width offered, as the reference's grid: `_layout`'s
-   * cells in a `Table.grid` with `collapsePadding` and no `padEdge`.
+   * cells in a `Table.grid`.
    *
    * [LAW:single-enforcer] `render` draws this and `measure` reports its width,
    * so the two cannot disagree about how wide a Columns is.
