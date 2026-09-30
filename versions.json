@@ -2,67 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-264",
-      "ref": "refs/pull/264/merge",
-      "sha": "19c99329d69792826323b28a99342b73b55a20c7",
-      "timestamp": "2026-09-30T16:53:16.266Z",
-      "commits": [
-        {
-          "sha": "19c99329d69792826323b28a99342b73b55a20c7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:52:08Z",
-          "message": "Merge 23faa78db2048b715c7ea3a616a45ff33437bca9 into 9aec2013b58c609efe46bf3d36f4f7b33aead3d1\n"
-        },
-        {
-          "sha": "23faa78db2048b715c7ea3a616a45ff33437bca9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:52:03-06:00",
-          "message": "docs(contrast): the terminal example imports what it uses (rich-contrast-knmh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "ccbdace2aee16bc4cd1bb63cde8a39f7b160a0ee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:50:37-06:00",
-          "message": "fix(contrast): measure through the writer's own downgrade; say inputs are written colours (rich-contrast-knmh)\n\nReview of PR #264 (escalation high):\n- shownAs measured via drawnTable's own match, a second account of the\n  index the writer emits beside ColorSpec.downgrade + getTruecolor, the one\n  Style.drawnColors writes. It now goes through that; the tables only list\n  replacement candidates.\n- docs/contrast.md: fg and bg are the colours written, not the terminal's\n  shades; the example passes undefined for substrate instead of a hand copy\n  of the writer's black.\n- resolveTerminal's comment no longer claims the widgets' fallback.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "faef30447887425a6e338dc9caad0995544aabfc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:41:00-06:00",
-          "message": "fix(contrast): a TerminalTheme holds exactly the sixteen ANSI colours; translucent text is ranked over its own ground (rich-contrast-knmh, rich-color-qqkm)\n\nReview of PR #264 (medium):\n- At STANDARD an index picked from a terminal's ansiColors is read back from\n  the sixteen-entry writer table, so a 256-entry ansiColors returned\n  undefined typed as ColorRgba. Every reader already indexes the table 0-15\n  and the class doc names it the theme's sixteen; the constructor now\n  refuses anything else, and its header stops calling it a 16/256 LUT.\n- The replacement ranked fg composited over the terminal's drawn ground,\n  which under Rose Pine Dawn turns a translucent navy into lavender. It is\n  the author's colour over the author's ground.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "2a0932e00c4b616e969b0a30e81eb7ad2686cccb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:36:19-06:00",
-          "message": "fix(contrast): a replacement is ranked on the author's colour; one owner for the unnamed terminal (rich-contrast-knmh)\n\nReview of PR #264 (high):\n- The replacement index was ranked by distance to the truecolor pre-pass,\n  which slides toward the pole the nominal ground names. Under a terminal\n  that draws the ground on the other side (Rose Pine Dawn) that pole is\n  wrong. Ranking on fg itself measured closer to the author's colour at\n  both ANSI and 256 colours across every bundled terminal.\n- 'No terminal means VGA' had two homes (colorMath's STANDARD_TABLE\n  fallback and getTruecolor's INTERNAL_DEFAULT_THEME); resolveTerminal is\n  now the one.\n- The depth-to-table map is one exhaustive switch, resolved once per call.\n- docs/contrast.md says readableOn measures in VGA at STANDARD\n  (rich-template-bindings-wrzr).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "77e424fd3f6891b6ae5e145a1cba7d558a130210",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:24:11-06:00",
-          "message": "fix(contrast): at ansi, text is measured in the terminal's own sixteen colours (rich-contrast-knmh)\n\nensureContrast, ensureDrawn and drawnColour measured a STANDARD-depth pair\non STANDARD_TABLE's nominal colours. The writer does pick the index by that\ntable, but the terminal draws the index in its theme's colour, and themes\ndisagree about sides: Rosé Pine Dawn's black is light and its white dark, so\nnavy on white passed at 16:1 nominal and drew at 2.1:1.\n\nEach now takes a trailing `terminal: TerminalTheme` and measures in its\nansiColors; a replacement is the writer's colour for the index that clears\nthe floor there. With none named the table is the VGA sixteen that\nDEFAULT_TERMINAL_THEME draws, so existing answers are unchanged.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9aec2013b58c609efe46bf3d36f4f7b33aead3d1",
-      "timestamp": "2026-09-30T16:18:30.867Z",
+      "sha": "409d3def96e013e7e0925e5a1a645a23b2f5cb54",
+      "timestamp": "2026-09-30T16:57:27.235Z",
       "commits": [
         {
-          "sha": "9aec2013b58c609efe46bf3d36f4f7b33aead3d1",
+          "sha": "409d3def96e013e7e0925e5a1a645a23b2f5cb54",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:17:27-06:00",
-          "message": "fix(strip): a gradient between named colours ramps between the theme's shades (rich-strip-hxet) (#263)\n\n* fix(strip): a gradient between named colours ramps between the theme's shades (rich-strip-hxet)\n\nGradientJoiner resolved its two neighbours' backgrounds to RGB at render\ntime, where the only table is VGA's, so under ATOM_ONE_DARK `on blue` |\n`on red` exported as #61afef and #e06c75 with a #000080→#800000 ramp\nbetween them.\n\nEach sample is now `ColorSpec.blend(left, right, t, false)`: a colour that\nstays a mix of its two ends until it is drawn. An export resolves both ends\nagainst its theme; a terminal is told the standard-table mix, as before.\nThe ends are read as backgrounds whoever draws the mix, so an `on default`\nneighbour is the theme's background even in a sample used as a foreground.\n\nThe powerline seam test compared two theme-drawn colours by palette slot\nnumber, which a mix and the default both lack; they now compare by name\nwhen neither has a slot.\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(color): a blend is a colour ColorSpec.parse reads back, named by what its ends draw (rich-strip-hxet)\n\nReview of #263: ColorBlend's name was not parseable, so Style.toString no\nlonger round-tripped, and it spelled ends as written, so vanishes told\nblue- and color(4)-mixes apart. blend(a,b,t) is now a colour form, its name\ncanonical (slot or hex per end). Ends are opaque and never default:\nGradientJoiner ramps between drawn grounds and treats default as nothing to\npaint, as PowerlineJoiner does, which drops the flattenAlpha override and\nthe fg/bg role.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T10:56:16-06:00",
+          "message": "fix(contrast): at ansi, text is measured in the terminal's own sixteen colours (rich-contrast-knmh) (#264)\n\n* fix(contrast): at ansi, text is measured in the terminal's own sixteen colours (rich-contrast-knmh)\n\nensureContrast, ensureDrawn and drawnColour measured a STANDARD-depth pair\non STANDARD_TABLE's nominal colours. The writer does pick the index by that\ntable, but the terminal draws the index in its theme's colour, and themes\ndisagree about sides: Rosé Pine Dawn's black is light and its white dark, so\nnavy on white passed at 16:1 nominal and drew at 2.1:1.\n\nEach now takes a trailing `terminal: TerminalTheme` and measures in its\nansiColors; a replacement is the writer's colour for the index that clears\nthe floor there. With none named the table is the VGA sixteen that\nDEFAULT_TERMINAL_THEME draws, so existing answers are unchanged.\n\n* fix(contrast): a replacement is ranked on the author's colour; one owner for the unnamed terminal (rich-contrast-knmh)\n\nReview of PR #264 (high):\n- The replacement index was ranked by distance to the truecolor pre-pass,\n  which slides toward the pole the nominal ground names. Under a terminal\n  that draws the ground on the other side (Rose Pine Dawn) that pole is\n  wrong. Ranking on fg itself measured closer to the author's colour at\n  both ANSI and 256 colours across every bundled terminal.\n- 'No terminal means VGA' had two homes (colorMath's STANDARD_TABLE\n  fallback and getTruecolor's INTERNAL_DEFAULT_THEME); resolveTerminal is\n  now the one.\n- The depth-to-table map is one exhaustive switch, resolved once per call.\n- docs/contrast.md says readableOn measures in VGA at STANDARD\n  (rich-template-bindings-wrzr).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(contrast): a TerminalTheme holds exactly the sixteen ANSI colours; translucent text is ranked over its own ground (rich-contrast-knmh, rich-color-qqkm)\n\nReview of PR #264 (medium):\n- At STANDARD an index picked from a terminal's ansiColors is read back from\n  the sixteen-entry writer table, so a 256-entry ansiColors returned\n  undefined typed as ColorRgba. Every reader already indexes the table 0-15\n  and the class doc names it the theme's sixteen; the constructor now\n  refuses anything else, and its header stops calling it a 16/256 LUT.\n- The replacement ranked fg composited over the terminal's drawn ground,\n  which under Rose Pine Dawn turns a translucent navy into lavender. It is\n  the author's colour over the author's ground.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(contrast): measure through the writer's own downgrade; say inputs are written colours (rich-contrast-knmh)\n\nReview of PR #264 (escalation high):\n- shownAs measured via drawnTable's own match, a second account of the\n  index the writer emits beside ColorSpec.downgrade + getTruecolor, the one\n  Style.drawnColors writes. It now goes through that; the tables only list\n  replacement candidates.\n- docs/contrast.md: fg and bg are the colours written, not the terminal's\n  shades; the example passes undefined for substrate instead of a hand copy\n  of the writer's black.\n- resolveTerminal's comment no longer claims the widgets' fallback.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* docs(contrast): the terminal example imports what it uses (rich-contrast-knmh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
