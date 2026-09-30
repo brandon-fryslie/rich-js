@@ -4,15 +4,22 @@
     {
       "version": "pr-229",
       "ref": "refs/pull/229/merge",
-      "sha": "8ebb2dfae3313d666211fd542f5bb39a17581914",
-      "timestamp": "2026-09-30T01:04:12.514Z",
+      "sha": "31501d7311ae9abc47b1d78d386f1fc36a1113d3",
+      "timestamp": "2026-09-30T02:16:58.066Z",
       "commits": [
         {
-          "sha": "8ebb2dfae3313d666211fd542f5bb39a17581914",
+          "sha": "31501d7311ae9abc47b1d78d386f1fc36a1113d3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T01:03:23Z",
-          "message": "Merge b4c3c46255c31b4f8e7e51e98fd89f0d6d5b4c0a into 9e26f9f798534f09dacc422e4b4e95984446c8fd\n"
+          "timestamp": "2026-09-30T02:16:05Z",
+          "message": "Merge 5be7dc3119355de47b1d0fbfaa92b73974871f7f into 9e26f9f798534f09dacc422e4b4e95984446c8fd\n"
+        },
+        {
+          "sha": "5be7dc3119355de47b1d0fbfaa92b73974871f7f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T20:16:00-06:00",
+          "message": "fix(line-ends): a column is not a renderable; containers end where their content does (rich-flexstrip-5kf.4cq)\n\nReview (high) of #229:\n- ProgressColumn no longer extends Renderable and takes a required task,\n  as Rich's is a callable of one; the columns leave the renderable\n  universe and their `task?.` guards go with the optional parameter.\n- LINE_ENDS gains a `content` kind for Group and Constrain, drawn around\n  an ended and an open content, instead of an own-line claim their\n  fixtures only happened to satisfy.\n- One exported-renderables universe (test/seam/exported-renderables.ts)\n  for both the line-ends and ascii-only gates.\n- JSONRenderable ends its line through its RichText's `end`, one place.\n- Status's unobservable line end is dropped; the gate header no longer\n  claims Status ran on in a Group.\n- rich-explore lays its ProgressBars out in a grid, one row each.\n- docs/group.md names fragments by example, not as a list.\n"
         },
         {
           "sha": "b4c3c46255c31b4f8e7e51e98fd89f0d6d5b4c0a",
