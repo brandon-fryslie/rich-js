@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-254",
-      "ref": "refs/pull/254/merge",
-      "sha": "9b89fb378766c03699c422d4a09b6f76230be27e",
-      "timestamp": "2026-09-30T12:34:48.206Z",
-      "commits": [
-        {
-          "sha": "9b89fb378766c03699c422d4a09b6f76230be27e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:33:40Z",
-          "message": "Merge f192974ece516bddef205f2dadc3c6ec4b46aca5 into 03eb28ab5d9d98f1bd9980cca301ca1bdf198585\n"
-        },
-        {
-          "sha": "f192974ece516bddef205f2dadc3c6ec4b46aca5",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:33:36-06:00",
-          "message": "fix(markup): read an embedded string once per markup setting, and as Rich's render_str reads it (rich-markup-3sw)\n\nReview round 1 (high):\n- EmbeddedText caches each markup reading; a 500-row markup table printed\n  9.3ms on master, 16.4ms re-parsing per call, 9.9ms cached.\n- readStr replaces emoji codes with markup off, as render_str does, for\n  print and every embedding site.\n- EmbeddedText measures unhighlighted, as Rich's Measurement.get does, so\n  measure and render agree wherever a container clears the highlighter.\n- Column header/footer go through embed, so a header read off one column\n  can be assigned to another; they take any cell content, as Rich's do.\n- protocol's type-only Highlighter import is marked as the one tier\n  exception; docs/highlighting.md states nested Columns/Rule draw plain.\n"
-        },
-        {
-          "sha": "fff6d57dd849f4272498cb9628c3d49683dc95a0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:20:58-06:00",
-          "message": "fix(markup): a console's markup and highlight settings reach strings embedded in a renderable (rich-markup-3sw)\n\nA string handed to a Panel, Table, Tree, Columns, Layout or Rule is now an\nEmbeddedText, read when it is drawn through renderStr (Rich's render_str)\nunder RenderOptions.markup and RenderOptions.highlighter, which the Console\nfills from its own settings and print's. An unmatched closing tag now throws\nfrom the render, as Rich's does.\n\nWhich sites highlight follows Rich site by site: Columns items, Layout panes\nand Rule titles are highlighted; Panel, Table and Tree strings are drawn\nplain; a Panel's title and subtitle are always markup.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "03eb28ab5d9d98f1bd9980cca301ca1bdf198585",
-      "timestamp": "2026-09-30T12:08:04.702Z",
+      "sha": "d2cc10e93b4fe71b1c5431bb942f203177a620d2",
+      "timestamp": "2026-09-30T12:39:44.002Z",
       "commits": [
         {
-          "sha": "03eb28ab5d9d98f1bd9980cca301ca1bdf198585",
+          "sha": "d2cc10e93b4fe71b1c5431bb942f203177a620d2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:06:56-06:00",
-          "message": "refactor(repo-facts): the docs build reads repo facts from scripts/, not test/ (rich-repo-facts-hss) (#253)\n\n* refactor(repo-facts): the docs build reads repo facts from scripts/, not test/ (rich-repo-facts-hss)\n\nREPO_ROOT, the package manifest, the entry-point map, the repo's compiler\noptions and listTypeScriptFiles move from test/coverage/extract.ts to\nscripts/repo-facts.ts; resolveAlias moves to scripts/resolve-alias.ts.\nEvery importer reads them from the new home and extract.ts re-exports\nnothing, so nothing under docs/ imports from test/ and a refactor of the\ncoverage verifier can no longer change how the docs' examples compile.\n\n* refactor(repo-facts): path helpers join the repo facts; a gate keeps test/ out of non-test code (rich-repo-facts-hss)\n\nReview pass (high) on PR #253:\n- repoRelative, isPathInside, isUnderSrc and isBehindNodeAirlock move to\n  scripts/repo-facts.ts, so the seam gates no longer import the coverage\n  verifier for repo layout.\n- test/seam/test-imports.test.ts fails when any .ts under src/, docs/,\n  scripts/ or examples/ imports a module under test/.\n- example-runner reads peerDependencies from PACKAGE_MANIFEST instead of\n  parsing package.json a second time.\n- resolveAlias no longer swallows a throw from getAliasedSymbol.\n- tsconfig.scripts.json includes scripts/**/*.ts directly."
+          "timestamp": "2026-09-30T06:38:43-06:00",
+          "message": "fix(markup): console markup and highlight settings reach embedded strings (rich-markup-3sw) (#254)\n\n* fix(markup): a console's markup and highlight settings reach strings embedded in a renderable (rich-markup-3sw)\n\nA string handed to a Panel, Table, Tree, Columns, Layout or Rule is now an\nEmbeddedText, read when it is drawn through renderStr (Rich's render_str)\nunder RenderOptions.markup and RenderOptions.highlighter, which the Console\nfills from its own settings and print's. An unmatched closing tag now throws\nfrom the render, as Rich's does.\n\nWhich sites highlight follows Rich site by site: Columns items, Layout panes\nand Rule titles are highlighted; Panel, Table and Tree strings are drawn\nplain; a Panel's title and subtitle are always markup.\n\n* fix(markup): read an embedded string once per markup setting, and as Rich's render_str reads it (rich-markup-3sw)\n\nReview round 1 (high):\n- EmbeddedText caches each markup reading; a 500-row markup table printed\n  9.3ms on master, 16.4ms re-parsing per call, 9.9ms cached.\n- readStr replaces emoji codes with markup off, as render_str does, for\n  print and every embedding site.\n- EmbeddedText measures unhighlighted, as Rich's Measurement.get does, so\n  measure and render agree wherever a container clears the highlighter.\n- Column header/footer go through embed, so a header read off one column\n  can be assigned to another; they take any cell content, as Rich's do.\n- protocol's type-only Highlighter import is marked as the one tier\n  exception; docs/highlighting.md states nested Columns/Rule draw plain."
         }
       ]
     }
