@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-282",
+      "ref": "refs/pull/282/merge",
+      "sha": "45ce4201eca591b2d31508ed5b6fb52754910e73",
+      "timestamp": "2026-09-30T22:34:13.509Z",
+      "commits": [
+        {
+          "sha": "45ce4201eca591b2d31508ed5b6fb52754910e73",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:33:06-06:00",
+          "message": "Merge 673f919c4330b6a1fd2ea62a31aa882d616c9536 into a26b42dd145ab4908eedba6cfa71b3ae6e7b07b4\n"
+        },
+        {
+          "sha": "673f919c4330b6a1fd2ea62a31aa882d616c9536",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:33:02-06:00",
+          "message": "fix(table): a grid pads between its columns, never at its edges (rich-table-q93f)\n\nTable.grid now defaults padEdge to false and collapsePadding to true, as\nRich's grid does, so an expanded grid reaches the right edge and every\nProgress row ends without a trailing pad cell. The padding default stays\n[0, 1, 0, 0] where Rich's is 0. Columns drops the two options it passed\nto get the same shape.\n\nTests pin the docs grid, a plain grid, a two-sided-padding grid and a\nProgress row against Python Rich 9d8f9a3's output for the same calls.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "a26b42dd145ab4908eedba6cfa71b3ae6e7b07b4",
