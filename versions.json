@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-256",
+      "ref": "refs/pull/256/merge",
+      "sha": "8e79f7ba515b0699d2647ce80e3b27c0e33c1a4b",
+      "timestamp": "2026-09-30T13:13:44.571Z",
+      "commits": [
+        {
+          "sha": "8e79f7ba515b0699d2647ce80e3b27c0e33c1a4b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T07:12:51-06:00",
+          "message": "Merge 9658d6ae1b6abc4026e8a60863b03fb67d1c6d1a into 622393165b844b4ea0cd2a83dc6197e10d415e16\n"
+        },
+        {
+          "sha": "9658d6ae1b6abc4026e8a60863b03fb67d1c6d1a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T07:12:47-06:00",
+          "message": "fix(syntax): every option takes effect or is gone (rich-syntax-fh2)\n\n- language picks a grammar (javascript, typescript, python, bash, text);\n  SyntaxLanguage is the union, so a name with no grammar is a type error.\n  One left-to-right scan, so a // in a string or a keyword in a comment\n  is not highlighted.\n- colours are syntax.* names in the console Theme; the ignored `theme`\n  option is removed.\n- wordWrap wraps (continuation rows unnumbered) or crops; before, wrapped\n  pieces were joined back onto one overflowing line.\n- lineRange keeps each line's number from the whole code.\n- padding and Syntax.fromPath (always threw) are removed.\n- empty lines are kept; measure reads the same shown lines as render.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "622393165b844b4ea0cd2a83dc6197e10d415e16",
