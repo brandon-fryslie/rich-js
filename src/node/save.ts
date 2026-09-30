@@ -9,8 +9,8 @@
  *
  * [LAW:single-enforcer] One funnel per format: `saveText` consumes
  * `Console.exportText()`, `saveHtml` consumes `Console.exportHtml()`, and
- * `saveSvg` consumes `Console.exportSvg()`. The encoding and recording logic stays on Console; this file is purely
- * the IO sink.
+ * `saveSvg` consumes `Console.exportSvg()`. The encoding and recording logic
+ * stays on Console; this file is purely the IO sink.
  */
 
 import { writeFileSync } from "node:fs";
