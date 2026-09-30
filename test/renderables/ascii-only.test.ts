@@ -4,9 +4,9 @@
  * The switch is a property of the output device (`ConsoleOptions.asciiOnly`),
  * and each renderable honours it by resolving the glyphs it chooses through
  * `drawable` in `src/core/protocol.ts`. Nothing about a new renderable makes it
- * do that, so this suite asks each one: the classes with a `render` method are
- * read off every `package.json#exports` entry, and each must have a row in
- * `ROWS` — so a renderable added without one fails here, by name.
+ * do that, so this suite asks each one: every exported renderable
+ * (test/seam/exported-renderables.ts) must have a row in `ROWS` — so a
+ * renderable added without one fails here, by name.
  *
  * A `glyphs` row is drawn twice. Without the switch it must spend a glyph
  * outside ASCII, which is what proves the fixture reaches the glyphs it is
@@ -17,9 +17,8 @@
  * why.
  */
 
-import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ENTRY_BY_SPECIFIER, REPO_ROOT } from "../coverage/extract.js";
+import { exportedRenderables } from "../seam/exported-renderables.js";
 import { renderToString } from "../../src/core/render.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import {
@@ -34,7 +33,6 @@ import {
   JSONRenderable,
   Layout,
   Markdown,
-  MofNCompleteColumn,
   Padding,
   Panel,
   PlainJoiner,
@@ -49,10 +47,6 @@ import {
   Strip,
   Syntax,
   Table,
-  TaskProgressColumn,
-  TextColumn,
-  TimeElapsedColumn,
-  TimeRemainingColumn,
   Traceback,
   Tree,
   Viewport,
@@ -121,13 +115,6 @@ const ROWS: Record<string, Row> = {
       return progress;
     },
   },
-  TextColumn: { draws: "text", make: () => new TextColumn("text"), why: "draws its format string" },
-  BarColumn: { draws: "glyphs", make: () => new BarColumn() },
-  TaskProgressColumn: { draws: "text", make: () => new TaskProgressColumn(), why: "draws a percentage" },
-  TimeRemainingColumn: { draws: "text", make: () => new TimeRemainingColumn(), why: "draws a time" },
-  TimeElapsedColumn: { draws: "text", make: () => new TimeElapsedColumn(), why: "draws a time" },
-  SpinnerColumn: { draws: "glyphs", make: () => new SpinnerColumn() },
-  MofNCompleteColumn: { draws: "text", make: () => new MofNCompleteColumn(), why: "draws a count" },
   Traceback: { draws: "text", make: () => new Traceback(new Error("boom")), why: "draws the error's message and stack" },
   Syntax: { draws: "glyphs", make: () => new Syntax("const a = 1;", "typescript", { lineNumbers: true }) },
   Markdown: { draws: "glyphs", make: () => new Markdown("- item\n\n> quote") },
@@ -135,7 +122,6 @@ const ROWS: Record<string, Row> = {
 
   // src/widgets/index.ts
   StaticItem: { draws: "glyphs", make: () => new StaticItem({ id: "static", render: panel() }) },
-  WidgetBase: { draws: "unrendered", why: "abstract; each concrete widget has its own row" },
   Button: { draws: "text", make: () => new Button({ label: "press" }), why: "draws its label" },
   Checkbox: { draws: "glyphs", make: () => new Checkbox({ label: "check", checked: true }) },
   Toggle: { draws: "text", make: () => new Toggle({ label: "toggle", on: true }), why: "draws its label and state" },
@@ -165,20 +151,9 @@ const NON_ASCII = /[^\x00-\x7F]/;
 const draw = (make: () => Renderable, asciiOnly: boolean): string =>
   renderToString(make(), { width: 40, colorSystem: null, asciiOnly });
 
-async function exportedRenderables(): Promise<string[]> {
-  const names = new Set<string>();
-  for (const source of new Set(ENTRY_BY_SPECIFIER.values())) {
-    const entry: Record<string, unknown> = await import(path.resolve(REPO_ROOT, source));
-    for (const [name, value] of Object.entries(entry)) {
-      if (typeof value === "function" && typeof value.prototype?.render === "function") names.add(name);
-    }
-  }
-  return [...names].sort();
-}
-
 describe("asciiOnly", () => {
-  it("has a row for every exported renderable, and none for a name no entry exports", async () => {
-    expect(Object.keys(ROWS).sort()).toEqual(await exportedRenderables());
+  it("has a row for every exported renderable, and none for a name no entry exports", () => {
+    expect(Object.keys(ROWS).sort()).toEqual(exportedRenderables().map((cls) => cls.name).sort());
   });
 
   for (const [name, row] of Object.entries(ROWS)) {

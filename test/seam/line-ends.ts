@@ -4,30 +4,29 @@
  * `Group` emits its children back to back with nothing between them, so a
  * child that leaves its last line open runs the next child onto it
  * (docs/group.md). That contract was held by a hand-written `Segment.line()`
- * in each renderable and by prose, and it had already failed three times
- * unseen: `Strip` (rich-flexstrip-5kf), then `Spinner` and `Status`, whose
- * output ran into whatever followed them in a `Group`. Printed alone, none of
- * the three showed it, because `Console.print` closes whatever a renderable
- * leaves open.
+ * in each renderable and by prose, and it had already failed twice unseen:
+ * `Strip` (rich-flexstrip-5kf), then `Spinner`, whose output ran into whatever
+ * followed it in a `Group`. Printed alone, neither showed it, because
+ * `Console.print` closes whatever a renderable leaves open.
  *
- * So `LINE_ENDS` below names every exported class that is a `Renderable` and
- * says which side of the line it sits on, and the test renders each one to
- * check. The universe is derived from `package.json#exports` by the compiler,
- * as the coverage gate's is, so a new renderable fails here until it is given
- * an entry.
+ * So `LINE_ENDS` below names every exported renderable
+ * (test/seam/exported-renderables.ts) and says which side of the line it sits
+ * on, and the test renders each one to check, so a new renderable fails here
+ * until it is given an entry.
  *
- * [LAW:types-are-the-program] Two kinds, and only the open one carries a
- * `why`. A renderable that ends its own line is the default and needs no
- * argument. One that does not is a line *fragment*, meant to be composed
- * inside a line some other renderable owns, and that is a claim to make on
- * purpose. The reference is the tiebreaker: Rich's `Spinner` ends its line
- * (it is a `Text`) and its `ProgressBar` does not.
+ * [LAW:types-are-the-program] Three kinds, and only the default carries no
+ * `why`. A renderable that ends its own line needs no argument. One that does
+ * not is a line *fragment*, meant to be composed inside a line some other
+ * renderable owns, and that is a claim to make on purpose. A container that
+ * renders its content and adds nothing after it ends where its content ends,
+ * so it is built around a content and drawn around one of each kind. The
+ * reference is the tiebreaker: Rich's `Spinner` ends its line (it is a
+ * `Text`), its `ProgressBar` does not, and its `Group` and `Constrain` pass
+ * their content through.
  */
 
-import ts from "typescript";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
-import { collectPublicExports, makeProgram, repoRelative } from "../coverage/extract.js";
 import { RichText } from "../../src/core/text.js";
 import { Emoji } from "../../src/core/emoji.js";
 import { JSONRenderable } from "../../src/core/json.js";
@@ -42,7 +41,7 @@ import { Layout } from "../../src/renderables/layout.js";
 import { Markdown } from "../../src/renderables/markdown.js";
 import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
-import { BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn, TimeRemainingColumn } from "../../src/renderables/progress.js";
+import { Progress } from "../../src/renderables/progress.js";
 import { ProgressBar } from "../../src/renderables/progressBar.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { Spinner } from "../../src/renderables/spinner.js";
@@ -62,40 +61,8 @@ import { Toggle } from "../../src/widgets/toggle.js";
 /** What one exported renderable promises about its last line. */
 export type LineEnd =
   | { readonly ends: "own-line"; readonly build: () => Renderable }
-  | { readonly ends: "open"; readonly build: () => Renderable; readonly why: string };
-
-/** An exported, constructible class whose instances are `Renderable`s. */
-export interface RenderableClass {
-  readonly name: string;
-  readonly file: string;
-}
-
-/**
- * Every class the package exports whose instances are `Renderable`, found by
- * the checker rather than by name. An abstract class is not in it: nothing
- * can build one, and each concrete subclass is in it on its own.
- */
-export function exportedRenderables(): RenderableClass[] {
-  const { program, checker } = makeProgram();
-  const protocol = program.getSourceFiles().find((file) => file.fileName.endsWith("/src/core/protocol.ts"));
-  const protocolSymbol = protocol && checker.getSymbolAtLocation(protocol);
-  const renderableSymbol = protocolSymbol && checker.getExportsOfModule(protocolSymbol).find((s) => s.name === "Renderable");
-  if (!renderableSymbol) throw new Error("line-ends: src/core/protocol.ts no longer exports Renderable");
-  const renderable = checker.getDeclaredTypeOfSymbol(renderableSymbol);
-
-  const found = new Map<string, RenderableClass>();
-  for (const row of collectPublicExports(program, checker)) {
-    const declaration = row.symbol.declarations?.find(ts.isClassDeclaration);
-    if (!declaration) continue;
-    if (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Abstract) continue;
-    if (!checker.isTypeAssignableTo(checker.getDeclaredTypeOfSymbol(row.symbol), renderable)) continue;
-    found.set(`${row.origin.file}::${row.origin.name}`, {
-      name: row.origin.name,
-      file: repoRelative(row.origin.file),
-    });
-  }
-  return [...found.values()];
-}
+  | { readonly ends: "open"; readonly build: () => Renderable; readonly why: string }
+  | { readonly ends: "content"; readonly build: (content: Renderable) => Renderable; readonly why: string };
 
 /**
  * Whether a renderable's output leaves nothing open after it: its last
@@ -115,20 +82,12 @@ export function endsOwnLine(renderable: Renderable, maxWidth: number): boolean {
 
 const text = (content: string): RichText => new RichText(content);
 
-/**
- * A `ProgressColumn` draws one cell of a `Progress` row, and `Progress`
- * concatenates a cell's segments into the text of a table cell. A line end
- * there would be a second line in the cell.
- */
-const PROGRESS_CELL = "a Progress column draws one cell of a row Progress lays out; a line end in it would be a second line in the cell";
-
 export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Align: { ends: "own-line", build: () => new Align(text("x")) },
-  BarColumn: { ends: "open", build: () => new BarColumn(), why: PROGRESS_CELL },
   Button: { ends: "own-line", build: () => new Button({ label: "Click" }) },
   Checkbox: { ends: "own-line", build: () => new Checkbox({ label: "Agree" }) },
   Columns: { ends: "own-line", build: () => new Columns(["a", "b"]) },
-  Constrain: { ends: "own-line", build: () => new Constrain(text("x"), 10) },
+  Constrain: { ends: "content", build: (content) => new Constrain(content, 10), why: "renders its content and nothing after it, as the reference's does: its last line is its content's" },
   Dropdown: { ends: "own-line", build: () => new Dropdown({ options: ["a", "b"] }) },
   Emoji: {
     ends: "open",
@@ -136,11 +95,10 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
     why: "one glyph, set inside a line of text as the reference's Emoji is: it yields the character and nothing after it",
   },
   FlexStrip: { ends: "own-line", build: () => new FlexStrip([text("a")]) },
-  Group: { ends: "own-line", build: () => new Group(text("a"), text("b")) },
+  Group: { ends: "content", build: (content) => new Group(text("a"), content), why: "renders its content and nothing after it, as the reference's does: its last line is its content's" },
   JSONRenderable: { ends: "own-line", build: () => JSONRenderable.fromData({ a: 1 }) },
   Layout: { ends: "own-line", build: () => new Layout(text("x")) },
   Markdown: { ends: "own-line", build: () => new Markdown("# hi") },
-  MofNCompleteColumn: { ends: "open", build: () => new MofNCompleteColumn(), why: PROGRESS_CELL },
   Padding: { ends: "own-line", build: () => new Padding(text("x"), 1) },
   Panel: { ends: "own-line", build: () => new Panel(text("x")) },
   Pretty: { ends: "own-line", build: () => new Pretty({ a: 1 }) },
@@ -161,7 +119,6 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
   Rule: { ends: "own-line", build: () => new Rule("t") },
   Slider: { ends: "own-line", build: () => new Slider() },
   Spinner: { ends: "own-line", build: () => new Spinner("dots", "hi") },
-  SpinnerColumn: { ends: "open", build: () => new SpinnerColumn(), why: PROGRESS_CELL },
   StaticItem: { ends: "own-line", build: () => new StaticItem({ id: "s", render: text("x") }) },
   Strip: { ends: "own-line", build: () => new Strip([text("a")], new PlainJoiner()) },
   Syntax: { ends: "own-line", build: () => new Syntax("x = 1", "python") },
@@ -174,11 +131,7 @@ export const LINE_ENDS: Readonly<Record<string, LineEnd>> = {
       return table;
     },
   },
-  TaskProgressColumn: { ends: "open", build: () => new TaskProgressColumn(), why: PROGRESS_CELL },
-  TextColumn: { ends: "open", build: () => new TextColumn("x"), why: PROGRESS_CELL },
   TextInput: { ends: "own-line", build: () => new TextInput() },
-  TimeElapsedColumn: { ends: "open", build: () => new TimeElapsedColumn(), why: PROGRESS_CELL },
-  TimeRemainingColumn: { ends: "open", build: () => new TimeRemainingColumn(), why: PROGRESS_CELL },
   Toggle: { ends: "own-line", build: () => new Toggle({ label: "Sound", id: "tg" }) },
   Traceback: { ends: "own-line", build: () => new Traceback(new Error("boom")) },
   Tree: { ends: "own-line", build: () => new Tree("root") },

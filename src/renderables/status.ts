@@ -34,7 +34,6 @@ class StatusRenderable implements Renderable {
     const style = getStyle(options, this._style);
     const msgStyle = style.isNull ? undefined : style;
     yield new Segment(` ${this.message}`, msgStyle);
-    yield Segment.line();
   }
 }
 

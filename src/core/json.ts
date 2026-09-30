@@ -59,7 +59,7 @@ export class JSONRenderable implements Renderable, Measurable {
       : undefined;
 
     const jsonStr = JSON.stringify(data, replacer, indent);
-    const text = new RichText(jsonStr, { end: "" });
+    const text = new RichText(jsonStr);
 
     if (doHighlight) {
       highlighter.highlight(text);
@@ -69,10 +69,7 @@ export class JSONRenderable implements Renderable, Measurable {
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
-    // The text is built with no `end` so it embeds cleanly; printed or
-    // stacked, JSON is a block of its own, as the reference's is.
     yield* this.text.render(options);
-    yield Segment.line();
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

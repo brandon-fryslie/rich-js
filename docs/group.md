@@ -43,7 +43,7 @@ console.print(
 
 A group emits its children's segments back to back and inserts nothing between them, so each child has to end its own line. `Panel`, `Rule`, `Table`, [`Strip`](./strip), and `FlexStrip` already do and stack without help. A `RichText` — and `renderMarkup`'s result, which is one — does it too, through its `end` option: every `RichText` draws a trailing `end` (default `"\n"`) itself, regardless of what its own text contains. That's why none of the calls above put a `\n` inside the markup: the text is the content, `end` is the line break, and writing both stacks two newlines into one row. Drop `end` to `""` — as [`Strip`](./strip) does for its own cells — for a `RichText` that should *not* end its own line, such as one meant to run straight into whatever the group renders next.
 
-A few renderables are line fragments instead, drawn to sit inside a line something else owns: `ProgressBar`, `Emoji`, and the `Progress` columns. As in Rich, a group runs whatever follows one of them onto its line.
+Some renderables are line fragments instead, drawn to sit inside a line something else owns — a `ProgressBar` or an `Emoji`, for example. As in Rich, a group runs whatever follows one of them onto its line, and so does a group whose last child is one.
 
 ## Building a group from a generator
 
