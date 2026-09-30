@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-265",
+      "ref": "refs/pull/265/merge",
+      "sha": "f13513440e04081ea49a406a345baf28235e1280",
+      "timestamp": "2026-09-30T17:03:50.522Z",
+      "commits": [
+        {
+          "sha": "f13513440e04081ea49a406a345baf28235e1280",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:02:40-06:00",
+          "message": "Merge e25f18b065569700da4546e0eba77658ad2ce9a2 into 409d3def96e013e7e0925e5a1a645a23b2f5cb54\n"
+        },
+        {
+          "sha": "e25f18b065569700da4546e0eba77658ad2ce9a2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:02:35-06:00",
+          "message": "fix(template-bindings): renderTemplate's error segment is one line fitted to maxWidth (rich-template-bindings-4bgw)\n\nThe caught error's message folds every line break to a space — an engine\nmessage can carry one (`bad escape sequence \\⏎`) — and the line is cut by\nRichText.truncate at the same maxWidth the success path draws at, ending in\nan ellipsis. The fixed 80-UTF-16-unit slice cut long messages mid-word and\ndropped the fix hint (`wrap it: darken (color \"primary\") …`) with no mark.\n\nThe docs example now shows a long error fitted to the page's terminal.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "409d3def96e013e7e0925e5a1a645a23b2f5cb54",
