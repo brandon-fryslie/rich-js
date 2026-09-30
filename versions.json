@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-284",
+      "ref": "refs/pull/284/merge",
+      "sha": "ecbb1d6ae1bc99de1b519c6a39b3dc0dd2f225b8",
+      "timestamp": "2026-09-30T23:05:46.847Z",
+      "commits": [
+        {
+          "sha": "ecbb1d6ae1bc99de1b519c6a39b3dc0dd2f225b8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T17:04:39-06:00",
+          "message": "Merge 0443a113890d21d3bee4a95dacf1bc1c81cf54a7 into 4d85447ea7d7aba7f12f2b41715982528540e7e1\n"
+        },
+        {
+          "sha": "0443a113890d21d3bee4a95dacf1bc1c81cf54a7",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T17:04:35-06:00",
+          "message": "fix(host): App takes a Theme, so its frames resolve the names it adds (rich-host-qvji)\n\nAppOptions had no theme, so the Console App builds always fell back to the\nbuilt-in names: a user's theme name drew plain in a RichText and threw from\ngetStyle under App and WidgetApp.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4d85447ea7d7aba7f12f2b41715982528540e7e1",
