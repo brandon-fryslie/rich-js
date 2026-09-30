@@ -1,7 +1,0 @@
-import{t as e}from"./terminal-host-BDZvuMlX.js";function t(t){let n=new e({terminal:t});n.start(),n.setRawMode(!0);let r=n.size();n.write(`\x1B[2J\x1B[H`),n.write(`rich-js · BrowserTerminalHost harness
-`),n.write(`size: ${r.cols}x${r.rows} · isTTY=${n.isTTY}\n`),n.write(`type to echo, Enter for newline, Ctrl-D to detach
-
-> `);let i=!1,a=e=>{let t=typeof e==`string`?e:new TextDecoder().decode(e);for(let e of t){let t=e.charCodeAt(0);if(t===4){n.write(`
-[detached]
-`),s(),c(),i=!0;return}if(t===13){n.write(`
-> `);continue}if(t===127){n.write(`\b \b`);continue}n.write(e)}},o=e=>{n.write(`\n[resize: ${e.cols}x${e.rows}]\n> `)},s=n.onData(a),c=n.onResize(o);return{host:n,stop(){i||(s(),c(),n.stop())}}}function n(e){let t=document.getElementById(e);if(t===null)throw Error(`rich-js mount: missing required element #${e} in the page shell.`);return t}var r=n(`status`),i=(e,t)=>{r.textContent=e,r.className=t??``};try{let e=n(`term`),r=new Terminal({cols:100,rows:30,cursorBlink:!0,theme:{background:`#1e1e1e`},fontFamily:getComputedStyle(e).fontFamily});r.open(e),r.focus();let a=t(r);window.__handle=a,i(`ready · first frame rendered`,`ok`)}catch(e){i(`boot error: `+(e?.message??String(e)),`err`),console.error(e)}

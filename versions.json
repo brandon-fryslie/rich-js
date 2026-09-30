@@ -4,15 +4,22 @@
     {
       "version": "pr-251",
       "ref": "refs/pull/251/merge",
-      "sha": "a797d5f39f36a7d368f23d0ed163883708744a0f",
-      "timestamp": "2026-09-30T11:00:36.241Z",
+      "sha": "e3ef57a6a9df98d309b917be544bfbd6cc9a8174",
+      "timestamp": "2026-09-30T11:15:13.584Z",
       "commits": [
         {
-          "sha": "a797d5f39f36a7d368f23d0ed163883708744a0f",
+          "sha": "e3ef57a6a9df98d309b917be544bfbd6cc9a8174",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:59:33-06:00",
-          "message": "Merge 5c89000d3ea5fd3dccbc3c2c9b1750da715af14b into f3f02b9ef585c437577d4bcb6e1ed4f42a926619\n"
+          "timestamp": "2026-09-30T11:14:07Z",
+          "message": "Merge d8c43e7acdef9b8b22242340585a119dbbf8f269 into f3f02b9ef585c437577d4bcb6e1ed4f42a926619\n"
+        },
+        {
+          "sha": "d8c43e7acdef9b8b22242340585a119dbbf8f269",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:14:02-06:00",
+          "message": "fix(demos): the shell opens every printed demo on its first line (rich-demos-c3k)\n\nReview of #251: the scroll-to-top lived in one demo's wire, so rich-strip\nstill opened scrolled past its top. It moves to the browser shell, and the\nwire's ReadingTerminal goes with it.\n\nThe demo terminal's size gets one home, examples/_browser-shell/demo-terminal.ts,\nfilled into the shell by vite.config.demos.ts and read by the tests that\ndepend on it.\n\nAt 100 columns the theme gallery rows (102 cells) and the named-ramp row\n(104) were wrapped by the Console, which the fits-terminal test could not\nsee. The name column is now as wide as the longest name, the ramp caption\nuses the section's ref(x) shorthand, and a second test checks each strip\nfits as drawn at an unbounded width.\n"
         },
         {
           "sha": "5c89000d3ea5fd3dccbc3c2c9b1750da715af14b",
