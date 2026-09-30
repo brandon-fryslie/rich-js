@@ -56,9 +56,20 @@ const otherRows = [
   ]),
   RichText.assemble(["link".padEnd(12), ["allowed", "link https://example.com/a?b=1&c=2 underline"]]),
   RichText.assemble(["refused".padEnd(12), ["script", "link javascript:alert(1) bold"]]),
+  // The pairs resolved together rather than one after the other: `reverse`
+  // decides which colour `dim` fades and `conceal` paints, and HTML gives a
+  // double underline its own span so a strike beside it stays single.
+  RichText.assemble([
+    "combined".padEnd(12),
+    ["rev+dim", `reverse dim ${PAINT}`],
+    " ",
+    ["rev+conceal", `reverse conceal ${PAINT}`],
+    " ",
+    ["u2+strike", "underline2 strike"],
+  ]),
   // ASCII, CJK, an emoji, and `e` carrying two combining marks: one cell each
   // for the first and last, two for the others.
-  RichText.assemble(["wide".padEnd(12), ["ab漢字cd😀ef é̂x", "cyan"]]),
+  RichText.assemble(["wide".padEnd(12), ["ab漢字cd😀ef e\u0301\u0302x", "cyan"]]),
   RichText.assemble(["escaped".padEnd(12), ['<a href="x">&amp;</a>', "italic"]]),
 ];
 

@@ -1,32 +1,33 @@
-<svg class="rich-terminal" viewBox="0 0 604 489.2" xmlns="http://www.w3.org/2000/svg">
+<svg class="rich-terminal" viewBox="0 0 604 513.6" xmlns="http://www.w3.org/2000/svg">
 <style>
-.terminal-dabaa6da-matrix{font-family:"Fira Code", Menlo, Consolas, "DejaVu Sans Mono", monospace;font-size:20px}
-.terminal-dabaa6da-title{font-size:18px;font-weight:bold;font-family:arial}
-.terminal-dabaa6da-r1{fill:#ffffff}
-.terminal-dabaa6da-r2{fill:#ffffff;font-weight:bold}
-.terminal-dabaa6da-r3{fill:#800000;font-weight:bold}
-.terminal-dabaa6da-r4{fill:#999999}
-.terminal-dabaa6da-r5{fill:#4d0033}
-.terminal-dabaa6da-r6{fill:#ffffff;font-style:italic}
-.terminal-dabaa6da-r7{fill:#800000;font-style:italic}
-.terminal-dabaa6da-r8{fill:#800000}
-.terminal-dabaa6da-r9{fill:#ffffff;animation:rich-svg-blink 1s step-end infinite}
-.terminal-dabaa6da-r10{fill:#800000;animation:rich-svg-blink 1s step-end infinite}
-.terminal-dabaa6da-r11{fill:#ffffff;animation:rich-svg-blink 0.5s step-end infinite}
-.terminal-dabaa6da-r12{fill:#800000;animation:rich-svg-blink 0.5s step-end infinite}
-.terminal-dabaa6da-r13{fill:#000000}
-.terminal-dabaa6da-r14{fill:#000080}
-.terminal-dabaa6da-r15{fill:#008000}
-.terminal-dabaa6da-r16{fill:#ff00ff}
-.terminal-dabaa6da-r17{fill:#ff8700}
-.terminal-dabaa6da-r18{fill:#8844cc}
-.terminal-dabaa6da-r19{fill:#008080}
+.terminal-404beb8b-matrix{font-family:"Fira Code", Menlo, Consolas, "DejaVu Sans Mono", monospace;font-size:20px}
+.terminal-404beb8b-title{font-size:18px;font-weight:bold;font-family:arial}
+.terminal-404beb8b-r1{fill:#ffffff}
+.terminal-404beb8b-r2{fill:#ffffff;font-weight:bold}
+.terminal-404beb8b-r3{fill:#800000;font-weight:bold}
+.terminal-404beb8b-r4{fill:#999999}
+.terminal-404beb8b-r5{fill:#4d0033}
+.terminal-404beb8b-r6{fill:#ffffff;font-style:italic}
+.terminal-404beb8b-r7{fill:#800000;font-style:italic}
+.terminal-404beb8b-r8{fill:#800000}
+.terminal-404beb8b-r9{fill:#ffffff;animation:rich-svg-blink 1s step-end infinite}
+.terminal-404beb8b-r10{fill:#800000;animation:rich-svg-blink 1s step-end infinite}
+.terminal-404beb8b-r11{fill:#ffffff;animation:rich-svg-blink 0.5s step-end infinite}
+.terminal-404beb8b-r12{fill:#800000;animation:rich-svg-blink 0.5s step-end infinite}
+.terminal-404beb8b-r13{fill:#000000}
+.terminal-404beb8b-r14{fill:#000080}
+.terminal-404beb8b-r15{fill:#008000}
+.terminal-404beb8b-r16{fill:#ff00ff}
+.terminal-404beb8b-r17{fill:#ff8700}
+.terminal-404beb8b-r18{fill:#8844cc}
+.terminal-404beb8b-r19{fill:#33004d}
+.terminal-404beb8b-r20{fill:#008080}
 @media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{fill:transparent}}}
 </style>
-<rect fill="#000000" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="602" height="487.2" rx="8"/>
-<text class="terminal-dabaa6da-title" fill="#ffffff" text-anchor="middle" x="302" y="27">export golden</text>
+<rect fill="#000000" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="602" height="511.6" rx="8"/>
+<text class="terminal-404beb8b-title" fill="#ffffff" text-anchor="middle" x="302" y="27">export golden</text>
 <g transform="translate(26,22)"><circle cx="0" cy="0" r="7" fill="#ff5f57"/><circle cx="22" cy="0" r="7" fill="#febc2e"/><circle cx="44" cy="0" r="7" fill="#28c840"/></g>
-<g class="terminal-dabaa6da-matrix" transform="translate(9,41)">
+<g class="terminal-404beb8b-matrix" transform="translate(9,41)">
 <rect fill="#000080" x="207.4" y="1.5" width="48.8" height="24.65" shape-rendering="crispEdges"/>
 <rect fill="#000080" x="195.2" y="25.9" width="36.6" height="24.65" shape-rendering="crispEdges"/>
 <rect fill="#000080" x="231.8" y="50.3" width="73.2" height="24.65" shape-rendering="crispEdges"/>
@@ -42,75 +43,83 @@
 <rect fill="#000080" x="256.2" y="269.9" width="97.6" height="24.65" shape-rendering="crispEdges"/>
 <rect fill="#000080" x="256.2" y="294.3" width="97.6" height="24.65" shape-rendering="crispEdges"/>
 <rect fill="#e0e0a0" x="341.6" y="318.7" width="36.6" height="24.65" shape-rendering="crispEdges"/>
-<g class="terminal-dabaa6da-r1"><text x="0" y="20" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bold        </text></g>
-<g class="terminal-dabaa6da-r2"><text x="146.4" y="20" textLength="48.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bold</text></g>
-<g class="terminal-dabaa6da-r1"><text x="195.2" y="20" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r3"><text x="207.4" y="20" textLength="48.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bold</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="44.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">dim         </text></g>
-<g class="terminal-dabaa6da-r4"><text x="146.4" y="44.4" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">dim</text></g>
-<g class="terminal-dabaa6da-r1"><text x="183" y="44.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r5"><text x="195.2" y="44.4" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">dim</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="68.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">italic      </text></g>
-<g class="terminal-dabaa6da-r6"><text x="146.4" y="68.8" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">italic</text></g>
-<g class="terminal-dabaa6da-r1"><text x="219.6" y="68.8" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r7"><text x="231.8" y="68.8" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">italic</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="93.2" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline   </text></g>
-<g class="terminal-dabaa6da-r1"><text x="146.4" y="93.2" textLength="109.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline</text><rect x="146.4" y="95.2" width="109.8" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="256.2" y="93.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r8"><text x="268.4" y="93.2" textLength="109.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline</text><rect x="268.4" y="95.2" width="109.8" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="117.6" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink       </text></g>
-<g class="terminal-dabaa6da-r9"><text x="146.4" y="117.6" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink</text></g>
-<g class="terminal-dabaa6da-r1"><text x="207.4" y="117.6" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r10"><text x="219.6" y="117.6" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="142" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink2      </text></g>
-<g class="terminal-dabaa6da-r11"><text x="146.4" y="142" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink2</text></g>
-<g class="terminal-dabaa6da-r1"><text x="219.6" y="142" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r12"><text x="231.8" y="142" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink2</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="166.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">reverse     </text></g>
-<g class="terminal-dabaa6da-r13"><text x="146.4" y="166.4" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">reverse</text></g>
-<g class="terminal-dabaa6da-r1"><text x="231.8" y="166.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r14"><text x="244" y="166.4" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">reverse</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="190.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">conceal     </text></g>
-<g class="terminal-dabaa6da-r13"><text x="146.4" y="190.8" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">conceal</text></g>
-<g class="terminal-dabaa6da-r1"><text x="231.8" y="190.8" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r14"><text x="244" y="190.8" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">conceal</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="215.2" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">strike      </text></g>
-<g class="terminal-dabaa6da-r1"><text x="146.4" y="215.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">strike</text><rect x="146.4" y="209.2" width="73.2" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="219.6" y="215.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r8"><text x="231.8" y="215.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">strike</text><rect x="231.8" y="209.2" width="73.2" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="239.6" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline2  </text></g>
-<g class="terminal-dabaa6da-r1"><text x="146.4" y="239.6" textLength="122" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline2</text><rect x="146.4" y="241.6" width="122" height="1.5"/><rect x="146.4" y="244.6" width="122" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="268.4" y="239.6" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r8"><text x="280.6" y="239.6" textLength="122" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline2</text><rect x="280.6" y="241.6" width="122" height="1.5"/><rect x="280.6" y="244.6" width="122" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="264" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">frame       </text></g>
-<g class="terminal-dabaa6da-r1"><text x="146.4" y="264" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">frame</text><rect x="146.4" y="245.5" width="61" height="24.65" rx="0" fill="none" stroke="#ffffff" stroke-width="1"/></g>
-<g class="terminal-dabaa6da-r1"><text x="207.4" y="264" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r8"><text x="219.6" y="264" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">frame</text><rect x="219.6" y="245.5" width="61" height="24.65" rx="0" fill="none" stroke="#800000" stroke-width="1"/></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="288.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">encircle    </text></g>
-<g class="terminal-dabaa6da-r1"><text x="146.4" y="288.4" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">encircle</text><rect x="146.4" y="269.9" width="97.6" height="24.65" rx="12.2" fill="none" stroke="#ffffff" stroke-width="1"/></g>
-<g class="terminal-dabaa6da-r1"><text x="244" y="288.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r8"><text x="256.2" y="288.4" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">encircle</text><rect x="256.2" y="269.9" width="97.6" height="24.65" rx="12.2" fill="none" stroke="#800000" stroke-width="1"/></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="312.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">overline    </text></g>
-<g class="terminal-dabaa6da-r1"><text x="146.4" y="312.8" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">overline</text><rect x="146.4" y="294.3" width="97.6" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="244" y="312.8" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r8"><text x="256.2" y="312.8" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">overline</text><rect x="256.2" y="294.3" width="97.6" height="1.5"/></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="337.2" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">colour      </text></g>
-<g class="terminal-dabaa6da-r15"><text x="146.4" y="337.2" textLength="48.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ansi</text></g>
-<g class="terminal-dabaa6da-r1"><text x="195.2" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r16"><text x="207.4" y="337.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bright</text></g>
-<g class="terminal-dabaa6da-r1"><text x="280.6" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r17"><text x="292.8" y="337.2" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">256</text></g>
-<g class="terminal-dabaa6da-r1"><text x="329.4" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r18"><text x="341.6" y="337.2" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">rgb</text></g>
-<g class="terminal-dabaa6da-r1"><text x="378.2" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
-<g class="terminal-dabaa6da-r1"><text x="390.4" y="337.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">canvas</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="361.6" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">link        </text></g>
-<a href="https://example.com/a?b=1&amp;c=2"><g class="terminal-dabaa6da-r1"><text x="146.4" y="361.6" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">allowed</text><rect x="146.4" y="363.6" width="85.4" height="1.5"/></g></a>
-<g class="terminal-dabaa6da-r1"><text x="0" y="386" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">refused     </text></g>
-<g class="terminal-dabaa6da-r2"><text x="146.4" y="386" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">script</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="410.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">wide        </text></g>
-<g class="terminal-dabaa6da-r19"><text x="146.4" y="410.4" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ab</text><text x="170.8" y="410.4" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">漢</text><text x="195.2" y="410.4" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">字</text><text x="219.6" y="410.4" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">cd</text><text x="244" y="410.4" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">😀</text><text x="268.4" y="410.4" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ef é̂x</text></g>
-<g class="terminal-dabaa6da-r1"><text x="0" y="434.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">escaped     </text></g>
-<g class="terminal-dabaa6da-r6"><text x="146.4" y="434.8" textLength="256.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">&lt;a href="x"&gt;&amp;amp;&lt;/a&gt;</text></g>
+<rect fill="#800000" x="146.4" y="391.9" width="85.4" height="24.65" shape-rendering="crispEdges"/>
+<rect fill="#800000" x="244" y="391.9" width="134.2" height="24.65" shape-rendering="crispEdges"/>
+<g class="terminal-404beb8b-r1"><text x="0" y="20" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bold        </text></g>
+<g class="terminal-404beb8b-r2"><text x="146.4" y="20" textLength="48.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bold</text></g>
+<g class="terminal-404beb8b-r1"><text x="195.2" y="20" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r3"><text x="207.4" y="20" textLength="48.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bold</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="44.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">dim         </text></g>
+<g class="terminal-404beb8b-r4"><text x="146.4" y="44.4" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">dim</text></g>
+<g class="terminal-404beb8b-r1"><text x="183" y="44.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r5"><text x="195.2" y="44.4" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">dim</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="68.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">italic      </text></g>
+<g class="terminal-404beb8b-r6"><text x="146.4" y="68.8" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">italic</text></g>
+<g class="terminal-404beb8b-r1"><text x="219.6" y="68.8" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r7"><text x="231.8" y="68.8" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">italic</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="93.2" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline   </text></g>
+<g class="terminal-404beb8b-r1"><text x="146.4" y="93.2" textLength="109.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline</text><rect x="146.4" y="95.2" width="109.8" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="256.2" y="93.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r8"><text x="268.4" y="93.2" textLength="109.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline</text><rect x="268.4" y="95.2" width="109.8" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="117.6" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink       </text></g>
+<g class="terminal-404beb8b-r9"><text x="146.4" y="117.6" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink</text></g>
+<g class="terminal-404beb8b-r1"><text x="207.4" y="117.6" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r10"><text x="219.6" y="117.6" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="142" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink2      </text></g>
+<g class="terminal-404beb8b-r11"><text x="146.4" y="142" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink2</text></g>
+<g class="terminal-404beb8b-r1"><text x="219.6" y="142" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r12"><text x="231.8" y="142" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">blink2</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="166.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">reverse     </text></g>
+<g class="terminal-404beb8b-r13"><text x="146.4" y="166.4" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">reverse</text></g>
+<g class="terminal-404beb8b-r1"><text x="231.8" y="166.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r14"><text x="244" y="166.4" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">reverse</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="190.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">conceal     </text></g>
+<g class="terminal-404beb8b-r13"><text x="146.4" y="190.8" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">conceal</text></g>
+<g class="terminal-404beb8b-r1"><text x="231.8" y="190.8" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r14"><text x="244" y="190.8" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">conceal</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="215.2" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">strike      </text></g>
+<g class="terminal-404beb8b-r1"><text x="146.4" y="215.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">strike</text><rect x="146.4" y="209.2" width="73.2" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="219.6" y="215.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r8"><text x="231.8" y="215.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">strike</text><rect x="231.8" y="209.2" width="73.2" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="239.6" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline2  </text></g>
+<g class="terminal-404beb8b-r1"><text x="146.4" y="239.6" textLength="122" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline2</text><rect x="146.4" y="241.6" width="122" height="1.5"/><rect x="146.4" y="244.6" width="122" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="268.4" y="239.6" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r8"><text x="280.6" y="239.6" textLength="122" lengthAdjust="spacingAndGlyphs" xml:space="preserve">underline2</text><rect x="280.6" y="241.6" width="122" height="1.5"/><rect x="280.6" y="244.6" width="122" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="264" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">frame       </text></g>
+<g class="terminal-404beb8b-r1"><text x="146.4" y="264" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">frame</text><rect x="146.4" y="245.5" width="61" height="24.65" rx="0" fill="none" stroke="#ffffff" stroke-width="1"/></g>
+<g class="terminal-404beb8b-r1"><text x="207.4" y="264" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r8"><text x="219.6" y="264" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">frame</text><rect x="219.6" y="245.5" width="61" height="24.65" rx="0" fill="none" stroke="#800000" stroke-width="1"/></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="288.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">encircle    </text></g>
+<g class="terminal-404beb8b-r1"><text x="146.4" y="288.4" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">encircle</text><rect x="146.4" y="269.9" width="97.6" height="24.65" rx="12.2" fill="none" stroke="#ffffff" stroke-width="1"/></g>
+<g class="terminal-404beb8b-r1"><text x="244" y="288.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r8"><text x="256.2" y="288.4" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">encircle</text><rect x="256.2" y="269.9" width="97.6" height="24.65" rx="12.2" fill="none" stroke="#800000" stroke-width="1"/></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="312.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">overline    </text></g>
+<g class="terminal-404beb8b-r1"><text x="146.4" y="312.8" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">overline</text><rect x="146.4" y="294.3" width="97.6" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="244" y="312.8" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r8"><text x="256.2" y="312.8" textLength="97.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">overline</text><rect x="256.2" y="294.3" width="97.6" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="337.2" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">colour      </text></g>
+<g class="terminal-404beb8b-r15"><text x="146.4" y="337.2" textLength="48.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ansi</text></g>
+<g class="terminal-404beb8b-r1"><text x="195.2" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r16"><text x="207.4" y="337.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">bright</text></g>
+<g class="terminal-404beb8b-r1"><text x="280.6" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r17"><text x="292.8" y="337.2" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">256</text></g>
+<g class="terminal-404beb8b-r1"><text x="329.4" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r18"><text x="341.6" y="337.2" textLength="36.6" lengthAdjust="spacingAndGlyphs" xml:space="preserve">rgb</text></g>
+<g class="terminal-404beb8b-r1"><text x="378.2" y="337.2" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r1"><text x="390.4" y="337.2" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">canvas</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="361.6" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">link        </text></g>
+<a href="https://example.com/a?b=1&amp;c=2"><g class="terminal-404beb8b-r1"><text x="146.4" y="361.6" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">allowed</text><rect x="146.4" y="363.6" width="85.4" height="1.5"/></g></a>
+<g class="terminal-404beb8b-r1"><text x="0" y="386" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">refused     </text></g>
+<g class="terminal-404beb8b-r2"><text x="146.4" y="386" textLength="73.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">script</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="410.4" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">combined    </text></g>
+<g class="terminal-404beb8b-r19"><text x="146.4" y="410.4" textLength="85.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">rev+dim</text></g>
+<g class="terminal-404beb8b-r1"><text x="231.8" y="410.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r8"><text x="244" y="410.4" textLength="134.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">rev+conceal</text></g>
+<g class="terminal-404beb8b-r1"><text x="378.2" y="410.4" textLength="12.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> </text></g>
+<g class="terminal-404beb8b-r1"><text x="390.4" y="410.4" textLength="109.8" lengthAdjust="spacingAndGlyphs" xml:space="preserve">u2+strike</text><rect x="390.4" y="412.4" width="109.8" height="1.5"/><rect x="390.4" y="415.4" width="109.8" height="1.5"/><rect x="390.4" y="404.4" width="109.8" height="1.5"/></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="434.8" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">wide        </text></g>
+<g class="terminal-404beb8b-r20"><text x="146.4" y="434.8" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ab</text><text x="170.8" y="434.8" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">漢</text><text x="195.2" y="434.8" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">字</text><text x="219.6" y="434.8" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">cd</text><text x="244" y="434.8" textLength="24.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">😀</text><text x="268.4" y="434.8" textLength="61" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ef é̂x</text></g>
+<g class="terminal-404beb8b-r1"><text x="0" y="459.2" textLength="146.4" lengthAdjust="spacingAndGlyphs" xml:space="preserve">escaped     </text></g>
+<g class="terminal-404beb8b-r6"><text x="146.4" y="459.2" textLength="256.2" lengthAdjust="spacingAndGlyphs" xml:space="preserve">&lt;a href="x"&gt;&amp;amp;&lt;/a&gt;</text></g>
 </g>
 </svg>
