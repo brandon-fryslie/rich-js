@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-252",
+      "ref": "refs/pull/252/merge",
+      "sha": "8dcfbcb37813a01b1752c32e67426f4e68398d9f",
+      "timestamp": "2026-09-30T11:27:59.716Z",
+      "commits": [
+        {
+          "sha": "8dcfbcb37813a01b1752c32e67426f4e68398d9f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:26:55-06:00",
+          "message": "Merge 38eb20100dbebad76beb0acf3e69f815b3824627 into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
+        },
+        {
+          "sha": "38eb20100dbebad76beb0acf3e69f815b3824627",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:26:50-06:00",
+          "message": "fix(markdown): reflow soft-broken blocks and end every list item's row (rich-demos-b19)\n\nA list item took only its marker line; its continuation lines fell into a\nparagraph that also swallowed the next items, joined untrimmed. The item\nnever ended its row, so what followed ran past the width and a Panel cut\nit off — the rich-dash README panel lost \"panel proves it is\" outright.\n\nParagraphs, list items and quotes now each take every line up to a blank\nor the next block start, joined by one space. Every wrapped block is laid\nout through one gutter: a list item's text hangs under its bullet, a\nquote's bar runs its full height, and a nested item keeps its indent.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "fc51ccf629a48dda1e39b948b9a26408f8f5dbb3",
