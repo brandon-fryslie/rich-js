@@ -13,6 +13,7 @@ import type { Renderable } from "../../src/core/protocol.js";
 import { RichText } from "../../src/core/text.js";
 import { Columns } from "../../src/renderables/columns.js";
 import { Layout } from "../../src/renderables/layout.js";
+import { Padding } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Rule } from "../../src/renderables/rule.js";
 import { Table } from "../../src/renderables/table.js";
@@ -28,6 +29,7 @@ const sites: [string, (content: string | RichText) => Renderable][] = [
   ["a tree label", (content) => new Tree(content)],
   ["a column item", (content) => new Columns([content])],
   ["a layout pane", (content) => new Layout(content)],
+  ["a padding's body", (content) => new Padding(content, 1)],
   [
     "a table cell",
     (content) => {
@@ -149,6 +151,7 @@ describe("a console's markup and highlight settings, in content embedded in a re
     ["a rule's title", (content) => new Rule(content)],
     ["a column item", (content) => new Columns([content])],
     ["a layout pane", (content) => new Layout(content)],
+    ["a padding's body", (content) => new Padding(content, 1)],
   ];
   const plain: [string, (content: string) => Renderable][] = [
     ["a panel's body", (content) => new Panel(content)],

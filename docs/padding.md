@@ -1,17 +1,17 @@
 # Padding
 
-`Padding` adds whitespace around any renderable.
+`Padding` adds whitespace around any renderable or string.
 
 ## Basic usage
 
-Pass a renderable and a single value to apply equal padding on all four sides. `Padding` takes a renderable, not a string, so markup goes through `renderMarkup` first. The background colour is only there to make the padding visible — [Style and expansion](#style-and-expansion) below covers it:
+Pass a renderable or a markup string and a single value to apply equal padding on all four sides. The background colour is only there to make the padding visible — [Style and expansion](#style-and-expansion) below covers it:
 
 ```typescript
-import { Console, Padding, renderMarkup } from "@promptctl/rich-js";
+import { Console, Padding } from "@promptctl/rich-js";
 
 const console = new Console();
 
-console.print(new Padding(renderMarkup("[bold]Hello![/bold]"), 1, { style: "white on dark_blue" }));
+console.print(new Padding("[bold]Hello![/bold]", 1, { style: "white on dark_blue" }));
 ```
 
 ## Granular padding
@@ -19,7 +19,7 @@ console.print(new Padding(renderMarkup("[bold]Hello![/bold]"), 1, { style: "whit
 Follows CSS padding conventions:
 
 ```typescript
-const hello = renderMarkup("[bold]Hello![/bold]");
+const hello = "[bold]Hello![/bold]";
 const shown = { style: "white on dark_blue" };
 
 // Single value — all sides
@@ -37,13 +37,13 @@ console.print(new Padding(hello, [1, 4, 2, 8], shown));
 `style` is the ground the whole padded block is drawn on, the content as well as the padding around it:
 
 ```typescript
-console.print(new Padding(renderMarkup("[bold]Important[/bold]"), [1, 4], { style: "white on dark_red" }));
+console.print(new Padding("[bold]Important[/bold]", [1, 4], { style: "white on dark_red" }));
 ```
 
 Prevent the padding from stretching to the terminal width:
 
 ```typescript
-console.print(new Padding(renderMarkup("Tight fit"), 1, { style: "white on dark_green", expand: false }));
+console.print(new Padding("Tight fit", 1, { style: "white on dark_green", expand: false }));
 ```
 
 ## Usage in other renderables
@@ -56,10 +56,10 @@ table.addColumn("Status");
 table.addColumn("Name");
 
 table.addRow(
-  new Padding(renderMarkup("[bold spring_green3]Active[/bold spring_green3]"), [0, 2]),
+  new Padding("[bold spring_green3]Active[/bold spring_green3]", [0, 2]),
   "Alice",
 );
-table.addRow(renderMarkup("[dark_orange]Away[/dark_orange]"), "Bob");
+table.addRow("[dark_orange]Away[/dark_orange]", "Bob");
 
 console.print(table);
 ```

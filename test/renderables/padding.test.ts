@@ -135,6 +135,11 @@ describe("Padding", () => {
     expect(lines[0]!.length).toBeLessThanOrEqual(2); // "Hi" is 2 chars, no expansion
   });
 
+  it("expand:false narrows a markup string to the text it draws, not the tags it is written with", () => {
+    const padded = new Padding("[bold]Hi[/bold]", [0, 1], { expand: false });
+    expect(collectLines(padded, { maxWidth: 40 })).toEqual([" Hi "]);
+  });
+
   it("expand:false narrows the block to what it measures, every row on the ground", () => {
     const inner: Renderable & Measurable = {
       *render() {

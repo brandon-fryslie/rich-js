@@ -1,7 +1,8 @@
 /**
  * The one crossing where content a caller hands a renderable — a table cell, a
- * panel's body, title or subtitle, a tree label, a column item, a layout pane,
- * a rule's title — becomes something that renderable can lay out.
+ * panel's body, title or subtitle, a padding's body, a tree label, a column
+ * item, a layout pane, a rule's title — becomes something that renderable can
+ * lay out.
  * [LAW:single-enforcer]
  *
  * A string is kept as written and read when it is drawn, through `readStr`,
