@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-281",
+      "ref": "refs/pull/281/merge",
+      "sha": "53a3374ec1267f08d06da0dbafbc38af028f9b96",
+      "timestamp": "2026-09-30T22:20:47.612Z",
+      "commits": [
+        {
+          "sha": "53a3374ec1267f08d06da0dbafbc38af028f9b96",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:19:39-06:00",
+          "message": "Merge edc99363eac9eb64c67d490268d1828be7bbe96a into 232e2a519df79f0cf29636409d81fca68ae1b8cb\n"
+        },
+        {
+          "sha": "edc99363eac9eb64c67d490268d1828be7bbe96a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:19:34-06:00",
+          "message": "test: one 30s hang detector for the whole suite, not per file (rich-test-suite-umkj)\n\nTests that spawn git, npm, node or a vite build cross vitest's 5s default\nunder a full suite's load, and per-describe allowances only ever covered the\nfile that had last flaked. vitest.config.ts now sets testTimeout once; the\neight 30s describe overrides that copied it are gone. Budgets that differ\n(the 2s termination guards, the 60s-180s builds) stay beside their tests.\n\nThree concurrent full suites, three times: 9 of 9 runs failed on a 5s\ntimeout before (ascii-only), 9 of 9 green after. A never-resolving test\nstill fails, at 30s.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "232e2a519df79f0cf29636409d81fca68ae1b8cb",
