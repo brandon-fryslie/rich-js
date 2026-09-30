@@ -4,15 +4,22 @@
     {
       "version": "pr-274",
       "ref": "refs/pull/274/merge",
-      "sha": "868ee2c2ee6d4b65a63eadfa1f768e3675631bc2",
-      "timestamp": "2026-09-30T20:08:56.434Z",
+      "sha": "3a1b2ac734dbefc640d801d88ac60bf2276c95e5",
+      "timestamp": "2026-09-30T20:17:43.568Z",
       "commits": [
         {
-          "sha": "868ee2c2ee6d4b65a63eadfa1f768e3675631bc2",
+          "sha": "3a1b2ac734dbefc640d801d88ac60bf2276c95e5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T20:08:05Z",
-          "message": "Merge 49570053722e3f17d05370309c096022202f9407 into 9b8a4c414c3d7fdfe641a2874502fef0de20751b\n"
+          "timestamp": "2026-09-30T20:16:35Z",
+          "message": "Merge f62fcff28a8c40745ba19b639575bc03679c413a into 9b8a4c414c3d7fdfe641a2874502fef0de20751b\n"
+        },
+        {
+          "sha": "f62fcff28a8c40745ba19b639575bc03679c413a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T14:16:30-06:00",
+          "message": "fix(cells): cutCells walks once, so each character lands on one side (rich-segment-cvn6)\n\nsplitCells built its halves from two walks, cellFit from the left and\ncellFitEnd from the right. Both take zero-width clusters, so one at the cut\nlanded in both halves (\"hello­world\" folded at width 5 printed the soft\nhyphen twice), and where per-cluster widths outsum cellLen of the whole the\nwalks left a gap and dropped the characters in it.\n\ncutCells (cells.ts, beside splitText) takes the left side with one cellFit,\nand the right side is the rest of the text with the glyph the cut went\nthrough, if any, blanked. cellColToCodeUnitOffset is now cellFitFrom from\nthe start rather than a second fit walk with its own zero-width rule, and\nthe fit walks count code units instead of building strings to measure.\n"
         },
         {
           "sha": "49570053722e3f17d05370309c096022202f9407",
