@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-270",
+      "ref": "refs/pull/270/merge",
+      "sha": "6972206ca46d3960824aaef4daf1245f362f71e2",
+      "timestamp": "2026-09-30T18:50:39.510Z",
+      "commits": [
+        {
+          "sha": "6972206ca46d3960824aaef4daf1245f362f71e2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T12:49:40-06:00",
+          "message": "Merge a16a21cc5b86afa5f4ffbd0b595f18c900cd8b76 into e527b78d9f14ebaec2a85220e37c135099981bc7\n"
+        },
+        {
+          "sha": "a16a21cc5b86afa5f4ffbd0b595f18c900cd8b76",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T12:49:34-06:00",
+          "message": "fix(live): printing through live.console lands above the frame (rich-live-sadk)\n\nA Console now holds at most one LiveRegion, and every write it makes steps\naround it: the frame is erased, the write lands where it was, and the frame\nis painted again underneath — Rich's render-hook model. Live claims the\nregion from start() to the hand-back; claiming a second on the same console\nthrows instead of corrupting both displays.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e527b78d9f14ebaec2a85220e37c135099981bc7",
