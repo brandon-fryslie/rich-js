@@ -107,3 +107,30 @@ test("a demo's rows start at the left edge: rich-viewport", async ({ page }) => 
     expect(row, `a row does not start at the panel's left border: ${JSON.stringify(drawn)}`).toMatch(/^[╭│╰]/);
   }
 });
+
+// A row can hold the right code point and still draw a missing-glyph box: the
+// terminal's own fonts have nothing in the Powerline private-use range. Only
+// the browser knows which face drew a glyph, so this asks it — the fonts
+// Chromium actually used for the row that carries the arrow.
+test("a demo's Powerline glyphs draw in the Powerline face: rich-strip", async ({ page }) => {
+  await page.goto("demos-app/rich-strip/");
+  await expect(page.locator("#status")).toContainText("ready");
+  const arrow = page.locator(".xterm-rows span", { hasText: "\uE0B0" }).first();
+  await expect(arrow).toBeAttached();
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("DOM.enable");
+  await cdp.send("CSS.enable");
+  // The face loads when a glyph in its range first needs it, so poll — and
+  // find the span afresh each time, since xterm replaces a row's spans when it
+  // repaints it. The shell's only web font is the Powerline face, so a web
+  // font drawing this span is that face.
+  await expect
+    .poll(async () => {
+      await arrow.evaluate((span) => span.setAttribute("data-powerline-probe", ""));
+      const { root } = await cdp.send("DOM.getDocument", { depth: 0 });
+      const { nodeId } = await cdp.send("DOM.querySelector", { nodeId: root.nodeId, selector: "[data-powerline-probe]" });
+      const { fonts } = await cdp.send("CSS.getPlatformFontsForNode", { nodeId });
+      return fonts.map((font) => ({ family: font.familyName, web: font.isCustomFont }));
+    })
+    .toContainEqual(expect.objectContaining({ web: true }));
+});
