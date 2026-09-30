@@ -25,9 +25,8 @@
  * runs in node and in a browser with no path of its own for either.
  */
 
-import { Console } from "../core/console.js";
+import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import type { Theme } from "../core/style.js";
 import { Painter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
@@ -41,7 +40,16 @@ import type { TerminalHost } from "./terminal-host.js";
  */
 export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 
-export interface AppOptions {
+// [LAW:one-source-of-truth] How a frame draws — its glyphs, the style names
+// it knows, what happens to a style it cannot resolve, markup and
+// highlighting — is the console's to say, so App takes those options as the
+// console declares them and passes them through. What the host decides, its
+// size, colours and sink, is not among them.
+type DrawOptions = Readonly<
+  Pick<ConsoleOptions, "asciiOnly" | "theme" | "onStyleError" | "markup" | "highlight" | "highlighter">
+>;
+
+export interface AppOptions extends DrawOptions {
   /** The terminal the app runs on. The app starts and stops it. */
   readonly host: TerminalHost;
   readonly surface: Surface;
@@ -50,16 +58,6 @@ export interface AppOptions {
    * app's state is drawn from the state as it is at that frame.
    */
   readonly view: () => Renderable;
-  /**
-   * The terminal can draw only ASCII, so every frame draws its boxes, guides
-   * and widget marks with ASCII characters. Default false.
-   */
-  readonly asciiOnly?: boolean;
-  /**
-   * The style names every frame resolves against, as on a `Console`. Default
-   * the built-in names only.
-   */
-  readonly theme?: Theme;
 }
 
 // Button presses, motion and the wheel, in the SGR encoding: coordinates as
@@ -90,15 +88,12 @@ export class App {
   private settle: (outcome: Outcome) => void = () => {};
 
   constructor(options: AppOptions) {
-    this.host = options.host;
-    this.surface = options.surface;
-    this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
-    this.view = options.view;
-    this.console = new Console({
-      environment: hostEnvironment(options.host),
-      asciiOnly: options.asciiOnly,
-      theme: options.theme,
-    });
+    const { host, surface, view, ...draw } = options;
+    this.host = host;
+    this.surface = surface;
+    this.painter = new Painter(surface, (bytes) => this.host.write(bytes));
+    this.view = view;
+    this.console = new Console({ ...draw, environment: hostEnvironment(host) });
   }
 
   get phase(): AppPhase {

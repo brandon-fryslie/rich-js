@@ -60,9 +60,9 @@ The root renders at the terminal's width, with the terminal's rows as its [heigh
 
 `asciiOnly: true` paints every frame for a terminal that draws only ASCII: every glyph the library chooses, from borders to widget marks, is drawn in ASCII. It is the same switch as on a [`Console`](/console#ascii-only-terminals).
 
-## Themes
+## Style names and drawing options
 
-`theme` is the [`Theme`](/protocol#drawing-with-theme-names) every frame resolves style names against, as on a `Console`. Without one, a frame knows only the built-in names: a `RichText` styled with a name your theme adds draws plain, and `getStyle` throws for it.
+`theme`, `onStyleError`, `markup`, `highlight` and `highlighter` are the [`Console`](/console) options of the same names, and every frame is drawn with them, as `asciiOnly` is above. `theme` is the [`Theme`](/protocol#drawing-with-theme-names) a frame resolves style names against. Without one, a frame knows only the built-in names: a `RichText` styled with a name your theme adds draws plain, and `getStyle` throws for it. `onStyleError` [hears each style a frame drops](/style#reporting-dropped-styles), a name your theme lacks included:
 
 ```ts silent
 import { RichText, Theme } from "@promptctl/rich-js";
@@ -73,11 +73,14 @@ const app = new App({
   host: new NodeTerminalHost(),
   surface: "inline",
   theme: new Theme({ "health.up": "bold green" }),
+  onStyleError: (error) => {
+    throw error;
+  },
   view: () => new RichText("● up", { style: "health.up" }),
 });
 ```
 
-A `WidgetApp` takes the same option.
+A `WidgetApp` takes the same options. Its `theme` names styles; it does not colour the widgets, each of which takes its own [`theme`](/widgets#the-widgets) palette.
 
 ## Every exit hands the terminal back
 
