@@ -67,6 +67,12 @@ interface Guide {
 interface TreeRow {
   readonly guides: readonly Guide[];
   readonly label: Renderable;
+  /**
+   * The styles of every node from the root down to this one, outermost first,
+   * as given — stacked at render the way a guide's are, so a node's style
+   * reaches every row beneath it and a deeper node's refines it, as in Rich.
+   */
+  readonly styles: ReadonlyArray<string | Style>;
 }
 
 /**
@@ -123,7 +129,7 @@ export class Tree implements Renderable, Measurable {
    * stand at the left edge, and its guide style still reaches their guides.
    */
   private _walk(options: RenderOptions): TreeRow[] {
-    const rows = [...this._rows(drawable(options, UNICODE_GUIDES, ASCII_GUIDES, guideGlyphs), [], [])];
+    const rows = [...this._rows(drawable(options, UNICODE_GUIDES, ASCII_GUIDES, guideGlyphs), [], [], [])];
     return this.hideRoot ? rows.slice(1).map((row) => ({ ...row, guides: row.guides.slice(1) })) : rows;
   }
 
@@ -138,21 +144,25 @@ export class Tree implements Renderable, Measurable {
    *
    * [LAW:dataflow-not-control-flow] Every node, at every depth, is walked by
    * this one recursion: its children get the columns above it, settled, plus a
-   * branch of their own, so no depth is drawn by a rule of its own.
+   * branch of their own, so no depth is drawn by a rule of its own. A node's
+   * style and its guide style are handed down the same way, as one more entry
+   * on the stack its ancestors built.
    */
   private *_rows(
     glyphs: GuideGlyphs,
     guides: readonly Guide[],
-    inherited: ReadonlyArray<string | Style>,
+    inheritedGuideStyles: ReadonlyArray<string | Style>,
+    inheritedStyles: ReadonlyArray<string | Style>,
   ): Iterable<TreeRow> {
-    yield { guides, label: this.label };
+    const styles = [...inheritedStyles, this.style];
+    yield { guides, label: this.label, styles };
 
     const children = this.expanded ? this.children : [];
-    const styles = [...inherited, this.guideStyle];
+    const guideStyles = [...inheritedGuideStyles, this.guideStyle];
     const above = guides.map((guide) => ({ ...guide, first: guide.rest }));
     for (let i = 0; i < children.length; i++) {
       const branch = i === children.length - 1 ? glyphs.end : glyphs.fork;
-      yield* children[i]!._rows(glyphs, [...above, { ...branch, styles }], styles);
+      yield* children[i]!._rows(glyphs, [...above, { ...branch, styles: guideStyles }], guideStyles, styles);
     }
   }
 
@@ -173,19 +183,27 @@ export class Tree implements Renderable, Measurable {
    * output is cut into lines and every line ends where Tree ends it. A label
    * that emits nothing still holds its row, and one that ends in a newline of
    * its own does not add a blank one.
+   *
+   * The node's style sits under the label's own, as Rich's `Styled` puts it, so
+   * markup in the label still wins; its background alone reaches under the
+   * guides, so a row with a background is filled from its first guide to the
+   * end of its label.
    */
   private *_renderRow(
     options: RenderOptions,
     row: TreeRow,
   ): Iterable<Segment> {
-    const styles = row.guides.map((guide) => Style.combine(guide.styles.map((style) => getStyle(options, style))));
+    const resolve = (styles: ReadonlyArray<string | Style>): Style =>
+      Style.combine(styles.map((style) => getStyle(options, style)));
+    const style = resolve(row.styles);
+    const styles = row.guides.map((guide) => style.backgroundStyle.add(resolve(guide.styles)));
     const width = Math.max(0, options.maxWidth - row.guides.reduce((sum, guide) => sum + cellLen(guide.first), 0));
     // The guides are cropped by `cellFit`; the label is cropped too, so a label
     // that ignores the width it is handed cannot push the row past the offer the
     // guides were fitted into. No highlighter: a label is drawn plain, as
     // Rich's `Tree` hands its labels `highlight=False`.
     const labelOptions = { ...options, highlighter: undefined, maxWidth: width, height: stackedHeight(options.height) };
-    const lines = Segment.splitLines(Segment.cropLines(row.label.render(labelOptions), width));
+    const lines = Segment.splitLines(Segment.applyStyle(Segment.cropLines(row.label.render(labelOptions), width), style));
     if (lines.length === 0) lines.push([]);
     for (let i = 0; i < lines.length; i++) {
       let left: number = options.maxWidth;

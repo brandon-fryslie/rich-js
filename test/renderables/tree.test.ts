@@ -194,6 +194,48 @@ describe("Tree", () => {
     expect(branch!.style?.equals(Style.parse("red italic"))).toBe(true);
   });
 
+  // `style` was stored and never read: `add("a", { style: "cyan" })` printed an
+  // unstyled "a". Python Rich 9d8f9a3 stacks it the way it stacks guide styles.
+  it("draws a node's label in its style, stacked onto its ancestors'", () => {
+    const tree = new Tree("root", { style: "bold" });
+    tree.add("a", { style: "cyan" }).add("b");
+    tree.add("c");
+    const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
+    const label = (row: number) => lines[row]!.at(-1)!;
+    expect(label(0).style?.equals(Style.parse("bold"))).toBe(true);
+    expect(label(1).text).toBe("a");
+    expect(label(1).style?.equals(Style.parse("bold cyan"))).toBe(true);
+    expect(label(2).text).toBe("b");
+    expect(label(2).style?.equals(Style.parse("bold cyan"))).toBe(true);
+    expect(label(3).text).toBe("c");
+    expect(label(3).style?.equals(Style.parse("bold"))).toBe(true);
+  });
+
+  it("lets a label's own markup win over its node's style", () => {
+    const tree = new Tree("root");
+    tree.add("[red]a[/]", { style: "cyan italic" });
+    const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
+    expect(lines[1]!.at(-1)!.style?.equals(Style.parse("red italic"))).toBe(true);
+  });
+
+  it("lays a node's background under every guide on every line of its row, and nothing else of its style", () => {
+    const tree = new Tree("root", { guide_style: "red" });
+    tree.add("a").add("x\ny", { style: "bold on blue" });
+    tree.add("sibling");
+    const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
+    const guides = [lines[2]!.slice(0, 2), lines[3]!.slice(0, 2)];
+    expect(guides.map((line) => line.map((guide) => guide.text))).toEqual([["│   ", "└── "], ["│   ", "    "]]);
+    for (const guide of guides.flat()) expect(guide.style?.equals(Style.parse("red on blue"))).toBe(true);
+  });
+
+  it("carries a hidden root's style to the children standing in its place", () => {
+    const tree = new Tree("root", { style: "cyan", hideRoot: true });
+    tree.add("a");
+    const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
+    expect(lines).toHaveLength(1);
+    expect(lines[0]!.at(-1)!.style?.equals(Style.parse("cyan"))).toBe(true);
+  });
+
   // A label taller than one line once printed its later lines at column 0 and
   // then a blank row, because the row's newline followed the label's own.
   it("leads every line of a multi-line label with the guides, and adds no blank rows", () => {
