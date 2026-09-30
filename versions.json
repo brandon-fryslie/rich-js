@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-249",
-      "ref": "refs/pull/249/merge",
-      "sha": "63924c68d654d5bd76655371e7361f1ecab03b96",
-      "timestamp": "2026-09-30T10:33:07.305Z",
-      "commits": [
-        {
-          "sha": "63924c68d654d5bd76655371e7361f1ecab03b96",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:31:58Z",
-          "message": "Merge f14ef750b23adcc4ecd60936a60089ddeb0599ad into 06423a219da1d1d45548d3aadf4b0d92fb7faa53\n"
-        },
-        {
-          "sha": "f14ef750b23adcc4ecd60936a60089ddeb0599ad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:31:53-06:00",
-          "message": "test(claude-sessions): render the footer without writing to stdout (rich-demos-qmk)\n\nReview: Console.print echoed every bar into the vitest output;\nrenderToString is the pure path.\n"
-        },
-        {
-          "sha": "b77b9ef9567a308d27446d37a6c8e06978751803",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:28:06-06:00",
-          "message": "test(claude-sessions): the footer shows every hint's key as text (rich-demos-qmk)\n\nThe unescaped `\\` hint that printed [/bold white on blue] was fixed in #208\nwith nothing pinning it. This renders the bar in all three modes and asserts\nthe exact plain text; with the escape removed it fails on the ticket's\nsymptom.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "06423a219da1d1d45548d3aadf4b0d92fb7faa53",
-      "timestamp": "2026-09-30T10:24:58.998Z",
+      "sha": "dcd22ee2cebf3853bfdaf2905e899f3e5377186e",
+      "timestamp": "2026-09-30T10:37:58.758Z",
       "commits": [
         {
-          "sha": "06423a219da1d1d45548d3aadf4b0d92fb7faa53",
+          "sha": "dcd22ee2cebf3853bfdaf2905e899f3e5377186e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:23:51-06:00",
-          "message": "fix(live): full-height inline frame no longer leaks rows into scrollback (rich-live-4rh) (#248)\n\n* fix(live): paint inline frames through App's painter, cursor on the last row (rich-live-4rh)\n\nAn inline Live wrote a newline after its frame's last row. On a frame as\ntall as the terminal that newline scrolled the screen, and the next erase\ncould not reach the frame's first row, so every refresh left it in\nscrollback. App already painted correctly with the cursor resting on the\nlast row. The painter now lives in core/paint.ts and both paint through it\n(rich-live-4vwq); the newline under the frame is written once, on hand-back.\n\nLive's tests now drive @xterm/headless (new devDependency) and assert the\nscreen and scrollback a user would see.\n\n* fix(paint): one Painter owns the rewind count, the width crop and the hand-back (rich-live-4rh)\n\nA restarted inline Live painted over the frame it had handed back, because\nLive never reset the row count App resets on resume. Painter now holds that\ncount from take() to handBack(), crops rows to the screen for both callers,\nand owns the surface's enter/leave bytes. Each row starts with its own CR, so\na Live handed back before any frame no longer moves the cursor.\n\nReview: /code-review high on #248."
+          "timestamp": "2026-09-30T04:36:51-06:00",
+          "message": "test(claude-sessions): the footer shows every hint's key as text (rich-demos-qmk) (#249)\n\n* test(claude-sessions): the footer shows every hint's key as text (rich-demos-qmk)\n\nThe unescaped `\\` hint that printed [/bold white on blue] was fixed in #208\nwith nothing pinning it. This renders the bar in all three modes and asserts\nthe exact plain text; with the escape removed it fails on the ticket's\nsymptom.\n\n* test(claude-sessions): render the footer without writing to stdout (rich-demos-qmk)\n\nReview: Console.print echoed every bar into the vitest output;\nrenderToString is the pure path."
         }
       ]
     }
