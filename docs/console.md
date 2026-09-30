@@ -394,8 +394,8 @@ when `end` would leave a printed line open. Options such as `style` and
 The timestamp is local time as `HH:MM:SS` on a 24-hour clock, whatever the
 machine's locale. It is read from the console's `getDatetime` option, which is
 the wall clock unless you pass one. A fixed clock makes logged output
-repeatable, and the examples in this section pass one so they print the same time
-on every build:
+repeatable. The console below is given one, and every example after it on this
+page logs through that console, so each prints the same time on every build:
 
 ```typescript
 const console = new Console({ getDatetime: () => new Date(2026, 8, 30, 9, 30, 0) });

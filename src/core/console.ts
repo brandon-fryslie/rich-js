@@ -182,6 +182,9 @@ function emit({ rows, closed, cropWidth }: Drawn): Segment[] {
 // another. The machine's locale never reaches it, so neither does the width
 // an AM/PM suffix would add, and one clock prints one stamp everywhere.
 function logTime(time: Date): string {
+  // [LAW:no-silent-failure] The clock is the caller's, and an invalid `Date`
+  // would otherwise print as `[NaN:NaN:NaN]`.
+  if (Number.isNaN(time.getTime())) throw new RangeError("Console getDatetime returned an invalid Date");
   const two = (n: number): string => String(n).padStart(2, "0");
   return `[${two(time.getHours())}:${two(time.getMinutes())}:${two(time.getSeconds())}] `;
 }
