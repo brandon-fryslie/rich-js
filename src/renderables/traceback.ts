@@ -16,9 +16,10 @@
  * sized and coloured a source-code excerpt this renderer does not produce.
  */
 
-import type { Segment } from "../core/segment.js";
+import { Segment } from "../core/segment.js";
 import { RichText } from "../core/text.js";
 import type { Renderable, RenderOptions } from "../core/protocol.js";
+import { layoutPadding } from "./padding.js";
 
 export interface TracebackOptions {
   suppress?: string[];
@@ -67,17 +68,18 @@ export class Traceback implements Renderable {
     this.suppress = options?.suppress ?? [];
   }
 
-  // [LAW:single-enforcer] The report is one `RichText`, so fitting it to the
-  // width is the one fitting every text in the library gets: a line wider than
-  // the report wraps, and a location wider than the report folds across lines
+  // [LAW:single-enforcer] The report is `RichText`, so fitting it to the width
+  // is the one fitting every text in the library gets: a line wider than the
+  // report wraps, and a location wider than the report folds across lines
   // whole, as Rich's does. Written as bare segments, each line was cropped at
   // the edge instead, and a frame lost its file and line to a long path.
-  render(options: RenderOptions): Iterable<Segment> {
-    const report = new RichText("", { end: "" });
-    report.append(this.error.name || "Error", "traceback.exc_type");
-    report.append(": ");
-    report.append(this.error.message, "traceback.text");
-    report.append("\n\n");
+  *render(options: RenderOptions): Iterable<Segment> {
+    const header = new RichText("", { end: "" });
+    header.append(this.error.name || "Error", "traceback.exc_type");
+    header.append(": ");
+    header.append(this.error.message, "traceback.text");
+    header.append("\n\n");
+    yield* header.render(options);
 
     // A suppressed frame keeps its place and shows its file and line only: it
     // is the same frame with no function name to show.
@@ -85,31 +87,42 @@ export class Traceback implements Renderable {
       this.suppress.some((s) => frame.file.includes(s)) ? { ...frame, function: undefined } : frame,
     );
 
+    const list = new RichText("", { end: "" });
     if (this.maxFrames > 0 && frames.length > this.maxFrames) {
       // Spend the budget exactly: the tail takes `maxFrames - head` rather than
       // a second `head`, so an odd budget shows every frame it counts, and it
       // slices from an index because `slice(-0)` is the whole array.
       const head = Math.floor(this.maxFrames / 2);
       const omitted = frames.length - this.maxFrames;
-      for (const frame of frames.slice(0, head)) appendFrame(report, frame);
-      report.append(`  ... ${omitted} frames omitted ...\n`, "traceback.text");
-      for (const frame of frames.slice(frames.length - (this.maxFrames - head))) appendFrame(report, frame);
+      for (const frame of frames.slice(0, head)) appendFrame(list, frame);
+      list.append(`... ${omitted} frames omitted ...\n`, "traceback.text");
+      for (const frame of frames.slice(frames.length - (this.maxFrames - head))) appendFrame(list, frame);
     } else {
-      for (const frame of frames) appendFrame(report, frame);
+      for (const frame of frames) appendFrame(list, frame);
     }
 
-    return report.render(options);
+    // The frames are one block set in from the report's edge, so a frame that
+    // wraps continues under itself instead of at the edge, where it read as a
+    // frame of its own. The width is divided as `Padding` divides it; the rows
+    // are not padded out on the right, as `Padding`'s are, because trailing
+    // blanks on every line of a crash report are bytes nobody asked for.
+    const { left, contentWidth } = layoutPadding(options.maxWidth, 2, 0);
+    const indent = new Segment(" ".repeat(left));
+    for (const line of Segment.splitLines(list.render({ ...options, maxWidth: contentWidth }))) {
+      yield indent;
+      yield* line;
+      yield Segment.line();
+    }
   }
 }
 
-function appendFrame(report: RichText, frame: StackFrame): void {
-  report.append("  ");
+function appendFrame(list: RichText, frame: StackFrame): void {
   if (frame.function) {
-    report.append(frame.function, "bold");
-    report.append(" ");
+    list.append(frame.function, "bold");
+    list.append(" ");
   }
-  report.append(frame.file, "dim");
-  report.append(":");
-  report.append(String(frame.line), "traceback.offset");
-  report.append("\n");
+  list.append(frame.file, "dim");
+  list.append(":");
+  list.append(String(frame.line), "traceback.offset");
+  list.append("\n");
 }

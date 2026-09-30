@@ -21,6 +21,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, it, expect } from "vitest";
+import { decodeAnsi } from "../../src/core/ansi.js";
 
 const FIXTURES = resolve(import.meta.dirname, "fixtures");
 const ALT_ON = "\x1b[?1049h";
@@ -95,9 +96,11 @@ describe("App in a real node process", { timeout: 30_000 }, () => {
     const report = output.slice(output.indexOf(ALT_OFF));
 
     // The location is as long as the checkout's path, so it may fold across
-    // lines; all of it is there either way.
-    expect(report.replaceAll("\n", "")).toContain(pathToFileURL(join(FIXTURES, "app-ending.ts")).href);
-    expect(report).not.toContain("    at ");
+    // lines, each continuing under its frame's indent, and it is coloured when
+    // the child's environment asks for colour. All of it is there either way.
+    const plain = decodeAnsi(report).plain;
+    expect(plain.replaceAll("\n  ", "")).toContain(pathToFileURL(join(FIXTURES, "app-ending.ts")).href);
+    expect(plain).not.toContain("    at ");
   });
 
   it("a terminating signal hands the terminal back and still terminates", async () => {

@@ -53,6 +53,12 @@ function stackOf(reason: unknown): string {
  * discarded by the one component that exists to show them. `isNativeError`
  * reads V8's internal error slot and is realm-independent.
  *
+ * The gate also reads `name` and `message`, because the type promises strings
+ * there and nothing stops a program assigning anything else to them after
+ * construction. A native error that breaks that promise is reported as the
+ * payload it is, through `inspect`, rather than handed to a renderable that
+ * would throw reading it — inside the handler, losing the crash it was for.
+ *
  * Whatever survives that gate is not an error, so it has no call site of its
  * own; `stackOf` salvages a stack from a duck-typed thrower and otherwise
  * leaves it empty rather than reporting the frames of this function, which
@@ -61,7 +67,9 @@ function stackOf(reason: unknown): string {
  * would collapse them to `[object Object]`.
  */
 function toError(reason: unknown): Error {
-  if (types.isNativeError(reason)) return reason;
+  if (types.isNativeError(reason) && typeof reason.name === "string" && typeof reason.message === "string") {
+    return reason;
+  }
   const error = new Error(inspect(reason));
   error.name = "NonError";
   error.stack = stackOf(reason);
