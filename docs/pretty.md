@@ -88,13 +88,13 @@ Put the options where they belong — `new Pretty([1, 2, 3], { expandAll: true }
 
 ## Indentation and guides
 
-`indent` is the number of spaces per level and defaults to 4. `indentGuides` defaults to `true` and draws a `│` in the first cell of each level, styled `repr.indent` (`dim green`); on an ASCII-only console the guide is `|`. `console.print` formats a value it is handed directly without guides, as Rich's does — construct the `Pretty` yourself to get them.
+`indent` is the number of spaces per level and defaults to 4. `indentGuides: true` draws a `│` in the first cell of each level, styled `repr.indent` (`dim green`). Guides are off by default and never drawn on an ASCII-only console, as in Rich. A value that wraps, or a `toString` with indent of its own, gets its slot's guides and no more, so no `│` lands inside it.
 
 ```typescript
 const user = { name: "Alice", metadata: { active: true } };
 
 console.print(new Pretty(user, { indent: 2, expandAll: true }));
-console.print(new Pretty(user, { indent: 2, indentGuides: false, expandAll: true }));
+console.print(new Pretty(user, { indent: 2, indentGuides: true, expandAll: true }));
 ```
 
 ## One line or many

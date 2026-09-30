@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Pretty } from "../../src/core/pretty.js";
+import type { PrettyOptions } from "../../src/core/pretty.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { Highlighter, NullHighlighter } from "../../src/core/highlighter.js";
@@ -119,7 +120,7 @@ describe("Pretty", () => {
       scores: [98, 87, 95],
       metadata: { active: true, role: "admin" },
     };
-    const text = collectText(new Pretty(data, { indentGuides: false }), { maxWidth: 43 });
+    const text = collectText(new Pretty(data), { maxWidth: 43 });
     const lines = text.split("\n");
     for (const line of lines) {
       expect(cellLen(line)).toBeLessThanOrEqual(43);
@@ -135,7 +136,7 @@ describe("Pretty", () => {
     // right after it before the newline. Uncharged, that `,` pushes the
     // line to 21 cells and wraps mid-array instead of expanding `k`.
     const data = { k: [1, 2, 3, 10], z: 1 };
-    const text = collectText(new Pretty(data, { indentGuides: false }), { maxWidth: 20 });
+    const text = collectText(new Pretty(data), { maxWidth: 20 });
     const lines = text.split("\n");
     for (const line of lines) {
       expect(cellLen(line)).toBeLessThanOrEqual(20);
@@ -150,7 +151,7 @@ describe("Pretty", () => {
     // charge as a non-last slot's trailing comma, just within one slot
     // instead of between two.
     const data = new Map([[[1, 2, 3, 10], "x"]]);
-    const text = collectText(new Pretty(data, { indentGuides: false }), { maxWidth: 20 });
+    const text = collectText(new Pretty(data), { maxWidth: 20 });
     const lines = text.split("\n");
     for (const line of lines) {
       expect(cellLen(line)).toBeLessThanOrEqual(20);
@@ -167,7 +168,7 @@ describe("Pretty", () => {
 
   describe("text that is one piece wraps under the key it belongs to (rich-pretty-xms.tmf)", () => {
     const laidOut = (value: unknown, maxWidth: number): string[] =>
-      new Pretty(value, { indentGuides: false }).toText({ maxWidth }).plain.split("\n");
+      new Pretty(value).toText({ maxWidth }).plain.split("\n");
 
     it("hangs a self-describing value's own lines, and cuts them to the width", () => {
       // `String(err)` is two lines, the second 60 cells. Emitted verbatim, it
@@ -420,29 +421,60 @@ describe("Pretty", () => {
 
   // --- Indent Guides ---
 
-  it("draws a guide at each level of indent, styled repr.indent", () => {
-    const text = new Pretty({ a: { b: { c: 1 } } }, { expandAll: true }).toText({ maxWidth: 80 });
-    expect(text.plain).toBe(
-      ["{", "│   a: {", "│   │   b: {", "│   │   │   c: 1", "│   │   }", "│   }", "}"].join("\n"),
-    );
-    const guided = text.spans.filter((s) => s.style === "repr.indent").map((s) => text.plain.slice(s.start, s.end));
-    expect(guided).toEqual(["│   ", "│   │   ", "│   │   │   ", "│   │   ", "│   "]);
-  });
+  describe("indent guides", () => {
+    const guided = (value: unknown, maxWidth: number, options: PrettyOptions = {}): RichText =>
+      new Pretty(value, { indentGuides: true, ...options }).toText({ maxWidth });
+    const guideRuns = (text: RichText): string[] =>
+      text.spans.filter((s) => s.style === "repr.indent").map((s) => text.plain.slice(s.start, s.end));
 
-  it("draws a guide per indent of the width it is given", () => {
-    const text = new Pretty({ a: [1] }, { expandAll: true, indent: 2 }).toText({ maxWidth: 80 });
-    expect(text.plain).toBe(["{", "│ a: [", "│ │ 1", "│ ]", "}"].join("\n"));
-  });
+    it("draws a guide at each level of indent, styled repr.indent", () => {
+      const text = guided({ a: { b: { c: 1 } } }, 80, { expandAll: true });
+      expect(text.plain).toBe(
+        ["{", "│   a: {", "│   │   b: {", "│   │   │   c: 1", "│   │   }", "│   }", "}"].join("\n"),
+      );
+      expect(guideRuns(text)).toEqual(["│   ", "│   │   ", "│   │   │   ", "│   │   ", "│   "]);
+    });
 
-  it("draws the guide in ASCII when the output is ASCII-only", () => {
-    const text = new Pretty({ a: 1 }, { expandAll: true }).toText({ maxWidth: 80, asciiOnly: true });
-    expect(text.plain).toBe("{\n|   a: 1\n}");
-  });
+    it("draws a guide per indent of the width it is given", () => {
+      expect(guided({ a: [1] }, 80, { expandAll: true, indent: 2 }).plain)
+        .toBe(["{", "│ a: [", "│ │ 1", "│ ]", "}"].join("\n"));
+    });
 
-  it("leaves the indent blank when guides are off", () => {
-    const text = new Pretty({ a: 1 }, { expandAll: true, indentGuides: false }).toText({ maxWidth: 80 });
-    expect(text.plain).toBe("{\n    a: 1\n}");
-    expect(text.spans.some((s) => s.style === "repr.indent")).toBe(false);
+    // A row that hangs is the value's continuation, not a level of the data, so
+    // only its slot's guides reach it. Read back out of the whitespace, a `│`
+    // landed inside the string's quotes, and copying the output copied it.
+    it("draws no guide inside a string that wraps", () => {
+      const text = guided({ key: "a b c d e f g h i j k l m n o p q r s t u v w x y z" }, 30);
+      expect(text.plain).toBe(
+        ["{", '│   key: "a b c d e f g h i j', "│       k l m n o p q r s t u", '│       v w x y z"', "}"].join("\n"),
+      );
+    });
+
+    it("draws no guide over a toString's own indent", () => {
+      const text = guided({ a: { toString: () => "Foo(\n        deep\n)" } }, 80, { expandAll: true });
+      expect(text.plain).toBe(["{", "│   a: Foo(", "│               deep", "│       )", "}"].join("\n"));
+    });
+
+    it("carries the guide through a blank line", () => {
+      const text = guided([{ toString: () => "top\n\nbottom" }], 80, { expandAll: true });
+      expect(text.plain).toBe(["[", "│   top", "│   ", "│       bottom", "]"].join("\n"));
+    });
+
+    it("draws none on an ASCII-only console, as the reference does", () => {
+      const text = new Pretty({ a: 1 }, { expandAll: true, indentGuides: true }).toText({ maxWidth: 80, asciiOnly: true });
+      expect(text.plain).toBe("{\n    a: 1\n}");
+    });
+
+    it("draws none with no indent to stand in", () => {
+      expect(guided({ a: { toString: () => "x\n  y" } }, 80, { expandAll: true, indent: 0 }).plain)
+        .toBe(["{", "a: x", "  y", "}"].join("\n"));
+    });
+
+    it("draws none by default, as the reference does", () => {
+      const text = new Pretty({ a: 1 }, { expandAll: true }).toText({ maxWidth: 80 });
+      expect(text.plain).toBe("{\n    a: 1\n}");
+      expect(guideRuns(text)).toEqual([]);
+    });
   });
 
   // An object either carries its own string form or it does not, and the two
@@ -634,12 +666,9 @@ describe("Pretty", () => {
         };
         Object.setPrototypeOf(counted, Map.prototype);
         const deep = { a: { b: { c: counted as unknown as Map<number, number> } } };
-        // Guides and highlighting are per-character work on an expansion this
-        // wide, and neither is what is being counted.
-        collectText(
-          new Pretty(deep, { indentGuides: false, highlighter: new NullHighlighter() }),
-          { maxWidth: 80 },
-        );
+        // Highlighting is per-character work on an expansion this wide, and
+        // is not what is being counted.
+        collectText(new Pretty(deep, { highlighter: new NullHighlighter() }), { maxWidth: 80 });
         return pulled;
       };
 
@@ -675,8 +704,8 @@ describe("Pretty", () => {
       // the fixed probing near the top cancels out of the subtraction.
       const shallow = countingChain(20);
       const deep = countingChain(26);
-      collectText(new Pretty(shallow.value, { indentGuides: false }), { maxWidth: 80 });
-      collectText(new Pretty(deep.value, { indentGuides: false }), { maxWidth: 80 });
+      collectText(new Pretty(shallow.value), { maxWidth: 80 });
+      collectText(new Pretty(deep.value), { maxWidth: 80 });
 
       // Six more levels, six more reads. The doubling this replaced spent
       // 12,247 reads on the 20 and 783,934 on the 26.
@@ -686,14 +715,11 @@ describe("Pretty", () => {
     it("renders a thousand levels, the depth being unbounded by default", () => {
       let deep: unknown = 1;
       for (let i = 0; i < 1000; i++) deep = { n: deep };
-      // At default options, indent guides included. They emit a span per
-      // indent character, so a d-deep value carries d²/2 spans, and this
-      // arrived only once RichText stopped spending the square of the span
-      // count turning them into segments (rich-text-6po) — which is the half
-      // of the cost this traversal never owned.
-      expect(collectText(new Pretty(deep), { maxWidth: 80 })).toContain("n: 1");
-      // A thousand guided levels is half a million spans — genuinely large at
-      // any complexity — so this is the one test here that costs real time:
+      // Guides on, so the thousand lines, each indented past the width, carry
+      // a guide run apiece through the render.
+      expect(collectText(new Pretty(deep, { indentGuides: true }), { maxWidth: 80 })).toContain("n: 1");
+      // A thousand levels is a thousand lines of up to four thousand cells,
+      // wrapped by the render, so this is the one test here that costs real time:
       // ~2s alone and ~15s against a saturated suite. The budget is set to
       // separate complexity *classes* rather than constants, which is the only
       // thing a wall clock can honestly assert: the quadratic this outran

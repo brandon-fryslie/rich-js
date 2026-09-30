@@ -23,7 +23,6 @@ import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
-import { drawable } from "./protocol.js";
 import type {
   Renderable,
   Measurable,
@@ -49,6 +48,11 @@ export interface PrettyOptions {
    * `Set {...}` — visible, so the reader knows the value continues.
    */
   maxDepth?: number;
+  /**
+   * Draw a `│` in the first cell of each level of indent. Off by default, as
+   * the reference's is, and never drawn on an ASCII-only console, where the
+   * reference draws none.
+   */
   indentGuides?: boolean;
   /**
    * Who colours the formatted text. Defaults to a `ReprHighlighter`.
@@ -159,9 +163,83 @@ function lineColumn(column: number, text: string): number {
  * `toString`'s last line can open with whitespace of its own, and read as
  * indent, that put the children off the grid the rest of the output is on.
  */
-interface Laid {
-  readonly text: string;
+interface Laid extends Lines {
   readonly inset: number;
+}
+
+/**
+ * Text, and the margin of each line it starts: the cells of indent that are
+ * the structure's, which is where an indent guide may stand.
+ *
+ * The margin is the one fact about a line its whitespace cannot give back. A
+ * wrapped string's rows hang one indent past their slot and a multi-line
+ * `toString` brings indent of its own, and a guide drawn in either lands inside
+ * the value. So a line's margin is recorded where the line is started, the only
+ * place that knows it, and pieces are joined with `cat`, which keeps each margin
+ * with its line. [LAW:one-source-of-truth] text reaches a new line only through
+ * `newline` or `_place`, so there is no newline without a margin.
+ */
+interface Lines {
+  readonly text: string;
+  /** One per `\n` in `text`, in order: the first line continues its caller's. */
+  readonly margins: readonly number[];
+}
+
+/** Text with no line break in it. */
+const flat = (text: string): Lines => ({ text, margins: [] });
+
+/** A new line whose first `margin` cells are the structure's indent. */
+const newline = (margin: number): Lines => ({ text: "\n" + " ".repeat(margin), margins: [margin] });
+
+const placed = (lines: Lines, inset: number): Laid => ({ text: lines.text, margins: lines.margins, inset });
+
+const cat = (...parts: Lines[]): Lines => ({
+  text: parts.map((part) => part.text).join(""),
+  margins: parts.flatMap((part) => part.margins),
+});
+
+/**
+ * A container laid out across lines: `open`, each of `parts` on a line of its
+ * own at `inner`, and `close` back at `outer`.
+ *
+ * Here and `follow` rather than inline because the traversal recurses once per
+ * level of the data, and what its frames hold is what bounds the depth it
+ * reaches; assembling a piece is done once the recursion under it has returned.
+ */
+function expansion(lead: Lines, shape: Container, parts: readonly Lines[], inner: number, outer: number): Laid {
+  const lines = parts.map((part, i) => cat(flat(i === 0 ? "" : EXPAND_SEPARATOR), newline(inner), part));
+  return placed(cat(lead, flat(shape.open), ...lines, newline(outer), flat(shape.close)), outer);
+}
+
+/**
+ * `laid` and then `tail` after `out`. A value `_place` moved onto a line of its
+ * own leaves the text before it ending the line, and the space that was to
+ * separate them goes with it — spaces only, as a line break carries a margin.
+ */
+function follow(out: Lines, laid: Lines, tail: string): Lines {
+  const before = laid.text.startsWith("\n") ? { text: out.text.replace(/ +$/, ""), margins: out.margins } : out;
+  return cat(before, laid, flat(tail));
+}
+
+/**
+ * `lines` with a guide in the first cell of each indent of every margin, as the
+ * reference's `with_indent_guides` draws it, and where each run of guides is. A
+ * guide takes the place of a space, so only a blank line grows.
+ */
+function withGuides(lines: Lines, indent: number): { plain: string; guides: Array<[number, number]> } {
+  const [first, ...rest] = lines.text.split("\n");
+  const guides: Array<[number, number]> = [];
+  let offset = first!.length;
+  const rows = rest.map((line, i) => {
+    const margin = lines.margins[i]!;
+    const drawn = Array.from({ length: margin }, (_, cell) => (cell % indent === 0 ? "│" : " ")).join("");
+    offset += 1;
+    guides.push([offset, offset + margin]);
+    const row = drawn + line.slice(margin);
+    offset += row.length;
+    return row;
+  });
+  return { plain: [first, ...rows].join("\n"), guides };
 }
 
 /**
@@ -449,7 +527,7 @@ export class Pretty implements Renderable, Measurable {
     this.maxLength = options?.maxLength;
     this.maxString = options?.maxString;
     this.maxDepth = options?.maxDepth ?? Infinity;
-    this.indentGuides = options?.indentGuides !== false;
+    this.indentGuides = options?.indentGuides ?? false;
     this.highlighter = options?.highlighter ?? reprHighlighter;
   }
 
@@ -462,14 +540,13 @@ export class Pretty implements Renderable, Measurable {
 
   /** The value laid out for `options.maxWidth` and highlighted: the text this renders. */
   toText(options: RenderOptions): RichText {
-    const formatted = this._format(this.data, rootFrame(options.maxWidth)).text;
-    const text = new RichText(formatted, { end: "" });
+    const laid = this._format(this.data, rootFrame(options.maxWidth));
+    const { plain, guides } = this.indentGuides && options.asciiOnly !== true
+      ? withGuides(laid, this.indent)
+      : { plain: laid.text, guides: [] };
+    const text = new RichText(plain, { end: "" });
     this.highlighter.highlight(text);
-
-    if (this.indentGuides) {
-      this._addIndentGuides(text, drawable(options, "│", "|"));
-    }
-
+    for (const [start, end] of guides) text.stylize("repr.indent", start, end);
     return text;
   }
 
@@ -686,26 +763,20 @@ export class Pretty implements Renderable, Measurable {
         budget: at.maxWidth - at.column - at.reserve,
         open: at.open,
       });
-      if (compact !== null) return { text: lead + compact, inset: at.inset };
+      if (compact !== null) return placed(cat(lead, flat(compact)), at.inset);
     }
 
-    const indentStr = " ".repeat(at.inset);
-    const innerIndent = " ".repeat(at.inset + this.indent);
+    const innerIndent = at.inset + this.indent;
     // Every non-last slot gets `EXPAND_SEPARATOR` appended right after it
     // below, on the same line as whatever its own last character was — the
     // last slot doesn't. Two frames, not one per slot: `reserve` is the only
     // field that varies, and it only ever takes these two values.
-    const base = this._onLine({ ...at, level: at.level + 1, column: cellLen(innerIndent) }, cellLen(innerIndent));
+    const base = this._onLine({ ...at, level: at.level + 1, column: innerIndent }, innerIndent);
     const midFrame: Frame = { ...base, reserve: cellLen(EXPAND_SEPARATOR) };
     const lastFrame: Frame = { ...base, reserve: 0 };
     const lastSlot = shape.slots.length - 1;
-    const parts = shape.slots.map((slot, i) =>
-      innerIndent + this._expandSlot(slot, i === lastSlot ? lastFrame : midFrame),
-    );
-    return {
-      text: lead + shape.open + "\n" + parts.join(EXPAND_SEPARATOR + "\n") + "\n" + indentStr + shape.close,
-      inset: at.inset,
-    };
+    const parts = shape.slots.map((slot, i) => this._expandSlot(slot, i === lastSlot ? lastFrame : midFrame));
+    return expansion(lead, shape, parts, innerIndent, at.inset);
   }
 
   /**
@@ -720,13 +791,13 @@ export class Pretty implements Renderable, Measurable {
    * sibling. It moves only to fit: past the edge, the hanging line has no more
    * room than this one.
    */
-  private _opening(at: Frame, open: string): { lead: string; at: Frame } {
+  private _opening(at: Frame, open: string): { lead: Lines; at: Frame } {
     const width = cellLen(open);
     if (at.hang === null || at.column + width <= at.maxWidth || at.hang + width > at.maxWidth) {
-      return { lead: "", at };
+      return { lead: flat(""), at };
     }
     return {
-      lead: "\n" + " ".repeat(at.hang),
+      lead: newline(at.hang),
       at: { ...this._onLine(at, at.hang), column: at.hang },
     };
   }
@@ -761,13 +832,13 @@ export class Pretty implements Renderable, Measurable {
    * folded into a later hole's reserve — it is spent, not carried, the moment
    * `out` grows past it.
    */
-  private _expandSlot(slot: Slot, at: Frame): string {
+  private _expandSlot(slot: Slot, at: Frame): Lines {
     // A key is one piece of text, placed like any other: one wider than its
     // line wraps under its slot rather than running on to column 0. Only a slot
     // with no values has its `at.reserve` land right after the head; a value
     // may move below it.
     const head = this._place(slot.head, { ...at, reserve: cellLen(slot.join) + (slot.holes.length === 0 ? at.reserve : 0) });
-    let out = head.text + slot.join;
+    let out = cat(head, flat(slot.join));
     let inset = head.inset;
     const lastHole = slot.holes.length - 1;
     for (let i = 0; i < slot.holes.length; i++) {
@@ -776,16 +847,14 @@ export class Pretty implements Renderable, Measurable {
       // unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows everything
       // that could be read.
       const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
-      const here: Frame = { ...this._onLine(at, inset), column: lineColumn(at.column, out), reserve };
+      const here: Frame = { ...this._onLine(at, inset), column: lineColumn(at.column, out.text), reserve };
       let laid: Laid;
       try {
         laid = this._format(hole.read(), here);
       } catch (error) {
         laid = this._place(threw(error), here);
       }
-      // A value `_place` moved onto a line of its own leaves the text before it
-      // ending the line, and the space that was to separate them goes with it.
-      out = (laid.text.startsWith("\n") ? out.trimEnd() : out) + laid.text + hole.tail;
+      out = follow(out, laid, hole.tail);
       inset = laid.inset;
     }
     return out;
@@ -813,7 +882,9 @@ export class Pretty implements Renderable, Measurable {
    * beneath it, where it used to wrap to column 0.
    */
   private _place(text: string, at: Frame): Laid {
-    if (at.hang === null) return { text, inset: at.inset };
+    // At the root nothing precedes the text that this formatter wrote, so none
+    // of its lines has indent that is the structure's.
+    if (at.hang === null) return placed({ text, margins: text.split("\n").slice(1).map(() => 0) }, at.inset);
     // A hanging row needs a cell to stand in. One indent past the slot has none
     // when the value sits one indent from the edge, and a row put there anyway
     // overruns the width and wraps to column 0 — so rows start where the value
@@ -828,10 +899,12 @@ export class Pretty implements Renderable, Measurable {
     const [first, ...rows] = lines.flatMap((line, i) => i === 0
       ? rowsOf(line, stayingLength(line, room(0, at.column), at.column > hang), room(0, hang))
       : rowsOf(line, stayingLength(line, room(i, hang), false), room(i, hang)));
-    return {
-      text: first + rows.map((row) => "\n" + (row === "" ? "" : " ".repeat(hang) + row)).join(""),
-      inset: rows.length === 0 ? at.inset : hang,
-    };
+    // A row hangs past its slot's margin, not at a margin of its own: the
+    // cells between are the value's, and a guide there would sit inside it.
+    const hung = rows.map((row) => row === ""
+      ? { text: "\n", margins: [at.inset] }
+      : cat(newline(at.inset), flat(" ".repeat(hang - at.inset) + row)));
+    return placed(cat(flat(first!), ...hung), rows.length === 0 ? at.inset : hang);
   }
 
   /** The one-line form of a value, or `null` when it will not fit `at.budget`. */
@@ -897,28 +970,4 @@ export class Pretty implements Renderable, Measurable {
     }
     return fitOneLine(out, at.budget);
   }
-
-  /**
-   * Each whole indent a line starts with drawn as a guide, `guide` in its first
-   * cell and styled `repr.indent`, as the reference's `with_indent_guides` draws
-   * it. A guide stands in for a space cell for cell, so the text keeps its
-   * length and every span the highlighter laid stays where it was.
-   */
-  private _addIndentGuides(text: RichText, guide: string): void {
-    const drawn: Array<[number, number]> = [];
-    let offset = 0;
-    text.plain = text.plain
-      .split("\n")
-      .map((line) => {
-        // A line of nothing but spaces has no content to guide the eye to: -1.
-        const levels = Math.max(0, Math.floor(line.search(/[^ ]/) / this.indent));
-        const guides = Array.from({ length: levels }, () => guide.padEnd(this.indent)).join("");
-        drawn.push([offset, offset + guides.length]);
-        offset += line.length + 1;
-        return guides + line.slice(guides.length);
-      })
-      .join("\n");
-    for (const [start, end] of drawn) text.stylize("repr.indent", start, end);
-  }
-
 }
