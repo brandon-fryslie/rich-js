@@ -5,6 +5,7 @@
 import { Segment } from "../core/segment.js";
 import { cellCount } from "../core/cells.js";
 import { Style, NULL_STYLE } from "../core/style.js";
+import type { RichText } from "../core/text.js";
 import { Measurement } from "../core/measure.js";
 import type {
   Renderable,
@@ -12,6 +13,7 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { fitHeight, getStyle, insetHeight, isMeasurable, withBoundedWidth, withCellWidth } from "../core/protocol.js";
+import { embed } from "./embed.js";
 
 export type PaddingDimensions =
   | number
@@ -108,12 +110,12 @@ export class Padding implements Renderable, Measurable {
   readonly expand: boolean;
 
   constructor(
-    renderable: Renderable,
+    content: string | RichText | Renderable,
     padding: PaddingDimensions,
     options?: { style?: string | Style; expand?: boolean },
   ) {
     const [top, right, bottom, left] = normalizePadding(padding);
-    this.renderable = renderable;
+    this.renderable = embed(content);
     this.top = top;
     this.right = right;
     this.bottom = bottom;
