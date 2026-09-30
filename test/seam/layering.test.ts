@@ -18,12 +18,8 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
-import {
-  REPO_ROOT,
-  listTypeScriptFiles,
-  loadCompilerOptions,
-  repoRelative,
-} from "../coverage/extract.js";
+import { repoRelative } from "../coverage/extract.js";
+import { REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../scripts/repo-facts.js";
 import { parseSourceFile } from "./graph.js";
 import {
   CORE_LAYER,

@@ -12,7 +12,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { resolve } from "node:path";
 import { bundleExample, bundleLiveRuntime, liveLibraryOnce } from "../docs/.vitepress/example-runner.js";
-import { REPO_ROOT } from "../test/coverage/extract.js";
+import { REPO_ROOT } from "../scripts/repo-facts.js";
 
 const from = (file: string) => JSON.stringify(resolve(REPO_ROOT, file));
 

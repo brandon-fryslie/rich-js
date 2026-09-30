@@ -8,7 +8,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { REPO_ROOT } from "../coverage/extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { readmeDemos, scriptedDemos } from "./readme-demos.js";
 
 const readme = readFileSync(path.join(REPO_ROOT, "README.md"), "utf8");

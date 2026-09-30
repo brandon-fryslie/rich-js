@@ -11,7 +11,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import stripAnsi from "strip-ansi";
 import { bundleExample } from "../docs/.vitepress/example-runner.js";
-import { REPO_ROOT } from "../test/coverage/extract.js";
+import { REPO_ROOT } from "../scripts/repo-facts.js";
 import { resolve } from "node:path";
 
 const LIBRARY = JSON.stringify(resolve(REPO_ROOT, "src/index.ts"));

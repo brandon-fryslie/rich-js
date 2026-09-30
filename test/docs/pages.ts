@@ -22,7 +22,7 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 
-import { REPO_ROOT } from "../coverage/extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 
 const DOCS_ROOT = path.join(REPO_ROOT, "docs");
 

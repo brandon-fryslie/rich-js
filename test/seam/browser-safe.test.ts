@@ -17,9 +17,9 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT, ENTRY_MODULES, isBehindNodeAirlock } from "../coverage/extract.js";
+import { isBehindNodeAirlock } from "../coverage/extract.js";
+import { REPO_ROOT, ENTRY_MODULES, loadCompilerOptions } from "../../scripts/repo-facts.js";
 import { reachableSourceModules, parseSourceFile, resolveEdge } from "./graph.js";
-import { loadCompilerOptions } from "../coverage/extract.js";
 import {
   browserSafetyViolations,
   describeViolation,

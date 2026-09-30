@@ -34,9 +34,9 @@ import {
   groupByOrigin,
   canonicalNameFor,
   originKey,
-  REPO_ROOT,
   type OriginInfo,
 } from "./extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { ALLOWLIST } from "./coverage-allowlist.js";
 
 describe("API → demo coverage", () => {

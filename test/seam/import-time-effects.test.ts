@@ -19,7 +19,7 @@ import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import { REPO_ROOT, listTypeScriptFiles } from "../coverage/extract.js";
+import { REPO_ROOT, listTypeScriptFiles } from "../../scripts/repo-facts.js";
 import { parseSourceFile } from "./graph.js";
 import { importTimeEffects, describeEffect, type ImportTimeEffect } from "./import-time-effects.js";
 

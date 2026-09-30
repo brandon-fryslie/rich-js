@@ -17,7 +17,7 @@
 import { describe, it, expect } from "vitest";
 import path from "node:path";
 import { readdirSync, readFileSync } from "node:fs";
-import { REPO_ROOT } from "../coverage/extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import {
   NODE_VERSION_LITERALS,
   scanWorkflow,

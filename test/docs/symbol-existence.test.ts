@@ -47,13 +47,9 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import ts from "typescript";
-import {
-  ENTRY_BY_SPECIFIER,
-  REPO_ROOT,
-  assertProgramClean,
-  loadCompilerOptions,
-  resolveAlias,
-} from "../coverage/extract.js";
+import { assertProgramClean } from "../coverage/extract.js";
+import { ENTRY_BY_SPECIFIER, REPO_ROOT, loadCompilerOptions } from "../../scripts/repo-facts.js";
+import { resolveAlias } from "../../scripts/resolve-alias.js";
 import {
   extractImportedNames,
   extractMemberUses,
@@ -166,7 +162,7 @@ function resolveSurface(): {
       // The full alias chain, not one hop: a class re-exported through two
       // modules resolves to a re-export specifier under a single
       // `getAliasedSymbol`, fails `isClassDeclaration`, and drops out of the
-      // check silently. [LAW:one-source-of-truth] one resolver, in extract.ts.
+      // check silently. [LAW:one-source-of-truth] one resolver, in scripts/resolve-alias.ts.
       const target = resolveAlias(symbol, checker);
       const declaration = target.declarations?.[0];
       // Classes and interfaces both, because a chain does not stay in classes:
