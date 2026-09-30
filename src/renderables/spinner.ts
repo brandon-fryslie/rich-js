@@ -27,13 +27,17 @@ export class Spinner implements Renderable, Measurable {
   readonly name: string;
   readonly speed: number;
   readonly style: string | Style;
+  /**
+   * The label drawn after the frame. It is read through `embed`'s one crossing
+   * each time it is drawn, so a string is markup under the console that draws
+   * it, as a string handed to `print` is — where Rich's `Spinner` parses it
+   * whatever the console says — and a `RichText` changed in place draws as
+   * changed, as the `Text` Rich keeps does. [LAW:single-enforcer]
+   */
+  text: string | RichText;
   private readonly _data: SpinnerData;
   private _frameIndex: number;
   private _lastUpdate: number;
-  // The label as it was handed over, and as it crosses `embed`'s one crossing,
-  // so a string is markup under the console that draws it, as Rich's
-  // `Text.from_markup(text)` makes it. [LAW:single-enforcer]
-  private _label: { given: string | RichText; drawn: EmbeddedText };
 
   constructor(name?: string, text: string | RichText = "", options?: SpinnerOptions) {
     const spinnerName = name ?? DEFAULT_SPINNER;
@@ -42,21 +46,12 @@ export class Spinner implements Renderable, Measurable {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
     }
     this.name = spinnerName;
-    this._label = { given: text, drawn: new EmbeddedText(text) };
+    this.text = text;
     this.speed = options?.speed ?? 1;
     this.style = options?.style ?? NULL_STYLE;
     this._data = data;
     this._frameIndex = 0;
     this._lastUpdate = Date.now();
-  }
-
-  /** The label drawn after the frame, as it was handed over. */
-  get text(): string | RichText {
-    return this._label.given;
-  }
-
-  set text(value: string | RichText) {
-    this._label = { given: value, drawn: new EmbeddedText(value) };
   }
 
   get frames(): readonly string[] {
@@ -86,15 +81,28 @@ export class Spinner implements Renderable, Measurable {
   }
 
   /**
-   * The spinner's current frame and its text, with no line end: the
-   * fragment a caller composes inside a line of its own, a `Progress` cell.
-   * `render` is this line, ended, because a `Spinner`
-   * printed or stacked in a `Group` is a line of its own, as the reference's
-   * `Text` is.
+   * The spinner's current frame and its text as a fragment a caller composes
+   * inside a line of its own, a `Progress` cell: no line end, and at its
+   * natural width, because the caller does the cutting, as with `inlineLabel`.
    */
   *drawFrame(options: RenderOptions): Iterable<Segment> {
+    const line = this._currentLine(options);
+    line.overflow = "ignore";
+    yield* line.render(options);
+  }
+
+  /**
+   * The same line wrapped to the width and ended, because a `Spinner` printed
+   * or stacked in a `Group` is a line of its own, as the reference's `Text` is.
+   */
+  *render(options: RenderOptions): Iterable<Segment> {
+    yield* this._currentLine(options).render(options);
+    yield Segment.line();
+  }
+
+  private _currentLine(options: RenderOptions): RichText {
     const frames = this._drawnFrames(options);
-    yield* this._line(frames[this._advance() % frames.length]!, options).render(options);
+    return this._line(frames[this._advance() % frames.length]!, options);
   }
 
   /**
@@ -106,20 +114,21 @@ export class Spinner implements Renderable, Measurable {
   private _line(frame: string, options: RenderOptions): RichText {
     const line = new RichText("", { end: "" }).append(frame, this.style);
     // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
-    const label = this._label.drawn.text({ ...options, highlighter: undefined });
+    const label = new EmbeddedText(this.text).text({ ...options, highlighter: undefined });
     if (label.plain !== "") line.append(" ").append(label);
     return line;
   }
 
-  *render(options: RenderOptions): Iterable<Segment> {
-    yield* this.drawFrame(options);
-    yield Segment.line();
-  }
-
-  /** Measured at its widest frame, so a column holding it never narrows as it turns. */
+  /**
+   * Measured at its widest frame, so a column holding it never narrows as it
+   * turns, and never offered less than that frame: a frame is one picture,
+   * which the reference's `Text` measure would let wrap apart at its spaces.
+   */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
     const frames = this._drawnFrames(options);
-    const widest = frames.reduce((a, b) => (cellLen(b) > cellLen(a) ? b : a));
-    return this._line(widest, options).measure(options);
+    const widths = frames.map((frame) => cellLen(frame));
+    const frameWidth = Math.max(...widths);
+    const { minimum, maximum } = this._line(frames[widths.indexOf(frameWidth)]!, options).measure(options);
+    return { minimum: Math.max(minimum, Math.min(frameWidth, maximum)), maximum };
   }
 }

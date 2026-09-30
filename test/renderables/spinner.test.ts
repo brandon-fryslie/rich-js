@@ -126,6 +126,22 @@ describe("Spinner", () => {
       s.text = new RichText("after");
       expect(collectText(s, { maxWidth: 80 })).toBe("⠋ after\n");
     });
+
+    it("draws a RichText label changed in place as changed, as Rich's kept Text does", () => {
+      const label = new RichText("hello");
+      const s = new Spinner("dots", label);
+      label.append(" world");
+      expect(collectText(s, { maxWidth: 80 })).toBe("⠋ hello world\n");
+    });
+
+    it("wraps a long label with its frame when drawn as a line of its own", () => {
+      expect(collectText(new Spinner("dots", "a very long label"), { maxWidth: 10 })).toBe("⠋ a very \nlong label\n");
+    });
+
+    it("leaves its fragment unwrapped for the caller composing it to cut", () => {
+      const fragment = [...new Spinner("dots", "a very long label").drawFrame({ maxWidth: 10 })];
+      expect(fragment.map((seg) => seg.text).join("")).toBe("⠋ a very long label");
+    });
   });
 
   describe("measurement", () => {
@@ -141,6 +157,12 @@ describe("Spinner", () => {
       const s = new Spinner("dots", "Loading...");
       const m = s.measure({ maxWidth: 80 });
       expect(m.minimum).toBeGreaterThan(0);
+    });
+
+    it("never offers a column less than its widest frame, spaces inside it or not", () => {
+      const s = new Spinner("bouncingBall", "a b");
+      const widest = Math.max(...s.frames.map((frame) => [...frame].length));
+      expect(s.measure({ maxWidth: 80 }).minimum).toBe(widest);
     });
   });
 });
