@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-273",
-      "ref": "refs/pull/273/merge",
-      "sha": "114c1b2e385fe4eca0868492468ca7e6bf3d6beb",
-      "timestamp": "2026-09-30T19:47:20.546Z",
-      "commits": [
-        {
-          "sha": "114c1b2e385fe4eca0868492468ca7e6bf3d6beb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T19:46:13Z",
-          "message": "Merge 8e8b1de448c217dc777d3e1242cadb01336f17d6 into 8d2e9b9de3088b068ba1b1e8b8616b694cc1bb4d\n"
-        },
-        {
-          "sha": "8e8b1de448c217dc777d3e1242cadb01336f17d6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:46:07-06:00",
-          "message": "test(rich-explore): each coverage item ends its own line, checked per item (rich-explore-demo-fgln)\n\nThe row-sum check re-derived Group's arithmetic from hand-copied render\noptions and missed an open item in the last position. Each item is now\nrendered alone under the options the frame was drawn with, and must draw\nnothing or end with a newline. The view also shows chopCells' array and\nsetCellSize's result instead of discarding one and stringifying the other.\n"
-        },
-        {
-          "sha": "fa35e72a7621f7249579d208b7dbd4b4e2115bb2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:41:26-06:00",
-          "message": "fix(rich-explore): each coverage item starts its own row (rich-explore-demo-fgln)\n\nThe coverage view built its Group items as RichText with end \"\", which\nleaves the line open as Rich's Text does, so the Group drew the next item\non the same row — 14 rows wider than 80 cells. The items end their lines\nnow, and the Emoji, a line fragment as in Rich, sits in a grid row beside\nits label. The test compares the view's row count with the sum of its\nitems' rows, which catches a join too short to overflow the width.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8d2e9b9de3088b068ba1b1e8b8616b694cc1bb4d",
-      "timestamp": "2026-09-30T19:33:27.609Z",
+      "sha": "9b8a4c414c3d7fdfe641a2874502fef0de20751b",
+      "timestamp": "2026-09-30T19:52:39.994Z",
       "commits": [
         {
-          "sha": "8d2e9b9de3088b068ba1b1e8b8616b694cc1bb4d",
+          "sha": "9b8a4c414c3d7fdfe641a2874502fef0de20751b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:32:12-06:00",
-          "message": "fix(tree): bold and underline2 guides draw heavy and double lines (rich-tree-te3h) (#272)\n\n* fix(tree): bold and underline2 guides draw heavy and double lines, without the attribute (rich-tree-te3h)\n\nRich reads each guide column's stacked guide style to pick its glyphs —\nheavy when bold, double when underline2 — and draws the guide with both\nattributes switched off. Tree always drew light glyphs and left bold on.\nA guide now carries its role, and the glyph set is chosen at render from\nthe theme-resolved style; every set is four cells, so measure is unchanged.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* test(tree): pin every guide role in heavy and double, and the guide's exact style (rich-tree-te3h)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T13:51:24-06:00",
+          "message": "fix(rich-explore): each coverage item starts its own row (rich-explore-demo-fgln) (#273)\n\n* fix(rich-explore): each coverage item starts its own row (rich-explore-demo-fgln)\n\nThe coverage view built its Group items as RichText with end \"\", which\nleaves the line open as Rich's Text does, so the Group drew the next item\non the same row — 14 rows wider than 80 cells. The items end their lines\nnow, and the Emoji, a line fragment as in Rich, sits in a grid row beside\nits label. The test compares the view's row count with the sum of its\nitems' rows, which catches a join too short to overflow the width.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(rich-explore): each coverage item ends its own line, checked per item (rich-explore-demo-fgln)\n\nThe row-sum check re-derived Group's arithmetic from hand-copied render\noptions and missed an open item in the last position. Each item is now\nrendered alone under the options the frame was drawn with, and must draw\nnothing or end with a newline. The view also shows chopCells' array and\nsetCellSize's result instead of discarding one and stringifying the other.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
