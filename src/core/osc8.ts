@@ -2,7 +2,7 @@
  * The OSC 8 hyperlink wire grammar — which bytes may not appear inside a
  * link, how a link becomes bytes, and how bytes are read back as a link.
  *
- * [LAW:one-source-of-truth] The producer (`segmentsToString`, the one encoder
+ * [LAW:one-source-of-truth] The producer (`segmentToString`, the one encoder
  * every link reaches the wire through) opens a link with `osc8Open` and closes
  * it with `OSC8_CLOSE`; every consumer that reads rendered bytes (a width measure, a
  * test extracting URLs) matches them with `OSC8`; the data-model boundary

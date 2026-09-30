@@ -90,12 +90,12 @@ const DEFAULT_WIDTH = 80;
  * `Style.render` for that segment, and nothing for a control segment.
  */
 export function segmentToString(segment: Segment, destination: Destination): string {
-  // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
-  // their own fact. Coupling them let a colour setting delete every control.
   if (segment.isControl) return "";
   const { text, style } = segment;
   // As the reference's `if not text` and `if style:` — no pair around nothing.
   if (text.length === 0 || style === undefined) return text;
+  // [LAW:one-type-per-behavior] Colour depth governs SGR only; hyperlinks are
+  // their own fact. Coupling them let a colour setting delete every control.
   const codes = destination.colorSystem === null ? "" : style.toSgrCodes(destination.colorSystem);
   const styled = codes.length > 0 ? `\x1b[${codes}m${text}\x1b[0m` : text;
   const link = destination.hyperlinks ? style.link : undefined;

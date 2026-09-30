@@ -1542,10 +1542,9 @@ describe("Table and Column styles", () => {
     // here, so the row fills it with one blank where the reference draws a
     // content line of pad, blank and pad. Same cells; this goes red when it
     // is fixed, and the substitution goes with it.
-    expect(draw(t)).toBe(reference.replace(
-      "\x1b[1m \x1b[0m\x1b[1m \x1b[0m\x1b[1m \x1b[0m│\n└",
-      "\x1b[1m   \x1b[0m│\n└",
-    ));
+    const divergent = "\x1b[1m \x1b[0m\x1b[1m \x1b[0m\x1b[1m \x1b[0m│\n└";
+    expect(reference).toContain(divergent);
+    expect(draw(t)).toBe(reference.replace(divergent, "\x1b[1m   \x1b[0m│\n└"));
   });
 
   it("layers a row style over the column's cell style, padding included", () => {
