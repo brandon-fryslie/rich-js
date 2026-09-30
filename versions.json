@@ -4,15 +4,22 @@
     {
       "version": "pr-252",
       "ref": "refs/pull/252/merge",
-      "sha": "8dcfbcb37813a01b1752c32e67426f4e68398d9f",
-      "timestamp": "2026-09-30T11:27:59.716Z",
+      "sha": "dba0215b29605cafd41ec107d0e1ff8654dfb79a",
+      "timestamp": "2026-09-30T11:35:09.024Z",
       "commits": [
         {
-          "sha": "8dcfbcb37813a01b1752c32e67426f4e68398d9f",
+          "sha": "dba0215b29605cafd41ec107d0e1ff8654dfb79a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:26:55-06:00",
-          "message": "Merge 38eb20100dbebad76beb0acf3e69f815b3824627 into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
+          "timestamp": "2026-09-30T11:34:00Z",
+          "message": "Merge ec96343da42a8dee901c6255272c921b998a6477 into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
+        },
+        {
+          "sha": "ec96343da42a8dee901c6255272c921b998a6477",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:33:55-06:00",
+          "message": "fix(markdown): CommonMark paragraph interrupts, setext headings, hard breaks, CRLF (rich-demos-b19)\n\nReview of #252: a paragraph is interrupted only by a numbered item counting\nfrom 1, and a = / - underline makes it a heading; lines ending in two spaces\nor a backslash keep their break; CRLF input tokenizes; a bare > continues a\nquote; list nesting is counted in columns so a tab never reaches the\nterminal; a gutter never narrows text below one column.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "38eb20100dbebad76beb0acf3e69f815b3824627",
