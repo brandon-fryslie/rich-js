@@ -88,21 +88,21 @@ export default defineComponent({
         return ++latest;
       };
       // A failure shown is about the address bar and the editor disagreeing;
-      // once a write makes them agree, it is over.
+      // once a write makes them agree, it is over. The write itself can throw
+      // too: a browser caps a URL's length below what a program may carry.
       const remember = (program: string) => {
         const event = next();
         pending = setTimeout(
           () =>
-            void encodeProgram(program).then(
-              (hash) => {
+            void encodeProgram(program)
+              .then((hash) => {
                 if (event !== latest) return;
                 history.replaceState(history.state, "", `#${hash}`);
                 failure.value = null;
-              },
-              (error: unknown) => {
+              })
+              .catch((error: unknown) => {
                 if (event === latest) failure.value = `The link could not be updated: ${message(error)}`;
-              },
-            ),
+              }),
           WRITE_AFTER_MS,
         );
       };

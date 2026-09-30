@@ -108,6 +108,20 @@ test("the link keeps up with fast typing and ends on what the editor holds", asy
   expect(errors).toEqual([]);
 });
 
+test("a link the browser refuses to write says so", async ({ page }) => {
+  const errors = await open(page);
+  await expect(editor(page)).toContainText("Hello", OPENING);
+  // As a browser refuses a URL past its length cap.
+  await page.evaluate(() => {
+    history.replaceState = () => {
+      throw new DOMException("The URL is too long", "DataError");
+    };
+  });
+  await write(page, HELLO_AGAIN);
+  await expect(alert(page)).toContainText("The link could not be updated: The URL is too long");
+  expect(errors).toEqual([]);
+});
+
 test("a playground that could not start starts when Run is pressed", async ({ page }) => {
   let refused = false;
   await page.route(XTERM.script.src, (route) => (refused ? route.continue() : ((refused = true), route.abort())));
