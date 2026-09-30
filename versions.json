@@ -4,15 +4,22 @@
     {
       "version": "pr-237",
       "ref": "refs/pull/237/merge",
-      "sha": "19361a1ba151427a881be20192cd47b4fd76de3e",
-      "timestamp": "2026-09-30T05:07:22.003Z",
+      "sha": "17da1b5fd0ea0f700009bfefed473aba415b1db5",
+      "timestamp": "2026-09-30T05:23:30.220Z",
       "commits": [
         {
-          "sha": "19361a1ba151427a881be20192cd47b4fd76de3e",
+          "sha": "17da1b5fd0ea0f700009bfefed473aba415b1db5",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:06:41-06:00",
-          "message": "Merge 9a0d02e7b4f29cd320c67c64586998092d5da11f into 5c6dd14ec0eaa22c49cec0fb1f41a6b2b6d559d2\n"
+          "timestamp": "2026-09-30T05:22:40Z",
+          "message": "Merge c701ebe2b2f2197726ea764e1e8ecd41bea51ff2 into 5c6dd14ec0eaa22c49cec0fb1f41a6b2b6d559d2\n"
+        },
+        {
+          "sha": "c701ebe2b2f2197726ea764e1e8ecd41bea51ff2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:22:36-06:00",
+          "message": "fix(docs): the live runtime reports a worker it cannot start, runs exporting code, and reloads in dev (rich-playground-afk.9c4)\n\n- The frame's relay sends any failure to start the worker (a constructor\n  that throws, a script that never loads) to the page as a crash, so the\n  run can no longer be stuck in \"running\" or print \"undefined\".\n- The playground program declares `exports`, the second CommonJS name\n  Sucrase's output uses.\n- The runtime module is bundled on every load and registers its files\n  with addWatchFile, so docs:dev picks up edits to the worker and does not\n  keep a failed bundle.\n"
         },
         {
           "sha": "9a0d02e7b4f29cd320c67c64586998092d5da11f",
