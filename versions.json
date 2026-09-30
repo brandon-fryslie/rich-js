@@ -4,15 +4,22 @@
     {
       "version": "pr-258",
       "ref": "refs/pull/258/merge",
-      "sha": "e640fa0f1d8cd4e8e849e0ddc70f87d395a75a10",
-      "timestamp": "2026-09-30T14:36:13.392Z",
+      "sha": "b2a24f6e2d5bfcd1365b41996b6446599099309d",
+      "timestamp": "2026-09-30T14:38:02.806Z",
       "commits": [
         {
-          "sha": "e640fa0f1d8cd4e8e849e0ddc70f87d395a75a10",
+          "sha": "b2a24f6e2d5bfcd1365b41996b6446599099309d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:35:01Z",
-          "message": "Merge 8d7a826bae3f68450fad6381f178addbe068bdf3 into d3bdf5a98614436595f579f8046997e3d9639185\n"
+          "timestamp": "2026-09-30T14:36:52Z",
+          "message": "Merge a9321e02571e7fb295bbab3cceed714d3a055dee into d3bdf5a98614436595f579f8046997e3d9639185\n"
+        },
+        {
+          "sha": "a9321e02571e7fb295bbab3cceed714d3a055dee",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:36:47-06:00",
+          "message": "docs(table): measure's comments name the minimum it reports and its noWrap divergence (rich-table-3u2)\n"
         },
         {
           "sha": "8d7a826bae3f68450fad6381f178addbe068bdf3",
