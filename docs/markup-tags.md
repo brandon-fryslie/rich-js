@@ -126,3 +126,5 @@ console.print(renderMarkup("[badge kind=error]Press [kbd]Q[/kbd][/badge]", { reg
 
 An opening plugin tag with no closing tag is not resolved at all: its handler is
 not called, and the tag is dropped from the output like a misspelled style name.
+While it is open it is still a plugin tag, though, so a style tag opened before
+it cannot be closed after it.

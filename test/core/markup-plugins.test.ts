@@ -310,9 +310,8 @@ describe("plugin pairs must nest", () => {
   });
 
   it("renders an inner plugin tag that never closes, rather than rejecting it", () => {
-    // No closer means no entry in `pairs` at all, so this shape never reaches
-    // the overlap test. Pinned because the obvious alternative fix — rejecting
-    // whenever a closing tag's match is not the top of the stack — breaks it.
+    // Pinned because an obvious rule — rejecting whenever a closing tag's match
+    // is not the top of the stack — breaks it.
     const out = renderMarkup("[aa]x[bb]y[/aa]", { registry: twoTags() });
     expect(renderToString(out, { colorSystem: null })).toBe("<A>xy</A>\n");
   });
@@ -476,6 +475,55 @@ describe("a style tag cannot cross a plugin pair's boundary", () => {
   it("names enclosing style tags among those open at an overlap", () => {
     const err = rejectionOf("[bold][aa][bb]x[/aa][/bb][/bold]", registry());
     expect(err.openTags).toEqual(["[bold]", "[aa]", "[bb]"]);
+  });
+});
+
+// One walk reads every tag, style and plugin alike, with one stack and one
+// rule for what each closing tag closes. Plugin pairs used to be found by a
+// walk of their own ahead of the one that built spans, and the two disagreed:
+// a crossing the pairing walk found hid an earlier error the other would have
+// reported, and a closing tag closed one tag in one walk and nothing in the
+// other (rich-markup-pyq5).
+describe("markup is judged tag by tag, in the order it is written", () => {
+  function registry(): MarkupRegistry {
+    const r = new MarkupRegistry();
+    r.register("aa", (ctx) => ctx.children);
+    r.register("bb", (ctx) => ctx.children);
+    return r;
+  }
+
+  it("rejects the first bad tag in the string, not a later crossing", () => {
+    const err = rejectionOf("[/x] [red][aa]x[/red][/aa]", registry());
+    expect(err.reason).toBe("Closing tag [/x] doesn't match any open tag");
+    expect(err.column).toBe(1);
+  });
+
+  it("rejects a crossing where it is written, before a later bad tag", () => {
+    const err = rejectionOf("[red][aa]x[/red][/nope][/aa]", registry());
+    expect(err.reason).toMatch(/^Closing tag \[\/red\] closes \[red\] across the boundary of plugin tag \[aa\]/);
+    expect(err.column).toBe(11);
+  });
+
+  it("rejects a style closed inside a plugin tag it opened outside, even one that never closes", () => {
+    const err = rejectionOf("[red][aa]x[/red]y", registry());
+    expect(err.reason).toMatch(/^Closing tag \[\/red\] closes \[red\] across the boundary of plugin tag \[aa\]/);
+    expect(err.openTags).toEqual(["[red]", "[aa]"]);
+  });
+
+  it("draws a plugin tag that never closes as the same string draws with no plugins", () => {
+    const spans = (markup: string, r: MarkupRegistry): string[] =>
+      renderMarkup(markup, { registry: r }).spans.map((s) => `${s.start}-${s.end} ${String(s.style)}`);
+    const markup = "[bold]a[bb]b[i]c[/i]d";
+    expect(spans(markup, registry())).toEqual(spans(markup, new MarkupRegistry()));
+  });
+
+  it("calls [/] reaching past a pair's end an overlap when the tag it names is a plugin tag", () => {
+    const err = rejectionOf("[aa]x[bb]y[/aa][/]", registry());
+    expect(err.reason).toMatch(/^Plugin tag \[bb\] overlaps \[aa\]/);
+  });
+
+  it("closes a style tag written with a plugin's name by that name", () => {
+    expect(renderMarkup("[aa=x]y[/aa]", { registry: registry() }).plain).toBe("y");
   });
 });
 
