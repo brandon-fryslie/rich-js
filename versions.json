@@ -4,15 +4,22 @@
     {
       "version": "pr-247",
       "ref": "refs/pull/247/merge",
-      "sha": "32f574099486fac43937cdb438c0abc3e8557214",
-      "timestamp": "2026-09-30T09:44:37.246Z",
+      "sha": "8e45aab474a70e964359ab991e3d3b407efa9794",
+      "timestamp": "2026-09-30T09:48:38.049Z",
       "commits": [
         {
-          "sha": "32f574099486fac43937cdb438c0abc3e8557214",
+          "sha": "8e45aab474a70e964359ab991e3d3b407efa9794",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:43:42Z",
-          "message": "Merge 1367dd1e90fee070c13e77de504dabef4d5f065e into 4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7\n"
+          "timestamp": "2026-09-30T09:47:34Z",
+          "message": "Merge cd45c0711b12b29fc132cc513e2e37e1e0ff4059 into 4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7\n"
+        },
+        {
+          "sha": "cd45c0711b12b29fc132cc513e2e37e1e0ff4059",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:47:29-06:00",
+          "message": "fix(layout): cap the row budget search at the offer (rich-layout-xvv)\n\nReview round 2 (medium): ratioBudget stepped one split per cell from its\nlower bound, so 1:1e6 ratios took 529ms and 1:1e9 hung. It now stops at the\nwidth on offer, which measure clamps to anyway, so a search costs at most one\nsplit per cell of the width it returns.\n"
         },
         {
           "sha": "1367dd1e90fee070c13e77de504dabef4d5f065e",
