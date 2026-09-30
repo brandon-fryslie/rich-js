@@ -4,15 +4,22 @@
     {
       "version": "pr-267",
       "ref": "refs/pull/267/merge",
-      "sha": "b88998fea890543dc54b95d54ab1fd622c7e005a",
-      "timestamp": "2026-09-30T17:41:56.349Z",
+      "sha": "6918725e430c934b4b80bb4fb30e86a82b9dd2f0",
+      "timestamp": "2026-09-30T17:50:20.849Z",
       "commits": [
         {
-          "sha": "b88998fea890543dc54b95d54ab1fd622c7e005a",
+          "sha": "6918725e430c934b4b80bb4fb30e86a82b9dd2f0",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:40:45-06:00",
-          "message": "Merge 31efeeea802070615479526ac80caaa289aebb4d into 8fc9178e2783eea2e17d3d1254c623c21b05b41f\n"
+          "timestamp": "2026-09-30T17:48:52Z",
+          "message": "Merge 6e7e1587f2a5cacc1bdf0eaa406daecc0b63611c into 8fc9178e2783eea2e17d3d1254c623c21b05b41f\n"
+        },
+        {
+          "sha": "6e7e1587f2a5cacc1bdf0eaa406daecc0b63611c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:48:48-06:00",
+          "message": "fix(spinner): the frame is never wrapped apart, the fragment is uncut, and the label is one source (rich-status-o9av)\n\nReview of #267: measure's minimum is floored at the widest frame, so a frame\nwith spaces in it is never offered less room than itself; drawFrame leaves\nits fragment at natural width for the composing caller to cut, while render\nwraps the line as Rich's Text does; and the label is held once and read\nthrough EmbeddedText when drawn, so a RichText changed in place draws as\nchanged and the getter is what is drawn.\n"
         },
         {
           "sha": "31efeeea802070615479526ac80caaa289aebb4d",
