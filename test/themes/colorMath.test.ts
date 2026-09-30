@@ -12,7 +12,7 @@ import {
   drawnColour,
   relativeLuminance,
 } from "../../src/themes/colorMath.js";
-import { STANDARD_TABLE, SURFACE_BLACK, TerminalTheme } from "../../src/core/color.js";
+import { STANDARD_TABLE, SURFACE_BLACK, TerminalTheme, WINDOWS_TABLE } from "../../src/core/color.js";
 import * as terminalThemes from "../../src/themes/terminalThemes.js";
 
 const mid = new ColorRgba(128, 128, 128);
@@ -402,6 +402,28 @@ describe("ensureContrast drawn at ansi", () => {
         ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD, SURFACE_BLACK, DEFAULT_TERMINAL_THEME).hex,
       );
     }
+  });
+});
+
+describe("ensureContrast drawn at WINDOWS", () => {
+  it("text never lands on its background's slot of the console's sixteen", () => {
+    const failures: string[] = [];
+    for (let v = 0; v < 256; v += 15) {
+      for (const bg of [new ColorRgba(v, v, v), new ColorRgba(v, 40, 60), new ColorRgba(200, v, 90)]) {
+        const chosen = ensureContrast(bg, bg, 3, ColorDepth.WINDOWS);
+        if (WINDOWS_TABLE.match(chosen) === WINDOWS_TABLE.match(bg)) failures.push(bg.hex);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it("with no terminal named, the floor holds in the colours the console draws", () => {
+    // Measured in the VGA sixteen, grey on navy passed at 4:1; the console
+    // draws that pair at 1.81:1.
+    const shown = (c: ColorRgba) => WINDOWS_TABLE.get(WINDOWS_TABLE.match(c));
+    const bg = new ColorRgba(0, 55, 218);
+    const chosen = ensureContrast(new ColorRgba(118, 118, 118), bg, 3, ColorDepth.WINDOWS);
+    expect(contrastRatio(shown(chosen), shown(bg))).toBeGreaterThanOrEqual(3);
   });
 });
 

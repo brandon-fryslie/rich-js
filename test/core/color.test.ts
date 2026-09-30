@@ -569,14 +569,47 @@ describe("ColorSpec.downgrade()", () => {
     expect(downgraded.number!).toBeLessThanOrEqual(255);
   });
 
-  it("WINDOWS downgrades to STANDARD returning a STANDARD-type color", () => {
-    // WINDOWS (system=4) > STANDARD (system=1), so downgrade is triggered
-    const c = new ColorSpec("color(12)", ColorDepth.WINDOWS, 12);
-    const downgraded = c.downgrade(ColorDepth.STANDARD);
-    expect(downgraded.type).toBe(ColorDepth.STANDARD);
-    expect(downgraded.number).toBeDefined();
-    expect(downgraded.number!).toBeGreaterThanOrEqual(0);
-    expect(downgraded.number!).toBeLessThan(16);
+  it("WINDOWS and STANDARD are the same sixteen slots: each becomes the other in the same slot", () => {
+    const win = new ColorSpec("color(12)", ColorDepth.WINDOWS, 12);
+    const std = ColorSpec.fromAnsi(12);
+    expect([win.downgrade(ColorDepth.STANDARD).type, win.downgrade(ColorDepth.STANDARD).number]).toEqual([ColorDepth.STANDARD, 12]);
+    expect([std.downgrade(ColorDepth.WINDOWS).type, std.downgrade(ColorDepth.WINDOWS).number]).toEqual([ColorDepth.WINDOWS, 12]);
+  });
+
+  it("a blend of named colours drawn at WINDOWS ramps between the console's own shades", () => {
+    // Mixed from the VGA ends instead, three quarters of the way to yellow is green (slot 2).
+    const blend = ColorSpec.parse("blend(black,yellow,0.75)").downgrade(ColorDepth.WINDOWS);
+    expect([blend.type, blend.number]).toEqual([ColorDepth.WINDOWS, 3]);
+  });
+
+  it("with no theme named, a colour drawn at WINDOWS reads as the console's own colour", () => {
+    expect(ColorSpec.parse("red").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(WINDOWS_TABLE.get(1));
+    expect(ColorSpec.parse("#0037da").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(new ColorRgba(0, 55, 218));
+    expect(ColorSpec.parse("red").getTruecolor()).toEqual(STANDARD_TABLE.get(1));
+  });
+
+  it("a WINDOWS colour is drawn at every richer depth as itself", () => {
+    const win = new ColorSpec("color(12)", ColorDepth.WINDOWS, 12);
+    expect(win.downgrade(ColorDepth.EIGHT_BIT)).toBe(win);
+    expect(win.downgrade(ColorDepth.TRUECOLOR)).toBe(win);
+  });
+
+  it("TRUECOLOR downgrades to WINDOWS as the console's nearest colour, in ANSI slot order", () => {
+    for (let i = 0; i < 16; i++) {
+      const downgraded = ColorSpec.fromRgba(WINDOWS_TABLE.get(i)).downgrade(ColorDepth.WINDOWS);
+      expect([downgraded.type, downgraded.number]).toEqual([ColorDepth.WINDOWS, i]);
+    }
+    // Slot n is written as SGR 30+n, so a red is written as a red.
+    expect(ColorSpec.parse("#ff0000").downgrade(ColorDepth.WINDOWS).getAnsiCodes()).toEqual(["31"]);
+    expect(ColorSpec.parse("#0000c0").downgrade(ColorDepth.WINDOWS).getAnsiCodes(false)).toEqual(["44"]);
+  });
+
+  it("EIGHT_BIT downgrades to WINDOWS: a cube colour is matched, an ANSI slot keeps its index", () => {
+    const cube = ColorSpec.parse("color(196)").downgrade(ColorDepth.WINDOWS);
+    expect(cube.type).toBe(ColorDepth.WINDOWS);
+    expect(cube.number).toBe(WINDOWS_TABLE.match(EIGHT_BIT_TABLE.get(196)));
+    const slot = new ColorSpec("color(3)", ColorDepth.EIGHT_BIT, 3).downgrade(ColorDepth.WINDOWS);
+    expect([slot.type, slot.number]).toEqual([ColorDepth.WINDOWS, 3]);
   });
 });
 

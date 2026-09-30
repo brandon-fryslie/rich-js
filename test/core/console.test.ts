@@ -1225,6 +1225,15 @@ describe("Console terminal detection", () => {
     expect(c.isTerminal).toBe(true);
   });
 
+  it("a WINDOWS console writes truecolor styles in the slot its own sixteen draw nearest", () => {
+    // xterm's defaults would put both in bright slots: 93 and 104.
+    const { console: c, chunks } = makeConsole({ colorSystem: ColorDepth.WINDOWS, forceTerminal: true });
+    c.print("[#ff8700 on #0037da]x[/]");
+    const codes = [...captured(chunks).matchAll(/\x1b\[([\d;]*)m/g)].flatMap((m) => m[1]!.split(";"));
+    expect(codes).toEqual(expect.arrayContaining(["33", "44"]));
+    expect(codes.filter((code) => !/^(0|3[0-7]|4[0-7]|9[0-7]|10[0-7])$/.test(code))).toEqual([]);
+  });
+
   it("null colorSystem strips ANSI codes from output", () => {
     const { console: c, chunks } = makeConsole({ colorSystem: null });
     c.print("[bold red]Hello[/bold red]");

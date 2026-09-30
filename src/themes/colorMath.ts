@@ -3,10 +3,9 @@ import {
   ColorRgba,
   ColorSpec,
   ColorTable,
-  EIGHT_BIT_DOWNGRADE_TABLE,
-  STANDARD_TABLE,
   blendRgb,
   contrastRatio,
+  downgradeTable,
   relativeLuminance,
   resolveTerminal,
   SURFACE_BLACK,
@@ -290,20 +289,21 @@ interface DrawnTable {
  * The table the terminal draws from at `drawnAt`. The 256-colour cube and
  * grey ramp are fixed by xterm, so the colour written is the colour shown.
  * ANSI 0–15 are the terminal theme's own: the writer still picks the index by
- * the nominal table, and the terminal shows `terminal`'s colour there.
+ * the nominal table — the Windows console's at WINDOWS — and the terminal
+ * shows `terminal`'s colour there.
  * Truecolor draws the chosen colour itself, as do the depths no table stands
  * behind.
  */
 function drawnTable(drawnAt: ColorDepth, terminal: TerminalTheme | undefined): DrawnTable | undefined {
-  const drawnBy = resolveTerminal(terminal);
+  const drawnBy = resolveTerminal(terminal, drawnAt);
   switch (drawnAt) {
     case ColorDepth.EIGHT_BIT:
-      return { depth: drawnAt, terminal: drawnBy, written: EIGHT_BIT_DOWNGRADE_TABLE, shown: EIGHT_BIT_DOWNGRADE_TABLE };
+      return { depth: drawnAt, terminal: drawnBy, written: downgradeTable(drawnAt), shown: downgradeTable(drawnAt) };
     case ColorDepth.STANDARD:
-      return { depth: drawnAt, terminal: drawnBy, written: STANDARD_TABLE, shown: drawnBy.ansiColors };
+    case ColorDepth.WINDOWS:
+      return { depth: drawnAt, terminal: drawnBy, written: downgradeTable(drawnAt), shown: drawnBy.ansiColors };
     case ColorDepth.TRUECOLOR:
     case ColorDepth.DEFAULT:
-    case ColorDepth.WINDOWS:
       return undefined;
   }
 }
