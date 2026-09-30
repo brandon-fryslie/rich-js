@@ -2,6 +2,8 @@
  * Terminal color representation, parsing, downgrading, and ANSI code generation.
  */
 
+import type { Env } from "./env.js";
+
 // --- ColorRgba ---
 
 function hex2(byte: number): string {
@@ -278,7 +280,7 @@ export enum ColorDepth {
 
 export interface DetectColorOptions {
   /** Environment to probe. Defaults to `process.env`. */
-  env?: NodeJS.ProcessEnv;
+  env?: Env;
   /** Whether output is going to a real terminal. Defaults to `process.stdout?.isTTY`. */
   isTTY?: boolean;
 }
@@ -343,14 +345,14 @@ export function detectColorSystem(
 }
 
 // FORCE_COLOR's depth: `undefined` when unset, `null` for its off values.
-function forcedColorSystem(env: NodeJS.ProcessEnv): ColorDepth | null | undefined {
+function forcedColorSystem(env: Env): ColorDepth | null | undefined {
   const force = env["FORCE_COLOR"];
   if (force === undefined || force === "") return undefined;
   const mapped = STRING_TO_DEPTH[force];
   return mapped !== undefined ? mapped : ColorDepth.STANDARD;
 }
 
-function envOf(options: DetectColorOptions): NodeJS.ProcessEnv {
+function envOf(options: DetectColorOptions): Env {
   return options.env ?? (typeof process !== "undefined" ? process.env : {});
 }
 

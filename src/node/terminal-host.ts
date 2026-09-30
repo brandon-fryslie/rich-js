@@ -36,6 +36,7 @@ import type {
   TerminalSize,
 } from "../host/terminal-host.js";
 import type { Unsubscribe } from "../core/subscription.js";
+import type { Env } from "../core/env.js";
 
 /**
  * Subset of NodeJS stream API the node host actually depends on. Tests
@@ -103,7 +104,7 @@ export interface NodeTerminalHostOptions {
    * pass a fixed map so what the host reports does not depend on the shell
    * that ran them.
    */
-  env?: NodeJS.ProcessEnv;
+  env?: Env;
   /**
    * What the host hears the program end through and suspends it with.
    * Defaults to `process`; tests pass an emitter that records `kill`.
@@ -118,7 +119,7 @@ export class NodeTerminalHost implements TerminalHost {
   private readonly stdin: NodeReadable;
   private readonly stdout: NodeWritable;
   private readonly process: NodeProcess;
-  readonly env: NodeJS.ProcessEnv;
+  readonly env: Env;
   private readonly dataHandlers = new Set<DataHandler>();
   private readonly resizeHandlers = new Set<ResizeHandler>();
   private dataListener: ((chunk: Buffer | string) => void) | undefined;

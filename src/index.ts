@@ -263,6 +263,7 @@ export type {
   ConsoleEnvironment,
   PrintOptions,
 } from "./core/console.js";
+export type { Env } from "./core/env.js";
 
 // Renderables
 export { Constrain } from "./renderables/constrain.js";

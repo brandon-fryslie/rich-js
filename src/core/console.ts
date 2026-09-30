@@ -6,6 +6,7 @@ import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
 import { ColorDepth, resolveDestination } from "./color.js";
 import type { Destination } from "./color.js";
+import type { Env } from "./env.js";
 import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
 import { RichText } from "./text.js";
@@ -61,7 +62,7 @@ export interface ConsoleStream extends ConsoleSink {
  * point — injecting a fake terminal needs no adapter at either end.
  */
 export interface ConsoleEnvironment {
-  readonly env: NodeJS.ProcessEnv;
+  readonly env: Env;
   readonly stdout?: ConsoleStream;
   readonly stderr?: ConsoleStream;
 }

@@ -136,6 +136,18 @@ function deriveEntryModules(pkg: PackageManifest): ReadonlyMap<string, string> {
   return entries;
 }
 
+/**
+ * Whether an entry module sits behind the `src/node/` airlock. An entry there is
+ * the consumer's explicit opt-in to Node; every other entry promises a browser
+ * nothing of Node's, at runtime and in its declarations.
+ *
+ * [LAW:one-source-of-truth] The browser-safe and browser-types gates both draw
+ * the line here, so a move of the airlock moves it for both.
+ */
+export function isBehindNodeAirlock(sourcePath: string): boolean {
+  return sourcePath.startsWith("src/node/");
+}
+
 export const EXAMPLES_ROOT = "examples";
 
 /**
