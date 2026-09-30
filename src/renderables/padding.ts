@@ -76,7 +76,7 @@ interface PaddingGeometry {
  * `layoutPanel` gives: a squeeze should cost you the decoration, not the thing
  * being decorated.
  */
-function layoutPadding(
+export function layoutPadding(
   outerWidth: number,
   leftWanted: number,
   rightWanted: number,

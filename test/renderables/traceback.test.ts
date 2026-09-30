@@ -132,6 +132,25 @@ describe("Traceback", () => {
     ].join("\n"));
   });
 
+  it("wraps a frame wider than the report under itself, folding a location whole", () => {
+    const error = new Error("x");
+    error.stack = [
+      "Error: x",
+      `    at run (/${"deep/".repeat(20)}app.ts:7:1)`,
+      "    at Object.reject (/a/b.ts:3:1)",
+    ].join("\n");
+    expect(collectText(new Traceback(error), { maxWidth: 40 })).toBe([
+      "Error: x",
+      "",
+      "  run ",
+      "  /deep/deep/deep/deep/deep/deep/deep/de",
+      "  ep/deep/deep/deep/deep/deep/deep/deep/",
+      "  deep/deep/deep/deep/deep/app.ts:7",
+      "  Object.reject /a/b.ts:3",
+      "",
+    ].join("\n"));
+  });
+
   // --- V8 frame shapes ---
 
   it.each([
