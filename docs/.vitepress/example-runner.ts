@@ -132,7 +132,8 @@ export class ExampleCompiler {
    * a protocol never built, `console.status` / `console.pager` transliterated
    * from Python Rich's `Console`.
    *
-   * When it fails, change the page, never `src/`. The code is the truth and the
+   * When it fails on a symbol the library lacks, change the page, never
+   * `src/`. The code is the truth and the
    * page a claim about it, so a symbol a page names and the library lacks is a
    * false page, not a missing feature; implementing it to clear the build lets
    * an unreviewed sentence set the roadmap. `docs/logging.md` documented a
@@ -156,12 +157,7 @@ export class ExampleCompiler {
       const where = at == null ? `docs/${program.page} (generated code)` : `docs/${program.page}:${at}`;
       return `${where}: ${ts.flattenDiagnosticMessageText(d.messageText, "\n")}`;
     });
-    if (errors.length > 0) {
-      throw new Error(
-        `docs example does not compile:\n${errors.join("\n")}\n` +
-          "Change the page, not src/, to make it compile; ExampleCompiler.check in docs/.vitepress/example-runner.ts says why.",
-      );
-    }
+    if (errors.length > 0) throw new Error(`docs example does not compile:\n${errors.join("\n")}`);
     return { checker: compiled.getTypeChecker(), file };
   }
 }
