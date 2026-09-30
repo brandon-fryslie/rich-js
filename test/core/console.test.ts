@@ -645,6 +645,12 @@ describe("Console.print() soft wrapping", () => {
     expect(lines.map((l) => cellLen(l)).every((w) => w <= 6), JSON.stringify(lines)).toBe(true);
     expect(lines.join("").split("⚠️")).toHaveLength(4);
   });
+
+  it("folds glyphs of several code points without losing the glyphs after them", () => {
+    const { console: c, chunks } = makeConsole({ width: 2, markup: false });
+    c.print("👍🏽a漢👨‍👩‍👧字", { overflow: "fold" });
+    expect(captured(chunks).split("\n").map((l) => l.trimEnd())).toEqual(["👍🏽", "a", "漢", "👨‍👩‍👧", "字", ""]);
+  });
 });
 
 // --- Cropping and overflow "ignore" ---

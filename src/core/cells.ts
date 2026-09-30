@@ -114,7 +114,7 @@ export function setCellSize(text: string, totalWidth: CellCol): string {
   if (currentWidth < totalWidth) {
     return text + " ".repeat(totalWidth - currentWidth);
   }
-  return cropToWidth(text, totalWidth);
+  return splitText(text, totalWidth)[0];
 }
 
 /**
@@ -168,7 +168,7 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
   let start = 0;
   let offset = 0;
   let cells = 0;
-  for (const ch of line) {
+  for (const ch of graphemes(line)) {
     if (pieces.length < cuts.length && cells >= cuts[pieces.length]!) {
       pieces.push(line.slice(start, offset));
       start = offset;
@@ -179,8 +179,11 @@ export function splitAtCells(line: string, cuts: readonly CellCol[]): string[] {
   return [...pieces, line.slice(start)];
 }
 
-// [LAW:no-shared-mutable-globals] A private memo, written only by `graphemes`.
+// [LAW:no-shared-mutable-globals] Private memos, written only by `clustersFrom`:
+// the segmenter, and the segmentation of the last string walked, so a caller
+// stepping along one string does not re-segment the whole of it every step.
 let segmenter: Intl.Segmenter | undefined;
+let lastSegmented: { text: string; segments: Intl.Segments } | undefined;
 
 /**
  * The grapheme clusters of `text`, in order: the unit `string-width` measures,
@@ -190,8 +193,24 @@ let segmenter: Intl.Segmenter | undefined;
  * between two of its code points leaves half a glyph.
  */
 export function graphemes(text: string): string[] {
-  segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
-  return Array.from(segmenter.segment(text), (s) => s.segment);
+  return Array.from(clustersFrom(text, asCodePoint(0)));
+}
+
+/**
+ * The clusters of `text` from code unit `start` on, lazily, so a walk that
+ * stops early pays only for the clusters it reads.
+ */
+function* clustersFrom(text: string, start: CodePoint): Generator<string> {
+  if (lastSegmented?.text !== text) {
+    segmenter ??= new Intl.Segmenter(undefined, { granularity: "grapheme" });
+    lastSegmented = { text, segments: segmenter.segment(text) };
+  }
+  const { segments } = lastSegmented;
+  for (let at = start, s = segments.containing(at); s; s = segments.containing(at)) {
+    const end = s.index + s.segment.length;
+    yield text.slice(at, end);
+    at = asCodePoint(end);
+  }
 }
 
 /**
@@ -204,7 +223,7 @@ export function graphemes(text: string): string[] {
  * must decide whether to force-take the glyph or skip it).
  */
 export function cellFit(text: string, cap: CellCol): string {
-  return fitClusters(graphemes(text), cap).join("");
+  return fitClusters(clustersFrom(text, asCodePoint(0)), cap).join("");
 }
 
 /** `cellFit` from the other end: the largest suffix of `text` within `cap` cells. */
@@ -212,16 +231,16 @@ export function cellFitEnd(text: string, cap: CellCol): string {
   return fitClusters(graphemes(text).reverse(), cap).reverse().join("");
 }
 
-function fitClusters(clusters: string[], cap: CellCol): string[] {
+function fitClusters(clusters: Iterable<string>, cap: CellCol): string[] {
+  const fit: string[] = [];
   let w = 0;
-  let n = 0;
   for (const cluster of clusters) {
     const cw = cellLen(cluster);
     if (w + cw > cap) break;
     w += cw;
-    n++;
+    fit.push(cluster);
   }
-  return clusters.slice(0, n);
+  return fit;
 }
 
 /**
@@ -230,21 +249,11 @@ function fitClusters(clusters: string[], cap: CellCol): string[] {
  * offset without slicing the tail, avoiding O(N²) allocation when called
  * repeatedly across a long string.
  *
- * [LAW:types-are-the-program] returns CodePoint because for...of always
- * stops on a code-point boundary.
+ * [LAW:types-are-the-program] returns CodePoint because it stops between
+ * grapheme clusters, and every cluster boundary is a code-point boundary.
  */
 export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
-  let w = 0;
-  let i: CodePoint = startCU;
-  while (i < text.length) {
-    const cp = text.codePointAt(i)!;
-    const ch = String.fromCodePoint(cp);
-    const cw = cellLen(ch);
-    if (w + cw > cap) break;
-    w += cw;
-    i = asCodePoint(i + ch.length);
-  }
-  return i;
+  return asCodePoint(startCU + fitClusters(clustersFrom(text, startCU), cap).join("").length);
 }
 
 /**
@@ -260,7 +269,8 @@ export function cellFitFrom(text: string, startCU: CodePoint, cap: CellCol): Cod
  * `chopCells` did neither and hung.
  */
 export function cellStepFrom(text: string, startCU: CodePoint, cap: CellCol): CodePoint {
-  return asCodePoint(Math.max(cellFitFrom(text, startCU, cap), nextCodePoint(text, startCU)));
+  const [first = ""] = clustersFrom(text, startCU);
+  return asCodePoint(Math.max(cellFitFrom(text, startCU, cap), startCU + first.length));
 }
 
 /**
@@ -273,13 +283,13 @@ export function cellStepFrom(text: string, startCU: CodePoint, cap: CellCol): Co
  * This is the inverse of `cellLen(content.slice(0, codeUnit))` — given a
  * visual column, return the corresponding string index.
  *
- * Returns `CodePoint` because `for...of` iteration always stops on a
- * code-point boundary.
+ * Returns `CodePoint` because it stops between grapheme clusters, and every
+ * cluster boundary is a code-point boundary.
  */
 export function cellColToCodeUnitOffset(content: string, cellCol: CellCol): CodePoint {
   let w = 0;
   let i = 0;
-  for (const ch of content) {
+  for (const ch of graphemes(content)) {
     if (w >= cellCol) break;
     const cw = cellLen(ch);
     if (w + cw > cellCol) break;
@@ -323,20 +333,3 @@ export function prevCodePoint(s: string, cu: CodeUnit): CodePoint {
   return asCodePoint(cu - 1);
 }
 
-// --- internal ---
-
-function cropToWidth(text: string, targetWidth: number): string {
-  let width = 0;
-  let i = 0;
-  // Use the string's code point iterator to handle surrogate pairs
-  for (const char of text) {
-    const charWidth = cellLen(char);
-    if (width + charWidth > targetWidth) break;
-    width += charWidth;
-    i += char.length;
-  }
-  const cropped = text.slice(0, i);
-  // Pad if we couldn't hit the exact width (wide char boundary)
-  const diff = targetWidth - width;
-  return diff > 0 ? cropped + " ".repeat(diff) : cropped;
-}

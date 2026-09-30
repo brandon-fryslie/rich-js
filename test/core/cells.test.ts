@@ -10,6 +10,8 @@ import {
   cellFitEnd,
   graphemes,
   asCodePoint,
+  splitAtCells,
+  cellColToCodeUnitOffset,
 } from "../../src/core/cells.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (widths, invariants), not implementation details (caching, slicing)
@@ -258,6 +260,11 @@ describe("cellStepFrom", () => {
 });
 
 describe("chopCells", () => {
+  it("cuts between glyphs of several code points, never inside one", () => {
+    const text = "👍🏽a漢👨‍👩‍👧字";
+    expect(chopCells(text, asCellCol(2))).toEqual(["👍🏽", "a", "漢", "👨‍👩‍👧", "字"]);
+  });
+
   it("returns single-element array when text fits within width", () => {
     const result = chopCells("hello", asCellCol(10));
     expect(result).toEqual(["hello"]);
@@ -346,5 +353,18 @@ describe("chopCells", () => {
     // splitText pads to land exactly on the requested column; chopping must not
     // — a padded line is content the caller never wrote.
     expect(chopCells("中文测试", asCellCol(3))).toEqual(["中", "文", "测", "试"]);
+  });
+});
+
+describe("splitAtCells", () => {
+  it("counts a glyph of several code points by the cells it takes", () => {
+    expect(splitAtCells("👍🏽a漢", [asCellCol(2), asCellCol(3)])).toEqual(["👍🏽", "a", "漢"]);
+  });
+});
+
+describe("cellColToCodeUnitOffset", () => {
+  it("never lands inside a glyph of several code points", () => {
+    expect(cellColToCodeUnitOffset("👍🏽a", asCellCol(1))).toBe(0);
+    expect(cellColToCodeUnitOffset("👍🏽a", asCellCol(2))).toBe("👍🏽".length);
   });
 });
