@@ -1696,6 +1696,13 @@ describe("Console theme resolution", () => {
     { label: "TimeElapsedColumn", name: "progress.elapsed", make: () => progressOf(new TimeElapsedColumn()) },
     { label: "Markdown heading", name: "markdown.h1", make: () => new Markdown("# Title") },
     { label: "Markdown inline code", name: "markdown.code", make: () => new Markdown("run `ls`") },
+    { label: "Markdown inlineCodeStyle", name: "my.code", make: (name) => new Markdown("run `ls`", { inlineCodeStyle: name }) },
+    { label: "Markdown link", name: "markdown.link_url", make: () => new Markdown("[a](https://example.com)") },
+    {
+      label: "Markdown link text without hyperlinks",
+      name: "markdown.link",
+      make: () => new Markdown("[a](https://example.com)", { hyperlinks: false }),
+    },
     { label: "Traceback", name: "traceback.exc_type", make: () => new Traceback(new Error("boom")) },
     { label: "Syntax keyword", name: "syntax.keyword", make: () => new Syntax("return", "javascript") },
     { label: "Syntax line number", name: "syntax.line_number", make: () => new Syntax("x", "text", { lineNumbers: true }) },

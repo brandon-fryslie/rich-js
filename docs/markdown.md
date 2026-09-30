@@ -41,6 +41,25 @@ background, with its indentation kept. The language tag after the opening fence 
 but not used: `Markdown` does no per-language highlighting. For highlighted code, render
 it with [`Syntax`](./syntax) instead.
 
+## Options
+
+| Option | Default | Effect |
+|--------|---------|--------|
+| `inlineCodeStyle` | `"markdown.code"` | The style of `` `inline code` ``: a theme name, a style definition such as `"bold magenta"`, or a `Style` |
+| `hyperlinks` | `true` | A link's text is the link, drawn in `markdown.link_url`. With `false` the text is drawn in `markdown.link` and the URL is written after it in parentheses, for a reader who cannot click it |
+| `justify` | left | Where paragraphs, list items and quoted text sit in the width: `"left"`, `"center"`, `"right"` or `"full"`. Headings are not moved |
+
+```typescript
+import { Console, Markdown } from "@promptctl/rich-js";
+
+const console = new Console({ width: 40 });
+
+console.print(new Markdown("Read [the guide](https://example.com), then run `npm test`.", {
+  hyperlinks: false,
+  inlineCodeStyle: "bold magenta",
+}));
+```
+
 ## Rendering a Markdown file
 
 The most common real-world pattern — read a Markdown file from disk and render it:

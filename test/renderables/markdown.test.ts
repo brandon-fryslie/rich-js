@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Markdown } from "../../src/renderables/markdown.js";
+import { Markdown, type MarkdownOptions } from "../../src/renderables/markdown.js";
 import { Segment } from "../../src/core/segment.js";
 import { Style } from "../../src/core/style.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -97,8 +97,8 @@ describe("Markdown", () => {
 
   // --- Reflow ---
 
-  function rows(markdown: string, maxWidth: number): string[] {
-    return collectText(new Markdown(markdown), { maxWidth }).split("\n").map((row) => row.trimEnd());
+  function rows(markdown: string, maxWidth: number, options?: MarkdownOptions): string[] {
+    return collectText(new Markdown(markdown, options), { maxWidth }).split("\n").map((row) => row.trimEnd());
   }
 
   it("reflows a hard-wrapped paragraph instead of keeping its source line breaks", () => {
@@ -198,29 +198,45 @@ describe("Markdown", () => {
 
   // --- Options ---
 
-  it("accepts inlineCodeStyle option as string", () => {
-    const md = new Markdown("Use `code` here", { inlineCodeStyle: "bold red" });
-    const text = collectText(md, { maxWidth: 80 });
-    expect(text).toContain("code");
+  function segment(markdown: string, text: string, options?: MarkdownOptions): Segment {
+    const found = collectSegments(new Markdown(markdown, options), { maxWidth: 80 }).find((s) => s.text === text);
+    expect(found, `no segment ${JSON.stringify(text)}`).toBeDefined();
+    return found!;
+  }
+
+  it("draws inline code in inlineCodeStyle, given as a style definition", () => {
+    expect(segment("Use `code` here", "code", { inlineCodeStyle: "bold red" }).style).toEqual(Style.parse("bold red"));
   });
 
-  it("accepts inlineCodeStyle option as Style", () => {
+  it("draws inline code in inlineCodeStyle, given as a Style", () => {
     const style = Style.parse("bold green");
-    const md = new Markdown("Use `code` here", { inlineCodeStyle: style });
-    const text = collectText(md, { maxWidth: 80 });
-    expect(text).toContain("code");
+    expect(segment("Use `code` here", "code", { inlineCodeStyle: style }).style).toEqual(style);
   });
 
-  it("accepts hyperlinks option", () => {
-    const md = new Markdown("[link](https://example.com)", { hyperlinks: true });
-    const text = collectText(md, { maxWidth: 80 });
-    expect(text).toContain("link");
+  it("makes a link's text the link by default", () => {
+    expect(rows("[link](https://example.com)", 80)).toEqual(["link", ""]);
+    expect(segment("[link](https://example.com)", "link").style?.link).toBe("https://example.com");
   });
 
-  it("disables hyperlinks when option is false", () => {
-    const md = new Markdown("[link](https://example.com)", { hyperlinks: false });
-    const text = collectText(md, { maxWidth: 80 });
-    expect(text).toContain("link");
+  it("writes a link's URL after its text when hyperlinks is false", () => {
+    const md = "[link](https://example.com) here";
+    expect(rows(md, 80, { hyperlinks: false })).toEqual(["link (https://example.com) here", ""]);
+    expect(segment(md, "link", { hyperlinks: false }).style?.link).toBeUndefined();
+    expect(segment(md, "https://example.com", { hyperlinks: false }).style?.link).toBe("https://example.com");
+  });
+
+  it("places paragraphs, list items and quotes by justify, and leaves headings where they are", () => {
+    const md = "# Head\n\nbody\n\n- item\n\n> quote";
+    expect(rows(md, 12, { justify: "right" })).toEqual([
+      "Head",
+      "",
+      "        body",
+      "",
+      "  •     item",
+      "",
+      "▎      quote",
+      "",
+    ]);
   });
 
   // --- Measurement ---
