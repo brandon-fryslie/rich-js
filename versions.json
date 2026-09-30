@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-240",
-      "ref": "refs/pull/240/merge",
-      "sha": "ef7ffee11b18efea3984b6c5fc46fe08205285f1",
-      "timestamp": "2026-09-30T07:40:13.122Z",
-      "commits": [
-        {
-          "sha": "ef7ffee11b18efea3984b6c5fc46fe08205285f1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:37:25Z",
-          "message": "Merge f22ee499d0d03a0edc7fd1ab03a6ac825b57afc6 into 0b901ceeff65c2f9521a5d70942aa7da145f0f72\n"
-        },
-        {
-          "sha": "f22ee499d0d03a0edc7fd1ab03a6ac825b57afc6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T01:36:58-06:00",
-          "message": "fix(docs): the program's console colours by Node's env rules (rich-playground-afk.6dm)\n\nReview (high): colour came from isTTY alone, so NO_COLOR, FORCE_COLOR and\nTERM=dumb were ignored; each table row is what Node 26 printed on a pty and\na pipe. The module header now names the console parameter, the formatter's\nweight is recorded where it was chosen, and the host-leak check spies on all\nfive methods and restores them in afterEach.\n"
-        },
-        {
-          "sha": "963bd02a68d326e5882e2f6ea53b6cc8c2afb1c9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T01:27:28-06:00",
-          "message": "fix(docs): a program's global console writes to its terminal (rich-playground-afk.6dm)\n\nrunInTerminal binds `console` lexically, as it binds `process`, to Node's\nconsole on the stand-in's streams, formatted by Node's own util.format\n(node-inspect-extracted). The body is wrapped in a block so a program's own\n`const console = new Console()` shadows the parameter rather than\nredeclaring it.\n\nFound by the playground checkpoint (rich-playground-afk.oui): a bare\nconsole.log in the playground went to devtools and the terminal stayed empty.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "0b901ceeff65c2f9521a5d70942aa7da145f0f72",
-      "timestamp": "2026-09-30T07:12:14.157Z",
+      "sha": "8989fb96d510e9b4bffca903895b8446ea9015fe",
+      "timestamp": "2026-09-30T07:45:00.774Z",
       "commits": [
         {
-          "sha": "0b901ceeff65c2f9521a5d70942aa7da145f0f72",
+          "sha": "8989fb96d510e9b4bffca903895b8446ea9015fe",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T01:11:14-06:00",
-          "message": "feat(docs): \"Try it\" opens any docs example in the playground (rich-playground-afk.4kh) (#239)\n\n* feat(docs): \"Try it\" opens any docs example in the playground (rich-playground-afk.4kh)\n\nEvery example that runs (static, silent, throws, live) carries a \"Try it\"\nlink in its output label. It opens the playground on the block as a program of\nits own: the block, plus the imports it uses and every statement above it\nthat declares something it uses (the prelude's console, the page context's\nlines, earlier blocks' declarations). Statements above it that change one of\nthose without printing come along too. docs/.vitepress/example-slice.ts cuts\nit using the TypeScript checker's reading of the page's own program.\n\nChecked at build time, per block: the program type-checks alone, and each\nblock that runs at build time, run as the playground runs it (Sucrase + the\nlive library), prints the bytes the page shows and ends the same way. Across\nthe site 206 of 242 executed blocks need nothing from above; all 242 pass.\n\nA page run now fixes the time and a seeded Math.random for every program it\nruns, so a block run twice (chain and Try it) agrees; console.log's timestamp\nis the one read that differed.\n\nVerified in Chromium (e2e/try-it.spec.ts): Try it on docs/panel.md lands on\nthe playground with the code and the same rows the page shows; on\ndocs/progress.md's live track() example, with the page context's doStep, and\nthe same final frame.\n\n* fix(docs): Try it programs keep the page's scopes and context (rich-playground-afk.4kh)\n\nReview (high) of PR #239:\n- a part that redeclares a carried name opens a scope, as the page nests it\n- the page's exampleContext is carried whole, so a live block's program,\n  which nothing runs at build, is decided by no reading of shape\n- a carried statement takes its own comments, not the line before's\n- a Try it program that fails to compile, or prints differently, says so\n  and names the causes, random numbers among them\n- the slicer reads imports through example-program.ts's parser\n- never-run blocks are no longer cut\n\n* fix(docs): a throws block's Try it program must throw what the page shows (rich-playground-afk.4kh)\n\nReview (medium) of PR #239: the gate compared only how a run ended, so a\nprogram throwing a different error passed. Both lines now come from one\nfunction, thrownLine, whose source the page program's helper embeds.\nThe console test matches values of the prelude console's type, not the class.\n\n* fix(docs): one import printer, a thrown line from source text, a callable Date (rich-playground-afk.4kh)\n\nReview (escalation high) of PR #239:\n- thrownLine evaluates THROWN_LINE, the text the program embeds, rather\n  than pasting a compiled function's toString into the program\n- the Date shadow is a Proxy, so Date() returns a string as a host's does\n- a Try it program carries every bare import the page ran by its block's end\n- example-slice uses example-program's importLines and SourceBuilder\n- a non-chain block's checker is not kept past its cut"
+          "timestamp": "2026-09-30T01:43:52-06:00",
+          "message": "fix(docs): a program's global console writes to its terminal (rich-playground-afk.6dm) (#240)\n\n* fix(docs): a program's global console writes to its terminal (rich-playground-afk.6dm)\n\nrunInTerminal binds `console` lexically, as it binds `process`, to Node's\nconsole on the stand-in's streams, formatted by Node's own util.format\n(node-inspect-extracted). The body is wrapped in a block so a program's own\n`const console = new Console()` shadows the parameter rather than\nredeclaring it.\n\nFound by the playground checkpoint (rich-playground-afk.oui): a bare\nconsole.log in the playground went to devtools and the terminal stayed empty.\n\n* fix(docs): the program's console colours by Node's env rules (rich-playground-afk.6dm)\n\nReview (high): colour came from isTTY alone, so NO_COLOR, FORCE_COLOR and\nTERM=dumb were ignored; each table row is what Node 26 printed on a pty and\na pipe. The module header now names the console parameter, the formatter's\nweight is recorded where it was chosen, and the host-leak check spies on all\nfive methods and restores them in afterEach."
         }
       ]
     }
