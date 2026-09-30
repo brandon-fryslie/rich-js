@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-235",
+      "ref": "refs/pull/235/merge",
+      "sha": "06d71398fd61d0c7bb4df61c9eafe13223655db6",
+      "timestamp": "2026-09-30T04:26:04.072Z",
+      "commits": [
+        {
+          "sha": "06d71398fd61d0c7bb4df61c9eafe13223655db6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:25:21-06:00",
+          "message": "Merge 2902ab11082a2df5b3fa010c364d71ddc461d58a into 00419df7c8828144e274f7ff2c41080f05635d73\n"
+        },
+        {
+          "sha": "2902ab11082a2df5b3fa010c364d71ddc461d58a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:25:16-06:00",
+          "message": "fix(palette): draw translucent vars on the palette's own background (rich-palette-y22)\n\nA theme's translucent variable (catppuccin-latte's block-hover-background\n#00000019, cyberpunk's alpha accents) is a tint meant for that theme's\nbackground, but once it left the palette the SGR writer composited it over\nblack and an export over its canvas: a pale hover tint drew as a black cell\nin the terminal. The Palette constructor now draws every translucent var\nonto the palette's `background`, so every colour a palette hands out is\nopaque and the writer, the exporters and the contrast choosers agree.\nbuildPalette draws its base colours the same way before deriving on-*,\nand getThemeBaseColors returns the colours getThemePalette does.\n\nHand-written translucency (\"#ffffff80\" in a template) still composites over\nthe writer's substrate.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "00419df7c8828144e274f7ff2c41080f05635d73",
