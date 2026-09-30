@@ -134,3 +134,14 @@ test("a demo's Powerline glyphs draw in the Powerline face: rich-strip", async (
     })
     .toContainEqual(expect.objectContaining({ web: true }));
 });
+
+// A printed demo writes many screens at once, and a terminal's viewport follows
+// the last row written — so a visitor landed on the end of the tour and never
+// saw where it starts. The first row on screen has to be the first row printed.
+test("a printed demo opens on its first line: themes-and-color-studio", async ({ page }) => {
+  await page.goto("demos-app/themes-and-color-studio/");
+  await expect(page.locator("#status")).toContainText("ready");
+  const rows = page.locator(".xterm-rows > div");
+  await expect(rows.first()).toContainText("themes-and-color-studio");
+  await expect(page.locator(".xterm-rows")).toContainText("1. Color values");
+});

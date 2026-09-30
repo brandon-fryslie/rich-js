@@ -137,7 +137,6 @@ export function runDemo(
   const out = new Console({
     environment: hostEnvironment(host),
     record: options?.record ?? false,
-    width: 120,
   });
 
   // ---------------------------------------------------------------------------
@@ -192,8 +191,8 @@ export function runDemo(
   }
 
   // The semantic vars we sample across the demo. Ordered roughly by role:
-  // brand → highlight → state. Sized to fit on one line of the configured
-  // console width.
+  // brand → highlight → state. Sized to fit on one line of the browser
+  // shell's 100-column terminal.
   const SEMANTIC_VARS = [
     "primary",
     "secondary",

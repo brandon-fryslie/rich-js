@@ -11,10 +11,11 @@
  * time, the rest of the boot sequence is identical for every demo.
  *
  * [LAW:types-are-the-program] The `Terminal` global declared here is the
- * minimum surface every wire's `mount(terminal: XtermTerminal)` expects:
- * cols/rows, write, onData, onResize, plus the DOM-mount helpers we call
- * locally (open, focus). Declaring the full shape lets TypeScript match
- * structurally — no `as unknown as` cast needed at the boundary.
+ * surface the wires' `mount(terminal)` parameters ask for between them:
+ * cols/rows, write (with xterm's parsed-callback), scrollToTop, onData,
+ * onResize, plus the DOM-mount helpers we call locally (open, focus).
+ * Declaring the full shape lets TypeScript match structurally — no
+ * `as unknown as` cast needed at the boundary.
  */
 import mount from "__DEMO_WIRE__";
 
@@ -25,7 +26,8 @@ interface XtermDisposable {
 declare const Terminal: new (opts: Record<string, unknown>) => {
   readonly cols: number;
   readonly rows: number;
-  write(data: Uint8Array | string): void;
+  write(data: Uint8Array | string, callback?: () => void): void;
+  scrollToTop(): void;
   onData(handler: (data: string) => void): XtermDisposable;
   onResize(handler: (size: { cols: number; rows: number }) => void): XtermDisposable;
   open(el: HTMLElement): void;
