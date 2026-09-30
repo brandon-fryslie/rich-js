@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-267",
-      "ref": "refs/pull/267/merge",
-      "sha": "6918725e430c934b4b80bb4fb30e86a82b9dd2f0",
-      "timestamp": "2026-09-30T17:50:20.849Z",
-      "commits": [
-        {
-          "sha": "6918725e430c934b4b80bb4fb30e86a82b9dd2f0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:48:52Z",
-          "message": "Merge 6e7e1587f2a5cacc1bdf0eaa406daecc0b63611c into 8fc9178e2783eea2e17d3d1254c623c21b05b41f\n"
-        },
-        {
-          "sha": "6e7e1587f2a5cacc1bdf0eaa406daecc0b63611c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:48:48-06:00",
-          "message": "fix(spinner): the frame is never wrapped apart, the fragment is uncut, and the label is one source (rich-status-o9av)\n\nReview of #267: measure's minimum is floored at the widest frame, so a frame\nwith spaces in it is never offered less room than itself; drawFrame leaves\nits fragment at natural width for the composing caller to cut, while render\nwraps the line as Rich's Text does; and the label is held once and read\nthrough EmbeddedText when drawn, so a RichText changed in place draws as\nchanged and the getter is what is drawn.\n"
-        },
-        {
-          "sha": "31efeeea802070615479526ac80caaa289aebb4d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:40:40-06:00",
-          "message": "fix(status): a Status message draws its markup (rich-status-o9av)\n\nnew Status(\"[bold]Working[/]\") drew the brackets: StatusRenderable yielded\nthe message as one raw Segment. Status's renderable is now a Spinner whose\nlabel is the message, as Rich's is, and the Spinner's label crosses embed's\nEmbeddedText, so a string is markup under the drawing console, assembled\nwith its frame as Rich's Text.assemble(frame, \" \", text). The label is left\nunhighlighted, as Rich's Text label is.\n\nStatus's `style` is now `spinnerStyle` (Rich's spinner_style, default\nstatus.spinner): the message styles itself with markup, and the rename makes\nthe changed meaning a type error rather than a silent recolour.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8fc9178e2783eea2e17d3d1254c623c21b05b41f",
-      "timestamp": "2026-09-30T17:34:22.668Z",
+      "sha": "c5e05b6b214291efdc3702e2bb32a351b951e5db",
+      "timestamp": "2026-09-30T17:54:04.382Z",
       "commits": [
         {
-          "sha": "8fc9178e2783eea2e17d3d1254c623c21b05b41f",
+          "sha": "c5e05b6b214291efdc3702e2bb32a351b951e5db",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:33:13-06:00",
-          "message": "fix(color): ColorDepth.WINDOWS draws in the Windows console's sixteen colours (rich-color-dhay) (#266)\n\n* fix(color): ColorDepth.WINDOWS draws in the Windows console's sixteen colours (rich-color-dhay)\n\ndowngrade() ranked depths by enum value, and WINDOWS = 4 sits above\nTRUECOLOR = 3, so nothing ever downgraded toward it and a WINDOWS console\nwrote 24-bit SGR. Depths are now ranked by how many colours they name\n(fidelity), and a downgrade to WINDOWS matches a fixed colour against\nWINDOWS_TABLE while an ANSI slot keeps its index, as Rich does.\n\nWINDOWS_TABLE was in console-attribute order (slot 1 navy) while every\nreader of a WINDOWS number — its 30+n SGR, theme.ansiColors — takes it as\nan ANSI index. It is now the Campbell scheme in ANSI order; the old values\nreordered would have been STANDARD_TABLE exactly. colorMath's drawnTable\nmeasures WINDOWS against that table instead of as truecolor.\n\n* fix(color): a WINDOWS colour with no theme named is drawn in the console's own sixteen (rich-color-dhay)\n\nReview of #266: at WINDOWS the writer picked slots by WINDOWS_TABLE but\ngetTruecolor and colorMath's drawnTable still fell back to the VGA sixteen,\nso ensureContrast(#767676 on #0037da, 3) accepted a pair the console draws\nat 1.81:1. resolveTerminal now takes the depth, and a WINDOWS colour with no\ntheme is drawn by the Windows console (Campbell); STANDARD and WINDOWS\nconvert to each other by keeping the slot, as Rich does, so a colour drawn\nat WINDOWS reads as the console's colour whichever depth spelled it.\n\ndowngradeTable(depth) is the one table downgrade rounds against and the one\ncolorMath hands entries back from, replacing a second copy of that mapping.\n\nStale text: the colour-studio blurb called WINDOWS \"not a downgrade target\";\nthe README listed \"standard\"/\"windows\" colorSystem strings that throw.\n\nNot taken: renaming a slot-kept colour to Rich's original name. Numbered\nspecs are compared by number (strip's vanishes reads name only when number\nis absent) and the STANDARD downgrade already names by slot.\n\n* fix(color): a blend downgraded to WINDOWS mixes the console's own ends (rich-color-dhay)\n\nperformDowngrade read a ColorBlend's RGB with no theme, so its named ends\ncame from the VGA sixteen and the mix was rounded against WINDOWS_TABLE:\nblend(black,yellow,0.75) wrote green. It now reads the colour as the\nterminal the target depth assumes draws it."
+          "timestamp": "2026-09-30T11:52:54-06:00",
+          "message": "fix(status): a Status message draws its markup (rich-status-o9av) (#267)\n\n* fix(status): a Status message draws its markup (rich-status-o9av)\n\nnew Status(\"[bold]Working[/]\") drew the brackets: StatusRenderable yielded\nthe message as one raw Segment. Status's renderable is now a Spinner whose\nlabel is the message, as Rich's is, and the Spinner's label crosses embed's\nEmbeddedText, so a string is markup under the drawing console, assembled\nwith its frame as Rich's Text.assemble(frame, \" \", text). The label is left\nunhighlighted, as Rich's Text label is.\n\nStatus's `style` is now `spinnerStyle` (Rich's spinner_style, default\nstatus.spinner): the message styles itself with markup, and the rename makes\nthe changed meaning a type error rather than a silent recolour.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(spinner): the frame is never wrapped apart, the fragment is uncut, and the label is one source (rich-status-o9av)\n\nReview of #267: measure's minimum is floored at the widest frame, so a frame\nwith spaces in it is never offered less room than itself; drawFrame leaves\nits fragment at natural width for the composing caller to cut, while render\nwraps the line as Rich's Text does; and the label is held once and read\nthrough EmbeddedText when drawn, so a RichText changed in place draws as\nchanged and the getter is what is drawn.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
