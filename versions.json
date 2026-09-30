@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-248",
-      "ref": "refs/pull/248/merge",
-      "sha": "81f99c2a64259033321a1d76fc2bfcb13dc18f25",
-      "timestamp": "2026-09-30T10:20:46.840Z",
-      "commits": [
-        {
-          "sha": "81f99c2a64259033321a1d76fc2bfcb13dc18f25",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:20:02Z",
-          "message": "Merge 09c78106438e4b007f973729e7666439235b66d8 into 9bfe1d1ff8f779367b2ac22876bb7d61bf927f28\n"
-        },
-        {
-          "sha": "09c78106438e4b007f973729e7666439235b66d8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:19:57-06:00",
-          "message": "fix(paint): one Painter owns the rewind count, the width crop and the hand-back (rich-live-4rh)\n\nA restarted inline Live painted over the frame it had handed back, because\nLive never reset the row count App resets on resume. Painter now holds that\ncount from take() to handBack(), crops rows to the screen for both callers,\nand owns the surface's enter/leave bytes. Each row starts with its own CR, so\na Live handed back before any frame no longer moves the cursor.\n\nReview: /code-review high on #248.\n"
-        },
-        {
-          "sha": "a59ce49daec71365b1ddc8ec6fe9ef439d4338ad",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:06:49-06:00",
-          "message": "fix(live): paint inline frames through App's painter, cursor on the last row (rich-live-4rh)\n\nAn inline Live wrote a newline after its frame's last row. On a frame as\ntall as the terminal that newline scrolled the screen, and the next erase\ncould not reach the frame's first row, so every refresh left it in\nscrollback. App already painted correctly with the cursor resting on the\nlast row. The painter now lives in core/paint.ts and both paint through it\n(rich-live-4vwq); the newline under the frame is written once, on hand-back.\n\nLive's tests now drive @xterm/headless (new devDependency) and assert the\nscreen and scrollback a user would see.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "9bfe1d1ff8f779367b2ac22876bb7d61bf927f28",
-      "timestamp": "2026-09-30T09:57:53.910Z",
+      "sha": "06423a219da1d1d45548d3aadf4b0d92fb7faa53",
+      "timestamp": "2026-09-30T10:24:58.998Z",
       "commits": [
         {
-          "sha": "9bfe1d1ff8f779367b2ac22876bb7d61bf927f28",
+          "sha": "06423a219da1d1d45548d3aadf4b0d92fb7faa53",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:56:55-06:00",
-          "message": "fix(layout): ratio split hands out every cell (rich-layout-xvv) (#247)\n\n* fix(layout): ratio split hands out every cell, as Rich's ratio_resolve does (rich-layout-xvv)\n\nLayout floored each growing pane's share and dropped what the floors left,\nso a 1:1 split of 5 rows drew 2 + 2 and padded a blank fifth row. The split\nis now ratioResolve in renderables/ratio.ts, a port of Rich's ratio_resolve:\nfixed sizes first, a pane under its minimum paid it and the rest re-shared,\nfractions carried rightward so the parts sum to the region. Exact arithmetic\nover decimal-read weights (exactWeights, moved from table.ts and shared), so\n0.1:0.2:0.3 of 6 is 1,2,3. The port keeps its one departure: nothing is paid\npast the total. ratioBudget, the measure-side inverse, sits beside it.\n\n* fix(layout): exact least row budget, linear re-share, cell-count edges (rich-layout-xvv)\n\nReview round 1 (high):\n- ratioBudget is now the least total at which ratioResolve reaches every want,\n  searched from a derived lower bound and checked against the split itself;\n  the floor-inverse overshot by a cell under carried rounding (\"left\"|\"right\"\n  measured 10, fits 9).\n- An unbounded want returns Infinity before any BigInt conversion, restoring\n  withBoundedWidth's error for a row holding an unmeasurable pane.\n- The re-share keeps its weight sum as a running total: 2000 panes 3.8s -> 15ms.\n- Edge.size/minimumSize are CellCol; Layout's getters return the parsed brand.\n- ratioResolve documents size 0 as a departure from Rich (`edge.size or None`).\n\n* fix(layout): cap the row budget search at the offer (rich-layout-xvv)\n\nReview round 2 (medium): ratioBudget stepped one split per cell from its\nlower bound, so 1:1e6 ratios took 529ms and 1:1e9 hung. It now stops at the\nwidth on offer, which measure clamps to anyway, so a search costs at most one\nsplit per cell of the width it returns.\n\n* fix(layout): closed-form row budget, Weight-typed edges (rich-layout-xvv)\n\nReview round 3 (escalation high): the exact-least budget search kept breeding\nfailures — BigInt on a fractional Measurable width, a `total += 1` that stalls\npast 2^53, cost linear in ratio spread. ratioBudget is the closed-form\nfloor-share inverse again: O(n), no loop, fractional wants rounded up,\nunbounded wants unbounded. It can overshoot the least width by the carried\nspare cells (\"left\"|\"right\" 10, fits 9); ratio.ts documents that trade.\n\nEdge.ratio is a `Weight`, parsed by `shareWeight` (was Layout's growthRatio),\nand ratioResolve lists the ratio-0 departure from Rich (`edge.ratio or 1`)."
+          "timestamp": "2026-09-30T04:23:51-06:00",
+          "message": "fix(live): full-height inline frame no longer leaks rows into scrollback (rich-live-4rh) (#248)\n\n* fix(live): paint inline frames through App's painter, cursor on the last row (rich-live-4rh)\n\nAn inline Live wrote a newline after its frame's last row. On a frame as\ntall as the terminal that newline scrolled the screen, and the next erase\ncould not reach the frame's first row, so every refresh left it in\nscrollback. App already painted correctly with the cursor resting on the\nlast row. The painter now lives in core/paint.ts and both paint through it\n(rich-live-4vwq); the newline under the frame is written once, on hand-back.\n\nLive's tests now drive @xterm/headless (new devDependency) and assert the\nscreen and scrollback a user would see.\n\n* fix(paint): one Painter owns the rewind count, the width crop and the hand-back (rich-live-4rh)\n\nA restarted inline Live painted over the frame it had handed back, because\nLive never reset the row count App resets on resume. Painter now holds that\ncount from take() to handBack(), crops rows to the screen for both callers,\nand owns the surface's enter/leave bytes. Each row starts with its own CR, so\na Live handed back before any frame no longer moves the cursor.\n\nReview: /code-review high on #248."
         }
       ]
     }
