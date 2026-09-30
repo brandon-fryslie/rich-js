@@ -152,8 +152,23 @@ describe("Markdown", () => {
     expect(rows("> a\n>\n>b", 80)).toEqual(["▎ a", "▎", "▎ b", ""]);
   });
 
-  it("keeps a list inside a quote on rows of its own", () => {
-    expect(rows("> - a\n> - b\n> soft\n>\n> para two", 80)).toEqual(["▎ - a", "▎ - b soft", "▎", "▎ para two", ""]);
+  it("draws the blocks inside a quote as blocks, beside its bar", () => {
+    expect(rows("> - a\n> - b\n> soft\n>\n> para two", 80)).toEqual([
+      "▎   • a",
+      "▎   • b soft",
+      "▎",
+      "▎ para two",
+      "",
+    ]);
+  });
+
+  it("draws a fenced block inside a quote line for line", () => {
+    expect(rows("> ```\n> a = 1\n> b = 2\n> ```", 80)).toEqual(["▎ a = 1", "▎ b = 2", ""]);
+  });
+
+  it("ends a quote at an unmarked line after a bare >, and lazily continues its open paragraph", () => {
+    expect(rows("> quoted\n>\nNot quoted", 80)).toEqual(["▎ quoted", "▎", "Not quoted", ""]);
+    expect(rows("> the total was\n2024. That year", 80)).toEqual(["▎ the total was 2024. That year", ""]);
   });
 
   it("leaves a list item's wrapped line that starts with a number other than 1 in the item", () => {
