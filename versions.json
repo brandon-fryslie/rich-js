@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-233",
+      "ref": "refs/pull/233/merge",
+      "sha": "24991234f23402d56ff45bc2c252188d8ec41fe0",
+      "timestamp": "2026-09-30T00:47:40.667Z",
+      "commits": [
+        {
+          "sha": "24991234f23402d56ff45bc2c252188d8ec41fe0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T18:46:48-06:00",
+          "message": "Merge 984de26920d6c7207262efb63a367b3f4f4ff507 into e4dc4663346578a9ef93e67b1663f98eaf63c01d\n"
+        },
+        {
+          "sha": "984de26920d6c7207262efb63a367b3f4f4ff507",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T18:46:43-06:00",
+          "message": "fix(pretty): a container whose opener will not fit after its key, and a key wider than its line, hang under the key (rich-pretty-xms.0l4)\n\nA container starts on its key's hanging line when its opener does not fit\nafter the key and does fit there, then lays out from that line. An object key\nis placed like any one-piece text, so a key wider than its line wraps under\nits slot instead of running to column 0. A value after a wrapped key is on the\nkey's last row, and a container there indents its entries from that row.\n\n`Frame.inset` is now the column the value's line starts at rather than a depth\ncount, so a line that starts on a hanging row is representable; `_onLine` is\nthe one place a hang is derived from it. Rich wraps the opener to column 0.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "e4dc4663346578a9ef93e67b1663f98eaf63c01d",
