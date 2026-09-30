@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-261",
-      "ref": "refs/pull/261/merge",
-      "sha": "2ab9ea295bd13d519b9b65c033ffcda4e99e585b",
-      "timestamp": "2026-09-30T15:35:20.858Z",
-      "commits": [
-        {
-          "sha": "2ab9ea295bd13d519b9b65c033ffcda4e99e585b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T15:34:12Z",
-          "message": "Merge af39da98466a16734ef34ab1c74aa33fbce2eec1 into 59b38e3b5e842583a8fe01d168ae1f4f0bace895\n"
-        },
-        {
-          "sha": "af39da98466a16734ef34ab1c74aa33fbce2eec1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:34:07-06:00",
-          "message": "fix(padding,panel): expand narrows a Padding, rows always reach it; border text shares one style rule (rich-panel-ech)\n\nReview (high) findings: expand:false left content rows ragged under a\nfull-width blank row; a string accessory on an unstyled panel drew with\nNULL_STYLE beside an undefined frame; titleStyle/subtitleStyle JSDoc\nstill described replacement.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "9c46eb45ef339a11f65b1d4b1744276b2ddedb1d",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:28:20-06:00",
-          "message": "fix(panel): a Panel's and a Padding's style is the ground under the whole block (rich-panel-ech)\n\nStyle reached only the padding spaces, leaving the content and the frame\nunstyled. As in Rich, the style is now applied under the content, and a\nPanel's frame is its border style laid over it; title, subtitle and accessory\nstyles lay over the frame's instead of replacing it, so they no longer cut a\nhole in the background on the border rows. docs/panel.md regains its Style\nsection.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "59b38e3b5e842583a8fe01d168ae1f4f0bace895",
-      "timestamp": "2026-09-30T15:20:29.464Z",
+      "sha": "308b201548d5573029aa4fdb9b9602c42f27596a",
+      "timestamp": "2026-09-30T15:36:38.109Z",
       "commits": [
         {
-          "sha": "59b38e3b5e842583a8fe01d168ae1f4f0bace895",
+          "sha": "308b201548d5573029aa4fdb9b9602c42f27596a",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:19:04-06:00",
-          "message": "fix(tree): a node's style draws its row and every row beneath it (rich-tree-736) (#260)\n\n* fix(tree): a node's style draws its row and every row beneath it (rich-tree-736)\n\nTree stored `style` and never read it. The walk now stacks each node's\nstyle the way it already stacked guide styles; the label is drawn over it,\nso its own markup still wins, and only its background reaches the guides,\nas in Rich. docs/tree.md gets its style example back.\n\n* fix(tree): say where a node's background reaches, show it, and pin it at depth (rich-tree-736)\n\nReview (high): the docs claimed the whole row was filled; only the guides\nand label are. The example now carries a background, and the test covers\nan ancestor rail and a multi-line label's later guides."
+          "timestamp": "2026-09-30T09:35:50-06:00",
+          "message": "fix(panel): a Panel's and a Padding's style is the ground under the whole block (rich-panel-ech) (#261)\n\n* fix(panel): a Panel's and a Padding's style is the ground under the whole block (rich-panel-ech)\n\nStyle reached only the padding spaces, leaving the content and the frame\nunstyled. As in Rich, the style is now applied under the content, and a\nPanel's frame is its border style laid over it; title, subtitle and accessory\nstyles lay over the frame's instead of replacing it, so they no longer cut a\nhole in the background on the border rows. docs/panel.md regains its Style\nsection.\n\n* fix(padding,panel): expand narrows a Padding, rows always reach it; border text shares one style rule (rich-panel-ech)\n\nReview (high) findings: expand:false left content rows ragged under a\nfull-width blank row; a string accessory on an unstyled panel drew with\nNULL_STYLE beside an undefined frame; titleStyle/subtitleStyle JSDoc\nstill described replacement.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
