@@ -10,16 +10,13 @@ import ts from "typescript";
  */
 export function resolveAlias(sym: ts.Symbol, checker: ts.TypeChecker): ts.Symbol {
   let s = sym;
-  // Some aliases re-alias; loop until we hit a non-alias symbol or a
-  // symbol the checker refuses to dereference further.
+  // Some aliases re-alias; loop until we hit a non-alias symbol. An alias
+  // that resolves to nothing comes back as the checker's `unknown` symbol,
+  // which is not an alias, so the chain always ends.
   while ((s.flags & ts.SymbolFlags.Alias) !== 0) {
-    try {
-      const aliased = checker.getAliasedSymbol(s);
-      if (aliased === s) break;
-      s = aliased;
-    } catch {
-      break;
-    }
+    const aliased = checker.getAliasedSymbol(s);
+    if (aliased === s) break;
+    s = aliased;
   }
   return s;
 }

@@ -40,7 +40,7 @@ import ts from "typescript";
 import { readFileSync, statSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { ENTRY_BY_SPECIFIER, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../scripts/repo-facts.js";
+import { ENTRY_BY_SPECIFIER, PACKAGE_MANIFEST, REPO_ROOT, listTypeScriptFiles, loadCompilerOptions } from "../../scripts/repo-facts.js";
 import { resolveAlias } from "../../scripts/resolve-alias.js";
 import { tscTransform } from "../../scripts/tsc-transform.js";
 import { Segment, decodeAnsi, osc8Sequences } from "../../src/index.js";
@@ -192,7 +192,7 @@ const SPECIFIER_BY_ENTRY: ReadonlyMap<string, string> = new Map(
 
 const LIVE_LIBRARY_PACKAGES: readonly string[] = [
   ...SPECIFIER_BY_ENTRY.values(),
-  ...Object.keys((JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8")) as { peerDependencies: Record<string, string> }).peerDependencies),
+  ...Object.keys(PACKAGE_MANIFEST.peerDependencies ?? {}),
 ].sort();
 
 const SRC_ROOT = path.join(REPO_ROOT, "src") + path.sep;

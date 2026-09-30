@@ -21,8 +21,7 @@
 
 import ts from "typescript";
 import path from "node:path";
-import { isPathInside, repoRelative } from "../coverage/extract.js";
-import { REPO_ROOT } from "../../scripts/repo-facts.js";
+import { REPO_ROOT, isPathInside, repoRelative } from "../../scripts/repo-facts.js";
 import { moduleSpecifiers, reachableSourceModules, resolveEdge } from "./graph.js";
 
 /**

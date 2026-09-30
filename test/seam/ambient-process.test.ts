@@ -21,8 +21,7 @@
 import { describe, it, expect } from "vitest";
 import ts from "typescript";
 import path from "node:path";
-import { isBehindNodeAirlock, repoRelative } from "../coverage/extract.js";
-import { REPO_ROOT, listTypeScriptFiles } from "../../scripts/repo-facts.js";
+import { REPO_ROOT, listTypeScriptFiles, isBehindNodeAirlock, repoRelative } from "../../scripts/repo-facts.js";
 import { parseSourceFile } from "./graph.js";
 import {
   HOST_ACCESS,

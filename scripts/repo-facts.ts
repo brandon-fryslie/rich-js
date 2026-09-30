@@ -1,6 +1,6 @@
 /**
- * What this repository says about itself: where it is, what its package
- * manifest promises, which source file each published entry point is, and the
+ * What this repository says about itself: where it is and how a path inside
+ * it is spelled, what its package manifest promises, which source file each published entry point is, and the
  * compiler options its build runs under.
  *
  * [LAW:one-way-deps] The docs build and the test suite both read these, so
@@ -16,10 +16,67 @@ import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+/**
+ * Whether an entry module sits behind the `src/node/` airlock. An entry there is
+ * the consumer's explicit opt-in to Node; every other entry promises a browser
+ * nothing of Node's, at runtime and in its declarations.
+ *
+ * [LAW:one-source-of-truth] The browser-safe and browser-types gates both draw
+ * the line here, so a move of the airlock moves it for both.
+ */
+export function isBehindNodeAirlock(sourcePath: string): boolean {
+  return sourcePath.startsWith("src/node/");
+}
+
+export function isUnderSrc(absPath: string): boolean {
+  return isPathInside(path.join(REPO_ROOT, "src"), absPath);
+}
+
+/**
+ * An absolute path in the one repo-relative spelling the suite compares on.
+ *
+ * [LAW:single-enforcer] The single crossing where an OS path becomes a
+ * canonical one, because the alternative is normalizing at each comparison
+ * and forgetting the next one. `path.relative` returns native separators, so
+ * on Windows `src\core\console.ts` never equals the `"src/core/console.ts"`
+ * a rule was written against — and equality failing silently is the worst
+ * available failure: the layering gate would report its two sanctioned edges
+ * as both unsanctioned and stale, accusing untouched code of precisely what
+ * the gate exists to catch.
+ */
+export function repoRelative(absPath: string): string {
+  return path.relative(REPO_ROOT, absPath).split(path.sep).join("/");
+}
+
+/**
+ * Whether `target` lives strictly inside `root`.
+ *
+ * [LAW:one-source-of-truth] The one home for this comparison, because it is
+ * short enough to retype and wrong in a way that fails silently. Compare with
+ * `path.relative` rather than `startsWith` on raw strings: `src/core-utils`
+ * begins with `src/core`, so a prefix test reads a sibling directory as
+ * inside and reports nothing about it ever again. `path.relative` also
+ * normalizes separator format, which a raw comparison does not.
+ *
+ * The comparison is lexical: it never reads the filesystem, so a symlink and
+ * its target read as unrelated paths. Every caller derives both
+ * arguments from `REPO_ROOT`, which is what makes that safe — a future caller
+ * holding paths from two sources has to resolve them before asking.
+ *
+ * Both arguments must also be the same kind of path — both absolute, or both
+ * relative to the same base. Callers work in different spaces (`isUnderSrc`
+ * in absolute paths, the layering rule in repo-relative ones) and each is
+ * internally consistent.
+ */
+export function isPathInside(root: string, target: string): boolean {
+  const rel = path.relative(root, target);
+  return rel.length > 0 && !rel.startsWith("..") && !path.isAbsolute(rel);
+}
+
 const PACKAGE_JSON_PATH = path.join(REPO_ROOT, "package.json");
 
 /**
- * The fields of `package.json` any check here reads.
+ * The fields of `package.json` any reader of `PACKAGE_MANIFEST` reads.
  *
  * Almost all of it is the published surface — what a consumer's installer and
  * resolver act on. `scripts` is the exception, and the line to hold is that it
@@ -29,8 +86,8 @@ const PACKAGE_JSON_PATH = path.join(REPO_ROOT, "package.json");
  * `devDependencies` is deliberately absent, and its absence
  * is the point: it describes this checkout, not the package, so a rule that
  * consulted it would call a dependency satisfied because *we* happen to have
- * it installed. That is the exact blindness `optional-peers.ts` exists to
- * remove.
+ * it installed. That is the exact blindness `test/seam/optional-peers.ts`
+ * exists to remove.
  */
 export interface PackageManifest {
   readonly name?: string;

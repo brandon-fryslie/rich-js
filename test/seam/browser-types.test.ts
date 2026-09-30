@@ -35,8 +35,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { isBehindNodeAirlock } from "../coverage/extract.js";
-import { REPO_ROOT, PACKAGE_MANIFEST, ENTRY_BY_SPECIFIER } from "../../scripts/repo-facts.js";
+import { REPO_ROOT, PACKAGE_MANIFEST, ENTRY_BY_SPECIFIER, isBehindNodeAirlock } from "../../scripts/repo-facts.js";
 
 const PACKAGE_NAME = PACKAGE_MANIFEST.name ?? missing("package.json has no `name` to install the package under");
 const TSC = path.join(REPO_ROOT, "node_modules", "typescript", "bin", "tsc");
