@@ -4,15 +4,22 @@
     {
       "version": "pr-261",
       "ref": "refs/pull/261/merge",
-      "sha": "4f1c15e229421f73dd2b77b793fd64b774c02b2c",
-      "timestamp": "2026-09-30T15:29:33.368Z",
+      "sha": "2ab9ea295bd13d519b9b65c033ffcda4e99e585b",
+      "timestamp": "2026-09-30T15:35:20.858Z",
       "commits": [
         {
-          "sha": "4f1c15e229421f73dd2b77b793fd64b774c02b2c",
+          "sha": "2ab9ea295bd13d519b9b65c033ffcda4e99e585b",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:28:24-06:00",
-          "message": "Merge 9c46eb45ef339a11f65b1d4b1744276b2ddedb1d into 59b38e3b5e842583a8fe01d168ae1f4f0bace895\n"
+          "timestamp": "2026-09-30T15:34:12Z",
+          "message": "Merge af39da98466a16734ef34ab1c74aa33fbce2eec1 into 59b38e3b5e842583a8fe01d168ae1f4f0bace895\n"
+        },
+        {
+          "sha": "af39da98466a16734ef34ab1c74aa33fbce2eec1",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:34:07-06:00",
+          "message": "fix(padding,panel): expand narrows a Padding, rows always reach it; border text shares one style rule (rich-panel-ech)\n\nReview (high) findings: expand:false left content rows ragged under a\nfull-width blank row; a string accessory on an unstyled panel drew with\nNULL_STYLE beside an undefined frame; titleStyle/subtitleStyle JSDoc\nstill described replacement.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "9c46eb45ef339a11f65b1d4b1744276b2ddedb1d",
