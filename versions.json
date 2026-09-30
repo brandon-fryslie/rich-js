@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-247",
+      "ref": "refs/pull/247/merge",
+      "sha": "9572b187523174bdd35c6646c29089cc4c4a1b1b",
+      "timestamp": "2026-09-30T09:34:55.300Z",
+      "commits": [
+        {
+          "sha": "9572b187523174bdd35c6646c29089cc4c4a1b1b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:33:52-06:00",
+          "message": "Merge 62763a6b3d8871044c2da1223c6bf66225228110 into 4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7\n"
+        },
+        {
+          "sha": "62763a6b3d8871044c2da1223c6bf66225228110",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:33:47-06:00",
+          "message": "fix(layout): ratio split hands out every cell, as Rich's ratio_resolve does (rich-layout-xvv)\n\nLayout floored each growing pane's share and dropped what the floors left,\nso a 1:1 split of 5 rows drew 2 + 2 and padded a blank fifth row. The split\nis now ratioResolve in renderables/ratio.ts, a port of Rich's ratio_resolve:\nfixed sizes first, a pane under its minimum paid it and the rest re-shared,\nfractions carried rightward so the parts sum to the region. Exact arithmetic\nover decimal-read weights (exactWeights, moved from table.ts and shared), so\n0.1:0.2:0.3 of 6 is 1,2,3. The port keeps its one departure: nothing is paid\npast the total. ratioBudget, the measure-side inverse, sits beside it.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7",
