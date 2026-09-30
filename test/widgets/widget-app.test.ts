@@ -291,6 +291,26 @@ describe("WidgetApp pointer", () => {
     expect(rows(app)[1]).toBe("abc 漢字");
   });
 
+  it("stops an overlay that ignores its offer at the screen edge, row for row", async () => {
+    const host = scriptedHost({ cols: 10, rows: 5 });
+    class WithPopup extends Checkbox {
+      renderOverlay(options: RenderOptions): Iterable<Segment> {
+        return new RichText("abcdefghijkl\na漢字漢字\n", { end: "" }).render({ ...options, maxWidth: 40 });
+      }
+    }
+    const owner = new WithPopup({ label: "o", id: "owner" });
+    const app = start(host, () => new Panel(owner));
+    await tick();
+
+    // Eight cells are left right of the panel's border and padding; the cut
+    // through the last glyph leaves its half blank, and the trailing newline
+    // adds no row.
+    expect(rows(app).slice(2)).toEqual(["│ abcdefgh", "│ a漢字漢 ", "╰────────╯"]);
+
+    host.type(click(9, 3));
+    expect(owner.checked).toBe(true);
+  });
+
   it("reads hover off each frame, under a pointer that has not moved", async () => {
     const host = scriptedHost({ cols: 20, rows: 4 });
     const box = new Checkbox({ label: "a", id: "a" });

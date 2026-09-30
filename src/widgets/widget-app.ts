@@ -196,9 +196,7 @@ function paintOverlay(lines: Segment[][], widget: WidgetBase, options: RenderOpt
   const overlay = widget.renderOverlay({ ...options, height: undefined });
   if (overlay === null) return;
   const width = Math.max(0, options.maxWidth - at.x);
-  const rows = Segment.anchorLines(Segment.splitLines(overlay), widget, at.rows).map((line) =>
-    Segment.adjustLineLength(line, width, undefined, false),
-  );
+  const rows = Segment.anchorLines(Segment.splitLines(Segment.cropLines(overlay, width)), widget, at.rows);
   paintLines(lines, rows, at.x, at.y + at.rows);
 }
 
