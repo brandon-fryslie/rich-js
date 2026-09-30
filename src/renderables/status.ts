@@ -1,52 +1,37 @@
 /**
  * Status — displays a spinner animation with a status message.
+ *
+ * Its renderable is a `Spinner` whose label is the message, as Rich's is, so
+ * the message is drawn the way the spinner draws its label: a string is markup
+ * under the console that draws it.
  */
 
-import { Segment } from "../core/segment.js";
-import { Style, NULL_STYLE } from "../core/style.js";
+import type { Style } from "../core/style.js";
+import type { RichText } from "../core/text.js";
 import { Console } from "../core/console.js";
 import { Spinner } from "./spinner.js";
 import { Live } from "./live.js";
-import type { Renderable, RenderOptions } from "../core/protocol.js";
-import { getStyle } from "../core/protocol.js";
 
 export interface StatusOptions {
   spinner?: string;
   speed?: number;
-  style?: string | Style;
+  /** The spinner's frame style; the message styles itself with its markup. */
+  spinnerStyle?: string | Style;
   console?: Console;
-}
-
-/** A renderable that shows spinner + message */
-class StatusRenderable implements Renderable {
-  message: string;
-  private _spinner: Spinner;
-  private _style: string | Style;
-
-  constructor(message: string, spinner: Spinner, style: string | Style) {
-    this.message = message;
-    this._spinner = spinner;
-    this._style = style;
-  }
-
-  *render(options: RenderOptions): Iterable<Segment> {
-    yield* this._spinner.drawFrame(options);
-    const style = getStyle(options, this._style);
-    const msgStyle = style.isNull ? undefined : style;
-    yield new Segment(` ${this.message}`, msgStyle);
-  }
 }
 
 export class Status {
   private _live: Live;
-  private _renderable: StatusRenderable;
+  private _spinner: Spinner;
   private _console: Console;
 
-  constructor(message: string, options?: StatusOptions) {
+  constructor(message: string | RichText, options?: StatusOptions) {
     this._console = options?.console ?? new Console({ forceTerminal: true });
-    const spinner = new Spinner(options?.spinner ?? "dots", undefined, { speed: options?.speed });
-    this._renderable = new StatusRenderable(message, spinner, options?.style ?? NULL_STYLE);
-    this._live = new Live(this._renderable, {
+    this._spinner = new Spinner(options?.spinner ?? "dots", message, {
+      speed: options?.speed,
+      style: options?.spinnerStyle ?? "status.spinner",
+    });
+    this._live = new Live(this._spinner, {
       console: this._console,
       transient: true,
       refreshPerSecond: 12.5,
@@ -57,12 +42,12 @@ export class Status {
     return this._console;
   }
 
-  get message(): string {
-    return this._renderable.message;
+  get message(): string | RichText {
+    return this._spinner.text;
   }
 
-  set message(value: string) {
-    this._renderable.message = value;
+  set message(value: string | RichText) {
+    this._spinner.text = value;
   }
 
   start(): void {
@@ -73,8 +58,8 @@ export class Status {
     this._live.stop();
   }
 
-  update(message: string): void {
-    this._renderable.message = message;
-    this._live.update(this._renderable, { refresh: true });
+  update(message: string | RichText): void {
+    this._spinner.text = message;
+    this._live.update(this._spinner, { refresh: true });
   }
 }

@@ -5,6 +5,7 @@
 import { cellLen } from "../core/cells.js";
 import { Segment } from "../core/segment.js";
 import { Style, NULL_STYLE } from "../core/style.js";
+import { RichText } from "../core/text.js";
 import { SPINNERS, DEFAULT_SPINNER, LINE_SPINNER } from "../core/spinnerData.js";
 import type { SpinnerData } from "../core/spinnerData.js";
 import type {
@@ -12,7 +13,8 @@ import type {
   Measurable,
   RenderOptions,
 } from "../core/protocol.js";
-import { drawable, getStyle } from "../core/protocol.js";
+import { drawable } from "../core/protocol.js";
+import { EmbeddedText } from "./embed.js";
 
 const spinnerGlyphs = ({ frames }: SpinnerData): string => frames.join("");
 
@@ -23,26 +25,38 @@ export interface SpinnerOptions {
 
 export class Spinner implements Renderable, Measurable {
   readonly name: string;
-  readonly text: string | undefined;
   readonly speed: number;
   readonly style: string | Style;
   private readonly _data: SpinnerData;
   private _frameIndex: number;
   private _lastUpdate: number;
+  // The label as it was handed over, and as it crosses `embed`'s one crossing,
+  // so a string is markup under the console that draws it, as Rich's
+  // `Text.from_markup(text)` makes it. [LAW:single-enforcer]
+  private _label: { given: string | RichText; drawn: EmbeddedText };
 
-  constructor(name?: string, text?: string, options?: SpinnerOptions) {
+  constructor(name?: string, text: string | RichText = "", options?: SpinnerOptions) {
     const spinnerName = name ?? DEFAULT_SPINNER;
     const data = SPINNERS[spinnerName];
     if (!data) {
       throw new Error(`Unknown spinner: "${spinnerName}"`);
     }
     this.name = spinnerName;
-    this.text = text;
+    this._label = { given: text, drawn: new EmbeddedText(text) };
     this.speed = options?.speed ?? 1;
     this.style = options?.style ?? NULL_STYLE;
     this._data = data;
     this._frameIndex = 0;
     this._lastUpdate = Date.now();
+  }
+
+  /** The label drawn after the frame, as it was handed over. */
+  get text(): string | RichText {
+    return this._label.given;
+  }
+
+  set text(value: string | RichText) {
+    this._label = { given: value, drawn: new EmbeddedText(value) };
   }
 
   get frames(): readonly string[] {
@@ -73,20 +87,28 @@ export class Spinner implements Renderable, Measurable {
 
   /**
    * The spinner's current frame and its text, with no line end: the
-   * fragment a caller composes inside a line of its own — a `Progress` cell,
-   * a `Status` message. `render` is this line, ended, because a `Spinner`
+   * fragment a caller composes inside a line of its own, a `Progress` cell.
+   * `render` is this line, ended, because a `Spinner`
    * printed or stacked in a `Group` is a line of its own, as the reference's
    * `Text` is.
    */
   *drawFrame(options: RenderOptions): Iterable<Segment> {
     const frames = this._drawnFrames(options);
-    const frame = frames[this._advance() % frames.length]!;
-    const style = getStyle(options, this.style);
-    const spinStyle = style.isNull ? undefined : style;
-    yield new Segment(frame, spinStyle);
-    if (this.text) {
-      yield new Segment(` ${this.text}`);
-    }
+    yield* this._line(frames[this._advance() % frames.length]!, options).render(options);
+  }
+
+  /**
+   * `frame` and the label as one text, as Rich's `Text.assemble(frame, " ",
+   * text)`: a long label wraps as one line with its frame. A label that draws
+   * nothing — the default `""`, or markup that styles nothing — is no label,
+   * not a trailing space, as an empty `Text` is falsy there.
+   */
+  private _line(frame: string, options: RenderOptions): RichText {
+    const line = new RichText("", { end: "" }).append(frame, this.style);
+    // Unhighlighted: Rich's label is a `Text` from the moment it is handed over, and a `Text` is never highlighted.
+    const label = this._label.drawn.text({ ...options, highlighter: undefined });
+    if (label.plain !== "") line.append(" ").append(label);
+    return line;
   }
 
   *render(options: RenderOptions): Iterable<Segment> {
@@ -94,10 +116,10 @@ export class Spinner implements Renderable, Measurable {
     yield Segment.line();
   }
 
+  /** Measured at its widest frame, so a column holding it never narrows as it turns. */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    const frameWidth = Math.max(...this._drawnFrames(options).map((f) => cellLen(f)));
-    const textWidth = this.text ? cellLen(this.text) + 1 : 0;
-    const total = frameWidth + textWidth;
-    return { minimum: frameWidth, maximum: total };
+    const frames = this._drawnFrames(options);
+    const widest = frames.reduce((a, b) => (cellLen(b) > cellLen(a) ? b : a));
+    return this._line(widest, options).measure(options);
   }
 }
