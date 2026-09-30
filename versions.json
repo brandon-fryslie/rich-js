@@ -4,15 +4,22 @@
     {
       "version": "pr-257",
       "ref": "refs/pull/257/merge",
-      "sha": "2cf05ccd43f41802320194691e58507c66732624",
-      "timestamp": "2026-09-30T14:12:28.188Z",
+      "sha": "d3b8c70b0947de5fef378607f0d7f273e2f02bf7",
+      "timestamp": "2026-09-30T14:18:01.636Z",
       "commits": [
         {
-          "sha": "2cf05ccd43f41802320194691e58507c66732624",
+          "sha": "d3b8c70b0947de5fef378607f0d7f273e2f02bf7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:11:16Z",
-          "message": "Merge 6a6e5952a24a08656e59fd20c456745bb93f7b72 into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+          "timestamp": "2026-09-30T14:17:04Z",
+          "message": "Merge f33b6888364bb1a51d3b046d12e09d97c737b93f into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+        },
+        {
+          "sha": "f33b6888364bb1a51d3b046d12e09d97c737b93f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:16:59-06:00",
+          "message": "test(pretty): the thousand-level render runs at default options again (rich-pretty-v7b)\n\nWith guides on, each line is a thousand words for the render to wrap, which\ntimed out in CI (191s vs master's ~5s); guides are off by default now, and\nthe test's claim is about the default.\n"
         },
         {
           "sha": "6a6e5952a24a08656e59fd20c456745bb93f7b72",
