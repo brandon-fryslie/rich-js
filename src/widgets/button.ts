@@ -19,12 +19,11 @@
 import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import { cellLen } from "../core/cells.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { WidgetBase } from "./widget-base.js";
+import { ThemedWidget } from "./themed-widget.js";
+import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 export type ButtonVariant = "default" | "primary" | "success" | "warning" | "danger";
@@ -51,28 +50,20 @@ const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: strin
   danger:   { bg: "error-muted",   fg: "text-error",   hover: "error",   hoverFg: "on-error" },
 };
 
-export class Button extends WidgetBase {
+export class Button extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
   @observable accessor label: string;
   @observableRef accessor variant: ButtonVariant;
 
-  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render — see slider.ts.
-  @observableRef private accessor _theme: TerminalTheme;
-
   constructor(options: ButtonOptions) {
-    super();
+    super(options.theme);
     this.id = options.id ?? `button-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.variant = options.variant ?? "default";
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
-
-  @action
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -123,21 +114,19 @@ export class Button extends WidgetBase {
     const text = `${left} ${this.label} ${right}`;
 
     if (this.disabled) {
-      return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
+      return [new Segment(text, new Style(this.disabledInk))];
     }
 
     // Active and hover share the same colour pair (full accent bg + on-accent fg).
     // Active is differentiated by bold, not by inverting fg/bg — inversion gives
     // mostly-accent text on mostly-bg-tinted background, which is unreadable for
     // accents whose contrast partner depends on luminance.
+    const keys = VARIANT_KEYS[this.variant];
     if (this.active || this.hovered) {
-      const fg = this.resolvePalette(VARIANT_KEYS[this.variant].hoverFg);
-      const bg = this.resolvePalette(VARIANT_KEYS[this.variant].hover);
-      return [new Segment(text, new Style({ color: fg, bgcolor: bg, bold: this.active }))];
+      return [new Segment(text, new Style({ ...ink(this.theme, keys.hoverFg, keys.hover), bold: this.active }))];
     }
 
-    const { fg, bg } = this.resolveColors("bg");
-    return [new Segment(text, new Style({ color: fg, bgcolor: bg }))];
+    return [new Segment(text, new Style(ink(this.theme, keys.fg, keys.bg)))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
@@ -145,23 +134,5 @@ export class Button extends WidgetBase {
     // counts UTF-16 code units and miscounts wide / emoji characters.
     const width = cellLen(this.label) + 4;
     return { minimum: width, maximum: width };
-  }
-
-  // --- Palette resolution ---
-
-  private resolveColors(
-    bgKey: "bg" | "hover",
-  ): { fg: ColorSpec; bg: ColorSpec } {
-    const keys = VARIANT_KEYS[this.variant];
-    return {
-      fg: this.resolvePalette(keys.fg),
-      bg: this.resolvePalette(bgKey === "hover" ? keys.hover : keys.bg),
-    };
-  }
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette is required and must contain all keys.
-    return ColorSpec.fromRgba(rgba!);
   }
 }

@@ -3,6 +3,11 @@ import { Segment } from "../../src/core/segment.js";
 import { Toggle } from "../../src/widgets/toggle.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { ColorSpec } from "../../src/core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+
+// What every widget draws a disabled cell in.
+const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
 const enterEvent = () => new KeyEvent({ key: "enter", character: "\r", shift: false, ctrl: false, meta: false });
@@ -75,10 +80,10 @@ describe("Toggle", () => {
       expect(segments[0]!.style).toBeDefined();
     });
 
-    it("renders dimmed when disabled", () => {
+    it("renders in the palette's muted foreground when disabled", () => {
       const tg = new Toggle({ label: "Go", disabled: true });
       const segments = Segment.splitLines(tg.render({ maxWidth: 80 }))[0]!;
-      expect(segments[0]!.style!.dim).toBe(true);
+      expect(segments.map((s) => s.style?.color)).toEqual(segments.map(() => MUTED));
     });
 
     it("renders with underline when focused", () => {

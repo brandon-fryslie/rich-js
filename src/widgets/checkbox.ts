@@ -11,15 +11,14 @@
  *   disabled  — dimmed
  */
 
-import { observable, action, observableRef } from "mobx";
+import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import { cellLen } from "../core/cells.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { WidgetBase } from "./widget-base.js";
+import { ThemedWidget } from "./themed-widget.js";
+import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 export interface CheckboxOptions {
@@ -30,28 +29,20 @@ export interface CheckboxOptions {
   theme?: TerminalTheme;
 }
 
-export class Checkbox extends WidgetBase {
+export class Checkbox extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
   @observable accessor label: string;
   @observable accessor checked: boolean;
 
-  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render — see slider.ts.
-  @observableRef private accessor _theme: TerminalTheme;
-
   constructor(options: CheckboxOptions) {
-    super();
+    super(options.theme);
     this.id = options.id ?? `checkbox-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.checked = options.checked ?? false;
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
-
-  @action
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -87,24 +78,16 @@ export class Checkbox extends WidgetBase {
     const text = `[${indicator}] ${this.label}`;
 
     if (this.disabled) {
-      return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
+      return [new Segment(text, new Style(this.disabledInk))];
     }
 
-    const fg = this.checked ? this.resolvePalette("primary") : this.resolvePalette("foreground");
-    return [new Segment(text, new Style({ color: fg, underline: this.focused }))];
+    const colors = ink(this.theme, this.checked ? "text-primary" : "foreground", "background");
+    return [new Segment(text, new Style({ ...colors, underline: this.focused }))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     // [LAW:one-source-of-truth] cellLen — see button.ts.
     const width = cellLen(this.label) + 4;
     return { minimum: width, maximum: width };
-  }
-
-  // --- Palette resolution ---
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette must contain all keys; missing is a construction bug.
-    return ColorSpec.fromRgba(rgba!);
   }
 }

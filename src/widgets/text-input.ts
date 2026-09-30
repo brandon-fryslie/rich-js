@@ -59,7 +59,6 @@
 import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import {
   cellLen,
   setCellSize,
@@ -73,10 +72,10 @@ import {
   type CellCol,
   type CodePoint,
 } from "../core/cells.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { WidgetBase } from "./widget-base.js";
+import { ThemedWidget } from "./themed-widget.js";
+import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 /**
@@ -253,7 +252,7 @@ function isWhitespace(c: string | undefined): boolean {
   return c !== undefined && WHITESPACE_RE.test(c);
 }
 
-export class TextInput extends WidgetBase {
+export class TextInput extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
@@ -261,7 +260,6 @@ export class TextInput extends WidgetBase {
   @observable accessor cursorPosition: CodePoint;
   @observableRef accessor placeholder: string;
 
-  private _theme: TerminalTheme;
   private readonly _maxLength: number | undefined;
   private readonly _password: boolean;
   private readonly _multiline: boolean;
@@ -318,7 +316,7 @@ export class TextInput extends WidgetBase {
   readonly multiline: boolean;
 
   constructor(options: TextInputOptions = {}) {
-    super();
+    super(options.theme);
     this.id = options.id ?? `text-input-${Math.random().toString(36).slice(2, 8)}`;
     this.value = options.value ?? "";
     this.placeholder = options.placeholder ?? "";
@@ -330,7 +328,6 @@ export class TextInput extends WidgetBase {
     // logic does nothing because row 0 is already inside the initial window).
     this.cursorPosition = (options.multiline ?? false) ? asCodePoint(0) : asCodePoint(this.value.length);
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
     this._maxLength = options.maxLength;
     this._password = options.password ?? false;
     this._multiline = options.multiline ?? false;
@@ -345,8 +342,6 @@ export class TextInput extends WidgetBase {
     this.contentStyleOverride = options.contentStyle;
     this.multiline = this._multiline;
   }
-
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -808,6 +803,14 @@ export class TextInput extends WidgetBase {
 
   // --- Rendering ---
 
+  // [LAW:one-source-of-truth] The style a value is drawn in is also what a
+  // short row is padded with, so a caller's `contentStyle` fills the row.
+  protected override get ground(): Style {
+    return this.disabled
+      ? new Style(this.disabledInk)
+      : this.contentStyleOverride ?? super.ground;
+  }
+
   protected draw(options: RenderOptions): Iterable<Segment> {
     if (this._multiline) return this._renderMultiline(options);
     return this._renderSingleLine(options);
@@ -848,19 +851,14 @@ export class TextInput extends WidgetBase {
     const cursorDisplayCellCol = asCellCol(cursorCellCol - actualStartCell);
 
     const bracketStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
-      : new Style({ color: this.resolvePalette("foreground") });
+      ? new Style(this.disabledInk)
+      : new Style(ink(this.theme, "foreground", "background"));
 
-    const contentStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
-      : showPlaceholder
-        ? new Style({ color: this.resolvePalette("foreground"), dim: true })
-        : this.contentStyleOverride ?? new Style({ color: this.resolvePalette("foreground") });
+    const contentStyle = showPlaceholder && !this.disabled
+      ? new Style({ ...ink(this.theme, "foreground", "background"), dim: true })
+      : this.ground;
 
-    const cursorStyle = this.cursorStyleOverride ?? new Style({
-      color: this.resolvePalette("on-primary"),
-      bgcolor: this.resolvePalette("primary"),
-    });
+    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
 
     const segments: Segment[] = [new Segment("[", bracketStyle)];
 
@@ -919,14 +917,9 @@ export class TextInput extends WidgetBase {
       padRows = this._minRows - total;
     }
 
-    const contentStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
-      : this.contentStyleOverride ?? new Style({ color: this.resolvePalette("foreground") });
-    const markerStyle = new Style({ color: this.resolvePalette("foreground"), dim: true });
-    const cursorStyle = this.cursorStyleOverride ?? new Style({
-      color: this.resolvePalette("on-primary"),
-      bgcolor: this.resolvePalette("primary"),
-    });
+    const contentStyle = this.ground;
+    const markerStyle = new Style({ ...ink(this.theme, "foreground", "background"), dim: true });
+    const cursorStyle = this.cursorStyleOverride ?? new Style(ink(this.theme, "on-primary", "primary"));
 
     // Scroll-direction arrows appear in the rightmost cell of the first/last
     // visible row, *only* when scroll is actually possible in that direction.
@@ -939,7 +932,7 @@ export class TextInput extends WidgetBase {
     const canScrollUp = arrowsMode && scrollable && this._scrollStart > 0;
     const canScrollDown =
       arrowsMode && scrollable && this._scrollStart + this._maxRows! < total;
-    const indicatorStyle = this.indicatorStyleOverride ?? new Style({ color: this.resolvePalette("primary") });
+    const indicatorStyle = this.indicatorStyleOverride ?? new Style(ink(this.theme, "text-primary", "background"));
 
     const segments: Segment[] = [];
     const showCursor = this.focused && !this.disabled;
@@ -1103,13 +1096,5 @@ export class TextInput extends WidgetBase {
     if (rows === null || rows.length <= this._maxRows) return undefined;
     const cursorRow1 = this._cursorVisualRow() + 1;
     return `[${cursorRow1}/${rows.length}]`;
-  }
-
-  // --- Palette resolution ---
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette must contain all keys.
-    return ColorSpec.fromRgba(rgba!);
   }
 }

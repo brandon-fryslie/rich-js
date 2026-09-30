@@ -14,12 +14,11 @@
 import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { ColorSpec } from "../core/color.js";
 import { cellLen } from "../core/cells.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { WidgetBase } from "./widget-base.js";
+import { ThemedWidget } from "./themed-widget.js";
+import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
 export type ToggleVariant = "default" | "primary" | "success" | "warning" | "danger";
@@ -49,7 +48,7 @@ const VARIANT_KEYS: Record<
   danger:  { onBg: "error",   onFg: "on-error",   offBg: "error-muted",   offFg: "text-error" },
 };
 
-export class Toggle extends WidgetBase {
+export class Toggle extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
@@ -57,22 +56,14 @@ export class Toggle extends WidgetBase {
   @observable accessor on: boolean;
   @observableRef accessor variant: ToggleVariant;
 
-  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render — see slider.ts.
-  @observableRef private accessor _theme: TerminalTheme;
-
   constructor(options: ToggleOptions) {
-    super();
+    super(options.theme);
     this.id = options.id ?? `toggle-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.on = options.on ?? false;
     this.variant = options.variant ?? "default";
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
-
-  @action
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -109,27 +100,18 @@ export class Toggle extends WidgetBase {
     const text = `${indicator} ${this.label}`;
 
     if (this.disabled) {
-      return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
+      return [new Segment(text, new Style(this.disabledInk))];
     }
 
     const keys = VARIANT_KEYS[this.variant];
-    const fg = this.resolvePalette(this.on ? keys.onFg : keys.offFg);
-    const bg = this.resolvePalette(this.on ? keys.onBg : keys.offBg);
+    const colors = this.on ? ink(this.theme, keys.onFg, keys.onBg) : ink(this.theme, keys.offFg, keys.offBg);
 
-    return [new Segment(text, new Style({ color: fg, bgcolor: bg, underline: this.focused }))];
+    return [new Segment(text, new Style({ ...colors, underline: this.focused }))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
     // [LAW:one-source-of-truth] cellLen — see button.ts.
     const width = 5 + 1 + cellLen(this.label);
     return { minimum: width, maximum: width };
-  }
-
-  // --- Palette resolution ---
-
-  private resolvePalette(key: string): ColorSpec {
-    const rgba = this._theme.palette.get(key);
-    // [LAW:no-defensive-null-guards] palette must contain all keys; missing is a construction bug.
-    return ColorSpec.fromRgba(rgba!);
   }
 }

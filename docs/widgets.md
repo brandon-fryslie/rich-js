@@ -147,7 +147,9 @@ On the alternate surface the view's height is the whole screen, so the status pa
 
 ## The widgets
 
-The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/transpose) whose palette supplies the widget's colors — and all expose the observable state `focused`, `hovered`, `active`, and `disabled`. `StaticItem`, described last, is the exception: it takes none of those.
+The six interactive widgets all accept `id`, `disabled`, and `theme` — a [`TerminalTheme`](/transpose) whose palette supplies the widget's colors, defaulting to the dark `DEFAULT_TERMINAL_THEME` — and all expose the observable state `focused`, `hovered`, `active`, and `disabled`. `StaticItem`, described last, is the exception: it takes none of those.
+
+A widget takes the background under every cell it draws from that same palette rather than leaving the terminal's own showing through, because a palette's colors are only chosen to read against its own background. So a widget looks the same in a light terminal as in a dark one, and a light theme is as readable in a dark terminal as a dark theme is in a light one.
 
 Omit `id` and you get a generated one, but the two kinds differ in a way that matters if you are writing test selectors. `Button`, `Checkbox`, and `Toggle` slugify their label — `new Button({ label: "Save changes" })` is `button-save-changes`, and it is stable. `Dropdown`, `Slider`, and `TextInput` have no label to work from and fall back to a random suffix (`slider-k3f9x1`), which changes on every construction. Pass an explicit `id` to those three whenever anything downstream needs to name them.
 

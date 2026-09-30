@@ -248,10 +248,9 @@ export class LiveTerminal {
       // Nothing scrolls back: the page scrolls, not the terminal under the pointer.
       scrollback: 0,
       // A program that picks its own colours picks them for a background it
-      // cannot see: the widgets' default palette is drawn for a dark terminal,
-      // and would be white on white in the light theme. The terminal keeps
-      // every colour readable against its background (WCAG AA), as several
-      // desktop terminals can.
+      // cannot see: `[white]` is white on white in the light theme. The
+      // terminal keeps every colour readable against its background (WCAG AA),
+      // as several desktop terminals can.
       minimumContrastRatio: 4.5,
       cursorBlink: false,
     });
