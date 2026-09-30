@@ -6,3 +6,12 @@ declare module "virtual:rich-live/runtime" {
   const runtime: string;
   export default runtime;
 }
+
+/**
+ * What the playground page runs: served by the docs-examples plugin as
+ * `PLAYGROUND_MODULE` (example-runner.ts), which owns what each is.
+ */
+declare module "virtual:rich-live/playground" {
+  export const library: string;
+  export const start: string;
+}

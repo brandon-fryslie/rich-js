@@ -100,6 +100,17 @@ export interface LiveTerminalOptions {
   readonly font: { readonly family: string; readonly size: number; readonly lineHeight: number };
 }
 
+/**
+ * The font static output is drawn in, as `LiveTerminalOptions` takes it:
+ * custom.css gives a live terminal's element `--rich-fragment-font`, and xterm
+ * takes it as numbers.
+ */
+export function elementFont(element: HTMLElement): LiveTerminalOptions["font"] {
+  const style = getComputedStyle(element);
+  const size = parseFloat(style.fontSize);
+  return { family: style.fontFamily, size, lineHeight: parseFloat(style.lineHeight) / size };
+}
+
 /** xterm's colour options, from the theme a program's output is drawn in everywhere else. */
 function xtermTheme(theme: TerminalTheme): Record<string, string> {
   const names = ["black", "red", "green", "yellow", "blue", "magenta", "cyan", "white"];

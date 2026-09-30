@@ -53,6 +53,7 @@ import {
   type BuildMarker,
   type Enclosure,
   type Fence,
+  type MarkerRule,
 } from "./example-markers.js";
 import {
   MAIN_BARREL,
@@ -401,6 +402,35 @@ async function bundleOrThrow(page: string, source: string, shape: BundleShape = 
   });
 }
 
+/**
+ * The module the playground page imports: `library`, the live library's
+ * script, and `start`, the program it opens on (`playgroundStart`).
+ */
+export const PLAYGROUND_MODULE = `${LIVE_MODULE_PREFIX}playground`;
+
+/** The page whose first TypeScript block the playground opens on. */
+export const PLAYGROUND_START_PAGE = "introduction.md";
+
+/**
+ * The program the playground opens on: the first TypeScript block of
+ * `PLAYGROUND_START_PAGE`, exactly as that page shows it. The playground runs
+ * a block with nothing around it, no prelude and no page context, so the
+ * block is type-checked that way, and one that is not a program on its own
+ * fails the build at its line. So does one its page does not run to an end:
+ * every visitor would open on a program that fails.
+ */
+export function playgroundStart(compiler: ExampleCompiler, markdown: string): string {
+  const page = PLAYGROUND_START_PAGE;
+  const [first] = scanFences(page, markdown);
+  if (first === undefined) throw new Error(`docs/${page}: has no TypeScript block for the playground to open on`);
+  const rule: MarkerRule = MARKERS[first.marker];
+  if (rule.run === "never" || (rule.run === "build" && rule.outcome === "throws")) {
+    throw new Error(`docs/${page}:${first.line}: the playground opens on this block, and a "${first.marker}" block does not run to an end`);
+  }
+  compiler.check({ page, source: first.code, origins: first.code.split("\n").map((_, i) => first.line + 1 + i), blocks: [first] });
+  return first.code;
+}
+
 const hash = (text: string): string => createHash("sha256").update(text).digest("hex").slice(0, 16);
 
 /**
@@ -629,6 +659,17 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
   // one that outlives an edit is never asked for. A program imports its
   // library, so the bundler gives a library its programs share one chunk.
   const live = new Map<string, string>();
+  // The live library is a function of `src/` alone: built once per state of it.
+  const libraryAt = (source: string): LibrarySource => {
+    if (library.source !== source) library = { source, get: liveLibraryOnce() };
+    return library.get;
+  };
+  /** Serve `shared` under its id, and return the specifier that imports it. */
+  const serveLibrary = (shared: LiveLibrary): string => {
+    const id = `${LIVE_LIBRARY_PATH}${shared.id}`;
+    live.set(id, `export default ${JSON.stringify(shared.script)};`);
+    return JSON.stringify(LIVE_MODULE_PREFIX + id);
+  };
   return {
     name: "rich-docs-examples",
     enforce: "pre",
@@ -637,17 +678,13 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       const page = path.relative(docsRoot, id);
       if (!scanFences(page, code).length) return null;
       const source = stamp();
-      // The live library is a function of `src/` alone: built once per state of it.
-      if (library.source !== source) library = { source, get: liveLibraryOnce() };
       const key = `${source}\u0000${code}`;
       const last = runs.get(id);
-      const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code, library.get);
+      const result = last !== undefined && last.key === key ? last.result : runPageExamples(compiler, page, code, libraryAt(source));
       runs.set(id, { key, result });
       const run = await result;
       for (const program of run.live) {
-        const library = `${LIVE_LIBRARY_PATH}${program.library.id}`;
-        live.set(library, `export default ${JSON.stringify(program.library.script)};`);
-        live.set(program.id, `import library from ${JSON.stringify(LIVE_MODULE_PREFIX + library)};\nexport default library + ${JSON.stringify(program.block)};`);
+        live.set(program.id, `import library from ${serveLibrary(program.library)};\nexport default library + ${JSON.stringify(program.block)};`);
       }
       return { code: run.markdown, map: null };
     },
@@ -660,6 +697,17 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
         const runtime = await bundleLiveRuntime();
         runtime.modules.forEach((file) => this.addWatchFile(file));
         return `export default ${JSON.stringify(runtime.code)};`;
+      }
+      if (id === `\0${PLAYGROUND_MODULE}`) {
+        // Imported by the playground's component, not by a page this plugin
+        // transforms, so only these watches re-run it in `docs:dev`: the start
+        // page for `start`, and `src/` for the library.
+        const startPage = path.join(docsRoot, PLAYGROUND_START_PAGE);
+        [startPage, ...listTypeScriptFiles("src")].forEach((file) => this.addWatchFile(file));
+        const start = playgroundStart(compiler, readFileSync(startPage, "utf-8"));
+        // Imported from the same module the live examples import, so the site bundles the library once.
+        const shared = await libraryAt(stamp())();
+        return `import library from ${serveLibrary(shared)};\nexport { library };\nexport const start = ${JSON.stringify(start)};`;
       }
       const module = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
       if (module === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);

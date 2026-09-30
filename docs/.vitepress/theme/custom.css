@@ -115,6 +115,12 @@
 
 .vp-doc .rich-example-output {
   border-top: 1px solid var(--vp-c-divider);
+}
+
+/* The playground's terminal pane (theme/RichPlayground.ts) is sized the same
+ * way, from the columns of the terminal it holds. */
+.vp-doc .rich-example-output,
+.rich-playground-output {
   /* The fragments' rows are drawn in the code font, tight enough that box
    * drawing joins up. `all:initial` shuts every other page rule out of them;
    * this custom property is the one way in (src/core/export-html.ts).
@@ -172,10 +178,10 @@
   display: block;
 }
 
-/* A live example's terminal (theme/RichLive.ts). Its font is the one static
+/* A live terminal: a live example's (theme/RichLive.ts) or the playground's. Its font is the one static
  * output is drawn in, read off this element by the component for xterm; its
  * background is set from the terminal theme, as a fragment's is. */
-.vp-doc .rich-live-screen {
+.rich-live-screen {
   box-sizing: border-box;
   /* One row until the terminal sizes itself to what its program has drawn. */
   min-height: calc(1lh + 2em);
@@ -192,14 +198,14 @@
   border-top: 1px solid var(--vp-c-divider);
 }
 
-.vp-doc .rich-live-failure {
+.rich-live-failure {
   margin-right: auto;
   font-size: 12px;
   line-height: 26px;
   color: var(--vp-c-danger-1);
 }
 
-.vp-doc .rich-live-button {
+.rich-live-button {
   padding: 2px 10px;
   border: 1px solid var(--vp-c-divider);
   border-radius: 6px;
@@ -209,9 +215,107 @@
   background: var(--vp-c-bg);
 }
 
-.vp-doc .rich-live-button:hover {
+.rich-live-button:hover {
   border-color: var(--vp-c-brand-1);
   color: var(--vp-c-brand-1);
+}
+
+.rich-live-button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* The playground (theme/RichPlayground.ts): a bar, then the editor beside the
+ * terminal, or above it where the page is too narrow for both. The editor's
+ * colours are One Light and One Dark Pro, the themes the site highlights code
+ * in (config.ts), so code reads the same here as on every page. */
+.rich-playground {
+  --rich-code-keyword: #a626a4;
+  --rich-code-string: #50a14f;
+  --rich-code-number: #986801;
+  --rich-code-comment: #a0a1a7;
+  --rich-code-function: #4078f2;
+  --rich-code-type: #c18401;
+  --rich-code-property: #e45649;
+  --rich-code-operator: #0184bc;
+  box-sizing: border-box;
+  max-width: var(--vp-layout-max-width);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.dark .rich-playground {
+  --rich-code-keyword: #c678dd;
+  --rich-code-string: #98c379;
+  --rich-code-number: #d19a66;
+  --rich-code-comment: #7f848e;
+  --rich-code-function: #61afef;
+  --rich-code-type: #e5c07b;
+  --rich-code-property: #e06c75;
+  --rich-code-operator: #56b6c2;
+}
+
+.rich-playground-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.rich-playground-title {
+  margin-right: auto;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.rich-playground-run kbd {
+  font-family: var(--vp-font-family-mono);
+  font-size: 11px;
+  color: var(--vp-c-text-2);
+}
+
+.rich-playground-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.rich-playground-editor,
+.rich-playground-output {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* The editor is as tall as its program, between a floor and most of the
+ * screen; past that it scrolls. */
+.rich-playground-editor .cm-editor {
+  min-height: 16em;
+  max-height: 70vh;
+}
+
+.rich-playground-editor:focus-within {
+  border-color: var(--vp-c-brand-1);
+}
+
+@media (max-width: 959px) {
+  .rich-playground-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rich-playground-editor .cm-editor {
+    min-height: 8em;
+    max-height: 50vh;
+  }
+}
+
+@media (max-width: 639px) {
+  .rich-playground {
+    padding: 16px;
+  }
 }
 
 /* Below 640px VitePress runs code blocks edge to edge; the card follows. */
