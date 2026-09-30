@@ -33,6 +33,7 @@ import {
 } from "../../src/renderables/progress.js";
 import { Markdown } from "../../src/renderables/markdown.js";
 import { Traceback } from "../../src/renderables/traceback.js";
+import { SVG_EXPORT_THEME } from "../../src/themes/terminalThemes.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts from the spec, not implementation details
 
@@ -1181,6 +1182,27 @@ describe("Console record and export", () => {
       const content = readFileSync(path, "utf-8");
       expect(content).toContain("Saved HTML");
       expect(content.toLowerCase()).toContain("<!doctype html>");
+    } finally {
+      rmSync(dir, { recursive: true });
+    }
+  });
+
+  it("saveSvg() writes exactly what exportSvg() returns", async () => {
+    const { mkdtempSync, readFileSync, rmSync } = await import("fs");
+    const { tmpdir } = await import("os");
+    const { join } = await import("path");
+    const { saveSvg } = await import("../../src/node/save.js");
+    const dir = mkdtempSync(join(tmpdir(), "rich-test-"));
+    const path = join(dir, "out.svg");
+    try {
+      const { console: c } = makeConsole({ record: true });
+      c.print("[bold red]Saved[/] SVG");
+      const options = { theme: SVG_EXPORT_THEME, title: "saved" };
+      const expected = c.exportSvg({ ...options, clear: false });
+      saveSvg(c, path, options);
+      expect(readFileSync(path, "utf-8")).toBe(expected);
+      // saveSvg forwards `clear`, whose default empties the recording.
+      expect(c.exportSvg({ ...options, clear: false })).not.toBe(expected);
     } finally {
       rmSync(dir, { recursive: true });
     }

@@ -8,8 +8,8 @@
  * refuse to resolve `fs` if a consumer ever pulls it in by accident.
  *
  * [LAW:single-enforcer] One funnel per format: `saveText` consumes
- * `Console.exportText()` and `saveHtml` consumes `Console.exportHtml()`.
- * The encoding and recording logic stays on Console; this file is purely
+ * `Console.exportText()`, `saveHtml` consumes `Console.exportHtml()`, and
+ * `saveSvg` consumes `Console.exportSvg()`. The encoding and recording logic stays on Console; this file is purely
  * the IO sink.
  */
 
@@ -30,4 +30,12 @@ export function saveHtml(
   options?: Parameters<Console["exportHtml"]>[0],
 ): void {
   writeFileSync(path, out.exportHtml(options), "utf-8");
+}
+
+export function saveSvg(
+  out: Console,
+  path: string,
+  options?: Parameters<Console["exportSvg"]>[0],
+): void {
+  writeFileSync(path, out.exportSvg(options), "utf-8");
 }
