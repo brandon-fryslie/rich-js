@@ -4,15 +4,22 @@
     {
       "version": "pr-258",
       "ref": "refs/pull/258/merge",
-      "sha": "6a4964d6f80eadb903426c5f4e4ccbd15a5a86f1",
-      "timestamp": "2026-09-30T14:29:06.708Z",
+      "sha": "e640fa0f1d8cd4e8e849e0ddc70f87d395a75a10",
+      "timestamp": "2026-09-30T14:36:13.392Z",
       "commits": [
         {
-          "sha": "6a4964d6f80eadb903426c5f4e4ccbd15a5a86f1",
+          "sha": "e640fa0f1d8cd4e8e849e0ddc70f87d395a75a10",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:28:17-06:00",
-          "message": "Merge 98981f1c69691a5734558e2bc5b2820aeefea55e into d3bdf5a98614436595f579f8046997e3d9639185\n"
+          "timestamp": "2026-09-30T14:35:01Z",
+          "message": "Merge 8d7a826bae3f68450fad6381f178addbe068bdf3 into d3bdf5a98614436595f579f8046997e3d9639185\n"
+        },
+        {
+          "sha": "8d7a826bae3f68450fad6381f178addbe068bdf3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:34:56-06:00",
+          "message": "fix(table): a table's measured minimum is its columns' minimums (rich-table-3u2)\n\nReview pass (high) on PR #258: measure reported one cell per column, so a\nparent squeezed a nested table below its own minimums and cut the figures\nthe shrink now protects. The minimum pass shares spent/holding with the\npasses after it, and the docs name padding and maxWidth as the other ways a\ncolumn is cut. Indented-text minimums filed as rich-text-z3ln.\n"
         },
         {
           "sha": "98981f1c69691a5734558e2bc5b2820aeefea55e",
