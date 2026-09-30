@@ -490,16 +490,17 @@ on. `doWork()` stands for your own slow, awaited work:
 import { Console, Status } from "@promptctl/rich-js";
 
 const console = new Console();
-const status = new Status("Processing...", { console, spinner: "dots", style: "bold green" });
+const status = new Status("[bold]Processing[/]...", { console, spinner: "dots", spinnerStyle: "cyan" });
 
 status.start();
 await doWork();
 status.stop();
 ```
 
-Pass `spinner: "dots"` or any named spinner to change the animation, and
-`style` to color the message. Assigning to `status.message` updates the text in
-place while the spinner runs.
+The message is markup, as a string handed to `print` is. Pass `spinner: "dots"`
+or any named spinner to change the animation, and `spinnerStyle` to color it
+(`status.spinner` from the theme by default). Assigning to `status.message`
+updates the text in place while the spinner runs.
 
 ## Console style
 

@@ -3,6 +3,7 @@ import { Spinner } from "../../src/renderables/spinner.js";
 import { Segment } from "../../src/core/segment.js";
 import { Group } from "../../src/renderables/group.js";
 import { RichText } from "../../src/core/text.js";
+import { ReprHighlighter } from "../../src/core/highlighter.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -50,7 +51,7 @@ describe("Spinner", () => {
 
     it(".speed can be set via options", () => {
       // [SPEC] speed option
-      const s = new Spinner("dots", undefined, { speed: 2 });
+      const s = new Spinner("dots", "", { speed: 2 });
       expect(s.speed).toBe(2);
     });
   });
@@ -87,11 +88,59 @@ describe("Spinner", () => {
 
     it("applies style option to spinner frame segments", () => {
       // [SPEC] style option — string | Style
-      const s = new Spinner("dots", undefined, { style: "bold red" });
+      const s = new Spinner("dots", "", { style: "bold red" });
       const segs = collectSegments(s, { maxWidth: 80 });
       // The frame segment should have a non-null style
       expect(segs.length).toBeGreaterThan(0);
       expect(segs[0]!.style).toBeDefined();
+    });
+  });
+
+  describe("label", () => {
+    it("draws a string label's markup as styles, as Rich's Text.from_markup does", () => {
+      const segs = collectSegments(new Spinner("dots", "[bold]hi[/]"), { maxWidth: 80 });
+      expect(segs.map((s) => s.text).join("")).toBe("⠋ hi\n");
+      expect(segs.find((s) => s.text === "hi")?.style?.bold).toBe(true);
+    });
+
+    it("draws a string label's brackets when the options turn markup off", () => {
+      expect(collectText(new Spinner("dots", "[bold]hi[/]"), { maxWidth: 80, markup: false })).toBe("⠋ [bold]hi[/]\n");
+    });
+
+    it("leaves the label unhighlighted, as Rich's Text label is", () => {
+      const segs = collectSegments(new Spinner("dots", "3 files"), { maxWidth: 80, highlighter: new ReprHighlighter() });
+      expect(segs.every((s) => s.style === undefined || s.text.startsWith("⠋"))).toBe(true);
+    });
+
+    it("keeps the frame's style off the label", () => {
+      const segs = collectSegments(new Spinner("dots", "hi", { style: "red" }), { maxWidth: 80 });
+      expect(segs.find((s) => s.text.includes("hi"))?.style?.color).toBeUndefined();
+    });
+
+    it("draws a label that draws nothing as no label, with no trailing space", () => {
+      expect(collectText(new Spinner("dots", "[bold][/]"), { maxWidth: 80 })).toBe("⠋\n");
+    });
+
+    it("draws a label assigned after construction", () => {
+      const s = new Spinner("dots", "before");
+      s.text = new RichText("after");
+      expect(collectText(s, { maxWidth: 80 })).toBe("⠋ after\n");
+    });
+
+    it("draws a RichText label changed in place as changed, as Rich's kept Text does", () => {
+      const label = new RichText("hello");
+      const s = new Spinner("dots", label);
+      label.append(" world");
+      expect(collectText(s, { maxWidth: 80 })).toBe("⠋ hello world\n");
+    });
+
+    it("wraps a long label with its frame when drawn as a line of its own", () => {
+      expect(collectText(new Spinner("dots", "a very long label"), { maxWidth: 10 })).toBe("⠋ a very \nlong label\n");
+    });
+
+    it("leaves its fragment unwrapped for the caller composing it to cut", () => {
+      const fragment = [...new Spinner("dots", "a very long label").drawFrame({ maxWidth: 10 })];
+      expect(fragment.map((seg) => seg.text).join("")).toBe("⠋ a very long label");
     });
   });
 
@@ -108,6 +157,12 @@ describe("Spinner", () => {
       const s = new Spinner("dots", "Loading...");
       const m = s.measure({ maxWidth: 80 });
       expect(m.minimum).toBeGreaterThan(0);
+    });
+
+    it("never offers a column less than its widest frame, spaces inside it or not", () => {
+      const s = new Spinner("bouncingBall", "a b");
+      const widest = Math.max(...s.frames.map((frame) => [...frame].length));
+      expect(s.measure({ maxWidth: 80 }).minimum).toBe(widest);
     });
   });
 });
