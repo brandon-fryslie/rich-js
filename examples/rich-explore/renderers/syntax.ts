@@ -1,9 +1,10 @@
 import { Syntax } from "../../../src/index.js";
-import type { Renderable } from "../../../src/index.js";
+import type { Renderable, SyntaxLanguage } from "../../../src/index.js";
 import type { FileSystem } from "../../_capabilities/index.js";
 import type { Entry } from "../fs/walk.js";
 
-const EXT_TO_LANG: Record<string, string> = {
+// Only the languages Syntax has a grammar for; any other file shows as text.
+const EXT_TO_LANG: Record<string, SyntaxLanguage> = {
   ".ts": "typescript",
   ".tsx": "typescript",
   ".js": "javascript",
@@ -11,25 +12,9 @@ const EXT_TO_LANG: Record<string, string> = {
   ".mjs": "javascript",
   ".cjs": "javascript",
   ".py": "python",
-  ".rs": "rust",
-  ".go": "go",
-  ".c": "c",
-  ".h": "c",
-  ".cpp": "cpp",
-  ".hpp": "cpp",
-  ".java": "java",
-  ".rb": "ruby",
   ".sh": "bash",
   ".bash": "bash",
   ".zsh": "bash",
-  ".yml": "yaml",
-  ".yaml": "yaml",
-  ".toml": "toml",
-  ".css": "css",
-  ".scss": "css",
-  ".html": "html",
-  ".xml": "xml",
-  ".sql": "sql",
 };
 
 const MAX_BYTES = 256 * 1024;
