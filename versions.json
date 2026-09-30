@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-241",
+      "ref": "refs/pull/241/merge",
+      "sha": "479e8b4546359e4098dff84d50fb1fc509f54657",
+      "timestamp": "2026-09-30T08:01:33.657Z",
+      "commits": [
+        {
+          "sha": "479e8b4546359e4098dff84d50fb1fc509f54657",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T02:00:24-06:00",
+          "message": "Merge 598861778402b84d20508ca9f3f1cfc5331a1279 into 8989fb96d510e9b4bffca903895b8446ea9015fe\n"
+        },
+        {
+          "sha": "598861778402b84d20508ca9f3f1cfc5331a1279",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T02:00:13-06:00",
+          "message": "feat(docs): the landing page opens on a live rich-js showcase (rich-landing-0mu)\n\nThe hero now runs examples/showcase/showcase.ts in a live terminal under its\ntext and buttons: a full-screen dashboard (Layout, Table, Tree, Progress,\ntruecolor) that loops with no input, holds one full frame under reduced\nmotion, follows the colour mode, and scales its font to fit a phone.\n\nThe showcase is served as `virtual:rich-live/showcase`, bundled onto the\nsame live library the docs' live examples share. Bundling a program onto the\nlibrary now takes an `examples/` file as well as a generated block: an import\nof an entry point becomes a read of the library, and a deep import into src/\nis refused, since it could only be a second copy of library code.\nThe showcase is bundled as the entry itself, because package.json's\n`\"sideEffects\": false` lets a bare import of it be dropped.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8989fb96d510e9b4bffca903895b8446ea9015fe",
