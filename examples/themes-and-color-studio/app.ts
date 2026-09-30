@@ -5,7 +5,7 @@
  * palette / theme / contrast subsystem. Eight sections, each a deterministic
  * pipeline of `print(renderable)` calls; section order is data (`SECTIONS`
  * below), not control flow. The same render path drives terminal output and
- * the optional HTML export — only the boundary varies.
+ * the optional recording export — only the boundary varies.
  *   [LAW:dataflow-not-control-flow]
  *
  * Shape: scripted, not interactive. Kept as a reference for the color
@@ -13,7 +13,8 @@
  * epic for the qualitative bar.
  *
  * Run:    npm run themes-and-color-studio
- * Export: EXPORT_HTML=out.html npm run themes-and-color-studio
+ * Export: the env vars index.ts reads, e.g.
+ *         EXPORT_SVG=out.svg npm run themes-and-color-studio
  */
 
 // ---- Owned exports from the main barrel -----------------------------------
