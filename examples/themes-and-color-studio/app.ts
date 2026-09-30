@@ -191,8 +191,8 @@ export function runDemo(
   }
 
   // The semantic vars we sample across the demo. Ordered roughly by role:
-  // brand → highlight → state. Sized to fit on one line of the browser
-  // shell's 100-column terminal.
+  // brand → highlight → state. Six of them, beside a theme's name, is one
+  // line of the demo terminal (examples/_browser-shell/demo-terminal.ts).
   const SEMANTIC_VARS = [
     "primary",
     "secondary",
@@ -502,12 +502,15 @@ export function runDemo(
     // header colors come from `getThemeBaseColors` (the cheap 8-color path
     // that doesn't hydrate the full ~150-var palette); the swatches come
     // from `getThemePalette` (which does).
+    // The name column is as wide as the longest name, so the swatches line up
+    // under each other and no cell goes to padding past it.
+    const nameWidth = Math.max(...names.map((name) => name.length));
     for (const name of names) {
       const base: ThemeBaseColors = getThemeBaseColors(name);
       const palette = getThemePalette(name);
       const tag = base.dark ? "dark " : "light";
       const header = new RichText("").append(
-        `  ${base.name.padEnd(22)} [${tag}]  `,
+        `  ${base.name.padEnd(nameWidth)} [${tag}]  `,
         bgFgStyle(base.bg, base.fg, base.bg),
       );
       const row = new RichText("");
@@ -698,7 +701,7 @@ export function runDemo(
       const c = resolveColorRef(palette, name);
       namedRamp.append(`  ${c.hex}  `, bgFgStyle(c, fg, bg));
     }
-    out.print(namedRamp.append(dim("   resolveColorRef(p, \"primary-darken-3\") …")));
+    out.print(namedRamp.append(dim('   ref("primary-darken-3") …')));
     out.print(blank());
 
     // ColorRamp — the one colour operation whose input is a *number*. A
