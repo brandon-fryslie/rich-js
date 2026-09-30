@@ -218,12 +218,14 @@ describe("Tree", () => {
     expect(lines[1]!.at(-1)!.style?.equals(Style.parse("red italic"))).toBe(true);
   });
 
-  it("lays a node's background under its guides, and nothing else of its style", () => {
+  it("lays a node's background under every guide on every line of its row, and nothing else of its style", () => {
     const tree = new Tree("root", { guide_style: "red" });
-    tree.add("a", { style: "bold on blue" });
-    const [guide] = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }))[1]!;
-    expect(guide!.text).toBe("└── ");
-    expect(guide!.style?.equals(Style.parse("red on blue"))).toBe(true);
+    tree.add("a").add("x\ny", { style: "bold on blue" });
+    tree.add("sibling");
+    const lines = Segment.splitLines(collectSegments(tree, { maxWidth: 40 }));
+    const guides = [lines[2]!.slice(0, 2), lines[3]!.slice(0, 2)];
+    expect(guides.map((line) => line.map((guide) => guide.text))).toEqual([["│   ", "└── "], ["│   ", "    "]]);
+    for (const guide of guides.flat()) expect(guide.style?.equals(Style.parse("red on blue"))).toBe(true);
   });
 
   it("carries a hidden root's style to the children standing in its place", () => {

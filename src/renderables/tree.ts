@@ -186,7 +186,8 @@ export class Tree implements Renderable, Measurable {
    *
    * The node's style sits under the label's own, as Rich's `Styled` puts it, so
    * markup in the label still wins; its background alone reaches under the
-   * guides, so a row with a background is filled from its first guide on.
+   * guides, so a row with a background is filled from its first guide to the
+   * end of its label.
    */
   private *_renderRow(
     options: RenderOptions,

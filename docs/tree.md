@@ -62,12 +62,12 @@ const tree = new Tree("[bold]Root[/bold]", { style: "italic" });
 const branch = tree.add("Branch", { style: "deep_sky_blue3" });
 branch.add("Leaf");
 branch.add("[spring_green3]Healthy leaf[/spring_green3]");
-tree.add("Sibling");
+tree.add("Sibling", { style: "on grey23" });
 
 console.print(tree);
 ```
 
-A style's background reaches under the node's guide lines too, so the whole row is filled.
+A style's background reaches under the node's guide lines too, so the row is filled from its first guide to the end of its label.
 
 ## Guide style
 
