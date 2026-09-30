@@ -117,12 +117,13 @@ console.print(
 );
 ```
 
-A long string, or a value whose own `toString` runs long or over several lines, cannot expand, so it wraps. It breaks between words, and each line after the first starts one indent in from its key rather than at the left edge. A value too long to fit even one word after its key starts on the next line:
+A long string, or a value whose own `toString` runs long or over several lines, cannot expand, so it wraps. It breaks between words, and each line after the first starts one indent in from its key rather than at the left edge. A word too long for the room left after its key moves down to that indented line, when it has more room there:
 
 ```typescript
 console.print(
   new Pretty({
-    quote: "the quick brown fox jumps over the lazy dog, twice over",
+    quote: "the quick brown fox jumps over the lazy dog, then turns around and jumps back over it",
+    attachment: "/home/alice/projects/reports/2026/q3/summary-final-v2.pdf",
     err: new Error("not ready\nretry in 30s"),
   }),
 );

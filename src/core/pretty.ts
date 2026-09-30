@@ -145,13 +145,17 @@ function lineColumn(column: number, text: string): number {
  *
  * Every row but the first begins at a break, so whatever whitespace a break
  * leaves on either side of it is the break's and not the text's, and a row of
- * nothing else is no row at all.
+ * nothing else is no row at all. Each is then set in by the indent the line
+ * opened with, so a wrapped line of a multi-line `toString` stays under its own
+ * first word.
  */
 function rowsOf(line: string, stay: number, hangRoom: number): string[] {
+  const lead = line.slice(0, line.length - line.trimStart().length);
   const rest = line.slice(stay);
-  const hung = splitAtCells(rest, divideLine(rest, asCellCol(hangRoom), { fold: true }))
+  const hung = splitAtCells(rest, divideLine(rest, asCellCol(hangRoom - cellLen(lead)), { fold: true }))
     .map((row) => row.trim())
-    .filter((row) => row !== "");
+    .filter((row) => row !== "")
+    .map((row) => lead + row);
   return [line.slice(0, stay).trimEnd(), ...hung];
 }
 

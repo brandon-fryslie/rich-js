@@ -198,6 +198,19 @@ describe("Pretty", () => {
       ]);
     });
 
+    it("keeps a line's own indent on the rows it wraps into", () => {
+      const value = { toString: () => "head\n    indented line that is long enough to wrap" };
+      expect(laidOut({ a: value }, 24)).toEqual([
+        "{",
+        "    a: head",
+        "            indented",
+        "            line that is",
+        "            long enough",
+        "            to wrap",
+        "}",
+      ]);
+    });
+
     it("hangs under the value itself when one indent past its slot is the edge", () => {
       // The element starts at column 8 of 12; one indent past it is column 12,
       // where a hanging row has no cell left and would wrap back to column 0.
