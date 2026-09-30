@@ -130,7 +130,8 @@ describe("Tree", () => {
       // A bold guide draws heavy (┗━━), so the guide segment is found by that glyph.
       const guideSegs = segs.filter((s) => s.text.includes("┗"));
       expect(guideSegs.length).toBeGreaterThan(0);
-      expect(guideSegs.some((s) => s.style !== undefined)).toBe(true);
+      const green = Style.parse("not bold not underline2 green");
+      for (const s of guideSegs) expect(s.style?.equals(green)).toBe(true);
     });
   });
 
@@ -207,6 +208,20 @@ describe("Tree", () => {
     for (const line of lines.slice(1)) {
       for (const segment of line.slice(0, -1)) expect(segment.style?.equals(guide)).toBe(true);
     }
+    expect(tree.measure({ maxWidth: 40 }).maximum).toBe(9);
+  });
+
+  // Python Rich 9d8f9a3 draws these rows: a fork, a rail under a two-line label,
+  // and an end, each in the weight's own glyphs. Every glyph is four cells, the
+  // width `measure` counts per guide without drawing one.
+  it.each([
+    ["bold", ["root", "┣━━ a", "┃   a2", "┃   ┗━━ x", "┗━━ b"]],
+    ["underline2", ["root", "╠══ a", "║   a2", "║   ╚══ x", "╚══ b"]],
+  ])("draws every role of a %s guide in one weight", (weight, rows) => {
+    const tree = new Tree("root", { guide_style: weight });
+    tree.add("a\na2").add("x");
+    tree.add("b");
+    expect(collectLines(tree, { maxWidth: 40 }).map((l) => l.trimEnd())).toEqual(rows);
     expect(tree.measure({ maxWidth: 40 }).maximum).toBe(9);
   });
 
