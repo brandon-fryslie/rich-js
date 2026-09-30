@@ -4,15 +4,22 @@
     {
       "version": "pr-266",
       "ref": "refs/pull/266/merge",
-      "sha": "4946649a18285028b9abcc3da80195436d2a6197",
-      "timestamp": "2026-09-30T17:15:36.156Z",
+      "sha": "f55cae4f83cff862db363a119c5b8b8d13df839d",
+      "timestamp": "2026-09-30T17:26:59.355Z",
       "commits": [
         {
-          "sha": "4946649a18285028b9abcc3da80195436d2a6197",
+          "sha": "f55cae4f83cff862db363a119c5b8b8d13df839d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:14:23-06:00",
-          "message": "Merge c1e3c5ae45ec70369fd4a2b1dcf686a553857c1b into 840008549a0deec1f0728b905d35f6cfad71a50f\n"
+          "timestamp": "2026-09-30T17:25:43Z",
+          "message": "Merge bd2ffe973fe213f405088d4b69075d3d021c755e into 840008549a0deec1f0728b905d35f6cfad71a50f\n"
+        },
+        {
+          "sha": "bd2ffe973fe213f405088d4b69075d3d021c755e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T11:25:38-06:00",
+          "message": "fix(color): a WINDOWS colour with no theme named is drawn in the console's own sixteen (rich-color-dhay)\n\nReview of #266: at WINDOWS the writer picked slots by WINDOWS_TABLE but\ngetTruecolor and colorMath's drawnTable still fell back to the VGA sixteen,\nso ensureContrast(#767676 on #0037da, 3) accepted a pair the console draws\nat 1.81:1. resolveTerminal now takes the depth, and a WINDOWS colour with no\ntheme is drawn by the Windows console (Campbell); STANDARD and WINDOWS\nconvert to each other by keeping the slot, as Rich does, so a colour drawn\nat WINDOWS reads as the console's colour whichever depth spelled it.\n\ndowngradeTable(depth) is the one table downgrade rounds against and the one\ncolorMath hands entries back from, replacing a second copy of that mapping.\n\nStale text: the colour-studio blurb called WINDOWS \"not a downgrade target\";\nthe README listed \"standard\"/\"windows\" colorSystem strings that throw.\n\nNot taken: renaming a slot-kept colour to Rich's original name. Numbered\nspecs are compared by number (strip's vanishes reads name only when number\nis absent) and the STANDARD downgrade already names by slot.\n"
         },
         {
           "sha": "c1e3c5ae45ec70369fd4a2b1dcf686a553857c1b",
