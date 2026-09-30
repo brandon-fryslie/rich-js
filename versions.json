@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-243",
-      "ref": "refs/pull/243/merge",
-      "sha": "633f13a4fcdf0945192d53f0596af989e664642f",
-      "timestamp": "2026-09-30T08:47:04.054Z",
-      "commits": [
-        {
-          "sha": "633f13a4fcdf0945192d53f0596af989e664642f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T08:45:58Z",
-          "message": "Merge 2ab30b848f8949a4592430c09f3a5e598955714a into 8ec00900f518a8f66664c7ae7a26e92921ad8aff\n"
-        },
-        {
-          "sha": "2ab30b848f8949a4592430c09f3a5e598955714a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:45:53-06:00",
-          "message": "refactor(demo): export rows carry their options as data (rich-export-9a1.4)\n\nThe SVG row wrapped saveSvg in a lambda with a hand-typed options shape;\neach row now carries options and the loop adds clear: false. app.ts's\nheader points at index.ts instead of restating one of its env vars.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "7bc8a43cc70a2f81ce6d81840d7cb0449660c7a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:41:57-06:00",
-          "message": "feat(export): saveSvg writes Console.exportSvg to a file (rich-export-9a1.4)\n\nsaveSvg joins saveText and saveHtml in src/node/save.ts, its options typed\nfrom Console.exportSvg. The themes demo gains EXPORT_SVG, which is what\ndemonstrates the new export to the coverage gate.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "8ec00900f518a8f66664c7ae7a26e92921ad8aff",
-      "timestamp": "2026-09-30T08:39:23.051Z",
+      "sha": "268b3f33da77e3a35b89ec74385fc1e00eccb721",
+      "timestamp": "2026-09-30T08:51:46.115Z",
       "commits": [
         {
-          "sha": "8ec00900f518a8f66664c7ae7a26e92921ad8aff",
+          "sha": "268b3f33da77e3a35b89ec74385fc1e00eccb721",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:38:17-06:00",
-          "message": "feat(export): Console.exportSvg draws the recording as a terminal window (rich-export-9a1.3) (#242)\n\n* feat(export): Console.exportSvg draws the recording as a terminal window (rich-export-9a1.3)\n\nencodeSvg in src/core/export-svg.ts encodes export-lines' resolved runs as\nan SVG: Rich's chrome and geometry, each chunk of a run anchored at its cell\ncolumn with textLength set to its cells so a fallback font cannot shift the\nrow, decorations as rectangles, one class per look, an FNV-1a id prefix so\nthe same recording exports the same bytes. Markup escaping moves into\nexport-lines so both encoders share one escaper.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(export): SVG class prefix covers the rules it scopes; markup drops XML-illegal chars (rich-export-9a1.3)\n\nReview pass (high) on PR #242:\n- The class prefix hashed only title + text, so one recording under two\n  themes inlined on one page shared class names and restyled each other.\n  It now hashes the class rules too; the blink keyframes, identical in every\n  SVG, take one constant name.\n- escapeText/escapeAttribute drop characters XML 1.0 forbids; one of them\n  made the whole SVG unparsable.\n- One FNV-1a (src/core/fnv1a.ts, UTF-8) replaces the UTF-16 copy in\n  export-svg and linkId in osc8.\n- Title centred on the window rect, not offset by the margin.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T02:50:43-06:00",
+          "message": "feat(export): saveSvg writes Console.exportSvg to a file (rich-export-9a1.4) (#243)\n\n* feat(export): saveSvg writes Console.exportSvg to a file (rich-export-9a1.4)\n\nsaveSvg joins saveText and saveHtml in src/node/save.ts, its options typed\nfrom Console.exportSvg. The themes demo gains EXPORT_SVG, which is what\ndemonstrates the new export to the coverage gate.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* refactor(demo): export rows carry their options as data (rich-export-9a1.4)\n\nThe SVG row wrapped saveSvg in a lambda with a hand-typed options shape;\neach row now carries options and the loop adds clear: false. app.ts's\nheader points at index.ts instead of restating one of its env vars.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
