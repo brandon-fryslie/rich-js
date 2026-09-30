@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-249",
+      "ref": "refs/pull/249/merge",
+      "sha": "f3235c275cb3009ca2c4980e746c97f6792e7f30",
+      "timestamp": "2026-09-30T10:29:24.016Z",
+      "commits": [
+        {
+          "sha": "f3235c275cb3009ca2c4980e746c97f6792e7f30",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:28:11-06:00",
+          "message": "Merge b77b9ef9567a308d27446d37a6c8e06978751803 into 06423a219da1d1d45548d3aadf4b0d92fb7faa53\n"
+        },
+        {
+          "sha": "b77b9ef9567a308d27446d37a6c8e06978751803",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:28:06-06:00",
+          "message": "test(claude-sessions): the footer shows every hint's key as text (rich-demos-qmk)\n\nThe unescaped `\\` hint that printed [/bold white on blue] was fixed in #208\nwith nothing pinning it. This renders the bar in all three modes and asserts\nthe exact plain text; with the escape removed it fails on the ticket's\nsymptom.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "06423a219da1d1d45548d3aadf4b0d92fb7faa53",
