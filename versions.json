@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-246",
-      "ref": "refs/pull/246/merge",
-      "sha": "f933d14e0a231e9608759aa5ea002e917f7a4e84",
-      "timestamp": "2026-09-30T09:24:20.489Z",
-      "commits": [
-        {
-          "sha": "f933d14e0a231e9608759aa5ea002e917f7a4e84",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:22:51Z",
-          "message": "Merge 3726d987375507441261a3d07aa5bc4607a39f44 into ae92b54b31a13b3baaba134bbc57103da7eed53b\n"
-        },
-        {
-          "sha": "3726d987375507441261a3d07aa5bc4607a39f44",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:22:40-06:00",
-          "message": "docs(export): rewrap export-svg header (rich-export-9a1.f98)\n"
-        },
-        {
-          "sha": "7285dc13cab16c63e298630c63bc0be52f6ab917",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:22:05-06:00",
-          "message": "fix(export): SVG frame is one opaque colour, blended from the theme (rich-export-9a1.f98)\n\nReview (high): a translucent stroke broke export-lines' rule that no exporter\ndraws a translucent colour, and its outer half took the host page's colour.\nThe frame is now the ink blended 35% into the canvas with blendRgb; over\nblack that is #595959, what Rich's white-at-35% composites to. The departure\nfrom Rich moves into the module header; tests assert the frame shows on a\nlight canvas and matches Rich's on black, not the attribute string.\n"
-        },
-        {
-          "sha": "e24b565fa5ec3f219ca336349f8e763b6802f7e8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:18:36-06:00",
-          "message": "fix(export): SVG window frame takes the theme's ink (rich-export-9a1.f98)\n\nThe frame stroke was Rich's fixed rgba(255,255,255,0.35), the one colour in\nthe export that ignored the TerminalTheme; around SOLARIZED_LIGHT's #fdf6e3\ncanvas it has no visible edge. It is now the theme foreground at Rich's 35%\nopacity, which under the default theme (#ffffff ink) draws exactly what Rich\ndraws.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "ae92b54b31a13b3baaba134bbc57103da7eed53b",
-      "timestamp": "2026-09-30T09:17:35.443Z",
+      "sha": "4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7",
+      "timestamp": "2026-09-30T09:27:30.412Z",
       "commits": [
         {
-          "sha": "ae92b54b31a13b3baaba134bbc57103da7eed53b",
+          "sha": "4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:16:04-06:00",
-          "message": "docs(export): document SVG export (rich-export-9a1.6) (#245)\n\n* docs(export): exportSvg, saveSvg and SVG_EXPORT_THEME in the console guide and README (rich-export-9a1.6)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* docs(export): save example keeps the recording for each file; README points at the guide (rich-export-9a1.6)\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T03:26:24-06:00",
+          "message": "fix(export): SVG window frame takes the theme's ink (rich-export-9a1.f98) (#246)\n\n* fix(export): SVG window frame takes the theme's ink (rich-export-9a1.f98)\n\nThe frame stroke was Rich's fixed rgba(255,255,255,0.35), the one colour in\nthe export that ignored the TerminalTheme; around SOLARIZED_LIGHT's #fdf6e3\ncanvas it has no visible edge. It is now the theme foreground at Rich's 35%\nopacity, which under the default theme (#ffffff ink) draws exactly what Rich\ndraws.\n\n* fix(export): SVG frame is one opaque colour, blended from the theme (rich-export-9a1.f98)\n\nReview (high): a translucent stroke broke export-lines' rule that no exporter\ndraws a translucent colour, and its outer half took the host page's colour.\nThe frame is now the ink blended 35% into the canvas with blendRgb; over\nblack that is #595959, what Rich's white-at-35% composites to. The departure\nfrom Rich moves into the module header; tests assert the frame shows on a\nlight canvas and matches Rich's on black, not the attribute string.\n\n* docs(export): rewrap export-svg header (rich-export-9a1.f98)"
         }
       ]
     }
