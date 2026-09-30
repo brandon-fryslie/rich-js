@@ -76,6 +76,7 @@ describe("runInTerminal", () => {
   });
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
     Reflect.deleteProperty(globalThis, "sawStandIn");
   });
 
@@ -146,7 +147,7 @@ describe("runInTerminal", () => {
 
   it("writes the program's console calls to the terminal, formatted as Node formats them", async () => {
     const term = terminal(75);
-    const host = vi.spyOn(globalThis.console, "log");
+    const host = (["log", "info", "debug", "warn", "error"] as const).map((method) => vi.spyOn(globalThis.console, method));
     await runInTerminal(
       await bundleExample(`
         console.log("%s scored", "Alice", { scores: [98, 87], at: new Date(0) }, 42n);
@@ -165,8 +166,29 @@ describe("runInTerminal", () => {
       node("warn"),
       node(new Map([["k", null]])),
     ]);
-    expect(host).not.toHaveBeenCalled();
-    host.mockRestore();
+    host.forEach((method) => expect(method).not.toHaveBeenCalled());
+  });
+
+  // Each row is what Node 26's own console printed, run on a pty and on a pipe in that env.
+  it.each<{ env: Record<string, string>; isTTY: boolean; colours: boolean }>([
+    { env: { TERM: "dumb" }, isTTY: true, colours: false },
+    { env: { TERM: "xterm-256color", NO_COLOR: "1" }, isTTY: true, colours: false },
+    { env: { TERM: "xterm-256color", NO_COLOR: "" }, isTTY: true, colours: true },
+    { env: { TERM: "xterm-256color", NODE_DISABLE_COLORS: "1" }, isTTY: true, colours: false },
+    { env: { TERM: "xterm-256color", FORCE_COLOR: "0" }, isTTY: true, colours: false },
+    { env: { TERM: "xterm-256color", FORCE_COLOR: "yes" }, isTTY: true, colours: false },
+    { env: { FORCE_COLOR: "1", NO_COLOR: "1" }, isTTY: false, colours: true },
+    { env: {}, isTTY: false, colours: false },
+  ])("colours the program's console as Node's in $env on a TTY: $isTTY", async ({ env, isTTY, colours }) => {
+    const term = { ...terminal(75), env, isTTY };
+    await runInTerminal(await bundleExample(`console.log({ n: 1 });`), term);
+    expect(term.output).toEqual([`${formatWithOptions({ colors: colours }, { n: 1 })}\n`]);
+  });
+
+  it("reads the colour env at each console call, as Node does", async () => {
+    const term = terminal(75);
+    await runInTerminal(await bundleExample(`console.log({ n: 1 });\nprocess.env.NO_COLOR = "1";\nconsole.log({ n: 1 });`), term);
+    expect(term.output).toEqual([true, false].map((colors) => `${formatWithOptions({ colors }, { n: 1 })}\n`));
   });
 
   it("rejects with the program's own error", async () => {
