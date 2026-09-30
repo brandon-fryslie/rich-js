@@ -25,7 +25,7 @@
  * runs in node and in a browser with no path of its own for either.
  */
 
-import { Console } from "../core/console.js";
+import { Console, type ConsoleOptions } from "../core/console.js";
 import { Segment } from "../core/segment.js";
 import { Painter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
@@ -40,7 +40,26 @@ import type { TerminalHost } from "./terminal-host.js";
  */
 export type AppPhase = "idle" | "running" | "suspended" | "stopped";
 
-export interface AppOptions {
+// [LAW:one-source-of-truth] How a frame draws — its glyphs, the style names
+// it knows, what happens to a style it cannot resolve, markup and
+// highlighting — is the console's to say, so App takes those options as the
+// console declares them. This list is both the type and what is copied: the
+// host alone decides the console's size, colours and sink, so no other
+// property of the options object reaches it, whatever the object carries.
+const DRAW_OPTIONS = ["asciiOnly", "theme", "onStyleError", "markup", "highlight", "highlighter"] as const;
+type DrawOption = (typeof DRAW_OPTIONS)[number];
+type DrawOptions = Readonly<Pick<ConsoleOptions, DrawOption>>;
+
+function drawOptions(options: DrawOptions): Pick<ConsoleOptions, DrawOption> {
+  const picked: Pick<ConsoleOptions, DrawOption> = {};
+  const copy = <K extends DrawOption>(key: K): void => {
+    picked[key] = options[key];
+  };
+  DRAW_OPTIONS.forEach(copy);
+  return picked;
+}
+
+export interface AppOptions extends DrawOptions {
   /** The terminal the app runs on. The app starts and stops it. */
   readonly host: TerminalHost;
   readonly surface: Surface;
@@ -49,11 +68,6 @@ export interface AppOptions {
    * app's state is drawn from the state as it is at that frame.
    */
   readonly view: () => Renderable;
-  /**
-   * The terminal can draw only ASCII, so every frame draws its boxes, guides
-   * and widget marks with ASCII characters. Default false.
-   */
-  readonly asciiOnly?: boolean;
 }
 
 // Button presses, motion and the wheel, in the SGR encoding: coordinates as
@@ -88,7 +102,7 @@ export class App {
     this.surface = options.surface;
     this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;
-    this.console = new Console({ environment: hostEnvironment(options.host), asciiOnly: options.asciiOnly });
+    this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
   }
 
   get phase(): AppPhase {

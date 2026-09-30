@@ -17,7 +17,10 @@ import { scriptedHost, type ScriptedHost } from "./scripted-host.js";
 import { RichText } from "../../src/core/text.js";
 import { Layout } from "../../src/renderables/layout.js";
 import { Panel } from "../../src/renderables/panel.js";
-import type { Renderable } from "../../src/core/protocol.js";
+import { getStyle, type Renderable, type RenderOptions } from "../../src/core/protocol.js";
+import { Segment } from "../../src/core/segment.js";
+import { Style, Theme } from "../../src/core/style.js";
+import { NullHighlighter } from "../../src/core/highlighter.js";
 
 // Pointer reporting belongs to the alternate surface: it is switched on with
 // the buffer and off before it, so no exit path leaves one without the other.
@@ -255,6 +258,85 @@ describe("App on an ASCII-only terminal", () => {
 
     expect(rows(ascii).join("\n")).toMatch(/^[\x00-\x7f]*$/);
     expect(rows(glyphs).join("\n")).toMatch(/[^\x00-\x7f]/);
+  });
+});
+
+describe("App drawing options", () => {
+  const theme = new Theme({ "health.up": "bold green" });
+  const inline = (options: Omit<AppOptions, "host" | "surface">): App =>
+    new App({ host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", ...options });
+  // The segment that drew "up", or a failure naming its absence: an assertion
+  // on the style of a segment that is not there would pass for any style.
+  const up = (target: App): Segment => {
+    const found = target.frame[0]?.find((s) => s.text.includes("up"));
+    if (found === undefined) throw new Error("no segment of the first row drew 'up'");
+    return found;
+  };
+
+  it("reach every frame's render options as the console's", () => {
+    const highlighter = new NullHighlighter();
+    const onStyleError = (): void => {};
+    let seen: RenderOptions | undefined;
+    const view: Renderable = {
+      *render(options: RenderOptions) {
+        seen = options;
+        yield new Segment("up");
+      },
+    };
+
+    void inline({ view: () => view, asciiOnly: true, theme, onStyleError, markup: false, highlighter }).run();
+
+    expect(seen).toMatchObject({ asciiOnly: true, theme, onStyleError, markup: false, highlighter });
+  });
+
+  it("carry nothing else to the console, so the host alone sets the frame's size", () => {
+    let seen: RenderOptions | undefined;
+    const view: Renderable = {
+      *render(options: RenderOptions) {
+        seen = options;
+        yield new Segment("up");
+      },
+    };
+    const console = { width: 3, height: 1, colorSystem: null };
+    const options: AppOptions = { ...console, host: scriptedHost({ cols: 12, rows: 3 }), surface: "inline", view: () => view };
+
+    void new App(options).run();
+
+    expect(seen?.maxWidth).toBe(12);
+    expect(seen?.colorSystem).not.toBe(null);
+  });
+
+  it("resolve a name the theme adds, which without the theme draws plain", () => {
+    const health: Renderable = {
+      *render(options: RenderOptions) {
+        yield new Segment("up", getStyle(options, "health.up"));
+      },
+    };
+    const view = (): Renderable => new RichText("up", { style: "health.up", end: "" });
+    const named = inline({ view: () => health, theme });
+    const themed = inline({ view, theme });
+    const plain = inline({ view });
+
+    void named.run();
+    void themed.run();
+    void plain.run();
+
+    expect(up(named).style?.equals(Style.parse("bold green"))).toBe(true);
+    expect(up(themed).style?.bold).toBe(true);
+    expect(up(plain).style?.bold).toBeUndefined();
+  });
+
+  it("report a name the theme lacks to onStyleError", () => {
+    const failed: string[] = [];
+    const target = inline({
+      view: () => new RichText("up", { style: "helth.up", end: "" }),
+      theme,
+      onStyleError: (_error, style) => failed.push(style),
+    });
+
+    void target.run();
+
+    expect(failed).toContain("helth.up");
   });
 });
 

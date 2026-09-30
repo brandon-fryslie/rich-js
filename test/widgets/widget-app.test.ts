@@ -23,6 +23,7 @@ import { Viewport } from "../../src/renderables/viewport.js";
 import { RichText } from "../../src/core/text.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 import type { Segment } from "../../src/core/segment.js";
+import { Style, Theme } from "../../src/core/style.js";
 import type { AppOptions } from "../../src/host/app.js";
 import { scriptedHost, type ScriptedHost } from "../host/scripted-host.js";
 
@@ -617,5 +618,22 @@ describe("WidgetApp lifecycle", () => {
     host.type(SPACE);
 
     expect(box.checked).toBe(true);
+  });
+});
+
+describe("WidgetApp drawing options", () => {
+  it("reach the view as they reach an App's", async () => {
+    const theme = new Theme({ "health.up": "bold green" });
+    const app = new WidgetApp({
+      host: scriptedHost({ cols: 12, rows: 3 }),
+      surface: "inline",
+      theme,
+      view: () => new Group(new Checkbox({ label: "c", id: "c" }), new RichText("up", { style: "health.up", end: "" })),
+    });
+    void app.run();
+    await tick();
+
+    const up = app.frame.flat().find((s) => s.text.includes("up"));
+    expect(up?.style?.equals(Style.parse("bold green"))).toBe(true);
   });
 });
