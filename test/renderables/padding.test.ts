@@ -135,6 +135,25 @@ describe("Padding", () => {
     expect(lines[0]!.length).toBeLessThanOrEqual(2); // "Hi" is 2 chars, no expansion
   });
 
+  it("expand:false narrows the block to what it measures, every row on the ground", () => {
+    const inner: Renderable & Measurable = {
+      *render() {
+        yield new Segment("a");
+        yield Segment.line();
+        yield new Segment("longer");
+        yield Segment.line();
+      },
+      measure() {
+        return { minimum: 6, maximum: 6 };
+      },
+    };
+    const padded = new Padding(inner, 1, { style: "on blue", expand: false });
+    const rows = Segment.splitLines(collectSegments(padded, { maxWidth: 20 }));
+    expect(rows.map((row) => Segment.getLineLength(row))).toEqual([8, 8, 8, 8]);
+    const ground = Style.parse("on blue");
+    for (const s of rows.flat()) expect(s.style?.bgcolor, JSON.stringify(s.text)).toEqual(ground.bgcolor);
+  });
+
   // --- Measurement ---
   // Spec: Minimum includes left + right padding (at least 4 for [0, 2, 0, 2])
 

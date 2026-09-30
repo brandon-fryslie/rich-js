@@ -124,7 +124,13 @@ export class Padding implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    const geometry = layoutPadding(options.maxWidth, this.left, this.right);
+    // `expand` decides how wide the block is, never whether its rows reach
+    // that width: as Rich's does, a padding that does not expand narrows to
+    // what it measures, and every row is then padded out to it. Deciding the
+    // rows instead left the content rows ragged under a full-width blank row,
+    // and a `style` ground with holes down its right-hand side.
+    const width = this.expand ? options.maxWidth : Measurement.get(options, this).maximum;
+    const geometry = layoutPadding(width, this.left, this.right);
 
     const innerOptions: RenderOptions = {
       ...options,
@@ -153,15 +159,9 @@ export class Padding implements Renderable, Measurable {
 
     for (const line of lines) {
       yield leftPad;
-      // `expand` is the pad half of this call; the crop half is unconditional,
-      // because a child that ignored the canvas it was handed (a Table at its
-      // natural width) would otherwise burst the padding around it.
-      yield* Segment.adjustLineLength(
-        line,
-        geometry.contentWidth,
-        style,
-        this.expand,
-      );
+      // Crops as well as pads: a child that ignored the canvas it was handed
+      // (a Table at its natural width) would otherwise burst the padding.
+      yield* Segment.adjustLineLength(line, geometry.contentWidth, style);
       yield rightPad;
       yield Segment.line();
     }

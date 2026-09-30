@@ -292,6 +292,23 @@ describe("Panel", () => {
     expect(collectSegments(typo, options)).toEqual(collectSegments(plain, options));
   });
 
+  it("lays a RichText accessory's style over the border's", () => {
+    const panel = new Panel("Content", {
+      bottomRightAccessory: new RichText("[1/2]", { style: "italic" }),
+      box: ASCII,
+      borderStyle: "red",
+    });
+    const accessory = collectSegments(panel, { maxWidth: 30 }).find((s) => s.text === " [1/2] ");
+    expect(accessory?.style?.italic).toBe(true);
+    expect(accessory?.style?.color).toEqual(Style.parse("red").color);
+  });
+
+  it("draws an accessory on an unstyled panel with no style, as its frame is", () => {
+    const panel = new Panel("Content", { bottomRightAccessory: "x", box: ASCII });
+    const bottom = Segment.splitLines(collectSegments(panel, { maxWidth: 20 })).at(-1)!;
+    for (const s of bottom) expect(s.style, JSON.stringify(s.text)).toBeUndefined();
+  });
+
   // --- Measurement ---
   // Spec: minimum > 0, maximum >= minimum
 
