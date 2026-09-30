@@ -6,10 +6,10 @@ import type { Style } from "../../src/core/style.js";
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
 
 // The built-in dialect, asserted through the module's one public crossing.
-// `renderMarkup` delegates to the built-in parser the moment a string carries no
-// paired plugin tag, so an empty registry is simply how a caller spells "no
-// plugin tags" — and spelling it here keeps every assertion below independent of
-// whatever another suite left on `globalMarkupRegistry`.
+// With an empty registry no tag is a plugin tag, so an empty registry is simply
+// how a caller spells "no plugin tags" — and spelling it here keeps every
+// assertion below independent of whatever another suite left on
+// `globalMarkupRegistry`.
 // [LAW:no-shared-mutable-globals]
 const BUILTINS_ONLY = new MarkupRegistry();
 const renderBuiltin = (markup: string, baseStyle?: string | Style, options?: { emoji?: boolean }) =>

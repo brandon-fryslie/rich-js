@@ -46,6 +46,17 @@ describe("MarkupRegistry", () => {
     expect(out.plain).toBe("a".repeat(20_000));
   });
 
+  // Moving each unclosed tag's content out to the tag around it when it closed
+  // ran out of memory here: every close copied all the tags inside it had written.
+  it("renders many unclosed plugin tags in time proportional to the string", () => {
+    const registry = new MarkupRegistry();
+    registry.register("click", (ctx) => ctx.children);
+    const began = performance.now();
+    const out = renderMarkup("[click]a".repeat(20_000), { registry });
+    expect(performance.now() - began).toBeLessThan(2000);
+    expect(out.plain).toBe("a".repeat(20_000));
+  });
+
   it("halves a backslash run on either side of a plugin pair's boundaries", () => {
     const registry = new MarkupRegistry();
     let received: MarkupTagContext | null = null;
@@ -525,11 +536,34 @@ describe("markup is judged tag by tag, in the order it is written", () => {
   it("closes a style tag written with a plugin's name by that name", () => {
     expect(renderMarkup("[aa=x]y[/aa]", { registry: registry() }).plain).toBe("y");
   });
+
+  it("closes the innermost tag a plugin's name names, style tag or plugin tag", () => {
+    const children: string[] = [];
+    const r = new MarkupRegistry();
+    r.register("aa", (ctx) => {
+      children.push(ctx.children.plain);
+      return ctx.children;
+    });
+    const out = renderMarkup("[aa]p[aa=y]q[/aa]r[/aa]", { registry: r });
+    expect(children).toEqual(["pqr"]);
+    expect(out.spans.map((s) => [s.start, s.end, String(s.style)])).toEqual([[1, 2, "aa y"]]);
+  });
+
+  it("closes a plugin tag as a style tag when the closer is in the style dialect", () => {
+    let called = false;
+    const r = new MarkupRegistry();
+    r.register("aa", (ctx) => {
+      called = true;
+      return ctx.children;
+    });
+    expect(renderMarkup("[aa]x[/aa=x]", { registry: r }).plain).toBe("x");
+    expect(called).toBe(false);
+  });
 });
 
-// The plugin walk parses the caller's string in slices — around each plugin
-// pair, and inside it — so every offset below is one a slice-relative count
-// would get wrong.
+// Each plugin pair's content is rendered apart from the text around it, as the
+// handler's `children`, so every offset below is one a count relative to that
+// content would get wrong.
 describe("a syntax error inside a plugin-tagged string is located in the caller's string", () => {
   function registry(): MarkupRegistry {
     const r = new MarkupRegistry();
