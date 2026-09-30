@@ -2,28 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-245",
-      "ref": "refs/pull/245/merge",
-      "sha": "1847487999b548b3cdb9bfdb76e79901075e8c5b",
-      "timestamp": "2026-09-30T09:12:07.344Z",
-      "commits": [
-        {
-          "sha": "1847487999b548b3cdb9bfdb76e79901075e8c5b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:11:01-06:00",
-          "message": "Merge 256a334902f03745f37a82b87de0e287bcc66184 into ccede526c5da927026e4a22d16a6f542485b6667\n"
-        },
-        {
-          "sha": "256a334902f03745f37a82b87de0e287bcc66184",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:10:57-06:00",
-          "message": "docs(export): exportSvg, saveSvg and SVG_EXPORT_THEME in the console guide and README (rich-export-9a1.6)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "ccede526c5da927026e4a22d16a6f542485b6667",
