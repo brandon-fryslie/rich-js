@@ -4,15 +4,22 @@
     {
       "version": "pr-257",
       "ref": "refs/pull/257/merge",
-      "sha": "4b5ffc010c8e08a3492ca902b1474166cd20d1ff",
-      "timestamp": "2026-09-30T13:35:13.362Z",
+      "sha": "836e6ba2ab8c7ffb1dbec7f93069dde3aab4a958",
+      "timestamp": "2026-09-30T13:55:09.573Z",
       "commits": [
         {
-          "sha": "4b5ffc010c8e08a3492ca902b1474166cd20d1ff",
+          "sha": "836e6ba2ab8c7ffb1dbec7f93069dde3aab4a958",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:34:13-06:00",
-          "message": "Merge 15a2b0cc7b58f1059bba382606d71b1c0615fb4a into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+          "timestamp": "2026-09-30T13:53:58Z",
+          "message": "Merge 2cc83d3cb8acb087217393e1e6d14a9c7f72269b into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+        },
+        {
+          "sha": "2cc83d3cb8acb087217393e1e6d14a9c7f72269b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T07:53:53-06:00",
+          "message": "fix(pretty): guides stand in the structure's margin, off by default (rich-pretty-v7b)\n\nThe formatter records each line's margin where it starts the line, and\nguides are drawn there rather than read back out of the whitespace, so a\nwrapped string or a toString's own indent gets no guide inside it. Off by\ndefault and never on an ASCII-only console, as in Rich; blank rows carry\nthe guide; indent: 0 no longer throws.\n\nAddresses /code-review high on PR #257.\n"
         },
         {
           "sha": "15a2b0cc7b58f1059bba382606d71b1c0615fb4a",
