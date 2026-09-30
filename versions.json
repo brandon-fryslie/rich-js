@@ -4,15 +4,22 @@
     {
       "version": "pr-231",
       "ref": "refs/pull/231/merge",
-      "sha": "249167f27fd048daf98554ad98a9691603ec5876",
-      "timestamp": "2026-09-30T00:29:16.849Z",
+      "sha": "07da7c1e897a4b51816f585aab113344f09bd5f7",
+      "timestamp": "2026-09-30T00:31:18.410Z",
       "commits": [
         {
-          "sha": "249167f27fd048daf98554ad98a9691603ec5876",
+          "sha": "07da7c1e897a4b51816f585aab113344f09bd5f7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:28:27Z",
-          "message": "Merge b9def8eb92b41ed4e9450333194d050558f64a99 into 11afe1fb445ff1637e88bab80e53780d69e2b9f2\n"
+          "timestamp": "2026-09-30T00:30:26Z",
+          "message": "Merge b8c612b6bcf245bdab2cef5816ff47492ce8ab79 into 11afe1fb445ff1637e88bab80e53780d69e2b9f2\n"
+        },
+        {
+          "sha": "b8c612b6bcf245bdab2cef5816ff47492ce8ab79",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T18:30:22-06:00",
+          "message": "fix(pretty): wrapped rows keep their line's indent; docs example shows the wrap (rich-pretty-xms.tmf)\n\nA later line of a multi-line toString lost its own leading indent on the\nrows it wrapped into. rowsOf now sets each hung row in by the indent its\nline opened with.\n\nThe docs example fit on one line at the docs terminal's 75 columns, so it\nshowed none of the wrapping its paragraph described. It now wraps a quote,\nmoves a path below its key, and says when that move happens.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "b9def8eb92b41ed4e9450333194d050558f64a99",
