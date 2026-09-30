@@ -81,6 +81,9 @@ export function playgroundScript(source: string, library: string): string {
   return [
     library,
     `const require = (${requireFrom})(${LIBRARY_BINDING});`,
+    // Sucrase writes a module's exports onto `exports`; the program is the
+    // entry module, whose exports nothing reads, as in Node.
+    "const exports = {};",
     `await eval(${JSON.stringify(evaluated)})();`,
   ].join("\n");
 }

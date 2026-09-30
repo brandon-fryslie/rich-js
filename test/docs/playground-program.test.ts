@@ -52,6 +52,12 @@ describe("the playground's program", { timeout: 60_000 }, () => {
     expect(output).toBe("after");
   });
 
+  it("runs code that exports, as Node runs an entry module that does", async () => {
+    const { output, error } = await play('export const planet = "Mercury";\nexport default planet;\nprocess.stdout.write(planet);');
+    expect(error).toBeNull();
+    expect(output).toBe("Mercury");
+  });
+
   it("reports a syntax error at the visitor's line, and runs nothing", async () => {
     const { output, error } = await play('process.stdout.write("ran");\nconst x: number = ;');
     expect(output).toBe("");

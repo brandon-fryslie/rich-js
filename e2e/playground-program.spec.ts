@@ -48,14 +48,15 @@ let built: Promise<{ readonly harness: string; readonly runtime: string; readonl
 const build = () =>
   (built ??= Promise.all([bundleExample(HARNESS), bundleLiveRuntime(), liveLibraryOnce()()]).then(([harness, runtime, library]) => ({
     harness,
-    runtime,
+    runtime: runtime.code,
     library: library.script,
   })));
 
-/** A blank page with a terminal on it, and every error the page itself raised. */
-async function open(page: Page): Promise<string[]> {
+/** A blank page, wearing `head` if given, with a terminal on it, and every error the page itself raised. */
+async function open(page: Page, head = ""): Promise<string[]> {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
+  await page.setContent(`<!doctype html><head>${head}</head><body></body>`);
   const { harness, runtime, library } = await build();
   await page.addScriptTag({ content: harness, type: "module" });
   await page.waitForFunction(() => "start" in globalThis);
@@ -183,4 +184,14 @@ test("the program can neither read nor reach the page: it has no document and no
   await open(page);
   await play(page, "process.stdout.write(`document=${typeof document} storage=${typeof localStorage} origin=${self.origin}`);");
   await expect.poll(() => rows(page)).toContain("document=undefined storage=undefined origin=null");
+});
+
+test("a worker the frame cannot start ends the run with a report, rather than leaving it running", async ({ page }) => {
+  // The frame inherits the page's policy, so this refuses it a worker as an
+  // engine that denies an opaque origin one would.
+  const errors = await open(page, `<meta http-equiv="Content-Security-Policy" content="worker-src 'none'">`);
+  await play(page, 'process.stdout.write("never");');
+  await expect(state(page)).toHaveAttribute("data-state", "exited");
+  expect(await rows(page)).toMatch(/The live terminal's worker did not (load|start)/);
+  expect(errors).toEqual([]);
 });

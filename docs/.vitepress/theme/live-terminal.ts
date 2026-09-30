@@ -194,16 +194,24 @@ function relay(): void {
     "message",
     ({ data, ports }: MessageEvent<string>) => {
       const port = ports[0]!;
-      const worker = new Worker(URL.createObjectURL(new Blob([data], { type: "text/javascript" })));
-      port.onmessage = (event) => worker.postMessage(event.data);
-      worker.onmessage = (event) => port.postMessage(event.data);
-      // live-worker.ts reports every failure of a program itself. What reaches
-      // here is the worker failing before it could: the browser's message
-      // already reads "Uncaught …".
-      worker.onerror = (event) => {
-        event.preventDefault();
-        port.postMessage({ kind: "crashed", report: event.message });
-      };
+      const crashed = (report: string) => port.postMessage({ kind: "crashed", report } satisfies FromWorker);
+      // [LAW:no-silent-failure] An engine that refuses this frame a worker
+      // throws here, where only the port can carry it to the page.
+      try {
+        const worker = new Worker(URL.createObjectURL(new Blob([data], { type: "text/javascript" })));
+        port.onmessage = (event) => worker.postMessage(event.data);
+        worker.onmessage = (event) => port.postMessage(event.data);
+        // live-worker.ts reports every failure of a program itself. What reaches
+        // here is the worker failing before it could: a script that threw reads
+        // "Uncaught …", and one that never loaded fires a bare `Event`, whatever
+        // lib.dom's `ErrorEvent` says.
+        worker.onerror = (event: ErrorEvent | Event) => {
+          event.preventDefault();
+          crashed(event instanceof ErrorEvent ? event.message : "The live terminal's worker did not load.");
+        };
+      } catch (error) {
+        crashed(`The live terminal's worker did not start: ${String(error)}`);
+      }
     },
     { once: true },
   );
