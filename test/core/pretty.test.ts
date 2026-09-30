@@ -746,9 +746,10 @@ describe("Pretty", () => {
     it("renders a thousand levels, the depth being unbounded by default", () => {
       let deep: unknown = 1;
       for (let i = 0; i < 1000; i++) deep = { n: deep };
-      // Guides on, so the thousand lines, each indented past the width, carry
-      // a guide run apiece through the render.
-      expect(collectText(new Pretty(deep, { indentGuides: true }), { maxWidth: 80 })).toContain("n: 1");
+      // At default options, so without guides: a guide every four cells makes
+      // each of these lines, indented far past the width, a thousand words for
+      // the render to wrap, and that cost is the wrap's, not this traversal's.
+      expect(collectText(new Pretty(deep), { maxWidth: 80 })).toContain("n: 1");
       // A thousand levels is a thousand lines of up to four thousand cells,
       // wrapped by the render, so this is the one test here that costs real time:
       // ~2s alone and ~15s against a saturated suite. The budget is set to
