@@ -124,11 +124,11 @@ describe("encodeSvg looks", () => {
   });
 
   it("blinks the glyph and its lines together, slow at 1s and fast at 0.5s", () => {
-    expect(styled("blink")).toMatch(/animation:terminal-[0-9a-f]+-blink 1s step-end infinite/);
-    expect(styled("blink2")).toMatch(/animation:terminal-[0-9a-f]+-blink 0\.5s step-end infinite/);
+    expect(styled("blink")).toContain("animation:rich-svg-blink 1s step-end infinite");
+    expect(styled("blink2")).toContain("animation:rich-svg-blink 0.5s step-end infinite");
     expect(styled("none")).not.toContain("animation:");
-    expect(styled("none")).toMatch(
-      /@media \(prefers-reduced-motion:no-preference\)\{@keyframes terminal-[0-9a-f]+-blink\{50%\{fill:transparent\}\}\}/,
+    expect(styled("none")).toContain(
+      "@media (prefers-reduced-motion:no-preference){@keyframes rich-svg-blink{50%{fill:transparent}}}",
     );
   });
 
@@ -153,6 +153,13 @@ describe("encodeSvg looks", () => {
     expect(texts(document).map((g) => g.text)).toEqual(["&lt;&amp;&gt;"]);
     expect(document).toContain('>a&lt;b&gt;&amp;"</text>');
   });
+
+  it("drops the characters XML admits nowhere, so one of them cannot leave the document unparsable", () => {
+    const document = encodeSvg([new Segment("a\x1b\x07b\uFFFE\uD800c\td")], { title: "t\x00", width: 10 });
+    expect(document).not.toMatch(/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFE\uFFFF]|\p{Cs}/u);
+    expect(texts(document).map((g) => g.text).join("")).toBe("abc\td");
+    expect(document).toContain(">t</text>");
+  });
 });
 
 describe("encodeSvg chrome", () => {
@@ -160,6 +167,13 @@ describe("encodeSvg chrome", () => {
     const document = encodeSvg([new Segment("x")], { theme: SOLARIZED_LIGHT, title: "Rich", width: 10 });
     expect(document).toContain(`<rect fill="${SOLARIZED_LIGHT.backgroundColor.hex}" stroke="rgba(255,255,255,0.35)"`);
     expect(document).toMatch(new RegExp(`fill="${SOLARIZED_LIGHT.foregroundColor.hex}" text-anchor="middle"[^>]*>Rich</text>`));
+  });
+
+  it("centres the title on the window, not on the margin before it", () => {
+    const document = styled("none");
+    const window = /<rect fill="[^"]+" stroke="rgba[^"]+" stroke-width="1" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/.exec(document)!;
+    const title = /text-anchor="middle" x="([\d.]+)"/.exec(document)!;
+    expect(Number(title[1])).toBe(Number(window[1]) + Number(window[2]) / 2);
   });
 
   it("falls back to the canvas export-lines resolves runs over", () => {
@@ -182,6 +196,12 @@ describe("encodeSvg chrome", () => {
     expect(prefix(a)).toBe(prefix(encodeSvg([new Segment("x")], { title: "one", width: 10 })));
     expect(prefix(a)).not.toBe(prefix(encodeSvg([new Segment("x")], { title: "two", width: 10 })));
     expect(prefix(a)).not.toBe(prefix(encodeSvg([new Segment("y")], { title: "one", width: 10 })));
+  });
+
+  it("gives the same recording under two themes two prefixes, so one page can show both", () => {
+    const prefix = (document: string) => /class="(terminal-[0-9a-f]{8})-matrix"/.exec(document)![1];
+    const under = (theme: TerminalTheme) => encodeSvg([new Segment("x")], { theme, title: "one", width: 10 });
+    expect(prefix(under(THEME))).not.toBe(prefix(under(SOLARIZED_LIGHT)));
   });
 });
 

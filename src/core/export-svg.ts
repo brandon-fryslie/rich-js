@@ -28,11 +28,13 @@
 import { cellLen, graphemes } from "./cells.js";
 import type { TerminalTheme } from "./color.js";
 import type { Segment } from "./segment.js";
+import { fnv1a } from "./fnv1a.js";
 import {
   escapeAttribute,
   escapeText,
   exportCanvas,
   exportLines,
+  type ExportLine,
   type ExportLook,
 } from "./export-lines.js";
 
@@ -57,18 +59,11 @@ const WINDOW_BUTTONS = ["#ff5f57", "#febc2e", "#28c840"] as const;
 const n = (value: number): string => String(Math.round(value * 100) / 100);
 
 /**
- * FNV-1a, 32-bit, as hex. The id prefix every class and keyframe name in one
- * SVG carries, so two SVGs inlined in one page do not restyle each other. It
- * is a hash of what is drawn rather than a counter or a clock, so the same
- * recording exports the same bytes.
+ * The blink keyframes every SVG defines identically, so one name serves them
+ * all: two inlined in one page define the same rule twice, and neither changes
+ * the other.
  */
-function fnv1a(text: string): string {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < text.length; i++) {
-    hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193) >>> 0;
-  }
-  return hash.toString(16).padStart(8, "0");
-}
+const BLINK_KEYFRAMES = "rich-svg-blink";
 
 /** Text anchored at `column` and stretched to exactly `cells`. */
 interface Chunk {
@@ -117,7 +112,7 @@ function chunk(text: string, column: number): Chunk[] {
 }
 
 /** Every run of every row at the column the runs before it on its row end at. */
-function place(rows: ReturnType<typeof exportLines>): PlacedRun[] {
+function place(rows: readonly ExportLine[]): PlacedRun[] {
   return rows.flatMap((runs, row) => {
     let column = 0;
     return runs.map(({ text, look }) => {
@@ -152,13 +147,13 @@ const OUTLINE_RADIUS: Record<ExportLook["outline"], number | null> = {
 };
 
 /** The CSS a look's class carries: what a glyph's `fill` and font say, and its blink. */
-function lookCss(look: ExportLook, blinkName: string): string {
+function lookCss(look: ExportLook): string {
   const period = BLINK_PERIOD[look.blink];
   return [
     `fill:${look.foreground.hex}`,
     ...(look.bold ? ["font-weight:bold"] : []),
     ...(look.italic ? ["font-style:italic"] : []),
-    ...(period === null ? [] : [`animation:${blinkName} ${period} step-end infinite`]),
+    ...(period === null ? [] : [`animation:${BLINK_KEYFRAMES} ${period} step-end infinite`]),
   ].join(";");
 }
 
@@ -228,40 +223,36 @@ export function encodeSvg(segments: Iterable<Segment>, { theme, title, width }: 
   const rows = exportLines(segments, theme);
   const runs = place(rows);
 
+  // The prefix every class name carries is a hash of the rules those classes
+  // define as well as of what is drawn, since a class is page-wide once the
+  // SVG is inlined: two exports that share a prefix define every rule alike, so
+  // the same recording under another theme cannot restyle this one.
+  const styled = runs.map((run) => ({ run, css: lookCss(run.look) }));
+  const rules = [...new Set(styled.map(({ css }) => css))];
   const text = rows.map((row) => row.map((run) => run.text).join("")).join("\n");
-  const id = `terminal-${fnv1a(`${title.length}:${title}${text}`)}`;
-  const blinkName = `${id}-blink`;
-
-  const classes = new Map<string, string>();
-  const classOf = (look: ExportLook): string => {
-    const css = lookCss(look, blinkName);
-    const known = classes.get(css);
-    if (known !== undefined) return known;
-    const name = `${id}-r${classes.size + 1}`;
-    classes.set(css, name);
-    return name;
-  };
-  const drawnRuns = runs.map((run) => runSvg(run, classOf(run.look)));
+  const id = `terminal-${fnv1a(`${title.length}:${title}${text.length}:${text}${rules.join("\n")}`)}`;
+  const classOf = (css: string): string => `${id}-r${rules.indexOf(css) + 1}`;
+  const drawnRuns = styled.map(({ run, css }) => runSvg(run, classOf(css)));
 
   const columns = runs.reduce((widest, run) => Math.max(widest, run.column + run.cells), width);
   const terminalWidth = Math.ceil(columns * CELL_WIDTH + PADDING.left + PADDING.right);
   const terminalHeight = rows.length * LINE_HEIGHT + PADDING.top + PADDING.bottom;
 
-  const css = [
+  const stylesheet = [
     `.${id}-matrix{font-family:${FONT_FAMILY};font-size:${CHAR_HEIGHT}px}`,
     `.${id}-title{font-size:18px;font-weight:bold;font-family:arial}`,
-    ...Array.from(classes, ([declarations, name]) => `.${name}{${declarations}}`),
+    ...rules.map((css) => `.${classOf(css)}{${css}}`),
     // Blink only for a reader who has not asked for reduced motion, as in HTML.
-    `@media (prefers-reduced-motion:no-preference){@keyframes ${blinkName}{50%{fill:transparent}}}`,
+    `@media (prefers-reduced-motion:no-preference){@keyframes ${BLINK_KEYFRAMES}{50%{fill:transparent}}}`,
   ].join("\n");
 
   return [
     `<svg class="rich-terminal" viewBox="0 0 ${n(terminalWidth + 2 * MARGIN)} ${n(terminalHeight + 2 * MARGIN)}" xmlns="http://www.w3.org/2000/svg">`,
-    `<style>\n${css}\n</style>`,
+    `<style>\n${stylesheet}\n</style>`,
     `<rect fill="${canvas.background.hex}" stroke="rgba(255,255,255,0.35)" stroke-width="1" ` +
       `x="${MARGIN}" y="${MARGIN}" width="${n(terminalWidth)}" height="${n(terminalHeight)}" rx="8"/>`,
     `<text class="${id}-title" fill="${canvas.foreground.hex}" text-anchor="middle" ` +
-      `x="${n(terminalWidth / 2)}" y="${MARGIN + CHAR_HEIGHT + 6}">${escapeText(title)}</text>`,
+      `x="${n(MARGIN + terminalWidth / 2)}" y="${MARGIN + CHAR_HEIGHT + 6}">${escapeText(title)}</text>`,
     `<g transform="translate(26,22)">${WINDOW_BUTTONS.map((fill, i) => `<circle cx="${i * 22}" cy="0" r="7" fill="${fill}"/>`).join("")}</g>`,
     `<g class="${id}-matrix" transform="translate(${MARGIN + PADDING.left},${MARGIN + PADDING.top})">`,
     ...runs.flatMap(backgroundSvg),

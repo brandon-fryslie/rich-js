@@ -102,14 +102,24 @@ export function parseHref(link: string): Href | null {
 const ENTITIES: Readonly<Record<string, string>> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
 
 /**
+ * The characters XML 1.0 admits nowhere in a document: C0 controls but tab,
+ * newline and return, the two noncharacters U+FFFE and U+FFFF, and unpaired
+ * surrogates. One of them leaves a whole SVG unparsable, not one glyph missing.
+ * Each takes no cell, so dropping it moves nothing on the grid.
+ */
+const NOT_XML = /[\x00-\x08\x0B\x0C\x0E-\x1F￾￿]|\p{Cs}/gu;
+
+/**
  * Text as character data in HTML or SVG markup. Both exporters write markup,
  * and [LAW:single-enforcer] one escaper is what keeps a title or a run that is
- * safe in one format from being live markup in the other.
+ * safe in one format from being live markup, or no markup at all, in the other.
  */
-export const escapeText = (text: string): string => text.replace(/[&<>]/g, (c) => ENTITIES[c]!);
+export const escapeText = (text: string): string =>
+  text.replace(NOT_XML, "").replace(/[&<>]/g, (c) => ENTITIES[c]!);
 
 /** A value inside a double-quoted attribute in HTML or SVG markup. */
-export const escapeAttribute = (value: string): string => value.replace(/[&"<>]/g, (c) => ENTITIES[c]!);
+export const escapeAttribute = (value: string): string =>
+  value.replace(NOT_XML, "").replace(/[&"<>]/g, (c) => ENTITIES[c]!);
 
 /**
  * How far a dim glyph moves toward its background — Rich's own factor, so an

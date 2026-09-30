@@ -10,7 +10,7 @@
  * terminator set below, so the bytes a sanitizer removes and the bytes a
  * reader stops at cannot disagree.
  *
- * [LAW:locality-or-seam] This module depends on nothing; every consumer
+ * [LAW:locality-or-seam] This module depends only on `fnv1a`; every consumer
  * imports downward.
  *
  * The `id=` parameter is what makes one link hover as one link. A terminal
@@ -31,6 +31,8 @@
  * exact, not approximate.
  */
 
+import { fnv1a } from "./fnv1a.js";
+
 /**
  * The bytes that prematurely terminate an OSC 8 sequence: ESC (`\x1b`, which
  * begins ST `ESC \`), BEL (`\x07`), and the 8-bit ST (`\x9c`).
@@ -44,22 +46,6 @@ export function stripOscTerminators(url: string): string {
   return url.replace(TERMINATOR_RE, "");
 }
 
-const utf8 = new TextEncoder();
-
-/**
- * FNV-1a, 32-bit, over the URL's UTF-8 bytes, as 8 lowercase hex digits — a
- * legal `id=` value (no `:`/`;`). UTF-8 rather than UTF-16 code units, so any
- * other runtime computing standard FNV-1a over the same URL gets the same id.
- */
-function linkId(url: string): string {
-  let h = 0x811c9dc5;
-  for (const byte of utf8.encode(url)) {
-    h ^= byte;
-    h = Math.imul(h, 0x01000193);
-  }
-  return (h >>> 0).toString(16).padStart(8, "0");
-}
-
 /**
  * The bytes that open a hyperlink to `url`.
  *
@@ -70,7 +56,8 @@ function linkId(url: string): string {
  */
 export function osc8Open(url: string): string {
   const clean = stripOscTerminators(url);
-  return `\x1b]8;id=${linkId(clean)};${clean}\x1b\\`;
+  // Hex digits are a legal `id=` value: no `:` or `;`.
+  return `\x1b]8;id=${fnv1a(clean)};${clean}\x1b\\`;
 }
 
 /** The bytes that close the current hyperlink. */
