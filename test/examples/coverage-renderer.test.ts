@@ -13,26 +13,29 @@
 import { it, expect } from "vitest";
 import { CoverageRenderable } from "../../examples/rich-explore/renderers/coverage.js";
 import { cellLen, renderToString } from "../../src/index.js";
-import type { Renderable, RenderOptions } from "../../src/index.js";
+import type { Renderable } from "../../src/index.js";
 
 const WIDTH = 80;
-
-function rows(renderable: Renderable): string[] {
-  const out = renderToString(renderable, { width: WIDTH, colorSystem: null, hyperlinks: false });
-  return out.replace(/\n$/, "").split("\n");
-}
+const DRAW = { width: WIDTH, colorSystem: null, hyperlinks: false } as const;
 
 it("the rich-explore coverage renderer produces a frame", () => {
-  expect(rows(new CoverageRenderable()).join("").trim().length).toBeGreaterThan(0);
+  expect(renderToString(new CoverageRenderable(), DRAW).trim().length).toBeGreaterThan(0);
 });
 
 it("every item in the coverage view starts its own row", () => {
   const view = new CoverageRenderable();
-  const frame = rows(view);
-  // An item left open runs the next onto its row — the frame loses a row per
-  // join, and a long join draws wider than the width it was given.
-  expect(frame.filter((row) => cellLen(row) > WIDTH)).toEqual([]);
-  const options: RenderOptions = { maxWidth: WIDTH, isTerminal: false, asciiOnly: false, colorSystem: null };
-  const itemRows = view.items(options).reduce((sum, item) => sum + rows(item).length, 0);
-  expect(frame.length).toBe(itemRows);
+  // The items are built from the options the frame is drawn with, read off
+  // the draw itself rather than restated here.
+  let items: Renderable[] = [];
+  const frame = renderToString({
+    render(options) {
+      items = view.items(options);
+      return view.render(options);
+    },
+  }, DRAW);
+  expect(frame.split("\n").filter((row) => cellLen(row) > WIDTH)).toEqual([]);
+  // An item whose output does not end its line runs whatever follows onto
+  // that line; a closed item draws nothing or finishes with a newline.
+  const open = items.map((item) => renderToString(item, DRAW)).filter((out) => /[^\n]$/.test(out));
+  expect(open).toEqual([]);
 });

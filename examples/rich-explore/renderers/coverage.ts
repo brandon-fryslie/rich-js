@@ -204,8 +204,8 @@ export class CoverageRenderable implements Renderable {
     items.push(new Rule("Cell Functions", { style: "bold cyan" }));
     items.push(new RichText(`cellLen("hello") = ${cellLen("hello")}`));
     items.push(new RichText(`splitText("abcdef", 3) = ${JSON.stringify(splitText("abcdef", asCellCol(3)))}`));
-    items.push(new RichText(`chopCells("hello world", 7) = "${chopCells("hello world", asCellCol(7))}"`));
-    setCellSize("A", asCellCol(1)); // exercise the function; restore to default width
+    items.push(new RichText(`chopCells("hello world", 7) = ${JSON.stringify(chopCells("hello world", asCellCol(7)))}`));
+    items.push(new RichText(`setCellSize("ab", 5) = ${JSON.stringify(setCellSize("ab", asCellCol(5)))}`));
 
     // ── 9. Measurement + measureRenderables ──────────────────────────
     items.push(new Rule("Measurement", { style: "bold cyan" }));
