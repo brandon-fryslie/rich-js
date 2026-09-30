@@ -19,6 +19,7 @@ import {
 } from "../core/protocol.js";
 import { Measurement } from "../core/measure.js";
 import { cellCount } from "../core/cells.js";
+import type { CellCol } from "../core/cells.js";
 import { ratioBudget, ratioResolve } from "./ratio.js";
 
 export interface LayoutOptions {
@@ -62,8 +63,8 @@ export class Layout implements Renderable, Measurable {
   name: string | undefined;
   visible: boolean;
   private _ratio!: number;
-  private _size: number | undefined;
-  private _minimumSize!: number;
+  private _size: CellCol | undefined;
+  private _minimumSize!: CellCol;
   private _renderable: Renderable | undefined;
   private _children: Layout[];
   private _splitDirection: "column" | "row" | undefined;
@@ -102,7 +103,7 @@ export class Layout implements Renderable, Measurable {
     this._ratio = growthRatio(value);
   }
 
-  get size(): number | undefined {
+  get size(): CellCol | undefined {
     return this._size;
   }
 
@@ -110,7 +111,7 @@ export class Layout implements Renderable, Measurable {
     this._size = value === undefined ? undefined : cellCount(value);
   }
 
-  get minimumSize(): number {
+  get minimumSize(): CellCol {
     return this._minimumSize;
   }
 

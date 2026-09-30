@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ratioBudget, ratioDistribute, ratioResolve } from "../../src/renderables/ratio.js";
 import type { Edge } from "../../src/renderables/ratio.js";
+import { cellCount } from "../../src/core/cells.js";
 
 describe("ratioDistribute", () => {
   it("rounds each share up, as Rich's ratio_distribute does, and sums to the total", () => {
@@ -25,9 +26,10 @@ describe("ratioDistribute", () => {
   });
 });
 
-describe("ratioResolve", () => {
-  const edge = (e: Partial<Edge> = {}): Edge => ({ size: undefined, ratio: 1, minimumSize: 1, ...e });
+const edge = ({ size, ratio = 1, minimumSize = 1 }: { size?: number; ratio?: number; minimumSize?: number } = {}): Edge =>
+  ({ size: size === undefined ? undefined : cellCount(size), ratio, minimumSize: cellCount(minimumSize) });
 
+describe("ratioResolve", () => {
   // Every expectation below is what Python Rich fc41075a's
   // `ratio_resolve(total, edges)` returns for the same call.
   it.each<[number, Edge[], number[]]>([
@@ -68,22 +70,49 @@ describe("ratioResolve", () => {
 });
 
 describe("ratioBudget", () => {
-  const edge = (e: Partial<Edge> = {}): Edge => ({ size: undefined, ratio: 1, minimumSize: 1, ...e });
-
-  // [LAW:one-source-of-truth] The budget is only right if the split it inverts
-  // agrees: every growing edge must receive at least what it asked for there.
-  it.each<[Edge[], number[]]>([
-    [[edge(), edge()], [4, 5]],
-    [[edge(), edge({ ratio: 3 })], [7, 2]],
-    [[edge({ ratio: 0.1 }), edge({ ratio: 0.2 }), edge({ ratio: 0.3 })], [3, 1, 4]],
-    [[edge({ size: 4 }), edge({ ratio: 0, minimumSize: 2 }), edge({ ratio: 5 }), edge()], [0, 0, 1, 9]],
-    [[edge({ minimumSize: 6 }), edge()], [2, 2]],
-  ])("is a total at which the split reaches every want", (edges, wants) => {
-    const budget = ratioBudget(edges, wants);
-    const parts = ratioResolve(budget, edges);
-    edges.forEach((e, i) => {
+  // [LAW:one-source-of-truth] The budget is only right if the split agrees:
+  // every edge receives what it is owed there, and at no smaller total.
+  const reaches = (edges: Edge[], wants: number[], total: number): boolean =>
+    ratioResolve(total, edges).every((part, i) => {
+      const e = edges[i]!;
       const owed = e.size ?? (e.ratio === 0 ? e.minimumSize : Math.max(e.minimumSize, wants[i]!));
-      expect(parts[i]).toBeGreaterThanOrEqual(owed);
+      return part >= owed;
     });
+
+  it.each<[Edge[], number[], number]>([
+    // Carried rounding hands the right pane the spare cell: 4 + 5 of 9, where a
+    // floored share would have needed 10.
+    [[edge(), edge()], [4, 5], 9],
+    [[edge(), edge({ ratio: 3 })], [7, 2], 28],
+    [[edge({ ratio: 0.1 }), edge({ ratio: 0.2 }), edge({ ratio: 0.3 })], [3, 1, 4], 18],
+    [[edge({ size: 4 }), edge({ ratio: 0, minimumSize: 2 }), edge({ ratio: 5 }), edge()], [0, 0, 1, 9], 55],
+    [[edge({ minimumSize: 6 }), edge()], [2, 2], 8],
+  ])("is the least total at which the split reaches every want", (edges, wants, least) => {
+    expect(ratioBudget(edges, wants)).toBe(least);
+    expect(reaches(edges, wants, least)).toBe(true);
+    // Every total below, not only the one below: an edge's cells are not
+    // monotone in the total, so one failure beneath proves nothing about the rest.
+    for (let total = 0; total < least; total++) expect(reaches(edges, wants, total)).toBe(false);
+  });
+
+  // The search starts past zero on a derived bound; were the bound ever above
+  // the answer, this sweep would find the smaller total it skipped.
+  it("starts its search at no total the split could already satisfy", () => {
+    const shapes = [
+      edge(), edge({ ratio: 3 }), edge({ ratio: 0.5, minimumSize: 4 }),
+      edge({ size: 2 }), edge({ ratio: 0, minimumSize: 3 }), edge({ ratio: 7, minimumSize: 0 }),
+    ];
+    for (const a of shapes) for (const b of shapes) for (const c of shapes) {
+      const edges = [a, b, c];
+      for (const wants of [[0, 0, 0], [5, 1, 3], [1, 9, 2], [4, 4, 11]]) {
+        let least = 0;
+        while (!reaches(edges, wants, least)) least += 1;
+        expect(ratioBudget(edges, wants)).toBe(least);
+      }
+    }
+  });
+
+  it("is unbounded when a want is", () => {
+    expect(ratioBudget([edge(), edge()], [Infinity, 3])).toBe(Infinity);
   });
 });

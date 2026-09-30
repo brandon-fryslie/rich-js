@@ -118,6 +118,28 @@ describe("Layout", () => {
     expect(rows).toEqual(["xxyyy"]);
   });
 
+  // The natural width of a row is the least width at which every pane shows
+  // all of itself under the same split `render` makes, and carried rounding
+  // gives the second pane the spare cell: 4 + 5 of 9.
+  it("measures a row at the least width that shows every pane whole", () => {
+    const layout = new Layout();
+    layout.splitRow(new Layout("left"), new Layout("right"));
+    expect(layout.measure({ maxWidth: 80 }).maximum).toBe(9);
+    const rows = collectText(layout, { maxWidth: 9, height: { rows: 1, exact: true } }).split("\n");
+    expect(rows[0]).toBe("leftright");
+  });
+
+  // A pane that cannot measure itself has no width of its own, so a row
+  // holding one offered an unbounded width has none either: measure says so,
+  // and render reaches `withBoundedWidth`'s explanation rather than a BigInt error.
+  it("has no natural width when a pane of its row has none", () => {
+    const opaque: Renderable = { *render() {} };
+    const layout = new Layout();
+    layout.splitRow(new Layout(opaque), new Layout("abc"));
+    expect(layout.measure({ maxWidth: Infinity }).maximum).toBe(Infinity);
+    expect(() => [...layout.render({ maxWidth: Infinity })]).toThrow(/no natural width/);
+  });
+
   it("getByName finds named layouts", () => {
     const layout = new Layout();
     layout.splitColumn(
@@ -240,9 +262,11 @@ describe("Layout", () => {
       expect(mutated.measure(options)).toEqual(row(parsed).measure(options));
     });
 
+    // Twelve cells of "wide content" need a row of 39 beside a ratio of 2.5,
+    // and 34 beside a ratio of 2; one-cell panes fit in 2 under either.
     it("keeps a fractional ratio, which divides space meaningfully", () => {
-      expect(row({ ratio: 2.5 }).measure(options)).not.toEqual(
-        row({ ratio: 2 }).measure(options),
+      expect(row({ ratio: 2.5 }, "wide content").measure(options)).not.toEqual(
+        row({ ratio: 2 }, "wide content").measure(options),
       );
     });
 

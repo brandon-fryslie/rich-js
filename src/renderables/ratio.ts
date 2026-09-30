@@ -1,3 +1,5 @@
+import type { CellCol } from "../core/cells.js";
+
 /**
  * Rich's `_ratio.py`: integer totals split into parts by ratio, in exact
  * arithmetic, each by the reference's own rounding.
@@ -46,14 +48,13 @@ function ceilDiv(a: bigint, b: bigint): bigint {
  * undefined — a share by `ratio`, never below `minimumSize`. A `ratio` of 0 is
  * a part that does not grow and takes its `minimumSize`.
  *
- * All three arrive parsed: `size` and `minimumSize` whole cell counts, `ratio`
- * finite and never negative. `Layout` is the one caller and its setters are
- * where that happens.
+ * `ratio` arrives finite and never negative; `Layout`'s setter is where that
+ * happens.
  */
 export interface Edge {
-  readonly size: number | undefined;
+  readonly size: CellCol | undefined;
   readonly ratio: number;
-  readonly minimumSize: number;
+  readonly minimumSize: CellCol;
 }
 
 /** Whether an edge takes a share by ratio; one that does not is paid `size ?? minimumSize`. */
@@ -69,11 +70,13 @@ const grows = (edge: Edge): boolean => edge.size === undefined && edge.ratio !==
  * after it, so they sum to what was left and the spare cells land on the
  * rightmost edges: 5 cells at 1:1 are 2 + 3.
  *
- * One departure, and it is the port's, not the reference's: nothing is paid
- * past what `total` still holds. Rich hands every edge its minimum even when
- * that overruns the total and leaves the overflow for the screen to clip; here
- * an edge is paid out of what is left, so the parts never sum past `total` and
- * two panes of a layout asked to fit one cell cannot merge into a two-cell row.
+ * Two departures, both the port's, not the reference's. Nothing is paid past
+ * what `total` still holds: Rich hands every edge its minimum even when that
+ * overruns the total and leaves the overflow for the screen to clip; here an
+ * edge is paid out of what is left, so the parts never sum past `total` and two
+ * panes of a layout asked to fit one cell cannot merge into a two-cell row. And
+ * a declared `size` of 0 is a pane of no cells, where Rich's `edge.size or
+ * None` reads it as undeclared and lets the pane grow.
  */
 export function ratioResolve(total: number, edges: readonly Edge[]): number[] {
   const sizes = edges.map(() => 0);
@@ -96,14 +99,15 @@ export function ratioResolve(total: number, edges: readonly Edge[]): number[] {
     minimum: BigInt(edges[index]!.minimumSize),
   }));
 
-  // `remaining * weight / weightSum` is the edge's share; compared across the
+  // `remaining * weight / sum` is the edge's share; compared across the
   // division so the test is exact. A budget already spent fails every edge's
   // test, which pays each its minimum out of nothing — zero, the clip above.
-  const weightSum = (): bigint => open.reduce((sum, { weight }) => sum + weight, 0n);
+  let sum = open.reduce((acc, { weight }) => acc + weight, 0n);
   const firstShort = (): (typeof open)[number] | undefined =>
-    open.find(({ weight, minimum }) => BigInt(remaining) * weight <= minimum * weightSum());
+    open.find(({ weight, minimum }) => BigInt(remaining) * weight <= minimum * sum);
   for (let short = firstShort(); short !== undefined; short = firstShort()) {
     pay(short.index, Number(short.minimum));
+    sum -= short.weight;
     open = open.filter((edge) => edge !== short);
   }
 
@@ -111,7 +115,6 @@ export function ratioResolve(total: number, edges: readonly Edge[]): number[] {
   // running total of the shares: an edge gets the whole cells its share moves
   // that running total across.
   const budget = BigInt(remaining);
-  const sum = weightSum();
   let weightSoFar = 0n;
   let cellsSoFar = 0n;
   for (const { index, weight } of open) {
@@ -124,39 +127,44 @@ export function ratioResolve(total: number, edges: readonly Edge[]): number[] {
 }
 
 /**
- * A `total` at which `ratioResolve` gives every growing edge at least
- * `wants[i]` cells, and every other edge its declared size or minimum. Enough,
- * not always the least: carried rounding can reach every want a cell sooner.
+ * The least `total` at which `ratioResolve` gives every growing edge at least
+ * `wants[i]` cells, and every other edge its declared size or minimum.
  *
- * [LAW:one-source-of-truth] It is the inverse of the split above and sits
- * beside it for that reason. A growing edge is never handed less than the
- * floor of its share, `total * ratio / totalRatio`, because the running total
- * it is carved from floors once on each side. So a budget at which every
- * share's floor reaches its want is enough, and one budget serves them all:
- * the row needs the largest such demand, never their total. Summed instead, a
- * 1:1 split of "left" and "right" reported 9 and then rendered "right" into
- * the 4 cells a floored share handed it.
+ * [LAW:one-source-of-truth] Asked of the split rather than derived beside it.
+ * An edge's cells are not monotone in the total — carried rounding moves a
+ * spare cell from one edge to the next as the total grows — so no inverse of
+ * the share formula is both exact and closed. The search is bounded on both
+ * sides by that formula instead. It starts where the parts could first cover
+ * every want: their sum, and for each edge its minimum does not cover, the
+ * total below which even the ceiling of its share falls short — carrying never
+ * rounds a share past its ceiling, and an edge paid its minimum only leaves the
+ * rest less. It ends by the time every share's floor reaches its want, which
+ * leaves the re-share pass nothing to take.
  *
- * At that budget every share already covers its edge's minimum — the want
- * includes it — so the re-share pass pays at most an edge whose share is
- * exactly that minimum, which leaves every other share where it was. Only a
- * growing edge's ratio is ever divided by, and that ratio is positive.
+ * An unbounded want, a pane with no width of its own offered all of it, is met
+ * only by an unbounded budget; the exact arithmetic has no infinity, so that
+ * answer is given before any.
  */
 export function ratioBudget(edges: readonly Edge[], wants: readonly number[]): number {
+  const owed = edges.map((edge, index) =>
+    grows(edge) ? Math.max(edge.minimumSize, wants[index]!) : (edge.size ?? edge.minimumSize),
+  );
+  const covered = owed.reduce((acc, cells) => acc + cells, 0);
+  if (!Number.isFinite(covered)) return covered;
+
   const growing = edges.flatMap((edge, index) => (grows(edge) ? [index] : []));
   const weights = exactWeights(growing.map((index) => edges[index]!.ratio));
   const sum = weights.reduce((acc, weight) => acc + weight, 0n);
-
-  const pinned = edges.reduce(
-    (acc, edge) => acc + (grows(edge) ? 0 : (edge.size ?? edge.minimumSize)),
-    0,
-  );
-  const budget = growing.reduce((most, index, slot) => {
-    const want = BigInt(Math.max(edges[index]!.minimumSize, wants[index]!));
-    const need = ceilDiv(want * sum, weights[slot]!);
-    return need > most ? need : most;
+  const pinned = covered - growing.reduce((acc, index) => acc + owed[index]!, 0);
+  const reached = growing.reduce((most, index, slot) => {
+    const beyondMinimum = BigInt(owed[index]! - edges[index]!.minimumSize);
+    const least = beyondMinimum > 0n ? (BigInt(owed[index]! - 1) * sum) / weights[slot]! + 1n : 0n;
+    return least > most ? least : most;
   }, 0n);
-  return pinned + Number(budget);
+
+  let total = Math.max(covered, pinned + Number(reached));
+  while (ratioResolve(total, edges).some((cells, index) => cells < owed[index]!)) total += 1;
+  return total;
 }
 
 /**
