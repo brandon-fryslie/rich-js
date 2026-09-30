@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-235",
-      "ref": "refs/pull/235/merge",
-      "sha": "1c58cf854ca6e2733cd11479f4bc9c96e9742295",
-      "timestamp": "2026-09-30T04:33:56.653Z",
-      "commits": [
-        {
-          "sha": "1c58cf854ca6e2733cd11479f4bc9c96e9742295",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:33:03Z",
-          "message": "Merge 15d8604b146eb45082bf3253313e3e81109f0a42 into 00419df7c8828144e274f7ff2c41080f05635d73\n"
-        },
-        {
-          "sha": "15d8604b146eb45082bf3253313e3e81109f0a42",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:32:57-06:00",
-          "message": "fix(palette): name the palette in the opaque-background error, drop the unused draw key, pin buildPalette's draw-then-derive (rich-palette-y22)\n\nReview pass (high) on #235.\n"
-        },
-        {
-          "sha": "2902ab11082a2df5b3fa010c364d71ddc461d58a",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:25:16-06:00",
-          "message": "fix(palette): draw translucent vars on the palette's own background (rich-palette-y22)\n\nA theme's translucent variable (catppuccin-latte's block-hover-background\n#00000019, cyberpunk's alpha accents) is a tint meant for that theme's\nbackground, but once it left the palette the SGR writer composited it over\nblack and an export over its canvas: a pale hover tint drew as a black cell\nin the terminal. The Palette constructor now draws every translucent var\nonto the palette's `background`, so every colour a palette hands out is\nopaque and the writer, the exporters and the contrast choosers agree.\nbuildPalette draws its base colours the same way before deriving on-*,\nand getThemeBaseColors returns the colours getThemePalette does.\n\nHand-written translucency (\"#ffffff80\" in a template) still composites over\nthe writer's substrate.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "00419df7c8828144e274f7ff2c41080f05635d73",
-      "timestamp": "2026-09-30T04:18:31.138Z",
+      "sha": "6a22776a4fe0312f3b62b199d324635ddc0305fb",
+      "timestamp": "2026-09-30T04:35:22.214Z",
       "commits": [
         {
-          "sha": "00419df7c8828144e274f7ff2c41080f05635d73",
+          "sha": "6a22776a4fe0312f3b62b199d324635ddc0305fb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:17:40-06:00",
-          "message": "fix(pretty): maxString cuts between glyphs and counts glyphs (rich-pretty-2tq) (#234)\n\n* fix(pretty): maxString cuts between glyphs and counts glyphs (rich-pretty-2tq)\n\nA code-unit cut kept half a surrogate pair, which JSON.stringify printed\nas a \\ud83d escape the value never held, and the dropped count was in\ncode units. maxString now counts grapheme clusters, the unit cells.ts\nalready treats as one glyph, so an emoji, flag or ZWJ family is kept or\ndropped whole. Rich counts code points; docs/pretty.md says so.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(pretty): segment a string once, and only when it is over the cap (rich-pretty-2tq)\n\nReview (high) found every string under maxString was split into clusters\non every probe; a 2M-char value at depth 4 took ~600ms. The code-unit\nlength check is back as the no-cut shortcut, and the cut form is memoised\nper value. The unit is documented at PrettyOptions.maxString and stated as\nclusters of the raw value, counted before escaping; flag, toned-hand and\nescape cases are tested.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T22:34:26-06:00",
+          "message": "fix(palette): draw translucent vars on the palette's own background (rich-palette-y22) (#235)\n\n* fix(palette): draw translucent vars on the palette's own background (rich-palette-y22)\n\nA theme's translucent variable (catppuccin-latte's block-hover-background\n#00000019, cyberpunk's alpha accents) is a tint meant for that theme's\nbackground, but once it left the palette the SGR writer composited it over\nblack and an export over its canvas: a pale hover tint drew as a black cell\nin the terminal. The Palette constructor now draws every translucent var\nonto the palette's `background`, so every colour a palette hands out is\nopaque and the writer, the exporters and the contrast choosers agree.\nbuildPalette draws its base colours the same way before deriving on-*,\nand getThemeBaseColors returns the colours getThemePalette does.\n\nHand-written translucency (\"#ffffff80\" in a template) still composites over\nthe writer's substrate.\n\n* fix(palette): name the palette in the opaque-background error, drop the unused draw key, pin buildPalette's draw-then-derive (rich-palette-y22)\n\nReview pass (high) on #235."
         }
       ]
     }
