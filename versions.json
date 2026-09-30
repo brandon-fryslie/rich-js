@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-276",
-      "ref": "refs/pull/276/merge",
-      "sha": "280a55fb91aab5afd907433d72b9be0a0950af75",
-      "timestamp": "2026-09-30T20:36:07.976Z",
-      "commits": [
-        {
-          "sha": "280a55fb91aab5afd907433d72b9be0a0950af75",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T20:35:11Z",
-          "message": "Merge 08837d916be2bd8b06aab94cfcae2b5b4f5e62d6 into d66baa0a14f74dea4a3ca5566bce6f7cb15ad594\n"
-        },
-        {
-          "sha": "08837d916be2bd8b06aab94cfcae2b5b4f5e62d6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:35:06-06:00",
-          "message": "test(markup): a handler's RichText style beats the base style too (rich-markup-zzc7)\n"
-        },
-        {
-          "sha": "2c3cb1f0c99e85b1adf61d0f00543718e980911f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:33:01-06:00",
-          "message": "test(markup): a handler's own style repaints the base style, once (rich-markup-zzc7)\n\nThe ordering bug was fixed by rich-markup-cg6 (#197), which paints the base\nstyle once in the single render walk; this pins it. Fails against d10dd296e^.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d66baa0a14f74dea4a3ca5566bce6f7cb15ad594",
-      "timestamp": "2026-09-30T20:31:14.477Z",
+      "sha": "78b60aa0dcb83e49c0b640c595f24ed586fceb51",
+      "timestamp": "2026-09-30T20:41:03.718Z",
       "commits": [
         {
-          "sha": "d66baa0a14f74dea4a3ca5566bce6f7cb15ad594",
+          "sha": "78b60aa0dcb83e49c0b640c595f24ed586fceb51",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:30:05-06:00",
-          "message": "refactor(widgets): an overlay is bounded through cropLines (rich-segment-1p2h) (#275)\n\n* refactor(widgets): an overlay is bounded through cropLines (rich-segment-1p2h)\n\nThe overlay clip is the last survivor of Screen's split-then-unpadded-crop\nhand-roll; it now composes splitLines(cropLines(...)) as Tree and Layout do.\nPainter's fitRows keeps adjustLineLength: it bounds the rows of a frame\nalready shaped by its caller, one line at a time, which is that primitive's\nown job — there is no stream there to crop.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(widgets): an overlay is offered the cells right of its column (rich-segment-1p2h)\n\npaintOverlay rendered the overlay at the frame's full maxWidth and then\ncropped it to maxWidth - at.x, so an overlay that fit itself to its offer\nlost its right edge instead of wrapping inside it. The crop now only catches\nan overlay that ignores what it was offered.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T14:39:54-06:00",
+          "message": "test(markup): a handler's own style repaints the base style, once (rich-markup-zzc7) (#276)\n\n* test(markup): a handler's own style repaints the base style, once (rich-markup-zzc7)\n\nThe ordering bug was fixed by rich-markup-cg6 (#197), which paints the base\nstyle once in the single render walk; this pins it. Fails against d10dd296e^.\n\n* test(markup): a handler's RichText style beats the base style too (rich-markup-zzc7)"
         }
       ]
     }
