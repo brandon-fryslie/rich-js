@@ -155,7 +155,7 @@ console.print(new Pretty(new Set(["red", "green", "blue"])));
 
 ## Truncating large values
 
-`maxLength` caps how many entries are shown, and the ones it drops are counted in a trailing `... +N` whatever the container. `maxString` cuts strings to that many characters and counts the rest after the closing quote — outside the value, so the count is never mistaken for the string's own content. A character here is a grapheme cluster, one glyph as the reader sees it, so a cut never splits an emoji, a flag or a skin-toned hand; Rich counts code points instead, and can:
+`maxLength` caps how many entries are shown, and the ones it drops are counted in a trailing `... +N` whatever the container. `maxString` cuts strings to that many characters and counts the rest after the closing quote — outside the value, so the count is never mistaken for the string's own content:
 
 ```typescript
 const bigArray = Array.from({ length: 1000 }, (_, i) => i + 1);
@@ -163,6 +163,8 @@ const bigArray = Array.from({ length: 1000 }, (_, i) => i + 1);
 console.print(new Pretty(bigArray, { maxLength: 10 }));
 console.print(new Pretty({ bio: "Field biologist. ".repeat(20) }, { maxString: 24 }));
 ```
+
+A character is a grapheme cluster of the string's value, so a cut never splits an emoji, a flag or a skin-toned hand; Rich counts code points instead, and can. The count is taken before escaping, so a newline is one character though it prints as `\n`.
 
 ## Nesting inside another renderable
 

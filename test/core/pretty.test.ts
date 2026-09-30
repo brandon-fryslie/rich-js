@@ -393,6 +393,16 @@ describe("Pretty", () => {
     // A ZWJ family is five code points and one glyph: it is kept or dropped whole.
     expect(collectText(new Pretty("a👨‍👩‍👧b", { maxString: 2 }), { maxWidth: 80 }))
       .toBe('"a👨‍👩‍👧"+1\n');
+    // A flag is two regional indicators, a toned hand a base and a modifier.
+    expect(collectText(new Pretty("🇺🇸🇫🇷x", { maxString: 1 }), { maxWidth: 80 }))
+      .toBe('"🇺🇸"+2\n');
+    expect(collectText(new Pretty("👍🏽ab", { maxString: 1 }), { maxWidth: 80 }))
+      .toBe('"👍🏽"+2\n');
+  });
+
+  it("counts maxString before escaping, so a control character is one", () => {
+    expect(collectText(new Pretty("a\nbcd", { maxString: 2 }), { maxWidth: 80 }))
+      .toBe('"a\\n"+3\n');
   });
 
   it("counts maxString in glyphs, so a short string of emoji is not cut", () => {

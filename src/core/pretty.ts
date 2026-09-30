@@ -33,6 +33,11 @@ export interface PrettyOptions {
   indent?: number;
   expandAll?: boolean;
   maxLength?: number;
+  /**
+   * How many characters of a string to show before cutting it, counting the
+   * rest after the closing quote. A character is a grapheme cluster, not a
+   * UTF-16 code unit: `"😀😀"` is two, though its `length` is four.
+   */
   maxString?: number;
   /**
    * How many levels of nesting to descend before eliding. Unbounded by default.
@@ -433,6 +438,8 @@ export class Pretty implements Renderable, Measurable {
   readonly maxDepth: number;
   readonly indentGuides: boolean;
   readonly highlighter: Highlighter;
+  // [LAW:no-shared-mutable-globals] A private memo, written only by `_cutString`.
+  private readonly cutStrings = new Map<string, string>();
 
   constructor(data: unknown, options?: PrettyOptions) {
     this.data = data;
@@ -495,15 +502,10 @@ export class Pretty implements Renderable, Measurable {
         // the quotes it reads as content, and copying it out yields a string
         // the program never held.
         //
-        // The unit is the grapheme cluster, the glyph a reader counts. A code
-        // unit cut can keep half a surrogate pair, which JSON.stringify prints
-        // as a `\ud83d` escape; a code point cut can keep half a flag or a ZWJ
-        // family. Either way the kept prefix shows something the value never
-        // held, and the dropped count is in a unit nobody can see.
-        if (this.maxString === undefined) return JSON.stringify(value);
-        const clusters = graphemes(value);
-        if (clusters.length <= this.maxString) return JSON.stringify(value);
-        return JSON.stringify(clusters.slice(0, this.maxString).join("")) + `+${clusters.length - this.maxString}`;
+        // A cluster is at least one code unit, so a string no longer than the
+        // cap in code units is within it in clusters, and needs no segmenting.
+        if (this.maxString === undefined || value.length <= this.maxString) return JSON.stringify(value);
+        return this._cutString(value, this.maxString);
       }
       case "number":
       case "bigint":
@@ -516,6 +518,32 @@ export class Pretty implements Renderable, Measurable {
     }
 
     return null;
+  }
+
+  /**
+   * `value` cut to `max` grapheme clusters, with the rest counted after the
+   * closing quote.
+   *
+   * The unit is the cluster of the value, counted before `JSON.stringify`
+   * escapes it. A code unit cut can keep half a surrogate pair, which
+   * JSON.stringify prints as a `\ud83d` escape; a code point cut can keep half
+   * a flag or a ZWJ family. Either way the kept prefix shows something the
+   * value never held, and the dropped count is in a unit nobody can see.
+   *
+   * Counting clusters reads the whole string, and the traversals ask for the
+   * same scalar once per probe at every level above it, so the answer is
+   * memoised per value.
+   */
+  private _cutString(value: string, max: number): string {
+    let cut = this.cutStrings.get(value);
+    if (cut === undefined) {
+      const clusters = graphemes(value);
+      cut = clusters.length <= max
+        ? JSON.stringify(value)
+        : JSON.stringify(clusters.slice(0, max).join("")) + `+${clusters.length - max}`;
+      this.cutStrings.set(value, cut);
+    }
+    return cut;
   }
 
   /**
