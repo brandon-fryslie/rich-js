@@ -85,8 +85,10 @@ resolve to a depth rather than throwing. `{ colorSystem: "vscode" }` quietly
 means truecolor. Treat those as an artifact of the shared table rather than
 supported spellings — use the five above.
 
-A sixth depth exists with no spec string: the legacy 16-color Windows console
-palette. Nothing detects it — `"auto"` never returns it, and there is no
+A sixth depth exists with no spec string: the Windows console's sixteen colors.
+It writes the same sixteen ANSI slots `"ansi"` does, but picks each slot by the
+color the console draws there — its default Campbell scheme, `WINDOWS_TABLE` —
+rather than the xterm defaults. Nothing detects it — `"auto"` never returns it, and there is no
 platform check anywhere in the library — so the only way to get it is to name
 the enum value:
 
