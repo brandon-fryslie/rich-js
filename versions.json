@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-254",
+      "ref": "refs/pull/254/merge",
+      "sha": "052b996860ae219d2194d460960deeb0d59fb56f",
+      "timestamp": "2026-09-30T12:22:05.865Z",
+      "commits": [
+        {
+          "sha": "052b996860ae219d2194d460960deeb0d59fb56f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T06:21:02-06:00",
+          "message": "Merge fff6d57dd849f4272498cb9628c3d49683dc95a0 into 03eb28ab5d9d98f1bd9980cca301ca1bdf198585\n"
+        },
+        {
+          "sha": "fff6d57dd849f4272498cb9628c3d49683dc95a0",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T06:20:58-06:00",
+          "message": "fix(markup): a console's markup and highlight settings reach strings embedded in a renderable (rich-markup-3sw)\n\nA string handed to a Panel, Table, Tree, Columns, Layout or Rule is now an\nEmbeddedText, read when it is drawn through renderStr (Rich's render_str)\nunder RenderOptions.markup and RenderOptions.highlighter, which the Console\nfills from its own settings and print's. An unmatched closing tag now throws\nfrom the render, as Rich's does.\n\nWhich sites highlight follows Rich site by site: Columns items, Layout panes\nand Rule titles are highlighted; Panel, Table and Tree strings are drawn\nplain; a Panel's title and subtitle are always markup.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "03eb28ab5d9d98f1bd9980cca301ca1bdf198585",
