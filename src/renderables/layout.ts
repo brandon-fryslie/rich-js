@@ -258,7 +258,7 @@ export class Layout implements Renderable, Measurable {
     if (visible.length === 0) return 0;
 
     const widths = visible.map((c) => c._naturalWidth(options));
-    if (this._splitDirection === "row") return ratioBudget(visible, widths);
+    if (this._splitDirection === "row") return ratioBudget(visible, widths, options.maxWidth);
 
     // Accumulated, not spread: a column split holds as many children as a caller
     // made, and `Math.max(...widths)` passes one argument per child, so a

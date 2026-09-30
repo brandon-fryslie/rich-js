@@ -88,7 +88,7 @@ describe("ratioBudget", () => {
     [[edge({ size: 4 }), edge({ ratio: 0, minimumSize: 2 }), edge({ ratio: 5 }), edge()], [0, 0, 1, 9], 55],
     [[edge({ minimumSize: 6 }), edge()], [2, 2], 8],
   ])("is the least total at which the split reaches every want", (edges, wants, least) => {
-    expect(ratioBudget(edges, wants)).toBe(least);
+    expect(ratioBudget(edges, wants, Infinity)).toBe(least);
     expect(reaches(edges, wants, least)).toBe(true);
     // Every total below, not only the one below: an edge's cells are not
     // monotone in the total, so one failure beneath proves nothing about the rest.
@@ -107,12 +107,20 @@ describe("ratioBudget", () => {
       for (const wants of [[0, 0, 0], [5, 1, 3], [1, 9, 2], [4, 4, 11]]) {
         let least = 0;
         while (!reaches(edges, wants, least)) least += 1;
-        expect(ratioBudget(edges, wants)).toBe(least);
+        expect(ratioBudget(edges, wants, Infinity)).toBe(least);
       }
     }
   });
 
-  it("is unbounded when a want is", () => {
-    expect(ratioBudget([edge(), edge()], [Infinity, 3])).toBe(Infinity);
+  it("is the cap when a want is unbounded", () => {
+    expect(ratioBudget([edge(), edge()], [Infinity, 3], Infinity)).toBe(Infinity);
+    expect(ratioBudget([edge(), edge()], [Infinity, 3], 80)).toBe(80);
+  });
+
+  // Uncapped, this climbs from about 40 to 40000000040 one split at a time.
+  it("stops at the cap when the least total lies past it", () => {
+    expect(ratioBudget([edge(), edge({ ratio: 1e9 })], [40, 5], 80)).toBe(80);
+    expect(ratioBudget([edge(), edge({ ratio: 3 })], [7, 2], 27)).toBe(27);
+    expect(ratioBudget([edge(), edge({ ratio: 3 })], [7, 2], 28)).toBe(28);
   });
 });

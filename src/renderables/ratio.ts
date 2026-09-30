@@ -128,7 +128,8 @@ export function ratioResolve(total: number, edges: readonly Edge[]): number[] {
 
 /**
  * The least `total` at which `ratioResolve` gives every growing edge at least
- * `wants[i]` cells, and every other edge its declared size or minimum.
+ * `wants[i]` cells, and every other edge its declared size or minimum — or
+ * `cap`, the width on offer, when no total within it does.
  *
  * [LAW:one-source-of-truth] Asked of the split rather than derived beside it.
  * An edge's cells are not monotone in the total — carried rounding moves a
@@ -141,16 +142,20 @@ export function ratioResolve(total: number, edges: readonly Edge[]): number[] {
  * rest less. It ends by the time every share's floor reaches its want, which
  * leaves the re-share pass nothing to take.
  *
- * An unbounded want, a pane with no width of its own offered all of it, is met
- * only by an unbounded budget; the exact arithmetic has no infinity, so that
- * answer is given before any.
+ * The cap is what keeps the search cheap. It asks the split once per cell it
+ * climbs, and the climb from the start to the answer grows with how far apart
+ * the ratios are — 1 : 1000000 around a pane wanting 40 answers 40000040. No
+ * caller can use a width past the one it offered, so the search stops there,
+ * and costs at most one split per cell of the width it returns. An unbounded
+ * want, a pane with no width of its own offered all of it, is the cap before
+ * any arithmetic: the exact arithmetic has no infinity.
  */
-export function ratioBudget(edges: readonly Edge[], wants: readonly number[]): number {
+export function ratioBudget(edges: readonly Edge[], wants: readonly number[], cap: number): number {
   const owed = edges.map((edge, index) =>
     grows(edge) ? Math.max(edge.minimumSize, wants[index]!) : (edge.size ?? edge.minimumSize),
   );
   const covered = owed.reduce((acc, cells) => acc + cells, 0);
-  if (!Number.isFinite(covered)) return covered;
+  if (covered >= cap) return cap;
 
   const growing = edges.flatMap((edge, index) => (grows(edge) ? [index] : []));
   const weights = exactWeights(growing.map((index) => edges[index]!.ratio));
@@ -162,8 +167,8 @@ export function ratioBudget(edges: readonly Edge[], wants: readonly number[]): n
     return least > most ? least : most;
   }, 0n);
 
-  let total = Math.max(covered, pinned + Number(reached));
-  while (ratioResolve(total, edges).some((cells, index) => cells < owed[index]!)) total += 1;
+  let total = Math.min(Math.max(covered, pinned + Number(reached)), cap);
+  while (total < cap && ratioResolve(total, edges).some((cells, index) => cells < owed[index]!)) total += 1;
   return total;
 }
 
