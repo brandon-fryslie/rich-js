@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-265",
-      "ref": "refs/pull/265/merge",
-      "sha": "ed8aaa92cb06de43c2ff8a2b8c6ef109d8fbe5a9",
-      "timestamp": "2026-09-30T17:08:50.652Z",
-      "commits": [
-        {
-          "sha": "ed8aaa92cb06de43c2ff8a2b8c6ef109d8fbe5a9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:07:54Z",
-          "message": "Merge c354348c6a349b8f1ca61bdc50887c50ab6be409 into 409d3def96e013e7e0925e5a1a645a23b2f5cb54\n"
-        },
-        {
-          "sha": "c354348c6a349b8f1ca61bdc50887c50ab6be409",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:07:48-06:00",
-          "message": "fix(template-bindings): error line folds every non-space whitespace; maxWidth is one value (rich-template-bindings-4bgw)\n\nReview (high) on #265: a tab in the engine's message was counted as 0 cells\nand drawn up to 8, so the fitted line could overflow maxWidth. The JSDoc and\ndocs now say the error line is fitted to maxWidth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "e25f18b065569700da4546e0eba77658ad2ce9a2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:02:35-06:00",
-          "message": "fix(template-bindings): renderTemplate's error segment is one line fitted to maxWidth (rich-template-bindings-4bgw)\n\nThe caught error's message folds every line break to a space — an engine\nmessage can carry one (`bad escape sequence \\⏎`) — and the line is cut by\nRichText.truncate at the same maxWidth the success path draws at, ending in\nan ellipsis. The fixed 80-UTF-16-unit slice cut long messages mid-word and\ndropped the fix hint (`wrap it: darken (color \"primary\") …`) with no mark.\n\nThe docs example now shows a long error fitted to the page's terminal.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "409d3def96e013e7e0925e5a1a645a23b2f5cb54",
-      "timestamp": "2026-09-30T16:57:27.235Z",
+      "sha": "840008549a0deec1f0728b905d35f6cfad71a50f",
+      "timestamp": "2026-09-30T17:10:03.458Z",
       "commits": [
         {
-          "sha": "409d3def96e013e7e0925e5a1a645a23b2f5cb54",
+          "sha": "840008549a0deec1f0728b905d35f6cfad71a50f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T10:56:16-06:00",
-          "message": "fix(contrast): at ansi, text is measured in the terminal's own sixteen colours (rich-contrast-knmh) (#264)\n\n* fix(contrast): at ansi, text is measured in the terminal's own sixteen colours (rich-contrast-knmh)\n\nensureContrast, ensureDrawn and drawnColour measured a STANDARD-depth pair\non STANDARD_TABLE's nominal colours. The writer does pick the index by that\ntable, but the terminal draws the index in its theme's colour, and themes\ndisagree about sides: Rosé Pine Dawn's black is light and its white dark, so\nnavy on white passed at 16:1 nominal and drew at 2.1:1.\n\nEach now takes a trailing `terminal: TerminalTheme` and measures in its\nansiColors; a replacement is the writer's colour for the index that clears\nthe floor there. With none named the table is the VGA sixteen that\nDEFAULT_TERMINAL_THEME draws, so existing answers are unchanged.\n\n* fix(contrast): a replacement is ranked on the author's colour; one owner for the unnamed terminal (rich-contrast-knmh)\n\nReview of PR #264 (high):\n- The replacement index was ranked by distance to the truecolor pre-pass,\n  which slides toward the pole the nominal ground names. Under a terminal\n  that draws the ground on the other side (Rose Pine Dawn) that pole is\n  wrong. Ranking on fg itself measured closer to the author's colour at\n  both ANSI and 256 colours across every bundled terminal.\n- 'No terminal means VGA' had two homes (colorMath's STANDARD_TABLE\n  fallback and getTruecolor's INTERNAL_DEFAULT_THEME); resolveTerminal is\n  now the one.\n- The depth-to-table map is one exhaustive switch, resolved once per call.\n- docs/contrast.md says readableOn measures in VGA at STANDARD\n  (rich-template-bindings-wrzr).\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(contrast): a TerminalTheme holds exactly the sixteen ANSI colours; translucent text is ranked over its own ground (rich-contrast-knmh, rich-color-qqkm)\n\nReview of PR #264 (medium):\n- At STANDARD an index picked from a terminal's ansiColors is read back from\n  the sixteen-entry writer table, so a 256-entry ansiColors returned\n  undefined typed as ColorRgba. Every reader already indexes the table 0-15\n  and the class doc names it the theme's sixteen; the constructor now\n  refuses anything else, and its header stops calling it a 16/256 LUT.\n- The replacement ranked fg composited over the terminal's drawn ground,\n  which under Rose Pine Dawn turns a translucent navy into lavender. It is\n  the author's colour over the author's ground.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(contrast): measure through the writer's own downgrade; say inputs are written colours (rich-contrast-knmh)\n\nReview of PR #264 (escalation high):\n- shownAs measured via drawnTable's own match, a second account of the\n  index the writer emits beside ColorSpec.downgrade + getTruecolor, the one\n  Style.drawnColors writes. It now goes through that; the tables only list\n  replacement candidates.\n- docs/contrast.md: fg and bg are the colours written, not the terminal's\n  shades; the example passes undefined for substrate instead of a hand copy\n  of the writer's black.\n- resolveTerminal's comment no longer claims the widgets' fallback.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* docs(contrast): the terminal example imports what it uses (rich-contrast-knmh)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T11:08:48-06:00",
+          "message": "fix(template-bindings): renderTemplate's error segment is one line fitted to maxWidth (rich-template-bindings-4bgw) (#265)\n\n* fix(template-bindings): renderTemplate's error segment is one line fitted to maxWidth (rich-template-bindings-4bgw)\n\nThe caught error's message folds every line break to a space — an engine\nmessage can carry one (`bad escape sequence \\⏎`) — and the line is cut by\nRichText.truncate at the same maxWidth the success path draws at, ending in\nan ellipsis. The fixed 80-UTF-16-unit slice cut long messages mid-word and\ndropped the fix hint (`wrap it: darken (color \"primary\") …`) with no mark.\n\nThe docs example now shows a long error fitted to the page's terminal.\n\n* fix(template-bindings): error line folds every non-space whitespace; maxWidth is one value (rich-template-bindings-4bgw)\n\nReview (high) on #265: a tab in the engine's message was counted as 0 cells\nand drawn up to 8, so the fitted line could overflow maxWidth. The JSDoc and\ndocs now say the error line is fitted to maxWidth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
