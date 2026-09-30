@@ -146,19 +146,90 @@ const READLINE_STAND_IN = path.join(REPO_ROOT, "docs", ".vitepress", "node-readl
  * that module included.
  */
 export function bundleExample(source: string): Promise<string> {
-  return bundle(source, { format: "es" }).then(({ code }) => code);
+  return bundle(generated(source), { format: "es" }).then(({ code }) => code);
 }
 
 /**
  * How a bundle is written: as a module (`es`), or as a minified script
  * declaring one variable, `name`, that holds its entry's default export
- * (`iife`). A module with `packagesExternal` leaves every package the program
- * imports as an import rather than inlining it.
+ * (`iife`). A module `onLibrary` is a program for the live library to run
+ * (`libraryImport`).
  */
-type BundleShape = { readonly format: "es"; readonly packagesExternal?: boolean } | { readonly format: "iife"; readonly name: string };
+type BundleShape = { readonly format: "es"; readonly onLibrary?: boolean } | { readonly format: "iife"; readonly name: string };
+
+/**
+ * What a bundle starts from: `source`, bundled as though it were the file
+ * `file`, so its relative imports resolve from where that file stands. The
+ * bundle is of this module and what it imports, and an entry is never dropped
+ * as unused; a module it only imports is, when it exports nothing and
+ * package.json promises `"sideEffects": false`, as it does for this whole
+ * repository.
+ */
+interface Entry {
+  readonly file: string;
+  readonly source: string;
+}
+
+/** A program generated here: a module no file backs. */
+const generated = (source: string): Entry => ({ file: PROGRAM_FILE, source });
 
 /** A specifier naming a package, not a file. */
 const isPackage = (id: string): boolean => !id.startsWith(".") && !path.isAbsolute(id);
+
+/**
+ * What a live block may import: every entry point of this package but the two
+ * that need a Node built-in the worker has no stand-in for (`node:fs`,
+ * `node:util`), and the optional peers the entry points import, which
+ * package.json's `peerDependencies` names.
+ */
+const NO_STAND_IN = new Set(["@promptctl/rich-js/node/save", "@promptctl/rich-js/node/traceback"]);
+
+/** The entry points the live library holds, each by the file under `src/` it is. */
+const SPECIFIER_BY_ENTRY: ReadonlyMap<string, string> = new Map(
+  [...ENTRY_BY_SPECIFIER].filter(([specifier]) => !NO_STAND_IN.has(specifier)).map(([specifier, file]) => [path.join(REPO_ROOT, file), specifier]),
+);
+
+const LIVE_LIBRARY_PACKAGES: readonly string[] = [
+  ...SPECIFIER_BY_ENTRY.values(),
+  ...Object.keys((JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8")) as { peerDependencies: Record<string, string> }).peerDependencies),
+].sort();
+
+const SRC_ROOT = path.join(REPO_ROOT, "src") + path.sep;
+
+/**
+ * An import of a program bundled onto the live library, left as an import for
+ * the library to supply: a package, by its name, and a file that is one of
+ * this package's entry points, by the name the package publishes it under.
+ * Any other file is the program's own, and bundled into it. Which file an
+ * import names is the build's resolver's answer (`resolve`), extensions,
+ * directories and all, never worked out again here.
+ *
+ * [LAW:single-enforcer] A file under `src/` the library does not hold is
+ * refused here. It could only be bundled in, a second copy of library code
+ * beside the library's, with classes of its own that none of the library's
+ * are instances of.
+ */
+async function libraryImport<Resolved extends { readonly id: string }>(
+  id: string,
+  importer: string | undefined,
+  resolve: () => Promise<Resolved | null>,
+): Promise<Resolved | { readonly id: string; readonly external: true } | null> {
+  if (isPackage(id)) return { id, external: true };
+  // Only an entry is imported by nothing, and an entry is no import.
+  if (importer === undefined) return null;
+  // Unresolved, it is the build's own error, which names the import.
+  const resolved = await resolve();
+  if (resolved === null) return null;
+  const specifier = SPECIFIER_BY_ENTRY.get(resolved.id);
+  if (specifier !== undefined) return { id: specifier, external: true };
+  if (resolved.id.startsWith(SRC_ROOT)) {
+    throw new Error(
+      `${path.relative(REPO_ROOT, importer)} imports ${path.relative(REPO_ROOT, resolved.id)}, which the live library does not hold; ` +
+        `a live program reaches the library only through ${[...SPECIFIER_BY_ENTRY.keys()].map((file) => path.relative(REPO_ROOT, file)).join(", ")}`,
+    );
+  }
+  return resolved;
+}
 
 /** A bundle's one chunk, and every module that went into it besides the source it was given. */
 interface Bundled {
@@ -166,8 +237,8 @@ interface Bundled {
   readonly modules: readonly string[];
 }
 
-async function bundle(source: string, shape: BundleShape): Promise<Bundled> {
-  const packagesExternal = shape.format === "es" && shape.packagesExternal === true;
+async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
+  const onLibrary = shape.format === "es" && shape.onLibrary === true;
   const result = await build({
     configFile: false,
     logLevel: "silent",
@@ -179,13 +250,14 @@ async function bundle(source: string, shape: BundleShape): Promise<Bundled> {
       {
         name: "rich-docs-example-entry",
         enforce: "pre",
-        resolveId: (id, importer) =>
-          id === PROGRAM_FILE ? id
-          : packagesExternal && importer === PROGRAM_FILE && isPackage(id) ? { id, external: true }
-          : id === "node:readline" ? READLINE_STAND_IN
-          : ENTRY_BY_SPECIFIER.has(id) ? path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(id)!)
-          : null,
-        load: (id) => (id === PROGRAM_FILE ? source : null),
+        resolveId(id, importer) {
+          return id === entry.file ? id
+            : onLibrary ? libraryImport(id, importer, () => this.resolve(id, importer, { skipSelf: true }))
+            : id === "node:readline" ? READLINE_STAND_IN
+            : ENTRY_BY_SPECIFIER.has(id) ? path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(id)!)
+            : null;
+        },
+        load: (id) => (id === entry.file ? entry.source : null),
       },
       tscTransform(REPO_ROOT),
     ],
@@ -195,7 +267,7 @@ async function bundle(source: string, shape: BundleShape): Promise<Bundled> {
       // name, and the library is what every live page downloads.
       minify: shape.format === "iife",
       rolldownOptions: {
-        input: PROGRAM_FILE,
+        input: entry.file,
         // An app build drops its entry's exports; a library's default export is its point.
         preserveEntrySignatures: shape.format === "iife" ? "exports-only" : false,
         output:
@@ -208,7 +280,7 @@ async function bundle(source: string, shape: BundleShape): Promise<Bundled> {
   if (!("output" in result)) throw new Error("bundle: vite returned no single build output");
   const chunks = result.output.filter((file) => file.type === "chunk");
   if (chunks.length !== 1) throw new Error(`bundle: expected one chunk, vite produced ${chunks.length}`);
-  return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== PROGRAM_FILE) };
+  return { code: chunks[0]!.code, modules: chunks[0]!.moduleIds.filter((id) => id !== entry.file) };
 }
 
 /**
@@ -440,14 +512,15 @@ const LIVE_WORKER = path.join(REPO_ROOT, "docs", ".vitepress", "theme", "live-wo
 
 /** The script `LIVE_RUNTIME_MODULE` exports, as it stands on disk now, and the files it was built from. */
 export function bundleLiveRuntime(): Promise<Bundled> {
-  return bundle(`import { serve } from ${JSON.stringify(LIVE_WORKER)};\nserve();`, { format: "es" }).catch((error: unknown) => {
+  return bundle(generated(`import { serve } from ${JSON.stringify(LIVE_WORKER)};\nserve();`), { format: "es" }).catch((error: unknown) => {
     throw new Error(`the live terminal's worker did not bundle: ${String(error)}`, { cause: error });
   });
 }
 
-async function bundleOrThrow(page: string, source: string, shape: BundleShape = { format: "es" }): Promise<string> {
-  return bundle(source, shape).then(({ code }) => code, (error: unknown) => {
-    throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
+/** `bundle`, failing with where the program came from. */
+async function bundleOrThrow(where: string, entry: Entry, shape: BundleShape = { format: "es" }): Promise<Bundled> {
+  return bundle(entry, shape).catch((error: unknown) => {
+    throw new Error(`${where}: bundling failed: ${String(error)}`, { cause: error });
   });
 }
 
@@ -519,17 +592,6 @@ async function tryItPrints(fence: Fence, standalone: ExampleProgram, record: Blo
 
 const hash = (text: string): string => createHash("sha256").update(text).digest("hex").slice(0, 16);
 
-/**
- * What a live block may import: every entry point of this package but the two
- * that need a Node built-in the worker has no stand-in for (`node:fs`,
- * `node:util`), and the optional peers the entry points import, which
- * package.json's `peerDependencies` names.
- */
-const NO_STAND_IN = new Set(["@promptctl/rich-js/node/save", "@promptctl/rich-js/node/traceback"]);
-const LIVE_LIBRARY_PACKAGES: readonly string[] = [
-  ...[...ENTRY_BY_SPECIFIER.keys()].filter((specifier) => !NO_STAND_IN.has(specifier)),
-  ...Object.keys((JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8")) as { peerDependencies: Record<string, string> }).peerDependencies),
-].sort();
 
 /** Where a live program's library comes from: built once, however many pages ask. */
 export type LibrarySource = () => Promise<LiveLibrary>;
@@ -545,7 +607,7 @@ async function bundleLiveLibrary(): Promise<LiveLibrary> {
     ...LIVE_LIBRARY_PACKAGES.map((specifier, i) => `import * as m${i} from ${JSON.stringify(specifier)};`),
     `export default { ${LIVE_LIBRARY_PACKAGES.map((specifier, i) => `${JSON.stringify(specifier)}: m${i}`).join(", ")} };`,
   ].join("\n");
-  const { code: script } = await bundle(entry, { format: "iife", name: LIBRARY_BINDING }).catch((error: unknown) => {
+  const { code: script } = await bundle(generated(entry), { format: "iife", name: LIBRARY_BINDING }).catch((error: unknown) => {
     throw new Error(`the live examples' library did not bundle: ${String(error)}`, { cause: error });
   });
   return { id: hash(script), script };
@@ -557,15 +619,15 @@ const isModuleOnly = (node: ts.Node): boolean =>
   (ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword);
 
 /**
- * A live block's own code: bundled with every package it imports left as an
- * import, then each import rewritten as a read of the library. The library
- * holds every export of every package a block may import, so a binding the
- * block imports is always there.
+ * A live program's own code: bundled with what the library supplies left as
+ * imports (`libraryImport`), then each import rewritten as a read of the
+ * library. The library holds every export of every package a program may
+ * import, so a binding the program imports is always there. `at` is where the
+ * program is written, for its errors.
  */
-async function liveBlock(page: string, fence: Fence, source: string): Promise<string> {
-  const code = await bundleOrThrow(page, source, { format: "es", packagesExternal: true });
+async function bundleOnLibrary(at: string, entry: Entry): Promise<Bundled> {
+  const { code, modules } = await bundleOrThrow(at, entry, { format: "es", onLibrary: true });
   const file = ts.createSourceFile("live.js", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-  const at = `docs/${page}:${fence.line}`;
   const refuse = (node: ts.Node): void => {
     if (isModuleOnly(node)) throw new Error(`${at}: a live example imports only with \`import\` declarations, not \`import()\``);
     ts.forEachChild(node, refuse);
@@ -590,13 +652,34 @@ async function liveBlock(page: string, fence: Fence, source: string): Promise<st
       : `const { ${bindings.elements.map((e) => (e.propertyName === undefined ? e.name.text : `${key(e.propertyName)}: ${e.name.text}`)).join(", ")} } = ${from};`;
     block = block.slice(0, statement.getStart(file)) + read + block.slice(statement.getEnd());
   }
-  return `\n${block}`;
+  return { code: `\n${block}`, modules };
 }
 
 async function liveProgram(page: string, fence: Fence, program: ExampleProgram, library: LibrarySource): Promise<LiveProgram> {
-  const [block, shared] = await Promise.all([liveBlock(page, fence, program.source), library()]);
+  const [{ code: block }, shared] = await Promise.all([bundleOnLibrary(`docs/${page}:${fence.line}`, generated(program.source)), library()]);
   return { id: hash(shared.id + block), block, library: shared };
 }
+
+/**
+ * The program the landing page's hero runs (theme/RichShowcase.ts). It is a
+ * program under `examples/`, not a docs block, so the demo-coverage gate
+ * (test/coverage/) counts what it imports; it runs on the live library as a
+ * live block does.
+ */
+export const SHOWCASE_FILE = path.join(REPO_ROOT, "examples", "showcase", "showcase.ts");
+
+/** The module the landing page's hero imports: a live program, the showcase's. */
+export const SHOWCASE_MODULE = `${LIVE_MODULE_PREFIX}showcase`;
+
+/** The showcase's own code, as a live program's block, and every file it was built from. */
+async function bundleShowcase(): Promise<Bundled> {
+  const entry: Entry = { file: SHOWCASE_FILE, source: readFileSync(SHOWCASE_FILE, "utf-8") };
+  const { code, modules } = await bundleOnLibrary(path.relative(REPO_ROOT, SHOWCASE_FILE), entry);
+  return { code, modules: [SHOWCASE_FILE, ...modules] };
+}
+
+/** The module a live program is served as: its library, imported, and its block. */
+const liveModule = (library: string, block: string): string => `import library from ${library};\nexport default library + ${JSON.stringify(block)};`;
 
 /**
  * Where the page's script goes: straight after its frontmatter, or at the top
@@ -670,7 +753,7 @@ export async function runPageExamples(
       });
     }
   }
-  const script = await bundleOrThrow(page, program.source);
+  const { code: script } = await bundleOrThrow(`docs/${page}`, generated(program.source));
   const world = newWorld();
   const { stream, end, exits } = await capture(script, world);
   if (exits.length > 0) throw new Error(`docs/${page}: an example calls process.exit(${exits[0]}), which would end the build; mark it \`node\``);
@@ -794,7 +877,7 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       runs.set(id, { key, result });
       const run = await result;
       for (const program of run.live) {
-        live.set(program.id, `import library from ${serveLibrary(program.library)};\nexport default library + ${JSON.stringify(program.block)};`);
+        live.set(program.id, liveModule(serveLibrary(program.library), program.block));
       }
       return { code: run.markdown, map: null };
     },
@@ -818,6 +901,14 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
         // Imported from the same module the live examples import, so the site bundles the library once.
         const shared = await libraryAt(stamp())();
         return `import library from ${serveLibrary(shared)};\nexport { library };\nexport const start = ${JSON.stringify(start)};`;
+      }
+      if (id === `\0${SHOWCASE_MODULE}`) {
+        // Imported by the landing page's hero, not by a page this plugin
+        // transforms, so only these watches re-run it in `docs:dev`: the
+        // showcase's files for its block, and `src/` for the library.
+        const [showcase, shared] = await Promise.all([bundleShowcase(), libraryAt(stamp())()]);
+        [...showcase.modules, ...listTypeScriptFiles("src")].forEach((file) => this.addWatchFile(file));
+        return liveModule(serveLibrary(shared), showcase.code);
       }
       const module = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
       if (module === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);

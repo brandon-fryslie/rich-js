@@ -15,6 +15,8 @@ import {
   LIVE_RUNTIME_MODULE,
   PLAYGROUND_MODULE,
   PLAYGROUND_START_PAGE,
+  SHOWCASE_FILE,
+  SHOWCASE_MODULE,
   type LoadContext,
   docsExamplesPlugin,
   liveLibraryOnce,
@@ -288,6 +290,14 @@ describe("a live block", { timeout: 30_000 }, () => {
     await expect(runPage(page("# t", fence(dynamic, "ts live")))).rejects.toThrow(/fixture\.md:3: a live example imports only with `import` declarations/);
   });
 
+  // A file past the entry points, and an entry point the worker cannot run.
+  it.each(["renderables/panel", "node/save"])("refuses a block importing src/%s.ts, which the library does not hold", async (file) => {
+    const deep = `import * as m from "../src/${file}.js";\nconsole.print(Object.keys(m));`;
+    await expect(runPage(page("# t", fence(deep, "ts live")))).rejects.toThrow(
+      new RegExp(`fixture\\.md:3: bundling failed: .*imports src/${file}\\.ts, which the live library does not hold; .*through src/index\\.ts(?!.*node/save)`, "s"),
+    );
+  });
+
   it("shares one module with an identical block", async () => {
     const result = await runPage(page(fence("console.print(1);", "ts live"), fence("console.print(1);", "ts live")));
     expect(result.live).toHaveLength(1);
@@ -546,6 +556,45 @@ describe("the plugin", () => {
     const program = (await plugin.load.call(context, plugin.resolveId(specifier)!))!;
     expect(program.startsWith(`import library from ${librarySpecifier!};`)).toBe(true);
     expect(await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!)).toMatch(/^export default "/);
+  });
+
+  it("serves the landing page's showcase, a program under examples/, running on the live examples' own library", { timeout: 60_000 }, async () => {
+    const plugin = docsExamplesPlugin();
+    const context: LoadContext = { addWatchFile: () => {} };
+    const watched: string[] = [];
+    const module = (await plugin.load.call({ addWatchFile: (file) => watched.push(file) }, plugin.resolveId(SHOWCASE_MODULE)!))!;
+    const [, librarySpecifier, block] = /^import library from ("[^"]+");\nexport default library \+ (".*");$/s.exec(module)!;
+    // Imported by the hero, not by a page this plugin transforms, so `docs:dev` learns it is stale only from these.
+    expect(watched).toContain(SHOWCASE_FILE);
+    expect(watched).toContain(path.join(REPO_ROOT, "src", "index.ts"));
+    const library = (await plugin.load.call(context, plugin.resolveId(JSON.parse(librarySpecifier!) as string)!))!;
+    const [, script] = /^export default (".*");$/s.exec(library)!;
+    const shared = JSON.parse(script!) as string;
+    // It runs on the library, carrying none of it.
+    expect((JSON.parse(block!) as string).length).toBeLessThan(shared.length / 50);
+
+    // It never ends: its frames are drawn on timers, so the test drives the clock.
+    vi.useFakeTimers();
+    try {
+      const output: string[] = [];
+      await runInTerminal(shared + (JSON.parse(block!) as string), {
+        ...EXAMPLE_TERMINAL,
+        write: (chunk) => output.push(String(chunk)),
+        onInput: () => {},
+        exit: () => {},
+      });
+      // Its first frame is drawn before its body returns, where a still frame is taken.
+      const frame = () => output.join("").split("\x1b[H").at(-1)!;
+      const first = frame();
+      expect(first).toContain("Services");
+      expect(first).toContain("Progress");
+      vi.advanceTimersByTime(2_000);
+      expect(frame()).toContain("Services");
+      expect(frame()).not.toBe(first);
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
   });
 
   it("refuses a start block that is not a program on its own, at its line", { timeout: 60_000 }, () => {

@@ -15,3 +15,12 @@ declare module "virtual:rich-live/playground" {
   export const library: string;
   export const start: string;
 }
+
+/**
+ * The landing page's showcase, a live program: served by the docs-examples
+ * plugin as `SHOWCASE_MODULE` (example-runner.ts), which owns what it is.
+ */
+declare module "virtual:rich-live/showcase" {
+  const program: string;
+  export default program;
+}
