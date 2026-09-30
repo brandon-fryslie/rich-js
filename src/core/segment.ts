@@ -60,21 +60,27 @@ export class Segment {
   }
 
   /**
-   * Splits at a cell position. Returns [left, right].
+   * Splits at a cell position. Returns [left, right]: the first `position`
+   * cells and the rest, so the two halves are exactly as wide as this one.
+   * A wide glyph the cut goes through leaves a space in each of its two cells,
+   * as the reference's `Segment.split_cells` does — kept whole on either side,
+   * it would make that side a cell wider than the cells it stands for.
    *
-   * [LAW:single-enforcer] The right half starts as many cells further into
-   * whatever drew it as the left half took from this one, and its anchor says
-   * so; see `./anchor.ts`. That is not `leftText`'s width: a cut through a
-   * wide glyph pads the left half and keeps the whole glyph on the right.
+   * [LAW:single-enforcer] The right half starts `position` cells further into
+   * whatever drew it, and its anchor says so; see `./anchor.ts`.
    */
   splitCells(position: CellCol): [Segment, Segment] {
     const len = this.cellLength;
     if (position >= len) return [this, new Segment("")];
     if (position <= 0) return [new Segment(""), this];
-    const [leftText, rightText] = splitText(this.text, position);
+    // `splitText` pads the left half and keeps a cut glyph whole on the right,
+    // so `rest` overhangs the cut by the one cell of that glyph left of it.
+    const [leftText, rest] = splitText(this.text, position);
+    const overhang = cellLen(rest) - (len - position);
+    const rightText = " ".repeat(overhang) + [...rest].slice(overhang).join("");
     return [
       new Segment(leftText, this.style),
-      new Segment(rightText, this.style?.shiftedBy(len - cellLen(rightText))),
+      new Segment(rightText, this.style?.shiftedBy(position)),
     ];
   }
 
@@ -445,12 +451,8 @@ export class Segment {
       const section: Segment[] = [];
 
       while (currentSegment && cellOffset + currentSegment.cellLength <= cut) {
-        if (currentSegment.isControl) {
-          section.push(currentSegment);
-        } else {
-          section.push(currentSegment);
-          cellOffset += currentSegment.cellLength;
-        }
+        section.push(currentSegment);
+        cellOffset += currentSegment.cellLength;
         segmentIndex++;
         currentSegment = segments[segmentIndex];
       }

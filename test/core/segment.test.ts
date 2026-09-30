@@ -177,6 +177,11 @@ describe("Segment.splitCells()", () => {
     expect(left.cellLength).toBe(2);
     expect(right.cellLength).toBe(2);
   });
+
+  it("leaves a space in each cell of a wide glyph the cut goes through", () => {
+    const [left, right] = new Segment("ab漢cd").splitCells(asCellCol(3));
+    expect([left.text, right.text]).toEqual(["ab ", " cd"]);
+  });
 });
 
 // --- Segment.line() ---
@@ -573,6 +578,11 @@ describe("Segment.divide()", () => {
     // First section: "abc" + "d", second: "ef"
     expect(Segment.getLineLength(result[0]!)).toBe(4);
     expect(Segment.getLineLength(result[1]!)).toBe(2);
+  });
+
+  it("gives each section exactly its cells when a cut goes through a wide glyph", () => {
+    const result = Segment.divide([new Segment("ab漢cd")], [3, 6]);
+    expect(result.map(texts)).toEqual([["ab "], [" cd"]]);
   });
 
   it("yields an empty section when cut is at position 0", () => {
