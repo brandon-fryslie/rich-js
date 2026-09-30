@@ -4,15 +4,22 @@
     {
       "version": "pr-241",
       "ref": "refs/pull/241/merge",
-      "sha": "479e8b4546359e4098dff84d50fb1fc509f54657",
-      "timestamp": "2026-09-30T08:01:33.657Z",
+      "sha": "5e504828332631a04454878b6e6aa0965b911112",
+      "timestamp": "2026-09-30T08:16:30.860Z",
       "commits": [
         {
-          "sha": "479e8b4546359e4098dff84d50fb1fc509f54657",
+          "sha": "5e504828332631a04454878b6e6aa0965b911112",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:00:24-06:00",
-          "message": "Merge 598861778402b84d20508ca9f3f1cfc5331a1279 into 8989fb96d510e9b4bffca903895b8446ea9015fe\n"
+          "timestamp": "2026-09-30T08:15:03Z",
+          "message": "Merge ff87a1a89ea04f11d95dd19cf93c7a3323a84da5 into 8989fb96d510e9b4bffca903895b8446ea9015fe\n"
+        },
+        {
+          "sha": "ff87a1a89ea04f11d95dd19cf93c7a3323a84da5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T02:14:58-06:00",
+          "message": "fix(docs): the showcase card holds its width, and live imports resolve through the build (rich-landing-0mu)\n\nReview (high) of PR #241:\n- The card's edge is a ring, not a border, so the card is exactly the width\n  its font was fitted to, and its screen is its terminal's width (columns ×\n  1ch, plus the pixel xterm rounds up) before xterm loads, so it no longer\n  widens on first draw.\n- libraryImport asks the build's resolver which file an import names, instead\n  of re-deriving it with path edits that a directory import slipped past.\n- The files a live program may import are the live library's entry points,\n  one list for the resolver and its refusal message; src/node/save.ts is now\n  refused at resolution with the right list.\n- Spectrum reads its height with regionRows and builds each cell's style\n  from ColorSpec.fromRgb, parsing no colour strings per frame.\n- The \"moves\" e2e waits for a percentage before reading one, so it cannot\n  pass on an absent row.\n\nxterm's rows are taller than the reserved line height: rich-live-terminal-t0rs.\n"
         },
         {
           "sha": "598861778402b84d20508ca9f3f1cfc5331a1279",

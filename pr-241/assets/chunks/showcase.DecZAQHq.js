@@ -1,5 +1,5 @@
 import{l as t}from"./c4e47efd5a86c1d3.B0dnbtjH.js";const e=t+`
-const { BarColumn, Layout, Live, Panel, Progress, RichText, Segment, SpinnerColumn, Style, Table, TaskProgressColumn, TextColumn, Tree, withCellWidth } = __richLibrary["@promptctl/rich-js"];
+const { BarColumn, ColorSpec, Layout, Live, Panel, Progress, RichText, Segment, SpinnerColumn, Style, Table, TaskProgressColumn, TextColumn, Tree, regionRows, withCellWidth } = __richLibrary["@promptctl/rich-js"];
 //#region examples/showcase/showcase.ts
 /**
 * showcase — the program the docs site's landing page runs in its hero
@@ -105,23 +105,22 @@ var Spectrum = class {
 	}
 	*render(options) {
 		const width = withCellWidth(options).maxWidth;
-		const rows = options.height?.rows ?? 5;
+		const rows = regionRows(options.height) ?? 5;
 		const colour = (x, y) => hsl(x / width * 360 + this.t * 40, .85, .72 - y / (rows * 2) * .5);
 		for (let row = 0; row < rows; row++) {
-			for (let x = 0; x < width; x++) yield new Segment("▀", Style.parse(\`\${colour(x, row * 2)} on \${colour(x, row * 2 + 1)}\`));
+			for (let x = 0; x < width; x++) yield new Segment("▀", Style.fromColor(colour(x, row * 2), colour(x, row * 2 + 1)));
 			yield Segment.line();
 		}
 	}
 };
-/** A colour as \`#rrggbb\`, from a hue in degrees and a saturation and lightness in 0–1. */
+/** A truecolor colour, from a hue in degrees and a saturation and lightness in 0–1. */
 function hsl(hue, saturation, lightness) {
 	const a = saturation * Math.min(lightness, 1 - lightness);
 	const channel = (n) => {
 		const k = (n + hue / 30) % 12;
-		const value = lightness - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
-		return Math.round(value * 255).toString(16).padStart(2, "0");
+		return Math.round((lightness - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255);
 	};
-	return \`#\${channel(0)}\${channel(8)}\${channel(4)}\`;
+	return ColorSpec.fromRgb(channel(0), channel(8), channel(4));
 }
 /** Jobs that fill at their own pace and start over when full. */
 var JOBS = [
