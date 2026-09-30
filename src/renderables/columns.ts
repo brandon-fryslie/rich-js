@@ -134,12 +134,7 @@ export class Columns implements Renderable, Measurable {
    */
   private _grid(options: RenderOptions): Table {
     const { columns, rows, widest } = this._layout(options);
-    const grid = Table.grid({
-      padding: this.padding,
-      collapsePadding: true,
-      padEdge: false,
-      expand: this.expand,
-    });
+    const grid = Table.grid({ padding: this.padding, expand: this.expand });
     const declared = this._declaredWidth(options);
     for (let col = 0; col < columns; col++) {
       grid.addColumn(undefined, { minWidth: declared, maxWidth: declared });

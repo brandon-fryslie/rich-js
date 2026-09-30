@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   BarColumn,
   Progress,
-  TaskProgressColumn,
   TextColumn,
 } from "../../src/renderables/progress.js";
 import { Segment } from "../../src/core/segment.js";
@@ -72,7 +71,7 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
     const progress = new Progress(
       new TextColumn("{task.description}"),
       new BarColumn(20),
-      new TaskProgressColumn(),
+      new TextColumn("done"),
       { expand },
     );
     const id = progress.addTask("compiling", { total: 100 });
@@ -87,6 +86,19 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
   it("keeps its natural width when it does not expand, whatever it is offered", () => {
     expect(row(false, 120)).toBe(row(false, 45));
     expect(row(false, 45).length).toBeLessThan(45);
+  });
+
+  // Python Rich 9d8f9a3's `make_tasks_table` for the same columns at width 45.
+  // Its grid pads no edge, so the row ends at the last column's text, or at
+  // the cell `expand` stretched it to — never on a pad cell. Every bar glyph
+  // reads as one: the reference draws a half cell at 42% where this port does
+  // not, and what is pinned here is where the columns sit.
+  it.each([
+    [false, "compiling ━━━━━━━━╺━━━━━━━━━━━ done"],
+    [true, "compiling    ━━━━━━━━╺━━━━━━━━━━━       done "],
+  ])("lays its row out as Rich does (expand: %s)", (expand, reference) => {
+    const cells = (line: string): string => line.replace(/[━╸╺]/g, "#");
+    expect(cells(row(expand, 45))).toBe(cells(reference));
   });
 
   it("fills the offer when it expands and leaves the bar at its own width", () => {

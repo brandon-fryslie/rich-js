@@ -410,15 +410,33 @@ describe("Table", () => {
     }
   });
 
-  it("carries a right-justified grid column to the far side when the grid expands", () => {
-    const grid = Table.grid({ expand: true });
-    grid.addColumn();
-    grid.addColumn("", { justify: "right" });
-    grid.addRow("Left side", "Right side");
-    const [line] = collectLines(grid, { maxWidth: 40 });
-    expect(line).toHaveLength(40);
-    expect(line!.startsWith("Left side ")).toBe(true);
-    expect(line!.trimEnd().endsWith(" Right side")).toBe(true);
+  // Python Rich 9d8f9a3's `Table.grid(padding=(0, 1, 0, 0), ...)` — this
+  // port's grid padding — which pads no edge and collapses its padding.
+  describe("a grid pads between its columns and never at its edges", () => {
+    it("carries a right-justified column to the far edge when it expands", () => {
+      const grid = Table.grid({ expand: true });
+      grid.addColumn();
+      grid.addColumn("", { justify: "right" });
+      grid.addRow("Left side", "Right side");
+      expect(collectLines(grid, { maxWidth: 40 })).toEqual(["Left side                     Right side"]);
+    });
+
+    it("ends at its last column's content when it does not expand", () => {
+      const grid = Table.grid();
+      grid.addColumn();
+      grid.addColumn();
+      grid.addRow("left", "right");
+      expect(collectLines(grid, { maxWidth: 40 })).toEqual(["left right"]);
+    });
+
+    it("pays one gap between columns padded on both sides", () => {
+      const grid = Table.grid({ padding: [0, 1] });
+      grid.addColumn();
+      grid.addColumn();
+      grid.addColumn();
+      grid.addRow("a", "bb", "c");
+      expect(collectLines(grid, { maxWidth: 40 })).toEqual(["a bb c"]);
+    });
   });
 
   it("measurement returns minimum > 0 and maximum >= minimum", () => {

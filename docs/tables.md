@@ -71,8 +71,8 @@ narrower than a word. Cell values can be any renderable — strings with markup,
 | Option | Description |
 |---|---|
 | `padding` | Padding inside cells — integer, 2-tuple, or 4-tuple (CSS order) |
-| `collapsePadding` | Merge each cell's padding into its neighbour's: a cell's left side gives way to the right side of the cell before it, and a row's bottom to the top of the row after it (default: `false`) |
-| `padEdge` | Pad the sides of the cells that meet the table's edge (default: `true`) |
+| `collapsePadding` | Merge each cell's padding into its neighbour's: a cell's left side gives way to the right side of the cell before it, and a row's bottom to the top of the row after it (default: `false`; `Table.grid`: `true`) |
+| `padEdge` | Pad the sides of the cells that meet the table's edge (default: `true`; `Table.grid`: `false`) |
 
 The padding above and below a cell is blank lines in that cell, so it stands between rows the same way the padding either side stands between columns. With `collapsePadding`, a row keeps `max(0, top - bottom)` of its bottom padding — Rich's arithmetic, so a bottom-only padding separates no rows.
 
@@ -298,7 +298,7 @@ grid.addRow("[bold]Left content[/bold]", "[dim]Right content[/dim]");
 console.print(grid);
 ```
 
-A common pattern: use a grid to position content at both edges of the terminal on a single line. `expand` makes the grid fill the terminal, and the right-justified column carries its content to the far side — one cell short of the edge, because `Table.grid` pads the right of every column, the last one included:
+A common pattern: use a grid to position content at both edges of the terminal on a single line. `expand` makes the grid fill the terminal, and the right-justified column carries its content to the far edge:
 
 ```typescript
 const grid = Table.grid({ expand: true });
@@ -309,4 +309,4 @@ grid.addRow("[bold]Left side[/bold]", "[dim]Right side[/dim]");
 console.print(grid);
 ```
 
-`Table.grid()` uses the same `Table` class — it simply disables borders and headers. No separate type.
+`Table.grid()` uses the same `Table` class with different defaults: no borders, no header, one cell of padding to the right of each column, `collapsePadding` on and `padEdge` off, so the padding falls between columns and never at the grid's edges. No separate type.
