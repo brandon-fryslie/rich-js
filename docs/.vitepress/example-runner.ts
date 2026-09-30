@@ -66,6 +66,7 @@ import {
   type ExampleProgram,
 } from "./example-program.js";
 import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
+import { LIBRARY_BINDING } from "./live-library.js";
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
@@ -369,6 +370,25 @@ export const LIVE_MODULE_PREFIX = "virtual:rich-live/";
 /** Where under `LIVE_MODULE_PREFIX` a live library is served. */
 const LIVE_LIBRARY_PATH = "library/";
 
+/**
+ * The module whose default export is the script a live program's worker runs:
+ * theme/live-worker.ts and everything it imports, bundled as one classic
+ * script. The page hands that text to the sandboxed frame a program runs in,
+ * because a frame with an opaque origin can start a worker only from a script
+ * it holds, never from a URL on the site. theme/live-terminal.ts owns why the
+ * frame.
+ */
+export const LIVE_RUNTIME_MODULE = `${LIVE_MODULE_PREFIX}runtime`;
+
+const LIVE_WORKER = path.join(REPO_ROOT, "docs", ".vitepress", "theme", "live-worker.ts");
+
+/** The script `LIVE_RUNTIME_MODULE` exports, as it stands on disk now. */
+export function bundleLiveRuntime(): Promise<string> {
+  return bundle(`import { serve } from ${JSON.stringify(LIVE_WORKER)};\nserve();`, { format: "es" }).catch((error: unknown) => {
+    throw new Error(`the live terminal's worker did not bundle: ${String(error)}`, { cause: error });
+  });
+}
+
 async function bundleOrThrow(page: string, source: string, shape: BundleShape = { format: "es" }): Promise<string> {
   return bundle(source, shape).catch((error: unknown) => {
     throw new Error(`docs/${page}: bundling failed: ${String(error)}`, { cause: error });
@@ -376,9 +396,6 @@ async function bundleOrThrow(page: string, source: string, shape: BundleShape = 
 }
 
 const hash = (text: string): string => createHash("sha256").update(text).digest("hex").slice(0, 16);
-
-/** The name a live program's library is declared under, in the function body both run in. */
-const LIBRARY_BINDING = "__richLibrary";
 
 /**
  * What a live block may import: every entry point of this package but the two
@@ -573,7 +590,7 @@ export interface DocsExamplesPlugin {
   readonly enforce: "pre";
   transform(code: string, id: string): Promise<{ code: string; map: null } | null>;
   resolveId(id: string): string | null;
-  load(id: string): string | null;
+  load(id: string): Promise<string | null>;
 }
 
 /** Every file under `src/` and when it last changed: what a page's output depends on besides the page. */
@@ -601,6 +618,7 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
   // one that outlives an edit is never asked for. A program imports its
   // library, so the bundler gives a library its programs share one chunk.
   const live = new Map<string, string>();
+  let runtime: Promise<string> | undefined;
   return {
     name: "rich-docs-examples",
     enforce: "pre",
@@ -624,8 +642,10 @@ export function docsExamplesPlugin(stamp: () => string = sourceStamp): DocsExamp
       return { code: run.markdown, map: null };
     },
     resolveId: (id) => (id.startsWith(LIVE_MODULE_PREFIX) ? `\0${id}` : null),
-    load(id) {
+    async load(id) {
       if (!id.startsWith(RESOLVED_LIVE_PREFIX)) return null;
+      // Built once per plugin: it is a function of docs/.vitepress/, not of `src/` or a page.
+      if (id === `\0${LIVE_RUNTIME_MODULE}`) return `export default ${JSON.stringify(await (runtime ??= bundleLiveRuntime()))};`;
       const module = live.get(id.slice(RESOLVED_LIVE_PREFIX.length));
       if (module === undefined) throw new Error(`${id.slice(1)}: no page run produced this live program`);
       return module;

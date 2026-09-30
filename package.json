@@ -110,6 +110,7 @@
     "mobx": "^7.0.3",
     "semver": "^7.8.5",
     "strip-ansi": "^7.2.0",
+    "sucrase": "^3.35.1",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",
     "vitepress": "^1.6.4",
