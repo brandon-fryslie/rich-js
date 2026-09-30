@@ -81,7 +81,7 @@ A translucent background is measured as drawn, composited over the surface benea
 The sixth argument, `terminal`, is the `TerminalTheme` whose sixteen `ansiColors` the terminal draws at `STANDARD`. Themes disagree about more than hue: Rosé Pine Dawn's black is `#F2E9E1` and its white `#575279`, so the side of a background that text belongs on flips. With no `terminal` named, the pair is measured in the VGA colours `DEFAULT_TERMINAL_THEME` draws. `fg` and `bg` are still the colours you write — a cell styled `on black` is passed as nominal black, `#000000` — and the terminal's own shades are only what they are measured in.
 
 ```typescript
-import { ColorDepth, ROSE_PINE_DAWN, drawnColour } from "@promptctl/rich-js";
+import { ColorDepth, ColorRgba, ROSE_PINE_DAWN, contrastRatio, drawnColour, ensureContrast } from "@promptctl/rich-js";
 
 const navy = new ColorRgba(0, 0, 128);
 const paper = new ColorRgba(255, 255, 255);
