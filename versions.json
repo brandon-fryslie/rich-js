@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-273",
+      "ref": "refs/pull/273/merge",
+      "sha": "cca7c99ff8be1e4616ad367663f080f4c32f607f",
+      "timestamp": "2026-09-30T19:42:40.563Z",
+      "commits": [
+        {
+          "sha": "cca7c99ff8be1e4616ad367663f080f4c32f607f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:41:32-06:00",
+          "message": "Merge fa35e72a7621f7249579d208b7dbd4b4e2115bb2 into 8d2e9b9de3088b068ba1b1e8b8616b694cc1bb4d\n"
+        },
+        {
+          "sha": "fa35e72a7621f7249579d208b7dbd4b4e2115bb2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:41:26-06:00",
+          "message": "fix(rich-explore): each coverage item starts its own row (rich-explore-demo-fgln)\n\nThe coverage view built its Group items as RichText with end \"\", which\nleaves the line open as Rich's Text does, so the Group drew the next item\non the same row — 14 rows wider than 80 cells. The items end their lines\nnow, and the Emoji, a line fragment as in Rich, sits in a grid row beside\nits label. The test compares the view's row count with the sum of its\nitems' rows, which catches a join too short to overflow the width.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "8d2e9b9de3088b068ba1b1e8b8616b694cc1bb4d",
