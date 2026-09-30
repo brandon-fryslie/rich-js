@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-244",
-      "ref": "refs/pull/244/merge",
-      "sha": "a98c79e21addc35ad42c43afda17bb78fd07b019",
-      "timestamp": "2026-09-30T09:04:27.242Z",
-      "commits": [
-        {
-          "sha": "a98c79e21addc35ad42c43afda17bb78fd07b019",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:03:15Z",
-          "message": "Merge 5dff54a5b0ce4534e9dac756e499f57ff759dc0f into 268b3f33da77e3a35b89ec74385fc1e00eccb721\n"
-        },
-        {
-          "sha": "5dff54a5b0ce4534e9dac756e499f57ff759dc0f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:03:11-06:00",
-          "message": "test(export): grid spec checks both edges on a long run; goldens pin combined attributes and a decomposed mark (rich-export-9a1.5)\n\nThe e2e spec read only each grapheme's left edge, which for a wide glyph is\nthe x attribute read back, and a lost textLength failed it by 0.14px. It now\nchecks the right edge too and adds a 30-cell ASCII chunk; both mutations fail\nby ~4px.\n\nThe golden fixture's e-with-two-marks was a precomposed é plus one mark; it is\nnow e + U+0301 + U+0302. A row pins reverse+dim, reverse+conceal and\nunderline2+strike, the pairs resolved together.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "ecba0e2f89a6bb02a0d0fc4aa814f057fd6321f8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:56:24-06:00",
-          "message": "test(export): golden HTML and SVG exports under two themes, and SVG glyphs on the cell grid in Chromium (rich-export-9a1.5)\n\nThe fixture's attribute rows come from ATTRIBUTE_NAMES, so an attribute\nadded to Style changes the goldens instead of being skipped. Deleting the\nhandling of any ExportLook field in either exporter fails a golden; the\nPlaywright spec fails when textLength is dropped.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "268b3f33da77e3a35b89ec74385fc1e00eccb721",
-      "timestamp": "2026-09-30T08:51:46.115Z",
+      "sha": "ccede526c5da927026e4a22d16a6f542485b6667",
+      "timestamp": "2026-09-30T09:08:47.915Z",
       "commits": [
         {
-          "sha": "268b3f33da77e3a35b89ec74385fc1e00eccb721",
+          "sha": "ccede526c5da927026e4a22d16a6f542485b6667",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:50:43-06:00",
-          "message": "feat(export): saveSvg writes Console.exportSvg to a file (rich-export-9a1.4) (#243)\n\n* feat(export): saveSvg writes Console.exportSvg to a file (rich-export-9a1.4)\n\nsaveSvg joins saveText and saveHtml in src/node/save.ts, its options typed\nfrom Console.exportSvg. The themes demo gains EXPORT_SVG, which is what\ndemonstrates the new export to the coverage gate.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* refactor(demo): export rows carry their options as data (rich-export-9a1.4)\n\nThe SVG row wrapped saveSvg in a lambda with a hand-typed options shape;\neach row now carries options and the loop adds clear: false. app.ts's\nheader points at index.ts instead of restating one of its env vars.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T03:07:43-06:00",
+          "message": "test(export): golden exports under two themes, SVG glyphs on the cell grid (rich-export-9a1.5) (#244)\n\n* test(export): golden HTML and SVG exports under two themes, and SVG glyphs on the cell grid in Chromium (rich-export-9a1.5)\n\nThe fixture's attribute rows come from ATTRIBUTE_NAMES, so an attribute\nadded to Style changes the goldens instead of being skipped. Deleting the\nhandling of any ExportLook field in either exporter fails a golden; the\nPlaywright spec fails when textLength is dropped.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* test(export): grid spec checks both edges on a long run; goldens pin combined attributes and a decomposed mark (rich-export-9a1.5)\n\nThe e2e spec read only each grapheme's left edge, which for a wide glyph is\nthe x attribute read back, and a lost textLength failed it by 0.14px. It now\nchecks the right edge too and adds a 30-cell ASCII chunk; both mutations fail\nby ~4px.\n\nThe golden fixture's e-with-two-marks was a precomposed é plus one mark; it is\nnow e + U+0301 + U+0302. A row pins reverse+dim, reverse+conceal and\nunderline2+strike, the pairs resolved together.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }

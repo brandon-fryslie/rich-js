@@ -1,1 +1,0 @@
-import{_ as i,o as a,c as n,ag as l}from"./chunks/framework.CBY49glL.js";const c=JSON.parse('{"title":"Markdown","description":"","frontmatter":{},"headers":[],"relativePath":"markdown.md","filePath":"markdown.md"}'),e={name:"markdown.md"};function t(p,s,h,o,k,r){return a(),n("div",null,[...s[0]||(s[0]=[l("",9)])])}const g=i(e,[["render",t]]);export{c as __pageData,g as default};
