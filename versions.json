@@ -4,15 +4,22 @@
     {
       "version": "pr-243",
       "ref": "refs/pull/243/merge",
-      "sha": "8f2679639676217d7a48ea37753236931d0e871e",
-      "timestamp": "2026-09-30T08:43:12.461Z",
+      "sha": "633f13a4fcdf0945192d53f0596af989e664642f",
+      "timestamp": "2026-09-30T08:47:04.054Z",
       "commits": [
         {
-          "sha": "8f2679639676217d7a48ea37753236931d0e871e",
+          "sha": "633f13a4fcdf0945192d53f0596af989e664642f",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T02:42:02-06:00",
-          "message": "Merge 7bc8a43cc70a2f81ce6d81840d7cb0449660c7a3 into 8ec00900f518a8f66664c7ae7a26e92921ad8aff\n"
+          "timestamp": "2026-09-30T08:45:58Z",
+          "message": "Merge 2ab30b848f8949a4592430c09f3a5e598955714a into 8ec00900f518a8f66664c7ae7a26e92921ad8aff\n"
+        },
+        {
+          "sha": "2ab30b848f8949a4592430c09f3a5e598955714a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T02:45:53-06:00",
+          "message": "refactor(demo): export rows carry their options as data (rich-export-9a1.4)\n\nThe SVG row wrapped saveSvg in a lambda with a hand-typed options shape;\neach row now carries options and the loop adds clear: false. app.ts's\nheader points at index.ts instead of restating one of its env vars.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "7bc8a43cc70a2f81ce6d81840d7cb0449660c7a3",
