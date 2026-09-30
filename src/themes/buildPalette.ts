@@ -1,6 +1,6 @@
 import { ColorRgba, blendRgb } from "../core/color.js";
 import { alphaBlend, contrastFor } from "./colorMath.js";
-import { Palette } from "./palette.js";
+import { Palette, drawnOn } from "./palette.js";
 
 /**
  * Base colors required to build a full semantic palette.
@@ -43,8 +43,23 @@ const ACCENT_KEYS: AccentKey[] = ["primary", "secondary", "accent", "success", "
  *              by relative luminance — single source of truth so widgets
  *              never need to invert / reverse fg/bg to get readable text.
  * - `surface` = background blended 5% toward foreground
+ *
+ * A translucent base colour is drawn onto `background` before anything is
+ * derived from it, so `on-*` is chosen against the colour the accent is drawn
+ * as and every derived entry is opaque.
  */
-export function buildPalette(name: string, dark: boolean, base: BaseColors): Palette {
+export function buildPalette(name: string, dark: boolean, given: BaseColors): Palette {
+  const draw = drawnOn(given.background);
+  const base: BaseColors = {
+    primary: draw("primary", given.primary),
+    secondary: draw("secondary", given.secondary),
+    accent: draw("accent", given.accent),
+    success: draw("success", given.success),
+    warning: draw("warning", given.warning),
+    error: draw("error", given.error),
+    background: given.background,
+    foreground: draw("foreground", given.foreground),
+  };
   const vars = new Map<string, ColorRgba>();
 
   // Base entries

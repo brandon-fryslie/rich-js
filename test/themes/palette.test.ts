@@ -36,6 +36,23 @@ describe("Palette", () => {
     expect(p.get("PRIMARY")).toBeUndefined();
   });
 
+  it("draws a translucent var onto the palette's background", () => {
+    const background = new ColorRgba(200, 200, 200);
+    const tint = new ColorRgba(0, 0, 0, 0.5);
+    const p = new Palette("t", false, new Map([["background", background], ["hover", tint]]));
+    expect(p.get("hover")).toEqual(new ColorRgba(100, 100, 100));
+  });
+
+  it("refuses a translucent var when there is no background to draw it on", () => {
+    const tint = new ColorRgba(0, 0, 0, 0.5);
+    expect(() => new Palette("t", false, new Map([["hover", tint]]))).toThrow(/hover is translucent/);
+  });
+
+  it("refuses a translucent background", () => {
+    const background = new ColorRgba(200, 200, 200, 0.5);
+    expect(() => new Palette("t", false, new Map([["background", background]]))).toThrow(/must be opaque/);
+  });
+
   it("supports empty palettes", () => {
     const p = new Palette("empty", false, new Map());
     expect(p.vars.size).toBe(0);

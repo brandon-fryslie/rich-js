@@ -1,5 +1,5 @@
 import { ColorRgba, ColorTable, parseRgbHex, parseRgbaHex } from "../core/color.js";
-import { Palette } from "./palette.js";
+import { Palette, drawnOn } from "./palette.js";
 import { THEMES, type ThemeName, type ThemePaletteData } from "./data/index.js";
 import { ANSI_SLOTS } from "./data/types.js";
 
@@ -69,17 +69,22 @@ export interface ThemeBaseColors {
  */
 export function getThemeBaseColors(name: ThemeName): ThemeBaseColors {
   const data = THEMES[name];
+  const bg = requireBaseVar(data, "background");
+  // The colours `getThemePalette(name)` hands out for the same names: drawn on
+  // the theme's own background, as a Palette draws every colour it holds.
+  const draw = drawnOn(bg);
+  const base = (key: string): ColorRgba => draw(key, requireBaseVar(data, key));
   return {
     name: data.name,
     dark: data.dark,
-    bg: requireBaseVar(data, "background"),
-    fg: requireBaseVar(data, "foreground"),
-    primary: requireBaseVar(data, "primary"),
-    secondary: requireBaseVar(data, "secondary"),
-    accent: requireBaseVar(data, "accent"),
-    success: requireBaseVar(data, "success"),
-    warning: requireBaseVar(data, "warning"),
-    error: requireBaseVar(data, "error"),
+    bg,
+    fg: base("foreground"),
+    primary: base("primary"),
+    secondary: base("secondary"),
+    accent: base("accent"),
+    success: base("success"),
+    warning: base("warning"),
+    error: base("error"),
     ansi: new ColorTable(ANSI_SLOTS.map((slot) => parseOpaqueHex(data.ansi[slot], data.name, `ansi.${slot}`))),
   };
 }

@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { ColorRgba } from "../../src/core/color.js";
+import { ColorDepth, ColorRgba, ColorSpec } from "../../src/core/color.js";
+import { resolveLook } from "../../src/core/export-lines.js";
+import { Style } from "../../src/core/style.js";
 import { Palette } from "../../src/themes/palette.js";
+import { CATPPUCCIN_LATTE } from "../../src/themes/terminalThemes.js";
+import * as terminalThemes from "../../src/themes/terminalThemes.js";
 import {
   getThemeBaseColors,
   getThemePalette,
@@ -82,11 +86,11 @@ describe("getThemePalette", () => {
     expect(getThemePalette("solarized-light")!.dark).toBe(false);
   });
 
-  it("preserves alpha for translucent vars (e.g. boost)", () => {
-    const gruv = getThemePalette("gruvbox");
-    const boost = gruv!.get("boost");
-    // boost in upstream Textual is a #FFFFFF0A overlay — alpha ~ 0x0A/255.
-    expect(boost!.alpha).toBeCloseTo(0x0a / 255, 3);
+  it("draws a translucent var onto the theme's own background (e.g. boost)", () => {
+    // boost in upstream Textual is a #FFFFFF0A overlay on gruvbox's #282828.
+    const boost = getThemePalette("gruvbox").get("boost")!;
+    expect(boost.hex).toBe(new ColorRgba(255, 255, 255, 0x0a / 255).compositeOver(new ColorRgba(0x28, 0x28, 0x28)).hex);
+    expect(boost.alpha).toBe(1);
   });
 
   it("hex equivalence — gruvbox.primary matches upstream Textual", () => {
@@ -129,5 +133,38 @@ describe("getThemeBaseColors", () => {
   it("base.dark matches palette.dark", () => {
     expect(getThemeBaseColors("solarized-light").dark).toBe(false);
     expect(getThemeBaseColors("dracula").dark).toBe(true);
+  });
+});
+
+// [LAW:behavior-not-structure] A theme's translucent variable is a tint meant
+// for that theme's background. Whatever a palette hands out is drawn there
+// already, so the terminal and an export paint the same colour for it.
+describe("every palette colour is opaque", () => {
+  it("holds for every bundled palette, its base colours, and its TerminalTheme", () => {
+    const translucent: string[] = [];
+    for (const name of ALL_NAMES) {
+      for (const [key, colour] of getThemePalette(name).vars) {
+        if (colour.alpha !== 1) translucent.push(`${name}.${key} ${colour.hex}`);
+      }
+      const base = getThemeBaseColors(name);
+      for (const key of ["bg", "fg", "primary", "secondary", "accent", "success", "warning", "error"] as const) {
+        if (base[key].alpha !== 1) translucent.push(`base ${name}.${key} ${base[key].hex}`);
+      }
+    }
+    for (const [exported, theme] of Object.entries(terminalThemes)) {
+      for (const [key, colour] of theme.palette.vars) {
+        if (colour.alpha !== 1) translucent.push(`${exported}.palette.${key} ${colour.hex}`);
+      }
+    }
+    expect(translucent).toEqual([]);
+  });
+
+  it("catppuccin-latte's hover background is a pale tint in the SGR bytes and in an export", () => {
+    // #00000019 over latte's #EFF1F5. Composited over the terminal's black it
+    // would draw #000000 in the terminal and this pale grey in an export.
+    const hover = getThemePalette("catppuccin-latte").get("block-hover-background")!;
+    const style = new Style({ bgcolor: ColorSpec.fromRgba(hover) });
+    expect(style.toSgrCodes(ColorDepth.TRUECOLOR)).toBe("48;2;216;217;221");
+    expect(resolveLook(style, CATPPUCCIN_LATTE).background).toEqual(new ColorRgba(216, 217, 221));
   });
 });
