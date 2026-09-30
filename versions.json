@@ -2,39 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-275",
-      "ref": "refs/pull/275/merge",
-      "sha": "f4de9ad94ad679b2d7581930d759ee07738c35c3",
-      "timestamp": "2026-09-30T20:25:54.940Z",
-      "commits": [
-        {
-          "sha": "f4de9ad94ad679b2d7581930d759ee07738c35c3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:24:45-06:00",
-          "message": "Merge 86fefc941f69d35cd45656db85bc67d2cc4a8b26 into 987c57459b95e2eddb811c57cb3c9c1c7325fc7d\n"
-        },
-        {
-          "sha": "86fefc941f69d35cd45656db85bc67d2cc4a8b26",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:24:41-06:00",
-          "message": "refactor(widgets): an overlay is bounded through cropLines (rich-segment-1p2h)\n\nThe overlay clip is the last survivor of Screen's split-then-unpadded-crop\nhand-roll; it now composes splitLines(cropLines(...)) as Tree and Layout do.\nPainter's fitRows keeps adjustLineLength: it bounds the rows of a frame\nalready shaped by its caller, one line at a time, which is that primitive's\nown job — there is no stream there to crop.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "987c57459b95e2eddb811c57cb3c9c1c7325fc7d",
-      "timestamp": "2026-09-30T20:22:45.964Z",
+      "sha": "d66baa0a14f74dea4a3ca5566bce6f7cb15ad594",
+      "timestamp": "2026-09-30T20:31:14.477Z",
       "commits": [
         {
-          "sha": "987c57459b95e2eddb811c57cb3c9c1c7325fc7d",
+          "sha": "d66baa0a14f74dea4a3ca5566bce6f7cb15ad594",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T14:21:32-06:00",
-          "message": "fix(segment): a cut through a wide glyph splits it into two blank cells (rich-segment-cvn6) (#274)\n\n* fix(segment): a cut through a wide glyph splits it into two blank cells (rich-segment-cvn6)\n\nSegment.splitCells padded the left half and kept a cut glyph whole on the\nright, so the halves were one cell wider than the segment. Segment.divide\ncounted from the padded left half, so every section after a mid-glyph cut\nwas measured from the wrong column — and WidgetApp paints overlays through\ndivide, so an overlay ending halfway through a CJK glyph widened the row\nunder it by a cell (\"abc字漢字\" in an 8-cell row).\n\nThe halves are now exactly `position` and `len - position` cells, a cut\nglyph leaving a space on each side — the reference's split_cells. The\nright half's anchor shift is therefore just `position`.\n\n* fix(cells): split on grapheme clusters, the unit cellLen measures (rich-segment-cvn6)\n\nsplitText walked code points while cellLen measures grapheme clusters, so\nthe previous commit's overhang arithmetic went negative on any glyph built\nfrom several code points: `new Segment(\"a⚠️b\").splitCells(2)` threw\nRangeError, and so did Console.print wrapping \"warn ⚠️ ok ⚠️ done ⚠️ x\" at\nwidth 6 — a crash master did not have. ZWJ, skin-tone and combining-mark\nglyphs left an orphaned tail on the right half.\n\nsplitCells now takes each half as cellFit/cellFitEnd's whole clusters padded\nto its share of the cells, so neither pad can go negative and the right\nhalf's anchor at `position` holds by construction. splitText's left side is\ncellFit's, which fixes the same mismatch for cropLines, Dropdown and\nTextInput.\n\n* fix(cells): every cell walk steps by grapheme cluster (rich-segment-cvn6)\n\ncellFitFrom, cellStepFrom, splitAtCells and cellColToCodeUnitOffset still\nwalked code points, so chopCells counted 👍🏽 as 4 cells and 👨‍👩‍👧 as 6. Its\ncuts drifted into the next wide glyph, and splitCells now blanks a glyph a\ncut goes through, so fold dropped text: \"👍🏽a漢\" at width 2 printed\n[\"👍🏽\", \"a \", \" \"], losing 漢.\n\nAll of them now walk clustersFrom, which steps one memoized segmentation with\nSegments.containing so a caller stepping along one string stays linear\n(chopCells on 1M chars: 107ms; slicing the tail per step took 5s).\ncropToWidth was splitText's left side and is gone; setCellSize crops through\nsplitText.\n\n* fix(cells): cutCells walks once, so each character lands on one side (rich-segment-cvn6)\n\nsplitCells built its halves from two walks, cellFit from the left and\ncellFitEnd from the right. Both take zero-width clusters, so one at the cut\nlanded in both halves (\"hello­world\" folded at width 5 printed the soft\nhyphen twice), and where per-cluster widths outsum cellLen of the whole the\nwalks left a gap and dropped the characters in it.\n\ncutCells (cells.ts, beside splitText) takes the left side with one cellFit,\nand the right side is the rest of the text with the glyph the cut went\nthrough, if any, blanked. cellColToCodeUnitOffset is now cellFitFrom from\nthe start rather than a second fit walk with its own zero-width rule, and\nthe fit walks count code units instead of building strings to measure."
+          "timestamp": "2026-09-30T14:30:05-06:00",
+          "message": "refactor(widgets): an overlay is bounded through cropLines (rich-segment-1p2h) (#275)\n\n* refactor(widgets): an overlay is bounded through cropLines (rich-segment-1p2h)\n\nThe overlay clip is the last survivor of Screen's split-then-unpadded-crop\nhand-roll; it now composes splitLines(cropLines(...)) as Tree and Layout do.\nPainter's fitRows keeps adjustLineLength: it bounds the rows of a frame\nalready shaped by its caller, one line at a time, which is that primitive's\nown job — there is no stream there to crop.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(widgets): an overlay is offered the cells right of its column (rich-segment-1p2h)\n\npaintOverlay rendered the overlay at the frame's full maxWidth and then\ncropped it to maxWidth - at.x, so an overlay that fit itself to its offer\nlost its right edge instead of wrapping inside it. The crop now only catches\nan overlay that ignores what it was offered.\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
         }
       ]
     }
