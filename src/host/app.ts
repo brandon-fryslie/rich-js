@@ -27,22 +27,11 @@
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { segmentsToString } from "../core/render.js";
-import { fitHeight, type Height, type Renderable } from "../core/protocol.js";
+import { belowFrame, frameHeight, paintFrame, type Surface } from "../core/paint.js";
+import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { hostEnvironment } from "./host-environment.js";
 import type { TerminalHost } from "./terminal-host.js";
-
-/**
- * Where the frame is painted. `alternate` is the whole terminal, in the
- * alternate screen buffer, so the rows the program printed before it are
- * there again when it stops; the terminal reports the pointer on it. `inline`
- * starts at the cursor's line, as tall as the frame, and stays on the
- * terminal when the app stops. It gets no pointer events: the terminal
- * reports a pointer by its row on the screen, and the app does not know
- * which row of the screen its frame starts on.
- */
-export type Surface = "alternate" | "inline";
 
 /**
  * Where an app is in its life. `idle` has not run; `running` holds the
@@ -68,22 +57,12 @@ export interface AppOptions {
 }
 
 /**
- * What a surface is, as the bytes that take it, find its first cell and hand
- * it back, and the kind of height it gives the frame.
- *
- * [LAW:dataflow-not-control-flow] The two surfaces differ only in these
- * values; `App` runs the same steps on both.
+ * What a surface asks of the terminal beyond the frame on it, as the bytes
+ * that take it and hand it back. The frame's own geometry is `core/paint`'s.
  */
-interface SurfaceBytes {
-  /** A region the frame fills, or a ceiling it keeps its own height under. */
-  readonly exact: boolean;
+interface SurfaceModes {
   readonly enter: string;
-  /** Bytes handing the surface back, the last frame `rows` tall. */
-  leave(rows: number): string;
-  /** Bytes to the frame's first cell, the last frame `rows` tall. */
-  home(rows: number): string;
-  /** The rows this frame paints, so a shorter one overwrites the last. */
-  painted(frameRows: number, lastRows: number): number;
+  readonly leave: string;
 }
 
 // Button presses, motion and the wheel, in the SGR encoding: coordinates as
@@ -91,38 +70,21 @@ interface SurfaceBytes {
 const POINTER_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
 const POINTER_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
 
-const SURFACES: Record<Surface, SurfaceBytes> = {
-  alternate: {
-    exact: true,
-    enter: "\x1b[?1049h" + POINTER_ON,
-    leave: () => POINTER_OFF + "\x1b[?1049l",
-    home: () => "\x1b[H",
-    // The frame is every row of the screen, so there is nothing left under it
-    // — and after the terminal shrinks, painting the old count would scroll.
-    painted: (frameRows) => frameRows,
-  },
-  inline: {
-    exact: false,
-    enter: "",
-    // Below the frame, where the program's next line belongs.
-    leave: (rows) => (rows > 0 ? "\n" : ""),
-    // After N rows written with N-1 newlines between them, the cursor is on
-    // the last. `ESC[0A` still moves a row on some terminals, so a one-row
-    // frame is returned to with the carriage return alone.
-    home: (rows) => (rows > 1 ? `\x1b[${rows - 1}A\r` : "\r"),
-    // A shorter frame blanks the rows the last one left below it.
-    painted: (frameRows, lastRows) => Math.max(frameRows, lastRows),
-  },
+// The terminal reports a pointer by its row on the screen, and an inline
+// frame does not know which row of the screen it starts on, so only the
+// alternate surface gets pointer events.
+const SURFACES: Record<Surface, SurfaceModes> = {
+  alternate: { enter: "\x1b[?1049h" + POINTER_ON, leave: POINTER_OFF + "\x1b[?1049l" },
+  inline: { enter: "", leave: "" },
 };
 
 const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 const RESET_STYLE = "\x1b[0m";
-const ERASE_LINE = "\x1b[2K";
 
 export class App {
   private readonly host: TerminalHost;
-  private readonly surface: SurfaceBytes;
+  private readonly surface: Surface;
   private readonly view: () => Renderable;
   // [LAW:one-source-of-truth] The host is the console's whole environment:
   // its size, its colours, where bytes go. Every frame renders with this
@@ -131,7 +93,7 @@ export class App {
 
   private _phase: AppPhase = "idle";
   private _frame: readonly (readonly Segment[])[] = [];
-  // The last frame's own rows on the terminal — what `home` rewinds.
+  // The last frame's own rows on the terminal — what the next paint rewinds.
   private rows = 0;
   private refreshQueued = false;
   private subscriptions: Unsubscribe[] = [];
@@ -140,7 +102,7 @@ export class App {
 
   constructor(options: AppOptions) {
     this.host = options.host;
-    this.surface = SURFACES[options.surface];
+    this.surface = options.surface;
     this.view = options.view;
     this.console = new Console({ environment: hostEnvironment(options.host), asciiOnly: options.asciiOnly });
   }
@@ -261,11 +223,11 @@ export class App {
 
   private enter(): void {
     this.host.setRawMode(true);
-    this.host.write(this.surface.enter + HIDE_CURSOR);
+    this.host.write(SURFACES[this.surface].enter + HIDE_CURSOR);
   }
 
   private leave(): void {
-    this.host.write(RESET_STYLE + SHOW_CURSOR + this.surface.leave(this.rows));
+    this.host.write(RESET_STYLE + SHOW_CURSOR + belowFrame(this.surface, this.rows) + SURFACES[this.surface].leave);
     this.host.setRawMode(false);
   }
 
@@ -294,32 +256,17 @@ export class App {
   private draw(): void {
     const options = this.console.options;
     const { maxWidth: cols } = options;
-    const height: Height = { rows: options.height.rows, exact: this.surface.exact };
+    const height = frameHeight(this.surface, options.height.rows);
     const lines = Segment.splitLines(this.view().render({ ...options, height }));
     // The app set the budget, so the app shapes what comes back: no deeper
-    // than the terminal — a taller frame would scroll the rows `home` counts
-    // back over — and, as a region, exactly that deep. No row wider than the
-    // terminal either: one that soft-wrapped would push every row below it
-    // down a row the frame does not know about.
+    // than the terminal — a taller frame would scroll the rows the painter
+    // counts back over — and, as a region, exactly that deep. No row wider
+    // than the terminal either: one that soft-wrapped would push every row
+    // below it down a row the frame does not know about.
     const frame = fitHeight(lines.slice(0, height.rows), height).map((line) =>
       Segment.adjustLineLength(line, cols, undefined, false),
     );
-    const painted = Math.min(this.surface.painted(frame.length, this.rows), height.rows);
-
-    // Each row is erased as it is reached rather than the frame cleared
-    // first, so no blank screen shows between two frames. The erase leads
-    // its row: after a row that fills the width, the cursor sits on its last
-    // cell, and an erase there would take it.
-    const destination = this.console.destination;
-    const body = Array.from({ length: painted }, (_, row) =>
-      ERASE_LINE + segmentsToString(frame[row] ?? [], destination),
-    ).join("\n");
-    // Rows blanked below the frame are not the frame's: the cursor goes back
-    // up to its last row, so the next frame and the program's next line start
-    // from the frame's own height.
-    const blanked = painted - Math.max(frame.length, 1);
-    const back = blanked > 0 ? `\x1b[${blanked}A` : "";
-    this.host.write(this.surface.home(this.rows) + body + back);
+    this.host.write(paintFrame(this.surface, frame, this.rows, height.rows, this.console.destination));
     this._frame = frame;
     this.rows = frame.length;
     for (const handler of [...this.paintHandlers]) handler(frame);

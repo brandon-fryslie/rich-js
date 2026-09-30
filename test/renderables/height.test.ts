@@ -31,15 +31,19 @@ function sized(height: number): { console: Console; out: () => string } {
   return { console, out: () => chunks.join("") };
 }
 
-// What one refresh wrote, after the cursor control Live issues around it.
+// What a first refresh wrote, after the move to the frame's first cell: home
+// on the alternate screen, the start of the cursor's line inline.
 function frame(renderable: Renderable, height: number, options: LiveOptions): string {
   const { console, out } = sized(height);
   const live = new Live(renderable, { console, autoRefresh: false, ...options });
   live.start();
   const before = out().length;
   live.refresh();
-  return out().slice(before).replace(/^\x1b\[2J\x1b\[H/, "");
+  return out().slice(before).replace(/^(\x1b\[H|\r)/, "");
 }
+
+// Each row is erased before it is drawn.
+const erased = (text: string) => `\x1b[2K${text}`;
 
 describe("the Height a renderable receives", () => {
   it("Console.print hands each block the terminal's rows as a ceiling", () => {
@@ -75,9 +79,6 @@ describe("alt-screen Live frames", () => {
     expect(rows[3]!.replace("\x1b[2K", "").trimEnd()).toBe("bottom");
   });
 
-  // Each alternate-screen row is erased before it is drawn.
-  const erased = (text: string) => `\x1b[2K${text}`;
-
   it("short content is padded to the screen, and tall content cropped to it", () => {
     expect(frame(new Probe(2), 4, { altScreen: true }).split("\n")).toEqual(
       ["line 0", "line 1", "", ""].map(erased),
@@ -110,7 +111,7 @@ describe("alt-screen Live frames", () => {
     live.start();
     const before = chunks.join("").length;
     live.refresh();
-    expect(chunks.join("").slice(before).replace(/^\x1b\[2J\x1b\[H/, "").split("\n")).toEqual(["hi", ""].map(erased));
+    expect(chunks.join("").slice(before).replace(/^\x1b\[H/, "").split("\n")).toEqual(["hi", ""].map(erased));
   });
 
   it("a transient stop leaves the buffer and erases nothing inside it", () => {
@@ -120,16 +121,20 @@ describe("alt-screen Live frames", () => {
     live.refresh();
     const before = out().length;
     live.stop();
-    expect(out().slice(before)).toBe("\x1b[?25h\x1b[0m\x1b[?1049l");
+    const stopped = out().slice(before);
+    expect(stopped).not.toContain("\x1b[2K");
+    expect(stopped.endsWith("\x1b[?25h\x1b[0m\x1b[?1049l")).toBe(true);
   });
 });
 
 describe("inline Live frames", () => {
-  it("keep their natural height under the ceiling and end with a newline", () => {
-    expect(frame(new Probe(2), 10, {})).toBe("line 0\nline 1\n");
+  // No newline after the last row: on a frame as tall as the terminal it
+  // would scroll the first row into scrollback.
+  it("keep their natural height under the ceiling, the cursor resting on the last row", () => {
+    expect(frame(new Probe(2), 10, {}).split("\n")).toEqual(["line 0", "line 1"].map(erased));
   });
 
   it("crop at the ceiling, with the ellipsis by default", () => {
-    expect(frame(new Probe(5), 3, {})).toBe("line 0\nline 1\n...\n");
+    expect(frame(new Probe(5), 3, {}).split("\n")).toEqual(["line 0", "line 1", "..."].map(erased));
   });
 });

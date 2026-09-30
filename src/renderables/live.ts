@@ -1,19 +1,19 @@
 /**
  * Live — animates a portion of the terminal by continuously re-rendering.
  *
- * Two modes:
- * - **Inline** (default): clears and redraws N lines in the current scroll
- *   region. Good for spinners/progress bars below other output.
+ * Two modes, each painting every frame over the last in place
+ * (`core/paint`):
+ * - **Inline** (default): the frame starts at the cursor's line and keeps its
+ *   own height. Good for spinners/progress bars below other output.
  * - **Alt-screen** (`altScreen: true`): enters the alternate screen buffer
- *   on start, cursor-homes on each refresh (no clear flicker), and restores
- *   the original buffer on stop. The screen is the frame's region, so a
- *   `Layout` fills it. Good for full-screen TUI apps.
+ *   on start and restores the original buffer on stop. The screen is the
+ *   frame's region, so a `Layout` fills it. Good for full-screen TUI apps.
  */
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { segmentsToString } from "../core/render.js";
-import { fitHeight, type Height, type Renderable } from "../core/protocol.js";
+import { belowFrame, frameHeight, paintFrame, type Surface } from "../core/paint.js";
+import { fitHeight, type Renderable } from "../core/protocol.js";
 
 export interface LiveOptions {
   refreshPerSecond?: number;
@@ -27,6 +27,13 @@ export interface LiveOptions {
   altScreen?: boolean;
 }
 
+// What a surface asks of the terminal beyond the frame on it: the bytes that
+// take it on `start()` and hand it back.
+const SURFACE_MODES: Record<Surface, { readonly enter: string; readonly leave: string }> = {
+  alternate: { enter: "\x1b[?1049h", leave: "\x1b[0m\x1b[?1049l" },
+  inline: { enter: "", leave: "" },
+};
+
 export class Live {
   private _renderable: Renderable | undefined;
   private _console: Console;
@@ -34,11 +41,11 @@ export class Live {
   private _autoRefresh: boolean;
   private _transient: boolean;
   private _verticalOverflow: "crop" | "ellipsis" | "visible";
-  private _altScreen: boolean;
+  private _surface: Surface;
   private _timer: ReturnType<typeof setInterval> | undefined;
-  private _lastLineCount: number;
+  // The last frame's own rows on the terminal — what the next paint rewinds.
+  private _rows: number;
   private _started: boolean;
-  private _firstRefresh: boolean;
 
   constructor(renderable?: Renderable, options?: LiveOptions) {
     this._renderable = renderable;
@@ -47,10 +54,9 @@ export class Live {
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
-    this._altScreen = options?.altScreen ?? false;
-    this._lastLineCount = 0;
+    this._surface = options?.altScreen ? "alternate" : "inline";
+    this._rows = 0;
     this._started = false;
-    this._firstRefresh = true;
   }
 
   get console(): Console {
@@ -64,12 +70,8 @@ export class Live {
   start(): void {
     if (this._started) return;
     this._started = true;
-    this._firstRefresh = true;
 
-    const stream = this._console.file;
-    if (this._altScreen) {
-      stream.write("\x1b[?1049h"); // enter alt screen
-    }
+    this._console.file.write(SURFACE_MODES[this._surface].enter);
     this._writeCursorControl(false);
 
     if (this._autoRefresh) {
@@ -95,8 +97,7 @@ export class Live {
     // the terminal is handed back on the way out.
     try {
       if (this._transient) {
-        this._console.file.write(this._erase());
-        this._lastLineCount = 0;
+        this._paint([]);
       } else {
         this.refresh();
       }
@@ -126,41 +127,19 @@ export class Live {
     // under them as a ceiling. Live set the budget, so Live shapes what comes
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
-    const height: Height = { rows: options.height.rows, exact: this._altScreen };
+    const height = frameHeight(this._surface, options.height.rows);
     const lines = Segment.splitLines(this._renderable.render({ ...options, height }));
-    const displayLines = fitHeight(this._overflow(lines, height.rows), height);
+    this._paint(fitHeight(this._overflow(lines, height.rows), height));
+  }
 
-    // [LAW:single-enforcer] Per-line encoding routes through the same
-    // tree-coalescer `Console._writeSegments` uses, so Live frames coalesce
-    // adjacent same-style segments into shared SGR pairs on the wire and
-    // encode for the console's own destination.
-    // The alternate screen is not erased between frames — the cursor only goes
-    // home — so each of its rows is erased before it is drawn, or a shorter
-    // frame leaves the last one's rows and line tails showing. The erase comes
-    // first because the cursor is then at the row's start; after a row that
-    // fills the width it would take the last cell. An inline frame's rows are
-    // erased by `_erase`.
-    const lead = this._altScreen ? "\x1b[2K" : "";
-    const destination = this._console.destination;
-    const output = displayLines
-      .map((line) => lead + segmentsToString(line, destination))
-      .join("\n");
-
-    // [LAW:effects-at-boundaries] The frame is fully rendered before a byte
-    // reaches the terminal, and whatever takes the last frame away goes out in
-    // the same write as the new one — so a render that throws leaves the last
-    // good frame showing. The first alternate-screen frame clears the buffer
-    // it walked into; after that the cursor only goes home.
-    const replace = this._altScreen ? (this._firstRefresh ? "\x1b[2J\x1b[H" : "\x1b[H") : this._erase();
-    // Inline, the newline leaves the cursor under the frame, where `_erase`
-    // counts up from. On the alternate screen the next frame starts from home,
-    // and a newline after a full-height frame's last row scrolls its first row
-    // off the top.
-    this._console.file.write(replace + (this._altScreen ? output : output + "\n"));
-    this._firstRefresh = false;
-    // What `_erase` erases: an inline frame's rows. An alternate-screen frame
-    // is erased by leaving the buffer.
-    this._lastLineCount = this._altScreen ? 0 : displayLines.length;
+  // [LAW:effects-at-boundaries] The frame is fully rendered before a byte
+  // reaches the terminal, and whatever takes the last frame away goes out in
+  // the same write as the new one — so a render that throws leaves the last
+  // good frame showing.
+  private _paint(frame: Segment[][]): void {
+    const screenRows = this._console.options.height.rows;
+    this._console.file.write(paintFrame(this._surface, frame, this._rows, screenRows, this._console.destination));
+    this._rows = frame.length;
   }
 
   // Lines past `rows`: dropped, with the last kept row replaced by an ellipsis,
@@ -174,11 +153,6 @@ export class Live {
     return kept;
   }
 
-  // Cursor-up and erase-line for each row of the last inline frame.
-  private _erase(): string {
-    return "\x1b[1A\x1b[2K".repeat(this._lastLineCount);
-  }
-
   // [LAW:single-enforcer] The one way the terminal is handed back — the timer
   // stopped, the cursor shown, the alternate screen left — whether `stop()`
   // ran or a frame threw with no caller to run it.
@@ -187,9 +161,7 @@ export class Live {
     clearInterval(this._timer);
     this._timer = undefined;
     this._writeCursorControl(true);
-    if (this._altScreen) {
-      this._console.file.write("\x1b[0m\x1b[?1049l"); // reset attrs + exit alt screen
-    }
+    this._console.file.write(belowFrame(this._surface, this._rows) + SURFACE_MODES[this._surface].leave);
   }
 
   private _writeCursorControl(show: boolean): void {
