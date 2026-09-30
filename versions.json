@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-278",
+      "ref": "refs/pull/278/merge",
+      "sha": "0546e9696ea56f7db8776bb0a086d846473d9e1e",
+      "timestamp": "2026-09-30T21:25:28.371Z",
+      "commits": [
+        {
+          "sha": "0546e9696ea56f7db8776bb0a086d846473d9e1e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T15:24:07-06:00",
+          "message": "Merge 5c8678fe8c1f2ea98494a12d5f70c54cc8001c79 into b313b89a9f7b4fc9f43fc73a9f7473ef2bb4f88c\n"
+        },
+        {
+          "sha": "5c8678fe8c1f2ea98494a12d5f70c54cc8001c79",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T15:24:02-06:00",
+          "message": "fix(render): write each segment as its own run, as Rich does (rich-render-g5g8)\n\nsegmentsToString joined adjacent segments with equal SGR codes under one\npair and nested OSC 8 inside it. Python Rich 9d8f9a3 writes every segment\nthrough its own Style.render — codes, text, reset, with a link's OSC 8 pair\noutside — so no byte-level fixture generated from it could hold two\nneighbours that share a style. The encoder is now segmentToString per\nsegment, joined.\n\nWith the join gone, segment cuts are visible in the bytes, which exposed\ntwo places Table cut where Rich does not: a Box rule is now one segment\n(Rich's get_top is one string), and a cell's blank lines are one blank of\nthe padded width (Rich's Padding and set_shape). The Table style tests\nnow pin the reference bytes verbatim instead of passing them through a\n`coalesce` rewrite.\n\nOne case cannot pin the reference yet: an empty cell is no line here and\none line in Rich (Panel(\"\") shows it visibly). Filed as rich-text-nucl;\nthe footer test states it as a named substitution that goes red when\nthat lands.\n\nThe markup golden gains [red]a[not bold]b[/not bold]c[/red] and\n[red]a[/red][red]b[/red], regenerated from the reference.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b313b89a9f7b4fc9f43fc73a9f7473ef2bb4f88c",
