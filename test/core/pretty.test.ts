@@ -291,17 +291,31 @@ describe("Pretty", () => {
 
     it("wraps a key wider than its line under its slot (rich-pretty-xms.0l4)", () => {
       expect(laidOut({ ["k".repeat(30)]: 1 }, 20)).toEqual([
-        "{", "    " + "k".repeat(16), "        " + "k".repeat(12), "        kk: 1", "}",
+        "{", "    " + "k".repeat(14), "        " + "k".repeat(10), "        kkkkkk: 1", "}",
       ]);
       expect(laidOut({ "a\nb": 1 }, 40)).toEqual(["{", "    a", "        b: 1", "}"]);
     });
 
+    it("keeps a wrapped key's colon on the key's last row", () => {
+      // Folded as part of the key, a key that filled its line put `: 1,` on a row of its own.
+      expect(laidOut({ ["k".repeat(16)]: 1, b: 2 }, 20)).toEqual([
+        "{", "    " + "k".repeat(14), "        kk: 1,", "    b: 2", "}",
+      ]);
+    });
+
+    it("indents from where a key's last row starts, not from the whitespace it opens with", () => {
+      // Read back out of the text, `   b`'s own spaces moved the entries to column 15 and `}` to 11.
+      expect(laidOut({ "a\n   b": new Map([[1, 2]]) }, 20)).toEqual([
+        "{", "    a", "           b: Map {", "            1 => 2", "        }", "}",
+      ]);
+    });
+
     it("indents a container after a wrapped key from the key's last line", () => {
-      // Indented from the slot instead, the entries sat level with `kk: Map {`.
+      // Indented from the slot instead, the entries sat level with `kkkk: Map {`.
       expect(laidOut({ ["k".repeat(24)]: new Map([["alpha", 1], ["beta", 2]]) }, 26)).toEqual([
         "{",
-        "    " + "k".repeat(22),
-        "        kk: Map {",
+        "    " + "k".repeat(20),
+        "        kkkk: Map {",
         '            "alpha" => 1,',
         '            "beta" => 2',
         "        }",

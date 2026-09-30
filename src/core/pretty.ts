@@ -145,13 +145,17 @@ function lineColumn(column: number, text: string): number {
 }
 
 /**
- * The column the line starts at after `text` is appended to a line that
- * started at `inset` — `lineColumn`'s other end. A multi-line insert leaves the
- * line on its own last row, which starts at that row's indent.
+ * Laid-out text, and the column its last line starts at.
+ *
+ * What follows the text on that line — a Map entry's value, the value after a
+ * wrapped key — indents its own children from there. Whatever laid the text
+ * out reports it; it is never read back out of the text, because a multi-line
+ * `toString`'s last line can open with whitespace of its own, and read as
+ * indent, that put the children off the grid the rest of the output is on.
  */
-function lineInset(inset: number, text: string): number {
-  const last = text.slice(text.lastIndexOf("\n") + 1);
-  return last === text ? inset : last.length - last.trimStart().length;
+interface Laid {
+  readonly text: string;
+  readonly inset: number;
 }
 
 /**
@@ -367,12 +371,17 @@ interface Hole {
 /**
  * One position in a container: literal text, then values with text between.
  *
- * `{ head: "... +3", holes: [] }` is the elision marker — one more position in
- * the sequence rather than a suffix glued on after a separator, so a bound of
- * zero does not lead with the comma it was supposed to follow.
+ * `head` is laid out as one piece: a key, or `"... +3"`, the elision marker —
+ * one more position in the sequence rather than a suffix glued on after a
+ * separator, so a bound of zero does not lead with the comma it was supposed
+ * to follow. `join` ties the head to its first value, `": "` after a key. It
+ * is not part of the head because a wrapped key leaves room for it on its last
+ * row, as a value does for its `tail`; folded in, the `:` was one more
+ * character to cut, and could land on a row of its own.
  */
 interface Slot {
   readonly head: string;
+  readonly join: string;
   readonly holes: readonly Hole[];
 }
 
@@ -412,7 +421,7 @@ const EXPAND_SEPARATOR = SEPARATOR.trimEnd();
 
 /** The marker for positions the bound dropped, or nothing when it dropped none. */
 const elided = (dropped: number): Slot[] =>
-  dropped > 0 ? [{ head: `... +${dropped}`, holes: [] }] : [];
+  dropped > 0 ? [{ head: `... +${dropped}`, join: "", holes: [] }] : [];
 
 
 export class Pretty implements Renderable, Measurable {
@@ -442,7 +451,7 @@ export class Pretty implements Renderable, Measurable {
 
   /** The value laid out for `options.maxWidth` and highlighted: the text this renders. */
   toText(options: RenderOptions): RichText {
-    const formatted = this._format(this.data, rootFrame(options.maxWidth));
+    const formatted = this._format(this.data, rootFrame(options.maxWidth)).text;
     const text = new RichText(formatted, { end: "" });
     this.highlighter.highlight(text);
 
@@ -454,7 +463,7 @@ export class Pretty implements Renderable, Measurable {
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {
-    const formatted = this._format(this.data, rootFrame(_options.maxWidth));
+    const formatted = this._format(this.data, rootFrame(_options.maxWidth)).text;
     const lines = formatted.split("\n");
     let max = 0;
     for (const line of lines) {
@@ -553,6 +562,7 @@ export class Pretty implements Renderable, Measurable {
           const shown = Math.min(elements.length, cap);
           return Array.from({ length: shown }, (_, i): Slot => ({
             head: "",
+            join: "",
             holes: [{ read: () => elements[i], tail: "" }],
           }));
         });
@@ -561,6 +571,7 @@ export class Pretty implements Renderable, Measurable {
         return this._container("Map {", "}", " ", form.map.size, level, () =>
           take(form.map.entries(), cap).map(([k, v]): Slot => ({
             head: "",
+            join: "",
             holes: [{ read: () => k, tail: " => " }, { read: () => v, tail: "" }],
           })),
         );
@@ -568,6 +579,7 @@ export class Pretty implements Renderable, Measurable {
         return this._container("Set {", "}", " ", form.set.size, level, () =>
           take(form.set, cap).map((v): Slot => ({
             head: "",
+            join: "",
             holes: [{ read: () => v, tail: "" }],
           })),
         );
@@ -579,7 +591,8 @@ export class Pretty implements Renderable, Measurable {
         const keys = Object.keys(record);
         return this._container("{", "}", " ", keys.length, level, () =>
           keys.slice(0, cap).map((k): Slot => ({
-            head: `${k}: `,
+            head: k,
+            join: ": ",
             holes: [{ read: () => record[k], tail: "" }],
           })),
         );
@@ -588,7 +601,7 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /** The laid-out form of a value, expanded across lines wherever one line will not do. */
-  private _format(value: unknown, at: Frame): string {
+  private _format(value: unknown, at: Frame): Laid {
     const scalar = this._scalar(value);
     if (scalar !== null) return this._place(scalar, at);
 
@@ -608,7 +621,7 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /** The arms for a non-null object, with `value` already on the open path. */
-  private _formatObject(value: object, from: Frame): string {
+  private _formatObject(value: object, from: Frame): Laid {
     const shape = this._shape(value, from.level, Infinity);
     if (shape.kind === "text") return this._place(shape.text, from);
 
@@ -635,7 +648,7 @@ export class Pretty implements Renderable, Measurable {
         budget: at.maxWidth - at.column - at.reserve,
         open: at.open,
       });
-      if (compact !== null) return lead + compact;
+      if (compact !== null) return { text: lead + compact, inset: at.inset };
     }
 
     const indentStr = " ".repeat(at.inset);
@@ -651,7 +664,10 @@ export class Pretty implements Renderable, Measurable {
     const parts = shape.slots.map((slot, i) =>
       innerIndent + this._expandSlot(slot, i === lastSlot ? lastFrame : midFrame),
     );
-    return lead + shape.open + "\n" + parts.join(EXPAND_SEPARATOR + "\n") + "\n" + indentStr + shape.close;
+    return {
+      text: lead + shape.open + "\n" + parts.join(EXPAND_SEPARATOR + "\n") + "\n" + indentStr + shape.close,
+      inset: at.inset,
+    };
   }
 
   /**
@@ -698,7 +714,8 @@ export class Pretty implements Renderable, Measurable {
    * of the same fact. `_joinOneLine`'s probe sibling tracks the analogous
    * thing via `budget` shrinking instead, because a probe already discards
    * anything that overruns and so never needs to know where a multi-line
-   * insert's last line ends.
+   * insert's last line ends. Where that line *starts* is the one fact `out`
+   * cannot give back, so it comes from each piece's `Laid.inset` instead.
    *
    * Each hole's `reserve` is its own `tail` plus, only for the slot's last
    * hole, whatever `at.reserve` already asked this whole slot to leave room
@@ -708,13 +725,12 @@ export class Pretty implements Renderable, Measurable {
    */
   private _expandSlot(slot: Slot, at: Frame): string {
     // A key is one piece of text, placed like any other: one wider than its
-    // line wraps under its slot rather than running on to column 0. Its
-    // trailing space separates it from the value, so it is kept out of the
-    // placing, where it would be taken for a break. Only a slot with no values
-    // has its `at.reserve` land right after the head; a value may move below it.
-    const key = slot.head.trimEnd();
-    const keyFrame: Frame = { ...at, reserve: slot.holes.length === 0 ? at.reserve : 0 };
-    let out = this._place(key, keyFrame) + slot.head.slice(key.length);
+    // line wraps under its slot rather than running on to column 0. Only a slot
+    // with no values has its `at.reserve` land right after the head; a value
+    // may move below it.
+    const head = this._place(slot.head, { ...at, reserve: cellLen(slot.join) + (slot.holes.length === 0 ? at.reserve : 0) });
+    let out = head.text + slot.join;
+    let inset = head.inset;
     const lastHole = slot.holes.length - 1;
     for (let i = 0; i < slot.holes.length; i++) {
       const hole = slot.holes[i]!;
@@ -722,16 +738,17 @@ export class Pretty implements Renderable, Measurable {
       // unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows everything
       // that could be read.
       const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
-      const here: Frame = { ...this._onLine(at, lineInset(at.inset, out)), column: lineColumn(at.column, out), reserve };
-      let text: string;
+      const here: Frame = { ...this._onLine(at, inset), column: lineColumn(at.column, out), reserve };
+      let laid: Laid;
       try {
-        text = this._format(hole.read(), here);
+        laid = this._format(hole.read(), here);
       } catch (error) {
-        text = this._place(threw(error), here);
+        laid = this._place(threw(error), here);
       }
       // A value `_place` moved onto a line of its own leaves the text before it
       // ending the line, and the space that was to separate them goes with it.
-      out = (text.startsWith("\n") ? out.trimEnd() : out) + text + hole.tail;
+      out = (laid.text.startsWith("\n") ? out.trimEnd() : out) + laid.text + hole.tail;
+      inset = laid.inset;
     }
     return out;
   }
@@ -757,8 +774,8 @@ export class Pretty implements Renderable, Measurable {
    * a long key is the case: `[1, 2, 3, 10] =>` ends the line and `"v"` hangs
    * beneath it, where it used to wrap to column 0.
    */
-  private _place(text: string, at: Frame): string {
-    if (at.hang === null) return text;
+  private _place(text: string, at: Frame): Laid {
+    if (at.hang === null) return { text, inset: at.inset };
     // A hanging row needs a cell to stand in. One indent past the slot has none
     // when the value sits one indent from the edge, and a row put there anyway
     // overruns the width and wraps to column 0 — so rows start where the value
@@ -773,7 +790,10 @@ export class Pretty implements Renderable, Measurable {
     const [first, ...rows] = lines.flatMap((line, i) => i === 0
       ? rowsOf(line, stayingLength(line, room(0, at.column), at.column > hang), room(0, hang))
       : rowsOf(line, stayingLength(line, room(i, hang), false), room(i, hang)));
-    return first + rows.map((row) => "\n" + (row === "" ? "" : " ".repeat(hang) + row)).join("");
+    return {
+      text: first + rows.map((row) => "\n" + (row === "" ? "" : " ".repeat(hang) + row)).join(""),
+      inset: rows.length === 0 ? at.inset : hang,
+    };
   }
 
   /** The one-line form of a value, or `null` when it will not fit `at.budget`. */
@@ -825,7 +845,7 @@ export class Pretty implements Renderable, Measurable {
 
   /** One position on one line, or `null` when any value in it will not fit. */
   private _slotOneLine(slot: Slot, at: Probe): string | null {
-    let out = slot.head;
+    let out = slot.head + slot.join;
     for (const hole of slot.holes) {
       const left = at.budget - cellLen(out);
       let text: string | null;
