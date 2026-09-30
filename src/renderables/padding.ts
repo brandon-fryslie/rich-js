@@ -124,7 +124,13 @@ export class Padding implements Renderable, Measurable {
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
-    const geometry = layoutPadding(options.maxWidth, this.left, this.right);
+    // `expand` decides how wide the block is, never whether its rows reach
+    // that width: as Rich's does, a padding that does not expand narrows to
+    // what it measures, and every row is then padded out to it. Deciding the
+    // rows instead left the content rows ragged under a full-width blank row,
+    // and a `style` ground with holes down its right-hand side.
+    const width = this.expand ? options.maxWidth : Measurement.get(options, this).maximum;
+    const geometry = layoutPadding(width, this.left, this.right);
 
     const innerOptions: RenderOptions = {
       ...options,
@@ -132,11 +138,14 @@ export class Padding implements Renderable, Measurable {
       height: insetHeight(options.height, this.top + this.bottom),
     };
 
-    const segments = [...this.renderable.render(innerOptions)];
-    const lines = fitHeight(Segment.splitLines(segments), innerOptions.height);
-
     const resolved = getStyle(options, this.style);
     const style = resolved.isNull ? undefined : resolved;
+
+    // The style is the ground the content is drawn on, not only the spaces
+    // around it — Rich's `render_lines(..., style=style)`. Applied to the
+    // padding alone, a background left a hole behind the content.
+    const segments = [...Segment.applyStyle(this.renderable.render(innerOptions), style)];
+    const lines = fitHeight(Segment.splitLines(segments), innerOptions.height);
     // Zero-length spans need no branch to suppress: the wire boundary drops
     // empty segments, so a padding the width could not afford emits nothing.
     const leftPad = new Segment(" ".repeat(geometry.left), style);
@@ -150,15 +159,9 @@ export class Padding implements Renderable, Measurable {
 
     for (const line of lines) {
       yield leftPad;
-      // `expand` is the pad half of this call; the crop half is unconditional,
-      // because a child that ignored the canvas it was handed (a Table at its
-      // natural width) would otherwise burst the padding around it.
-      yield* Segment.adjustLineLength(
-        line,
-        geometry.contentWidth,
-        style,
-        this.expand,
-      );
+      // Crops as well as pads: a child that ignored the canvas it was handed
+      // (a Table at its natural width) would otherwise burst the padding.
+      yield* Segment.adjustLineLength(line, geometry.contentWidth, style);
       yield rightPad;
       yield Segment.line();
     }

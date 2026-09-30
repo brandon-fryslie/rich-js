@@ -4,6 +4,7 @@ import type { PaddingDimensions } from "../../src/renderables/padding.js";
 import { Panel } from "../../src/renderables/panel.js";
 import { Segment } from "../../src/core/segment.js";
 import { RichText } from "../../src/core/text.js";
+import { Style } from "../../src/core/style.js";
 import { ASCII, DOUBLE } from "../../src/core/box.js";
 import type { Measurable, Renderable, RenderOptions } from "../../src/core/protocol.js";
 
@@ -192,16 +193,24 @@ describe("Panel", () => {
     expect(borderSegments.length).toBeGreaterThan(0);
   });
 
-  // Spec: style — style for panel content
+  // Spec: style — the ground the whole panel is drawn on, as Rich's is
 
-  it("style applies style to content area segments", () => {
-    const panel = new Panel("Hi", { box: ASCII, style: "bold" });
-    const segments = collectSegments(panel, { maxWidth: 20 });
-    // Content padding segments should have a style applied
-    const styledPaddingSegments = segments.filter(
-      (s) => !s.isControl && s.text.includes(" ") && s.style !== undefined && !/[+\-|]/.test(s.text),
-    );
-    expect(styledPaddingSegments.length).toBeGreaterThan(0);
+  it("style is under every cell: frame, padding, content and title", () => {
+    const panel = new Panel("[bold]Hi[/bold] there", {
+      box: ASCII, style: "white on blue", borderStyle: "red", title: "T", titleStyle: "italic", padding: 1,
+    });
+    const visible = Segment.splitLines(collectSegments(panel, { maxWidth: 20 })).flat().filter((s) => s.text !== "");
+    const ground = Style.parse("white on blue");
+    for (const s of visible) expect(s.style?.bgcolor, JSON.stringify(s.text)).toEqual(ground.bgcolor);
+    // Each layer keeps what it says for itself on top of that ground.
+    const frame = visible.filter((s) => /^[+\-|]+$/.test(s.text));
+    expect(frame.length).toBeGreaterThan(0);
+    for (const s of frame) expect(s.style?.color).toEqual(Style.parse("red").color);
+    expect(visible.find((s) => s.text === "Hi")?.style?.bold).toBe(true);
+    expect(visible.find((s) => s.text.includes("there"))?.style?.color).toEqual(ground.color);
+    const title = visible.find((s) => s.text.includes("T"));
+    expect(title?.style?.italic).toBe(true);
+    expect(title?.style?.color).toEqual(Style.parse("red").color);
   });
 
   // Spec: padding — internal padding
@@ -281,6 +290,23 @@ describe("Panel", () => {
       borderStyle: "red",
     });
     expect(collectSegments(typo, options)).toEqual(collectSegments(plain, options));
+  });
+
+  it("lays a RichText accessory's style over the border's", () => {
+    const panel = new Panel("Content", {
+      bottomRightAccessory: new RichText("[1/2]", { style: "italic" }),
+      box: ASCII,
+      borderStyle: "red",
+    });
+    const accessory = collectSegments(panel, { maxWidth: 30 }).find((s) => s.text === " [1/2] ");
+    expect(accessory?.style?.italic).toBe(true);
+    expect(accessory?.style?.color).toEqual(Style.parse("red").color);
+  });
+
+  it("draws an accessory on an unstyled panel with no style, as its frame is", () => {
+    const panel = new Panel("Content", { bottomRightAccessory: "x", box: ASCII });
+    const bottom = Segment.splitLines(collectSegments(panel, { maxWidth: 20 })).at(-1)!;
+    for (const s of bottom) expect(s.style, JSON.stringify(s.text)).toBeUndefined();
   });
 
   // --- Measurement ---

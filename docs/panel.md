@@ -96,7 +96,7 @@ console.print(new Panel("[spring_green3]Content[/spring_green3]", { padding: [1,
 
 ## Border colour
 
-`borderStyle` colours the frame. The title and subtitle are drawn in it too, unless `titleStyle` or `subtitleStyle` gives them a style of their own:
+`borderStyle` colours the frame. The title and subtitle are drawn in it too, with `titleStyle` or `subtitleStyle` laid over it where given:
 
 ```typescript
 console.print(new Panel("Disk usage is above [bold]90%[/bold]", {
@@ -104,6 +104,20 @@ console.print(new Panel("Disk usage is above [bold]90%[/bold]", {
   subtitle:    "/dev/sda1",
   borderStyle: "bold red1",
   titleStyle:  "bold dark_orange",
+  expand:      false,
+}));
+```
+
+## Style
+
+`style` is the ground the whole panel is drawn on: the frame, the padding and the content all sit on it. `borderStyle` and the content's own markup are laid over it, so here the frame is `bold red1` and the text is white, both on dark blue:
+
+```typescript
+console.print(new Panel("Disk usage is above [bold]90%[/bold]", {
+  title:       "⚠ Alert",
+  style:       "white on dark_blue",
+  borderStyle: "bold red1",
+  padding:     1,
   expand:      false,
 }));
 ```

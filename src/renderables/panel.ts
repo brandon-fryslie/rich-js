@@ -20,8 +20,8 @@ import { fitHeight, getStyle, insetHeight, isMeasurable, withBoundedWidth, withC
 
 /**
  * A lazily-resolved border accessory. Strings render inline in the
- * border style; a `RichText` accessory contributes ONLY its wrapping
- * `style` (per-range spans within the RichText are not preserved — the
+ * border style; a `RichText` accessory lays ONLY its wrapping `style` over
+ * the border's (per-range spans within the RichText are not preserved — the
  * accessory is a small status indicator, not an arbitrary span carrier).
  * A function form is evaluated at render time, *after* content has been
  * rendered for the current frame — use this when the accessory mirrors
@@ -49,14 +49,13 @@ export interface PanelOptions {
   style?: string | Style;
   borderStyle?: string | Style;
   /**
-   * Style for the title text in the top border. Defaults to `borderStyle`
-   * (i.e. title inherits the border color). Set independently when the
-   * title should pop relative to the border.
+   * Style for the title text in the top border, laid over `borderStyle`:
+   * what it sets wins, and what it leaves unset the border's supplies.
    */
   titleStyle?: string | Style;
   /**
-   * Style for the subtitle text in the bottom border. Defaults to
-   * `borderStyle`.
+   * Style for the subtitle text in the bottom border, laid over
+   * `borderStyle` as `titleStyle` is.
    */
   subtitleStyle?: string | Style;
   width?: number;
@@ -148,15 +147,14 @@ function borderLabel(options: RenderOptions): RenderOptions {
 }
 
 /**
- * The style of text set into a border: its own when one was given, the
- * border's otherwise — the one rule for "what colour is the title text in".
+ * The style of text set into a border — title, subtitle and accessory alike:
+ * its own laid over the border's, the one rule for "what colour is the title
+ * text in". Laid over rather than in place of it, as Rich's `stylize_before`
+ * does, because the border's style carries the panel's own: a title that
+ * replaced it cut a hole in the panel's background on the top row.
  */
-function borderTextStyle(
-  options: RenderOptions,
-  own: string | Style | undefined,
-  border: Style | undefined,
-): Style | undefined {
-  return own === undefined ? border : getStyle(options, own);
+function borderTextStyle(border: Style | undefined, own: Style): Style | undefined {
+  return own.isNull ? border : (border ?? NULL_STYLE).add(own);
 }
 
 export class Panel implements Renderable, Measurable {
@@ -194,15 +192,19 @@ export class Panel implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     const options = withBoundedWidth(rawOptions, this);
     const box = this.box.substitute(options);
-    const borderStyle = getStyle(options, this.borderStyle);
+    // [LAW:one-source-of-truth] `style` is the ground the whole panel is drawn
+    // on, as Rich's is: the frame's style is the border style laid over it,
+    // and the content is rendered on top of it. Applied to the padding alone,
+    // "white on dark_blue" drew a blue ring with a hole where the text was.
     const style = getStyle(options, this.style);
+    const borderStyle = style.add(getStyle(options, this.borderStyle));
     const border = borderStyle.isNull ? undefined : borderStyle;
     const contentStyle = style.isNull ? undefined : style;
 
     const geometry = layoutPanel(this._getPanelWidth(options), this.padding);
     const [padTop, , padBottom] = this.padding;
 
-    const contentLines = this._renderContent(options, geometry.contentWidth);
+    const contentLines = this._renderContent(options, geometry.contentWidth, contentStyle);
 
     // Top border (with optional title)
     yield* this._renderTopBorder(options, box, geometry, border);
@@ -233,6 +235,7 @@ export class Panel implements Renderable, Measurable {
   private _renderContent(
     options: RenderOptions,
     contentWidth: number,
+    style: Style | undefined,
   ): Segment[][] {
     // Two border rows and the vertical padding are the panel's own. Handed on
     // as a region, the rest is the panel's to shape, which is what stretches
@@ -243,7 +246,7 @@ export class Panel implements Renderable, Measurable {
     // hands its body `highlight=False`.
     const innerOptions: RenderOptions = { ...options, highlighter: undefined, maxWidth: contentWidth, height };
     const lines = fitHeight(
-      Segment.splitLines([...this.renderable.render(innerOptions)]),
+      Segment.splitLines([...Segment.applyStyle(this.renderable.render(innerOptions), style)]),
       height,
     );
     return contentWidth === 0 ? [] : lines;
@@ -356,7 +359,7 @@ export class Panel implements Renderable, Measurable {
     border: Style | undefined,
   ): Iterable<Segment> {
     const innerBorderWidth = geometry.spanWidth;
-    const titleSeg = borderTextStyle(options, this.titleStyle, border);
+    const titleSeg = borderTextStyle(border, getStyle(options, this.titleStyle ?? NULL_STYLE));
     const title = inlineLabel(this.title, borderLabel(options), titleSeg);
     const titleWidth = Segment.getLineLength(title);
 
@@ -408,7 +411,7 @@ export class Panel implements Renderable, Measurable {
         : ` ${accessory.plain} `;
     const accessoryWidth = cellLen(accessoryDisplay);
     const accessoryOwn = accessory instanceof RichText ? accessory.resolvedStyle(options) : NULL_STYLE;
-    const accessoryStyle = accessoryOwn.isNull ? border : accessoryOwn;
+    const accessoryStyle = borderTextStyle(border, accessoryOwn);
 
     yield new Segment(box.bottom.left.repeat(geometry.left), border);
 
@@ -417,7 +420,7 @@ export class Panel implements Renderable, Measurable {
     // as its centering canvas.
     const centerWidth = Math.max(0, innerBorderWidth - accessoryWidth);
 
-    const subtitleSeg = borderTextStyle(options, this.subtitleStyle, border);
+    const subtitleSeg = borderTextStyle(border, getStyle(options, this.subtitleStyle ?? NULL_STYLE));
     const subtitle = inlineLabel(this.subtitle, borderLabel(options), subtitleSeg);
     const subtitleWidth = Segment.getLineLength(subtitle);
 
