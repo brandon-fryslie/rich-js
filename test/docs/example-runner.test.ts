@@ -428,6 +428,11 @@ describe("the plugin", () => {
     expect(() => playgroundStart(compiler, markdown)).toThrow(new RegExp(`docs/${PLAYGROUND_START_PAGE}:4: Property 'print' does not exist`));
   });
 
+  it.each(["node", "shape", "throws"])("refuses a start block marked %s, which does not run to an end", (marker) => {
+    const markdown = page("# Start", fence('import { Console } from "@promptctl/rich-js";\nnew Console().print("hi");', `ts ${marker}`));
+    expect(() => playgroundStart(compiler, markdown)).toThrow(`docs/${PLAYGROUND_START_PAGE}:3: the playground opens on this block, and a "${marker}" block`);
+  });
+
   it("passes a page with no TypeScript example through untouched", async () => {
     expect(await docsExamplesPlugin().transform("# Prose\n\n```sh\nnpm install\n```\n", path.join(REPO_ROOT, "docs", "fixture-prose.md"))).toBeNull();
   });

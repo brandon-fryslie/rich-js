@@ -53,6 +53,7 @@ import {
   type BuildMarker,
   type Enclosure,
   type Fence,
+  type MarkerRule,
 } from "./example-markers.js";
 import {
   MAIN_BARREL,
@@ -415,12 +416,17 @@ export const PLAYGROUND_START_PAGE = "introduction.md";
  * `PLAYGROUND_START_PAGE`, exactly as that page shows it. The playground runs
  * a block with nothing around it, no prelude and no page context, so the
  * block is type-checked that way, and one that is not a program on its own
- * fails the build at its line.
+ * fails the build at its line. So does one its page does not run to an end:
+ * every visitor would open on a program that fails.
  */
 export function playgroundStart(compiler: ExampleCompiler, markdown: string): string {
   const page = PLAYGROUND_START_PAGE;
   const [first] = scanFences(page, markdown);
   if (first === undefined) throw new Error(`docs/${page}: has no TypeScript block for the playground to open on`);
+  const rule: MarkerRule = MARKERS[first.marker];
+  if (rule.run === "never" || (rule.run === "build" && rule.outcome === "throws")) {
+    throw new Error(`docs/${page}:${first.line}: the playground opens on this block, and a "${first.marker}" block does not run to an end`);
+  }
   compiler.check({ page, source: first.code, origins: first.code.split("\n").map((_, i) => first.line + 1 + i), blocks: [first] });
   return first.code;
 }

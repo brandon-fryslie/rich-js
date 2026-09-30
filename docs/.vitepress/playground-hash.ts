@@ -12,13 +12,41 @@
  * it here.
  */
 
-async function through(bytes: Uint8Array<ArrayBuffer>, stream: CompressionStream | DecompressionStream): Promise<Uint8Array<ArrayBuffer>> {
-  return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+/**
+ * The longest program a link carries, in UTF-8 bytes: far past any program a
+ * person writes, and far short of what a crafted hash can inflate to. A link
+ * is opened on sight, so reading one must not be able to exhaust the tab.
+ */
+export const MAX_PROGRAM_BYTES = 1 << 20;
+
+const tooLong = () => new Error(`a playground program is at most ${MAX_PROGRAM_BYTES} bytes`);
+
+/** All of `stream`, refused as soon as it passes `MAX_PROGRAM_BYTES`. */
+async function bounded(stream: ReadableStream<Uint8Array<ArrayBuffer>>): Promise<Uint8Array<ArrayBuffer>> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  let size = 0;
+  for (let next = await reader.read(); !next.done; next = await reader.read()) {
+    size += next.value.length;
+    if (size > MAX_PROGRAM_BYTES) {
+      // Cancelled, so nothing past the limit is inflated.
+      await reader.cancel();
+      throw tooLong();
+    }
+    chunks.push(next.value);
+  }
+  return new Uint8Array(await new Blob(chunks).arrayBuffer());
 }
+
+const through = (bytes: Uint8Array<ArrayBuffer>, stream: CompressionStream | DecompressionStream) =>
+  bounded(new Blob([bytes]).stream().pipeThrough(stream));
 
 /** The hash, without its `#`, that opens the playground on `source`. */
 export async function encodeProgram(source: string): Promise<string> {
-  const bytes = await through(new TextEncoder().encode(source), new CompressionStream("deflate"));
+  const program = new TextEncoder().encode(source);
+  // A link this wrote is one `decodeProgram` opens.
+  if (program.length > MAX_PROGRAM_BYTES) throw tooLong();
+  const bytes = await through(program, new CompressionStream("deflate"));
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(""))
     .replaceAll("+", "-")
     .replaceAll("/", "_")
