@@ -5,6 +5,11 @@ import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
 import type { RenderOptions } from "../../src/core/protocol.js";
+import { ColorSpec } from "../../src/core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+
+// What every widget draws a disabled cell in.
+const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string, character = ""): KeyEvent => new KeyEvent({
@@ -364,10 +369,10 @@ describe("TextInput", () => {
       expect(cursorSeg!.text.length).toBe(1);
     });
 
-    it("renders dimmed when disabled", () => {
+    it("renders in the palette's muted foreground when disabled", () => {
       const t = new TextInput({ value: "ab", disabled: true });
       const segments = Segment.splitLines(t.render(RENDER))[0]!;
-      expect(segments.every((s) => s.style?.dim === true)).toBe(true);
+      expect(segments.map((s) => s.style?.color)).toEqual(segments.map(() => MUTED));
     });
 
     it("emits the same total width focused vs unfocused", () => {

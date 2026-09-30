@@ -3,6 +3,11 @@ import { Dropdown } from "../../src/widgets/dropdown.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
 import { Segment } from "../../src/core/segment.js";
+import { ColorSpec } from "../../src/core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+
+// What every widget draws a disabled cell in.
+const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag; fresh per call.
 const makeKey = (key: string): KeyEvent => new KeyEvent({
@@ -364,10 +369,10 @@ describe("Dropdown", () => {
       expect(distinct.size).toBeGreaterThan(1);
     });
 
-    it("renders dimmed when disabled (collapsed)", () => {
+    it("renders in the palette's muted foreground when disabled (collapsed)", () => {
       const d = new Dropdown({ options: ["a"], disabled: true });
       const segs = Segment.splitLines(d.render(RENDER))[0]!;
-      expect(segs.every((s) => s.style?.dim === true)).toBe(true);
+      expect(segs.map((s) => s.style?.color)).toEqual(segs.map(() => MUTED));
     });
 
     it("focused adds underline to header row", () => {

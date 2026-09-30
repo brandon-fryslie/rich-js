@@ -10,6 +10,7 @@
 
 import { observable, action } from "mobx";
 import { Segment } from "../core/segment.js";
+import { NULL_STYLE, type Style } from "../core/style.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type {
   InteractiveWidget,
@@ -104,15 +105,22 @@ export abstract class WidgetBase implements InteractiveWidget {
   // anchor, so stamping has to follow every text layout `draw` does.
   // Every row is padded to the widest, so the widget owns its whole rectangle
   // and a click past the end of a short row still reaches it; every row ends
-  // in a newline, so a blank last row survives the next `splitLines`.
+  // in a newline, so a blank last row survives the next `splitLines`. The
+  // padding stands on `ground`, whatever the widget draws its own cells on.
   // Reporting itself before it draws is what puts a widget ahead of the
   // widgets nested in it in document order — the order focus traverses.
   render(options: RenderOptions): Iterable<Segment> {
     options.onDraw?.(this);
     const drawn = Segment.splitLines(this.draw(options));
     const [width] = Segment.getShape(drawn);
-    const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width)), this);
+    const lines = Segment.anchorLines(drawn.map((line) => Segment.adjustLineLength(line, width, this.ground)), this);
     return lines.flatMap((line) => [...line, Segment.line()]);
+  }
+
+  // What a padded row stands on. None by default: the padding shows whatever
+  // the widget is drawn over, as the cells of content it did not draw do.
+  protected get ground(): Style {
+    return NULL_STYLE;
   }
 
   protected abstract draw(options: RenderOptions): Iterable<Segment>;

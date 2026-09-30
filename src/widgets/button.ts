@@ -20,10 +20,9 @@ import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen } from "../core/cells.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import type { RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { WidgetBase } from "./widget-base.js";
+import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -51,28 +50,20 @@ const VARIANT_KEYS: Record<ButtonVariant, { bg: string; fg: string; hover: strin
   danger:   { bg: "error-muted",   fg: "text-error",   hover: "error",   hoverFg: "on-error" },
 };
 
-export class Button extends WidgetBase {
+export class Button extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
   @observable accessor label: string;
   @observableRef accessor variant: ButtonVariant;
 
-  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render — see slider.ts.
-  @observableRef private accessor _theme: TerminalTheme;
-
   constructor(options: ButtonOptions) {
-    super();
+    super(options.theme);
     this.id = options.id ?? `button-${options.label.toLowerCase().replace(/\s+/g, "-")}`;
     this.label = options.label;
     this.variant = options.variant ?? "default";
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
-
-  @action
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -123,7 +114,7 @@ export class Button extends WidgetBase {
     const text = `${left} ${this.label} ${right}`;
 
     if (this.disabled) {
-      return [new Segment(text, new Style({ color: "#666666", bgcolor: "#333333", dim: true }))];
+      return [new Segment(text, new Style(this.disabledInk))];
     }
 
     // Active and hover share the same colour pair (full accent bg + on-accent fg).
@@ -132,10 +123,10 @@ export class Button extends WidgetBase {
     // accents whose contrast partner depends on luminance.
     const keys = VARIANT_KEYS[this.variant];
     if (this.active || this.hovered) {
-      return [new Segment(text, new Style({ ...ink(this._theme, keys.hoverFg, keys.hover), bold: this.active }))];
+      return [new Segment(text, new Style({ ...ink(this.theme, keys.hoverFg, keys.hover), bold: this.active }))];
     }
 
-    return [new Segment(text, new Style(ink(this._theme, keys.fg, keys.bg)))];
+    return [new Segment(text, new Style(ink(this.theme, keys.fg, keys.bg)))];
   }
 
   measure(_options: RenderOptions): { minimum: number; maximum: number } {

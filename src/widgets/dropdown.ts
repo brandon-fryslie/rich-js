@@ -23,14 +23,13 @@
  * than the header. See docs/widgets.md → Dropdown.
  */
 
-import { observable, action, observableRef, observableShallow } from "mobx";
+import { observable, action, observableShallow } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import { cellLen, setCellSize, splitText, asCellCol } from "../core/cells.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { WidgetBase } from "./widget-base.js";
+import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
 import type {
   KeyEvent,
@@ -47,7 +46,7 @@ export interface DropdownOptions {
   theme?: TerminalTheme;
 }
 
-export class Dropdown extends WidgetBase implements OverlayRenderable {
+export class Dropdown extends ThemedWidget implements OverlayRenderable {
   readonly id: string;
   readonly focusable = true;
 
@@ -70,13 +69,8 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     return result;
   }
 
-  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render — render() and renderOverlay() read _theme.palette, so the
-  // theme reference must participate in MobX reactivity.
-  @observableRef private accessor _theme: TerminalTheme;
-
   constructor(options: DropdownOptions) {
-    super();
+    super(options.theme);
     this.id = options.id ?? `dropdown-${Math.random().toString(36).slice(2, 8)}`;
     this.options = [...options.options];
     // [LAW:types-are-the-program] selectedIndex must point to a valid
@@ -87,7 +81,6 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     this.selectedIndex = this.clampIndex(options.selectedIndex ?? 0);
     this.highlightedIndex = this.selectedIndex;
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
 
   // [LAW:single-enforcer] One place owns "is this index valid for the
@@ -100,9 +93,6 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     if (this.options.length === 0) return 0;
     return Math.max(0, Math.min(n, this.options.length - 1));
   }
-
-  @action
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -261,9 +251,9 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     const maxLabelLen = this.maxLabelLen();
 
     const baseStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
+      ? new Style(this.disabledInk)
       : new Style({
-          ...ink(this._theme, "foreground", "surface"),
+          ...ink(this.theme, "foreground", "surface"),
           underline: this.focused,
         });
 
@@ -320,9 +310,9 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     const text = setCellSize("(no matches)", asCellCol(maxLabelLen));
     const inner = ` ${text} `;
     const style = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
+      ? new Style(this.disabledInk)
       : new Style({
-          ...ink(this._theme, "foreground", "surface"),
+          ...ink(this.theme, "foreground", "surface"),
           dim: true,
         });
     return [
@@ -350,18 +340,12 @@ export class Dropdown extends WidgetBase implements OverlayRenderable {
     // Highlighted: muted bg → text-primary (mostly-accent fg) is readable.
     // Selected:    full primary bg → on-primary (WCAG contrast) for fg.
     const rowStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true })
+      ? new Style(this.disabledInk)
       : isHighlighted
-        ? new Style({
-            ...ink(this._theme, "text-primary", "primary-muted"),
-          })
+        ? new Style(ink(this.theme, "text-primary", "primary-muted"))
         : isSelected
-          ? new Style({
-              ...ink(this._theme, "on-primary", "primary"),
-            })
-          : new Style({
-              ...ink(this._theme, "foreground", "surface"),
-            });
+          ? new Style(ink(this.theme, "on-primary", "primary"))
+          : new Style(ink(this.theme, "foreground", "surface"));
 
     return [
       new Segment(" ", rowStyle),

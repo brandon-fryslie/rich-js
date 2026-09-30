@@ -3,6 +3,11 @@ import { Segment } from "../../src/core/segment.js";
 import { Button } from "../../src/widgets/button.js";
 import { KeyEvent } from "../../src/widgets/types.js";
 import type { InteractiveWidget, WidgetMouseEvent } from "../../src/widgets/types.js";
+import { ColorSpec } from "../../src/core/color.js";
+import { DEFAULT_TERMINAL_THEME } from "../../src/themes/terminalThemes.js";
+
+// What every widget draws a disabled cell in.
+const MUTED = ColorSpec.fromRgba(DEFAULT_TERMINAL_THEME.palette.get("foreground-muted")!);
 
 // Factories — KeyEvent carries a mutable `stopped` flag, so each call site
 // must get a fresh instance.
@@ -55,11 +60,10 @@ describe("Button", () => {
       expect(segments[0]!.style).toBeDefined();
     });
 
-    it("renders dimmed when disabled", () => {
+    it("renders in the palette's muted foreground when disabled", () => {
       const btn = new Button({ label: "Go", disabled: true });
       const segments = Segment.splitLines(btn.render({ maxWidth: 80 }))[0]!;
-      const style = segments[0]!.style!;
-      expect(style.dim).toBe(true);
+      expect(segments.map((s) => s.style?.color)).toEqual(segments.map(() => MUTED));
     });
 
     it("renders brackets when focused", () => {

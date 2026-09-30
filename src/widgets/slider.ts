@@ -21,10 +21,9 @@
 import { observable, action, observableRef } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
-import { DEFAULT_TERMINAL_THEME } from "../themes/terminalThemes.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
-import { WidgetBase } from "./widget-base.js";
+import { ThemedWidget } from "./themed-widget.js";
 import { ink } from "./ink.js";
 import type { KeyEvent, WidgetMouseEvent } from "./types.js";
 
@@ -41,7 +40,7 @@ export interface SliderOptions {
 
 const DEFAULT_WIDTH = 20;
 
-export class Slider extends WidgetBase {
+export class Slider extends ThemedWidget {
   readonly id: string;
   readonly focusable = true;
 
@@ -51,14 +50,10 @@ export class Slider extends WidgetBase {
   @observableRef accessor step: number;
   @observableRef accessor width: number;
 
-  // [LAW:types-are-the-program] @observableRef so setTheme() triggers a
-  // re-render — render() reads _theme.palette, so the theme reference must
-  // participate in MobX reactivity for Screen's autorun to fire on swap.
-  @observableRef private accessor _theme: TerminalTheme;
   private _dragging = false;
 
   constructor(options: SliderOptions = {}) {
-    super();
+    super(options.theme);
     this.id = options.id ?? `slider-${Math.random().toString(36).slice(2, 8)}`;
     this.min = options.min ?? 0;
     this.max = options.max ?? 100;
@@ -74,11 +69,7 @@ export class Slider extends WidgetBase {
     this.width = width;
     this.value = clampSnap(options.value ?? this.min, this.min, this.max, this.step);
     this.disabled = options.disabled ?? false;
-    this._theme = options.theme ?? DEFAULT_TERMINAL_THEME;
   }
-
-  @action
-  setTheme(theme: TerminalTheme): void { this._theme = theme; }
 
   // --- Event handlers ---
 
@@ -162,14 +153,14 @@ export class Slider extends WidgetBase {
 
     const baseAttrs = { underline: this.focused };
     const filledStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true, ...baseAttrs })
-      : new Style({ ...ink(this._theme, "primary", "background"), ...baseAttrs });
+      ? new Style({ ...this.disabledInk, ...baseAttrs })
+      : new Style({ ...ink(this.theme, "text-primary", "background"), ...baseAttrs });
     const unfilledStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true, ...baseAttrs })
-      : new Style({ ...ink(this._theme, "foreground", "background"), dim: true, ...baseAttrs });
+      ? new Style({ ...this.disabledInk, ...baseAttrs })
+      : new Style({ ...ink(this.theme, "foreground", "background"), dim: true, ...baseAttrs });
     const markerStyle = this.disabled
-      ? new Style({ color: "#666666", bgcolor: "#333333", dim: true, bold: true, ...baseAttrs })
-      : new Style({ ...ink(this._theme, "primary", "background"), bold: true, ...baseAttrs });
+      ? new Style({ ...this.disabledInk, bold: true, ...baseAttrs })
+      : new Style({ ...ink(this.theme, "text-primary", "background"), bold: true, ...baseAttrs });
 
     const segments: Segment[] = [];
     if (markerIdx > 0) {
