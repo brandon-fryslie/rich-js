@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-284",
-      "ref": "refs/pull/284/merge",
-      "sha": "df3c4b9f55ce5af4b43b82b1a266d3ab73fe21fb",
-      "timestamp": "2026-09-30T23:13:17.555Z",
-      "commits": [
-        {
-          "sha": "df3c4b9f55ce5af4b43b82b1a266d3ab73fe21fb",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T23:12:09Z",
-          "message": "Merge acc0b5db26374d6ef0615625843489836a98cffc into 4d85447ea7d7aba7f12f2b41715982528540e7e1\n"
-        },
-        {
-          "sha": "acc0b5db26374d6ef0615625843489836a98cffc",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:12:05-06:00",
-          "message": "fix(host): App copies only the drawing options it names to its console (rich-host-qvji)\n\nA rest spread passed any extra property of the options object — width,\ngetSize, colorSystem, file — to the console, overriding what the host\ndecides. One key list is now both the type and what is copied.\n"
-        },
-        {
-          "sha": "013e217595d5e6010c985e18fc8df5d671f2f0e6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:09:58-06:00",
-          "message": "fix(host): App takes the console's drawing options as the console declares them (rich-host-qvji)\n\nAppOptions picked asciiOnly and theme from ConsoleOptions by hand, one field\nat a time; onStyleError, markup, highlight and highlighter never reached a\nframe. It now extends a Pick of ConsoleOptions and forwards by spread.\n\nReview (high): tests no longer pass on a missing segment; WidgetApp's frames\nare covered; docs separate the style-name Theme from a widget's palette.\n"
-        },
-        {
-          "sha": "0443a113890d21d3bee4a95dacf1bc1c81cf54a7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:04:35-06:00",
-          "message": "fix(host): App takes a Theme, so its frames resolve the names it adds (rich-host-qvji)\n\nAppOptions had no theme, so the Console App builds always fell back to the\nbuilt-in names: a user's theme name drew plain in a RichText and threw from\ngetStyle under App and WidgetApp.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "4d85447ea7d7aba7f12f2b41715982528540e7e1",
-      "timestamp": "2026-09-30T23:01:21.470Z",
+      "sha": "b38c6b91569ddf12897b387b599cef1f5be67440",
+      "timestamp": "2026-09-30T23:17:04.228Z",
       "commits": [
         {
-          "sha": "4d85447ea7d7aba7f12f2b41715982528540e7e1",
+          "sha": "b38c6b91569ddf12897b387b599cef1f5be67440",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:00:26-06:00",
-          "message": "test(docs): the docs build is the one check that pages name real symbols (rich-docs-kdeh) (#283)\n\n* test(docs): the docs build is the one check that pages name real symbols (rich-docs-kdeh)\n\nsymbol-existence.test.ts swept every docs fence for two defects the docs\nbuild already rejects: an import an entry point does not export, and a\nmember a class does not have. example-runner type-checks every TypeScript\nfence, whatever its marker, and fails the build at the page and line.\n[LAW:single-enforcer]\n\nDeleted the sweep and code-blocks.ts / resolve-chain.ts, which only it\nused, with their fixture suites. The two defect classes are now rows in\nexample-runner.test.ts's failure table, and the \"change the page, not\nsrc/\" rule and the three-ways-a-page-lies ceiling live on\nExampleCompiler.check; the compile error's last line points there.\n\nLost: missing-symbol feedback from `npm test` without a build. The docs\nbuild runs on every PR and before every docs commit, so that was a\nsecond, weaker checkpoint for one invariant.\n\n* review(docs): scope the page-not-library rule to missing symbols; floor the fences the build sees (rich-docs-kdeh)\n\nThe error suffix told the author to change the page on every diagnostic,\nincluding a src/ type regression and a Try-it slicer bug; the rule lives in\nExampleCompiler.check's docstring, scoped to symbols the library lacks.\nThe deleted sweep's fence floor is back in the example-gate sweep: the build\npasses a page on which scanFences finds nothing.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T17:15:56-06:00",
+          "message": "fix(host): App takes a Theme, so its frames resolve the names it adds (rich-host-qvji) (#284)\n\n* fix(host): App takes a Theme, so its frames resolve the names it adds (rich-host-qvji)\n\nAppOptions had no theme, so the Console App builds always fell back to the\nbuilt-in names: a user's theme name drew plain in a RichText and threw from\ngetStyle under App and WidgetApp.\n\n* fix(host): App takes the console's drawing options as the console declares them (rich-host-qvji)\n\nAppOptions picked asciiOnly and theme from ConsoleOptions by hand, one field\nat a time; onStyleError, markup, highlight and highlighter never reached a\nframe. It now extends a Pick of ConsoleOptions and forwards by spread.\n\nReview (high): tests no longer pass on a missing segment; WidgetApp's frames\nare covered; docs separate the style-name Theme from a widget's palette.\n\n* fix(host): App copies only the drawing options it names to its console (rich-host-qvji)\n\nA rest spread passed any extra property of the options object — width,\ngetSize, colorSystem, file — to the console, overriding what the host\ndecides. One key list is now both the type and what is copied."
         }
       ]
     }
