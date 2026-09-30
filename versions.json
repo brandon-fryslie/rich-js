@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2300745a25c9da6ee9976329c977db9ecd623c34",
-      "timestamp": "2026-09-30T15:10:43.884Z",
+      "sha": "59b38e3b5e842583a8fe01d168ae1f4f0bace895",
+      "timestamp": "2026-09-30T15:20:29.464Z",
       "commits": [
         {
-          "sha": "2300745a25c9da6ee9976329c977db9ecd623c34",
+          "sha": "59b38e3b5e842583a8fe01d168ae1f4f0bace895",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T09:09:35-06:00",
-          "message": "fix(markdown): every option takes effect or is gone (rich-markdown-ft8) (#259)\n\n* fix(markdown): every option takes effect or is gone (rich-markdown-ft8)\n\n- inlineCodeStyle styles inline code (was hard-coded to markdown.code).\n- hyperlinks: true makes a link's text the link, in markdown.link_url;\n  false draws the text in markdown.link and writes \" (url)\" after it, as\n  Rich does.\n- justify places paragraphs, list items and quoted text; headings keep\n  their own placement. It was declared and never read, same defect.\n- codeTheme is removed: Syntax lost its theme option in #256, colours are\n  console theme names, so there is nothing for it to name.\n\n* fix(markdown): links span their text, headings stay left, justify has one source (rich-markdown-ft8)\n\nReview round 1 (high) on #259:\n- a link's span starts where its text lands, not at the source length, which\n  control-character stripping can shorten\n- headings are placed left explicitly instead of inheriting the print's justify\n- justify travels once, as the block's placement; InlineSettings holds only\n  inline code style and hyperlinks, and Markdown no longer implements it\n- docs: an unset justify follows the print's\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(markdown): a heading is drawn at its natural width (rich-markdown-ft8)\n\nReview round 2 (medium) on #259: placing headings \"left\" padded them to the\nwidth, and markdown.h1's underline ran to the edge. A heading now renders\nwith no placement asked of it, so the print's justify cannot reach it either.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(markdown): body text defaults to left, as Rich's Paragraph does (rich-markdown-ft8)\n\nReview round 3 (escalation high) on #259: Rich's Paragraph uses\nmarkdown.justify or \"left\", so an unset justify never inherits the print's.\nThe settings object carries justify once, and the Justify type derives from\nRenderOptions.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T09:19:04-06:00",
+          "message": "fix(tree): a node's style draws its row and every row beneath it (rich-tree-736) (#260)\n\n* fix(tree): a node's style draws its row and every row beneath it (rich-tree-736)\n\nTree stored `style` and never read it. The walk now stacks each node's\nstyle the way it already stacked guide styles; the label is drawn over it,\nso its own markup still wins, and only its background reaches the guides,\nas in Rich. docs/tree.md gets its style example back.\n\n* fix(tree): say where a node's background reaches, show it, and pin it at depth (rich-tree-736)\n\nReview (high): the docs claimed the whole row was filled; only the guides\nand label are. The example now carries a background, and the test covers\nan ancestor rail and a multi-line label's later guides."
         }
       ]
     }
