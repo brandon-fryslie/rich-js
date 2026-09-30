@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-272",
+      "ref": "refs/pull/272/merge",
+      "sha": "73641810472d102901545d8e84d9bf12ce03446f",
+      "timestamp": "2026-09-30T19:23:29.951Z",
+      "commits": [
+        {
+          "sha": "73641810472d102901545d8e84d9bf12ce03446f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:22:19-06:00",
+          "message": "Merge be4ab5c33e25da86974d6ba77f22b3173fbd618a into 7d1269e1f067cfaf970db02865817ea7240c0618\n"
+        },
+        {
+          "sha": "be4ab5c33e25da86974d6ba77f22b3173fbd618a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:22:14-06:00",
+          "message": "fix(tree): bold and underline2 guides draw heavy and double lines, without the attribute (rich-tree-te3h)\n\nRich reads each guide column's stacked guide style to pick its glyphs —\nheavy when bold, double when underline2 — and draws the guide with both\nattributes switched off. Tree always drew light glyphs and left bold on.\nA guide now carries its role, and the glyph set is chosen at render from\nthe theme-resolved style; every set is four cells, so measure is unchanged.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "7d1269e1f067cfaf970db02865817ea7240c0618",
