@@ -4,15 +4,22 @@
     {
       "version": "pr-250",
       "ref": "refs/pull/250/merge",
-      "sha": "e0ce5eea4b2f1afd307f9c4ed3ca582f5936d08b",
-      "timestamp": "2026-09-30T10:44:47.121Z",
+      "sha": "d598fc4835df8d487719f321f524527337c4cac6",
+      "timestamp": "2026-09-30T10:49:40.814Z",
       "commits": [
         {
-          "sha": "e0ce5eea4b2f1afd307f9c4ed3ca582f5936d08b",
+          "sha": "d598fc4835df8d487719f321f524527337c4cac6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:43:40-06:00",
-          "message": "Merge a3d622c767066d61fc52a31c911c2a014f77d289 into dcd22ee2cebf3853bfdaf2905e899f3e5377186e\n"
+          "timestamp": "2026-09-30T10:48:42Z",
+          "message": "Merge 0be70841daad08795957336f485ca179bd9c0748 into dcd22ee2cebf3853bfdaf2905e899f3e5377186e\n"
+        },
+        {
+          "sha": "0be70841daad08795957336f485ca179bd9c0748",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:48:37-06:00",
+          "message": "test(demos): Powerline probe re-finds its span each poll and asserts a web face, not a file's name (rich-demos-4cl)\n\nReview (high): a repainted row stales a held CDP nodeId; the family name is\nthe generator's choice, not the site's; the raw U+E0B0 was invisible. Also\npoints the font generator's docstring at code-font.css.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "a3d622c767066d61fc52a31c911c2a014f77d289",
