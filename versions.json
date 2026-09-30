@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-255",
+      "ref": "refs/pull/255/merge",
+      "sha": "1e522f348c61e87d50119b79981c01d02d8d43e5",
+      "timestamp": "2026-09-30T12:47:55.748Z",
+      "commits": [
+        {
+          "sha": "1e522f348c61e87d50119b79981c01d02d8d43e5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T06:47:09-06:00",
+          "message": "Merge 67b293e117e8c761b061be252798a716862f4ff6 into d2cc10e93b4fe71b1c5431bb942f203177a620d2\n"
+        },
+        {
+          "sha": "67b293e117e8c761b061be252798a716862f4ff6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T06:47:04-06:00",
+          "message": "fix(widgets): every widget cell takes its background from the theme (rich-widgets-73e)\n\nCheckbox, Slider and TextInput drew palette foregrounds over whatever the\nterminal showed, so the dark default palette's white text vanished in a light\nterminal. Every cell now takes both colours from the one palette through\nsrc/widgets/ink.ts, which replaces six copies of resolvePalette and has no\nforeground-only form. The slider's unfilled track moves from `surface` (1.1:1\non the palette's own background) to dimmed `foreground`.\n\ntest/widgets/terminal-contrast.test.ts renders each widget state without a\ntheme and requires 3:1 glyph contrast on two dark and two light terminals.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "d2cc10e93b4fe71b1c5431bb942f203177a620d2",
