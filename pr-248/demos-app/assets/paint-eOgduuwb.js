@@ -1,3 +1,0 @@
-import{s as e}from"./console-CPrdJhFE.js";var t={alternate:{exact:!0,home:()=>`\x1B[H`,painted:e=>e,below:()=>``},inline:{exact:!1,home:e=>e>1?`\x1b[${e-1}A\r`:`\r`,painted:(e,t,n)=>Math.max(e,Math.min(t,n)),below:e=>e>0?`
-`:``}},n=`\x1B[2K`;function r(e,n){return{rows:n,exact:t[e].exact}}function i(r,i,a,o,s){let c=t[r],l=c.painted(i.length,a,o),u=Array.from({length:l},(t,r)=>n+e(i[r]??[],s)).join(`
-`),d=l-Math.max(i.length,1),f=d>0?`\x1b[${d}A`:``;return c.home(a)+u+f}function a(e,n){return t[e].below(n)}export{r as n,i as r,a as t};

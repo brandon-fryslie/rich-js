@@ -4,15 +4,22 @@
     {
       "version": "pr-248",
       "ref": "refs/pull/248/merge",
-      "sha": "5f3454db4f9a54ab3f46bc0227882cde58586989",
-      "timestamp": "2026-09-30T10:07:55.577Z",
+      "sha": "81f99c2a64259033321a1d76fc2bfcb13dc18f25",
+      "timestamp": "2026-09-30T10:20:46.840Z",
       "commits": [
         {
-          "sha": "5f3454db4f9a54ab3f46bc0227882cde58586989",
+          "sha": "81f99c2a64259033321a1d76fc2bfcb13dc18f25",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:06:54-06:00",
-          "message": "Merge a59ce49daec71365b1ddc8ec6fe9ef439d4338ad into 9bfe1d1ff8f779367b2ac22876bb7d61bf927f28\n"
+          "timestamp": "2026-09-30T10:20:02Z",
+          "message": "Merge 09c78106438e4b007f973729e7666439235b66d8 into 9bfe1d1ff8f779367b2ac22876bb7d61bf927f28\n"
+        },
+        {
+          "sha": "09c78106438e4b007f973729e7666439235b66d8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:19:57-06:00",
+          "message": "fix(paint): one Painter owns the rewind count, the width crop and the hand-back (rich-live-4rh)\n\nA restarted inline Live painted over the frame it had handed back, because\nLive never reset the row count App resets on resume. Painter now holds that\ncount from take() to handBack(), crops rows to the screen for both callers,\nand owns the surface's enter/leave bytes. Each row starts with its own CR, so\na Live handed back before any frame no longer moves the cursor.\n\nReview: /code-review high on #248.\n"
         },
         {
           "sha": "a59ce49daec71365b1ddc8ec6fe9ef439d4338ad",
