@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-229",
+      "ref": "refs/pull/229/merge",
+      "sha": "8ebb2dfae3313d666211fd542f5bb39a17581914",
+      "timestamp": "2026-09-30T01:04:12.514Z",
+      "commits": [
+        {
+          "sha": "8ebb2dfae3313d666211fd542f5bb39a17581914",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T01:03:23Z",
+          "message": "Merge b4c3c46255c31b4f8e7e51e98fd89f0d6d5b4c0a into 9e26f9f798534f09dacc422e4b4e95984446c8fd\n"
+        },
+        {
+          "sha": "b4c3c46255c31b4f8e7e51e98fd89f0d6d5b4c0a",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T16:38:06-06:00",
+          "message": "fix(renderables): every exported renderable ends its own line or is listed as a fragment (rich-flexstrip-5kf.4cq)\n\nSpinner, Status, Pretty, JSON and a Layout leaf left their last line open,\nso a Group ran what followed onto it; Rich ends all five. test/seam/line-ends.ts\nderives every exported Renderable class and requires an entry saying which\nside of the line it sits on, rendering each to check. ProgressBar, Emoji and\nthe Progress columns are fragments, as in Rich.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9e26f9f798534f09dacc422e4b4e95984446c8fd",
@@ -13,28 +35,6 @@
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
           "timestamp": "2026-09-29T19:01:12-06:00",
           "message": "fix(pretty): a container's opener and an overlong key hang under the key (rich-pretty-xms.0l4) (#233)\n\n* fix(pretty): a container whose opener will not fit after its key, and a key wider than its line, hang under the key (rich-pretty-xms.0l4)\n\nA container starts on its key's hanging line when its opener does not fit\nafter the key and does fit there, then lays out from that line. An object key\nis placed like any one-piece text, so a key wider than its line wraps under\nits slot instead of running to column 0. A value after a wrapped key is on the\nkey's last row, and a container there indents its entries from that row.\n\n`Frame.inset` is now the column the value's line starts at rather than a depth\ncount, so a line that starts on a hanging row is representable; `_onLine` is\nthe one place a hang is derived from it. Rich wraps the opener to column 0.\n\n* fix(pretty): a wrapped key keeps its colon, and a key's last row starts where it was laid (rich-pretty-xms.0l4)\n\nSlot.join carries a key's ': ' apart from the key, so the key's last row\nreserves room for it rather than folding ':' onto a row of its own.\n_place/_format return Laid { text, inset }: where the last line starts is\nreported by what laid it out, not read back from leading whitespace that\ncan be the value's own."
-        }
-      ]
-    },
-    {
-      "version": "pr-229",
-      "ref": "refs/pull/229/merge",
-      "sha": "b5e99925759cde27b8e99ee6a752a7192127822f",
-      "timestamp": "2026-09-29T22:39:39.800Z",
-      "commits": [
-        {
-          "sha": "b5e99925759cde27b8e99ee6a752a7192127822f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:38:16-06:00",
-          "message": "Merge 607423c67ba606272a38eb73369cddd1605e43b8 into 9a426139579b1cfb72fd2d2b824e893767fb249a\n"
-        },
-        {
-          "sha": "607423c67ba606272a38eb73369cddd1605e43b8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T16:38:06-06:00",
-          "message": "fix(renderables): every exported renderable ends its own line or is listed as a fragment (rich-flexstrip-5kf.4cq)\n\nSpinner, Status, Pretty, JSON and a Layout leaf left their last line open,\nso a Group ran what followed onto it; Rich ends all five. test/seam/line-ends.ts\nderives every exported Renderable class and requires an entry saying which\nside of the line it sits on, rendering each to check. ProgressBar, Emoji and\nthe Progress columns are fragments, as in Rich.\n"
         }
       ]
     }
