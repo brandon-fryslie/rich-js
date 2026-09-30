@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-261",
+      "ref": "refs/pull/261/merge",
+      "sha": "4f1c15e229421f73dd2b77b793fd64b774c02b2c",
+      "timestamp": "2026-09-30T15:29:33.368Z",
+      "commits": [
+        {
+          "sha": "4f1c15e229421f73dd2b77b793fd64b774c02b2c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:28:24-06:00",
+          "message": "Merge 9c46eb45ef339a11f65b1d4b1744276b2ddedb1d into 59b38e3b5e842583a8fe01d168ae1f4f0bace895\n"
+        },
+        {
+          "sha": "9c46eb45ef339a11f65b1d4b1744276b2ddedb1d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:28:20-06:00",
+          "message": "fix(panel): a Panel's and a Padding's style is the ground under the whole block (rich-panel-ech)\n\nStyle reached only the padding spaces, leaving the content and the frame\nunstyled. As in Rich, the style is now applied under the content, and a\nPanel's frame is its border style laid over it; title, subtitle and accessory\nstyles lay over the frame's instead of replacing it, so they no longer cut a\nhole in the background on the border rows. docs/panel.md regains its Style\nsection.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "59b38e3b5e842583a8fe01d168ae1f4f0bace895",
