@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-240",
+      "ref": "refs/pull/240/merge",
+      "sha": "b90c249fa0818c6a096534b79597b5b974a04bed",
+      "timestamp": "2026-09-30T07:28:39.500Z",
+      "commits": [
+        {
+          "sha": "b90c249fa0818c6a096534b79597b5b974a04bed",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T01:27:33-06:00",
+          "message": "Merge 963bd02a68d326e5882e2f6ea53b6cc8c2afb1c9 into 0b901ceeff65c2f9521a5d70942aa7da145f0f72\n"
+        },
+        {
+          "sha": "963bd02a68d326e5882e2f6ea53b6cc8c2afb1c9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T01:27:28-06:00",
+          "message": "fix(docs): a program's global console writes to its terminal (rich-playground-afk.6dm)\n\nrunInTerminal binds `console` lexically, as it binds `process`, to Node's\nconsole on the stand-in's streams, formatted by Node's own util.format\n(node-inspect-extracted). The body is wrapped in a block so a program's own\n`const console = new Console()` shadows the parameter rather than\nredeclaring it.\n\nFound by the playground checkpoint (rich-playground-afk.oui): a bare\nconsole.log in the playground went to devtools and the terminal stayed empty.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "0b901ceeff65c2f9521a5d70942aa7da145f0f72",
