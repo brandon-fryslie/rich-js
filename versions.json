@@ -2,6 +2,35 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-238",
+      "ref": "refs/pull/238/merge",
+      "sha": "af2ef426b9f4e53837a8f478afcaacae4e86fec8",
+      "timestamp": "2026-09-30T05:46:08.853Z",
+      "commits": [
+        {
+          "sha": "af2ef426b9f4e53837a8f478afcaacae4e86fec8",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:45:26-06:00",
+          "message": "Merge aabd9fa39692643d1bb139a1ff3ed4244cab8f32 into 3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8\n"
+        },
+        {
+          "sha": "aabd9fa39692643d1bb139a1ff3ed4244cab8f32",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:45:05-06:00",
+          "message": "feat(docs): the playground page: editor, Run, terminal (rich-playground-afk.npl)\n\nA Playground nav tab: a CodeMirror 6 editor beside the live terminal, above it\nat phone width, running the editor's TypeScript on the live library.\n\n- Run, or Ctrl/Cmd+Enter in the editor, runs the editor's program, replacing\n  the run before; Stop ends one that has not ended.\n- Every edit is written to the URL hash (docs/.vitepress/playground-hash.ts:\n  deflate, base64url), so a link or a reload opens the same program. A hash it\n  cannot read is reported and the start example opened.\n- It opens on the first block of docs/introduction.md, served with the live\n  library as virtual:rich-live/playground. That block is type-checked with no\n  prelude or page context, so one that stops being a program on its own fails\n  the build at its line. The library module is the one the live examples\n  import, so the site ships it once.\n- Editor colours are One Light / One Dark Pro as custom properties, so the\n  editor follows the site's colour mode; the terminal takes the example themes.\n\nVerified in Chromium (e2e/playground.spec.ts): reached from the nav, start\nexample runs, edit and rerun by button and shortcut, reload and a fresh context\nrestore the program, unreadable link reported, endless loop stopped, phone\nstacking, light and dark terminal themes.\n"
+        },
+        {
+          "sha": "0b9a89d11de43179ece167367bf8dfe149f07e17",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T23:45:05-06:00",
+          "message": "test(e2e): poll the rows of a worker that did not start (rich-playground-afk.npl)\n\nThe run's state turns exited as the report is written, and xterm draws the\nwrite a moment later, so reading the rows once raced the draw. It failed about\none run in three under the full e2e group, on master too.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8",
