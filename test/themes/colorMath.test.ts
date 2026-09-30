@@ -12,7 +12,8 @@ import {
   drawnColour,
   relativeLuminance,
 } from "../../src/themes/colorMath.js";
-import { STANDARD_TABLE } from "../../src/core/color.js";
+import { STANDARD_TABLE, SURFACE_BLACK, TerminalTheme } from "../../src/core/color.js";
+import * as terminalThemes from "../../src/themes/terminalThemes.js";
 
 const mid = new ColorRgba(128, 128, 128);
 const black = new ColorRgba(0, 0, 0);
@@ -337,6 +338,56 @@ describe("ensureContrast drawn at ansi", () => {
     const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD);
     expect(contrastRatio(nominal(chosen), nominal(bg))).toBeGreaterThanOrEqual(4.5);
   });
+
+  // The terminal draws each index in its own theme's colour, so the colour
+  // the writer's index is shown as is the one to measure.
+  const shownIn = (terminal: TerminalTheme) => (c: ColorRgba) =>
+    ColorSpec.fromRgba(c).downgrade(ColorDepth.STANDARD).getTruecolor(terminal);
+  const bundled = Object.values(terminalThemes).filter((t) => t instanceof TerminalTheme);
+
+  it("navy on white under Rosé Pine Dawn, whose black is light and white dark, reads as that terminal draws it", () => {
+    const { ROSE_PINE_DAWN } = terminalThemes;
+    const shown = shownIn(ROSE_PINE_DAWN);
+    const fg = new ColorRgba(0x00, 0x00, 0x80);
+    const bg = new ColorRgba(0xff, 0xff, 0xff);
+    // The nominal table calls it 16:1; the terminal draws teal on dusk.
+    expect(contrastRatio(shown(ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD)), shown(bg))).toBeLessThan(4.5);
+    const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN);
+    expect(contrastRatio(shown(chosen), shown(bg))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("under every bundled terminal, text clears the floor as drawn, or no index of that terminal can", () => {
+    const failures: string[] = [];
+    let misread = 0;
+    for (const terminal of bundled) {
+      const shown = shownIn(terminal);
+      for (let v = 0; v < 256; v += 17) {
+        for (const bg of [new ColorRgba(v, v, v), new ColorRgba(v, 40, 160), new ColorRgba(230, v, 90)]) {
+          const ground = shown(bg);
+          const best = Math.max(...Array.from({ length: 16 }, (_, i) => contrastRatio(terminal.ansiColors.get(i), ground)));
+          for (const fg of [new ColorRgba(255 - v, 255 - v, 255 - v), new ColorRgba(v, 200, 255 - v), new ColorRgba(0, 0, 0x80)]) {
+            if (contrastRatio(shown(ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD)), ground) < Math.min(4.5, best)) misread++;
+            const chosen = ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD, SURFACE_BLACK, terminal);
+            const ratio = contrastRatio(shown(chosen), ground);
+            if (ratio < Math.min(4.5, best) - 1e-9) failures.push(`${fg.hex} on ${bg.hex} in ${terminal.palette.name}: ${ratio.toFixed(2)}`);
+          }
+        }
+      }
+    }
+    expect(misread).toBeGreaterThan(0);
+    expect(failures).toEqual([]);
+  });
+
+  it("naming no terminal measures on the one DEFAULT_TERMINAL_THEME draws", () => {
+    const { DEFAULT_TERMINAL_THEME } = terminalThemes;
+    for (let v = 0; v < 256; v += 17) {
+      const fg = new ColorRgba(v, 255 - v, 128);
+      const bg = new ColorRgba(255 - v, v, 60);
+      expect(ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD).hex).toBe(
+        ensureContrast(fg, bg, 4.5, ColorDepth.STANDARD, SURFACE_BLACK, DEFAULT_TERMINAL_THEME).hex,
+      );
+    }
+  });
 });
 
 describe("ensureDrawn", () => {
@@ -373,6 +424,17 @@ describe("ensureDrawn", () => {
     const repaired = ensureDrawn(onGround, ColorDepth.STANDARD, apartAtAnsi)!;
     expect(nominal(repaired).hex).toBe(repaired.hex);
     expect(STANDARD_TABLE.match(repaired)).not.toBe(STANDARD_TABLE.match(ground));
+  });
+
+  it("at ansi a named terminal's own colour is what accept is shown, and a repair is written as its index", () => {
+    const { ROSE_PINE_DAWN } = terminalThemes;
+    const white = new ColorRgba(0xff, 0xff, 0xff);
+    // Nominal bright white, which Rosé Pine Dawn draws dark.
+    expect(drawnColour(white, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN).hex).toBe(ROSE_PINE_DAWN.ansiColors.get(15).hex);
+    const light = (candidate: ColorRgba) => relativeLuminance(candidate) > 0.5;
+    const repaired = ensureDrawn(white, ColorDepth.STANDARD, light, SURFACE_BLACK, ROSE_PINE_DAWN)!;
+    expect(light(drawnColour(repaired, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN))).toBe(true);
+    expect(STANDARD_TABLE.get(STANDARD_TABLE.match(repaired)).hex).toBe(repaired.hex);
   });
 
   it("keeps the chosen colour when its drawn colour is accepted", () => {

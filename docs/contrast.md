@@ -67,7 +67,7 @@ console.print(`[${strong.hex} on ${panel.hex}] link, AAA  [/]  ${contrastRatio(s
 
 ### Measured where it is drawn — `drawnAt`
 
-`ensureContrast(fg, bg, minRatio, drawnAt = ColorDepth.TRUECOLOR)` takes a fourth argument: the depth the terminal will draw at. At truecolor the colours are drawn as computed. At 256 colours the terminal rounds text and background to its palette **independently**, and two roundings can meet in the middle — a pair that read at 4.5:1 can draw at 2:1. So at `ColorDepth.EIGHT_BIT` the answer is measured on the drawn pair: a colour that still clears the floor once rounded is returned unchanged, and one that does not is replaced by the nearest 256-colour entry (indices 16–255, never the terminal-defined ANSI 0–15) that clears it — or, when no entry can clear it on that background, by the entry with the most contrast, the same honest fallback as truecolor's black/white. At `STANDARD` the terminal draws its own theme's sixteen colours, so the pair is measured the same way on the ANSI table's nominal colours, which stand in for the theme's: they are wrong in hue from theme to theme but right about which side of a background text belongs on. A truecolor answer whose nominal pair clears the floor stands; one that does not is replaced by the nearest entry that clears it against the background's nominal colour, or the one with the most contrast. Text on its background's own index measures 1:1, so it is always replaced.
+`ensureContrast(fg, bg, minRatio, drawnAt = ColorDepth.TRUECOLOR)` takes a fourth argument: the depth the terminal will draw at. At truecolor the colours are drawn as computed. At 256 colours the terminal rounds text and background to its palette **independently**, and two roundings can meet in the middle — a pair that read at 4.5:1 can draw at 2:1. So at `ColorDepth.EIGHT_BIT` the answer is measured on the drawn pair: a colour that still clears the floor once rounded is returned unchanged, and one that does not is replaced by the nearest 256-colour entry (indices 16–255, never the terminal-defined ANSI 0–15) that clears it — or, when no entry can clear it on that background, by the entry with the most contrast, the same honest fallback as truecolor's black/white. At `STANDARD` the writer picks one of the sixteen ANSI indices and the terminal draws each in its own theme's colour, so the pair is measured in the colours of the terminal you name (see `terminal` below). A truecolor answer whose drawn pair clears the floor stands; one that does not is replaced by the colour the writer emits as the nearest index that clears it, or the one with the most contrast. Text on its background's own index measures 1:1, so it is always replaced.
 
 ```typescript
 const drawn = ensureContrast(link, panel, 4.5, ColorDepth.EIGHT_BIT);
@@ -78,13 +78,32 @@ Here the truecolor answer still clears 4.5:1 once both colours are rounded to th
 
 A translucent background is measured as drawn, composited over the surface beneath it: a fifth argument, `substrate`, defaulting to black, which is what the terminal writer composites over. A caller choosing text for another surface (an export flattens over its canvas, `exportCanvas(theme).background`) passes that surface; it must be opaque. `contrastFor(bg, substrate)` takes the same surface.
 
+The sixth argument, `terminal`, is the `TerminalTheme` whose sixteen `ansiColors` the terminal draws at `STANDARD`. Themes disagree about more than hue: Rosé Pine Dawn's black is `#F2E9E1` and its white `#575279`, so the side of a background that text belongs on flips. With no `terminal` named, the pair is measured in the VGA colours `DEFAULT_TERMINAL_THEME` draws.
+
+```typescript
+import { ColorDepth, ROSE_PINE_DAWN, drawnColour } from "@promptctl/rich-js";
+
+const surface = new ColorRgba(0, 0, 0); // what the terminal writer composites over
+const navy = new ColorRgba(0, 0, 128);
+const paper = new ColorRgba(255, 255, 255);
+const shown = (c: ColorRgba) => drawnColour(c, ColorDepth.STANDARD, surface, ROSE_PINE_DAWN);
+
+for (const terminal of [undefined, ROSE_PINE_DAWN]) {
+  const text = ensureContrast(navy, paper, 4.5, ColorDepth.STANDARD, surface, terminal);
+  const ratio = contrastRatio(shown(text), shown(paper)).toFixed(2);
+  console.print(`[${shown(text).hex} on ${shown(paper).hex}] ${terminal ? "measured in Rosé Pine Dawn" : "measured in VGA"} [/]  drawn by Rosé Pine Dawn at ${ratio}:1`);
+}
+```
+
+Both lines are drawn as a Rosé Pine Dawn terminal draws them. Measured in VGA, navy on white clears the floor and stands, and that terminal draws it teal on dusk; measured in the terminal's own colours it is replaced.
+
 In templates, `readableOn` measures at the depth `richTextFuncs(drawnAt)` / `colorFuncs(drawnAt)` were given — see [Template Bindings](/template-bindings).
 
 ### A floor that is not text — `ensureDrawn`
 
-Some floors are not text on a background. Examples are a selected cell that must stand off every unselected one, or two nested panels that must not merge. `ensureDrawn(chosen, drawnAt, accept)` is the same repair with the floor stated by you. `accept(candidate, drawn)` is shown the candidate as drawn, plus `drawn`, the same rounding for any colour it compares against. When the chosen colour as drawn is accepted, it comes back composited over the substrate (black unless you pass another), so a translucent colour returns opaque. When it is refused, the nearest entry of the table the depth draws from that is accepted comes back instead (it draws as itself): the 256-colour cube and grey ramp, or at `STANDARD` the sixteen ANSI entries, whose nominal colours stand in for the theme's as they do in `ensureContrast`. Truecolor draws from no table, so a colour refused there has no replacement. The result is `undefined` when nothing is accepted.
+Some floors are not text on a background. Examples are a selected cell that must stand off every unselected one, or two nested panels that must not merge. `ensureDrawn(chosen, drawnAt, accept)` is the same repair with the floor stated by you. `accept(candidate, drawn)` is shown the candidate as drawn, plus `drawn`, the same rounding for any colour it compares against. When the chosen colour as drawn is accepted, it comes back composited over the substrate (black unless you pass another), so a translucent colour returns opaque. When it is refused, the colour the writer emits as the nearest accepted entry of the table the depth draws from comes back instead: the 256-colour cube and grey ramp, which draw as themselves, or at `STANDARD` the sixteen ANSI indices, shown to `accept` in the colours of `terminal` (a fifth argument after `substrate`) as `ensureContrast` measures them. Truecolor draws from no table, so a colour refused there has no replacement. The result is `undefined` when nothing is accepted.
 
-`drawnColour(colour, drawnAt, substrate?)` is that same rounding on its own, for a floor measured outside `accept`.
+`drawnColour(colour, drawnAt, substrate?, terminal?)` is that same rounding on its own, for a floor measured outside `accept`.
 
 ```typescript
 import { ColorDepth, ColorRgba, drawnColour, ensureDrawn, Oklch, Panel } from "@promptctl/rich-js";
