@@ -570,13 +570,9 @@ export class Console {
         // formatted object the same way they reach a printed string; a `Pretty`
         // left to its own default would outrank both. [LAW:dataflow-not-control-flow]
         // the disabled case is an identity highlighter, not a skipped call.
-        // Indent guides are styling too, and travel with the same decision —
-        // the console owns what `highlight` means for everything it emits,
-        // rather than `Pretty` inferring it back out of the highlighter.
         const pretty = new Pretty(item, {
           ...PRINT_DATA_BOUNDS,
           highlighter: strings.highlighter ?? NO_HIGHLIGHT,
-          indentGuides: strings.highlighter !== undefined,
         });
         // A scalar spells the same at every width, so it joins its run as the
         // one text it is.
