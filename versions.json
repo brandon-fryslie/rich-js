@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-239",
+      "ref": "refs/pull/239/merge",
+      "sha": "d3ba3fc36b2c73c16e14654f8129c41b1cd6a2cd",
+      "timestamp": "2026-09-30T06:34:05.219Z",
+      "commits": [
+        {
+          "sha": "d3ba3fc36b2c73c16e14654f8129c41b1cd6a2cd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T00:33:01-06:00",
+          "message": "Merge 1a1aa65d974e7911e726ceb1b868b6a823db6b76 into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
+        },
+        {
+          "sha": "1a1aa65d974e7911e726ceb1b868b6a823db6b76",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T00:32:57-06:00",
+          "message": "feat(docs): \"Try it\" opens any docs example in the playground (rich-playground-afk.4kh)\n\nEvery example that runs (static, silent, throws, live) carries a \"Try it\"\nlink in its output label. It opens the playground on the block as a program of\nits own: the block, plus the imports it uses and every statement above it\nthat declares something it uses (the prelude's console, the page context's\nlines, earlier blocks' declarations). Statements above it that change one of\nthose without printing come along too. docs/.vitepress/example-slice.ts cuts\nit using the TypeScript checker's reading of the page's own program.\n\nChecked at build time, per block: the program type-checks alone, and each\nblock that runs at build time, run as the playground runs it (Sucrase + the\nlive library), prints the bytes the page shows and ends the same way. Across\nthe site 206 of 242 executed blocks need nothing from above; all 242 pass.\n\nA page run now fixes the time and a seeded Math.random for every program it\nruns, so a block run twice (chain and Try it) agrees; console.log's timestamp\nis the one read that differed.\n\nVerified in Chromium (e2e/try-it.spec.ts): Try it on docs/panel.md lands on\nthe playground with the code and the same rows the page shows; on\ndocs/progress.md's live track() example, with the page context's doStep, and\nthe same final frame.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "5368cb7aec2ad3f5205e0c24e05b52b4687927db",
