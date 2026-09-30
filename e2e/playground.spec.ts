@@ -133,6 +133,15 @@ test("a playground that could not start starts when Run is pressed", async ({ pa
   expect(errors).toEqual([]);
 });
 
+test("the global console writes to the terminal, as Node's writes to stdout and stderr", async ({ page }) => {
+  const errors = await open(page);
+  await expect.poll(() => rows(page), OPENING).toContain("Hello, World!");
+  await write(page, 'console.log("out", { n: 1 });\nconsole.error("err");');
+  await button(page, "Run").click();
+  await expect.poll(() => rows(page)).toContain("out { n: 1 }\nerr");
+  expect(errors).toEqual([]);
+});
+
 test("a program that never ends is stopped, and the page stays usable", async ({ page }) => {
   const errors = await open(page);
   await expect.poll(() => rows(page), OPENING).toContain("Hello, World!");

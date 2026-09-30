@@ -39,6 +39,7 @@
  * Node's kernel would discard too.
  */
 
+import { formatWithOptions } from "node-inspect-extracted";
 import type { ConsoleEnvironment, ConsoleStream } from "../../src/index.js";
 
 /**
@@ -70,9 +71,8 @@ export interface SimulatedTerminal extends ConsoleStream {
 // The async-function constructor has no global name; it is reached through an
 // async function's prototype.
 const AsyncFunction = Object.getPrototypeOf(async () => {}).constructor as new (
-  parameter: string,
-  body: string,
-) => (process: SimulatedProcess) => Promise<void>;
+  ...parametersThenBody: string[]
+) => (process: SimulatedProcess, console: ProgramConsole) => Promise<void>;
 
 type Listener = (...args: never[]) => void;
 
@@ -181,6 +181,22 @@ class SimulatedProcess extends Events implements ConsoleEnvironment {
   }
 }
 
+/** The part of Node's global `console` a program writes with. */
+type ProgramConsole = Readonly<Record<"log" | "info" | "debug" | "warn" | "error", (...args: unknown[]) => void>>;
+
+/**
+ * What the program sees as `console`: Node's, on the stand-in's streams. Each
+ * call is formatted as Node's `util.format` formats it, by Node's own code
+ * (node-inspect-extracted), coloured when the stream is a TTY as Node's is, and
+ * written with a newline — `log`, `info` and `debug` to stdout, `warn` and
+ * `error` to stderr. A method Node has and this lacks is not a function here,
+ * so a call to it fails loudly rather than landing somewhere unseen.
+ */
+function programConsole(process: SimulatedProcess): ProgramConsole {
+  const to = (stream: Output) => (...args: unknown[]) => void stream.write(`${formatWithOptions({ colors: stream.isTTY }, ...args)}\n`);
+  return { log: to(process.stdout), info: to(process.stdout), debug: to(process.stdout), warn: to(process.stderr), error: to(process.stderr) };
+}
+
 /**
  * Run a bundled program with `process` bound to a stand-in for `terminal`.
  * Settles when the program's body does. Every failure rejects, one that stops
@@ -189,10 +205,16 @@ class SimulatedProcess extends Events implements ConsoleEnvironment {
 export async function runInTerminal(program: string, terminal: SimulatedTerminal): Promise<void> {
   // "use strict" because the program was written as a module, and a sloppy body
   // would turn an assignment to an undeclared name into a global — a leak.
-  const body = new AsyncFunction("process", `"use strict";\n${program}`);
+  // [LAW:no-shared-mutable-globals] `console` is bound as `process` is, so the
+  // program's free `console` writes to its terminal and not the host's
+  // devtools. The body is a block so that a program declaring its own
+  // `console` — every docs example's `const console = new Console()` — shadows
+  // the parameter instead of redeclaring it, which is a SyntaxError.
+  const body = new AsyncFunction("process", "console", `"use strict"; {\n${program}\n}`);
   const stdin = new Input(terminal.isTTY);
   terminal.onInput((chunk) => stdin.emit("data", chunk));
   // [LAW:one-source-of-truth] The env is copied per run: a program that sets
   // `process.env.X` changes its own run and not the terminal it was handed.
-  await body(new SimulatedProcess(terminal, { ...terminal.env }, stdin));
+  const process = new SimulatedProcess(terminal, { ...terminal.env }, stdin);
+  await body(process, programConsole(process));
 }
