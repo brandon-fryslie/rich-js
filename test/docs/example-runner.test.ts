@@ -335,6 +335,12 @@ describe("Try it", { timeout: 30_000 }, () => {
     );
   });
 
+  it("carries every bare import the page ran by the block's end", async () => {
+    const context = ["---", "exampleContext: |", '  import "@promptctl/rich-js";', '  const used = "u";', "---", ""].join("\n");
+    const [only] = await tried(await run(context + fence("console.print(used);")));
+    expect(only!.program.split("\n")[0]).toBe('import "@promptctl/rich-js";');
+  });
+
   it("opens a scope where the block redeclares a name it carries, as the page does", async () => {
     const [, second] = await tried(
       await run(page(fence('const t = "a";\nconst p = new Panel(t);', "ts silent"), fence('const t = "b";\nconst console = new Console({ width: 30 });\nconsole.print(p, t);'))),
@@ -402,6 +408,10 @@ describe("a page run's time and random numbers", { timeout: 30_000 }, () => {
     const shown = outputs(await run(page(fence("console.print(String(Date.now()), String(Math.random()));"), fence("console.print(String(Date.now()));"))));
     const [first, second] = shown.map(text);
     expect(first!.split(" ")[0]).toBe(second);
+  });
+
+  it("keep \`Date()\` a string, as a host's is", async () => {
+    expect(text(outputs(await run(fence("console.print(typeof Date(), Date() === new Date().toString());")))[0]!)).toBe("string true");
   });
 
   it("are the build's own, not a constant", async () => {

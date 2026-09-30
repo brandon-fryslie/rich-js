@@ -34,33 +34,12 @@
  */
 import ts from "typescript";
 import type { Fence } from "./example-markers.js";
-import { importBindings, splitImports, type ExampleProgram, type ImportBinding } from "./example-program.js";
+import { SourceBuilder, importBindings, importLines, splitImports, type ExampleProgram, type ImportBinding } from "./example-program.js";
 
 /** A program the checker has read, and the file in it that is `program`'s source. */
 export interface Checked {
   readonly checker: ts.TypeChecker;
   readonly file: ts.SourceFile;
-}
-
-/**
- * The import lines that bind `bindings`: one line per module, in the order the
- * modules were first imported, a default or namespace import on a line of its own.
- */
-function importLines(bindings: readonly ImportBinding[]): string[] {
-  const modules = new Map<string, ImportBinding[]>();
-  for (const binding of bindings) modules.set(binding.from, [...(modules.get(binding.from) ?? []), binding]);
-  return [...modules].flatMap(([from, bound]) => {
-    const quoted = JSON.stringify(from);
-    const type = (b: ImportBinding) => (b.typeOnly ? "type " : "");
-    const named = bound.filter((b) => b.imported !== "*" && b.imported !== "default");
-    return [
-      ...bound.filter((b) => b.imported === "default").map((b) => `import ${type(b)}${b.local} from ${quoted};`),
-      ...bound.filter((b) => b.imported === "*").map((b) => `import ${type(b)}* as ${b.local} from ${quoted};`),
-      ...(named.length === 0
-        ? []
-        : [`import { ${named.map((b) => `${type(b)}${b.imported === b.local ? b.local : `${b.imported} as ${b.local}`}`).join(", ")} } from ${quoted};`]),
-    ];
-  });
 }
 
 /** The names a statement binds in the scope it sits in: none for one that is not a declaration. */
@@ -124,6 +103,9 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
   // value however a block wrote it.
   const imported = new Map(file.statements.filter(ts.isImportDeclaration).flatMap(importBindings).map((b) => [b.local, b] as const));
   const order = [...imported.keys()];
+  const bare = file.statements
+    .filter((s): s is ts.ImportDeclaration => ts.isImportDeclaration(s) && s.importClause === undefined)
+    .map((s) => ({ text: s.getText(file), line: origin(s)! }));
 
   // The type of the prelude's `console`: a statement that names a value of it writes to the terminal.
   const prelude = statements.find(
@@ -207,6 +189,7 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
         .map((b) => [b.local, b] as const),
     );
     const body = own.body.split("\n").map((text, i) => ({ text, line: target.line + 1 + i }));
+    const firstLine = body.findIndex(({ text }) => text.trim() !== "");
 
     // The parts it carries, in page order, each with the names it declares,
     // then the block, less the blank lines left where its imports were before its first line.
@@ -220,16 +203,13 @@ export function standalonePrograms(checked: Checked, program: ExampleProgram): (
     }
     parts.push({
       names: statements.filter(inTarget).flatMap(declaredNames),
-      lines: body.filter((_, i) => body.slice(0, i + 1).some(({ text }) => text.trim() !== "")),
+      lines: body.slice(firstLine === -1 ? body.length : firstLine),
     });
 
-    const out = { lines: [] as string[], origins: [] as (number | null)[] };
-    const add = (text: string, line: number | null) =>
-      text.split("\n").forEach((piece, i) => {
-        out.lines.push(piece);
-        out.origins.push(line === null ? null : line + i);
-      });
-    [...own.imports.flatMap((imp) => (imp.kind === "bare" ? [imp.text] : [])), ...importLines([...bindings.values()])].forEach((line) => add(line, null));
+    const out = new SourceBuilder();
+    const add = (text: string, line: number | null) => out.add(text, line);
+    // A bare import is run for what it does, so every one the page ran by the block's end runs here too.
+    [...new Set(bare.filter((b) => b.line < target.closeLine).map((b) => b.text)), ...importLines([...bindings.values()])].forEach((line) => add(line, null));
     // A blank line stands between parts, as between blocks on the page, and a
     // part that redeclares a name above it opens the scope the page gives it.
     const visible = new Set(bindings.keys());

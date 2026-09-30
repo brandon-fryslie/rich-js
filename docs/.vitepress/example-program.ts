@@ -152,17 +152,29 @@ export function importBindings(statement: ts.ImportDeclaration): ImportBinding[]
   ];
 }
 
-function importText(binding: ImportBinding): string {
-  const type = binding.typeOnly ? "type " : "";
-  const from = JSON.stringify(binding.from);
-  const { local, imported } = binding;
-  if (imported === "*") return `import ${type}* as ${local} from ${from};`;
-  if (imported === "default") return `import ${type}${local} from ${from};`;
-  return `import { ${type}${imported === local ? local : `${imported} as ${local}`} } from ${from};`;
+/**
+ * The import lines that bind `bindings`: one line per module, in the order the
+ * modules were first imported, a default or namespace import on a line of its own.
+ */
+export function importLines(bindings: readonly ImportBinding[]): string[] {
+  const modules = new Map<string, ImportBinding[]>();
+  for (const binding of bindings) modules.set(binding.from, [...(modules.get(binding.from) ?? []), binding]);
+  return [...modules].flatMap(([from, bound]) => {
+    const quoted = JSON.stringify(from);
+    const type = (b: ImportBinding) => (b.typeOnly ? "type " : "");
+    const named = bound.filter((b) => b.imported !== "*" && b.imported !== "default");
+    return [
+      ...bound.filter((b) => b.imported === "default").map((b) => `import ${type(b)}${b.local} from ${quoted};`),
+      ...bound.filter((b) => b.imported === "*").map((b) => `import ${type(b)}* as ${b.local} from ${quoted};`),
+      ...(named.length === 0
+        ? []
+        : [`import { ${named.map((b) => `${type(b)}${b.imported === b.local ? b.local : `${b.imported} as ${b.local}`}`).join(", ")} } from ${quoted};`]),
+    ];
+  });
 }
 
 /** Lines of generated source, each remembering the page line it came from. */
-class SourceBuilder {
+export class SourceBuilder {
   readonly lines: string[] = [];
   readonly origins: (number | null)[] = [];
 
@@ -178,18 +190,24 @@ class SourceBuilder {
 /**
  * The line a thrown value is shown as, the way Node reports it: an `Error` as
  * `Name: message` (just `Name` when the message is empty), anything else as
- * `Uncaught` and the value, a string quoted so `throw ""` still shows.
+ * `Uncaught` and the value, a string quoted so `throw ""` still shows. An
+ * expression over `error`, written so it is both JavaScript and TypeScript.
+ */
+const THROWN_LINE =
+  'error instanceof Error ? Error.prototype.toString.call(error) : `Uncaught ${typeof error === "string" ? JSON.stringify(error) : String(error)}`';
+
+/**
+ * [LAW:one-source-of-truth] `THROWN_LINE` evaluated here, where the runner reads
+ * a throw off a run: the line the page shows for a throw and the line a "Try
+ * it" program's throw is held to are one text.
  */
 export function thrownLine(error: unknown): string {
-  return error instanceof Error ? Error.prototype.toString.call(error) : `Uncaught ${typeof error === "string" ? JSON.stringify(error) : String(error)}`;
+  return (new Function("error", `return ${THROWN_LINE};`) as (error: unknown) => string)(error);
 }
 
-// [LAW:one-source-of-truth] The program reports a throw through `thrownLine`'s
-// own source, so the line a page shows and the line the runner reads off a run
-// (a "Try it" program's) are one function's.
 const THREW_HELPER = [
   "const __richExampleThrew = (error: unknown): string =>",
-  `  ${JSON.stringify(BLOCK_THREW)} + JSON.stringify((${thrownLine.toString()})(error)) + ${JSON.stringify(THREW_CLOSE)};`,
+  `  ${JSON.stringify(BLOCK_THREW)} + JSON.stringify(${THROWN_LINE}) + ${JSON.stringify(THREW_CLOSE)};`,
 ].join("\n");
 
 const WRITE_END = `process.stdout.write(${JSON.stringify(BLOCK_END)});`;
@@ -264,7 +282,7 @@ function compose(
   for (const imp of bound.values()) {
     // Every barrel value is a value in every example, so the page's own import of one is never type-only.
     const barrelValue = imp.from === MAIN_BARREL && barrelValues.has(imp.imported);
-    out.add(importText({ ...imp, typeOnly: imp.typeOnly && !barrelValue }), imp.line);
+    out.add(importLines([{ ...imp, typeOnly: imp.typeOnly && !barrelValue }]).join("\n"), imp.line);
   }
   const prelude = barrel.filter((e) => !bound.has(e.name)).map((e) => (e.typeOnly ? `type ${e.name}` : e.name));
   out.add(`import { ${prelude.join(", ")} } from ${JSON.stringify(MAIN_BARREL)};`, null);

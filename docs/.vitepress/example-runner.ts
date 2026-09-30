@@ -244,13 +244,14 @@ function newWorld(): World {
 
 /**
  * `world` as declarations over the globals `Date` and `Math` in the body a
- * program runs in: every `new Date()` and `Date.now()` is `world.now`, and
+ * program runs in: every `new Date()`, `Date()` and `Date.now()` is `world.now`, and
  * `Math.random` is mulberry32 from `world.seed`.
  */
-const worldScript = (world: World): string => `const Date = ((Clock) => class Date extends Clock {
-  constructor(...time) { super(...(time.length === 0 ? [Date.now()] : time)); }
-  static now() { return ${world.now}; }
-})(globalThis.Date);
+const worldScript = (world: World): string => `const Date = new Proxy(globalThis.Date, {
+  apply: (Clock) => new Clock(${world.now}).toString(),
+  construct: (Clock, time, target) => Reflect.construct(Clock, time.length === 0 ? [${world.now}] : time, target),
+  get: (Clock, key) => (key === "now" ? () => ${world.now} : Reflect.get(Clock, key)),
+});
 const Math = ((seed) => Object.create(globalThis.Math, { random: { value: () => {
   seed = (seed + 0x6d2b79f5) | 0;
   let t = globalThis.Math.imul(seed ^ (seed >>> 15), 1 | seed);
@@ -650,12 +651,16 @@ export async function runPageExamples(
   // as a program of its own, whether it runs in the browser or nowhere: not
   // being run at build time is no licence to call something that does not exist.
   const alone = new Map<Fence, ExampleProgram>(fences.filter((f) => !runsAtBuild(f)).map((fence) => [fence, buildBlockProgram(page, context, fence, barrel)]));
-  const checkedAlone = new Map([...alone].map(([fence, blockProgram]) => [fence, compiler.check(blockProgram)] as const));
-  // Each "Try it" program is cut from the program its block ran in.
+  // Each "Try it" program is cut from the program its block ran in, as the checker read it.
+  const cutAlone = new Map<Fence, ExampleProgram>();
+  for (const [fence, blockProgram] of alone) {
+    const read = compiler.check(blockProgram);
+    if (MARKERS[fence.marker].run !== "never") cutAlone.set(fence, standalonePrograms(read, blockProgram)(fence));
+  }
   const inChain = standalonePrograms(checked, program);
-  const cut = (fence: Fence): ExampleProgram =>
-    runsAtBuild(fence) ? inChain(fence) : standalonePrograms(checkedAlone.get(fence)!, alone.get(fence)!)(fence);
-  const tried = new Map<Fence, ExampleProgram>(fences.filter((fence) => MARKERS[fence.marker].run !== "never").map((fence) => [fence, cut(fence)]));
+  const tried = new Map<Fence, ExampleProgram>(
+    fences.filter((fence) => MARKERS[fence.marker].run !== "never").map((fence) => [fence, runsAtBuild(fence) ? inChain(fence) : cutAlone.get(fence)!]),
+  );
   for (const [fence, standalone] of tried) {
     try {
       compiler.check(standalone);
