@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-231",
-      "ref": "refs/pull/231/merge",
-      "sha": "07da7c1e897a4b51816f585aab113344f09bd5f7",
-      "timestamp": "2026-09-30T00:31:18.410Z",
-      "commits": [
-        {
-          "sha": "07da7c1e897a4b51816f585aab113344f09bd5f7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:30:26Z",
-          "message": "Merge b8c612b6bcf245bdab2cef5816ff47492ce8ab79 into 11afe1fb445ff1637e88bab80e53780d69e2b9f2\n"
-        },
-        {
-          "sha": "b8c612b6bcf245bdab2cef5816ff47492ce8ab79",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:30:22-06:00",
-          "message": "fix(pretty): wrapped rows keep their line's indent; docs example shows the wrap (rich-pretty-xms.tmf)\n\nA later line of a multi-line toString lost its own leading indent on the\nrows it wrapped into. rowsOf now sets each hung row in by the indent its\nline opened with.\n\nThe docs example fit on one line at the docs terminal's 75 columns, so it\nshowed none of the wrapping its paragraph described. It now wraps a quote,\nmoves a path below its key, and says when that move happens.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "b9def8eb92b41ed4e9450333194d050558f64a99",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T18:22:34-06:00",
-          "message": "fix(pretty): hang under the value when one indent past its slot is the edge (rich-pretty-xms.tmf)\n\nA value one indent from the right edge hung its rows at a column with no\ncell left, so divideLine gave no cuts and the row overran the width and\nwrapped to column 0. Rows now start where the value began there.\n\nsplitAtCells moves to cells.ts beside the other cell walkers, so the\ngrapheme fix in rich-cells-1y9d finds it with them.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "e85ec5c3a40b14f0bd3e957442a6aff4fd1267a1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:10:22-06:00",
-          "message": "fix(pretty): cut hanging rows in one walk, and drop rows a break alone made (rich-pretty-xms.tmf)\n\nReview (high): splitting per cut rescanned the line (6.4s at 200k chars);\nan empty remainder or a folded word's trailing space became a blank row;\na thrown value's marker was placed from the slot's start column.\n"
-        },
-        {
-          "sha": "d5ea33697b301dcd1648f98381787ff01c365e94",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:01:19-06:00",
-          "message": "fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf)\n\nA scalar, a self-describing value, or a marker placed inside a container\nis cut to the width left on its line; its continuation lines, its own\nincluded, hang one indent past its slot. A value whose first word does\nnot fit after its key starts on a hanging line. The root stays unplaced:\nits line is its caller's.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "11afe1fb445ff1637e88bab80e53780d69e2b9f2",
-      "timestamp": "2026-09-29T23:48:43.683Z",
+      "sha": "e4dc4663346578a9ef93e67b1663f98eaf63c01d",
+      "timestamp": "2026-09-30T00:34:26.324Z",
       "commits": [
         {
-          "sha": "11afe1fb445ff1637e88bab80e53780d69e2b9f2",
+          "sha": "e4dc4663346578a9ef93e67b1663f98eaf63c01d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T17:47:51-06:00",
-          "message": "fix(columns): lay out through Table.grid, as Rich's Columns does (rich-columns-i08a) (#232)\n\n* fix(columns): lay out through Table.grid, as Rich's Columns does (rich-columns-i08a)\n\nColumns keeps only its column-count search and hands the cells to a\nTable.grid with collapsePadding and no padEdge; its own spacing, stretch\nand row-separator code is gone. Table gains what that needs, each ported\nfrom Rich's Table:\n\n- collapsePadding and padEdge options, giving per-column and per-row padding\n- padding above and below a cell is drawn (it was ignored)\n- the `maximum or 1` floor, handed back when the table is squeezed\n  (rich-table-r9aq)\n- cells sized by their own measurement, not String(cell) or the whole\n  text's length (rich-table-ca0, rich-table-pyrl)\n- cells handed the table's rows as a ceiling, per the Height contract\n\nA Columns' declared width is each column's natural width rather than a\nTable column width, so expand still stretches it as Rich does.\n\n* fix(measure): a renderable that cannot measure itself is answered once, in Measurement.get; Group measures as Rich's does (rich-columns-i08a)\n\nReview of #232: a Group cell asked for the whole offer, since Group had no\nmeasure and Table/Columns each carried their own fallback. Measurement.get now\ntakes any renderable and gives the reference's (0, max_width) for one without a\nmeasure; Group measures through measureRenderables, as Rich's does. The other\ncopies of the fallback are rich-measure-29a4.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* docs(columns): drop the empty-column clause, true of the last column only (rich-columns-i08a)\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-29T18:33:36-06:00",
+          "message": "fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf) (#231)\n\n* fix(pretty): one-piece text wraps under its key instead of running to column 0 (rich-pretty-xms.tmf)\n\nA scalar, a self-describing value, or a marker placed inside a container\nis cut to the width left on its line; its continuation lines, its own\nincluded, hang one indent past its slot. A value whose first word does\nnot fit after its key starts on a hanging line. The root stays unplaced:\nits line is its caller's.\n\n* fix(pretty): cut hanging rows in one walk, and drop rows a break alone made (rich-pretty-xms.tmf)\n\nReview (high): splitting per cut rescanned the line (6.4s at 200k chars);\nan empty remainder or a folded word's trailing space became a blank row;\na thrown value's marker was placed from the slot's start column.\n\n* fix(pretty): hang under the value when one indent past its slot is the edge (rich-pretty-xms.tmf)\n\nA value one indent from the right edge hung its rows at a column with no\ncell left, so divideLine gave no cuts and the row overran the width and\nwrapped to column 0. Rows now start where the value began there.\n\nsplitAtCells moves to cells.ts beside the other cell walkers, so the\ngrapheme fix in rich-cells-1y9d finds it with them.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(pretty): wrapped rows keep their line's indent; docs example shows the wrap (rich-pretty-xms.tmf)\n\nA later line of a multi-line toString lost its own leading indent on the\nrows it wrapped into. rowsOf now sets each hung row in by the indent its\nline opened with.\n\nThe docs example fit on one line at the docs terminal's 75 columns, so it\nshowed none of the wrapping its paragraph described. It now wraps a quote,\nmoves a path below its key, and says when that move happens.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     },
