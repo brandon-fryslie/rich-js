@@ -176,8 +176,23 @@ const generated = (source: string): Entry => ({ file: PROGRAM_FILE, source });
 /** A specifier naming a package, not a file. */
 const isPackage = (id: string): boolean => !id.startsWith(".") && !path.isAbsolute(id);
 
-/** Each of this package's entry points, by the file under `src/` it is. */
-const SPECIFIER_BY_ENTRY: ReadonlyMap<string, string> = new Map([...ENTRY_BY_SPECIFIER].map(([specifier, file]) => [path.join(REPO_ROOT, file), specifier]));
+/**
+ * What a live block may import: every entry point of this package but the two
+ * that need a Node built-in the worker has no stand-in for (`node:fs`,
+ * `node:util`), and the optional peers the entry points import, which
+ * package.json's `peerDependencies` names.
+ */
+const NO_STAND_IN = new Set(["@promptctl/rich-js/node/save", "@promptctl/rich-js/node/traceback"]);
+
+/** The entry points the live library holds, each by the file under `src/` it is. */
+const SPECIFIER_BY_ENTRY: ReadonlyMap<string, string> = new Map(
+  [...ENTRY_BY_SPECIFIER].filter(([specifier]) => !NO_STAND_IN.has(specifier)).map(([specifier, file]) => [path.join(REPO_ROOT, file), specifier]),
+);
+
+const LIVE_LIBRARY_PACKAGES: readonly string[] = [
+  ...SPECIFIER_BY_ENTRY.values(),
+  ...Object.keys((JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8")) as { peerDependencies: Record<string, string> }).peerDependencies),
+].sort();
 
 const SRC_ROOT = path.join(REPO_ROOT, "src") + path.sep;
 
@@ -185,27 +200,35 @@ const SRC_ROOT = path.join(REPO_ROOT, "src") + path.sep;
  * An import of a program bundled onto the live library, left as an import for
  * the library to supply: a package, by its name, and a file that is one of
  * this package's entry points, by the name the package publishes it under.
- * Any other file is the program's own, and bundled into it.
+ * Any other file is the program's own, and bundled into it. Which file an
+ * import names is the build's resolver's answer (`resolve`), extensions,
+ * directories and all, never worked out again here.
  *
- * [LAW:single-enforcer] A file under `src/` that is not an entry point is
- * refused here. The library holds only the entry points' exports, so the file
- * could only be bundled in, a second copy of library code beside the
- * library's, with classes of its own that none of the library's are instances of.
+ * [LAW:single-enforcer] A file under `src/` the library does not hold is
+ * refused here. It could only be bundled in, a second copy of library code
+ * beside the library's, with classes of its own that none of the library's
+ * are instances of.
  */
-function libraryImport(id: string, importer: string | undefined): { readonly id: string; readonly external: true } | null {
+async function libraryImport<Resolved extends { readonly id: string }>(
+  id: string,
+  importer: string | undefined,
+  resolve: () => Promise<Resolved | null>,
+): Promise<Resolved | { readonly id: string; readonly external: true } | null> {
   if (isPackage(id)) return { id, external: true };
   // Only an entry is imported by nothing, and an entry is no import.
   if (importer === undefined) return null;
-  const file = path.resolve(path.dirname(importer), id).replace(/\.js$/, ".ts");
-  const specifier = SPECIFIER_BY_ENTRY.get(file);
+  // Unresolved, it is the build's own error, which names the import.
+  const resolved = await resolve();
+  if (resolved === null) return null;
+  const specifier = SPECIFIER_BY_ENTRY.get(resolved.id);
   if (specifier !== undefined) return { id: specifier, external: true };
-  if (file.startsWith(SRC_ROOT)) {
+  if (resolved.id.startsWith(SRC_ROOT)) {
     throw new Error(
-      `${path.relative(REPO_ROOT, importer)} imports ${path.relative(REPO_ROOT, file)}, which no entry point is; ` +
-        `a live program reaches the library only through ${[...ENTRY_BY_SPECIFIER.values()].join(", ")}`,
+      `${path.relative(REPO_ROOT, importer)} imports ${path.relative(REPO_ROOT, resolved.id)}, which the live library does not hold; ` +
+        `a live program reaches the library only through ${[...SPECIFIER_BY_ENTRY.keys()].map((file) => path.relative(REPO_ROOT, file)).join(", ")}`,
     );
   }
-  return null;
+  return resolved;
 }
 
 /** A bundle's one chunk, and every module that went into it besides the source it was given. */
@@ -227,12 +250,13 @@ async function bundle(entry: Entry, shape: BundleShape): Promise<Bundled> {
       {
         name: "rich-docs-example-entry",
         enforce: "pre",
-        resolveId: (id, importer) =>
-          id === entry.file ? id
-          : onLibrary ? libraryImport(id, importer)
-          : id === "node:readline" ? READLINE_STAND_IN
-          : ENTRY_BY_SPECIFIER.has(id) ? path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(id)!)
-          : null,
+        resolveId(id, importer) {
+          return id === entry.file ? id
+            : onLibrary ? libraryImport(id, importer, () => this.resolve(id, importer, { skipSelf: true }))
+            : id === "node:readline" ? READLINE_STAND_IN
+            : ENTRY_BY_SPECIFIER.has(id) ? path.join(REPO_ROOT, ENTRY_BY_SPECIFIER.get(id)!)
+            : null;
+        },
         load: (id) => (id === entry.file ? entry.source : null),
       },
       tscTransform(REPO_ROOT),
@@ -568,17 +592,6 @@ async function tryItPrints(fence: Fence, standalone: ExampleProgram, record: Blo
 
 const hash = (text: string): string => createHash("sha256").update(text).digest("hex").slice(0, 16);
 
-/**
- * What a live block may import: every entry point of this package but the two
- * that need a Node built-in the worker has no stand-in for (`node:fs`,
- * `node:util`), and the optional peers the entry points import, which
- * package.json's `peerDependencies` names.
- */
-const NO_STAND_IN = new Set(["@promptctl/rich-js/node/save", "@promptctl/rich-js/node/traceback"]);
-const LIVE_LIBRARY_PACKAGES: readonly string[] = [
-  ...[...ENTRY_BY_SPECIFIER.keys()].filter((specifier) => !NO_STAND_IN.has(specifier)),
-  ...Object.keys((JSON.parse(readFileSync(path.join(REPO_ROOT, "package.json"), "utf-8")) as { peerDependencies: Record<string, string> }).peerDependencies),
-].sort();
 
 /** Where a live program's library comes from: built once, however many pages ask. */
 export type LibrarySource = () => Promise<LiveLibrary>;

@@ -290,10 +290,11 @@ describe("a live block", { timeout: 30_000 }, () => {
     await expect(runPage(page("# t", fence(dynamic, "ts live")))).rejects.toThrow(/fixture\.md:3: a live example imports only with `import` declarations/);
   });
 
-  it("refuses a block that reaches into src/ past the entry points, which the library does not hold", async () => {
-    const deep = 'import { Panel } from "../src/renderables/panel.js";\nconsole.print(new Panel("x"));';
+  // A file past the entry points, and an entry point the worker cannot run.
+  it.each(["renderables/panel", "node/save"])("refuses a block importing src/%s.ts, which the library does not hold", async (file) => {
+    const deep = `import * as m from "../src/${file}.js";\nconsole.print(Object.keys(m));`;
     await expect(runPage(page("# t", fence(deep, "ts live")))).rejects.toThrow(
-      /fixture\.md:3: bundling failed: .*imports src\/renderables\/panel\.ts, which no entry point is/s,
+      new RegExp(`fixture\\.md:3: bundling failed: .*imports src/${file}\\.ts, which the live library does not hold; .*through src/index\\.ts(?!.*node/save)`, "s"),
     );
   });
 

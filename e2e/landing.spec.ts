@@ -19,10 +19,10 @@ async function open(page: Page): Promise<string[]> {
 
 const showcase = (page: Page) => page.locator(".rich-showcase");
 // xterm's DOM renderer draws some of a row's spaces as no-break spaces.
-const rows = async (page: Page) => (await showcase(page).locator(".xterm-rows").innerText()).replaceAll(" ", " ");
+const rows = async (page: Page) => (await showcase(page).locator(".xterm-rows").innerText()).replaceAll("\u00a0", " ");
 const button = (page: Page) => showcase(page).locator(".rich-live-button");
 /** The first job's percentage, which only moves while the program runs. */
-const rendering = async (page: Page) => /Rendering frames\s.*?(\d+)%/.exec(await rows(page))?.[1] ?? "";
+const rendering = async (page: Page) => /Rendering frames\s.*?(\d+)%/.exec(await rows(page))?.[1];
 
 test("the hero's text and buttons are on the page before its terminal has loaded", async ({ page }) => {
   let release!: () => void;
@@ -46,7 +46,7 @@ test("the hero's text and buttons are on the page before its terminal has loaded
 test("the showcase moves, needing nothing from the reader", async ({ page }) => {
   const errors = await open(page);
   await showcase(page).scrollIntoViewIfNeeded();
-  await expect.poll(() => rows(page), { timeout: 15_000 }).toContain("Services");
+  await expect.poll(() => rendering(page), { timeout: 15_000 }).toMatch(/^\d+$/);
   await expect(button(page)).toHaveText("Restart");
   const first = await rendering(page);
   await expect.poll(() => rendering(page)).not.toBe(first);

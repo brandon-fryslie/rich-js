@@ -240,8 +240,13 @@
  * hero's text, as wide as its terminal and no wider than the page. Its font is
  * sized as an example's output is, from the columns the terminal has, but with
  * no floor: a showcase is looked at whole, not read row by row, and a floor
- * would leave it scrolling sideways at phone width. Its screen holds every row
- * from the start, so the page does not move when the program first draws. */
+ * would leave it scrolling sideways at phone width. Its screen is as wide as
+ * its terminal from the start, a cell being one `ch` of the face xterm
+ * measures, so the card does not widen when the program first draws. It
+ * reserves the terminal's rows at the page's line height, which xterm's rows
+ * are still taller than (lit rich-live-terminal-t0rs). Its edge is a ring, not
+ * a border, so the card is exactly its screen's width, the width the font was
+ * fitted to. */
 .rich-showcase {
   container-type: inline-size;
   box-sizing: border-box;
@@ -256,13 +261,14 @@
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  border: 1px solid var(--vp-c-divider);
   border-radius: 10px;
   overflow: hidden;
-  box-shadow: var(--vp-shadow-3);
+  box-shadow: 0 0 0 1px var(--vp-c-divider), var(--vp-shadow-3);
 }
 
 .rich-showcase .rich-live-screen {
+  /* xterm rounds its screen up to a whole pixel. */
+  width: calc(var(--rich-example-columns) * 1ch + 2em + 1px);
   min-height: calc(var(--rich-example-rows) * 1lh + 2em);
 }
 
