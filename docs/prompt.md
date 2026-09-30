@@ -7,7 +7,7 @@ exampleContext: |
 
 # Prompts
 
-`Prompt` classes display a question, read a line of input, validate it, and loop until a valid response is received. Prompt text can contain markup and emoji.
+`Prompt` classes display a question, read a line of input, validate it, and loop until a valid response is received. Prompt text can contain markup and emoji. The choices and default a prompt appends are drawn as written, in the theme's `prompt.choices` and `prompt.default` styles.
 
 ## Input capability
 
@@ -113,7 +113,7 @@ console.print(ok ? "[green]continuing[/]" : "[red]stopped[/]");
 
 ## Custom input sources
 
-`PromptInput` is `(prompt: string) => Promise<string>`. Use it to wire tests, browser shells, or non-stdin sources:
+`PromptInput` is `(prompt: RichText) => Promise<string>`. The prompt arrives as styled text, ending in the `": "` the answer is typed after; drawing it is the input's job, because only the input knows what its terminal can show. Use it to wire tests, browser shells, or non-stdin sources:
 
 ```typescript
 import { Prompt, Confirm } from "@promptctl/rich-js";
@@ -128,4 +128,4 @@ const confirmed = await Confirm.ask("Proceed?", fakeAsk);
 console.print({ name, confirmed });
 ```
 
-The renderable always appends a single trailing space to the rendered prompt before passing it to the input function, so custom implementations should not add their own.
+`nodeAsk` draws the prompt with a default `Console` on stdout: the default theme, in the colours detected for stdout.

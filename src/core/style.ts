@@ -780,9 +780,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "status.message": NULL_STYLE,
 
   // Prompt
-  "prompt": Style.parse("bold"),
-  "prompt.choices": Style.parse("magenta"),
-  "prompt.default": Style.parse("cyan"),
+  "prompt": NULL_STYLE,
+  "prompt.choices": Style.parse("bold magenta"),
+  "prompt.default": Style.parse("bold cyan"),
 
   // Inspect
   "inspect.attr": Style.parse("yellow italic"),

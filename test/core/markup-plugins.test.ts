@@ -260,12 +260,12 @@ describe("the global registry reaches every markup consumer", () => {
   });
 
   it("resolves a globally registered tag through Prompt.ask", async () => {
-    // `Prompt` hands the *plain* text to its input capability, so a handler
-    // that rewrites text is visible in the prompt string the user is shown.
+    // `Prompt` reads its text as markup, so a handler that rewrites text is
+    // visible in the prompt the user is shown.
     const asked = await withGlobalShout(async () => {
       let seen = "";
       await Prompt.ask("pick [shout]one[/shout]", async (prompt) => {
-        seen = prompt;
+        seen = prompt.plain;
         return "x";
       });
       return seen;
