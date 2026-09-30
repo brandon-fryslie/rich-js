@@ -2,53 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-255",
-      "ref": "refs/pull/255/merge",
-      "sha": "602fe00cd024497c1145b392fd532190fdab1f73",
-      "timestamp": "2026-09-30T13:03:26.883Z",
-      "commits": [
-        {
-          "sha": "602fe00cd024497c1145b392fd532190fdab1f73",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:02:18Z",
-          "message": "Merge 9c6a15a9f8a2213ed6509c0c60a4b6d26ec93cf8 into d2cc10e93b4fe71b1c5431bb942f203177a620d2\n"
-        },
-        {
-          "sha": "9c6a15a9f8a2213ed6509c0c60a4b6d26ec93cf8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:02:13-06:00",
-          "message": "fix(widgets): a TextInput pads its rows in the style its value is drawn in (rich-widgets-73e)\n\nReview pass (medium): a caller's contentStyle background was striped by the\ntheme's ground in the padding of short multiline rows.\n"
-        },
-        {
-          "sha": "35a3bf17d913ffeec2fd4499779d92513bf2a27c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:59:36-06:00",
-          "message": "fix(widgets): padding and disabled cells take the palette ground too (rich-widgets-73e)\n\nReview pass (high): a multiline TextInput's padding and blank rows, and every\ndisabled state, still let the terminal's background through. The theme moves\nonto ThemedWidget, whose ground pads every row; StaticItem keeps no ground.\nDisabled cells draw in foreground-muted on background. Accent glyphs on the\nbackground use text-primary. The contrast test now checks the ground under\nevery cell, disabled states included.\n"
-        },
-        {
-          "sha": "67b293e117e8c761b061be252798a716862f4ff6",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:47:04-06:00",
-          "message": "fix(widgets): every widget cell takes its background from the theme (rich-widgets-73e)\n\nCheckbox, Slider and TextInput drew palette foregrounds over whatever the\nterminal showed, so the dark default palette's white text vanished in a light\nterminal. Every cell now takes both colours from the one palette through\nsrc/widgets/ink.ts, which replaces six copies of resolvePalette and has no\nforeground-only form. The slider's unfilled track moves from `surface` (1.1:1\non the palette's own background) to dimmed `foreground`.\n\ntest/widgets/terminal-contrast.test.ts renders each widget state without a\ntheme and requires 3:1 glyph contrast on two dark and two light terminals.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "d2cc10e93b4fe71b1c5431bb942f203177a620d2",
-      "timestamp": "2026-09-30T12:39:44.002Z",
+      "sha": "622393165b844b4ea0cd2a83dc6197e10d415e16",
+      "timestamp": "2026-09-30T13:07:07.594Z",
       "commits": [
         {
-          "sha": "d2cc10e93b4fe71b1c5431bb942f203177a620d2",
+          "sha": "622393165b844b4ea0cd2a83dc6197e10d415e16",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:38:43-06:00",
-          "message": "fix(markup): console markup and highlight settings reach embedded strings (rich-markup-3sw) (#254)\n\n* fix(markup): a console's markup and highlight settings reach strings embedded in a renderable (rich-markup-3sw)\n\nA string handed to a Panel, Table, Tree, Columns, Layout or Rule is now an\nEmbeddedText, read when it is drawn through renderStr (Rich's render_str)\nunder RenderOptions.markup and RenderOptions.highlighter, which the Console\nfills from its own settings and print's. An unmatched closing tag now throws\nfrom the render, as Rich's does.\n\nWhich sites highlight follows Rich site by site: Columns items, Layout panes\nand Rule titles are highlighted; Panel, Table and Tree strings are drawn\nplain; a Panel's title and subtitle are always markup.\n\n* fix(markup): read an embedded string once per markup setting, and as Rich's render_str reads it (rich-markup-3sw)\n\nReview round 1 (high):\n- EmbeddedText caches each markup reading; a 500-row markup table printed\n  9.3ms on master, 16.4ms re-parsing per call, 9.9ms cached.\n- readStr replaces emoji codes with markup off, as render_str does, for\n  print and every embedding site.\n- EmbeddedText measures unhighlighted, as Rich's Measurement.get does, so\n  measure and render agree wherever a container clears the highlighter.\n- Column header/footer go through embed, so a header read off one column\n  can be assigned to another; they take any cell content, as Rich's do.\n- protocol's type-only Highlighter import is marked as the one tier\n  exception; docs/highlighting.md states nested Columns/Rule draw plain."
+          "timestamp": "2026-09-30T07:06:11-06:00",
+          "message": "fix(widgets): every widget cell takes its background from the theme (rich-widgets-73e) (#255)\n\n* fix(widgets): every widget cell takes its background from the theme (rich-widgets-73e)\n\nCheckbox, Slider and TextInput drew palette foregrounds over whatever the\nterminal showed, so the dark default palette's white text vanished in a light\nterminal. Every cell now takes both colours from the one palette through\nsrc/widgets/ink.ts, which replaces six copies of resolvePalette and has no\nforeground-only form. The slider's unfilled track moves from `surface` (1.1:1\non the palette's own background) to dimmed `foreground`.\n\ntest/widgets/terminal-contrast.test.ts renders each widget state without a\ntheme and requires 3:1 glyph contrast on two dark and two light terminals.\n\n* fix(widgets): padding and disabled cells take the palette ground too (rich-widgets-73e)\n\nReview pass (high): a multiline TextInput's padding and blank rows, and every\ndisabled state, still let the terminal's background through. The theme moves\nonto ThemedWidget, whose ground pads every row; StaticItem keeps no ground.\nDisabled cells draw in foreground-muted on background. Accent glyphs on the\nbackground use text-primary. The contrast test now checks the ground under\nevery cell, disabled states included.\n\n* fix(widgets): a TextInput pads its rows in the style its value is drawn in (rich-widgets-73e)\n\nReview pass (medium): a caller's contentStyle background was striped by the\ntheme's ground in the padding of short multiline rows."
         }
       ]
     }
