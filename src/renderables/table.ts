@@ -359,8 +359,9 @@ function layoutTable(
 // --- Column ---
 
 export interface ColumnOptions {
-  header?: string | RichText;
-  footer?: string | RichText;
+  /** Anything a cell can hold, as Rich's `RenderableType` header is. */
+  header?: string | RichText | Renderable;
+  footer?: string | RichText | Renderable;
   headerStyle?: string | Style;
   footerStyle?: string | Style;
   style?: string | Style;
@@ -389,8 +390,8 @@ const columnShare = (col: Column): number =>
   col.ratio !== undefined && col.ratio > 0 ? Math.min(col.ratio, UNBOUNDED) : 0;
 
 export class Column {
-  private _header!: EmbeddedText;
-  private _footer!: EmbeddedText;
+  private _header!: Renderable & Partial<Measurable>;
+  private _footer!: Renderable & Partial<Measurable>;
   headerStyle: string | Style;
   footerStyle: string | Style;
   style: string | Style;
@@ -424,7 +425,7 @@ export class Column {
    * `Table.columns` hands out the live column and both fields are public, so a
    * constructor-only stamp held only until the first `columns[0].footer = mine`
    * — which installed content still owned by the caller into a slot every
-   * reader below assumes `EmbeddedText` has been through. [LAW:parse-dont-validate] The setter
+   * reader below assumes `embed` has been through. [LAW:parse-dont-validate] The setter
    * is the border, so the guarantee holds for the object's whole lifetime and
    * the constructor is one caller of it rather than the one place it is true.
    *
@@ -433,23 +434,23 @@ export class Column {
    * a column always has one and `show_footer` alone decides whether it is
    * drawn. Modelling the absence as `undefined` instead made "no column has a
    * footer" a state the render path could ask about — and it did, skipping the
-   * row a caller had asked for. `EmbeddedText` already maps nothing onto empty,
+   * row a caller had asked for. `embed` already maps nothing onto empty,
    * which is why the setters take `undefined` rather than defaulting around it.
    */
-  get header(): Renderable & Measurable {
+  get header(): Renderable & Partial<Measurable> {
     return this._header;
   }
 
-  set header(content: string | RichText | undefined) {
-    this._header = new EmbeddedText(content);
+  set header(content: ColumnOptions["header"]) {
+    this._header = embed(content);
   }
 
-  get footer(): Renderable & Measurable {
+  get footer(): Renderable & Partial<Measurable> {
     return this._footer;
   }
 
-  set footer(content: string | RichText | undefined) {
-    this._footer = new EmbeddedText(content);
+  set footer(content: ColumnOptions["footer"]) {
+    this._footer = embed(content);
   }
 
   get flexible(): boolean {
@@ -479,7 +480,8 @@ export class Column {
     col.headerStyle = this.headerStyle;
     col.footerStyle = this.footerStyle;
     col.style = this.style;
-    // Shared, not copied: an `EmbeddedText` owns its content and never changes.
+    // Shared, not copied, as a row's cells are: `embed` already copied a
+    // caller's `RichText`, and what it hands back is never changed.
     col._header = this._header;
     col._footer = this._footer;
     return col;
@@ -587,7 +589,7 @@ export class Table implements Renderable, Measurable {
     return this._rows.length;
   }
 
-  addColumn(header?: string | RichText, options?: ColumnOptions): this {
+  addColumn(header?: ColumnOptions["header"], options?: ColumnOptions): this {
     const col = new Column({ ...options, header: header ?? options?.header });
     this._columns.push(col);
     return this;

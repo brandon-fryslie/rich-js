@@ -80,7 +80,7 @@ non-interactive program needs from the terminal without any of the above
 
 ### Core primitives (src/core/)
 
-Build order within `src/core/`. Each tier imports only from tiers above it:
+Build order within `src/core/`. Each tier imports only from tiers above it, but for `protocol`'s type-only import of `Highlighter`, whose comment owns why:
 
 ```
 0   anchor · cells · color · env · fnv1a · subscription

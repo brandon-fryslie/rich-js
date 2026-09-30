@@ -4,7 +4,7 @@
  * a rule's title — becomes something that renderable can lay out.
  * [LAW:single-enforcer]
  *
- * A string is kept as written and read when it is drawn, through `renderStr`,
+ * A string is kept as written and read when it is drawn, through `readStr`,
  * under the options it is drawn with. That is where a console's settings
  * arrive: its `markup` decides whether the string is markup, and its
  * highlighter highlights it, exactly as they do for a string handed to `print`.
@@ -15,12 +15,11 @@
  *
  * `end` is cleared because embedded text is a fragment rather than a printed
  * line; left at the default `"\n"` it draws a trailing blank row. A `RichText`
- * is copied when it is handed over, since the caller still holds it, and again
- * when it is drawn, since clearing `end` in place would reach into the copy
- * every later draw reads.
+ * is copied when it is handed over, since the caller still holds it, and every
+ * text drawn from it is a copy again, since the drawing site may change it.
  */
 
-import { renderStr } from "../core/markup.js";
+import { readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
 import type { Style } from "../core/style.js";
@@ -36,21 +35,30 @@ export class EmbeddedText implements Renderable, Measurable {
   // [LAW:types-are-the-program] Two kinds, and the kind is the discriminator: a
   // string still to be read, or text whose reading is already fixed.
   private readonly _source: string | RichText;
+  // A string's reading under each markup setting, made the first time one is
+  // asked for. Parsing is the costly half of drawing a string, and a table
+  // measures every cell more than once per print; read on every call, a
+  // 500-row table of markup printed 75% slower.
+  private readonly _readings = new Map<boolean, RichText>();
 
   constructor(content: unknown) {
-    this._source =
-      typeof content === "string"
-        ? content
-        : content instanceof RichText
-          ? content.copy()
-          : new RichText(String(content ?? ""));
+    if (typeof content === "string") {
+      this._source = content;
+    } else {
+      const text = content instanceof RichText ? content.copy() : new RichText(String(content ?? ""));
+      text.end = "";
+      this._source = text;
+    }
   }
 
   /** The text this content draws under `options`, `end` cleared. */
   text(options: RenderOptions): RichText {
-    if (typeof this._source === "string") return renderStr(this._source, options);
-    const text = this._source.copy();
-    text.end = "";
+    if (typeof this._source !== "string") return this._source.copy();
+    const markup = options.markup !== false;
+    const reading = this._readings.get(markup) ?? readStr(this._source, markup);
+    this._readings.set(markup, reading);
+    const text = reading.copy();
+    options.highlighter?.highlight(text);
     return text;
   }
 
@@ -58,8 +66,14 @@ export class EmbeddedText implements Renderable, Measurable {
     return this.text(options).render(options);
   }
 
+  /**
+   * Measured unhighlighted, as Rich's `Measurement.get` reads a string with
+   * `highlight=False`: so a container that clears the highlighter for what it
+   * draws measures what it draws, whether or not it clears it for what it
+   * measures, and no highlighter runs just to be thrown away.
+   */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    return this.text(options).measure(options);
+    return this.text({ ...options, highlighter: undefined }).measure(options);
   }
 }
 

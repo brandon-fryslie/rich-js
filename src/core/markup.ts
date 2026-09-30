@@ -736,16 +736,25 @@ export function renderMarkup(
 }
 
 /**
- * A string as the text it draws, the way Rich's `render_str` makes one: read
- * as markup unless `markup` is false, then highlighted by `highlighter` if
- * there is one. The text is a fragment, so its `end` is empty. `print` and
- * every renderable that is handed a string both draw it through here, so a
- * console's settings mean the same thing wherever the string lands.
+ * A string as the text it draws, before any highlighting: read as markup
+ * unless `markup` is false, its emoji codes replaced either way, as Rich's
+ * `render_str` reads one. The text is a fragment, so its `end` is empty.
  * [LAW:single-enforcer]
  */
-export function renderStr(source: string, settings: Pick<DrawOptions, "markup" | "highlighter">): RichText {
-  const text = settings.markup === false ? new RichText(source) : renderMarkup(source);
+export function readStr(source: string, markup: boolean): RichText {
+  const text = markup ? renderMarkup(source) : new RichText(emojiReplace(source));
   text.end = "";
+  return text;
+}
+
+/**
+ * A string as the text it draws, the way Rich's `render_str` makes one: read
+ * by `readStr` under `markup`, then highlighted by `highlighter` if there is
+ * one. `print` and every renderable that is handed a string both draw it this
+ * way, so a console's settings mean the same thing wherever the string lands.
+ */
+export function renderStr(source: string, settings: Pick<DrawOptions, "markup" | "highlighter">): RichText {
+  const text = readStr(source, settings.markup !== false);
   settings.highlighter?.highlight(text);
   return text;
 }

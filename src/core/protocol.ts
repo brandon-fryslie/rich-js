@@ -7,6 +7,10 @@ import type { Segment } from "./segment.js";
 import { cellCount } from "./cells.js";
 import { DEFAULT_THEME, type Style, type StyleSyntaxError, type Theme } from "./style.js";
 import type { ColorDepth } from "./color.js";
+// [LAW:one-way-deps] exception: the one upward edge between core's tiers, and
+// type-only. A render option that highlights the text being rendered, when
+// `RichText` is itself rendered under these options, is a recursion in the
+// domain; any type that broke the loop would say less than `Highlighter` does.
 import type { Highlighter } from "./highlighter.js";
 
 /**

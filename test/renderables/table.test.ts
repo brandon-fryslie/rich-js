@@ -673,8 +673,9 @@ describe("Column", () => {
 });
 
 describe("A column's header and footer are stamped on assignment, not just at construction", () => {
-  // `embeddedText` is the one crossing where caller content becomes table
-  // content, and it promises three things: markup is parsed, `end` is cleared
+  // `embed` is the one crossing where caller content becomes table
+  // content, and it promises three things: a string is read as markup when it
+  // is drawn, `end` is cleared
   // (a cell is a fragment, not a line), and a `RichText` is copied so the
   // caller no longer holds the table's cell. `Table.columns` hands out the live
   // column, so those promises have to survive an assignment made long after the
@@ -1446,7 +1447,7 @@ describe("Table cells wrap before the overflow method sees them", () => {
 
   // rich-text-5ai code review: a `RichText` cell reached the wire through
   // the embedding crossing's passthrough arm (it implements `render`), which
-  // skipped `embeddedText`'s `end` clearing — its default `end: "\n"` then drew a
+  // skipped `EmbeddedText`'s `end` clearing — its default `end: "\n"` then drew a
   // genuine extra blank row under the real one, once `RichText.render`
   // started honoring `end` for non-empty text.
   it("does not draw a blank row for a RichText cell with an embedded trailing newline", () => {

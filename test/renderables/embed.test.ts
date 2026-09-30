@@ -207,6 +207,37 @@ describe("a console's markup and highlight settings, in content embedded in a re
     expect(printed(new Columns(["1", "True"]))).toContain(cyan);
   });
 
+  for (const [site, build] of [...highlighted, ...plain]) {
+    it(`replaces emoji codes in ${site} under a console with markup off, as Rich's render_str does`, () => {
+      expect(printed(build("[b]:smile:"), { markup: false })).toContain("[b]😄");
+    });
+  }
+
+  it("replaces emoji codes in a string printed with markup off, as Rich's render_str does", () => {
+    const chunks: string[] = [];
+    new Console({ file: { write: (data: string) => void chunks.push(data) }, markup: false }).print("[b]:smile:");
+    expect(chunks.join("")).toBe("[b]😄\n");
+  });
+
+  it("reads one renderable's strings afresh under each console that draws it", () => {
+    const panel = new Panel("[bold]Hello[/bold]");
+    expect(printed(panel)).toContain(`${BOLD}Hello`);
+    expect(printed(panel, { markup: false })).toContain("[bold]Hello[/bold]");
+    expect(printed(panel)).toContain(`${BOLD}Hello`);
+  });
+
+  it("takes back a column's header or footer read off another column", () => {
+    const t = new Table({ showFooter: true });
+    t.addColumn("[bold]left[/bold]", { footer: "[bold]total[/bold]" });
+    t.addColumn("right");
+    t.columns[1]!.header = t.columns[0]!.header;
+    t.columns[1]!.footer = t.columns[0]!.footer;
+    const out = printed(t, { colorSystem: null });
+    expect(out.match(/left/g)).toHaveLength(2);
+    expect(out.match(/total/g)).toHaveLength(2);
+    expect(out).not.toContain("[bold]");
+  });
+
   it("raises an unmatched closing tag from the print that draws it, not from the constructor", () => {
     const panel = new Panel("[/bold]");
     expect(() => printed(panel)).toThrow(/Closing tag/);
