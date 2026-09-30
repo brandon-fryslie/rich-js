@@ -4,15 +4,22 @@
     {
       "version": "pr-284",
       "ref": "refs/pull/284/merge",
-      "sha": "602661619efcf264f5875c6781b59d7e16bcb786",
-      "timestamp": "2026-09-30T23:11:10.860Z",
+      "sha": "df3c4b9f55ce5af4b43b82b1a266d3ab73fe21fb",
+      "timestamp": "2026-09-30T23:13:17.555Z",
       "commits": [
         {
-          "sha": "602661619efcf264f5875c6781b59d7e16bcb786",
+          "sha": "df3c4b9f55ce5af4b43b82b1a266d3ab73fe21fb",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T23:10:02Z",
-          "message": "Merge 013e217595d5e6010c985e18fc8df5d671f2f0e6 into 4d85447ea7d7aba7f12f2b41715982528540e7e1\n"
+          "timestamp": "2026-09-30T23:12:09Z",
+          "message": "Merge acc0b5db26374d6ef0615625843489836a98cffc into 4d85447ea7d7aba7f12f2b41715982528540e7e1\n"
+        },
+        {
+          "sha": "acc0b5db26374d6ef0615625843489836a98cffc",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T17:12:05-06:00",
+          "message": "fix(host): App copies only the drawing options it names to its console (rich-host-qvji)\n\nA rest spread passed any extra property of the options object — width,\ngetSize, colorSystem, file — to the console, overriding what the host\ndecides. One key list is now both the type and what is copied.\n"
         },
         {
           "sha": "013e217595d5e6010c985e18fc8df5d671f2f0e6",
