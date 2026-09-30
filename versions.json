@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-253",
+      "ref": "refs/pull/253/merge",
+      "sha": "f3f4e41c0cd4909060ade975e5c4c480e94ee800",
+      "timestamp": "2026-09-30T11:56:49.518Z",
+      "commits": [
+        {
+          "sha": "f3f4e41c0cd4909060ade975e5c4c480e94ee800",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:55:42-06:00",
+          "message": "Merge f5650ea81e405c06266c78c1d52ca7d4203354d9 into 2c62ec9330dd145ef6fd85c07020d6126ec44f48\n"
+        },
+        {
+          "sha": "f5650ea81e405c06266c78c1d52ca7d4203354d9",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:55:37-06:00",
+          "message": "refactor(repo-facts): the docs build reads repo facts from scripts/, not test/ (rich-repo-facts-hss)\n\nREPO_ROOT, the package manifest, the entry-point map, the repo's compiler\noptions and listTypeScriptFiles move from test/coverage/extract.ts to\nscripts/repo-facts.ts; resolveAlias moves to scripts/resolve-alias.ts.\nEvery importer reads them from the new home and extract.ts re-exports\nnothing, so nothing under docs/ imports from test/ and a refactor of the\ncoverage verifier can no longer change how the docs' examples compile.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "2c62ec9330dd145ef6fd85c07020d6126ec44f48",
