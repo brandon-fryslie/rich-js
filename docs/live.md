@@ -235,4 +235,4 @@ try {
 }
 ```
 
-The `Group` renders its members in order, and the one `Live` counts every line they produce — so its clear-and-redraw covers the whole region.
+The `Group` renders its members in order, and the one `Live` counts every line they produce — so each redraw covers the whole region.

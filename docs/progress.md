@@ -277,6 +277,6 @@ try {
 }
 ```
 
-Do not call `start()` on any of them. A started `Progress` builds its own `Live` with its own refresh timer, and that timer knows nothing about the other display's output. To redraw, a `Live` moves the cursor up one line at a time and erases, counting from wherever the cursor happens to sit — so the first display's next tick clears upward through the lines the second one just wrote and redraws itself in their place. Two started instances do not stack; the second one's bars are erased before you ever see them.
+Do not call `start()` on any of them. A started `Progress` builds its own `Live` with its own refresh timer, and that timer knows nothing about the other display's output. To redraw, a `Live` moves the cursor up as many rows as it drew last, counting from wherever the cursor happens to sit, and paints its new frame from there — so the first display's next tick lands on the lines the second one just wrote and redraws itself in their place. Two started instances do not stack; the second one's bars are erased before you ever see them.
 
 See [Live Display](./live) for details.

@@ -2,11 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import xterm from "@xterm/headless";
 import { Console } from "../../src/core/console.js";
 import { RichText } from "../../src/core/text.js";
+import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 
-const SHOW_CURSOR = "\x1b[?25h";
-const EXIT_ALT_SCREEN = "\x1b[0m\x1b[?1049l";
+const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
+const EXIT_ALT_SCREEN = "\x1b[?1049l";
 
 class RenderFailed extends Error {}
 
@@ -87,6 +88,16 @@ describe("Live when a frame's render throws", () => {
       expect(out()).toBe(after);
     },
   );
+
+  it("an auto-refresh failure before any frame hands the terminal back with no line under it", () => {
+    vi.useFakeTimers();
+    const { live: display, out } = live({ refreshPerSecond: 10 });
+    display.update(broken);
+    display.start();
+
+    expect(() => vi.advanceTimersByTime(100)).toThrow(RenderFailed);
+    expect(out().endsWith(SHOW_CURSOR)).toBe(true);
+  });
 
   it.each(modes)(
     "stop() surfaces a failed final frame and still hands the terminal back %s",
@@ -195,5 +206,48 @@ describe("Live inline on a terminal", () => {
     term.console.file.write("after\n");
 
     expect(await term.rows()).toEqual(["before", "after"]);
+  });
+
+  it("keeps the frame it handed back when started again", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(new RichText("a\nb\nc"), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+    display.stop();
+    display.update(new RichText("x\ny\nz"));
+    display.start();
+    display.refresh();
+    display.stop();
+
+    expect(await term.rows()).toEqual(["a", "b", "c", "x", "y", "z"]);
+  });
+
+  it("crops a row wider than the terminal, so refreshing does not drift the frame down", async () => {
+    const term = terminal(20, 10);
+    const wide: Renderable = {
+      *render() {
+        yield new Segment("w".repeat(30));
+        yield new Segment("\n");
+        yield new Segment("b");
+      },
+    };
+    const display = new Live(wide, { console: term.console, autoRefresh: false });
+    display.start();
+    for (let i = 0; i < 3; i++) display.refresh();
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["w".repeat(20), "b", "after"]);
+  });
+
+  it("leaves the cursor's line alone when handed back before any frame", async () => {
+    const term = terminal(20, 10);
+    term.console.file.write("before: ");
+    const display = new Live(new RichText("a"), { console: term.console, autoRefresh: false, transient: true });
+    display.start();
+    display.stop();
+    term.console.file.write("after\n");
+
+    expect(await term.rows()).toEqual(["before: after"]);
   });
 });

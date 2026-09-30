@@ -31,19 +31,20 @@ function sized(height: number): { console: Console; out: () => string } {
   return { console, out: () => chunks.join("") };
 }
 
-// What a first refresh wrote, after the move to the frame's first cell: home
-// on the alternate screen, the start of the cursor's line inline.
+// What a first refresh wrote, after the move to the frame's first row: home
+// on the alternate screen, and no move inline, where it is the cursor's line.
 function frame(renderable: Renderable, height: number, options: LiveOptions): string {
   const { console, out } = sized(height);
   const live = new Live(renderable, { console, autoRefresh: false, ...options });
   live.start();
   const before = out().length;
   live.refresh();
-  return out().slice(before).replace(/^(\x1b\[H|\r)/, "");
+  return out().slice(before).replace(/^\x1b\[H/, "");
 }
 
-// Each row is erased before it is drawn.
-const erased = (text: string) => `\x1b[2K${text}`;
+// Each row starts from its first cell and is erased before it is drawn.
+const ROW_START = "\r\x1b[2K";
+const erased = (text: string) => ROW_START + text;
 
 describe("the Height a renderable receives", () => {
   it("Console.print hands each block the terminal's rows as a ceiling", () => {
@@ -75,8 +76,8 @@ describe("alt-screen Live frames", () => {
     // Six rows, not seven: a trailing newline would leave an empty seventh
     // element here, and on a terminal it scrolls the first row off the top.
     expect(rows).toHaveLength(6);
-    expect(rows[0]!.replace("\x1b[2K", "").trimEnd()).toBe("top");
-    expect(rows[3]!.replace("\x1b[2K", "").trimEnd()).toBe("bottom");
+    expect(rows[0]!.replace(ROW_START, "").trimEnd()).toBe("top");
+    expect(rows[3]!.replace(ROW_START, "").trimEnd()).toBe("bottom");
   });
 
   it("short content is padded to the screen, and tall content cropped to it", () => {
@@ -123,7 +124,7 @@ describe("alt-screen Live frames", () => {
     live.stop();
     const stopped = out().slice(before);
     expect(stopped).not.toContain("\x1b[2K");
-    expect(stopped.endsWith("\x1b[?25h\x1b[0m\x1b[?1049l")).toBe(true);
+    expect(stopped.endsWith("\x1b[0m\x1b[?25h\x1b[?1049l")).toBe(true);
   });
 });
 

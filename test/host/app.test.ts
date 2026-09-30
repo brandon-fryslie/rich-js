@@ -23,10 +23,12 @@ import type { Renderable } from "../../src/core/protocol.js";
 // the buffer and off before it, so no exit path leaves one without the other.
 const POINTER_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
 const POINTER_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
-const ALT_ON = "\x1b[?1049h" + POINTER_ON;
-const ALT_OFF = POINTER_OFF + "\x1b[?1049l";
+const ALT_ON = "\x1b[?1049h";
+const ALT_OFF = "\x1b[?1049l";
 const CURSOR_OFF = "\x1b[?25l";
 const CURSOR_ON = "\x1b[?25h";
+const TAKE = ALT_ON + CURSOR_OFF + POINTER_ON;
+const HAND_BACK = POINTER_OFF + "\x1b[0m" + CURSOR_ON + ALT_OFF;
 
 function text(value: string): Renderable {
   return new RichText(value, { end: "" });
@@ -53,7 +55,7 @@ describe("App on the alternate screen", () => {
     expect(target.phase).toBe("running");
     expect(host.started()).toBe(true);
     expect(host.raw()).toBe(true);
-    expect(host.output().startsWith(ALT_ON + CURSOR_OFF)).toBe(true);
+    expect(host.output().startsWith(TAKE)).toBe(true);
     // A region: padded to every row of the screen.
     expect(rows(target)).toEqual(["hello", "", ""]);
     expect(stripAnsi(host.output())).toContain("hello");
@@ -118,7 +120,7 @@ describe("App on the alternate screen", () => {
     expect(target.phase).toBe("stopped");
     expect(host.raw()).toBe(false);
     expect(host.started()).toBe(false);
-    expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
+    expect(host.output().endsWith(HAND_BACK)).toBe(true);
   });
 
   // The rest of the program's end — a crash report, then the exit — is
@@ -138,7 +140,7 @@ describe("App on the alternate screen", () => {
     expect(settled).toBe(false);
     expect(target.phase).toBe("stopped");
     expect(host.raw()).toBe(false);
-    expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
+    expect(host.output().endsWith(HAND_BACK)).toBe(true);
   });
 
   it("hands the terminal back before rejecting with the error a frame threw", async () => {
@@ -157,7 +159,7 @@ describe("App on the alternate screen", () => {
     await expect(running).rejects.toBe(fault);
     expect(target.phase).toBe("stopped");
     expect(host.raw()).toBe(false);
-    expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
+    expect(host.output().endsWith(HAND_BACK)).toBe(true);
   });
 
   it("hands the terminal back when failed, and run rejects with the error it was given", async () => {
@@ -172,7 +174,7 @@ describe("App on the alternate screen", () => {
     expect(target.phase).toBe("stopped");
     expect(host.raw()).toBe(false);
     expect(host.started()).toBe(false);
-    expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
+    expect(host.output().endsWith(HAND_BACK)).toBe(true);
   });
 
   it("rejects when the first frame throws, with the terminal handed back", async () => {
@@ -184,7 +186,7 @@ describe("App on the alternate screen", () => {
 
     await expect(target.run()).rejects.toBe(fault);
     expect(host.raw()).toBe(false);
-    expect(host.output()).toContain(ALT_OFF);
+    expect(host.output()).toContain(HAND_BACK);
   });
 
   it("suspends by handing the terminal back first, and repaints on resume", async () => {
@@ -197,7 +199,7 @@ describe("App on the alternate screen", () => {
     expect(target.phase).toBe("suspended");
     expect(host.suspends()).toBe(1);
     expect(host.raw()).toBe(false);
-    expect(host.output().endsWith(CURSOR_ON + ALT_OFF)).toBe(true);
+    expect(host.output().endsWith(HAND_BACK)).toBe(true);
 
     const handedBack = host.output().length;
     host.resume();
@@ -206,7 +208,7 @@ describe("App on the alternate screen", () => {
     expect(target.phase).toBe("running");
     expect(host.raw()).toBe(true);
     const resumed = host.output().slice(handedBack);
-    expect(resumed.startsWith(ALT_ON + CURSOR_OFF)).toBe(true);
+    expect(resumed.startsWith(TAKE)).toBe(true);
     expect(stripAnsi(resumed)).toContain("frame");
   });
 
@@ -322,11 +324,11 @@ describe("App inline", () => {
     await tick();
 
     const second = host.output().slice(first);
-    // Back to the first frame's top row, then three rows: the new one and
-    // two blanked.
-    const home = "\x1b[2A\r";
+    // Back to the first frame's top row, then three rows, each from its
+    // first cell: the new one and two blanked.
+    const home = "\x1b[2A";
     expect(second.startsWith(home)).toBe(true);
-    expect(stripAnsi(second.slice(home.length)).split("\n")).toEqual(["z", "", ""]);
+    expect(second.slice(home.length).split("\n").map(stripAnsi)).toEqual(["\rz", "\r", "\r"]);
   });
 
   it("after blanking, starts the next frame and the program's next line from its own height", async () => {

@@ -12,7 +12,7 @@
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { belowFrame, frameHeight, paintFrame, type Surface } from "../core/paint.js";
+import { Painter } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 
 export interface LiveOptions {
@@ -22,17 +22,10 @@ export interface LiveOptions {
   console?: Console;
   verticalOverflow?: "crop" | "ellipsis" | "visible";
   /** When true, Live enters the alternate screen buffer on start() and
-   *  restores the original on stop(). Refresh uses cursor-home instead of
-   *  cursor-up-and-clear, eliminating flicker for full-screen layouts. */
+   *  restores the original on stop(). The screen is the frame's region, so
+   *  a full-screen layout fills it. */
   altScreen?: boolean;
 }
-
-// What a surface asks of the terminal beyond the frame on it: the bytes that
-// take it on `start()` and hand it back.
-const SURFACE_MODES: Record<Surface, { readonly enter: string; readonly leave: string }> = {
-  alternate: { enter: "\x1b[?1049h", leave: "\x1b[0m\x1b[?1049l" },
-  inline: { enter: "", leave: "" },
-};
 
 export class Live {
   private _renderable: Renderable | undefined;
@@ -41,10 +34,8 @@ export class Live {
   private _autoRefresh: boolean;
   private _transient: boolean;
   private _verticalOverflow: "crop" | "ellipsis" | "visible";
-  private _surface: Surface;
+  private readonly _painter: Painter;
   private _timer: ReturnType<typeof setInterval> | undefined;
-  // The last frame's own rows on the terminal — what the next paint rewinds.
-  private _rows: number;
   private _started: boolean;
 
   constructor(renderable?: Renderable, options?: LiveOptions) {
@@ -54,8 +45,9 @@ export class Live {
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
-    this._surface = options?.altScreen ? "alternate" : "inline";
-    this._rows = 0;
+    this._painter = new Painter(options?.altScreen ? "alternate" : "inline", (bytes) =>
+      this._console.file.write(bytes),
+    );
     this._started = false;
   }
 
@@ -71,8 +63,7 @@ export class Live {
     if (this._started) return;
     this._started = true;
 
-    this._console.file.write(SURFACE_MODES[this._surface].enter);
-    this._writeCursorControl(false);
+    this._painter.take();
 
     if (this._autoRefresh) {
       const interval = Math.floor(1000 / this._refreshPerSecond);
@@ -127,7 +118,7 @@ export class Live {
     // under them as a ceiling. Live set the budget, so Live shapes what comes
     // back — its overflow policy, then `fitHeight`, which pads only a region.
     const options = this._console.options;
-    const height = frameHeight(this._surface, options.height.rows);
+    const height = this._painter.height(options.height.rows);
     const lines = Segment.splitLines(this._renderable.render({ ...options, height }));
     this._paint(fitHeight(this._overflow(lines, height.rows), height));
   }
@@ -137,9 +128,8 @@ export class Live {
   // the same write as the new one — so a render that throws leaves the last
   // good frame showing.
   private _paint(frame: Segment[][]): void {
-    const screenRows = this._console.options.height.rows;
-    this._console.file.write(paintFrame(this._surface, frame, this._rows, screenRows, this._console.destination));
-    this._rows = frame.length;
+    const { height, maxWidth } = this._console.options;
+    this._painter.paint(frame, { rows: height.rows, cols: maxWidth }, this._console.destination);
   }
 
   // Lines past `rows`: dropped, with the last kept row replaced by an ellipsis,
@@ -160,11 +150,6 @@ export class Live {
     this._started = false;
     clearInterval(this._timer);
     this._timer = undefined;
-    this._writeCursorControl(true);
-    this._console.file.write(belowFrame(this._surface, this._rows) + SURFACE_MODES[this._surface].leave);
-  }
-
-  private _writeCursorControl(show: boolean): void {
-    this._console.file.write(show ? "\x1b[?25h" : "\x1b[?25l");
+    this._painter.handBack();
   }
 }

@@ -27,7 +27,7 @@
 
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { belowFrame, frameHeight, paintFrame, type Surface } from "../core/paint.js";
+import { Painter, type Surface } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 import { hostEnvironment } from "./host-environment.js";
@@ -56,31 +56,15 @@ export interface AppOptions {
   readonly asciiOnly?: boolean;
 }
 
-/**
- * What a surface asks of the terminal beyond the frame on it, as the bytes
- * that take it and hand it back. The frame's own geometry is `core/paint`'s.
- */
-interface SurfaceModes {
-  readonly enter: string;
-  readonly leave: string;
-}
-
 // Button presses, motion and the wheel, in the SGR encoding: coordinates as
 // decimal numbers, so a terminal wider than 223 columns still reports them.
-const POINTER_ON = "\x1b[?1006h\x1b[?1000h\x1b[?1003h";
-const POINTER_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
-
 // The terminal reports a pointer by its row on the screen, and an inline
 // frame does not know which row of the screen it starts on, so only the
-// alternate surface gets pointer events.
-const SURFACES: Record<Surface, SurfaceModes> = {
-  alternate: { enter: "\x1b[?1049h" + POINTER_ON, leave: POINTER_OFF + "\x1b[?1049l" },
-  inline: { enter: "", leave: "" },
+// alternate surface gets them.
+const POINTER: Record<Surface, { readonly on: string; readonly off: string }> = {
+  alternate: { on: "\x1b[?1006h\x1b[?1000h\x1b[?1003h", off: "\x1b[?1003l\x1b[?1000l\x1b[?1006l" },
+  inline: { on: "", off: "" },
 };
-
-const HIDE_CURSOR = "\x1b[?25l";
-const SHOW_CURSOR = "\x1b[?25h";
-const RESET_STYLE = "\x1b[0m";
 
 export class App {
   private readonly host: TerminalHost;
@@ -93,8 +77,7 @@ export class App {
 
   private _phase: AppPhase = "idle";
   private _frame: readonly (readonly Segment[])[] = [];
-  // The last frame's own rows on the terminal — what the next paint rewinds.
-  private rows = 0;
+  private readonly painter: Painter;
   private refreshQueued = false;
   private subscriptions: Unsubscribe[] = [];
   private readonly paintHandlers = new Set<(frame: readonly (readonly Segment[])[]) => void>();
@@ -103,6 +86,7 @@ export class App {
   constructor(options: AppOptions) {
     this.host = options.host;
     this.surface = options.surface;
+    this.painter = new Painter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;
     this.console = new Console({ environment: hostEnvironment(options.host), asciiOnly: options.asciiOnly });
   }
@@ -188,9 +172,6 @@ export class App {
     // handed back for good.
     if (this._phase !== "suspended") return;
     this._phase = "running";
-    // What the last frame occupied is gone under whatever ran meanwhile, so
-    // the next one starts where the cursor is.
-    this.rows = 0;
     this.enter();
     this.paint();
   }
@@ -223,11 +204,13 @@ export class App {
 
   private enter(): void {
     this.host.setRawMode(true);
-    this.host.write(SURFACES[this.surface].enter + HIDE_CURSOR);
+    this.painter.take();
+    this.host.write(POINTER[this.surface].on);
   }
 
   private leave(): void {
-    this.host.write(RESET_STYLE + SHOW_CURSOR + belowFrame(this.surface, this.rows) + SURFACES[this.surface].leave);
+    this.host.write(POINTER[this.surface].off);
+    this.painter.handBack();
     this.host.setRawMode(false);
   }
 
@@ -255,20 +238,17 @@ export class App {
 
   private draw(): void {
     const options = this.console.options;
-    const { maxWidth: cols } = options;
-    const height = frameHeight(this.surface, options.height.rows);
+    const height = this.painter.height(options.height.rows);
     const lines = Segment.splitLines(this.view().render({ ...options, height }));
     // The app set the budget, so the app shapes what comes back: no deeper
     // than the terminal — a taller frame would scroll the rows the painter
-    // counts back over — and, as a region, exactly that deep. No row wider
-    // than the terminal either: one that soft-wrapped would push every row
-    // below it down a row the frame does not know about.
-    const frame = fitHeight(lines.slice(0, height.rows), height).map((line) =>
-      Segment.adjustLineLength(line, cols, undefined, false),
+    // goes back over — and, as a region, exactly that deep.
+    const frame = this.painter.paint(
+      fitHeight(lines.slice(0, height.rows), height),
+      { rows: height.rows, cols: options.maxWidth },
+      this.console.destination,
     );
-    this.host.write(paintFrame(this.surface, frame, this.rows, height.rows, this.console.destination));
     this._frame = frame;
-    this.rows = frame.length;
     for (const handler of [...this.paintHandlers]) handler(frame);
   }
 }
