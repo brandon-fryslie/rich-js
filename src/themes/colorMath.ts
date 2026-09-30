@@ -1,6 +1,7 @@
 import {
   ColorDepth,
   ColorRgba,
+  ColorSpec,
   ColorTable,
   EIGHT_BIT_DOWNGRADE_TABLE,
   STANDARD_TABLE,
@@ -238,9 +239,14 @@ export function drawnColour(
   return shownAs(drawnTable(drawnAt, terminal), drawnBackground(colour, substrate));
 }
 
-/** An opaque colour as the terminal shows it: its written index, in `shown`'s colour. */
+/**
+ * An opaque colour as the terminal shows it: downgraded to the index the
+ * writer emits and drawn as the terminal draws that index.
+ * [LAW:one-source-of-truth] That rounding is `ColorSpec.downgrade`'s, the one
+ * `Style.drawnColors` writes; the tables here only list the candidates.
+ */
 function shownAs(table: DrawnTable | undefined, opaque: ColorRgba): ColorRgba {
-  return table === undefined ? opaque : table.shown.get(table.written.match(opaque));
+  return table === undefined ? opaque : ColorSpec.fromRgba(opaque).downgrade(table.depth).getTruecolor(table.terminal);
 }
 
 /**
@@ -267,13 +273,15 @@ function drawnBackground(bg: ColorRgba, substrate: ColorRgba): ColorRgba {
 }
 
 /**
- * A depth's palette seen from both ends of the wire: `written`, the table
- * `ColorSpec.downgrade` rounds a colour to an index by, and `shown`, the
- * colour the terminal draws at each of those indices. Measurement reads
- * `shown`; a replacement is `written`'s colour for the index, which the
- * writer rounds back to that same index.
+ * A depth's palette seen from both ends of the wire, drawn by `terminal`:
+ * `written`, the colours `ColorSpec.downgrade` rounds to each index, and
+ * `shown`, the colour the terminal draws at each of those indices. Candidates
+ * are scanned in `shown`; a replacement is `written`'s colour for the index,
+ * which the writer rounds back to that same index.
  */
 interface DrawnTable {
+  readonly depth: ColorDepth;
+  readonly terminal: TerminalTheme;
   readonly written: ColorTable;
   readonly shown: ColorTable;
 }
@@ -287,19 +295,18 @@ interface DrawnTable {
  * behind.
  */
 function drawnTable(drawnAt: ColorDepth, terminal: TerminalTheme | undefined): DrawnTable | undefined {
+  const drawnBy = resolveTerminal(terminal);
   switch (drawnAt) {
     case ColorDepth.EIGHT_BIT:
-      return EIGHT_BIT_DRAWN;
+      return { depth: drawnAt, terminal: drawnBy, written: EIGHT_BIT_DOWNGRADE_TABLE, shown: EIGHT_BIT_DOWNGRADE_TABLE };
     case ColorDepth.STANDARD:
-      return { written: STANDARD_TABLE, shown: resolveTerminal(terminal).ansiColors };
+      return { depth: drawnAt, terminal: drawnBy, written: STANDARD_TABLE, shown: drawnBy.ansiColors };
     case ColorDepth.TRUECOLOR:
     case ColorDepth.DEFAULT:
     case ColorDepth.WINDOWS:
       return undefined;
   }
 }
-
-const EIGHT_BIT_DRAWN: DrawnTable = { written: EIGHT_BIT_DOWNGRADE_TABLE, shown: EIGHT_BIT_DOWNGRADE_TABLE };
 
 function ensureTruecolorContrast(
   fg: ColorRgba,

@@ -994,7 +994,9 @@ const INTERNAL_DEFAULT_THEME = new TerminalTheme(
 
 /**
  * The terminal a colour is drawn by: `theme`, or the VGA sixteen when a caller
- * names none. Every "no theme given" in the library resolves here.
+ * names none — for `ColorSpec.getTruecolor` and the contrast measurement that
+ * reads it. (Widgets fall back to `DEFAULT_TERMINAL_THEME`, which carries a
+ * palette this does not.)
  */
 export function resolveTerminal(theme?: TerminalTheme): TerminalTheme {
   return theme ?? INTERNAL_DEFAULT_THEME;
