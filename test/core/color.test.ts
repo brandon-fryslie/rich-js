@@ -576,6 +576,12 @@ describe("ColorSpec.downgrade()", () => {
     expect([std.downgrade(ColorDepth.WINDOWS).type, std.downgrade(ColorDepth.WINDOWS).number]).toEqual([ColorDepth.WINDOWS, 12]);
   });
 
+  it("a blend of named colours drawn at WINDOWS ramps between the console's own shades", () => {
+    // Mixed from the VGA ends instead, three quarters of the way to yellow is green (slot 2).
+    const blend = ColorSpec.parse("blend(black,yellow,0.75)").downgrade(ColorDepth.WINDOWS);
+    expect([blend.type, blend.number]).toEqual([ColorDepth.WINDOWS, 3]);
+  });
+
   it("with no theme named, a colour drawn at WINDOWS reads as the console's own colour", () => {
     expect(ColorSpec.parse("red").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(WINDOWS_TABLE.get(1));
     expect(ColorSpec.parse("#0037da").downgrade(ColorDepth.WINDOWS).getTruecolor()).toEqual(new ColorRgba(0, 55, 218));

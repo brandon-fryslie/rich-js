@@ -691,8 +691,9 @@ export class ColorSpec {
   // --- private ---
 
   private performDowngrade(targetSystem: ColorDepth): ColorSpec {
-    // Get the true RGB of this color
-    const triplet = this.getTruecolor();
+    // The colour as the terminal this depth assumes draws it: a blend's named
+    // ends are the Windows console's own at WINDOWS.
+    const triplet = this.getTruecolor(resolveTerminal(undefined, targetSystem));
 
     switch (targetSystem) {
       case ColorDepth.EIGHT_BIT:
