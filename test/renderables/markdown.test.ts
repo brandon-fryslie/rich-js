@@ -239,10 +239,10 @@ describe("Markdown", () => {
     ]);
   });
 
-  it("follows the justify it is rendered with when none is given, and still leaves headings left", () => {
+  it("places body text left when no justify is given, whatever it is rendered with", () => {
     const md = new Markdown("# Head\n\nbody");
     const text = collectText(md, { maxWidth: 12, justify: "right" });
-    expect(text.split("\n").map((row) => row.trimEnd())).toEqual(["Head", "", "        body", ""]);
+    expect(text.split("\n")).toEqual(["Head", "", "body        ", ""]);
   });
 
   it("draws a heading at its natural width, so its style stops where its text does", () => {

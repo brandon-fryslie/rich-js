@@ -23,19 +23,21 @@ export interface MarkdownOptions {
    * in parentheses, for a reader who cannot click it. Default `true`.
    */
   hyperlinks?: boolean;
-  /**
-   * How body text — paragraphs, list items, quotes — is placed in its width.
-   * Unset, it follows the justify it is rendered with. Headings are always left.
-   */
-  justify?: "left" | "center" | "right" | "full";
+  /** How body text — paragraphs, list items, quotes — is placed in its width. Default `"left"`; headings keep their own. */
+  justify?: Justify;
 }
 
-type Justify = MarkdownOptions["justify"];
+type Justify = NonNullable<RenderOptions["justify"]>;
 
 /** What the options say about inline text, which every block's text is drawn with. */
 interface InlineSettings {
   readonly inlineCodeStyle: string | Style;
   readonly hyperlinks: boolean;
+}
+
+/** What the options say about every block: its inline text, and where body text sits. */
+interface BlockSettings extends InlineSettings {
+  readonly justify: Justify;
 }
 
 // Simple markdown token types
@@ -214,7 +216,7 @@ function tokenize(markdown: string): MdToken[] {
   return tokens;
 }
 
-function applyInlineStyles(text: string, settings: InlineSettings, justify: Justify): RichText {
+function applyInlineStyles(text: string, settings: InlineSettings, justify: Justify | undefined): RichText {
   const result = new RichText("", { end: "", justify });
 
   // Process inline patterns
@@ -294,7 +296,11 @@ function* guttered(
  * too, so `splitLines` counts it even when the text is empty, and an empty
  * item still draws its bullet.
  */
-function inline(text: string, settings: InlineSettings, justify: Justify): (options: RenderOptions) => Iterable<Segment> {
+function inline(
+  text: string,
+  settings: InlineSettings,
+  justify: Justify | undefined,
+): (options: RenderOptions) => Iterable<Segment> {
   return function* (options) {
     yield* applyInlineStyles(text, settings, justify).render(options);
     yield Segment.line();
@@ -304,16 +310,11 @@ function inline(text: string, settings: InlineSettings, justify: Justify): (opti
 const NO_GUTTER = new Segment("");
 
 /**
- * Each block in `tokens`, every row it draws ended, body text placed by `justify`.
- * A heading is drawn at its natural width whatever `justify` or `options` say,
- * so its underline stops where its text does.
+ * Each block in `tokens`, every row it draws ended, body text placed by
+ * `settings.justify`. A heading is drawn at its natural width whatever
+ * `settings` or `options` say, so its underline stops where its text does.
  */
-function* renderTokens(
-  tokens: readonly MdToken[],
-  options: RenderOptions,
-  settings: InlineSettings,
-  justify: Justify,
-): Iterable<Segment> {
+function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   for (const token of tokens) {
     switch (token.type) {
       case "heading": {
@@ -324,7 +325,7 @@ function* renderTokens(
       }
 
       case "paragraph": {
-        yield* guttered(inline(token.text, settings, justify), options, NO_GUTTER, NO_GUTTER);
+        yield* guttered(inline(token.text, settings, settings.justify), options, NO_GUTTER, NO_GUTTER);
         break;
       }
 
@@ -347,13 +348,13 @@ function* renderTokens(
       case "list_item": {
         const bullet = " ".repeat(token.indent) + (token.ordered ? `${token.index}. ` : drawable(options, "  • ", "  * "));
         const hang = new Segment(" ".repeat(cellLen(bullet)));
-        yield* guttered(inline(token.text, settings, justify), options, new Segment(bullet), hang);
+        yield* guttered(inline(token.text, settings, settings.justify), options, new Segment(bullet), hang);
         break;
       }
 
       case "blockquote": {
         const bar = new Segment(drawable(options, "▎ ", "| "), getStyle(options, "markdown.hr"));
-        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings, justify);
+        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
         yield* guttered(body, options, bar, bar, Style.parse("dim italic"));
         break;
       }
@@ -375,13 +376,13 @@ export class Markdown implements Renderable, Measurable {
     this.markdown = markdown;
     this.inlineCodeStyle = options?.inlineCodeStyle ?? "markdown.code";
     this.hyperlinks = options?.hyperlinks !== false;
-    this.justify = options?.justify;
+    this.justify = options?.justify ?? "left";
   }
 
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    yield* renderTokens(tokenize(this.markdown), options, this, this.justify);
+    yield* renderTokens(tokenize(this.markdown), options, this);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {

@@ -47,7 +47,7 @@ it with [`Syntax`](./syntax) instead.
 |--------|---------|--------|
 | `inlineCodeStyle` | `"markdown.code"` | The style of `` `inline code` ``: a theme name, a style definition such as `"bold magenta"`, or a `Style` |
 | `hyperlinks` | `true` | A link's text is the link, drawn in `markdown.link_url`. With `false` the text is drawn in `markdown.link` and the URL is written after it in parentheses, for a reader who cannot click it |
-| `justify` | the print's | Where paragraphs, list items and quoted text sit in the width: `"left"`, `"center"`, `"right"` or `"full"`. Unset, they follow the justify the Markdown is printed with, which is left unless one is given. Headings are always left |
+| `justify` | `"left"` | Where paragraphs, list items and quoted text sit in the width: `"left"`, `"center"`, `"right"` or `"full"`. Headings are always left |
 
 ```typescript
 import { Console, Markdown } from "@promptctl/rich-js";
