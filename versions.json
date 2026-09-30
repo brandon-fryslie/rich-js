@@ -4,15 +4,22 @@
     {
       "version": "pr-270",
       "ref": "refs/pull/270/merge",
-      "sha": "6972206ca46d3960824aaef4daf1245f362f71e2",
-      "timestamp": "2026-09-30T18:50:39.510Z",
+      "sha": "9766e1bcc975edc6edf87d6fbcb5770fe5033f36",
+      "timestamp": "2026-09-30T18:59:28.518Z",
       "commits": [
         {
-          "sha": "6972206ca46d3960824aaef4daf1245f362f71e2",
+          "sha": "9766e1bcc975edc6edf87d6fbcb5770fe5033f36",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:49:40-06:00",
-          "message": "Merge a16a21cc5b86afa5f4ffbd0b595f18c900cd8b76 into e527b78d9f14ebaec2a85220e37c135099981bc7\n"
+          "timestamp": "2026-09-30T18:58:21Z",
+          "message": "Merge b73bd19a0237b74db0106a36ec96cb942f5e9e7d into e527b78d9f14ebaec2a85220e37c135099981bc7\n"
+        },
+        {
+          "sha": "b73bd19a0237b74db0106a36ec96cb942f5e9e7d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T12:58:16-06:00",
+          "message": "fix(live): a print through live.console reaches the terminal in one write, and keeps a line it stops mid-way (rich-live-sadk)\n\nLiveRegion.around is now text in, bytes out: the console writes the erase,\nthe text and the repainted frame as one chunk. Painter.around ends text that\nstops mid-line before the frame repaints over it. A stale claimLiveRegion\nrelease leaves a newer claim in place. docs/live.md's warning named the\nwrong console.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
         },
         {
           "sha": "a16a21cc5b86afa5f4ffbd0b595f18c900cd8b76",
