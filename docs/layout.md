@@ -128,6 +128,9 @@ console.print(page);
 
 A layout with `ratio: 2` alongside one with `ratio: 1` takes two-thirds of the available space.
 
+Every cell is handed out. Where the shares do not divide evenly, the spare cells go to
+the later layouts, as they do in Rich: a 1:1 split of 5 columns is 2 and 3.
+
 ## Minimum size
 
 Prevent a flexible layout from shrinking below a threshold. On a 75-column terminal a

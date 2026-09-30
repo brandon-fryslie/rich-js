@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Layout } from "../../src/renderables/layout.js";
 import type { LayoutOptions } from "../../src/renderables/layout.js";
-import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
+import type { Measurable, Renderable, RenderOptions } from "../../src/core/protocol.js";
 import { Segment } from "../../src/core/segment.js";
 import { cellLen } from "../../src/core/cells.js";
 import { RichText } from "../../src/core/text.js";
@@ -93,6 +93,54 @@ describe("Layout", () => {
     expect(rows.map((r) => r.trimEnd())).toEqual(["1 x", "2", "3"]);
   });
 
+  // A split hands out every cell of its region. Floored per pane, a 1:1 split of
+  // five rows drew 2 + 2 and the region pad left a fifth row blank; the spare
+  // cell now goes where Rich's `ratio_resolve` puts it, to the pane after.
+  it("fills an odd region with a 1:1 column split", () => {
+    const layout = new Layout();
+    layout.splitColumn(
+      new Layout(new RichText("a\na\na\na\na")),
+      new Layout(new RichText("b\nb\nb\nb\nb")),
+    );
+    const rows = collectText(layout, { maxWidth: 3, height: { rows: 5, exact: true } })
+      .split("\n")
+      .slice(0, -1)
+      .map((r) => r.trimEnd());
+    expect(rows).toEqual(["a", "a", "b", "b", "b"]);
+  });
+
+  it("fills an odd width with a 1:1 row split", () => {
+    const layout = new Layout();
+    layout.splitRow(new Layout("xxxxx"), new Layout("yyyyy"));
+    const rows = collectText(layout, { maxWidth: 5, height: { rows: 1, exact: true } })
+      .split("\n")
+      .slice(0, -1);
+    expect(rows).toEqual(["xxyyy"]);
+  });
+
+  // A Measurable is free to report a fractional width; the row reads it as the
+  // whole cells that hold it rather than handing a fraction to exact arithmetic.
+  it("measures a row holding a pane of fractional width", () => {
+    const fractional: Renderable & Measurable = {
+      *render() {},
+      measure: () => ({ minimum: 1, maximum: 4.5 }),
+    };
+    const layout = new Layout();
+    layout.splitRow(new Layout(fractional), new Layout("abc"));
+    expect(layout.measure({ maxWidth: 80 }).maximum).toBe(10);
+  });
+
+  // A pane that cannot measure itself has no width of its own, so a row
+  // holding one offered an unbounded width has none either: measure says so,
+  // and render reaches `withBoundedWidth`'s explanation rather than a BigInt error.
+  it("has no natural width when a pane of its row has none", () => {
+    const opaque: Renderable = { *render() {} };
+    const layout = new Layout();
+    layout.splitRow(new Layout(opaque), new Layout("abc"));
+    expect(layout.measure({ maxWidth: Infinity }).maximum).toBe(Infinity);
+    expect(() => [...layout.render({ maxWidth: Infinity })]).toThrow(/no natural width/);
+  });
+
   it("getByName finds named layouts", () => {
     const layout = new Layout();
     layout.splitColumn(
@@ -177,7 +225,7 @@ describe("Layout", () => {
   // Unparsed, it escaped through `measure` two ways. A NaN ratio made
   // `totalRatio` NaN and the whole measurement NaN. A negative one summed with
   // its siblings to a `totalRatio` of 0, so a row holding twelve cells of text
-  // reported a natural width of 0, and `_distributeSpace` — dividing by the same
+  // reported a natural width of 0, and the split — dividing by the same
   // ratios at render time — disagreed by handing both panes real space.
   describe("a ratio is a share weight", () => {
     const options: RenderOptions = { maxWidth: 40, height: { rows: 5, exact: true } };

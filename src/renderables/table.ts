@@ -11,7 +11,7 @@ import { RichText } from "../core/text.js";
 import { embed, embeddedText } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
-import { ratioDistribute } from "./ratio.js";
+import { exactWeights, ratioDistribute } from "./ratio.js";
 import type {
   Renderable,
   Measurable,
@@ -159,24 +159,6 @@ function distribute(total: number, demands: readonly Bid[]): number[] {
   }
 
   return granted;
-}
-
-/**
- * Weights as integers in one exact proportion. Each is read as the decimal it
- * prints as — the number its caller wrote, `0.1` rather than the binary double
- * nearest it — and all are scaled by the one power of ten that makes them
- * whole, so `0.1 : 0.3 : 1` is exactly `1 : 3 : 10`. A weight that does not
- * print as a decimal, `Infinity`, is refused by `BigInt` with a SyntaxError —
- * the loud end of what `demandCells` exists to prevent.
- */
-function exactWeights(weights: readonly number[]): bigint[] {
-  const decimals = weights.map((weight) => {
-    const [digits = "", power = "0"] = String(weight).split("e");
-    const [whole = "", fraction = ""] = digits.split(".");
-    return { mantissa: BigInt(whole + fraction), exponent: fraction.length - Number(power) };
-  });
-  const common = Math.max(...decimals.map(({ exponent }) => exponent));
-  return decimals.map(({ mantissa, exponent }) => mantissa * 10n ** BigInt(common - exponent));
 }
 
 /**
