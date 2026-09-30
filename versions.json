@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-253",
-      "ref": "refs/pull/253/merge",
-      "sha": "7761b89bf62878a62e4419a3eb045189a9b9ca52",
-      "timestamp": "2026-09-30T12:03:51.065Z",
-      "commits": [
-        {
-          "sha": "7761b89bf62878a62e4419a3eb045189a9b9ca52",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:02:45Z",
-          "message": "Merge ce0de215e7aedaf1c7b82d70bf345c3d398faf05 into 2c62ec9330dd145ef6fd85c07020d6126ec44f48\n"
-        },
-        {
-          "sha": "ce0de215e7aedaf1c7b82d70bf345c3d398faf05",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:02:40-06:00",
-          "message": "refactor(repo-facts): path helpers join the repo facts; a gate keeps test/ out of non-test code (rich-repo-facts-hss)\n\nReview pass (high) on PR #253:\n- repoRelative, isPathInside, isUnderSrc and isBehindNodeAirlock move to\n  scripts/repo-facts.ts, so the seam gates no longer import the coverage\n  verifier for repo layout.\n- test/seam/test-imports.test.ts fails when any .ts under src/, docs/,\n  scripts/ or examples/ imports a module under test/.\n- example-runner reads peerDependencies from PACKAGE_MANIFEST instead of\n  parsing package.json a second time.\n- resolveAlias no longer swallows a throw from getAliasedSymbol.\n- tsconfig.scripts.json includes scripts/**/*.ts directly.\n"
-        },
-        {
-          "sha": "f5650ea81e405c06266c78c1d52ca7d4203354d9",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:55:37-06:00",
-          "message": "refactor(repo-facts): the docs build reads repo facts from scripts/, not test/ (rich-repo-facts-hss)\n\nREPO_ROOT, the package manifest, the entry-point map, the repo's compiler\noptions and listTypeScriptFiles move from test/coverage/extract.ts to\nscripts/repo-facts.ts; resolveAlias moves to scripts/resolve-alias.ts.\nEvery importer reads them from the new home and extract.ts re-exports\nnothing, so nothing under docs/ imports from test/ and a refactor of the\ncoverage verifier can no longer change how the docs' examples compile.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "2c62ec9330dd145ef6fd85c07020d6126ec44f48",
-      "timestamp": "2026-09-30T11:52:40.614Z",
+      "sha": "03eb28ab5d9d98f1bd9980cca301ca1bdf198585",
+      "timestamp": "2026-09-30T12:08:04.702Z",
       "commits": [
         {
-          "sha": "2c62ec9330dd145ef6fd85c07020d6126ec44f48",
+          "sha": "03eb28ab5d9d98f1bd9980cca301ca1bdf198585",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:51:32-06:00",
-          "message": "fix(markdown): reflow soft-broken blocks and end every list item's row (rich-demos-b19) (#252)\n\n* fix(markdown): reflow soft-broken blocks and end every list item's row (rich-demos-b19)\n\nA list item took only its marker line; its continuation lines fell into a\nparagraph that also swallowed the next items, joined untrimmed. The item\nnever ended its row, so what followed ran past the width and a Panel cut\nit off — the rich-dash README panel lost \"panel proves it is\" outright.\n\nParagraphs, list items and quotes now each take every line up to a blank\nor the next block start, joined by one space. Every wrapped block is laid\nout through one gutter: a list item's text hangs under its bullet, a\nquote's bar runs its full height, and a nested item keeps its indent.\n\n* fix(markdown): CommonMark paragraph interrupts, setext headings, hard breaks, CRLF (rich-demos-b19)\n\nReview of #252: a paragraph is interrupted only by a numbered item counting\nfrom 1, and a = / - underline makes it a heading; lines ending in two spaces\nor a backslash keep their break; CRLF input tokenizes; a bare > continues a\nquote; list nesting is counted in columns so a tab never reaches the\nterminal; a gutter never narrows text below one column.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(markdown): quote structure keeps its rows, list items read numbers as CommonMark, empty blocks draw (rich-demos-b19)\n\nReview of #252: inside a quote a blank line or a block start begins a row\nof its own instead of reflowing into the text around it; a numbered line\nindented into a list item stays its text unless it counts from 1; an empty\nitem or quote still draws its bullet or bar.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(markdown): a blockquote holds blocks of its own (rich-demos-b19)\n\nReview of #252: a quote's lines, markers cut off, are tokenized as Markdown\nof their own and drawn beside the bar, so a fence, a list or a paragraph\nbreak inside one keeps its shape, and a lazy line continues only the\nparagraph open inside it. The quote-only row rules in continuation go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T06:06:56-06:00",
+          "message": "refactor(repo-facts): the docs build reads repo facts from scripts/, not test/ (rich-repo-facts-hss) (#253)\n\n* refactor(repo-facts): the docs build reads repo facts from scripts/, not test/ (rich-repo-facts-hss)\n\nREPO_ROOT, the package manifest, the entry-point map, the repo's compiler\noptions and listTypeScriptFiles move from test/coverage/extract.ts to\nscripts/repo-facts.ts; resolveAlias moves to scripts/resolve-alias.ts.\nEvery importer reads them from the new home and extract.ts re-exports\nnothing, so nothing under docs/ imports from test/ and a refactor of the\ncoverage verifier can no longer change how the docs' examples compile.\n\n* refactor(repo-facts): path helpers join the repo facts; a gate keeps test/ out of non-test code (rich-repo-facts-hss)\n\nReview pass (high) on PR #253:\n- repoRelative, isPathInside, isUnderSrc and isBehindNodeAirlock move to\n  scripts/repo-facts.ts, so the seam gates no longer import the coverage\n  verifier for repo layout.\n- test/seam/test-imports.test.ts fails when any .ts under src/, docs/,\n  scripts/ or examples/ imports a module under test/.\n- example-runner reads peerDependencies from PACKAGE_MANIFEST instead of\n  parsing package.json a second time.\n- resolveAlias no longer swallows a throw from getAliasedSymbol.\n- tsconfig.scripts.json includes scripts/**/*.ts directly."
         }
       ]
     }
