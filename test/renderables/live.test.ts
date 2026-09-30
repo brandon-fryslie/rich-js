@@ -308,6 +308,37 @@ describe("Printing through live.console", () => {
     expect(await term.rows()).toEqual(["early", ...PANEL]);
   });
 
+  it("reaches the terminal as one write, so the frame is never seen gone", () => {
+    const chunks: string[] = [];
+    const console = new Console({
+      width: 20,
+      height: 5,
+      colorSystem: null,
+      hyperlinks: false,
+      file: { write: (s: string) => void chunks.push(s) },
+    });
+    const display = new Live(new RichText("good"), { console, autoRefresh: false });
+    display.start();
+    display.refresh();
+    const before = chunks.length;
+    display.console.print("printed");
+
+    expect(chunks.slice(before)).toEqual([expect.stringMatching(/printed\n.*good$/s)]);
+    display.stop();
+  });
+
+  it("keeps a print that stops mid-line, ending its line before the frame", async () => {
+    const term = terminal(20, 10);
+    const display = new Live(panel(), { console: term.console, autoRefresh: false });
+    display.start();
+    display.refresh();
+    display.console.print("Downloading", { end: "" });
+    display.console.print("done");
+    display.stop();
+
+    expect(await term.rows()).toEqual(["Downloading", "done", ...PANEL]);
+  });
+
   it("is written plainly once the Live has stopped", async () => {
     const term = terminal(20, 10);
     const display = new Live(panel(), { console: term.console, autoRefresh: false });
@@ -328,5 +359,16 @@ describe("Printing through live.console", () => {
     first.stop();
     second.start();
     second.stop();
+  });
+
+  it("keeps a region claimed when a stale release is called again", () => {
+    const term = terminal(20, 10);
+    const release = term.console.claimLiveRegion({ around: (text) => text });
+    release();
+    const display = new Live(panel(), { console: term.console, autoRefresh: false });
+    display.start();
+    release();
+    expect(() => new Live(panel(), { console: term.console, autoRefresh: false }).start()).toThrow(/already/);
+    display.stop();
   });
 });

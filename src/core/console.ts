@@ -49,16 +49,17 @@ export interface ConsoleSink {
 
 /**
  * A frame standing on the terminal under the cursor — a running `Live` — that
- * everything the console writes has to go above. `around` takes the frame off
- * the terminal, runs `write`, and paints it back under what was written.
+ * everything the console writes has to go above. `around` returns the bytes
+ * that take the frame off the terminal, write `text`, and paint the frame
+ * back under it; the console writes them in one piece.
  */
 export interface LiveRegion {
-  around(write: () => void): void;
+  around(text: string): string;
 }
 
 // [LAW:dataflow-not-control-flow] With no live region claimed, stepping around
-// it is just writing: every write takes the same path.
-const NO_LIVE_REGION: LiveRegion = { around: (write) => write() };
+// it is the text itself: every write takes the same path.
+const NO_LIVE_REGION: LiveRegion = { around: (text) => text };
 
 // [LAW:types-are-the-program] A sink you can also interrogate: the console asks
 // its output target three questions beyond "take these bytes" — are you a
@@ -744,8 +745,10 @@ export class Console {
       throw new Error("A live display is already running on this console; stop it before starting another.");
     }
     this._liveRegion = region;
+    // Letting go of a region no longer held — a second call, or after another
+    // was claimed — leaves the one that is.
     return () => {
-      this._liveRegion = NO_LIVE_REGION;
+      if (this._liveRegion === region) this._liveRegion = NO_LIVE_REGION;
     };
   }
 
@@ -816,7 +819,7 @@ export class Console {
       return;
     }
     const target = this._file ?? defaultSink(this._stream);
-    this._liveRegion.around(() => target.write(text));
+    target.write(this._liveRegion.around(text));
   }
 }
 

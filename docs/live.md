@@ -182,7 +182,7 @@ try {
 
 ## Print and log during live display
 
-Output printed to the live display's internal console appears above the live area without disrupting it:
+Output printed through `live.console` — the console the live display draws on — appears above the live area without disrupting it:
 
 ```typescript live
 const progress = new Panel("[yellow]working…[/]", { expand: false });
@@ -199,8 +199,8 @@ try {
 }
 ```
 
-::: warning Don't use the outer console
-Printing directly to an outer console while a live display is active will break the display. Always use `live.console` for output that should appear above the live area.
+::: warning Print through the console the Live draws on
+Only `live.console` steps around the frame. Anything else that writes to the same terminal while the display runs — another `Console`, or `process.stdout.write` — lands on the frame, and the next refresh erases it.
 :::
 
 Pass a custom Console to control where above-display output goes:
