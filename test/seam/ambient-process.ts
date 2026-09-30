@@ -33,7 +33,7 @@
  */
 
 import ts from "typescript";
-import { repoRelative } from "../coverage/extract.js";
+import { repoRelative } from "../../scripts/repo-facts.js";
 import { isNameSlot } from "./identifiers.js";
 
 /** The global this rule is about. */

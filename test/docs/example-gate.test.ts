@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { REPO_ROOT } from "../coverage/extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { scanFences } from "../../docs/.vitepress/example-markers.js";
 import { pageFindings } from "./example-gate.js";
 import { docsPages } from "./pages.js";

@@ -32,7 +32,7 @@
  * repository does not contain.
  */
 
-import { type PackageManifest } from "../coverage/extract.js";
+import { type PackageManifest } from "../../scripts/repo-facts.js";
 
 /**
  * The entry points that may reach one optional peer, and why it is theirs.

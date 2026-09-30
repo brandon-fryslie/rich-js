@@ -22,7 +22,7 @@ import { describe, it, expect } from "vitest";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import semver from "semver";
-import { REPO_ROOT, PACKAGE_MANIFEST } from "../coverage/extract.js";
+import { REPO_ROOT, PACKAGE_MANIFEST } from "../../scripts/repo-facts.js";
 import {
   nodeRange,
   treeFloor,

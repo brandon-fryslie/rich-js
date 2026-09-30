@@ -10,7 +10,8 @@
  */
 
 import ts from "typescript";
-import { collectPublicExports, makeProgram, repoRelative } from "../coverage/extract.js";
+import { repoRelative } from "../../scripts/repo-facts.js";
+import { collectPublicExports, makeProgram } from "../coverage/extract.js";
 
 /** An exported, constructible class whose instances are `Renderable`s. */
 export interface RenderableClass {

@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { REPO_ROOT, PACKAGE_MANIFEST } from "../coverage/extract.js";
+import { REPO_ROOT, PACKAGE_MANIFEST } from "../../scripts/repo-facts.js";
 
 const GUARD_RELATIVE = "scripts/verify-entry-points.mjs";
 const GUARD_PATH = path.join(REPO_ROOT, GUARD_RELATIVE);

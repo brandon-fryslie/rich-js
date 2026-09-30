@@ -12,7 +12,7 @@ import stripAnsi from "strip-ansi";
 import { cellLen } from "../../src/index.js";
 import { runInTerminal, type SimulatedTerminal } from "../../docs/.vitepress/simulated-process.js";
 import { bundleExample } from "../../docs/.vitepress/example-runner.js";
-import { REPO_ROOT } from "../coverage/extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { resolve } from "node:path";
 import { formatWithOptions } from "node:util";
 

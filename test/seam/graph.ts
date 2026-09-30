@@ -16,7 +16,7 @@
 import ts from "typescript";
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import { REPO_ROOT, isUnderSrc, loadCompilerOptions } from "../coverage/extract.js";
+import { REPO_ROOT, loadCompilerOptions, isUnderSrc } from "../../scripts/repo-facts.js";
 
 /**
  * A file the walk reached, with the import chain that reached it.

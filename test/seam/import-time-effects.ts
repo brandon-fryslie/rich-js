@@ -71,7 +71,7 @@
 
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT } from "../coverage/extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 
 /**
  * One reason importing a module is not free.

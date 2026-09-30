@@ -26,7 +26,7 @@
 
 import ts from "typescript";
 import path from "node:path";
-import { REPO_ROOT } from "../coverage/extract.js";
+import { REPO_ROOT } from "../../scripts/repo-facts.js";
 import { runtimeModuleSpecifiers } from "./graph.js";
 import { isNameSlot } from "./identifiers.js";
 import { classifySpecifier } from "./specifiers.js";

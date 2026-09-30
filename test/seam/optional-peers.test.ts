@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from "vitest";
 import path from "node:path";
-import { REPO_ROOT, ENTRY_BY_SPECIFIER, PACKAGE_MANIFEST } from "../coverage/extract.js";
+import { REPO_ROOT, ENTRY_BY_SPECIFIER, PACKAGE_MANIFEST } from "../../scripts/repo-facts.js";
 import { reachableSourceModules, parseSourceFile, runtimeModuleSpecifiers } from "./graph.js";
 import { classifySpecifier } from "./specifiers.js";
 import {

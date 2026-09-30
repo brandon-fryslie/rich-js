@@ -41,7 +41,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, copyFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { REPO_ROOT, PACKAGE_MANIFEST } from "../coverage/extract.js";
+import { REPO_ROOT, PACKAGE_MANIFEST } from "../../scripts/repo-facts.js";
 
 const GUARD_RELATIVE = "scripts/verify-release-tag.mjs";
 const GUARD_PATH = path.join(REPO_ROOT, GUARD_RELATIVE);
