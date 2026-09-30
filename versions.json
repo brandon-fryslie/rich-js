@@ -4,15 +4,22 @@
     {
       "version": "pr-236",
       "ref": "refs/pull/236/merge",
-      "sha": "ce67aaef96667f6d704cf9dba0b3d7d213c406b3",
-      "timestamp": "2026-09-30T04:40:13.309Z",
+      "sha": "1041ed76502abbc4ff896a5f6803d26b81106ce2",
+      "timestamp": "2026-09-30T04:44:53.614Z",
       "commits": [
         {
-          "sha": "ce67aaef96667f6d704cf9dba0b3d7d213c406b3",
+          "sha": "1041ed76502abbc4ff896a5f6803d26b81106ce2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T22:39:20-06:00",
-          "message": "Merge 6aec5028a48fb9878ad0d3b297d3c255c211c94e into 6a22776a4fe0312f3b62b199d324635ddc0305fb\n"
+          "timestamp": "2026-09-30T04:44:02Z",
+          "message": "Merge 1c073c62eee4a9090c0e0f393f63f45453f90c84 into 6a22776a4fe0312f3b62b199d324635ddc0305fb\n"
+        },
+        {
+          "sha": "1c073c62eee4a9090c0e0f393f63f45453f90c84",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:43:57-06:00",
+          "message": "test(types): the NodeJS probe imports every entry; fixtures name Env (rich-types-42o)\n\nReview pass (high) on #236:\n- The guard probe imported nothing, so Node types leaked through a symlinked\n  peer's reference directive left it failing for the wrong reason. It now\n  imports every browser entry first; reproduced with a scratch peer: old probe\n  exit 2, new probe exit 0.\n- Consumer tsconfig pins noUncheckedSideEffectImports rather than trusting\n  TypeScript's default to make an unresolved entry an error.\n- ambient-process.test.ts draws the airlock through isBehindNodeAirlock.\n- Test fixtures standing in for the public API annotate Env, not ProcessEnv.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "6aec5028a48fb9878ad0d3b297d3c255c211c94e",
