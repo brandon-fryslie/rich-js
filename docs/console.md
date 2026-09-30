@@ -566,13 +566,30 @@ new Console().print(new RichText(`${page}\n${red}`));
 
 Every style attribute is written into the page, including reverse, dim, blink, frame and encircle; blink holds still for a reader whose system asks for reduced motion. A link becomes an `<a>` element only when its scheme is on a short allowlist of web, mail and file schemes; any other link, such as `javascript:`, exports as its styled text alone, because an exported page is made to be published.
 
+`exportSvg` draws the recording as a picture of a terminal window: rounded chrome with three buttons and a title, every character on the cell it filled in the terminal, and text a reader can still select and copy. It follows the same rules as `exportHtml` — the same `theme` option, the same attributes, the same link allowlist — and adds `title`, the text in the window's title bar, which defaults to `"Rich"`.
+
+Without a theme, the window is white on black, the same as the page. `SVG_EXPORT_THEME` is the palette Python Rich draws its screenshots in; pass it to get that look.
+
+```typescript
+import { SVG_EXPORT_THEME } from "@promptctl/rich-js";
+
+console.print(new Panel("[bold]Hello![/bold] 漢字", { title: "wide characters" }));
+const svg = console.exportSvg({ theme: SVG_EXPORT_THEME, title: "hello.ts" });
+
+// The document's opening tag, and the window's title
+const open = /<svg[^>]*>/.exec(svg)?.[0];
+const title = /<text[^>]*>hello\.ts<\/text>/.exec(svg)?.[0];
+new Console().print(new RichText(`${open}\n${title}`));
+```
+
 To persist the exported output to disk, use the node-only helpers from the `node/save` subpath:
 
 ```typescript node
-import { saveText, saveHtml } from "@promptctl/rich-js/node/save";
+import { saveText, saveHtml, saveSvg } from "@promptctl/rich-js/node/save";
 
 saveText(console, "output.txt");
 saveHtml(console, "output.html");
+saveSvg(console, "output.svg", { theme: SVG_EXPORT_THEME });
 ```
 
 These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. Each takes the same options as the export it writes, so `saveHtml(console, "output.html", { theme: SOLARIZED_LIGHT })` saves the themed page. The recording buffer is cleared after writing by default; pass `{ clear: false }` to preserve it for a second export (e.g. saving both `.txt` and `.html` from the same recorded run).
