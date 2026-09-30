@@ -4,15 +4,22 @@
     {
       "version": "pr-255",
       "ref": "refs/pull/255/merge",
-      "sha": "1e522f348c61e87d50119b79981c01d02d8d43e5",
-      "timestamp": "2026-09-30T12:47:55.748Z",
+      "sha": "d625bf46108f579d0b62a1406274344ea6169dc3",
+      "timestamp": "2026-09-30T13:00:48.907Z",
       "commits": [
         {
-          "sha": "1e522f348c61e87d50119b79981c01d02d8d43e5",
+          "sha": "d625bf46108f579d0b62a1406274344ea6169dc3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:47:09-06:00",
-          "message": "Merge 67b293e117e8c761b061be252798a716862f4ff6 into d2cc10e93b4fe71b1c5431bb942f203177a620d2\n"
+          "timestamp": "2026-09-30T12:59:41Z",
+          "message": "Merge 35a3bf17d913ffeec2fd4499779d92513bf2a27c into d2cc10e93b4fe71b1c5431bb942f203177a620d2\n"
+        },
+        {
+          "sha": "35a3bf17d913ffeec2fd4499779d92513bf2a27c",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T06:59:36-06:00",
+          "message": "fix(widgets): padding and disabled cells take the palette ground too (rich-widgets-73e)\n\nReview pass (high): a multiline TextInput's padding and blank rows, and every\ndisabled state, still let the terminal's background through. The theme moves\nonto ThemedWidget, whose ground pads every row; StaticItem keeps no ground.\nDisabled cells draw in foreground-muted on background. Accent glyphs on the\nbackground use text-primary. The contrast test now checks the ground under\nevery cell, disabled states included.\n"
         },
         {
           "sha": "67b293e117e8c761b061be252798a716862f4ff6",
