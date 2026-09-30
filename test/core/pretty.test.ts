@@ -463,6 +463,16 @@ describe("Pretty", () => {
     it("draws none on an ASCII-only console, as the reference does", () => {
       const text = new Pretty({ a: 1 }, { expandAll: true, indentGuides: true }).toText({ maxWidth: 80, asciiOnly: true });
       expect(text.plain).toBe("{\n    a: 1\n}");
+      expect(guideRuns(text)).toEqual([]);
+    });
+
+    // A key that wraps moves its value onto the key's own hang, which is the
+    // key's continuation and not a level of the data.
+    it("gives a value after a wrapped key its slot's guides and no more", () => {
+      expect(guided({ kkkkkkkkkkkkkkkkkkkk: "aa bb cc dd ee ff" }, 16).plain.split("\n")).toEqual([
+        "{", "│   kkkkkkkkkk", "│       kkkkkk", "│       kkkk:",
+        '│           "aa', "│           bb", "│           cc", "│           dd", "│           ee", '│           ff"', "}",
+      ]);
     });
 
     // A row that looks empty can still be continued — here by the `,` that
@@ -472,6 +482,18 @@ describe("Pretty", () => {
         .toBe(["[", "│   x", "│   ,", "│   2", "]"].join("\n"));
       expect(guided({ "a\n": 1 }, 80, { expandAll: true }).plain)
         .toBe(["{", "│   a", "│   : 1", "}"].join("\n"));
+    });
+
+    it("leaves a blank row empty when guides are off", () => {
+      const text = new Pretty([{ toString: () => "top\n\nbottom" }], { expandAll: true }).toText({ maxWidth: 80 });
+      expect(text.plain.split("\n")).toEqual(["[", "    top", "", "        bottom", "]"]);
+    });
+
+    // What continues a blank row sits inside the structure. At column 0 it was
+    // left of the slot, and a row hung from there came before the margin.
+    it("lays out a value continuing a blank row inside its slot", () => {
+      expect(new Pretty({ "a\n": "bb cc dd ee" }).toText({ maxWidth: 11 }).plain)
+        .toBe(["{", "    a", '    : "bb', "      cc dd", '      ee"', "}"].join("\n"));
     });
 
     it("draws none with no indent to stand in", () => {

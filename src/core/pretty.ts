@@ -105,6 +105,11 @@ const reprHighlighter = new ReprHighlighter();
  * or the container's own trailing `,` landed after it — the same failure as
  * the untracked-key bug, mirrored onto the other side of the value.
  *
+ * `margin` is the indent the structure gives the slot this value is in, and so
+ * where an indent guide may stand on the value's continuation rows. It is not
+ * `inset`: a key that wraps moves `inset` to its own hang, which is the key's
+ * continuation and not a level of the data.
+ *
  * `hang` is where a continuation line of this value's own text begins — one
  * indent past `inset`, so a wrapped string or a multi-line
  * `toString` reads as belonging to its key rather than as the next key.
@@ -122,6 +127,7 @@ const reprHighlighter = new ReprHighlighter();
  */
 interface Frame {
   readonly inset: number;
+  readonly margin: number;
   readonly level: number;
   readonly maxWidth: number;
   readonly column: number;
@@ -132,6 +138,7 @@ interface Frame {
 
 const rootFrame = (maxWidth: number): Frame => ({
   inset: 0,
+  margin: 0,
   level: 0,
   maxWidth,
   column: 0,
@@ -179,7 +186,8 @@ interface Laid extends Lines {
  * place that knows it, and pieces are joined with `cat`, which keeps each margin
  * with its line. [LAW:one-source-of-truth] text reaches a new line only through
  * `newline`, so there is no newline without a margin, and every margin is
- * written as spaces: a line that looks empty may still be continued.
+ * written: a line that looks blank may still be continued, by a `,` or a key's
+ * value, and what continues it belongs inside the structure.
  */
 interface Lines {
   readonly text: string;
@@ -196,7 +204,9 @@ const newline = (margin: number): Lines => ({ text: "\n" + " ".repeat(margin), m
 const placed = (lines: Lines, inset: number): Laid => ({ text: lines.text, margins: lines.margins, inset });
 
 const cat = (...parts: Lines[]): Lines => ({
-  text: parts.map((part) => part.text).join(""),
+  // `+`, not `join`: a concatenation is left unflattened until it is read, and
+  // each level of the data would otherwise copy the whole of its subtree's text.
+  text: parts.reduce((text, part) => text + part.text, ""),
   margins: parts.flatMap((part) => part.margins),
 });
 
@@ -219,25 +229,31 @@ function expansion(lead: Lines, shape: Container, parts: readonly Lines[], inner
  * separate them goes with it — spaces only, as a line break carries a margin.
  */
 function follow(out: Lines, laid: Lines, tail: string): Lines {
-  const before = laid.text.startsWith("\n") ? { text: out.text.replace(/ +$/, ""), margins: out.margins } : out;
-  return cat(before, laid, flat(tail));
+  let end = out.text.length;
+  while (laid.text.startsWith("\n") && out.text[end - 1] === " ") end--;
+  return cat({ text: out.text.slice(0, end), margins: out.margins }, laid, flat(tail));
 }
 
 /**
- * `lines` with a guide in the first cell of each indent of every margin, as the
- * reference's `with_indent_guides` draws it, and where each run of guides is. A
- * guide takes the place of a space, so the text keeps its length.
+ * `lines` as it is shown, and where each run of guides is. A line with nothing
+ * past its margin is blank, and loses the spaces its margin was written as.
+ * With a `guide`, each indent of every margin has one in its first cell, as
+ * the reference's `with_indent_guides` draws it, blank lines included, so the
+ * rule runs unbroken. [LAW:dataflow-not-control-flow] no guide is `null`, and
+ * the same pass runs either way.
  */
-function withGuides(lines: Lines, indent: number, guide: string): { plain: string; guides: Array<[number, number]> } {
+function drawMargins(lines: Lines, indent: number, guide: string | null): { plain: string; guides: Array<[number, number]> } {
   const [first, ...rest] = lines.text.split("\n");
   const guides: Array<[number, number]> = [];
   let offset = first!.length;
   const rows = rest.map((line, i) => {
     const margin = lines.margins[i]!;
-    const drawn = Array.from({ length: margin }, (_, cell) => (cell % indent === 0 ? guide : " ")).join("");
+    const content = line.slice(margin);
     offset += 1;
-    guides.push([offset, offset + margin]);
-    const row = drawn + line.slice(margin);
+    if (guide !== null && margin > 0) guides.push([offset, offset + margin]);
+    const row = guide === null
+      ? (content === "" ? "" : line)
+      : Array.from({ length: margin }, (_, cell) => (cell % indent === 0 ? guide : " ")).join("") + content;
     offset += row.length;
     return row;
   });
@@ -543,10 +559,10 @@ export class Pretty implements Renderable, Measurable {
   /** The value laid out for `options.maxWidth` and highlighted: the text this renders. */
   toText(options: RenderOptions): RichText {
     const laid = this._format(this.data, rootFrame(options.maxWidth));
-    // The reference draws no guide on an ASCII-only console: a blank one here.
-    const { plain, guides } = this.indentGuides
-      ? withGuides(laid, this.indent, drawable(options, "│", " "))
-      : { plain: laid.text, guides: [] };
+    // The reference draws no guide at all on an ASCII-only console, so there is
+    // no ASCII glyph to fall back to: `null` is none.
+    const guide = this.indentGuides ? drawable<string | null>(options, "│", null, (g) => g ?? "") : null;
+    const { plain, guides } = drawMargins(laid, this.indent, guide);
     const text = new RichText(plain, { end: "" });
     this.highlighter.highlight(text);
     for (const [start, end] of guides) text.stylize("repr.indent", start, end);
@@ -774,7 +790,7 @@ export class Pretty implements Renderable, Measurable {
     // below, on the same line as whatever its own last character was — the
     // last slot doesn't. Two frames, not one per slot: `reserve` is the only
     // field that varies, and it only ever takes these two values.
-    const base = this._onLine({ ...at, level: at.level + 1, column: innerIndent }, innerIndent);
+    const base = this._onLine({ ...at, level: at.level + 1, column: innerIndent, margin: innerIndent }, innerIndent);
     const midFrame: Frame = { ...base, reserve: cellLen(EXPAND_SEPARATOR) };
     const lastFrame: Frame = { ...base, reserve: 0 };
     const lastSlot = shape.slots.length - 1;
@@ -904,7 +920,7 @@ export class Pretty implements Renderable, Measurable {
       : rowsOf(line, stayingLength(line, room(i, hang), false), room(i, hang)));
     // A row hangs past its slot's margin, not at a margin of its own: the
     // cells between are the value's, and a guide there would sit inside it.
-    const hung = rows.map((row) => cat(newline(at.inset), flat(row === "" ? "" : " ".repeat(hang - at.inset) + row)));
+    const hung = rows.map((row) => cat(newline(at.margin), flat(row === "" ? "" : " ".repeat(hang - at.margin) + row)));
     return placed(cat(flat(first!), ...hung), rows.length === 0 ? at.inset : hang);
   }
 
