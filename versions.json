@@ -4,15 +4,22 @@
     {
       "version": "pr-247",
       "ref": "refs/pull/247/merge",
-      "sha": "9572b187523174bdd35c6646c29089cc4c4a1b1b",
-      "timestamp": "2026-09-30T09:34:55.300Z",
+      "sha": "32f574099486fac43937cdb438c0abc3e8557214",
+      "timestamp": "2026-09-30T09:44:37.246Z",
       "commits": [
         {
-          "sha": "9572b187523174bdd35c6646c29089cc4c4a1b1b",
+          "sha": "32f574099486fac43937cdb438c0abc3e8557214",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T03:33:52-06:00",
-          "message": "Merge 62763a6b3d8871044c2da1223c6bf66225228110 into 4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7\n"
+          "timestamp": "2026-09-30T09:43:42Z",
+          "message": "Merge 1367dd1e90fee070c13e77de504dabef4d5f065e into 4cfb2871afd1cce8ab7bfa0200f2ea8809683cf7\n"
+        },
+        {
+          "sha": "1367dd1e90fee070c13e77de504dabef4d5f065e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T03:43:37-06:00",
+          "message": "fix(layout): exact least row budget, linear re-share, cell-count edges (rich-layout-xvv)\n\nReview round 1 (high):\n- ratioBudget is now the least total at which ratioResolve reaches every want,\n  searched from a derived lower bound and checked against the split itself;\n  the floor-inverse overshot by a cell under carried rounding (\"left\"|\"right\"\n  measured 10, fits 9).\n- An unbounded want returns Infinity before any BigInt conversion, restoring\n  withBoundedWidth's error for a row holding an unmeasurable pane.\n- The re-share keeps its weight sum as a running total: 2000 panes 3.8s -> 15ms.\n- Edge.size/minimumSize are CellCol; Layout's getters return the parsed brand.\n- ratioResolve documents size 0 as a departure from Rich (`edge.size or None`).\n"
         },
         {
           "sha": "62763a6b3d8871044c2da1223c6bf66225228110",
