@@ -425,8 +425,8 @@ describe("Console.print()", () => {
     });
 
     it("emits no styling for data when highlighting is off", () => {
-      // Indent guides are styling, so `highlight: false` has to reach them too;
-      // otherwise a wrapped object still emits ANSI the caller declined.
+      // `highlight: false` has to reach every line of a wrapped object, or it
+      // still emits ANSI the caller declined.
       const wide: Record<string, number> = {};
       for (let i = 0; i < 12; i++) wide[`key_${i}`] = i;
       const { console: c, chunks } = makeConsole({ colorSystem: "truecolor" });

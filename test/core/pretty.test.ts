@@ -420,18 +420,29 @@ describe("Pretty", () => {
 
   // --- Indent Guides ---
 
-  it("indent guides are enabled by default", () => {
-    // indentGuides defaults to true per spec
-    const p = new Pretty({ a: [1, 2] }, { expandAll: true });
-    const text = collectText(p, { maxWidth: 40 });
-    // Should render without error; guides are visual
-    expect(text).toContain("a");
+  it("draws a guide at each level of indent, styled repr.indent", () => {
+    const text = new Pretty({ a: { b: { c: 1 } } }, { expandAll: true }).toText({ maxWidth: 80 });
+    expect(text.plain).toBe(
+      ["{", "│   a: {", "│   │   b: {", "│   │   │   c: 1", "│   │   }", "│   }", "}"].join("\n"),
+    );
+    const guided = text.spans.filter((s) => s.style === "repr.indent").map((s) => text.plain.slice(s.start, s.end));
+    expect(guided).toEqual(["│   ", "│   │   ", "│   │   │   ", "│   │   ", "│   "]);
   });
 
-  it("indent guides can be disabled", () => {
-    const p = new Pretty({ a: [1, 2] }, { expandAll: true, indentGuides: false });
-    const text = collectText(p, { maxWidth: 40 });
-    expect(text).toContain("a");
+  it("draws a guide per indent of the width it is given", () => {
+    const text = new Pretty({ a: [1] }, { expandAll: true, indent: 2 }).toText({ maxWidth: 80 });
+    expect(text.plain).toBe(["{", "│ a: [", "│ │ 1", "│ ]", "}"].join("\n"));
+  });
+
+  it("draws the guide in ASCII when the output is ASCII-only", () => {
+    const text = new Pretty({ a: 1 }, { expandAll: true }).toText({ maxWidth: 80, asciiOnly: true });
+    expect(text.plain).toBe("{\n|   a: 1\n}");
+  });
+
+  it("leaves the indent blank when guides are off", () => {
+    const text = new Pretty({ a: 1 }, { expandAll: true, indentGuides: false }).toText({ maxWidth: 80 });
+    expect(text.plain).toBe("{\n    a: 1\n}");
+    expect(text.spans.some((s) => s.style === "repr.indent")).toBe(false);
   });
 
   // An object either carries its own string form or it does not, and the two

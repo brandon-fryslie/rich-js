@@ -88,11 +88,12 @@ Put the options where they belong — `new Pretty([1, 2, 3], { expandAll: true }
 
 ## Indentation and guides
 
-`indent` is the number of spaces per level and defaults to 4. `indentGuides` defaults to `true` and styles the first space of each level `dim green`. The guide is a styled space, not a line-drawing character, and the style is a foreground colour, which a space does not draw — so the guide leaves no visible mark, in a terminal or in plain text.
+`indent` is the number of spaces per level and defaults to 4. `indentGuides` defaults to `true` and draws a `│` in the first cell of each level, styled `repr.indent` (`dim green`); on an ASCII-only console the guide is `|`. `console.print` formats a value it is handed directly without guides, as Rich's does — construct the `Pretty` yourself to get them.
 
 ```typescript
 const user = { name: "Alice", metadata: { active: true } };
 
+console.print(new Pretty(user, { indent: 2, expandAll: true }));
 console.print(new Pretty(user, { indent: 2, indentGuides: false, expandAll: true }));
 ```
 

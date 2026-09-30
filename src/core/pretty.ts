@@ -23,6 +23,7 @@ import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
+import { drawable } from "./protocol.js";
 import type {
   Renderable,
   Measurable,
@@ -466,7 +467,7 @@ export class Pretty implements Renderable, Measurable {
     this.highlighter.highlight(text);
 
     if (this.indentGuides) {
-      this._addIndentGuides(text);
+      this._addIndentGuides(text, drawable(options, "│", "|"));
     }
 
     return text;
@@ -897,17 +898,27 @@ export class Pretty implements Renderable, Measurable {
     return fitOneLine(out, at.budget);
   }
 
-  private _addIndentGuides(text: RichText): void {
-    const lines = text.plain.split("\n");
+  /**
+   * Each whole indent a line starts with drawn as a guide, `guide` in its first
+   * cell and styled `repr.indent`, as the reference's `with_indent_guides` draws
+   * it. A guide stands in for a space cell for cell, so the text keeps its
+   * length and every span the highlighter laid stays where it was.
+   */
+  private _addIndentGuides(text: RichText, guide: string): void {
+    const drawn: Array<[number, number]> = [];
     let offset = 0;
-    for (const line of lines) {
-      const leadingSpaces = line.length - line.trimStart().length;
-      for (let i = 0; i < leadingSpaces; i += this.indent) {
-        if (i + offset < text.length) {
-          text.stylize("repr.indent", offset + i, offset + i + 1);
-        }
-      }
-      offset += line.length + 1; // +1 for newline
-    }
+    text.plain = text.plain
+      .split("\n")
+      .map((line) => {
+        // A line of nothing but spaces has no content to guide the eye to: -1.
+        const levels = Math.max(0, Math.floor(line.search(/[^ ]/) / this.indent));
+        const guides = Array.from({ length: levels }, () => guide.padEnd(this.indent)).join("");
+        drawn.push([offset, offset + guides.length]);
+        offset += line.length + 1;
+        return guides + line.slice(guides.length);
+      })
+      .join("\n");
+    for (const [start, end] of drawn) text.stylize("repr.indent", start, end);
   }
+
 }
