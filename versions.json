@@ -4,15 +4,22 @@
     {
       "version": "pr-278",
       "ref": "refs/pull/278/merge",
-      "sha": "0546e9696ea56f7db8776bb0a086d846473d9e1e",
-      "timestamp": "2026-09-30T21:25:28.371Z",
+      "sha": "bc5694fca31acc760cc8f337389ac137cc76801e",
+      "timestamp": "2026-09-30T21:32:22.962Z",
       "commits": [
         {
-          "sha": "0546e9696ea56f7db8776bb0a086d846473d9e1e",
+          "sha": "bc5694fca31acc760cc8f337389ac137cc76801e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T15:24:07-06:00",
-          "message": "Merge 5c8678fe8c1f2ea98494a12d5f70c54cc8001c79 into b313b89a9f7b4fc9f43fc73a9f7473ef2bb4f88c\n"
+          "timestamp": "2026-09-30T21:31:35Z",
+          "message": "Merge 01d9b2cf0068b1f50920e98afb2664b66353e700 into b313b89a9f7b4fc9f43fc73a9f7473ef2bb4f88c\n"
+        },
+        {
+          "sha": "01d9b2cf0068b1f50920e98afb2664b66353e700",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T15:31:31-06:00",
+          "message": "review(render): osc8 names the per-segment encoder; a divergence's needle is asserted (rich-render-g5g8)\n"
         },
         {
           "sha": "5c8678fe8c1f2ea98494a12d5f70c54cc8001c79",
