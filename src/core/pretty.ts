@@ -23,6 +23,7 @@ import { Segment } from "./segment.js";
 import { RichText } from "./text.js";
 import { ReprHighlighter } from "./highlighter.js";
 import type { Highlighter } from "./highlighter.js";
+import { drawable } from "./protocol.js";
 import type {
   Renderable,
   Measurable,
@@ -177,7 +178,8 @@ interface Laid extends Lines {
  * the value. So a line's margin is recorded where the line is started, the only
  * place that knows it, and pieces are joined with `cat`, which keeps each margin
  * with its line. [LAW:one-source-of-truth] text reaches a new line only through
- * `newline` or `_place`, so there is no newline without a margin.
+ * `newline`, so there is no newline without a margin, and every margin is
+ * written as spaces: a line that looks empty may still be continued.
  */
 interface Lines {
   readonly text: string;
@@ -224,15 +226,15 @@ function follow(out: Lines, laid: Lines, tail: string): Lines {
 /**
  * `lines` with a guide in the first cell of each indent of every margin, as the
  * reference's `with_indent_guides` draws it, and where each run of guides is. A
- * guide takes the place of a space, so only a blank line grows.
+ * guide takes the place of a space, so the text keeps its length.
  */
-function withGuides(lines: Lines, indent: number): { plain: string; guides: Array<[number, number]> } {
+function withGuides(lines: Lines, indent: number, guide: string): { plain: string; guides: Array<[number, number]> } {
   const [first, ...rest] = lines.text.split("\n");
   const guides: Array<[number, number]> = [];
   let offset = first!.length;
   const rows = rest.map((line, i) => {
     const margin = lines.margins[i]!;
-    const drawn = Array.from({ length: margin }, (_, cell) => (cell % indent === 0 ? "│" : " ")).join("");
+    const drawn = Array.from({ length: margin }, (_, cell) => (cell % indent === 0 ? guide : " ")).join("");
     offset += 1;
     guides.push([offset, offset + margin]);
     const row = drawn + line.slice(margin);
@@ -541,8 +543,9 @@ export class Pretty implements Renderable, Measurable {
   /** The value laid out for `options.maxWidth` and highlighted: the text this renders. */
   toText(options: RenderOptions): RichText {
     const laid = this._format(this.data, rootFrame(options.maxWidth));
-    const { plain, guides } = this.indentGuides && options.asciiOnly !== true
-      ? withGuides(laid, this.indent)
+    // The reference draws no guide on an ASCII-only console: a blank one here.
+    const { plain, guides } = this.indentGuides
+      ? withGuides(laid, this.indent, drawable(options, "│", " "))
       : { plain: laid.text, guides: [] };
     const text = new RichText(plain, { end: "" });
     this.highlighter.highlight(text);
@@ -901,9 +904,7 @@ export class Pretty implements Renderable, Measurable {
       : rowsOf(line, stayingLength(line, room(i, hang), false), room(i, hang)));
     // A row hangs past its slot's margin, not at a margin of its own: the
     // cells between are the value's, and a guide there would sit inside it.
-    const hung = rows.map((row) => row === ""
-      ? { text: "\n", margins: [at.inset] }
-      : cat(newline(at.inset), flat(" ".repeat(hang - at.inset) + row)));
+    const hung = rows.map((row) => cat(newline(at.inset), flat(row === "" ? "" : " ".repeat(hang - at.inset) + row)));
     return placed(cat(flat(first!), ...hung), rows.length === 0 ? at.inset : hang);
   }
 

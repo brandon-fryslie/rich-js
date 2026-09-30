@@ -465,6 +465,15 @@ describe("Pretty", () => {
       expect(text.plain).toBe("{\n    a: 1\n}");
     });
 
+    // A row that looks empty can still be continued — here by the `,` that
+    // separates it from the next element — so its margin is spaces like any other.
+    it("keeps what follows a value that ends its own line", () => {
+      expect(guided([{ toString: () => "x\n" }, 2], 80, { expandAll: true }).plain)
+        .toBe(["[", "│   x", "│   ,", "│   2", "]"].join("\n"));
+      expect(guided({ "a\n": 1 }, 80, { expandAll: true }).plain)
+        .toBe(["{", "│   a", "│   : 1", "}"].join("\n"));
+    });
+
     it("draws none with no indent to stand in", () => {
       expect(guided({ a: { toString: () => "x\n  y" } }, 80, { expandAll: true, indent: 0 }).plain)
         .toBe(["{", "a: x", "  y", "}"].join("\n"));
