@@ -163,15 +163,32 @@ describe("encodeSvg looks", () => {
 });
 
 describe("encodeSvg chrome", () => {
+  const frame = (document: string) => {
+    const [, fill, stroke] = /<rect fill="([^"]+)" stroke="([^"]+)"/.exec(document)!;
+    return { fill, stroke };
+  };
+
   it("paints the window in the theme's canvas and titles it in the theme's ink", () => {
     const document = encodeSvg([new Segment("x")], { theme: SOLARIZED_LIGHT, title: "Rich", width: 10 });
-    expect(document).toContain(`<rect fill="${SOLARIZED_LIGHT.backgroundColor.hex}" stroke="rgba(255,255,255,0.35)"`);
+    expect(frame(document).fill).toBe(SOLARIZED_LIGHT.backgroundColor.hex);
     expect(document).toMatch(new RegExp(`fill="${SOLARIZED_LIGHT.foregroundColor.hex}" text-anchor="middle"[^>]*>Rich</text>`));
+  });
+
+  it("frames the window in an opaque colour that shows against a light canvas", () => {
+    const { fill, stroke } = frame(encodeSvg([new Segment("x")], { theme: SOLARIZED_LIGHT, title: "Rich", width: 10 }));
+    expect(stroke).toMatch(/^#[0-9a-f]{6}$/);
+    expect(stroke).not.toBe(fill);
+  });
+
+  it("frames a black canvas in the colour Rich's white-at-35% stroke composites to", () => {
+    const { fill, stroke } = frame(encodeSvg([new Segment("x")], { title: "Rich", width: 10 }));
+    expect(fill).toBe("#000000");
+    expect(stroke).toBe("#595959");
   });
 
   it("centres the title on the window, not on the margin before it", () => {
     const document = styled("none");
-    const window = /<rect fill="[^"]+" stroke="rgba[^"]+" stroke-width="1" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/.exec(document)!;
+    const window = /<rect[^>]* x="([\d.]+)"[^>]* width="([\d.]+)"[^>]* rx="8"/.exec(document)!;
     const title = /text-anchor="middle" x="([\d.]+)"/.exec(document)!;
     expect(Number(title[1])).toBe(Number(window[1]) + Number(window[2]) / 2);
   });
@@ -179,7 +196,7 @@ describe("encodeSvg chrome", () => {
   it("falls back to the canvas export-lines resolves runs over", () => {
     const { background, foreground } = exportCanvas();
     const document = encodeSvg([new Segment("x")], { title: "Rich", width: 10 });
-    expect(document).toContain(`<rect fill="${background.hex}" stroke=`);
+    expect(frame(document).fill).toBe(background.hex);
     expect(document).toContain(`fill="${foreground.hex}" text-anchor="middle"`);
   });
 

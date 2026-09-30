@@ -9,16 +9,21 @@
  *
  * The geometry is Rich's — a 20px character, a cell 0.61 of that wide, a row
  * 1.22 of it tall, the same margin and padding — so a screenshot of the same
- * program matches the library this ports. What is not Rich's is how a glyph
- * lands on its cell. The exporter has no font engine and does not know which
- * font the viewer will draw with, so no advance width can be trusted: a CJK
- * character drawn from a fallback font is rarely two cells, and every glyph
- * after it on the row drifts. So every chunk of a run is anchored at its own
- * column and stretched to its own cells with `textLength`, and alignment is
- * guaranteed by the numbers written here rather than by the font. Measured in
- * headless Chromium on `"ab漢字cd😀ef é̂x"`: Rich's `textLength` (cell width ×
- * string length) was off by up to 12px, one `<text>` a run by 3.9px, this
- * chunking by 0.
+ * program matches the library this ports. The frame's colour is not Rich's:
+ * Rich strokes it white at 35% whatever the theme, which vanishes around a
+ * light canvas. Here it is the theme's ink blended 35% into the canvas — over
+ * a black canvas the colour Rich draws — and opaque, so the half of the stroke
+ * lying outside the canvas does not take on the colour of the page around it.
+ *
+ * Nor is how a glyph lands on its cell. The exporter has no font engine and
+ * does not know which font the viewer will draw with, so no advance width can
+ * be trusted: a CJK character drawn from a fallback font is rarely two cells,
+ * and every glyph after it on the row drifts. So every chunk of a run is
+ * anchored at its own column and stretched to its own cells with
+ * `textLength`, and alignment is guaranteed by the numbers written here rather
+ * than by the font. Measured in headless Chromium on `"ab漢字cd😀ef é̂x"`:
+ * Rich's `textLength` (cell width × string length) was off by up to 12px, one
+ * `<text>` a run by 3.9px, this chunking by 0.
  *
  * Decorations are rectangles, not CSS `text-decoration`: SVG has no reliable
  * double underline, and one `text-decoration` property cannot hold an
@@ -26,7 +31,7 @@
  */
 
 import { cellLen, graphemes } from "./cells.js";
-import type { TerminalTheme } from "./color.js";
+import { blendRgb, type TerminalTheme } from "./color.js";
 import type { Segment } from "./segment.js";
 import { fnv1a } from "./fnv1a.js";
 import {
@@ -52,6 +57,8 @@ const CELL_HEIGHT = LINE_HEIGHT + 0.25;
 const LINE_THICKNESS = 1.5;
 
 const FONT_FAMILY = `"Fira Code", Menlo, Consolas, "DejaVu Sans Mono", monospace`;
+
+const FRAME_FADE = 0.35;
 
 const WINDOW_BUTTONS = ["#ff5f57", "#febc2e", "#28c840"] as const;
 
@@ -249,7 +256,7 @@ export function encodeSvg(segments: Iterable<Segment>, { theme, title, width }: 
   return [
     `<svg class="rich-terminal" viewBox="0 0 ${n(terminalWidth + 2 * MARGIN)} ${n(terminalHeight + 2 * MARGIN)}" xmlns="http://www.w3.org/2000/svg">`,
     `<style>\n${stylesheet}\n</style>`,
-    `<rect fill="${canvas.background.hex}" stroke="rgba(255,255,255,0.35)" stroke-width="1" ` +
+    `<rect fill="${canvas.background.hex}" stroke="${blendRgb(canvas.background, canvas.foreground, FRAME_FADE).hex}" stroke-width="1" ` +
       `x="${MARGIN}" y="${MARGIN}" width="${n(terminalWidth)}" height="${n(terminalHeight)}" rx="8"/>`,
     `<text class="${id}-title" fill="${canvas.foreground.hex}" text-anchor="middle" ` +
       `x="${n(MARGIN + terminalWidth / 2)}" y="${MARGIN + CHAR_HEIGHT + 6}">${escapeText(title)}</text>`,
