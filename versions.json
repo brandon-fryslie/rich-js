@@ -4,15 +4,22 @@
     {
       "version": "pr-257",
       "ref": "refs/pull/257/merge",
-      "sha": "a5b1cb34f7f0b4e7198009c66f61498975906965",
-      "timestamp": "2026-09-30T14:00:35.288Z",
+      "sha": "2cf05ccd43f41802320194691e58507c66732624",
+      "timestamp": "2026-09-30T14:12:28.188Z",
       "commits": [
         {
-          "sha": "a5b1cb34f7f0b4e7198009c66f61498975906965",
+          "sha": "2cf05ccd43f41802320194691e58507c66732624",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:59:37Z",
-          "message": "Merge e817063d3c3531c62124f5045363737f5e9fc828 into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+          "timestamp": "2026-09-30T14:11:16Z",
+          "message": "Merge 6a6e5952a24a08656e59fd20c456745bb93f7b72 into 269bb905ddd86ca223005a6d94b65e23ec63809b\n"
+        },
+        {
+          "sha": "6a6e5952a24a08656e59fd20c456745bb93f7b72",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T08:11:12-06:00",
+          "message": "fix(pretty): a hanging row's guides are its slot's; margins always written (rich-pretty-v7b)\n\nFrame carries the slot's margin, so a value after a wrapped key gets its\nslot's guides and a hanging row can no longer start left of it (the\nnegative repeat). Every margin is written and a line with nothing past it\nis cleared in the one final pass, so blank rows keep no trailing spaces.\nAn ASCII-only console gets no guide spans at all; the trailing-space trim\nscans back instead of backtracking.\n\nNot taken: copying margins per level (toText at 1000 levels 520ms vs\nmaster's 435ms; the render around it is ~40s either way).\n\nAddresses the step-12 /code-review high on PR #257.\n"
         },
         {
           "sha": "e817063d3c3531c62124f5045363737f5e9fc828",
