@@ -362,7 +362,7 @@ const html = console.exportHtml({ theme: SOLARIZED_LIGHT, clear: false });
 saveSvg(console, "output.svg", { theme: SVG_EXPORT_THEME });
 ```
 
-Each export clears the recording unless passed `clear: false`. `exportHtml` and `exportSvg` take a terminal theme; `SVG_EXPORT_THEME` is Python Rich's screenshot palette, and without a theme both draw white on black. `saveText`, `saveHtml` and `saveSvg` live on the `node/save` subpath because they import `node:fs`; the main barrel stays browser-safe.
+`saveText`, `saveHtml` and `saveSvg` live on the `node/save` subpath because they import `node:fs`; the main barrel stays browser-safe. The [console guide](https://brandon-fryslie.github.io/rich-js/master/console#exporting) covers what each export draws, the themes it takes, and when it clears the recording.
 
 ## Demos
 
@@ -385,7 +385,7 @@ npm run demo
 | `npm run demo-inputs` | rich-config | The widgets — checkbox, toggle, slider, dropdown, text input, button — driving a theme and palette viewer. |
 | `npm run demo:dropdown` | dropdown-demo | Three `Dropdown` widgets: a plain one, one filtered as you type, and one whose options change every few seconds. |
 | `npm run template-bindings` | rich-template-bindings | Type a template on the left and watch it render on the right. |
-| `npm run themes-and-color-studio` | themes-and-color-studio | A printed tour of colours, palettes, bundled themes, and contrast. Prints once and exits; set `EXPORT_HTML=out.html`, `EXPORT_SVG=out.svg` or `EXPORT_TEXT=out.txt` to save it to that file too. |
+| `npm run themes-and-color-studio` | themes-and-color-studio | A printed tour of colours, palettes, bundled themes, and contrast. Prints once and exits; set any of `EXPORT_HTML=out.html`, `EXPORT_SVG=out.svg` and `EXPORT_TEXT=out.txt` to also save it to each file named. |
 | `npm run strip` | rich-strip | Every built-in `Joiner`, printed side by side. Prints once and exits. |
 | `npm run markup-plugins` | rich-markup-plugins | Custom markup tags registered through `MarkupRegistry`. Prints once and exits. |
 | `npm run viewport` | rich-viewport | A cursor walking a list taller than its window, kept in view by `Viewport.ensureVisible`. |

@@ -585,14 +585,15 @@ new Console().print(new RichText(`${open}\n${title}`));
 To persist the exported output to disk, use the node-only helpers from the `node/save` subpath:
 
 ```typescript node
+import { SVG_EXPORT_THEME } from "@promptctl/rich-js";
 import { saveText, saveHtml, saveSvg } from "@promptctl/rich-js/node/save";
 
-saveText(console, "output.txt");
-saveHtml(console, "output.html");
+saveText(console, "output.txt", { clear: false });
+saveHtml(console, "output.html", { clear: false });
 saveSvg(console, "output.svg", { theme: SVG_EXPORT_THEME });
 ```
 
-These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. Each takes the same options as the export it writes, so `saveHtml(console, "output.html", { theme: SOLARIZED_LIGHT })` saves the themed page. The recording buffer is cleared after writing by default; pass `{ clear: false }` to preserve it for a second export (e.g. saving both `.txt` and `.html` from the same recorded run).
+These helpers live outside the main barrel so the browser bundle never reaches `node:fs`. Each takes the same options as the export it writes, `theme` and `clear` included. A save clears the recording just as its export does, so every save but the last passes `{ clear: false }`; without it, the next file would be empty.
 
 ## Error / stderr output
 
