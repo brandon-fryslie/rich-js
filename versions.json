@@ -4,15 +4,22 @@
     {
       "version": "pr-252",
       "ref": "refs/pull/252/merge",
-      "sha": "dba0215b29605cafd41ec107d0e1ff8654dfb79a",
-      "timestamp": "2026-09-30T11:35:09.024Z",
+      "sha": "12e668b6a93dfefdc7e76bbd354573c39c88f946",
+      "timestamp": "2026-09-30T11:41:58.255Z",
       "commits": [
         {
-          "sha": "dba0215b29605cafd41ec107d0e1ff8654dfb79a",
+          "sha": "12e668b6a93dfefdc7e76bbd354573c39c88f946",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:34:00Z",
-          "message": "Merge ec96343da42a8dee901c6255272c921b998a6477 into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
+          "timestamp": "2026-09-30T11:40:13Z",
+          "message": "Merge 9366744392ba82ee1dbc88c1975937e279359e9f into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
+        },
+        {
+          "sha": "9366744392ba82ee1dbc88c1975937e279359e9f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T05:40:07-06:00",
+          "message": "fix(markdown): quote structure keeps its rows, list items read numbers as CommonMark, empty blocks draw (rich-demos-b19)\n\nReview of #252: inside a quote a blank line or a block start begins a row\nof its own instead of reflowing into the text around it; a numbered line\nindented into a list item stays its text unless it counts from 1; an empty\nitem or quote still draws its bullet or bar.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "ec96343da42a8dee901c6255272c921b998a6477",
