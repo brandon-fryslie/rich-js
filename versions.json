@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-269",
-      "ref": "refs/pull/269/merge",
-      "sha": "3e615385e6efbba1cde261c9a77d8e1b5c7d49ac",
-      "timestamp": "2026-09-30T18:36:23.481Z",
-      "commits": [
-        {
-          "sha": "3e615385e6efbba1cde261c9a77d8e1b5c7d49ac",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:35:15-06:00",
-          "message": "Merge 01548c6f387be11ace6d298e290acab0ac4ac63e into 77ab1b7f302bf884d94eac7ad6a5419b1a4bf186\n"
-        },
-        {
-          "sha": "01548c6f387be11ace6d298e290acab0ac4ac63e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:35:11-06:00",
-          "message": "fix(prompt): nodeAsk hands readline one unbroken line; prompt tests compare without the repr highlighter (rich-prompt-vo5e)\n\nReview (high) fixes on PR #269.\n"
-        },
-        {
-          "sha": "cc404ccf3d0a6020e17bcb56ec664084d59b0bfd",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:24:43-06:00",
-          "message": "fix(prompt): a prompt shows its choices and y/n and draws its markup (rich-prompt-vo5e)\n\nThe prompt is built as a RichText the way Rich's make_prompt builds it: the\ncaller's markup, then the choices and default appended as plain text in the\nprompt.choices / prompt.default theme styles, then \": \". PromptInput now\nreceives that RichText, and nodeAsk draws it through a Console on stdout.\nThe prompt theme entries, unused until now, take Rich's values.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "77ab1b7f302bf884d94eac7ad6a5419b1a4bf186",
-      "timestamp": "2026-09-30T18:15:45.617Z",
+      "sha": "e527b78d9f14ebaec2a85220e37c135099981bc7",
+      "timestamp": "2026-09-30T18:41:04.895Z",
       "commits": [
         {
-          "sha": "77ab1b7f302bf884d94eac7ad6a5419b1a4bf186",
+          "sha": "e527b78d9f14ebaec2a85220e37c135099981bc7",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T12:14:27-06:00",
-          "message": "feat(console): Console.log reads its time from a getDatetime clock (rich-console-nz5y) (#268)\n\n* feat(console): Console.log reads its time from a getDatetime clock (rich-console-nz5y)\n\nConsole.log stamped each row from `new Date()` formatted in the machine's\nlocale, so a test could not pin a log line and every docs build wrote the\nbuilder's time and locale into docs/console.md.\n\n`ConsoleOptions.getDatetime` is the clock log reads, once per call, as\nRich's `get_datetime`. The stamp is local 24-hour `HH:MM:SS`, what Rich's\n`%X` prints under the C locale a Python program runs in, so one clock\nprints one stamp on every machine. The Logging section's examples pass a\nfixed clock.\n\n* fix(console): log throws on an invalid clock; log tests pin the clock (rich-console-nz5y)\n\nReview of PR #268: a getDatetime returning an invalid Date printed\n[NaN:NaN:NaN] silently; it now throws a RangeError. The remaining\nConsole.log tests read the wall clock and matched the stamp loosely; they\nnow pass a fixed clock and assert whole rows. The docs say which console\ncarries the fixed clock. Repeated-time blanking is rich-console-4i40.\n\n* docs(console): the fixed clock covers the page's log() examples (rich-console-nz5y)"
+          "timestamp": "2026-09-30T12:39:53-06:00",
+          "message": "fix(prompt)!: a prompt shows its choices and y/n and draws its markup (rich-prompt-vo5e) (#269)\n\n* fix(prompt): a prompt shows its choices and y/n and draws its markup (rich-prompt-vo5e)\n\nThe prompt is built as a RichText the way Rich's make_prompt builds it: the\ncaller's markup, then the choices and default appended as plain text in the\nprompt.choices / prompt.default theme styles, then \": \". PromptInput now\nreceives that RichText, and nodeAsk draws it through a Console on stdout.\nThe prompt theme entries, unused until now, take Rich's values.\n\n* fix(prompt): nodeAsk hands readline one unbroken line; prompt tests compare without the repr highlighter (rich-prompt-vo5e)\n\nReview (high) fixes on PR #269."
         }
       ]
     }
