@@ -517,7 +517,12 @@ describe("markup is judged tag by tag, in the order it is written", () => {
 
   it("rejects a style closed inside a plugin tag it opened outside, even one that never closes", () => {
     const err = rejectionOf("[red][aa]x[/red]y", registry());
-    expect(err.reason).toMatch(/^Closing tag \[\/red\] closes \[red\] across the boundary of plugin tag \[aa\]/);
+    // No pair is ever formed here, so the reason must not claim one.
+    expect(err.reason).toBe(
+      "Closing tag [/red] closes [red] across the boundary of plugin tag [aa]: " +
+        "a style tag must open and close on the same side of a plugin tag, " +
+        "because a handler replaces the text between a plugin tag and its closer.",
+    );
     expect(err.openTags).toEqual(["[red]", "[aa]"]);
   });
 

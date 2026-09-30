@@ -665,8 +665,8 @@ function walk(tokens: readonly MarkupToken[], source: string, registry: MarkupRe
     unparsable(
       `Closing tag ${closer.fullMatch} closes ${style.tag.fullMatch} ` +
         `across the boundary of plugin tag ${pair.tag.fullMatch}: ` +
-        `a style tag must open and close on the same side of a plugin pair, ` +
-        `because the handler replaces the text inside it.`,
+        `a style tag must open and close on the same side of a plugin tag, ` +
+        `because a handler replaces the text between a plugin tag and its closer.`,
       closer.start,
     );
 
