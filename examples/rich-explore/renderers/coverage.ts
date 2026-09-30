@@ -59,6 +59,11 @@ import type { Renderable, RenderOptions } from "../../../src/index.js";
 
 export class CoverageRenderable implements Renderable {
   *render(options: RenderOptions): Iterable<Segment> {
+    yield* new Group(...this.items(options)).render(options);
+  }
+
+  /** What the view shows, one Group item per row block, in order. */
+  items(options: RenderOptions): Renderable[] {
     const items: Renderable[] = [];
 
     // ── 1. All 18 Box variants, plus one built here ──────────────────
@@ -91,7 +96,7 @@ export class CoverageRenderable implements Renderable {
       },
     ];
     const boxPanels: Renderable[] = boxStyles.map(({ name, box }) =>
-      new Panel(new RichText(name, { end: "" }), { box, title: name, expand: false }),
+      new Panel(new RichText(name), { box, title: name, expand: false }),
     );
     items.push(new Columns(boxPanels, { equal: true, expand: true }));
 
@@ -109,12 +114,12 @@ export class CoverageRenderable implements Renderable {
     items.push(new Rule("Columns", { style: "bold cyan" }));
     const fruits = ["apple", "banana", "cherry", "date", "elderberry",
       "fig", "grape", "honeydew", "kiwi", "lemon", "mango", "nectarine"];
-    items.push(new Columns(fruits.map((f) => new RichText(f, { end: "" })), { expand: true }));
+    items.push(new Columns(fruits.map((f) => new RichText(f)), { expand: true }));
 
     // ── 4. The Highlighter family ────────────────────────────────────
     items.push(new Rule("Highlighters", { style: "bold cyan" }));
     const nh = new NullHighlighter();
-    const nhText = new RichText("NullHighlighter applied: no styles changed", { end: "" });
+    const nhText = new RichText("NullHighlighter applied: no styles changed");
     nh.highlight(nhText);
     items.push(nhText);
     // Also exercise Highlighter.call (the convenience method)
@@ -140,19 +145,18 @@ export class CoverageRenderable implements Renderable {
 
     // ── 5. Emoji + NoEmoji ───────────────────────────────────────────
     items.push(new Rule("Emoji + NoEmoji", { style: "bold cyan" }));
-    // Emoji renderable
-    const emojiObj = new Emoji("star");
-    items.push(emojiObj);
+    // An Emoji is a line fragment, as in Rich, so it sits in a grid row
+    // beside its label rather than running the next item onto its line.
+    items.push(Table.grid().addColumn().addColumn().addRow(`Emoji("star"):`, new Emoji("star")));
     // NoEmoji error — name without colons
     try { new Emoji("definitely_not_a_real_emoji_xyz"); } catch (e) {
       const isNoEmoji = e instanceof NoEmoji;
-      items.push(new RichText(`NoEmoji caught: ${isNoEmoji} — ${(e as Error).message}`, { end: "" }));
+      items.push(new RichText(`NoEmoji caught: ${isNoEmoji} — ${(e as Error).message}`));
     }
     // EMOJI dict + emojiReplace
     const sampleKeys = Object.keys(EMOJI).slice(0, 15);
     items.push(new RichText(
       `EMOJI dict: ${Object.keys(EMOJI).length} entries. Sample: ${emojiReplace(sampleKeys.map((k) => `:${k}:`).join(" "))}`,
-      { end: "" },
     ));
 
     // ── 6. StyleStack + Theme + DEFAULT_STYLES ───────────────────────
@@ -163,7 +167,6 @@ export class CoverageRenderable implements Renderable {
     const stackResult = stack.current;
     const stackText = new RichText(
       `StyleStack: bold=${String(stackResult.bold)} italic=${String(stackResult.italic)}`,
-      { end: "" },
     );
     stackText.stylize(stackResult);
     stack.pop();
@@ -173,66 +176,61 @@ export class CoverageRenderable implements Renderable {
     const theme = new Theme({ "custom.test": "bold green" });
     items.push(new RichText(
       `Theme: ${Object.keys(DEFAULT_STYLES).length} default styles + 1 custom`,
-      { end: "" },
     ));
     const customStyle = theme.get("custom.test");
-    const themeText = new RichText("Custom theme style: bold green", { end: "" });
+    const themeText = new RichText("Custom theme style: bold green");
     if (customStyle) themeText.stylize(customStyle);
     items.push(themeText);
     // NULL_STYLE
-    items.push(new RichText(`NULL_STYLE.isNull: ${String(NULL_STYLE.isNull)}`, { end: "" }));
+    items.push(new RichText(`NULL_STYLE.isNull: ${String(NULL_STYLE.isNull)}`));
 
     // ── 7. Palette + parseRgbHex + ColorDepth + ColorParseError ───────
     items.push(new Rule("Color / Palette", { style: "bold cyan" }));
     const rgb = parseRgbHex("ff6600");
-    items.push(new RichText(`parseRgbHex("ff6600") = ${rgb.hex} (r=${rgb.red} g=${rgb.green} b=${rgb.blue})`, { end: "" }));
+    items.push(new RichText(`parseRgbHex("ff6600") = ${rgb.hex} (r=${rgb.red} g=${rgb.green} b=${rgb.blue})`));
     items.push(new RichText(
       `STANDARD_TABLE: ${STANDARD_TABLE.size} colors, WINDOWS_TABLE: ${WINDOWS_TABLE.size} colors`,
-      { end: "" },
     ));
     try { ColorSpec.parse("not_a_color_xyz"); } catch (e) {
       items.push(new RichText(
         `ColorParseError: ${e instanceof ColorParseError} — ${(e as Error).message.slice(0, 60)}`,
-        { end: "" },
       ));
     }
     items.push(new RichText(
       `ColorDepth: DEFAULT=${ColorDepth.DEFAULT} STANDARD=${ColorDepth.STANDARD} EIGHT_BIT=${ColorDepth.EIGHT_BIT} TRUECOLOR=${ColorDepth.TRUECOLOR}`,
-      { end: "" },
     ));
 
     // ── 8. Cell functions ────────────────────────────────────────────
     items.push(new Rule("Cell Functions", { style: "bold cyan" }));
-    items.push(new RichText(`cellLen("hello") = ${cellLen("hello")}`, { end: "" }));
-    items.push(new RichText(`splitText("abcdef", 3) = ${JSON.stringify(splitText("abcdef", asCellCol(3)))}`, { end: "" }));
-    items.push(new RichText(`chopCells("hello world", 7) = "${chopCells("hello world", asCellCol(7))}"`, { end: "" }));
-    setCellSize("A", asCellCol(1)); // exercise the function; restore to default width
+    items.push(new RichText(`cellLen("hello") = ${cellLen("hello")}`));
+    items.push(new RichText(`splitText("abcdef", 3) = ${JSON.stringify(splitText("abcdef", asCellCol(3)))}`));
+    items.push(new RichText(`chopCells("hello world", 7) = ${JSON.stringify(chopCells("hello world", asCellCol(7)))}`));
+    items.push(new RichText(`setCellSize("ab", 5) = ${JSON.stringify(setCellSize("ab", asCellCol(5)))}`));
 
     // ── 9. Measurement + measureRenderables ──────────────────────────
     items.push(new Rule("Measurement", { style: "bold cyan" }));
-    const measurable = new RichText("measure this text", { end: "" });
+    const measurable = new RichText("measure this text");
     const m = Measurement.get(options, measurable);
-    items.push(new RichText(`Measurement.get: min=${m.minimum}, max=${m.maximum}`, { end: "" }));
-    const multi = measureRenderables(options, [measurable, new RichText("short", { end: "" })]);
-    items.push(new RichText(`measureRenderables: min=${multi.minimum}, max=${multi.maximum}`, { end: "" }));
+    items.push(new RichText(`Measurement.get: min=${m.minimum}, max=${m.maximum}`));
+    const multi = measureRenderables(options, [measurable, new RichText("short")]);
+    items.push(new RichText(`measureRenderables: min=${multi.minimum}, max=${multi.maximum}`));
 
     // ── 10. Protocol checks ──────────────────────────────────────────
     items.push(new Rule("Protocol", { style: "bold cyan" }));
     items.push(new RichText(
       `isRenderable(RichText)=${isRenderable(measurable)} isMeasurable(RichText)=${isMeasurable(measurable)} isRenderable("str")=${isRenderable("str")}`,
-      { end: "" },
     ));
 
     // ── 11. StyleSyntaxError + MarkupError ───────────────────────────
     items.push(new Rule("Error Types", { style: "bold cyan" }));
     try { Style.parse("zzzz_invalid"); } catch (e) {
-      items.push(new RichText(`StyleSyntaxError: ${e instanceof StyleSyntaxError}`, { end: "" }));
+      items.push(new RichText(`StyleSyntaxError: ${e instanceof StyleSyntaxError}`));
     }
     try { renderMarkup("[bold]hello\n[red]world[/italic]"); } catch (e) {
-      items.push(new RichText(`MarkupError: ${e instanceof MarkupError}`, { end: "" }));
+      items.push(new RichText(`MarkupError: ${e instanceof MarkupError}`));
       if (e instanceof MarkupSyntaxError) {
-        items.push(new RichText(`line ${e.line}, column ${e.column}; open: ${e.openTags.join(" ")}`, { end: "" }));
-        items.push(new RichText(e.message, { end: "" }));
+        items.push(new RichText(`line ${e.line}, column ${e.column}; open: ${e.openTags.join(" ")}`));
+        items.push(new RichText(e.message));
       }
     }
 
@@ -240,18 +238,17 @@ export class CoverageRenderable implements Renderable {
     items.push(new Rule("Spinner Data", { style: "bold cyan" }));
     items.push(new RichText(
       `${Object.keys(SPINNERS).length} spinners. DEFAULT="${DEFAULT_SPINNER}". Sample: ${Object.keys(SPINNERS).slice(0, 8).join(", ")}`,
-      { end: "" },
     ));
 
     // ── 13. Align (all three) ────────────────────────────────────────
     items.push(new Rule("Align", { style: "bold cyan" }));
-    items.push(new Align(new RichText("← left", { end: "" }), "left"));
-    items.push(new Align(new RichText("center →", { end: "" }), "center"));
-    items.push(new Align(new RichText("right →", { end: "" }), "right"));
+    items.push(new Align(new RichText("← left"), "left"));
+    items.push(new Align(new RichText("center →"), "center"));
+    items.push(new Align(new RichText("right →"), "right"));
 
     // ── 14. Padding (standalone) ─────────────────────────────────────
     items.push(new Rule("Padding (standalone)", { style: "bold cyan" }));
-    items.push(new Padding(new RichText("Padded [1,2,1,2]", { end: "" }), [1, 2, 1, 2]));
+    items.push(new Padding(new RichText("Padded [1,2,1,2]"), [1, 2, 1, 2]));
 
     // ── 15. Progress (rendered as a static snapshot) ───────────────
     items.push(new Rule("Progress (static render)", { style: "bold cyan" }));
@@ -278,7 +275,7 @@ export class CoverageRenderable implements Renderable {
     // Status wraps a Spinner + message in a Live. We can't call start()
     // here but we validate construction + the internal renderable.
     const status = new Status("Loading session...", { spinner: "dots" });
-    items.push(new RichText(`Status constructed: spinner=dots message="${status.message}"`, { end: "" }));
+    items.push(new RichText(`Status constructed: spinner=dots message="${status.message}"`));
 
     // ── 17. Prompt classes (construction, no stdin) ──────────────────
     items.push(new Rule("Prompt classes", { style: "bold cyan" }));
@@ -287,7 +284,6 @@ export class CoverageRenderable implements Renderable {
     items.push(new RichText(
       `Prompt: ${typeof Prompt.ask === "function"} IntPrompt: ${typeof IntPrompt.ask === "function"} ` +
       `FloatPrompt: ${typeof FloatPrompt.ask === "function"} Confirm: ${typeof Confirm.ask === "function"}`,
-      { end: "" },
     ));
 
     // ── 18. track (generator, exercised without Live) ────────────────
@@ -296,13 +292,13 @@ export class CoverageRenderable implements Renderable {
     // to exercise the code path. It creates a Progress + Live internally
     // but we can't display it in our TUI — just prove it doesn't crash.
     // (Would write to stdout briefly, but that's ok for coverage.)
-    items.push(new RichText(`track: generator function exists = ${typeof track === "function"}`, { end: "" }));
+    items.push(new RichText(`track: generator function exists = ${typeof track === "function"}`));
 
     // ── 19. Span (what a highlighter actually leaves behind) ─────────
     items.push(new Rule("Span", { style: "bold cyan" }));
     // Styling annotates ranges; it never rewrites the text. Reading the
     // spans back is how you see that — the plain string is untouched.
-    const spanned = new RichText("Spans annotate a range, not the whole string.", { end: "" });
+    const spanned = new RichText("Spans annotate a range, not the whole string.");
     new ShoutHighlighter().highlight(spanned);
     spanned.stylize(Style.parse("bold yellow"), 0, 5);
     items.push(spanned);
@@ -310,30 +306,26 @@ export class CoverageRenderable implements Renderable {
       `plain text unchanged; ${spanned.spans.length} spans, all Span instances = ` +
       `${spanned.spans.every((s) => s instanceof Span)}: ` +
       spanned.spans.map((s) => `[${s.start},${s.end})`).join(" "),
-      { end: "" },
     ));
 
     // ── 20. Segment → ANSI without a Console ─────────────────────────
     items.push(new Rule("renderToString / segmentsToString", { style: "bold cyan" }));
-    const sample = new Panel(new RichText("rendered off-console", { end: "" }), { box: SQUARE });
+    const sample = new Panel(new RichText("rendered off-console"), { box: SQUARE });
     const plain = renderToString(sample, { width: 40, colorSystem: null });
     items.push(new RichText(
       `renderToString(width 40, no color): ${plain.split("\n").length} lines, ` +
       `${plain.length} chars, no ESC = ${!plain.includes("\u001b")}`,
-      { end: "" },
     ));
     const colored = renderToString(sample, { width: 40, colorSystem: ColorDepth.TRUECOLOR });
-    items.push(new RichText(`same panel at truecolor: ${colored.length} chars`, { end: "" }));
+    items.push(new RichText(`same panel at truecolor: ${colored.length} chars`));
     // The two lower-level entry points the above delegates to.
     const styled = new Segment("segment", Style.parse("bold green"));
     items.push(new RichText(
       `segmentToString: ${JSON.stringify(segmentToString(styled, { colorSystem: ColorDepth.STANDARD, hyperlinks: true }))}`,
-      { end: "" },
     ));
     items.push(new RichText(
       `segmentsToString(2 segs, no color): ` +
       JSON.stringify(segmentsToString([styled, new Segment("!")], { colorSystem: null, hyperlinks: true })),
-      { end: "" },
     ));
     // A link split across two styles is two OSC 8 pairs sharing one id, so a
     // terminal hovers it as one link. osc8Sequences reads the rendered bytes back.
@@ -349,21 +341,19 @@ export class CoverageRenderable implements Renderable {
     items.push(new RichText(
       `split link: ${opens.length} OSC 8 opens, ids ${opens.map((s) => s.params).join(" ")}; ` +
       `visible ${JSON.stringify(split.replace(ZERO_WIDTH, ""))}`,
-      { end: "" },
     ));
     // decodeAnsi reads the same bytes back as styled text — the bold glyph and
     // the link survive, so the line below draws exactly like the segments above.
-    items.push(new RichText("decoded: ", { end: "" }).append(decodeAnsi(split)));
+    items.push(new RichText("decoded: ").append(decodeAnsi(split)));
     // One AnsiDecoder per stream: the bold set on the first line carries on.
     const decoder = new AnsiDecoder();
     const [first, second] = decoder.decode("\x1b[1;35mline one\nline two\x1b[0m");
-    items.push(new RichText("streamed: ", { end: "" }).append(first!).append(" / ").append(second!));
+    items.push(new RichText("streamed: ").append(first!).append(" / ").append(second!));
     // A control segment carries no text — ControlType names what it does.
     const bell = new Segment("", undefined, [[ControlType.BELL]]);
     items.push(new RichText(
       `control segment: type=${ControlType.BELL} text=${JSON.stringify(bell.text)} ` +
       `isControl=${bell.isControl}`,
-      { end: "" },
     ));
 
     // ── 21. Spinner (a single frame, no Live) ────────────────────────
@@ -380,7 +370,6 @@ export class CoverageRenderable implements Renderable {
     table.addRow("delta", "epsilon", "zeta");
     items.push(table);
 
-    // ── Render ───────────────────────────────────────────────────────
-    yield* new Group(...items).render(options);
+    return items;
   }
 }
