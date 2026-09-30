@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-251",
-      "ref": "refs/pull/251/merge",
-      "sha": "e3ef57a6a9df98d309b917be544bfbd6cc9a8174",
-      "timestamp": "2026-09-30T11:15:13.584Z",
-      "commits": [
-        {
-          "sha": "e3ef57a6a9df98d309b917be544bfbd6cc9a8174",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:14:07Z",
-          "message": "Merge d8c43e7acdef9b8b22242340585a119dbbf8f269 into f3f02b9ef585c437577d4bcb6e1ed4f42a926619\n"
-        },
-        {
-          "sha": "d8c43e7acdef9b8b22242340585a119dbbf8f269",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:14:02-06:00",
-          "message": "fix(demos): the shell opens every printed demo on its first line (rich-demos-c3k)\n\nReview of #251: the scroll-to-top lived in one demo's wire, so rich-strip\nstill opened scrolled past its top. It moves to the browser shell, and the\nwire's ReadingTerminal goes with it.\n\nThe demo terminal's size gets one home, examples/_browser-shell/demo-terminal.ts,\nfilled into the shell by vite.config.demos.ts and read by the tests that\ndepend on it.\n\nAt 100 columns the theme gallery rows (102 cells) and the named-ramp row\n(104) were wrapped by the Console, which the fits-terminal test could not\nsee. The name column is now as wide as the longest name, the ramp caption\nuses the section's ref(x) shorthand, and a second test checks each strip\nfits as drawn at an unbounded width.\n"
-        },
-        {
-          "sha": "5c89000d3ea5fd3dccbc3c2c9b1750da715af14b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:59:29-06:00",
-          "message": "fix(demos): themes-and-color-studio opens on its first line and fits the demo terminal (rich-demos-c3k)\n\nThe browser wire scrolls xterm to the top once xterm has parsed everything\nthe tour printed; the Console takes its width from the host instead of a\nhardcoded 120, which xterm re-wrapped mid-word in its 100 columns.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "f3f02b9ef585c437577d4bcb6e1ed4f42a926619",
-      "timestamp": "2026-09-30T10:54:07.707Z",
+      "sha": "fc51ccf629a48dda1e39b948b9a26408f8f5dbb3",
+      "timestamp": "2026-09-30T11:20:13.768Z",
       "commits": [
         {
-          "sha": "f3f02b9ef585c437577d4bcb6e1ed4f42a926619",
+          "sha": "fc51ccf629a48dda1e39b948b9a26408f8f5dbb3",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T04:52:55-06:00",
-          "message": "fix(demos): demo terminals draw Powerline glyphs in the Powerline face (rich-demos-4cl) (#250)\n\n* fix(demos): demo terminals draw Powerline glyphs in the docs' Powerline face (rich-demos-4cl)\n\nThe demo shell's xterm named no font, so Powerline and Capsule joiners drew\nas missing-glyph boxes. The @font-face and code font stack move out of\ncustom.css into code-font.css, which the theme imports and every demo shell\nlinks; the mount passes #term's computed family to xterm.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* test(demos): Powerline probe re-finds its span each poll and asserts a web face, not a file's name (rich-demos-4cl)\n\nReview (high): a repainted row stales a held CDP nodeId; the family name is\nthe generator's choice, not the site's; the raw U+E0B0 was invisible. Also\npoints the font generator's docstring at code-font.css.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* docs(scripts): rewrap powerline-font.py docstring (rich-demos-4cl)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude Opus 5.5 <noreply@anthropic.com>"
+          "timestamp": "2026-09-30T05:19:03-06:00",
+          "message": "fix(demos): themes-and-color-studio opens on its first line (rich-demos-c3k) (#251)\n\n* fix(demos): themes-and-color-studio opens on its first line and fits the demo terminal (rich-demos-c3k)\n\nThe browser wire scrolls xterm to the top once xterm has parsed everything\nthe tour printed; the Console takes its width from the host instead of a\nhardcoded 120, which xterm re-wrapped mid-word in its 100 columns.\n\n* fix(demos): the shell opens every printed demo on its first line (rich-demos-c3k)\n\nReview of #251: the scroll-to-top lived in one demo's wire, so rich-strip\nstill opened scrolled past its top. It moves to the browser shell, and the\nwire's ReadingTerminal goes with it.\n\nThe demo terminal's size gets one home, examples/_browser-shell/demo-terminal.ts,\nfilled into the shell by vite.config.demos.ts and read by the tests that\ndepend on it.\n\nAt 100 columns the theme gallery rows (102 cells) and the named-ramp row\n(104) were wrapped by the Console, which the fits-terminal test could not\nsee. The name column is now as wide as the longest name, the ramp caption\nuses the section's ref(x) shorthand, and a second test checks each strip\nfits as drawn at an unbounded width."
         }
       ]
     }
