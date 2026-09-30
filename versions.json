@@ -4,15 +4,22 @@
     {
       "version": "pr-271",
       "ref": "refs/pull/271/merge",
-      "sha": "4aca6b2e9d2fad6d1340769ed476d006e8070427",
-      "timestamp": "2026-09-30T19:06:36.351Z",
+      "sha": "b8ae69ed2793b535309ec8e10a624ce4f51eb7b6",
+      "timestamp": "2026-09-30T19:13:49.107Z",
       "commits": [
         {
-          "sha": "4aca6b2e9d2fad6d1340769ed476d006e8070427",
+          "sha": "b8ae69ed2793b535309ec8e10a624ce4f51eb7b6",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T13:05:35-06:00",
-          "message": "Merge df60586caf8e228fb8db1c54f9e5dd4453142ad0 into 1c1341c84b8811148562683d213d14fc9a9e8936\n"
+          "timestamp": "2026-09-30T19:12:42Z",
+          "message": "Merge 0dcd445a28e36660c948f16f77a7067ea9030aea into 1c1341c84b8811148562683d213d14fc9a9e8936\n"
+        },
+        {
+          "sha": "0dcd445a28e36660c948f16f77a7067ea9030aea",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T13:12:37-06:00",
+          "message": "fix(style): every default style that paints a ground is readable on every bundled theme (rich-syntax-60ii)\n\nReview of #271: the per-Syntax contrast test checked one style on two themes.\nThe sweep now lives on DEFAULT_STYLES, where the invariant is, and it caught\nmarkdown.code (cyan on grey11, 3.57:1 on the default theme) -> dark_turquoise.\n16-colour depth is filed as rich-contrast-sqqq.\n"
         },
         {
           "sha": "df60586caf8e228fb8db1c54f9e5dd4453142ad0",
