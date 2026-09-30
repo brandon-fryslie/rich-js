@@ -366,6 +366,9 @@ describe("ensureContrast drawn at ansi", () => {
     const onBlack = (fg: ColorRgba) => shown(ensureContrast(fg, black, 4.5, ColorDepth.STANDARD, SURFACE_BLACK, ROSE_PINE_DAWN)).hex;
     expect(onBlack(new ColorRgba(0x33, 0x00, 0xff))).toBe("#575279");
     expect(onBlack(new ColorRgba(0x33, 0x66, 0x33))).toBe("#286983");
+    // Translucent text is the author's colour over the author's ground (a
+    // navy here), not over the light shade Dawn draws that ground in.
+    expect(onBlack(new ColorRgba(0x00, 0x00, 0xff, 0.5))).toBe("#286983");
   });
 
   it("under every bundled terminal, text clears the floor as drawn, or no index of that terminal can", () => {

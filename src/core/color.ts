@@ -161,7 +161,7 @@ function rgbDistance(a: ColorRgba, b: ColorRgba): number {
 
 export class ColorTable {
   private readonly colors: ColorRgba[];
-  private readonly firstIndex: number;
+  readonly firstIndex: number;
   private readonly matchCache = new Map<string, number>();
   private readonly readableCache = new Map<string, number>();
 
@@ -864,8 +864,8 @@ export function blendRgb(
 // --- TerminalTheme ---
 
 /**
- * A terminal theme — surface/foreground baseline, the ANSI 16/256 LUT, and a
- * semantic palette.
+ * A terminal theme — surface/foreground baseline, the sixteen ANSI colours,
+ * and a semantic palette.
  *
  * **`ansiColors` is the theme's own sixteen colours**, the shades a terminal
  * showing this theme draws `red`, `blue` and the rest in. `ColorSpec.parse("red")`
@@ -878,7 +878,15 @@ export class TerminalTheme {
     readonly foregroundColor: ColorRgba,
     readonly ansiColors: ColorTable,
     readonly palette: import("../themes/palette.js").Palette,
-  ) {}
+  ) {
+    // [LAW:parse-dont-validate] Every reader indexes `ansiColors` 0–15 as the
+    // terminal's sixteen, so a theme is the proof it holds exactly those.
+    if (ansiColors.firstIndex !== 0 || ansiColors.size !== 16) {
+      throw new RangeError(
+        `a TerminalTheme's ansiColors are the sixteen ANSI colours, indices 0–15; got ${ansiColors.size} from index ${ansiColors.firstIndex}`,
+      );
+    }
+  }
 }
 
 // --- ColorTable data ---

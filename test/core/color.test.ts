@@ -21,6 +21,7 @@ import {
   SVG_EXPORT_THEME,
 } from "../../src/themes/terminalThemes.js";
 import { buildPalette } from "../../src/themes/buildPalette.js";
+import { Palette } from "../../src/themes/palette.js";
 import { Style } from "../../src/core/style.js";
 
 // ---------------------------------------------------------------------------
@@ -781,7 +782,7 @@ describe("TerminalTheme", () => {
   it("stores background, foreground, ansiColors, and palette", () => {
     const bg = new ColorRgba(0, 0, 0);
     const fg = new ColorRgba(255, 255, 255);
-    const pal = new ColorTable([bg, fg]);
+    const pal = STANDARD_TABLE;
     const palette = buildPalette("test", true, {
       primary: new ColorRgba(0, 111, 184),
       secondary: new ColorRgba(118, 38, 113),
@@ -797,6 +798,15 @@ describe("TerminalTheme", () => {
     expect(theme.foregroundColor).toBe(fg);
     expect(theme.ansiColors).toBe(pal);
     expect(theme.palette).toBe(palette);
+  });
+
+  it("refuses ansiColors that are not the sixteen ANSI colours", () => {
+    const palette = new Palette("probe", true, new Map());
+    const black = new ColorRgba(0, 0, 0);
+    const theme = (table: ColorTable) => () => new TerminalTheme(black, black, table, palette);
+    expect(theme(new ColorTable([black, black]))).toThrow(RangeError);
+    expect(theme(EIGHT_BIT_TABLE)).toThrow(RangeError);
+    expect(theme(new ColorTable(Array.from({ length: 16 }, () => black), 16))).toThrow(RangeError);
   });
 });
 

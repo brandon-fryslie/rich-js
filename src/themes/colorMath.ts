@@ -184,7 +184,7 @@ export function ensureContrast(
   if (table === undefined) return chosen;
   const shownBg = shownAs(table, ground);
   if (contrastRatio(shownAs(table, chosen), shownBg) >= minRatio) return chosen;
-  return table.written.get(table.shown.matchReadable(fg.compositeOver(shownBg), shownBg, minRatio));
+  return table.written.get(table.shown.matchReadable(fg.compositeOver(ground), shownBg, minRatio));
 }
 
 /**
