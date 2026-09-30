@@ -16,12 +16,14 @@
 import { cellLen, graphemes } from "./cells.js";
 import type { TerminalTheme } from "./color.js";
 import type { Segment } from "./segment.js";
-import { exportCanvas, exportLines, type ExportLook, type ExportRun } from "./export-lines.js";
-
-const ENTITIES: Readonly<Record<string, string>> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
-
-const escapeText = (text: string): string => text.replace(/[&<>]/g, (c) => ENTITIES[c]!);
-const escapeAttribute = (value: string): string => value.replace(/[&"<>]/g, (c) => ENTITIES[c]!);
+import {
+  escapeAttribute,
+  escapeText,
+  exportCanvas,
+  exportLines,
+  type ExportLook,
+  type ExportRun,
+} from "./export-lines.js";
 
 const BLINK_KEYFRAMES = "rich-blink";
 

@@ -99,6 +99,18 @@ export function parseHref(link: string): Href | null {
   return LINKABLE_SCHEMES.has(url.protocol) ? (url.href as Href) : null;
 }
 
+const ENTITIES: Readonly<Record<string, string>> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+
+/**
+ * Text as character data in HTML or SVG markup. Both exporters write markup,
+ * and [LAW:single-enforcer] one escaper is what keeps a title or a run that is
+ * safe in one format from being live markup in the other.
+ */
+export const escapeText = (text: string): string => text.replace(/[&<>]/g, (c) => ENTITIES[c]!);
+
+/** A value inside a double-quoted attribute in HTML or SVG markup. */
+export const escapeAttribute = (value: string): string => value.replace(/[&"<>]/g, (c) => ENTITIES[c]!);
+
 /**
  * How far a dim glyph moves toward its background — Rich's own factor, so an
  * export of the same program matches the library this ports.

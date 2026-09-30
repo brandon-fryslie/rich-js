@@ -9,6 +9,7 @@ import type { Destination } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalTheme } from "./color.js";
 import { encodeHtml } from "./export-html.js";
+import { encodeSvg } from "./export-svg.js";
 import { RichText } from "./text.js";
 import { renderMarkup } from "./markup.js";
 import { Pretty, isExpandable } from "./pretty.js";
@@ -731,6 +732,13 @@ export class Console {
     const html = encodeHtml(this._recorded, theme);
     if (clear) this._recorded = [];
     return html;
+  }
+
+  // [LAW:single-enforcer] As `exportHtml`: `encodeSvg` draws, this clears.
+  exportSvg({ theme, title = "Rich", clear = true }: { theme?: TerminalTheme; title?: string; clear?: boolean } = {}): string {
+    const svg = encodeSvg(this._recorded, { theme, title, width: this.width });
+    if (clear) this._recorded = [];
+    return svg;
   }
 
   // --- Internal ---
