@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-250",
+      "ref": "refs/pull/250/merge",
+      "sha": "e0ce5eea4b2f1afd307f9c4ed3ca582f5936d08b",
+      "timestamp": "2026-09-30T10:44:47.121Z",
+      "commits": [
+        {
+          "sha": "e0ce5eea4b2f1afd307f9c4ed3ca582f5936d08b",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:43:40-06:00",
+          "message": "Merge a3d622c767066d61fc52a31c911c2a014f77d289 into dcd22ee2cebf3853bfdaf2905e899f3e5377186e\n"
+        },
+        {
+          "sha": "a3d622c767066d61fc52a31c911c2a014f77d289",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T04:43:36-06:00",
+          "message": "fix(demos): demo terminals draw Powerline glyphs in the docs' Powerline face (rich-demos-4cl)\n\nThe demo shell's xterm named no font, so Powerline and Capsule joiners drew\nas missing-glyph boxes. The @font-face and code font stack move out of\ncustom.css into code-font.css, which the theme imports and every demo shell\nlinks; the mount passes #term's computed family to xterm.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "dcd22ee2cebf3853bfdaf2905e899f3e5377186e",
