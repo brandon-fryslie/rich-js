@@ -4,15 +4,22 @@
     {
       "version": "pr-283",
       "ref": "refs/pull/283/merge",
-      "sha": "1169de34ae5b6918e35b69760a765bfbe0d33d42",
-      "timestamp": "2026-09-30T22:53:28.914Z",
+      "sha": "18a4bc19619df2d26d64ebfd0975c76e3ddb44ca",
+      "timestamp": "2026-09-30T23:00:20.834Z",
       "commits": [
         {
-          "sha": "1169de34ae5b6918e35b69760a765bfbe0d33d42",
+          "sha": "18a4bc19619df2d26d64ebfd0975c76e3ddb44ca",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T16:52:35-06:00",
-          "message": "Merge 3588f4ddd002d35335c5894186ff15a0678bc800 into 6ae5d81fe630bd8e43c5a5aadd7c8e141fdc779f\n"
+          "timestamp": "2026-09-30T22:59:15Z",
+          "message": "Merge d437393fcf811f5b8f78e5ed67d0c8c71ef38bf2 into 6ae5d81fe630bd8e43c5a5aadd7c8e141fdc779f\n"
+        },
+        {
+          "sha": "d437393fcf811f5b8f78e5ed67d0c8c71ef38bf2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T16:59:11-06:00",
+          "message": "review(docs): scope the page-not-library rule to missing symbols; floor the fences the build sees (rich-docs-kdeh)\n\nThe error suffix told the author to change the page on every diagnostic,\nincluding a src/ type regression and a Try-it slicer bug; the rule lives in\nExampleCompiler.check's docstring, scoped to symbols the library lacks.\nThe deleted sweep's fence floor is back in the example-gate sweep: the build\npasses a page on which scanFences finds nothing.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "3588f4ddd002d35335c5894186ff15a0678bc800",
