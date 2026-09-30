@@ -86,7 +86,7 @@ export function exampleContext(page: string, markdown: string): ExampleContext |
  * import binds and the export that name is. Two blocks importing one export
  * merge into one import however each wrote it.
  */
-type Hoisted = Bare | Binding;
+export type Hoisted = Bare | Binding;
 
 interface Bare {
   readonly kind: "bare";
@@ -94,14 +94,18 @@ interface Bare {
   readonly line: number;
 }
 
-interface Binding {
-  readonly kind: "binding";
-  readonly line: number;
+/** One name an import binds: the export it is, and whether only its type is imported. */
+export interface ImportBinding {
   readonly local: string;
   readonly from: string;
   /** The export's name: `default` for a default import, `*` for a namespace. */
   readonly imported: string;
   readonly typeOnly: boolean;
+}
+
+interface Binding extends ImportBinding {
+  readonly kind: "binding";
+  readonly line: number;
 }
 
 /** A name the main barrel exports, and whether it is a type and nothing else. */
@@ -111,7 +115,7 @@ export interface BarrelExport {
 }
 
 /** A block's code split into its imports and the rest, the rest keeping its line count. */
-function splitImports(code: string, firstLine: number): { imports: Hoisted[]; body: string } {
+export function splitImports(code: string, firstLine: number): { imports: Hoisted[]; body: string } {
   const source = ts.createSourceFile("block.ts", code, ts.ScriptTarget.ES2022, true);
   const imports: Hoisted[] = [];
   let body = code;
@@ -127,17 +131,16 @@ function splitImports(code: string, firstLine: number): { imports: Hoisted[]; bo
 
 /** An import declaration as one hoisted import per name it binds; a bare import binds none and is kept whole. */
 function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line: number): Hoisted[] {
+  if (statement.importClause === undefined) return [{ kind: "bare", text: statement.getText(source), line }];
+  return importBindings(statement).map((binding) => ({ kind: "binding", line, ...binding }));
+}
+
+/** The names an import declaration binds, one per name; none for a bare import. */
+export function importBindings(statement: ts.ImportDeclaration): ImportBinding[] {
   const clause = statement.importClause;
-  if (clause === undefined) return [{ kind: "bare", text: statement.getText(source), line }];
+  if (clause === undefined) return [];
   const from = (statement.moduleSpecifier as ts.StringLiteral).text;
-  const binding = (local: string, imported: string, typeOnly: boolean): Binding => ({
-    kind: "binding",
-    line,
-    local,
-    from,
-    imported,
-    typeOnly: clause.isTypeOnly || typeOnly,
-  });
+  const binding = (local: string, imported: string, typeOnly: boolean): ImportBinding => ({ local, from, imported, typeOnly: clause.isTypeOnly || typeOnly });
   const bindings = clause.namedBindings;
   return [
     ...(clause.name === undefined ? [] : [binding(clause.name.text, "default", false)]),
@@ -149,17 +152,29 @@ function importsOf(statement: ts.ImportDeclaration, source: ts.SourceFile, line:
   ];
 }
 
-function importText(binding: Binding): string {
-  const type = binding.typeOnly ? "type " : "";
-  const from = JSON.stringify(binding.from);
-  const { local, imported } = binding;
-  if (imported === "*") return `import ${type}* as ${local} from ${from};`;
-  if (imported === "default") return `import ${type}${local} from ${from};`;
-  return `import { ${type}${imported === local ? local : `${imported} as ${local}`} } from ${from};`;
+/**
+ * The import lines that bind `bindings`: one line per module, in the order the
+ * modules were first imported, a default or namespace import on a line of its own.
+ */
+export function importLines(bindings: readonly ImportBinding[]): string[] {
+  const modules = new Map<string, ImportBinding[]>();
+  for (const binding of bindings) modules.set(binding.from, [...(modules.get(binding.from) ?? []), binding]);
+  return [...modules].flatMap(([from, bound]) => {
+    const quoted = JSON.stringify(from);
+    const type = (b: ImportBinding) => (b.typeOnly ? "type " : "");
+    const named = bound.filter((b) => b.imported !== "*" && b.imported !== "default");
+    return [
+      ...bound.filter((b) => b.imported === "default").map((b) => `import ${type(b)}${b.local} from ${quoted};`),
+      ...bound.filter((b) => b.imported === "*").map((b) => `import ${type(b)}* as ${b.local} from ${quoted};`),
+      ...(named.length === 0
+        ? []
+        : [`import { ${named.map((b) => `${type(b)}${b.imported === b.local ? b.local : `${b.imported} as ${b.local}`}`).join(", ")} } from ${quoted};`]),
+    ];
+  });
 }
 
 /** Lines of generated source, each remembering the page line it came from. */
-class SourceBuilder {
+export class SourceBuilder {
   readonly lines: string[] = [];
   readonly origins: (number | null)[] = [];
 
@@ -175,13 +190,24 @@ class SourceBuilder {
 /**
  * The line a thrown value is shown as, the way Node reports it: an `Error` as
  * `Name: message` (just `Name` when the message is empty), anything else as
- * `Uncaught` and the value, a string quoted so `throw ""` still shows.
+ * `Uncaught` and the value, a string quoted so `throw ""` still shows. An
+ * expression over `error`, written so it is both JavaScript and TypeScript.
  */
+const THROWN_LINE =
+  'error instanceof Error ? Error.prototype.toString.call(error) : `Uncaught ${typeof error === "string" ? JSON.stringify(error) : String(error)}`';
+
+/**
+ * [LAW:one-source-of-truth] `THROWN_LINE` evaluated here, where the runner reads
+ * a throw off a run: the line the page shows for a throw and the line a "Try
+ * it" program's throw is held to are one text.
+ */
+export function thrownLine(error: unknown): string {
+  return (new Function("error", `return ${THROWN_LINE};`) as (error: unknown) => string)(error);
+}
+
 const THREW_HELPER = [
   "const __richExampleThrew = (error: unknown): string =>",
-  `  ${JSON.stringify(BLOCK_THREW)} +`,
-  "  JSON.stringify(error instanceof Error ? Error.prototype.toString.call(error) : `Uncaught ${typeof error === \"string\" ? JSON.stringify(error) : String(error)}`) +",
-  `  ${JSON.stringify(THREW_CLOSE)};`,
+  `  ${JSON.stringify(BLOCK_THREW)} + JSON.stringify(${THROWN_LINE}) + ${JSON.stringify(THREW_CLOSE)};`,
 ].join("\n");
 
 const WRITE_END = `process.stdout.write(${JSON.stringify(BLOCK_END)});`;
@@ -256,7 +282,7 @@ function compose(
   for (const imp of bound.values()) {
     // Every barrel value is a value in every example, so the page's own import of one is never type-only.
     const barrelValue = imp.from === MAIN_BARREL && barrelValues.has(imp.imported);
-    out.add(importText({ ...imp, typeOnly: imp.typeOnly && !barrelValue }), imp.line);
+    out.add(importLines([{ ...imp, typeOnly: imp.typeOnly && !barrelValue }]).join("\n"), imp.line);
   }
   const prelude = barrel.filter((e) => !bound.has(e.name)).map((e) => (e.typeOnly ? `type ${e.name}` : e.name));
   out.add(`import { ${prelude.join(", ")} } from ${JSON.stringify(MAIN_BARREL)};`, null);

@@ -25,7 +25,11 @@
  *   7. bundle each `live` block's program from step 2 on
  *      the one library every live block shares (`LiveLibrary`), which the
  *      page imports as a module when its live terminal (theme/RichLive.ts)
- *      first scrolls into view.
+ *      first scrolls into view;
+ *   8. cut each block that runs into a program of its own (example-slice.ts),
+ *      type-check it and link it from the block's "Try it"; a block of the
+ *      chain's is also run as the playground runs it and held to the block's
+ *      output.
  *
  * [LAW:no-silent-failure] Every failure throws and fails the build, naming the
  * page, and the line when one line is to blame.
@@ -61,6 +65,7 @@ import {
   buildProgram,
   exampleContext,
   splitRecords,
+  thrownLine,
   type BarrelExport,
   type BlockRecord,
   type ExampleContext,
@@ -68,6 +73,9 @@ import {
 } from "./example-program.js";
 import { runInTerminal, type SimulatedTerminal } from "./simulated-process.js";
 import { LIBRARY_BINDING } from "./live-library.js";
+import { standalonePrograms, type Checked } from "./example-slice.js";
+import { encodeProgram } from "./playground-hash.js";
+import { playgroundScript } from "./theme/playground-program.js";
 
 const PROGRAM_FILE = path.join(REPO_ROOT, "docs", "__docs-example__.ts");
 
@@ -113,8 +121,8 @@ export class ExampleCompiler {
       .sort((a, b) => (a.name < b.name ? -1 : 1));
   }
 
-  /** Type-check `program`, throwing every error at the page line it came from. */
-  check(program: ExampleProgram): void {
+  /** Type-check `program`, throwing every error at the page line it came from; the checker's reading of it. */
+  check(program: ExampleProgram): Checked {
     const compiled = this.compile(program.source);
     const file = compiled.getSourceFile(PROGRAM_FILE)!;
     const errors = ts.getPreEmitDiagnostics(compiled, file).map((d) => {
@@ -123,6 +131,7 @@ export class ExampleCompiler {
       return `${where}: ${ts.flattenDiagnosticMessageText(d.messageText, "\n")}`;
     });
     if (errors.length > 0) throw new Error(`docs example does not compile:\n${errors.join("\n")}`);
+    return { checker: compiled.getTypeChecker(), file };
   }
 }
 
@@ -211,8 +220,47 @@ const RUN_DEADLINE_MS = 5_000;
 
 type RunEnd = { readonly kind: "finished" } | { readonly kind: "threw"; readonly error: unknown } | { readonly kind: "stalled" };
 
-/** Run `script` in the example terminal: every byte it wrote, and how the run ended. */
-async function capture(script: string): Promise<{ stream: string; end: RunEnd; exits: number[] }> {
+/**
+ * What a program reads that is neither its page nor `src/`: the time, and
+ * random numbers. A page run fixes both, and every program it runs reads the
+ * same: one instant, and one sequence from one seed.
+ *
+ * [LAW:one-source-of-truth] A block runs twice in a page run, in the page's
+ * chain and as its "Try it" program (`tryItPrints`), and the second is held to
+ * the first's bytes. `console.log` stamps each line with the time, and an
+ * example may print a random number; read from the host, either would make two
+ * runs of one block differ. A block that draws random numbers after a block
+ * above it drew some still differs, since its program starts the sequence
+ * afresh, and the gate names that among the causes at the block.
+ */
+interface World {
+  readonly now: number;
+  readonly seed: number;
+}
+
+function newWorld(): World {
+  return { now: Date.now(), seed: Math.floor(Math.random() * 2 ** 32) };
+}
+
+/**
+ * `world` as declarations over the globals `Date` and `Math` in the body a
+ * program runs in: every `new Date()`, `Date()` and `Date.now()` is `world.now`, and
+ * `Math.random` is mulberry32 from `world.seed`.
+ */
+const worldScript = (world: World): string => `const Date = new Proxy(globalThis.Date, {
+  apply: (Clock) => new Clock(${world.now}).toString(),
+  construct: (Clock, time, target) => Reflect.construct(Clock, time.length === 0 ? [${world.now}] : time, target),
+  get: (Clock, key) => (key === "now" ? () => ${world.now} : Reflect.get(Clock, key)),
+});
+const Math = ((seed) => Object.create(globalThis.Math, { random: { value: () => {
+  seed = (seed + 0x6d2b79f5) | 0;
+  let t = globalThis.Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + globalThis.Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+} } }))(${world.seed});`;
+
+/** Run `script` in the example terminal, in `world`: every byte it wrote, and how the run ended. */
+async function capture(script: string, world: World): Promise<{ stream: string; end: RunEnd; exits: number[] }> {
   const chunks: string[] = [];
   const exits: number[] = [];
   const decoder = new TextDecoder();
@@ -227,7 +275,7 @@ async function capture(script: string): Promise<{ stream: string; end: RunEnd; e
   };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const end = await Promise.race([
-    runInTerminal(script, terminal).then(
+    runInTerminal(`${worldScript(world)}\n${script}`, terminal).then(
       (): RunEnd => ({ kind: "finished" }),
       (error: unknown): RunEnd => ({ kind: "threw", error: error ?? new Error("the example rejected with no reason") }),
     ),
@@ -318,10 +366,11 @@ function shownHtml(shown: Shown): { html: string; columns: number | null } {
  * shows the same way. `v-pre` on each fragment keeps Vue from reading `{{` in
  * output; it cannot sit on the whole card, which may hold a component.
  */
-function outputHtml(fence: Fence, shown: Shown): string {
+function outputHtml(fence: Fence, shown: Shown, tryIt: string | null): string {
   const { label, caption, note } = MARKERS[fence.marker];
   const captionHtml = caption === null ? "" : `<span class="rich-example-caption">${caption}</span>`;
-  const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span>${captionHtml}</div>`;
+  const tryHtml = tryIt === null ? "" : `<a class="rich-example-try" href="${tryIt}">Try it</a>`;
+  const labelHtml = `<div class="rich-example-label"><span class="rich-example-name">${label}</span>${captionHtml}${tryHtml}</div>`;
   const noteHtml = note === null ? "" : `<p class="rich-example-note">${note}</p>`;
   const { html, columns } = shownHtml(shown);
   const style = columns === null ? "" : ` style="--rich-example-columns:${columns}"`;
@@ -429,6 +478,43 @@ export function playgroundStart(compiler: ExampleCompiler, markdown: string): st
   }
   compiler.check({ page, source: first.code, origins: first.code.split("\n").map((_, i) => first.line + 1 + i), blocks: [first] });
   return first.code;
+}
+
+/** The playground's page, which "Try it" links to. */
+const PLAYGROUND_PAGE = "playground.md";
+
+/** The playground's address from `page`'s, relative so it holds under any base the site is served from. */
+function playgroundHref(page: string): string {
+  return path.posix.relative(path.posix.dirname(`/${page}`), `/${PLAYGROUND_PAGE.replace(/\.md$/, "")}`);
+}
+
+/**
+ * Hold a block's "Try it" program to what the page shows for the block: run
+ * the way the playground runs it, on the live library, it writes the bytes the
+ * block wrote in the page's chain and ends the way the block ended.
+ *
+ * [LAW:verifiable-goals] The program is cut from the page by what its names
+ * refer to (example-slice.ts), and that reading can miss a statement the
+ * block's output depends on. A miss fails here, at the block, rather than in
+ * front of a reader.
+ */
+async function tryItPrints(fence: Fence, standalone: ExampleProgram, record: BlockRecord, shared: LiveLibrary, world: World): Promise<void> {
+  const { stream, end, exits } = await capture(playgroundScript(standalone.source, shared.script), world);
+  // How each ended, a throw by the line the page shows for it.
+  const ended = end.kind === "finished" ? "completed" : end.kind === "threw" ? `threw ${thrownLine(end.error)}` : end.kind;
+  const expected = record.ended.kind === "threw" ? `threw ${record.ended.line}` : record.ended.kind;
+  if (exits.length === 0 && ended === expected && stream === record.output) return;
+  let from = 0;
+  while (from < stream.length && stream[from] === record.output[from]) from += 1;
+  throw new Error(
+    `docs/${fence.page}:${fence.line}: "Try it" opens this block as the program below, which ${ended} ` +
+      `where the page's run of the block ${expected}, writing ${JSON.stringify(stream.slice(from, from + 60))} ` +
+      `where the page shows ${JSON.stringify(record.output.slice(from, from + 60))}. ` +
+      `The program is the block and what example-slice.ts carries from above it, so the difference is a statement above ` +
+      `the block that it leaves out, one it carries that prints, or random numbers the block draws after a block above it ` +
+      `drew some, which the program draws afresh.\n${standalone.source}`,
+    { cause: end.kind === "threw" ? end.error : undefined },
+  );
 }
 
 const hash = (text: string): string => createHash("sha256").update(text).digest("hex").slice(0, 16);
@@ -560,14 +646,33 @@ export async function runPageExamples(
   const context = exampleContext(page, markdown);
   const barrel = compiler.barrelExports();
   const program = buildProgram(page, context, chain, barrel);
-  compiler.check(program);
+  const checked = compiler.check(program);
   // [LAW:single-enforcer] Every block outside the chain is checked here, each
   // as a program of its own, whether it runs in the browser or nowhere: not
   // being run at build time is no licence to call something that does not exist.
   const alone = new Map<Fence, ExampleProgram>(fences.filter((f) => !runsAtBuild(f)).map((fence) => [fence, buildBlockProgram(page, context, fence, barrel)]));
-  for (const blockProgram of alone.values()) compiler.check(blockProgram);
+  // Each "Try it" program is cut from the program its block ran in, as the checker read it.
+  const cutAlone = new Map<Fence, ExampleProgram>();
+  for (const [fence, blockProgram] of alone) {
+    const read = compiler.check(blockProgram);
+    if (MARKERS[fence.marker].run !== "never") cutAlone.set(fence, standalonePrograms(read, blockProgram)(fence));
+  }
+  const inChain = standalonePrograms(checked, program);
+  const tried = new Map<Fence, ExampleProgram>(
+    fences.filter((fence) => MARKERS[fence.marker].run !== "never").map((fence) => [fence, runsAtBuild(fence) ? inChain(fence) : cutAlone.get(fence)!]),
+  );
+  for (const [fence, standalone] of tried) {
+    try {
+      compiler.check(standalone);
+    } catch (error) {
+      throw new Error(`docs/${page}:${fence.line}: "Try it" opens this block as the program below, which does not compile. ${(error as Error).message}\n${standalone.source}`, {
+        cause: error,
+      });
+    }
+  }
   const script = await bundleOrThrow(page, program.source);
-  const { stream, end, exits } = await capture(script);
+  const world = newWorld();
+  const { stream, end, exits } = await capture(script, world);
   if (exits.length > 0) throw new Error(`docs/${page}: an example calls process.exit(${exits[0]}), which would end the build; mark it \`node\``);
   const records = splitRecords(stream);
   if (end.kind !== "finished") {
@@ -583,6 +688,11 @@ export async function runPageExamples(
     throw new Error(`docs/${page}: exampleContext wrote ${JSON.stringify(contextRecord.output.slice(0, 60))}; it may not print`);
   }
   const bytes = new Map<Fence, string | null>(chain.map((fence, i) => [fence, blockBytes(fence, blocks[i]!)]));
+  const shared = await library();
+  for (const [i, fence] of chain.entries()) await tryItPrints(fence, tried.get(fence)!, blocks[i]!, shared, world);
+  const links = new Map<Fence, string>(
+    await Promise.all([...tried].map(async ([fence, standalone]) => [fence, `${playgroundHref(page)}#${await encodeProgram(standalone.source)}`] as const)),
+  );
   const liveBlocks = [...alone].filter(([fence]) => MARKERS[fence.marker].run === "browser");
   const programs = await Promise.all(liveBlocks.map(([fence, blockProgram]) => liveProgram(page, fence, blockProgram, library)));
   const live = new Map<Fence, LiveProgram>(liveBlocks.map(([fence], i) => [fence, programs[i]!]));
@@ -601,7 +711,7 @@ export async function runPageExamples(
   // runs to the next blank line: without them the fence would not be parsed as
   // a fence, and prose written straight under it would be swallowed.
   for (const fence of [...fences].reverse()) {
-    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown(fence)), "", "</div>", "");
+    lines.splice(fence.closeLine, 0, "", outputHtml(fence, shown(fence), links.get(fence) ?? null), "", "</div>", "");
     lines.splice(fence.line - 1, 0, "", '<div class="rich-example">', "");
   }
   // Each live program is a module of its own, imported only when its terminal

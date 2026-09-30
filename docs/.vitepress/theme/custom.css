@@ -162,6 +162,17 @@
   content: '▸ ';
 }
 
+/* "Try it", at the far end of the label: opens the block in the playground. */
+.vp-doc .rich-example-try {
+  margin-left: auto;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.vp-doc .rich-example-try:hover {
+  text-decoration: underline;
+}
+
 .vp-doc .rich-example-note {
   margin: 0;
   padding: 12px 16px;
