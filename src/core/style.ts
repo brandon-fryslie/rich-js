@@ -738,7 +738,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "syntax.number": Style.parse("cyan"),
   "syntax.comment": Style.parse("dim italic"),
   "syntax.line_number": Style.parse("dim"),
-  "syntax.line_number.highlight": Style.parse("bold on grey27"),
+  // Ink and ground both from the fixed 256-colour greys: the terminal theme's
+  // own foreground is dark on a light theme and would vanish on grey27.
+  "syntax.line_number.highlight": Style.parse("bold grey93 on grey27"),
 
   // Markdown
   "markdown.h1": Style.parse("bold underline"),
