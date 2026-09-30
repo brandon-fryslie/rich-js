@@ -1593,6 +1593,33 @@ describe("Table sizes and pads cells as Rich does", () => {
     expect(lines(grid({ padding: 0 }, "a", "", "b"), 2)).toEqual(["a"]);
   });
 
+  it("wraps what can wrap before it cuts what cannot (rich-table-3u2)", () => {
+    const pair = (left: [string, boolean], right: [string, boolean]): Table => {
+      const g = Table.grid({ padding: [0, 1, 0, 0], padEdge: false });
+      g.addColumn("", { noWrap: left[1] });
+      g.addColumn("", { noWrap: right[1] });
+      g.addRow(left[0], right[0]);
+      return g;
+    };
+    const trimmed = (r: Renderable, maxWidth: number): string[] =>
+      lines(r, maxWidth).map((line) => line.trimEnd());
+    // A figure with no break in it keeps every cell while the title beside it
+    // has a wrap left to give. Rich cuts it to `$1,332,539,…` here.
+    expect(trimmed(pair(["Star Wars Ep. VIII: The Last Jedi", false], ["$1,332,539,889", false]), 24)).toEqual([
+      "Star Wars $1,332,539,889",
+      "Ep. VIII:",
+      "The Last",
+      "Jedi",
+    ]);
+    // A column that may not wrap has no narrower width than its whole line, as
+    // in Rich.
+    expect(trimmed(pair(["one two three", true], ["alpha beta gamma delta", false]), 24)).toEqual([
+      "one two three alpha beta",
+      "              gamma",
+      "              delta",
+    ]);
+  });
+
   it("sizes a multi-line cell by its widest line (rich-table-pyrl)", () => {
     const t = new Table();
     t.addColumn("A");

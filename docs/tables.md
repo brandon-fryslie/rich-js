@@ -31,10 +31,12 @@ console.print(table);
 ```
 
 The example terminal is 75 columns wide, narrower than this table wants, so the
-columns shrink to fit. Each gives up width in proportion to its natural width:
-the long titles and the "Production Budget" header wrap onto a second line, and
-the Box Office figures, which cannot wrap, are cut short by their column's
-`overflow` (an ellipsis by default). Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
+columns shrink to fit. Every column first keeps its minimum — its longest word,
+or its whole line if it has `noWrap` — and only the width past that is shared
+out in proportion to natural width, so the long titles wrap onto a second line
+while the Box Office figures, which have no break in them, stay whole. A column
+is cut short by its `overflow` (an ellipsis by default) only when the minimums
+alone do not fit. Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
 
 ## Table options
 
