@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-275",
+      "ref": "refs/pull/275/merge",
+      "sha": "f4de9ad94ad679b2d7581930d759ee07738c35c3",
+      "timestamp": "2026-09-30T20:25:54.940Z",
+      "commits": [
+        {
+          "sha": "f4de9ad94ad679b2d7581930d759ee07738c35c3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T14:24:45-06:00",
+          "message": "Merge 86fefc941f69d35cd45656db85bc67d2cc4a8b26 into 987c57459b95e2eddb811c57cb3c9c1c7325fc7d\n"
+        },
+        {
+          "sha": "86fefc941f69d35cd45656db85bc67d2cc4a8b26",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T14:24:41-06:00",
+          "message": "refactor(widgets): an overlay is bounded through cropLines (rich-segment-1p2h)\n\nThe overlay clip is the last survivor of Screen's split-then-unpadded-crop\nhand-roll; it now composes splitLines(cropLines(...)) as Tree and Layout do.\nPainter's fitRows keeps adjustLineLength: it bounds the rows of a frame\nalready shaped by its caller, one line at a time, which is that primitive's\nown job — there is no stream there to crop.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "987c57459b95e2eddb811c57cb3c9c1c7325fc7d",
