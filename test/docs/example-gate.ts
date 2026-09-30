@@ -2,9 +2,9 @@
  * The docs-example gate: every example on a page shows its real output, or
  * says why it does not, and no output is drawn by hand.
  *
- * Parsing only, like `code-blocks.ts` beside it — markdown text in, findings
- * out — so each rule is exercised against fixture strings. The `.test.ts`
- * beside this file owns the sweep over `docs/`.
+ * Parsing only — markdown text in, findings out — so each rule is exercised
+ * against fixture strings. The `.test.ts` beside this file owns the sweep over
+ * `docs/`.
  *
  * WHAT COUNTS AS DRAWN OUTPUT is decided by the fence, never by its contents.
  * A block VitePress shows exactly as typed is drawn output: no language, a
@@ -16,10 +16,9 @@
  * one that was not — the call sequence in `docs/strip.md` — says nothing
  * about what it holds. Output also hid in `text` (`docs/markup.md` prints a
  * parse error that way), while the other `text` blocks were Go templates.
- * Telling those apart by reading them is the guessing `code-blocks.ts`'s
- * header warns against: a check that invents findings gets correct pages
- * edited to silence it. So a block that is not output names a language Shiki
- * has a grammar for.
+ * Telling those apart by reading them is guessing, and a check that invents
+ * findings gets correct pages edited to silence it. So a block that is not
+ * output names a language Shiki has a grammar for.
  * [LAW:types-are-the-program] The fence is the declared type; the gate reads
  * the declaration, not a guess at the value.
  *
