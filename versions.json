@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-252",
-      "ref": "refs/pull/252/merge",
-      "sha": "bba5988101d76851c8dea314cc7994fde5285c90",
-      "timestamp": "2026-09-30T11:48:02.828Z",
-      "commits": [
-        {
-          "sha": "bba5988101d76851c8dea314cc7994fde5285c90",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T11:46:54Z",
-          "message": "Merge 3c1780b0e315542cbf426776458a8f6aa9e13d65 into fc51ccf629a48dda1e39b948b9a26408f8f5dbb3\n"
-        },
-        {
-          "sha": "3c1780b0e315542cbf426776458a8f6aa9e13d65",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:46:49-06:00",
-          "message": "fix(markdown): a blockquote holds blocks of its own (rich-demos-b19)\n\nReview of #252: a quote's lines, markers cut off, are tokenized as Markdown\nof their own and drawn beside the bar, so a fence, a list or a paragraph\nbreak inside one keeps its shape, and a lazy line continues only the\nparagraph open inside it. The quote-only row rules in continuation go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "9366744392ba82ee1dbc88c1975937e279359e9f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:40:07-06:00",
-          "message": "fix(markdown): quote structure keeps its rows, list items read numbers as CommonMark, empty blocks draw (rich-demos-b19)\n\nReview of #252: inside a quote a blank line or a block start begins a row\nof its own instead of reflowing into the text around it; a numbered line\nindented into a list item stays its text unless it counts from 1; an empty\nitem or quote still draws its bullet or bar.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "ec96343da42a8dee901c6255272c921b998a6477",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:33:55-06:00",
-          "message": "fix(markdown): CommonMark paragraph interrupts, setext headings, hard breaks, CRLF (rich-demos-b19)\n\nReview of #252: a paragraph is interrupted only by a numbered item counting\nfrom 1, and a = / - underline makes it a heading; lines ending in two spaces\nor a backslash keep their break; CRLF input tokenizes; a bare > continues a\nquote; list nesting is counted in columns so a tab never reaches the\nterminal; a gutter never narrows text below one column.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "38eb20100dbebad76beb0acf3e69f815b3824627",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:26:50-06:00",
-          "message": "fix(markdown): reflow soft-broken blocks and end every list item's row (rich-demos-b19)\n\nA list item took only its marker line; its continuation lines fell into a\nparagraph that also swallowed the next items, joined untrimmed. The item\nnever ended its row, so what followed ran past the width and a Panel cut\nit off — the rich-dash README panel lost \"panel proves it is\" outright.\n\nParagraphs, list items and quotes now each take every line up to a blank\nor the next block start, joined by one space. Every wrapped block is laid\nout through one gutter: a list item's text hangs under its bullet, a\nquote's bar runs its full height, and a nested item keeps its indent.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "fc51ccf629a48dda1e39b948b9a26408f8f5dbb3",
-      "timestamp": "2026-09-30T11:20:13.768Z",
+      "sha": "2c62ec9330dd145ef6fd85c07020d6126ec44f48",
+      "timestamp": "2026-09-30T11:52:40.614Z",
       "commits": [
         {
-          "sha": "fc51ccf629a48dda1e39b948b9a26408f8f5dbb3",
+          "sha": "2c62ec9330dd145ef6fd85c07020d6126ec44f48",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T05:19:03-06:00",
-          "message": "fix(demos): themes-and-color-studio opens on its first line (rich-demos-c3k) (#251)\n\n* fix(demos): themes-and-color-studio opens on its first line and fits the demo terminal (rich-demos-c3k)\n\nThe browser wire scrolls xterm to the top once xterm has parsed everything\nthe tour printed; the Console takes its width from the host instead of a\nhardcoded 120, which xterm re-wrapped mid-word in its 100 columns.\n\n* fix(demos): the shell opens every printed demo on its first line (rich-demos-c3k)\n\nReview of #251: the scroll-to-top lived in one demo's wire, so rich-strip\nstill opened scrolled past its top. It moves to the browser shell, and the\nwire's ReadingTerminal goes with it.\n\nThe demo terminal's size gets one home, examples/_browser-shell/demo-terminal.ts,\nfilled into the shell by vite.config.demos.ts and read by the tests that\ndepend on it.\n\nAt 100 columns the theme gallery rows (102 cells) and the named-ramp row\n(104) were wrapped by the Console, which the fits-terminal test could not\nsee. The name column is now as wide as the longest name, the ramp caption\nuses the section's ref(x) shorthand, and a second test checks each strip\nfits as drawn at an unbounded width."
+          "timestamp": "2026-09-30T05:51:32-06:00",
+          "message": "fix(markdown): reflow soft-broken blocks and end every list item's row (rich-demos-b19) (#252)\n\n* fix(markdown): reflow soft-broken blocks and end every list item's row (rich-demos-b19)\n\nA list item took only its marker line; its continuation lines fell into a\nparagraph that also swallowed the next items, joined untrimmed. The item\nnever ended its row, so what followed ran past the width and a Panel cut\nit off — the rich-dash README panel lost \"panel proves it is\" outright.\n\nParagraphs, list items and quotes now each take every line up to a blank\nor the next block start, joined by one space. Every wrapped block is laid\nout through one gutter: a list item's text hangs under its bullet, a\nquote's bar runs its full height, and a nested item keeps its indent.\n\n* fix(markdown): CommonMark paragraph interrupts, setext headings, hard breaks, CRLF (rich-demos-b19)\n\nReview of #252: a paragraph is interrupted only by a numbered item counting\nfrom 1, and a = / - underline makes it a heading; lines ending in two spaces\nor a backslash keep their break; CRLF input tokenizes; a bare > continues a\nquote; list nesting is counted in columns so a tab never reaches the\nterminal; a gutter never narrows text below one column.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(markdown): quote structure keeps its rows, list items read numbers as CommonMark, empty blocks draw (rich-demos-b19)\n\nReview of #252: inside a quote a blank line or a block start begins a row\nof its own instead of reflowing into the text around it; a numbered line\nindented into a list item stays its text unless it counts from 1; an empty\nitem or quote still draws its bullet or bar.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(markdown): a blockquote holds blocks of its own (rich-demos-b19)\n\nReview of #252: a quote's lines, markers cut off, are tokenized as Markdown\nof their own and drawn beside the bar, so a fence, a list or a paragraph\nbreak inside one keeps its shape, and a lazy line continues only the\nparagraph open inside it. The quote-only row rules in continuation go.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
