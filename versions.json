@@ -4,15 +4,22 @@
     {
       "version": "pr-234",
       "ref": "refs/pull/234/merge",
-      "sha": "307957ddf94c4cafc43f8bc1a6f4b5222b2be8b8",
-      "timestamp": "2026-09-30T03:59:38.306Z",
+      "sha": "3cead7d550c6bfa2b04fed4fbf5ac0ed4fc59a34",
+      "timestamp": "2026-09-30T04:16:07.810Z",
       "commits": [
         {
-          "sha": "307957ddf94c4cafc43f8bc1a6f4b5222b2be8b8",
+          "sha": "3cead7d550c6bfa2b04fed4fbf5ac0ed4fc59a34",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T21:58:43-06:00",
-          "message": "Merge 539eba52039cb05155059162a039c3b444a5ef3e into 3226a47d2a575fbac6a77d5efabf586c32bad4ec\n"
+          "timestamp": "2026-09-30T04:15:23Z",
+          "message": "Merge 02d4b00bb56e039f74f7bc2c7785b0bdab89aba5 into 3226a47d2a575fbac6a77d5efabf586c32bad4ec\n"
+        },
+        {
+          "sha": "02d4b00bb56e039f74f7bc2c7785b0bdab89aba5",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-29T22:15:18-06:00",
+          "message": "fix(pretty): segment a string once, and only when it is over the cap (rich-pretty-2tq)\n\nReview (high) found every string under maxString was split into clusters\non every probe; a 2M-char value at depth 4 took ~600ms. The code-unit\nlength check is back as the no-cut shortcut, and the cut form is memoised\nper value. The unit is documented at PrettyOptions.maxString and stated as\nclusters of the raw value, counted before escaping; flag, toned-hand and\nescape cases are tested.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "539eba52039cb05155059162a039c3b444a5ef3e",
