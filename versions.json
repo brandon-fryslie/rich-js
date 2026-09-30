@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-238",
-      "ref": "refs/pull/238/merge",
-      "sha": "1d3303caf0f40406cc7c098155beb712df090e0c",
-      "timestamp": "2026-09-30T06:07:05.678Z",
-      "commits": [
-        {
-          "sha": "1d3303caf0f40406cc7c098155beb712df090e0c",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T06:06:25Z",
-          "message": "Merge 5e60e20437dd3de742c7f38df3ae005bd4295d78 into 3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8\n"
-        },
-        {
-          "sha": "5e60e20437dd3de742c7f38df3ae005bd4295d78",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:06:21-06:00",
-          "message": "fix(docs): a link the browser refuses to write is reported, not thrown (rich-playground-afk.npl)\n\n/code-review medium: replaceState ran in the success arm of then(ok, err), so\na browser's refusal (URL length cap) escaped as an unhandled rejection.\n"
-        },
-        {
-          "sha": "b2e261f681d75b53a33189c604187dc5354176ae",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:02:48-06:00",
-          "message": "fix(docs): the playground's link keeps up, and a failed start retries (rich-playground-afk.npl)\n\nReview (/code-review high) of PR #238:\n- The hash is written once typing pauses: one history write a keystroke is\n  a burst Safari and Firefox refuse and Chrome drops.\n- Edits, followed links and closing are ordered events; an encode or decode\n  that lands after a later event is dropped, replacing the unordered chain.\n- `opened: Opened | null` meant both \"opening\" and \"failed\"; it is a Phase\n  union, and Run opens a playground that failed to, as RichLive's button does.\n- A link failure clears once a write makes the address bar and editor agree.\n- A link followed in the tab runs in the page's motion mode.\n- The start block must be one its page runs to an end (not node/shape/throws).\n- decodeProgram refuses to inflate past MAX_PROGRAM_BYTES; encode refuses the same.\n- aria-keyshortcuts dropped: it named Control+Enter on a Mac, and the kbd\n  in the button's name already says the shortcut.\n"
-        },
-        {
-          "sha": "aabd9fa39692643d1bb139a1ff3ed4244cab8f32",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:45:05-06:00",
-          "message": "feat(docs): the playground page: editor, Run, terminal (rich-playground-afk.npl)\n\nA Playground nav tab: a CodeMirror 6 editor beside the live terminal, above it\nat phone width, running the editor's TypeScript on the live library.\n\n- Run, or Ctrl/Cmd+Enter in the editor, runs the editor's program, replacing\n  the run before; Stop ends one that has not ended.\n- Every edit is written to the URL hash (docs/.vitepress/playground-hash.ts:\n  deflate, base64url), so a link or a reload opens the same program. A hash it\n  cannot read is reported and the start example opened.\n- It opens on the first block of docs/introduction.md, served with the live\n  library as virtual:rich-live/playground. That block is type-checked with no\n  prelude or page context, so one that stops being a program on its own fails\n  the build at its line. The library module is the one the live examples\n  import, so the site ships it once.\n- Editor colours are One Light / One Dark Pro as custom properties, so the\n  editor follows the site's colour mode; the terminal takes the example themes.\n\nVerified in Chromium (e2e/playground.spec.ts): reached from the nav, start\nexample runs, edit and rerun by button and shortcut, reload and a fresh context\nrestore the program, unreadable link reported, endless loop stopped, phone\nstacking, light and dark terminal themes.\n"
-        },
-        {
-          "sha": "0b9a89d11de43179ece167367bf8dfe149f07e17",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:45:05-06:00",
-          "message": "test(e2e): poll the rows of a worker that did not start (rich-playground-afk.npl)\n\nThe run's state turns exited as the report is written, and xterm draws the\nwrite a moment later, so reading the rows once raced the draw. It failed about\none run in three under the full e2e group, on master too.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8",
-      "timestamp": "2026-09-30T05:28:26.752Z",
+      "sha": "5368cb7aec2ad3f5205e0c24e05b52b4687927db",
+      "timestamp": "2026-09-30T06:10:52.056Z",
       "commits": [
         {
-          "sha": "3e14643e1ecfa2be3e136bd90244cc94dc3f7dc8",
+          "sha": "5368cb7aec2ad3f5205e0c24e05b52b4687927db",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-29T23:27:48-06:00",
-          "message": "feat(docs): run visitor TypeScript in a sandboxed frame against a terminal (rich-playground-afk.9c4) (#237)\n\n* feat(docs): run visitor TypeScript in a sandboxed frame against a terminal (rich-playground-afk.9c4)\n\nThe playground's runner: a visitor's TypeScript becomes the script a live\nterminal runs (theme/playground-program.ts), and every live terminal now runs\nits program in a worker inside a frame sandboxed to an opaque origin.\n\n- Types are stripped by Sucrase, chosen by weight on the page (minified,\n  gzip -9): Sucrase 48 KB, typescript 1.0 MB, esbuild-wasm 3.7 MB. It keeps\n  every line where it was, so an error's stack names the visitor's own line\n  through a //# sourceURL.\n- Imports by published name read the live library the docs' live examples\n  already share (widgets and template-bindings with their optional peers).\n- The worker's script is served as text (virtual:rich-live/runtime), since an\n  opaque-origin frame can start a worker only from a script it holds. The\n  worker reports every failure itself, with the error's stack.\n- Stopping a run removes its frame, which ends a loop that never yields.\n\nVerified in Chromium (e2e/playground-program.spec.ts): coloured Table,\nanimating Progress, Button on Enter, syntax and thrown errors at their lines,\na spinning program stopped with the page responsive and its worker gone, and\nno document or origin inside the program. The docs' live examples pass\nunchanged under the sandbox (e2e/live-examples.spec.ts).\n\n* fix(docs): the live runtime reports a worker it cannot start, runs exporting code, and reloads in dev (rich-playground-afk.9c4)\n\n- The frame's relay sends any failure to start the worker (a constructor\n  that throws, a script that never loads) to the page as a crash, so the\n  run can no longer be stuck in \"running\" or print \"undefined\".\n- The playground program declares `exports`, the second CommonJS name\n  Sucrase's output uses.\n- The runtime module is bundled on every load and registers its files\n  with addWatchFile, so docs:dev picks up edits to the worker and does not\n  keep a failed bundle."
+          "timestamp": "2026-09-30T00:10:12-06:00",
+          "message": "feat(docs): the playground page: editor, Run, terminal (rich-playground-afk.npl) (#238)\n\n* test(e2e): poll the rows of a worker that did not start (rich-playground-afk.npl)\n\nThe run's state turns exited as the report is written, and xterm draws the\nwrite a moment later, so reading the rows once raced the draw. It failed about\none run in three under the full e2e group, on master too.\n\n* feat(docs): the playground page: editor, Run, terminal (rich-playground-afk.npl)\n\nA Playground nav tab: a CodeMirror 6 editor beside the live terminal, above it\nat phone width, running the editor's TypeScript on the live library.\n\n- Run, or Ctrl/Cmd+Enter in the editor, runs the editor's program, replacing\n  the run before; Stop ends one that has not ended.\n- Every edit is written to the URL hash (docs/.vitepress/playground-hash.ts:\n  deflate, base64url), so a link or a reload opens the same program. A hash it\n  cannot read is reported and the start example opened.\n- It opens on the first block of docs/introduction.md, served with the live\n  library as virtual:rich-live/playground. That block is type-checked with no\n  prelude or page context, so one that stops being a program on its own fails\n  the build at its line. The library module is the one the live examples\n  import, so the site ships it once.\n- Editor colours are One Light / One Dark Pro as custom properties, so the\n  editor follows the site's colour mode; the terminal takes the example themes.\n\nVerified in Chromium (e2e/playground.spec.ts): reached from the nav, start\nexample runs, edit and rerun by button and shortcut, reload and a fresh context\nrestore the program, unreadable link reported, endless loop stopped, phone\nstacking, light and dark terminal themes.\n\n* fix(docs): the playground's link keeps up, and a failed start retries (rich-playground-afk.npl)\n\nReview (/code-review high) of PR #238:\n- The hash is written once typing pauses: one history write a keystroke is\n  a burst Safari and Firefox refuse and Chrome drops.\n- Edits, followed links and closing are ordered events; an encode or decode\n  that lands after a later event is dropped, replacing the unordered chain.\n- `opened: Opened | null` meant both \"opening\" and \"failed\"; it is a Phase\n  union, and Run opens a playground that failed to, as RichLive's button does.\n- A link failure clears once a write makes the address bar and editor agree.\n- A link followed in the tab runs in the page's motion mode.\n- The start block must be one its page runs to an end (not node/shape/throws).\n- decodeProgram refuses to inflate past MAX_PROGRAM_BYTES; encode refuses the same.\n- aria-keyshortcuts dropped: it named Control+Enter on a Mac, and the kbd\n  in the button's name already says the shortcut.\n\n* fix(docs): a link the browser refuses to write is reported, not thrown (rich-playground-afk.npl)\n\n/code-review medium: replaceState ran in the success arm of then(ok, err), so\na browser's refusal (URL length cap) escaped as an unhandled rejection."
         }
       ]
     }
