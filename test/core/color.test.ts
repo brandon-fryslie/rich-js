@@ -641,6 +641,53 @@ describe("ColorSpec.getTruecolor()", () => {
   });
 });
 
+describe("ColorSpec.blend()", () => {
+  const blue = ColorSpec.parse("blue");
+  const red = ColorSpec.parse("red");
+
+  it("draws as the mix of the shades a theme draws its ends in", () => {
+    const mixed = ColorSpec.blend(blue, red, 0.25, false);
+    expect(mixed.getTruecolor(ATOM_ONE_DARK)).toEqual(
+      blendRgb(ATOM_ONE_DARK.ansiColors.get(4), ATOM_ONE_DARK.ansiColors.get(1), 0.25),
+    );
+  });
+
+  it("tells a terminal the mix under the standard table, at every depth", () => {
+    const mixed = ColorSpec.blend(blue, red, 0.25, false);
+    const standard = blendRgb(STANDARD_TABLE.get(4), STANDARD_TABLE.get(1), 0.25);
+    expect(mixed.getAnsiCodes(false)).toEqual(["48", "2", `${standard.red}`, `${standard.green}`, `${standard.blue}`]);
+    expect(mixed.downgrade(ColorDepth.EIGHT_BIT)).toEqual(ColorSpec.fromRgba(standard).downgrade(ColorDepth.EIGHT_BIT));
+  });
+
+  it("reads a default end in the role it was made with, whoever draws it", () => {
+    const fromGround = ColorSpec.blend(ColorSpec.default(), red, 0, false);
+    expect(fromGround.getTruecolor(MONOKAI, true)).toEqual(MONOKAI.backgroundColor);
+    expect(ColorSpec.blend(ColorSpec.default(), red, 0, true).getTruecolor(MONOKAI, false)).toEqual(MONOKAI.foregroundColor);
+  });
+
+  it("has a fixed value only when both ends do", () => {
+    const a = ColorSpec.parse("#000000");
+    const b = ColorSpec.parse("#ffffff");
+    expect(ColorSpec.blend(a, b, 0.5, false).fixedValue).toEqual(blendRgb(a.value!, b.value!, 0.5));
+    expect(ColorSpec.blend(a, red, 0.5, false).fixedValue).toBeUndefined();
+  });
+
+  it("flattens each end onto the ground, keeping the mix theme-drawn", () => {
+    const glass = ColorSpec.parse("#ffffff80");
+    const flat = ColorSpec.blend(glass, blue, 0.5, false).flattenAlpha(new ColorRgba(0, 0, 0));
+    expect(flat.getTruecolor(ATOM_ONE_DARK)).toEqual(
+      blendRgb(glass.value!.compositeOver(new ColorRgba(0, 0, 0)), ATOM_ONE_DARK.ansiColors.get(4), 0.5),
+    );
+  });
+
+  it("is named for what it mixes, so two mixes with one standard RGB stay two colours", () => {
+    const navy = ColorSpec.parse("#000080");
+    expect(ColorSpec.blend(blue, red, 0.5, false).value).toEqual(ColorSpec.blend(navy, red, 0.5, false).value);
+    expect(ColorSpec.blend(blue, red, 0.5, false).name).not.toBe(ColorSpec.blend(navy, red, 0.5, false).name);
+    expect(ColorSpec.blend(ColorSpec.default(), red, 0.5, false).name).not.toBe(ColorSpec.blend(ColorSpec.default(), red, 0.5, true).name);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // parseRgbHex
 // ---------------------------------------------------------------------------

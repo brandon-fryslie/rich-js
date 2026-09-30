@@ -636,6 +636,18 @@ export class ColorSpec {
   }
 
   /**
+   * The colour `t` of the way from `from` to `to`, each end read as a
+   * foreground or a background colour as `foreground` says. It stays a mix of
+   * the two until it is drawn, so whatever theme draws either end draws the
+   * mix between them: exported under a theme whose `blue` is #61afef, a mix
+   * with `blue` starts from #61afef. A terminal is told its RGB under the
+   * standard table, the only one a render has.
+   */
+  static blend(from: ColorSpec, to: ColorSpec, t: number, foreground: boolean): ColorSpec {
+    return new ColorBlend(from, to, t, foreground);
+  }
+
+  /**
    * Parse a color string. Cached — identical strings return the same instance.
    */
   static parse(colorString: string): ColorSpec {
@@ -676,6 +688,50 @@ export class ColorSpec {
       case ColorDepth.DEFAULT:
         return ColorSpec.default();
     }
+  }
+}
+
+function mix(from: ColorSpec, to: ColorSpec, t: number, foreground: boolean, theme?: TerminalTheme): ColorRgba {
+  return blendRgb(from.getTruecolor(theme, foreground), to.getTruecolor(theme, foreground), t);
+}
+
+/**
+ * `ColorSpec.blend`. A terminal is told it as a truecolor value, so it is one,
+ * and `value` is what it is told; every question that reaches a theme is asked
+ * of its two ends instead.
+ */
+class ColorBlend extends ColorSpec {
+  constructor(
+    private readonly from: ColorSpec,
+    private readonly to: ColorSpec,
+    private readonly t: number,
+    // Which of a theme's two defaults a `default` end stands for, fixed when
+    // the mix is made rather than by whoever draws it.
+    private readonly foreground: boolean,
+  ) {
+    super(
+      `blend(${from.name},${to.name},${t},${foreground ? "fg" : "bg"})`,
+      ColorDepth.TRUECOLOR,
+      undefined,
+      mix(from, to, t, foreground),
+    );
+  }
+
+  override get fixedValue(): ColorRgba | undefined {
+    const a = this.from.fixedValue;
+    const b = this.to.fixedValue;
+    return a === undefined || b === undefined ? undefined : blendRgb(a, b, this.t);
+  }
+
+  // Compositing is linear, so the mix of two flattened ends is the flattened mix.
+  override flattenAlpha(bg: ColorRgba): ColorSpec {
+    const from = this.from.flattenAlpha(bg);
+    const to = this.to.flattenAlpha(bg);
+    return from === this.from && to === this.to ? this : new ColorBlend(from, to, this.t, this.foreground);
+  }
+
+  override getTruecolor(theme?: TerminalTheme): ColorRgba {
+    return mix(this.from, this.to, this.t, this.foreground, theme);
   }
 }
 

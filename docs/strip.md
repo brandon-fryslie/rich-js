@@ -176,6 +176,7 @@ console.print(
 - Middle: `steps` cells, each painted with the half-block glyph `▌` (U+258C) so one cell carries **two** colour samples — `fg` for the left half, `bg` for the right half. `steps` cells therefore produce `2 × steps` colour samples between the two anchors, doubling the perceived smoothness compared to one-colour-per-cell at the same width.
 - All samples use midpoint sampling — no sample ever equals either anchor.
 - Endpoints (or items lacking a `bgcolor`) render empty — a gradient needs two anchors.
+- A named background (`blue`, `color(4)`, `default`) is the terminal theme's own shade, so each sample is kept as a mix of the two anchors (`ColorSpec.blend`) rather than a fixed RGB. An export under a theme draws the ramp from that theme's `blue` to its `red`, the shades the anchors themselves are drawn in. A live terminal is sent the standard-table RGB, because a render cannot know the terminal's palette.
 - Best on truecolor. On 256-colour terminals the colour-system downgrade still works, but adjacent samples quantize to the same palette index — neighbouring half-cells collapse into one colour and the gradient visibly stripes.
 
 ## Custom joiners
