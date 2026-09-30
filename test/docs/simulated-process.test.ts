@@ -234,6 +234,23 @@ describe("runInTerminal", () => {
     expect(stripAnsi(term.output.join(""))).toBe("Name?: Al\b \blice\r\nHello, Alice!\n");
   });
 
+  it("hands readline a nodeAsk prompt wider than the terminal as one unbroken line", async () => {
+    const term = terminal(10);
+    const prompt = JSON.stringify(resolve(REPO_ROOT, "src/node/prompt.ts"));
+    const run = runInTerminal(
+      await bundleExample(`
+        import { Prompt } from ${LIBRARY};
+        import { nodeAsk } from ${prompt};
+        await Prompt.ask("Pick one please", nodeAsk, { choices: ["a", "b"] });
+      `),
+      term,
+    );
+    await vi.waitFor(() => expect(stripAnsi(term.output.join(""))).toContain(": "));
+    term.type("a\r");
+    await run;
+    expect(stripAnsi(term.output.join(""))).toBe("Pick one please [a/b]: a\r\n");
+  });
+
   it("draws a nodeAsk prompt in the terminal's colours, its markup, choices and y/n included", async () => {
     const term = terminal(75);
     const prompt = JSON.stringify(resolve(REPO_ROOT, "src/node/prompt.ts"));
@@ -255,7 +272,7 @@ describe("runInTerminal", () => {
     const draw = (markup: string): string => {
       const chunks: string[] = [];
       const file = { write: (data: string) => (chunks.push(data), true) } as NodeJS.WritableStream;
-      new Console({ file, colorSystem: "truecolor", forceTerminal: true }).print(markup, { end: "" });
+      new Console({ file, colorSystem: "truecolor", forceTerminal: true, highlight: false }).print(markup, { end: "" });
       return chunks.join("");
     };
     expect(term.output.join("")).toBe(

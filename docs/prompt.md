@@ -128,4 +128,4 @@ const confirmed = await Confirm.ask("Proceed?", fakeAsk);
 console.print({ name, confirmed });
 ```
 
-`nodeAsk` draws the prompt with a `Console` on stdout, so it takes the same colours that console's own output would.
+`nodeAsk` draws the prompt with a default `Console` on stdout: the default theme, in the colours detected for stdout.

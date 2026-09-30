@@ -11,7 +11,7 @@ import { Confirm, FloatPrompt, IntPrompt, Prompt, type PromptInput } from "../..
 function draw(item: RichText | string): string {
   const chunks: string[] = [];
   const file = { write: (data: string) => (chunks.push(data), true) } as NodeJS.WritableStream;
-  new Console({ file, width: 80, colorSystem: "256", forceTerminal: true }).print(item, { end: "" });
+  new Console({ file, width: 80, colorSystem: "256", forceTerminal: true, highlight: false }).print(item, { end: "" });
   return chunks.join("");
 }
 
