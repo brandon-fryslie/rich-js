@@ -4,15 +4,22 @@
     {
       "version": "pr-239",
       "ref": "refs/pull/239/merge",
-      "sha": "d3ba3fc36b2c73c16e14654f8129c41b1cd6a2cd",
-      "timestamp": "2026-09-30T06:34:05.219Z",
+      "sha": "1c3d5ec5ccc79646ac5701cac692be1f886fed2e",
+      "timestamp": "2026-09-30T06:48:41.953Z",
       "commits": [
         {
-          "sha": "d3ba3fc36b2c73c16e14654f8129c41b1cd6a2cd",
+          "sha": "1c3d5ec5ccc79646ac5701cac692be1f886fed2e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:33:01-06:00",
-          "message": "Merge 1a1aa65d974e7911e726ceb1b868b6a823db6b76 into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
+          "timestamp": "2026-09-30T06:47:29Z",
+          "message": "Merge 891a900cd7d44e41de2a61eb64207df9562a7ffa into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
+        },
+        {
+          "sha": "891a900cd7d44e41de2a61eb64207df9562a7ffa",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T00:47:24-06:00",
+          "message": "fix(docs): Try it programs keep the page's scopes and context (rich-playground-afk.4kh)\n\nReview (high) of PR #239:\n- a part that redeclares a carried name opens a scope, as the page nests it\n- the page's exampleContext is carried whole, so a live block's program,\n  which nothing runs at build, is decided by no reading of shape\n- a carried statement takes its own comments, not the line before's\n- a Try it program that fails to compile, or prints differently, says so\n  and names the causes, random numbers among them\n- the slicer reads imports through example-program.ts's parser\n- never-run blocks are no longer cut\n"
         },
         {
           "sha": "1a1aa65d974e7911e726ceb1b868b6a823db6b76",
