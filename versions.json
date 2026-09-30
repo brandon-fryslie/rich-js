@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-239",
-      "ref": "refs/pull/239/merge",
-      "sha": "8e7b4d576fc822879124e02c79946b4309181ea0",
-      "timestamp": "2026-09-30T07:07:48.346Z",
-      "commits": [
-        {
-          "sha": "8e7b4d576fc822879124e02c79946b4309181ea0",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T07:06:42Z",
-          "message": "Merge d94f29e4fdc2d7901c2eacc47e4892c6a8d31917 into 5368cb7aec2ad3f5205e0c24e05b52b4687927db\n"
-        },
-        {
-          "sha": "d94f29e4fdc2d7901c2eacc47e4892c6a8d31917",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T01:06:37-06:00",
-          "message": "fix(docs): one import printer, a thrown line from source text, a callable Date (rich-playground-afk.4kh)\n\nReview (escalation high) of PR #239:\n- thrownLine evaluates THROWN_LINE, the text the program embeds, rather\n  than pasting a compiled function's toString into the program\n- the Date shadow is a Proxy, so Date() returns a string as a host's does\n- a Try it program carries every bare import the page ran by its block's end\n- example-slice uses example-program's importLines and SourceBuilder\n- a non-chain block's checker is not kept past its cut\n"
-        },
-        {
-          "sha": "82b45058d20c2e94e2592cfbe768c0efdd682847",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:55:17-06:00",
-          "message": "fix(docs): a throws block's Try it program must throw what the page shows (rich-playground-afk.4kh)\n\nReview (medium) of PR #239: the gate compared only how a run ended, so a\nprogram throwing a different error passed. Both lines now come from one\nfunction, thrownLine, whose source the page program's helper embeds.\nThe console test matches values of the prelude console's type, not the class.\n"
-        },
-        {
-          "sha": "891a900cd7d44e41de2a61eb64207df9562a7ffa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:47:24-06:00",
-          "message": "fix(docs): Try it programs keep the page's scopes and context (rich-playground-afk.4kh)\n\nReview (high) of PR #239:\n- a part that redeclares a carried name opens a scope, as the page nests it\n- the page's exampleContext is carried whole, so a live block's program,\n  which nothing runs at build, is decided by no reading of shape\n- a carried statement takes its own comments, not the line before's\n- a Try it program that fails to compile, or prints differently, says so\n  and names the causes, random numbers among them\n- the slicer reads imports through example-program.ts's parser\n- never-run blocks are no longer cut\n"
-        },
-        {
-          "sha": "1a1aa65d974e7911e726ceb1b868b6a823db6b76",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:32:57-06:00",
-          "message": "feat(docs): \"Try it\" opens any docs example in the playground (rich-playground-afk.4kh)\n\nEvery example that runs (static, silent, throws, live) carries a \"Try it\"\nlink in its output label. It opens the playground on the block as a program of\nits own: the block, plus the imports it uses and every statement above it\nthat declares something it uses (the prelude's console, the page context's\nlines, earlier blocks' declarations). Statements above it that change one of\nthose without printing come along too. docs/.vitepress/example-slice.ts cuts\nit using the TypeScript checker's reading of the page's own program.\n\nChecked at build time, per block: the program type-checks alone, and each\nblock that runs at build time, run as the playground runs it (Sucrase + the\nlive library), prints the bytes the page shows and ends the same way. Across\nthe site 206 of 242 executed blocks need nothing from above; all 242 pass.\n\nA page run now fixes the time and a seeded Math.random for every program it\nruns, so a block run twice (chain and Try it) agrees; console.log's timestamp\nis the one read that differed.\n\nVerified in Chromium (e2e/try-it.spec.ts): Try it on docs/panel.md lands on\nthe playground with the code and the same rows the page shows; on\ndocs/progress.md's live track() example, with the page context's doStep, and\nthe same final frame.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "5368cb7aec2ad3f5205e0c24e05b52b4687927db",
-      "timestamp": "2026-09-30T06:10:52.056Z",
+      "sha": "0b901ceeff65c2f9521a5d70942aa7da145f0f72",
+      "timestamp": "2026-09-30T07:12:14.157Z",
       "commits": [
         {
-          "sha": "5368cb7aec2ad3f5205e0c24e05b52b4687927db",
+          "sha": "0b901ceeff65c2f9521a5d70942aa7da145f0f72",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T00:10:12-06:00",
-          "message": "feat(docs): the playground page: editor, Run, terminal (rich-playground-afk.npl) (#238)\n\n* test(e2e): poll the rows of a worker that did not start (rich-playground-afk.npl)\n\nThe run's state turns exited as the report is written, and xterm draws the\nwrite a moment later, so reading the rows once raced the draw. It failed about\none run in three under the full e2e group, on master too.\n\n* feat(docs): the playground page: editor, Run, terminal (rich-playground-afk.npl)\n\nA Playground nav tab: a CodeMirror 6 editor beside the live terminal, above it\nat phone width, running the editor's TypeScript on the live library.\n\n- Run, or Ctrl/Cmd+Enter in the editor, runs the editor's program, replacing\n  the run before; Stop ends one that has not ended.\n- Every edit is written to the URL hash (docs/.vitepress/playground-hash.ts:\n  deflate, base64url), so a link or a reload opens the same program. A hash it\n  cannot read is reported and the start example opened.\n- It opens on the first block of docs/introduction.md, served with the live\n  library as virtual:rich-live/playground. That block is type-checked with no\n  prelude or page context, so one that stops being a program on its own fails\n  the build at its line. The library module is the one the live examples\n  import, so the site ships it once.\n- Editor colours are One Light / One Dark Pro as custom properties, so the\n  editor follows the site's colour mode; the terminal takes the example themes.\n\nVerified in Chromium (e2e/playground.spec.ts): reached from the nav, start\nexample runs, edit and rerun by button and shortcut, reload and a fresh context\nrestore the program, unreadable link reported, endless loop stopped, phone\nstacking, light and dark terminal themes.\n\n* fix(docs): the playground's link keeps up, and a failed start retries (rich-playground-afk.npl)\n\nReview (/code-review high) of PR #238:\n- The hash is written once typing pauses: one history write a keystroke is\n  a burst Safari and Firefox refuse and Chrome drops.\n- Edits, followed links and closing are ordered events; an encode or decode\n  that lands after a later event is dropped, replacing the unordered chain.\n- `opened: Opened | null` meant both \"opening\" and \"failed\"; it is a Phase\n  union, and Run opens a playground that failed to, as RichLive's button does.\n- A link failure clears once a write makes the address bar and editor agree.\n- A link followed in the tab runs in the page's motion mode.\n- The start block must be one its page runs to an end (not node/shape/throws).\n- decodeProgram refuses to inflate past MAX_PROGRAM_BYTES; encode refuses the same.\n- aria-keyshortcuts dropped: it named Control+Enter on a Mac, and the kbd\n  in the button's name already says the shortcut.\n\n* fix(docs): a link the browser refuses to write is reported, not thrown (rich-playground-afk.npl)\n\n/code-review medium: replaceState ran in the success arm of then(ok, err), so\na browser's refusal (URL length cap) escaped as an unhandled rejection."
+          "timestamp": "2026-09-30T01:11:14-06:00",
+          "message": "feat(docs): \"Try it\" opens any docs example in the playground (rich-playground-afk.4kh) (#239)\n\n* feat(docs): \"Try it\" opens any docs example in the playground (rich-playground-afk.4kh)\n\nEvery example that runs (static, silent, throws, live) carries a \"Try it\"\nlink in its output label. It opens the playground on the block as a program of\nits own: the block, plus the imports it uses and every statement above it\nthat declares something it uses (the prelude's console, the page context's\nlines, earlier blocks' declarations). Statements above it that change one of\nthose without printing come along too. docs/.vitepress/example-slice.ts cuts\nit using the TypeScript checker's reading of the page's own program.\n\nChecked at build time, per block: the program type-checks alone, and each\nblock that runs at build time, run as the playground runs it (Sucrase + the\nlive library), prints the bytes the page shows and ends the same way. Across\nthe site 206 of 242 executed blocks need nothing from above; all 242 pass.\n\nA page run now fixes the time and a seeded Math.random for every program it\nruns, so a block run twice (chain and Try it) agrees; console.log's timestamp\nis the one read that differed.\n\nVerified in Chromium (e2e/try-it.spec.ts): Try it on docs/panel.md lands on\nthe playground with the code and the same rows the page shows; on\ndocs/progress.md's live track() example, with the page context's doStep, and\nthe same final frame.\n\n* fix(docs): Try it programs keep the page's scopes and context (rich-playground-afk.4kh)\n\nReview (high) of PR #239:\n- a part that redeclares a carried name opens a scope, as the page nests it\n- the page's exampleContext is carried whole, so a live block's program,\n  which nothing runs at build, is decided by no reading of shape\n- a carried statement takes its own comments, not the line before's\n- a Try it program that fails to compile, or prints differently, says so\n  and names the causes, random numbers among them\n- the slicer reads imports through example-program.ts's parser\n- never-run blocks are no longer cut\n\n* fix(docs): a throws block's Try it program must throw what the page shows (rich-playground-afk.4kh)\n\nReview (medium) of PR #239: the gate compared only how a run ended, so a\nprogram throwing a different error passed. Both lines now come from one\nfunction, thrownLine, whose source the page program's helper embeds.\nThe console test matches values of the prelude console's type, not the class.\n\n* fix(docs): one import printer, a thrown line from source text, a callable Date (rich-playground-afk.4kh)\n\nReview (escalation high) of PR #239:\n- thrownLine evaluates THROWN_LINE, the text the program embeds, rather\n  than pasting a compiled function's toString into the program\n- the Date shadow is a Proxy, so Date() returns a string as a host's does\n- a Try it program carries every bare import the page ran by its block's end\n- example-slice uses example-program's importLines and SourceBuilder\n- a non-chain block's checker is not kept past its cut"
         }
       ]
     }
