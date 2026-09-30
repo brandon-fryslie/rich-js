@@ -8,6 +8,7 @@ import {
 import { RichText } from "../../src/core/text.js";
 import { Style, StyleSyntaxError, Theme } from "../../src/core/style.js";
 import { ColorDepth } from "../../src/core/color.js";
+import type { Env } from "../../src/core/env.js";
 import { Live } from "../../src/renderables/live.js";
 import { Highlighter, RegexHighlighter } from "../../src/core/highlighter.js";
 import { Pretty } from "../../src/core/pretty.js";
@@ -1314,7 +1315,7 @@ function makeStreamOf(props: {
 
 function makeEnvironment(
   overrides: {
-    env?: NodeJS.ProcessEnv;
+    env?: Env;
     stdout?: { isTTY?: boolean; columns?: number; rows?: number };
     stderr?: { isTTY?: boolean; columns?: number; rows?: number };
   } = {},
@@ -1408,12 +1409,12 @@ describe("Console and Live hyperlinks", () => {
   const linked = "[link=https://example.com]go[/link]";
   const OSC8 = "\x1b]8;";
   const SGR = /\x1b\[[0-9;]*m/;
-  const printed = (options: ConsoleOptions, env: NodeJS.ProcessEnv, isTTY: boolean): string => {
+  const printed = (options: ConsoleOptions, env: Env, isTTY: boolean): string => {
     const host = makeEnvironment({ env, stdout: { isTTY } });
     new Console({ environment: host.environment, ...options }).print(linked);
     return host.stdout.chunks.join("");
   };
-  const refreshed = (env: NodeJS.ProcessEnv, isTTY: boolean, options: ConsoleOptions = {}): string => {
+  const refreshed = (env: Env, isTTY: boolean, options: ConsoleOptions = {}): string => {
     const host = makeEnvironment({ env, stdout: { isTTY } });
     const live = new Live(new RichText("go", { style: new Style({ link: "https://example.com" }) }), {
       console: new Console({ environment: host.environment, ...options }),

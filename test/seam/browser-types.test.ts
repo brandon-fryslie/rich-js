@@ -3,7 +3,7 @@
  *
  * `browser-safe.test.ts` next door walks the runtime graph and skips erased
  * edges, because a browser cannot trip over a type at runtime. A browser's
- * *compiler* can. Three public option types once named `NodeJS.ProcessEnv`, the
+ * *compiler* can. Public signatures once named `NodeJS.ProcessEnv`, the
  * emitted `.d.ts` carried it verbatim, and a project with no `@types/node` and
  * `skipLibCheck` off — the ordinary browser project, say one driving this
  * library through xterm.js — failed on our types with `Cannot find namespace
@@ -19,7 +19,7 @@
  * signature fails here, naming the `.d.ts` and the line.
  *
  * [LAW:behavior-not-structure] The second test is the guard on the guard: the
- * same consumer, told to name `NodeJS`, must fail. A consumer that picked up
+ * same consumer, importing every entry and then naming `NodeJS`, must fail. A consumer that picked up
  * Node's types from anywhere — a dependency's `/// <reference types="node" />`,
  * a relaxed `types` — would pass the first test for the very reason it should
  * not.
@@ -61,6 +61,8 @@ const CONSUMER_TSCONFIG = {
     types: [],
     strict: true,
     skipLibCheck: false,
+    // An import that resolves nowhere is an error, not a silently unchecked entry.
+    noUncheckedSideEffectImports: true,
     noEmit: true,
   },
   files: ["consumer.ts"],
@@ -78,6 +80,9 @@ function tsc(cwd: string, ...args: string[]): { status: number | null; output: s
 }
 
 let consumer = "";
+
+/** Every browser-facing entry, imported the way a consumer imports it. */
+const IMPORT_EVERY_ENTRY = BROWSER_SPECIFIERS.map((specifier) => `import "${specifier}";\n`).join("");
 
 /** Type-check `source` as the consumer's only file. */
 function checkConsumer(source: string): { status: number | null; output: string } {
@@ -119,8 +124,7 @@ describe("the published declarations in a project with no Node types", () => {
   it(
     "type-check for every browser-facing entry",
     () => {
-      const source = BROWSER_SPECIFIERS.map((specifier) => `import "${specifier}";\n`).join("");
-      expect(checkConsumer(source)).toEqual({ status: 0, output: "" });
+      expect(checkConsumer(IMPORT_EVERY_ENTRY)).toEqual({ status: 0, output: "" });
     },
     TIMEOUT_MS,
   );
@@ -128,7 +132,7 @@ describe("the published declarations in a project with no Node types", () => {
   it(
     "fail on a signature that names Node",
     () => {
-      const { status, output } = checkConsumer(`export type Probe = NodeJS.ProcessEnv;\n`);
+      const { status, output } = checkConsumer(`${IMPORT_EVERY_ENTRY}export type Probe = NodeJS.ProcessEnv;\n`);
       expect(status).not.toBe(0);
       expect(output).toContain("Cannot find namespace 'NodeJS'");
     },
