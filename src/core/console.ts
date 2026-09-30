@@ -110,6 +110,11 @@ export interface ConsoleOptions {
    * `Object.defineProperty`.
    */
   getSize?: () => { width: number; height: number };
+  /**
+   * The clock `log` stamps each row from, read once per call. Default: the
+   * wall clock. Pass a fixed one to make logged output repeatable.
+   */
+  getDatetime?: () => Date;
   style?: string | Style;
   forceTerminal?: boolean;
   forceInteractive?: boolean;
@@ -172,8 +177,17 @@ function emit({ rows, closed, cropWidth }: Drawn): Segment[] {
   return [...Segment.cropLines(output, cropWidth)];
 }
 
-// The time `log` stamps, in a form whose width does not change with the hour.
-const LOG_TIME: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit", second: "2-digit" };
+// The time `log` stamps: local 24-hour `HH:MM:SS`, what the reference's `%X`
+// prints under the C locale a Python program runs in unless it asks for
+// another. The machine's locale never reaches it, so neither does the width
+// an AM/PM suffix would add, and one clock prints one stamp everywhere.
+function logTime(time: Date): string {
+  // [LAW:no-silent-failure] The clock is the caller's, and an invalid `Date`
+  // would otherwise print as `[NaN:NaN:NaN]`.
+  if (Number.isNaN(time.getTime())) throw new RangeError("Console getDatetime returned an invalid Date");
+  const two = (n: number): string => String(n).padStart(2, "0");
+  return `[${two(time.getHours())}:${two(time.getMinutes())}:${two(time.getSeconds())}] `;
+}
 
 // Three of the five justify methods place what a print draws as a block, the
 // way Rich's `print` wraps each renderable in `Align`. The other two leave it
@@ -352,6 +366,7 @@ export class Console {
   // caller-supplied `getSize` overrides. Every size read in this class goes
   // through `_getSize()` — no second path, no second source to drift.
   private _getSize: () => { width: number; height: number };
+  private readonly _getDatetime: () => Date;
   private _style: Style;
   private _isTerminal: boolean;
   private _forceInteractive: boolean | undefined;
@@ -395,6 +410,7 @@ export class Console {
       hyperlinks: options?.hyperlinks ?? resolved.hyperlinks,
     };
     this._getSize = resolveGetSize(options, environment, stream);
+    this._getDatetime = options?.getDatetime ?? (() => new Date());
     // [LAW:no-ambient-temporal-coupling] The theme is assigned before the
     // style, because the console's own style may be one of the theme's names.
     this._theme = options?.theme ?? DEFAULT_THEME;
@@ -664,7 +680,7 @@ export class Console {
   // the console's style alone, as the reference styles only the renderables.
   log(...args: unknown[]): void {
     const options = this.options;
-    const time = new RichText(`[${new Date().toLocaleTimeString(undefined, LOG_TIME)}] `, { end: "" });
+    const time = new RichText(logTime(this._getDatetime()), { end: "" });
     time.stylize("log.time");
     const width = Math.min(time.cellLength, options.maxWidth - 1);
     const { rows, cropWidth } = this._draw(args, { ...options, maxWidth: options.maxWidth - width });

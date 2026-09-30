@@ -389,9 +389,16 @@ cut at the width by that method: at width 12,
 `print()` would draw for the same arguments in the width that is left. Every
 line after the first is indented to the column, and the row always ends, even
 when `end` would leave a printed line open. Options such as `style` and
-`justify` apply to that content and never to the timestamp:
+`justify` apply to that content and never to the timestamp.
+
+The timestamp is local time as `HH:MM:SS` on a 24-hour clock, whatever the
+machine's locale. It is read from the console's `getDatetime` option, which is
+the wall clock unless you pass one. A fixed clock makes logged output
+repeatable. The console below is given one, and every `log()` example on this
+page runs through it, so each prints the same time on every build:
 
 ```typescript
+const console = new Console({ getDatetime: () => new Date(2026, 8, 30, 9, 30, 0) });
 console.log("Server started on port [bold cyan]3000[/]");
 console.log("user", 42, "signed in");
 ```

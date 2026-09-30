@@ -851,25 +851,36 @@ describe("Console.print() line ends", () => {
 // --- Console.log() ---
 
 describe("Console.log()", () => {
-  it("adds a timestamp to output", () => {
-    const { console: c, chunks } = makeConsole({ markup: false });
+  // Every test here but the first reads this clock, so each can state the
+  // whole row rather than matching around a stamp it cannot know.
+  const clock = { getDatetime: () => new Date(2026, 8, 30, 9, 5, 7) };
+  const TIME = "[09:05:07] ";
+
+  // Local 24-hour time whatever the machine's locale, as the reference's `%X`
+  // prints it, read from the console's clock once per call.
+  it("stamps each row with the time its clock reads", () => {
+    let now = new Date(2026, 8, 30, 9, 5, 7);
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, getDatetime: () => now });
     c.log("Hello");
-    const output = captured(chunks);
-    expect(output).toContain("Hello");
-    // Should contain time-like text (e.g., brackets around time)
-    expect(output).toMatch(/\[.*\]/);
+    now = new Date(2026, 8, 30, 21, 45, 0);
+    c.log("again");
+    expect(captured(chunks)).toBe("[09:05:07] Hello\n[21:45:00] again\n");
+  });
+
+  it("throws on a clock that reads an invalid date", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, getDatetime: () => new Date(Number.NaN) });
+    expect(() => c.log("Hello")).toThrow(RangeError);
+    expect(chunks).toEqual([]);
   });
 
   // The time is a column, as in the reference's `LogRender`: a container is a
   // block in `print`, and here it sits beside the time rather than below it.
   it("draws what print would beside the time, in the width that is left", () => {
-    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false });
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false, ...clock });
     c.log("user", { userId: 42, action: "login" }, "done");
-    const output = captured(chunks);
-    const time = /^\[[^\]]*\] /.exec(output)?.[0] ?? "";
-    const pad = " ".repeat(time.length);
-    expect(output).toBe(
-      `${time}user\n` +
+    const pad = " ".repeat(TIME.length);
+    expect(captured(chunks)).toBe(
+      `${TIME}user\n` +
       `${pad}{\n` +
       `${pad}    userId: 42,\n` +
       `${pad}    action: "login"\n` +
@@ -879,33 +890,29 @@ describe("Console.log()", () => {
   });
 
   it("gives up the time's cells before the content's in a console narrower than the time", () => {
-    const { console: c, chunks } = makeConsole({ width: 8, markup: false, highlight: false });
+    const { console: c, chunks } = makeConsole({ width: 8, markup: false, highlight: false, ...clock });
     c.log("hello");
-    const rows = captured(chunks).split("\n").slice(0, -1);
-    for (const row of rows) expect(row).toHaveLength(8);
-    expect(rows[0]).toMatch(/^\[.{6}h$/);
     // The content column is one cell wide, and all of the content reaches it.
-    expect(rows.map((row) => row.at(-1)).join("")).toBe("hello");
+    const pad = " ".repeat(7);
+    expect(captured(chunks)).toBe(`[09:05:h\n${pad}e\n${pad}l\n${pad}l\n${pad}o\n`);
   });
 
   it("closes its row whatever end leaves open, and never splits a row with the column", () => {
-    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false });
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false, ...clock });
     c.log("a", [1], { end: "" });
     c.log("b");
-    const [first, second] = captured(chunks).split("\n");
-    expect(first).toMatch(/^\[[^\]]*\] a\[1\]$/);
-    expect(second).toMatch(/^\[[^\]]*\] b$/);
+    expect(captured(chunks)).toBe(`${TIME}a[1]\n${TIME}b\n`);
   });
 
   it("draws the time on a row of its own when the content draws no lines", () => {
-    const { console: c, chunks } = makeConsole({ width: 40 });
+    const { console: c, chunks } = makeConsole({ width: 40, ...clock });
     const nothing: Renderable = { *render() {} };
     c.log(nothing);
-    expect(captured(chunks)).toMatch(/^\[[^\]]*\] \n$/);
+    expect(captured(chunks)).toBe(`${TIME}\n`);
   });
 
   it("gives the time and its column the console's base style", () => {
-    const { console: c, chunks } = makeConsole({ width: 40, colorSystem: "ansi", style: "on blue" });
+    const { console: c, chunks } = makeConsole({ width: 40, colorSystem: "ansi", style: "on blue", ...clock });
     c.log("a", [1]);
     // Two rows — the time beside `a`, then the column's blank beside `[1]` —
     // and each opens on the blue background before any of its cells.
