@@ -2,6 +2,7 @@
 import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { defineAsyncComponent, h } from 'vue'
+import './code-font.css'
 import './custom.css'
 
 const RichShowcase = defineAsyncComponent(() => import('./RichShowcase.js'))

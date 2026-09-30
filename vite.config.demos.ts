@@ -37,6 +37,9 @@ const examplesDir = resolve(__dirname, "examples");
 const compiledExamplesDir = resolve(__dirname, "dist-demo", "examples");
 const stagingDir = resolve(__dirname, ".vite-demos");
 const shellDir = resolve(examplesDir, "_browser-shell");
+// [LAW:one-source-of-truth] The demo terminals draw in the docs' code font
+// stack, Powerline face included, linked from the theme's own file.
+const codeFontCss = resolve(__dirname, "docs", ".vitepress", "theme", "code-font.css");
 
 // [LAW:single-enforcer] Demo bundles land in VitePress's `public/` so the
 // docs build copies them to the deployed dist with zero extra wiring — one
@@ -112,10 +115,12 @@ function stageDemos(demos: readonly string[]): void {
       dir,
       resolve(compiledExamplesDir, name, "wire.js"),
     ).replace(/\\/g, "/");
+    const codeFontHref = relative(dir, codeFontCss).replace(/\\/g, "/");
     writeFileSync(
       resolve(dir, "index.html"),
       htmlTmpl
         .replaceAll("__DEMO_NAME__", name)
+        .replaceAll("__CODE_FONT_CSS_HREF__", codeFontHref)
         .replaceAll("__XTERM_CSS_HREF__", XTERM.stylesheet.href)
         .replaceAll("__XTERM_CSS_INTEGRITY__", XTERM.stylesheet.integrity)
         .replaceAll("__XTERM_JS_SRC__", XTERM.script.src)

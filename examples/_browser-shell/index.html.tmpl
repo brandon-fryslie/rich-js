@@ -9,12 +9,13 @@
       integrity="__XTERM_CSS_INTEGRITY__"
       crossorigin="anonymous"
     />
+    <link rel="stylesheet" href="__CODE_FONT_CSS_HREF__" />
     <style>
       html, body { margin: 0; padding: 0; background: #1e1e1e; color: #ddd; font-family: ui-monospace, monospace; }
       header { padding: 12px 16px; border-bottom: 1px solid #333; font-size: 13px; display: flex; gap: 12px; align-items: baseline; }
       header strong { color: #fff; }
       header code { color: #6cb6ff; }
-      #term { padding: 12px; height: calc(100vh - 80px); }
+      #term { padding: 12px; height: calc(100vh - 80px); font-family: var(--rich-code-font-family); }
       .ok { color: #6c6; }
       .err { color: #f66; }
     </style>

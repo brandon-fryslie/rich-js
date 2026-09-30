@@ -52,13 +52,17 @@ const setStatus = (msg: string, cls?: string): void => {
 };
 
 try {
+  const termEl = requireEl<HTMLDivElement>("term");
   const term = new Terminal({
     cols: 100,
     rows: 30,
     cursorBlink: true,
     theme: { background: "#1e1e1e" },
+    // The docs' code font stack, which the shell gives #term: xterm takes a
+    // family as an option and never reads its element's CSS.
+    fontFamily: getComputedStyle(termEl).fontFamily,
   });
-  term.open(requireEl<HTMLDivElement>("term"));
+  term.open(termEl);
   term.focus();
   // No cast: the local `Terminal` instance shape matches the wire's
   // `XtermTerminal` parameter type structurally.
