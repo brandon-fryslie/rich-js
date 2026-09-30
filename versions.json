@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-269",
+      "ref": "refs/pull/269/merge",
+      "sha": "d66f2f80318d9ce488516dd433ad0ae6b8cfec1f",
+      "timestamp": "2026-09-30T18:26:01.167Z",
+      "commits": [
+        {
+          "sha": "d66f2f80318d9ce488516dd433ad0ae6b8cfec1f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T12:24:54-06:00",
+          "message": "Merge cc404ccf3d0a6020e17bcb56ec664084d59b0bfd into 77ab1b7f302bf884d94eac7ad6a5419b1a4bf186\n"
+        },
+        {
+          "sha": "cc404ccf3d0a6020e17bcb56ec664084d59b0bfd",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T12:24:43-06:00",
+          "message": "fix(prompt): a prompt shows its choices and y/n and draws its markup (rich-prompt-vo5e)\n\nThe prompt is built as a RichText the way Rich's make_prompt builds it: the\ncaller's markup, then the choices and default appended as plain text in the\nprompt.choices / prompt.default theme styles, then \": \". PromptInput now\nreceives that RichText, and nodeAsk draws it through a Console on stdout.\nThe prompt theme entries, unused until now, take Rich's values.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "77ab1b7f302bf884d94eac7ad6a5419b1a4bf186",
