@@ -60,6 +60,28 @@ describe("template-bindings — bootstrap smoke", () => {
     expect(seg!.text.startsWith("[error: error calling fg:")).toBe(true);
   });
 
+  it("renderTemplate folds a line break inside the error's own message", () => {
+    const engine = createRichTextEngine();
+    const segs = renderTemplate(engine, `{{ "a\\\nb" }}`);
+    expect(segs.map((s) => s.text)).toEqual(["[error: bad escape sequence \\ ]"]);
+  });
+
+  it("renderTemplate folds a tab inside the error's own message, which the terminal would draw wider than it is counted", () => {
+    const engine = createRichTextEngine();
+    const segs = renderTemplate(engine, `{{ "a\\\tb" }}`);
+    expect(segs.map((s) => s.text)).toEqual(["[error: bad escape sequence \\ ]"]);
+  });
+
+  it("renderTemplate's error line is whole within maxWidth and marks a cut with an ellipsis", () => {
+    const engine = createRichTextEngine();
+    const source = `{{ darken "primary" 2 }}`;
+    const [whole] = renderTemplate(engine, source);
+    expect(whole!.text).toMatch(/wrap it: darken \(color "primary"\) …\]$/);
+
+    const [cut] = renderTemplate(engine, source, {}, { maxWidth: 40 });
+    expect(cut!.text).toBe(whole!.text.slice(0, 39) + "…");
+  });
+
   it("renderTemplate accepts a custom error style", () => {
     const engine = createRichTextEngine();
     const segs = renderTemplate(engine, `{{ bogus }}`, {}, { errorStyle: "yellow" });
