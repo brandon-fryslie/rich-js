@@ -4,15 +4,22 @@
     {
       "version": "pr-284",
       "ref": "refs/pull/284/merge",
-      "sha": "ecbb1d6ae1bc99de1b519c6a39b3dc0dd2f225b8",
-      "timestamp": "2026-09-30T23:05:46.847Z",
+      "sha": "602661619efcf264f5875c6781b59d7e16bcb786",
+      "timestamp": "2026-09-30T23:11:10.860Z",
       "commits": [
         {
-          "sha": "ecbb1d6ae1bc99de1b519c6a39b3dc0dd2f225b8",
+          "sha": "602661619efcf264f5875c6781b59d7e16bcb786",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-09-30T17:04:39-06:00",
-          "message": "Merge 0443a113890d21d3bee4a95dacf1bc1c81cf54a7 into 4d85447ea7d7aba7f12f2b41715982528540e7e1\n"
+          "timestamp": "2026-09-30T23:10:02Z",
+          "message": "Merge 013e217595d5e6010c985e18fc8df5d671f2f0e6 into 4d85447ea7d7aba7f12f2b41715982528540e7e1\n"
+        },
+        {
+          "sha": "013e217595d5e6010c985e18fc8df5d671f2f0e6",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T17:09:58-06:00",
+          "message": "fix(host): App takes the console's drawing options as the console declares them (rich-host-qvji)\n\nAppOptions picked asciiOnly and theme from ConsoleOptions by hand, one field\nat a time; onStyleError, markup, highlight and highlighter never reached a\nframe. It now extends a Pick of ConsoleOptions and forwards by spread.\n\nReview (high): tests no longer pass on a missing segment; WidgetApp's frames\nare covered; docs separate the style-name Theme from a widget's palette.\n"
         },
         {
           "sha": "0443a113890d21d3bee4a95dacf1bc1c81cf54a7",
