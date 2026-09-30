@@ -42,6 +42,15 @@ import { Measurement } from "../core/measure.js";
  * no column is short, so neither a share nor a stretch can widen one column
  * while another is still truncated.
  *
+ * `minimum` is the part of `want` the column cannot give up without cutting
+ * its content — its longest unbreakable word, or all of it for a column that
+ * may not wrap — and every column is paid its minimum before any is paid past
+ * it, so a squeezed table wraps what can wrap before it truncates what cannot.
+ * One deliberate divergence: the reference's `_collapse_widths` narrows the
+ * widest wrappable column first and reads no minimum, so once the widest has
+ * narrowed to the next it cuts both alike — a 14-cell figure beside a long
+ * title is truncated there with room to spare in the title's wrap.
+ *
  * `pad` is the padding the column draws either side of its content, already
  * reduced by `collapsePadding` and `padEdge`. `floor` is the part of `want`
  * that is Rich's `_range.maximum or 1`: the one cell a column with nothing at
@@ -51,6 +60,7 @@ import { Measurement } from "../core/measure.js";
  */
 interface ColumnDemand {
   readonly reserved: number;
+  readonly minimum: number;
   readonly want: number;
   readonly weight: number;
   readonly fill: number;
@@ -277,21 +287,30 @@ function layoutTable(
   // table its frame.
   const reserved = seatedDemands.map((demand, index) => take(demand.reserved - seats[index]!));
 
-  // What is left to apportion is the rest of what each column wanted. A table
+  // What is left to apportion is the rest of what each column wanted: its
+  // minimum first, for every column, and only then the width past it. A table
   // whose columns all fit leaves this budget partly unspent.
-  const wanted = distribute(
+  const spent = (granted: readonly number[]): number =>
+    granted.reduce((sum, width) => sum + width, 0);
+  const base = seatedDemands.map((_, index) => seats[index]! + reserved[index]!);
+  const holding = (...passes: ReadonlyArray<readonly number[]>): number[] =>
+    base.map((start, index) => passes.reduce((sum, granted) => sum + granted[index]!, start));
+  const needed = distribute(
     budget,
     seatedDemands.map((demand, index) => ({
-      want: Math.max(0, demand.want - seats[index]! - reserved[index]!),
+      want: Math.max(0, demand.minimum - base[index]!),
       weight: demand.weight,
     })),
   );
-  const spent = (granted: readonly number[]): number =>
-    granted.reduce((sum, cells) => sum + cells, 0);
-  const holding = (...passes: ReadonlyArray<readonly number[]>): number[] =>
-    seatedDemands.map((_, index) =>
-      passes.reduce((sum, granted) => sum + granted[index]!, seats[index]! + reserved[index]!),
-    );
+  const afterNeeded = holding(needed);
+  const beyond = distribute(
+    budget - spent(needed),
+    seatedDemands.map((demand, index) => ({
+      want: Math.max(0, demand.want - afterNeeded[index]!),
+      weight: demand.weight,
+    })),
+  );
+  const wanted = needed.map((width, index) => width + beyond[index]!);
   // The unspent part goes first to the columns with nothing to size to, each
   // alike, up to its `fill` — the reference's `Measurement(1, max_width)`, a
   // maximum of the whole offer that no content measured.
@@ -738,7 +757,7 @@ export class Table implements Renderable, Measurable {
   /**
    * [LAW:one-source-of-truth] Both ends of the range are widths the geometry
    * actually produced — the maximum from the demands as they stand, the
-   * minimum from the same layout with every column asking for a single cell.
+   * minimum from the same layout with every column asking for its minimum.
    * Neither end stretches or fills into an offer: both only spend cells an
    * offer happens to leave over, and a renderable reports the width its content
    * wants rather than the width it was offered. A declared `width` is not an
@@ -782,17 +801,14 @@ export class Table implements Renderable, Measurable {
     // `minWidth: Infinity` measured 18014398509481988 and rendered
     // `RangeError: Invalid string length` out of the top border.
     const maximum = laidOut >= UNBOUNDED ? Infinity : laidOut;
+    // The narrowest this table draws without cutting a cell is every column at
+    // its own minimum — the reference's sum of `_measure_column` minimums — so a
+    // parent squeezing it still leaves each figure whole. One divergence: a
+    // `noWrap` column's minimum is its whole line, where the reference measures
+    // its longest word and then never narrows it that far when it draws.
     const tightest = layoutTable(
       outerWidth,
-      demands.map((demand) => ({
-        ...demand,
-        reserved: 0,
-        want: Math.min(1, demand.want),
-        weight: 1,
-        fill: 0,
-        ratio: 0,
-        stretch: false,
-      })),
+      demands.map((demand) => ({ ...demand, want: demand.minimum, fill: 0, ratio: 0, stretch: false })),
       frame,
     ).totalWidth;
     return {
@@ -866,7 +882,7 @@ export class Table implements Renderable, Measurable {
       const pad = this._columnPadding(index);
       const sizing = this._columnSizing(col, index, inner);
       const floor = pad[0] + sizing.want + pad[1] === 0 ? 1 : 0;
-      return { ...sizing, want: sizing.want + floor, pad, floor };
+      return { ...sizing, minimum: sizing.minimum + floor, want: sizing.want + floor, pad, floor };
     });
   }
 
@@ -879,7 +895,7 @@ export class Table implements Renderable, Measurable {
       // [LAW:single-enforcer] floored where it is parsed, the same rule
       // `normalizePadding` applies to a negative padding side.
       const declared = demandCells(col.width);
-      return { reserved: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
+      return { reserved: declared, minimum: declared, want: declared, weight: 0, fill: 0, ratio: 0, stretch: false };
     }
     // A flexible column takes its share of whatever the bounded columns
     // leave; every other column asks for its natural width, whether or not a
@@ -892,10 +908,10 @@ export class Table implements Renderable, Measurable {
     const share = columnShare(col);
     if (share > 0) {
       const floor = Math.max(1, demandCells(col.minWidth ?? 0));
-      return { reserved: 0, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
+      return { reserved: 0, minimum: floor, want: floor, weight: floor, fill: 0, ratio: share, stretch: false };
     }
-    const widest = this._widestCell(col, index, options);
-    const natural = demandCells(this._bounded(col, widest ?? 1));
+    const range = this._cellRange(col, index, options);
+    const natural = demandCells(this._bounded(col, range?.maximum ?? 1));
     // `expand` is a stretch rather than a larger want: the column still
     // competes for its natural width like any other, and only the cells left
     // once every column has that are shared out. A larger want looks
@@ -916,11 +932,16 @@ export class Table implements Renderable, Measurable {
     // "no cells" as zero sized it to a two-cell box instead. The one cell is
     // its want, so a `minWidth` is paid like any column's, and the offer is
     // its `fill`, held to its `maxWidth`.
+    //
+    // A column that may not wrap has no narrower width than its natural one
+    // that keeps its content whole — the reference leaves `no_wrap` columns out
+    // of the ones it collapses.
     return {
       reserved: 0,
+      minimum: col.noWrap ? natural : Math.min(natural, demandCells(this._bounded(col, range?.minimum ?? 1))),
       want: natural,
       weight: natural,
-      fill: widest === undefined ? demandCells(this._bounded(col, UNBOUNDED)) : 0,
+      fill: range === undefined ? demandCells(this._bounded(col, UNBOUNDED)) : 0,
       ratio: 0,
       stretch: this.expand,
     };
@@ -966,13 +987,18 @@ export class Table implements Renderable, Measurable {
   }
 
   /**
-   * The widest cell in a column, or `undefined` when the column has no cell to
-   * measure. Zero is a column whose cells draw nothing — a gutter asks for its
-   * padding and nothing else — and is not the same answer.
-   * [LAW:types-are-the-program]
+   * The widest any cell in a column draws, and the narrowest the column can be
+   * without cutting one — the reference's `_measure_column` — or `undefined`
+   * when the column has no cell to measure. Zero is a column whose cells draw
+   * nothing — a gutter asks for its padding and nothing else — and is not the
+   * same answer. [LAW:types-are-the-program]
    */
-  private _widestCell(col: Column, index: number, options: RenderOptions): number | undefined {
-    let widest: number | undefined;
+  private _cellRange(
+    col: Column,
+    index: number,
+    options: RenderOptions,
+  ): { minimum: number; maximum: number } | undefined {
+    let range: { minimum: number; maximum: number } | undefined;
     for (const cell of this._columnCells(col, index)) {
       // The stamped cell, so the width a column asks for is the width its text
       // will occupy — measuring the raw value sized this column to
@@ -980,9 +1006,13 @@ export class Table implements Renderable, Measurable {
       // [LAW:one-source-of-truth] Measured as the cell measures itself, so a
       // multi-line cell asks for its widest line and a `Panel` for its frame;
       // one that cannot measure itself asks for every cell there is, as in Rich.
-      widest = Math.max(widest ?? 0, Measurement.get(options, cell).maximum);
+      const measured = Measurement.get(options, cell);
+      range = {
+        minimum: Math.max(range?.minimum ?? 0, measured.minimum),
+        maximum: Math.max(range?.maximum ?? 0, measured.maximum),
+      };
     }
-    return widest;
+    return range;
   }
 
   /**
