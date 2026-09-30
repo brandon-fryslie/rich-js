@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Padding } from "../../src/renderables/padding.js";
 import { Segment } from "../../src/core/segment.js";
+import { Style } from "../../src/core/style.js";
 import type { Renderable, Measurable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -98,17 +99,22 @@ describe("Padding", () => {
   });
 
   // --- Options ---
-  // Spec: style applied to padding and content
+  // Spec: style is the ground the padding and the content are drawn on
 
-  it("style option applies style to padding segments", () => {
-    const inner = simpleRenderable("Hi");
-    const padded = new Padding(inner, [1, 1, 1, 1], { style: "bold" });
-    const segments = collectSegments(padded, { maxWidth: 20 });
-    // Padding segments (non-newline) should have the style applied
-    const styledSegments = segments.filter(
-      (s) => !s.isControl && s.text.trim() === "" && s.style !== undefined,
-    );
-    expect(styledSegments.length).toBeGreaterThan(0);
+  it("style is under the content as well as the padding", () => {
+    const inner: Renderable = {
+      *render() {
+        yield new Segment("Hi", Style.parse("bold"));
+        yield Segment.line();
+      },
+    };
+    const padded = new Padding(inner, 1, { style: "white on blue" });
+    const visible = Segment.splitLines(collectSegments(padded, { maxWidth: 10 })).flat().filter((s) => s.text !== "");
+    const ground = Style.parse("white on blue");
+    for (const s of visible) expect(s.style?.bgcolor, JSON.stringify(s.text)).toEqual(ground.bgcolor);
+    const content = visible.find((s) => s.text === "Hi");
+    expect(content?.style?.bold).toBe(true);
+    expect(content?.style?.color).toEqual(ground.color);
   });
 
   // Spec: expand (default true) — expand to full terminal width

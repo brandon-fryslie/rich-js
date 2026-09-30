@@ -132,11 +132,14 @@ export class Padding implements Renderable, Measurable {
       height: insetHeight(options.height, this.top + this.bottom),
     };
 
-    const segments = [...this.renderable.render(innerOptions)];
-    const lines = fitHeight(Segment.splitLines(segments), innerOptions.height);
-
     const resolved = getStyle(options, this.style);
     const style = resolved.isNull ? undefined : resolved;
+
+    // The style is the ground the content is drawn on, not only the spaces
+    // around it — Rich's `render_lines(..., style=style)`. Applied to the
+    // padding alone, a background left a hole behind the content.
+    const segments = [...Segment.applyStyle(this.renderable.render(innerOptions), style)];
+    const lines = fitHeight(Segment.splitLines(segments), innerOptions.height);
     // Zero-length spans need no branch to suppress: the wire boundary drops
     // empty segments, so a padding the width could not afford emits nothing.
     const leftPad = new Segment(" ".repeat(geometry.left), style);

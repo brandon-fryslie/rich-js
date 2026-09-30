@@ -34,7 +34,7 @@ console.print(new Padding(hello, [1, 4, 2, 8], shown));
 
 ## Style and expansion
 
-Apply a background color across the padded area:
+`style` is the ground the whole padded block is drawn on, the content as well as the padding around it:
 
 ```typescript
 console.print(new Padding(renderMarkup("[bold]Important[/bold]"), [1, 4], { style: "white on dark_red" }));
