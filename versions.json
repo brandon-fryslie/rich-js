@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-264",
+      "ref": "refs/pull/264/merge",
+      "sha": "4dcc875da151914db30bd612f09271e0fe2513c2",
+      "timestamp": "2026-09-30T16:25:23.898Z",
+      "commits": [
+        {
+          "sha": "4dcc875da151914db30bd612f09271e0fe2513c2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T10:24:15-06:00",
+          "message": "Merge 77e424fd3f6891b6ae5e145a1cba7d558a130210 into 9aec2013b58c609efe46bf3d36f4f7b33aead3d1\n"
+        },
+        {
+          "sha": "77e424fd3f6891b6ae5e145a1cba7d558a130210",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T10:24:11-06:00",
+          "message": "fix(contrast): at ansi, text is measured in the terminal's own sixteen colours (rich-contrast-knmh)\n\nensureContrast, ensureDrawn and drawnColour measured a STANDARD-depth pair\non STANDARD_TABLE's nominal colours. The writer does pick the index by that\ntable, but the terminal draws the index in its theme's colour, and themes\ndisagree about sides: Rosé Pine Dawn's black is light and its white dark, so\nnavy on white passed at 16:1 nominal and drew at 2.1:1.\n\nEach now takes a trailing `terminal: TerminalTheme` and measures in its\nansiColors; a replacement is the writer's colour for the index that clears\nthe floor there. With none named the table is the VGA sixteen that\nDEFAULT_TERMINAL_THEME draws, so existing answers are unchanged.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "9aec2013b58c609efe46bf3d36f4f7b33aead3d1",
