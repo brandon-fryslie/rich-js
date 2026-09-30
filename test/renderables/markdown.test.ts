@@ -95,6 +95,47 @@ describe("Markdown", () => {
     expect(text.length).toBeGreaterThan(0);
   });
 
+  // --- Reflow ---
+
+  function rows(markdown: string, maxWidth: number): string[] {
+    return collectText(new Markdown(markdown), { maxWidth }).split("\n").map((row) => row.trimEnd());
+  }
+
+  it("reflows a hard-wrapped paragraph instead of keeping its source line breaks", () => {
+    expect(rows("one two\nthree four\n  five", 80)).toEqual(["one two three four five", ""]);
+  });
+
+  it("keeps a list item's continuation lines in the item, hanging under its text", () => {
+    const md = "- alpha beta gamma\n  delta epsilon\n- zeta";
+    expect(rows(md, 18)).toEqual(["  • alpha beta", "    gamma delta", "    epsilon", "  • zeta", ""]);
+  });
+
+  it("ends every list item on its own row", () => {
+    expect(rows("- Item A\n- Item B\n1. First\n2. Second", 80)).toEqual([
+      "  • Item A",
+      "  • Item B",
+      "1. First",
+      "2. Second",
+      "",
+    ]);
+  });
+
+  it("indents a nested list item under its parent", () => {
+    expect(rows("- parent\n  - child", 80)).toEqual(["  • parent", "    • child", ""]);
+  });
+
+  it("draws a quote's bar down every row it wraps to, with its lines joined", () => {
+    expect(rows("> one two\n> three four", 12)).toEqual(["▎ one two", "▎ three four", ""]);
+  });
+
+  it("keeps every row inside its width when a list runs into a paragraph", () => {
+    // A row wider than the width is cut off by whatever frames it, so its
+    // tail is lost rather than wrapped.
+    const out = rows("- first item\n  continues here\nand runs on\n\nafter the gap", 16);
+    expect(out.every((row) => row.length <= 16)).toBe(true);
+    expect(out).toEqual(["  • first item", "    continues", "    here and", "    runs on", "", "after the gap", ""]);
+  });
+
   // --- Options ---
 
   it("accepts inlineCodeStyle option as string", () => {
