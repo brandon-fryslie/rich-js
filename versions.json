@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-262",
+      "ref": "refs/pull/262/merge",
+      "sha": "8c02fa002b7f844b34ef24afb8507f6b6a541a21",
+      "timestamp": "2026-09-30T15:44:46.258Z",
+      "commits": [
+        {
+          "sha": "8c02fa002b7f844b34ef24afb8507f6b6a541a21",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:43:40-06:00",
+          "message": "Merge 15c90cc57c8c0e39c451bca3276b82c5b017bb57 into 308b201548d5573029aa4fdb9b9602c42f27596a\n"
+        },
+        {
+          "sha": "15c90cc57c8c0e39c451bca3276b82c5b017bb57",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-09-30T09:43:35-06:00",
+          "message": "fix(padding): a string handed to a padding draws its markup (rich-padding-wv28)\n\nnew Padding(\"[bold]Hello[/]\", 1) threw: Padding took only a renderable, so\ndocs/padding.md wrapped every string in renderMarkup(). Its body now crosses\nembed(), the one crossing a panel, tree, column and layout already use, and\ntakes string | RichText | Renderable as Rich's takes any RenderableType.\nPadding joins the site table in embed.test.ts.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "308b201548d5573029aa4fdb9b9602c42f27596a",
