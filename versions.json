@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-285",
+      "ref": "refs/pull/285/merge",
+      "sha": "da132dca7fd3039c3318f50f283872adf9311fef",
+      "timestamp": "2026-10-02T23:59:47.008Z",
+      "commits": [
+        {
+          "sha": "da132dca7fd3039c3318f50f283872adf9311fef",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T17:58:38-06:00",
+          "message": "Merge 187e9165b56013b34147187b9e26ee361cb9931f into b38c6b91569ddf12897b387b599cef1f5be67440\n"
+        },
+        {
+          "sha": "187e9165b56013b34147187b9e26ee361cb9931f",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T17:58:28-06:00",
+          "message": "feat(core): one easing vocabulary — CSS eases and time phases, replacing RAMP_EASINGS (rich-effects-fxiy.87k)\n\nsrc/core/easing.ts: Ease (cubicBezier, steps, EASES by CSS name plus\nsine and the legacy step), parseEase, and Phase (once/loop/pingPong,\nseconds in, no clock read). ColorRamp and the template ramp take an\nEase; RAMP_EASINGS, RAMP_EASING_NAMES, parseRampEasing and RampEasing\nare gone. step keeps its exact behaviour, so every template renders\nunchanged; an unknown name now reads \"unknown easing\".\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "b38c6b91569ddf12897b387b599cef1f5be67440",
