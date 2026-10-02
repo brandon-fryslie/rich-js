@@ -1,11 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
-import {
-  ColorRamp,
-  RAMP_EASING_NAMES,
-  parseRampEasing,
-} from "../../src/themes/ramp.js";
+import { EASES } from "../../src/core/easing.js";
+import { ColorRamp } from "../../src/themes/ramp.js";
 
 const panel = new ColorRgba(40, 44, 52);
 const warning = new ColorRgba(229, 192, 123);
@@ -13,13 +10,13 @@ const error = new ColorRgba(224, 108, 117);
 
 // The bundled cc-candybar threshold cascade — `≥ 50 warning, ≥ 80 error,
 // else panel` — spelled as data.
-const cascade = new ColorRamp("step", [
+const cascade = new ColorRamp(EASES.step, [
   { at: 0, color: panel },
   { at: 50, color: warning },
   { at: 80, color: error },
 ]);
 
-const gradient = new ColorRamp("linear", [
+const gradient = new ColorRamp(EASES.linear, [
   { at: 0, color: panel },
   { at: 50, color: warning },
   { at: 80, color: error },
@@ -27,12 +24,12 @@ const gradient = new ColorRamp("linear", [
 
 describe("ColorRamp — shape is checked once, in the constructor", () => {
   it("refuses an empty ramp", () => {
-    expect(() => new ColorRamp("linear", [])).toThrow(/at least one stop/);
+    expect(() => new ColorRamp(EASES.linear, [])).toThrow(/at least one stop/);
   });
 
   it("refuses a non-finite position", () => {
     expect(
-      () => new ColorRamp("linear", [{ at: Number.NaN, color: panel }]),
+      () => new ColorRamp(EASES.linear, [{ at: Number.NaN, color: panel }]),
     ).toThrow(/stop 0 has a non-finite position NaN/);
   });
 
@@ -42,7 +39,7 @@ describe("ColorRamp — shape is checked once, in the constructor", () => {
     // never wrote.
     expect(
       () =>
-        new ColorRamp("step", [
+        new ColorRamp(EASES.step, [
           { at: 0, color: panel },
           { at: 80, color: warning },
           { at: 50, color: error },
@@ -51,7 +48,7 @@ describe("ColorRamp — shape is checked once, in the constructor", () => {
   });
 
   it("accepts two stops at one position as a hard edge, the later color winning there", () => {
-    const hard = new ColorRamp("linear", [
+    const hard = new ColorRamp(EASES.linear, [
       { at: 0, color: panel },
       { at: 50, color: panel },
       { at: 50, color: error },
@@ -99,7 +96,7 @@ describe("ColorRamp.at", () => {
   });
 
   it("a one-stop ramp is that color everywhere", () => {
-    const flat = new ColorRamp("linear", [{ at: 10, color: warning }]);
+    const flat = new ColorRamp(EASES.linear, [{ at: 10, color: warning }]);
     expect(flat.at(-5)).toBe(warning);
     expect(flat.at(10)).toBe(warning);
     expect(flat.at(500)).toBe(warning);
@@ -108,16 +105,5 @@ describe("ColorRamp.at", () => {
   it("refuses a non-finite value", () => {
     expect(() => cascade.at(Number.NaN)).toThrow(/finite value, got NaN/);
     expect(() => cascade.at(Number.POSITIVE_INFINITY)).toThrow(/finite value/);
-  });
-});
-
-describe("parseRampEasing", () => {
-  it("narrows every listed name and nothing else", () => {
-    for (const name of RAMP_EASING_NAMES) expect(parseRampEasing(name)).toBe(name);
-    expect(() => parseRampEasing("smooth")).toThrow(
-      /unknown ramp easing "smooth"; expected one of "linear", "step"/,
-    );
-    // Prototype names are not easings.
-    expect(() => parseRampEasing("toString")).toThrow(/unknown ramp easing/);
   });
 });

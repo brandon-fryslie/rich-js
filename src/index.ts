@@ -105,10 +105,14 @@ export {
 } from "./themes/colorMath.js";
 // A number → a color through ordered stops, interpolated in OKLCH — the one
 // color operation whose input is a measurement rather than a color, so a
-// gradient (or, with the `step` easing, a threshold cascade) stays inside the
+// gradient (or, with the `step` ease, a threshold cascade) stays inside the
 // theme system instead of being computed beside it.
-export { ColorRamp, RAMP_EASING_NAMES, parseRampEasing } from "./themes/ramp.js";
-export type { ColorStop, RampEasing } from "./themes/ramp.js";
+export { ColorRamp } from "./themes/ramp.js";
+export type { ColorStop } from "./themes/ramp.js";
+// Progress in [0, 1]: phases turn seconds into it, eases reshape it. One
+// vocabulary for ramps and time-based effects alike, CSS's names throughout.
+export { EASES, Phase, cubicBezier, parseEase, steps } from "./core/easing.js";
+export type { Ease, StepPosition } from "./core/easing.js";
 
 export {
   Style,

@@ -92,8 +92,11 @@ import {
   darken,
   // Section 5 — a number → a colour over ordered stops
   ColorRamp,
-  RAMP_EASING_NAMES,
-  parseRampEasing,
+  EASES,
+  Phase,
+  cubicBezier,
+  parseEase,
+  steps,
   // Infrastructure (consumed, not the focus of this demo)
   Console,
   RichText,
@@ -707,23 +710,47 @@ export function runDemo(
     // ColorRamp — the one colour operation whose input is a *number*. A
     // measurement lands on ordered stops; `linear` interpolates between them
     // in OKLCH, `step` holds each stop until the next, which is a threshold
-    // cascade (`≥ 50 warning, ≥ 80 error`) spelled as data. Both easings are
-    // one class with one value changed. [LAW:one-type-per-behavior]
+    // cascade (`≥ 50 warning, ≥ 80 error`) spelled as data. Every ease is
+    // one class with one value changed: CSS's named curves, by the name a
+    // template spells them with, and `steps`/`cubicBezier` built in place.
+    // [LAW:one-type-per-behavior]
     const stops = [
       { at: 0, color: surface },
       { at: 50, color: resolveColorRef(palette, "warning") },
       { at: 80, color: resolveColorRef(palette, "error") },
     ];
-    out.print(bold("    ColorRamp — a number → a colour, over the same stops, per easing:"));
-    out.print(blurb(`easings: ${RAMP_EASING_NAMES.join(", ")}; stops at 0 (surface), 50 (warning), 80 (error)`));
-    for (const easingName of RAMP_EASING_NAMES) {
-      const ramp = new ColorRamp(parseRampEasing(easingName), stops);
-      const row = new RichText(`      ${easingName.padEnd(8)}`);
+    out.print(bold("    ColorRamp — a number → a colour, over the same stops, per ease:"));
+    out.print(blurb("stops at 0 (surface), 50 (warning), 80 (error)"));
+    const eases = [
+      ...Object.keys(EASES).map((name) => [name, parseEase(name)] as const),
+      ["steps(3)", steps(3)] as const,
+      ["steps(3, jump-start)", steps(3, "jump-start")] as const,
+      ["cubicBezier(.7,0,.3,1)", cubicBezier(0.7, 0, 0.3, 1)] as const,
+    ];
+    for (const [label, ease] of eases) {
+      const ramp = new ColorRamp(ease, stops);
+      const row = new RichText(`      ${label.padEnd(24)}`);
       for (const value of [0, 25, 50, 65, 80, 100]) {
         row.append(` ${String(value).padStart(3)} `, bgFgStyle(ramp.at(value), fg, bg));
       }
       out.print(row);
     }
+    out.print(blank());
+
+    // A phase turns seconds into progress, so the same ramp can be swept by
+    // time instead of a measurement. `t` is an argument — nothing reads a
+    // clock — so this row is the pulse sampled every quarter second, frozen.
+    const pulse = Phase.pingPong(2);
+    const pulseRamp = new ColorRamp(EASES.sine, [
+      { at: 0, color: surface },
+      { at: 1, color: resolveColorRef(palette, "primary") },
+    ]);
+    const pulseRow = new RichText(`      ${"pingPong(2s) · sine".padEnd(24)}`);
+    for (let quarter = 0; quarter <= 8; quarter++) {
+      pulseRow.append("    ", bgFgStyle(pulseRamp.at(pulse(quarter / 4)), fg, bg));
+    }
+    out.print(bold("    Phase — seconds → progress; t = 0 … 2 s in quarter seconds:"));
+    out.print(pulseRow);
     out.print(blank());
 
     // buildPalette directly — construct a BaseColors bundle and watch the

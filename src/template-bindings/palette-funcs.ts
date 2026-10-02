@@ -66,7 +66,8 @@
 import type { FuncMap, TemplateFunc } from "@promptctl/go-template-js";
 import type { Palette } from "../themes/palette.js";
 import { resolveColorRef } from "../themes/colorRef.js";
-import { ColorRamp, parseRampEasing, type ColorStop } from "../themes/ramp.js";
+import { parseEase } from "../core/easing.js";
+import { ColorRamp, type ColorStop } from "../themes/ramp.js";
 
 /**
  * The `(position, color-ref)` pairs a `ramp` call's tail spells, as stops.
@@ -139,7 +140,7 @@ export function paletteFuncs(getPalette: () => Palette): FuncMap {
   // [LAW:types-are-the-program]
   const rampFunc: TemplateFunc = {
     fn: ((value: number, easing: string, ...tail: unknown[]) =>
-      new ColorRamp(parseRampEasing(easing), colorStops(tail, getPalette())).at(value)
+      new ColorRamp(parseEase(easing), colorStops(tail, getPalette())).at(value)
         .hex) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     arity: { kind: "alternating", minimum: 4 },
