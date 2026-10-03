@@ -2,49 +2,6 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-315",
-      "ref": "refs/pull/315/merge",
-      "sha": "0db791c8e744643d39fe30a0cbff83139c97434f",
-      "timestamp": "2026-10-03T12:24:10.945Z",
-      "commits": [
-        {
-          "sha": "0db791c8e744643d39fe30a0cbff83139c97434f",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T12:22:56Z",
-          "message": "Merge 4520f8454e5302168a5b424c7404879acd6ca2b2 into 1f43fdb736d7b6f07ea1098af5579afd881725b2\n"
-        },
-        {
-          "sha": "4520f8454e5302168a5b424c7404879acd6ca2b2",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:22:51-06:00",
-          "message": "refactor(console): print leaves each part's end to append, as Rich's join does (rich-embed-1r2m)\n\nReview pass (high, escalation): the end-clearing in print was dead —\nTextRun joins with RichText.append, which already drops it. Comments on the\ntitle style and the standalone Layout test now say what Rich does.\n"
-        },
-        {
-          "sha": "e9768f2a58f6327bb29567085a72558b92bb75d3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:09:08-06:00",
-          "message": "fix(text): justify pads in the text's base style, as Rich's does (rich-embed-1r2m)\n\nReview pass (medium): setting the table title style as the text's base left\nits justify padding unstyled, because RichText padded outside the base.\nRich's Lines.justify pads inside the Text. Markdown's element style moves to\na span under the inline spans, as Rich's is, so a heading's padding stays\nplain.\n"
-        },
-        {
-          "sha": "252dd9814615f4942835fc97d10556a4439c39a3",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:00:57-06:00",
-          "message": "fix(table): a title's end runs on as the text emits it, as Rich's does (rich-embed-1r2m)\n\nReview pass (high): a title or caption with a non-newline end widened its\nown row past the table. It is now yielded as the text renders it, the title\nstyle set as the text's base. Pins Rich 9d8f9a3 bytes for that, a progress\ndescription's trailing newline, a standalone leaf's width padding, and\nRichText.append leaving the appended text's end behind.\n"
-        },
-        {
-          "sha": "f78a426bfcb5f365bd4ff82d044571593a56a252",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:47:03-06:00",
-          "message": "fix(embed)!: a body keeps its own end, as Rich's does (rich-embed-1r2m)\n\nA string reads with Rich's default end, as `render_str` gives it, and a\nRichText keeps the end it was given. So `RichText(\"foo\\n\")` or \"foo\\n\" in\na table cell, a column, a panel body, a tree label or a layout pane draws\nthe blank row its newline makes. The sites that set text into a line\nclear the end there: print's run and an inline label (panel and rule\ntitles).\n\nA Layout leaf is now shaped to its region as Rich's `render_lines` shapes\nit: each line cropped and padded to the width, and held to the region's\nrows.\n\nExpected output is Python Rich 9d8f9a3's, pinned in each renderable's tests.\n"
-        }
-      ]
-    },
-    {
       "version": "pr-316",
       "ref": "refs/pull/316/merge",
       "sha": "9f56a3a918d08004aa355c8312b721513c80129f",
