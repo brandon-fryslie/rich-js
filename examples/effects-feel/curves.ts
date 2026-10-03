@@ -215,7 +215,7 @@ function swell(shape: SwellShape, s: number, k: number): number {
  */
 const BREATH: SwellShape = { rise: 0.36, fall: 0.5 };
 
-/** A firefly's brightest flash: it kindles quicker than it fades, and is dark for the other half of its turn. */
+/** A firefly's brightest flash, in turns: it kindles quicker than it fades, and the rest of its turn is dark. */
 const FLASH: SwellShape = { rise: 0.24, fall: 0.36 };
 
 /** About one breath in this many is a sigh. */
@@ -347,8 +347,8 @@ export function drift(curve: Curve, span: number, z: number): Loop {
  * most moments a few are lit, at different brightnesses. Its light is a
  * soft halo several cells wide, brightest where it is, so as it hovers the
  * glow slides between cells rather than hopping. `seconds` is a firefly's
- * turn: its brightest flash, rise and fall, takes half of it, and a dimmer
- * one less.
+ * turn: its brightest flash, rise and fall, takes `FLASH` of it, and a
+ * dimmer one less.
  */
 export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number): Loop {
   const count = Math.max(3, Math.round(span / 8));
