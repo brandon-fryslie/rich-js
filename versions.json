@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-330",
+      "ref": "refs/pull/330/merge",
+      "sha": "b1925cdb4da4c0eeb96b385c65f617f682707a92",
+      "timestamp": "2026-10-03T15:21:38.493Z",
+      "commits": [
+        {
+          "sha": "b1925cdb4da4c0eeb96b385c65f617f682707a92",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:20:17-06:00",
+          "message": "Merge 34a16e80ea1665e2f47c4de0e690e3cba4a27426 into 618ab5fef0e33826e668c85ba0a692040fdced8a\n"
+        },
+        {
+          "sha": "34a16e80ea1665e2f47c4de0e690e3cba4a27426",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:18:40-06:00",
+          "message": "effects-feel: a sigh catches once on the way in and draws in again (rich-effects-fxiy.b6i)\n\nA swell is now a list of knots joined by raised cosines; breath and\nfirefly flash keep their shapes, and the sigh gains its double inhale.\nEach part of the sigh's inhale climbs less steeply than a breath, so the\n1 fps worst step over an hour stays 0.0395. REACH 0.3 -> 0.27 keeps a\nwhole-element rest between breaths now a sigh lasts 0.70 of its turn.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-329",
       "ref": "refs/pull/329/merge",
       "sha": "cbcf6425b747ee2893f54d3a172b24a92b0a778f",
