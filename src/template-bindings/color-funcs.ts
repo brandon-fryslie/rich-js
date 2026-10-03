@@ -26,7 +26,7 @@
  *
  * ### The carrier is a hex string, deliberately
  *
- * A color crosses the template seam as `#RRGGBB`, not as an opaque object,
+ * A color crosses the template seam as `#RRGGBB` (or `#RRGGBBAA`), not as an opaque object,
  * for three reasons:
  *
  * 1. **The type separates.** `"string"` is the strictest arg slot the template
@@ -70,12 +70,14 @@ import { darken, contrastFor, ensureContrast } from "../themes/colorMath.js";
  * its error *wording*, because the mistake it catches is almost always the
  * same one — a palette name passed where a color belongs (`darken "primary" 2`)
  * — and an author who reads "wrap it: darken (color "primary")" is corrected in
- * one step, where "expected #RRGGBB" leaves them guessing.
+ * one step, where "expected #RRGGBB" leaves them guessing. What it parses
+ * must then be a colour these functions can compute with (`computable`).
  * [LAW:no-silent-failure]
  */
 function asColor(value: string, func: string): ColorRgba {
+  let colour: ColorRgba;
   try {
-    return parseHexColor(value.trim());
+    colour = parseHexColor(value.trim());
   } catch (cause) {
     if (!(cause instanceof ColorParseError)) throw cause;
     throw new TypeError(
@@ -84,6 +86,25 @@ function asColor(value: string, func: string): ColorRgba {
       { cause },
     );
   }
+  return computable(colour, func, JSON.stringify(value));
+}
+
+/**
+ * A colour the colour functions can compute with. A fully transparent one — a
+ * theme's "no background", `#00000000` — has no colour of its own: what shows
+ * through it is whatever surface it lands on, which a template cannot know.
+ * Darkening, mixing or contrasting it would answer for a surface nobody named,
+ * so it is refused here, for every colour function and every `ramp` stop.
+ * [LAW:single-enforcer]
+ */
+export function computable(colour: ColorRgba, func: string, written: string): ColorRgba {
+  if (colour.alpha === 0) {
+    throw new RangeError(
+      `${func} got ${written}, which is fully transparent: it draws no colour of its own, ` +
+        `so there is nothing to compute with — use the colour of the surface it sits on, e.g. (color "background")`,
+    );
+  }
+  return colour;
 }
 
 // [LAW:single-enforcer] Every colour function is fixed-arity, so the engine's
