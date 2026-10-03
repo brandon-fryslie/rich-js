@@ -2,60 +2,24 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-314",
-      "ref": "refs/pull/314/merge",
-      "sha": "d39fd8bed7c50bad51f7b94bef0b49471221f45b",
-      "timestamp": "2026-10-03T12:05:43.069Z",
-      "commits": [
-        {
-          "sha": "d39fd8bed7c50bad51f7b94bef0b49471221f45b",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T12:04:31Z",
-          "message": "Merge c75faa4789b2b37a5d68c6c2d0ac6d156e972f03 into 9f660772dc5a3e63ce82bd15ba6d8d02e59ba2e6\n"
-        },
-        {
-          "sha": "c75faa4789b2b37a5d68c6c2d0ac6d156e972f03",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T06:04:27-06:00",
-          "message": "perf(examples): effects-feel builds each loop's effect once per subject, not per frame (rich-effects-fxiy.b6i)\n"
-        },
-        {
-          "sha": "84756f88015581e4eeae3d6c349a950d76ad18d1",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:59:40-06:00",
-          "message": "feat(examples): effects-feel light takes each colour's share of what its cells can spare, so effects show (rich-effects-fxiy.b6i)\n\nThe loops sat at the threshold of seeing (pulse ~0.03 ΔE, drift 0.028)\nbecause a fixed per-side share was the only thing keeping a glint from\nclosing a cell, and it closed some anyway: Latte's white-lettered fills fell\nbelow AA, and its status line fell 7 -> 5.4.\n\nA loop is now a Touch (what it does to a colour at a strength) and a Field\n(how strongly, where and when). `shares` settles each colour, lightest first,\nat the largest share every cell it is drawn in can take while still reading at\nits resting contrast or WCAG AA, whichever is lower — measured on the colours\nthe run's depth draws, with strengths snapped to the levels checked. That\nreplaces Side/SHARE/catches and the \"darker wins\" fold.\n\nDefaults retuned for visibility inside the 1 fps no-jump gate: shimmer 90 s\nacross a 32-column band, pulse 16 s at 0.29, drift 50 s at 24 degrees with a\nstronger silver, sparkle 36 s at 0.6 with 6-column halos.\n\nThe status line's ink is `ensureContrast` of the muted ink at the run's depth\ninstead of a hand-rolled bisection.\n"
-        },
-        {
-          "sha": "445aace9439e9312020797eca35ec157a3ad4d3e",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:38:28-06:00",
-          "message": "feat(examples): effects-feel light only ever lights, so a glint on a dark fill reads as sun, not shadow (rich-effects-fxiy.b6i)\n\nA darker colour was pulled toward a deep amber, which at a muted fill's\nlightness is brown: a glint crossing the dark half of the strip read as a\nshadow. Each light is now one colour; both colours of a cell move toward\nit and never below their own lightness, the darker only 0.15 of the way,\nso the fill warms a little while its lettering lifts to cream and the\nworst contrast stays within 93% of rest. The status line is drawn at the\ndimmest ink that still reads at 7:1, which leaves light room to lift it.\n"
-        },
-        {
-          "sha": "2073e6b01544a435f52b6823b38ef2f236cf07e8",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:25:55-06:00",
-          "message": "feat(examples): effects-feel light catches a strip's lettering too, so a glint on a dark fill reads as light (rich-effects-fxiy.b6i)\n\nOn the strip's muted fills a glint could only deepen the fill to amber (light\ntext sits on them), which read as a passing shadow. A subject's lit colours\nare now every colour its text cells set, each catching the side of a light\naway from its partner (`catches`, `Side`): the lettering glints pale while the\nfill glows amber, the way sunlight catches a sign. Label contrast holds at\nrest under shimmer, pulse and sparkle; drift on dark improves 4.58 -> 4.90.\n\n`Subject.slot` is gone: what a subject lights is what its text cells set. At\n16 colours the theme's white is both a pale fill and lettering on a paler one,\nso it has no side away from both and catches no light (an ANSI slot cannot\nmove anyway).\n"
-        }
-      ]
-    },
-    {
       "version": "pr-315",
       "ref": "refs/pull/315/merge",
-      "sha": "e7c1d89af87bb44685b9819388b9e729167fb5dc",
-      "timestamp": "2026-10-03T12:02:31.526Z",
+      "sha": "0488ca8516aa6db3650f2403ec8a51b62644efee",
+      "timestamp": "2026-10-03T12:10:32.683Z",
       "commits": [
         {
-          "sha": "e7c1d89af87bb44685b9819388b9e729167fb5dc",
+          "sha": "0488ca8516aa6db3650f2403ec8a51b62644efee",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T12:01:02Z",
-          "message": "Merge 252dd9814615f4942835fc97d10556a4439c39a3 into 9f660772dc5a3e63ce82bd15ba6d8d02e59ba2e6\n"
+          "timestamp": "2026-10-03T12:09:14Z",
+          "message": "Merge e9768f2a58f6327bb29567085a72558b92bb75d3 into 9f660772dc5a3e63ce82bd15ba6d8d02e59ba2e6\n"
+        },
+        {
+          "sha": "e9768f2a58f6327bb29567085a72558b92bb75d3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:09:08-06:00",
+          "message": "fix(text): justify pads in the text's base style, as Rich's does (rich-embed-1r2m)\n\nReview pass (medium): setting the table title style as the text's base left\nits justify padding unstyled, because RichText padded outside the base.\nRich's Lines.justify pads inside the Text. Markdown's element style moves to\na span under the inline spans, as Rich's is, so a heading's padding stays\nplain.\n"
         },
         {
           "sha": "252dd9814615f4942835fc97d10556a4439c39a3",
