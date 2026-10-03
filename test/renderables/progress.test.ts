@@ -116,6 +116,22 @@ describe("Progress expand (rich-justify-0cr.3)", () => {
   });
 });
 
+describe("A squeezed row narrows its bar before its description (rich-table-frxv)", () => {
+  // Python Rich 9d8f9a3: `TextColumn("{task.description}")` beside
+  // `BarColumn(40)` at width 30. The bar's column may wrap and the
+  // description's may not, so the bar alone gives up the nine cells:
+  // "download" whole and a bar of 21. Only where the columns sit is pinned;
+  // the bar's own glyphs differ from the reference on a colourless console.
+  it("keeps the description whole and draws the bar 21 cells wide", () => {
+    const progress = new Progress(new TextColumn("{task.description}"), new BarColumn(40));
+    progress.addTask("download", { total: 10 });
+    const line = Segment.splitLines([...progress.render({ ...OPTS, maxWidth: 30 })])[0]!
+      .map((segment) => segment.text)
+      .join("");
+    expect(line).toBe(`download ${"━".repeat(21)}`);
+  });
+});
+
 describe("ProgressColumn.tableColumn (rich-progress-j4lb)", () => {
   // Python Rich 9d8f9a3: a `ProgressColumn` subclass returning
   // `Text("alpha beta gamma")` beside `TextColumn("task")` at width 14. Its
