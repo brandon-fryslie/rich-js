@@ -187,7 +187,8 @@ describe("App in a real node process", () => {
       framed();
       return true;
     });
-    await painted;
+    // A fixture that ends before it paints is that failure, shown with its output.
+    expect(await Promise.race([painted, app.ended])).toBeUndefined();
 
     await app.stop();
 
