@@ -4,15 +4,22 @@
     {
       "version": "pr-331",
       "ref": "refs/pull/331/merge",
-      "sha": "6ba1a621d868f622b0b1dcd7b84518ec45c4d688",
-      "timestamp": "2026-10-03T15:33:14.351Z",
+      "sha": "c90d78d6eb33bd9bf8b8a6a565c4b57b9ea94899",
+      "timestamp": "2026-10-03T15:38:54.017Z",
       "commits": [
         {
-          "sha": "6ba1a621d868f622b0b1dcd7b84518ec45c4d688",
+          "sha": "c90d78d6eb33bd9bf8b8a6a565c4b57b9ea94899",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:31:52-06:00",
-          "message": "Merge 1146f24052e610962aa4504daced0af1d9e3270b into ca201caaeb0c815b1f3743f0061848a42d377030\n"
+          "timestamp": "2026-10-03T15:37:33Z",
+          "message": "Merge d77eac050ed28b166f1bb6ff17574bbdc07f869d into ca201caaeb0c815b1f3743f0061848a42d377030\n"
+        },
+        {
+          "sha": "d77eac050ed28b166f1bb6ff17574bbdc07f869d",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T09:37:28-06:00",
+          "message": "fix(progress): drop the unused percentComplete, treat width 0 as none, document the colourless bar (rich-progress-mn24)\n"
         },
         {
           "sha": "1146f24052e610962aa4504daced0af1d9e3270b",
