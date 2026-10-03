@@ -9,7 +9,7 @@ import { Box, ROUNDED } from "../core/box.js";
 import type { EdgeChars } from "../core/box.js";
 import { Measurement } from "../core/measure.js";
 import { RichText } from "../core/text.js";
-import { embed, inlineLabel } from "./embed.js";
+import { embed, inlineLabel, type InlineLabel } from "./embed.js";
 import type { PaddingDimensions } from "./padding.js";
 import { normalizePadding } from "./padding.js";
 import type {
@@ -165,26 +165,34 @@ function borderTextStyle(border: Style | undefined, own: Style): Style | undefin
  *
  * Cut as Rich cuts it. An unlabelled rule is one run, corners included. A
  * label is set into the `span - 2` cells between one rule cell either side,
- * cropped to them and centred with the rule filling the rest, so the row
- * leaves as corner-and-rule, rule, label, rule, rule-and-corner. Rich draws no
- * label in a span of two cells or fewer (`width <= 4`), where it would sit on
- * the corners.
+ * truncated to them as Rich's `align_text` truncates it — marked only when the
+ * label's own overflow is `"ellipsis"` — and centred with the rule filling the
+ * rest, so the row leaves as corner-and-rule, rule, label, rule,
+ * rule-and-corner. Rich draws no label in a span of two cells or fewer
+ * (`width <= 4`), where it would sit on the corners.
  */
 function borderRow(
+  options: RenderOptions,
   edge: EdgeChars,
   geometry: PanelGeometry,
   span: number,
-  label: readonly Segment[],
+  label: InlineLabel | undefined,
+  labelStyle: Style | undefined,
   border: Style | undefined,
   close: string,
 ): Segment[] {
   const corner = edge.left.repeat(geometry.left);
-  const labelWidth = Segment.getLineLength([...label]);
-  if (labelWidth === 0 || span <= 2) {
+  if (label === undefined || span <= 2) {
     return [new Segment(corner + edge.horizontal.repeat(span) + close, border)];
   }
   const canvas = span - 2;
-  const fitted = Segment.adjustLineLength([...label], Math.min(labelWidth, canvas), undefined, false);
+  const labelOptions = borderLabel(options);
+  const text = label.text(labelOptions);
+  text.truncate(canvas, text.overflow === "ellipsis" ? undefined : { marker: "" });
+  // Already cut to the canvas, so it leaves as it stands: `"ignore"` also
+  // leaves it unjustified, its spaces where `pad` put them.
+  text.overflow = "ignore";
+  const fitted = [...Segment.applyStyle(text.render(labelOptions), labelStyle)];
   const excess = canvas - Segment.getLineLength(fitted);
   const before = Math.floor(excess / 2);
   return [
@@ -209,6 +217,8 @@ export class Panel implements Renderable, Measurable {
   readonly subtitleStyle: string | Style | undefined;
   readonly width: number | undefined;
   readonly padding: [number, number, number, number];
+  private readonly _titleLabel: InlineLabel | undefined;
+  private readonly _subtitleLabel: InlineLabel | undefined;
 
   constructor(
     content: string | RichText | Renderable,
@@ -218,6 +228,8 @@ export class Panel implements Renderable, Measurable {
     this.box = options?.box ?? ROUNDED;
     this.title = options?.title;
     this.subtitle = options?.subtitle;
+    this._titleLabel = inlineLabel(this.title);
+    this._subtitleLabel = inlineLabel(this.subtitle);
     this.bottomRightAccessory = options?.bottomRightAccessory;
     this.expand = options?.expand !== false;
     this.style = options?.style ?? NULL_STYLE;
@@ -334,15 +346,13 @@ export class Panel implements Renderable, Measurable {
   measure(rawOptions: RenderOptions): { minimum: number; maximum: number } {
     const options = withCellWidth(rawOptions);
 
-    const declared = this._declaredWidth;
-    if (declared !== undefined) {
-      // A declared width is not a ceiling on the content, it is the answer:
-      // `_getPanelWidth` returns it before measuring anything, so the panel
-      // draws at this width whatever the content wants. Reported with a
-      // content-derived floor instead, `{width: 20}` around "hi" offered 100
-      // cells answered 6..20 and then drew 20 every time, and a parent
-      // dividing space from the floor under-provisioned it.
-      const width = Math.min(options.maxWidth, declared);
+    if (this._declaredWidth !== undefined) {
+      // A declared width draws one width whatever the parent offers below it,
+      // so that width is both ends of the range: `_getPanelWidth`'s answer,
+      // not a content-derived floor. Reported with one, `{width: 20}` around
+      // "hi" offered 100 cells answered 6..20 and then drew 20 every time, and
+      // a parent dividing space from the floor under-provisioned it.
+      const width = this._getPanelWidth(options);
       return { minimum: width, maximum: width };
     }
 
@@ -351,53 +361,63 @@ export class Panel implements Renderable, Measurable {
 
   /**
    * The width this panel wants when nothing declared one for it: its content
-   * plus its own frame, both read off the division it will render against.
+   * and frame, widened for its title.
    *
    * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` ask this same
-   * question, and each used to work it out itself — the same `layoutPanel`, the
-   * same `frameOverhead`, the same `Math.min(maxWidth, maximum + overhead)`,
-   * written twice. That is the pattern `_declaredWidth` below was extracted to
-   * stop, left standing for the fit case; changing how overhead is derived in
-   * one copy is all it would take to put `measure` and `render` back into the
-   * disagreement this epic spent itself closing.
+   * question, so both read `_contentRange` and `_titled` rather than each
+   * working the overhead and the title out itself — two copies is all it takes
+   * to put `measure` and `render` back into disagreement.
    */
   private _fitRange(options: RenderOptions): { minimum: number; maximum: number } {
+    const content = this._contentRange(options);
+    const maximum = this._titled(options, content.maximum);
+    return { minimum: Math.min(content.minimum, maximum), maximum };
+  }
+
+  /** The content plus its own frame, both read off the division it will render against. */
+  private _contentRange(options: RenderOptions): { minimum: number; maximum: number } {
     const geometry = layoutPanel(options.maxWidth, this.padding);
     const overhead = frameOverhead(geometry);
-
     const measurement = Measurement.get(
       { ...options, maxWidth: geometry.contentWidth },
       this.renderable,
     );
-    // A title widens the panel to hold it whole between one rule cell either
-    // side, as Rich's fitted panel does; untitled, the content alone decides.
-    const titleWidth = Segment.getLineLength(inlineLabel(this.title, borderLabel(options), undefined));
-    const titleFloor = titleWidth === 0 ? 0 : titleWidth + 4;
-    const maximum = Math.min(options.maxWidth, Math.max(measurement.maximum + overhead, titleFloor));
     return {
-      minimum: Math.min(measurement.minimum + overhead, maximum),
-      maximum,
+      minimum: measurement.minimum + overhead,
+      maximum: Math.min(options.maxWidth, measurement.maximum + overhead),
     };
+  }
+
+  /**
+   * `width` widened to hold the title whole between one rule cell either
+   * side, as Rich's panel widens it — past a declared width too, up to the
+   * width the panel was offered.
+   */
+  private _titled(options: RenderOptions, width: number): number {
+    const label = this._titleLabel?.text(borderLabel(options));
+    const floor = label === undefined ? 0 : label.cellLength + 4;
+    return Math.min(options.maxWidth, Math.max(width, floor));
   }
 
   /**
    * The width this panel was told to be, as a count of cells.
    *
-   * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` answer the same
-   * question about the same field, so they read it from here. Answered
-   * separately, `measure` reported nine cells of content while `render` drew the
-   * declared twelve, and the parent that divided space from the range got a
-   * panel three cells wider than the share it granted.
+   * [LAW:one-source-of-truth] `measure` and `_getPanelWidth` read the field
+   * from here, so neither can count it differently from the other.
    */
   private get _declaredWidth(): number | undefined {
     return this.width === undefined ? undefined : cellCount(this.width);
   }
 
+  /**
+   * As Rich's `__rich_console__` sizes it: a declared width is a ceiling that
+   * `expand` fills and a fitted panel fits its content inside, and the title
+   * widens either.
+   */
   private _getPanelWidth(options: RenderOptions): number {
-    const declared = this._declaredWidth;
-    if (declared !== undefined) return Math.min(declared, options.maxWidth);
-    if (this.expand) return options.maxWidth;
-    return this._fitRange(options).maximum;
+    const ceiling = Math.min(options.maxWidth, this._declaredWidth ?? options.maxWidth);
+    const body = this.expand ? ceiling : this._contentRange({ ...options, maxWidth: ceiling }).maximum;
+    return this._titled(options, body);
   }
 
   private *_renderTopBorder(
@@ -407,8 +427,7 @@ export class Panel implements Renderable, Measurable {
     border: Style | undefined,
   ): Iterable<Segment> {
     const titleStyle = borderTextStyle(border, getStyle(options, this.titleStyle ?? NULL_STYLE));
-    const title = inlineLabel(this.title, borderLabel(options), titleStyle);
-    yield* borderRow(box.top, geometry, geometry.spanWidth, title, border, box.top.right.repeat(geometry.right));
+    yield* borderRow(options, box.top, geometry, geometry.spanWidth, this._titleLabel, titleStyle, border, box.top.right.repeat(geometry.right));
     yield Segment.line();
   }
 
@@ -432,13 +451,12 @@ export class Panel implements Renderable, Measurable {
     const accessoryOwn = accessory instanceof RichText ? accessory.resolvedStyle(options) : NULL_STYLE;
 
     const subtitleStyle = borderTextStyle(border, getStyle(options, this.subtitleStyle ?? NULL_STYLE));
-    const subtitle = inlineLabel(this.subtitle, borderLabel(options), subtitleStyle);
     // The accessory hugs the bottom-right corner; the rule and subtitle are
     // laid out, as Rich lays them, across the span it leaves. With no
     // accessory the corner closes the rule's last run, as Rich's does.
     const corner = box.bottom.right.repeat(geometry.right);
     const [close, afterAccessory] = accessoryText === "" ? [corner, ""] : ["", corner];
-    yield* borderRow(box.bottom, geometry, geometry.spanWidth - cellLen(accessoryText), subtitle, border, close);
+    yield* borderRow(options, box.bottom, geometry, geometry.spanWidth - cellLen(accessoryText), this._subtitleLabel, subtitleStyle, border, close);
     yield new Segment(accessoryText, borderTextStyle(border, accessoryOwn));
     yield new Segment(afterAccessory, border);
     yield Segment.line();

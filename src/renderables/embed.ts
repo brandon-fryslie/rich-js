@@ -23,7 +23,6 @@
 import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
-import type { Style } from "../core/style.js";
 import { RichText } from "../core/text.js";
 
 /**
@@ -92,21 +91,43 @@ export function embed(content: unknown): Renderable & Partial<Measurable> {
 
 /**
  * Caller content set into a line it shares with other drawing — a panel's
- * title or subtitle in its border, a rule's title — as one line of segments:
- * a space either side, its own styles over `base`. The caller cuts it to the
- * room it has with `Segment.adjustLineLength`, which is cell-aware.
+ * title or subtitle in its border, a rule's title — read as Rich's `_title`
+ * reads it: newlines become spaces, so the label stays on its line, and it is
+ * set off by a space either side.
  *
- * Content with no text is no label at all, not two spaces: an absent title, an
- * empty string, an empty `RichText` and markup that styles nothing all draw
- * the plain line, as Rich's do (an empty `Text` is falsy there).
+ * Held once by the renderable that owns it, so a string's markup is read once
+ * and every measure and render after reuses that reading.
  */
-export function inlineLabel(content: unknown, options: RenderOptions, base: Style | undefined): Segment[] {
-  // The label leaves at its natural width, `"ignore"`, because the caller does
-  // the cutting; the label's own overflow method would cut it first, and to a
-  // width no one measured. `"ignore"` also leaves it unjustified, so its spaces
-  // stay where `pad` put them.
-  const bare = new EmbeddedText(content).text(options);
-  const text = bare.plain === "" ? bare : bare.pad(1);
-  text.overflow = "ignore";
-  return [...Segment.applyStyle(text.render(options), base)];
+export class InlineLabel {
+  private readonly _content: EmbeddedText;
+
+  constructor(content: string | RichText) {
+    this._content = new EmbeddedText(content);
+  }
+
+  /** The label drawn under `options`: one line, padded, its own overflow kept for the caller's cut. */
+  text(options: RenderOptions): RichText {
+    const text = this._content.text(options);
+    text.plain = text.plain.replaceAll("\n", " ");
+    return text.pad(1);
+  }
+}
+
+/**
+ * Whether caller content is there at all, decided on the content as given, as
+ * Rich's `if self.title` decides it: absent, an empty string and an empty
+ * `Text` are not, and markup that styles nothing is — it reads as empty text,
+ * but the string that holds it is not empty.
+ */
+export function present(content: string | RichText | undefined): content is string | RichText {
+  return content instanceof RichText ? content.plain !== "" : content !== undefined && content !== "";
+}
+
+/**
+ * Caller content as a label, or no label at all: content that is not
+ * `present` draws the plain rule, and markup that styles nothing is a label of
+ * two spaces, a gap in the rule, as Rich's is.
+ */
+export function inlineLabel(content: string | RichText | undefined): InlineLabel | undefined {
+  return present(content) ? new InlineLabel(content) : undefined;
 }

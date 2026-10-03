@@ -845,8 +845,7 @@ export class RichText implements Renderable, Measurable {
     // non-empty text alike — the pre-fix code checked it once for empty text
     // (truthy) and again for non-empty text (truthy and not the default
     // "\n"), which gave `end` two meanings depending on whether the text was
-    // empty (rich-text-5ai). Empty text takes zero iterations of the loop
-    // above, so this is reached either way with nothing yielded but this.
+    // empty (rich-text-5ai).
     if (this._end) {
       yield new Segment(this._end);
     }
@@ -930,9 +929,11 @@ export class RichText implements Renderable, Measurable {
     const boundaries = [0, ...[...inner].sort((a, b) => a - b), text.length];
 
     // Every span edge is a boundary, so where a span's range opens is a lookup
-    // rather than a search.
+    // rather than a search. Where two boundaries share an offset — empty
+    // text's start and end — the first wins, so the offset names the piece
+    // that opens there rather than the one past the last.
     const pieceAt = new Map<number, number>(
-      boundaries.map((position, piece) => [position, piece]),
+      boundaries.map((position, piece): [number, number] => [position, piece]).reverse(),
     );
 
     const styles = boundaries.slice(0, -1).map(() => base);

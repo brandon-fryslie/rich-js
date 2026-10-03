@@ -12,7 +12,7 @@ import type {
   RenderOptions,
 } from "../core/protocol.js";
 import { drawable, getStyle } from "../core/protocol.js";
-import { inlineLabel } from "./embed.js";
+import { inlineLabel, type InlineLabel } from "./embed.js";
 
 export type RuleAlign = "left" | "center" | "right";
 
@@ -30,6 +30,7 @@ export class Rule implements Renderable, Measurable {
   readonly characters: string;
   readonly align: RuleAlign;
   readonly style: string | Style;
+  private readonly _label: InlineLabel | undefined;
 
   constructor(title?: string | RichText, options?: RuleOptions) {
     const chars = options?.characters ?? DEFAULT_RULE_CHAR;
@@ -44,6 +45,7 @@ export class Rule implements Renderable, Measurable {
     }
 
     this.title = title;
+    this._label = inlineLabel(title);
     this.characters = chars;
     this.align = align ?? "center";
     this.style = options?.style ?? NULL_STYLE;
@@ -55,15 +57,20 @@ export class Rule implements Renderable, Measurable {
     const style = getStyle(options, this.style);
     const ruleStyle = style.isNull ? undefined : style;
 
-    const title = inlineLabel(this.title, options, ruleStyle);
-    const titleWidth = Segment.getLineLength(title);
+    const label = this._label?.text(options);
 
-    if (titleWidth === 0) {
+    if (label === undefined) {
       // No title — just a line of repeated characters
       yield new Segment(repeatToWidth(ruleChar, maxWidth), ruleStyle);
       yield Segment.line();
       return;
     }
+
+    // The caller does the cutting, so the label leaves at its natural width,
+    // unjustified, its spaces where `pad` put them.
+    label.overflow = "ignore";
+    const title = [...Segment.applyStyle(label.render(options), ruleStyle)];
+    const titleWidth = Segment.getLineLength(title);
 
     if (titleWidth >= maxWidth) {
       // Title fills the whole width; adjustLineLength cuts by cells, not code units.

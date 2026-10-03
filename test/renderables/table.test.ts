@@ -1382,6 +1382,19 @@ describe("Table markup", () => {
     ]);
   });
 
+  // Rich asks `if self.title` of the title as given, so markup that styles
+  // nothing is a title — a blank row — though it reads as empty text.
+  it("draws a blank row for a title or caption of markup that styles nothing", () => {
+    const titled = new Table({ title: "[b][/b]" });
+    titled.addColumn("A");
+    titled.addRow("x");
+    expect(collectLines(titled, { maxWidth: 20 })).toEqual(["     ", "┏━━━┓", "┃ A ┃", "┡━━━┩", "│ x │", "└───┘"]);
+    const captioned = new Table({ caption: "[b][/b]" });
+    captioned.addColumn("A");
+    captioned.addRow("x");
+    expect(collectLines(captioned, { maxWidth: 20 })).toEqual(["┏━━━┓", "┃ A ┃", "┡━━━┩", "│ x │", "└───┘", "     "]);
+  });
+
   it("lets titleJustify outrank a justify carried by the title text", () => {
     // Two owners of one alignment: a `RichText` with its own `justify` pads
     // itself to full width inside `render`, which used to collapse the gap and

@@ -562,6 +562,42 @@ describe("Panel as Rich draws it", () => {
     );
   });
 
+  it("reads a newline in a title or subtitle as a space, so the border stays one row", () => {
+    expect(draw(new Panel("hi", { title: "a\nb" }), 20)).toBe(
+      "╭────── a b ───────╮\n│ hi               │\n╰──────────────────╯\n",
+    );
+    expect(draw(new Panel("hi", { subtitle: "a\nb" }), 20)).toBe(
+      "╭──────────────────╮\n│ hi               │\n╰────── a b ───────╯\n",
+    );
+  });
+
+  it("widens past a declared width to hold its title, and measures what it draws", () => {
+    const panel = new Panel("hi", { title: "a long title", width: 10 });
+    expect(draw(panel, 30)).toBe("╭─ a long title ─╮\n│ hi             │\n╰────────────────╯\n");
+    expect(panel.measure({ maxWidth: 30 })).toEqual({ minimum: 18, maximum: 18 });
+  });
+
+  it("fits its content inside a declared width when it does not expand", () => {
+    expect(draw(new Panel("hi", { width: 20, expand: false }), 30)).toBe("╭────╮\n│ hi │\n╰────╯\n");
+    expect(draw(new Panel("hi", { title: "T", width: 5, expand: false }), 30)).toBe(
+      "╭─ T ─╮\n│ hi  │\n╰─────╯\n",
+    );
+  });
+
+  it("draws markup that styles nothing as a two-space gap, and an empty RichText as no title", () => {
+    expect(draw(new Panel("hi", { title: "[b][/b]" }), 20)).toBe(
+      "╭────────  ────────╮\n│ hi               │\n╰──────────────────╯\n",
+    );
+    expect(draw(new Panel("hi", { title: new RichText("") }), 20)).toBe(
+      "╭──────────────────╮\n│ hi               │\n╰──────────────────╯\n",
+    );
+  });
+
+  it("marks a cut title only when its own overflow is ellipsis", () => {
+    const title = new RichText("a very long title indeed", { overflow: "ellipsis" });
+    expect(draw(new Panel("hi", { title }), 12)).toBe("╭─ a very…─╮\n│ hi       │\n╰──────────╯\n");
+  });
+
   it("keeps a title off the corners of a five-cell panel", () => {
     expect(draw(new Panel("hi", { title: "T" }), 5)).toBe(
       "╭─ ─╮\n│ h │\n│ i │\n╰───╯\n",
