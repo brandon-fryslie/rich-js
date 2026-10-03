@@ -2,60 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-287",
-      "ref": "refs/pull/287/merge",
-      "sha": "e91ddb96d1b30ef9d9b1246ee72c82c047a5c0ee",
-      "timestamp": "2026-10-03T01:05:06.510Z",
-      "commits": [
-        {
-          "sha": "e91ddb96d1b30ef9d9b1246ee72c82c047a5c0ee",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T01:03:54Z",
-          "message": "Merge 2d0f718bb0f5cd24dff28442fd42e358235904fa into 6eb4218ac6ce9a64b502659ee054926bf0cbc1b9\n"
-        },
-        {
-          "sha": "2d0f718bb0f5cd24dff28442fd42e358235904fa",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T19:03:49-06:00",
-          "message": "fix(examples): effects-feel reads contrast off the cells it draws (rich-shimmer-ufj7)\n\nEscalation high review on #287:\n- Contrast is read from the segments Effected yields, through the wire's own\n  drawnColors, so a slot an effect leaves on its ANSI spec is measured as that\n  slot; at --depth 16 the old second downgrade measured another colour.\n- A DrawnSubject carries its span, its own colours and its text cells,\n  measured once; frames no longer re-render or re-measure a subject.\n- Text cells are read with the Nerd Font glyphs, so an ASCII seam is not text.\n- Each effect row seeds its cells by its own key; the curves use IDENTITY.\n- The strip test pulses each ground in the direction the demo does.\n\nNot taken: the ~0.5 s contrast pass at startup is paid once, before the first\nframe. The 16-colour slot snap in Effected itself is rich-effects-fxiy.knj.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "176982c1b09673f5cbb77f68c22c3d02265bbb36",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:55:39-06:00",
-          "message": "fix(examples): effects-feel measures each subject whole, once (rich-shimmer-ufj7)\n\nMedium review on #287: measuring per terminal width blocked the event loop\n~0.4 s for every width a resize passed through, and compared a per-width\nworst contrast against a startup-width rest. A sweep crosses the element,\nnot the screen, so span and contrast are the element's at its own width:\nmeasured once at startup, the cache and the resize work gone.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "9f6d949606165004cea30f5c3d68dfa37e3a8305",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:51:51-06:00",
-          "message": "fix(examples): effects-feel moves a strip's fill wherever it shows (rich-shimmer-ufj7)\n\nHigh review on #287:\n- A move applies to the subject's own colours, by hex, in either slot, so a\n  powerline arrow moves with the fill it carries and the terminal ground\n  behind a cap never gains one (onColors replaces onSlot).\n- Subjects are measured at the width they are drawn, inside the padding, and\n  re-measured on resize; at-rest contrast is one identity sample, not 1,920.\n- A key outside the table repaints nothing, so mouse reports cost no frame.\n- The cell walk is graphemes(), the one Effected keys by; parseEase is the one\n  ease gate; an empty or non-decimal number flag is refused.\n- Tests wait on what the screen shows instead of wall-clock sleeps.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n"
-        },
-        {
-          "sha": "5bb60706b1f991b306a684959c1ad18d6bba5f50",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:41:12-06:00",
-          "message": "feat(examples): effects-feel — the feel demo for shimmer, pulse, drift, sparkle, fade-in and dissolve-out (rich-shimmer-ufj7)\n\nA demo, not a start on src/: the curves live in examples/effects-feel/curves.ts\non top of Effected and the easing vocabulary, and move to src/ only after\nBrandon's sign-off (rich-effects-fxiy.b6i).\n\nA powerline strip of a dozen palette cells and a run of text under each\neffect, drawn by App at --fps 0.5–30, at --depth truecolor/256/16/none (as the\nhost's FORCE_COLOR/NO_COLOR), on a --ground dark/light Catppuccin theme, with\nper-effect seconds, ease and swing. f and d replay the fade-in and dissolve;\nq and Ctrl-C hand the terminal back. Each loop shows the worst text-on-ground\ncontrast over a full period, read at the run's depth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "6eb4218ac6ce9a64b502659ee054926bf0cbc1b9",
-      "timestamp": "2026-10-03T00:31:47.169Z",
+      "sha": "45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d",
+      "timestamp": "2026-10-03T01:09:39.674Z",
       "commits": [
         {
-          "sha": "6eb4218ac6ce9a64b502659ee054926bf0cbc1b9",
+          "sha": "45a4d6e6fd8dfb5b949115c3dd8e80b9a98baa1d",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T18:30:25-06:00",
-          "message": "feat(effects): Effected — a per-cell colour effect over a renderable's finished cells (rich-effects-fxiy.3t3) (#286)\n\n* feat(effects): Effected — a per-cell colour effect over a renderable's finished cells (rich-effects-fxiy.3t3)\n\nsrc/renderables/effect.ts: Effect (cell colours, row/col/seed, t → colours)\nand Effected, a Renderable that measures as its child. Segments are cut\nonly where colours change; unchanged cells keep their ColorSpec, so the\nidentity effect is byte-identical. Anchors shift per run, wide glyphs stay\nwhole, colours are built with ColorSpec.fromRgba. Seeds are FNV-1a of a\ncaller key and the cell position. docs/effects.md; demo in the colour\nstudio.\n\n* fix(effects): an effect sees the colours on screen — reverse swapped, ANSI and default resolved through a TerminalTheme (rich-effects-fxiy.3t3)\n\nEffected's `defaults: CellColors` becomes `theme: TerminalTheme`, the type\nthat already says what a terminal draws, so an ANSI-slot cell is moved from\nthe caller's red rather than the built-in table's. Colours are read through\nStyle.drawnColors, the one account of what a style writes, so alpha is\nflattened as the wire flattens it. Under reverse the two slots are swapped\nin and swapped back out. The studio's sweep counts its indent, and the docs\nstate the nesting law at the level it holds: colours, not bytes.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(effects): resolve a cell at the depth it is written, and keep the written spec (rich-effects-fxiy.3t3)\n\nAn effect now sees drawnColors at the render's colour depth, so below\ntruecolor it starts from the colour on screen; and a slot it leaves alone\nkeeps that flattened spec, so a translucent glyph does not re-blend over a\nground the effect moved.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
+          "timestamp": "2026-10-02T19:08:45-06:00",
+          "message": "feat(examples): effects-feel demo (rich-shimmer-ufj7) (#287)\n\n* feat(examples): effects-feel — the feel demo for shimmer, pulse, drift, sparkle, fade-in and dissolve-out (rich-shimmer-ufj7)\n\nA demo, not a start on src/: the curves live in examples/effects-feel/curves.ts\non top of Effected and the easing vocabulary, and move to src/ only after\nBrandon's sign-off (rich-effects-fxiy.b6i).\n\nA powerline strip of a dozen palette cells and a run of text under each\neffect, drawn by App at --fps 0.5–30, at --depth truecolor/256/16/none (as the\nhost's FORCE_COLOR/NO_COLOR), on a --ground dark/light Catppuccin theme, with\nper-effect seconds, ease and swing. f and d replay the fade-in and dissolve;\nq and Ctrl-C hand the terminal back. Each loop shows the worst text-on-ground\ncontrast over a full period, read at the run's depth.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n\n* fix(examples): effects-feel moves a strip's fill wherever it shows (rich-shimmer-ufj7)\n\nHigh review on #287:\n- A move applies to the subject's own colours, by hex, in either slot, so a\n  powerline arrow moves with the fill it carries and the terminal ground\n  behind a cap never gains one (onColors replaces onSlot).\n- Subjects are measured at the width they are drawn, inside the padding, and\n  re-measured on resize; at-rest contrast is one identity sample, not 1,920.\n- A key outside the table repaints nothing, so mouse reports cost no frame.\n- The cell walk is graphemes(), the one Effected keys by; parseEase is the one\n  ease gate; an empty or non-decimal number flag is refused.\n- Tests wait on what the screen shows instead of wall-clock sleeps.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(examples): effects-feel measures each subject whole, once (rich-shimmer-ufj7)\n\nMedium review on #287: measuring per terminal width blocked the event loop\n~0.4 s for every width a resize passed through, and compared a per-width\nworst contrast against a startup-width rest. A sweep crosses the element,\nnot the screen, so span and contrast are the element's at its own width:\nmeasured once at startup, the cache and the resize work gone.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n* fix(examples): effects-feel reads contrast off the cells it draws (rich-shimmer-ufj7)\n\nEscalation high review on #287:\n- Contrast is read from the segments Effected yields, through the wire's own\n  drawnColors, so a slot an effect leaves on its ANSI spec is measured as that\n  slot; at --depth 16 the old second downgrade measured another colour.\n- A DrawnSubject carries its span, its own colours and its text cells,\n  measured once; frames no longer re-render or re-measure a subject.\n- Text cells are read with the Nerd Font glyphs, so an ASCII seam is not text.\n- Each effect row seeds its cells by its own key; the curves use IDENTITY.\n- The strip test pulses each ground in the direction the demo does.\n\nNot taken: the ~0.5 s contrast pass at startup is paid once, before the first\nframe. The 16-colour slot snap in Effected itself is rich-effects-fxiy.knj.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n---------\n\nCo-authored-by: Claude <noreply@anthropic.com>"
         }
       ]
     }
