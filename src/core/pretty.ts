@@ -440,7 +440,8 @@ function describesItself(value: object): boolean {
  * form would print `{}`, which reads as an empty object. `Symbol.toStringTag` is
  * the kind the platform declares for each, and a subclass and an object from
  * another realm still carry it, so no list of built-ins is kept here. A
- * subclass is named as Node's `util.inspect` names one, `Task [Promise]`.
+ * constructor named otherwise than its tag is named both ways, `Task [Promise]`,
+ * in the shape Node's `util.inspect` uses.
  */
 function opaqueName(value: object): string | null {
   const tag = (value as { [Symbol.toStringTag]?: unknown })[Symbol.toStringTag];
