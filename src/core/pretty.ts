@@ -63,6 +63,10 @@ export interface PrettyOptions {
    * `highlighter` have to reach the output the same way they reach a printed
    * string — a `Pretty` reaching for its own singleton would silently outrank
    * both. `NullHighlighter` is the "none" case.
+   *
+   * It reads each `Map` entry's `=>` as `= `: the arrow is this formatter's
+   * punctuation, not the data's, and its `>` would close a repr tag opened by
+   * any `<` before it.
    */
   highlighter?: Highlighter;
 }
@@ -212,22 +216,42 @@ interface Lines {
   readonly text: string;
   /** One per `\n` in `text`, in order: the first line continues its caller's. */
   readonly margins: readonly number[];
+  /**
+   * Where in `text`, in order, each `>` of a Map entry's `=>` is.
+   *
+   * rich-pretty-h1uu: the arrow is this formatter's punctuation, and the
+   * reference's output has none — a Python repr has no `=>`. Left in the text
+   * the highlighter reads, its `>` closed the repr tag pattern, which runs from
+   * the first `<` to the last `>`, so a `<` in any key or value tagged
+   * everything from there to the last arrow. A `>` the data wrote is the data's
+   * and stays; which of them is an arrow's is known only here, where the arrow
+   * is written, and not recoverable from the text.
+   */
+  readonly arrows: readonly number[];
 }
 
 /** Text with no line break in it. */
-const flat = (text: string): Lines => ({ text, margins: [] });
+const flat = (text: string): Lines => ({ text, margins: [], arrows: [] });
 
 /** A new line whose first `margin` cells are the structure's indent. */
-const newline = (margin: number): Lines => ({ text: "\n" + " ".repeat(margin), margins: [margin] });
+const newline = (margin: number): Lines => ({ text: "\n" + " ".repeat(margin), margins: [margin], arrows: [] });
 
-const placed = (lines: Lines, inset: number): Laid => ({ text: lines.text, margins: lines.margins, inset });
+/** What follows a Map entry's key. */
+const ARROW: Lines = { text: " => ", margins: [], arrows: [2] };
 
-const cat = (...parts: Lines[]): Lines => ({
+const placed = (lines: Lines, inset: number): Laid => ({ ...lines, inset });
+
+const cat = (...parts: Lines[]): Lines => {
   // `+`, not `join`: a concatenation is left unflattened until it is read, and
   // each level of the data would otherwise copy the whole of its subtree's text.
-  text: parts.reduce((text, part) => text + part.text, ""),
-  margins: parts.flatMap((part) => part.margins),
-});
+  let text = "";
+  const arrows: number[] = [];
+  for (const part of parts) {
+    for (const arrow of part.arrows) arrows.push(text.length + arrow);
+    text += part.text;
+  }
+  return { text, margins: parts.flatMap((part) => part.margins), arrows };
+};
 
 /**
  * A container laid out across lines: `open`, each of `parts` on a line of its
@@ -247,14 +271,15 @@ function expansion(lead: Lines, shape: Container, parts: readonly Lines[], inner
  * own leaves the text before it ending the line, and the space that was to
  * separate them goes with it — spaces only, as a line break carries a margin.
  */
-function follow(out: Lines, laid: Lines, tail: string): Lines {
+function follow(out: Lines, laid: Lines, tail: Lines): Lines {
   let end = out.text.length;
   while (laid.text.startsWith("\n") && out.text[end - 1] === " ") end--;
-  return cat({ text: out.text.slice(0, end), margins: out.margins }, laid, flat(tail));
+  return cat({ ...out, text: out.text.slice(0, end) }, laid, tail);
 }
 
 /**
- * `lines` as it is shown, and where each run of guides is. A line with nothing
+ * `lines` as it is shown, where each run of guides is, and where each of its
+ * `arrows` landed. A line with nothing
  * past its margin is blank, and loses the spaces its margin was written as.
  * With a `guide`, each indent of every margin has one in its first cell, as
  * the reference's `with_indent_guides` draws it, blank lines included, so the
@@ -264,24 +289,51 @@ function follow(out: Lines, laid: Lines, tail: string): Lines {
  * The guide offsets are counted over the text `RichText` will hold, which has
  * its control characters stripped; counted over the raw text, every guide past
  * a `\r` in a key or a `toString` would land one cell right. A margin is only
- * ever spaces, so stripping cannot move one.
+ * ever spaces, so stripping cannot move one. An arrow is moved by the
+ * stripping of what precedes it, and by the blank lines dropped before it;
+ * never inside its own line, whose row is the line itself or the same line
+ * with guides over its margin.
  */
-function drawMargins(lines: Lines, indent: number, guide: string | null): { plain: string; guides: Array<[number, number]> } {
+function drawMargins(
+  lines: Lines,
+  indent: number,
+  guide: string | null,
+): { plain: string; guides: Array<[number, number]>; arrows: number[] } {
+  let raw = 0;
+  let kept = 0;
+  const stripped = lines.arrows.map((arrow) => {
+    kept += stripControlChars(lines.text.slice(raw, arrow)).length;
+    raw = arrow;
+    return kept;
+  });
+  const arrows: number[] = [];
+  // Each arrow before `end` in the stripped text is on the line that starts
+  // at `from` there and at `to` in what is shown.
+  const land = (from: number, to: number, end: number): void => {
+    while (arrows.length < stripped.length && stripped[arrows.length]! < end) {
+      arrows.push(to + stripped[arrows.length]! - from);
+    }
+  };
   const [first, ...rest] = stripControlChars(lines.text).split("\n");
   const guides: Array<[number, number]> = [];
   let offset = first!.length;
+  let from = first!.length;
+  land(0, 0, from);
   const rows = rest.map((line, i) => {
     const margin = lines.margins[i]!;
     const content = line.slice(margin);
     offset += 1;
+    from += 1;
     if (guide !== null && margin > 0) guides.push([offset, offset + margin]);
     const row = guide === null
       ? (content === "" ? "" : line)
       : Array.from({ length: margin }, (_, cell) => (cell % indent === 0 ? guide : " ")).join("") + content;
+    land(from, offset, from + line.length);
     offset += row.length;
+    from += line.length;
     return row;
   });
-  return { plain: [first, ...rows].join("\n"), guides };
+  return { plain: [first, ...rows].join("\n"), guides, arrows };
 }
 
 /**
@@ -354,8 +406,8 @@ interface Probe {
  * used to render as `{ m: Map {` — a one-line object with an expansion wedged
  * inside it and the closing brace back at column 0.
  */
-function fitOneLine(text: string, budget: number): string | null {
-  return text.includes("\n") || cellLen(text) > budget ? null : text;
+function fitOneLine(lines: Lines, budget: number): Lines | null {
+  return lines.text.includes("\n") || cellLen(lines.text) > budget ? null : lines;
 }
 
 /**
@@ -605,7 +657,7 @@ export function isExpandable(value: unknown): boolean {
  */
 interface Hole {
   readonly read: () => unknown;
-  readonly tail: string;
+  readonly tail: Lines;
 }
 
 /**
@@ -700,9 +752,19 @@ export class Pretty implements Renderable, Measurable {
     // The reference draws no guide at all on an ASCII-only console, so there is
     // no ASCII glyph to fall back to: `null` is none.
     const guide = this.indentGuides ? drawable<string | null>(options, "│", null, (g) => g ?? "") : null;
-    const { plain, guides } = drawMargins(laid, this.indent, guide);
-    const text = new RichText(plain, { end: "" });
+    const { plain, guides, arrows } = drawMargins(laid, this.indent, guide);
+    // The highlighter reads the text with each arrow's `>` a space — of the
+    // repr patterns only the tag's reads a `>` — and the text then shows it
+    // again: one code unit for one, so every span lands where it was found.
+    let reading = "";
+    let from = 0;
+    for (const arrow of arrows) {
+      reading += plain.slice(from, arrow) + " ";
+      from = arrow + 1;
+    }
+    const text = new RichText(reading + plain.slice(from), { end: "" });
     this.highlighter.highlight(text);
+    text.plain = plain;
     for (const [start, end] of guides) text.stylize("repr.indent", start, end);
     return text;
   }
@@ -835,7 +897,7 @@ export class Pretty implements Renderable, Measurable {
           return Array.from({ length: shown }, (_, i): Slot => ({
             head: "",
             join: "",
-            holes: [{ read: () => elements[i], tail: "" }],
+            holes: [{ read: () => elements[i], tail: flat("") }],
           }));
         });
       }
@@ -844,7 +906,7 @@ export class Pretty implements Renderable, Measurable {
           take(form.map.entries(), cap).map(([k, v]): Slot => ({
             head: "",
             join: "",
-            holes: [{ read: () => k, tail: " => " }, { read: () => v, tail: "" }],
+            holes: [{ read: () => k, tail: ARROW }, { read: () => v, tail: flat("") }],
           })),
         );
       case "set":
@@ -852,7 +914,7 @@ export class Pretty implements Renderable, Measurable {
           take(form.set, cap).map((v): Slot => ({
             head: "",
             join: "",
-            holes: [{ read: () => v, tail: "" }],
+            holes: [{ read: () => v, tail: flat("") }],
           })),
         );
       case "opaque":
@@ -867,7 +929,7 @@ export class Pretty implements Renderable, Measurable {
           keys.slice(0, cap).map((k): Slot => ({
             head: k,
             join: ": ",
-            holes: [{ read: () => record[k], tail: "" }],
+            holes: [{ read: () => record[k], tail: flat("") }],
           })),
         );
       }
@@ -922,7 +984,7 @@ export class Pretty implements Renderable, Measurable {
         budget: at.maxWidth - at.column - at.reserve,
         open: at.open,
       });
-      if (compact !== null) return placed(cat(lead, flat(compact)), at.inset);
+      if (compact !== null) return placed(cat(lead, compact), at.inset);
     }
 
     const innerIndent = at.inset + this.indent;
@@ -1005,7 +1067,7 @@ export class Pretty implements Renderable, Measurable {
       // This is the read that costs the least when it fails: neighbours are
       // unaffected, so `{ a: 1, b: [Threw: …], c: 3 }` still shows everything
       // that could be read.
-      const reserve = cellLen(hole.tail) + (i === lastHole ? at.reserve : 0);
+      const reserve = cellLen(hole.tail.text) + (i === lastHole ? at.reserve : 0);
       const here: Frame = { ...this._onLine(at, inset), column: lineColumn(at.column, out.text), reserve };
       let laid: Laid;
       try {
@@ -1043,7 +1105,7 @@ export class Pretty implements Renderable, Measurable {
   private _place(text: string, at: Frame): Laid {
     // At the root nothing precedes the text that this formatter wrote, so none
     // of its lines has indent that is the structure's.
-    if (at.hang === null) return placed({ text, margins: text.split("\n").slice(1).map(() => 0) }, at.inset);
+    if (at.hang === null) return placed({ text, margins: text.split("\n").slice(1).map(() => 0), arrows: [] }, at.inset);
     // A hanging row needs a cell to stand in. One indent past the slot has none
     // when the value sits one indent from the edge, and a row put there anyway
     // overruns the width and wraps to column 0 — so rows start where the value
@@ -1065,19 +1127,19 @@ export class Pretty implements Renderable, Measurable {
   }
 
   /** The one-line form of a value, or `null` when it will not fit `at.budget`. */
-  private _oneLine(value: unknown, at: Probe): string | null {
+  private _oneLine(value: unknown, at: Probe): Lines | null {
     const scalar = this._scalar(value);
-    if (scalar !== null) return fitOneLine(scalar, at.budget);
+    if (scalar !== null) return fitOneLine(flat(scalar), at.budget);
 
     const object = value as object;
-    if (at.open.has(object)) return fitOneLine("[Circular]", at.budget);
+    if (at.open.has(object)) return fitOneLine(flat("[Circular]"), at.budget);
     at.open.add(object);
     try {
       const shape = this._shape(object, at.level, at.budget);
-      if (shape.kind === "text") return fitOneLine(shape.text, at.budget);
+      if (shape.kind === "text") return fitOneLine(flat(shape.text), at.budget);
       return this._joinOneLine(shape, { level: at.level + 1, budget: at.budget, open: at.open });
     } catch (error) {
-      return fitOneLine(threw(error), at.budget);
+      return fitOneLine(flat(threw(error)), at.budget);
     } finally {
       at.open.delete(object);
     }
@@ -1096,34 +1158,37 @@ export class Pretty implements Renderable, Measurable {
    * every level costs at least the two cells of its own brackets, so a probe
    * descends at most `budget / 2` levels however deep the data goes.
    */
-  private _joinOneLine(shape: Container, at: Probe): string | null {
+  private _joinOneLine(shape: Container, at: Probe): Lines | null {
     let used = cellLen(shape.open) + cellLen(shape.close) + 2 * cellLen(shape.pad);
     if (used > at.budget) return null;
 
-    const pieces: string[] = [];
+    const pieces: Lines[] = [];
     for (const slot of shape.slots) {
-      used += pieces.length > 0 ? cellLen(SEPARATOR) : 0;
+      if (pieces.length > 0) {
+        used += cellLen(SEPARATOR);
+        pieces.push(flat(SEPARATOR));
+      }
       const piece = this._slotOneLine(slot, { ...at, budget: at.budget - used });
       if (piece === null) return null;
-      used += cellLen(piece);
+      used += cellLen(piece.text);
       pieces.push(piece);
     }
-    return shape.open + shape.pad + pieces.join(SEPARATOR) + shape.pad + shape.close;
+    return cat(flat(shape.open + shape.pad), ...pieces, flat(shape.pad + shape.close));
   }
 
   /** One position on one line, or `null` when any value in it will not fit. */
-  private _slotOneLine(slot: Slot, at: Probe): string | null {
-    let out = slot.head + slot.join;
+  private _slotOneLine(slot: Slot, at: Probe): Lines | null {
+    let out = flat(slot.head + slot.join);
     for (const hole of slot.holes) {
-      const left = at.budget - cellLen(out);
-      let text: string | null;
+      const left = at.budget - cellLen(out.text);
+      let text: Lines | null;
       try {
         text = this._oneLine(hole.read(), { ...at, budget: left });
       } catch (error) {
-        text = fitOneLine(threw(error), left);
+        text = fitOneLine(flat(threw(error)), left);
       }
       if (text === null) return null;
-      out += text + hole.tail;
+      out = cat(out, text, hole.tail);
     }
     return fitOneLine(out, at.budget);
   }

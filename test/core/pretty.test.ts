@@ -66,6 +66,46 @@ describe("Pretty", () => {
     expect(text).toContain("Map {}");
   });
 
+  describe("a Map's arrows are not the data's > (rich-pretty-h1uu)", () => {
+    const tags = (value: unknown, options?: PrettyOptions, maxWidth = 80): string[] => {
+      const text = new Pretty(value, options).toText({ maxWidth });
+      return text.spans
+        .filter((s) => String(s.style).startsWith("repr.tag"))
+        .map((s) => `${String(s.style)} ${text.plain.slice(s.start, s.end)}`);
+    };
+
+    it("a < in a key opens no tag that an arrow closes", () => {
+      const map = new Map<unknown, unknown>([["a<b", 1], ["c", 2]]);
+      const text = new Pretty(map).toText({ maxWidth: 80 });
+      expect(text.plain).toBe('Map { "a<b" => 1, "c" => 2 }');
+      expect(tags(map)).toEqual([]);
+    });
+
+    it("a > the data wrote still closes one, across an arrow, as Rich's does across a dict's colon", () => {
+      expect(tags(new Map([["<a", "b>"]]))).toEqual([
+        "repr.tag_start <",
+        "repr.tag_name a",
+        'repr.tag_contents " => "b',
+        "repr.tag_end >",
+      ]);
+    });
+
+    it("an arrow is found on an expanded line, past stripped control characters and dropped blank lines", () => {
+      const key = { toString: () => "\x07\x07<k" };
+      const map = new Map<unknown, unknown>([
+        [key, 1],
+        ["d", { toString: () => "x\n\n  y" }],
+        ["e", new Map([["f", [1, 2, 3, 4, 5, 6]]])],
+      ]);
+      for (const indentGuides of [false, true]) {
+        const text = new Pretty(map, { indentGuides }).toText({ maxWidth: 16 });
+        expect(text.plain.split("\n").length).toBeGreaterThan(4);
+        expect(text.plain.match(/ => /g)).toHaveLength(4);
+        expect(tags(map, { indentGuides }, 16)).toEqual([]);
+      }
+    });
+  });
+
   // --- Sets ---
 
   it("formats Sets", () => {
