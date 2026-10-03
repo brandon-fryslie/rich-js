@@ -4,15 +4,22 @@
     {
       "version": "pr-298",
       "ref": "refs/pull/298/merge",
-      "sha": "edb5f45e50348a2e0ca5f3d7a51f41426654d6af",
-      "timestamp": "2026-10-03T05:58:48.842Z",
+      "sha": "75f38e7398f10aa260252b3c5dbeb20647da7485",
+      "timestamp": "2026-10-03T06:02:02.258Z",
       "commits": [
         {
-          "sha": "edb5f45e50348a2e0ca5f3d7a51f41426654d6af",
+          "sha": "75f38e7398f10aa260252b3c5dbeb20647da7485",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T05:57:33Z",
-          "message": "Merge 54bc6027b770acbc4d5c60ef124ae13f2b537e28 into f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872\n"
+          "timestamp": "2026-10-03T06:01:02Z",
+          "message": "Merge c1e4539b94a53febfb5a26ee3c75c0c23ebc6077 into f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872\n"
+        },
+        {
+          "sha": "c1e4539b94a53febfb5a26ee3c75c0c23ebc6077",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T00:00:57-06:00",
+          "message": "fix(template-bindings): flattening a template's output stays inside renderTemplate's try, so an unflattenable scope value is an [error: …] line again (rich-diagnostics-t782)\n"
         },
         {
           "sha": "54bc6027b770acbc4d5c60ef124ae13f2b537e28",
