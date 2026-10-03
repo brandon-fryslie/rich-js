@@ -4,15 +4,22 @@
     {
       "version": "pr-299",
       "ref": "refs/pull/299/merge",
-      "sha": "095a55c5df71df2182887cef24182a717e060eff",
-      "timestamp": "2026-10-03T06:17:38.480Z",
+      "sha": "3dd7a39906b1601361bf800295a7f19e938636af",
+      "timestamp": "2026-10-03T06:27:29.277Z",
       "commits": [
         {
-          "sha": "095a55c5df71df2182887cef24182a717e060eff",
+          "sha": "3dd7a39906b1601361bf800295a7f19e938636af",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:16:33-06:00",
-          "message": "Merge 95c54d9624972226db1813bcf1ba030c0e2a5b57 into 328fe3812c957cadebfc264633efefde18ca08ca\n"
+          "timestamp": "2026-10-03T06:26:16Z",
+          "message": "Merge 3f22a172f1d878fbb6e6fb77a0fa7f16c4fee716 into 328fe3812c957cadebfc264633efefde18ca08ca\n"
+        },
+        {
+          "sha": "3f22a172f1d878fbb6e6fb77a0fa7f16c4fee716",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T00:26:12-06:00",
+          "message": "fix(table)!: a ratio column's width is its floor in the split; renderToString takes the highlight pair (rich-table-7m57)\n\nReview fixes: a width+ratio column now joins Rich's flexible split with\nits width as the flex minimum, so Column.flexible and the division agree;\nratioDistribute zeroes the ratio of a part whose minimum is 0, as Rich's\ndoes; the split total is capped at UNBOUNDED so it stays exact; the\npadded-width formula has one helper; docs corrected.\n\nBREAKING CHANGE: RenderOptions.highlighter is now the console's\nhighlighter whether or not highlighting is on; RenderOptions.highlight\nsays whether strings are highlighted. A custom renderable must read the\npair (activeHighlighter) rather than treat a present highlighter as on.\n"
         },
         {
           "sha": "95c54d9624972226db1813bcf1ba030c0e2a5b57",
