@@ -4,15 +4,22 @@
     {
       "version": "pr-312",
       "ref": "refs/pull/312/merge",
-      "sha": "6bd43b75dedff38c55da2df9abda7470139e5c43",
-      "timestamp": "2026-10-03T11:01:16.743Z",
+      "sha": "5ee769281c403fd23ddd774e160d025a31f56c68",
+      "timestamp": "2026-10-03T11:11:41.015Z",
       "commits": [
         {
-          "sha": "6bd43b75dedff38c55da2df9abda7470139e5c43",
+          "sha": "5ee769281c403fd23ddd774e160d025a31f56c68",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T04:59:58-06:00",
-          "message": "Merge 9ea19950692f5be85a72108c9dbe68fbac2943e1 into dd692fc4f5f83b7f632f6012a04975a59f37d855\n"
+          "timestamp": "2026-10-03T11:10:22Z",
+          "message": "Merge 7c384c5ac7b33afe03f47b8c22c9373930aef892 into dd692fc4f5f83b7f632f6012a04975a59f37d855\n"
+        },
+        {
+          "sha": "7c384c5ac7b33afe03f47b8c22c9373930aef892",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:10:17-06:00",
+          "message": "fix(progress)!: each column names the grid column it is laid out in, as Rich's get_table_column (rich-progress-j4lb)\n\nTextColumn and TaskProgressColumn are noWrap; the rest take a plain column,\nso a column that may wrap gives up width before one that may not. Task and\nProgressColumn are exported so a custom column can be written against them.\nProgressBar given no width fills the width it is offered, as Rich's does.\n"
         },
         {
           "sha": "9ea19950692f5be85a72108c9dbe68fbac2943e1",
