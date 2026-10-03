@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-317",
+      "ref": "refs/pull/317/merge",
+      "sha": "fc19f0b0e6e9d4b620207d55a3a8556d5187b9c2",
+      "timestamp": "2026-10-03T12:40:03.323Z",
+      "commits": [
+        {
+          "sha": "fc19f0b0e6e9d4b620207d55a3a8556d5187b9c2",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:38:57-06:00",
+          "message": "Merge c878709c1fae041adf25a87f47c7ab31a1b5b6b3 into effccf96ff9abee5ec3a61820ea001260b1a4c45\n"
+        },
+        {
+          "sha": "c878709c1fae041adf25a87f47c7ab31a1b5b6b3",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T06:38:52-06:00",
+          "message": "fix(rule)!: a title wider than the rule is cut with an ellipsis between rule cells, as Rich's is (rich-rule-thri)\n\nRule now lays its line out as Rich's __rich_console__ does: the title is cut\nto the width less Rich's required_space (4 centred, 2 aligned) with an\nellipsis, a rule cell stays either side, and a rule with no room past that\nis bare. A left- or right-aligned title no longer carries a space on its\nclosed side.\n\nThe ellipsis cut Panel already ported from Rich's Text.truncate is now\ncutLabel in embed.ts, shared by both; the space either side of a label is\nPanel's _title padding and moves to Panel.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "effccf96ff9abee5ec3a61820ea001260b1a4c45",
