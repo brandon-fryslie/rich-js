@@ -61,7 +61,7 @@
  * or invoke them programmatically.
  */
 
-import { observable, action, observableRef } from "mobx";
+import { observable, action, observableRef, runInAction } from "mobx";
 import { Segment } from "../core/segment.js";
 import { Style } from "../core/style.js";
 import {
@@ -72,12 +72,14 @@ import {
   cellColToCodeUnitOffset,
   asCellCol,
   asCodePoint,
+  asCodeUnit,
   graphemeBoundary,
   graphemes,
   nextGrapheme,
   prevGrapheme,
   type CellCol,
   type CodePoint,
+  type CodeUnit,
 } from "../core/cells.js";
 import { drawable, type RenderOptions } from "../core/protocol.js";
 import type { TerminalTheme } from "../core/color.js";
@@ -245,8 +247,9 @@ const ASCII_NEWLINE_GLYPH = "~";
 const MASK_GLYPH = "•";
 const ASCII_MASK_GLYPH = "*";
 
-// Text a key may insert: anything but the C0 controls and DEL.
-const PRINTABLE = /^[^\x00-\x1f\x7f]+$/u;
+// Text a key may insert: anything but the C0 controls, DEL and the C1
+// controls, which a terminal reads as escape sequences (U+009B is CSI).
+const PRINTABLE = /^[^\x00-\x1f\x7f-\x9f]+$/u;
 
 // Word-character regex used by Alt+B/F and Ctrl+Left/Right. Matches the
 // readline default (alphanumeric + underscore), which is what users typing
@@ -282,11 +285,13 @@ export class TextInput extends ThemedWidget {
   // its line's end.
   get value(): string { return this._value; }
   set value(v: string) {
-    this._value = toLf(v);
-    this._cursor = graphemeBoundary(this._value, this._cursor);
+    runInAction(() => {
+      this._value = toLf(v);
+      this._cursor = graphemeBoundary(this._value, this._cursor);
+    });
   }
   get cursorPosition(): CodePoint { return this._cursor; }
-  set cursorPosition(p: number) { this._cursor = graphemeBoundary(this._value, p); }
+  set cursorPosition(p: CodeUnit) { this._cursor = graphemeBoundary(this._value, p); }
   @observableRef accessor placeholder: string;
 
   private readonly _maxLength: number | undefined;
@@ -341,6 +346,7 @@ export class TextInput extends ThemedWidget {
   // single-line renderer. Captured by _renderSingleLine and read by
   // handleMouse so the hit-test uses the same visual origin the user sees.
   private _singleLineViewportStart: CellCol = asCellCol(0);
+  private _singleLineAsciiOnly = false;
 
   readonly multiline: boolean;
 
@@ -355,7 +361,7 @@ export class TextInput extends ThemedWidget {
     // inputs follow the textarea convention (cursor at start — pre-loaded
     // content is read top-to-bottom, and the viewport's "scroll into view"
     // logic does nothing because row 0 is already inside the initial window).
-    this._cursor = graphemeBoundary(this._value, (options.multiline ?? false) ? 0 : this._value.length);
+    this._cursor = graphemeBoundary(this._value, asCodeUnit((options.multiline ?? false) ? 0 : this._value.length));
     this.disabled = options.disabled ?? false;
     this._maxLength = options.maxLength;
     this._password = options.password ?? false;
@@ -471,7 +477,7 @@ export class TextInput extends ThemedWidget {
       const rawRowIdx = this._scrollStart + event.y;
       // Clicks on minRows-padded empty rows (beyond the last real row) snap to end.
       if (rawRowIdx >= rows.length) {
-        this.cursorPosition = this.value.length;
+        this.cursorPosition = asCodeUnit(this.value.length);
         this._preferredColumn = null;
         return;
       }
@@ -480,18 +486,25 @@ export class TextInput extends ThemedWidget {
       // Continuation rows start after the marker; non-continuation rows start at column 0.
       const contentXOff = asCellCol(row.isContinuation ? this._markerWidth : 0);
       const relX = asCellCol(Math.max(0, event.x - contentXOff));
-      this.cursorPosition = row.valueStart + cellColToCodeUnitOffset(row.content, relX);
+      this.cursorPosition = asCodeUnit(row.valueStart + cellColToCodeUnitOffset(row.content, relX));
     } else {
       // [LAW:types-are-the-program] relX is a cell-column offset into the full
       // display string. Add _singleLineViewportStart (the scroll offset captured
       // by _renderSingleLine) so a click on a scrolled viewport maps to the
       // correct code-unit in the underlying value.
       const relX = asCellCol(Math.max(0, event.x - 1) + this._singleLineViewportStart);
-      // A password mask is one cell per glyph, so the column counts glyphs.
-      const glyphs = graphemes(this.value);
-      this.cursorPosition = this._password
-        ? glyphs.slice(0, relX).join("").length
-        : cellColToCodeUnitOffset(this.value.replace(/\n/g, NEWLINE_GLYPH), relX);
+      // The glyphs of `value` whose shown cells lie wholly left of the click,
+      // shown as the last render showed them.
+      const drawn = { asciiOnly: this._singleLineAsciiOnly };
+      let at = 0;
+      let col = 0;
+      for (const g of graphemes(this.value)) {
+        const w = cellLen(this._shown(g, drawn));
+        if (col + w > relX) break;
+        col += w;
+        at += g.length;
+      }
+      this.cursorPosition = asCodeUnit(at);
     }
     this._preferredColumn = null;
   }
@@ -523,7 +536,7 @@ export class TextInput extends ThemedWidget {
       if (rowIdx === 0) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
       const target = this._visualRows[rowIdx - 1]!;
-      this.cursorPosition = target.valueStart + this._clampColForRow(col, rowIdx - 1);
+      this.cursorPosition = asCodeUnit(target.valueStart + this._clampColForRow(col, rowIdx - 1));
       this._preferredColumn = col;
       return;
     }
@@ -535,7 +548,7 @@ export class TextInput extends ThemedWidget {
     let prevLineStart: number = prevLineEnd;
     while (prevLineStart > 0 && this.value[prevLineStart - 1] !== "\n") prevLineStart--;
     const prevLineContent = this.value.slice(prevLineStart, prevLineEnd);
-    this.cursorPosition = prevLineStart + cellColToCodeUnitOffset(prevLineContent, asCellCol(Math.min(col, cellLen(prevLineContent))));
+    this.cursorPosition = asCodeUnit(prevLineStart + cellColToCodeUnitOffset(prevLineContent, asCellCol(Math.min(col, cellLen(prevLineContent)))));
     this._preferredColumn = col;
   }
 
@@ -544,7 +557,7 @@ export class TextInput extends ThemedWidget {
       const rowIdx = this._cursorVisualRow();
       if (rowIdx === this._visualRows.length - 1) return;
       const col = this._preferredColumn ?? this._cursorVisualCol();
-      this.cursorPosition = this._visualRows[rowIdx + 1]!.valueStart + this._clampColForRow(col, rowIdx + 1);
+      this.cursorPosition = asCodeUnit(this._visualRows[rowIdx + 1]!.valueStart + this._clampColForRow(col, rowIdx + 1));
       this._preferredColumn = col;
       return;
     }
@@ -557,7 +570,7 @@ export class TextInput extends ThemedWidget {
     let nextLineEnd: number = nextLineStart;
     while (nextLineEnd < this.value.length && this.value[nextLineEnd] !== "\n") nextLineEnd++;
     const nextLineContent = this.value.slice(nextLineStart, nextLineEnd);
-    this.cursorPosition = nextLineStart + cellColToCodeUnitOffset(nextLineContent, asCellCol(Math.min(col, cellLen(nextLineContent))));
+    this.cursorPosition = asCodeUnit(nextLineStart + cellColToCodeUnitOffset(nextLineContent, asCellCol(Math.min(col, cellLen(nextLineContent)))));
     this._preferredColumn = col;
   }
 
@@ -614,12 +627,12 @@ export class TextInput extends ThemedWidget {
   }
 
   @action moveDocStart(): void {
-    this.cursorPosition = 0;
+    this.cursorPosition = asCodeUnit(0);
     this._preferredColumn = null;
   }
 
   @action moveDocEnd(): void {
-    this.cursorPosition = this.value.length;
+    this.cursorPosition = asCodeUnit(this.value.length);
     this._preferredColumn = null;
   }
 
@@ -796,7 +809,6 @@ export class TextInput extends ThemedWidget {
     let toInsert = text;
     if (this._maxLength !== undefined) {
       const room = this._maxLength - this.value.length;
-      if (room <= 0) return;
       // Cut between glyphs: the longest run of whole clusters within `room`.
       let fit = 0;
       for (const g of graphemes(toInsert)) {
@@ -805,9 +817,10 @@ export class TextInput extends ThemedWidget {
       }
       toInsert = toInsert.slice(0, fit);
     }
+    if (toInsert.length === 0) return;
     // The end is taken before the write: the value setter has already moved
     // the cursor past a cluster the insert grew.
-    const end = this.cursorPosition + toInsert.length;
+    const end = asCodeUnit(this.cursorPosition + toInsert.length);
     this.value =
       this.value.slice(0, this.cursorPosition) +
       toInsert +
@@ -832,16 +845,22 @@ export class TextInput extends ThemedWidget {
     return this._renderSingleLine(options);
   }
 
+  // [LAW:dataflow-not-control-flow] How a stretch of `value` is shown in one
+  // line derives from mode: one mask cell per glyph, or `\n` as a visible
+  // glyph. The render and the click hit-test both read it.
+  private _shown(text: string, options: { readonly asciiOnly?: boolean }): string {
+    return this._password
+      ? drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH).repeat(graphemes(text).length)
+      : text.replace(/\n/g, drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH));
+  }
+
   private _renderSingleLine(options: RenderOptions): Segment[] {
     const showPlaceholder = this.focused && this.value.length === 0 && this.placeholder.length > 0;
 
-    // [LAW:dataflow-not-control-flow] How a stretch of `value` is shown derives
-    // from mode: one mask cell per glyph, or `\n` as a visible glyph. The
-    // cursor's column is the width of the shown text before it, whatever the
-    // mode — a placeholder is shown only over an empty value.
-    const shown = (text: string): string => this._password
-      ? drawable(options, MASK_GLYPH, ASCII_MASK_GLYPH).repeat(graphemes(text).length)
-      : text.replace(/\n/g, drawable(options, NEWLINE_GLYPH, ASCII_NEWLINE_GLYPH));
+    // The cursor's column is the width of the shown text before it, whatever
+    // the mode — a placeholder is shown only over an empty value.
+    this._singleLineAsciiOnly = options.asciiOnly ?? false;
+    const shown = (text: string): string => this._shown(text, options);
     const rawDisplay = showPlaceholder ? this.placeholder : shown(this.value);
 
     const rawCellWidth = asCellCol(cellLen(rawDisplay));

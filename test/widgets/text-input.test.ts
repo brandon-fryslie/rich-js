@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { autorun } from "mobx";
 import { TextInput, charGreedyWrap, type WrapStrategy, type WrapRow } from "../../src/widgets/text-input.js";
 import { asCodePoint, asCellCol, type CodePoint } from "../../src/core/cells.js";
 import { KeyEvent } from "../../src/widgets/types.js";
@@ -1263,6 +1264,29 @@ describe("TextInput", () => {
       t.transposeChars();
       expect(t.value).toBe("👍🏽");
       expect(changes).toEqual([]);
+    });
+
+    it("a glyph too long for maxLength is refused without a change event", () => {
+      const t = new TextInput({ value: "abcd", maxLength: 5 });
+      const changes: unknown[] = [];
+      t.onChange((w) => changes.push(w));
+      t.handleKey(printable("😀"));
+      expect(changes).toEqual([]);
+    });
+
+    it("refuses C1 controls, which a terminal reads as escape sequences", () => {
+      const t = new TextInput({ value: "" });
+      t.handleKey(printable("\u009b"));
+      expect(t.value).toBe("");
+    });
+
+    it("an observer of value and cursorPosition never sees the cursor past the value", () => {
+      const t = new TextInput({ value: "hello" });
+      const seen: number[] = [];
+      const stop = autorun(() => { seen.push(t.cursorPosition - t.value.length); });
+      t.value = "";
+      stop();
+      expect(seen.every((over) => over <= 0)).toBe(true);
     });
 
     it("transposes whole glyphs", () => {

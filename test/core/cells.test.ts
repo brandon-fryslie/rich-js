@@ -13,6 +13,9 @@ import {
   splitAtCells,
   cellColToCodeUnitOffset,
   graphemeBoundary,
+  nextGrapheme,
+  prevGrapheme,
+  asCodeUnit,
 } from "../../src/core/cells.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts (widths, invariants), not implementation details (caching, slicing)
@@ -433,10 +436,20 @@ describe("every width walk cuts between grapheme clusters", () => {
 });
 
 describe("graphemeBoundary", () => {
-  it("keeps a boundary, moves an offset inside a glyph to its end, and clamps to the string", () => {
+  it("keeps a boundary, moves an offset inside a glyph to its end, and stops at the string's end", () => {
     const s = "a👍🏽b";
-    expect([0, 1, 2, 3, 4, 5, 6].map((cu) => graphemeBoundary(s, cu))).toEqual([0, 1, 5, 5, 5, 5, 6]);
-    expect(graphemeBoundary(s, -3)).toBe(0);
-    expect(graphemeBoundary(s, 40)).toBe(6);
+    expect([0, 1, 2, 3, 4, 5, 6, 40].map((cu) => graphemeBoundary(s, asCodeUnit(cu)))).toEqual([0, 1, 5, 5, 5, 5, 6, 6]);
+  });
+});
+
+describe("nextGrapheme / prevGrapheme", () => {
+  it("step over each whole glyph, and stop at either end", () => {
+    for (const glyph of ["❤️", "👨‍👩‍👧", "🇺🇸", "e\u0301"]) {
+      const s = `a${glyph}b`;
+      expect(nextGrapheme(s, asCodePoint(1))).toBe(1 + glyph.length);
+      expect(prevGrapheme(s, asCodePoint(1 + glyph.length))).toBe(1);
+      expect(nextGrapheme(s, asCodePoint(s.length))).toBe(s.length);
+      expect(prevGrapheme(s, asCodePoint(0))).toBe(0);
+    }
   });
 });

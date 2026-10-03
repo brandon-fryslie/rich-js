@@ -317,12 +317,12 @@ export function prevGrapheme(s: string, cu: CodePoint): CodePoint {
 
 /**
  * Where an offset into `s` comes to rest as a cursor: itself when it is a
- * cluster boundary, else the end of the cluster it falls inside, clamped to
- * `0…s.length`. The one parse from any number to the boundaries
+ * cluster boundary, else the end of the cluster it falls inside, and never
+ * past `s.length`. The one parse from any number to the boundaries
  * `nextGrapheme` and `prevGrapheme` step between.
  */
-export function graphemeBoundary(s: string, cu: number): CodePoint {
-  const at = Math.min(Math.max(cu, 0), s.length);
+export function graphemeBoundary(s: string, cu: CodeUnit): CodePoint {
+  const at = Math.min(cu, s.length);
   const cluster = segmentsOf(s).containing(at);
   return asCodePoint(cluster === undefined || cluster.index === at ? at : cluster.index + cluster.segment.length);
 }
