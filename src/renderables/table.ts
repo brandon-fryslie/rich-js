@@ -1255,18 +1255,16 @@ export class Table implements Renderable, Measurable {
     //
     // Never highlighted, and markup as the console says: Rich draws a title
     // and caption through `render_str(highlight=False)`.
-    const source = text.text({ ...options, highlight: false });
+    //
+    // The table's title style is the *base* a string title's own spans layer
+    // over, as `render_str(style=)` sets it: a `[red]` title inside an italic
+    // table title arrives as italic-red, and the line breaks and the `end` the
+    // text emits stay unstyled. A `RichText` title takes none of it, because
+    // the reference renders a `Text` title without the title style
+    // (rich-table-qj6i).
+    const source = text.text({ ...options, highlight: false }, getStyle(options, ownStyle));
     source.justify = undefined;
     if (source.overflow === "ignore") source.overflow = undefined;
-
-    // The table's title style is the *base* the content's own spans layer over,
-    // which is what the reference emits: a `[red]` title inside an italic table
-    // title arrives as italic-red, not one or the other. Rendering `text.plain`
-    // here read the characters and dropped every span attached to them, so a
-    // styled title lost its styling and parsed markup silently did nothing.
-    // Set as the text's base, as `render_str(style=)` sets a string title's,
-    // so the line breaks and the `end` the text emits stay unstyled.
-    source.style = getStyle(options, ownStyle).add(source.resolvedStyle(options));
     //
     // Rendered at the table's own width with nothing suppressed, because that
     // is what the reference hands its title: an annotation too wide for the

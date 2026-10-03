@@ -826,7 +826,8 @@ export class RichText implements Renderable, Measurable {
   *render(options: RenderOptions): Iterable<Segment> {
     const expanded = expandTabs(this._text, this._tabSize);
     const base = this.resolvedStyle(options);
-    const allSegments = this._buildSegments(expanded, base, options);
+    const { segments: allSegments, covered } = this._buildSegments(expanded, base, options);
+    const spanFree = spanFreeLines(allSegments, covered);
     // Rich wraps the lines of `split(allow_blank=True)`: n line breaks make
     // n + 1 lines, the last one blank when the text ends in a break, and that
     // blank line is justified like any other. `Segment.splitLines` is Rich's
@@ -868,6 +869,7 @@ export class RichText implements Renderable, Measurable {
 
     for (let index = 0; index < logicalLines.length; index += 1) {
       const line = logicalLines[index]!;
+      const free = spanFree[index]!;
       const terminateLine = index < logicalLines.length - 1;
 
       // Wrap first, overflow last — the reference's order, and the reason a
@@ -877,7 +879,10 @@ export class RichText implements Renderable, Measurable {
 
       const wrapped = Segment.divide(line, cuts);
       const placed = this._justifyLines(
-        wrapped.map((piece) => [...this._fitLine(piece, edge, overflow, ellipsis)]),
+        wrapped.map((piece, at) => ({
+          segments: [...this._fitLine(piece, edge, overflow, ellipsis)],
+          free: (cell: number) => free(at === 0 ? cell : cuts[at - 1]! + cell),
+        })),
         maxWidth,
         base,
         justify,
@@ -957,7 +962,7 @@ export class RichText implements Renderable, Measurable {
     { text, offsetOf }: TabExpansion,
     base: Style,
     options: RenderOptions,
-  ): Segment[] {
+  ): { segments: Segment[]; covered: boolean[] } {
     // A span is written against the text as given; `offsetOf` moves its edges
     // past every tab that widened before them.
     const clamp = (offset: number): number =>
@@ -986,22 +991,25 @@ export class RichText implements Renderable, Measurable {
     );
 
     const styles = boundaries.slice(0, -1).map(() => base);
+    const covered = styles.map(() => false);
     for (const span of this._spans) {
       const end = clamp(span.end);
       const style = resolveStyle(options, span.style);
       const opensAt = pieceAt.get(clamp(span.start))!;
       for (let piece = opensAt; boundaries[piece]! < end; piece++) {
         styles[piece] = styles[piece]!.add(style);
+        covered[piece] = true;
       }
     }
 
-    return styles.map(
+    const segments = styles.map(
       (style, piece) =>
         new Segment(
           text.slice(boundaries[piece]!, boundaries[piece + 1]!),
           style.isNull ? undefined : style,
         ),
     );
+    return { segments, covered };
   }
 
   /**
@@ -1017,7 +1025,7 @@ export class RichText implements Renderable, Measurable {
    * *logical* line — and `Segment.divide` already handed it over whole.
    */
   private _justifyLines(
-    lines: Segment[][],
+    lines: WrappedLine[],
     maxWidth: number,
     base: Style,
     justify?: "left" | "center" | "right" | "full",
@@ -1025,8 +1033,8 @@ export class RichText implements Renderable, Measurable {
     if (justify !== "full") {
       return lines.map((line) => [...this._justifyLine(line, maxWidth, base, justify)]);
     }
-    return lines.map((line, index) =>
-      index === lines.length - 1 ? line : this._fillLine(line, maxWidth, base),
+    return lines.map(({ segments }, index) =>
+      index === lines.length - 1 ? segments : this._fillLine(segments, maxWidth, base),
     );
   }
 
@@ -1048,7 +1056,7 @@ export class RichText implements Renderable, Measurable {
    * inside the `Text` it justifies: a title "on red" fills its row in red.
    */
   private *_justifyLine(
-    line: Segment[],
+    { segments: line, free }: WrappedLine,
     maxWidth: number,
     base: Style,
     // [LAW:types-are-the-program] `full` is absent rather than ignored: it
@@ -1069,14 +1077,11 @@ export class RichText implements Renderable, Measurable {
         );
         const gap = Math.max(maxWidth - Segment.getLineLength(body), 0);
         const leftPad = justify === "center" ? Math.floor(gap / 2) : gap;
-        if (leftPad > 0) yield new Segment(" ".repeat(leftPad), padStyle);
-        yield* body;
-        const rightPad = gap - leftPad;
-        if (rightPad > 0) yield new Segment(" ".repeat(rightPad), padStyle);
+        yield* padded(body, free, leftPad, gap - leftPad, padStyle);
         break;
       }
       case "left":
-        yield* Segment.adjustLineLength(line, Math.max(maxWidth, Segment.getLineLength(line)), padStyle);
+        yield* padded(line, free, 0, Math.max(maxWidth - Segment.getLineLength(line), 0), padStyle);
         break;
       default:
         yield* line;
@@ -1203,4 +1208,82 @@ export class RichText implements Renderable, Measurable {
     yield* Segment.adjustLineLength(line, maxWidth, undefined, false);
   }
 
+}
+
+/**
+ * One wrapped line, and whether each of its cells is drawn by no span — the
+ * cells the reference cuts into the same piece as padding beside them.
+ */
+interface WrappedLine {
+  readonly segments: Segment[];
+  readonly free: (cell: number) => boolean;
+}
+
+/**
+ * For each logical line of a render, whether the cell at an offset is covered
+ * by no span. `covered` is `_buildSegments`'s answer per piece; a piece split
+ * by a line break answers for both halves.
+ */
+function spanFreeLines(segments: readonly Segment[], covered: readonly boolean[]): ((cell: number) => boolean)[] {
+  // Per line, the cell each run ends at and whether that run is span-free.
+  const lines: { end: number; free: boolean }[][] = [[]];
+  segments.forEach((segment, piece) => {
+    segment.text.split("\n").forEach((part, at) => {
+      if (at > 0) lines.push([]);
+      const runs = lines.at(-1)!;
+      runs.push({ end: (runs.at(-1)?.end ?? 0) + cellLen(part), free: !covered[piece] });
+    });
+  });
+  return lines.map((runs) => (cell) => {
+    let lo = 0;
+    let hi = runs.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (runs[mid]!.end <= cell) lo = mid + 1;
+      else hi = mid;
+    }
+    return runs[lo]!.free;
+  });
+}
+
+/**
+ * A line with `left` and `right` cells of padding in `style` either side.
+ *
+ * The reference pads inside the `Text` it justifies and cuts its output at
+ * span edges, so a pad and the run of the line beside it that no span covers
+ * are one piece, and Rich emits them as one segment; a run a span covers stays
+ * its own segment even when its style draws the same as the pad
+ * (rich-table-qj6i). A span-free run is drawn in `style` alone, which is what
+ * makes the joined segment's style exact.
+ */
+function* padded(
+  drawn: Segment[],
+  free: (cell: number) => boolean,
+  left: number,
+  right: number,
+  style: Style | undefined,
+): Iterable<Segment> {
+  if (left + right === 0) return yield* drawn;
+  // An empty piece writes no bytes, and at an edge it would take the join that
+  // belongs to the run behind it.
+  const line = drawn.filter((segment) => segment.text !== "");
+  const pad = (cells: number): string => " ".repeat(cells);
+  const width = Segment.getLineLength(line);
+  // A line with no cells has no run to join; the pads alone are its one piece.
+  if (width === 0) return yield new Segment(pad(left + right), style);
+  const last = line.length - 1;
+  // A zero-width segment has no cell of its own to ask about, so it never
+  // joins: merged on its neighbour's answer it would lose its own style.
+  const head = left > 0 && line[0]!.cellLength > 0 && free(0);
+  const tail = right > 0 && line[last]!.cellLength > 0 && free(width - 1);
+  const from = head ? 1 : 0;
+  const to = tail ? last : last + 1;
+  // One run joined on both sides: the pads and it are one piece.
+  if (from > to) {
+    yield new Segment(pad(left) + line[0]!.text + pad(right), style);
+    return;
+  }
+  if (left > 0) yield new Segment(pad(left) + (head ? line[0]!.text : ""), style);
+  yield* line.slice(from, to);
+  if (right > 0) yield new Segment((tail ? line[last]!.text : "") + pad(right), style);
 }
