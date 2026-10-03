@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-321",
+      "ref": "refs/pull/321/merge",
+      "sha": "5327537d1686de244fbf1195355bc2bb31fbc25e",
+      "timestamp": "2026-10-03T13:24:19.389Z",
+      "commits": [
+        {
+          "sha": "5327537d1686de244fbf1195355bc2bb31fbc25e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:23:01-06:00",
+          "message": "Merge 98fb9b7b1ad14b286dbda4923f6e3a20af3bdd62 into 31ca70ee636d0281f5f29836b59a07099b2f87e5\n"
+        },
+        {
+          "sha": "98fb9b7b1ad14b286dbda4923f6e3a20af3bdd62",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T07:22:56-06:00",
+          "message": "fix(highlighter)!: ISO8601Highlighter lays Rich's spans in Rich's colours (rich-highlighter-6cj4)\n\nISO8601Highlighter now carries Rich 15.0.0's patterns: each matches a whole\nstring that is one ISO 8601 value and lays year/month/day/week/hour/minute/\nsecond/frac/ms/hyphen spans under date/time/timezone. iso8601.date is blue,\niso8601.time magenta, iso8601.timezone yellow, as in rich.default_styles.\n\nBREAKING CHANGE: a date or time inside other text (\"date: 2023-01-15\") is no\nlonger highlighted; Rich's patterns are anchored to the whole string.\n\ntest/core/iso8601-highlight.golden.json is Rich's own output for its\niso8601_highlight_tests corpus plus three edge cases.\n"
+        }
+      ]
+    },
+    {
       "version": "master",
       "ref": "refs/heads/master",
       "sha": "31ca70ee636d0281f5f29836b59a07099b2f87e5",
