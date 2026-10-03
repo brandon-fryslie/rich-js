@@ -865,9 +865,9 @@ export const DEFAULT_STYLES: Record<string, Style> = {
   "pretty": NULL_STYLE,
 
   // ISO8601
-  "iso8601.date": Style.parse("cyan"),
-  "iso8601.time": Style.parse("cyan"),
-  "iso8601.timezone": Style.parse("bright_blue"),
+  "iso8601.date": Style.parse("blue"),
+  "iso8601.time": Style.parse("magenta"),
+  "iso8601.timezone": Style.parse("yellow"),
 };
 
 /**

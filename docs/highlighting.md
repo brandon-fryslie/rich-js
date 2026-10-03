@@ -121,7 +121,7 @@ console.print("Hello, World!");
 |---|---|
 | `ReprHighlighter` | Default. Rich's repr patterns — numbers, strings, booleans, attributes, calls, paths, URLs, addresses |
 | `JSONHighlighter` | JSON-formatted strings — keys, values, brackets |
-| `ISO8601Highlighter` | ISO 8601 date/time strings |
+| `ISO8601Highlighter` | A string that is one ISO 8601 date, time, week or timezone — not one inside other text |
 
 ```typescript
 import { JSONHighlighter, Console } from "@promptctl/rich-js";

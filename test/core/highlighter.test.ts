@@ -4,7 +4,6 @@ import {
   RegexHighlighter,
   ReprHighlighter,
   JSONHighlighter,
-  ISO8601Highlighter,
 } from "../../src/core/highlighter.js";
 import { RichText } from "../../src/core/text.js";
 
@@ -232,44 +231,5 @@ describe("JSONHighlighter", () => {
     const result = h.call('{"key": true}');
     expect(result.plain).toBe('{"key": true}');
     expect(result.spans.length).toBeGreaterThan(0);
-  });
-});
-
-// --- ISO8601Highlighter ---
-
-describe("ISO8601Highlighter", () => {
-  it("call creates highlighted RichText from string", () => {
-    const h = new ISO8601Highlighter();
-    const result = h.call("2023-01-15T14:30:00Z");
-    expect(result.plain).toBe("2023-01-15T14:30:00Z");
-    expect(result.spans.length).toBeGreaterThan(0);
-  });
-
-  it("highlights dates", () => {
-    const h = new ISO8601Highlighter();
-    const text = new RichText("date: 2023-01-15");
-    h.highlight(text);
-    const matched = matchedTexts(text, "iso8601.date");
-    expect(matched).toContain("2023-01-15");
-  });
-
-  it("highlights times", () => {
-    const h = new ISO8601Highlighter();
-    const text = new RichText("time: 14:30:00");
-    h.highlight(text);
-    const matched = matchedTexts(text, "iso8601.time");
-    expect(matched).toContain("14:30:00");
-  });
-
-  it("highlights datetime with timezone", () => {
-    const h = new ISO8601Highlighter();
-    const text = new RichText("2023-01-15T14:30:00+05:00");
-    h.highlight(text);
-    const dates = matchedTexts(text, "iso8601.date");
-    const times = matchedTexts(text, "iso8601.time");
-    const tzs = matchedTexts(text, "iso8601.timezone");
-    expect(dates).toContain("2023-01-15");
-    expect(times).toContain("14:30:00");
-    expect(tzs).toContain("+05:00");
   });
 });

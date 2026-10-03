@@ -143,11 +143,46 @@ export class JSONHighlighter extends RegexHighlighter {
 
 // --- ISO8601Highlighter ---
 
+// Rich 15.0.0's patterns, after the Regular Expressions Cookbook recipes it
+// cites. Each matches a whole string that is one ISO 8601 value, never a value
+// inside other text. Python's `$` also matches before a final `\n`, which
+// JavaScript's does not; `END` is Python's.
+const END = String.raw`(?=\n?$)`;
+const YEAR = String.raw`(?<year>[0-9]{4})`;
+const MONTH = String.raw`(?<month>1[0-2]|0[1-9])`;
+const DAY = String.raw`(?<day>3[01]|0[1-9]|[12][0-9])`;
+const HOUR = String.raw`(?<hour>2[0-3]|[01][0-9])`;
+const MINUTE = String.raw`(?<minute>[0-5][0-9])`;
+const SECOND = String.raw`(?<second>[0-5][0-9])`;
+const WEEK = String.raw`(?<week>5[0-3]|[1-4][0-9]|0[1-9])`;
+const TZ_HOUR = String.raw`[+-](?:2[0-3]|[01][0-9])`;
+const XSD_DATE = String.raw`(?<date>(?<year>-?(?:[1-9][0-9]*)?[0-9]{4})-${MONTH}-${DAY})`;
+const XSD_TZ = String.raw`(?<timezone>Z|${TZ_HOUR}:[0-5][0-9])?`;
+
 export class ISO8601Highlighter extends RegexHighlighter {
   static override baseStyle = "iso8601.";
   static override highlights = [
-    /(?<date>\d{4}-\d{2}-\d{2})/g,
-    /(?<time>\d{2}:\d{2}:\d{2}(?:\.\d+)?)/g,
-    /(?<timezone>[+-]\d{2}:\d{2}|Z)/g,
+    // Dates
+    `^${YEAR}-${MONTH}${END}`,
+    `^(?<date>${YEAR}${MONTH}${DAY})${END}`,
+    String.raw`^(?<date>${YEAR}-?(?<day>36[0-6]|3[0-5][0-9]|[12][0-9]{2}|0[1-9][0-9]|00[1-9]))${END}`,
+    // Weeks
+    `^(?<date>${YEAR}-?W${WEEK})${END}`,
+    `^(?<date>${YEAR}-?W${WEEK}-?(?<day>[1-7]))${END}`,
+    // Times
+    `^(?<time>${HOUR}:?${MINUTE})${END}`,
+    `^(?<time>${HOUR}${MINUTE}${SECOND})${END}`,
+    `^(?<timezone>(Z|${TZ_HOUR}(?::?(?:[0-5][0-9]))?))${END}`,
+    `^(?<time>${HOUR}${MINUTE}${SECOND})(?<timezone>Z|${TZ_HOUR}(?::?(?:[0-5][0-9]))?)${END}`,
+    // Date and time. Rich writes this as one pattern whose `-` and `:`
+    // separators are all present or all absent, keyed on a Python conditional
+    // group JavaScript lacks; it is the two spellings here, adjacent, so the
+    // one that matches lays its spans where Rich's single pattern would.
+    `^(?<date>${YEAR}(?<hyphen>-)${MONTH}-${DAY}) (?<time>${HOUR}:${MINUTE}:${SECOND})${END}`,
+    `^(?<date>${YEAR}${MONTH}${DAY}) (?<time>${HOUR}${MINUTE}${SECOND})${END}`,
+    // XML Schema date, time and dateTime
+    `^${XSD_DATE}${XSD_TZ}${END}`,
+    String.raw`^(?<time>${HOUR}:${MINUTE}:${SECOND}(?<frac>\.[0-9]+)?)${XSD_TZ}${END}`,
+    String.raw`^${XSD_DATE}T(?<time>${HOUR}:${MINUTE}:${SECOND}(?<ms>\.[0-9]+)?)${XSD_TZ}${END}`,
   ];
 }
