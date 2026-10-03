@@ -722,7 +722,7 @@ export function runDemo(
     out.print(bold("    ColorRamp — a number → a colour, over the same stops, per ease:"));
     out.print(blurb("stops at 0 (surface), 50 (warning), 80 (error)"));
     const eases = [
-      ...Object.keys(EASES).map((name) => [name, parseEase(name)] as const),
+      ...Object.entries(EASES),
       ["steps(3)", steps(3)] as const,
       ["steps(3, jump-start)", steps(3, "jump-start")] as const,
       ["cubicBezier(.7,0,.3,1)", cubicBezier(0.7, 0, 0.3, 1)] as const,
@@ -741,7 +741,7 @@ export function runDemo(
     // time instead of a measurement. `t` is an argument — nothing reads a
     // clock — so this row is the pulse sampled every quarter second, frozen.
     const pulse = Phase.pingPong(2);
-    const pulseRamp = new ColorRamp(EASES.sine, [
+    const pulseRamp = new ColorRamp(parseEase("sine"), [
       { at: 0, color: surface },
       { at: 1, color: resolveColorRef(palette, "primary") },
     ]);

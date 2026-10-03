@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ColorRgba } from "../../src/core/color.js";
 import { Oklch } from "../../src/core/oklch.js";
-import { EASES } from "../../src/core/easing.js";
+import { EASES, cubicBezier } from "../../src/core/easing.js";
 import { ColorRamp } from "../../src/themes/ramp.js";
 
 const panel = new ColorRgba(40, 44, 52);
@@ -105,5 +105,39 @@ describe("ColorRamp.at", () => {
   it("refuses a non-finite value", () => {
     expect(() => cascade.at(Number.NaN)).toThrow(/finite value, got NaN/);
     expect(() => cascade.at(Number.POSITIVE_INFINITY)).toThrow(/finite value/);
+  });
+});
+
+describe("ColorRamp — every ease in the vocabulary", () => {
+  const stops = [
+    { at: 0, color: panel },
+    { at: 50, color: warning },
+    { at: 80, color: error },
+  ];
+
+  it("paints each stop's own color on it whenever the ease starts at 0", () => {
+    for (const [name, ease] of Object.entries(EASES)) {
+      if (ease(0) !== 0) continue;
+      const ramp = new ColorRamp(ease, stops);
+      for (const stop of stops) expect(ramp.at(stop.at), `${name} at ${stop.at}`).toBe(stop.color);
+    }
+  });
+
+  it("jumps at the start of the interval under step-start, as CSS defines it", () => {
+    const ramp = new ColorRamp(EASES["step-start"], stops);
+    expect(ramp.at(0)).toBe(warning);
+    expect(ramp.at(50)).toBe(error);
+    expect(ramp.at(80)).toBe(error);
+  });
+
+  it("holds the end colors where an ease overshoots, never painting outside its stops", () => {
+    const two = [
+      { at: 0, color: panel },
+      { at: 100, color: error },
+    ];
+    // A CSS "back" curve: above 1 well before the end of the interval…
+    expect(new ColorRamp(cubicBezier(0.34, 1.56, 0.64, 1), two).at(70)).toBe(error);
+    // …and its mirror, below 0 just after the start.
+    expect(new ColorRamp(cubicBezier(0.36, 0, 0.66, -0.56), two).at(30)).toBe(panel);
   });
 });

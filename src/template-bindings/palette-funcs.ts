@@ -132,15 +132,15 @@ export function paletteFuncs(getPalette: () => Palette): FuncMap {
     arity: { kind: "exact" },
     returnType: "string",
   };
-  // `ramp <value> <easing> <position> <color> …` — the argument list is one
-  // float/string cycle end to end (value, easing, then each stop's position
+  // `ramp <value> <ease> <position> <color> …` — the argument list is one
+  // float/string cycle end to end (value, ease, then each stop's position
   // and color), so the engine's `alternating` gate types every slot; the
   // pairing and the references are parsed in `colorStops`. Its minimum is the
-  // value, the easing, and one stop, so the gate refuses a stopless call.
+  // value, the ease, and one stop, so the gate refuses a stopless call.
   // [LAW:types-are-the-program]
   const rampFunc: TemplateFunc = {
-    fn: ((value: number, easing: string, ...tail: unknown[]) =>
-      new ColorRamp(parseEase(easing), colorStops(tail, getPalette())).at(value)
+    fn: ((value: number, ease: string, ...tail: unknown[]) =>
+      new ColorRamp(parseEase(ease), colorStops(tail, getPalette())).at(value)
         .hex) as TemplateFunc["fn"],
     argTypes: ["float", "string"],
     arity: { kind: "alternating", minimum: 4 },

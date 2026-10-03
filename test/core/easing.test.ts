@@ -113,10 +113,10 @@ describe("the built-in names", () => {
       expect(parseEase(name)).toBe(EASES[name]);
     }
     expect(() => parseEase("smooth")).toThrow(
-      /unknown easing "smooth"; expected one of "linear", "ease", "ease-in"/,
+      /unknown ease "smooth"; expected one of "linear", "ease", "ease-in"/,
     );
     // Prototype names are not eases.
-    expect(() => parseEase("toString")).toThrow(/unknown easing/);
+    expect(() => parseEase("toString")).toThrow(/unknown ease/);
   });
 });
 

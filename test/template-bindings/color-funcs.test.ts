@@ -329,7 +329,7 @@ describe("ramp — a number becomes a color inside the theme", () => {
       /last stop \(position 50\) has no color/,
     );
     expect(() => colorText(`{{ ramp 65 "smooth" 0 "surface" }}`)).toThrow(
-      /unknown easing "smooth"/,
+      /unknown ease "smooth"/,
     );
     expect(() => colorText(`{{ ramp 65 "step" 0 "nope" }}`)).toThrow(/no such variable/);
     expect(() => colorText(`{{ ramp 65 "step" 80 "error" 50 "warning" }}`)).toThrow(

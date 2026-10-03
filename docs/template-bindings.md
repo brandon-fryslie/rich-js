@@ -186,7 +186,7 @@ const meter = `{{- define "cell" -}}
 console.print(RichText.fromFragments(engine.compile(meter)({})));
 ```
 
-The ease is any name in `EASES` — CSS's keywords `linear`, `ease`, `ease-in`, `ease-out`, `ease-in-out`, `step-start`, `step-end`, plus `sine` and `step` — and it shapes the way between each pair of stops. The `"step"` ease holds each stop's color until the next position, which is a threshold cascade — `≥ 50 warning, ≥ 80 error, else calm` — written as data instead of a chain of `if`s. It is the same function: a gradient and a cascade differ by one word. Positions are required, never spread evenly by default, because the positions *are* the decision — where warning begins is the whole content of a threshold, and a ramp that guessed them would be deciding it silently.
+The ease is any name in `EASES` ([Easing & Phases](/easing) lists them) and it shapes the way between each pair of stops. The `"step"` ease holds each stop's color until the next position, which is a threshold cascade — `≥ 50 warning, ≥ 80 error, else calm` — written as data instead of a chain of `if`s. It is the same function: a gradient and a cascade differ by one word. Positions are required, never spread evenly by default, because the positions *are* the decision — where warning begins is the whole content of a threshold, and a ramp that guessed them would be deciding it silently.
 
 Stops are color references, resolved through the same path as `color` (see below), so a ramp over palette names — `ramp .pct "step" 0 "surface" 50 "warning" 80 "error"` — recolors with the theme like every other color in the template, and a hex literal in a stop works because that resolver passes literals through.
 

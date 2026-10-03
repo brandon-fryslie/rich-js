@@ -52,7 +52,7 @@ export interface ColorStop {
  */
 export class ColorRamp {
   constructor(
-    readonly easing: Ease,
+    readonly ease: Ease,
     readonly stops: readonly ColorStop[],
   ) {
     if (stops.length === 0) {
@@ -74,14 +74,19 @@ export class ColorRamp {
 
   /**
    * The color at `value`. Below the first stop it is the first color; at or
-   * above the last stop it is the last; between two stops it is `easing`
-   * of the way from the lower to the upper, so a value exactly on a stop is
-   * that stop's color, byte for byte.
+   * above the last stop it is the last; between two stops the raw progress
+   * from the lower to the upper goes through `ease`, and the eased progress
+   * says how far to mix.
    *
-   * The two endpoint returns are the exactness contract, not a shortcut:
-   * the sRGB → OKLCH → sRGB round-trip can land a channel one unit off, and a
-   * ramp that does not hit its own stops exactly would make a `step` ramp
-   * paint a color the author never wrote.
+   * Eased progress 0 is the lower stop's color and 1 the upper's, byte for
+   * byte — the exactness contract, not a shortcut: the sRGB → OKLCH → sRGB
+   * round-trip can land a channel one unit off, and a ramp that did not hit
+   * its own stops exactly would make a `step` ramp paint a color the author
+   * never wrote. So a value on a stop is that stop's color whenever the ease
+   * starts at 0, as every built-in does but `step-start` and the
+   * `jump-start`/`jump-both` steps, which jump at the start of the interval as
+   * CSS defines them. An ease that overshoots [0, 1] holds the end colors
+   * where it does: a ramp never paints outside its stops.
    */
   at(value: number): ColorRgba {
     if (!Number.isFinite(value)) {
@@ -95,9 +100,9 @@ export class ColorRamp {
     const from = stops[lower] as ColorStop;
     if (lower === stops.length - 1) return from.color;
     // `to.at > value >= from.at` by construction of `lower`, so the segment
-    // has positive width and `t ∈ [0, 1)`.
+    // has positive width and raw progress is in [0, 1).
     const to = stops[lower + 1] as ColorStop;
-    const t = this.easing((value - from.at) / (to.at - from.at));
+    const t = this.ease((value - from.at) / (to.at - from.at));
     if (t <= 0) return from.color;
     if (t >= 1) return to.color;
     return Oklch.fromRgba(from.color).mix(Oklch.fromRgba(to.color), t).toRgba();

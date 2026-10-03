@@ -123,6 +123,9 @@ export function steps(n: number, position: StepPosition = "jump-end"): Ease {
 /** The identity ease: progress unchanged. */
 const linear: Ease = (x) => x;
 
+/** CSS `step-end`: 0 until the very end. */
+const stepEnd: Ease = steps(1, "jump-end");
+
 /** A half-cosine, flat at both ends: the curve a breathing pulse wants. */
 const sine: Ease = (x) => (1 - Math.cos(Math.PI * x)) / 2;
 
@@ -130,7 +133,7 @@ const sine: Ease = (x) => (1 - Math.cos(Math.PI * x)) / 2;
  * Every built-in ease by the name a template spells it with — CSS's keyword
  * names, plus `sine`, plus `step`: the spelling `ColorRamp` used before this
  * vocabulary existed, kept so every template written against it renders the
- * same. It is `steps(1, end)`, the same curve as CSS's `step-end`.
+ * same. It is CSS's `step-end`, the same function value.
  */
 export const EASES = {
   linear,
@@ -139,8 +142,8 @@ export const EASES = {
   "ease-out": cubicBezier(0, 0, 0.58, 1),
   "ease-in-out": cubicBezier(0.42, 0, 0.58, 1),
   "step-start": steps(1, "jump-start"),
-  "step-end": steps(1, "jump-end"),
-  step: steps(1, "jump-end"),
+  "step-end": stepEnd,
+  step: stepEnd,
   sine,
 } as const satisfies Record<string, Ease>;
 
@@ -154,7 +157,7 @@ export type EaseName = keyof typeof EASES;
 export function parseEase(name: string): Ease {
   if (!Object.hasOwn(EASES, name)) {
     throw new RangeError(
-      `unknown easing ${JSON.stringify(name)}; expected one of ` +
+      `unknown ease ${JSON.stringify(name)}; expected one of ` +
         Object.keys(EASES).map((n) => JSON.stringify(n)).join(", "),
     );
   }
