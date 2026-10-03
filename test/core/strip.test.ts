@@ -19,6 +19,7 @@ import { Oklch } from "../../src/core/oklch.js";
 import { renderToString } from "../../src/core/render.js";
 import { Measurement } from "../../src/core/measure.js";
 import { cellLen } from "../../src/core/cells.js";
+import { Table } from "../../src/renderables/table.js";
 
 // [LAW:behavior-not-structure] Tests assert what consumers observe — segment
 // text, fg/bg pairs, ordering — not the internal walk.
@@ -569,9 +570,19 @@ describe("Strip measure", () => {
     expect(Measurement.get(ascii, strip).maximum).toBe(Measurement.get(UNBOUNDED, strip).maximum - 1);
   });
 
-  it("sums its items' minimums with the cells its joins draw", () => {
+  it("measures one width as both bounds, since its row never narrows", () => {
     const strip = new Strip([cell("one two", "on red"), cell("three", "on blue")], new PlainJoiner({ separator: "|" }));
-    expect(Measurement.get(UNBOUNDED, strip)).toEqual(new Measurement(3 + 5 + 1, 7 + 5 + 1));
+    expect(Measurement.get(UNBOUNDED, strip)).toEqual(new Measurement(7 + 1 + 5, 7 + 1 + 5));
+  });
+
+  it("keeps every item when a Table squeezes the column it sits in", () => {
+    const strip = new Strip(
+      [new RichText(" alpha beta ", { style: "on red", end: "", noWrap: true }),
+        new RichText(" gamma delta ", { style: "on blue", end: "", noWrap: true })],
+      new PowerlineJoiner(),
+    );
+    const table = new Table({ showHeader: false }).addRow(strip, "a long neighbour that would gladly take every column it is offered");
+    expect(renderToString(table, { colorSystem: null, width: 50 })).toContain(" gamma delta ");
   });
 
   it("measures an empty strip as no cells, as it draws none", () => {

@@ -31,7 +31,6 @@ import { Style } from "./style.js";
 import { ColorDepth, ColorSpec, SURFACE_BLACK } from "./color.js";
 import { Oklch } from "./oklch.js";
 import { drawable, type Measurable, type Renderable, type RenderOptions } from "./protocol.js";
-import { Measurement } from "./measure.js";
 
 // --- StyledRenderable ---
 
@@ -74,29 +73,25 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
     this.joiner = joiner;
   }
 
-  // [LAW:one-source-of-truth] The joins the walk draws, in order: one before
-  // each item and one after the last, so `render` and `measure` cannot
-  // disagree about which positions the joiner fills. No items, no joins.
-  private _joins(): Renderable[] {
-    const items = this.items;
-    return items.length === 0
-      ? []
-      : [null, ...items].map((left, i) => this.joiner.join(left, items[i] ?? null));
-  }
-
   *render(options: RenderOptions): Iterable<Segment> {
     const items = this.items;
     if (items.length === 0) return;
-    const [lead, ...joins] = this._joins();
 
     // [LAW:dataflow-not-control-flow] The walk is the same shape every render:
     // start-cap, item, mid-join, item, ..., item, end-cap. Variability lives
     // in `items` and in what the joiner emits at each position — never in
     // whether a join runs.
-    yield* lead!.render(options);
+    //
+    // The row sits its items side by side, so none is handed a justify: a
+    // `left` fills the canvas, and the first item would pad over the rest of
+    // the row. Where the row sits in the width is its container's to say.
+    const row: RenderOptions = { ...options, justify: undefined };
+    yield* this.joiner.join(null, items[0]!).render(row);
     for (let i = 0; i < items.length; i++) {
-      yield* items[i]!.render(options);
-      yield* joins[i]!.render(options);
+      const item = items[i]!;
+      yield* item.render(row);
+      const next = i + 1 < items.length ? items[i + 1]! : null;
+      yield* this.joiner.join(item, next).render(row);
     }
 
     // [LAW:one-source-of-truth] `Strip`'s sibling `FlexStrip` ends every line
@@ -113,25 +108,16 @@ export class Strip<T extends StyledRenderable = StyledRenderable> implements Ren
   }
 
   /**
-   * One row: each item's measurement, summed, plus the cells every join
-   * draws. A join is a few glyphs that never wrap, so its width is what it
-   * draws at these options; an item answers for itself through
-   * `Measurement.get`, which is also what an item that cannot measure itself
-   * asks for — the whole offer.
+   * [LAW:one-source-of-truth] The width of the one row it draws, and that is
+   * both bounds: the row never wraps and no item is offered less than the whole
+   * width, so there is no narrower strip to report as a minimum. Read off the
+   * drawing rather than summed from the items' measurements, which describe
+   * how an item could be drawn, not how the walk draws it.
    */
   measure(options: RenderOptions): { minimum: number; maximum: number } {
-    let joined = 0;
-    for (const join of this._joins()) {
-      for (const segment of join.render(options)) joined += segment.cellLength;
-    }
-    let minimum = joined;
-    let maximum = joined;
-    for (const item of this.items) {
-      const m = Measurement.get(options, item);
-      minimum += m.minimum;
-      maximum += m.maximum;
-    }
-    return { minimum, maximum };
+    let width = 0;
+    for (const segment of this.render(options)) width += segment.cellLength;
+    return { minimum: width, maximum: width };
   }
 }
 
