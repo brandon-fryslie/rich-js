@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { runInNewContext } from "node:vm";
 import { Pretty, isExpandable } from "../../src/core/pretty.js";
 import type { PrettyOptions } from "../../src/core/pretty.js";
 import { cellLen } from "../../src/core/cells.js";
@@ -597,6 +598,37 @@ describe("Pretty", () => {
     });
   });
 
+  // A `vm` context is another realm: its `Object.prototype`, `Map` and
+  // `DataView` are not this realm's, so identity and `instanceof` say no.
+  describe("a value from another realm prints as the same value made here", () => {
+    const text = (value: unknown) => collectText(new Pretty(value), { maxWidth: 80 });
+    const foreign = (source: string): unknown => runInNewContext(source);
+
+    it.each([
+      ["({ a: 1 })", { a: 1 }],
+      ["Promise.resolve(1)", Promise.resolve(1)],
+      ["new Map([[1, 2]])", new Map([[1, 2]])],
+      ["new Set([1])", new Set([1])],
+      ["new DataView(new ArrayBuffer(2))", new DataView(new ArrayBuffer(2))],
+      ["new Uint8Array([1, 2])", new Uint8Array([1, 2])],
+      ["new Error('x')", new Error("x")],
+      ["new (class Foo { constructor() { this.b = 2; } })()", { b: 2 }],
+    ])("%s", (source, local) => {
+      expect(text(foreign(source))).toBe(text(local));
+    });
+
+    it("still spells a foreign object whose own toString answers", () => {
+      expect(text(foreign("({ toString() { return 'mine'; } })"))).toBe("mine\n");
+      expect(text(foreign("Object.assign(Object.create(null), { toString: () => 'bare' })"))).toBe("bare\n");
+    });
+
+    it("lays a foreign collection out as a container", () => {
+      expect(isExpandable(foreign("new Map()"))).toBe(true);
+      expect(isExpandable(foreign("({})"))).toBe(true);
+      expect(isExpandable(foreign("Promise.resolve()"))).toBe(false);
+    });
+  });
+
   // A cycle and a DAG look identical to a set that only ever grows: both revisit
   // an object already seen. Only the pair pins that `open` empties on the way
   // back up, so both cases are here and neither is meaningful alone.
@@ -685,14 +717,14 @@ describe("Pretty", () => {
       // `.size` answers the total without iterating, so spreading first only
       // ever served to throw the tail away.
       let pulled = 0;
-      const counted = {
-        size: 5_000,
-        *[Symbol.iterator](): Iterator<number> {
+      class Counted extends Set<number> {
+        override get size(): number { return 5_000; }
+        override *[Symbol.iterator](): SetIterator<number> {
           for (let i = 0; i < 5_000; i++) { pulled++; yield i; }
-        },
-      };
-      Object.setPrototypeOf(counted, Set.prototype);
-      collectText(new Pretty(counted as unknown as Set<number>, { maxLength: 5 }), { maxWidth: 40 });
+        }
+      }
+      const counted = new Counted();
+      collectText(new Pretty(counted, { maxLength: 5 }), { maxWidth: 40 });
       expect(pulled).toBe(5);
     });
 
@@ -701,15 +733,15 @@ describe("Pretty", () => {
       // a position. Reaching one costs an iterator step, so enumerating a
       // container in order to print `Set {...}` drains it to say nothing.
       let pulled = 0;
-      const counted = {
-        size: 5_000,
-        *[Symbol.iterator](): Iterator<number> {
+      class Counted extends Set<number> {
+        override get size(): number { return 5_000; }
+        override *[Symbol.iterator](): SetIterator<number> {
           for (let i = 0; i < 5_000; i++) { pulled++; yield i; }
-        },
-      };
-      Object.setPrototypeOf(counted, Set.prototype);
+        }
+      }
+      const counted = new Counted();
       const text = collectText(
-        new Pretty({ s: counted as unknown as Set<number> }, { maxDepth: 1 }),
+        new Pretty({ s: counted }, { maxDepth: 1 }),
         { maxWidth: 40 },
       );
       expect(text).toContain("Set {...}");
@@ -726,14 +758,13 @@ describe("Pretty", () => {
       // same in both runs and cancels, so there is no constant to keep true.
       const pullsFor = (size: number): number => {
         let pulled = 0;
-        const counted = {
-          size,
-          *entries(): Iterator<[number, number]> {
+        class Counted extends Map<number, number> {
+          override get size(): number { return size; }
+          override *entries(): MapIterator<[number, number]> {
             for (let i = 0; i < size; i++) { pulled++; yield [i, i]; }
-          },
-        };
-        Object.setPrototypeOf(counted, Map.prototype);
-        const deep = { a: { b: { c: counted as unknown as Map<number, number> } } };
+          }
+        }
+        const deep = { a: { b: { c: new Counted() } } };
         // Highlighting is per-character work on an expansion this wide, and
         // is not what is being counted.
         collectText(new Pretty(deep, { highlighter: new NullHighlighter() }), { maxWidth: 80 });

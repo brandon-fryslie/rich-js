@@ -370,10 +370,74 @@ function fitOneLine(text: string, budget: number): string | null {
  */
 function indexedElements(value: object): ArrayLike<unknown> | null {
   if (Array.isArray(value)) return value as unknown[];
-  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+  if (ArrayBuffer.isView(value) && typedArrayName(value) !== undefined) {
     return value as unknown as ArrayLike<unknown>;
   }
   return null;
+}
+
+/*
+ * Brand checks: what a value *is*, asked of the internal slot that makes it
+ * one rather than of its prototype chain.
+ *
+ * `Pretty` reflects on values it did not create, and some were created in
+ * another realm — a `vm` context, an iframe — whose `Map`, `DataView` and
+ * `Object.prototype` are not this realm's. `instanceof` and prototype identity
+ * answer "no" to every one of them, so a `Map` printed `[object Map]` and a
+ * `DataView` printed as an empty array. Every built-in method reads its
+ * receiver's slot and not its prototype, which is what makes these
+ * realm-independent: the platform's own brand check, borrowed from this realm
+ * and applied to a value from any.
+ */
+
+// %TypedArray%.prototype[Symbol.toStringTag]: a typed array's name, and
+// `undefined` for every other receiver — the spec's brand check for the family.
+function typedArrayName(value: object): string | undefined {
+  const family = Object.getPrototypeOf(Uint8Array.prototype) as object;
+  const getter = Object.getOwnPropertyDescriptor(family, Symbol.toStringTag)?.get;
+  return getter?.call(value) as string | undefined;
+}
+
+// `has` throws a TypeError on any receiver without the collection's slot.
+function isMap(value: object): value is Map<unknown, unknown> {
+  try {
+    Map.prototype.has.call(value, undefined);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isSet(value: object): value is Set<unknown> {
+  try {
+    Set.prototype.has.call(value, undefined);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// A realm's `Object` as `Function.prototype.toString` spells every built-in.
+const NATIVE_OBJECT = /^function\s+Object\s*\(\s*\)\s*\{\s*\[native code\]\s*\}$/;
+
+/**
+ * The `Object.prototype` of whichever realm made `value`, or `null` when its
+ * prototype chain does not end at one. The chain's last link is that realm's
+ * `Object.prototype` exactly when its `constructor` is the realm's native
+ * `Object`, whose `prototype` is that link — no identity with this realm's is
+ * asked for, which is the point.
+ */
+function realmObjectPrototype(value: object): object | null {
+  let root = value;
+  for (let up = Object.getPrototypeOf(root) as object | null; up !== null; up = Object.getPrototypeOf(root) as object | null) {
+    root = up;
+  }
+  const ctor = (root as { constructor?: unknown }).constructor;
+  return typeof ctor === "function" &&
+    (ctor as { prototype?: unknown }).prototype === root &&
+    NATIVE_OBJECT.test(Function.prototype.toString.call(ctor))
+    ? root
+    : null;
 }
 
 /**
@@ -421,14 +485,17 @@ function threw(error: unknown): string {
  *
  * Both clauses are load-bearing. The identity check separates the two
  * populations; the `typeof` check is what makes `Object.create(null)` — which
- * has no `toString` at all — reflect rather than throw.
+ * has no `toString` at all — reflect rather than throw. The identity is with
+ * the `Object.prototype` of the value's own realm, not this one's: an object
+ * from a `vm` context inherits a `toString` that is a different function and
+ * the same non-answer.
  */
 function describesItself(value: object): boolean {
   const asRecord = value as { toString?: unknown; [Symbol.toPrimitive]?: unknown };
   return (
     typeof asRecord[Symbol.toPrimitive] === "function" ||
     (typeof asRecord.toString === "function" &&
-      asRecord.toString !== Object.prototype.toString)
+      asRecord.toString !== (realmObjectPrototype(value) as { toString?: unknown } | null)?.toString)
   );
 }
 
@@ -467,8 +534,8 @@ type Form =
 function formOf(value: object): Form {
   const elements = indexedElements(value);
   if (elements !== null) return { kind: "indexed", elements };
-  if (value instanceof Map) return { kind: "map", map: value };
-  if (value instanceof Set) return { kind: "set", set: value };
+  if (isMap(value)) return { kind: "map", map: value };
+  if (isSet(value)) return { kind: "set", set: value };
   // Below the Array/Map/Set arms deliberately: an array also overrides
   // `toString`, but "1,2,3" is a poorer answer than the structural form.
   if (describesItself(value)) return { kind: "self" };
