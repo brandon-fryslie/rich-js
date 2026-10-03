@@ -822,6 +822,17 @@ describe("Console.print() line ends", () => {
     expect(printed(["a", { toString: () => "T" }, "b"]).out).toBe("a T b\n");
   });
 
+  // The reference prints an object it cannot look inside as its repr, inline.
+  it("keeps an object whose contents are out of reach in the line, named by its kind", () => {
+    const { console: c, chunks } = makeConsole({ width: 80 });
+    c.print("waiting on", new Promise(() => {}), "done");
+    c.print("a", new WeakMap(), new WeakSet(), "b");
+    expect(captured(chunks)).toBe(
+      "waiting on Promise { <state unknown> } done\n" +
+      "a WeakMap { <items unknown> } WeakSet { <items unknown> } b\n",
+    );
+  });
+
   it("uses the print's end, not a RichText argument's own", () => {
     expect(printed(["a", new RichText(""), "b"]).out).toBe("a  b\n");
     expect(printed([new RichText("")]).out).toBe("\n");
@@ -894,6 +905,21 @@ describe("Console.log()", () => {
     expect(captured(chunks)).toBe("[09:05:07] Hello\n[21:45:00] again\n");
   });
 
+  // The reference's `omit_repeated_times`: a stamp that reads as the previous
+  // row's is left blank at its width, and a stamp that differs prints again.
+  it("leaves the time blank on a row whose time reads as the previous row's", () => {
+    let now = new Date(2026, 8, 30, 9, 5, 7, 100);
+    const { console: c, chunks } = makeConsole({ width: 40, markup: false, getDatetime: () => now });
+    c.log("one");
+    now = new Date(2026, 8, 30, 9, 5, 7, 900);
+    c.log("two");
+    now = new Date(2026, 8, 30, 9, 5, 8);
+    c.log("three");
+    c.log("four");
+    const pad = " ".repeat(TIME.length);
+    expect(captured(chunks)).toBe(`${TIME}one\n${pad}two\n[09:05:08] three\n${pad}four\n`);
+  });
+
   it("throws on a clock that reads an invalid date", () => {
     const { console: c, chunks } = makeConsole({ width: 40, getDatetime: () => new Date(Number.NaN) });
     expect(() => c.log("Hello")).toThrow(RangeError);
@@ -928,7 +954,8 @@ describe("Console.log()", () => {
     const { console: c, chunks } = makeConsole({ width: 40, markup: false, highlight: false, ...clock });
     c.log("a", [1], { end: "" });
     c.log("b");
-    expect(captured(chunks)).toBe(`${TIME}a[1]\n${TIME}b\n`);
+    const pad = " ".repeat(TIME.length);
+    expect(captured(chunks)).toBe(`${TIME}a[1]\n${pad}b\n`);
   });
 
   it("draws the time on a row of its own when the content draws no lines", () => {

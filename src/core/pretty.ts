@@ -433,14 +433,30 @@ function describesItself(value: object): boolean {
 }
 
 /**
- * How `Pretty` reads an object: by index, by entry, by member, by key, or as
- * the text it spells itself. `_shape` lays out each form, and `isExpandable`
- * asks only which one it is, so the two cannot disagree. [LAW:one-source-of-truth]
+ * The text of a built-in whose contents JavaScript gives no reader a way to
+ * reach — a promise's state, a weak collection's members — or `null` for any
+ * other object. Reflecting on one finds no keys and prints `{}`, which reads as
+ * an empty object; the kind and what is hidden are all there is to show, worded
+ * as Node's `util.inspect` words the weak collections.
+ */
+function opaqueText(value: object): string | null {
+  if (value instanceof Promise) return "Promise { <state unknown> }";
+  if (value instanceof WeakMap) return "WeakMap { <items unknown> }";
+  if (value instanceof WeakSet) return "WeakSet { <items unknown> }";
+  return null;
+}
+
+/**
+ * How `Pretty` reads an object: by index, by entry, by member, by key, as the
+ * text it spells itself, or as the kind it is when its contents are out of
+ * reach. `_shape` lays out each form, and `isExpandable` asks only which one it
+ * is, so the two cannot disagree. [LAW:one-source-of-truth]
  */
 type Form =
   | { kind: "indexed"; elements: ArrayLike<unknown> }
   | { kind: "map"; map: Map<unknown, unknown> }
   | { kind: "set"; set: Set<unknown> }
+  | { kind: "opaque"; text: string }
   | { kind: "self" }
   | { kind: "keys"; record: Record<string, unknown> };
 
@@ -449,11 +465,25 @@ function formOf(value: object): Form {
   if (elements !== null) return { kind: "indexed", elements };
   if (value instanceof Map) return { kind: "map", map: value };
   if (value instanceof Set) return { kind: "set", set: value };
+  const opaque = opaqueText(value);
+  if (opaque !== null) return { kind: "opaque", text: opaque };
   // Below the Array/Map/Set arms deliberately: an array also overrides
   // `toString`, but "1,2,3" is a poorer answer than the structural form.
   if (describesItself(value)) return { kind: "self" };
   return { kind: "keys", record: value as Record<string, unknown> };
 }
+
+// Which forms have positions to lay out, and which are one piece of text.
+// [LAW:types-are-the-program] Keyed by every kind, so a new form cannot reach
+// `isExpandable` without someone deciding which it is.
+const LAID_OUT: Record<Form["kind"], boolean> = {
+  indexed: true,
+  map: true,
+  set: true,
+  keys: true,
+  opaque: false,
+  self: false,
+};
 
 /**
  * Whether `Pretty` lays a value out as a container — brackets and positions —
@@ -469,7 +499,7 @@ function formOf(value: object): Form {
 export function isExpandable(value: unknown): boolean {
   if (typeof value !== "object" || value === null) return false;
   try {
-    return formOf(value).kind !== "self";
+    return LAID_OUT[formOf(value).kind];
   } catch {
     return false;
   }
@@ -736,6 +766,8 @@ export class Pretty implements Renderable, Measurable {
             holes: [{ read: () => v, tail: "" }],
           })),
         );
+      case "opaque":
+        return { kind: "text", text: form.text };
       case "self":
         return { kind: "text", text: String(value) };
       case "keys": {

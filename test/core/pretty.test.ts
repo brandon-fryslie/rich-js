@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Pretty } from "../../src/core/pretty.js";
+import { Pretty, isExpandable } from "../../src/core/pretty.js";
 import type { PrettyOptions } from "../../src/core/pretty.js";
 import { cellLen } from "../../src/core/cells.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
@@ -557,6 +557,25 @@ describe("Pretty", () => {
       // Array.prototype.toString would answer "1,2,3" — self-description is
       // only consulted after the arms that know a richer form.
       expect(collectText(new Pretty([1, 2, 3]), { maxWidth: 80 })).toContain("[1, 2, 3]");
+    });
+  });
+
+  // Reflection finds no keys on these, and `{}` would read as an empty object.
+  describe("a built-in whose contents are out of reach prints its kind", () => {
+    it("names a Promise, a WeakMap and a WeakSet, and says what is hidden", () => {
+      expect(collectText(new Pretty(Promise.resolve(1)), { maxWidth: 80 })).toBe("Promise { <state unknown> }\n");
+      expect(collectText(new Pretty(new WeakMap([[{}, 1]])), { maxWidth: 80 })).toBe("WeakMap { <items unknown> }\n");
+      expect(collectText(new Pretty(new WeakSet()), { maxWidth: 80 })).toBe("WeakSet { <items unknown> }\n");
+    });
+
+    it("is not a container, so it does not expand", () => {
+      expect(isExpandable(new Promise(() => {}))).toBe(false);
+      expect(isExpandable(new WeakMap())).toBe(false);
+      expect(isExpandable(new WeakSet())).toBe(false);
+    });
+
+    it("keeps its form inside a container", () => {
+      expect(collectText(new Pretty({ p: new WeakSet() }), { maxWidth: 80 })).toBe("{ p: WeakSet { <items unknown> } }\n");
     });
   });
 
