@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-313",
+      "ref": "refs/pull/313/merge",
+      "sha": "8d146dfa736f89e51c4ab118dcbe72c6fa4010d4",
+      "timestamp": "2026-10-03T11:20:05.811Z",
+      "commits": [
+        {
+          "sha": "8d146dfa736f89e51c4ab118dcbe72c6fa4010d4",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:18:52-06:00",
+          "message": "Merge b7a2941e593b7e557a13443075b5273588dc16af into b808387a254349d73d156465df76fbcbbd5b07dc\n"
+        },
+        {
+          "sha": "b7a2941e593b7e557a13443075b5273588dc16af",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T05:18:46-06:00",
+          "message": "fix(progress): TimeElapsedColumn and TimeRemainingColumn stop at a task's finish, as Rich's do (rich-progress-jj5r)\n\nA finished task's elapsed clock holds at Task.finishedTime instead of\nreading Date.now(); TimeRemainingColumn shows 0:00:00 once finished and\ntakes elapsedWhenFinished, Rich's elapsed_when_finished. A task never\nstarted shows -:--:-- in the elapsed column, as Rich's does, not 0:00:00.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-311",
       "ref": "refs/pull/311/merge",
       "sha": "36951aaf13cb7bc4e84709621d764c90f7224d03",
