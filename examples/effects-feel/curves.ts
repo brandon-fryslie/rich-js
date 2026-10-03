@@ -295,10 +295,15 @@ export function pulse(curve: Curve, span: number, glow: ColorRgba, z: number): L
     // lag is never negative, so every cell starts at rest.
     const phase = Math.max(0, t / P - lag + drift(t) - drift0);
     // Breath `n` is one event across the whole element: its strength and its
-    // moment in its turn are the same in every cell.
+    // moment in its turn are the same in every cell. Depth runs in spells —
+    // a few deeper breaths, then a few shallower — on slow noise over the
+    // breaths, and the breath after a sigh is a quieter one that comes late.
     const n = Math.floor(phase);
-    const [shape, k] = hash(n, 1 + z) < 1 / SIGH_EVERY ? [SIGH, 1] : [BREATH, 0.5 + 0.25 * hash(n, 2 + z)];
-    const start = hash(n, 3 + z) * (lasts(SIGH, 1) - lasts(shape, k));
+    const sigh = (m: number): boolean => hash(m, 1 + z) < 1 / SIGH_EVERY;
+    const after = sigh(n - 1) ? 1 : 0;
+    const depth = (0.5 + 0.25 * smoothstep(-0.5, 0.5, noise(n * 0.31, 2.5, z))) * (1 - 0.2 * after);
+    const [shape, k] = sigh(n) ? [SIGH, 1] : [BREATH, depth];
+    const start = Math.max(hash(n, 3 + z), 0.9 * after) * (lasts(SIGH, 1) - lasts(shape, k));
     // How fully this stretch of the element takes it: some stretches to the
     // whole swing, some to 45% of it.
     const fill = 1 - 0.55 * smoothstep(-0.5, 0.5, noise(cell.col * 0.025, 1.9, t / (6 * P) + z));
@@ -402,7 +407,8 @@ const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
 /**
  * Drift, as wind crossing a field. Swing: degrees of hue at a gust's
  * strongest. Gusts are patches of noise carried along the row from column 0
- * toward its end, `STRIDE` columns a period, changing shape as they go.
+ * toward its end, about `STRIDE` columns a period, changing shape as they
+ * go, on a wind that gathers and slackens rather than running at one speed.
  * The air they ride is itself turbulent — the field is warped by slower
  * noise, so a gust bends, stretches and catches up with another rather than
  * sliding by in a straight line — and gusts come in sets, the wind rising
@@ -411,11 +417,18 @@ const SILVER = { lightness: 0.08, chroma: 0.3 } as const;
  * swing — the way grass shows the pale side of its blades.
  */
 export function drift(curve: Curve, z: number): Loop {
-  const speed = STRIDE / curve.seconds;
+  const P = curve.seconds;
+  // How far the air has blown by `t`: the wind gathers and slackens over a
+  // couple of periods, between a third of `STRIDE` a period and a little over
+  // it, and never turns back — noise's slope stays within ±2.3, so the pace,
+  // `GUST.mean * (1 + GUST.surge * slope)` of `STRIDE`, stays above 0.
+  const GUST = { mean: 0.73, surge: 0.25, over: 2 } as const;
+  const blown = (t: number): number =>
+    (GUST.mean * STRIDE * (t + GUST.surge * GUST.over * P * noise(t / (GUST.over * P), 7.7, z))) / P;
   const field: Field = (cell, t) => {
     const row = cell.row + z;
     const warp = 1.2 * noise(cell.col * 0.03, row * 0.2 + 3.3, t * 0.02);
-    const air = fbm((cell.col - speed * t) * 0.045 + warp, row * 0.3, t * 0.03, 3);
+    const air = fbm((cell.col - blown(t)) * 0.045 + warp, row * 0.3, t * 0.03, 3);
     const swell = 0.6 + 0.4 * noise(t / (1.7 * curve.seconds) + 0.4, cell.col * 0.012, 9.1 + z);
     return curve.ease(swell * smoothstep(-0.15, 0.55, air));
   };
@@ -491,9 +504,10 @@ export function sparkle(curve: Curve, span: number, glow: ColorRgba, z: number):
     return flown.flies;
   };
   const field: Field = (cell, t) => {
+    // Where two halos overlap the brighter wins, so light never doubles up.
     let shine = 0;
-    for (const fly of fliesAt(t)) shine += fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO);
-    return curve.swing * curve.ease(clamp01(shine));
+    for (const fly of fliesAt(t)) shine = Math.max(shine, fly.glow * bump(Math.hypot(cell.col - fly.x, 2 * (cell.row - fly.y)) / HALO));
+    return curve.swing * curve.ease(shine);
   };
   return { touch: light(glow), field };
 }

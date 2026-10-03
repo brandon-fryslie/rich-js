@@ -153,6 +153,30 @@ describe("the loops move", () => {
     expect(caught).toBe(true);
   });
 
+  it("the breath after a sigh is a quiet one", () => {
+    // A breath's height is the brightest any cell takes it to; a sigh is the
+    // longest kind of breath, so the breaths are told apart by how long the
+    // element is lit. Shallow breaths come in spells too, so the claim is
+    // about the breaths after sighs taken together.
+    const span = 82;
+    const row = Array.from({ length: span }, (_, col) => ({ row: 0, col, seed: 0 }));
+    const ratios = [0, 11.3, 22.6].flatMap((z) => {
+      const breath = pulse(curve(BREATH_SECONDS, 1), span, sun, z);
+      const breaths: { lit: number; peak: number }[] = [];
+      let current: { lit: number; peak: number } | undefined;
+      for (let t = 0; t < 40 * BREATH_SECONDS; t += 0.5) {
+        const peak = Math.max(...row.map((cell) => breath.field(cell, t)));
+        if (peak === 0) current = undefined;
+        else if (current === undefined) breaths.push((current = { lit: 0.5, peak }));
+        else [current.lit, current.peak] = [current.lit + 0.5, Math.max(current.peak, peak)];
+      }
+      const sigh = 0.9 * Math.max(...breaths.map((b) => b.lit));
+      return breaths.slice(0, -1).flatMap((b, i) => (b.lit > sigh && breaths[i + 1]!.lit < sigh ? [breaths[i + 1]!.peak / b.peak] : []));
+    });
+    expect(ratios.length).toBeGreaterThan(5);
+    expect(ratios.reduce((sum, r) => sum + r, 0) / ratios.length).toBeLessThan(0.6);
+  });
+
   it.each([40, 104, 1024])("a breath swells once and ebbs once in every cell, %s columns wide", (span) => {
     // However far the heart wanders, a cell's breath only ever moves on: it
     // never turns back partway up the inhale or down the exhale.
@@ -179,6 +203,28 @@ describe("the loops move", () => {
 
   it("a glint lifts light ink away from a dark ground", () => {
     expect(contrastRatio(ground, light(sun)(ink, 1))).toBeGreaterThan(contrastRatio(ground, ink));
+  });
+
+  it("drift's wind gathers and slackens rather than running at one speed", () => {
+    // The wind's pace at `t`, in columns a second: the shift, to a tenth of
+    // a column, that best lines the row up with itself `GAP` seconds later.
+    // Turbulence alone makes a steady wind's pace wander from one reading to
+    // the next, so paces are averaged over half a minute, and the swing
+    // between the stillest and the gustiest half-minute is what is read.
+    const GAP = 3;
+    const cols = Array.from({ length: 360 }, (_, i) => i + 20);
+    const swings = [0, 11.3, 22.6].map((z) => {
+      const gusts = drift(parseSettings([])!.curves.drift, z);
+      const pace = (t: number): number => {
+        const misfit = (d: number): number =>
+          cols.reduce((sum, col) => sum + (gusts.field({ row: 0, col, seed: 0 }, t) - gusts.field({ row: 0, col: col + d, seed: 0 }, t + GAP)) ** 2, 0);
+        const shifts = Array.from({ length: 61 }, (_, i) => i / 10);
+        return shifts.reduce((best, d) => (misfit(d) < misfit(best) ? d : best), 0) / GAP;
+      };
+      const spells = Array.from({ length: 16 }, (_, i) => Array.from({ length: 8 }, (_, j) => pace(i * 75 + j * 4)).reduce((sum, p) => sum + p, 0) / 8);
+      return Math.max(...spells) / Math.min(...spells);
+    });
+    expect(swings.reduce((sum, s) => sum + s, 0) / swings.length).toBeGreaterThan(2.5);
   });
 
   it("sparkle lights a few cells at a time, each at its own strength", () => {
