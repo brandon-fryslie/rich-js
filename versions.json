@@ -4,15 +4,22 @@
     {
       "version": "pr-298",
       "ref": "refs/pull/298/merge",
-      "sha": "0449f8411a095887a37102782c1e5649e24492f5",
-      "timestamp": "2026-10-03T05:53:37.903Z",
+      "sha": "edb5f45e50348a2e0ca5f3d7a51f41426654d6af",
+      "timestamp": "2026-10-03T05:58:48.842Z",
       "commits": [
         {
-          "sha": "0449f8411a095887a37102782c1e5649e24492f5",
+          "sha": "edb5f45e50348a2e0ca5f3d7a51f41426654d6af",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:52:28-06:00",
-          "message": "Merge d735bcd8b9cdde857a543cdc90b43657689e26d5 into f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872\n"
+          "timestamp": "2026-10-03T05:57:33Z",
+          "message": "Merge 54bc6027b770acbc4d5c60ef124ae13f2b537e28 into f14cde4d6a0aa23b7683bccba8e67f5eb5a7b872\n"
+        },
+        {
+          "sha": "54bc6027b770acbc4d5c60ef124ae13f2b537e28",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:57:28-06:00",
+          "message": "fix(diagnostics): renderTemplate keeps its doc, takes RenderOptions' fields so a wrapping renderable forwards them whole, and its docs say what a theme reaches (rich-diagnostics-t782)\n"
         },
         {
           "sha": "d735bcd8b9cdde857a543cdc90b43657689e26d5",
