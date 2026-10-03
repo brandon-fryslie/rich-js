@@ -122,7 +122,7 @@ export {
   NULL_STYLE,
   DEFAULT_STYLES,
 } from "./core/style.js";
-export type { StyleOptions } from "./core/style.js";
+export type { StyleOptions, TextStyle, LayeredStyle } from "./core/style.js";
 
 export {
   Segment,
@@ -182,7 +182,7 @@ export { Measurement, measureRenderables } from "./core/measure.js";
 
 // Text
 export { Span, RichText } from "./core/text.js";
-export type { RichTextOptions, TextStyle, LayeredStyle } from "./core/text.js";
+export type { RichTextOptions } from "./core/text.js";
 
 // Strip + Joiner
 export {

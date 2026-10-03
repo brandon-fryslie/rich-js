@@ -443,6 +443,34 @@ export class StyleStack {
 
 const STYLE_NAME_RE = /^[a-z][a-z0-9._-]*$/;
 
+/**
+ * A `Style` added over a style name or definition a render has yet to
+ * resolve. Which it is cannot be told before then: a theme's names shadow
+ * definitions (`Theme.resolve`), so the addition waits for the render whose
+ * theme says what `under` stands for, and draws as `under` resolved with
+ * `over` added on top.
+ */
+export interface LayeredStyle {
+  readonly under: string;
+  readonly over: Style;
+}
+
+/** A style as a RichText stores it, base or span: resolved when it is drawn. */
+export type TextStyle = string | Style | LayeredStyle;
+
+/**
+ * `over` added to `base`, the outer style winning as `Style.add` has it. A
+ * `Style` base takes the addition now, and so does `""`, the definition that
+ * adds nothing; any other string keeps it as a `LayeredStyle` for the render
+ * that resolves the string.
+ */
+export function layerStyle(base: TextStyle, over: Style): TextStyle {
+  if (base instanceof Style) return base.add(over);
+  if (base === "") return over;
+  if (typeof base === "string") return { under: base, over };
+  return { under: base.under, over: base.over.add(over) };
+}
+
 export class Theme {
   private readonly styles: Map<string, Style>;
 
@@ -472,17 +500,19 @@ export class Theme {
   }
 
   /**
-   * The style a `string | Style` stands for under this theme: a name this
-   * theme defines, otherwise a definition for `Style.parse`, which throws
-   * `StyleSyntaxError` when the string is neither.
+   * The style a `TextStyle` stands for under this theme: a name this theme
+   * defines, otherwise a definition for `Style.parse`, which throws
+   * `StyleSyntaxError` when the string is neither. A `LayeredStyle` is its
+   * `under` resolved here with its `over` added on top.
    *
    * [LAW:one-source-of-truth] The theme is the one map from names to styles.
    * The lookup stays outside `Style.parse`'s process-wide cache on purpose:
    * cached there, the first console to resolve `repr.number` would decide it
    * for every console after it, whatever theme each was given.
    */
-  resolve(style: string | Style): Style {
+  resolve(style: TextStyle): Style {
     if (style instanceof Style) return style;
+    if (typeof style !== "string") return this.resolve(style.under).add(style.over);
     return this.styles.get(style) ?? Style.parse(style);
   }
 

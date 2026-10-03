@@ -7,6 +7,7 @@ import {
 } from "../../src/template-bindings/index.js";
 import {
   Style,
+  Theme,
   ATTRIBUTE_NAMES,
   ATTRIBUTE_SHORT_ALIASES,
 } from "../../src/core/style.js";
@@ -391,6 +392,20 @@ describe("error surface", () => {
     const drawn = out[0]!.resolvedStyle({ maxWidth: 80 });
     expect(drawn.bold).toBe(true);
     expect(drawn.italic).toBe(true);
+  });
+
+  it("a link over a fragment whose base style is a name is a link once a theme resolves it", () => {
+    const named = new RichText("42", { style: "my.heading" });
+    const out = engine.parse(`{{ link "https://u.test" .n }}`).evaluate({ n: named });
+    const theme = new Theme({ "my.heading": "bold" });
+    const resolved = theme.resolve(out[0]!.style);
+    expect(resolved.link).toBe("https://u.test");
+    expect(resolved.bold).toBe(true);
+  });
+
+  it("a fragment whose base style is the empty definition takes the pipe as its whole style", () => {
+    const out = engine.parse(`{{ bold .n }}`).evaluate({ n: new RichText("42", { style: "" }) });
+    expect(baseStyleOf(out[0]!).bold).toBe(true);
   });
 
   it("an unknown function name is a FuncNotFoundError", () => {

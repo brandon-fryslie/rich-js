@@ -5,7 +5,7 @@
 import { cellLen, cellCount, cellFit, cellFitEnd, asCellCol, expandTabs, parseTabSize, type CellCol, type TabExpansion, type TabSize } from "./cells.js";
 import { divideLine, wordWidths } from "./wrap.js";
 import { Segment } from "./segment.js";
-import { Style, NULL_STYLE, StyleSyntaxError } from "./style.js";
+import { Style, NULL_STYLE, StyleSyntaxError, type TextStyle } from "./style.js";
 import { stripOscTerminators } from "./osc8.js";
 import { drawable, getStyle, withBoundedWidth } from "./protocol.js";
 import type { Renderable, Measurable, OverflowMethod, RenderOptions } from "./protocol.js";
@@ -65,31 +65,6 @@ function sanitizeStyleLink(style: Style): Style {
   const cleaned = stripOscTerminators(link);
   if (cleaned === link) return style;
   return style.withLink(cleaned);
-}
-
-/**
- * A `Style` added over a style name or definition the render has yet to
- * resolve. The name cannot be resolved until a render's theme says what it
- * stands for, so the addition waits for that render: it draws as `under`
- * resolved, with `over` added on top.
- */
-export interface LayeredStyle {
-  readonly under: string;
-  readonly over: Style;
-}
-
-/** A style as a RichText stores it, base or span: resolved when it is drawn. */
-export type TextStyle = string | Style | LayeredStyle;
-
-/**
- * `over` added to `base`, the outer style winning as `Style.add` has it. A
- * `Style` base takes the addition now; a string base keeps it as a
- * `LayeredStyle` for the render that resolves the string.
- */
-export function layerStyle(base: TextStyle, over: Style): TextStyle {
-  if (base instanceof Style) return base.add(over);
-  if (typeof base === "string") return { under: base, over };
-  return { under: base.under, over: base.over.add(over) };
 }
 
 /**
@@ -264,7 +239,7 @@ export class RichText implements Renderable, Measurable {
     return this._text.length > 0;
   }
 
-  /** The base style every span layers over: a `Style`, or a name resolved at render. */
+  /** The base style every span layers over, resolved at render unless it is a `Style`. */
   get style(): TextStyle {
     return this._style;
   }
@@ -353,7 +328,7 @@ export class RichText implements Renderable, Measurable {
 
   // --- Content Operations ---
 
-  append(content: string | RichText, style?: string | Style): this {
+  append(content: string | RichText, style?: TextStyle): this {
     if (content instanceof RichText) {
       if (style !== undefined) {
         throw new Error("Style argument must not be provided when appending RichText");
@@ -440,7 +415,7 @@ export class RichText implements Renderable, Measurable {
     return this;
   }
 
-  highlightRegex(pattern: RegExp, style?: string | Style): number {
+  highlightRegex(pattern: RegExp, style?: TextStyle): number {
     const text = this._text;
     let count = 0;
 
@@ -481,7 +456,7 @@ export class RichText implements Renderable, Measurable {
 
   highlightWords(
     words: string[],
-    style: string | Style,
+    style: TextStyle,
     options?: { caseSensitive?: boolean },
   ): number {
     const caseSensitive = options?.caseSensitive !== false;
@@ -785,7 +760,7 @@ export class RichText implements Renderable, Measurable {
 
   // --- Token Appending ---
 
-  appendTokens(tokens: Array<[string, (string | Style)?]>): this {
+  appendTokens(tokens: Array<[string, TextStyle?]>): this {
     for (const [text, style] of tokens) {
       this.append(text, style);
     }
@@ -795,8 +770,8 @@ export class RichText implements Renderable, Measurable {
   // --- Static Factories ---
 
   static assemble(
-    parts: Array<string | [string, (string | Style)?] | RichText>,
-    options?: { style?: string | Style },
+    parts: Array<string | [string, TextStyle?] | RichText>,
+    options?: { style?: TextStyle },
   ): RichText {
     const result = new RichText("", { style: options?.style });
     for (const part of parts) {
@@ -812,7 +787,7 @@ export class RichText implements Renderable, Measurable {
     return result;
   }
 
-  static styled(text: string, style: string | Style): RichText {
+  static styled(text: string, style: TextStyle): RichText {
     const result = new RichText(text);
     result.stylize(style);
     return result;

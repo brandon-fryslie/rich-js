@@ -7,8 +7,8 @@
  * keeping one copy prevents the two from drifting.
  */
 
-import type { Style } from "../core/style.js";
-import { RichText, layerStyle } from "../core/text.js";
+import { layerStyle, type Style } from "../core/style.js";
+import { RichText } from "../core/text.js";
 
 /**
  * Apply a style on top of an already-styled RichText fragment.

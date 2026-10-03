@@ -14,7 +14,7 @@ const second = new RichText("Second line", { style: "italic deep_sky_blue3" });
 console.print(new Panel(new Group(first, second), { borderStyle: "spring_green3" }));
 ```
 
-`new Panel(first, second)` does not do this: `Panel`'s second parameter is its options object, not more content. TypeScript refuses the call; plain JavaScript runs it, reads `second` as options, and never draws it.
+`new Panel(first, second)` does not do this: `Panel`'s second parameter is its options object, not more content.
 
 ## Group items must be renderables
 
