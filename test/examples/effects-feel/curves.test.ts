@@ -144,6 +144,14 @@ describe("the loops move", () => {
     expect(lit).toContain(20);
   });
 
+  it("shimmer draws a colour wherever the noise peaks", () => {
+    // Perlin noise reaches 0.9997 under a caustic's ripple at row 15, column
+    // 59, t 114.5, where a crest of 1 − hypot(noise, 0.12) went below zero and
+    // its power was NaN.
+    const glint = shimmer(curve(48, 1), 400, 400, sun, 0);
+    expect(() => glint(ink, ground, { row: 15, col: 59, seed: 0 }, 114.5)).not.toThrow();
+  });
+
   it("onColors leaves a colour not in its set alone", () => {
     const moved = onColors(new Map([[ground.hex, ink]]), pulse(curve(3, 0.2), sun))(colors, cells[0]!, 1.5);
     expect(moved.fg).toBe(ink);

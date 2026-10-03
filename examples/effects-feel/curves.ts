@@ -168,9 +168,10 @@ const bump = (d: number): number => (Math.abs(d) >= 1 ? 0 : (1 - d * d) ** 3);
 export function shimmer(curve: Curve, span: number, width: number, light: Light, z: number): ColorMove {
   const phase = Phase.loop(curve.seconds);
   const glow = lightOf(light);
-  // A ripple's crest: ridged noise, 1 where the field crosses zero. Its crease
-  // is rounded, so a crest sliding through a cell lights it smoothly.
-  const ripple = (a: number, b: number, c: number): number => 1 - Math.hypot(noise(a, b, c), 0.12);
+  // A ripple's crest: a Gaussian ridge, 1 where the field crosses zero and in
+  // (0, 1] for any noise, smooth throughout, so a crest sliding through a cell
+  // lights it smoothly.
+  const ripple = (a: number, b: number, c: number): number => Math.exp(-((noise(a, b, c) / 0.8) ** 2));
   return (color, against, cell, t) => {
     const centre = phase(t) * (span + 2 * width) - width;
     const band = bump((cell.col - centre) / width);
@@ -179,7 +180,7 @@ export function shimmer(curve: Curve, span: number, width: number, light: Light,
     const caustic =
       (ripple(cell.col * 0.21 + current, row * 0.9, t * 0.07) * ripple(cell.col * 0.33 + 9.1 - current, row * 0.7, t * 0.055 + 4.2)) **
       2.5;
-    return lit(color, against, glow, curve.swing * curve.ease(band * (0.3 + 0.7 * caustic)));
+    return lit(color, against, glow, curve.swing * curve.ease(band * (0.3 + 0.4 * caustic)));
   };
 }
 
