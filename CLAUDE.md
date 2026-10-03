@@ -83,7 +83,7 @@ non-interactive program needs from the terminal without any of the above
 Build order within `src/core/`. Each tier imports only from tiers above it, but for `protocol`'s type-only import of `Highlighter`, whose comment owns why:
 
 ```
-0   anchor · cells · color · easing · env · fnv1a · subscription
+0   anchor · cells · color · easing · env · fnv1a · memo · subscription
 1   clock · oklch · osc8 · style · wrap
 2   segment
 3   box · protocol · export-lines
@@ -120,6 +120,7 @@ A third upward edge is not a fact to append here. It is the signal to stop and r
 - **oklch** — perceptually-uniform polar colour space. sRGB ↔ OKLab ↔ OKLCH, reversible but for the final 0–255 quantization. This is where equal numeric deltas mean equal perceptual deltas, which is what transposition needs.
 - **style** — immutable `Style` descriptors (colours + text attributes + links). `Style.parse` (cached), `Style.add`. Includes `StyleStack`, `Theme`, `DEFAULT_STYLES`.
 - **segment** — atomic render unit `(text, style?, control?)`. Static methods (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, `divide`) operate on `Segment[]` / `Segment[][]`.
+- **memo** — `Memo`: a string-keyed memo holding at most `MEMO_MAX` entries. Every library cache keyed by strings a long-running host derives without end — `cellLen`, `ColorTable`'s matches, `ColorSpec.parse`, `Style.parse` — is one, so the bound has one definition.
 - **fnv1a** — `fnv1a`: FNV-1a over a string's UTF-8 bytes, as hex. The one hash behind every identifier the library derives from what it names — an OSC 8 link id, an SVG export's class prefix.
 - **osc8** — the OSC 8 hyperlink wire grammar, one home: the terminator bytes a URL may not carry (`stripOscTerminators`, used by RichText at its data-model boundary), the producer every link is written through (`osc8Open` — sanitize + a URL-derived `id=` so a split link hovers as one — and `OSC8_CLOSE`), and the reader: `osc8Sequences` (typed scan of rendered bytes) over the `OSC8` pattern (exported for composing into a larger regex).
 - **env** — `Env`, the environment map every public signature names instead of `NodeJS.ProcessEnv`, which a project without `@types/node` cannot resolve. `test/seam/browser-types.test.ts` type-checks every non-`node/` entry's emitted declarations with no Node types loaded, the type-level twin of the browser-safe gate below.
@@ -362,7 +363,7 @@ A hand-maintained list of what a machine already computes will be wrong, and it 
 
 ### Key patterns
 
-- **Immutable + cached**: `ColorRgba`, `ColorSpec`, `Style`, and `Segment` are immutable. `ColorSpec.parse` and `Style.parse` are cached, as are `ColorSpec` downgrades and nearest-colour matches.
+- **Immutable + cached**: `ColorRgba`, `ColorSpec`, `Style`, and `Segment` are immutable. `ColorSpec.parse` and `Style.parse` are memoized through the bounded `Memo`, as are nearest-colour matches; each `ColorSpec` caches its own downgrades.
 - **Data-driven instances**: box styles and spinners are instances of one type differing only by character/frame data, not separate types.
 - **Segment pipelines**: rendering is a pipeline of `Segment[]` transformations (`applyStyle`, `splitLines`, `adjustLineLength`, `simplify`, …).
 - **Protocol-first renderables**: every renderable implements `Renderable` (and often `Measurable`) from `protocol.ts`. Console calls `render(options)` uniformly.

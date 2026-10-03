@@ -9,6 +9,7 @@ import {
   SURFACE_BLACK,
 } from "./color.js";
 import { shiftAnchor, type Anchor } from "./anchor.js";
+import { Memo } from "./memo.js";
 
 // [LAW:one-way-deps] `core/style` depends only on `core/color`. The substrate
 // a translucent colour is flattened over is `SURFACE_BLACK`, defined beside
@@ -104,8 +105,8 @@ export class StyleSyntaxError extends Error {
   }
 }
 
-// [LAW:one-source-of-truth] Parse cache is the single source for parsed Style instances
-const styleParseCache = new Map<string, Style>();
+// [LAW:one-source-of-truth] The single source for parsed Style instances.
+const styleParseMemo = new Memo<Style>();
 
 // --- Style ---
 
@@ -398,7 +399,7 @@ export class Style {
   }
 
   /**
-   * Parse a space-separated style definition. Cached.
+   * Parse a space-separated style definition. Memoized (`Memo`).
    *
    * A definition only: `"bold red"` parses, `"repr.number"` does not. Names
    * belong to a `Theme`, and `Theme.resolve` is where one is looked up.
@@ -407,12 +408,7 @@ export class Style {
     const normalized = Style.normalize(definition);
     if (normalized === "" || normalized === "none") return NULL_STYLE;
 
-    const cached = styleParseCache.get(normalized);
-    if (cached) return cached;
-
-    const result = parseStyleDefinition(normalized);
-    styleParseCache.set(normalized, result);
-    return result;
+    return styleParseMemo.get(normalized, parseStyleDefinition);
   }
 }
 

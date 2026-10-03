@@ -3,6 +3,7 @@
  */
 
 import type { Env } from "./env.js";
+import { Memo } from "./memo.js";
 
 // --- ColorRgba ---
 
@@ -132,24 +133,6 @@ function luminanceRatio(la: number, lb: number): number {
 
 // --- ColorTable ---
 
-/**
- * An indexed palette: entry `i` of `colors` is terminal index `firstIndex + i`.
- * `firstIndex` lets a table hold only the part of a palette a downgrade may
- * choose (the 256-colour cube and grey ramp start at 16) while every index it
- * reports is the terminal's own.
- */
-// [LAW:single-enforcer] The one size policy for ColorTable's memos: a key is
-// derived from colours a long-running host computes without end (ramp stops,
-// mixes), so an unbounded map grows with every render. Clearing at the cap is
-// the policy `cellLen` already uses; a refill costs one table scan per key.
-const TABLE_CACHE_MAX = 4096;
-
-function remember(cache: Map<string, number>, key: string, index: number): number {
-  if (cache.size >= TABLE_CACHE_MAX) cache.clear();
-  cache.set(key, index);
-  return index;
-}
-
 // [LAW:one-source-of-truth] The one distance every table scan ranks by, so
 // `matchWhere`'s "nearest by the distance `match` uses" cannot drift.
 function rgbDistance(a: ColorRgba, b: ColorRgba): number {
@@ -159,11 +142,18 @@ function rgbDistance(a: ColorRgba, b: ColorRgba): number {
   return dr * dr + dg * dg + db * db;
 }
 
+/**
+ * An indexed palette: entry `i` of `colors` is terminal index `firstIndex + i`.
+ * `firstIndex` lets a table hold only the part of a palette a downgrade may
+ * choose (the 256-colour cube and grey ramp start at 16) while every index it
+ * reports is the terminal's own.
+ */
 export class ColorTable {
   private readonly colors: ColorRgba[];
   readonly firstIndex: number;
-  private readonly matchCache = new Map<string, number>();
-  private readonly readableCache = new Map<string, number>();
+  // Keyed by colours a host computes without end (ramp stops, mixes), so bounded.
+  private readonly matchMemo = new Memo<number>();
+  private readonly readableMemo = new Memo<number>();
 
   constructor(colors: ColorRgba[], firstIndex = 0) {
     this.colors = colors;
@@ -193,9 +183,10 @@ export class ColorTable {
    */
   match(value: ColorRgba): number {
     const key = `${value.red},${value.green},${value.blue},${value.alpha}`;
-    const cached = this.matchCache.get(key);
-    if (cached !== undefined) return cached;
+    return this.matchMemo.get(key, () => this.nearest(value));
+  }
 
+  private nearest(value: ColorRgba): number {
     let bestIndex = 0;
     let bestDist = Infinity;
     for (let i = 0; i < this.colors.length; i++) {
@@ -206,7 +197,7 @@ export class ColorTable {
         bestIndex = i;
       }
     }
-    return remember(this.matchCache, key, this.firstIndex + bestIndex);
+    return this.firstIndex + bestIndex;
   }
 
   /**
@@ -220,9 +211,10 @@ export class ColorTable {
    */
   matchReadable(value: ColorRgba, on: ColorRgba, minRatio: number): number {
     const key = `${value.red},${value.green},${value.blue}|${on.red},${on.green},${on.blue}|${minRatio}`;
-    const cached = this.readableCache.get(key);
-    if (cached !== undefined) return cached;
+    return this.readableMemo.get(key, () => this.nearestReadable(value, on, minRatio));
+  }
 
+  private nearestReadable(value: ColorRgba, on: ColorRgba, minRatio: number): number {
     const lOn = relativeLuminance(on);
     let best = 0;
     let bestPasses = false;
@@ -244,7 +236,7 @@ export class ColorTable {
         bestScore = score;
       }
     }
-    return remember(this.readableCache, key, this.firstIndex + best);
+    return this.firstIndex + best;
   }
 
   /**
@@ -484,8 +476,8 @@ export class ColorParseError extends Error {
   }
 }
 
-// [LAW:one-source-of-truth] Parse cache is the single source for parsed ColorSpec instances
-const parseCache = new Map<string, ColorSpec>();
+// [LAW:one-source-of-truth] The single source for parsed ColorSpec instances.
+const colorSpecParseMemo = new Memo<ColorSpec>();
 
 export class ColorSpec {
   readonly name: string;
@@ -676,16 +668,11 @@ export class ColorSpec {
   }
 
   /**
-   * Parse a color string. Cached — identical strings return the same instance.
+   * Parse a color string. Memoized (`Memo`): a string parsed again while
+   * remembered returns the same instance.
    */
   static parse(colorString: string): ColorSpec {
-    const key = colorString.toLowerCase().trim();
-    const cached = parseCache.get(key);
-    if (cached) return cached;
-
-    const result = parseSingle(key);
-    parseCache.set(key, result);
-    return result;
+    return colorSpecParseMemo.get(colorString.toLowerCase().trim(), parseSingle);
   }
 
   // --- private ---
