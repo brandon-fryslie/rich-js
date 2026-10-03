@@ -4,15 +4,22 @@
     {
       "version": "pr-297",
       "ref": "refs/pull/297/merge",
-      "sha": "dc7d735e4e76ebfdf21052966fd259321a5a4a6e",
-      "timestamp": "2026-10-03T05:23:20.278Z",
+      "sha": "604a1e5f1403d172e5b9524554f594021d1daea2",
+      "timestamp": "2026-10-03T05:39:38.899Z",
       "commits": [
         {
-          "sha": "dc7d735e4e76ebfdf21052966fd259321a5a4a6e",
+          "sha": "604a1e5f1403d172e5b9524554f594021d1daea2",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-02T23:22:00-06:00",
-          "message": "Merge 4495c653e075f3ff2639cee82488757548353eb9 into eb23c375bcca60a5dff382d4c53034ce6d78d786\n"
+          "timestamp": "2026-10-03T05:38:23Z",
+          "message": "Merge 271708a3677049d32d24fa097aa77bdce3cd2d2e into eb23c375bcca60a5dff382d4c53034ce6d78d786\n"
+        },
+        {
+          "sha": "271708a3677049d32d24fa097aa77bdce3cd2d2e",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T23:38:19-06:00",
+          "message": "fix(markdown): lines keep their source columns inside containers; link text styles win; linear reading (rich-markdown-ht8e)\n\nA container's lines now carry their container's content column instead of\nbeing cut, so tabs reach their source stops at any depth and a fence, quote\nor heading may sit up to three columns into an item. A thematic break wins\nover a list item; `===` alone is text. Code tabs are expanded at Syntax's 8.\nA link's text styles sit over the link's own. Lazy continuation reads its\ncontainer once per run, and inline brackets pair in one pass.\n"
         },
         {
           "sha": "4495c653e075f3ff2639cee82488757548353eb9",
