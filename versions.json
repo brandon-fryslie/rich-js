@@ -2,46 +2,17 @@
   "schema": 2,
   "versions": [
     {
-      "version": "pr-333",
-      "ref": "refs/pull/333/merge",
-      "sha": "225f8315e2864d366020937564befb4a4192e4e7",
-      "timestamp": "2026-10-03T16:07:28.436Z",
-      "commits": [
-        {
-          "sha": "225f8315e2864d366020937564befb4a4192e4e7",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T16:06:35Z",
-          "message": "Merge 471f3897923b2899c4b4aba08f5136de74607ada into a420e29e75cb36dc59c12858fad2c13fad03dc31\n"
-        },
-        {
-          "sha": "471f3897923b2899c4b4aba08f5136de74607ada",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:06:30-06:00",
-          "message": "fix(progress): samples kept in place, negative estimates drawn as Rich's floor divmod draws them, speed window documented from the latest update (rich-progress-jj5r.ef9)\n"
-        },
-        {
-          "sha": "5762807a37315039e7b98076a3b21672bded8925",
-          "author_name": "Brandon Fryslie",
-          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:59:53-06:00",
-          "message": "fix(progress): TimeRemainingColumn estimates speed from the last 30 seconds of updates, as Rich does (rich-progress-jj5r.ef9)\n\nProgress keeps Rich's ProgressSample window per task and derives Task.speed\nonce a frame beside elapsed; timeRemaining reads it instead of\ncompleted / elapsed over the task's whole life.\n"
-        }
-      ]
-    },
-    {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "a420e29e75cb36dc59c12858fad2c13fad03dc31",
-      "timestamp": "2026-10-03T15:52:40.438Z",
+      "sha": "af858560988127167b8534ebf8daf8eaac83689e",
+      "timestamp": "2026-10-03T16:09:28.935Z",
       "commits": [
         {
-          "sha": "a420e29e75cb36dc59c12858fad2c13fad03dc31",
+          "sha": "af858560988127167b8534ebf8daf8eaac83689e",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T09:51:02-06:00",
-          "message": "fix(progress): MofNCompleteColumn pads the count to the total's width, whole and styled, as Rich does (rich-progress-adjo) (#332)\n\n* fix(progress): MofNCompleteColumn pads the count to the total's width, whole and styled, as Rich does (rich-progress-adjo)\n\nRich 9d8f9a3 draws f\"{int(completed):{len(str(total))}d}/{int(total)}\" in\nprogress.download; this drew the raw numbers unpadded and unstyled, so the\ncolumn widened as it counted. The ticket's TimeElapsed/TimeRemaining cases\nwere already fixed by #313 (rich-progress-jj5r) and are pinned there.\n\n* fix(progress): counts are refused at addTask/updateTask when not finite; MofNCompleteColumn takes Rich's separator (rich-progress-adjo)\n\n* fix(progress): updateTask checks the count it would write before writing any field (rich-progress-adjo)"
+          "timestamp": "2026-10-03T10:08:04-06:00",
+          "message": "fix(progress): TimeRemainingColumn estimates speed from the last 30 seconds of updates, as Rich does (rich-progress-jj5r.ef9) (#333)\n\n* fix(progress): TimeRemainingColumn estimates speed from the last 30 seconds of updates, as Rich does (rich-progress-jj5r.ef9)\n\nProgress keeps Rich's ProgressSample window per task and derives Task.speed\nonce a frame beside elapsed; timeRemaining reads it instead of\ncompleted / elapsed over the task's whole life.\n\n* fix(progress): samples kept in place, negative estimates drawn as Rich's floor divmod draws them, speed window documented from the latest update (rich-progress-jj5r.ef9)"
         }
       ]
     },
