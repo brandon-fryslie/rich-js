@@ -83,6 +83,15 @@ const GEOMETRY: Record<Surface, Geometry> = {
 // frames. The erase leads its row: after a row that fills the width, the
 // cursor sits on its last cell, and an erase there would take it.
 const ROW_START = "\r\x1b[2K";
+// A frame's bytes between these two are shown at once: a terminal that has
+// synchronized output (DEC private mode 2026 — iTerm2, kitty, WezTerm,
+// Ghostty, foot, Windows Terminal …) holds the screen until the frame has
+// fully arrived, so a repaint can never show a row erased and not yet
+// redrawn. Thirty full-screen repaints a second show exactly that on a
+// terminal that paints whenever bytes land, as a flicker over the whole
+// frame. A terminal without the mode ignores both sequences.
+const SYNC_START = "\x1b[?2026h";
+const SYNC_END = "\x1b[?2026l";
 const HIDE_CURSOR = "\x1b[?25l";
 const SHOW_CURSOR = "\x1b[?25h";
 const RESET_STYLE = "\x1b[0m";
@@ -182,7 +191,7 @@ export class SurfacePainter implements Painter {
     // from the frame's own height.
     const blanked = painted - Math.max(rows.length, 1);
     const back = blanked > 0 ? `\x1b[${blanked}A` : "";
-    const bytes = this.geometry.home(this.rows) + body + back;
+    const bytes = SYNC_START + this.geometry.home(this.rows) + body + back + SYNC_END;
     this.rows = rows.length;
     return bytes;
   }

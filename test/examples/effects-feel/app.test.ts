@@ -48,9 +48,15 @@ describe("effects-feel", () => {
     expect(host.raw()).toBe(false);
   });
 
-  it("draws every effect, with the worst contrast of each loop", async () => {
+  it("draws every effect, with the worst contrast of each loop measured between the frames", async () => {
     const { host, demo } = started();
     await shown(host, FIRST_FRAME);
+    // The first frame is up before any loop's contrast is, since measuring
+    // one takes hundreds of frames and holding the screen for them is what
+    // the demo is not allowed to do.
+    expect(host.output()).toContain("measuring contrast…");
+    // Measuring every loop is a second or two of work spread between the frames; more under a loaded suite.
+    await vi.waitFor(() => expect(host.output()).toMatch(/sparkle .*worst contrast \d+\.\d\d:1 over \d+s \(at rest \d+\.\d\d:1\)/), { timeout: 30_000, interval: 50 });
     host.type("q");
     await demo.done;
     const out = host.output();
@@ -74,6 +80,59 @@ describe("effects-feel", () => {
     const before = host.output().length;
     host.type("f");
     await vi.waitFor(() => expect(host.output().slice(before)).toMatch(/fade\s.*running/), { timeout: 5000, interval: 10 });
+    host.type("q");
+    await demo.done;
+  });
+
+  it("starts over after one cycle, the longest loop's period, without a key", async () => {
+    const periods = ["shimmer", "pulse", "drift", "sparkle"].flatMap((loop) => [`--${loop}-period`, "0.5"]);
+    const { host, demo } = started([...periods, "--fade-duration", "0.1", "--dissolve-duration", "0.1"]);
+    await shown(host, "done — f replays");
+    const before = host.output().length;
+    // The transitions ran again on their own: the cycle came round.
+    await vi.waitFor(() => expect(host.output().slice(before)).toMatch(/fade\s.*running/), { timeout: 5000, interval: 10 });
+    expect(host.output()).toContain("of 0.5s");
+    host.type("q");
+    await demo.done;
+  });
+
+  it("walks the themes on n and p, each measured anew", async () => {
+    const { host, demo } = started();
+    await shown(host, "catppuccin-mocha (dark)");
+    host.type("n");
+    await shown(host, "catppuccin-latte (light)");
+    host.type("p");
+    await shown(host, /catppuccin-latte \(light\)[^]*catppuccin-mocha \(dark\)/);
+    host.type("p");
+    await shown(host, "cyberpunk (dark)");
+    host.type("q");
+    await demo.done;
+  });
+
+  it("steps the frame rate on < and >, and the pace of the demo's time on - and +", async () => {
+    const { host, demo } = started(["--fps", "5"]);
+    await shown(host, "5 fps · rate ×1");
+    host.type(">");
+    await shown(host, "10 fps · rate ×1");
+    host.type("<<");
+    await shown(host, "2 fps · rate ×1");
+    host.type("+");
+    await shown(host, "2 fps · rate ×2");
+    host.type("---");
+    await shown(host, "2 fps · rate ×0.25");
+    host.type("q");
+    await demo.done;
+  });
+
+  it("holds the frame rate and the pace at their ends", async () => {
+    const { host, demo } = started(["--fps", "30"]);
+    await shown(host, FIRST_FRAME);
+    host.type(">>>");
+    host.type("++++++");
+    await shown(host, "30 fps · rate ×8");
+    host.type("<<<<<<<<<<");
+    host.type("------------");
+    await shown(host, "0.5 fps · rate ×0.125");
     host.type("q");
     await demo.done;
   });

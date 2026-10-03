@@ -107,7 +107,8 @@ describe("runInTerminal", () => {
     // frame's first cell, then its rows erased and drawn again.
     const frames = term.output.filter((chunk) => chunk.includes("Copying"));
     expect(frames.length).toBeGreaterThan(2);
-    expect(frames.slice(1).every((chunk) => /^(\x1b\[\d+A)?\r\x1b\[2K/.test(chunk))).toBe(true);
+    // Each repaint: synchronized output begun, back up over the last frame, each row erased as it is reached.
+    expect(frames.slice(1).every((chunk) => /^\x1b\[\?2026h(\x1b\[\d+A)?\r\x1b\[2K/.test(chunk))).toBe(true);
     expect(stripAnsi(frames.at(-1) ?? "")).toContain("100%");
   });
 

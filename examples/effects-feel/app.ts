@@ -6,10 +6,12 @@
  * curve lands in `src/`. See `curves.ts`.
  *
  * [LAW:no-ambient-temporal-coupling] The `App` is the frame owner: it ticks
- * at the run's rate and hands each frame its `t`, and the view is a pure
- * function of that `t` and the two transition start times. Every effect below
- * is sampled at whatever `t` it is handed, so 30 frames a second and one every
- * two seconds run the same code.
+ * at the run's frame rate and hands each frame its `t`; a `Pace` turns that
+ * into the demo's own time, which runs at a rate the keys set and starts over
+ * after one cycle of every loop; and the view is a function of that time, the
+ * scene the keys chose, and the two transition start times. Every effect
+ * below is sampled at whatever time it is handed, so 30 frames a second and
+ * one every two seconds run the same code.
  *
  * [LAW:dataflow-not-control-flow] The host is a value: the demo never asks
  * which terminal it is on, and the colour depth it is judged at arrives as
@@ -17,9 +19,25 @@
  */
 
 import {
+  ATOM_ONE_DARK,
+  ATOM_ONE_LIGHT,
+  CATPPUCCIN_FRAPPE,
   CATPPUCCIN_LATTE,
+  CATPPUCCIN_MACCHIATO,
   CATPPUCCIN_MOCHA,
+  CYBERPUNK,
   ColorDepth,
+  DRACULA,
+  FLEXOKI,
+  GRUVBOX,
+  MONOKAI,
+  NORD,
+  ROSE_PINE,
+  ROSE_PINE_DAWN,
+  ROSE_PINE_MOON,
+  SOLARIZED_DARK,
+  SOLARIZED_LIGHT,
+  TOKYO_NIGHT,
   ColorRgba,
   ColorSpec,
   Console,
@@ -37,6 +55,9 @@ import {
   contrastRatio,
   frameRate,
   systemClock,
+  type Clock,
+  type FrameRate,
+  type Unsubscribe,
   type Effect,
   type Measurable,
   type Renderable,
@@ -49,11 +70,24 @@ import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js
 import { dissolveOut, drift, fadeIn, onColors, pulse, settledAt, shares, shimmer, sparkle, type Loop, type Pair } from "./curves.js";
 import { depthDrawn, type EffectName, type NamedCurve, type Settings } from "./settings.js";
 
-/** The bundled theme each ground is drawn in: one family, so only the ground differs. */
-const THEMES: Record<Settings["ground"], TerminalTheme> = {
-  dark: CATPPUCCIN_MOCHA,
-  light: CATPPUCCIN_LATTE,
-};
+/**
+ * The bundled themes a run can be drawn in, in the order the theme keys walk
+ * them. A run starts on the first of its ground.
+ */
+const THEMES: readonly TerminalTheme[] = [
+  CATPPUCCIN_MOCHA, CATPPUCCIN_LATTE, CATPPUCCIN_MACCHIATO, CATPPUCCIN_FRAPPE,
+  TOKYO_NIGHT, NORD, DRACULA, GRUVBOX, MONOKAI, ROSE_PINE, ROSE_PINE_MOON, ROSE_PINE_DAWN,
+  SOLARIZED_DARK, SOLARIZED_LIGHT, ATOM_ONE_DARK, ATOM_ONE_LIGHT, FLEXOKI, CYBERPUNK,
+];
+
+/** The frame rates the fps keys step through, slowest first. */
+const FPS_STEPS = [0.5, 1, 2, 5, 10, 15, 30] as const;
+
+/** How far the rate keys take the demo's time from the clock's: ×2 a press, within these. */
+const RATE_RANGE = [1 / 8, 8] as const;
+
+/** How long a slice of contrast measuring may hold the event loop, in seconds: well inside a frame at 30 fps. */
+const MEASURE_SLICE = 0.008;
 
 const STRIP_LABELS = [
   "main", "+3 ~2", "claude.ai", "opus", "3.4k tok", "12%",
@@ -221,13 +255,15 @@ function sampled(seconds: number): number[] {
 /**
  * The worst contrast between text and its ground over every frame `draw`
  * makes at each of `times`, read off the drawn cells as the wire writes them.
+ * Yields after each frame, so a caller can spread the hundreds of frames a
+ * loop is measured over across its own frames instead of holding one.
  */
-function worstContrast(
+function* worstContrast(
   subjects: readonly DrawnSubject[],
   draw: (subject: DrawnSubject, t: number) => Iterable<Segment>,
   times: readonly number[],
   theme: TerminalTheme,
-): number {
+): Generator<void, number> {
   let worst = Number.POSITIVE_INFINITY;
   for (const subject of subjects) {
     for (const t of times) {
@@ -235,9 +271,22 @@ function worstContrast(
         const { fg, bg } = shown(cell, subject.options, theme);
         worst = subject.text.has(cell.at) ? Math.min(worst, contrastRatio(fg, bg)) : worst;
       }
+      yield;
     }
   }
   return worst;
+}
+
+/** `steps` run to its end, a slice of `budget` seconds on `clock` at a time, between the frames. */
+function spread(steps: Generator<void>, clock: Clock, budget: number): Unsubscribe {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const slice = (): void => {
+    const until = clock.now() + budget;
+    while (clock.now() < until) if (steps.next().done) return;
+    timer = setTimeout(slice);
+  };
+  slice();
+  return () => clearTimeout(timer);
 }
 
 const LOOPS = ["shimmer", "pulse", "drift", "sparkle"] as const;
@@ -256,18 +305,114 @@ export function subjectUnder(subject: DrawnSubject, loop: Loop, theme: TerminalT
   return onColors(shares(subject.pairs, subject.colors, asDrawn), loop);
 }
 
+/**
+ * Everything a theme decides: the subjects drawn in it, each loop settled on
+ * their colours, the contrast each loop was measured at, and the styles of
+ * the lines around them. Built once per theme, since settling the shares is
+ * costly, and read by every frame until the keys choose another theme.
+ * Measuring the contrast costs more still — hundreds of frames a loop — so
+ * `contrast` says it is being measured until `measure`, run between the
+ * frames, has filled each loop's line in.
+ */
+interface Scene {
+  readonly theme: TerminalTheme;
+  readonly ink: ColorSpec;
+  readonly paper: ColorSpec;
+  readonly quiet: Style;
+  readonly heading: Style;
+  readonly subjects: readonly DrawnSubject[];
+  readonly loops: Record<LoopName, (subject: DrawnSubject) => Effect>;
+  readonly contrast: Record<LoopName, string>;
+  readonly measure: () => Generator<void>;
+}
+
+function scene(theme: TerminalTheme, drawnWith: RenderOptions, curves: Settings["curves"]): Scene {
+  const ink = ColorSpec.fromRgba(theme.foregroundColor);
+  const paper = ColorSpec.fromRgba(theme.backgroundColor);
+  const quiet = Style.fromColor(ColorSpec.fromRgba(paletteRgba(theme, "foreground-muted")));
+  const heading = Style.fromColor(ink).add(Style.parse("bold"));
+  const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
+  const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith, theme));
+
+  const made: Record<LoopName, (subject: DrawnSubject) => Loop> = {
+    shimmer: (s) => shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z),
+    pulse: (s) => pulse(curves.pulse, s.span, LIGHTS.sun, s.z),
+    drift: (s) => drift(curves.drift, s.z),
+    sparkle: (s) => sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z),
+  };
+  const loops = Object.fromEntries(
+    LOOPS.map((name) => {
+      const built = new Map(subjects.map((s) => [s, subjectUnder(s, made[name](s), theme)]));
+      return [name, (s: DrawnSubject) => built.get(s)!];
+    }),
+  ) as Record<LoopName, (subject: DrawnSubject) => Effect>;
+
+  // With no colour drawn there is no contrast to read: every effect is the
+  // identity, and every cell is the terminal's own ink on its own ground.
+  const none = drawnWith.colorSystem === null;
+  const contrast = Object.fromEntries(LOOPS.map((loop) => [loop, none ? "no colour drawn" : "measuring contrast…"])) as Record<LoopName, string>;
+  const ratio = (r: number): string => `${r.toFixed(2)}:1`;
+  function* measure(): Generator<void> {
+    if (none) return;
+    const rest = ratio(yield* worstContrast(subjects, (s) => s.renderable.render(s.options), [0], theme));
+    for (const loop of LOOPS) {
+      const under = (s: DrawnSubject, at: number) =>
+        new Effected(s.renderable, loops[loop](s), { t: at, key: seedKey(loop, s), theme }).render(s.options);
+      const worst = yield* worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
+      contrast[loop] = `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
+    }
+  }
+  return { theme, ink, paper, quiet, heading, subjects, loops, contrast, measure };
+}
+
+/**
+ * The demo's own time: the clock's, from the last reset, at `rate` — so a
+ * rate change bends the time from that moment and never jumps it — and
+ * starting over once a `cycle` has run, so what is seen is one full pass of
+ * every loop, then the same again, at whatever rate.
+ */
+class Pace {
+  private rate = 1;
+  // The demo time at the last change of rate, and the clock time then.
+  private base = 0;
+  private mark: number;
+
+  constructor(clockNow: number, private readonly cycle: number) {
+    this.mark = clockNow;
+  }
+
+  /** The demo time at `clockNow`, and whether it just started over. */
+  at(clockNow: number): { t: number; reset: boolean } {
+    const t = this.base + (clockNow - this.mark) * this.rate;
+    if (t < this.cycle) return { t, reset: false };
+    this.base = 0;
+    this.mark = clockNow;
+    return { t: 0, reset: true };
+  }
+
+  /** `at(clockNow)` as a bare time. */
+  now(clockNow: number): number {
+    return this.at(clockNow).t;
+  }
+
+  get speed(): number {
+    return this.rate;
+  }
+
+  /** From `clockNow` on, demo time runs at `rate` times the clock's. */
+  setRate(clockNow: number, rate: number): void {
+    this.base = this.now(clockNow);
+    this.mark = clockNow;
+    this.rate = rate;
+  }
+}
+
 export interface DemoHandle {
   /** Resolves once the demo has stopped and handed the terminal back. */
   readonly done: Promise<void>;
 }
 
 export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
-  const theme = THEMES[settings.ground];
-  const ink = ColorSpec.fromRgba(theme.foregroundColor);
-  const paper = ColorSpec.fromRgba(theme.backgroundColor);
-  const quiet = Style.fromColor(ColorSpec.fromRgba(paletteRgba(theme, "foreground-muted")));
-  const heading = Style.fromColor(ink).add(Style.parse("bold"));
-
   // What the frames are drawn with, asked of the host the app paints on.
   const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
   // [LAW:no-silent-failure] A run judged at one depth and drawn at another is
@@ -278,46 +423,31 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     const name = resolved === null ? "none" : resolved === undefined ? "nothing" : ColorDepth[resolved];
     throw new Error(`asked for ${settings.depth} but the terminal resolved ${name}`);
   }
-  const depth = drawnWith.colorSystem ?? ColorDepth.TRUECOLOR;
-  const subjects = [stripSubject(theme), textSubject(theme, depth)].map((s) => drawnSubject(s, drawnWith, theme));
   const { curves } = settings;
 
-  const made: Record<LoopName, (subject: DrawnSubject) => Loop> = {
-    shimmer: (s) => shimmer(curves.shimmer, s.span, SHIMMER_WIDTH, LIGHTS.sun, s.z),
-    pulse: (s) => pulse(curves.pulse, s.span, LIGHTS.sun, s.z),
-    drift: (s) => drift(curves.drift, s.z),
-    sparkle: (s) => sparkle(curves.sparkle, s.span, LIGHTS.firefly, s.z),
-  };
-  // A subject's shares under a loop never change during a run, and settling
-  // them is the costliest thing here, so each effect is built once, not per
-  // frame or per contrast sample.
-  const loops = Object.fromEntries(
-    LOOPS.map((name) => {
-      const built = new Map(subjects.map((s) => [s, subjectUnder(s, made[name](s), theme)]));
-      return [name, (s: DrawnSubject) => built.get(s)!];
-    }),
-  ) as Record<LoopName, (subject: DrawnSubject) => Effect>;
-
-  // With no colour drawn there is no contrast to read: every effect is the
-  // identity, and every cell is the terminal's own ink on its own ground.
-  const ratio = (r: number): string => `${r.toFixed(2)}:1`;
-  const rest = ratio(worstContrast(subjects, (s) => s.renderable.render(s.options), [0], theme));
-  const measured = (loop: LoopName): string => {
-    const under = (s: DrawnSubject, at: number) =>
-      new Effected(s.renderable, loops[loop](s), { t: at, key: seedKey(loop, s), theme }).render(s.options);
-    const worst = worstContrast(subjects, under, sampled(curves[loop].seconds), theme);
-    return `worst contrast ${ratio(worst)} over ${CONTRAST.periods * curves[loop].seconds}s (at rest ${rest})`;
-  };
-  const contrast = Object.fromEntries(
-    LOOPS.map((loop) => [loop, drawnWith.colorSystem === null ? "no colour drawn" : measured(loop)]),
-  ) as Record<LoopName, string>;
-
   // [LAW:no-ambient-temporal-coupling] The app owns the frames and hands each
-  // its time; a replay starts at the time on that same clock.
+  // its time; the pace turns it into the demo's, and a replay starts at the
+  // demo time it was asked at. One cycle is the longest loop's period: by then
+  // every loop has shown a full pass and both transitions have settled.
   const clock = systemClock();
-  const origin = clock.now();
-  let fadeStart = origin;
-  let dissolveStart = origin;
+
+  // The scene on show, its contrast measured between the frames: a frame is
+  // never held for it, and a theme chosen while the last one was still being
+  // measured stops that measurement where it was.
+  let at = THEMES.findIndex((theme) => theme.palette.dark === (settings.ground === "dark"));
+  let shown: Scene;
+  let stopMeasuring: Unsubscribe = () => {};
+  const show = (theme: TerminalTheme): void => {
+    stopMeasuring();
+    shown = scene(theme, drawnWith, curves);
+    stopMeasuring = spread(shown.measure(), clock, MEASURE_SLICE);
+  };
+  show(THEMES[at]!);
+  const cycle = Math.max(...LOOPS.map((loop) => curves[loop].seconds), settledAt(curves.fade, 0), settledAt(curves.dissolve, 0));
+  const pace = new Pace(clock.now(), cycle);
+  let fadeStart = 0;
+  let dissolveStart = 0;
+  let fps: FrameRate = frameRate(settings.fps);
 
   const describe = (name: EffectName, curve: NamedCurve): string =>
     `${name.padEnd(9)} ${curve.seconds}s · ${curve.easeName} · swing ${curve.swing}`;
@@ -326,29 +456,33 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     t >= settledAt(curve, start) ? `done — ${key} replays` : "running";
 
   const row = (t: number, name: EffectName, status: string, effect: (subject: DrawnSubject) => Effect): Renderable[] => [
-    new RichText(`${describe(name, curves[name])}   ${status}`, { style: quiet, noWrap: true }),
-    ...subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: seedKey(name, s), theme })),
+    new RichText(`${describe(name, curves[name])}   ${status}`, { style: shown.quiet, noWrap: true }),
+    ...shown.subjects.map((s) => new Effected(s.renderable, effect(s), { t, key: seedKey(name, s), theme: shown.theme })),
     new RichText(""),
   ];
 
-  const view = (t: number): Renderable =>
-    new Padding(
+  const view = (clockNow: number): Renderable => {
+    const { t, reset } = pace.at(clockNow);
+    if (reset) fadeStart = dissolveStart = 0;
+    const { theme, loops, contrast } = shown;
+    return new Padding(
       new Group(
         new RichText(
-          `effects feel · ${settings.fps} fps · ${settings.depth} · ${settings.ground} (${theme.palette.name}) · t=${(t - origin).toFixed(1)}s`,
-          { style: heading, noWrap: true },
+          `effects feel · ${fps.perSecond} fps · rate ×${pace.speed} · ${settings.depth} · ${theme.palette.name} (${theme.palette.dark ? "dark" : "light"}) · t=${t.toFixed(1)}s of ${cycle}s`,
+          { style: shown.heading, noWrap: true },
         ),
-        new RichText("f replays the fade-in · d replays the dissolve · q quits", { style: quiet, noWrap: true }),
+        new RichText("f fade-in · d dissolve · n/p theme · </> fps · -/+ rate · q quits", { style: shown.quiet, noWrap: true }),
         new RichText(""),
         ...LOOPS.flatMap((loop) => row(t, loop, contrast[loop], loops[loop])),
         ...row(t, "fade", transitionStatus(t, curves.fade, fadeStart, "f"), (s) => fadeIn(curves.fade, fadeStart, s.z, theme.backgroundColor)),
         ...row(t, "dissolve", transitionStatus(t, curves.dissolve, dissolveStart, "d"), (s) => dissolveOut(curves.dissolve, dissolveStart, s.z, theme.backgroundColor)),
       ),
       [1, 2],
-      { style: Style.fromColor(ink, paper) },
+      { style: Style.fromColor(shown.ink, shown.paper) },
     );
+  };
 
-  const app = new App({ host, surface: "alternate", view, clock, rate: frameRate(settings.fps) });
+  const app = new App({ host, surface: "alternate", view, clock, rate: fps });
   // The loops never settle, so the demo animates for as long as it runs.
   app.animate();
 
@@ -356,11 +490,36 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   // not in it does nothing, so a mouse report repaints nothing.
   const replay = (): number => {
     app.refresh();
-    return clock.now();
+    return pace.now(clock.now());
+  };
+  const theme = (step: number): void => {
+    at = (at + step + THEMES.length) % THEMES.length;
+    show(THEMES[at]!);
+    app.refresh();
+  };
+  const stepFps = (step: number): void => {
+    const near = FPS_STEPS.findIndex((f) => f >= fps.perSecond);
+    const i = Math.min(Math.max((near === -1 ? FPS_STEPS.length - 1 : near) + step, 0), FPS_STEPS.length - 1);
+    fps = frameRate(FPS_STEPS[i]!);
+    app.rate = fps;
+    app.refresh();
+  };
+  const scaleRate = (by: number): void => {
+    pace.setRate(clock.now(), Math.min(Math.max(pace.speed * by, RATE_RANGE[0]), RATE_RANGE[1]));
+    app.refresh();
   };
   const keys: Record<string, () => void> = {
     f: () => (fadeStart = replay()),
     d: () => (dissolveStart = replay()),
+    n: () => theme(1),
+    p: () => theme(-1),
+    ">": () => stepFps(1),
+    ".": () => stepFps(1),
+    "<": () => stepFps(-1),
+    ",": () => stepFps(-1),
+    "+": () => scaleRate(2),
+    "=": () => scaleRate(2),
+    "-": () => scaleRate(0.5),
     q: () => app.stop(),
     "\x03": () => app.stop(),
   };
@@ -374,6 +533,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     }
   });
 
-  const done = app.run().finally(unsubscribe);
+  const done = app.run().finally(() => {
+    unsubscribe();
+    stopMeasuring();
+  });
   return { done };
 }

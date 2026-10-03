@@ -94,10 +94,11 @@ export class App {
   private readonly surface: Surface;
   private readonly view: (t: number) => Renderable;
   private readonly clock: Clock;
-  private readonly rate: FrameRate;
+  private _rate: FrameRate;
   // What is animating now: one token per `animate()` not yet released.
   private readonly animations = new Set<object>();
-  private stopTicking: Unsubscribe | null = null;
+  // The timer painting frames, and the rate it was started at.
+  private ticking: { readonly rate: FrameRate; readonly stop: Unsubscribe } | null = null;
   // [LAW:one-source-of-truth] The host is the console's whole environment:
   // its size, its colours, where bytes go. Every frame renders with this
   // console's options and is encoded for its destination.
@@ -117,12 +118,26 @@ export class App {
     this.painter = new SurfacePainter(options.surface, (bytes) => this.host.write(bytes));
     this.view = options.view;
     this.clock = options.clock ?? systemClock();
-    this.rate = options.rate ?? DEFAULT_RATE;
+    this._rate = options.rate ?? DEFAULT_RATE;
     this.console = new Console({ ...drawOptions(options), environment: hostEnvironment(options.host) });
   }
 
   get phase(): AppPhase {
     return this._phase;
+  }
+
+  /** How often the app paints while something is animating. */
+  get rate(): FrameRate {
+    return this._rate;
+  }
+
+  /**
+   * Set how often the app paints: an animation under way goes on at the new
+   * rate from its next frame, without a frame lost or one painted twice.
+   */
+  set rate(rate: FrameRate) {
+    this._rate = rate;
+    this.tick();
   }
 
   /** The rows on screen now, as painted: what a pointer event lands on. */
@@ -282,18 +297,19 @@ export class App {
     this.settle(outcome);
   }
 
-  // [LAW:single-enforcer] Whether the clock is ticking follows from the
-  // phase and what is animating, and is brought in line with them here
-  // alone, after every change to either — so a timer runs exactly while a
-  // running app has something animating, and none outlives the app.
+  // [LAW:single-enforcer] Whether the clock is ticking, and at what rate,
+  // follows from the phase, what is animating and the rate, and is brought
+  // in line with them here alone, after every change to any — so a timer
+  // runs exactly while a running app has something animating, at the rate
+  // the app has now, and none outlives the app.
   private tick(): void {
     const wanted = this._phase === "running" && this.animations.size > 0;
-    const ticking = this.stopTicking;
-    if (ticking === null) {
-      if (wanted) this.stopTicking = this.clock.every(this.rate, () => this.paint());
-    } else if (!wanted) {
-      ticking();
-      this.stopTicking = null;
+    if (this.ticking !== null && (!wanted || this.ticking.rate !== this._rate)) {
+      this.ticking.stop();
+      this.ticking = null;
+    }
+    if (wanted && this.ticking === null) {
+      this.ticking = { rate: this._rate, stop: this.clock.every(this._rate, () => this.paint()) };
     }
   }
 

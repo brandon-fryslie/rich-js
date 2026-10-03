@@ -31,6 +31,9 @@ const POINTER_OFF = "\x1b[?1003l\x1b[?1000l\x1b[?1006l";
 const ALT_ON = "\x1b[?1049h";
 const ALT_OFF = "\x1b[?1049l";
 const CURSOR_OFF = "\x1b[?25l";
+// Every paint is wrapped in synchronized output, so the terminal shows it whole.
+const SYNC_START = "\x1b[?2026h";
+const SYNC_END = "\x1b[?2026l";
 const CURSOR_ON = "\x1b[?25h";
 const TAKE = ALT_ON + CURSOR_OFF + POINTER_ON;
 const HAND_BACK = POINTER_OFF + "\x1b[0m" + CURSOR_ON + ALT_OFF;
@@ -414,6 +417,22 @@ describe("App frame clock", () => {
     expect(times).toEqual([100, 102, 104, 106]);
   });
 
+  it("goes on at a new rate from the next frame when rate is set mid-animation", () => {
+    const clock = fakeClock();
+    const { target, times } = clocked(1, clock);
+    void target.run();
+    target.animate();
+    clock.advance(2);
+    expect(times).toEqual([0, 1, 2]);
+
+    target.rate = frameRate(4);
+
+    clock.advance(1);
+    expect(target.rate.perSecond).toBe(4);
+    expect(times).toEqual([0, 1, 2, 2.25, 2.5, 2.75, 3]);
+    expect(clock.timers()).toBe(1);
+  });
+
   it("paints an animation's first frame without waiting out an interval", async () => {
     const clock = fakeClock();
     const { target, times } = clocked(0.5, clock);
@@ -582,7 +601,7 @@ describe("App inline", () => {
     const second = host.output().slice(first);
     // Back to the first frame's top row, then three rows, each from its
     // first cell: the new one and two blanked.
-    const home = "\x1b[2A";
+    const home = SYNC_START + "\x1b[2A";
     expect(second.startsWith(home)).toBe(true);
     expect(second.slice(home.length).split("\n").map(stripAnsi)).toEqual(["\rz", "\r", "\r"]);
   });
@@ -606,10 +625,10 @@ describe("App inline", () => {
     const last = host.output().slice(second + third.length);
 
     // One row up from the second frame's last row to its first, not two.
-    expect(third.startsWith("\x1b[1A\r")).toBe(true);
+    expect(third.startsWith(SYNC_START + "\x1b[1A\r")).toBe(true);
     // The row it blanked is left behind, and the program's line follows the
     // frame's one row.
-    expect(third.endsWith("\x1b[1A")).toBe(true);
+    expect(third.endsWith("\x1b[1A" + SYNC_END)).toBe(true);
     expect(last.endsWith(CURSOR_ON + "\n")).toBe(true);
   });
 
