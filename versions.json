@@ -4,15 +4,22 @@
     {
       "version": "pr-286",
       "ref": "refs/pull/286/merge",
-      "sha": "20e69c5c581c8bfc6ebf5dc9a0631700c0f4c4b4",
-      "timestamp": "2026-10-03T00:24:15.502Z",
+      "sha": "84979eae88234bf4bce058a703bc99f8b1991789",
+      "timestamp": "2026-10-03T00:26:33.188Z",
       "commits": [
         {
-          "sha": "20e69c5c581c8bfc6ebf5dc9a0631700c0f4c4b4",
+          "sha": "84979eae88234bf4bce058a703bc99f8b1991789",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T00:23:01Z",
-          "message": "Merge 4c5cae4845b0823744a5b685b450eea5f6e1d957 into 7f994999fee0195cf9c8738fac04ee420d5f62b9\n"
+          "timestamp": "2026-10-03T00:25:30Z",
+          "message": "Merge 565582603dcbefe9976ae965480a1660451a6044 into 7f994999fee0195cf9c8738fac04ee420d5f62b9\n"
+        },
+        {
+          "sha": "565582603dcbefe9976ae965480a1660451a6044",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-02T18:25:25-06:00",
+          "message": "fix(effects): resolve a cell at the depth it is written, and keep the written spec (rich-effects-fxiy.3t3)\n\nAn effect now sees drawnColors at the render's colour depth, so below\ntruecolor it starts from the colour on screen; and a slot it leaves alone\nkeeps that flattened spec, so a translucent glyph does not re-blend over a\nground the effect moved.\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n"
         },
         {
           "sha": "4c5cae4845b0823744a5b685b450eea5f6e1d957",
