@@ -1592,6 +1592,29 @@ describe("Table cells wrap before the overflow method sees them", () => {
     expect(collectLines(g, { maxWidth: 30 })).toEqual(["dow… xxxxxxxxxxxxxxxxxxxxxxxx…"]);
   });
 
+  // Python Rich 9d8f9a3, the same grid with three wrapping one-word columns at
+  // width 20: the widest narrows to the next, then the two narrow together.
+  it("narrows the widest column that may wrap down to the next, then both alike", () => {
+    const g = Table.grid({ padding: [0, 1] });
+    g.addColumn("");
+    g.addColumn("");
+    g.addColumn("");
+    g.addRow("a".repeat(12), "b".repeat(8), "c".repeat(4));
+    expect(collectLines(g, { maxWidth: 20 })).toEqual(["aaaaaa… bbbbbb… cccc"]);
+  });
+
+  // One even cut, `ratio_reduce(4, [1, 1, 1], [3, 1, 1], [3, 1, 1])`, leaves
+  // `[2, 0, 0]` where the grid has one cell past its three seats; Rich keeps
+  // what one cut leaves and draws past its width. The cut repeats until it fits.
+  it("repeats the even cut until the columns fit", () => {
+    const g = Table.grid({ padding: 0 });
+    g.addColumn("", { noWrap: true });
+    g.addColumn("", { noWrap: true });
+    g.addColumn("", { noWrap: true });
+    g.addRow("xxxx", "yy", "zz");
+    expect(collectLines(g, { maxWidth: 4 })).toEqual(["x………"]);
+  });
+
   it("reports its column minimums to a parent that squeezes it", () => {
     const inner = pair(["Star Wars Ep. VIII: The Last Jedi", false], ["$1,332,539,889", false]);
     // The reference's measure: the sum of each column's longest word and padding.

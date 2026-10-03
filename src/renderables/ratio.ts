@@ -69,7 +69,7 @@ export function ratioReduce(
   let remaining = BigInt(total);
   return weights.map((ratio, index) => {
     if (ratio === 0n) return values[index]!;
-    const share = roundHalfEven(ratio * remaining, totalRatio);
+    const share = roundDiv(ratio * remaining, totalRatio);
     const maximum = BigInt(maximums[index]!);
     const given = share < maximum ? share : maximum;
     remaining -= given;
@@ -79,7 +79,7 @@ export function ratioReduce(
 }
 
 /** Python's `round(a / b)` for a positive `b`: the nearest integer, a tie to the even one. */
-function roundHalfEven(a: bigint, b: bigint): bigint {
+function roundDiv(a: bigint, b: bigint): bigint {
   const floor = a / b - (a % b < 0n ? 1n : 0n);
   const twice = 2n * (a - floor * b);
   return twice > b || (twice === b && floor % 2n !== 0n) ? floor + 1n : floor;

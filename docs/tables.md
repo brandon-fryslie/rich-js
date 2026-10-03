@@ -38,9 +38,9 @@ while the Box Office figures, which have no break in them, stay whole. A column
 is cut short by its `overflow` (an ellipsis by default) only when the table is
 too narrow for every column's minimum and padding, or when its `maxWidth` is
 narrower than a word. When the minimums do not fit, the columns that may wrap
-give up their width first, widest first, and only then does every column give
-up cells evenly — as Rich does — so a short `noWrap` label beside a long one
-is not cut down in proportion to it. Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
+give up cells first, the one with the longest words first, and only then does
+every column give up cells evenly — Rich's order — so a short `noWrap` label
+beside a long column that may wrap stays whole. Cell values can be any renderable — strings with markup, styled text, other tables, panels, etc.
 
 ## Table options
 
