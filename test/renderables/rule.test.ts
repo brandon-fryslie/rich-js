@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Rule } from "../../src/renderables/rule.js";
 import { Segment } from "../../src/core/segment.js";
+import { renderToString } from "../../src/core/render.js";
 import type { Renderable, RenderOptions } from "../../src/core/protocol.js";
 
 // [LAW:behavior-not-structure] Tests assert behavioral contracts, not implementation details
@@ -54,6 +55,18 @@ describe("Rule", () => {
     ["right", 2, "Title", "──"],
   ] as const)("%s at width %i draws %j as Rich does", (align, width, title, expected) => {
     expect(collectLines(new Rule(title, { align }), { maxWidth: width })).toEqual([expected]);
+  });
+
+  // Rich 9d8f9a3's bytes, `style="none"` so the line's own style is out of it:
+  // a cut title's ellipsis, and the space a split wide character leaves, carry
+  // the styling of the text they replace.
+  it.each([
+    ["center", 10, "[bold]Hello world[/bold]", "─ \x1b[1mHello…\x1b[0m ─"],
+    ["left", 10, "[bold]Hello[/bold] world", "\x1b[1mHello\x1b[0m w… ─"],
+    ["left", 6, "[bold]中中中中[/bold]", "\x1b[1m中 …\x1b[0m ─"],
+  ] as const)("%s at width %i cuts %j inside its styling, as Rich does", (align, width, title, expected) => {
+    const bytes = renderToString(new Rule(title, { align, style: "none" }), { width, colorSystem: "truecolor" });
+    expect(bytes).toBe(`${expected}\n`);
   });
 
   it("uses custom characters", () => {

@@ -22,7 +22,7 @@
  * the drawing site may change it.
  */
 
-import { cellLen } from "../core/cells.js";
+import { cellCount, cellLen, setCellSize } from "../core/cells.js";
 import { activeHighlighter, readStr } from "../core/markup.js";
 import type { Measurable, Renderable, RenderOptions } from "../core/protocol.js";
 import { Segment } from "../core/segment.js";
@@ -121,17 +121,16 @@ export class InlineLabel {
 }
 
 /**
- * A label cut to `width` cells as Rich's `Text.truncate` cuts one: to the width
- * less `marker`, padded back to it, so a wide character the cut splits leaves a
- * space in its cell rather than a cell of the line around it, then the marker.
- * A label that fits is left as it is.
+ * A label cut to `width` cells as Rich's `Text.truncate` cuts one: its plain
+ * text set to the width less `marker` — a wide character the cut splits leaves
+ * a space in its cell rather than a cell of the line around it — then the
+ * marker, with every span that ran past the cut trimmed to the new end, so the
+ * pad and the marker take the styling of what they replace. A label that fits
+ * is left as it is.
  */
 export function cutLabel(text: RichText, width: number, marker: string): void {
   if (text.cellLength <= width) return;
-  const room = width - cellLen(marker);
-  text.truncate(room, { marker: "" });
-  text.padRight(room - text.cellLength);
-  text.append(marker);
+  text.plain = setCellSize(text.plain, cellCount(width - cellLen(marker))) + marker;
 }
 
 /**
