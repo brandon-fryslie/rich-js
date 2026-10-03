@@ -1,6 +1,12 @@
 /**
  * Markdown — renders Markdown content to the terminal.
  * Uses built-in parsing (no external dependency).
+ *
+ * Block structure is read as CommonMark reads it: a blockquote and a list
+ * item are both containers, their lines tokenized as Markdown of their own
+ * once the container's marker or indentation is cut off, and drawn beside a
+ * gutter — the quote's bar, the item's marker then its hang. Where CommonMark
+ * leaves the drawing open, Rich's is followed.
  */
 
 import { cellLen } from "../core/cells.js";
@@ -40,13 +46,15 @@ interface BlockSettings extends InlineSettings {
   readonly justify: Justify;
 }
 
-// Simple markdown token types
+/** What a list item's gutter opens with: a bullet, or its number in the list, padded to the list's widest. */
+type ItemMarker = { readonly kind: "bullet" } | { readonly kind: "number"; readonly label: string };
+
 type MdToken =
   | { type: "heading"; level: number; text: string }
   | { type: "paragraph"; text: string }
-  | { type: "code_block"; language: string; code: string }
+  | { type: "code_block"; code: string }
   | { type: "hr" }
-  | { type: "list_item"; ordered: boolean; index: number; indent: number; text: string }
+  | { type: "list_item"; marker: ItemMarker; children: MdToken[] }
   | { type: "blockquote"; children: MdToken[] }
   | { type: "blank" };
 
@@ -55,66 +63,134 @@ const RULE = /^(?:---+|===+|\*\*\*+)$/;
 const SETEXT = /^ {0,3}(=+|-+)[ \t]*$/;
 const FENCE = /^```(\w*)/;
 const QUOTE = /^> ?/;
-const BULLET = /^(\s*)([*\-+])\s+(.+)$/;
-const NUMBERED = /^(\s*)(\d+)\.\s+(.+)$/;
+const LIST_MARKER = /^([ \t]*)([*+-]|(\d{1,9})\.)([ \t]*)(.*)$/;
 const HARD_BREAK = /(?: {2,}|\\)$/;
-const BLOCK_STARTS = [HEADING, FENCE, QUOTE, BULLET, NUMBERED];
+const BLOCK_STARTS = [HEADING, FENCE, QUOTE];
+/** Indentation that makes a line indented code when it opens a block, as CommonMark counts it. */
+const CODE_INDENT = 4;
+
+/** The column `ws` ends at when it starts at column `from`, a tab reaching the next stop of 4 as CommonMark counts it. */
+function advance(from: number, ws: string): number {
+  return [...ws].reduce((col, ch) => (ch === "\t" ? col + 4 - (col % 4) : col + 1), from);
+}
+
+/** The columns `line`'s leading whitespace spans. */
+function indentOf(line: string): number {
+  return advance(0, /^[ \t]*/.exec(line)![0]);
+}
 
 /**
- * Whether `line` opens a block of its own. It is what ends a list item, and
- * with `endsParagraph`'s two readings a paragraph: every line up to the next
- * blank or the next block start belongs to the one before it. A hard-wrapped
- * source line is a soft break, not a block, so the source's own line breaks
- * never reach the screen.
+ * `line` with its first `n` columns of leading whitespace cut off — a
+ * container's indentation removed so its content is read as Markdown of its
+ * own. A tab straddling column `n` leaves the columns past `n` as spaces.
+ */
+function dropColumns(line: string, n: number): string {
+  let col = 0;
+  let i = 0;
+  for (; i < line.length && col < n && (line[i] === " " || line[i] === "\t"); i++) {
+    const next = advance(col, line[i]!);
+    if (next > n) return " ".repeat(next - n) + line.slice(i + 1);
+    col = next;
+  }
+  return line.slice(i);
+}
+
+/**
+ * A list item's opening line, read as CommonMark reads it: a bullet or a
+ * number at most three columns in. `content` is the item's content column —
+ * where its text starts, and how far every line of the item is indented —
+ * and `first` is the text of the marker line from that column on. An item
+ * opening with a blank line, or with indented code, has its content column
+ * one space past the marker.
+ */
+interface ItemStart {
+  readonly bullet: string | undefined;
+  readonly start: number;
+  readonly content: number;
+  readonly first: string;
+}
+
+function itemStart(line: string): ItemStart | undefined {
+  const m = LIST_MARKER.exec(line);
+  if (!m) return undefined;
+  const indent = advance(0, m[1]!);
+  const spacing = m[4]!;
+  const rest = m[5]!;
+  if (indent >= CODE_INDENT || (spacing === "" && rest !== "")) return undefined;
+  const markerEnd = indent + m[2]!.length;
+  const spaced = advance(markerEnd, spacing) - markerEnd;
+  const opensCode = spaced > CODE_INDENT;
+  return {
+    bullet: m[3] === undefined ? m[2] : undefined,
+    start: m[3] === undefined ? 0 : parseInt(m[3], 10),
+    content: rest === "" || opensCode ? markerEnd + 1 : markerEnd + spaced,
+    first: opensCode ? " ".repeat(spaced - 1) + rest : rest,
+  };
+}
+
+/** Whether two item starts belong to one list: the same bullet character, or both numbered. */
+function sameList(a: ItemStart, b: ItemStart): boolean {
+  return a.bullet === b.bullet;
+}
+
+/**
+ * Whether `line` opens a block of its own — a heading, a fence, a quote, a
+ * rule or a list item. A line that does not is text, and under an open
+ * paragraph it continues that paragraph.
  */
 function opensBlock(line: string): boolean {
-  return BLOCK_STARTS.some((re) => re.test(line)) || RULE.test(line.trim());
+  return BLOCK_STARTS.some((re) => re.test(line)) || RULE.test(line.trim()) || itemStart(line) !== undefined;
 }
 
 /**
  * Whether `line` ends a paragraph: `opensBlock`, read as CommonMark reads it
- * under a paragraph. A numbered item interrupts one only when it counts from
- * 1, so prose wrapped onto "2024. That year" stays prose, and a line of `=` or
- * `-` is the paragraph's heading underline.
+ * under a paragraph. A list item interrupts one only when it has text and,
+ * numbered, counts from 1, so prose wrapped onto "2024. That year" stays
+ * prose; and a line of `=` or `-` is the paragraph's heading underline.
  */
 function endsParagraph(line: string): boolean {
-  const numbered = NUMBERED.exec(line);
-  return numbered ? parseInt(numbered[2]!, 10) === 1 : opensBlock(line) || SETEXT.test(line);
+  if (SETEXT.test(line)) return true;
+  const item = itemStart(line);
+  return item ? item.first !== "" && (item.bullet !== undefined || item.start === 1) : opensBlock(line);
+}
+
+/** Whether the last block of `tokens`, followed into the containers it closes, is a paragraph still open. */
+function endsInParagraph(tokens: readonly MdToken[]): boolean {
+  const last = tokens[tokens.length - 1];
+  switch (last?.type) {
+    case "paragraph":
+      return true;
+    case "list_item":
+    case "blockquote":
+      return endsInParagraph(last.children);
+    default:
+      return false;
+  }
 }
 
 /**
- * Whether `line` ends a list item whose marker sits at column `indent`:
- * `opensBlock`, except that a numbered line indented past the marker is the
- * item's own text, read as `endsParagraph` reads it, unless it counts from 1.
+ * Whether `line`, short of a container's marker or indentation, still
+ * belongs to it as a lazy continuation: CommonMark's paragraph continuation
+ * text, which continues the paragraph open at the end of the container's
+ * `inner` lines and opens no block of its own. Outside the container a line
+ * is read without the paragraph under it, so any list item — whatever it
+ * counts from — ends the container rather than continuing it.
  */
-function endsItem(indent: number): (line: string) => boolean {
-  return (line) => {
-    const numbered = NUMBERED.exec(line);
-    return numbered ? columns(numbered[1]!) <= indent || parseInt(numbered[2]!, 10) === 1 : opensBlock(line);
-  };
-}
-
-/** The columns a run of leading whitespace spans, a tab reaching the next stop of 4 as CommonMark counts it. */
-function columns(indent: string): number {
-  return [...indent].reduce((col, ch) => (ch === "\t" ? col + 4 - (col % 4) : col + 1), 0);
+function continuesLazily(inner: readonly string[], line: string): boolean {
+  return line.trim() !== "" && !opensBlock(line) && endsInParagraph(tokenize(inner));
 }
 
 /**
- * The text of the block begun at `start` — `first`, then every line after it
- * up to a blank or a line `ends` says opens another block — and the index of
- * the line that ended it. Soft-broken lines are joined by one space, as a
- * Markdown renderer reflows them, with their own indentation dropped; a line
- * ending in two spaces or a backslash breaks hard, and its break is kept.
+ * The text of the paragraph begun at `start`, every line after it up to a
+ * blank or a line that ends a paragraph, and the index of the line that ended
+ * it. Soft-broken lines are joined by one space, as a Markdown renderer
+ * reflows them, with their own indentation dropped; a line ending in two
+ * spaces or a backslash breaks hard, and its break is kept.
  */
-function continuation(
-  first: string,
-  lines: readonly string[],
-  start: number,
-  ends: (line: string) => boolean,
-): { text: string; next: number } {
-  const parts = [first];
+function continuation(lines: readonly string[], start: number): { text: string; next: number } {
+  const parts = [lines[start]!];
   let i = start + 1;
-  for (; i < lines.length && lines[i]!.trim() !== "" && !ends(lines[i]!); i++) parts.push(lines[i]!);
+  for (; i < lines.length && lines[i]!.trim() !== "" && !endsParagraph(lines[i]!); i++) parts.push(lines[i]!);
   const text = parts
     .map((part, n) => {
       const words = (n === parts.length - 1 ? part : part.replace(HARD_BREAK, "")).trim();
@@ -124,8 +200,62 @@ function continuation(
   return { text, next: i };
 }
 
-function tokenize(markdown: string): MdToken[] {
-  const lines = markdown.split(/\r?\n/);
+/**
+ * The lines of the list item opened at `start` with its content column cut
+ * off — every line after it that is blank, indented to the content column, or
+ * a lazy continuation — and the index of the line that ended it. Blank lines
+ * trailing the item are left to whatever follows it, and an item that opens
+ * with a blank line ends at the next one: it is empty.
+ */
+function itemLines(item: ItemStart, lines: readonly string[], start: number): { inner: string[]; next: number } {
+  const inner = item.first === "" ? [] : [item.first];
+  let i = start + 1;
+  for (; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (line.trim() === "") {
+      if (inner.length === 0) break;
+      inner.push("");
+    } else if (indentOf(line) >= item.content) inner.push(dropColumns(line, item.content));
+    else if (continuesLazily(inner, line)) inner.push(line);
+    else break;
+  }
+  for (; inner[inner.length - 1] === ""; i--) inner.pop();
+  return { inner, next: i };
+}
+
+/**
+ * The list opened at `start`: each item as a token holding its blocks, and
+ * between items the blank lines that separated them in the source. Numbers
+ * count on from the first item's, as Rich draws them, right-aligned to the
+ * widest so every item hangs at one column.
+ */
+function list(first: ItemStart, lines: readonly string[], start: number): { tokens: MdToken[]; next: number } {
+  const items: { gap: number; children: MdToken[] }[] = [];
+  let i = start;
+  let gap = 0;
+  for (let item: ItemStart | undefined = first; item && sameList(first, item); item = itemStart(lines[i] ?? "")) {
+    const { inner, next } = itemLines(item, lines, i);
+    items.push({ gap, children: tokenize(inner.length === 0 ? [""] : inner) });
+    let after = next;
+    while (after < lines.length && lines[after]!.trim() === "") after++;
+    gap = after - next;
+    i = after;
+  }
+  // The blank lines after the last item belong to whatever follows the list.
+  const next = i - gap;
+  const width = String(first.start + items.length - 1).length + 1;
+  const tokens = items.flatMap(({ gap: blanks, children }, n): MdToken[] => [
+    ...Array.from({ length: blanks }, (): MdToken => ({ type: "blank" })),
+    {
+      type: "list_item",
+      marker: first.bullet === undefined ? { kind: "number", label: `${first.start + n}.`.padStart(width) } : { kind: "bullet" },
+      children,
+    },
+  ]);
+  return { tokens, next };
+}
+
+function tokenize(lines: readonly string[]): MdToken[] {
   const tokens: MdToken[] = [];
   let i = 0;
 
@@ -136,6 +266,17 @@ function tokenize(markdown: string): MdToken[] {
     if (line.trim() === "") {
       tokens.push({ type: "blank" });
       i++;
+      continue;
+    }
+
+    // Indented code: its lines, and the blank lines between them, with the indent cut off
+    if (indentOf(line) >= CODE_INDENT) {
+      const code: string[] = [];
+      for (; i < lines.length && (lines[i]!.trim() === "" || indentOf(lines[i]!) >= CODE_INDENT); i++) {
+        code.push(dropColumns(lines[i]!, CODE_INDENT));
+      }
+      for (; code[code.length - 1]!.trim() === ""; i--) code.pop();
+      tokens.push({ type: "code_block", code: code.join("\n") });
       continue;
     }
 
@@ -155,9 +296,7 @@ function tokenize(markdown: string): MdToken[] {
     }
 
     // Fenced code block
-    const codeMatch = FENCE.exec(line);
-    if (codeMatch) {
-      const lang = codeMatch[1] ?? "";
+    if (FENCE.test(line)) {
       const codeLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i]!.startsWith("```")) {
@@ -165,7 +304,7 @@ function tokenize(markdown: string): MdToken[] {
         i++;
       }
       i++; // skip closing ```
-      tokens.push({ type: "code_block", language: lang, code: codeLines.join("\n") });
+      tokens.push({ type: "code_block", code: codeLines.join("\n") });
       continue;
     }
 
@@ -176,34 +315,24 @@ function tokenize(markdown: string): MdToken[] {
       for (; i < lines.length; i++) {
         const next = lines[i]!;
         const marked = QUOTE.test(next);
-        const lazy = !marked && next.trim() !== "" && inner[inner.length - 1]!.trim() !== "" && !endsParagraph(next);
-        if (!marked && !lazy) break;
+        if (!marked && !continuesLazily(inner, next)) break;
         inner.push(next.replace(QUOTE, ""));
       }
-      tokens.push({ type: "blockquote", children: tokenize(inner.join("\n")) });
+      tokens.push({ type: "blockquote", children: tokenize(inner) });
       continue;
     }
 
-    // List item: the marker line and every line continuing it. Its leading
-    // whitespace is its nesting, kept as columns so a nested item sits under its parent.
-    const listMatch = BULLET.exec(line) ?? NUMBERED.exec(line);
-    if (listMatch) {
-      const ordered = NUMBERED.test(line);
-      const indent = columns(listMatch[1]!);
-      const { text, next } = continuation(listMatch[3]!, lines, i, endsItem(indent));
-      tokens.push({
-        type: "list_item",
-        ordered,
-        index: ordered ? parseInt(listMatch[2]!, 10) : 0,
-        indent,
-        text,
-      });
+    // List: its items, each Markdown of its own, as a quote is
+    const item = itemStart(line);
+    if (item) {
+      const { tokens: items, next } = list(item, lines, i);
+      tokens.push(...items);
       i = next;
       continue;
     }
 
     // Paragraph, or a setext heading when a line of `=` or `-` underlines it
-    const { text, next } = continuation(line, lines, i, endsParagraph);
+    const { text, next } = continuation(lines, i);
     const underline = SETEXT.exec(lines[next] ?? "");
     tokens.push(
       underline
@@ -216,54 +345,142 @@ function tokenize(markdown: string): MdToken[] {
   return tokens;
 }
 
-function applyInlineStyles(text: string, settings: InlineSettings, justify: Justify | undefined): RichText {
-  const result = new RichText("", { end: "", justify });
+/** One inline construct found at a position in a run of text, and the index just past it. */
+type Inline =
+  | { kind: "code"; code: string; end: number }
+  | { kind: "emphasis"; style: "bold" | "italic"; inner: string; end: number }
+  | { kind: "link"; inner: string; url: string; end: number }
+  | { kind: "image"; alt: string; src: string; end: number }
+  | { kind: "literal"; text: string; end: number };
 
-  // Process inline patterns
-  const inlineRe = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[(.+?)\]\((.+?)\))/g;
-  let lastIdx = 0;
-  let match: RegExpExecArray | null;
+/** The index of the `]` closing the `[` at `open`, counting nested brackets, or -1. */
+function closingBracket(text: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === "\\") i++;
+    else if (text[i] === "[") depth++;
+    else if (text[i] === "]" && --depth === 0) return i;
+  }
+  return -1;
+}
 
-  while ((match = inlineRe.exec(text)) !== null) {
-    // Add text before match
-    if (match.index > lastIdx) {
-      result.append(text.slice(lastIdx, match.index));
+/**
+ * The `(destination "title")` of a link opening at `open`, as CommonMark reads
+ * it: a destination in angle brackets, or a run of non-space characters whose
+ * parentheses balance — so a URL may itself hold `(…)` — then an optional
+ * quoted title, then the `)`. The destination and the index past the `)`.
+ */
+function linkDestination(text: string, open: number): { url: string; end: number } | undefined {
+  if (text[open] !== "(") return undefined;
+  const angled = /^\(\s*<([^<>\n]*)>/.exec(text.slice(open));
+  let i: number;
+  let url: string;
+  if (angled) {
+    url = angled[1]!;
+    i = open + angled[0].length;
+  } else {
+    i = open + 1;
+    while (text[i] === " ") i++;
+    const from = i;
+    for (let depth = 0; i < text.length && !/\s/.test(text[i]!) && !(text[i] === ")" && depth === 0); i++) {
+      if (text[i] === "\\") i++;
+      else if (text[i] === "(") depth++;
+      else if (text[i] === ")") depth--;
     }
+    url = text.slice(from, i);
+  }
+  const tail = /^\s*(?:"[^"]*"|'[^']*'|\([^()]*\))?\s*\)/.exec(text.slice(i));
+  return tail ? { url, end: i + tail[0].length } : undefined;
+}
 
-    if (match[2]) {
-      // Bold: **text**
-      result.append(match[2], "bold");
-    } else if (match[3]) {
-      // Italic: *text*
-      result.append(match[3], "italic");
-    } else if (match[4]) {
-      // Inline code: `text`
-      result.append(match[4], settings.inlineCodeStyle);
-    } else if (match[5] && match[6]) {
-      // Link: [text](url). As Rich draws it: without hyperlinks the URL is
-      // written out, and it is still the link, for a terminal that can click it.
-      // The link spans from where the linked text starts in `result`, which
-      // `append` may have shortened by stripping control characters.
-      const link = new Style({ link: match[6] });
-      if (settings.hyperlinks) {
-        const start = result.length;
-        result.append(match[5], "markdown.link_url").stylize(link, start);
-      } else {
-        result.append(match[5], "markdown.link").append(" (");
-        const start = result.length;
-        result.append(match[6], "markdown.link_url").stylize(link, start).append(")");
+/** The characters an inline construct can open with. */
+const INLINE_OPENERS = new Set(["`", "*", "!", "["]);
+
+/** The inline construct opening at `i` in `text`, if one does. */
+function inlineAt(text: string, i: number): Inline | undefined {
+  if (!INLINE_OPENERS.has(text[i]!)) return undefined;
+  const rest = text.slice(i);
+  const ticks = /^`+/.exec(rest)?.[0];
+  if (ticks) {
+    const close = new RegExp(`(?<!\`)${ticks}(?!\`)`).exec(text.slice(i + ticks.length));
+    const end = close ? i + ticks.length + close.index + ticks.length : i + ticks.length;
+    return close
+      ? { kind: "code", code: text.slice(i + ticks.length, end - ticks.length), end }
+      : { kind: "literal", text: ticks, end };
+  }
+  const emphasis = /^\*\*(.+?)\*\*/.exec(rest) ?? /^\*(.+?)\*/.exec(rest);
+  if (emphasis) {
+    const style = emphasis[0].startsWith("**") ? "bold" : "italic";
+    return { kind: "emphasis", style, inner: emphasis[1]!, end: i + emphasis[0].length };
+  }
+  const image = rest.startsWith("![");
+  if (!image && !rest.startsWith("[")) return undefined;
+  const open = image ? i + 1 : i;
+  const close = closingBracket(text, open);
+  const destination = close < 0 ? undefined : linkDestination(text, close + 1);
+  if (!destination) return undefined;
+  const label = text.slice(open + 1, close);
+  return image
+    ? { kind: "image", alt: label, src: destination.url, end: destination.end }
+    : { kind: "link", inner: label, url: destination.url, end: destination.end };
+}
+
+/**
+ * `text` as inline Markdown appended to `result`: code spans, emphasis, links
+ * and images, the text inside emphasis, links and images parsed the same way,
+ * and everything else as it is. Each construct's style spans from where its
+ * text starts in `result`, which `append` may have shortened by stripping
+ * control characters.
+ */
+function appendInline(result: RichText, text: string, settings: InlineSettings, options: RenderOptions): void {
+  let plain = 0;
+  for (let i = 0; i < text.length; ) {
+    const found = inlineAt(text, i);
+    if (!found) {
+      i++;
+      continue;
+    }
+    result.append(text.slice(plain, i));
+    const start = result.length;
+    switch (found.kind) {
+      case "code":
+        result.append(found.code, settings.inlineCodeStyle);
+        break;
+      case "literal":
+        result.append(found.text);
+        break;
+      case "emphasis":
+        appendInline(result, found.inner, settings, options);
+        result.stylize(found.style, start);
+        break;
+      case "link": {
+        // As Rich draws it: without hyperlinks the URL is written out, and it
+        // is still the link, for a terminal that can click it.
+        const link = new Style({ link: found.url });
+        appendInline(result, found.inner, settings, options);
+        if (settings.hyperlinks) {
+          result.stylize("markdown.link_url", start).stylize(link, start);
+        } else {
+          result.stylize("markdown.link", start).append(" (");
+          const url = result.length;
+          result.append(found.url, "markdown.link_url").stylize(link, url).append(")");
+        }
+        break;
+      }
+      case "image": {
+        // Rich's ImageItem: a picture glyph, then the alt text — or, with
+        // none, the image's file name — linked to the image, then a space.
+        result.append(drawable(options, "🌆 ", ""));
+        const title = result.length;
+        appendInline(result, found.alt || (found.src.replace(/\/+$/, "").split("/").pop() ?? ""), settings, options);
+        if (settings.hyperlinks) result.stylize(new Style({ link: found.src }), title);
+        result.append(" ");
+        break;
       }
     }
-
-    lastIdx = match.index + match[0].length;
+    i = plain = found.end;
   }
-
-  // Remaining text
-  if (lastIdx < text.length) {
-    result.append(text.slice(lastIdx));
-  }
-
-  return result;
+  result.append(text.slice(plain));
 }
 
 /**
@@ -292,17 +509,20 @@ function* guttered(
 }
 
 /**
- * `text` as inline Markdown, wrapped, with every row ended — its last one
- * too, so `splitLines` counts it even when the text is empty, and an empty
- * item still draws its bullet.
+ * `text` as inline Markdown, placed by `justify` in `style`, wrapped, with
+ * every row ended. `style` is the text's own, so placement pads beside it
+ * rather than in it.
  */
 function inline(
   text: string,
   settings: InlineSettings,
   justify: Justify | undefined,
+  style?: Style,
 ): (options: RenderOptions) => Iterable<Segment> {
   return function* (options) {
-    yield* applyInlineStyles(text, settings, justify).render(options);
+    const result = new RichText("", { end: "", justify, style });
+    appendInline(result, text, settings, options);
+    yield* result.render(options);
     yield Segment.line();
   };
 }
@@ -311,16 +531,17 @@ const NO_GUTTER = new Segment("");
 
 /**
  * Each block in `tokens`, every row it draws ended, body text placed by
- * `settings.justify`. A heading is drawn at its natural width whatever
- * `settings` or `options` say, so its underline stops where its text does.
+ * `settings.justify`. A heading keeps its own placement whatever `settings`
+ * or `options` say — Rich's: an h1 centred, every other level left — and its
+ * style stops where its text does.
  */
 function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, settings: BlockSettings): Iterable<Segment> {
   for (const token of tokens) {
     switch (token.type) {
       case "heading": {
         const style = getStyle(options, `markdown.h${Math.min(token.level, 4)}`);
-        const unplaced = { ...options, justify: undefined };
-        yield* guttered(inline(token.text, settings, undefined), unplaced, NO_GUTTER, NO_GUTTER, style);
+        const draw = inline(token.text, settings, token.level === 1 ? "center" : undefined, style);
+        yield* guttered(draw, { ...options, justify: undefined }, NO_GUTTER, NO_GUTTER);
         break;
       }
 
@@ -346,9 +567,10 @@ function* renderTokens(tokens: readonly MdToken[], options: RenderOptions, setti
       }
 
       case "list_item": {
-        const bullet = " ".repeat(token.indent) + (token.ordered ? `${token.index}. ` : drawable(options, "  • ", "  * "));
-        const hang = new Segment(" ".repeat(cellLen(bullet)));
-        yield* guttered(inline(token.text, settings, settings.justify), options, new Segment(bullet), hang);
+        const marker = token.marker.kind === "number" ? `${token.marker.label} ` : drawable(options, "  • ", "  * ");
+        const hang = new Segment(" ".repeat(cellLen(marker)));
+        const body = (inner: RenderOptions) => renderTokens(token.children, inner, settings);
+        yield* guttered(body, options, new Segment(marker), hang);
         break;
       }
 
@@ -382,7 +604,7 @@ export class Markdown implements Renderable, Measurable {
   *render(rawOptions: RenderOptions): Iterable<Segment> {
     // Every block below is one of a stack.
     const options = { ...rawOptions, height: stackedHeight(rawOptions.height) };
-    yield* renderTokens(tokenize(this.markdown), options, this);
+    yield* renderTokens(tokenize(this.markdown.split(/\r?\n/)), options, this);
   }
 
   measure(options: RenderOptions): { minimum: number; maximum: number } {
