@@ -20,7 +20,7 @@ import {
   dissolveOut,
   drift,
   fadeIn,
-  onSlot,
+  onColors,
   pulse,
   settledAt,
   shimmer,
@@ -53,11 +53,11 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
   const untouched = bytes(subject);
 
   it("pulse at the start of its period", () => {
-    expect(drawn(onSlot("fg", pulse(curve(3, 0.2), true)), 0)).toBe(untouched);
+    expect(drawn(onColors(new Set([ink.hex]), pulse(curve(3, 0.2), true)), 0)).toBe(untouched);
   });
 
   it("shimmer before its band enters the row", () => {
-    expect(drawn(onSlot("fg", shimmer(curve(2, 0.7), 30, 8, new ColorRgba(255, 255, 255))), 0)).toBe(untouched);
+    expect(drawn(onColors(new Set([ink.hex]), shimmer(curve(2, 0.7), 30, 8, new ColorRgba(255, 255, 255))), 0)).toBe(untouched);
   });
 
   it("fade-in once it has settled", () => {
@@ -73,26 +73,26 @@ describe("each curve at rest draws the cells as they were, byte for byte", () =>
 describe("the loops move", () => {
   it("pulse brightens away from a dark ground, and darkens away from a light one", () => {
     const peak = 1.5; // half of a 3 s ping-pong
-    const up = onSlot("fg", pulse(curve(3, 0.2), true))(colors, cells[0]!, peak).fg;
-    const down = onSlot("fg", pulse(curve(3, 0.2), false))(colors, cells[0]!, peak).fg;
+    const up = onColors(new Set([ink.hex]), pulse(curve(3, 0.2), true))(colors, cells[0]!, peak).fg;
+    const down = onColors(new Set([ink.hex]), pulse(curve(3, 0.2), false))(colors, cells[0]!, peak).fg;
     expect(up.red + up.green + up.blue).toBeGreaterThan(ink.red + ink.green + ink.blue);
     expect(down.red + down.green + down.blue).toBeLessThan(ink.red + ink.green + ink.blue);
   });
 
   it("sparkle's cells are out of step with one another", () => {
-    const moved = at(onSlot("fg", sparkle(curve(2, 0.2), true)), 0.3).map((c) => c.fg.hex);
+    const moved = at(onColors(new Set([ink.hex]), sparkle(curve(2, 0.2), true)), 0.3).map((c) => c.fg.hex);
     expect(new Set(moved).size).toBeGreaterThan(1);
   });
 
   it("drift shifts hue along the row", () => {
-    const moved = at(onSlot("bg", drift(curve(8, 40), 40)), 0).map((c) => c.bg.hex);
+    const moved = at(onColors(new Set([ground.hex]), drift(curve(8, 40), 40)), 0).map((c) => c.bg.hex);
     expect(new Set(moved).size).toBeGreaterThan(1);
   });
 
   it("shimmer lights only the columns under its band", () => {
     const band = 8;
     // Halfway through a 2 s loop the band's centre is at the middle of span + 2·band.
-    const lit = at(onSlot("fg", shimmer(curve(2, 0.7), 40, band, new ColorRgba(255, 255, 255))), 1)
+    const lit = at(onColors(new Set([ink.hex]), shimmer(curve(2, 0.7), 40, band, new ColorRgba(255, 255, 255))), 1)
       .map((c, col) => (sameColor(c.fg, ink) ? -1 : col))
       .filter((col) => col >= 0);
     expect(lit.length).toBeGreaterThan(0);
@@ -100,8 +100,8 @@ describe("the loops move", () => {
     expect(lit).toContain(20);
   });
 
-  it("onSlot leaves the other slot alone", () => {
-    const moved = onSlot("bg", pulse(curve(3, 0.2), true))(colors, cells[0]!, 1.5);
+  it("onColors leaves a colour not in its set alone", () => {
+    const moved = onColors(new Set([ground.hex]), pulse(curve(3, 0.2), true))(colors, cells[0]!, 1.5);
     expect(moved.fg).toBe(ink);
     expect(sameColor(moved.bg, ground)).toBe(false);
   });

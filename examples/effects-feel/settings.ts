@@ -8,9 +8,8 @@
 
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import { EASES, parseEase, type Env } from "../../src/index.js";
+import type { EaseName } from "../../src/core/easing.js";
 import type { Curve } from "./curves.js";
-
-type EaseName = keyof typeof EASES;
 
 /** The colour depths a run can be judged at, by the name the flag takes. */
 export const DEPTHS = ["truecolor", "256", "16", "none"] as const;
@@ -25,7 +24,7 @@ export type EffectName = (typeof EFFECTS)[number];
 
 /** A curve as the flags spelled it, so the screen can say what is running. */
 export interface NamedCurve extends Curve {
-  readonly easeName: EaseName;
+  readonly easeName: string;
 }
 
 export interface Settings {
@@ -109,10 +108,10 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
   const curves = Object.fromEntries(
     EFFECTS.map((effect) => {
       const d = DEFAULTS[effect];
-      const easeName = oneOf(`--${effect}-ease`, flag(`${effect}-ease`) ?? d.ease, Object.keys(EASES) as EaseName[]);
+      const easeName = flag(`${effect}-ease`) ?? d.ease;
       const curve: NamedCurve = {
         seconds: number(`--${effect}-${secondsWord(effect)}`, flag(`${effect}-${secondsWord(effect)}`), d.seconds, [0.05, 600]),
-        ease: parseEase(easeName),
+        ease: named(`--${effect}-ease`, parseEase, easeName),
         easeName,
         swing: number(`--${effect}-swing`, flag(`${effect}-swing`), d.swing, effect === "drift" ? [-360, 360] : [0, 1]),
       };
@@ -128,12 +127,25 @@ export function parseSettings(argv: readonly string[]): Settings | undefined {
   };
 }
 
+/** A decimal as a person types one: `2`, `-90`, `0.5`, `.5`. */
+const DECIMAL = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/;
+
 function number(name: string, raw: string | undefined, fallback: number, [lo, hi]: readonly [number, number]): number {
-  const value = raw === undefined ? fallback : Number(raw);
+  // `Number` alone reads "" and " " as 0, and 0 is in range for every swing.
+  const value = raw === undefined ? fallback : DECIMAL.test(raw) ? Number(raw) : Number.NaN;
   if (!Number.isFinite(value) || value < lo || value > hi) {
     throw new RangeError(`${name} must be a number from ${lo} to ${hi}, got ${JSON.stringify(raw)}`);
   }
   return value;
+}
+
+/** `parse` on a flag's value, its refusal prefixed with the flag's name. */
+function named<T>(name: string, parse: (raw: string) => T, raw: string): T {
+  try {
+    return parse(raw);
+  } catch (error) {
+    throw new RangeError(`${name}: ${String(error)}`, { cause: error });
+  }
 }
 
 function oneOf<T extends string>(name: string, raw: string, legal: readonly T[]): T {

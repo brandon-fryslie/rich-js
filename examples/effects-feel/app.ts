@@ -38,17 +38,18 @@ import {
   type RenderOptions,
   type TerminalTheme,
 } from "../../src/index.js";
+import { graphemes } from "../../src/core/cells.js";
 import { App, hostEnvironment, type TerminalHost } from "../../src/host/index.js";
 import {
   dissolveOut,
   drift,
   fadeIn,
-  onSlot,
+  onColors,
   pulse,
   settledAt,
   shimmer,
   sparkle,
-  type Slot,
+  type ColorMove,
 } from "./curves.js";
 import type { EffectName, NamedCurve, Settings } from "./settings.js";
 
@@ -66,17 +67,44 @@ const STRIP_KEYS = ["primary", "secondary", "accent", "success", "warning", "err
 
 const TEXT = "Thinking about how a band of light should cross these words at one frame a second…";
 
+/** The view's padding either side, in columns. */
+const PAD_X = 2;
+
 /** How wide a shimmer's band is, in columns. */
 const SHIMMER_WIDTH = 8;
 
 /** Samples per period when measuring a looping effect's worst contrast. */
 const CONTRAST_SAMPLES = 240;
 
-/** A thing the effects are tried on, and which of its colours they move. */
-interface Subject {
+/**
+ * A thing the effects are tried on, and the slot it shows its colour in: a
+ * powerline strip in the ground of its cells, a run of text in its ink.
+ */
+export interface Subject {
   readonly name: string;
   readonly renderable: Renderable;
-  readonly slot: Slot;
+  readonly slot: "fg" | "bg";
+}
+
+/**
+ * The colours `subject` sets its slot to, by hex, as the screen shows them at
+ * the run's depth. A cell that sets none is drawn in the terminal's own
+ * colour, which is no colour of the subject's.
+ */
+function colorsOf(subject: Subject, options: RenderOptions, theme: TerminalTheme): ReadonlySet<string> {
+  const foreground = subject.slot === "fg";
+  return new Set(
+    [...subject.renderable.render(options)].flatMap((segment) => {
+      const drawn = (segment.style ?? Style.null()).drawnColors(options.colorSystem ?? undefined);
+      const spec = foreground ? drawn.color : drawn.bgcolor;
+      return spec === undefined ? [] : [spec.getTruecolor(theme, foreground).hex];
+    }),
+  );
+}
+
+/** `move` on whatever cells show `subject`'s colour. */
+export function onSubject(subject: Subject, move: ColorMove, options: RenderOptions, theme: TerminalTheme): Effect {
+  return onColors(colorsOf(subject, options, theme), move);
 }
 
 /** A colour of the theme's palette by its name; a name the palette lacks is a bug here. */
@@ -87,7 +115,7 @@ function paletteColor(theme: TerminalTheme, key: string): ColorSpec {
 }
 
 /** A powerline strip of a dozen cells over the theme's palette. */
-function stripSubject(theme: TerminalTheme): Subject {
+export function stripSubject(theme: TerminalTheme): Subject {
   const color = (key: string): ColorSpec => paletteColor(theme, key);
   const cells = STRIP_LABELS.map((label, i) => {
     const key = STRIP_KEYS[i % STRIP_KEYS.length]!;
@@ -117,12 +145,12 @@ const SEAM_GLYPHS: ReadonlySet<string> = new Set(Object.values(POWERLINE_JOINER_
  */
 function textCells(subject: Subject, options: RenderOptions): ReadonlySet<string> {
   const cells = new Set<string>();
-  const segmenter = new Intl.Segmenter();
   let row = 0;
   let col = 0;
   for (const segment of subject.renderable.render(options)) {
     if (segment.isControl) continue;
-    for (const { segment: glyph } of segmenter.segment(segment.text)) {
+    // [LAW:one-source-of-truth] The walk `Effected` keys its cells by.
+    for (const glyph of graphemes(segment.text)) {
       if (glyph === "\n") {
         row++;
         col = 0;
@@ -135,15 +163,20 @@ function textCells(subject: Subject, options: RenderOptions): ReadonlySet<string
   return cells;
 }
 
+/** `count` moments evenly across one period of `seconds`. */
+function sampled(seconds: number, count: number): number[] {
+  return Array.from({ length: count }, (_, i) => (i / count) * seconds);
+}
+
 /**
- * The worst contrast between text and its ground over one period of
+ * The worst contrast between text and its ground at each of `times` under
  * `effect`, as the screen shows it at the run's depth; `undefined` when
  * nothing is drawn in colour, which is when no effect runs at all.
  */
 function worstContrast(
   subjects: readonly Subject[],
   effect: (subject: Subject) => Effect,
-  period: number,
+  times: readonly number[],
   options: RenderOptions,
   theme: TerminalTheme,
 ): number | undefined {
@@ -163,8 +196,7 @@ function worstContrast(
       }
       return out;
     };
-    for (let i = 0; i < CONTRAST_SAMPLES; i++) {
-      const t = (i / CONTRAST_SAMPLES) * period;
+    for (const t of times) {
       [...new Effected(subject.renderable, recorded, { t, key: subject.name, theme }).render(options)];
     }
   }
@@ -188,27 +220,44 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   const heading = Style.fromColor(ink).add(Style.parse("bold"));
   const subjects = [stripSubject(theme), textSubject(theme)];
 
-  // What the frames are drawn with, asked of the host the app paints on.
-  const options = new Console({ environment: hostEnvironment(host) }).options;
-  const span = (subject: Subject): number => Measurement.get(options, subject.renderable).maximum;
+  // What the frames are drawn with, asked of the host the app paints on. The
+  // subjects sit inside the view's padding, so they are drawn that much
+  // narrower than the terminal.
+  const drawnWith = new Console({ environment: hostEnvironment(host) }).options;
+  const optionsAt = (cols: number): RenderOptions => ({ ...drawnWith, maxWidth: Math.max(1, cols - 2 * PAD_X) });
   const highlight = dark ? new ColorRgba(255, 255, 255) : new ColorRgba(0, 0, 0);
   const { curves } = settings;
+  const ratio = (r: number | undefined): string => (r === undefined ? "—" : `${r.toFixed(2)}:1`);
+  // Identity contrast: what the cells read at before any effect moves them.
+  const rest = ratio(worstContrast(subjects, () => (colors) => colors, [0], optionsAt(host.size().cols), theme));
 
-  const loops: Record<Loop, (subject: Subject) => Effect> = {
-    shimmer: (s) => onSlot(s.slot, shimmer(curves.shimmer, span(s), SHIMMER_WIDTH, highlight)),
-    pulse: (s) => onSlot(s.slot, pulse(curves.pulse, dark)),
-    drift: (s) => onSlot(s.slot, drift(curves.drift, span(s))),
-    sparkle: (s) => onSlot(s.slot, sparkle(curves.sparkle, dark)),
+  /**
+   * Each loop as it runs at a width, and the worst contrast it reaches there
+   * over one period: a sweep crosses the subject as drawn, so both follow the
+   * terminal when it is resized. Measured once per width.
+   */
+  const atWidth = new Map<number, { loops: Record<Loop, (subject: Subject) => Effect>; contrast: Record<Loop, string> }>();
+  const measuredAt = (options: RenderOptions) => {
+    const known = atWidth.get(options.maxWidth);
+    if (known !== undefined) return known;
+    const span = (subject: Subject): number => Measurement.get(options, subject.renderable).maximum;
+    const on = (subject: Subject, move: ColorMove): Effect => onSubject(subject, move, options, theme);
+    const loops: Record<Loop, (subject: Subject) => Effect> = {
+      shimmer: (s) => on(s, shimmer(curves.shimmer, span(s), SHIMMER_WIDTH, highlight)),
+      pulse: (s) => on(s, pulse(curves.pulse, dark)),
+      drift: (s) => on(s, drift(curves.drift, span(s))),
+      sparkle: (s) => on(s, sparkle(curves.sparkle, dark)),
+    };
+    const contrast = Object.fromEntries(
+      LOOPS.map((loop) => {
+        const worst = worstContrast(subjects, loops[loop], sampled(curves[loop].seconds, CONTRAST_SAMPLES), options, theme);
+        return [loop, worst === undefined ? "no colour drawn" : `worst contrast ${ratio(worst)} (at rest ${rest})`];
+      }),
+    ) as Record<Loop, string>;
+    const measured = { loops, contrast };
+    atWidth.set(options.maxWidth, measured);
+    return measured;
   };
-
-  const contrast = Object.fromEntries(
-    LOOPS.map((loop) => {
-      const worst = worstContrast(subjects, loops[loop], curves[loop].seconds, options, theme);
-      const rest = worstContrast(subjects, () => (colors) => colors, curves[loop].seconds, options, theme);
-      const ratio = (r: number | undefined): string => (r === undefined ? "—" : `${r.toFixed(2)}:1`);
-      return [loop, worst === undefined ? "no colour drawn" : `worst contrast ${ratio(worst)} (at rest ${ratio(rest)})`];
-    }),
-  ) as Record<Loop, string>;
 
   // [LAW:no-ambient-temporal-coupling] The clock, read here and nowhere else.
   const origin = performance.now();
@@ -229,8 +278,9 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     new RichText(""),
   ];
 
-  const view = (): Renderable =>
-    new Padding(
+  const view = (): Renderable => {
+    const { loops, contrast } = measuredAt(optionsAt(host.size().cols));
+    return new Padding(
       new Group(
         new RichText(
           `effects feel · ${settings.fps} fps · ${settings.depth} · ${settings.ground} (${theme.palette.name}) · t=${t.toFixed(1)}s`,
@@ -248,9 +298,10 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
           () => dissolveOut(curves.dissolve, dissolveStart),
         ),
       ),
-      [1, 2],
+      [1, PAD_X],
       { style: Style.fromColor(ink, paper) },
     );
+  };
 
   const app = new App({ host, surface: "alternate", view });
 
@@ -260,10 +311,15 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
   }, 1000 / settings.fps);
 
   // [LAW:dataflow-not-control-flow] Each key is a row in this table; a key
-  // not in it does nothing.
+  // not in it does nothing, so a mouse report repaints nothing.
+  const replay = (): number => {
+    t = clock();
+    app.refresh();
+    return t;
+  };
   const keys: Record<string, () => void> = {
-    f: () => (fadeStart = t = clock()),
-    d: () => (dissolveStart = t = clock()),
+    f: () => (fadeStart = replay()),
+    d: () => (dissolveStart = replay()),
     q: () => app.stop(),
     "\x03": () => app.stop(),
   };
@@ -272,7 +328,6 @@ export function runDemo(host: TerminalHost, settings: Settings): DemoHandle {
     try {
       const text = typeof chunk === "string" ? chunk : decoder.decode(chunk);
       for (const key of text) keys[key]?.();
-      app.refresh();
     } catch (error) {
       app.fail(error);
     }

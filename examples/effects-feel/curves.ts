@@ -32,18 +32,20 @@ import {
   type ThemeKey,
 } from "../../src/index.js";
 
-/** Which of a cell's two colours a single-colour move paints. */
-export type Slot = "fg" | "bg";
-
 /** A move of one colour: the colour, the cell, the time, to the new colour. */
 export type ColorMove = (color: ColorRgba, cell: EffectCell, t: number) => ColorRgba;
 
 /**
- * A one-colour move as an `Effect` on the slot the subject paints with: a
- * powerline strip shows its colour in the ground, a run of text in its ink.
+ * A one-colour move as an `Effect` on a subject's own colours, by hex,
+ * wherever a cell shows them. A powerline strip's fill is the ground of its
+ * cells and the ink of the seam glyphs between them, so the arrow moves with
+ * the cell it points out of; the terminal ground behind its caps is no colour
+ * of the strip's, and stays put.
  */
-export function onSlot(slot: Slot, move: ColorMove): Effect {
-  return (colors, cell, t) => ({ ...colors, [slot]: move(colors[slot], cell, t) });
+export function onColors(colors: ReadonlySet<string>, move: ColorMove): Effect {
+  const moved = (color: ColorRgba, cell: EffectCell, t: number): ColorRgba =>
+    colors.has(color.hex) ? move(color, cell, t) : color;
+  return ({ fg, bg }, cell, t) => ({ fg: moved(fg, cell, t), bg: moved(bg, cell, t) });
 }
 
 /** How the curves below are tuned: one period (or duration), ease and swing. */
