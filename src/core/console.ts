@@ -689,7 +689,6 @@ export class Console {
     const options = this.options;
     const stamped = logTime(this._getDatetime());
     const repeated = stamped === this._lastLogTime;
-    this._lastLogTime = stamped;
     const time = new RichText(stamped, { end: "" });
     time.stylize("log.time");
     const width = Math.min(time.cellLength, options.maxWidth - 1);
@@ -705,6 +704,9 @@ export class Console {
     ]);
     // The row is the column wider than its cell; an uncropped cell stays so.
     this._writeSegments(emit({ rows: grid, closed: true, cropWidth: cropWidth + width }));
+    // Remembered only once the row is written: a log that threw printed no
+    // stamp, so the next row's must show.
+    this._lastLogTime = stamped;
   }
 
   // [LAW:one-source-of-truth] `RuleOptions` is `Rule`'s, not a restatement of

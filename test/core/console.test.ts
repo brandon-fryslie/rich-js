@@ -828,8 +828,8 @@ describe("Console.print() line ends", () => {
     c.print("waiting on", new Promise(() => {}), "done");
     c.print("a", new WeakMap(), new WeakSet(), "b");
     expect(captured(chunks)).toBe(
-      "waiting on Promise { <state unknown> } done\n" +
-      "a WeakMap { <items unknown> } WeakSet { <items unknown> } b\n",
+      "waiting on Promise {} done\n" +
+      "a WeakMap {} WeakSet {} b\n",
     );
   });
 
@@ -918,6 +918,13 @@ describe("Console.log()", () => {
     c.log("four");
     const pad = " ".repeat(TIME.length);
     expect(captured(chunks)).toBe(`${TIME}one\n${pad}two\n[09:05:08] three\n${pad}four\n`);
+  });
+
+  it("stamps the row after a log that threw, since that log printed no time", () => {
+    const { console: c, chunks } = makeConsole({ width: 40, ...clock });
+    expect(() => c.log("[/bold] bad")).toThrow();
+    c.log("next");
+    expect(captured(chunks)).toBe(`${TIME}next\n`);
   });
 
   it("throws on a clock that reads an invalid date", () => {

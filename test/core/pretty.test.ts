@@ -561,21 +561,39 @@ describe("Pretty", () => {
   });
 
   // Reflection finds no keys on these, and `{}` would read as an empty object.
-  describe("a built-in whose contents are out of reach prints its kind", () => {
-    it("names a Promise, a WeakMap and a WeakSet, and says what is hidden", () => {
-      expect(collectText(new Pretty(Promise.resolve(1)), { maxWidth: 80 })).toBe("Promise { <state unknown> }\n");
-      expect(collectText(new Pretty(new WeakMap([[{}, 1]])), { maxWidth: 80 })).toBe("WeakMap { <items unknown> }\n");
-      expect(collectText(new Pretty(new WeakSet()), { maxWidth: 80 })).toBe("WeakSet { <items unknown> }\n");
+  describe("an object the platform names but reflection cannot read prints its name", () => {
+    const text = (value: unknown) => collectText(new Pretty(value), { maxWidth: 80 });
+
+    it("names each by its toStringTag, with no list of built-ins", () => {
+      expect(text(Promise.resolve(1))).toBe("Promise {}\n");
+      expect(text(new WeakMap([[{}, 1]]))).toBe("WeakMap {}\n");
+      expect(text(new WeakSet())).toBe("WeakSet {}\n");
+      expect(text(new WeakRef({}))).toBe("WeakRef {}\n");
+      expect(text(new ArrayBuffer(4))).toBe("ArrayBuffer {}\n");
+      expect(text((function* () {})())).toBe("Generator {}\n");
+    });
+
+    it("names a subclass beside the kind it extends, and lets one that spells itself keep it", () => {
+      class Task extends Promise<number> {}
+      expect(text(new Task(() => {}))).toBe("Task [Promise] {}\n");
+      class Spelled extends Promise<number> {
+        override toString() { return "Task#7"; }
+      }
+      expect(text(new Spelled(() => {}))).toBe("Task#7\n");
+    });
+
+    it("shows the keys instead when there are keys to show", () => {
+      expect(text(Object.assign(Promise.resolve(1), { id: 7 }))).toBe("{ id: 7 }\n");
     });
 
     it("is not a container, so it does not expand", () => {
       expect(isExpandable(new Promise(() => {}))).toBe(false);
       expect(isExpandable(new WeakMap())).toBe(false);
-      expect(isExpandable(new WeakSet())).toBe(false);
+      expect(isExpandable(new WeakRef({}))).toBe(false);
     });
 
     it("keeps its form inside a container", () => {
-      expect(collectText(new Pretty({ p: new WeakSet() }), { maxWidth: 80 })).toBe("{ p: WeakSet { <items unknown> } }\n");
+      expect(text({ p: new WeakSet() })).toBe("{ p: WeakSet {} }\n");
     });
   });
 

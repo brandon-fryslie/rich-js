@@ -166,8 +166,8 @@ for by name.
 ### Line ends
 
 `sep` and `end` belong to text. Adjacent strings, `RichText` values and scalar
-data (numbers, booleans, `null`, an object that describes itself, a `Promise`,
-`WeakMap` or `WeakSet`) are joined
+data (numbers, booleans, `null`, an object that describes itself, an object
+whose state is out of reach, such as a `Promise`) are joined
 with `sep`, a space by default, and the line they make is ended with `end`, a
 line break by default. Any other renderable takes whole lines of its own: text
 before it ends its line first, text after it starts on a new one, and neither
@@ -188,7 +188,7 @@ carries on along it. A line break at the end of a string is text, so
 
 Data that is a container takes whole lines of its own too, as it does in Python
 Rich: an array or typed array, a `Map`, a `Set`, or any other object that does
-not describe itself, even an empty one. An object describes itself when it has a
+not describe itself and is not out of reach, even an empty one. An object describes itself when it has a
 `Symbol.toPrimitive` method or a `toString` method other than
 `Object.prototype.toString`. `Pretty` formats it and may spread it
 across several lines, so it is not joined into a line of text:
@@ -197,9 +197,10 @@ across several lines, so it is not joined into a line of text:
 console.print("x =", [1, 2], "y =", 99);
 ```
 
-A `Promise`, `WeakMap` or `WeakSet` is not a container, because nothing in it
-can be read. It prints as its kind and what is hidden, inside the line, the way
-Python Rich prints an object's repr:
+An object whose state JavaScript keeps out of reach is not a container, because
+nothing in it can be read: one with a `Symbol.toStringTag` and no keys of its
+own, such as a `Promise`, a `WeakMap` or a `WeakRef`. It prints as that kind,
+inside the line, the way Python Rich prints an object's repr:
 
 ```typescript
 console.print("waiting on", new Promise(() => {}), "done");

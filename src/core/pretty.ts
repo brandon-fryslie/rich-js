@@ -433,17 +433,20 @@ function describesItself(value: object): boolean {
 }
 
 /**
- * The text of a built-in whose contents JavaScript gives no reader a way to
- * reach — a promise's state, a weak collection's members — or `null` for any
- * other object. Reflecting on one finds no keys and prints `{}`, which reads as
- * an empty object; the kind and what is hidden are all there is to show, worded
- * as Node's `util.inspect` words the weak collections.
+ * The name of an object the platform names but reflection cannot read — a
+ * promise, a weak collection, a `WeakRef`, an `ArrayBuffer`, a generator — or
+ * `null` when there is no such name or there are keys to show instead. Their
+ * state lives in internal slots, so `Object.keys` finds nothing and the keys
+ * form would print `{}`, which reads as an empty object. `Symbol.toStringTag` is
+ * the kind the platform declares for each, and a subclass and an object from
+ * another realm still carry it, so no list of built-ins is kept here. A
+ * subclass is named as Node's `util.inspect` names one, `Task [Promise]`.
  */
-function opaqueText(value: object): string | null {
-  if (value instanceof Promise) return "Promise { <state unknown> }";
-  if (value instanceof WeakMap) return "WeakMap { <items unknown> }";
-  if (value instanceof WeakSet) return "WeakSet { <items unknown> }";
-  return null;
+function opaqueName(value: object): string | null {
+  const tag = (value as { [Symbol.toStringTag]?: unknown })[Symbol.toStringTag];
+  if (typeof tag !== "string" || Object.keys(value).length > 0) return null;
+  const named = (Object.getPrototypeOf(value) as { constructor?: { name?: unknown } } | null)?.constructor?.name;
+  return typeof named === "string" && named !== "" && named !== tag ? `${named} [${tag}]` : tag;
 }
 
 /**
@@ -465,11 +468,12 @@ function formOf(value: object): Form {
   if (elements !== null) return { kind: "indexed", elements };
   if (value instanceof Map) return { kind: "map", map: value };
   if (value instanceof Set) return { kind: "set", set: value };
-  const opaque = opaqueText(value);
-  if (opaque !== null) return { kind: "opaque", text: opaque };
   // Below the Array/Map/Set arms deliberately: an array also overrides
   // `toString`, but "1,2,3" is a poorer answer than the structural form.
   if (describesItself(value)) return { kind: "self" };
+  // Below `self`, so a promise subclass that spells itself keeps its spelling.
+  const opaque = opaqueName(value);
+  if (opaque !== null) return { kind: "opaque", text: `${opaque} {}` };
   return { kind: "keys", record: value as Record<string, unknown> };
 }
 
