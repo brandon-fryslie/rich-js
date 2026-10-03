@@ -6,6 +6,8 @@ import { Segment } from "../../src/core/segment.js";
 import type { Renderable } from "../../src/core/protocol.js";
 import { Live, type LiveOptions } from "../../src/renderables/live.js";
 import { Panel } from "../../src/renderables/panel.js";
+import { Progress } from "../../src/renderables/progress.js";
+import { Status } from "../../src/renderables/status.js";
 import { fakeClock } from "../core/fake-clock.js";
 
 const SHOW_CURSOR = "\x1b[0m\x1b[?25h";
@@ -406,6 +408,7 @@ describe("Live on a console that is not interactive", () => {
   const consoles = [
     ["a file", {}],
     ["a terminal told it is not interactive", { forceTerminal: true, forceInteractive: false }],
+    ["a dumb terminal", { forceTerminal: true, environment: { env: { TERM: "dumb" } } }],
   ] as const;
 
   function plain(console: object, options: LiveOptions): { live: Live; out: () => string; clock: ReturnType<typeof fakeClock> } {
@@ -446,5 +449,66 @@ describe("Live on a console that is not interactive", () => {
     display.stop();
 
     expect(out()).toBe("one\n");
+  });
+
+  // Rich draws no frame off a terminal until the last, so a refresh or a
+  // print costs no render there; the one render is the frame left at stop.
+  it("draws the frame once, at stop, however often it refreshes or prints", () => {
+    const chunks: string[] = [];
+    const clock = fakeClock();
+    let renders = 0;
+    const counted: Renderable = {
+      render() {
+        renders += 1;
+        return [new Segment("frame")];
+      },
+    };
+    const target = new Console({ width: 20, height: 5, colorSystem: null, file: { write: (s: string) => void chunks.push(s) } });
+    const display = new Live(counted, { console: target, clock });
+    display.start();
+    clock.advance(3);
+    display.refresh();
+    display.console.print("one");
+    expect(renders).toBe(0);
+
+    display.stop();
+
+    expect(renders).toBe(1);
+    expect(chunks.join("")).toBe("one\nframe\n");
+  });
+
+  it("prints the frame through the console, so a recording and a capture hold it", () => {
+    const chunks: string[] = [];
+    const target = new Console({ width: 20, height: 5, colorSystem: null, record: true, file: { write: (s: string) => void chunks.push(s) } });
+    const recorded = new Live(new RichText("frame"), { console: target, autoRefresh: false });
+    recorded.start();
+    recorded.console.print("one");
+    recorded.stop();
+    expect(target.exportText()).toBe("one\nframe\n");
+
+    target.beginCapture();
+    const captured = new Live(new RichText("again"), { console: target, autoRefresh: false });
+    captured.start();
+    captured.stop();
+    expect(target.endCapture()).toBe("again\n");
+    expect(chunks.join("")).toBe("one\nframe\n");
+  });
+});
+
+// Rich's Live, Progress and Status take the console `get_console()` gives,
+// which detects the terminal — so piped, none of them paints.
+describe("The console a display makes for itself", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("is interactive exactly when a console made with no options is", () => {
+    for (const term of ["xterm-256color", "dumb"]) {
+      vi.stubEnv("TERM", term);
+      const detected = new Console().isInteractive;
+      expect(new Live().console.isInteractive).toBe(detected);
+      expect(new Progress().console.isInteractive).toBe(detected);
+      expect(new Status("working").console.isInteractive).toBe(detected);
+    }
   });
 });

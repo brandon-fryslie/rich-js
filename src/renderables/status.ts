@@ -26,7 +26,7 @@ export class Status {
   private _console: Console;
 
   constructor(message: string | RichText, options?: StatusOptions) {
-    this._console = options?.console ?? new Console({ forceTerminal: true });
+    this._console = options?.console ?? new Console();
     this._spinner = new Spinner(options?.spinner ?? "dots", message, {
       speed: options?.speed,
       style: options?.spinnerStyle ?? "status.spinner",

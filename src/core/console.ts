@@ -4,7 +4,7 @@
 
 import { Segment } from "./segment.js";
 import { Style, NULL_STYLE, Theme, DEFAULT_THEME } from "./style.js";
-import { ColorDepth, resolveDestination } from "./color.js";
+import { ColorDepth, isDumbTerminal, resolveDestination } from "./color.js";
 import type { Destination } from "./color.js";
 import type { Env } from "./env.js";
 import type { TerminalTheme } from "./color.js";
@@ -384,7 +384,7 @@ export class Console {
   private readonly _getDatetime: () => Date;
   private _style: Style;
   private _isTerminal: boolean;
-  private _forceInteractive: boolean | undefined;
+  private readonly _interactive: boolean;
   private _file: ConsoleSink | undefined;
   // [LAW:one-source-of-truth] The resolved output stream, not the `stderr`
   // flag that selected it. Storing the answer instead of the question is what
@@ -431,7 +431,8 @@ export class Console {
     // style, because the console's own style may be one of the theme's names.
     this._theme = options?.theme ?? DEFAULT_THEME;
     this._style = this._theme.resolve(options?.style ?? NULL_STYLE);
-    this._forceInteractive = options?.forceInteractive;
+    // Rich's rule: a terminal is interactive unless it is a dumb one.
+    this._interactive = options?.forceInteractive ?? (this._isTerminal && !isDumbTerminal(environment.env));
     this._file = options?.file;
     this._record = options?.record ?? false;
     this._markup = options?.markup !== false;
@@ -463,8 +464,7 @@ export class Console {
   }
 
   get isInteractive(): boolean {
-    if (this._forceInteractive !== undefined) return this._forceInteractive;
-    return this.isTerminal;
+    return this._interactive;
   }
 
   get colorSystem(): ColorDepth | null {

@@ -28,7 +28,7 @@
 import { frameRate, systemClock, type Clock, type FrameRate } from "../core/clock.js";
 import { Console } from "../core/console.js";
 import { Segment } from "../core/segment.js";
-import { FinalFramePainter, SurfacePainter, type Painter, type Screen } from "../core/paint.js";
+import { FinalFramePainter, SurfacePainter, type FrameSource, type Painter, type Screen } from "../core/paint.js";
 import { fitHeight, type Renderable } from "../core/protocol.js";
 import type { Unsubscribe } from "../core/subscription.js";
 
@@ -64,7 +64,7 @@ export class Live {
 
   constructor(renderable?: Renderable, options?: LiveOptions) {
     this._renderable = renderable;
-    this._console = options?.console ?? new Console({ forceTerminal: true });
+    this._console = options?.console ?? new Console();
     // [LAW:parse-dont-validate] Parsed whether or not it auto-refreshes, so a
     // rate that could never tick is refused where it is given.
     this._rate = frameRate(options?.refreshPerSecond ?? 4);
@@ -72,12 +72,13 @@ export class Live {
     this._autoRefresh = options?.autoRefresh !== false;
     this._transient = options?.transient ?? false;
     this._verticalOverflow = options?.verticalOverflow ?? "ellipsis";
-    const write = (bytes: string): void => void this._console.file.write(bytes);
     // [LAW:dataflow-not-control-flow] What the console is decides which
     // painter Live holds; every frame then takes the same path through it.
+    // The final frame is a print, as in Rich, so a recording or a capture
+    // holds it with everything else the console wrote.
     this._painter = this._console.isInteractive
-      ? new SurfacePainter(options?.altScreen ? "alternate" : "inline", write)
-      : new FinalFramePainter(write);
+      ? new SurfacePainter(options?.altScreen ? "alternate" : "inline", (bytes) => void this._console.file.write(bytes))
+      : new FinalFramePainter((frame) => this._console.print(linesOf(frame)));
     this._held = null;
   }
 
@@ -124,7 +125,7 @@ export class Live {
     // the terminal is handed back on the way out.
     try {
       if (this._transient) {
-        this._paint([]);
+        this._paint(() => []);
       } else {
         this.refresh();
       }
@@ -147,7 +148,7 @@ export class Live {
     // before `start()` or after the hand-back it would land on a screen that
     // belongs to someone else — the main buffer, under the user's own output.
     if (this._held === null) return;
-    this._paint(this._frame());
+    this._paint(() => this._frame());
   }
 
   private _frame(): Segment[][] {
@@ -167,14 +168,14 @@ export class Live {
   // again under it, as Rich's render hook does — in the bytes the console
   // writes, so a render that throws writes nothing.
   private _stepAround(text: string): string {
-    return this._painter.around(text, this._frame(), this._screen(), this._console.destination);
+    return this._painter.around(text, () => this._frame(), this._screen(), this._console.destination);
   }
 
   // [LAW:effects-at-boundaries] The frame is fully rendered before a byte
   // reaches the terminal, and whatever takes the last frame away goes out in
   // the same write as the new one — so a render that throws leaves the last
   // good frame showing.
-  private _paint(frame: Segment[][]): void {
+  private _paint(frame: FrameSource): void {
     this._painter.paint(frame, this._screen(), this._console.destination);
   }
 
@@ -204,4 +205,9 @@ export class Live {
     this._stopTicking = undefined;
     this._painter.handBack();
   }
+}
+
+// A drawn frame as a renderable, each row a line, for the console to print.
+function linesOf(frame: Segment[][]): Renderable {
+  return { render: () => frame.flatMap((row) => [...row, Segment.line()]) };
 }

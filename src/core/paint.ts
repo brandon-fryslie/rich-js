@@ -6,8 +6,8 @@
  *
  * [LAW:one-source-of-truth] Where the cursor rests between frames, and how
  * many rows the next paint goes back over, is one fact, and a `SurfacePainter`
- * is its only owner: `App` and `Live` both hold one, so they cannot disagree about
- * it. They once did: `Live` wrote a newline after its last row, and on a
+ * is its only owner: `App` holds one, and so does `Live` on a terminal, so
+ * they cannot disagree about it. They once did: `Live` wrote a newline after its last row, and on a
  * frame as tall as the terminal that newline scrolled the screen, so every
  * refresh left the frame's top row behind in scrollback. The cursor rests on
  * the last row, and the newline that ends it is written once, when the frame
@@ -91,8 +91,13 @@ const fitRows = (frame: Segment[][], screen: Screen): Segment[][] =>
   frame.map((line) => Segment.adjustLineLength(line, screen.cols, undefined, false));
 
 /**
- * What paints a run of frames on an output, writing through the `write` it
- * was made with, from `take` to `handBack`.
+ * A frame not yet drawn: the painter calls it when it is about to put the
+ * frame on the output, so one that never shows a frame never pays to draw it.
+ */
+export type FrameSource = () => Segment[][];
+
+/**
+ * What paints a run of frames on an output, from `take` to `handBack`.
  */
 export interface Painter {
   /** The budget a frame renders under, on a screen `screenRows` tall. */
@@ -100,16 +105,15 @@ export interface Painter {
   /** Take the output. */
   take(): void;
   /**
-   * Paint `frame` over the last frame and return it as painted. `frame` is
-   * already shaped to its height by whoever set its budget. An empty frame
-   * erases the last one.
+   * Paint `frame` over the last frame. `frame` is already shaped to its
+   * height by whoever set its budget. An empty frame erases the last one.
    */
-  paint(frame: Segment[][], screen: Screen, destination: Destination): Segment[][];
+  paint(frame: FrameSource, screen: Screen, destination: Destination): void;
   /**
    * The bytes that write `text` while `frame` is the frame standing on the
    * output, for the caller to write in one piece.
    */
-  around(text: string, frame: Segment[][], screen: Screen, destination: Destination): string;
+  around(text: string, frame: FrameSource, screen: Screen, destination: Destination): string;
   /** Hand the output back. The next `take` starts from wherever it then is. */
   handBack(): void;
 }
@@ -140,12 +144,13 @@ export class SurfacePainter implements Painter {
   }
 
   /**
-   * Paint `frame` over the last frame, leaving the cursor on its last row.
-   * No row is wider than the screen, since one that soft-wrapped would push
-   * every row below it down a row the next paint does not go back over.
+   * Paint `frame` over the last frame, leaving the cursor on its last row,
+   * and return it as painted. No row is wider than the screen, since one that
+   * soft-wrapped would push every row below it down a row the next paint does
+   * not go back over.
    */
-  paint(frame: Segment[][], screen: Screen, destination: Destination): Segment[][] {
-    const rows = fitRows(frame, screen);
+  paint(frame: FrameSource, screen: Screen, destination: Destination): Segment[][] {
+    const rows = fitRows(frame(), screen);
     this.write(this.over(rows, screen, destination));
     return rows;
   }
@@ -155,10 +160,10 @@ export class SurfacePainter implements Painter {
    * under it — in one string, so no terminal ever shows the frame gone. The
    * frame fills whole lines, so text that stops mid-line is ended before it.
    */
-  around(text: string, frame: Segment[][], screen: Screen, destination: Destination): string {
+  around(text: string, frame: FrameSource, screen: Screen, destination: Destination): string {
     const erase = this.over([], screen, destination);
     const ended = text.endsWith("\n") ? text : `${text}\n`;
-    return erase + ended + this.over(fitRows(frame, screen), screen, destination);
+    return erase + ended + this.over(fitRows(frame(), screen), screen, destination);
   }
 
   // The bytes that paint `rows` over the last frame. They go out in one
@@ -193,14 +198,14 @@ export class SurfacePainter implements Painter {
  * Paints on an output that is not a terminal — a file, a pipe, a CI log — as
  * Rich's `Live` does: nothing while the frames change, since every one would
  * stay there for good with the escape sequences that move over it as literal
- * bytes, and the last frame once, as plain lines, when the output is handed
- * back. What is written around the frame goes out as it was given.
+ * bytes, and the last frame once, printed as plain lines through `print`, when
+ * the output is handed back. What is written around the frame goes out as it
+ * was given. No frame is drawn but the one handed back.
  */
 export class FinalFramePainter implements Painter {
-  // The last frame, encoded: what `handBack` writes.
-  private last = "";
+  private last: FrameSource = () => [];
 
-  constructor(private readonly write: (bytes: string) => void) {}
+  constructor(private readonly print: (frame: Segment[][]) => void) {}
 
   height(screenRows: number): Height {
     return { rows: screenRows, exact: false };
@@ -208,10 +213,8 @@ export class FinalFramePainter implements Painter {
 
   take(): void {}
 
-  paint(frame: Segment[][], screen: Screen, destination: Destination): Segment[][] {
-    const rows = fitRows(frame, screen);
-    this.last = rows.map((row) => `${segmentsToString(row, destination)}\n`).join("");
-    return rows;
+  paint(frame: FrameSource): void {
+    this.last = frame;
   }
 
   around(text: string): string {
@@ -219,7 +222,8 @@ export class FinalFramePainter implements Painter {
   }
 
   handBack(): void {
-    this.write(this.last);
-    this.last = "";
+    const frame = this.last;
+    this.last = () => [];
+    this.print(frame());
   }
 }
