@@ -1,1 +1,0 @@
-import{i as e,q as t}from"./console-DdqMIia3.js";var n=class{renderables;constructor(...e){this.renderables=e}*render(e){let n={...e,height:t(e.height)};for(let e of this.renderables)yield*e.render(n)}measure(t){return e(t,this.renderables)}};export{n as t};
