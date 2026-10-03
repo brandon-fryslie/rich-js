@@ -2,6 +2,28 @@
   "schema": 2,
   "versions": [
     {
+      "version": "pr-311",
+      "ref": "refs/pull/311/merge",
+      "sha": "b41cb742aeff6e75fa34de5b92fee0decbffd348",
+      "timestamp": "2026-10-03T10:49:12.724Z",
+      "commits": [
+        {
+          "sha": "b41cb742aeff6e75fa34de5b92fee0decbffd348",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:47:35-06:00",
+          "message": "Merge 3f8a6ff13583686b7ccc20e1c573dd94ca30a294 into 528a1bd5bec59d5b62db4b21b4f9c3137e241cfe\n"
+        },
+        {
+          "sha": "3f8a6ff13583686b7ccc20e1c573dd94ca30a294",
+          "author_name": "Brandon Fryslie",
+          "author_email": "530235+brandon-fryslie@users.noreply.github.com",
+          "timestamp": "2026-10-03T04:47:20-06:00",
+          "message": "feat(examples): effects-feel curves rebuilt as breath, sunlight on water, wind, fireflies (rich-effects-fxiy.b6i)\n\nBrandon's first verdict on b6i: the defaults were jerky and choppy. The loops\nare now smooth noise and smooth waveforms, light mixes in OKLab instead of\nround the hue circle, and the demo runs at 30 fps by default. A test bars any\nloop from moving a cell more than dE_OK 0.06 between frames at 1 fps.\n"
+        }
+      ]
+    },
+    {
       "version": "pr-310",
       "ref": "refs/pull/310/merge",
       "sha": "74bd0686965de88eeb88e6240917e5e9f458550c",
