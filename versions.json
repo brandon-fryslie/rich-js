@@ -4,15 +4,15 @@
     {
       "version": "master",
       "ref": "refs/heads/master",
-      "sha": "09db77c36082d202e269ed0c62e304032e7b6051",
-      "timestamp": "2026-10-03T16:31:58.122Z",
+      "sha": "dec2facc8b0d76a04a34f10462f118357b141ffd",
+      "timestamp": "2026-10-03T16:56:01.994Z",
       "commits": [
         {
-          "sha": "09db77c36082d202e269ed0c62e304032e7b6051",
+          "sha": "dec2facc8b0d76a04a34f10462f118357b141ffd",
           "author_name": "Brandon Fryslie",
           "author_email": "530235+brandon-fryslie@users.noreply.github.com",
-          "timestamp": "2026-10-03T10:30:42-06:00",
-          "message": "fix(text): keep a RichText's trailing blank line through wrap, as Rich does (rich-text-vj2a) (#334)\n\n* fix(text): a RichText ending in a newline keeps its trailing blank line through wrap, as Rich does (rich-text-vj2a)\n\nRichText.render took its lines from Segment.splitLines, Rich's split_lines,\nwhich drops a trailing empty line, and patched the break back in. Rich wraps\nsplit(allow_blank=True), so that line is justified like any other. The\nsplitter is now handed the text closed by one more break, so every line the\ntext has comes back and the patch is gone.\n\n* fix(text): review — trailing-blank pinned across every justify mode, Tree's row comment made true, no copy per render (rich-text-vj2a)\n\n* test(text): empty justified text is one padded blank line, as in Rich (rich-text-vj2a)"
+          "timestamp": "2026-10-03T10:54:13-06:00",
+          "message": "fix(table): a RichText title or caption keeps its own style, and justify pads inside the text's run, as Rich does (rich-table-qj6i) (#335)\n\n* fix(table): a RichText title or caption keeps its own style, and justify pads inside the text's run, as Rich does (rich-table-qj6i)\n\n* fix(text): a justify pad joins the run beside it only when no span covers that run, as Rich does (rich-table-qj6i)\n\nReview: the join was decided by style equality, which merged a pad into a\nspan whose style equals the base. _buildSegments now reports which pieces a\nspan covers, and padded joins on that.\n\n* fix(text): a zero-width segment at a justified edge keeps its own style (rich-table-qj6i)"
         }
       ]
     },
